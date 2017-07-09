@@ -1746,16 +1746,19 @@ function setChangeMenuClick() {
     $("#post-sections a").off("click").click(function(e) {
         try {
             const post_sections = ["posts","excerpt","safelist-settings"];
-            $("#post-sections li").removeClass("active");
-            $(e.currentTarget).parent().addClass("active");
             let match=/show-(.*)-link/.exec(e.currentTarget.id);
             if(match){
+                if ((match[1] === "excerpt")&&($(e.currentTarget).parent().hasClass("active"))) {
+                    return;
+                }
                 let activesection = match[1];
                 $.each(_.difference(post_sections,activesection), function(i, section) {
                     $("#"+section).hide();
                 });
                 $("#"+activesection).show();
             }
+            $("#post-sections li").removeClass("active");
+            $(e.currentTarget).parent().addClass("active");
             e.preventDefault();
         } catch (e) {
             errorlog(e);
