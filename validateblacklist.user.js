@@ -175,6 +175,7 @@ class ValidateBlacklist {
                 $.each(this.working_list,(i,value)=>{
                     this.working_list[i] = this.getLastAlias(value);
                 });
+                this.working_list = _.uniq(this.working_list);
                 //Validate tags next to avoid processing any more bogus entries
                 this.validateTags();
                 this.stage = 2;
@@ -409,7 +410,6 @@ class ValidateBlacklist {
            }
         });
     }
-    //Code check the following function
     //Render functions
     reconstructList() {
         //Helps with HTML formatting
@@ -495,11 +495,16 @@ class ValidateBlacklist {
                 savetag = negativeadd+this.aliased_tags[tag];
                 let htmltag = sanitizeForHTML(tag);
                 let htmlaliastag = sanitizeForHTML(this.aliased_tags[tag]);
+                tag = this.aliased_tags[tag];
+                //Check for duplicates
+                if ($.inArray(tag,this.normal_list)>=0) {
+                    buildhtml.push(liWrapper(`<span>${displaychar}: Duplicate: ${htmltag} -> ${htmlaliastag}</span>`,this.is_sublist));
+                    return;
+                }
                 buildhtml.push(liWrapper(`<span>${displaychar}: ${htmltag} -> ${htmlaliastag}</span>`,this.is_sublist));
                 currindex++;
                 //Update display char for any superfluous tags found
                 displaychar = (this.is_sublist?String.fromCharCode("a".charCodeAt() + currindex):currindex+1);
-                tag = this.aliased_tags[tag];
                 //Don't continue just yet... check for an implication match
             }
             //Drop and continue
@@ -591,7 +596,7 @@ function sleep(ms) {
 }
 
 //Export list
-window.ValidateBlacklist = ValidateBlacklist;
-window.TextboxLogger = TextboxLogger;
+if(window.ValidateBlacklist===undefined) {window.ValidateBlacklist = ValidateBlacklist;}
+if(window.TextboxLogger===undefined) {window.TextboxLogger = TextboxLogger;}
 
 })();
