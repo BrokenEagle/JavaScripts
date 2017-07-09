@@ -8,7 +8,7 @@
 // @match        *://*.donmai.us/*
 // @grant        none
 // @run-at       document-body
-// @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/safelist.js
+// @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/safelist.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.4/lodash.min.js
 // ==/UserScript==
 
