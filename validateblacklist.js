@@ -10,7 +10,7 @@
 // @exclude      *://*.donmai.us/posts/*
 // @grant        none
 // @run-at       document-body
-// @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/raw/stable/dist/validateblacklist.js
+// @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/validateblacklist.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.15.0/lodash.js
 // ==/UserScript==
 
