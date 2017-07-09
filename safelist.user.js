@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Safelist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      35
+// @version      36
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Alternate Danbooru blacklist handler
 // @author       BrokenEagle
@@ -29,7 +29,8 @@ const help_hints = {
     'enable_tag_hide':"Hide all occurrences of a tag in sidemenus and tables.",
     'enable_text_replace':"Replace all occurrences of a tag with <u><b>Replacement Text</b></u> in prose and titles.",
     'enable_write_mode':"Enable writes to your Danbooru blacklist with the <b><u>Push</u></b> button.",
-    'enable_validate_mode':"Enable ValidateBlacklist addon if installed. Click <b><u>Validate</u></b> button to activate.",
+    'enable_validate_mode':'Enable <a href="https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/validateblacklist.user.js">ValidateBlacklist addon</a> if installed. Click <b><u>Validate</u></b> button to activate.',
+    'enable_order_mode':'Enable <a href="https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/orderblacklist.user.js">OrderBlacklist addon</a> if installed. Click <b><u>Order</u></b> button to activate.',
     'use_session_enable':"Have a different state of enabled on every page tab.",
     'use_session_level':"Have a different active list on every page tab."
 };
@@ -492,11 +493,12 @@ class Safelist {
         optionitem += this.renderButton('validate');
         optionitem += this.renderButton('reset');
         optionitem += this.renderButton('apply');
+        optionitem += this.renderButton('order');
         optionitem += this.renderButton('delete');
         return optionitem + `
             </div>`;
     }
-    //For the validate function
+    //For the addon modules
     renderFeedback() {
         return `
             <div class="safelist-output">
@@ -581,6 +583,7 @@ class Safelist {
         this.setPullButtonClick();
         this.setPushButtonClick();
         this.setValidateButtonClick();
+        this.setOrderButtonClick();
         this.setResetButtonClick();
         this.setApplyButtonClick();
         this.setDeleteButtonClick();
@@ -665,12 +668,14 @@ class Safelist {
                         $(`[name="safelist-validate-level-${level}"]`).hide();
                         $(`[name="safelist-reset-level-${level}"]`).show();
                         $(`#safelist-settings-level-${level} .safelist-output`).show();
+                        $(`[name="safelist-order-level-${level}"]`)[0].setAttribute("disabled","true");
                         //Get current tags in tag box
                         var safelevel = safelist_config.levels[level];
                         let taglist = $("#safelist_tags_level_"+level).val().split('\n');
                         safelevel.$results = $("#safelist_results_level_"+level);
                         safelevel.logger = new TextboxLogger("#safelist_feedback_level_"+level);
                         safelevel.blacklist = new ValidateBlacklist(taglist,safelevel.logger);
+                        safelevel.instance = ValidateBlacklist;
                         //Clear both output areas
                         safelevel.logger.clear();
                         safelevel.$results[0].innerHTML = "";
@@ -688,6 +693,42 @@ class Safelist {
             }
         });
     }
+    setOrderButtonClick() {
+        $(`[name="safelist-order-level-${this.level}"]`).off().click(function(e) {
+            try {
+                let match = /safelist-order-level-(.*)/.exec(e.target.name);
+                if (match) {
+                    let level = match[1];
+                    //Only process if ValidateBlacklist is installed
+                    if (typeof(OrderBlacklist)=='function') {
+                        $(`[name="safelist-order-level-${level}"]`).hide();
+                        $(`[name="safelist-reset-level-${level}"]`).show();
+                        $(`#safelist-settings-level-${level} .safelist-output`).show();
+                        $(`[name="safelist-validate-level-${level}"]`)[0].setAttribute("disabled","true");
+                        //Get current tags in tag box
+                        var safelevel = safelist_config.levels[level];
+                        let taglist = $("#safelist_tags_level_"+level).val().split('\n');
+                        safelevel.$results = $("#safelist_results_level_"+level);
+                        safelevel.logger = new TextboxLogger("#safelist_feedback_level_"+level);
+                        safelevel.blacklist = new OrderBlacklist(taglist,safelevel.logger);
+                        safelevel.instance = OrderBlacklist;
+                        //Clear both output areas
+                        safelevel.logger.clear();
+                        safelevel.$results[0].innerHTML = "";
+                        //Start processing the lists
+                        safelevel.blacklist.processList();
+                        setTimeout(()=>{safelevel.validateCallback();},timeout_polling_interval);
+                    } else {
+                        Danbooru.notice("Order Blacklist not installed!");
+                        $(`[name="safelist-order-level-${level}"]`)[0].setAttribute("disabled","true");
+                    }
+                }
+            } catch (e) {
+                errorlog(e);
+                throw e;
+            }
+        });
+    }
     //Set the reset button
     setResetButtonClick() {
         $(`[name="safelist-reset-level-${this.level}"]`).off().click(function(e) {
@@ -697,12 +738,12 @@ class Safelist {
                     let level = match[1];
                     //Was the validate global variable instantiated...?
                     var safelevel = safelist_config.levels[level];
-                    if (('blacklist' in safelevel) && (safelevel.blacklist instanceof ValidateBlacklist)) {
+                    if ('blacklist' in safelevel) {
                         $(`[name="safelist-reset-level-${level}"]`).hide();
                         $(`[name="safelist-validate-level-${level}"]`).show();
                         safelevel.blacklist.allstop();
                     } else {
-                        Danbooru.notice("Validate Blacklist not initiated!");
+                        Danbooru.notice("Safelist addon not initiated!");
                         $(`[name="safelist-reset-level-${level}"]`)[0].setAttribute("disabled","true");
                     }
                 }
@@ -720,9 +761,9 @@ class Safelist {
                 if (match) {
                     let level = match[1];
                     var safelevel = safelist_config.levels[level];
-                    if (('blacklist' in safelevel) && (safelevel.blacklist instanceof ValidateBlacklist)) {
+                    if ('blacklist' in safelevel) {
                         $(`[name="safelist-apply-level-${level}"]`).hide();
-                        $(`[name="safelist-validate-level-${level}"]`).show();
+                        safelevel.resetButtons();
                         $("#safelist_tags_level_"+level).val(safelevel.blacklist.reconstructed_list.join('\n'));
                         safelevel.logger.log("Blacklist has been updated in text area!");
                         safelevel.logger.log("Click 'Save' to update Safelist settings...");
@@ -730,7 +771,7 @@ class Safelist {
                             safelevel.logger.log("...or click 'Push' to update Danbooru blacklist.");
                         }
                     } else {
-                        Danbooru.notice("Validate Blacklist not initiated!");
+                        Danbooru.notice("Safelist addon not initiated!");
                         $(`[name="safelist-apply-level-${level}"]`)[0].setAttribute("disabled","true");
                     }
                 }
@@ -773,13 +814,13 @@ class Safelist {
                     //Doing this here so that we don't have to check for the addon at program initialization
                     let $tooltip = $(`#safelist_results_level_${this.level} + .validate-blacklist`);
                     let $label = $(`[for=safelist_results_level_${this.level}]`);
-                    if ($tooltip.length) {
-                        $tooltip[0].innerHTML = ValidateBlacklist.legend;
+                    if ($tooltip.length && (this.instance.legend!==undefined)) {
+                        $tooltip[0].innerHTML = this.instance.legend;
                         $tooltip.addClass("tooltip");
                         $label[0].innerHTML = "Results (hover for legend)";
                     }
                 } else {
-                    $(`[name="safelist-validate-level-${this.level}"]`).show();
+                    this.resetButtons();
                 }
             } else if ((!this.blacklist.stop)&&(!this.blacklist.error)) {
                 debuglog("Reschedule callback");
@@ -791,6 +832,13 @@ class Safelist {
             throw e;
         }
     }
+    resetButtons() {
+        $(`[name="safelist-validate-level-${this.level}"]`).show();
+        if (safelist_config.enable_validate_mode) {$(`[name="safelist-validate-level-${this.level}"]`)[0].removeAttribute("disabled");}
+        $(`[name="safelist-order-level-${this.level}"]`).show();
+        if (safelist_config.enable_order_mode) {$(`[name="safelist-order-level-${this.level}"]`)[0].removeAttribute("disabled");}
+    }
+    
     //Tag & text functions
     
     //The following are completely tag related and will be hidden
@@ -997,6 +1045,9 @@ function initializeSafelist() {
         if (!safelist_config.enable_validate_mode) {
             $.each($(".safelist-validate"), (i,entry)=>{entry.setAttribute("disabled",true);});
         }
+        if (!safelist_config.enable_order_mode) {
+            $.each($(".safelist-order"), (i,entry)=>{entry.setAttribute("disabled",true);});
+        }
         console.timeEnd("MenuSetup");
     }
     console.timeEnd("Initialize");
@@ -1085,6 +1136,13 @@ function reloadSafelist(configure,changed_menus) {
             $.each($(".safelist-validate"), (i,entry)=>{entry.setAttribute("disabled",true);});
         }
     }
+    if ('enable_order_mode' in configure) {
+        if (safelist_config.enable_validate_mode) {
+            $.each($(".safelist-order"), (i,entry)=>{entry.removeAttribute("disabled");});
+        } else {
+            $.each($(".safelist-order"), (i,entry)=>{entry.setAttribute("disabled",true);});
+        }
+    }
     if (('use_session_enable' in configure) || ('use_session_level' in configure)) {
         setSessionData();
     }
@@ -1119,6 +1177,9 @@ function resetAllSettings() {
     if (!safelist_config.enable_validate_mode) {
         $.each($(".safelist-validate"), (i,entry)=>{entry.setAttribute("disabled",true);});
     }
+    if (!safelist_config.enable_order_mode) {
+        $.each($(".safelist-order"), (i,entry)=>{entry.setAttribute("disabled",true);});
+    }
 }
 
 /////////////////////
@@ -1134,6 +1195,7 @@ function initialProgramData() {
     safelist_config.enable_tag_hide = false;
     safelist_config.enable_text_replace = false;
     safelist_config.enable_validate_mode = false;
+    safelist_config.enable_order_mode = false;
     safelist_config.enable_write_mode = false;
     safelist_config.use_session_enable = false;
     safelist_config.use_session_level = false;
@@ -1181,6 +1243,7 @@ function validateProgramData() {
     validateData(safelist_config,'enable_text_replace','boolean',false);
     validateData(safelist_config,'enable_write_mode','boolean',false);
     validateData(safelist_config,'enable_validate_mode','boolean',false);
+    validateData(safelist_config,'enable_order_mode','boolean',false);
     validateData(safelist_config,'use_session_enable','boolean',false);
     validateData(safelist_config,'use_session_level','boolean',false);
     if (validateData(safelist_config,'levels','object',{})) {
@@ -1206,7 +1269,8 @@ function validateProgramData() {
     }
     _(safelist_config).each((val,key)=>{
         if ($.inArray(key,['name','replacement_text','enable_tag_hide','enable_text_replace',
-                            'enable_write_mode','enable_validate_mode','use_session_enable','use_session_level',
+                            'enable_write_mode','enable_validate_mode','enable_order_mode',
+                            'use_session_enable','use_session_level',
                             'levels','next_index','enable_safelist','active_list'])<0) {
             debuglog(`Deleting key: ${key}`);
             delete safelist_config[key];
@@ -1548,10 +1612,11 @@ function renderSettingMenu() {
     menustring += renderOptionTextinput('replacement_text');
     menustring += renderOptionCheckbox('enable_tag_hide');
     menustring += renderOptionCheckbox('enable_text_replace');
-    menustring += renderOptionCheckbox('enable_write_mode');
-    menustring += renderOptionCheckbox('enable_validate_mode');
     menustring += renderOptionCheckbox('use_session_enable');
     menustring += renderOptionCheckbox('use_session_level');
+    menustring += renderOptionCheckbox('enable_validate_mode');
+    menustring += renderOptionCheckbox('enable_order_mode');
+    menustring += renderOptionCheckbox('enable_write_mode');
     menustring += `
         <div class="clearfix"></div>
     </div>`;
@@ -1707,6 +1772,7 @@ function setAddButtonClick() {
             $("#safelist-settings>hr").before(addlist.renderLevelSetting());
             if (!safelist_config.enable_write_mode) {$(`[name="safelist-push-level-${index}"]`)[0].setAttribute("disabled","true");}
             if (!safelist_config.enable_validate_mode) {$(`[name="safelist-validate-level-${index}"]`)[0].setAttribute("disabled","true");}
+            if (!safelist_config.enable_order_mode) {$(`[name="safelist-order-level-${index}"]`)[0].setAttribute("disabled","true");}
             addlist.setMenuLevelClicks();
             safelist_config.next_index++;
         } catch (e) {
@@ -1782,6 +1848,7 @@ function setSaveButtonClick() {
             safelist_config.enable_text_replace = $("#safelist-enable-text-replace")[0].checked;
             safelist_config.enable_write_mode = $("#safelist-enable-write-mode")[0].checked;
             safelist_config.enable_validate_mode = $("#safelist-enable-validate-mode")[0].checked;
+            safelist_config.enable_order_mode = $("#safelist-enable-validate-mode")[0].checked;
             safelist_config.use_session_enable = $("#safelist-use-session-enable")[0].checked;
             safelist_config.use_session_level = $("#safelist-use-session-level")[0].checked;
             safelist_config.replacement_text = $("[name=safelist-replacement-text]").val().replace(/<.+?>/g,'');
