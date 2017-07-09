@@ -5,8 +5,9 @@
 
 2. Application Files
 
-  a. Safelist.js - Alternate blacklist handler for Danbooru with UI enhancements.
-  b. ValidateBlacklist.js-  Addon module that validates a Danbooru blacklist.
+  a. safelist.user.js - Alternate blacklist handler for Danbooru with UI enhancements.
+  b. validateblacklist.user.js-  Addon module that validates a Danbooru blacklist.
+  c. orderblacklist.user.just
 
 3. Setup
 
@@ -105,3 +106,31 @@
         an array of strings representing each line of a blacklist in the same order
         that they were input.  reconstructed_html contains a user friendly HTML
         representation of the changes made to the input list.
+  
+  c. OrderBlacklist
+  
+    Two classes are exported to the window variable for use.
+    
+    i. TextboxLogger:
+    
+        Provides user feedback and should be instantiated with the DOM name
+        of a <textarea> to write to.  The two main functions are log and clear,
+        which either writes to a text area or clears it respectively.
+    
+    ii. OrderBlacklist:
+    
+        Orders a Danbooru blacklist.  Instantiated with an array of strings
+        representing each line of the blacklist and an optional instance of
+        TextboxLogger.  Processing is started with the class function processList.
+        Processing can be stopped at any point with the class function allstop.
+        
+        When processing is complete, the class variable is_ready will be set to
+        true.  If there were no faults found, the class variable unchanged will
+        be set to true.
+        
+        The results are stored in two class variables. reconstructed_list contains
+        an array of strings representing each line of a blacklist in the new order
+        by post count.  reconstructed_html contains a user friendly HTML
+        representation of the new list.
+
+  
