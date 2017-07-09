@@ -1,16 +1,23 @@
 /*Safelist controls*/
-li.safelist-active, li.safelist-pending {
-    font-style: italic;
+#safelist-box {
+    margin-bottom: 0.5em;
 }
-li.safelist-pending:after {
-    content: "(Loading)";
-    padding-left: 4px;
-}
-li.safelist-allnone {
-    font-weight: bold;
+#safelist-box h1 {
+    font-size: 1.16667em;
 }
 #safelist-box #safelist {
     margin-left: 1em;
+}
+#safelist-box #safelist .safelist-active,
+#safelist-box #safelist .safelist-pending {
+    font-style: italic;
+}
+#safelist-box #safelist .safelist-pending:after {
+    content: "(Loading)";
+    padding-left: 4px;
+}
+#safelist-box #safelist .safelist-allnone {
+    font-weight: bold;
 }
     /*Sidebar list*/
 #c-posts #sidebar #safelist-box #safelist li,
@@ -79,17 +86,31 @@ li.safelist-allnone {
     position: absolute;
 }
 
-
 /*Safelist settings*/
-    /*Textblock*/
-#c-posts #a-index #safelist-settings .safelist-textblock div {
-    padding: 0 0.5em;
+    /*General settings*/
+#c-posts #a-index #safelist-settings {
+    display: block;
 }
-#c-posts #a-index #safelist-settings .safelist-textblock li {
-    list-style-type: disc;
+#c-posts #a-index #safelist-settings input.btn {
+    margin-right: 1em;
+    margin-top: 1em;
+    min-width: 4em;
 }
-#c-posts #a-index #safelist-settings .safelist-textblock ul {
-    margin-left: 1.5em;
+    /*Name row*/
+#c-posts #a-index #safelist-settings .safelist-namerow {
+    height: 2em;
+}
+#c-posts #a-index #safelist-settings .safelist-namerow h2 {
+    display: inline-block;
+    margin-right: 0.5em;
+}
+#c-posts #a-index #safelist-settings .safelist-namerow .text {
+    margin: 0.5em;
+    padding-left: 0.5em;
+    line-height:150%;
+}
+#c-posts #a-index #safelist-settings > div {
+    margin-bottom: 1em;
 }
     /*Input groupings*/
 #c-posts #a-index #safelist-settings .input {
@@ -101,29 +122,39 @@ li.safelist-allnone {
     display: block;
     font-weight: bold;
     line-height: 1.5em;
+    font-size: 100%;
 }
 #c-posts #a-index #safelist-settings .input span {
     display: block;
     max-width: 90%;
 }
-
-
-#c-posts #a-index #safelist-settings > div {
-    margin-bottom: 1em;
-}
+    /*Textblock(s)*/
 #c-posts #a-index #safelist-settings textarea {
     width: 90%;
     height: 10em;
 }
-    /*Border for feedback areas*/
+#c-posts #a-index #safelist-settings .safelist-textblock li {
+    list-style-type: disc;
+}
+#c-posts #a-index #safelist-settings .safelist-textblock ul {
+    margin-left: 1.5em;
+}
 #c-posts #a-index #safelist-settings .safelist-textblock div {
+    padding: 0 0.5em;
     border: 2px solid lightgrey;
     width: 90%;
     height: 10em;
     font-size: 0.8em;
     overflow: auto;
 }
-    /*Makes everything fit nicely*/
+    /*Checkbox input*/
+#c-posts #a-index #safelist-settings .safelist-checkbox input {
+    margin-top: 1em;
+}
+#c-posts #a-index #safelist-settings .safelist-checkbox .hint {
+    margin: 1em 0;
+}
+    /*Fit and placement settings*/
 #c-posts #a-index #safelist-settings .safelist-textblock,
 #c-posts #a-index #safelist-settings .safelist-checkbox,
 #c-posts #a-index #safelist-settings .safelist-textinput,
@@ -140,48 +171,8 @@ li.safelist-allnone {
     margin-top: 0.5em;
     position: relative;
 }
-    /*Checkbox input*/
-#c-posts #a-index #safelist-settings .safelist-checkbox input {
-    margin-top: 1em;
-}
-#c-posts #a-index #safelist-settings .safelist-checkbox .hint {
-    margin: 1em 0;
-}
-#c-posts #a-index #safelist-settings #safelist-settings {
-    display: block;
-}
-#c-posts #a-index #safelist-settings #safelist-settings input.btn {
-    margin-right: 1em;
-    margin-top: 1em;
-    min-width: 4em;
-}
-    /*Name row*/
-#safelist-settings .safelist-namerow {
-    height: 2em;
-}
-#safelist-settings .safelist-namerow h2 {
-    display: inline-block;
-    margin-right: 0.5em;
-}
-#safelist-settings .safelist-namerow .text {
-    margin: 0.5em;
-    padding-left: 0.5em;
-    line-height:150%;
-}
-section#safelist-box h1 {
-    font-size: 1.16667em;
-}
-section#safelist-box {
-    margin-bottom: 0.5em;
-}
-div.safelist-error {
-    font-size: 125%;
-    margin: 1em;
-    font-weight: bold;
-    text-align: left;
-    border: 2px solid lightgrey;
-}
-.tooltip {
+    /*Tooltip*/
+#c-posts #a-index #safelist-settings .tooltip {
     visibility: hidden;
     background-color: black;
     color: #fff;
@@ -196,11 +187,19 @@ div.safelist-error {
     left: 4em;
     margin-left: -60px;
 }
-
-label:hover ~ .tooltip, .tooltip:hover {
+#c-posts #a-index #safelist-settings .validate-blacklist.tooltip {
+    text-align: left;
+}
+#c-posts #a-index #safelist-settings label:hover ~ .tooltip,
+#c-posts #a-index #safelist-settings .tooltip:hover {
     visibility: visible;
 }
 
-.validate-blacklist.tooltip {
+/*Other settings*/
+div.safelist-error {
+    font-size: 125%;
+    margin: 1em;
+    font-weight: bold;
     text-align: left;
+    border: 2px solid lightgrey;
 }
