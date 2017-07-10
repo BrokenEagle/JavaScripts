@@ -681,7 +681,7 @@ class Safelist {
                         safelevel.$results[0].innerHTML = "";
                         //Start processing the lists
                         safelevel.blacklist.processList();
-                        setTimeout(()=>{safelevel.validateCallback();},timeout_polling_interval);
+                        setTimeout(()=>{safelevel.addonCallback();},timeout_polling_interval);
                     } else {
                         Danbooru.notice("Validate Blacklist not installed!");
                         $(`[name="safelist-validate-level-${level}"]`)[0].setAttribute("disabled","true");
@@ -717,7 +717,7 @@ class Safelist {
                         safelevel.$results[0].innerHTML = "";
                         //Start processing the lists
                         safelevel.blacklist.processList();
-                        setTimeout(()=>{safelevel.validateCallback();},timeout_polling_interval);
+                        setTimeout(()=>{safelevel.addonCallback();},timeout_polling_interval);
                     } else {
                         Danbooru.notice("Order Blacklist not installed!");
                         $(`[name="safelist-order-level-${level}"]`)[0].setAttribute("disabled","true");
@@ -803,7 +803,7 @@ class Safelist {
     //Helper functions
     
     //Callback for the validate button
-    validateCallback() {
+    addonCallback() {
         try {
             if (this.blacklist.is_ready) {
                 this.$results[0].innerHTML = this.blacklist.reconstructed_html;
@@ -825,7 +825,7 @@ class Safelist {
             } else if ((!this.blacklist.stop)&&(!this.blacklist.error)) {
                 debuglog("Reschedule callback");
                 var me = this;
-                setTimeout(()=>{me.validateCallback();},timeout_polling_interval);
+                setTimeout(()=>{me.addonCallback();},timeout_polling_interval);
             }
         } catch (e) {
             errorlog(e);
