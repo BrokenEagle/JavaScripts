@@ -21,7 +21,8 @@
 }
     /*Sidebar list*/
 #c-posts #sidebar #safelist-box #safelist li,
-#c-favorites #sidebar #safelist-box #safelist li {
+#c-favorites #sidebar #safelist-box #safelist li,
+#c-wiki-pages #sidebar #safelist-box #safelist li {
     list-style-type: disc;
 }
     /*Topbar list*/
