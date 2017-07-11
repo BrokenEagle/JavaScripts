@@ -52,6 +52,8 @@
             Push button.
         - Enable Validate Mode: Enable ValidateBlacklist addon if installed.
             Click Validate button to activate.
+        - Enable Order Mode: Enable OrderBlacklist addon if installed.
+            Click Order button to activate.
         - Use Session Enable: Have a different state of enabled on each page tab.
         - Use Session Level: Have a different active level on each page tab.
         
@@ -77,7 +79,8 @@
         - Pull: Populate tag list with a user's Danbooru blacklist tags.
         - Push: Write a tag list to a user's Danbooru blacklist.
         - Validate: Activates the ValidateBlacklist addon for the tag list.
-        - Reset: Resets the ValidateBlacklist addon, causing it to stop.
+        - Order: Activates the OrderBlacklist addon for the tag list.
+        - Reset: Resets the module addon, causing it to stop.
         - Apply: Apply the recommended changes to the tag list window.
         - Delete: Delete the level.
   
