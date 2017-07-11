@@ -7,7 +7,7 @@
 
   a. safelist.user.js - Alternate blacklist handler for Danbooru with UI enhancements.
   b. validateblacklist.user.js-  Addon module that validates a Danbooru blacklist.
-  c. orderblacklist.user.just
+  c. orderblacklist.user.js - Addon module that orders a Danbooru blacklist.
 
 3. Setup
 
