@@ -59,7 +59,8 @@ const safelist_css = `
 }
     /*Sidebar list*/
 #c-posts #sidebar #safelist-box #safelist li,
-#c-favorites #sidebar #safelist-box #safelist li {
+#c-favorites #sidebar #safelist-box #safelist li, 
+#c-wiki-pages #sidebar #safelist-box #safelist li {
     list-style-type: disc;
 }
     /*Topbar list*/
@@ -994,7 +995,7 @@ function initializeSafelist() {
     loadSessionData();
     validateExpandableStatus();
     console.timeEnd("PreInit");
-    if ($("#blacklist-box").length&&!($("#c-wiki-pages").length||$("#c-wiki-page-versions").length)) {
+    if ($("#blacklist-box").length&&!($("#c-wiki-page-versions").length)) {
         console.time("SideSetup");
         setCSSStyle(safelist_css,"safelist_css");
         menu_items = calculateRenderedMenus();
