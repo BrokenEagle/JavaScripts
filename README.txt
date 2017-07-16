@@ -8,6 +8,7 @@
   a. safelist.user.js - Alternate blacklist handler for Danbooru with UI enhancements.
   b. validateblacklist.user.js-  Addon module that validates a Danbooru blacklist.
   c. orderblacklist.user.js - Addon module that orders a Danbooru blacklist.
+  d. dtextstyler.user.js - UI controls for DText styles.
 
 3. Setup
 
@@ -136,4 +137,18 @@
         by post count.  reconstructed_html contains a user friendly HTML
         representation of the new list.
 
-  
+    d. DtextStyler:
+    
+        Provides user interface controls to facilitate DText markup.
+        
+        - B: Bold
+        - I: Italics
+        - U: Underline
+        - S: Strikethrough
+        - Aあ: Translate
+        - ": Quote
+        - {}: Expand
+        - Crossed-out circle: Spoiler
+        - <>: Code
+        - Chain-links: Textile link
+
