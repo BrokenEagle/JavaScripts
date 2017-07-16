@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DText Styler
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2
+// @version      3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Alternate Danbooru blacklist handler
 // @author       BrokenEagle
@@ -144,9 +144,10 @@ function fixSelectionText(prefix,suffix,block,inline) {
 ////////////////////
 //Render functions
 
-function renderButton(inline,block,prefix,suffix,content) {
+function renderButton(title,inline,block,prefix,suffix,content) {
+    let start_title = title.slice(0,1).toUpperCase() + title.slice(1);
     return `
-    <button type="button" class="dtext-markup" data-block="${block}" data-inline="${inline}" data-prefix="${prefix}" data-suffix="${suffix}">
+    <button title=${start_title} type="button" class="dtext-markup" data-block="${block}" data-inline="${inline}" data-prefix="${prefix}" data-suffix="${suffix}">
         ${content}
     </button>`;
 }
@@ -155,7 +156,7 @@ function renderButtons() {
     let outputtext = `
 <div>`;
     $.each(buttondict,(key,val)=>{
-        outputtext += renderButton(val.inline,val.block,val.prefix,val.suffix,val.content);
+        outputtext += renderButton(key,val.inline,val.block,val.prefix,val.suffix,val.content);
     });
     return outputtext + `
 </div>`;
