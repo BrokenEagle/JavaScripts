@@ -3,7 +3,7 @@
 // @namespace    https://github.com/BrokenEagle/JavaScripts
 // @version      3
 // @source       https://danbooru.donmai.us/users/23799
-// @description  Alternate Danbooru blacklist handler
+// @description  Danbooru DText UI addon.
 // @author       BrokenEagle
 // @match        *://*.donmai.us/*
 // @grant        none
