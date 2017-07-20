@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DText Styler
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3
+// @version      4
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Danbooru DText UI addon.
 // @author       BrokenEagle
@@ -9,6 +9,7 @@
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/dtextstyle.user.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/PapaParse/4.3.3/papaparse.min.js
 // ==/UserScript==
 
 (function() {
@@ -87,6 +88,27 @@ const buttondict = {
         'prefix':'&quot;',
         'suffix':'&quot;:[url]',
         'content':'<svg height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg>'
+    },
+    'wikilink': {
+        'inline':true,
+        'block':false,
+        'prefix':'[[',
+        'suffix':']]',
+        'content':'<svg height="16" version="1.1" viewBox="4 4 26 26" width="20"><path fill-rule="evenodd" d="M29 6.428c0 .098-.03.188-.094.27-.062.08-.13.122-.205.122-.612.058-1.115.257-1.505.595-.39.338-.793.983-1.21 1.935L19.63 23.667c-.042.133-.16.2-.35.2a.39.39 0 0 1-.348-.2l-3.568-7.438-4.096 7.435a.39.39 0 0 1-.35.2c-.182 0-.303-.067-.36-.2L4.315 9.35c-.39-.894-.802-1.518-1.234-1.873-.43-.355-1.03-.574-1.804-.658-.066 0-.13-.037-.187-.106a.36.36 0 0 1-.09-.24c0-.226.066-.34.2-.34.556 0 1.14.025 1.746.075.565.05 1.097.072 1.596.072.507 0 1.105-.025 1.796-.075a28.2 28.2 0 0 1 1.92-.076c.132 0 .198.115.198.344 0 .228-.04.342-.124.342-.557.04-.995.183-1.315.425-.32.243-.48.56-.48.953 0 .2.067.45.2.75l5.092 11.68 2.99-5.56-2.732-5.718c-.49-1.028-.894-1.69-1.21-1.986-.315-.297-.793-.478-1.432-.545-.06 0-.116-.035-.17-.104a.377.377 0 0 1-.08-.24c0-.226.057-.34.174-.34.556 0 1.067.024 1.533.074.448.05.926.074 1.433.074.498 0 1.025-.026 1.582-.076a19.55 19.55 0 0 1 1.694-.076c.133 0 .2.115.2.343 0 .23-.042.342-.125.342-1.113.075-1.67.392-1.67.952 0 .25.13.64.386 1.166l1.806 3.665 1.8-3.345c.248-.477.373-.878.373-1.204 0-.768-.557-1.177-1.67-1.227-.1 0-.15-.117-.15-.346 0-.08.025-.16.075-.232.05-.074.1-.11.15-.11.4 0 .89.024 1.47.074.557.05 1.014.075 1.37.075.258 0 .636-.02 1.135-.06.63-.058 1.16-.087 1.582-.087.1 0 .15.097.15.293 0 .26-.092.392-.274.392-.645.065-1.17.244-1.56.536-.396.293-.888.957-1.478 1.99l-2.39 4.43 3.236 6.6 4.79-11.128c.166-.41.25-.786.25-1.128 0-.82-.558-1.253-1.67-1.303-.1 0-.15-.115-.15-.344 0-.227.074-.34.224-.34.406 0 .887.025 1.444.075.515.048.947.073 1.296.073.365 0 .79-.026 1.27-.075.498-.05.946-.076 1.345-.076.117 0 .175.097.175.293z"></path></svg>'
+    },
+    'searchlink': {
+        'inline':true,
+        'block':false,
+        'prefix':'{{',
+        'suffix':'}}',
+        'content':'<svg height="16" version="1.1" viewBox="0 0 500 500" width="20"><path fill="none" stroke="#000" stroke-width="36" stroke-linecap="round" d="m280,278a153,153 0 1,0-2,2l170,170m-91-117 110,110-26,26-110-110"></path></svg>'
+    }
+};
+
+var specialbuttondict = {
+    'table': {
+        'func':null,
+        'content':'<svg height="16" version="1.1" viewBox="0 0 500 500" width="20"><path fill-rule="evenodd" d="M507.948,46.021c-1.367-16.368-14.588-30.13-31.21-30.13H31.782 c-16.622,0-29.844,13.762-31.242,30.13H0v414.825c0,17.544,14.239,31.782,31.782,31.782h444.955 c17.544,0,31.782-14.239,31.782-31.782V46.021H507.948z M158.912,460.846H31.782v-95.347h127.13V460.846z M158.912,336.354 H31.782v-97.985h127.13V336.354z M158.912,206.586H31.782v-95.347h127.13V206.586z M317.825,460.846h-127.13v-95.347h127.13 V460.846z M317.825,336.354h-127.13v-97.985h127.13V336.354z M317.825,206.586h-127.13v-95.347h127.13V206.586z M476.737,460.846 h-127.13v-95.347h127.13V460.846z M476.737,336.354h-127.13v-97.985h127.13V336.354z M476.737,206.586h-127.13v-95.347h127.13 V206.586z"></path></svg>'
     }
 };
 
@@ -141,6 +163,68 @@ function fixSelectionText(prefix,suffix,block,inline) {
     activeEl.setSelectionRange(caretPos, caretPos);
 }
 
+function fixTable() {
+    var fixtext = "";
+    var activeEl = document.activeElement;
+    var activeElTagName = activeEl ? activeEl.tagName.toLowerCase() : null;
+    fixtext = activeEl.value.slice(0,activeEl.selectionStart);
+    var valueselection = activeEl.value.slice(activeEl.selectionStart, activeEl.selectionEnd);
+    fixtext += CSVtoDtextTable(valueselection);
+    fixtext = fixtext.replace(/^\s+/,'');
+    var caretPos = fixtext.length;
+    fixtext += activeEl.value.slice(activeEl.selectionEnd);
+    activeEl.value = fixtext;
+    activeEl.setSelectionRange(caretPos, caretPos);
+}
+specialbuttondict.table.func = fixTable;
+
+function CSVtoDtextTable(csvtext) {
+    let tabletext = "";
+    let sectiontext = "";
+    let csvdata = Papa.parse(csvtext);
+    $.each(csvdata.data,(i,row)=>{
+        let rowtext = "";
+        $.each(row,(j,col)=>{
+            if (i===0) {
+                rowtext += AddTableHeader(col);
+            } else {
+                rowtext += AddTableData(col);
+            }
+        });
+        sectiontext += AddTableRow(rowtext);
+        if (i===0) {
+            tabletext += AddTableHead(sectiontext);
+            sectiontext = "";
+        }
+    });
+    tabletext += AddTableBody(sectiontext);
+    return AddTable(tabletext);
+}
+
+function AddTable(input) {
+	return '[table]\n' + input + '[/table]\n';
+}
+
+function AddTableHead(input) {
+	return '[thead]\n' + input + '[/thead]\n';
+}
+
+function AddTableBody(input) {
+	return '[tbody]\n' + input + '[/tbody]\n';
+}
+
+function AddTableRow(input) {
+	return '[tr]\n' + input + '[/tr]\n';
+}
+
+function AddTableHeader(input) {
+	return '[th]' + input + '[/th]\n';
+}
+
+function AddTableData(input) {
+	return '[td]' + input + '[/td]\n';
+}
+
 ////////////////////
 //Render functions
 
@@ -152,11 +236,22 @@ function renderButton(title,inline,block,prefix,suffix,content) {
     </button>`;
 }
 
+function renderSpecialButton(title,content) {
+    let start_title = title.slice(0,1).toUpperCase() + title.slice(1);
+    return `
+    <button title=${start_title} name=${title} type="button" class="dtext-markup special-markup">
+        ${content}
+    </button>`;
+}
+
 function renderButtons() {
     let outputtext = `
 <div>`;
     $.each(buttondict,(key,val)=>{
         outputtext += renderButton(key,val.inline,val.block,val.prefix,val.suffix,val.content);
+    });
+    $.each(specialbuttondict,(key,val)=>{
+        outputtext += renderSpecialButton(key,val.content);
     });
     return outputtext + `
 </div>`;
@@ -165,7 +260,7 @@ function renderButtons() {
 //////////////////
 //Click functions
 function setButtonClicks() {
-    $(".dtext-markup").off().click((e)=>{
+    $(".dtext-markup:not(.special-markup)").off().click((e)=>{
         let buttonTA = $(e.currentTarget).parent().parent().find('textarea');
         if (buttonTA.length===0) {return;}
         buttonTA = buttonTA[0];
@@ -176,6 +271,15 @@ function setButtonClicks() {
         let block = JSON.parse(e.currentTarget.dataset.block);
         let inline = JSON.parse(e.currentTarget.dataset.inline);
         fixSelectionText(prefix,suffix,block,inline);
+    });
+    $(".special-markup").off().click((e)=>{
+        let buttonTA = $(e.currentTarget).parent().parent().find('textarea');
+        if (buttonTA.length===0) {return;}
+        buttonTA = buttonTA[0];
+        let activeTA = document.activeElement;
+        if(buttonTA.id!=activeTA.id) {return;}
+        let name = e.currentTarget.name;
+        specialbuttondict[name].func();
     });
     $.each($(".dtext-markup"),(i,btn)=>{
         btn.onmousedown = (e)=>{

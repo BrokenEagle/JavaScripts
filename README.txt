@@ -151,4 +151,6 @@
         - Crossed-out circle: Spoiler
         - <>: Code
         - Chain-links: Textile link
-
+        - W: Wiki link
+        - Magnifying glass: Tag search link
+        - Spreadsheet: Dtext table
