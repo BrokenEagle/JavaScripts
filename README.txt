@@ -9,6 +9,7 @@
   b. validateblacklist.user.js-  Addon module that validates a Danbooru blacklist.
   c. orderblacklist.user.js - Addon module that orders a Danbooru blacklist.
   d. dtextstyler.user.js - UI controls for DText styles.
+  e. iqdb4chan.user.js - Danbooru IQDB checker for 4chan threads.
 
 3. Setup
 
@@ -154,3 +155,11 @@
         - W: Wiki link
         - Magnifying glass: Tag search link
         - Spreadsheet: Dtext table
+    
+    e. IQDB4Chan
+        
+        Provides a link under the thread named "IQDB Check" that will check every
+        thumbnail in the thread for a match on Danbooru's IQDB server.  With any
+        match, links to the matching Danbooru post are added after the 4chan image
+        file data.  With any non-match, the entire thumbnail is surrounded with a
+        thick red border.
