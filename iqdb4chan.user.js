@@ -114,7 +114,7 @@ async function checkThumbs() {
                 let poststring = "";
                 for (let i=0;i<data.length;i++) {
                     let postid = data[i].post.id;
-                    poststring += `, <a href="http://danbooru.donmai.us/posts/${postid}">post #${postid}</a>`;
+                    poststring += `, <a href="http://danbooru.donmai.us/posts/${postid}" target="_blank" class="danbooru-post">post #${postid}</a>`;
                 }
                 let oldhtml = _$($filethumbs[j]).prev()[0].innerHTML;
                 _$($filethumbs[j]).prev()[0].innerHTML = oldhtml + poststring;

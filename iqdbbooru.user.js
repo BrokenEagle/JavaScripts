@@ -205,7 +205,7 @@ async function checkThumbs() {
                 let postlist = [];
                 for (let i=0;i<data.length;i++) {
                     let postid = data[i].post.id;
-                    postlist.push(`<a href="http://danbooru.donmai.us/posts/${postid}">post #${postid}</a>`);
+                    postlist.push(`<a href="http://danbooru.donmai.us/posts/${postid}" target="_blank" class="danbooru-post">post #${postid}</a>`);
                 }
                 if (checkThumbs.maxPosts < data.length) {
                     let newheight = site_config[window.location.host].startHeight + (15 * data.length);
