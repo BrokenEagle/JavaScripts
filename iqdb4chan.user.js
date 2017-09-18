@@ -103,11 +103,11 @@ async function checkThumbs() {
     let $filethumbs = _$(".fileThumb");
     for (let j=0;j<$filethumbs.length;j++) {
         console.log($filethumbs[j].href);
-        if (async_requests > 25) {
+        if (checkThumbs.async_requests > 25) {
             console.log("Sleeping for one second...");
             let temp = await sleep(1000);
         }
-        async_requests++;
+        checkThumbs.async_requests++;
         const resp = _$.getJSON('https://danbooru.donmai.us/iqdb_queries.json',{'url':$filethumbs[j].href},data=>{
             console.log("Data:",data.length);
             if (data.length > 0) {
@@ -123,19 +123,19 @@ async function checkThumbs() {
             }
         }).always(()=>{
             console.log("Status:",resp.status,resp.statusText);
-            async_requests--;
+            checkThumbs.async_requests--;
         });
     }
 }
+checkThumbs.async_requests = 0;
 
 _$.ajaxSetup({
     xhr: function () { return new GM_XHR(); },
 });
 
-var async_requests = 0;
 var IQDB_done = false;
 
-_$(".boardTitle").after('<a href="#" id="iqdb-check">IQDB Check</a>');
+_$(".boardTitle").after('<a href="#" id="iqdb-check">&lt;IQDB Check&gt;</a>');
 
 _$("#iqdb-check").off().click(e=>{
     if (!IQDB_done) {
