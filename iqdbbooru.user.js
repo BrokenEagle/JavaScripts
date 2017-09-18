@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IQDB Booru
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5
+// @version      6
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Danbooru IQDB checker for various Booru sites.
 // @author       BrokenEagle
@@ -15,6 +15,8 @@
 // @require      https://ajax.googleapis.com/ajax/libs/jquery/1.8/jquery.min.js
 // @connect      donmai.us
 // ==/UserScript==
+
+//Global variables
 
 //Configuration details per site
 var site_config = {
@@ -61,13 +63,14 @@ var site_config = {
         'linkAnchor': '#tag-sidebar',
         'anchorVector': [[-1,0]]
     }
-}
+};
 
 // 4chan uses the $ variable so run jQuery in noConflict mode
 _$ = jQuery.noConflict();
 
 // https://gist.github.com/monperrus/999065
-// This is an shim that adapts jQuery's ajax methods to use GM_xmlhttpRequest. This allows us to use $.getJSON instead of using GM_xmlhttpRequest directly.
+// This is an shim that adapts jQuery's ajax methods to use GM_xmlhttpRequest.
+// This allows us to use $.getJSON instead of using GM_xmlhttpRequest directly.
 function GM_XHR() {
     this.type = null;
     this.url = null;
@@ -145,6 +148,12 @@ function GM_XHR() {
     };
 }
 
+//Helper functions
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 //Functions for moving through the DOM
 function getNthParent(obj,levels) {
     let $element = obj;
@@ -169,10 +178,10 @@ function getNthSibling(obj,vector) {
 
 function walkDOM(obj,vectors) {
     let $element = obj;
-    for (vector of vectors) {
-        if ((vector[0] != 0) && (vector[1] != 0)) {
+    for (let vector of vectors) {
+        if ((vector[0] !== 0) && (vector[1] !== 0)) {
             continue; //invalid vector
-        } else if (vector[0] != 0) {
+        } else if (vector[0] !== 0) {
             $element = getNthSibling($element,vector[0]);
         } else if (vector[1] > 0) {
             $element = getNthParent($element,vector[1]);
@@ -183,12 +192,8 @@ function walkDOM(obj,vectors) {
     return $element;
 }
 
-//Helper functions
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
+//Main functions
 
-//Main function
 async function checkThumbs() {
     let $filethumbs = _$(site_config[window.location.host].thumbQuery);
     for (let j=0;j<$filethumbs.length;j++) {
@@ -231,11 +236,6 @@ async function checkThumbs() {
 checkThumbs.maxPosts = 0;
 checkThumbs.async_requests = 0;
 
-//Configure ajax so that getJSON can be used
-_$.ajaxSetup({
-    xhr: function () { return new GM_XHR(); },
-});
-
 function IQDBCheck() {
     if (!IQDBCheck.IQDB_done) {
         _$(".thumbnail-preview").css('width',`${site_config[window.location.host].startWidth}px`).css('text-align','center');
@@ -244,6 +244,13 @@ function IQDBCheck() {
     }
 }
 IQDBCheck.IQDB_done = false;
+
+//Configure ajax so that getJSON can be used
+_$.ajaxSetup({
+    xhr: function () { return new GM_XHR(); },
+});
+
+//PROGRAM START
 
 //Add IQDB check link
 walkDOM(_$(site_config[window.location.host].linkAnchor)[0],site_config[window.location.host].anchorVector).innerHTML += '<br><a style="color:hotpink" href="#" id="iqdb-check">&lt;IQDB Check&gt;</a>';

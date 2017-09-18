@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IQDB 4chan
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2
+// @version      3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Danbooru IQDB checker for 4chan threads.
 // @author       BrokenEagle
@@ -13,11 +13,16 @@
 // @connect      donmai.us
 // ==/UserScript==
 
+//Global variables
+
+/*Empty*/
+
 // 4chan uses the $ variable so run jQuery in noConflict mode
 _$ = jQuery.noConflict();
 
 // https://gist.github.com/monperrus/999065
-// This is an shim that adapts jQuery's ajax methods to use GM_xmlhttpRequest. This allows us to use $.getJSON instead of using GM_xmlhttpRequest directly.
+// This is an shim that adapts jQuery's ajax methods to use GM_xmlhttpRequest.
+// This allows us to use $.getJSON instead of using GM_xmlhttpRequest directly.
 function GM_XHR() {
     this.type = null;
     this.url = null;
@@ -95,9 +100,13 @@ function GM_XHR() {
     };
 }
 
+//Helper functions
+
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
+
+//Main functions
 
 async function checkThumbs() {
     let $filethumbs = _$(".fileThumb");
@@ -135,14 +144,19 @@ function IQDBCheck() {
         IQDBCheck.IQDB_done = true;
     }
 }
-IQDBCheck.IQDB_done = false
+IQDBCheck.IQDB_done = false;
 
+//Configure ajax so that getJSON can be used
 _$.ajaxSetup({
     xhr: function () { return new GM_XHR(); },
 });
 
+//PROGRAM START
+
+//Add IQDB check link
 _$(".boardTitle").after('<a href="#" id="iqdb-check">&lt;IQDB Check&gt;</a>');
 
+//Add click function to the IQDB check link
 _$("#iqdb-check").off().click(e=>{
     IQDBCheck();
     e.preventDefault();
