@@ -236,19 +236,20 @@ _$.ajaxSetup({
     xhr: function () { return new GM_XHR(); },
 });
 
-//Global variables
-var IQDB_done = false;
+function IQDBCheck() {
+    if (!IQDBCheck.IQDB_done) {
+        _$(".thumbnail-preview").css('width',`${site_config[window.location.host].startWidth}px`).css('text-align','center');
+        checkThumbs();
+        IQDBCheck.IQDB_done = true;
+    }
+}
+IQDBCheck.IQDB_done = false;
 
 //Add IQDB check link
 walkDOM(_$(site_config[window.location.host].linkAnchor)[0],site_config[window.location.host].anchorVector).innerHTML += '<br><a style="color:hotpink" href="#" id="iqdb-check">&lt;IQDB Check&gt;</a>';
 
 //Add click function to the IQDB check link
 _$("#iqdb-check").off().click(e=>{
-    if (!IQDB_done) {
-        //Constant CSS settings
-        _$(".thumbnail-preview").css('width',`${site_config[window.location.host].startWidth}px`).css('text-align','center');
-        checkThumbs();
-        IQDB_done = true;
-    }
+    IQDBCheck();
     e.preventDefault();
 });

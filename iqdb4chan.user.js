@@ -129,18 +129,21 @@ async function checkThumbs() {
 }
 checkThumbs.async_requests = 0;
 
+function IQDBCheck() {
+    if (!IQDBCheck.IQDB_done) {
+        checkThumbs();
+        IQDBCheck.IQDB_done = true;
+    }
+}
+IQDBCheck.IQDB_done = false
+
 _$.ajaxSetup({
     xhr: function () { return new GM_XHR(); },
 });
 
-var IQDB_done = false;
-
 _$(".boardTitle").after('<a href="#" id="iqdb-check">&lt;IQDB Check&gt;</a>');
 
 _$("#iqdb-check").off().click(e=>{
-    if (!IQDB_done) {
-        checkThumbs();
-        IQDB_done = true;
-    }
+    IQDBCheck();
     e.preventDefault();
 });
