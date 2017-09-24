@@ -13,7 +13,7 @@
 
 //Constants
 
-const preedittags = $("#post_tag_string").val().split(/[\s\n]+/).filter(value=>{return value !== '';});
+const preedittags = filterNull(getTagList());
 const submitvalidator = `
 <input id="validate-tags" type="button" class="ui-button ui-widget ui-corner-all" value="Submit">
 <div id="validation-input">
@@ -23,13 +23,36 @@ const submitvalidator = `
 
 //Functions
 
+function getTagList() {
+    return $("#post_tag_string").val().split(/[\s\n]+/);
+}
+
+function filterNull(array) {
+    return array.filter(value=>{return value !== '';});
+}
+
+function filterMetatags(array) {
+    return array.filter(value=>{return !value.match(/(?:rating|-?parent|source|-?locked|-?pool|newpool|-?fav|child|-?favgroup|upvote|downvote):/i);});
+}
+
+function filterTypetags(array) {
+    return array.filter(value=>{return !value.match(/(?:general|gen|artist|art|copyright|copy|co|character|char|ch):/i);});
+}
+
+function filterNegativetags(array) {
+    return array.filter(value=>{return value[0]!='-';});
+}
+
+function setDifference(array1,array2) {
+    return array1.filter(value=>{return array2.indexOf(value) < 0;});
+}
+
 function getCurrentTags() {
-    return $("#post_tag_string").val().split(/[\s\n]+/).filter(value=>{return ((value !== '')&&(!value.match(/(?:rating|-?parent|source|-?locked|-?pool|newpool|-?fav|child|-?favgroup|upvote|downvote):/i)));});
+    return filterMetatags(filterNull(getTagList()));
 }
 
 function validateTagAdds() {
-    let postedittags = getCurrentTags();
-    let addedtags = postedittags.filter(value=>{return ((preedittags.indexOf(value) < 0)&&(value[0]!='-'));});
+    let addedtags = setDifference(filterNegativetags(filterTypetags(getCurrentTags())),preedittags);
     let checktags = [];
     let async_requests = 0;
     for (let i = 0;i < addedtags.length;i+=100) {
