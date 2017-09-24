@@ -11,6 +11,7 @@
   d. dtextstyler.user.js - UI controls for DText styles.
   e. iqdb4chan.user.js - Danbooru IQDB checker for 4chan threads.
   f. iqdbbooru.user.js - Danbooru IQDB checker for various Boorus.
+  g. validatetaginput.user.js - Validates tag input on a post edit, both adds and removes.
 
 3. Setup
 
@@ -178,3 +179,12 @@
       - The IQDB link only appears after a tag search from the post page.
       - Auto paging must be turned off on Sankakucomplex or any other userscript 
         that may be used as the IQDB check is only allowed to run once per page load.
+  
+  g. ValidateTagInput
+  
+    Prior to submitting tag edits, it runs a check on tag adds and removes. For tag adds,
+    it checks if any new tags will be created, potentially catching mistags and spelling
+    error. For tag removes, it checks the implication hierarchy to determine if any still
+    existing tags will cause a remove to be readded.
+    
+    Note:  The tag remove checker is still a work-in-progress and hasn't been added yet.
