@@ -53,6 +53,11 @@ function getCurrentTags() {
 
 function validateTagAdds() {
     let addedtags = setDifference(filterNegativetags(filterTypetags(getCurrentTags())),preedittags);
+    if ((addedtags.length === 0) || !$("#skip-validate-tags")[0].checked) {
+        console.log("Skipping validations!",addedtags.length === 0,!$("#skip-validate-tags")[0].checked);
+        $("#form [name=commit]").click();
+        return
+    }
     let checktags = [];
     let async_requests = 0;
     for (let i = 0;i < addedtags.length;i+=100) {
@@ -70,7 +75,7 @@ function validateTagAdds() {
             console.log("In interval:",checktags);
             clearInterval(validatetimer);
             nonexisttags = addedtags.filter(value=>{return checktags.indexOf(value) < 0;});
-            if (nonexisttags.length > 0 && !$("#skip-validate-tags")[0].checked) {
+            if (nonexisttags.length > 0) {
                 console.log("Nonexistant tags:");
                 $.each(nonexisttags,(i,tag)=>{console.log(i,tag);});
                 $("#validation-input").show();
