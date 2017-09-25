@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2
+// @version      3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag inputs on a post edit, both adds and removes.
 // @author       BrokenEagle
@@ -52,11 +52,14 @@ function getCurrentTags() {
 }
 
 function validateTagAdds() {
+    validateTagAdds.isready = false;
+    validateTagAdds.submitrequest = false;
     let addedtags = setDifference(filterNegativetags(filterTypetags(getCurrentTags())),preedittags);
-    if ((addedtags.length === 0) || !$("#skip-validate-tags")[0].checked) {
-        console.log("Skipping validations!",addedtags.length === 0,!$("#skip-validate-tags")[0].checked);
-        $("#form [name=commit]").click();
-        return
+    if ((addedtags.length === 0) || $("#skip-validate-tags")[0].checked) {
+        console.log("Skipping validations!",addedtags.length === 0,$("#skip-validate-tags")[0].checked);
+        validateTagAdds.isready = true;
+        validateTagAdds.submitrequest = true;
+        return;
     }
     let checktags = [];
     let async_requests = 0;
@@ -89,15 +92,19 @@ function validateTagAdds() {
                 $("#validate-tags")[0].setAttribute('value','Submit');
             } else {
                 console.log("Free and clear to submit!");
-                $("#form [name=commit]").click();
+                validateTagAdds.submitrequest = true;
             }
+            validateTagAdds.isready = true;
         }
     },500);
 }
+validateTagAdds.isready = true;
 
 function validateTagRemoves() {
     //WIP
+    validateTagRemoves.submitrequest = true;
 }
+validateTagRemoves.isready = true;
 
 //Execution start
 
@@ -106,7 +113,21 @@ $("#form [name=commit]").hide();
 $("#validation-input").hide();
 
 $("#validate-tags").click(e=>{
-    $("#validate-tags")[0].setAttribute('disabled','true');
-    $("#validate-tags")[0].setAttribute('value','Submitting...');
-    validateTagAdds();
+    if (validateTagAdds.isready && validateTagRemoves.isready) {
+        $("#validate-tags")[0].setAttribute('disabled','true');
+        $("#validate-tags")[0].setAttribute('value','Submitting...');
+        validateTagAdds();
+        validateTagRemoves();
+        let clicktimer = setInterval(()=>{
+            if(validateTagAdds.isready) {
+                clearInterval(clicktimer);
+                if (validateTagAdds.submitrequest && validateTagRemoves.submitrequest) {
+                    console.log("Submit request!");
+                    $("#form [name=commit]").click();
+                } else {
+                    console.log("Validation failed!");
+                }
+            }
+        },100);
+    }
 });
