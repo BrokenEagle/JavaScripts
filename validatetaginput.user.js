@@ -1,19 +1,20 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3
+// @version      4
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag inputs on a post edit, both adds and removes.
 // @author       BrokenEagle
 // @match        *://*.donmai.us/posts/*
+// @match        *://*.donmai.us/uploads*
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/validatetaginput.user.js
 // ==/UserScript==
 
-//Constants
+//Global variables
 
-const preedittags = filterNull(getTagList());
+var preedittags;
 const submitvalidator = `
 <input id="validate-tags" type="button" class="ui-button ui-widget ui-corner-all" value="Submit">
 <div id="validation-input">
@@ -24,7 +25,11 @@ const submitvalidator = `
 //Functions
 
 function getTagList() {
-    return $("#post_tag_string").val().split(/[\s\n]+/);
+    if ($("c-posts").length) {
+        return $("#post_tag_string").val().split(/[\s\n]+/);
+    } else {
+        return $("#upload_tag_string").val().split(/[\s\n]+/);
+    }
 }
 
 function filterNull(array) {
@@ -106,28 +111,42 @@ function validateTagRemoves() {
 }
 validateTagRemoves.isready = true;
 
-//Execution start
+//Main
 
-$("#form [name=commit]").after(submitvalidator);
-$("#form [name=commit]").hide();
-$("#validation-input").hide();
-
-$("#validate-tags").click(e=>{
-    if (validateTagAdds.isready && validateTagRemoves.isready) {
-        $("#validate-tags")[0].setAttribute('disabled','true');
-        $("#validate-tags")[0].setAttribute('value','Submitting...');
-        validateTagAdds();
-        validateTagRemoves();
-        let clicktimer = setInterval(()=>{
-            if(validateTagAdds.isready) {
-                clearInterval(clicktimer);
-                if (validateTagAdds.submitrequest && validateTagRemoves.submitrequest) {
-                    console.log("Submit request!");
-                    $("#form [name=commit]").click();
-                } else {
-                    console.log("Validation failed!");
-                }
-            }
-        },100);
+function main() {
+    if (window.location.pathname === '/uploads') {
+        //Upload error occurred from /uploads/new... reload prior preedittags
+        preedittags = JSON.parse(localStorage.preedittags);
+    
+    } else {
+        preedittags = filterNull(getTagList());
+        localStorage.preedittags = JSON.stringify(preedittags);
     }
-});
+    $("#form [name=commit]").after(submitvalidator);
+    $("#form [name=commit]").hide();
+    $("#validation-input").hide();
+
+    $("#validate-tags").click(e=>{
+        if (validateTagAdds.isready && validateTagRemoves.isready) {
+            $("#validate-tags")[0].setAttribute('disabled','true');
+            $("#validate-tags")[0].setAttribute('value','Submitting...');
+            validateTagAdds();
+            validateTagRemoves();
+            let clicktimer = setInterval(()=>{
+                if(validateTagAdds.isready) {
+                    clearInterval(clicktimer);
+                    if (validateTagAdds.submitrequest && validateTagRemoves.submitrequest) {
+                        console.log("Submit request!");
+                        $("#form [name=commit]").click();
+                    } else {
+                        console.log("Validation failed!");
+                    }
+                }
+            },100);
+        }
+    });
+}
+
+if ($("#c-uploads #a-new").length || $("#c-posts #a-show").length) {
+    main();
+}
