@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5
+// @version      6
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag inputs on a post edit, both adds and removes.
 // @author       BrokenEagle
@@ -90,6 +90,49 @@ function hasDataExpired(entryname) {
     return false;
 }
 
+//Queries aliases of added tags... can be called multiple times
+async function queryTagAliases(taglist) {
+	queryTagAliases.isdone = false;
+	let async_requests = 0;
+    for (let i = 0;i < taglist.length;i++) {
+		if (taglist[i] in queryTagAliases.seenlist) {
+			continue;
+		}
+		let entryname = 'ta-'+taglist[i];
+		if (hasDataExpired(entryname)) {
+			if (async_requests > 25) {
+				console.log("Sleeping...");
+				let temp = await sleep(sleep_wait_time);
+			}
+			console.log("Querying alias:",taglist[i]);
+			async_requests++;
+			resp = $.getJSON('/tag_aliases',{'search':{'antecedent_name':taglist[i],'status':'active'}},data=>{
+				if (data.length) {
+					//Alias antecedents are unique, so no need to check the size
+					console.log("Alias:",taglist[i],data[0].consequent_name);
+					queryTagAliases.aliastags.push(taglist[i]);
+					localStorage[entryname] = JSON.stringify({'aliases':data[0].consequent_name,'expires':Date.now()});
+				}
+				queryTagAliases.seenlist.push(taglist[i]);
+			}).always(()=>{
+				async_requests--;
+			});
+		} else {
+			console.log("Found alias:",taglist[i]);
+			queryTagAliases.aliastags.push(taglist[i]);
+		}
+	}
+    let aliastimer = setInterval(()=>{
+        if (async_requests === 0) {
+            clearInterval(aliastimer);
+            queryTagAliases.isdone = true;
+			console.log("Found aliases:",queryTagAliases.aliastags);
+        }
+    },500);
+}
+queryTagAliases.aliastags = [];
+queryTagAliases.seenlist = [];
+
 //Queries implications of preexisting tags... called only once
 async function queryTagImplications(taglist) {
     queryTagImplications.isdone = false;
@@ -161,12 +204,13 @@ function validateTagAdds() {
             async_requests--;
         });
     }
+    queryTagAliases(addedtags);
     let validatetimer = setInterval(()=>{
-        console.log("Async:",async_requests);
-        if (async_requests===0) {
+        console.log("Waiting:",async_requests,queryTagAliases.isdone);
+        if (async_requests===0 && queryTagAliases.isdone) {
             console.log("In interval:",checktags);
             clearInterval(validatetimer);
-            nonexisttags = setDifference(addedtags,checktags);
+            nonexisttags = setDifference(setDifference(addedtags,checktags),queryTagAliases.aliastags);
             if (nonexisttags.length > 0) {
                 console.log("Nonexistant tags:");
                 $.each(nonexisttags,(i,tag)=>{console.log(i,tag);});
