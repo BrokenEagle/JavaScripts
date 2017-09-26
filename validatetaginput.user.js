@@ -16,6 +16,8 @@
 
 var preedittags;
 
+const sleep_wait_time = 1000;
+
 const submitvalidator = `
 <input id="validate-tags" type="button" class="ui-button ui-widget ui-corner-all" value="Submit">
 <div id="validation-input">
@@ -78,7 +80,7 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function hasImplicationExpired(entryname) {
+function hasDataExpired(entryname) {
     if (localStorage[entryname] === undefined) {
         return true;
     }
@@ -88,44 +90,40 @@ function hasImplicationExpired(entryname) {
     return false;
 }
 
+//Queries implications of preexisting tags... called only once
 async function queryTagImplications(taglist) {
+    queryTagImplications.isdone = false;
     let async_requests = 0;
-    let checkimplications = {};
     for (let i = 0;i < taglist.length;i++) {
         let entryname = 'ti-'+taglist[i];
-        if (hasImplicationExpired(entryname)) {
+        if (hasDataExpired(entryname)) {
             if (async_requests > 25) {
-                console.log("Sleeping for one second...");
-                let temp = await sleep(1000);
+                console.log("Sleeping...");
+                let temp = await sleep(sleep_wait_time);
             }
             console.log("Querying implication:",taglist[i]);
             async_requests++;
             resp = $.getJSON('/tag_implications',{'limit':100,'search':{'consequent_name':taglist[i],'status':'active'}},data=>{
-                localStorage[entryname] = JSON.stringify({'aliases':data.map(entry=>{return entry.antecedent_name;}),'expires':Date.now()});
+                let implications = data.map(entry=>{return entry.antecedent_name;});
+                queryTagImplications.implicationdict[taglist[i]] = implications;
+                localStorage[entryname] = JSON.stringify({'implications':implications,'expires':Date.now()});
             }).always(()=>{
                 async_requests--;
             });
         } else {
             console.log("Found implication:",taglist[i]);
+            queryTagImplications.implicationdict[taglist[i]] = JSON.parse(localStorage[entryname]).implications;
         }
     }
     let implicationtimer = setInterval(()=>{
         if (async_requests === 0) {
             clearInterval(implicationtimer);
             queryTagImplications.isdone = true;
+            console.log("Implications:",queryTagImplications.implicationdict);
         }
     },500);
 }
-queryTagImplications.isdone = false;
-
-function buildImplicationDict(array) {
-    var implicationdict = {};
-    $.each(array,(i,tag)=>{
-        //These entries should have been created if the code gets here
-        implicationdict[tag] = JSON.parse(localStorage['ti-'+tag]).aliases;
-    });
-    return implicationdict;
-}
+queryTagImplications.implicationdict = {};
 
 function getAllRelations(tag,implicationdict) {
     var tmp = [];
@@ -168,7 +166,7 @@ function validateTagAdds() {
         if (async_requests===0) {
             console.log("In interval:",checktags);
             clearInterval(validatetimer);
-            nonexisttags = addedtags.filter(value=>{return checktags.indexOf(value) < 0;});
+            nonexisttags = setDifference(addedtags,checktags);
             if (nonexisttags.length > 0) {
                 console.log("Nonexistant tags:");
                 $.each(nonexisttags,(i,tag)=>{console.log(i,tag);});
@@ -198,11 +196,9 @@ function validateTagRemoves() {
     let postedittags = transformTypetags(getCurrentTags());
     let removedtags = (setDifference(preedittags,postedittags)).concat(setIntersection(getNegativetags(postedittags),postedittags));
     console.log("Removed tags:",removedtags);
-    let implicationdict = buildImplicationDict(preedittags);
-    console.log("Implications:",implicationdict);
     let allrelations = [];
     $.each(removedtags,(i,tag)=>{
-        let badremoves = setIntersection(getAllRelations(tag,implicationdict),postedittags);
+        let badremoves = setIntersection(getAllRelations(tag,queryTagImplications.implicationdict),postedittags);
         if (badremoves.length) {
             allrelations.push(badremoves.toString() + ' -> ' + tag);
         }
