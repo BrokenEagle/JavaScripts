@@ -33,9 +33,9 @@ const warningMessages = `
 
 function getTagList() {
     if ($("#c-posts").length) {
-        return $("#post_tag_string").val().split(/[\s\n]+/);
+        return $("#post_tag_string").val().split(/[\s\n]+/).map(tag=>{return tag.toLowerCase();});
     } else {
-        return $("#upload_tag_string").val().split(/[\s\n]+/);
+        return $("#upload_tag_string").val().split(/[\s\n]+/).map(tag=>{return tag.toLowerCase();});
     }
 }
 
