@@ -30,7 +30,7 @@ const warningMessages = `
 //Functions
 
 function getTagList() {
-    if ($("c-posts").length) {
+    if ($("#c-posts").length) {
         return $("#post_tag_string").val().split(/[\s\n]+/);
     } else {
         return $("#upload_tag_string").val().split(/[\s\n]+/);
@@ -189,7 +189,7 @@ validateTagAdds.isready = true;
 
 function validateTagRemoves() {
     validateTagRemoves.submitrequest = false;
-    if (!queryTagImplications.isdone) {
+    if (!queryTagImplications.isdone || $("#skip-validate-tags")[0].checked) {
         //Validate tag removals are not as critical, so don't hold up any tag editing if it's not done yet
         $("#warning-bad-removes").hide();
         validateTagRemoves.submitrequest = true;
