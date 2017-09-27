@@ -26,8 +26,8 @@ const submitvalidator = `
 </div>`;
 
 const warningMessages = `
-<div id="warning-bad-removes" class="error-messages ui-state-error ui-corner-all" style="display:none"></div>
-<div id="warning-new-tags" class="error-messages ui-state-error ui-corner-all" style="display:none"></div>`;
+<div id="warning-new-tags" class="error-messages ui-state-error ui-corner-all" style="display:none"></div>
+<div id="warning-bad-removes" class="error-messages ui-state-highlight ui-corner-all" style="display:none"></div>`;
 
 //Functions
 
