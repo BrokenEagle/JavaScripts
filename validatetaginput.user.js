@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      15
+// @version      16
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
 // @match        *://*.donmai.us/posts*
 // @match        *://*.donmai.us/uploads*
+// @match        *://*.donmai.us/users/*/edit
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/validatetaginput.user.js
@@ -39,6 +40,12 @@ const inputValidator = `
 <label for="skip-validate-tags">Skip Validation</label>
 <input type="checkbox" id="skip-validate-tags">
 </div>`;
+
+const resetStorage = `
+<div class="input">
+    <label>Site data</label>
+    <p><a href="#" id="reset-storage-link">Reset cached data</a></p>
+</div>`
 
 const warningMessages = `
 <div id="warning-no-rating" class="error-messages ui-state-error ui-corner-all" style="display:none"><strong>Error</strong>: Must specify a rating</div>
@@ -396,6 +403,16 @@ function validateTagsClick(e) {
 }
 validateTagsClick.isready = true;
 
+function resetLocalStorageClick(e) {
+    if (confirm("Delete Danbooru cached data?\n\nThis includes data for the tag autcomplete and the tag validator.")) {
+        $.each(Object.keys(localStorage).filter(entry=>{return entry.match(/^(?:ti|ta|ac)-/);}),(i,key)=>{
+            delete localStorage[key];
+        });
+        Danbooru.notice("Site data reset!");
+    }
+    e.preventDefault();
+}
+
 //Main
 
 function main() {
@@ -450,5 +467,8 @@ var loadtimer = setInterval(()=> {
     clearInterval(loadtimer);
     if ($("#c-uploads #a-new,#c-posts #a-show,#c-posts #a-index").length) {
         main();
+    } else if ($("#c-users #a-edit").length) {
+        $("#basic-settings-section > .user_time_zone").before(resetStorage);
+        $("#reset-storage-link").click(resetLocalStorageClick);
     }
 },timer_poll_interval);
