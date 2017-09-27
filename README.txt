@@ -186,5 +186,3 @@
     it checks if any new tags will be created, potentially catching mistags and spelling
     error. For tag removes, it checks the implication hierarchy to determine if any still
     existing tags will cause a remove to be readded.
-    
-    Note:  The tag remove checker is still a work-in-progress and hasn't been added yet.
