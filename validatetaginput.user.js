@@ -92,41 +92,41 @@ function hasDataExpired(entryname) {
 
 //Queries aliases of added tags... can be called multiple times
 async function queryTagAliases(taglist) {
-	queryTagAliases.isdone = false;
-	let async_requests = 0;
+    queryTagAliases.isdone = false;
+    let async_requests = 0;
     for (let i = 0;i < taglist.length;i++) {
-		if (taglist[i] in queryTagAliases.seenlist) {
-			continue;
-		}
-		let entryname = 'ta-'+taglist[i];
-		if (hasDataExpired(entryname)) {
-			if (async_requests > 25) {
-				console.log("Sleeping...");
-				let temp = await sleep(sleep_wait_time);
-			}
-			console.log("Querying alias:",taglist[i]);
-			async_requests++;
-			resp = $.getJSON('/tag_aliases',{'search':{'antecedent_name':taglist[i],'status':'active'}},data=>{
-				if (data.length) {
-					//Alias antecedents are unique, so no need to check the size
-					console.log("Alias:",taglist[i],data[0].consequent_name);
-					queryTagAliases.aliastags.push(taglist[i]);
-					localStorage[entryname] = JSON.stringify({'aliases':data[0].consequent_name,'expires':Date.now()});
-				}
-				queryTagAliases.seenlist.push(taglist[i]);
-			}).always(()=>{
-				async_requests--;
-			});
-		} else {
-			console.log("Found alias:",taglist[i]);
-			queryTagAliases.aliastags.push(taglist[i]);
-		}
-	}
+        if (taglist[i] in queryTagAliases.seenlist) {
+            continue;
+        }
+        let entryname = 'ta-'+taglist[i];
+        if (hasDataExpired(entryname)) {
+            if (async_requests > 25) {
+                console.log("Sleeping...");
+                let temp = await sleep(sleep_wait_time);
+            }
+            console.log("Querying alias:",taglist[i]);
+            async_requests++;
+            resp = $.getJSON('/tag_aliases',{'search':{'antecedent_name':taglist[i],'status':'active'}},data=>{
+                if (data.length) {
+                    //Alias antecedents are unique, so no need to check the size
+                    console.log("Alias:",taglist[i],data[0].consequent_name);
+                    queryTagAliases.aliastags.push(taglist[i]);
+                    localStorage[entryname] = JSON.stringify({'aliases':data[0].consequent_name,'expires':Date.now()});
+                }
+                queryTagAliases.seenlist.push(taglist[i]);
+            }).always(()=>{
+                async_requests--;
+            });
+        } else {
+            console.log("Found alias:",taglist[i]);
+            queryTagAliases.aliastags.push(taglist[i]);
+        }
+    }
     let aliastimer = setInterval(()=>{
         if (async_requests === 0) {
             clearInterval(aliastimer);
             queryTagAliases.isdone = true;
-			console.log("Found aliases:",queryTagAliases.aliastags);
+            console.log("Found aliases:",queryTagAliases.aliastags);
         }
     },500);
 }
