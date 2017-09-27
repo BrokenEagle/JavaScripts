@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      13
+// @version      14
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag inputs on a post edit, both adds and removes.
 // @author       BrokenEagle
@@ -14,9 +14,14 @@
 
 //Global variables
 
+//Holds the state of the tags in the textbox at page load
 var preedittags;
 
+//Sleep time is one second
 const sleep_wait_time = 1000;
+
+//Expiration time is one month
+const expiration_time = 1000*60*60*24*30;
 
 const submitvalidator = `
 <input id="validate-tags" type="button" class="ui-button ui-widget ui-corner-all" value="Submit">
@@ -77,6 +82,12 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function forAllLocalData(func) {
+    $.each(Object.keys(localStorage).filter(entry=>{return entry.match(/^(?:ti|ta)-/);}),(i,key)=>{
+        func(key);
+    });
+}
+
 function hasDataExpired(entryname) {
     if (localStorage[entryname] === undefined) {
         return true;
@@ -85,6 +96,33 @@ function hasDataExpired(entryname) {
         return true;
     }
     return false;
+}
+
+function checkArrayData(array,type) {
+    return array.reduce((total,value)=>{return total && (typeof value === type);},true);
+}
+
+function checkDataModel(entryname) {
+    let data;
+    try {
+        data = JSON.parse(localStorage[entryname]);
+    } catch (e) {
+        console.log(entryname, "Unparsable entry!");
+        return false;
+    }
+    if (!('value' in data) || !('expires' in data)) {
+        console.log(entryname, "Missing data properties!");
+        return false;
+    }
+    if (typeof(data.expires) !== "number") {
+        console.log(entryname, "Expires is not a number!");
+        return false;
+    }
+    if (!($.isArray(data.value) && checkArrayData(data.value,'string'))) {
+        console.log(entryname, "Value is not an array of strings!");
+        return false;
+    }
+    return true;
 }
 
 //Queries aliases of added tags... can be called multiple times
@@ -97,7 +135,7 @@ async function queryTagAliases(taglist) {
             continue;
         }
         let entryname = 'ta-'+taglist[i];
-        if (hasDataExpired(entryname)) {
+        if (hasDataExpired(entryname) || !checkDataModel(entryname)) {
             if (async_requests > 25) {
                 console.log("Sleeping...");
                 let temp = await sleep(sleep_wait_time);
@@ -109,20 +147,20 @@ async function queryTagAliases(taglist) {
                     //Alias antecedents are unique, so no need to check the size
                     console.log("Alias:",taglist[i],data[0].consequent_name);
                     queryTagAliases.aliastags.push(taglist[i]);
-                    consequent = data[0].consequent_name;
+                    consequent = [data[0].consequent_name];
                 } else {
-                    consequent = "";
+                    consequent = [];
                 }
-                localStorage[entryname] = JSON.stringify({'aliases':consequent,'expires':Date.now()+(60*60*24*30*1000)});
+                localStorage[entryname] = JSON.stringify({'value':consequent,'expires':Date.now()+expiration_time});
                 queryTagAliases.seenlist.push(taglist[i]);
             }).always(()=>{
                 async_requests--;
             });
         } else {
             console.log("Found alias:",taglist[i]);
-            consequent = JSON.parse(localStorage[entryname]).aliases;
+            consequent = JSON.parse(localStorage[entryname]).value;
             if (consequent.length) {
-                console.log("Alias:",taglist[i],consequent);
+                console.log("Alias:",taglist[i],consequent[0]);
                 queryTagAliases.aliastags.push(taglist[i]);
             }
         }
@@ -144,7 +182,7 @@ async function queryTagImplications(taglist) {
     let async_requests = 0;
     for (let i = 0;i < taglist.length;i++) {
         let entryname = 'ti-'+taglist[i];
-        if (hasDataExpired(entryname)) {
+        if (hasDataExpired(entryname) || !checkDataModel(entryname)) {
             if (async_requests > 25) {
                 console.log("Sleeping...");
                 let temp = await sleep(sleep_wait_time);
@@ -154,13 +192,13 @@ async function queryTagImplications(taglist) {
             resp = $.getJSON('/tag_implications',{'limit':100,'search':{'consequent_name':taglist[i],'status':'active'}},data=>{
                 let implications = data.map(entry=>{return entry.antecedent_name;});
                 queryTagImplications.implicationdict[taglist[i]] = implications;
-                localStorage[entryname] = JSON.stringify({'implications':implications,'expires':Date.now()+(60*60*24*30*1000)});
+                localStorage[entryname] = JSON.stringify({'value':implications,'expires':Date.now()+expiration_time});
             }).always(()=>{
                 async_requests--;
             });
         } else {
             console.log("Found implication:",taglist[i]);
-            queryTagImplications.implicationdict[taglist[i]] = JSON.parse(localStorage[entryname]).implications;
+            queryTagImplications.implicationdict[taglist[i]] = JSON.parse(localStorage[entryname]).value;
         }
     }
     let implicationtimer = setInterval(()=>{
