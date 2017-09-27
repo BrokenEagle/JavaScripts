@@ -94,6 +94,7 @@ function hasDataExpired(entryname) {
 async function queryTagAliases(taglist) {
     queryTagAliases.isdone = false;
     let async_requests = 0;
+    let consequent = "";
     for (let i = 0;i < taglist.length;i++) {
         if (taglist[i] in queryTagAliases.seenlist) {
             continue;
@@ -111,22 +112,29 @@ async function queryTagAliases(taglist) {
                     //Alias antecedents are unique, so no need to check the size
                     console.log("Alias:",taglist[i],data[0].consequent_name);
                     queryTagAliases.aliastags.push(taglist[i]);
-                    localStorage[entryname] = JSON.stringify({'aliases':data[0].consequent_name,'expires':Date.now()+(60*60*24*30*1000)});
+                    consequent = data[0].consequent_name;
+                } else {
+                    consequent = "";
                 }
+                localStorage[entryname] = JSON.stringify({'aliases':consequent,'expires':Date.now()+(60*60*24*30*1000)});
                 queryTagAliases.seenlist.push(taglist[i]);
             }).always(()=>{
                 async_requests--;
             });
         } else {
             console.log("Found alias:",taglist[i]);
-            queryTagAliases.aliastags.push(taglist[i]);
+            consequent = JSON.parse(localStorage[entryname]).aliases;
+            if (consequent.length) {
+                console.log("Alias:",taglist[i],consequent);
+                queryTagAliases.aliastags.push(taglist[i]);
+            }
         }
     }
     let aliastimer = setInterval(()=>{
         if (async_requests === 0) {
             clearInterval(aliastimer);
             queryTagAliases.isdone = true;
-            console.log("Found aliases:",queryTagAliases.aliastags);
+            console.log("Check aliases:",queryTagAliases.aliastags);
         }
     },500);
 }
@@ -199,7 +207,6 @@ function validateTagAdds() {
         async_requests++;
         resp = $.getJSON('/tags',{'limit':100,'search':{'name':addedtags.slice(i,i+100).join(','),'hide_empty':'yes'}},data=>{
             checktags = checktags.concat(data.map(entry=>{return entry.name;}));
-            console.log("In callback:",checktags);
         }).always(()=>{
             async_requests--;
         });
@@ -208,7 +215,6 @@ function validateTagAdds() {
     let validatetimer = setInterval(()=>{
         console.log("Waiting:",async_requests,queryTagAliases.isdone);
         if (async_requests===0 && queryTagAliases.isdone) {
-            console.log("In interval:",checktags);
             clearInterval(validatetimer);
             nonexisttags = setDifference(setDifference(addedtags,checktags),queryTagAliases.aliastags);
             if (nonexisttags.length > 0) {
