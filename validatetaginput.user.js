@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7
+// @version      8
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag inputs on a post edit, both adds and removes.
 // @author       BrokenEagle
@@ -32,11 +32,7 @@ const warningMessages = `
 //Functions
 
 function getTagList() {
-    if ($("#c-posts").length) {
-        return $("#post_tag_string").val().split(/[\s\n]+/).map(tag=>{return tag.toLowerCase();});
-    } else {
-        return $("#upload_tag_string").val().split(/[\s\n]+/).map(tag=>{return tag.toLowerCase();});
-    }
+    return $("#upload_tag_string,#post_tag_string").val().split(/[\s\n]+/).map(tag=>{return tag.toLowerCase();});
 }
 
 function filterNull(array) {
@@ -259,7 +255,7 @@ function validateTagRemoves() {
         $("#validation-input").show();
         $("#warning-bad-removes").show();
         let removelist = allrelations.join('<br>');
-        $("#warning-bad-removes")[0].innerHTML = '<strong>Warning</strong>: The following implication relations prevent certain tag removes:<br>' + removelist;
+        $("#warning-bad-removes")[0].innerHTML = '<strong>Notice</strong>: The following implication relations prevent certain tag removes:<br>' + removelist;
     } else {
         console.log("Tag Remove Validation - Free and clear to submit!");
         $("#warning-bad-removes").hide();
@@ -293,7 +289,9 @@ function main() {
                     clearInterval(clicktimer);
                     if (validateTagAdds.submitrequest && validateTagRemoves.submitrequest) {
                         console.log("Submit request!");
-                        $("#form [name=commit]").click();
+                        $("#form").trigger("submit");
+                        $("#quick-edit-form").trigger("submit");
+                        $("#upload_tag_string,#post_tag_string").off(".submit");
                     } else {
                         console.log("Validation failed!");
                         $("#validate-tags")[0].removeAttribute('disabled');
@@ -303,10 +301,14 @@ function main() {
             },100);
         }
     });
+    $("#upload_tag_string,#post_tag_string").off("keydown.danbooru.submit").on("keydown.danbooru.submit", null, "return", e=>{
+        $("#validate-tags").click();
+        e.preventDefault();
+    });
 }
 
 //Execution start
 
-if ($("#c-uploads #a-new").length || $("#c-posts #a-show").length) {
+if ($("#c-uploads #a-new,#c-posts #a-show").length) {
     main();
 }
