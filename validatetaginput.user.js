@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6
+// @version      7
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag inputs on a post edit, both adds and removes.
 // @author       BrokenEagle
@@ -84,7 +84,7 @@ function hasDataExpired(entryname) {
     if (localStorage[entryname] === undefined) {
         return true;
     }
-    if ((Date.now - JSON.parse(localStorage[entryname]).expires) > (60*60*24*30)) {
+    if ((Date.now() - JSON.parse(localStorage[entryname]).expires) > 0) {
         return true;
     }
     return false;
@@ -111,7 +111,7 @@ async function queryTagAliases(taglist) {
                     //Alias antecedents are unique, so no need to check the size
                     console.log("Alias:",taglist[i],data[0].consequent_name);
                     queryTagAliases.aliastags.push(taglist[i]);
-                    localStorage[entryname] = JSON.stringify({'aliases':data[0].consequent_name,'expires':Date.now()});
+                    localStorage[entryname] = JSON.stringify({'aliases':data[0].consequent_name,'expires':Date.now()+(60*60*24*30*1000)});
                 }
                 queryTagAliases.seenlist.push(taglist[i]);
             }).always(()=>{
@@ -149,7 +149,7 @@ async function queryTagImplications(taglist) {
             resp = $.getJSON('/tag_implications',{'limit':100,'search':{'consequent_name':taglist[i],'status':'active'}},data=>{
                 let implications = data.map(entry=>{return entry.antecedent_name;});
                 queryTagImplications.implicationdict[taglist[i]] = implications;
-                localStorage[entryname] = JSON.stringify({'implications':implications,'expires':Date.now()});
+                localStorage[entryname] = JSON.stringify({'implications':implications,'expires':Date.now()+(60*60*24*30*1000)});
             }).always(()=>{
                 async_requests--;
             });
