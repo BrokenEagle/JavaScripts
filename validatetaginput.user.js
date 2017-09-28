@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      8
+// @version      9
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag inputs on a post edit, both adds and removes.
 // @author       BrokenEagle
@@ -241,10 +241,12 @@ function validateTagRemoves() {
     }
     let postedittags = transformTypetags(getCurrentTags());
     let removedtags = (setDifference(preedittags,postedittags)).concat(setIntersection(getNegativetags(postedittags),postedittags));
+    let finaltags = setDifference(postedittags,removedtags);
+    console.log("Final tags:",finaltags);
     console.log("Removed tags:",removedtags);
     let allrelations = [];
     $.each(removedtags,(i,tag)=>{
-        let badremoves = setIntersection(getAllRelations(tag,queryTagImplications.implicationdict),postedittags);
+        let badremoves = setIntersection(getAllRelations(tag,queryTagImplications.implicationdict),finaltags);
         if (badremoves.length) {
             allrelations.push(badremoves.toString() + ' -> ' + tag);
         }
