@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      14
+// @version      15
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag inputs on a post edit, both adds and removes.
 // @author       BrokenEagle
-// @match        *://*.donmai.us/posts/*
+// @match        *://*.donmai.us/posts*
 // @match        *://*.donmai.us/uploads*
 // @grant        none
 // @run-at       document-end
@@ -23,9 +23,11 @@ const sleep_wait_time = 1000;
 //Expiration time is one month
 const expiration_time = 1000*60*60*24*30;
 
-const submitvalidator = `
-<input id="validate-tags" type="button" class="ui-button ui-widget ui-corner-all" value="Submit">
-<div id="validation-input">
+const submitButton = `
+<input id="validate-tags" type="button" class="ui-button ui-widget ui-corner-all" value="Submit">`;
+
+const inputValidator = `
+<div id="validation-input" style="display:none">
 <label for="skip-validate-tags">Skip Validation</label>
 <input type="checkbox" id="skip-validate-tags">
 </div>`;
@@ -175,6 +177,7 @@ async function queryTagAliases(taglist) {
 }
 queryTagAliases.aliastags = [];
 queryTagAliases.seenlist = [];
+queryTagAliases.isdone = true;
 
 //Queries implications of preexisting tags... called only once
 async function queryTagImplications(taglist) {
@@ -210,6 +213,7 @@ async function queryTagImplications(taglist) {
     },500);
 }
 queryTagImplications.implicationdict = {};
+queryTagImplications.isdone = true;
 
 function getAllRelations(tag,implicationdict) {
     var tmp = [];
@@ -323,6 +327,21 @@ function validateRatingExists() {
     }
 }
 
+function postModeMenuClick(e) {
+    let s = $("#mode-box select").val();
+    if (s === "edit") {
+        $("#validation-input,#warning-no-rating,#warning-new-tags,#warning-bad-removes").hide();
+        let post_id = $(e.target).closest("article").data("id");
+        let $post = $("#post_" + post_id);
+        preedittags = $post.data("tags").split(' ');
+        console.log("Preedit tags:",preedittags);
+        queryTagImplications(preedittags);
+    } else if (s === "view") {
+        return;
+    }
+    e.preventDefault();
+}
+
 //Main
 
 function main() {
@@ -330,30 +349,46 @@ function main() {
     if ($("#c-uploads #a-new").length) {
         //Upload tags will always start out blank
         preedittags = [];
-    } else {
+    } else if ($("#c-posts #a-show").length) {
         preedittags = filterNull(getTagList());
+        queryTagImplications(preedittags);
+    } else if ($("#c-posts #a-index").length){
+        $(".post-preview a").click(postModeMenuClick);
+    } else {
+        console.log("Nothing found!")
+        return;
     }
     console.log("Preedit tags:",preedittags);
-    $("#form [name=commit]").after(submitvalidator);
-    $("#related-tags-container").before(warningMessages);
-    $("#form [name=commit]").hide();
-    $("#validation-input").hide();
-    queryTagImplications(preedittags);
+    $("#form [type=submit],#quick-edit-form [type=submit][value=Submit]").after(submitButton);
+    $("#form [type=submit],#quick-edit-form [type=submit][value=Submit]").hide();
+    if ($("#c-posts #a-index").length) {
+        $("#quick-edit-form [type=submit][value=Cancel]").after(inputValidator);
+        $("#quick-edit-form").after(warningMessages);
+    } else{
+        $("#validate-tags").after(inputValidator);
+        $("#related-tags-container").before(warningMessages);
+    }
+    //$("#validation-input").hide();
+    //queryTagImplications(preedittags);
     $("#validate-tags").click(e=>{
         if (validateTagAdds.isready) {
             $("#validate-tags")[0].setAttribute('disabled','true');
             $("#validate-tags")[0].setAttribute('value','Submitting...');
             validateTagAdds();
             validateTagRemoves();
-            validateRatingExists();
+            if ($("#c-uploads #a-new,#c-posts #a-show").length) {
+                validateRatingExists();
+            } else {
+                validateRatingExists.submitrequest = true;
+            }
             let clicktimer = setInterval(()=>{
                 if(validateTagAdds.isready) {
                     clearInterval(clicktimer);
                     if (validateTagAdds.submitrequest && validateTagRemoves.submitrequest && validateRatingExists.submitrequest) {
                         console.log("Submit request!");
-                        $("#form").trigger("submit");
-                        $("#quick-edit-form").trigger("submit");
-                        $("#upload_tag_string,#post_tag_string").off(".submit");
+                        //$("#form").trigger("submit");
+                        //$("#quick-edit-form").trigger("submit");
+                        //$("#upload_tag_string,#post_tag_string").off(".submit");
                     } else {
                         console.log("Validation failed!");
                         $("#validate-tags")[0].removeAttribute('disabled');
@@ -388,7 +423,7 @@ var loadtimer = setInterval(()=> {
         return;
     }
     clearInterval(loadtimer);
-    if ($("#c-uploads #a-new,#c-posts #a-show").length) {
+    if ($("#c-uploads #a-new,#c-posts #a-show,#c-posts #a-index").length) {
         main();
     }
 },100);
