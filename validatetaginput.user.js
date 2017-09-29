@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9
+// @version      10
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag inputs on a post edit, both adds and removes.
 // @author       BrokenEagle
@@ -189,7 +189,8 @@ function getAllRelations(tag,implicationdict) {
 function validateTagAdds() {
     validateTagAdds.isready = false;
     validateTagAdds.submitrequest = false;
-    let addedtags = setDifference(filterNegativetags(filterTypetags(getCurrentTags())),preedittags);
+    let postedittags = getCurrentTags();
+    let addedtags = setDifference(setDifference(filterNegativetags(filterTypetags(postedittags)),preedittags),getNegativetags(postedittags));
     console.log("Added tags:",addedtags);
     if ((addedtags.length === 0) || $("#skip-validate-tags")[0].checked) {
         console.log("Tag Add Validation - Skipping!",addedtags.length === 0,$("#skip-validate-tags")[0].checked);
