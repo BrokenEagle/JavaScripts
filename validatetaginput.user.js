@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10
+// @version      11
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag inputs on a post edit, both adds and removes.
 // @author       BrokenEagle
@@ -275,13 +275,13 @@ function validateTagRemoves() {
 
 function main() {
     console.log("========STARTING MAIN========");
-    if (window.location.pathname === '/uploads') {
-        //Upload error occurred from /uploads/new... reload prior preedittags
-        preedittags = JSON.parse(localStorage.preedittags);
+    if ($("#c-uploads #a-new").length) {
+        //Upload tags will always start out blank
+        preedittags = [];
     } else {
         preedittags = filterNull(getTagList());
-        localStorage.preedittags = JSON.stringify(preedittags);
     }
+    console.log("Preedit tags:",preedittags);
     $("#form [name=commit]").after(submitvalidator);
     $("#related-tags-container").before(warningMessages);
     $("#form [name=commit]").hide();
