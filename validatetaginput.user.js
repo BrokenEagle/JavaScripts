@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      11
+// @version      12
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag inputs on a post edit, both adds and removes.
 // @author       BrokenEagle
@@ -310,14 +310,32 @@ function main() {
             },100);
         }
     });
-    $("#upload_tag_string,#post_tag_string").off("keydown.danbooru.submit").on("keydown.danbooru.submit", null, "return", e=>{
-        $("#validate-tags").click();
-        e.preventDefault();
-    });
+    let rebindtimer = setInterval(()=>{
+        let boundevents = $.map($._data($("#upload_tag_string,#post_tag_string")[0], "events").keydown,(entry)=>{return entry.namespace;});
+        console.log("Bound events:",boundevents);
+        if ($.inArray('danbooru.submit',boundevents) >= 0) {
+            clearInterval(rebindtimer);
+            $("#upload_tag_string,#post_tag_string").off("keydown.danbooru.submit").on("keydown.danbooru.submit", null, "return", e=>{
+                $("#validate-tags").click();
+                e.preventDefault();
+            });
+        }
+    },100);
 }
 
 //Execution start
 
-if ($("#c-uploads #a-new,#c-posts #a-show").length) {
-    main();
-}
+var loadtimer = setInterval(()=> {
+    if (typeof window.Danbooru === undefined) {
+        console.log("Danbooru not installed yet!");
+        return;
+    }
+    if (typeof window.jQuery === undefined) {
+        console.log("jQuery not installed yet!");
+        return;
+    }
+    clearInterval(loadtimer);
+    if ($("#c-uploads #a-new,#c-posts #a-show").length) {
+        main();
+    }
+},100);
