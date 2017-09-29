@@ -92,7 +92,7 @@ async function queryTagAliases(taglist) {
     let async_requests = 0;
     let consequent = "";
     for (let i = 0;i < taglist.length;i++) {
-        if (taglist[i] in queryTagAliases.seenlist) {
+        if ($.inArray(taglist[i],queryTagAliases.seenlist) >= 0) {
             continue;
         }
         let entryname = 'ta-'+taglist[i];
@@ -190,6 +190,7 @@ function validateTagAdds() {
     validateTagAdds.isready = false;
     validateTagAdds.submitrequest = false;
     let addedtags = setDifference(filterNegativetags(filterTypetags(getCurrentTags())),preedittags);
+    console.log("Added tags:",addedtags);
     if ((addedtags.length === 0) || $("#skip-validate-tags")[0].checked) {
         console.log("Tag Add Validation - Skipping!",addedtags.length === 0,$("#skip-validate-tags")[0].checked);
         $("#warning-new-tags").hide();
@@ -201,8 +202,12 @@ function validateTagAdds() {
     let async_requests = 0;
     for (let i = 0;i < addedtags.length;i+=100) {
         async_requests++;
+        let querystring = addedtags.slice(i,i+100).join(',');
+        console.log("Tag query string:",i,querystring);
         resp = $.getJSON('/tags',{'limit':100,'search':{'name':addedtags.slice(i,i+100).join(','),'hide_empty':'yes'}},data=>{
-            checktags = checktags.concat(data.map(entry=>{return entry.name;}));
+            let foundtags = data.map(entry=>{return entry.name;});
+            console.log("Found tags:",i,foundtags);
+            checktags = checktags.concat(foundtags);
         }).always(()=>{
             async_requests--;
         });
@@ -214,7 +219,7 @@ function validateTagAdds() {
             clearInterval(validatetimer);
             nonexisttags = setDifference(setDifference(addedtags,checktags),queryTagAliases.aliastags);
             if (nonexisttags.length > 0) {
-                console.log("Nonexistant tags:");
+                console.log("Tag Add Validation - Nonexistant tags!");
                 $.each(nonexisttags,(i,tag)=>{console.log(i,tag);});
                 $("#validation-input").show();
                 $("#warning-new-tags").show();
@@ -252,7 +257,7 @@ function validateTagRemoves() {
         }
     });
     if (allrelations.length) {
-        console.log("Badremove tags:");
+        console.log("Tag Remove Validation - Badremove tags!");
         $.each(allrelations,(i,relation)=>{console.log(i,relation);});
         $("#validation-input").show();
         $("#warning-bad-removes").show();
@@ -268,6 +273,7 @@ function validateTagRemoves() {
 //Main
 
 function main() {
+    console.log("========STARTING MAIN========");
     if (window.location.pathname === '/uploads') {
         //Upload error occurred from /uploads/new... reload prior preedittags
         preedittags = JSON.parse(localStorage.preedittags);
