@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      12
+// @version      13
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag inputs on a post edit, both adds and removes.
 // @author       BrokenEagle
@@ -26,6 +26,7 @@ const submitvalidator = `
 </div>`;
 
 const warningMessages = `
+<div id="warning-no-rating" class="error-messages ui-state-error ui-corner-all" style="display:none"><strong>Error</strong>: Must specify a rating</div>
 <div id="warning-new-tags" class="error-messages ui-state-error ui-corner-all" style="display:none"></div>
 <div id="warning-bad-removes" class="error-messages ui-state-highlight ui-corner-all" style="display:none"></div>`;
 
@@ -271,6 +272,19 @@ function validateTagRemoves() {
     }
 }
 
+function validateRatingExists() {
+    validateRatingExists.submitrequest = false;
+    if ($("#upload_rating_s,#post_rating_s")[0].checked || $("#upload_rating_q,#post_rating_q")[0].checked || $("#upload_rating_e,#post_rating_e")[0].checked) {
+        console.log("Rating Exists Validation - Free and clear to submit!");
+        $("#warning-no-rating").hide();
+        validateRatingExists.submitrequest = true;
+    } else {
+        $("#validation-input").show();
+        $("#warning-no-rating").show();
+        console.log("Rating Exists Validation - No rating selected!");
+    }
+}
+
 //Main
 
 function main() {
@@ -293,10 +307,11 @@ function main() {
             $("#validate-tags")[0].setAttribute('value','Submitting...');
             validateTagAdds();
             validateTagRemoves();
+            validateRatingExists();
             let clicktimer = setInterval(()=>{
                 if(validateTagAdds.isready) {
                     clearInterval(clicktimer);
-                    if (validateTagAdds.submitrequest && validateTagRemoves.submitrequest) {
+                    if (validateTagAdds.submitrequest && validateTagRemoves.submitrequest && validateRatingExists.submitrequest) {
                         console.log("Submit request!");
                         $("#form").trigger("submit");
                         $("#quick-edit-form").trigger("submit");
