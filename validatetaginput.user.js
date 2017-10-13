@@ -333,6 +333,8 @@ function validateRatingExists() {
     }
 }
 
+//Click functions
+
 function postModeMenuClick(e) {
     let s = $("#mode-box select").val();
     if (s === "edit") {
@@ -347,6 +349,49 @@ function postModeMenuClick(e) {
     }
     e.preventDefault();
 }
+
+function validateTagsClick(e) {
+    //Prevent code from being reentrant until finished processing
+    if (validateTagsClick.isready) {
+        validateTagsClick.isready = false;
+        $("#validate-tags")[0].setAttribute('disabled','true');
+        $("#validate-tags")[0].setAttribute('value','Submitting...');
+        validateTagAdds();
+        validateTagRemoves();
+        if ($("#c-uploads #a-new,#c-posts #a-show").length) {
+            validateRatingExists();
+        } else {
+            validateRatingExists.submitrequest = true;
+        }
+        let clicktimer = setInterval(()=>{
+            if(validateTagAdds.isready) {
+                clearInterval(clicktimer);
+                if (validateTagAdds.submitrequest && validateTagRemoves.submitrequest && validateRatingExists.submitrequest) {
+                    console.log("Submit request!");
+                    $("#form,#quick-edit-form").trigger("submit");
+                    if ($("#c-uploads #a-new,#c-posts #a-show").length) {
+                        console.log("Disabling return key!")
+                        $("#upload_tag_string,#post_tag_string").off("keydown.danbooru.submit");
+                    } else {
+                        //Wait until the edit box closes to reenable the submit button click
+                        setTimeout(()=>{
+                            console.log("Ready for next edit!");
+                            $("#validate-tags")[0].removeAttribute('disabled');
+                            $("#validate-tags")[0].setAttribute('value','Submit');
+                            validateTagsClick.isready = true;
+                        },quickedit_wait_time);
+                    }
+                } else {
+                    console.log("Validation failed!");
+                    $("#validate-tags")[0].removeAttribute('disabled');
+                    $("#validate-tags")[0].setAttribute('value','Submit');
+                    validateTagsClick.isready = true;
+                }
+            }
+        },timer_poll_interval);
+    }
+}
+validateTagsClick.isready = true;
 
 //Main
 
@@ -374,36 +419,7 @@ function main() {
         $("#validate-tags").after(inputValidator);
         $("#related-tags-container").before(warningMessages);
     }
-    //$("#validation-input").hide();
-    //queryTagImplications(preedittags);
-    $("#validate-tags").click(e=>{
-        if (validateTagAdds.isready) {
-            $("#validate-tags")[0].setAttribute('disabled','true');
-            $("#validate-tags")[0].setAttribute('value','Submitting...');
-            validateTagAdds();
-            validateTagRemoves();
-            if ($("#c-uploads #a-new,#c-posts #a-show").length) {
-                validateRatingExists();
-            } else {
-                validateRatingExists.submitrequest = true;
-            }
-            let clicktimer = setInterval(()=>{
-                if(validateTagAdds.isready) {
-                    clearInterval(clicktimer);
-                    if (validateTagAdds.submitrequest && validateTagRemoves.submitrequest && validateRatingExists.submitrequest) {
-                        console.log("Submit request!");
-                        //$("#form").trigger("submit");
-                        //$("#quick-edit-form").trigger("submit");
-                        //$("#upload_tag_string,#post_tag_string").off(".submit");
-                    } else {
-                        console.log("Validation failed!");
-                        $("#validate-tags")[0].removeAttribute('disabled');
-                        $("#validate-tags")[0].setAttribute('value','Submit');
-                    }
-                }
-            },timer_poll_interval);
-        }
-    });
+    $("#validate-tags").click(validateTagsClick);
     let rebindtimer = setInterval(()=>{
         let boundevents = $.map($._data($("#upload_tag_string,#post_tag_string")[0], "events").keydown,(entry)=>{return entry.namespace;});
         console.log("Bound events:",boundevents);
