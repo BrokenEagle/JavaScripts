@@ -17,8 +17,14 @@
 //Holds the state of the tags in the textbox at page load
 var preedittags;
 
-//Sleep time is one second
+//Sleep time to wait for async requests
 const sleep_wait_time = 1000;
+
+//Wait time before renabling the quick edit box
+const quickedit_wait_time = 1000;
+
+//Polling interval for checking program status
+const timer_poll_interval = 100;
 
 //Expiration time is one month
 const expiration_time = 1000*60*60*24*30;
@@ -173,7 +179,7 @@ async function queryTagAliases(taglist) {
             queryTagAliases.isdone = true;
             console.log("Check aliases:",queryTagAliases.aliastags);
         }
-    },500);
+    },timer_poll_interval);
 }
 queryTagAliases.aliastags = [];
 queryTagAliases.seenlist = [];
@@ -210,7 +216,7 @@ async function queryTagImplications(taglist) {
             queryTagImplications.isdone = true;
             console.log("Implications:",queryTagImplications.implicationdict);
         }
-    },500);
+    },timer_poll_interval);
 }
 queryTagImplications.implicationdict = {};
 queryTagImplications.isdone = true;
@@ -276,7 +282,7 @@ function validateTagAdds() {
             }
             validateTagAdds.isready = true;
         }
-    },500);
+    },timer_poll_interval);
 }
 validateTagAdds.isready = true;
 
@@ -395,7 +401,7 @@ function main() {
                         $("#validate-tags")[0].setAttribute('value','Submit');
                     }
                 }
-            },100);
+            },timer_poll_interval);
         }
     });
     let rebindtimer = setInterval(()=>{
@@ -408,7 +414,7 @@ function main() {
                 e.preventDefault();
             });
         }
-    },100);
+    },timer_poll_interval);
 }
 
 //Execution start
@@ -426,4 +432,4 @@ var loadtimer = setInterval(()=> {
     if ($("#c-uploads #a-new,#c-posts #a-show,#c-posts #a-index").length) {
         main();
     }
-},100);
+},timer_poll_interval);
