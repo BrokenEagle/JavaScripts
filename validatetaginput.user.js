@@ -3,7 +3,7 @@
 // @namespace    https://github.com/BrokenEagle/JavaScripts
 // @version      15
 // @source       https://danbooru.donmai.us/users/23799
-// @description  Validates tag inputs on a post edit, both adds and removes.
+// @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
 // @match        *://*.donmai.us/posts*
 // @match        *://*.donmai.us/uploads*
@@ -20,7 +20,9 @@ var preedittags;
 //Sleep time to wait for async requests
 const sleep_wait_time = 1000;
 
-//Wait time before renabling the quick edit box
+//Wait time for quick edit box
+// 1. Let box close before reenabling the submit button
+// 2. Let box open before querying the implications
 const quickedit_wait_time = 1000;
 
 //Polling interval for checking program status
@@ -343,7 +345,8 @@ function postModeMenuClick(e) {
         let $post = $("#post_" + post_id);
         preedittags = $post.data("tags").split(' ');
         console.log("Preedit tags:",preedittags);
-        queryTagImplications(preedittags);
+        //Wait until the edit box loads before querying implications
+        setTimeout(()=>{queryTagImplications(preedittags);},quickedit_wait_time);
     } else if (s === "view") {
         return;
     }
