@@ -268,6 +268,7 @@ function validateTagRemoves() {
     validateTagRemoves.submitrequest = false;
     if (!queryTagImplications.isdone || $("#skip-validate-tags")[0].checked) {
         //Validate tag removals are not as critical, so don't hold up any tag editing if it's not done yet
+        console.log("Tag Remove Validation - Skipping!",queryTagImplications.isdone,$("#skip-validate-tags")[0].checked);
         $("#warning-bad-removes").hide();
         validateTagRemoves.submitrequest = true;
         return;
@@ -300,7 +301,13 @@ function validateTagRemoves() {
 
 function validateRatingExists() {
     validateRatingExists.submitrequest = false;
-    if ($("#upload_rating_s,#post_rating_s")[0].checked || $("#upload_rating_q,#post_rating_q")[0].checked || $("#upload_rating_e,#post_rating_e")[0].checked) {
+    if ($("#skip-validate-tags")[0].checked) {
+        //Validate tag removals are not as critical, so don't hold up any tag editing if it's not done yet
+        console.log("Rating Exists Validation - Skipping!",$("#skip-validate-tags")[0].checked);
+        $("#warning-bad-removes").hide();
+        validateRatingExists.submitrequest = true;
+    }
+    else if ($("#upload_rating_s,#post_rating_s")[0].checked || $("#upload_rating_q,#post_rating_q")[0].checked || $("#upload_rating_e,#post_rating_e")[0].checked) {
         console.log("Rating Exists Validation - Free and clear to submit!");
         $("#warning-no-rating").hide();
         validateRatingExists.submitrequest = true;
@@ -337,7 +344,7 @@ function validateTagsClick(e) {
         $("#validate-tags")[0].setAttribute('value','Submitting...');
         validateTagAdds();
         validateTagRemoves();
-        if ($("#c-uploads #a-new,#c-posts #a-show").length) {
+        if ($("#c-uploads #a-new").length) {
             validateRatingExists();
         } else {
             validateRatingExists.submitrequest = true;
