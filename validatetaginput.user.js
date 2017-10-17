@@ -45,7 +45,7 @@ const resetStorage = `
 <div class="input">
     <label>Site data</label>
     <p><a href="#" id="reset-storage-link">Reset cached data</a></p>
-</div>`
+</div>`;
 
 const warningMessages = `
 <div id="warning-no-rating" class="error-messages ui-state-error ui-corner-all" style="display:none"><strong>Error</strong>: Must specify a rating</div>
@@ -145,7 +145,7 @@ function checkDataModel(entryname) {
 //Queries aliases of added tags... can be called multiple times
 async function queryTagAliases(taglist) {
     queryTagAliases.isdone = false;
-    let async_requests = 0;
+    queryTagAliases.async_requests = 0;
     let consequent = "";
     for (let i = 0;i < taglist.length;i++) {
         if ($.inArray(taglist[i],queryTagAliases.seenlist) >= 0) {
@@ -153,12 +153,12 @@ async function queryTagAliases(taglist) {
         }
         let entryname = 'ta-'+taglist[i];
         if (hasDataExpired(entryname) || !checkDataModel(entryname)) {
-            if (async_requests > 25) {
+            if (queryTagAliases.async_requests > 25) {
                 console.log("Sleeping...");
                 let temp = await sleep(sleep_wait_time);
             }
             console.log("Querying alias:",taglist[i]);
-            async_requests++;
+            queryTagAliases.async_requests++;
             resp = $.getJSON('/tag_aliases',{'search':{'antecedent_name':taglist[i],'status':'active'}},data=>{
                 if (data.length) {
                     //Alias antecedents are unique, so no need to check the size
@@ -171,7 +171,7 @@ async function queryTagAliases(taglist) {
                 localStorage[entryname] = JSON.stringify({'value':consequent,'expires':Date.now()+expiration_time});
                 queryTagAliases.seenlist.push(taglist[i]);
             }).always(()=>{
-                async_requests--;
+                queryTagAliases.async_requests--;
             });
         } else {
             console.log("Found alias:",taglist[i]);
@@ -182,50 +182,38 @@ async function queryTagAliases(taglist) {
             }
         }
     }
-    let aliastimer = setInterval(()=>{
-        if (async_requests === 0) {
-            clearInterval(aliastimer);
-            queryTagAliases.isdone = true;
-            console.log("Check aliases:",queryTagAliases.aliastags);
-        }
-    },timer_poll_interval);
+    queryTagAliasesCallback.timer = setInterval(queryTagAliasesCallback,timer_poll_interval);
 }
 queryTagAliases.aliastags = [];
 queryTagAliases.seenlist = [];
 queryTagAliases.isdone = true;
 
-//Queries implications of preexisting tags... called only once
+//Queries implications of preexisting tags... called once per image
 async function queryTagImplications(taglist) {
     queryTagImplications.isdone = false;
-    let async_requests = 0;
+    queryTagImplications.async_requests = 0;
     for (let i = 0;i < taglist.length;i++) {
         let entryname = 'ti-'+taglist[i];
         if (hasDataExpired(entryname) || !checkDataModel(entryname)) {
-            if (async_requests > 25) {
+            if (queryTagImplications.async_requests > 25) {
                 console.log("Sleeping...");
                 let temp = await sleep(sleep_wait_time);
             }
             console.log("Querying implication:",taglist[i]);
-            async_requests++;
+            queryTagImplications.async_requests++;
             resp = $.getJSON('/tag_implications',{'limit':100,'search':{'consequent_name':taglist[i],'status':'active'}},data=>{
                 let implications = data.map(entry=>{return entry.antecedent_name;});
                 queryTagImplications.implicationdict[taglist[i]] = implications;
                 localStorage[entryname] = JSON.stringify({'value':implications,'expires':Date.now()+expiration_time});
             }).always(()=>{
-                async_requests--;
+                queryTagImplications.async_requests--;
             });
         } else {
             console.log("Found implication:",taglist[i]);
             queryTagImplications.implicationdict[taglist[i]] = JSON.parse(localStorage[entryname]).value;
         }
     }
-    let implicationtimer = setInterval(()=>{
-        if (async_requests === 0) {
-            clearInterval(implicationtimer);
-            queryTagImplications.isdone = true;
-            console.log("Implications:",queryTagImplications.implicationdict);
-        }
-    },timer_poll_interval);
+    queryTagImplicationsCallback.timer = setInterval(queryTagImplicationsCallback,timer_poll_interval);
 }
 queryTagImplications.implicationdict = {};
 queryTagImplications.isdone = true;
@@ -248,50 +236,31 @@ function validateTagAdds() {
     validateTagAdds.isready = false;
     validateTagAdds.submitrequest = false;
     let postedittags = getCurrentTags();
-    let addedtags = setDifference(setDifference(filterNegativetags(filterTypetags(postedittags)),preedittags),getNegativetags(postedittags));
-    console.log("Added tags:",addedtags);
-    if ((addedtags.length === 0) || $("#skip-validate-tags")[0].checked) {
-        console.log("Tag Add Validation - Skipping!",addedtags.length === 0,$("#skip-validate-tags")[0].checked);
+    validateTagAdds.addedtags = setDifference(setDifference(filterNegativetags(filterTypetags(postedittags)),preedittags),getNegativetags(postedittags));
+    console.log("Added tags:",validateTagAdds.addedtags);
+    if ((validateTagAdds.addedtags.length === 0) || $("#skip-validate-tags")[0].checked) {
+        console.log("Tag Add Validation - Skipping!",validateTagAdds.addedtags.length === 0,$("#skip-validate-tags")[0].checked);
         $("#warning-new-tags").hide();
         validateTagAdds.isready = true;
         validateTagAdds.submitrequest = true;
         return;
     }
-    let checktags = [];
-    let async_requests = 0;
-    for (let i = 0;i < addedtags.length;i+=100) {
-        async_requests++;
-        let querystring = addedtags.slice(i,i+100).join(',');
+    validateTagAdds.checktags = [];
+    validateTagAdds.async_requests = 0;
+    for (let i = 0;i < validateTagAdds.addedtags.length;i+=100) {
+        validateTagAdds.async_requests++;
+        let querystring = validateTagAdds.addedtags.slice(i,i+100).join(',');
         console.log("Tag query string:",i,querystring);
-        resp = $.getJSON('/tags',{'limit':100,'search':{'name':addedtags.slice(i,i+100).join(','),'hide_empty':'yes'}},data=>{
+        resp = $.getJSON('/tags',{'limit':100,'search':{'name':validateTagAdds.addedtags.slice(i,i+100).join(','),'hide_empty':'yes'}},data=>{
             let foundtags = data.map(entry=>{return entry.name;});
             console.log("Found tags:",i,foundtags);
-            checktags = checktags.concat(foundtags);
+            validateTagAdds.checktags = validateTagAdds.checktags.concat(foundtags);
         }).always(()=>{
-            async_requests--;
+            validateTagAdds.async_requests--;
         });
     }
-    queryTagAliases(addedtags);
-    let validatetimer = setInterval(()=>{
-        console.log("Waiting:",async_requests,queryTagAliases.isdone);
-        if (async_requests===0 && queryTagAliases.isdone) {
-            clearInterval(validatetimer);
-            nonexisttags = setDifference(setDifference(addedtags,checktags),queryTagAliases.aliastags);
-            if (nonexisttags.length > 0) {
-                console.log("Tag Add Validation - Nonexistant tags!");
-                $.each(nonexisttags,(i,tag)=>{console.log(i,tag);});
-                $("#validation-input").show();
-                $("#warning-new-tags").show();
-                let taglist = nonexisttags.join(', ');
-                $("#warning-new-tags")[0].innerHTML = '<strong>Warning</strong>: The following new tags will be created:  ' + taglist;
-            } else {
-                console.log("Tag Add Validation - Free and clear to submit!");
-                $("#warning-new-tags").hide();
-                validateTagAdds.submitrequest = true;
-            }
-            validateTagAdds.isready = true;
-        }
-    },timer_poll_interval);
+    queryTagAliases(validateTagAdds.addedtags);
+    validateTagAddsCallback.timer = setInterval(validateTagAddsCallback,timer_poll_interval);
 }
 validateTagAdds.isready = true;
 
@@ -373,32 +342,7 @@ function validateTagsClick(e) {
         } else {
             validateRatingExists.submitrequest = true;
         }
-        let clicktimer = setInterval(()=>{
-            if(validateTagAdds.isready) {
-                clearInterval(clicktimer);
-                if (validateTagAdds.submitrequest && validateTagRemoves.submitrequest && validateRatingExists.submitrequest) {
-                    console.log("Submit request!");
-                    $("#form,#quick-edit-form").trigger("submit");
-                    if ($("#c-uploads #a-new,#c-posts #a-show").length) {
-                        console.log("Disabling return key!")
-                        $("#upload_tag_string,#post_tag_string").off("keydown.danbooru.submit");
-                    } else {
-                        //Wait until the edit box closes to reenable the submit button click
-                        setTimeout(()=>{
-                            console.log("Ready for next edit!");
-                            $("#validate-tags")[0].removeAttribute('disabled');
-                            $("#validate-tags")[0].setAttribute('value','Submit');
-                            validateTagsClick.isready = true;
-                        },quickedit_wait_time);
-                    }
-                } else {
-                    console.log("Validation failed!");
-                    $("#validate-tags")[0].removeAttribute('disabled');
-                    $("#validate-tags")[0].setAttribute('value','Submit');
-                    validateTagsClick.isready = true;
-                }
-            }
-        },timer_poll_interval);
+        validateTagsClickCallback.timer = setInterval(validateTagsClickCallback,timer_poll_interval);
     }
 }
 validateTagsClick.isready = true;
@@ -411,6 +355,103 @@ function resetLocalStorageClick(e) {
         Danbooru.notice("Site data reset!");
     }
     e.preventDefault();
+}
+
+//Timer/callback functions
+
+function queryTagAliasesCallback() {
+    if (queryTagAliases.async_requests === 0) {
+        clearInterval(queryTagAliasesCallback.timer);
+        queryTagAliases.isdone = true;
+        console.log("Check aliases:",queryTagAliases.aliastags);
+    }
+}
+
+function queryTagImplicationsCallback() {
+    if (queryTagImplications.async_requests === 0) {
+        clearInterval(queryTagImplicationsCallback.timer);
+        queryTagImplications.isdone = true;
+        console.log("Implications:",queryTagImplications.implicationdict);
+    }
+}
+
+function validateTagAddsCallback() {
+    console.log("Waiting:",validateTagAdds.async_requests,queryTagAliases.isdone);
+    if (validateTagAdds.async_requests===0 && queryTagAliases.isdone) {
+        clearInterval(validateTagAddsCallback.timer);
+        nonexisttags = setDifference(setDifference(validateTagAdds.addedtags,validateTagAdds.checktags),queryTagAliases.aliastags);
+        if (nonexisttags.length > 0) {
+            console.log("Tag Add Validation - Nonexistant tags!");
+            $.each(nonexisttags,(i,tag)=>{console.log(i,tag);});
+            $("#validation-input").show();
+            $("#warning-new-tags").show();
+            let taglist = nonexisttags.join(', ');
+            $("#warning-new-tags")[0].innerHTML = '<strong>Warning</strong>: The following new tags will be created:  ' + taglist;
+        } else {
+            console.log("Tag Add Validation - Free and clear to submit!");
+            $("#warning-new-tags").hide();
+            validateTagAdds.submitrequest = true;
+        }
+        validateTagAdds.isready = true;
+    }
+}
+
+function validateTagsClickCallback() {
+    //Wait on asynchronous functions
+    if(validateTagAdds.isready) {
+        clearInterval(validateTagsClickCallback.timer);
+        if (validateTagAdds.submitrequest && validateTagRemoves.submitrequest && validateRatingExists.submitrequest) {
+            console.log("Submit request!");
+            $("#form,#quick-edit-form").trigger("submit");
+            if ($("#c-uploads #a-new,#c-posts #a-show").length) {
+                console.log("Disabling return key!");
+                $("#upload_tag_string,#post_tag_string").off("keydown.danbooru.submit");
+            } else {
+                //Wait until the edit box closes to reenable the submit button click
+                setTimeout(()=>{
+                    console.log("Ready for next edit!");
+                    $("#validate-tags")[0].removeAttribute('disabled');
+                    $("#validate-tags")[0].setAttribute('value','Submit');
+                    validateTagsClick.isready = true;
+                },quickedit_wait_time);
+            }
+        } else {
+            console.log("Validation failed!");
+            $("#validate-tags")[0].removeAttribute('disabled');
+            $("#validate-tags")[0].setAttribute('value','Submit');
+            validateTagsClick.isready = true;
+        }
+    }
+}
+
+function rebindHotkey() {
+    let boundevents = $.map($._data($("#upload_tag_string,#post_tag_string")[0], "events").keydown,(entry)=>{return entry.namespace;});
+    console.log("Bound events:",boundevents);
+    if ($.inArray('danbooru.submit',boundevents) >= 0) {
+        clearInterval(rebindHotkey.timer);
+        $("#upload_tag_string,#post_tag_string").off("keydown.danbooru.submit").on("keydown.danbooru.submit", null, "return", e=>{
+            $("#validate-tags").click();
+            e.preventDefault();
+        });
+    }
+}
+
+function programLoad() {
+    if (typeof window.Danbooru === undefined) {
+        console.log("Danbooru not installed yet!");
+        return;
+    }
+    if (typeof window.jQuery === undefined) {
+        console.log("jQuery not installed yet!");
+        return;
+    }
+    clearInterval(programLoad.timer);
+    if ($("#c-uploads #a-new,#c-posts #a-show,#c-posts #a-index").length) {
+        main();
+    } else if ($("#c-users #a-edit").length) {
+        $("#basic-settings-section > .user_time_zone").before(resetStorage);
+        $("#reset-storage-link").click(resetLocalStorageClick);
+    }
 }
 
 //Main
@@ -426,7 +467,7 @@ function main() {
     } else if ($("#c-posts #a-index").length){
         $(".post-preview a").click(postModeMenuClick);
     } else {
-        console.log("Nothing found!")
+        console.log("Nothing found!");
         return;
     }
     console.log("Preedit tags:",preedittags);
@@ -440,35 +481,9 @@ function main() {
         $("#related-tags-container").before(warningMessages);
     }
     $("#validate-tags").click(validateTagsClick);
-    let rebindtimer = setInterval(()=>{
-        let boundevents = $.map($._data($("#upload_tag_string,#post_tag_string")[0], "events").keydown,(entry)=>{return entry.namespace;});
-        console.log("Bound events:",boundevents);
-        if ($.inArray('danbooru.submit',boundevents) >= 0) {
-            clearInterval(rebindtimer);
-            $("#upload_tag_string,#post_tag_string").off("keydown.danbooru.submit").on("keydown.danbooru.submit", null, "return", e=>{
-                $("#validate-tags").click();
-                e.preventDefault();
-            });
-        }
-    },timer_poll_interval);
+    rebindHotkey.timer = setInterval(rebindHotkey,timer_poll_interval);
 }
 
 //Execution start
 
-var loadtimer = setInterval(()=> {
-    if (typeof window.Danbooru === undefined) {
-        console.log("Danbooru not installed yet!");
-        return;
-    }
-    if (typeof window.jQuery === undefined) {
-        console.log("jQuery not installed yet!");
-        return;
-    }
-    clearInterval(loadtimer);
-    if ($("#c-uploads #a-new,#c-posts #a-show,#c-posts #a-index").length) {
-        main();
-    } else if ($("#c-users #a-edit").length) {
-        $("#basic-settings-section > .user_time_zone").before(resetStorage);
-        $("#reset-storage-link").click(resetLocalStorageClick);
-    }
-},timer_poll_interval);
+programLoad.timer = setInterval(programLoad,timer_poll_interval);
