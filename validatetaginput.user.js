@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16
+// @version      17
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -11,12 +11,24 @@
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/validatetaginput.user.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // ==/UserScript==
 
 //Global variables
 
 //Holds the state of the tags in the textbox at page load
 var preedittags;
+
+//Gets own instance in case forage is used in another script
+var danboorustorage = localforage.createInstance({
+    name: 'Danbooru storage',
+    driver: [localforage.INDEXEDDB,
+             localforage.LOCALSTORAGE]
+    });
+
+//Set state variables that indicate which database is being used
+const use_indexed_db = danboorustorage.supports(danboorustorage.INDEXEDDB);
+const use_local_storage = !danboorustorage.supports(danboorustorage.INDEXEDDB) && danboorustorage.supports(danboorustorage.LOCALSTORAGE);
 
 //Sleep time to wait for async requests
 const sleep_wait_time = 1000;
@@ -99,17 +111,11 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function forAllLocalData(func) {
-    $.each(Object.keys(localStorage).filter(entry=>{return entry.match(/^(?:ti|ta)-/);}),(i,key)=>{
-        func(key);
-    });
-}
-
-function hasDataExpired(entryname) {
-    if (localStorage[entryname] === undefined) {
+function hasDataExpired(storeditem) {
+    if (storeditem === null) {
         return true;
     }
-    if ((Date.now() - JSON.parse(localStorage[entryname]).expires) > 0) {
+    if ((Date.now() - storeditem.expires) > 0) {
         return true;
     }
     return false;
@@ -119,27 +125,27 @@ function checkArrayData(array,type) {
     return array.reduce((total,value)=>{return total && (typeof value === type);},true);
 }
 
-function checkDataModel(entryname) {
-    let data;
-    try {
-        data = JSON.parse(localStorage[entryname]);
-    } catch (e) {
-        console.log(entryname, "Unparsable entry!");
-        return false;
-    }
-    if (!('value' in data) || !('expires' in data)) {
+function checkDataModel(storeditem) {
+    if (!('value' in storeditem) || !('expires' in storeditem)) {
         console.log(entryname, "Missing data properties!");
         return false;
     }
-    if (typeof(data.expires) !== "number") {
+    if (typeof(storeditem.expires) !== "number") {
         console.log(entryname, "Expires is not a number!");
         return false;
     }
-    if (!($.isArray(data.value) && checkArrayData(data.value,'string'))) {
+    if (!($.isArray(storeditem.value) && checkArrayData(storeditem.value,'string'))) {
         console.log(entryname, "Value is not an array of strings!");
         return false;
     }
     return true;
+}
+
+//Removes local storage used by Versions 16 and prior
+function resetLocalStorage() {
+    $.each(Object.keys(localStorage).filter(entry=>{return entry.match(/^(?:ti|ta)-/);}),(i,key)=>{
+        delete localStorage[key];
+    });
 }
 
 //Queries aliases of added tags... can be called multiple times
@@ -152,7 +158,8 @@ async function queryTagAliases(taglist) {
             continue;
         }
         let entryname = 'ta-'+taglist[i];
-        if (hasDataExpired(entryname) || !checkDataModel(entryname)) {
+        let storeditem = await (use_indexed_db || use_local_storage ? danboorustorage.getItem(entryname) : null);
+        if (hasDataExpired(storeditem) || !checkDataModel(storeditem)) {
             if (queryTagAliases.async_requests > 25) {
                 console.log("Sleeping...");
                 let temp = await sleep(sleep_wait_time);
@@ -168,14 +175,16 @@ async function queryTagAliases(taglist) {
                 } else {
                     consequent = [];
                 }
-                localStorage[entryname] = JSON.stringify({'value':consequent,'expires':Date.now()+expiration_time});
+                if (use_indexed_db || use_local_storage) {
+                    danboorustorage.setItem(entryname,{'value':consequent,'expires':Date.now()+expiration_time});
+                }
                 queryTagAliases.seenlist.push(taglist[i]);
             }).always(()=>{
                 queryTagAliases.async_requests--;
             });
         } else {
             console.log("Found alias:",taglist[i]);
-            consequent = JSON.parse(localStorage[entryname]).value;
+            consequent = storeditem.value;
             if (consequent.length) {
                 console.log("Alias:",taglist[i],consequent[0]);
                 queryTagAliases.aliastags.push(taglist[i]);
@@ -194,7 +203,8 @@ async function queryTagImplications(taglist) {
     queryTagImplications.async_requests = 0;
     for (let i = 0;i < taglist.length;i++) {
         let entryname = 'ti-'+taglist[i];
-        if (hasDataExpired(entryname) || !checkDataModel(entryname)) {
+        let storeditem = await (use_indexed_db || use_local_storage ? danboorustorage.getItem(entryname) : null);
+        if (hasDataExpired(storeditem) || !checkDataModel(storeditem)) {
             if (queryTagImplications.async_requests > 25) {
                 console.log("Sleeping...");
                 let temp = await sleep(sleep_wait_time);
@@ -204,13 +214,15 @@ async function queryTagImplications(taglist) {
             resp = $.getJSON('/tag_implications',{'limit':100,'search':{'consequent_name':taglist[i],'status':'active'}},data=>{
                 let implications = data.map(entry=>{return entry.antecedent_name;});
                 queryTagImplications.implicationdict[taglist[i]] = implications;
-                localStorage[entryname] = JSON.stringify({'value':implications,'expires':Date.now()+expiration_time});
+                if (use_indexed_db || use_local_storage) {
+                    danboorustorage.setItem(entryname,{'value':implications,'expires':Date.now()+expiration_time});
+                }
             }).always(()=>{
                 queryTagImplications.async_requests--;
             });
         } else {
             console.log("Found implication:",taglist[i]);
-            queryTagImplications.implicationdict[taglist[i]] = JSON.parse(localStorage[entryname]).value;
+            queryTagImplications.implicationdict[taglist[i]] = storeditem.value;
         }
     }
     queryTagImplicationsCallback.timer = setInterval(queryTagImplicationsCallback,timer_poll_interval);
@@ -356,10 +368,10 @@ validateTagsClick.isready = true;
 
 function resetLocalStorageClick(e) {
     if (confirm("Delete Danbooru cached data?\n\nThis includes data for the tag autcomplete and the tag validator.")) {
-        $.each(Object.keys(localStorage).filter(entry=>{return entry.match(/^(?:ti|ta|ac)-/);}),(i,key)=>{
+        $.each(Object.keys(localStorage).filter(entry=>{return entry.match(/^ac-/);}),(i,key)=>{
             delete localStorage[key];
         });
-        Danbooru.notice("Site data reset!");
+        let temp = danboorustorage.clear(()=>{Danbooru.notice("Site data reset!");});
     }
     e.preventDefault();
 }
@@ -489,6 +501,7 @@ function main() {
     }
     $("#validate-tags").click(validateTagsClick);
     rebindHotkey.timer = setInterval(rebindHotkey,timer_poll_interval);
+    //resetLocalStorage();
 }
 
 //Execution start
