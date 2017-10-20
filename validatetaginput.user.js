@@ -30,6 +30,9 @@ var danboorustorage = localforage.createInstance({
 const use_indexed_db = danboorustorage.supports(danboorustorage.INDEXEDDB);
 const use_local_storage = !danboorustorage.supports(danboorustorage.INDEXEDDB) && danboorustorage.supports(danboorustorage.LOCALSTORAGE);
 
+//Set the maximum cache size to 1M chars
+const maximum_cache_size = 1000000;
+
 //Sleep time to wait for async requests
 const sleep_wait_time = 1000;
 
@@ -141,11 +144,21 @@ function checkDataModel(storeditem) {
     return true;
 }
 
-//Removes local storage used by Versions 16 and prior
-function resetLocalStorage() {
-    $.each(Object.keys(localStorage).filter(entry=>{return entry.match(/^(?:ti|ta)-/);}),(i,key)=>{
-        delete localStorage[key];
+function deleteKeyEntries(regex) {
+    $.each(Object.keys(localStorage).filter(entry=>{return entry.match(regex);}),(i,key)=>{
+        localStorage.removeItem(key);
     });
+}
+
+function pruneCache() {
+    let current_cache_size = 0;
+    //Removes local storage used by Versions 16 and prior
+    if (use_local_storage) {
+         current_cache_size = filterKeyEntries(Object.keys(localStorage)).reduce((total,key)=>{return total+localStorage[key].length;},0);
+    }
+    if (use_indexed_db || (current_cache_size > maximum_cache_size)) {
+        deleteKeyEntries(/^(?:ti|ta)-/);
+    }
 }
 
 //Queries aliases of added tags... can be called multiple times
@@ -368,10 +381,12 @@ validateTagsClick.isready = true;
 
 function resetLocalStorageClick(e) {
     if (confirm("Delete Danbooru cached data?\n\nThis includes data for the tag autcomplete and the tag validator.")) {
-        $.each(Object.keys(localStorage).filter(entry=>{return entry.match(/^ac-/);}),(i,key)=>{
-            delete localStorage[key];
-        });
-        let temp = danboorustorage.clear(()=>{Danbooru.notice("Site data reset!");});
+        if (use_local_storage) {
+            deleteKeyEntries(/^(?:ac|ti|ta)-/);
+        }
+        if (use_indexed_db) {
+            let temp = danboorustorage.clear(()=>{Danbooru.notice("Site data reset!");});
+        }
     }
     e.preventDefault();
 }
@@ -477,6 +492,7 @@ function programLoad() {
 
 function main() {
     console.log("========STARTING MAIN========");
+    pruneCache();
     if ($("#c-uploads #a-new").length) {
         //Upload tags will always start out blank
         preedittags = [];
@@ -501,7 +517,6 @@ function main() {
     }
     $("#validate-tags").click(validateTagsClick);
     rebindHotkey.timer = setInterval(rebindHotkey,timer_poll_interval);
-    //resetLocalStorage();
 }
 
 //Execution start
