@@ -114,6 +114,31 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+async function retrieveData(key) {
+    if (!(use_indexed_db || use_local_storage)) {
+        return null;
+    }
+    if (key in sessionStorage) {
+        console.log("Found item (Session):",key);
+        try {
+            return JSON.parse(sessionStorage.getItem(key));
+        } catch (e) {
+            //Swallow exception
+        }
+    }
+    let value = await danboorustorage.getItem(key);
+    if (value !== null) {
+        console.log("Found item (IndexDB):",key);
+        sessionStorage[key] = JSON.stringify(value);
+    }
+    return value;
+}
+
+function saveData(key,value) {
+    danboorustorage.setItem(key,value);
+    sessionStorage.setItem(key,JSON.stringify(value));
+}
+
 function hasDataExpired(storeditem) {
     if (storeditem === null) {
         return true;
@@ -144,9 +169,9 @@ function checkDataModel(storeditem) {
     return true;
 }
 
-function deleteKeyEntries(regex) {
-    $.each(Object.keys(localStorage).filter(entry=>{return entry.match(regex);}),(i,key)=>{
-        localStorage.removeItem(key);
+function deleteKeyEntries(store,regex) {
+    $.each(Object.keys(store).filter(entry=>{return entry.match(regex);}),(i,key)=>{
+        store.removeItem(key);
     });
 }
 
@@ -157,7 +182,7 @@ function pruneCache() {
          current_cache_size = filterKeyEntries(Object.keys(localStorage)).reduce((total,key)=>{return total+localStorage[key].length;},0);
     }
     if (use_indexed_db || (current_cache_size > maximum_cache_size)) {
-        deleteKeyEntries(/^(?:ti|ta)-/);
+        deleteKeyEntries(localStorage,/^(?:ti|ta)-/);
     }
 }
 
@@ -171,7 +196,7 @@ async function queryTagAliases(taglist) {
             continue;
         }
         let entryname = 'ta-'+taglist[i];
-        let storeditem = await (use_indexed_db || use_local_storage ? danboorustorage.getItem(entryname) : null);
+        let storeditem = await retrieveData(entryname);
         if (hasDataExpired(storeditem) || !checkDataModel(storeditem)) {
             if (queryTagAliases.async_requests > 25) {
                 console.log("Sleeping...");
@@ -189,14 +214,13 @@ async function queryTagAliases(taglist) {
                     consequent = [];
                 }
                 if (use_indexed_db || use_local_storage) {
-                    danboorustorage.setItem(entryname,{'value':consequent,'expires':Date.now()+expiration_time});
+                    saveData(entryname,{'value':consequent,'expires':Date.now()+expiration_time});
                 }
                 queryTagAliases.seenlist.push(taglist[i]);
             }).always(()=>{
                 queryTagAliases.async_requests--;
             });
         } else {
-            console.log("Found alias:",taglist[i]);
             consequent = storeditem.value;
             if (consequent.length) {
                 console.log("Alias:",taglist[i],consequent[0]);
@@ -216,7 +240,7 @@ async function queryTagImplications(taglist) {
     queryTagImplications.async_requests = 0;
     for (let i = 0;i < taglist.length;i++) {
         let entryname = 'ti-'+taglist[i];
-        let storeditem = await (use_indexed_db || use_local_storage ? danboorustorage.getItem(entryname) : null);
+        let storeditem = await retrieveData(entryname);
         if (hasDataExpired(storeditem) || !checkDataModel(storeditem)) {
             if (queryTagImplications.async_requests > 25) {
                 console.log("Sleeping...");
@@ -228,13 +252,12 @@ async function queryTagImplications(taglist) {
                 let implications = data.map(entry=>{return entry.antecedent_name;});
                 queryTagImplications.implicationdict[taglist[i]] = implications;
                 if (use_indexed_db || use_local_storage) {
-                    danboorustorage.setItem(entryname,{'value':implications,'expires':Date.now()+expiration_time});
+                    saveData(entryname,{'value':implications,'expires':Date.now()+expiration_time});
                 }
             }).always(()=>{
                 queryTagImplications.async_requests--;
             });
         } else {
-            console.log("Found implication:",taglist[i]);
             queryTagImplications.implicationdict[taglist[i]] = storeditem.value;
         }
     }
@@ -382,11 +405,12 @@ validateTagsClick.isready = true;
 function resetLocalStorageClick(e) {
     if (confirm("Delete Danbooru cached data?\n\nThis includes data for the tag autcomplete and the tag validator.")) {
         if (use_local_storage) {
-            deleteKeyEntries(/^(?:ac|ti|ta)-/);
+            deleteKeyEntries(localStorage,/^(?:ac|ti|ta)-/);
         }
         if (use_indexed_db) {
             let temp = danboorustorage.clear(()=>{Danbooru.notice("Site data reset!");});
         }
+        deleteKeyEntries(sessionStorage,/^(?:ac|ti|ta)-/);
     }
     e.preventDefault();
 }
