@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      17
+// @version      18
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -15,6 +15,9 @@
 // ==/UserScript==
 
 //Global variables
+
+//Set to true to switch the debug info on
+const debug_console = false;
 
 //Holds the state of the tags in the textbox at page load
 var preedittags;
@@ -69,6 +72,90 @@ const warning_messages = `
 
 //Functions
 
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function debuglog(args) {
+    if (debug_console) {
+        console.log.apply(this,arguments);
+    }
+}
+
+function debugTime(str) {
+    if (debug_console) {
+        console.time(str);
+    }
+}
+
+function debugTimeEnd(str) {
+    if (debug_console) {
+        console.timeEnd(str);
+    }
+}
+
+function recordTime(entryname,type) {
+    if (debug_console) {
+        let index = entryname + ',' + type;
+        recordTime.records[index] = {
+            entryname: entryname,
+            type: type,
+            starttime: performance.now(),
+            endtime: 0};
+    }
+}
+recordTime.records = {};
+
+function recordTimeEnd(entryname,type) {
+    if (debug_console) {
+        let index = entryname + ',' + type;
+        if (!(index in recordTime.records)) {
+            return;
+        }
+        if (recordTime.records[index].endtime === 0) {
+            recordTime.records[index].endtime = performance.now();
+        }
+    }
+}
+
+function outputAdjustedMean() {
+    let outputtime = {};
+    $.each(recordTime.records,(i,val)=>{
+        if (!(val.type in outputtime)) {
+            outputtime[val.type] = [];
+        }
+        outputtime[val.type].push(val.endtime-val.starttime);
+    });
+    $.each(outputtime,(type,values)=>{
+        let adjvalues = removeOutliers(values);
+        debuglog(type + ':',"num",values.length,"avg",Math.round(100*average(adjvalues))/100,"rem",values.length-adjvalues.length);
+    });
+}
+
+function removeOutliers(values) {
+    do {
+        var length = values.length;
+        let avg = average(values);
+        let stddev = standardDeviation(values);
+        let adjvalues = values.filter(val=>{return (Math.abs(val-avg) < (2 * stddev));});
+        var newlength = adjvalues.length;
+        if (newlength === 0) {
+            return values;
+        }
+        values = adjvalues;
+    } while (length != newlength);
+    return values;
+}
+
+function standardDeviation(values) {
+  var avg = average(values);
+  return Math.sqrt(average(values.map(value=>{let diff = value - avg; return diff * diff;})));
+}
+
+function average(values) {
+    return values.reduce(function(a, b) { return a + b; })/values.length;
+}
+
 function getTagList() {
     return stripQuoteSourceMetatag($("#upload_tag_string,#post_tag_string").val()).split(/[\s\n]+/).map(tag=>{return tag.toLowerCase();});
 }
@@ -118,26 +205,27 @@ function getCurrentTags() {
     return filterMetatags(filterNull(getTagList()));
 }
 
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 async function retrieveData(key) {
     if (!(use_indexed_db || use_local_storage)) {
         return null;
     }
     let database = use_indexed_db ? "IndexDB" : "LocalStorage";
     if (key in sessionStorage) {
-        console.log("Found item (Session):",key);
+        debuglog("Found item (Session):",key);
+        recordTime(key,'Session');
+        let data = sessionStorage.getItem(key);
+        recordTimeEnd(key,'Session');
         try {
-            return JSON.parse(sessionStorage.getItem(key));
+            return JSON.parse(data);
         } catch (e) {
             //Swallow exception
         }
     }
+    recordTime(key,database);
     let value = await danboorustorage.getItem(key);
+    recordTimeEnd(key,database);
     if (value !== null) {
-        console.log(`Found item (${database}):`,key);
+        debuglog(`Found item (${database}):`,key);
         sessionStorage[key] = JSON.stringify(value);
     }
     return value;
@@ -164,15 +252,15 @@ function checkArrayData(array,type) {
 
 function checkDataModel(storeditem) {
     if (!('value' in storeditem) || !('expires' in storeditem)) {
-        console.log(entryname, "Missing data properties!");
+        debuglog(entryname, "Missing data properties!");
         return false;
     }
     if (typeof(storeditem.expires) !== "number") {
-        console.log(entryname, "Expires is not a number!");
+        debuglog(entryname, "Expires is not a number!");
         return false;
     }
     if (!($.isArray(storeditem.value) && checkArrayData(storeditem.value,'string'))) {
-        console.log(entryname, "Value is not an array of strings!");
+        debuglog(entryname, "Value is not an array of strings!");
         return false;
     }
     return true;
@@ -197,6 +285,7 @@ function pruneCache() {
 
 //Queries aliases of added tags... can be called multiple times
 async function queryTagAliases(taglist) {
+    debugTime("queryTagAliases");
     queryTagAliases.isdone = false;
     queryTagAliases.async_requests = 0;
     let consequent = "";
@@ -208,15 +297,17 @@ async function queryTagAliases(taglist) {
         let storeditem = await retrieveData(entryname);
         if (hasDataExpired(storeditem) || !checkDataModel(storeditem)) {
             if (queryTagAliases.async_requests > 25) {
-                console.log("Sleeping...");
+                debuglog("Sleeping...");
                 let temp = await sleep(sleep_wait_time);
             }
-            console.log("Querying alias:",taglist[i]);
+            debuglog("Querying alias:",taglist[i]);
             queryTagAliases.async_requests++;
+            recordTime(entryname,"Network");
             resp = $.getJSON('/tag_aliases',{'search':{'antecedent_name':taglist[i],'status':'active'}},data=>{
+                recordTimeEnd(entryname,"Network");
                 if (data.length) {
                     //Alias antecedents are unique, so no need to check the size
-                    console.log("Alias:",taglist[i],data[0].consequent_name);
+                    debuglog("Alias:",taglist[i],data[0].consequent_name);
                     queryTagAliases.aliastags.push(taglist[i]);
                     consequent = [data[0].consequent_name];
                 } else {
@@ -232,7 +323,7 @@ async function queryTagAliases(taglist) {
         } else {
             consequent = storeditem.value;
             if (consequent.length) {
-                console.log("Alias:",taglist[i],consequent[0]);
+                debuglog("Alias:",taglist[i],consequent[0]);
                 queryTagAliases.aliastags.push(taglist[i]);
             }
         }
@@ -245,6 +336,7 @@ queryTagAliases.isdone = true;
 
 //Queries implications of preexisting tags... called once per image
 async function queryTagImplications(taglist) {
+    debugTime("queryTagImplications");
     queryTagImplications.isdone = false;
     queryTagImplications.async_requests = 0;
     for (let i = 0;i < taglist.length;i++) {
@@ -252,12 +344,14 @@ async function queryTagImplications(taglist) {
         let storeditem = await retrieveData(entryname);
         if (hasDataExpired(storeditem) || !checkDataModel(storeditem)) {
             if (queryTagImplications.async_requests > 25) {
-                console.log("Sleeping...");
+                debuglog("Sleeping...");
                 let temp = await sleep(sleep_wait_time);
             }
-            console.log("Querying implication:",taglist[i]);
+            debuglog("Querying implication:",taglist[i]);
             queryTagImplications.async_requests++;
+            recordTime(entryname,"Network");
             resp = $.getJSON('/tag_implications',{'limit':100,'search':{'consequent_name':taglist[i],'status':'active'}},data=>{
+                recordTimeEnd(entryname,"Network");
                 let implications = data.map(entry=>{return entry.antecedent_name;});
                 queryTagImplications.implicationdict[taglist[i]] = implications;
                 if (use_indexed_db || use_local_storage) {
@@ -290,13 +384,14 @@ function getAllRelations(tag,implicationdict) {
 }
 
 function validateTagAdds() {
+    debugTime("validateTagAdds");
     validateTagAdds.isready = false;
     validateTagAdds.submitrequest = false;
     let postedittags = getCurrentTags();
     validateTagAdds.addedtags = setDifference(setDifference(filterNegativetags(filterTypetags(postedittags)),preedittags),getNegativetags(postedittags));
-    console.log("Added tags:",validateTagAdds.addedtags);
+    debuglog("Added tags:",validateTagAdds.addedtags);
     if ((validateTagAdds.addedtags.length === 0) || $("#skip-validate-tags")[0].checked) {
-        console.log("Tag Add Validation - Skipping!",validateTagAdds.addedtags.length === 0,$("#skip-validate-tags")[0].checked);
+        debuglog("Tag Add Validation - Skipping!",validateTagAdds.addedtags.length === 0,$("#skip-validate-tags")[0].checked);
         $("#warning-new-tags").hide();
         validateTagAdds.isready = true;
         validateTagAdds.submitrequest = true;
@@ -307,10 +402,10 @@ function validateTagAdds() {
     for (let i = 0;i < validateTagAdds.addedtags.length;i+=100) {
         validateTagAdds.async_requests++;
         let querystring = validateTagAdds.addedtags.slice(i,i+100).join(',');
-        console.log("Tag query string:",i,querystring);
+        debuglog("Tag query string:",i,querystring);
         resp = $.getJSON('/tags',{'limit':100,'search':{'name':validateTagAdds.addedtags.slice(i,i+100).join(','),'hide_empty':'yes'}},data=>{
             let foundtags = data.map(entry=>{return entry.name;});
-            console.log("Found tags:",i,foundtags);
+            debuglog("Found tags:",i,foundtags);
             validateTagAdds.checktags = validateTagAdds.checktags.concat(foundtags);
         }).always(()=>{
             validateTagAdds.async_requests--;
@@ -325,7 +420,7 @@ function validateTagRemoves() {
     validateTagRemoves.submitrequest = false;
     if (!queryTagImplications.isdone || $("#skip-validate-tags")[0].checked) {
         //Validate tag removals are not as critical, so don't hold up any tag editing if it's not done yet
-        console.log("Tag Remove Validation - Skipping!",queryTagImplications.isdone,$("#skip-validate-tags")[0].checked);
+        debuglog("Tag Remove Validation - Skipping!",queryTagImplications.isdone,$("#skip-validate-tags")[0].checked);
         $("#warning-bad-removes").hide();
         validateTagRemoves.submitrequest = true;
         return;
@@ -333,8 +428,8 @@ function validateTagRemoves() {
     let postedittags = transformTypetags(getCurrentTags());
     let removedtags = (setDifference(preedittags,postedittags)).concat(setIntersection(getNegativetags(postedittags),postedittags));
     let finaltags = setDifference(postedittags,removedtags);
-    console.log("Final tags:",finaltags);
-    console.log("Removed tags:",removedtags);
+    debuglog("Final tags:",finaltags);
+    debuglog("Removed tags:",removedtags);
     let allrelations = [];
     $.each(removedtags,(i,tag)=>{
         let badremoves = setIntersection(getAllRelations(tag,queryTagImplications.implicationdict),finaltags);
@@ -343,14 +438,14 @@ function validateTagRemoves() {
         }
     });
     if (allrelations.length) {
-        console.log("Tag Remove Validation - Badremove tags!");
-        $.each(allrelations,(i,relation)=>{console.log(i,relation);});
+        debuglog("Tag Remove Validation - Badremove tags!");
+        $.each(allrelations,(i,relation)=>{debuglog(i,relation);});
         $("#validation-input").show();
         $("#warning-bad-removes").show();
         let removelist = allrelations.join('<br>');
         $("#warning-bad-removes")[0].innerHTML = '<strong>Notice</strong>: The following implication relations prevent certain tag removes:<br>' + removelist;
     } else {
-        console.log("Tag Remove Validation - Free and clear to submit!");
+        debuglog("Tag Remove Validation - Free and clear to submit!");
         $("#warning-bad-removes").hide();
         validateTagRemoves.submitrequest = true;
     }
@@ -359,19 +454,18 @@ function validateTagRemoves() {
 function validateRatingExists() {
     validateRatingExists.submitrequest = false;
     if ($("#skip-validate-tags")[0].checked) {
-        //Validate tag removals are not as critical, so don't hold up any tag editing if it's not done yet
-        console.log("Rating Exists Validation - Skipping!",$("#skip-validate-tags")[0].checked);
+        debuglog("Rating Exists Validation - Skipping!",$("#skip-validate-tags")[0].checked);
         $("#warning-bad-removes").hide();
         validateRatingExists.submitrequest = true;
     }
     else if ($("#upload_rating_s,#post_rating_s")[0].checked || $("#upload_rating_q,#post_rating_q")[0].checked || $("#upload_rating_e,#post_rating_e")[0].checked) {
-        console.log("Rating Exists Validation - Free and clear to submit!");
+        debuglog("Rating Exists Validation - Free and clear to submit!");
         $("#warning-no-rating").hide();
         validateRatingExists.submitrequest = true;
     } else {
         $("#validation-input").show();
         $("#warning-no-rating").show();
-        console.log("Rating Exists Validation - No rating selected!");
+        debuglog("Rating Exists Validation - No rating selected!");
     }
 }
 
@@ -384,7 +478,7 @@ function postModeMenuClick(e) {
         let post_id = $(e.target).closest("article").data("id");
         let $post = $("#post_" + post_id);
         preedittags = $post.data("tags").split(' ');
-        console.log("Preedit tags:",preedittags);
+        debuglog("Preedit tags:",preedittags);
         //Wait until the edit box loads before querying implications
         setTimeout(()=>{queryTagImplications(preedittags);},quickedit_wait_time);
     } else if (s === "view") {
@@ -396,6 +490,7 @@ function postModeMenuClick(e) {
 function validateTagsClick(e) {
     //Prevent code from being reentrant until finished processing
     if (validateTagsClick.isready) {
+        debugTime("validateTagsClick");
         validateTagsClick.isready = false;
         $("#validate-tags")[0].setAttribute('disabled','true');
         $("#validate-tags")[0].setAttribute('value','Submitting...');
@@ -428,34 +523,37 @@ function resetLocalStorageClick(e) {
 
 function queryTagAliasesCallback() {
     if (queryTagAliases.async_requests === 0) {
+        debugTimeEnd("queryTagAliases");
         clearInterval(queryTagAliasesCallback.timer);
         queryTagAliases.isdone = true;
-        console.log("Check aliases:",queryTagAliases.aliastags);
+        debuglog("Check aliases:",queryTagAliases.aliastags);
     }
 }
 
 function queryTagImplicationsCallback() {
     if (queryTagImplications.async_requests === 0) {
+        debugTimeEnd("queryTagImplications");
         clearInterval(queryTagImplicationsCallback.timer);
         queryTagImplications.isdone = true;
-        console.log("Implications:",queryTagImplications.implicationdict);
+        debuglog("Implications:",queryTagImplications.implicationdict);
     }
 }
 
 function validateTagAddsCallback() {
-    console.log("Waiting:",validateTagAdds.async_requests,queryTagAliases.isdone);
+    debuglog("Waiting:",validateTagAdds.async_requests,queryTagAliases.isdone);
     if (validateTagAdds.async_requests===0 && queryTagAliases.isdone) {
+        debugTimeEnd("validateTagAdds");
         clearInterval(validateTagAddsCallback.timer);
         nonexisttags = setDifference(setDifference(validateTagAdds.addedtags,validateTagAdds.checktags),queryTagAliases.aliastags);
         if (nonexisttags.length > 0) {
-            console.log("Tag Add Validation - Nonexistant tags!");
-            $.each(nonexisttags,(i,tag)=>{console.log(i,tag);});
+            debuglog("Tag Add Validation - Nonexistant tags!");
+            $.each(nonexisttags,(i,tag)=>{debuglog(i,tag);});
             $("#validation-input").show();
             $("#warning-new-tags").show();
             let taglist = nonexisttags.join(', ');
             $("#warning-new-tags")[0].innerHTML = '<strong>Warning</strong>: The following new tags will be created:  ' + taglist;
         } else {
-            console.log("Tag Add Validation - Free and clear to submit!");
+            debuglog("Tag Add Validation - Free and clear to submit!");
             $("#warning-new-tags").hide();
             validateTagAdds.submitrequest = true;
         }
@@ -466,24 +564,28 @@ function validateTagAddsCallback() {
 function validateTagsClickCallback() {
     //Wait on asynchronous functions
     if(validateTagAdds.isready) {
+        debugTimeEnd("validateTagsClick");
         clearInterval(validateTagsClickCallback.timer);
         if (validateTagAdds.submitrequest && validateTagRemoves.submitrequest && validateRatingExists.submitrequest) {
-            console.log("Submit request!");
+            debuglog("Submit request!");
             $("#form,#quick-edit-form").trigger("submit");
             if ($("#c-uploads #a-new,#c-posts #a-show").length) {
-                console.log("Disabling return key!");
+                debuglog("Disabling return key!");
                 $("#upload_tag_string,#post_tag_string").off("keydown.danbooru.submit");
             } else {
                 //Wait until the edit box closes to reenable the submit button click
                 setTimeout(()=>{
-                    console.log("Ready for next edit!");
+                    debuglog("Ready for next edit!");
                     $("#validate-tags")[0].removeAttribute('disabled');
                     $("#validate-tags")[0].setAttribute('value','Submit');
                     validateTagsClick.isready = true;
                 },quickedit_wait_time);
             }
+            if (debug_console) {
+                outputAdjustedMean();
+            }
         } else {
-            console.log("Validation failed!");
+            debuglog("Validation failed!");
             $("#validate-tags")[0].removeAttribute('disabled');
             $("#validate-tags")[0].setAttribute('value','Submit');
             validateTagsClick.isready = true;
@@ -493,7 +595,7 @@ function validateTagsClickCallback() {
 
 function rebindHotkey() {
     let boundevents = $.map($._data($("#upload_tag_string,#post_tag_string")[0], "events").keydown,(entry)=>{return entry.namespace;});
-    console.log("Bound events:",boundevents);
+    debuglog("Bound events:",boundevents);
     if ($.inArray('danbooru.submit',boundevents) >= 0) {
         clearInterval(rebindHotkey.timer);
         $("#upload_tag_string,#post_tag_string").off("keydown.danbooru.submit").on("keydown.danbooru.submit", null, "return", e=>{
@@ -505,11 +607,11 @@ function rebindHotkey() {
 
 function programLoad() {
     if (typeof window.Danbooru === undefined) {
-        console.log("Danbooru not installed yet!");
+        debuglog("Danbooru not installed yet!");
         return;
     }
     if (typeof window.jQuery === undefined) {
-        console.log("jQuery not installed yet!");
+        debuglog("jQuery not installed yet!");
         return;
     }
     clearInterval(programLoad.timer);
@@ -519,12 +621,13 @@ function programLoad() {
         $("#basic-settings-section > .user_time_zone").before(reset_storage);
         $("#reset-storage-link").click(resetLocalStorageClick);
     }
+    debugTimeEnd("programLoad");
 }
 
 //Main
 
 function main() {
-    console.log("========STARTING MAIN========");
+    debuglog("========STARTING MAIN========");
     pruneCache();
     if ($("#c-uploads #a-new").length) {
         //Upload tags will always start out blank
@@ -535,10 +638,10 @@ function main() {
     } else if ($("#c-posts #a-index").length){
         $(".post-preview a").click(postModeMenuClick);
     } else {
-        console.log("Nothing found!");
+        debuglog("Nothing found!");
         return;
     }
-    console.log("Preedit tags:",preedittags);
+    debuglog("Preedit tags:",preedittags);
     $("#form [type=submit],#quick-edit-form [type=submit][value=Submit]").after(submit_button);
     $("#form [type=submit],#quick-edit-form [type=submit][value=Submit]").hide();
     if ($("#c-posts #a-index").length) {
@@ -554,4 +657,5 @@ function main() {
 
 //Execution start
 
+debugTime("programLoad");
 programLoad.timer = setInterval(programLoad,timer_poll_interval);
