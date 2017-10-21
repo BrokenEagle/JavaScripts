@@ -28,7 +28,7 @@ var danboorustorage = localforage.createInstance({
 
 //Set state variables that indicate which database is being used
 const use_indexed_db = danboorustorage.supports(danboorustorage.INDEXEDDB);
-const use_local_storage = !danboorustorage.supports(danboorustorage.INDEXEDDB) && danboorustorage.supports(danboorustorage.LOCALSTORAGE);
+const use_local_storage = !use_indexed_db && danboorustorage.supports(danboorustorage.LOCALSTORAGE);
 
 //Set the maximum cache size to 1M chars
 const maximum_cache_size = 1000000;
@@ -47,22 +47,22 @@ const timer_poll_interval = 100;
 //Expiration time is one month
 const expiration_time = 1000*60*60*24*30;
 
-const submitButton = `
+const submit_button = `
 <input id="validate-tags" type="button" class="ui-button ui-widget ui-corner-all" value="Submit">`;
 
-const inputValidator = `
+const input_validator = `
 <div id="validation-input" style="display:none">
 <label for="skip-validate-tags">Skip Validation</label>
 <input type="checkbox" id="skip-validate-tags">
 </div>`;
 
-const resetStorage = `
+const reset_storage = `
 <div class="input">
     <label>Site data</label>
     <p><a href="#" id="reset-storage-link">Reset cached data</a></p>
 </div>`;
 
-const warningMessages = `
+const warning_messages = `
 <div id="warning-no-rating" class="error-messages ui-state-error ui-corner-all" style="display:none"><strong>Error</strong>: Must specify a rating</div>
 <div id="warning-new-tags" class="error-messages ui-state-error ui-corner-all" style="display:none"></div>
 <div id="warning-bad-removes" class="error-messages ui-state-highlight ui-corner-all" style="display:none"></div>`;
@@ -88,6 +88,10 @@ function filterTypetags(array) {
 
 function filterNegativetags(array) {
     return array.filter(value=>{return value[0]!='-';});
+}
+
+function regexFilter(array,regex) {
+    return array.filter(entry=>{return entry.match(regex);});
 }
 
 function getNegativetags(array) {
@@ -118,6 +122,7 @@ async function retrieveData(key) {
     if (!(use_indexed_db || use_local_storage)) {
         return null;
     }
+    let database = use_indexed_db ? "IndexDB" : "LocalStorage";
     if (key in sessionStorage) {
         console.log("Found item (Session):",key);
         try {
@@ -128,7 +133,7 @@ async function retrieveData(key) {
     }
     let value = await danboorustorage.getItem(key);
     if (value !== null) {
-        console.log("Found item (IndexDB):",key);
+        console.log(`Found item (${database}):`,key);
         sessionStorage[key] = JSON.stringify(value);
     }
     return value;
@@ -170,7 +175,7 @@ function checkDataModel(storeditem) {
 }
 
 function deleteKeyEntries(store,regex) {
-    $.each(Object.keys(store).filter(entry=>{return entry.match(regex);}),(i,key)=>{
+    $.each(regexFilter(Object.keys(store),regex),(i,key)=>{
         store.removeItem(key);
     });
 }
@@ -179,10 +184,10 @@ function pruneCache() {
     let current_cache_size = 0;
     //Removes local storage used by Versions 16 and prior
     if (use_local_storage) {
-         current_cache_size = filterKeyEntries(Object.keys(localStorage)).reduce((total,key)=>{return total+localStorage[key].length;},0);
+         current_cache_size = regexFilter(Object.keys(localStorage),/^Danbooru storage\/(ti|ta)-/).reduce((total,key)=>{return total+localStorage[key].length;},0);
     }
     if (use_indexed_db || (current_cache_size > maximum_cache_size)) {
-        deleteKeyEntries(localStorage,/^(?:ti|ta)-/);
+        deleteKeyEntries(localStorage,/^Danbooru storage\/(ti|ta)-/);
     }
 }
 
@@ -405,12 +410,12 @@ validateTagsClick.isready = true;
 function resetLocalStorageClick(e) {
     if (confirm("Delete Danbooru cached data?\n\nThis includes data for the tag autcomplete and the tag validator.")) {
         if (use_local_storage) {
-            deleteKeyEntries(localStorage,/^(?:ac|ti|ta)-/);
+            deleteKeyEntries(localStorage,/^(Danbooru storage\/(ti|ta)|ac)-/);
         }
         if (use_indexed_db) {
             let temp = danboorustorage.clear(()=>{Danbooru.notice("Site data reset!");});
         }
-        deleteKeyEntries(sessionStorage,/^(?:ac|ti|ta)-/);
+        deleteKeyEntries(sessionStorage,/^(ti|ta)-/);
     }
     e.preventDefault();
 }
@@ -507,7 +512,7 @@ function programLoad() {
     if ($("#c-uploads #a-new,#c-posts #a-show,#c-posts #a-index").length) {
         main();
     } else if ($("#c-users #a-edit").length) {
-        $("#basic-settings-section > .user_time_zone").before(resetStorage);
+        $("#basic-settings-section > .user_time_zone").before(reset_storage);
         $("#reset-storage-link").click(resetLocalStorageClick);
     }
 }
@@ -530,14 +535,14 @@ function main() {
         return;
     }
     console.log("Preedit tags:",preedittags);
-    $("#form [type=submit],#quick-edit-form [type=submit][value=Submit]").after(submitButton);
+    $("#form [type=submit],#quick-edit-form [type=submit][value=Submit]").after(submit_button);
     $("#form [type=submit],#quick-edit-form [type=submit][value=Submit]").hide();
     if ($("#c-posts #a-index").length) {
-        $("#quick-edit-form [type=submit][value=Cancel]").after(inputValidator);
-        $("#quick-edit-form").after(warningMessages);
+        $("#quick-edit-form [type=submit][value=Cancel]").after(input_validator);
+        $("#quick-edit-form").after(warning_messages);
     } else{
-        $("#validate-tags").after(inputValidator);
-        $("#related-tags-container").before(warningMessages);
+        $("#validate-tags").after(input_validator);
+        $("#related-tags-container").before(warning_messages);
     }
     $("#validate-tags").click(validateTagsClick);
     rebindHotkey.timer = setInterval(rebindHotkey,timer_poll_interval);
