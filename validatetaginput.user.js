@@ -70,7 +70,11 @@ const warning_messages = `
 //Functions
 
 function getTagList() {
-    return $("#upload_tag_string,#post_tag_string").val().split(/[\s\n]+/).map(tag=>{return tag.toLowerCase();});
+    return stripQuoteSourceMetatag($("#upload_tag_string,#post_tag_string").val()).split(/[\s\n]+/).map(tag=>{return tag.toLowerCase();});
+}
+
+function stripQuoteSourceMetatag(str) {
+    return str.replace(/source:"[^"]+"\s?/g,'');
 }
 
 function filterNull(array) {
