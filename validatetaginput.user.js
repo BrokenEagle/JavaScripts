@@ -279,7 +279,7 @@ function pruneCache() {
          current_cache_size = regexFilter(Object.keys(localStorage),/^Danbooru storage\/(ti|ta)-/).reduce((total,key)=>{return total+localStorage[key].length;},0);
     }
     if (use_indexed_db || (current_cache_size > maximum_cache_size)) {
-        deleteKeyEntries(localStorage,/^Danbooru storage\/(ti|ta)-/);
+        deleteKeyEntries(localStorage,/^(Danbooru storage\/)?(ti|ta)-/);
     }
 }
 
