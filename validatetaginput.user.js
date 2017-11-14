@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      18
+// @version      19
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -174,7 +174,7 @@ function filterMetatags(array) {
 
 //Typetags are ignored for tag adds, and do nothing for tag removes
 function filterTypetags(array) {
-    return array.filter(value=>{return !value.match(/(?:general|gen|artist|art|copyright|copy|co|character|char|ch):/i);});
+    return array.filter(value=>{return !value.match(/(?:general|gen|artist|art|copyright|copy|co|character|char|ch|meta):/i);});
 }
 
 function filterNegativetags(array) {
@@ -190,7 +190,7 @@ function getNegativetags(array) {
 }
 
 function transformTypetags(array) {
-    return array.map(value=>{return value.match(/(?:general:|gen:|artist:|art:|copyright:|copy:|co:|character:|char:|ch:)?(.*)/i)[1];});
+    return array.map(value=>{return value.match(/(?:general:|gen:|artist:|art:|copyright:|copy:|co:|character:|char:|ch:|meta:)?(.*)/i)[1];});
 }
 
 function setDifference(array1,array2) {
