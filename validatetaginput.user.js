@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      20
+// @version      20.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -237,10 +237,8 @@ function saveData(key,value) {
 }
 
 function hasDataExpired(storeditem) {
-    if (storeditem === null) {
-        return true;
-    }
-    if ((Date.now() - storeditem.expires) > 0) {
+    if (Date.now() > storeditem.expires) {
+        debuglog("Data has expired!");
         return true;
     }
     return false;
@@ -251,6 +249,10 @@ function checkArrayData(array,type) {
 }
 
 function checkDataModel(storeditem) {
+    if (storeditem === null) {
+        debuglog("Item not found!");
+        return false;
+    }
     if (!('value' in storeditem) || !('expires' in storeditem)) {
         debuglog("Missing data properties!");
         return false;
@@ -295,7 +297,8 @@ async function queryTagAliases(taglist) {
         }
         let entryname = 'ta-'+taglist[i];
         let storeditem = await retrieveData(entryname);
-        if (hasDataExpired(storeditem) || !checkDataModel(storeditem)) {
+        debuglog("Checking",entryname);
+        if (!checkDataModel(storeditem) || hasDataExpired(storeditem)) {
             if (queryTagAliases.async_requests > 25) {
                 debuglog("Sleeping...");
                 let temp = await sleep(sleep_wait_time);
@@ -342,7 +345,8 @@ async function queryTagImplications(taglist) {
     for (let i = 0;i < taglist.length;i++) {
         let entryname = 'ti-'+taglist[i];
         let storeditem = await retrieveData(entryname);
-        if (hasDataExpired(storeditem) || !checkDataModel(storeditem)) {
+        debuglog("Checking",entryname);
+        if (!checkDataModel(storeditem) || hasDataExpired(storeditem)) {
             if (queryTagImplications.async_requests > 25) {
                 debuglog("Sleeping...");
                 let temp = await sleep(sleep_wait_time);
