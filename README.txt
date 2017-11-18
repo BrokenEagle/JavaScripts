@@ -12,6 +12,7 @@
   e. iqdb4chan.user.js - Danbooru IQDB checker for 4chan threads.
   f. iqdbbooru.user.js - Danbooru IQDB checker for various Boorus.
   g. validatetaginput.user.js - Validates tag input on a post edit, both adds and removes.
+  h. indexedautocomplete.user.js - Uses IndexedDB for storage instead of localStorage.
 
 3. Setup
 
@@ -186,3 +187,14 @@
     it checks if any new tags will be created, potentially catching mistags and spelling
     error. For tag removes, it checks the implication hierarchy to determine if any still
     existing tags will cause a remove to be readded.
+
+  h. IndexedAutocomplete
+  
+    Switches Danbooru storage mechanism for autocomplete entries, using IndexedDB instead
+    of Local Storage.  This eliminates the need for pruning actions which frequently occur
+    before the week expiration period is over.  This caused slowdowns every time it occurred
+    as the client would have to query the network again which is always slow.
+    
+    To reduce the penalty incurred by migrating to IndexedDB which is slower than Local
+    Storage, retrieved data is cached in the relatively unused Session Storage as a quicker
+    lookup mechanism for data items.
