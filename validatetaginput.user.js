@@ -252,15 +252,15 @@ function checkArrayData(array,type) {
 
 function checkDataModel(storeditem) {
     if (!('value' in storeditem) || !('expires' in storeditem)) {
-        debuglog(entryname, "Missing data properties!");
+        debuglog("Missing data properties!");
         return false;
     }
     if (typeof(storeditem.expires) !== "number") {
-        debuglog(entryname, "Expires is not a number!");
+        debuglog("Expires is not a number!");
         return false;
     }
     if (!($.isArray(storeditem.value) && checkArrayData(storeditem.value,'string'))) {
-        debuglog(entryname, "Value is not an array of strings!");
+        debuglog("Value is not an array of strings!");
         return false;
     }
     return true;
