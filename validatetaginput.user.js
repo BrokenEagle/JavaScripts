@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      19
+// @version      20
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -458,7 +458,10 @@ function validateRatingExists() {
         $("#warning-bad-removes").hide();
         validateRatingExists.submitrequest = true;
     }
-    else if ($("#upload_rating_s,#post_rating_s")[0].checked || $("#upload_rating_q,#post_rating_q")[0].checked || $("#upload_rating_e,#post_rating_e")[0].checked) {
+    else if ($("#upload_rating_s,#post_rating_s")[0].checked ||
+             $("#upload_rating_q,#post_rating_q")[0].checked ||
+             $("#upload_rating_e,#post_rating_e")[0].checked ||
+             ($("#upload_tag_string").val().search(/\brating:[sqe]/) >= 0)) {
         debuglog("Rating Exists Validation - Free and clear to submit!");
         $("#warning-no-rating").hide();
         validateRatingExists.submitrequest = true;
