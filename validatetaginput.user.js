@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      20.1
+// @version      21
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -48,7 +48,9 @@ const quickedit_wait_time = 1000;
 const timer_poll_interval = 100;
 
 //Expiration time is one month
-const expiration_time = 1000*60*60*24*30;
+const milliseconds_per_day = 1000 * 60 * 60 * 24;
+const validatetag_expiration_days = 30;
+const validatetag_expiration_time = milliseconds_per_day * validatetag_expiration_days;
 
 const submit_button = `
 <input id="validate-tags" type="button" class="ui-button ui-widget ui-corner-all" value="Submit">`;
@@ -317,7 +319,7 @@ async function queryTagAliases(taglist) {
                     consequent = [];
                 }
                 if (use_indexed_db || use_local_storage) {
-                    saveData(entryname,{'value':consequent,'expires':Date.now()+expiration_time});
+                    saveData(entryname,{'value':consequent,'expires':Date.now() + validatetag_expiration_time});
                 }
                 queryTagAliases.seenlist.push(taglist[i]);
             }).always(()=>{
@@ -359,7 +361,7 @@ async function queryTagImplications(taglist) {
                 let implications = data.map(entry=>{return entry.antecedent_name;});
                 queryTagImplications.implicationdict[taglist[i]] = implications;
                 if (use_indexed_db || use_local_storage) {
-                    saveData(entryname,{'value':implications,'expires':Date.now()+expiration_time});
+                    saveData(entryname,{'value':implications,'expires':Date.now() + validatetag_expiration_time});
                 }
             }).always(()=>{
                 queryTagImplications.async_requests--;
@@ -628,7 +630,7 @@ function programLoad() {
         $("#basic-settings-section > .user_time_zone").before(reset_storage);
         $("#reset-storage-link").click(resetLocalStorageClick);
     }
-    debugTimeEnd("programLoad");
+    debugTimeEnd("VTI-programLoad");
 }
 
 //Main
@@ -642,7 +644,7 @@ function main() {
     } else if ($("#c-posts #a-show").length) {
         preedittags = filterNull(getTagList());
         queryTagImplications(preedittags);
-    } else if ($("#c-posts #a-index").length){
+    } else if ($("#c-posts #a-index #mode-box").length){
         $(".post-preview a").click(postModeMenuClick);
     } else {
         debuglog("Nothing found!");
@@ -664,5 +666,5 @@ function main() {
 
 //Execution start
 
-debugTime("programLoad");
+debugTime("VTI-programLoad");
 programLoad.timer = setInterval(programLoad,timer_poll_interval);
