@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2
+// @version      3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -223,9 +223,51 @@ async function NormalSourceIndexed(term, resp) {
     });
 }
 
+async function PoolSourceIndexed(term, resp, metatag) {
+    var key = ("pl-" + term).toLowerCase();
+    if (use_indexed_db || use_local_storage) {
+        var cached = await retrieveData(key);
+        debuglog("Checking",key);
+        if (!checkDataModel(cached) || hasDataExpired(cached)) {
+            danboorustorage.removeItem(key);
+        } else {
+            resp(cached.value);
+            return;
+        }
+    }
+
+    debuglog("Querying pools:",term);
+    recordTime(key,"Network");
+    $.ajax({
+        url: "/pools.json",
+        data: {
+          "search[order]": "post_count",
+          "search[name_matches]": term,
+          "limit": 10
+        },
+        method: "get",
+        success: function(data) {
+            recordTimeEnd(key,"Network");
+            var d = $.map(data, function(pool) {
+                return {
+                    type: "pool",
+                    label: pool.name.replace(/_/g, " "),
+                    value: metatag + ":" + pool.name,
+                    post_count: pool.post_count,
+                    category: pool.category
+                };
+            });
+            saveData(key, {"value": d, "expires": Date.now() + autocomplete_expiration_time});
+            resp(d);
+        }
+    });
+}
+
+
 //Main program
 function main() {
     Danbooru.Autocomplete.normal_source = NormalSourceIndexed;
+    Danbooru.Autocomplete.pool_source = PoolSourceIndexed;
     if (debug_console) {
         window.onbeforeunload = function () {
             outputAdjustedMean();
