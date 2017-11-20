@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3
+// @version      4
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -22,6 +22,14 @@ const timer_poll_interval = 100;
 const milliseconds_per_day = 1000 * 60 * 60 * 24;
 const autocomplete_expiration_days = 7;
 const autocomplete_expiration_time =  milliseconds_per_day * autocomplete_expiration_days;
+
+//DOM elements with autocomplete
+const autocomplete_domlist = [
+    "[data-autocomplete=tag-query]",
+    "[data-autocomplete=tag-edit]",
+    "[data-autocomplete=tag]",
+    ".autocomplete-mentions textarea"
+];
 
 //Gets own instance in case forage is used in another script
 var danboorustorage = localforage.createInstance({
@@ -263,11 +271,62 @@ async function PoolSourceIndexed(term, resp, metatag) {
     });
 }
 
+async function UserSourceIndexed(term, resp, metatag) {
+    var key = ("us-" + term).toLowerCase();
+    if (use_indexed_db || use_local_storage) {
+        var cached = await retrieveData(key);
+        debuglog("Checking",key);
+        if (!checkDataModel(cached) || hasDataExpired(cached)) {
+            danboorustorage.removeItem(key);
+        } else {
+            resp(cached.value);
+            return;
+        }
+    }
+
+    debuglog("Querying users:",term);
+    recordTime(key,"Network");
+    $.ajax({
+        url: "/users.json",
+        data: {
+            "search[order]": "post_upload_count",
+            "search[current_user_first]": "true",
+            "search[name_matches]": term + "*",
+            "limit": 10
+        },
+        method: "get",
+        success: function(data) {
+            recordTimeEnd(key,"Network");
+            var prefix;
+            var display_name;
+
+            if (metatag === "@") {
+                prefix = "@";
+                display_name = function(name) {return name;};
+            } else {
+                prefix = metatag + ":";
+                display_name = function(name) {return name.replace(/_/g, " ");};
+            }
+
+            var d = $.map(data, function(user) {
+                return {
+                    type: "user",
+                    label: display_name(user.name),
+                    value: prefix + user.name,
+                    level: user.level_string
+                };
+            });
+            saveData(key, {"value": d, "expires": Date.now() + autocomplete_expiration_time});
+            resp(d);
+        }
+    });
+}
 
 //Main program
 function main() {
     Danbooru.Autocomplete.normal_source = NormalSourceIndexed;
     Danbooru.Autocomplete.pool_source = PoolSourceIndexed;
+    Danbooru.Autocomplete.user_source = UserSourceIndexed;
     if (debug_console) {
         window.onbeforeunload = function () {
             outputAdjustedMean();
@@ -290,7 +349,7 @@ function programLoad() {
         return;
     }
     clearInterval(programLoad.timer);
-    if ($("[data-autocomplete=tag-query],[data-autocomplete=tag-edit],[data-autocomplete=tag]").length) {
+    if ($(autocomplete_domlist.join(',')).length) {
         use_indexed_db && main();
     }
     debugTimeEnd("IAC-programLoad");
