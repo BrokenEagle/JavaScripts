@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4
+// @version      4.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -14,6 +14,9 @@
 
 //Set to true to switch the debug info on
 const debug_console = true;
+
+//The number of retries before abandoning program load
+const program_load_max_retries = 100;
 
 //Polling interval for checking program status
 const timer_poll_interval = 100;
@@ -336,16 +339,24 @@ function main() {
 
 //Wait until program is ready before executing
 function programLoad() {
-    if (typeof window.jQuery === undefined) {
+    if (programLoad.retries >= program_load_max_retries) {
+        debuglog("Abandoning program load!");
+        clearInterval(programLoad.timer);
+        return;
+    }
+    if (window.jQuery === undefined) {
         debuglog("jQuery not installed yet!");
+        programLoad.retries += 1;
         return;
     }
-    if (typeof window.Danbooru === undefined) {
+    if (window.Danbooru === undefined) {
         debuglog("Danbooru not installed yet!");
+        programLoad.retries += 1;
         return;
     }
-    if (typeof window.Danbooru.Autocomplete === undefined) {
+    if (window.Danbooru.Autocomplete === undefined) {
         debuglog("Danbooru Autocomplete not installed yet!");
+        programLoad.retries += 1;
         return;
     }
     clearInterval(programLoad.timer);
@@ -354,6 +365,7 @@ function programLoad() {
     }
     debugTimeEnd("IAC-programLoad");
 }
+programLoad.retries = 0;
 
 //Execution start
 

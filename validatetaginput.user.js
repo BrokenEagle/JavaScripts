@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      21
+// @version      21.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -18,6 +18,9 @@
 
 //Set to true to switch the debug info on
 const debug_console = false;
+
+//The number of retries before abandoning program load
+const program_load_max_retries = 100;
 
 //Holds the state of the tags in the textbox at page load
 var preedittags;
@@ -615,12 +618,19 @@ function rebindHotkey() {
 }
 
 function programLoad() {
-    if (typeof window.Danbooru === undefined) {
-        debuglog("Danbooru not installed yet!");
+    if (programLoad.retries >= program_load_max_retries) {
+        debuglog("Abandoning program load!");
+        clearInterval(programLoad.timer);
         return;
     }
-    if (typeof window.jQuery === undefined) {
+    if (window.jQuery === undefined) {
         debuglog("jQuery not installed yet!");
+        programLoad.retries += 1;
+        return;
+    }
+    if (window.Danbooru === undefined) {
+        debuglog("Danbooru not installed yet!");
+        programLoad.retries += 1;
         return;
     }
     clearInterval(programLoad.timer);
@@ -632,6 +642,7 @@ function programLoad() {
     }
     debugTimeEnd("VTI-programLoad");
 }
+programLoad.retries = 0;
 
 //Main
 
