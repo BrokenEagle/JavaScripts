@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IQDB Booru
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6
+// @version      7
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Danbooru IQDB checker for various Booru sites.
 // @author       BrokenEagle
@@ -19,7 +19,7 @@
 //Global variables
 
 //Configuration details per site
-var site_config = {
+const site_config = {
     'gelbooru.com': {
         'thumbQuery': '.preview',
         'outerContainer': '.thumbnail-preview',
@@ -64,6 +64,22 @@ var site_config = {
         'anchorVector': [[-1,0]]
     }
 };
+
+//Default colors for links
+const postlink_css = `
+a.very-high-similarity {
+    color: green;
+}
+a.high-similarity {
+    color: blue;
+}
+a.medium-high-similarity {
+    color: orange;
+}
+a.medium-similarity {
+    color: red;
+}
+`
 
 // 4chan uses the $ variable so run jQuery in noConflict mode
 _$ = jQuery.noConflict();
@@ -154,6 +170,26 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function setCSSStyle(csstext) {
+    var css_dom = document.createElement('style');
+    css_dom.type = 'text/css';
+    css_dom.innerHTML = csstext;
+    document.head.appendChild(css_dom);
+}
+
+function similarityClass(score) {
+    if (score > 95.0) {
+        return "very-high-similarity";
+    }
+    if (score > 90.0) {
+        return "high-similarity";
+    }
+    if (score > 85.0) {
+        return "medium-high-similarity";
+    }
+    return "medium-similarity";
+}
+
 //Functions for moving through the DOM
 function getNthParent(obj,levels) {
     let $element = obj;
@@ -210,7 +246,8 @@ async function checkThumbs() {
                 let postlist = [];
                 for (let i=0;i<data.length;i++) {
                     let postid = data[i].post.id;
-                    postlist.push(`<a href="http://danbooru.donmai.us/posts/${postid}" target="_blank" class="danbooru-post">post #${postid}</a>`);
+                    let scoreclass = similarityClass(data[i].score);
+                    postlist.push(`<a href="http://danbooru.donmai.us/posts/${postid}" target="_blank" class="danbooru-post ${scoreclass}">post #${postid}</a>`);
                 }
                 if (checkThumbs.maxPosts < data.length) {
                     let newheight = site_config[window.location.host].startHeight + (15 * data.length);
@@ -239,6 +276,7 @@ checkThumbs.async_requests = 0;
 function IQDBCheck() {
     if (!IQDBCheck.IQDB_done) {
         _$(".thumbnail-preview").css('width',`${site_config[window.location.host].startWidth}px`).css('text-align','center');
+        setCSSStyle(postlink_css);
         checkThumbs();
         IQDBCheck.IQDB_done = true;
     }

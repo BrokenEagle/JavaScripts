@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IQDB 4chan
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3
+// @version      4
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Danbooru IQDB checker for 4chan threads.
 // @author       BrokenEagle
@@ -15,7 +15,21 @@
 
 //Global variables
 
-/*Empty*/
+//Default colors for links
+const postlink_css = `
+a.very-high-similarity {
+    color: green;
+}
+a.high-similarity {
+    color: blue;
+}
+a.medium-high-similarity {
+    color: orange;
+}
+a.medium-similarity {
+    color: red;
+}
+`
 
 // 4chan uses the $ variable so run jQuery in noConflict mode
 _$ = jQuery.noConflict();
@@ -106,6 +120,26 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function setCSSStyle(csstext) {
+    var css_dom = document.createElement('style');
+    css_dom.type = 'text/css';
+    css_dom.innerHTML = csstext;
+    document.head.appendChild(css_dom);
+}
+
+function similarityClass(score) {
+    if (score > 95.0) {
+        return "very-high-similarity";
+    }
+    if (score > 90.0) {
+        return "high-similarity";
+    }
+    if (score > 85.0) {
+        return "medium-high-similarity";
+    }
+    return "medium-similarity";
+}
+
 //Main functions
 
 async function checkThumbs() {
@@ -123,7 +157,8 @@ async function checkThumbs() {
                 let poststring = "";
                 for (let i=0;i<data.length;i++) {
                     let postid = data[i].post.id;
-                    poststring += `, <a href="http://danbooru.donmai.us/posts/${postid}" target="_blank" class="danbooru-post">post #${postid}</a>`;
+                    let scoreclass = similarityClass(data[i].score);
+                    poststring += `, <a href="http://danbooru.donmai.us/posts/${postid}" target="_blank" class="danbooru-post ${scoreclass}">post #${postid}</a>`;
                 }
                 let oldhtml = _$($filethumbs[j]).prev()[0].innerHTML;
                 _$($filethumbs[j]).prev()[0].innerHTML = oldhtml + poststring;
@@ -140,6 +175,7 @@ checkThumbs.async_requests = 0;
 
 function IQDBCheck() {
     if (!IQDBCheck.IQDB_done) {
+        setCSSStyle(postlink_css);
         checkThumbs();
         IQDBCheck.IQDB_done = true;
     }
