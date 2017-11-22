@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.1
+// @version      5
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -325,11 +325,86 @@ async function UserSourceIndexed(term, resp, metatag) {
     });
 }
 
+async function FavoriteGroupSourceIndexed(term, resp, metatag) {
+    var key = ("fg-" + term).toLowerCase();
+    if (use_indexed_db || use_local_storage) {
+        var cached = await retrieveData(key);
+        debuglog("Checking",key);
+        if (!checkDataModel(cached) || hasDataExpired(cached)) {
+            danboorustorage.removeItem(key);
+        } else {
+            resp(cached.value);
+            return;
+        }
+    }
+
+    debuglog("Querying favgroups:",term);
+    recordTime(key,"Network");
+    $.ajax({
+        url: "/favorite_groups.json",
+        data: {
+            "search[name_matches]": term,
+            "limit": 10
+        },
+        method: "get",
+        success: function(data) {
+            recordTimeEnd(key,"Network");
+            var d = $.map(data, function(favgroup) {
+                return {
+                    label: favgroup.name.replace(/_/g, " "),
+                    value: metatag + ":" + favgroup.name,
+                    post_count: favgroup.post_count
+                };
+            });
+            saveData(key, {"value": d, "expires": Date.now() + autocomplete_expiration_time});
+            resp(d);
+        }
+    });
+}
+
+async function SavedSearchSourceIndexed(term, resp, metatag) {
+    var key = ("ss-" + term).toLowerCase();
+    if (use_indexed_db || use_local_storage) {
+        var cached = await retrieveData(key);
+        debuglog("Checking",key);
+        if (!checkDataModel(cached) || hasDataExpired(cached)) {
+            danboorustorage.removeItem(key);
+        } else {
+            resp(cached.value);
+            return;
+        }
+    }
+
+    debuglog("Querying savedsearch:",term);
+    recordTime(key,"Network");
+    $.ajax({
+        url: "/saved_searches/labels.json",
+        data: {
+            "search[label]": term + "*",
+            "limit": 10
+        },
+        method: "get",
+        success: function(data) {
+            recordTimeEnd(key,"Network");
+            var d = $.map(data, function(label) {
+                return {
+                    label: label.replace(/_/g, " "),
+                    value: "search:" + label,
+                };
+            });
+            saveData(key, {"value": d, "expires": Date.now() + autocomplete_expiration_time});
+            resp(d);
+        }
+    });
+}
+
 //Main program
 function main() {
     Danbooru.Autocomplete.normal_source = NormalSourceIndexed;
     Danbooru.Autocomplete.pool_source = PoolSourceIndexed;
     Danbooru.Autocomplete.user_source = UserSourceIndexed;
+    Danbooru.Autocomplete.favorite_group_source = FavoriteGroupSourceIndexed;
+    Danbooru.Autocomplete.saved_search_source = SavedSearchSourceIndexed;
     if (debug_console) {
         window.onbeforeunload = function () {
             outputAdjustedMean();
