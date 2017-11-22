@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6
+// @version      7
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -21,10 +21,8 @@ const program_load_max_retries = 100;
 //Polling interval for checking program status
 const timer_poll_interval = 100;
 
-//Expiration time for autocomplete
+//Used for expiration time calculations
 const milliseconds_per_day = 1000 * 60 * 60 * 24;
-const autocomplete_expiration_days = 7;
-const autocomplete_expiration_time =  milliseconds_per_day * autocomplete_expiration_days;
 
 //DOM elements with autocomplete
 const autocomplete_domlist = [
@@ -44,6 +42,48 @@ var danboorustorage = localforage.createInstance({
 //Set state variables that indicate which database is being used
 const use_indexed_db = danboorustorage.supports(danboorustorage.INDEXEDDB);
 const use_local_storage = !use_indexed_db && danboorustorage.supports(danboorustorage.LOCALSTORAGE);
+
+//Expiration variables
+
+const expiration_config = {
+    'tag' : {
+        'logarithmic_start': 100,
+        'minimum_days': 7,
+        'maximum_days': 28
+    },
+    'pool' : {
+        'logarithmic_start': 10,
+        'minimum_days': 7,
+        'maximum_days': 28
+    },
+    'user' : {
+        'minimum_days': 28
+    },
+    'favgroup' : {
+        'minimum_days': 7
+    },
+    'search' : {
+        'minimum_days': 7
+    },
+    'relatedtag' : {
+        'minimum_days': 7
+    }
+}
+
+//Helper functions
+
+function MinimumExpirationTime(type) {
+    return expiration_config[type].minimum_days * milliseconds_per_day;
+}
+
+//Logarithmic increase of expiration time based upon a count
+function ExpirationTime(type,count) {
+    let config = expiration_config[type];
+    let expiration = Math.log10(10 * count/config.logarithmic_start) * config.minimum_days;
+    expiration = Math.max(expiration,config.minimum_days);
+    expiration = Math.min(expiration,config.maximum_days);
+    return Math.round(expiration * milliseconds_per_day);
+}
 
 //Debug output functions
 
@@ -233,7 +273,8 @@ async function NormalSourceIndexed(term, resp) {
                     post_count: tag.post_count
                 };
             });
-            saveData(key, {"value": d, "expires": Date.now() + autocomplete_expiration_time});
+            var expiration_time = (d.length ? ExpirationTime('tag',d[0].post_count) : MinimumExpirationTime('tag'));
+            saveData(key, {"value": d, "expires": Date.now() + expiration_time});
             resp(d);
         }
     });
@@ -273,7 +314,8 @@ async function PoolSourceIndexed(term, resp, metatag) {
                     category: pool.category
                 };
             });
-            saveData(key, {"value": d, "expires": Date.now() + autocomplete_expiration_time});
+            var expiration_time = (d.length ? ExpirationTime('pool',d[0].post_count) : MinimumExpirationTime('pool'));
+            saveData(key, {"value": d, "expires": Date.now() + expiration_time});
             resp(d);
         }
     });
@@ -317,7 +359,7 @@ async function UserSourceIndexed(term, resp, metatag) {
                 };
             });
             $.each(d, (i,val)=> {FixupUserMetatag(val,metatag);});
-            saveData(key, {"value": d, "expires": Date.now() + autocomplete_expiration_time});
+            saveData(key, {"value": d, "expires": Date.now() + MinimumExpirationTime('user')});
             resp(d);
         }
     });
@@ -364,7 +406,7 @@ async function FavoriteGroupSourceIndexed(term, resp, metatag) {
                     post_count: favgroup.post_count
                 };
             });
-            saveData(key, {"value": d, "expires": Date.now() + autocomplete_expiration_time});
+            saveData(key, {"value": d, "expires": Date.now() + MinimumExpirationTime('favgroup')});
             resp(d);
         }
     });
@@ -400,7 +442,7 @@ async function SavedSearchSourceIndexed(term, resp, metatag) {
                     value: "search:" + label,
                 };
             });
-            saveData(key, {"value": d, "expires": Date.now() + autocomplete_expiration_time});
+            saveData(key, {"value": d, "expires": Date.now() + MinimumExpirationTime('search')});
             resp(d);
         }
     });
@@ -427,7 +469,7 @@ function CommonBindIndexed(button_name, category) {
                 "category": category
             });
             recordTimeEnd(key,"Network");
-            saveData(key, {"value": data, "expires": Date.now() + autocomplete_expiration_time});
+            saveData(key, {"value": data, "expires": Date.now() + MinimumExpirationTime('relatedtag')});
             Danbooru.RelatedTag.process_response(data);
         } else {
             Danbooru.RelatedTag.process_response(cached.value);
