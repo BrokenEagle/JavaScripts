@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      21.1
+// @version      22
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -460,27 +460,6 @@ function validateTagRemoves() {
     }
 }
 
-function validateRatingExists() {
-    validateRatingExists.submitrequest = false;
-    if ($("#skip-validate-tags")[0].checked) {
-        debuglog("Rating Exists Validation - Skipping!",$("#skip-validate-tags")[0].checked);
-        $("#warning-bad-removes").hide();
-        validateRatingExists.submitrequest = true;
-    }
-    else if ($("#upload_rating_s,#post_rating_s")[0].checked ||
-             $("#upload_rating_q,#post_rating_q")[0].checked ||
-             $("#upload_rating_e,#post_rating_e")[0].checked ||
-             ($("#upload_tag_string").val().search(/\brating:[sqe]/) >= 0)) {
-        debuglog("Rating Exists Validation - Free and clear to submit!");
-        $("#warning-no-rating").hide();
-        validateRatingExists.submitrequest = true;
-    } else {
-        $("#validation-input").show();
-        $("#warning-no-rating").show();
-        debuglog("Rating Exists Validation - No rating selected!");
-    }
-}
-
 //Click functions
 
 function postModeMenuClick(e) {
@@ -508,11 +487,6 @@ function validateTagsClick(e) {
         $("#validate-tags")[0].setAttribute('value','Submitting...');
         validateTagAdds();
         validateTagRemoves();
-        if ($("#c-uploads #a-new").length) {
-            validateRatingExists();
-        } else {
-            validateRatingExists.submitrequest = true;
-        }
         validateTagsClickCallback.timer = setInterval(validateTagsClickCallback,timer_poll_interval);
     }
 }
@@ -578,13 +552,17 @@ function validateTagsClickCallback() {
     if(validateTagAdds.isready) {
         debugTimeEnd("validateTagsClick");
         clearInterval(validateTagsClickCallback.timer);
-        if (validateTagAdds.submitrequest && validateTagRemoves.submitrequest && validateRatingExists.submitrequest) {
+        if (validateTagAdds.submitrequest && validateTagRemoves.submitrequest) {
             debuglog("Submit request!");
             $("#form,#quick-edit-form").trigger("submit");
             if ($("#c-uploads #a-new,#c-posts #a-show").length) {
                 debuglog("Disabling return key!");
                 $("#upload_tag_string,#post_tag_string").off("keydown.danbooru.submit");
-            } else {
+            }
+            if ($("#c-uploads #a-new").length) {
+                //Check for the triggering of Danbooru's client validation (file/source/rating)
+                reenableSubmitCallback.timer = setInterval(reenableSubmitCallback,timer_poll_interval);
+            } else if ($("#c-posts #a-index").length) {
                 //Wait until the edit box closes to reenable the submit button click
                 setTimeout(()=>{
                     debuglog("Ready for next edit!");
@@ -593,15 +571,26 @@ function validateTagsClickCallback() {
                     validateTagsClick.isready = true;
                 },quickedit_wait_time);
             }
-            if (debug_console) {
-                outputAdjustedMean();
-            }
         } else {
             debuglog("Validation failed!");
             $("#validate-tags")[0].removeAttribute('disabled');
             $("#validate-tags")[0].setAttribute('value','Submit');
             validateTagsClick.isready = true;
         }
+    }
+}
+
+function reenableSubmitCallback() {
+    if ($("#client-errors").css("display") !== "none") {
+        clearInterval(reenableSubmitCallback.timer);
+        debuglog("Danbooru's client validation failed!");
+        $("#validate-tags")[0].removeAttribute('disabled');
+        $("#validate-tags")[0].setAttribute('value','Submit');
+        $("#upload_tag_string").on("keydown.danbooru.submit", null, "return", e=>{
+            $("#validate-tags").click();
+            e.preventDefault();
+        });
+        validateTagsClick.isready = true;
     }
 }
 
@@ -673,6 +662,11 @@ function main() {
     }
     $("#validate-tags").click(validateTagsClick);
     rebindHotkey.timer = setInterval(rebindHotkey,timer_poll_interval);
+    if (debug_console) {
+        window.onbeforeunload = function () {
+            outputAdjustedMean();
+        };
+    }
 }
 
 //Execution start
