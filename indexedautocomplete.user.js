@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5
+// @version      5.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -189,6 +189,11 @@ function checkDataModel(storeditem) {
         debuglog("Value is not an array!");
         return false;
     }
+    //Temporary fix
+    if (storeditem.value.length && ('type' in storeditem.value[0]) && (storeditem.value[0].type === "user") && !('name' in storeditem.value[0])) {
+        debuglog("Incorrect user value!");
+        return false
+    }
     return true;
 }
 
@@ -282,6 +287,7 @@ async function UserSourceIndexed(term, resp, metatag) {
         if (!checkDataModel(cached) || hasDataExpired(cached)) {
             danboorustorage.removeItem(key);
         } else {
+            $.each(cached.value, (i,val)=> {FixupUserMetatag(val,metatag)});
             resp(cached.value);
             return;
         }
@@ -303,26 +309,28 @@ async function UserSourceIndexed(term, resp, metatag) {
             var prefix;
             var display_name;
 
-            if (metatag === "@") {
-                prefix = "@";
-                display_name = function(name) {return name;};
-            } else {
-                prefix = metatag + ":";
-                display_name = function(name) {return name.replace(/_/g, " ");};
-            }
-
             var d = $.map(data, function(user) {
                 return {
                     type: "user",
-                    label: display_name(user.name),
-                    value: prefix + user.name,
+                    name: user.name,
                     level: user.level_string
                 };
             });
+            $.each(d, (i,val)=> {FixupUserMetatag(val,metatag)});
             saveData(key, {"value": d, "expires": Date.now() + autocomplete_expiration_time});
             resp(d);
         }
     });
+}
+
+function FixupUserMetatag(value,metatag) {
+    if (metatag === "@") {
+        value.value = "@" + value.name;
+        value.label = value.name;
+    } else {
+        value.value = metatag + ":" + value.name;
+        value.label = value.name.replace(/_/g, " ");
+    }
 }
 
 async function FavoriteGroupSourceIndexed(term, resp, metatag) {
