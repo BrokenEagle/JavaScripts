@@ -172,7 +172,7 @@ function hasDataExpired(storeditem) {
     return false;
 }
 
-function checkDataModel(storeditem) {
+function checkDataModel(storeditem,key) {
     if (storeditem === null) {
         debuglog("Item not found!");
         return false;
@@ -190,7 +190,7 @@ function checkDataModel(storeditem) {
         return false;
     }
     //Temporary fix
-    if (storeditem.value.length && ('type' in storeditem.value[0]) && (storeditem.value[0].type === "user") && !('name' in storeditem.value[0])) {
+    if ((key.search(/^us-/) >= 0) && !('name' in storeditem.value[0])) {
         debuglog("Incorrect user value!");
         return false
     }
@@ -205,7 +205,7 @@ async function NormalSourceIndexed(term, resp) {
     if (use_indexed_db || use_local_storage) {
         var cached = await retrieveData(key);
         debuglog("Checking",key);
-        if (!checkDataModel(cached) || hasDataExpired(cached)) {
+        if (!checkDataModel(cached,key) || hasDataExpired(cached)) {
             danboorustorage.removeItem(key);
         } else {
             resp(cached.value);
@@ -244,7 +244,7 @@ async function PoolSourceIndexed(term, resp, metatag) {
     if (use_indexed_db || use_local_storage) {
         var cached = await retrieveData(key);
         debuglog("Checking",key);
-        if (!checkDataModel(cached) || hasDataExpired(cached)) {
+        if (!checkDataModel(cached,key) || hasDataExpired(cached)) {
             danboorustorage.removeItem(key);
         } else {
             resp(cached.value);
@@ -284,7 +284,7 @@ async function UserSourceIndexed(term, resp, metatag) {
     if (use_indexed_db || use_local_storage) {
         var cached = await retrieveData(key);
         debuglog("Checking",key);
-        if (!checkDataModel(cached) || hasDataExpired(cached)) {
+        if (!checkDataModel(cached,key) || hasDataExpired(cached)) {
             danboorustorage.removeItem(key);
         } else {
             $.each(cached.value, (i,val)=> {FixupUserMetatag(val,metatag)});
@@ -338,7 +338,7 @@ async function FavoriteGroupSourceIndexed(term, resp, metatag) {
     if (use_indexed_db || use_local_storage) {
         var cached = await retrieveData(key);
         debuglog("Checking",key);
-        if (!checkDataModel(cached) || hasDataExpired(cached)) {
+        if (!checkDataModel(cached,key) || hasDataExpired(cached)) {
             danboorustorage.removeItem(key);
         } else {
             resp(cached.value);
@@ -375,7 +375,7 @@ async function SavedSearchSourceIndexed(term, resp, metatag) {
     if (use_indexed_db || use_local_storage) {
         var cached = await retrieveData(key);
         debuglog("Checking",key);
-        if (!checkDataModel(cached) || hasDataExpired(cached)) {
+        if (!checkDataModel(cached,key) || hasDataExpired(cached)) {
             danboorustorage.removeItem(key);
         } else {
             resp(cached.value);
