@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.1
+// @version      6
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -185,14 +185,14 @@ function checkDataModel(storeditem,key) {
         debuglog("Expires is not a number!");
         return false;
     }
-    if (!$.isArray(storeditem.value)) {
+    if ((key.search(RegExp('^rt(' + ShortNameRegexString() + ')?-')) < 0) && !$.isArray(storeditem.value)) {
         debuglog("Value is not an array!");
         return false;
     }
     //Temporary fix
     if ((key.search(/^us-/) >= 0) && !('name' in storeditem.value[0])) {
         debuglog("Incorrect user value!");
-        return false
+        return false;
     }
     return true;
 }
@@ -287,7 +287,7 @@ async function UserSourceIndexed(term, resp, metatag) {
         if (!checkDataModel(cached,key) || hasDataExpired(cached)) {
             danboorustorage.removeItem(key);
         } else {
-            $.each(cached.value, (i,val)=> {FixupUserMetatag(val,metatag)});
+            $.each(cached.value, (i,val)=> {FixupUserMetatag(val,metatag);});
             resp(cached.value);
             return;
         }
@@ -316,7 +316,7 @@ async function UserSourceIndexed(term, resp, metatag) {
                     level: user.level_string
                 };
             });
-            $.each(d, (i,val)=> {FixupUserMetatag(val,metatag)});
+            $.each(d, (i,val)=> {FixupUserMetatag(val,metatag);});
             saveData(key, {"value": d, "expires": Date.now() + autocomplete_expiration_time});
             resp(d);
         }
@@ -406,6 +406,73 @@ async function SavedSearchSourceIndexed(term, resp, metatag) {
     });
 }
 
+function CommonBindIndexed(button_name, category) {
+    $(button_name).click(async function(e) {
+        var $dest = $("#related-tags");
+        $dest.empty();
+        Danbooru.RelatedTag.build_recent_and_frequent($dest);
+        $dest.append("<em>Loading...</em>");
+        $("#related-tags-container").show();
+        var currenttag = $.trim(Danbooru.RelatedTag.current_tag());
+        var keymodifier = (category.length ? GetShortName(category) : "");
+        var key = ("rt" + keymodifier + "-" + currenttag).toLowerCase();
+        var cached = await retrieveData(key);
+        debuglog("Checking",key);
+        if (!checkDataModel(cached,key) || hasDataExpired(cached)) {
+            danboorustorage.removeItem(key);
+            debuglog("Querying relatedtag:",currenttag,category);
+            recordTime(key,"Network");
+            var data = await $.get("/related_tag.json", {
+                "query": currenttag,
+                "category": category
+            });
+            recordTimeEnd(key,"Network");
+            saveData(key, {"value": data, "expires": Date.now() + autocomplete_expiration_time});
+            Danbooru.RelatedTag.process_response(data);
+        } else {
+            Danbooru.RelatedTag.process_response(cached.value);
+        }
+        $("#artist-tags-container").hide();
+        e.preventDefault();
+    });
+}
+
+function rebindRelatedTags() {
+    //Only need to check one of them, since they're all bound at the same time
+    let bounditems = $._data($("#related-tags-button")[0]);
+    debuglog("Bound items:",Object.keys(bounditems));
+    if (!$.isEmptyObject(bounditems) && bounditems.events.click.length) {
+        clearInterval(rebindRelatedTags.timer);
+        $("#related-tags-button").off();
+        Danbooru.RelatedTag.common_bind("#related-tags-button", "");
+        var related_buttons = JSON.parse(Danbooru.meta("related-tag-button-list"));
+        $.each(related_buttons, function(i,category) {
+            $(`#related-${category}-button`).off();
+            Danbooru.RelatedTag.common_bind("#related-" + category + "-button", category);
+        });
+    }
+}
+
+function GetShortNames() {
+    if (GetShortName.shortnames === undefined) {
+        GetShortName.shortnames = JSON.parse(Danbooru.meta("short-tag-category-names"));
+    }
+    return GetShortName.shortnames;
+}
+
+function GetShortName(category) {
+    let shortnames = GetShortNames();
+    for (let i = 0;i < shortnames.length ; i++) {
+        if (category.search(RegExp(shortnames[i])) === 0) {
+            return shortnames[i];
+        }
+    }
+}
+
+function ShortNameRegexString() {
+    return GetShortNames().join('|') ;
+}
+
 //Main program
 function main() {
     Danbooru.Autocomplete.normal_source = NormalSourceIndexed;
@@ -413,6 +480,10 @@ function main() {
     Danbooru.Autocomplete.user_source = UserSourceIndexed;
     Danbooru.Autocomplete.favorite_group_source = FavoriteGroupSourceIndexed;
     Danbooru.Autocomplete.saved_search_source = SavedSearchSourceIndexed;
+    if ($("#c-posts #a-show,#c-uploads #a-new").length) {
+        Danbooru.RelatedTag.common_bind = CommonBindIndexed;
+        rebindRelatedTags.timer = setInterval(rebindRelatedTags,timer_poll_interval);
+    }
     if (debug_console) {
         window.onbeforeunload = function () {
             outputAdjustedMean();
