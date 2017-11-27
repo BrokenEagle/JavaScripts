@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2
+// @version      3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags)
 // @author       BrokenEagle
@@ -26,8 +26,9 @@ const display_limit = 20;
 //Minimum amount of time between rechecks
 const recheck_event_interval = 1000 * 60;
 
-//Placeholder for the current user's name
+//Placeholder for the current user
 var username;
+var userid;
 
 //HTML for the notice block
 const notice_box = `
@@ -35,6 +36,10 @@ const notice_box = `
     <div id="flag-section"  style="display:none">
         <h1>You've got flags!</h1>
         <div id="flag-table"></div>
+    </div>
+    <div id="appeal-section"  style="display:none">
+        <h1>You've got appeals!</h1>
+        <div id="appeal-table"></div>
     </div>
   <p><a href="#" id="hide-event-notice">Close this</a></p>
 </div>
@@ -79,6 +84,17 @@ function SetTimeout() {
     localStorage['el-timeout'] = Date.now() + recheck_event_interval;
 }
 
+function HideUsersAppeals($appeal) {
+    $.each($("tr",$appeal),(i,row)=>{
+        if (i === 0) {
+            return;
+        }
+        if ($("td:nth-of-type(6) a",row)[0].innerHTML === username) {
+            $(row).hide();
+        }
+    });
+}
+
 //Main functions
 
 async function CheckFlags() {
@@ -110,6 +126,37 @@ async function CheckFlags() {
 }
 CheckFlags.lastid = 0;
 
+async function CheckAppeals() {
+    let appeallastid = localStorage['el-appeallastid'];
+    if (appeallastid) {
+        let jsonappeal = await $.getJSON("/post_appeals", {search: {is_resolved: false, post_tags_match: "status:deleted user:" + username},page: 'a' + appeallastid,limit: display_limit});
+        jsonappeal = jsonappeal.filter((val)=>{return val.creator_id !== userid;});
+        if (jsonappeal.length) {
+            debuglog("Found appeals!",jsonappeal[0].id);
+            CheckAppeals.lastid = jsonappeal[0].id;
+            let appealhtml = await $.get("/post_appeals", {search: {is_resolved: false, post_tags_match: "status:deleted user:" + username},page: 'a' + appeallastid});
+            let $appeal = $(appealhtml);
+            HideUsersAppeals($appeal);
+            $("#appeal-table").append($(".striped",$appeal));
+            $("#appeal-table .post-preview").addClass("blacklisted");
+            $("#event-notice").show();
+            $("#appeal-section").show();
+            localStorage['el-events'] = true;
+        } else {
+            debuglog("No appeals!");
+        }
+    } else {
+        jsonappeal = await $.getJSON("/post_appeals", {limit: 1});
+        if (jsonappeal.length) {
+            localStorage['el-appeallastid'] = jsonappeal[0].id;
+        } else {
+            localStorage['el-appeallastid'] = 0;
+        }
+        debuglog("Set last appeal ID:",localStorage['el-appeallastid']);
+    }
+}
+CheckAppeals.lastid = 0;
+
 function InitializeNoticeBox() {
     $("#page").prepend(notice_box);
     $("#hide-event-notice").click((e)=>{
@@ -118,6 +165,10 @@ function InitializeNoticeBox() {
             localStorage['el-flaglastid'] = CheckFlags.lastid;
             debuglog("Set last flag ID:",localStorage['el-flaglastid']);
         }
+        if (CheckAppeals.lastid) {
+            localStorage['el-appeallastid'] = CheckAppeals.lastid;
+            debuglog("Set last appeal ID:",localStorage['el-appeallastid']);
+        }
         localStorage['el-events'] = false;
         e.preventDefault();
     });
@@ -125,13 +176,17 @@ function InitializeNoticeBox() {
 
 function main() {
     username = Danbooru.meta('current-user-name');
-    if (!username) {
+    userid = Danbooru.meta('current-user-id');
+    if (!username || !userid || isNaN(userid)) {
+        debuglog("Invalid meta variables!");
         return;
     }
+    userid = parseInt(userid);
     InitializeNoticeBox();
     if (CheckTimeout() || HasEvents()) {
         SetTimeout();
         CheckFlags();
+        CheckAppeals();
     } else {
         debuglog("Waiting...");
     }
