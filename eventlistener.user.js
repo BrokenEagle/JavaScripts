@@ -21,18 +21,18 @@ const program_load_max_retries = 100;
 const timer_poll_interval = 100;
 
 //The default number of items displayed per page
-const flag_display_limit = 20;
+const display_limit = 20;
 
 //Minimum amount of time between rechecks
-const recheck_event_interval = 1000 * 60
+const recheck_event_interval = 1000 * 60;
 
-//The current user's name
-const username = Danbooru.meta('current-user-name');
+//Placeholder for the current user's name
+var username;
 
 //HTML for the notice block
 const notice_box = `
 <div class="ui-corner-all ui-state-highlight" id="event-notice" style="display:none">
-    <div>
+    <div id="flag-section"  style="display:none">
         <h1>You've got flags!</h1>
         <div id="flag-table"></div>
     </div>
@@ -62,15 +62,14 @@ function debugTimeEnd(str) {
 
 function CheckTimeout() {
     let timeout = localStorage['el-timeout'];
-    if (!timeout || (Date.now() > parseInt(timeout))) {
+    if (isNaN(timeout) || (Date.now() > parseInt(timeout))) {
         return true;
     }
     return false;
 }
 
 function HasEvents() {
-    let events = localStorage['el-events'];
-    if (events && JSON.parse(events)) {
+    if (localStorage['el-events'] === "true") {
         return true;
     }
     return false;
@@ -83,29 +82,30 @@ function SetTimeout() {
 //Main functions
 
 async function CheckFlags() {
-    flaglastid = localStorage['el-flaglastid'];
+    let flaglastid = localStorage['el-flaglastid'];
     if (flaglastid) {
-        jsonflag = await $.getJSON("/post_flags", {search: {category: 'normal',is_resolved: false, post_tags_match: "status:flagged user:" + username},page: 'a' + flaglastid,limit: flag_display_limit});
+        let jsonflag = await $.getJSON("/post_flags", {search: {category: 'normal',is_resolved: false, post_tags_match: "status:flagged user:" + username},page: 'a' + flaglastid,limit: display_limit});
         if (jsonflag.length) {
             debuglog("Found flags!",jsonflag[0].id);
             CheckFlags.lastid = jsonflag[0].id;
-            flaghtml = await $.get("/post_flags", {search: {category: 'normal',is_resolved: false, post_tags_match: "status:flagged user:" + username},page: 'a' + flaglastid});
-            $flag = $(flaghtml);
+            let flaghtml = await $.get("/post_flags", {search: {category: 'normal',is_resolved: false, post_tags_match: "status:flagged user:" + username},page: 'a' + flaglastid});
+            let $flag = $(flaghtml);
             $("#flag-table").append($(".striped",$flag));
             $("#flag-table .post-preview").addClass("blacklisted");
             $("#event-notice").show();
+            $("#flag-section").show();
             localStorage['el-events'] = true;
         } else {
             debuglog("No flags!");
         }
     } else {
-        jsonflag = await $.getJSON("/post_flags", {limit: 1});
+        let jsonflag = await $.getJSON("/post_flags", {limit: 1});
         if (jsonflag.length) {
             localStorage['el-flaglastid'] = jsonflag[0].id;
         } else {
             localStorage['el-flaglastid'] = 0;
         }
-        debuglog("Set last ID:",localStorage['el-flaglastid']);
+        debuglog("Set last flag ID:",localStorage['el-flaglastid']);
     }
 }
 CheckFlags.lastid = 0;
@@ -116,7 +116,7 @@ function InitializeNoticeBox() {
         $("#event-notice").hide();
         if (CheckFlags.lastid) {
             localStorage['el-flaglastid'] = CheckFlags.lastid;
-            debuglog("Set last ID:",localStorage['el-flaglastid']);
+            debuglog("Set last flag ID:",localStorage['el-flaglastid']);
         }
         localStorage['el-events'] = false;
         e.preventDefault();
@@ -124,6 +124,10 @@ function InitializeNoticeBox() {
 }
 
 function main() {
+    username = Danbooru.meta('current-user-name');
+    if (!username) {
+        return;
+    }
     InitializeNoticeBox();
     if (CheckTimeout() || HasEvents()) {
         SetTimeout();
