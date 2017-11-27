@@ -23,6 +23,9 @@ const timer_poll_interval = 100;
 //The default number of items displayed per page
 const flag_display_limit = 20;
 
+//Minimum amount of time between rechecks
+const recheck_event_interval = 1000 * 60
+
 //The current user's name
 const username = Danbooru.meta('current-user-name');
 
@@ -57,6 +60,26 @@ function debugTimeEnd(str) {
     }
 }
 
+function CheckTimeout() {
+    let timeout = localStorage['el-timeout'];
+    if (!timeout || (Date.now() > parseInt(timeout))) {
+        return true;
+    }
+    return false;
+}
+
+function HasEvents() {
+    let events = localStorage['el-events'];
+    if (events && JSON.parse(events)) {
+        return true;
+    }
+    return false;
+}
+
+function SetTimeout() {
+    localStorage['el-timeout'] = Date.now() + recheck_event_interval;
+}
+
 //Main functions
 
 async function CheckFlags() {
@@ -71,6 +94,7 @@ async function CheckFlags() {
             $("#flag-table").append($(".striped",$flag));
             $("#flag-table .post-preview").addClass("blacklisted");
             $("#event-notice").show();
+            localStorage['el-events'] = true;
         } else {
             debuglog("No flags!");
         }
@@ -94,13 +118,19 @@ function InitializeNoticeBox() {
             localStorage['el-flaglastid'] = CheckFlags.lastid;
             debuglog("Set last ID:",localStorage['el-flaglastid']);
         }
+        localStorage['el-events'] = false;
         e.preventDefault();
     });
 }
 
 function main() {
     InitializeNoticeBox();
-    CheckFlags();
+    if (CheckTimeout() || HasEvents()) {
+        SetTimeout();
+        CheckFlags();
+    } else {
+        debuglog("Waiting...");
+    }
 }
 
 //Wait until program is ready before executing
