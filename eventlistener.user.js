@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3
+// @version      4
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags)
 // @author       BrokenEagle
@@ -33,6 +33,10 @@ var userid;
 //HTML for the notice block
 const notice_box = `
 <div class="ui-corner-all ui-state-highlight" id="event-notice" style="display:none">
+    <div id="ham-dmail-section"  style="display:none">
+        <h1>You've got mail!</h1>
+        <div id="ham-dmail-table"></div>
+    </div>
     <div id="flag-section"  style="display:none">
         <h1>You've got flags!</h1>
         <div id="flag-table"></div>
@@ -40,6 +44,10 @@ const notice_box = `
     <div id="appeal-section"  style="display:none">
         <h1>You've got appeals!</h1>
         <div id="appeal-table"></div>
+    </div>
+    <div id="spam-dmail-section"  style="display:none">
+        <h1>You've got spam!</h1>
+        <div id="spam-dmail-table"></div>
     </div>
   <p><a href="#" id="hide-event-notice">Close this</a></p>
 </div>
@@ -146,7 +154,7 @@ async function CheckAppeals() {
             debuglog("No appeals!");
         }
     } else {
-        jsonappeal = await $.getJSON("/post_appeals", {limit: 1});
+        let jsonappeal = await $.getJSON("/post_appeals", {limit: 1});
         if (jsonappeal.length) {
             localStorage['el-appeallastid'] = jsonappeal[0].id;
         } else {
@@ -156,6 +164,50 @@ async function CheckAppeals() {
     }
 }
 CheckAppeals.lastid = 0;
+
+async function CheckDmails() {
+    let dmaillastid = localStorage['el-dmaillastid'];
+    if (dmaillastid) {
+        let jsondmail = await $.getJSON("/dmails", {page: 'a' + dmaillastid,limit: display_limit});
+        let hamjsondmail = jsondmail.filter((val)=>{return !val.is_read && !val.is_spam;});
+        let spamjsondmail = jsondmail.filter((val)=>{return !val.is_read && val.is_spam;});
+        if (hamjsondmail.length) {
+            debuglog("Found ham dmails!",jsondmail[0].id);
+            CheckDmails.lastid = jsondmail[0].id;
+            let hamdmailhtml = await $.get("/dmails", {search: {read: false},page: 'a' + dmaillastid});
+            let $hamdmail = $(hamdmailhtml);
+            $("tr.read-false", $hamdmail).css("font-weight","bold");
+            $("#ham-dmail-table").append($(".striped",$hamdmail));
+            $("#event-notice").show();
+            $("#ham-dmail-section").show();
+            localStorage['el-events'] = true;
+        } else {
+            debuglog("No ham dmails!");
+        }
+        if (spamjsondmail.length) {
+            debuglog("Found spam dmails!",jsondmail[0].id);
+            CheckDmails.lastid = jsondmail[0].id;
+            let spamdmailhtml = await $.get("/dmails", {search: {read: false, is_spam: true},page: 'a' + dmaillastid});
+            let $spamdmail = $(spamdmailhtml);
+            $("tr.read-false", $spamdmail).css("font-weight","bold");
+            $("#spam-dmail-table").append($(".striped",$spamdmail));
+            $("#event-notice").show();
+            $("#spam-dmail-section").show();
+            localStorage['el-events'] = true;
+        } else {
+            debuglog("No spam dmails!");
+        }
+    } else {
+        let jsondmail = await $.getJSON("/dmails", {limit: 1});
+        if (jsondmail.length) {
+            localStorage['el-dmaillastid'] = jsondmail[0].id;
+        } else {
+            localStorage['el-dmaillastid'] = 0;
+        }
+        debuglog("Set last dmail ID:",localStorage['el-dmaillastid']);
+    }
+}
+CheckDmails.lastid = 0;
 
 function InitializeNoticeBox() {
     $("#page").prepend(notice_box);
@@ -168,6 +220,11 @@ function InitializeNoticeBox() {
         if (CheckAppeals.lastid) {
             localStorage['el-appeallastid'] = CheckAppeals.lastid;
             debuglog("Set last appeal ID:",localStorage['el-appeallastid']);
+        }
+        if (CheckDmails.lastid) {
+            localStorage['el-dmaillastid'] = CheckDmails.lastid;
+            debuglog("Set last dmail ID:",localStorage['el-dmaillastid']);
+            $("#hide-dmail-notice").click();
         }
         localStorage['el-events'] = false;
         e.preventDefault();
@@ -182,9 +239,11 @@ function main() {
         return;
     }
     userid = parseInt(userid);
+    $("#dmail-notice").hide();
     InitializeNoticeBox();
     if (CheckTimeout() || HasEvents()) {
         SetTimeout();
+        CheckDmails();
         CheckFlags();
         CheckAppeals();
     } else {
@@ -197,25 +256,28 @@ function programLoad() {
     if (programLoad.retries >= program_load_max_retries) {
         debuglog("Abandoning program load!");
         clearInterval(programLoad.timer);
-        return;
+        return false;
     }
     if (window.jQuery === undefined) {
         debuglog("jQuery not installed yet!");
         programLoad.retries += 1;
-        return;
+        return false;
     }
     if (window.Danbooru === undefined) {
         debuglog("Danbooru not installed yet!");
         programLoad.retries += 1;
-        return;
+        return false;
     }
     clearInterval(programLoad.timer);
     main();
     debugTimeEnd("EL-programLoad");
+    return true;
 }
 programLoad.retries = 0;
 
 //Execution start
 
 debugTime("EL-programLoad");
-programLoad.timer = setInterval(programLoad,timer_poll_interval);
+if (!programLoad()) {
+    programLoad.timer = setInterval(programLoad,timer_poll_interval);
+}
