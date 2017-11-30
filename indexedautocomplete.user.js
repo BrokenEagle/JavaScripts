@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7
+// @version      8
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -21,6 +21,9 @@ const program_load_max_retries = 100;
 //Polling interval for checking program status
 const timer_poll_interval = 100;
 
+//Interval for fixup callback functions
+const callback_interval = 1000;
+
 //Used for expiration time calculations
 const milliseconds_per_day = 1000 * 60 * 60 * 24;
 
@@ -29,7 +32,8 @@ const autocomplete_domlist = [
     "[data-autocomplete=tag-query]",
     "[data-autocomplete=tag-edit]",
     "[data-autocomplete=tag]",
-    ".autocomplete-mentions textarea"
+    ".autocomplete-mentions textarea",
+    "#search_title,#quick_search_title"
 ];
 
 //Gets own instance in case forage is used in another script
@@ -67,10 +71,13 @@ const expiration_config = {
     },
     'relatedtag' : {
         'minimum_days': 7
+    },
+    'wikipage' : {
+        'minimum_days': 7
     }
-}
+};
 
-//Helper functions
+//Time functions
 
 function MinimumExpirationTime(type) {
     return expiration_config[type].minimum_days * milliseconds_per_day;
@@ -448,6 +455,68 @@ async function SavedSearchSourceIndexed(term, resp, metatag) {
     });
 }
 
+async function WikiPageIndexed(req, resp) {
+    var key = ("wp-" + req.term).toLowerCase();
+    if (use_indexed_db || use_local_storage) {
+        var cached = await retrieveData(key);
+        debuglog("Checking",key);
+        if (!checkDataModel(cached,key) || hasDataExpired(cached)) {
+            danboorustorage.removeItem(key);
+        } else {
+            resp(cached.value);
+            return;
+        }
+    }
+
+    debuglog("Querying wikipage:",req.term);
+    recordTime(key,"Network");
+    $.ajax({
+        url: "/wiki_pages.json",
+        data: {
+            "search[title]": req.term + "*",
+            "search[hide_deleted]": "Yes",
+            "search[order]": "post_count",
+            "limit": 10
+        },
+        method: "get",
+        success: function(data) {
+            recordTimeEnd(key,"Network");
+            var d = $.map(data, function(wiki_page) {
+                return {
+                    label: wiki_page.title.replace(/_/g, " "),
+                    value: wiki_page.title,
+                    category: wiki_page.category_name
+                };
+            });
+            saveData(key, {"value": d, "expires": Date.now() + MinimumExpirationTime('wikipage')});
+            setTimeout(()=>{FixExpirationCallback(key,d,d[0].value);},callback_interval);
+            resp(d);
+        }
+    });
+}
+
+function FixExpirationCallback(key,value,tagname) {
+    debuglog("Fixing expiration:",tagname);
+    recordTime(key + 'callback',"Network");
+    $.ajax({
+        url: "/tags.json",
+        data: {
+            "search[name]": tagname,
+        },
+        method: "get",
+        success: function(data) {
+            recordTimeEnd(key + 'callback',"Network");
+            if (!data.length) {
+                return
+            }
+            var expiration_time = ExpirationTime('tag',data[0].post_count);
+            saveData(key, {"value": value, "expires": Date.now() + expiration_time});
+        }
+    });
+}
+
+//Non-autocomplete storage
+
 function CommonBindIndexed(button_name, category) {
     $(button_name).click(async function(e) {
         var $dest = $("#related-tags");
@@ -479,6 +548,8 @@ function CommonBindIndexed(button_name, category) {
     });
 }
 
+//Rebind callback functions
+
 function rebindRelatedTags() {
     //Only need to check one of them, since they're all bound at the same time
     let bounditems = $._data($("#related-tags-button")[0]);
@@ -494,6 +565,38 @@ function rebindRelatedTags() {
         });
     }
 }
+
+function rebindWikiPageAutocomplete() {
+    var $fields = $("#search_title,#quick_search_title");
+    if ($fields.length && ('uiAutocomplete' in $.data($fields[0]))) {
+        clearInterval(rebindWikiPageAutocomplete.timer);
+        $("#search_title,#quick_search_title").off().removeData();
+        Danbooru.WikiPage.initialize_autocomplete();
+    }
+}
+
+//Initialization functions
+
+function WikiPageInitializeAutocompleteIndexed() {
+    var $fields = $("#search_title,#quick_search_title");
+
+    $fields.autocomplete({
+        minLength: 1,
+        delay: 100,
+        source: WikiPageIndexed
+    });
+
+    var render_wiki_page = function(list, wiki_page) {
+        var $link = $("<a/>").addClass("tag-type-" + wiki_page.category).text(wiki_page.label);
+        return $("<li/>").data("item.autocomplete", wiki_page).append($link).appendTo(list);
+    };
+
+    $fields.each(function(i, field) {
+        $(field).data("uiAutocomplete")._renderItem = render_wiki_page;
+    });
+}
+
+//Name functions
 
 function GetShortNames() {
     if (GetShortName.shortnames === undefined) {
@@ -525,6 +628,10 @@ function main() {
     if ($("#c-posts #a-show,#c-uploads #a-new").length) {
         Danbooru.RelatedTag.common_bind = CommonBindIndexed;
         rebindRelatedTags.timer = setInterval(rebindRelatedTags,timer_poll_interval);
+    }
+    if ($("#c-wiki-pages").length) {
+        Danbooru.WikiPage.initialize_autocomplete = WikiPageInitializeAutocompleteIndexed;
+        rebindWikiPageAutocomplete.timer = setInterval(rebindWikiPageAutocomplete,timer_poll_interval);
     }
     if (debug_console) {
         window.onbeforeunload = function () {
