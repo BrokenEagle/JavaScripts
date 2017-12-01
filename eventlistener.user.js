@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4
+// @version      4.1
 // @source       https://danbooru.donmai.us/users/23799
-// @description  Informs users of new events (flags)
+// @description  Informs users of new events (flags,appeals,dmails)
 // @author       BrokenEagle
 // @match        *://*.donmai.us/*
 // @grant        none
@@ -118,7 +118,7 @@ async function CheckFlags() {
             $("#flag-table .post-preview").addClass("blacklisted");
             $("#event-notice").show();
             $("#flag-section").show();
-            localStorage['el-events'] = true;
+            CheckFlags.hasevents = true;
         } else {
             debuglog("No flags!");
         }
@@ -131,8 +131,11 @@ async function CheckFlags() {
         }
         debuglog("Set last flag ID:",localStorage['el-flaglastid']);
     }
+    CheckFlags.isdone = true;
 }
 CheckFlags.lastid = 0;
+CheckFlags.hasevents = false;
+CheckFlags.isdone = false;
 
 async function CheckAppeals() {
     let appeallastid = localStorage['el-appeallastid'];
@@ -149,7 +152,7 @@ async function CheckAppeals() {
             $("#appeal-table .post-preview").addClass("blacklisted");
             $("#event-notice").show();
             $("#appeal-section").show();
-            localStorage['el-events'] = true;
+            CheckAppeals.hasevents = true;
         } else {
             debuglog("No appeals!");
         }
@@ -162,8 +165,11 @@ async function CheckAppeals() {
         }
         debuglog("Set last appeal ID:",localStorage['el-appeallastid']);
     }
+    CheckAppeals.isdone = true;
 }
 CheckAppeals.lastid = 0;
+CheckAppeals.hasevents = false;
+CheckAppeals.isdone = false;
 
 async function CheckDmails() {
     let dmaillastid = localStorage['el-dmaillastid'];
@@ -180,7 +186,7 @@ async function CheckDmails() {
             $("#ham-dmail-table").append($(".striped",$hamdmail));
             $("#event-notice").show();
             $("#ham-dmail-section").show();
-            localStorage['el-events'] = true;
+            CheckDmails.hasevents = true;
         } else {
             debuglog("No ham dmails!");
         }
@@ -193,7 +199,7 @@ async function CheckDmails() {
             $("#spam-dmail-table").append($(".striped",$spamdmail));
             $("#event-notice").show();
             $("#spam-dmail-section").show();
-            localStorage['el-events'] = true;
+            CheckDmails.hasevents = true;
         } else {
             debuglog("No spam dmails!");
         }
@@ -206,8 +212,22 @@ async function CheckDmails() {
         }
         debuglog("Set last dmail ID:",localStorage['el-dmaillastid']);
     }
+    CheckDmails.isdone = true;
 }
 CheckDmails.lastid = 0;
+CheckDmails.hasevents = false;
+CheckDmails.isdone = false;
+
+function CheckAllEvents() {
+    if (CheckFlags.isdone && CheckAppeals.isdone && CheckDmails.isdone) {
+        clearInterval(CheckAllEvents.timer);
+        if (CheckFlags.hasevents || CheckAppeals.hasevents || CheckDmails.hasevents) {
+            localStorage['el-events'] = true;
+        } else {
+            localStorage['el-events'] = false;
+        }
+    }
+}
 
 function InitializeNoticeBox() {
     $("#page").prepend(notice_box);
@@ -246,6 +266,7 @@ function main() {
         CheckDmails();
         CheckFlags();
         CheckAppeals();
+        CheckAllEvents.timer = setInterval(CheckAllEvents,timer_poll_interval);
     } else {
         debuglog("Waiting...");
     }
