@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.1
+// @version      4.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails)
 // @author       BrokenEagle
@@ -202,6 +202,10 @@ async function CheckDmails() {
             CheckDmails.hasevents = true;
         } else {
             debuglog("No spam dmails!");
+        }
+        if (!hamjsondmail.length && !spamjsondmail.length && jsondmail.length && (dmaillastid !== jsondmail[0].id.toString())) {
+            localStorage['el-dmaillastid'] = jsondmail[0].id;
+            debuglog("Setting DMail last ID:",localStorage['el-dmaillastid']);
         }
     } else {
         let jsondmail = await $.getJSON("/dmails", {limit: 1});
