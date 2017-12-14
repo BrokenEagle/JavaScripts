@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.2
+// @version      5
 // @source       https://danbooru.donmai.us/users/23799
-// @description  Informs users of new events (flags,appeals,dmails)
+// @description  Informs users of new events (flags,appeals,dmails,comments)
 // @author       BrokenEagle
 // @match        *://*.donmai.us/*
 // @grant        none
@@ -49,8 +49,36 @@ const notice_box = `
         <h1>You've got spam!</h1>
         <div id="spam-dmail-table"></div>
     </div>
+    <div id="comments-section"  class="comments-for-post" style="display:none">
+        <h1>You've got comments!</h1>
+        <div id="comments-table"></div>
+    </div>
   <p><a href="#" id="hide-event-notice">Close this</a></p>
 </div>
+`;
+
+//HTML for subscribe links
+const comment_links = `
+<li id="subscribe-comments" style="display:none"><a href="#">Subscribe Comments</a></li>
+<li id="unsubscribe-comments" style="display:none"><a href="#">Unsubscribe Comments</a></li>
+`;
+
+const comment_css = `
+#event-notice #comments-section #comments-table .preview {
+    float: left;
+    width: 154px;
+    height: 154px;
+    margin-right: 30px;
+    overflow: hidden;
+    text-align; center;
+}
+#event-notice #comments-section #comments-table .comment {
+    margin-left: 184px;
+    margin-bottom: 2em;
+    word-wrap: break-word;
+    padding: 5px;
+    display: block;
+}
 `;
 
 //Helper functions
@@ -70,6 +98,36 @@ function debugTime(str) {
 function debugTimeEnd(str) {
     if (debug_console) {
         console.timeEnd(str);
+    }
+}
+
+function setCSSStyle(csstext) {
+    var css_dom = document.createElement('style');
+    css_dom.type = 'text/css';
+    css_dom.innerHTML = csstext;
+    document.head.appendChild(css_dom);
+}
+
+function GetSetCommentList(input = null) {
+    if (!input) {
+        if (!GetSetCommentList.list) {
+            let commentlist = localStorage['el-commentlist'];
+            if (commentlist) {
+                GetSetCommentList.list = JSON.parse(commentlist);
+            } else {
+                GetSetCommentList.list = [];
+            }
+        }
+        return GetSetCommentList.list;
+    } else {
+        let commentlist = GetSetCommentList();
+        if (input[0] == '-') {
+            commentlist = commentlist.filter((val)=>{return val != input.slice(1);});
+        } else {
+            commentlist.push(parseInt(input));
+        }
+        localStorage['el-commentlist'] = JSON.stringify(commentlist);
+        GetSetCommentList.list = commentlist;
     }
 }
 
@@ -99,6 +157,18 @@ function HideUsersAppeals($appeal) {
         }
         if ($("td:nth-of-type(6) a",row)[0].innerHTML === username) {
             $(row).hide();
+        }
+    });
+}
+
+function HideNonsubscribeComments($comments) {
+    let commentlist = GetSetCommentList();
+    $(".post-preview",$comments).addClass("blacklisted");
+    $(".edit_comment",$comments).hide();
+    $.each($(".post-preview",$comments), (i,entry)=>{
+        let $entry = $(entry);
+        if (commentlist.indexOf($entry.data('id')) < 0) {
+            $entry.addClass("blacklisted-active");
         }
     });
 }
@@ -222,10 +292,74 @@ CheckDmails.lastid = 0;
 CheckDmails.hasevents = false;
 CheckDmails.isdone = false;
 
+async function CheckComments() {
+    let commentlastid = localStorage['el-commentlastid'];
+    let commentlist = GetSetCommentList();
+    if (commentlastid) {
+        var jsoncomments = [], subscribecomments = [];
+        if (!localStorage['el-savedcommentlist']) {
+            let tempcomments;
+            while (true) {
+                tempcomments = jsoncomments;
+                jsoncomments = await $.getJSON("/comments", {group_by: 'comment', page: 'a' + commentlastid, limit: display_limit});
+                subscribecomments = jsoncomments.filter((val)=>{return (val.creator_id !== userid) && (commentlist.indexOf(val.post_id) >= 0);}).concat(subscribecomments);
+                if (jsoncomments.length === display_limit) {
+                    commentlastid = jsoncomments[0].id.toString();
+                    debuglog("Rechecking @",commentlastid);
+                    continue;
+                } else if (jsoncomments.length === 0) {
+                    jsoncomments = tempcomments;
+                }
+                break;
+            }
+            if (subscribecomments.length) {
+                subscribecomments = subscribecomments.map((val)=>{return val.id;});
+                localStorage['el-savedcommentlist'] = JSON.stringify(subscribecomments);
+            }
+            if (jsoncomments.length) {
+                jsoncomments = [jsoncomments[0].id];
+                localStorage['el-savedcommentlastid'] = JSON.stringify(jsoncomments);
+            }
+        } else {
+            subscribecomments = JSON.parse(localStorage['el-savedcommentlist']);
+            jsoncomments = JSON.parse(localStorage['el-savedcommentlastid']);
+        }
+        if (subscribecomments.length) {
+            debuglog("Found comments!",jsoncomments[0]);
+            CheckComments.lastid = jsoncomments[0];
+            let commentshtml = await $.get("/comments", {group_by: 'comment', search: {id: subscribecomments.join(',')}, limit: subscribecomments.length});
+            let $comments = $(commentshtml);
+            HideNonsubscribeComments($comments);
+            $("#comments-table").append($(".list-of-comments",$comments));
+            $("#event-notice").show();
+            $("#comments-section").show();
+            CheckComments.hasevents = true;
+        } else {
+            debuglog("No comments!");
+            if (jsoncomments.length && (localStorage['el-commentlastid'] !== jsoncomments[0].toString())) {
+                localStorage['el-commentlastid'] = jsoncomments[0];
+                debuglog("Setting comment last ID:",localStorage['el-commentlastid']);
+            }
+        }
+    } else {
+        let jsoncomment = await $.getJSON("/comments", {group_by: 'comment', limit: 1});
+        if (jsoncomment.length) {
+            localStorage['el-commentlastid'] = jsoncomment[0].id;
+        } else {
+            localStorage['el-commentlastid'] = 0;
+        }
+        debuglog("Set comment last ID:",localStorage['el-commentlastid']);
+    }
+    CheckComments.isdone = true;
+}
+CheckComments.lastid = 0;
+CheckComments.hasevents = false;
+CheckComments.isdone = false;
+
 function CheckAllEvents() {
-    if (CheckFlags.isdone && CheckAppeals.isdone && CheckDmails.isdone) {
+    if (CheckFlags.isdone && CheckAppeals.isdone && CheckDmails.isdone && CheckComments.isdone) {
         clearInterval(CheckAllEvents.timer);
-        if (CheckFlags.hasevents || CheckAppeals.hasevents || CheckDmails.hasevents) {
+        if (CheckFlags.hasevents || CheckAppeals.hasevents || CheckDmails.hasevents || CheckComments.hasevents) {
             localStorage['el-events'] = true;
         } else {
             localStorage['el-events'] = false;
@@ -250,8 +384,44 @@ function InitializeNoticeBox() {
             debuglog("Set last dmail ID:",localStorage['el-dmaillastid']);
             $("#hide-dmail-notice").click();
         }
+        if (CheckComments.lastid) {
+            localStorage['el-commentlastid'] = CheckComments.lastid;
+            debuglog("Set last comment ID:",localStorage['el-commentlastid']);
+            delete localStorage['el-savedcommentlist'];
+            delete localStorage['el-savedcommentlastid'];
+            debuglog("Deleted saved values!");
+        }
         localStorage['el-events'] = false;
         e.preventDefault();
+    });
+}
+
+function InitializeCommentSubscribe() {
+    $("#nav > menu:nth-child(2)").append(comment_links);
+    SubscribeCommentsClick();
+    UnsubscribeCommentsClick();
+    let commentlist = GetSetCommentList();
+    let postid = parseInt(Danbooru.meta('post-id'));
+    if (commentlist.indexOf(postid) < 0) {
+        $("#subscribe-comments").show();
+    } else {
+        $("#unsubscribe-comments").show();
+    }
+}
+
+function SubscribeCommentsClick() {
+    $("#subscribe-comments a").click((e)=>{
+        GetSetCommentList(Danbooru.meta('post-id'));
+        $("#subscribe-comments").hide();
+        $("#unsubscribe-comments").show();
+    });
+}
+
+function UnsubscribeCommentsClick() {
+    $("#unsubscribe-comments a").click((e)=>{
+        GetSetCommentList('-' + Danbooru.meta('post-id'));
+        $("#unsubscribe-comments").hide();
+        $("#subscribe-comments").show();
     });
 }
 
@@ -270,9 +440,18 @@ function main() {
         CheckDmails();
         CheckFlags();
         CheckAppeals();
+        if (GetSetCommentList().length) {
+            setCSSStyle(comment_css);
+            CheckComments();
+        } else {
+            CheckComments.isdone = true;
+        }
         CheckAllEvents.timer = setInterval(CheckAllEvents,timer_poll_interval);
     } else {
         debuglog("Waiting...");
+    }
+    if ($("#c-posts #a-show").length) {
+        InitializeCommentSubscribe();
     }
 }
 
