@@ -568,7 +568,7 @@ function rebindRelatedTags() {
 
 function rebindWikiPageAutocomplete() {
     var $fields = $("#search_title,#quick_search_title");
-    if ($fields.length && ('uiAutocomplete' in $.data($fields[0]))) {
+    if ($fields.length && (('uiAutocomplete' in $.data($fields[0])) || $("#c-wiki-page-versions").length)) {
         clearInterval(rebindWikiPageAutocomplete.timer);
         $("#search_title,#quick_search_title").off().removeData();
         Danbooru.WikiPage.initialize_autocomplete();
@@ -629,7 +629,7 @@ function main() {
         Danbooru.RelatedTag.common_bind = CommonBindIndexed;
         rebindRelatedTags.timer = setInterval(rebindRelatedTags,timer_poll_interval);
     }
-    if ($("#c-wiki-pages").length) {
+    if ($("#c-wiki-pages,#c-wiki-page-versions").length) {
         Danbooru.WikiPage.initialize_autocomplete = WikiPageInitializeAutocompleteIndexed;
         rebindWikiPageAutocomplete.timer = setInterval(rebindWikiPageAutocomplete,timer_poll_interval);
     }
