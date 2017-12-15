@@ -59,8 +59,8 @@ const notice_box = `
 
 //HTML for subscribe links
 const comment_links = `
-<li id="subscribe-comments" style="display:none"><a href="#">Subscribe Comments</a></li>
-<li id="unsubscribe-comments" style="display:none"><a href="#">Unsubscribe Comments</a></li>
+<li id="subscribe-comments" style="display:none !important"><a href="#">Subscribe Comments</a></li>
+<li id="unsubscribe-comments" style="display:none !important"><a href="#">Unsubscribe Comments</a></li>
 `;
 
 const comment_css = `
@@ -106,6 +106,14 @@ function setCSSStyle(csstext) {
     css_dom.type = 'text/css';
     css_dom.innerHTML = csstext;
     document.head.appendChild(css_dom);
+}
+
+function FullHide(selector) {
+    $(selector).attr('style','display: none !important');
+}
+
+function ClearHide(selector) {
+    $(selector).attr('style','');
 }
 
 function GetSetCommentList(input = null) {
@@ -403,25 +411,25 @@ function InitializeCommentSubscribe() {
     let commentlist = GetSetCommentList();
     let postid = parseInt(Danbooru.meta('post-id'));
     if (commentlist.indexOf(postid) < 0) {
-        $("#subscribe-comments").show();
+        ClearHide("#subscribe-comments");
     } else {
-        $("#unsubscribe-comments").show();
+        ClearHide("#unsubscribe-comments");
     }
 }
 
 function SubscribeCommentsClick() {
     $("#subscribe-comments a").click((e)=>{
         GetSetCommentList(Danbooru.meta('post-id'));
-        $("#subscribe-comments").hide();
-        $("#unsubscribe-comments").show();
+        FullHide("#subscribe-comments");
+        ClearHide("#unsubscribe-comments");
     });
 }
 
 function UnsubscribeCommentsClick() {
     $("#unsubscribe-comments a").click((e)=>{
         GetSetCommentList('-' + Danbooru.meta('post-id'));
-        $("#unsubscribe-comments").hide();
-        $("#subscribe-comments").show();
+        FullHide("#unsubscribe-comments");
+        ClearHide$("#subscribe-comments");
     });
 }
 
