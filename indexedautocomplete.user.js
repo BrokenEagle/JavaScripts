@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      8
+// @version      8.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -489,7 +489,9 @@ async function WikiPageIndexed(req, resp) {
                 };
             });
             saveData(key, {"value": d, "expires": Date.now() + MinimumExpirationTime('wikipage')});
-            setTimeout(()=>{FixExpirationCallback(key,d,d[0].value);},callback_interval);
+            if (d.length) {
+                setTimeout(()=>{FixExpirationCallback(key,d,d[0].value);},callback_interval);
+            }
             resp(d);
         }
     });
