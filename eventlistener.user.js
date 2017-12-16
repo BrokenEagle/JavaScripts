@@ -57,12 +57,22 @@ const notice_box = `
 </div>
 `;
 
-//HTML for subscribe links
-const comment_links = `
-<li id="subscribe-comments" style="display:none !important"><a href="#">Subscribe Comments</a></li>
-<li id="unsubscribe-comments" style="display:none !important"><a href="#">Unsubscribe Comments</a></li>
+//Program CSS
+const eventlistener_css = `
+#c-comments #a-index #p-index-by-post .subscribe-comments,
+#c-comments #a-index #p-index-by-post .unsubscribe-comments {
+    margin: 1em 0;
+}
+#c-comments #a-index #p-index-by-comment table {
+    float: left;
+    text-align: center;
+}
+#c-comments #a-index #p-index-by-comment .preview {
+    margin-right: 0;
+}
 `;
 
+//Fix for showing comments
 const comment_css = `
 #event-notice #comments-section #comments-table .preview {
     float: left;
@@ -404,32 +414,60 @@ function InitializeNoticeBox() {
     });
 }
 
-function InitializeCommentSubscribe() {
-    $("#nav > menu:nth-child(2)").append(comment_links);
+function RenderCommentPartialPostLinks(postid,tag,separator) {
+    let commentlist = GetSetCommentList();
+    let subscribe = (commentlist.indexOf(postid) < 0 ? "style": 'style="display:none !important"');
+    let unsubscribe = (commentlist.indexOf(postid) < 0 ? 'style="display:none !important"' : "style");
+    return `<${tag} data-post-id="${postid}" class="subscribe-comments" ${subscribe}><a href="#">Subscribe${separator}comments</a></${tag}>` +
+           `<${tag} data-post-id="${postid}" class="unsubscribe-comments" ${unsubscribe}"><a href="#">Unsubscribe${separator}comments</a></${tag}>`;
+}
+
+function InitializePostCommentLinks() {
+    var postid = parseInt(Danbooru.meta('post-id'));
+    $("#nav > menu:nth-child(2)").append(RenderCommentPartialPostLinks(postid,"li"," "));
     SubscribeCommentsClick();
     UnsubscribeCommentsClick();
-    let commentlist = GetSetCommentList();
-    let postid = parseInt(Danbooru.meta('post-id'));
-    if (commentlist.indexOf(postid) < 0) {
-        ClearHide("#subscribe-comments");
-    } else {
-        ClearHide("#unsubscribe-comments");
-    }
+}
+
+function InitializeCommentPartialPostLinks() {
+    $.each($("#p-index-by-post .comments-for-post"), (i,$entry)=>{
+        let postid = parseInt($($entry).data('post-id'));
+        $(".header",$entry).after(RenderCommentPartialPostLinks(postid,"div"," "));
+    });
+    SubscribeCommentsClick();
+    UnsubscribeCommentsClick();
+}
+
+function InitializeCommentPartialCommentLinks() {
+    $.each($("#p-index-by-comment .post-preview"), (i,$entry)=>{
+        var postid = parseInt($($entry).data('id'));
+        var linkhtml = RenderCommentPartialPostLinks(postid,"div","<br>");
+        var $table = $.parseHTML(`<table><tbody><tr><td></td></tr><tr><td>${linkhtml}</td></tr></tbody></table>`);
+        var $preview = $(".preview",$entry).detach();
+        $("tr:nth-of-type(1) td",$table).append($preview);
+        $entry.prepend($table[0]);
+    });
+    SubscribeCommentsClick();
+    UnsubscribeCommentsClick();
 }
 
 function SubscribeCommentsClick() {
-    $("#subscribe-comments a").click((e)=>{
-        GetSetCommentList(Danbooru.meta('post-id'));
-        FullHide("#subscribe-comments");
-        ClearHide("#unsubscribe-comments");
+    $(".subscribe-comments a").click((e)=>{
+        let post = $(e.target.parentElement).data('post-id');
+        GetSetCommentList(post);
+        FullHide(`.subscribe-comments[data-post-id=${post}]`);
+        ClearHide(`.unsubscribe-comments[data-post-id=${post}]`);
+        e.preventDefault();
     });
 }
 
 function UnsubscribeCommentsClick() {
-    $("#unsubscribe-comments a").click((e)=>{
-        GetSetCommentList('-' + Danbooru.meta('post-id'));
-        FullHide("#unsubscribe-comments");
-        ClearHide$("#subscribe-comments");
+    $(".unsubscribe-comments a").click((e)=>{
+        let post = $(e.target.parentElement).data('post-id');
+        GetSetCommentList('-' + post);
+        FullHide(`.unsubscribe-comments[data-post-id=${post}]`);
+        ClearHide(`.subscribe-comments[data-post-id=${post}]`);
+        e.preventDefault();
     });
 }
 
@@ -459,8 +497,13 @@ function main() {
         debuglog("Waiting...");
     }
     if ($("#c-posts #a-show").length) {
-        InitializeCommentSubscribe();
+        InitializePostCommentLinks();
+    } else if ($("#c-comments #a-index #p-index-by-post").length) {
+        InitializeCommentPartialPostLinks();
+    } else if ($("#c-comments #a-index #p-index-by-comment").length) {
+        InitializeCommentPartialCommentLinks();
     }
+    setCSSStyle(eventlistener_css);
 }
 
 //Wait until program is ready before executing
