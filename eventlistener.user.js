@@ -63,11 +63,13 @@ const eventlistener_css = `
 #c-comments #a-index #p-index-by-post .unsubscribe-comments {
     margin: 1em 0;
 }
-#c-comments #a-index #p-index-by-comment table {
+#c-comments #a-index #p-index-by-comment table,
+#event-notice #comments-section #comments-table table {
     float: left;
     text-align: center;
 }
-#c-comments #a-index #p-index-by-comment .preview {
+#c-comments #a-index #p-index-by-comment .preview,
+#event-notice #comments-section #comments-table .preview {
     margin-right: 0;
 }
 `;
@@ -126,27 +128,28 @@ function ClearHide(selector) {
     $(selector).attr('style','');
 }
 
-function GetSetCommentList(input = null) {
-    if (!input) {
-        if (!GetSetCommentList.list) {
-            let commentlist = localStorage['el-commentlist'];
-            if (commentlist) {
-                GetSetCommentList.list = JSON.parse(commentlist);
-            } else {
-                GetSetCommentList.list = [];
-            }
-        }
-        return GetSetCommentList.list;
-    } else {
-        let commentlist = GetSetCommentList();
-        if (input[0] == '-') {
-            commentlist = commentlist.filter((val)=>{return val != input.slice(1);});
+function GetCommentList() {
+    if (!GetCommentList.list) {
+        let commentlist = localStorage['el-commentlist'];
+        if (commentlist) {
+            GetCommentList.list = JSON.parse(commentlist);
         } else {
-            commentlist.push(parseInt(input));
+            GetCommentList.list = [];
         }
-        localStorage['el-commentlist'] = JSON.stringify(commentlist);
-        GetSetCommentList.list = commentlist;
     }
+    return GetCommentList.list;
+}
+
+function SetCommentList(input) {
+    let commentlist = GetCommentList();
+    if (input[0] == '-') {
+        commentlist = commentlist.filter((val)=>{return val != input.slice(1);});
+    } else {
+        commentlist.push(parseInt(input));
+    }
+    commentlist = $.unique(commentlist);
+    localStorage['el-commentlist'] = JSON.stringify(commentlist);
+    GetCommentList.list = commentlist;
 }
 
 function CheckTimeout() {
@@ -180,7 +183,7 @@ function HideUsersAppeals($appeal) {
 }
 
 function HideNonsubscribeComments($comments) {
-    let commentlist = GetSetCommentList();
+    let commentlist = GetCommentList();
     $(".post-preview",$comments).addClass("blacklisted");
     $(".edit_comment",$comments).hide();
     $.each($(".post-preview",$comments), (i,entry)=>{
@@ -312,7 +315,7 @@ CheckDmails.isdone = false;
 
 async function CheckComments() {
     let commentlastid = localStorage['el-commentlastid'];
-    let commentlist = GetSetCommentList();
+    let commentlist = GetCommentList();
     if (commentlastid) {
         var jsoncomments = [], subscribecomments = [];
         if (!localStorage['el-savedcommentlist']) {
@@ -349,6 +352,7 @@ async function CheckComments() {
             let $comments = $(commentshtml);
             HideNonsubscribeComments($comments);
             $("#comments-table").append($(".list-of-comments",$comments));
+            InitializeEventNoticeCommentLinks();
             $("#event-notice").show();
             $("#comments-section").show();
             CheckComments.hasevents = true;
@@ -415,7 +419,7 @@ function InitializeNoticeBox() {
 }
 
 function RenderCommentPartialPostLinks(postid,tag,separator) {
-    let commentlist = GetSetCommentList();
+    let commentlist = GetCommentList();
     let subscribe = (commentlist.indexOf(postid) < 0 ? "style": 'style="display:none !important"');
     let unsubscribe = (commentlist.indexOf(postid) < 0 ? 'style="display:none !important"' : "style");
     return `<${tag} data-post-id="${postid}" class="subscribe-comments" ${subscribe}><a href="#">Subscribe${separator}comments</a></${tag}>` +
@@ -451,10 +455,23 @@ function InitializeCommentPartialCommentLinks() {
     UnsubscribeCommentsClick();
 }
 
+function InitializeEventNoticeCommentLinks() {
+    $.each($("#event-notice .post-preview"), (i,$entry)=>{
+        var postid = parseInt($($entry).data('id'));
+        var linkhtml = RenderCommentPartialPostLinks(postid,"div","<br>");
+        var $table = $.parseHTML(`<table><tbody><tr><td></td></tr><tr><td>${linkhtml}</td></tr></tbody></table>`);
+        var $preview = $(".preview",$entry).detach();
+        $("tr:nth-of-type(1) td",$table).append($preview);
+        $entry.prepend($table[0]);
+    });
+    SubscribeCommentsClick();
+    UnsubscribeCommentsClick();
+}
+
 function SubscribeCommentsClick() {
-    $(".subscribe-comments a").click((e)=>{
+    $(".subscribe-comments a").off().click((e)=>{
         let post = $(e.target.parentElement).data('post-id');
-        GetSetCommentList(post);
+        SetCommentList(post);
         FullHide(`.subscribe-comments[data-post-id=${post}]`);
         ClearHide(`.unsubscribe-comments[data-post-id=${post}]`);
         e.preventDefault();
@@ -462,9 +479,9 @@ function SubscribeCommentsClick() {
 }
 
 function UnsubscribeCommentsClick() {
-    $(".unsubscribe-comments a").click((e)=>{
+    $(".unsubscribe-comments a").off().click((e)=>{
         let post = $(e.target.parentElement).data('post-id');
-        GetSetCommentList('-' + post);
+        SetCommentList('-' + post);
         FullHide(`.unsubscribe-comments[data-post-id=${post}]`);
         ClearHide(`.subscribe-comments[data-post-id=${post}]`);
         e.preventDefault();
@@ -486,7 +503,7 @@ function main() {
         CheckDmails();
         CheckFlags();
         CheckAppeals();
-        if (GetSetCommentList().length) {
+        if (GetCommentList().length) {
             setCSSStyle(comment_css);
             CheckComments();
         } else {
