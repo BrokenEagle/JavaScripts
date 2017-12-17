@@ -334,8 +334,8 @@ async function CheckComments() {
                 break;
             }
             if (subscribecomments.length) {
+                localStorage['el-savedcommentlist'] = JSON.stringify(subscribecomments.map((val)=>{return {id:val.id,post:val.post_id};}));
                 subscribecomments = subscribecomments.map((val)=>{return val.id;});
-                localStorage['el-savedcommentlist'] = JSON.stringify(subscribecomments);
             }
             if (jsoncomments.length) {
                 jsoncomments = [jsoncomments[0].id];
@@ -343,7 +343,15 @@ async function CheckComments() {
             }
         } else {
             subscribecomments = JSON.parse(localStorage['el-savedcommentlist']);
+            subscribecomments = subscribecomments.filter(value=>{return commentlist.indexOf(value.post) >= 0;});
             jsoncomments = JSON.parse(localStorage['el-savedcommentlastid']);
+            if (!subscribecomments.length) {
+                debuglog("Deleting saved comment values");
+                delete localStorage['el-savedcommentlist'];
+                delete localStorage['el-savedcommentlastid'];
+            } else {
+                subscribecomments = subscribecomments.map((val)=>{return val.id;});
+            }
         }
         if (subscribecomments.length) {
             debuglog("Found comments!",jsoncomments[0]);
