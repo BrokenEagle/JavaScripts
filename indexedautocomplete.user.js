@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      8.1
+// @version      9
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -33,7 +33,8 @@ const autocomplete_domlist = [
     "[data-autocomplete=tag-edit]",
     "[data-autocomplete=tag]",
     ".autocomplete-mentions textarea",
-    "#search_title,#quick_search_title"
+    "#search_title,#quick_search_title",
+    "#search_name,#quick_search_name"
 ];
 
 //Gets own instance in case forage is used in another script
@@ -73,6 +74,9 @@ const expiration_config = {
         'minimum_days': 7
     },
     'wikipage' : {
+        'minimum_days': 7
+    },
+    'artist' : {
         'minimum_days': 7
     }
 };
@@ -497,6 +501,49 @@ async function WikiPageIndexed(req, resp) {
     });
 }
 
+async function ArtistIndexed(req, resp) {
+    var key = ("ar-" + req.term).toLowerCase();
+    if (use_indexed_db || use_local_storage) {
+        var cached = await retrieveData(key);
+        debuglog("Checking",key);
+        if (!checkDataModel(cached,key) || hasDataExpired(cached)) {
+            danboorustorage.removeItem(key);
+        } else {
+            resp(cached.value);
+            return;
+        }
+    }
+
+    debuglog("Querying artist:",req.term);
+    recordTime(key,"Network");
+    $.ajax({
+        url: "/artists.json",
+        data: {
+            "search[name]": req.term + "*",
+            "search[is_active]": true,
+            "search[order]": "post_count",
+            "limit": 10
+        },
+        method: "get",
+        success: function(data) {
+            recordTimeEnd(key,"Network");
+            var d = $.map(data, function(artist) {
+                return {
+                    label: artist.name.replace(/_/g, " "),
+                    value: artist.name
+                };
+            });
+            saveData(key, {"value": d, "expires": Date.now() + MinimumExpirationTime('artist')});
+            if (d.length) {
+                setTimeout(()=>{FixExpirationCallback(key,d,d[0].value);},callback_interval);
+            }
+            resp(d);
+        }
+    });
+}
+
+//Callback functions
+
 function FixExpirationCallback(key,value,tagname) {
     debuglog("Fixing expiration:",tagname);
     recordTime(key + 'callback',"Network");
@@ -572,8 +619,17 @@ function rebindWikiPageAutocomplete() {
     var $fields = $("#search_title,#quick_search_title");
     if ($fields.length && (('uiAutocomplete' in $.data($fields[0])) || $("#c-wiki-page-versions").length)) {
         clearInterval(rebindWikiPageAutocomplete.timer);
-        $("#search_title,#quick_search_title").off().removeData();
+        $fields.off().removeData();
         Danbooru.WikiPage.initialize_autocomplete();
+    }
+}
+
+function rebindArtistAutocomplete() {
+    var $fields = $("#search_name,#quick_search_name");
+    if ($fields.length && ('uiAutocomplete' in $.data($fields[0]))) {
+        clearInterval(rebindArtistAutocomplete.timer);
+        $fields.off().removeData();
+        Danbooru.Artist.initialize_autocomplete();
     }
 }
 
@@ -595,6 +651,25 @@ function WikiPageInitializeAutocompleteIndexed() {
 
     $fields.each(function(i, field) {
         $(field).data("uiAutocomplete")._renderItem = render_wiki_page;
+    });
+}
+
+function ArtistInitializeAutocompleteIndexed() {
+    var $fields = $("#search_name,#quick_search_name");
+
+    $fields.autocomplete({
+        minLength: 1,
+        delay: 100,
+        source: ArtistIndexed
+    });
+
+    var render_artist = function(list, artist) {
+      var $link = $("<a/>").addClass("tag-type-1").text(artist.label);
+      return $("<li/>").data("item.autocomplete", artist).append($link).appendTo(list);
+    };
+
+    $fields.each(function(i, field) {
+      $(field).data("uiAutocomplete")._renderItem = render_artist;
     });
 }
 
@@ -634,6 +709,10 @@ function main() {
     if ($("#c-wiki-pages,#c-wiki-page-versions").length) {
         Danbooru.WikiPage.initialize_autocomplete = WikiPageInitializeAutocompleteIndexed;
         rebindWikiPageAutocomplete.timer = setInterval(rebindWikiPageAutocomplete,timer_poll_interval);
+    }
+    if ($("#c-artists").length) {
+        Danbooru.Artist.initialize_autocomplete = ArtistInitializeAutocompleteIndexed;
+        rebindArtistAutocomplete.timer = setInterval(rebindArtistAutocomplete,timer_poll_interval);
     }
     if (debug_console) {
         window.onbeforeunload = function () {
