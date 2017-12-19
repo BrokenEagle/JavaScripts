@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9
+// @version      9.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -373,8 +373,8 @@ async function UserSourceIndexed(term, resp, metatag) {
                     level: user.level_string
                 };
             });
-            $.each(d, (i,val)=> {FixupUserMetatag(val,metatag);});
             saveData(key, {"value": d, "expires": Date.now() + MinimumExpirationTime('user')});
+            $.each(d, (i,val)=> {FixupUserMetatag(val,metatag);});
             resp(d);
         }
     });
