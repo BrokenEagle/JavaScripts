@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9.1
+// @version      10
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -34,7 +34,9 @@ const autocomplete_domlist = [
     "[data-autocomplete=tag]",
     ".autocomplete-mentions textarea",
     "#search_title,#quick_search_title",
-    "#search_name,#quick_search_name"
+    "#search_name,#quick_search_name",
+    "#search_name_matches,#quick_search_name_matches",
+    "#add-to-pool-dialog input[type=text]"
 ];
 
 //Gets own instance in case forage is used in another script
@@ -303,6 +305,7 @@ async function PoolSourceIndexed(term, resp, metatag) {
         if (!checkDataModel(cached,key) || hasDataExpired(cached)) {
             danboorustorage.removeItem(key);
         } else {
+            $.each(cached.value, (i,val)=> {FixupPoolMetatag(val,metatag);});
             resp(cached.value);
             return;
         }
@@ -323,17 +326,35 @@ async function PoolSourceIndexed(term, resp, metatag) {
             var d = $.map(data, function(pool) {
                 return {
                     type: "pool",
-                    label: pool.name.replace(/_/g, " "),
-                    value: metatag + ":" + pool.name,
+                    name: pool.name,
                     post_count: pool.post_count,
                     category: pool.category
                 };
             });
             var expiration_time = (d.length ? ExpirationTime('pool',d[0].post_count) : MinimumExpirationTime('pool'));
             saveData(key, {"value": d, "expires": Date.now() + expiration_time});
+            $.each(d, (i,val)=> {FixupPoolMetatag(val,metatag);});
             resp(d);
         }
     });
+}
+
+function PoolSourceIndexedNontag(req, resp) {
+    PoolSourceIndexed(req.term, resp, "");
+}
+
+function FixupPoolMetatag(value,metatag) {
+    //Temporary fix
+    if (!('name' in value)) {
+        value.name = value.label.replace(/ /g, "_");
+    }
+    if (metatag === "") {
+        value.value = value.name;
+        value.label = value.name.replace(/_/g, " ");
+    } else {
+        value.value = metatag + ":" + value.name;
+        value.label = value.name.replace(/_/g, " ");
+    }
 }
 
 async function UserSourceIndexed(term, resp, metatag) {
@@ -560,7 +581,7 @@ function FixExpirationCallback(key,value,tagname,type) {
         success: function(data) {
             recordTimeEnd(key + 'callback',"Network");
             if (!data.length) {
-                return
+                return;
             }
             var expiration_time = ExpirationTime(type,data[0].post_count);
             saveData(key, {"value": value, "expires": Date.now() + expiration_time});
@@ -637,6 +658,24 @@ function rebindArtistAutocomplete() {
     }
 }
 
+function rebindPoolAutocomplete() {
+    var $fields = $("#search_name_matches,#quick_search_name_matches");
+    if ($fields.length && (('uiAutocomplete' in $.data($fields[0])) || $("#c-pool-versions").length)) {
+        clearInterval(rebindPoolAutocomplete.timer);
+        $fields.off().removeData();
+        Danbooru.Pool.initialize_autocomplete_for("#search_name_matches,#quick_search_name_matches");
+    }
+}
+
+function rebindPostPoolAutocomplete() {
+    var $fields = $("#add-to-pool-dialog input[type=text]");
+    if ($fields.length && ('uiAutocomplete' in $.data($fields[0]))) {
+        clearInterval(rebindPostPoolAutocomplete.timer);
+        $fields.off().removeData();
+        Danbooru.Pool.initialize_autocomplete_for("#add-to-pool-dialog input[type=text]");
+    }
+}
+
 //Initialization functions
 
 function WikiPageInitializeAutocompleteIndexed() {
@@ -674,6 +713,25 @@ function ArtistInitializeAutocompleteIndexed() {
 
     $fields.each(function(i, field) {
       $(field).data("uiAutocomplete")._renderItem = render_artist;
+    });
+}
+
+function PoolInitializeAutocompleteIndexed(selector) {
+    var $fields = $(selector);
+
+    $fields.autocomplete({
+        minLength: 1,
+        delay: 100,
+        source: PoolSourceIndexedNontag
+    });
+
+    var render_pool = function(list, pool) {
+        var $link = $("<a/>").addClass("pool-category-" + pool.category).text(pool.label);
+        return $("<li/>").data("item.autocomplete", pool).append($link).appendTo(list);
+    };
+
+    $fields.each(function(i, field) {
+        $(field).data("uiAutocomplete")._renderItem = render_pool;
     });
 }
 
@@ -717,6 +775,14 @@ function main() {
     if ($("#c-artists").length) {
         Danbooru.Artist.initialize_autocomplete = ArtistInitializeAutocompleteIndexed;
         rebindArtistAutocomplete.timer = setInterval(rebindArtistAutocomplete,timer_poll_interval);
+    }
+    if ($("#c-pools,#c-pool-versions").length) {
+        Danbooru.Pool.initialize_autocomplete_for = PoolInitializeAutocompleteIndexed;
+        rebindPoolAutocomplete.timer = setInterval(rebindPoolAutocomplete,timer_poll_interval);
+    }
+    if ($("#c-posts #a-show").length) {
+        Danbooru.Pool.initialize_autocomplete_for = PoolInitializeAutocompleteIndexed;
+        rebindPostPoolAutocomplete.timer = setInterval(rebindPostPoolAutocomplete,timer_poll_interval);
     }
     if (debug_console) {
         window.onbeforeunload = function () {
