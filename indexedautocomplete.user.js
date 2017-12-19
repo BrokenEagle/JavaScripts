@@ -74,10 +74,14 @@ const expiration_config = {
         'minimum_days': 7
     },
     'wikipage' : {
-        'minimum_days': 7
+        'logarithmic_start': 100,
+        'minimum_days': 7,
+        'maximum_days': 28
     },
     'artist' : {
-        'minimum_days': 7
+        'logarithmic_start': 10,
+        'minimum_days': 7,
+        'maximum_days': 28
     }
 };
 
@@ -494,7 +498,7 @@ async function WikiPageIndexed(req, resp) {
             });
             saveData(key, {"value": d, "expires": Date.now() + MinimumExpirationTime('wikipage')});
             if (d.length) {
-                setTimeout(()=>{FixExpirationCallback(key,d,d[0].value);},callback_interval);
+                setTimeout(()=>{FixExpirationCallback(key,d,d[0].value,'wikipage');},callback_interval);
             }
             resp(d);
         }
@@ -535,7 +539,7 @@ async function ArtistIndexed(req, resp) {
             });
             saveData(key, {"value": d, "expires": Date.now() + MinimumExpirationTime('artist')});
             if (d.length) {
-                setTimeout(()=>{FixExpirationCallback(key,d,d[0].value);},callback_interval);
+                setTimeout(()=>{FixExpirationCallback(key,d,d[0].value,'artist');},callback_interval);
             }
             resp(d);
         }
@@ -544,7 +548,7 @@ async function ArtistIndexed(req, resp) {
 
 //Callback functions
 
-function FixExpirationCallback(key,value,tagname) {
+function FixExpirationCallback(key,value,tagname,type) {
     debuglog("Fixing expiration:",tagname);
     recordTime(key + 'callback',"Network");
     $.ajax({
@@ -558,7 +562,7 @@ function FixExpirationCallback(key,value,tagname) {
             if (!data.length) {
                 return
             }
-            var expiration_time = ExpirationTime('tag',data[0].post_count);
+            var expiration_time = ExpirationTime(type,data[0].post_count);
             saveData(key, {"value": value, "expires": Date.now() + expiration_time});
         }
     });
