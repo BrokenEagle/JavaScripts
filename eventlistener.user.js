@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.1
+// @version      5.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments)
 // @author       BrokenEagle
@@ -148,6 +148,14 @@ function SetCommentList(input) {
     localStorage['el-commentlist'] = JSON.stringify(commentlist);
 }
 
+function SaveLastID(key,lastid) {
+    let previousid = localStorage[key];
+    if (previousid) {
+        lastid = Math.max(parseInt(previousid),lastid);
+    }
+    localStorage[key] = lastid;
+}
+
 function CheckTimeout() {
     let timeout = localStorage['el-timeout'];
     if (isNaN(timeout) || (Date.now() > parseInt(timeout))) {
@@ -212,9 +220,9 @@ async function CheckFlags() {
     } else {
         let jsonflag = await $.getJSON("/post_flags", {limit: 1});
         if (jsonflag.length) {
-            localStorage['el-flaglastid'] = jsonflag[0].id;
+            SaveLastID('el-flaglastid',jsonflag[0].id);
         } else {
-            localStorage['el-flaglastid'] = 0;
+            SaveLastID('el-flaglastid',0);
         }
         debuglog("Set last flag ID:",localStorage['el-flaglastid']);
     }
@@ -246,9 +254,9 @@ async function CheckAppeals() {
     } else {
         let jsonappeal = await $.getJSON("/post_appeals", {limit: 1});
         if (jsonappeal.length) {
-            localStorage['el-appeallastid'] = jsonappeal[0].id;
+            SaveLastID('el-appeallastid',jsonappeal[0].id);
         } else {
-            localStorage['el-appeallastid'] = 0;
+            SaveLastID('el-appeallastid',0);
         }
         debuglog("Set last appeal ID:",localStorage['el-appeallastid']);
     }
@@ -291,15 +299,15 @@ async function CheckDmails() {
             debuglog("No spam dmails!");
         }
         if (!hamjsondmail.length && !spamjsondmail.length && jsondmail.length && (dmaillastid !== jsondmail[0].id.toString())) {
-            localStorage['el-dmaillastid'] = jsondmail[0].id;
+            SaveLastID('el-dmaillastid',jsondmail[0].id);
             debuglog("Setting DMail last ID:",localStorage['el-dmaillastid']);
         }
     } else {
         let jsondmail = await $.getJSON("/dmails", {limit: 1});
         if (jsondmail.length) {
-            localStorage['el-dmaillastid'] = jsondmail[0].id;
+            SaveLastID('el-dmaillastid',jsondmail[0].id);
         } else {
-            localStorage['el-dmaillastid'] = 0;
+            SaveLastID('el-dmaillastid',0);
         }
         debuglog("Set last dmail ID:",localStorage['el-dmaillastid']);
     }
@@ -363,16 +371,16 @@ async function CheckComments() {
         } else {
             debuglog("No comments!");
             if (jsoncomments.length && (localStorage['el-commentlastid'] !== jsoncomments[0].toString())) {
-                localStorage['el-commentlastid'] = jsoncomments[0];
+                SaveLastID('el-commentlastid',jsoncomments[0]);
                 debuglog("Setting comment last ID:",localStorage['el-commentlastid']);
             }
         }
     } else {
         let jsoncomment = await $.getJSON("/comments", {group_by: 'comment', limit: 1});
         if (jsoncomment.length) {
-            localStorage['el-commentlastid'] = jsoncomment[0].id;
+            SaveLastID('el-commentlastid',jsoncomment[0].id);
         } else {
-            localStorage['el-commentlastid'] = 0;
+            SaveLastID('el-commentlastid',0);
         }
         debuglog("Set comment last ID:",localStorage['el-commentlastid']);
     }
@@ -398,20 +406,20 @@ function InitializeNoticeBox() {
     $("#hide-event-notice").click((e)=>{
         $("#event-notice").hide();
         if (CheckFlags.lastid) {
-            localStorage['el-flaglastid'] = CheckFlags.lastid;
+            SaveLastID('el-flaglastid',CheckFlags.lastid);
             debuglog("Set last flag ID:",localStorage['el-flaglastid']);
         }
         if (CheckAppeals.lastid) {
-            localStorage['el-appeallastid'] = CheckAppeals.lastid;
+            SaveLastID('el-appeallastid',CheckAppeals.lastid);
             debuglog("Set last appeal ID:",localStorage['el-appeallastid']);
         }
         if (CheckDmails.lastid) {
-            localStorage['el-dmaillastid'] = CheckDmails.lastid;
+            SaveLastID('el-dmaillastid',CheckDmails.lastid);
             debuglog("Set last dmail ID:",localStorage['el-dmaillastid']);
             $("#hide-dmail-notice").click();
         }
         if (CheckComments.lastid) {
-            localStorage['el-commentlastid'] = CheckComments.lastid;
+            SaveLastID('el-commentlastid',CheckComments.lastid);
             debuglog("Set last comment ID:",localStorage['el-commentlastid']);
             delete localStorage['el-savedcommentlist'];
             delete localStorage['el-savedcommentlastid'];
