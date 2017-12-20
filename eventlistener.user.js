@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5
+// @version      5.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments)
 // @author       BrokenEagle
@@ -129,15 +129,12 @@ function ClearHide(selector) {
 }
 
 function GetCommentList() {
-    if (!GetCommentList.list) {
-        let commentlist = localStorage['el-commentlist'];
-        if (commentlist) {
-            GetCommentList.list = JSON.parse(commentlist);
-        } else {
-            GetCommentList.list = [];
-        }
+    let commentlist = localStorage['el-commentlist'];
+    if (commentlist) {
+        return JSON.parse(commentlist);
+    } else {
+        return [];
     }
-    return GetCommentList.list;
 }
 
 function SetCommentList(input) {
@@ -149,7 +146,6 @@ function SetCommentList(input) {
     }
     commentlist = $.unique(commentlist);
     localStorage['el-commentlist'] = JSON.stringify(commentlist);
-    GetCommentList.list = commentlist;
 }
 
 function CheckTimeout() {
