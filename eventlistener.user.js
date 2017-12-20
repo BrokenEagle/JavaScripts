@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.2
+// @version      5.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments)
 // @author       BrokenEagle
@@ -171,7 +171,7 @@ function HasEvents() {
     return false;
 }
 
-function SetTimeout() {
+function SetRecheckTimeout() {
     localStorage['el-timeout'] = Date.now() + recheck_event_interval;
 }
 
@@ -483,7 +483,7 @@ function InitializeEventNoticeCommentLinks() {
 function SubscribeCommentsClick() {
     $(".subscribe-comments a").off().click((e)=>{
         let post = $(e.target.parentElement).data('post-id');
-        SetCommentList(post);
+        setTimeout(()=>{SetCommentList(post);},1);
         FullHide(`.subscribe-comments[data-post-id=${post}]`);
         ClearHide(`.unsubscribe-comments[data-post-id=${post}]`);
         e.preventDefault();
@@ -493,7 +493,7 @@ function SubscribeCommentsClick() {
 function UnsubscribeCommentsClick() {
     $(".unsubscribe-comments a").off().click((e)=>{
         let post = $(e.target.parentElement).data('post-id');
-        SetCommentList('-' + post);
+        setTimeout(()=>{SetCommentList('-' + post);},1);
         FullHide(`.unsubscribe-comments[data-post-id=${post}]`);
         ClearHide(`.subscribe-comments[data-post-id=${post}]`);
         e.preventDefault();
@@ -511,7 +511,7 @@ function main() {
     $("#dmail-notice").hide();
     InitializeNoticeBox();
     if (CheckTimeout() || HasEvents()) {
-        SetTimeout();
+        SetRecheckTimeout();
         CheckDmails();
         CheckFlags();
         CheckAppeals();
