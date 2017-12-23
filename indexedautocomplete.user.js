@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.3
+// @version      11
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -27,6 +27,15 @@ const callback_interval = 1000;
 //Used for expiration time calculations
 const milliseconds_per_day = 1000 * 60 * 60 * 24;
 
+const autocomplete_userlist = [
+    "#search_to_name",
+    "#search_from_name",
+    "#dmail_to_name",
+    "#search_user_name",
+    "#search_banner_name",
+    "#search_creator_name",
+    "#search_approver_name"
+];
 //DOM elements with autocomplete
 const autocomplete_domlist = [
     "[data-autocomplete=tag-query]",
@@ -37,7 +46,7 @@ const autocomplete_domlist = [
     "#search_name,#quick_search_name",
     "#search_name_matches,#quick_search_name_matches",
     "#add-to-pool-dialog input[type=text]"
-];
+    ].concat(autocomplete_userlist);
 
 //Gets own instance in case forage is used in another script
 var danboorustorage = localforage.createInstance({
@@ -401,13 +410,23 @@ async function UserSourceIndexed(term, resp, metatag) {
     });
 }
 
+function UserSourceIndexedNontag(req, resp) {
+    UserSourceIndexed(req.term, resp, "");
+}
+
 function FixupUserMetatag(value,metatag) {
-    if (metatag === "@") {
-        value.value = "@" + value.name;
-        value.label = value.name;
-    } else {
-        value.value = metatag + ":" + value.name;
-        value.label = value.name.replace(/_/g, " ");
+    switch(metatag) {
+        case "@":
+            value.value = "@" + value.name;
+            value.label = value.name;
+            break;
+        case "":
+            value.value = value.name;
+            value.label = value.name.replace(/_/g, " ");
+            break;
+        default:
+            value.value = metatag + ":" + value.name;
+            value.label = value.name.replace(/_/g, " ");
     }
 }
 
@@ -735,6 +754,25 @@ function PoolInitializeAutocompleteIndexed(selector) {
     });
 }
 
+function UserInitializeAutocompleteIndexed(selector) {
+    var $fields = $(selector);
+
+    $fields.autocomplete({
+        minLength: 1,
+        delay: 100,
+        source: UserSourceIndexedNontag
+    });
+
+    var render_user = function(list, user) {
+        var $link = $("<a/>").addClass("user-" + user.level.toLowerCase()).addClass("with-style").text(user.label);
+        return $("<li/>").data("item.autocomplete", user).append($link).appendTo(list);
+    };
+
+    $fields.each(function(i, field) {
+        $(field).data("uiAutocomplete")._renderItem = render_user;
+    });
+}
+
 //Name functions
 
 function GetShortNames() {
@@ -780,6 +818,12 @@ function main() {
     if ($("#c-posts #a-show").length) {
         Danbooru.Pool.initialize_autocomplete_for = PoolInitializeAutocompleteIndexed;
         rebindPostPoolAutocomplete.timer = setInterval(rebindPostPoolAutocomplete,timer_poll_interval);
+    }
+    if ($(autocomplete_userlist.join(',')).length) {
+        UserInitializeAutocompleteIndexed(autocomplete_userlist.join(','));
+    }
+    if ($('[placeholder="Search users"]').length) {
+        UserInitializeAutocompleteIndexed("#search_name_matches,#quick_search_name_matches");
     }
     if (debug_console) {
         window.onbeforeunload = function () {
