@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.3
+// @version      6
 // @source       https://danbooru.donmai.us/users/23799
-// @description  Informs users of new events (flags,appeals,dmails,comments)
+// @description  Informs users of new events (flags,appeals,dmails,comments,forums)
 // @author       BrokenEagle
 // @match        *://*.donmai.us/*
 // @grant        none
@@ -45,15 +45,19 @@ const notice_box = `
         <h1>You've got appeals!</h1>
         <div id="appeal-table"></div>
     </div>
-    <div id="spam-dmail-section"  style="display:none">
-        <h1>You've got spam!</h1>
-        <div id="spam-dmail-table"></div>
+    <div id="forums-section"  style="display:none">
+        <h1>You've got forums!</h1>
+        <div id="forums-table"></div>
     </div>
     <div id="comments-section"  class="comments-for-post" style="display:none">
         <h1>You've got comments!</h1>
         <div id="comments-table"></div>
     </div>
-  <p><a href="#" id="hide-event-notice">Close this</a></p>
+    <div id="spam-dmail-section"  style="display:none">
+        <h1>You've got spam!</h1>
+        <div id="spam-dmail-table"></div>
+    </div>
+    <p><a href="#" id="hide-event-notice">Close this</a></p>
 </div>
 `;
 
@@ -92,6 +96,18 @@ const comment_css = `
     display: block;
 }
 `;
+
+//Fix for showing forum posts
+const forum_css = `
+#event-notice #forums-section #forums-table .author {
+    padding: 1em 1em 0 1em;
+    width: 12em;
+    float: left;
+}
+#event-notice #forums-section #forums-table .content {
+    padding: 1em;
+    margin-left: 14em;
+}`;
 
 //Helper functions
 
@@ -146,6 +162,26 @@ function SetCommentList(input) {
     }
     commentlist = $.unique(commentlist);
     localStorage['el-commentlist'] = JSON.stringify(commentlist);
+}
+
+function GetForumList() {
+    let forumlist = localStorage['el-forumlist'];
+    if (forumlist) {
+        return JSON.parse(forumlist);
+    } else {
+        return [];
+    }
+}
+
+function SetForumList(input) {
+    let forumlist = GetForumList();
+    if (input[0] == '-') {
+        forumlist = forumlist.filter((val)=>{return val != input.slice(1);});
+    } else {
+        forumlist.push(parseInt(input));
+    }
+    forumlist = $.unique(forumlist);
+    localStorage['el-forumlist'] = JSON.stringify(forumlist);
 }
 
 function SaveLastID(key,lastid) {
@@ -390,10 +426,85 @@ CheckComments.lastid = 0;
 CheckComments.hasevents = false;
 CheckComments.isdone = false;
 
+async function CheckForums() {
+    let forumlastid = localStorage['el-forumlastid'];
+    let forumlist = GetForumList();
+    if (forumlastid) {
+        var jsonforums = [], subscribeforums = [];
+        if (!localStorage['el-savedforumlist']) {
+            let tempforums;
+            while (true) {
+                tempforums = jsonforums;
+                jsonforums = await $.getJSON("/forum_posts", {page: 'a' + forumlastid, limit: display_limit});
+                subscribeforums = jsonforums.filter((val)=>{return (val.creator_id !== userid) && (forumlist.indexOf(val.topic_id) >= 0);}).concat(subscribeforums);
+                if (jsonforums.length === display_limit) {
+                    forumlastid = jsonforums[0].id.toString();
+                    debuglog("Rechecking @",forumlastid);
+                    continue;
+                } else if (jsonforums.length === 0) {
+                    jsonforums = tempforums;
+                }
+                break;
+            }
+            if (subscribeforums.length) {
+                localStorage['el-savedforumlist'] = JSON.stringify(subscribeforums.map((val)=>{return {id:val.id,topic:val.topic_id};}));
+                subscribeforums = subscribeforums.map((val)=>{return val.id;});
+            }
+            if (jsonforums.length) {
+                jsonforums = [jsonforums[0].id];
+                localStorage['el-savedforumlastid'] = JSON.stringify(jsonforums);
+            }
+        } else {
+            subscribeforums = JSON.parse(localStorage['el-savedforumlist']);
+            subscribeforums = subscribeforums.filter(value=>{return forumlist.indexOf(value.topic) >= 0;});
+            jsonforums = JSON.parse(localStorage['el-savedforumlastid']);
+            if (!subscribeforums.length) {
+                debuglog("Deleting saved forum values");
+                delete localStorage['el-savedforumlist'];
+                delete localStorage['el-savedforumlastid'];
+            } else {
+                subscribeforums = subscribeforums.map((val)=>{return val.id;});
+            }
+        }
+        if (subscribeforums.length) {
+            debuglog("Found forums!",jsonforums[0]);
+            CheckForums.lastid = jsonforums[0];
+            let forumshtml = await $.get("/forum_posts", {search: {id: subscribeforums.join(',')}, limit: subscribeforums.length});
+            let $forums = $(forumshtml);
+            //HideNonsubscribeComments($comments);
+            let $forums_table = $("#forums-table");
+            $forums_table.append($(".striped",$forums));
+            InitializeTopicIndexLinks($forums_table);
+            InitializeOpenForumLinks($forums_table);
+            $("#event-notice").show();
+            $("#forums-section").show();
+            CheckForums.hasevents = true;
+        } else {
+            debuglog("No forums!");
+            if (jsonforums.length && (localStorage['el-forumlastid'] !== jsonforums[0].toString())) {
+                SaveLastID('el-forumlastid',jsonforums[0]);
+                debuglog("Setting forum last ID:",localStorage['el-forumlastid']);
+            }
+        }
+    } else {
+        let jsonforum = await $.getJSON("/forum_posts", {limit: 1});
+        if (jsonforum.length) {
+            SaveLastID('el-forumlastid',jsonforum[0].id);
+        } else {
+            SaveLastID('el-forumlastid',0);
+        }
+        debuglog("Set forum last ID:",localStorage['el-forumlastid']);
+    }
+    CheckForums.isdone = true;
+}
+CheckForums.lastid = 0;
+CheckForums.hasevents = false;
+CheckForums.isdone = false;
+
 function CheckAllEvents() {
-    if (CheckFlags.isdone && CheckAppeals.isdone && CheckDmails.isdone && CheckComments.isdone) {
+    if (CheckFlags.isdone && CheckAppeals.isdone && CheckDmails.isdone && CheckComments.isdone && CheckForums.isdone) {
         clearInterval(CheckAllEvents.timer);
-        if (CheckFlags.hasevents || CheckAppeals.hasevents || CheckDmails.hasevents || CheckComments.hasevents) {
+        if (CheckFlags.hasevents || CheckAppeals.hasevents || CheckDmails.hasevents || CheckComments.hasevents || CheckForums.hasevents) {
             localStorage['el-events'] = true;
         } else {
             localStorage['el-events'] = false;
@@ -425,6 +536,13 @@ function InitializeNoticeBox() {
             delete localStorage['el-savedcommentlastid'];
             debuglog("Deleted saved values!");
         }
+        if (CheckForums.lastid) {
+            SaveLastID('el-forumlastid',CheckForums.lastid);
+            debuglog("Set last comment ID:",localStorage['el-forumlastid']);
+            delete localStorage['el-savedforumlist'];
+            delete localStorage['el-savedforumlastid'];
+            debuglog("Deleted saved values!");
+        }
         localStorage['el-events'] = false;
         e.preventDefault();
     });
@@ -438,11 +556,57 @@ function RenderCommentPartialPostLinks(postid,tag,separator) {
            `<${tag} data-post-id="${postid}" class="unsubscribe-comments" ${unsubscribe}"><a href="#">Unsubscribe${separator}comments</a></${tag}>`;
 }
 
+function RenderForumTopicLinks(topicid,tag,ender) {
+    let forumlist = GetForumList();
+    let subscribe = (forumlist.indexOf(topicid) < 0 ? "style": 'style="display:none !important"');
+    let unsubscribe = (forumlist.indexOf(topicid) < 0 ? 'style="display:none !important"' : "style");
+    return `<${tag} data-topic-id="${topicid}" class="subscribe-topic" ${subscribe}><a href="#">Subscribe${ender}</a></${tag}>` +
+           `<${tag} data-topic-id="${topicid}" class="unsubscribe-topic" ${unsubscribe}"><a href="#">Unsubscribe${ender}</a></${tag}>`;
+}
+
+function RenderOpenForumLinks(forumid) {
+    return `<span data-forum-id="${forumid}" class="show-full-forum" style><a href="#">Show</a></span>` +
+           `<span data-forum-id="${forumid}" class="hide-full-forum" style="display:none !important"><a href="#">Hide</a></span>&nbsp;|&nbsp;`;
+}
+
+function InitializeOpenForumLinks($obj) {
+    $.each($(".striped tbody tr",$obj),(i,$row)=>{
+        let forumid = $row.id.match(/(\d+)$/)[1];
+        $(".forum-post-excerpt",$row).prepend(RenderOpenForumLinks(forumid));
+    });
+    ShowFullForumClick($obj);
+    HideFullForumClick($obj);
+}
+
 function InitializePostCommentLinks() {
     var postid = parseInt(Danbooru.meta('post-id'));
     $("#nav > menu:nth-child(2)").append(RenderCommentPartialPostLinks(postid,"li"," "));
     SubscribeCommentsClick();
     UnsubscribeCommentsClick();
+}
+
+function InitializeTopicShowLinks() {
+    var topicid = parseInt($("#forum_post_topic_id").attr("value"));
+    if (!topicid) {
+        let $obj = $('a[href$="/subscribe"],a[href$="/unsubscribe"]');
+        let match = $obj.attr("href").match(/\/forum_topics\/(\d+)\/(?:un)?subscribe/);
+        if (!match) {
+            return;
+        }
+        topicid = parseInt(match[1]);
+    }
+    $("#nav > menu:nth-child(2)").append(RenderForumTopicLinks(topicid,"li"," topic"));
+    SubscribeTopicClick();
+    UnsubscribeTopicClick();
+}
+
+function InitializeTopicIndexLinks($obj) {
+    $.each($(".striped tr td:first-of-type",$obj), (i,entry)=>{
+        let topicid = parseInt(entry.innerHTML.match(/\/forum_topics\/(\d+)/)[1]);
+        $(entry).prepend(RenderForumTopicLinks(topicid,"span","")+'&nbsp|&nbsp');
+    });
+    SubscribeTopicClick();
+    UnsubscribeTopicClick();
 }
 
 function InitializeCommentPartialPostLinks() {
@@ -500,6 +664,64 @@ function UnsubscribeCommentsClick() {
     });
 }
 
+function SubscribeTopicClick() {
+    $(".subscribe-topic a").off().click((e)=>{
+        let topic = $(e.target.parentElement).data('topic-id');
+        console.log("topic");
+        setTimeout(()=>{SetForumList(topic);},1);
+        FullHide(`.subscribe-topic[data-topic-id=${topic}]`);
+        ClearHide(`.unsubscribe-topic[data-topic-id=${topic}]`);
+        e.preventDefault();
+    });
+}
+
+function UnsubscribeTopicClick() {
+    $(".unsubscribe-topic a").off().click((e)=>{
+        let topic = $(e.target.parentElement).data('topic-id');
+        console.log("topic",topic);
+        setTimeout(()=>{SetForumList('-' + topic);},1);
+        FullHide(`.unsubscribe-topic[data-topic-id=${topic}]`);
+        ClearHide(`.subscribe-topic[data-topic-id=${topic}]`);
+        e.preventDefault();
+    });
+}
+
+function ShowFullForumClick($obj) {
+    $(".show-full-forum a").off().click(function(e){
+        let forumid = $(e.target.parentElement).data('forum-id');
+        console.log(forumid);
+        if (ShowFullForumClick.openlist.indexOf(forumid) < 0) {
+            let $rowelement = e.target.parentElement.parentElement.parentElement;
+            AddForumPost(forumid,$rowelement);
+            ShowFullForumClick.openlist.push(forumid);
+        }
+        FullHide(`.show-full-forum[data-forum-id=${forumid}]`);
+        ClearHide(`.hide-full-forum[data-forum-id=${forumid}]`);
+        $(`#full-forum-id-${forumid}`).show();
+        e.preventDefault();
+    });
+}
+ShowFullForumClick.openlist = [];
+
+async function AddForumPost(forumid,$rowelement) {
+    let forum_post = await $.get(`/forum_posts/${forumid}`);
+    let $forum_post = $.parseHTML(forum_post);
+    let $outerblock = $.parseHTML(`<tr id="full-forum-id-${forumid}"><td colspan="4"></td></tr>`);
+    $("td",$outerblock).append($(".forum-post",$forum_post));
+    $($rowelement).after($outerblock);
+}
+
+function HideFullForumClick($obj) {
+    $(".hide-full-forum a").off().click(function(e){
+        let forumid = $(e.target.parentElement).data('forum-id');
+        console.log(forumid);
+        FullHide(`.hide-full-forum[data-forum-id=${forumid}]`);
+        ClearHide(`.show-full-forum[data-forum-id=${forumid}]`);
+        $(`#full-forum-id-${forumid}`).hide();
+        e.preventDefault();
+    });
+}
+
 function main() {
     username = Danbooru.meta('current-user-name');
     userid = Danbooru.meta('current-user-id');
@@ -521,6 +743,12 @@ function main() {
         } else {
             CheckComments.isdone = true;
         }
+        if (GetForumList().length) {
+            setCSSStyle(forum_css);
+            CheckForums();
+        } else {
+            CheckForums.isdone = true;
+        }
         CheckAllEvents.timer = setInterval(CheckAllEvents,timer_poll_interval);
     } else {
         debuglog("Waiting...");
@@ -531,6 +759,13 @@ function main() {
         InitializeCommentPartialPostLinks();
     } else if ($("#c-comments #a-index #p-index-by-comment").length) {
         InitializeCommentPartialCommentLinks();
+    }
+    if ($("#c-forum-topics #a-show").length) {
+        InitializeTopicShowLinks();
+        $('a[href$="/subscribe"]').text("Subscribe email");
+        $('a[href$="/unsubscribe"]').text("Unsubscribe email");
+    } else if ($("#c-forum-topics #a-index,#c-forum-posts #a-index").length) {
+        InitializeTopicIndexLinks(document);
     }
     setCSSStyle(eventlistener_css);
 }
