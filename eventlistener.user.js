@@ -11,6 +11,8 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/eventlistener.user.js
 // ==/UserScript==
 
+/****Global variables****/
+
 //Set to true to switch the debug info on
 const debug_console = true;
 
@@ -109,7 +111,7 @@ const forum_css = `
     margin-left: 14em;
 }`;
 
-//Helper functions
+/****Helper functions****/
 
 function debuglog(args) {
     if (debug_console) {
@@ -234,7 +236,15 @@ function HideNonsubscribeComments($comments) {
     });
 }
 
-//Main functions
+async function AddForumPost(forumid,$rowelement) {
+    let forum_post = await $.get(`/forum_posts/${forumid}`);
+    let $forum_post = $.parseHTML(forum_post);
+    let $outerblock = $.parseHTML(`<tr id="full-forum-id-${forumid}"><td colspan="4"></td></tr>`);
+    $("td",$outerblock).append($(".forum-post",$forum_post));
+    $($rowelement).after($outerblock);
+}
+
+/****Main execution functions****/
 
 async function CheckFlags() {
     let flaglastid = localStorage['el-flaglastid'];
@@ -471,7 +481,6 @@ async function CheckForums() {
             CheckForums.lastid = jsonforums[0];
             let forumshtml = await $.get("/forum_posts", {search: {id: subscribeforums.join(',')}, limit: subscribeforums.length});
             let $forums = $(forumshtml);
-            //HideNonsubscribeComments($comments);
             let $forums_table = $("#forums-table");
             $forums_table.append($(".striped",$forums));
             InitializeTopicIndexLinks($forums_table);
@@ -501,6 +510,8 @@ CheckForums.lastid = 0;
 CheckForums.hasevents = false;
 CheckForums.isdone = false;
 
+/****Callback functions****/
+
 function CheckAllEvents() {
     if (CheckFlags.isdone && CheckAppeals.isdone && CheckDmails.isdone && CheckComments.isdone && CheckForums.isdone) {
         clearInterval(CheckAllEvents.timer);
@@ -512,41 +523,7 @@ function CheckAllEvents() {
     }
 }
 
-function InitializeNoticeBox() {
-    $("#page").prepend(notice_box);
-    $("#hide-event-notice").click((e)=>{
-        $("#event-notice").hide();
-        if (CheckFlags.lastid) {
-            SaveLastID('el-flaglastid',CheckFlags.lastid);
-            debuglog("Set last flag ID:",localStorage['el-flaglastid']);
-        }
-        if (CheckAppeals.lastid) {
-            SaveLastID('el-appeallastid',CheckAppeals.lastid);
-            debuglog("Set last appeal ID:",localStorage['el-appeallastid']);
-        }
-        if (CheckDmails.lastid) {
-            SaveLastID('el-dmaillastid',CheckDmails.lastid);
-            debuglog("Set last dmail ID:",localStorage['el-dmaillastid']);
-            $("#hide-dmail-notice").click();
-        }
-        if (CheckComments.lastid) {
-            SaveLastID('el-commentlastid',CheckComments.lastid);
-            debuglog("Set last comment ID:",localStorage['el-commentlastid']);
-            delete localStorage['el-savedcommentlist'];
-            delete localStorage['el-savedcommentlastid'];
-            debuglog("Deleted saved values!");
-        }
-        if (CheckForums.lastid) {
-            SaveLastID('el-forumlastid',CheckForums.lastid);
-            debuglog("Set last comment ID:",localStorage['el-forumlastid']);
-            delete localStorage['el-savedforumlist'];
-            delete localStorage['el-savedforumlastid'];
-            debuglog("Deleted saved values!");
-        }
-        localStorage['el-events'] = false;
-        e.preventDefault();
-    });
-}
+/****Render functions****/
 
 function RenderCommentPartialPostLinks(postid,tag,separator) {
     let commentlist = GetCommentList();
@@ -567,6 +544,13 @@ function RenderForumTopicLinks(topicid,tag,ender) {
 function RenderOpenForumLinks(forumid) {
     return `<span data-forum-id="${forumid}" class="show-full-forum" style><a href="#">Show</a></span>` +
            `<span data-forum-id="${forumid}" class="hide-full-forum" style="display:none !important"><a href="#">Hide</a></span>&nbsp;|&nbsp;`;
+}
+
+/****Initialize functions****/
+
+function InitializeNoticeBox() {
+    $("#page").prepend(notice_box);
+    HideEventNoticeClick();
 }
 
 function InitializeOpenForumLinks($obj) {
@@ -644,6 +628,43 @@ function InitializeEventNoticeCommentLinks() {
     UnsubscribeCommentsClick();
 }
 
+/****Click functions****/
+
+function HideEventNoticeClick() {
+    $("#hide-event-notice").click((e)=>{
+        $("#event-notice").hide();
+        if (CheckFlags.lastid) {
+            SaveLastID('el-flaglastid',CheckFlags.lastid);
+            debuglog("Set last flag ID:",localStorage['el-flaglastid']);
+        }
+        if (CheckAppeals.lastid) {
+            SaveLastID('el-appeallastid',CheckAppeals.lastid);
+            debuglog("Set last appeal ID:",localStorage['el-appeallastid']);
+        }
+        if (CheckDmails.lastid) {
+            SaveLastID('el-dmaillastid',CheckDmails.lastid);
+            debuglog("Set last dmail ID:",localStorage['el-dmaillastid']);
+            $("#hide-dmail-notice").click();
+        }
+        if (CheckComments.lastid) {
+            SaveLastID('el-commentlastid',CheckComments.lastid);
+            debuglog("Set last comment ID:",localStorage['el-commentlastid']);
+            delete localStorage['el-savedcommentlist'];
+            delete localStorage['el-savedcommentlastid'];
+            debuglog("Deleted saved values!");
+        }
+        if (CheckForums.lastid) {
+            SaveLastID('el-forumlastid',CheckForums.lastid);
+            debuglog("Set last comment ID:",localStorage['el-forumlastid']);
+            delete localStorage['el-savedforumlist'];
+            delete localStorage['el-savedforumlastid'];
+            debuglog("Deleted saved values!");
+        }
+        localStorage['el-events'] = false;
+        e.preventDefault();
+    });
+}
+
 function SubscribeCommentsClick() {
     $(".subscribe-comments a").off().click((e)=>{
         let post = $(e.target.parentElement).data('post-id');
@@ -703,14 +724,6 @@ function ShowFullForumClick($obj) {
 }
 ShowFullForumClick.openlist = [];
 
-async function AddForumPost(forumid,$rowelement) {
-    let forum_post = await $.get(`/forum_posts/${forumid}`);
-    let $forum_post = $.parseHTML(forum_post);
-    let $outerblock = $.parseHTML(`<tr id="full-forum-id-${forumid}"><td colspan="4"></td></tr>`);
-    $("td",$outerblock).append($(".forum-post",$forum_post));
-    $($rowelement).after($outerblock);
-}
-
 function HideFullForumClick($obj) {
     $(".hide-full-forum a").off().click(function(e){
         let forumid = $(e.target.parentElement).data('forum-id');
@@ -721,6 +734,8 @@ function HideFullForumClick($obj) {
         e.preventDefault();
     });
 }
+
+/****Main****/
 
 function main() {
     username = Danbooru.meta('current-user-name');
@@ -770,6 +785,8 @@ function main() {
     setCSSStyle(eventlistener_css);
 }
 
+/****Program load****/
+
 //Wait until program is ready before executing
 function programLoad() {
     if (programLoad.retries >= program_load_max_retries) {
@@ -794,7 +811,7 @@ function programLoad() {
 }
 programLoad.retries = 0;
 
-//Execution start
+/****Execution start****/
 
 debugTime("EL-programLoad");
 if (!programLoad()) {
