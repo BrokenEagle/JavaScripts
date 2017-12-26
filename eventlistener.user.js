@@ -219,17 +219,6 @@ function SetRecheckTimeout() {
     localStorage['el-timeout'] = Date.now() + recheck_event_interval;
 }
 
-function HideUsersAppeals($appeal) {
-    $.each($("tr",$appeal),(i,row)=>{
-        if (i === 0) {
-            return;
-        }
-        if ($("td:nth-of-type(6) a",row)[0].innerHTML === username) {
-            $(row).hide();
-        }
-    });
-}
-
 async function AddForumPost(forumid,$rowelement) {
     let forum_post = await $.get(`/forum_posts/${forumid}`);
     let $forum_post = $.parseHTML(forum_post);
@@ -243,11 +232,13 @@ async function AddForumPost(forumid,$rowelement) {
 async function CheckFlags() {
     let flaglastid = localStorage['el-flaglastid'];
     if (flaglastid) {
-        let jsonflag = await $.getJSON("/post_flags", {search: {category: 'normal',is_resolved: false, post_tags_match: "status:flagged user:" + username},page: 'a' + flaglastid,limit: display_limit});
+        let jsonflag = await $.getJSON("/post_flags", {search: {category: 'normal',post_tags_match: "user:" + username},page: 'a' + flaglastid,limit: display_limit});
+        jsonflag = jsonflag.filter((val)=>{return !('creator_id' in val);});
         if (jsonflag.length) {
             debuglog("Found flags!",jsonflag[0].id);
             CheckFlags.lastid = jsonflag[0].id;
-            let flaghtml = await $.get("/post_flags", {search: {category: 'normal',is_resolved: false, post_tags_match: "status:flagged user:" + username},page: 'a' + flaglastid});
+            let flaglist = jsonflag.map((val)=>{return val.id;});
+            let flaghtml = await $.get("/post_flags", {search: {id: flaglist.join(',')}, limit: flaglist.length});
             let $flag = $(flaghtml);
             $("#flag-table").append($(".striped",$flag));
             $("#flag-table .post-preview").addClass("blacklisted");
@@ -275,14 +266,14 @@ CheckFlags.isdone = false;
 async function CheckAppeals() {
     let appeallastid = localStorage['el-appeallastid'];
     if (appeallastid) {
-        let jsonappeal = await $.getJSON("/post_appeals", {search: {is_resolved: false, post_tags_match: "status:deleted user:" + username},page: 'a' + appeallastid,limit: display_limit});
+        let jsonappeal = await $.getJSON("/post_appeals", {search: {post_tags_match: "user:" + username},page: 'a' + appeallastid,limit: display_limit});
         jsonappeal = jsonappeal.filter((val)=>{return val.creator_id !== userid;});
         if (jsonappeal.length) {
             debuglog("Found appeals!",jsonappeal[0].id);
             CheckAppeals.lastid = jsonappeal[0].id;
-            let appealhtml = await $.get("/post_appeals", {search: {is_resolved: false, post_tags_match: "status:deleted user:" + username},page: 'a' + appeallastid});
+            let appeallist = jsonappeal.map((val)=>{return val.id;});
+            let appealhtml = await $.get("/post_appeals", {search: {id: appeallist.join(',')}, limit: appeallist.length});
             let $appeal = $(appealhtml);
-            HideUsersAppeals($appeal);
             $("#appeal-table").append($(".striped",$appeal));
             $("#appeal-table .post-preview").addClass("blacklisted");
             $("#event-notice").show();
