@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6
+// @version      6.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums)
 // @author       BrokenEagle
@@ -77,6 +77,12 @@ const eventlistener_css = `
 #c-comments #a-index #p-index-by-comment .preview,
 #event-notice #comments-section #comments-table .preview {
     margin-right: 0;
+}
+.striped .subscribe-topic a,
+.striped .unsubscribe-topic,
+#event-notice .show-full-forum,
+#event-notice .hide-full-forum {
+    font-family: monospace;
 }
 `;
 
@@ -533,11 +539,12 @@ function RenderCommentPartialPostLinks(postid,tag,separator) {
            `<${tag} data-post-id="${postid}" class="unsubscribe-comments" ${unsubscribe}"><a href="#">Unsubscribe${separator}comments</a></${tag}>`;
 }
 
-function RenderForumTopicLinks(topicid,tag,ender) {
+function RenderForumTopicLinks(topicid,tag,ender,right=false) {
     let forumlist = GetForumList();
     let subscribe = (forumlist.indexOf(topicid) < 0 ? "style": 'style="display:none !important"');
     let unsubscribe = (forumlist.indexOf(topicid) < 0 ? 'style="display:none !important"' : "style");
-    return `<${tag} data-topic-id="${topicid}" class="subscribe-topic" ${subscribe}><a href="#">Subscribe${ender}</a></${tag}>` +
+    let spacer = (right ? "&nbsp;&nbsp;" : "");
+    return `<${tag} data-topic-id="${topicid}" class="subscribe-topic" ${subscribe}><a href="#">${spacer}Subscribe${ender}</a></${tag}>` +
            `<${tag} data-topic-id="${topicid}" class="unsubscribe-topic" ${unsubscribe}"><a href="#">Unsubscribe${ender}</a></${tag}>`;
 }
 
@@ -587,7 +594,7 @@ function InitializeTopicShowLinks() {
 function InitializeTopicIndexLinks($obj) {
     $.each($(".striped tr td:first-of-type",$obj), (i,entry)=>{
         let topicid = parseInt(entry.innerHTML.match(/\/forum_topics\/(\d+)/)[1]);
-        $(entry).prepend(RenderForumTopicLinks(topicid,"span","")+'&nbsp|&nbsp');
+        $(entry).prepend(RenderForumTopicLinks(topicid,"span","",true)+'&nbsp|&nbsp');
     });
     SubscribeTopicClick();
     UnsubscribeTopicClick();
