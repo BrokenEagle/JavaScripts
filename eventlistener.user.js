@@ -230,18 +230,6 @@ function HideUsersAppeals($appeal) {
     });
 }
 
-function HideNonsubscribeComments($comments) {
-    let commentlist = GetCommentList();
-    $(".post-preview",$comments).addClass("blacklisted");
-    $(".edit_comment",$comments).hide();
-    $.each($(".post-preview",$comments), (i,entry)=>{
-        let $entry = $(entry);
-        if (commentlist.indexOf($entry.data('id')) < 0) {
-            $entry.addClass("blacklisted-active");
-        }
-    });
-}
-
 async function AddForumPost(forumid,$rowelement) {
     let forum_post = await $.get(`/forum_posts/${forumid}`);
     let $forum_post = $.parseHTML(forum_post);
@@ -414,7 +402,8 @@ async function CheckComments() {
             CheckComments.lastid = jsoncomments[0];
             let commentshtml = await $.get("/comments", {group_by: 'comment', search: {id: subscribecomments.join(',')}, limit: subscribecomments.length});
             let $comments = $(commentshtml);
-            HideNonsubscribeComments($comments);
+            $(".post-preview",$comments).addClass("blacklisted");
+            $(".edit_comment",$comments).hide();
             $("#comments-table").append($(".list-of-comments",$comments));
             InitializeEventNoticeCommentLinks();
             $("#event-notice").show();
