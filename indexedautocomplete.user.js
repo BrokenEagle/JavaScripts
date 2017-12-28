@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10
+// @version      10.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -738,10 +738,7 @@ function PoolInitializeAutocompleteIndexed(selector) {
 //Name functions
 
 function GetShortNames() {
-    if (GetShortName.shortnames === undefined) {
-        GetShortName.shortnames = JSON.parse(Danbooru.meta("short-tag-category-names"));
-    }
-    return GetShortName.shortnames;
+    return ['art','char','copy','gen','meta'];
 }
 
 function GetShortName(category) {
