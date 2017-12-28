@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.1
+// @version      10.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -632,7 +632,7 @@ function rebindRelatedTags() {
         clearInterval(rebindRelatedTags.timer);
         $("#related-tags-button").off();
         Danbooru.RelatedTag.common_bind("#related-tags-button", "");
-        var related_buttons = JSON.parse(Danbooru.meta("related-tag-button-list"));
+        var related_buttons = ['general','artist','character','copyright'];
         $.each(related_buttons, function(i,category) {
             $(`#related-${category}-button`).off();
             Danbooru.RelatedTag.common_bind("#related-" + category + "-button", category);
