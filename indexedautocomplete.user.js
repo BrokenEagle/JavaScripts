@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.2
+// @version      10.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -642,7 +642,7 @@ function rebindRelatedTags() {
 
 function rebindWikiPageAutocomplete() {
     var $fields = $("#search_title,#quick_search_title");
-    if ($fields.length && (('uiAutocomplete' in $.data($fields[0])) || $("#c-wiki-page-versions").length)) {
+    if ($fields.length && ('uiAutocomplete' in $.data($fields[0]))) {
         clearInterval(rebindWikiPageAutocomplete.timer);
         $fields.off().removeData();
         Danbooru.WikiPage.initialize_autocomplete();
