@@ -704,7 +704,6 @@ function UnsubscribeCommentsClick() {
 function SubscribeTopicClick() {
     $(".subscribe-topic a").off().click((e)=>{
         let topic = $(e.target.parentElement).data('topic-id');
-        console.log("topic");
         setTimeout(()=>{SetForumList(topic);},1);
         FullHide(`.subscribe-topic[data-topic-id=${topic}]`);
         ClearHide(`.unsubscribe-topic[data-topic-id=${topic}]`);
@@ -715,7 +714,6 @@ function SubscribeTopicClick() {
 function UnsubscribeTopicClick() {
     $(".unsubscribe-topic a").off().click((e)=>{
         let topic = $(e.target.parentElement).data('topic-id');
-        console.log("topic",topic);
         setTimeout(()=>{SetForumList('-' + topic);},1);
         FullHide(`.unsubscribe-topic[data-topic-id=${topic}]`);
         ClearHide(`.subscribe-topic[data-topic-id=${topic}]`);
@@ -726,7 +724,6 @@ function UnsubscribeTopicClick() {
 function ShowFullForumClick($obj) {
     $(".show-full-forum a").off().click(function(e){
         let forumid = $(e.target.parentElement).data('forum-id');
-        console.log(forumid);
         if (ShowFullForumClick.openlist.indexOf(forumid) < 0) {
             let $rowelement = e.target.parentElement.parentElement.parentElement;
             AddForumPost(forumid,$rowelement);
@@ -743,7 +740,6 @@ ShowFullForumClick.openlist = [];
 function HideFullForumClick($obj) {
     $(".hide-full-forum a").off().click(function(e){
         let forumid = $(e.target.parentElement).data('forum-id');
-        console.log(forumid);
         FullHide(`.hide-full-forum[data-forum-id=${forumid}]`);
         ClearHide(`.show-full-forum[data-forum-id=${forumid}]`);
         $(`#full-forum-id-${forumid}`).hide();
@@ -754,7 +750,6 @@ function HideFullForumClick($obj) {
 function ShowFullDmailClick($obj) {
     $(".show-full-dmail a").off().click(function(e){
         let dmailid = $(e.target.parentElement).data('dmail-id');
-        console.log(dmailid);
         if (ShowFullDmailClick.openlist.indexOf(dmailid) < 0) {
             let $rowelement = e.target.parentElement.parentElement.parentElement;
             AddDmail(dmailid,$rowelement);
@@ -771,7 +766,6 @@ ShowFullDmailClick.openlist = [];
 function HideFullDmailClick($obj) {
     $(".hide-full-dmail a").off().click(function(e){
         let dmailid = $(e.target.parentElement).data('dmail-id');
-        console.log(dmailid);
         FullHide(`.hide-full-dmail[data-dmail-id=${dmailid}]`);
         ClearHide(`.show-full-dmail[data-dmail-id=${dmailid}]`);
         $(`#full-dmail-id-${dmailid}`).hide();
