@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.1
+// @version      7
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums)
 // @author       BrokenEagle
@@ -81,7 +81,9 @@ const eventlistener_css = `
 .striped .subscribe-topic a,
 .striped .unsubscribe-topic,
 #event-notice .show-full-forum,
-#event-notice .hide-full-forum {
+#event-notice .hide-full-forum,
+#event-notice .show-full-dmail,
+#event-notice .hide-full-dmail {
     font-family: monospace;
 }
 `;
@@ -227,6 +229,15 @@ async function AddForumPost(forumid,$rowelement) {
     $($rowelement).after($outerblock);
 }
 
+async function AddDmail(dmailid,$rowelement) {
+    let dmail = await $.get(`/dmails/${dmailid}`);
+    let $dmail = $.parseHTML(dmail);
+    $(".dmail h1:first-of-type",$dmail).hide();
+    let $outerblock = $.parseHTML(`<tr id="full-dmail-id-${dmailid}"><td colspan="4"></td></tr>`);
+    $("td",$outerblock).append($(".dmail",$dmail));
+    $($rowelement).after($outerblock);
+}
+
 /****Main execution functions****/
 
 async function CheckFlags() {
@@ -310,6 +321,8 @@ async function CheckDmails() {
             let $hamdmail = $(hamdmailhtml);
             $("tr.read-false", $hamdmail).css("font-weight","bold");
             $("#ham-dmail-table").append($(".striped",$hamdmail));
+            let $dmails_table = $("#ham-dmail-table");
+            InitializeOpenDmailLinks($dmails_table);
             $("#event-notice").show();
             $("#ham-dmail-section").show();
             CheckDmails.hasevents = true;
@@ -323,6 +336,8 @@ async function CheckDmails() {
             let $spamdmail = $(spamdmailhtml);
             $("tr.read-false", $spamdmail).css("font-weight","bold");
             $("#spam-dmail-table").append($(".striped",$spamdmail));
+            let $dmails_table = $("#spam-dmail-table");
+            InitializeOpenDmailLinks($dmails_table);
             $("#event-notice").show();
             $("#spam-dmail-section").show();
             CheckDmails.hasevents = true;
@@ -533,6 +548,11 @@ function RenderOpenForumLinks(forumid) {
            `<span data-forum-id="${forumid}" class="hide-full-forum" style="display:none !important"><a href="#">Hide</a></span>&nbsp;|&nbsp;`;
 }
 
+function RenderOpenDmailLinks(dmailid) {
+    return `<span data-dmail-id="${dmailid}" class="show-full-dmail" style><a href="#">Show</a></span>` +
+           `<span data-dmail-id="${dmailid}" class="hide-full-dmail" style="display:none !important"><a href="#">Hide</a></span>&nbsp;|&nbsp;`;
+}
+
 /****Initialize functions****/
 
 function InitializeNoticeBox() {
@@ -547,6 +567,15 @@ function InitializeOpenForumLinks($obj) {
     });
     ShowFullForumClick($obj);
     HideFullForumClick($obj);
+}
+
+function InitializeOpenDmailLinks($obj) {
+    $.each($(".striped tbody tr",$obj),(i,$row)=>{
+        let dmailid = $row.innerHTML.match(/\/dmails\/(\d+)/)[1];
+        $("td:nth-of-type(4)",$row).prepend(RenderOpenDmailLinks(dmailid));
+    });
+    ShowFullDmailClick($obj);
+    HideFullDmailClick($obj);
 }
 
 function InitializePostCommentLinks() {
@@ -718,6 +747,34 @@ function HideFullForumClick($obj) {
         FullHide(`.hide-full-forum[data-forum-id=${forumid}]`);
         ClearHide(`.show-full-forum[data-forum-id=${forumid}]`);
         $(`#full-forum-id-${forumid}`).hide();
+        e.preventDefault();
+    });
+}
+
+function ShowFullDmailClick($obj) {
+    $(".show-full-dmail a").off().click(function(e){
+        let dmailid = $(e.target.parentElement).data('dmail-id');
+        console.log(dmailid);
+        if (ShowFullDmailClick.openlist.indexOf(dmailid) < 0) {
+            let $rowelement = e.target.parentElement.parentElement.parentElement;
+            AddDmail(dmailid,$rowelement);
+            ShowFullDmailClick.openlist.push(dmailid);
+        }
+        FullHide(`.show-full-dmail[data-dmail-id=${dmailid}]`);
+        ClearHide(`.hide-full-dmail[data-dmail-id=${dmailid}]`);
+        $(`#full-dmail-id-${dmailid}`).show();
+        e.preventDefault();
+    });
+}
+ShowFullDmailClick.openlist = [];
+
+function HideFullDmailClick($obj) {
+    $(".hide-full-dmail a").off().click(function(e){
+        let dmailid = $(e.target.parentElement).data('dmail-id');
+        console.log(dmailid);
+        FullHide(`.hide-full-dmail[data-dmail-id=${dmailid}]`);
+        ClearHide(`.show-full-dmail[data-dmail-id=${dmailid}]`);
+        $(`#full-dmail-id-${dmailid}`).hide();
         e.preventDefault();
     });
 }
