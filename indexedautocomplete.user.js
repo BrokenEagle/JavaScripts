@@ -468,7 +468,7 @@ async function FavoriteGroupSourceIndexed(term, resp, metatag) {
     });
 }
 
-async function SavedSearchSourceIndexed(term, resp, metatag) {
+async function SavedSearchSourceIndexed(term, resp, metatag = "search") {
     var key = ("ss-" + term).toLowerCase();
     if (use_indexed_db || use_local_storage) {
         var cached = await retrieveData(key);
@@ -495,8 +495,7 @@ async function SavedSearchSourceIndexed(term, resp, metatag) {
             recordTimeEnd(key,"Network");
             var d = $.map(data, function(label) {
                 return {
-                    label: label.replace(/_/g, " "),
-                    value: "search:" + label,
+                    name: label
                 };
             });
             saveData(key, {"value": d, "expires": Date.now() + MinimumExpirationTime('search')});
