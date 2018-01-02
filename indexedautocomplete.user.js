@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      11.2
+// @version      11.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -264,6 +264,14 @@ function checkDataModel(storeditem,key) {
     return true;
 }
 
+function DataCopy(olddata) {
+    let newdata = [];
+    $.each(olddata, (i,data)=>{
+        newdata.push(jQuery.extend(true, {}, data));
+    });
+    return newdata;
+}
+
 //Main execution functions
 
 //Function to rebind Autocomplete normal source function
@@ -342,7 +350,7 @@ async function PoolSourceIndexed(term, resp, metatag) {
                 };
             });
             var expiration_time = (d.length ? ExpirationTime('pool',d[0].post_count) : MinimumExpirationTime('pool'));
-            saveData(key, {"value": d, "expires": Date.now() + expiration_time});
+            saveData(key, {"value": DataCopy(d), "expires": Date.now() + expiration_time});
             $.each(d, (i,val)=> {FixupPoolMetatag(val,metatag);});
             resp(d);
         }
@@ -404,7 +412,7 @@ async function UserSourceIndexed(term, resp, metatag) {
                     level: user.level_string
                 };
             });
-            saveData(key, {"value": d, "expires": Date.now() + MinimumExpirationTime('user')});
+            saveData(key, {"value": DataCopy(d), "expires": Date.now() + MinimumExpirationTime('user')});
             $.each(d, (i,val)=> {FixupUserMetatag(val,metatag);});
             resp(d);
         }
@@ -498,7 +506,7 @@ async function SavedSearchSourceIndexed(term, resp, metatag = "search") {
                     name: label
                 };
             });
-            saveData(key, {"value": d, "expires": Date.now() + MinimumExpirationTime('search')});
+            saveData(key, {"value": DataCopy(d), "expires": Date.now() + MinimumExpirationTime('search')});
             $.each(d, (i,val)=> {FixupSavedSearchMetatag(val,metatag);});
             resp(d);
         }
