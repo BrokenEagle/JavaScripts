@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      11
+// @version      11.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -34,7 +34,8 @@ const autocomplete_userlist = [
     "#search_user_name",
     "#search_banner_name",
     "#search_creator_name",
-    "#search_approver_name"
+    "#search_approver_name",
+    "#search_updater_name"
 ];
 //DOM elements with autocomplete
 const autocomplete_domlist = [
@@ -670,7 +671,7 @@ function rebindWikiPageAutocomplete() {
 
 function rebindArtistAutocomplete() {
     var $fields = $("#search_name,#quick_search_name");
-    if ($fields.length && ('uiAutocomplete' in $.data($fields[0]))) {
+    if ($fields.length && (('uiAutocomplete' in $.data($fields[0])) || $("#c-artist-versions").length) ) {
         clearInterval(rebindArtistAutocomplete.timer);
         $fields.off().removeData();
         Danbooru.Artist.initialize_autocomplete();
@@ -807,7 +808,7 @@ function main() {
         Danbooru.WikiPage.initialize_autocomplete = WikiPageInitializeAutocompleteIndexed;
         rebindWikiPageAutocomplete.timer = setInterval(rebindWikiPageAutocomplete,timer_poll_interval);
     }
-    if ($("#c-artists").length) {
+    if ($("#c-artists,#c-artist-versions").length) {
         Danbooru.Artist.initialize_autocomplete = ArtistInitializeAutocompleteIndexed;
         rebindArtistAutocomplete.timer = setInterval(rebindArtistAutocomplete,timer_poll_interval);
     }
