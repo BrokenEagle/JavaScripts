@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      11.1
+// @version      11.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -476,6 +476,7 @@ async function SavedSearchSourceIndexed(term, resp, metatag) {
         if (!checkDataModel(cached,key) || hasDataExpired(cached)) {
             danboorustorage.removeItem(key);
         } else {
+            $.each(cached.value, (i,val)=> {FixupSavedSearchMetatag(val,metatag);});
             resp(cached.value);
             return;
         }
@@ -499,9 +500,28 @@ async function SavedSearchSourceIndexed(term, resp, metatag) {
                 };
             });
             saveData(key, {"value": d, "expires": Date.now() + MinimumExpirationTime('search')});
+            $.each(d, (i,val)=> {FixupSavedSearchMetatag(val,metatag);});
             resp(d);
         }
     });
+}
+
+function SavedSearchSourceIndexedNontag(req, resp) {
+    SavedSearchSourceIndexed(req.term, resp, "");
+}
+
+function FixupSavedSearchMetatag(value,metatag) {
+    //Temporary fix
+    if (!('name' in value)) {
+        value.name = value.label.replace(/ /g, "_");
+    }
+    if (metatag === "") {
+        value.value = value.name;
+        value.label = value.name.replace(/_/g, " ");
+    } else {
+        value.value = metatag + ":" + value.name;
+        value.label = value.name.replace(/_/g, " ");
+    }
 }
 
 async function WikiPageIndexed(req, resp) {
@@ -696,6 +716,15 @@ function rebindPostPoolAutocomplete() {
     }
 }
 
+function rebindSavedSearchAutocomplete() {
+    var $fields = $("#saved_search_labels");
+    if ($fields.length && ('uiAutocomplete' in $.data($fields[0]))) {
+        clearInterval(rebindSavedSearchAutocomplete.timer);
+        $fields.off().removeData();
+        SavedSearchInitializeAutocompleteIndexed("#saved_search_labels");
+    }
+}
+
 //Initialization functions
 
 function WikiPageInitializeAutocompleteIndexed() {
@@ -774,6 +803,16 @@ function UserInitializeAutocompleteIndexed(selector) {
     });
 }
 
+function SavedSearchInitializeAutocompleteIndexed(selector) {
+    var $fields = $(selector);
+
+    $fields.autocomplete({
+        minLength: 1,
+        delay: 100,
+        source: SavedSearchSourceIndexedNontag
+    });
+}
+
 //Name functions
 
 function GetShortNames() {
@@ -819,6 +858,9 @@ function main() {
     if ($("#c-posts #a-show").length) {
         Danbooru.Pool.initialize_autocomplete_for = PoolInitializeAutocompleteIndexed;
         rebindPostPoolAutocomplete.timer = setInterval(rebindPostPoolAutocomplete,timer_poll_interval);
+    }
+    if ($("#c-posts #a-index").length) {
+        rebindSavedSearchAutocomplete.timer = setInterval(rebindSavedSearchAutocomplete,timer_poll_interval);
     }
     if ($(autocomplete_userlist.join(',')).length) {
         UserInitializeAutocompleteIndexed(autocomplete_userlist.join(','));
