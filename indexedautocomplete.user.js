@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      11.3
+// @version      11.4
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -302,7 +302,7 @@ async function NormalSourceIndexed(term, resp) {
                 return {
                     type: "tag",
                     label: tag.name.replace(/_/g, " "),
-                    antecedent: tag.antecedent_name,
+                    antecedent: tag.antecedent_name || null,
                     value: tag.name,
                     category: tag.category,
                     post_count: tag.post_count
