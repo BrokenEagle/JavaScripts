@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      22
+// @version      23
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -12,6 +12,7 @@
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/validatetaginput.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
 // ==/UserScript==
 
 //Global variables
@@ -54,6 +55,29 @@ const timer_poll_interval = 100;
 const milliseconds_per_day = 1000 * 60 * 60 * 24;
 const validatetag_expiration_days = 30;
 const validatetag_expiration_time = milliseconds_per_day * validatetag_expiration_days;
+
+//Validate constants
+
+const relation_constraints = {
+    entry: {
+        expires : {
+            presence: true,
+            numericality: {
+                onlyInteger: true,
+                greaterThan: 0,
+            }
+        },
+        value: {
+            presence: true,
+            array: true
+        }
+    },
+    value: {
+        string: true
+    }
+};
+
+//HTML constants
 
 const submit_button = `
 <input id="validate-tags" type="button" class="ui-button ui-widget ui-corner-all" value="Submit">`;
@@ -161,6 +185,8 @@ function average(values) {
     return values.reduce(function(a, b) { return a + b; })/values.length;
 }
 
+//Program functions
+
 function getTagList() {
     return stripQuoteSourceMetatag($("#upload_tag_string,#post_tag_string").val()).split(/[\s\n]+/).map(tag=>{return tag.toLowerCase();});
 }
@@ -249,26 +275,53 @@ function hasDataExpired(storeditem) {
     return false;
 }
 
-function checkArrayData(array,type) {
-    return array.reduce((total,value)=>{return total && (typeof value === type);},true);
+//Validate functions
+
+validate.validators.array = function(value, options, key, attributes) {
+    if ((options === true) && (!validate.isArray(value))) {
+        return "is not an array";
+    }
 }
 
-function checkDataModel(storeditem) {
-    if (storeditem === null) {
-        debuglog("Item not found!");
+validate.validators.string = function(value, options, key, attributes) {
+    if (options !== false) {
+        var message = "";
+        //Can't use presence validator so must catch it here
+        if (value === undefined) {
+            return "can't be missing";
+        }
+        if (validate.isString(value)) {
+            return;
+        }
+        message += "is not a string"
+        if (validate.isHash(options) && 'allowNull' in options && options.allowNull === true) {
+            if (value === null) {
+                return;
+            }
+            message += " or null"
+        }
+        return message;
+    }
+}
+
+function PrintValidateError(key,checkerror) {
+    debuglog(key,':\r\n',JSON.stringify(checkerror,null,2));
+}
+
+function ValidateRelationEntry(key,entry) {
+    if (entry === null) {
+        debuglog(key,"entry not found!");
         return false;
     }
-    if (!('value' in storeditem) || !('expires' in storeditem)) {
-        debuglog("Missing data properties!");
-        return false;
+    check = validate(entry,relation_constraints.entry);
+    if (check !== undefined) {
+        PrintValidateError(key,check);
+        return false
     }
-    if (typeof(storeditem.expires) !== "number") {
-        debuglog("Expires is not a number!");
-        return false;
-    }
-    if (!($.isArray(storeditem.value) && checkArrayData(storeditem.value,'string'))) {
-        debuglog("Value is not an array of strings!");
-        return false;
+    check = validate(entry.value,relation_constraints.value);
+    if (check !== undefined) {
+        PrintValidateError(key,check);
+        return false
     }
     return true;
 }
@@ -303,7 +356,7 @@ async function queryTagAliases(taglist) {
         let entryname = 'ta-'+taglist[i];
         let storeditem = await retrieveData(entryname);
         debuglog("Checking",entryname);
-        if (!checkDataModel(storeditem) || hasDataExpired(storeditem)) {
+        if (!ValidateRelationEntry(entryname,storeditem) || hasDataExpired(storeditem)) {
             if (queryTagAliases.async_requests > 25) {
                 debuglog("Sleeping...");
                 let temp = await sleep(sleep_wait_time);
@@ -351,7 +404,7 @@ async function queryTagImplications(taglist) {
         let entryname = 'ti-'+taglist[i];
         let storeditem = await retrieveData(entryname);
         debuglog("Checking",entryname);
-        if (!checkDataModel(storeditem) || hasDataExpired(storeditem)) {
+        if (!ValidateRelationEntry(entryname,storeditem) || hasDataExpired(storeditem)) {
             if (queryTagImplications.async_requests > 25) {
                 debuglog("Sleeping...");
                 let temp = await sleep(sleep_wait_time);

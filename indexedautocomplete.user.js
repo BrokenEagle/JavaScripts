@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      11.4
+// @version      12
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -10,6 +10,7 @@
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/indexedautocomplete.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
 // ==/UserScript==
 
 //Set to true to switch the debug info on
@@ -94,6 +95,116 @@ const expiration_config = {
         'logarithmic_start': 10,
         'minimum_days': 7,
         'maximum_days': 28
+    }
+};
+
+//Validation variables
+
+var postcount_constraints = {
+    presence: true,
+    numericality: {
+        noStrings: true,
+        onlyInteger: true,
+        greaterThan: 0,
+    }
+};
+
+const expires_constraints = {
+    presence: true,
+    numericality: {
+        onlyInteger: true,
+        greaterThan: 0,
+    }
+};
+
+const stringonly_constraints = {
+    string: true
+};
+
+const tagentryarray_constraints = {
+    presence: true,
+    tagentryarray: true
+};
+
+function inclusion_constraints(array) {
+    return { presence: true, inclusion: array };
+}
+
+var autocompleteconstraints = {
+    entry: {
+        expires : expires_constraints,
+        value: {
+            presence: true,
+            array: {
+                length: {
+                    maximum : 10,
+                    tooLong : "array is too long (maximum is %{count} items"
+                }
+            }
+        }
+    },
+    tag: {
+        antecedent: {
+            string: {
+                allowNull: true
+            }
+        },
+        category: inclusion_constraints([0,1,3,4,5]),
+        label: stringonly_constraints,
+        post_count: postcount_constraints,
+        type: inclusion_constraints(["tag"]),
+        value: stringonly_constraints
+    },
+    pool: {
+        category: inclusion_constraints(["collection","series"]),
+        post_count: postcount_constraints,
+        type: inclusion_constraints(["pool"]),
+        name: stringonly_constraints
+    },
+    user: {
+        level: inclusion_constraints(["Member","Gold","Platinum","Builder","Moderator","Admin"]),
+        type: inclusion_constraints(["user"]),
+        name: stringonly_constraints
+    },
+    favgroup: {
+        post_count: postcount_constraints,
+        label: stringonly_constraints,
+        value: stringonly_constraints
+    },
+    savedsearch: {
+        name: stringonly_constraints
+    },
+    artist: {
+        label: stringonly_constraints,
+        value: stringonly_constraints
+    },
+    wikipage: {
+        label: stringonly_constraints,
+        value: stringonly_constraints,
+        category: inclusion_constraints([0,1,3,4,5])
+    }
+};
+
+var relatedtagconstraints = {
+    entry: {
+        expires : expires_constraints,
+        value : {
+            presence: true
+        }
+    },
+    value: {
+        category: inclusion_constraints(["","general","character","copyright","artist"]),
+        query: stringonly_constraints,
+        tags: tagentryarray_constraints,
+        wiki_page_tags: tagentryarray_constraints,
+        other_wikis: {
+            presence: true,
+            array: true
+        }
+    },
+    other_wikis: {
+        title: stringonly_constraints,
+        wiki_page_tags: tagentryarray_constraints
     }
 };
 
@@ -239,37 +350,139 @@ function hasDataExpired(storeditem) {
     return false;
 }
 
-function checkDataModel(storeditem,key) {
-    if (storeditem === null) {
-        debuglog("Item not found!");
-        return false;
-    }
-    if (!('value' in storeditem) || !('expires' in storeditem)) {
-        debuglog("Missing data properties!");
-        return false;
-    }
-    if (typeof(storeditem.expires) !== "number") {
-        debuglog("Expires is not a number!");
-        return false;
-    }
-    if ((key.search(RegExp('^rt(' + ShortNameRegexString() + ')?-')) < 0) && !$.isArray(storeditem.value)) {
-        debuglog("Value is not an array!");
-        return false;
-    }
-    //Temporary fix
-    if ((key.search(/^us-/) >= 0) && !('name' in storeditem.value[0])) {
-        debuglog("Incorrect user value!");
-        return false;
-    }
-    return true;
-}
-
 function DataCopy(olddata) {
     let newdata = [];
     $.each(olddata, (i,data)=>{
         newdata.push(jQuery.extend(true, {}, data));
     });
     return newdata;
+}
+
+//Validation functions
+
+validate.validators.array = function(value, options, key, attributes) {
+    if (options !== false) {
+        if (!validate.isArray(value)) {
+            return "is not an array";
+        }
+        if (options !== true && 'length' in options) {
+            let checkerror = validate({val:value},{val:{length: options.length}});
+            if (checkerror !== undefined) {
+                return JSON.stringify(checkerror,null,2);
+            }
+        }
+    }
+}
+
+validate.validators.tagentryarray = function(value, options, key, attributes) {
+    if (options !== false) {
+        if (!validate.isArray(value)) {
+            return "is not an array";
+        }
+        for (let i=0;i < value.length;i++) {
+            if (value[i].length !== 2) {
+                return "must have 2 entries in tag entry ["+i.toString()+"]";
+            }
+            if (!validate.isString(value[i][0])) {
+                return "must be a string ["+i.toString()+"][0]";;
+            }
+            if ([0,1,3,4,5].indexOf(value[i][1]) < 0) {
+                return "must be a valid tag category ["+i.toString()+"][1]";
+            }
+        }
+    }
+}
+
+validate.validators.string = function(value, options, key, attributes) {
+    if (options !== false) {
+        var message = "";
+        //Can't use presence validator so must catch it here
+        if (value === undefined) {
+            return "can't be missing";
+        }
+        if (validate.isString(value)) {
+            return;
+        }
+        message += "is not a string"
+        if (validate.isHash(options) && 'allowNull' in options && options.allowNull === true) {
+            if (value === null) {
+                return;
+            }
+            message += " or null"
+        }
+        return message;
+    }
+}
+
+function PrintValidateError(key,checkerror) {
+    console.log(key,':\r\n',JSON.stringify(checkerror,null,2));
+}
+
+function ValidateEntry(key,entry) {
+    if (entry === null) {
+        debuglog(key,"entry not found!");
+        return false;
+    }
+    if (key.match(/^(?:ac|pl|us|fg|ss|ar|wp)-/)) {
+        return ValidateAutocompleteEntry(key,entry);
+    } else if (key.match(/^rt(?:gen|char|copy|art)?-/)) {
+        return ValidateRelatedtagEntry(key,entry);
+    }
+    console.log("Shouldn't get here");
+    return false;
+}
+
+function ValidateAutocompleteEntry(key,entry) {
+    check = validate(entry,autocompleteconstraints.entry);
+    if (check !== undefined) {
+        PrintValidateError(key,check);
+        return false
+    }
+    for (let i=0;i < entry.value.length; i++) {
+        if (key.match(/^ac-/)) {
+            check = validate(entry.value[i],autocompleteconstraints.tag);
+        } else if (key.match(/^pl-/)) {
+            check = validate(entry.value[i],autocompleteconstraints.pool);
+        } else if (key.match(/^us-/)) {
+            check = validate(entry.value[i],autocompleteconstraints.user);
+        } else if (key.match(/^fg-/)) {
+            check = validate(entry.value[i],autocompleteconstraints.favgroup);
+        } else if (key.match(/^ss-/)) {
+            check = validate(entry.value[i],autocompleteconstraints.savedsearch);
+        } else if (key.match(/^ar-/)) {
+            check = validate(entry.value[i],autocompleteconstraints.artist);
+        } else if (key.match(/^wp-/)) {
+            check = validate(entry.value[i],autocompleteconstraints.wikipage);
+        }
+        if (check !== undefined) {
+            console.log("value["+i.toString()+"]");
+            PrintValidateError(key,check);
+            return false;
+        }
+    }
+    return true;
+}
+
+function ValidateRelatedtagEntry(key,entry) {
+    check = validate(entry,relatedtagconstraints.entry);
+    if (check !== undefined) {
+        PrintValidateError(key,check);
+        return false
+    }
+    check = validate(entry.value,relatedtagconstraints.value);
+    if (check !== undefined) {
+        PrintValidateError(key,check);
+        return false
+    }
+    for (let i = 0;i < entry.value.other_wikis.length; i++) {
+        check = validate(entry.value.other_wikis[i],relatedtagconstraints.other_wikis);
+        if (check !== undefined) {
+            console.log("value["+i.toString()+"]");
+            PrintValidateError(key,check);
+            return false
+        }
+    }
+    return true;
 }
 
 //Main execution functions
@@ -280,7 +493,7 @@ async function NormalSourceIndexed(term, resp) {
     if (use_indexed_db || use_local_storage) {
         var cached = await retrieveData(key);
         debuglog("Checking",key);
-        if (!checkDataModel(cached,key) || hasDataExpired(cached)) {
+        if (!ValidateEntry(key,cached) || hasDataExpired(cached)) {
             danboorustorage.removeItem(key);
         } else {
             resp(cached.value);
@@ -320,7 +533,7 @@ async function PoolSourceIndexed(term, resp, metatag) {
     if (use_indexed_db || use_local_storage) {
         var cached = await retrieveData(key);
         debuglog("Checking",key);
-        if (!checkDataModel(cached,key) || hasDataExpired(cached)) {
+        if (!ValidateEntry(key,cached) || hasDataExpired(cached)) {
             danboorustorage.removeItem(key);
         } else {
             $.each(cached.value, (i,val)=> {FixupPoolMetatag(val,metatag);});
@@ -380,7 +593,7 @@ async function UserSourceIndexed(term, resp, metatag) {
     if (use_indexed_db || use_local_storage) {
         var cached = await retrieveData(key);
         debuglog("Checking",key);
-        if (!checkDataModel(cached,key) || hasDataExpired(cached)) {
+        if (!ValidateEntry(key,cached) || hasDataExpired(cached)) {
             danboorustorage.removeItem(key);
         } else {
             $.each(cached.value, (i,val)=> {FixupUserMetatag(val,metatag);});
@@ -444,7 +657,7 @@ async function FavoriteGroupSourceIndexed(term, resp, metatag) {
     if (use_indexed_db || use_local_storage) {
         var cached = await retrieveData(key);
         debuglog("Checking",key);
-        if (!checkDataModel(cached,key) || hasDataExpired(cached)) {
+        if (!ValidateEntry(key,cached) || hasDataExpired(cached)) {
             danboorustorage.removeItem(key);
         } else {
             resp(cached.value);
@@ -481,7 +694,7 @@ async function SavedSearchSourceIndexed(term, resp, metatag = "search") {
     if (use_indexed_db || use_local_storage) {
         var cached = await retrieveData(key);
         debuglog("Checking",key);
-        if (!checkDataModel(cached,key) || hasDataExpired(cached)) {
+        if (!ValidateEntry(key,cached) || hasDataExpired(cached)) {
             danboorustorage.removeItem(key);
         } else {
             $.each(cached.value, (i,val)=> {FixupSavedSearchMetatag(val,metatag);});
@@ -536,7 +749,7 @@ async function WikiPageIndexed(req, resp) {
     if (use_indexed_db || use_local_storage) {
         var cached = await retrieveData(key);
         debuglog("Checking",key);
-        if (!checkDataModel(cached,key) || hasDataExpired(cached)) {
+        if (!ValidateEntry(key,cached) || hasDataExpired(cached)) {
             danboorustorage.removeItem(key);
         } else {
             resp(cached.value);
@@ -578,7 +791,7 @@ async function ArtistIndexed(req, resp) {
     if (use_indexed_db || use_local_storage) {
         var cached = await retrieveData(key);
         debuglog("Checking",key);
-        if (!checkDataModel(cached,key) || hasDataExpired(cached)) {
+        if (!ValidateEntry(key,cached) || hasDataExpired(cached)) {
             danboorustorage.removeItem(key);
         } else {
             resp(cached.value);
@@ -650,7 +863,7 @@ function CommonBindIndexed(button_name, category) {
         var key = ("rt" + keymodifier + "-" + currenttag).toLowerCase();
         var cached = await retrieveData(key);
         debuglog("Checking",key);
-        if (!checkDataModel(cached,key) || hasDataExpired(cached)) {
+        if (!ValidateEntry(key,cached) || hasDataExpired(cached)) {
             danboorustorage.removeItem(key);
             debuglog("Querying relatedtag:",currenttag,category);
             recordTime(key,"Network");
