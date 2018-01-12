@@ -487,18 +487,25 @@ function ValidateRelatedtagEntry(key,entry) {
 
 //Main execution functions
 
-//Function to rebind Autocomplete normal source function
-async function NormalSourceIndexed(term, resp) {
-    var key = ("ac-" + term).toLowerCase();
+async function CheckLocalDB(key) {
     if (use_indexed_db || use_local_storage) {
         var cached = await retrieveData(key);
         debuglog("Checking",key);
         if (!ValidateEntry(key,cached) || hasDataExpired(cached)) {
             danboorustorage.removeItem(key);
         } else {
-            resp(cached.value);
-            return;
+            return cached.value;
         }
+    }
+}
+
+//Function to rebind Autocomplete normal source function
+async function NormalSourceIndexed(term, resp) {
+    var key = ("ac-" + term).toLowerCase();
+    var value = await CheckLocalDB(key);
+    if (value) {
+        resp(value);
+        return;
     }
 
     debuglog("Querying tags:",term);
@@ -530,16 +537,11 @@ async function NormalSourceIndexed(term, resp) {
 
 async function PoolSourceIndexed(term, resp, metatag) {
     var key = ("pl-" + term).toLowerCase();
-    if (use_indexed_db || use_local_storage) {
-        var cached = await retrieveData(key);
-        debuglog("Checking",key);
-        if (!ValidateEntry(key,cached) || hasDataExpired(cached)) {
-            danboorustorage.removeItem(key);
-        } else {
-            $.each(cached.value, (i,val)=> {FixupPoolMetatag(val,metatag);});
-            resp(cached.value);
-            return;
-        }
+    var value = await CheckLocalDB(key);
+    if (value) {
+        $.each(value, (i,val)=> {FixupPoolMetatag(val,metatag);});
+        resp(value);
+        return;
     }
 
     debuglog("Querying pools:",term);
@@ -590,16 +592,11 @@ function FixupPoolMetatag(value,metatag) {
 
 async function UserSourceIndexed(term, resp, metatag) {
     var key = ("us-" + term).toLowerCase();
-    if (use_indexed_db || use_local_storage) {
-        var cached = await retrieveData(key);
-        debuglog("Checking",key);
-        if (!ValidateEntry(key,cached) || hasDataExpired(cached)) {
-            danboorustorage.removeItem(key);
-        } else {
-            $.each(cached.value, (i,val)=> {FixupUserMetatag(val,metatag);});
-            resp(cached.value);
-            return;
-        }
+    var value = await CheckLocalDB(key);
+    if (value) {
+        $.each(value, (i,val)=> {FixupUserMetatag(val,metatag);});
+        resp(value);
+        return;
     }
 
     debuglog("Querying users:",term);
@@ -654,15 +651,10 @@ function FixupUserMetatag(value,metatag) {
 
 async function FavoriteGroupSourceIndexed(term, resp, metatag) {
     var key = ("fg-" + term).toLowerCase();
-    if (use_indexed_db || use_local_storage) {
-        var cached = await retrieveData(key);
-        debuglog("Checking",key);
-        if (!ValidateEntry(key,cached) || hasDataExpired(cached)) {
-            danboorustorage.removeItem(key);
-        } else {
-            resp(cached.value);
-            return;
-        }
+    var value = await CheckLocalDB(key);
+    if (value) {
+        resp(value);
+        return;
     }
 
     debuglog("Querying favgroups:",term);
@@ -691,16 +683,11 @@ async function FavoriteGroupSourceIndexed(term, resp, metatag) {
 
 async function SavedSearchSourceIndexed(term, resp, metatag = "search") {
     var key = ("ss-" + term).toLowerCase();
-    if (use_indexed_db || use_local_storage) {
-        var cached = await retrieveData(key);
-        debuglog("Checking",key);
-        if (!ValidateEntry(key,cached) || hasDataExpired(cached)) {
-            danboorustorage.removeItem(key);
-        } else {
-            $.each(cached.value, (i,val)=> {FixupSavedSearchMetatag(val,metatag);});
-            resp(cached.value);
-            return;
-        }
+    var value = await CheckLocalDB(key);
+    if (value) {
+        resp(value);
+        $.each(value, (i,val)=> {FixupSavedSearchMetatag(val,metatag);});
+        return;
     }
 
     debuglog("Querying savedsearch:",term);
@@ -746,15 +733,10 @@ function FixupSavedSearchMetatag(value,metatag) {
 
 async function WikiPageIndexed(req, resp) {
     var key = ("wp-" + req.term).toLowerCase();
-    if (use_indexed_db || use_local_storage) {
-        var cached = await retrieveData(key);
-        debuglog("Checking",key);
-        if (!ValidateEntry(key,cached) || hasDataExpired(cached)) {
-            danboorustorage.removeItem(key);
-        } else {
-            resp(cached.value);
-            return;
-        }
+    var value = await CheckLocalDB(key);
+    if (value) {
+        resp(value);
+        return;
     }
 
     debuglog("Querying wikipage:",req.term);
@@ -788,15 +770,11 @@ async function WikiPageIndexed(req, resp) {
 
 async function ArtistIndexed(req, resp) {
     var key = ("ar-" + req.term).toLowerCase();
-    if (use_indexed_db || use_local_storage) {
-        var cached = await retrieveData(key);
-        debuglog("Checking",key);
-        if (!ValidateEntry(key,cached) || hasDataExpired(cached)) {
-            danboorustorage.removeItem(key);
-        } else {
-            resp(cached.value);
-            return;
-        }
+    var value = await CheckLocalDB(key);
+    if (value) {
+        resp(value);
+        $.each(value, (i,val)=> {FixupSavedSearchMetatag(val,metatag);});
+        return;
     }
 
     debuglog("Querying artist:",req.term);
