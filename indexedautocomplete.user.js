@@ -168,8 +168,7 @@ var autocompleteconstraints = {
     },
     favgroup: {
         post_count: postcount_constraints,
-        label: stringonly_constraints,
-        value: stringonly_constraints
+        name: stringonly_constraints
     },
     savedsearch: {
         name: stringonly_constraints
@@ -517,6 +516,185 @@ function FixupMetatag(value,metatag) {
 
 //Main execution functions
 
+var NetworkSourceConfig = {
+    tag: {
+        url: "/tags/autocomplete.json",
+        data: function(term) {
+            return {
+                "search[name_matches]": term + "*"
+            };
+        },
+        map: function(tag) {
+            return {
+                type: "tag",
+                label: tag.name.replace(/_/g, " "),
+                antecedent: tag.antecedent_name || null,
+                value: tag.name,
+                category: tag.category,
+                post_count: tag.post_count
+            };
+        },
+        expiration: function(d) {
+            return (d.length ? ExpirationTime('tag',d[0].post_count) : MinimumExpirationTime('tag'));
+        },
+        fixupmetatag: false,
+        fixupexpiration: false
+    },
+    pool: {
+        url: "/pools.json",
+        data: function(term) {
+            return {
+                "search[order]": "post_count",
+                "search[name_matches]": term,
+                "limit": 10
+            };
+        },
+        map: function(pool) {
+            return {
+                type: "pool",
+                name: pool.name,
+                post_count: pool.post_count,
+                category: pool.category
+            };
+        },
+        expiration: function(d) {
+            return (d.length ? ExpirationTime('pool',d[0].post_count) : MinimumExpirationTime('pool'));
+        },
+        fixupmetatag: true,
+        fixupexpiration: false
+    },
+    user: {
+        url: "/users.json",
+        data: function(term) {
+            return {
+                "search[order]": "post_upload_count",
+                "search[current_user_first]": "true",
+                "search[name_matches]": term + "*",
+                "limit": 10
+            };
+        },
+        map: function(user) {
+            return {
+                type: "user",
+                name: user.name,
+                level: user.level_string
+            };
+        },
+        expiration: function(d) {
+            return MinimumExpirationTime('user');
+        },
+        fixupmetatag: true,
+        fixupexpiration: false
+    },
+    favgroup: {
+        url: "/favorite_groups.json",
+        data: function(term) {
+            return {
+                "search[name_matches]": term,
+                "limit": 10
+            };
+        },
+        map: function(favgroup) {
+            return {
+                name: favgroup.name,
+                post_count: favgroup.post_count
+            };
+        },
+        expiration: function(d) {
+            return MinimumExpirationTime('favgroup');
+        },
+        fixupmetatag: true,
+        fixupexpiration: false
+    },
+    search: {
+        url: "/saved_searches/labels.json",
+        data: function(term) {
+            return {
+                "search[label]": term + "*",
+                "limit": 10
+            };
+        },
+        map: function(label) {
+            return {
+                name: label
+            };
+        },
+        expiration: function(d) {
+            return MinimumExpirationTime('search');
+        },
+        fixupmetatag: true,
+        fixupexpiration: false
+    },
+    wikipage: {
+        url: "/wiki_pages.json",
+        data: function(term) {
+            return {
+                "search[title]": term + "*",
+                "search[hide_deleted]": "Yes",
+                "search[order]": "post_count",
+                "limit": 10
+            };
+        },
+        map: function(wikipage) {
+            return {
+                label: wikipage.title.replace(/_/g, " "),
+                value: wikipage.title,
+                category: wikipage.category_name
+            };
+        },
+        expiration: function(d) {
+            return MinimumExpirationTime('wikipage');
+        },
+        fixupmetatag: false,
+        fixupexpiration: true
+    },
+    artist: {
+        url: "/artists.json",
+        data: function(term) {
+            return {
+                "search[name]": term + "*",
+                "search[is_active]": true,
+                "search[order]": "post_count",
+                "limit": 10
+            };
+        },
+        map: function(artist) {
+            return {
+                label: artist.name.replace(/_/g, " "),
+                value: artist.name
+            };
+        },
+        expiration: function(d) {
+            return MinimumExpirationTime('artist');
+        },
+        fixupmetatag: false,
+        fixupexpiration: true
+    }
+}
+
+function NetworkSource(type,key,term,resp,metatag) {
+    debuglog("Querying",type,':',term);
+    recordTime(key,"Network");
+    $.ajax({
+        url: NetworkSourceConfig[type].url,
+        data: NetworkSourceConfig[type].data(term),
+        method: "get",
+        success: function(data) {
+            recordTimeEnd(key,"Network");
+            var d = $.map(data, NetworkSourceConfig[type].map);
+            var expiration_time = NetworkSourceConfig[type].expiration(d);
+            saveData(key, {"value": DataCopy(d), "expires": Date.now() + expiration_time});
+            if (NetworkSourceConfig[type].fixupmetatag) {
+                $.each(d, (i,val)=> {FixupMetatag(val,metatag);});
+            }
+            if (NetworkSourceConfig[type].fixupexpiration && d.length) {
+                setTimeout(()=>{FixExpirationCallback(key,d,d[0].value,type);},callback_interval);
+            }
+            resp(d);
+        }
+    });
+}
+
 //Function to rebind Autocomplete normal source function
 async function NormalSourceIndexed(term, resp) {
     var key = ("ac-" + term).toLowerCase();
@@ -525,32 +703,7 @@ async function NormalSourceIndexed(term, resp) {
         resp(value);
         return;
     }
-
-    debuglog("Querying tags:",term);
-    recordTime(key,"Network");
-    $.ajax({
-        url: "/tags/autocomplete.json",
-        data: {
-            "search[name_matches]": term + "*"
-        },
-        method: "get",
-        success: function(data) {
-            recordTimeEnd(key,"Network");
-            var d = $.map(data, function(tag) {
-                return {
-                    type: "tag",
-                    label: tag.name.replace(/_/g, " "),
-                    antecedent: tag.antecedent_name || null,
-                    value: tag.name,
-                    category: tag.category,
-                    post_count: tag.post_count
-                };
-            });
-            var expiration_time = (d.length ? ExpirationTime('tag',d[0].post_count) : MinimumExpirationTime('tag'));
-            saveData(key, {"value": d, "expires": Date.now() + expiration_time});
-            resp(d);
-        }
-    });
+    NetworkSource('tag',key,term,resp,"");
 }
 
 async function PoolSourceIndexed(term, resp, metatag) {
@@ -561,33 +714,7 @@ async function PoolSourceIndexed(term, resp, metatag) {
         resp(value);
         return;
     }
-
-    debuglog("Querying pools:",term);
-    recordTime(key,"Network");
-    $.ajax({
-        url: "/pools.json",
-        data: {
-          "search[order]": "post_count",
-          "search[name_matches]": term,
-          "limit": 10
-        },
-        method: "get",
-        success: function(data) {
-            recordTimeEnd(key,"Network");
-            var d = $.map(data, function(pool) {
-                return {
-                    type: "pool",
-                    name: pool.name,
-                    post_count: pool.post_count,
-                    category: pool.category
-                };
-            });
-            var expiration_time = (d.length ? ExpirationTime('pool',d[0].post_count) : MinimumExpirationTime('pool'));
-            saveData(key, {"value": DataCopy(d), "expires": Date.now() + expiration_time});
-            $.each(d, (i,val)=> {FixupMetatag(val,metatag);});
-            resp(d);
-        }
-    });
+    NetworkSource('pool',key,term,resp,metatag);
 }
 
 async function UserSourceIndexed(term, resp, metatag) {
@@ -598,99 +725,29 @@ async function UserSourceIndexed(term, resp, metatag) {
         resp(value);
         return;
     }
-
-    debuglog("Querying users:",term);
-    recordTime(key,"Network");
-    $.ajax({
-        url: "/users.json",
-        data: {
-            "search[order]": "post_upload_count",
-            "search[current_user_first]": "true",
-            "search[name_matches]": term + "*",
-            "limit": 10
-        },
-        method: "get",
-        success: function(data) {
-            recordTimeEnd(key,"Network");
-            var prefix;
-            var display_name;
-
-            var d = $.map(data, function(user) {
-                return {
-                    type: "user",
-                    name: user.name,
-                    level: user.level_string
-                };
-            });
-            saveData(key, {"value": DataCopy(d), "expires": Date.now() + MinimumExpirationTime('user')});
-            $.each(d, (i,val)=> {FixupMetatag(val,metatag);});
-            resp(d);
-        }
-    });
+    NetworkSource('user',key,term,resp,metatag);
 }
 
 async function FavoriteGroupSourceIndexed(term, resp, metatag) {
     var key = ("fg-" + term).toLowerCase();
     var value = await CheckLocalDB(key);
     if (value) {
+        $.each(value, (i,val)=> {FixupMetatag(val,metatag);});
         resp(value);
         return;
     }
-
-    debuglog("Querying favgroups:",term);
-    recordTime(key,"Network");
-    $.ajax({
-        url: "/favorite_groups.json",
-        data: {
-            "search[name_matches]": term,
-            "limit": 10
-        },
-        method: "get",
-        success: function(data) {
-            recordTimeEnd(key,"Network");
-            var d = $.map(data, function(favgroup) {
-                return {
-                    label: favgroup.name.replace(/_/g, " "),
-                    value: metatag + ":" + favgroup.name,
-                    post_count: favgroup.post_count
-                };
-            });
-            saveData(key, {"value": d, "expires": Date.now() + MinimumExpirationTime('favgroup')});
-            resp(d);
-        }
-    });
+    NetworkSource('favgroup',key,term,resp,metatag);
 }
 
 async function SavedSearchSourceIndexed(term, resp, metatag = "search") {
     var key = ("ss-" + term).toLowerCase();
     var value = await CheckLocalDB(key);
     if (value) {
-        resp(value);
         $.each(value, (i,val)=> {FixupMetatag(val,metatag);});
+        resp(value);
         return;
     }
-
-    debuglog("Querying savedsearch:",term);
-    recordTime(key,"Network");
-    $.ajax({
-        url: "/saved_searches/labels.json",
-        data: {
-            "search[label]": term + "*",
-            "limit": 10
-        },
-        method: "get",
-        success: function(data) {
-            recordTimeEnd(key,"Network");
-            var d = $.map(data, function(label) {
-                return {
-                    name: label
-                };
-            });
-            saveData(key, {"value": DataCopy(d), "expires": Date.now() + MinimumExpirationTime('search')});
-            $.each(d, (i,val)=> {FixupMetatag(val,metatag);});
-            resp(d);
-        }
-    });
+    NetworkSource('search',key,term,resp,metatag);
 }
 
 async function WikiPageIndexed(req, resp) {
@@ -700,34 +757,7 @@ async function WikiPageIndexed(req, resp) {
         resp(value);
         return;
     }
-
-    debuglog("Querying wikipage:",req.term);
-    recordTime(key,"Network");
-    $.ajax({
-        url: "/wiki_pages.json",
-        data: {
-            "search[title]": req.term + "*",
-            "search[hide_deleted]": "Yes",
-            "search[order]": "post_count",
-            "limit": 10
-        },
-        method: "get",
-        success: function(data) {
-            recordTimeEnd(key,"Network");
-            var d = $.map(data, function(wiki_page) {
-                return {
-                    label: wiki_page.title.replace(/_/g, " "),
-                    value: wiki_page.title,
-                    category: wiki_page.category_name
-                };
-            });
-            saveData(key, {"value": d, "expires": Date.now() + MinimumExpirationTime('wikipage')});
-            if (d.length) {
-                setTimeout(()=>{FixExpirationCallback(key,d,d[0].value,'wikipage');},callback_interval);
-            }
-            resp(d);
-        }
-    });
+    NetworkSource('wikipage',key,req.term,resp,"");
 }
 
 async function ArtistIndexed(req, resp) {
@@ -737,33 +767,7 @@ async function ArtistIndexed(req, resp) {
         resp(value);
         return;
     }
-
-    debuglog("Querying artist:",req.term);
-    recordTime(key,"Network");
-    $.ajax({
-        url: "/artists.json",
-        data: {
-            "search[name]": req.term + "*",
-            "search[is_active]": true,
-            "search[order]": "post_count",
-            "limit": 10
-        },
-        method: "get",
-        success: function(data) {
-            recordTimeEnd(key,"Network");
-            var d = $.map(data, function(artist) {
-                return {
-                    label: artist.name.replace(/_/g, " "),
-                    value: artist.name
-                };
-            });
-            saveData(key, {"value": d, "expires": Date.now() + MinimumExpirationTime('artist')});
-            if (d.length) {
-                setTimeout(()=>{FixExpirationCallback(key,d,d[0].value,'artist');},callback_interval);
-            }
-            resp(d);
-        }
-    });
+    NetworkSource('artist',key,req.term,resp,"");
 }
 
 //Callback functions
