@@ -590,10 +590,6 @@ async function PoolSourceIndexed(term, resp, metatag) {
     });
 }
 
-function PoolSourceIndexedNontag(req, resp) {
-    PoolSourceIndexed(req.term, resp, "");
-}
-
 async function UserSourceIndexed(term, resp, metatag) {
     var key = ("us-" + term).toLowerCase();
     var value = await CheckLocalDB(key);
@@ -631,10 +627,6 @@ async function UserSourceIndexed(term, resp, metatag) {
             resp(d);
         }
     });
-}
-
-function UserSourceIndexedNontag(req, resp) {
-    UserSourceIndexed(req.term, resp, "");
 }
 
 async function FavoriteGroupSourceIndexed(term, resp, metatag) {
@@ -699,10 +691,6 @@ async function SavedSearchSourceIndexed(term, resp, metatag = "search") {
             resp(d);
         }
     });
-}
-
-function SavedSearchSourceIndexedNontag(req, resp) {
-    SavedSearchSourceIndexed(req.term, resp, "");
 }
 
 async function WikiPageIndexed(req, resp) {
@@ -942,7 +930,7 @@ function PoolInitializeAutocompleteIndexed(selector) {
     $fields.autocomplete({
         minLength: 1,
         delay: 100,
-        source: PoolSourceIndexedNontag
+        source: function (req, resp) { PoolSourceIndexed(req.term, resp, "");}
     });
 
     var render_pool = function(list, pool) {
@@ -961,7 +949,7 @@ function UserInitializeAutocompleteIndexed(selector) {
     $fields.autocomplete({
         minLength: 1,
         delay: 100,
-        source: UserSourceIndexedNontag
+        source: function (req, resp) { UserSourceIndexed(req.term, resp, "");}
     });
 
     var render_user = function(list, user) {
@@ -980,7 +968,7 @@ function SavedSearchInitializeAutocompleteIndexed(selector) {
     $fields.autocomplete({
         minLength: 1,
         delay: 100,
-        source: SavedSearchSourceIndexedNontag
+        source: function (req, resp) { SavedSearchSourceIndexed(req.term, resp, "");}
     });
 }
 
