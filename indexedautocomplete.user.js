@@ -485,7 +485,7 @@ function ValidateRelatedtagEntry(key,entry) {
     return true;
 }
 
-//Main execution functions
+//Main helper functions
 
 async function CheckLocalDB(key) {
     if (use_indexed_db || use_local_storage) {
@@ -498,6 +498,24 @@ async function CheckLocalDB(key) {
         }
     }
 }
+
+function FixupMetatag(value,metatag) {
+    switch(metatag) {
+        case "@":
+            value.value = "@" + value.name;
+            value.label = value.name;
+            break;
+        case "":
+            value.value = value.name;
+            value.label = value.name.replace(/_/g, " ");
+            break;
+        default:
+            value.value = metatag + ":" + value.name;
+            value.label = value.name.replace(/_/g, " ");
+    }
+}
+
+//Main execution functions
 
 //Function to rebind Autocomplete normal source function
 async function NormalSourceIndexed(term, resp) {
@@ -539,7 +557,7 @@ async function PoolSourceIndexed(term, resp, metatag) {
     var key = ("pl-" + term).toLowerCase();
     var value = await CheckLocalDB(key);
     if (value) {
-        $.each(value, (i,val)=> {FixupPoolMetatag(val,metatag);});
+        $.each(value, (i,val)=> {FixupMetatag(val,metatag);});
         resp(value);
         return;
     }
@@ -566,7 +584,7 @@ async function PoolSourceIndexed(term, resp, metatag) {
             });
             var expiration_time = (d.length ? ExpirationTime('pool',d[0].post_count) : MinimumExpirationTime('pool'));
             saveData(key, {"value": DataCopy(d), "expires": Date.now() + expiration_time});
-            $.each(d, (i,val)=> {FixupPoolMetatag(val,metatag);});
+            $.each(d, (i,val)=> {FixupMetatag(val,metatag);});
             resp(d);
         }
     });
@@ -576,25 +594,11 @@ function PoolSourceIndexedNontag(req, resp) {
     PoolSourceIndexed(req.term, resp, "");
 }
 
-function FixupPoolMetatag(value,metatag) {
-    //Temporary fix
-    if (!('name' in value)) {
-        value.name = value.label.replace(/ /g, "_");
-    }
-    if (metatag === "") {
-        value.value = value.name;
-        value.label = value.name.replace(/_/g, " ");
-    } else {
-        value.value = metatag + ":" + value.name;
-        value.label = value.name.replace(/_/g, " ");
-    }
-}
-
 async function UserSourceIndexed(term, resp, metatag) {
     var key = ("us-" + term).toLowerCase();
     var value = await CheckLocalDB(key);
     if (value) {
-        $.each(value, (i,val)=> {FixupUserMetatag(val,metatag);});
+        $.each(value, (i,val)=> {FixupMetatag(val,metatag);});
         resp(value);
         return;
     }
@@ -623,7 +627,7 @@ async function UserSourceIndexed(term, resp, metatag) {
                 };
             });
             saveData(key, {"value": DataCopy(d), "expires": Date.now() + MinimumExpirationTime('user')});
-            $.each(d, (i,val)=> {FixupUserMetatag(val,metatag);});
+            $.each(d, (i,val)=> {FixupMetatag(val,metatag);});
             resp(d);
         }
     });
@@ -631,22 +635,6 @@ async function UserSourceIndexed(term, resp, metatag) {
 
 function UserSourceIndexedNontag(req, resp) {
     UserSourceIndexed(req.term, resp, "");
-}
-
-function FixupUserMetatag(value,metatag) {
-    switch(metatag) {
-        case "@":
-            value.value = "@" + value.name;
-            value.label = value.name;
-            break;
-        case "":
-            value.value = value.name;
-            value.label = value.name.replace(/_/g, " ");
-            break;
-        default:
-            value.value = metatag + ":" + value.name;
-            value.label = value.name.replace(/_/g, " ");
-    }
 }
 
 async function FavoriteGroupSourceIndexed(term, resp, metatag) {
@@ -686,7 +674,7 @@ async function SavedSearchSourceIndexed(term, resp, metatag = "search") {
     var value = await CheckLocalDB(key);
     if (value) {
         resp(value);
-        $.each(value, (i,val)=> {FixupSavedSearchMetatag(val,metatag);});
+        $.each(value, (i,val)=> {FixupMetatag(val,metatag);});
         return;
     }
 
@@ -707,7 +695,7 @@ async function SavedSearchSourceIndexed(term, resp, metatag = "search") {
                 };
             });
             saveData(key, {"value": DataCopy(d), "expires": Date.now() + MinimumExpirationTime('search')});
-            $.each(d, (i,val)=> {FixupSavedSearchMetatag(val,metatag);});
+            $.each(d, (i,val)=> {FixupMetatag(val,metatag);});
             resp(d);
         }
     });
@@ -715,20 +703,6 @@ async function SavedSearchSourceIndexed(term, resp, metatag = "search") {
 
 function SavedSearchSourceIndexedNontag(req, resp) {
     SavedSearchSourceIndexed(req.term, resp, "");
-}
-
-function FixupSavedSearchMetatag(value,metatag) {
-    //Temporary fix
-    if (!('name' in value)) {
-        value.name = value.label.replace(/ /g, "_");
-    }
-    if (metatag === "") {
-        value.value = value.name;
-        value.label = value.name.replace(/_/g, " ");
-    } else {
-        value.value = metatag + ":" + value.name;
-        value.label = value.name.replace(/_/g, " ");
-    }
 }
 
 async function WikiPageIndexed(req, resp) {
@@ -773,7 +747,6 @@ async function ArtistIndexed(req, resp) {
     var value = await CheckLocalDB(key);
     if (value) {
         resp(value);
-        $.each(value, (i,val)=> {FixupSavedSearchMetatag(val,metatag);});
         return;
     }
 
