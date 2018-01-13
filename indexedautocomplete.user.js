@@ -561,7 +561,11 @@ var NetworkSourceConfig = {
             return (d.length ? ExpirationTime('pool',d[0].post_count) : MinimumExpirationTime('pool'));
         },
         fixupmetatag: true,
-        fixupexpiration: false
+        fixupexpiration: false,
+        render: function(list, pool) {
+            var $link = $("<a/>").addClass("pool-category-" + pool.category).text(pool.label);
+            return $("<li/>").data("item.autocomplete", pool).append($link).appendTo(list);
+        }
     },
     user: {
         url: "/users.json",
@@ -584,7 +588,11 @@ var NetworkSourceConfig = {
             return MinimumExpirationTime('user');
         },
         fixupmetatag: true,
-        fixupexpiration: false
+        fixupexpiration: false,
+        render: function(list, user) {
+            var $link = $("<a/>").addClass("user-" + user.level.toLowerCase()).addClass("with-style").text(user.label);
+            return $("<li/>").data("item.autocomplete", user).append($link).appendTo(list);
+        }
     },
     favgroup: {
         url: "/favorite_groups.json",
@@ -646,7 +654,11 @@ var NetworkSourceConfig = {
             return MinimumExpirationTime('wikipage');
         },
         fixupmetatag: false,
-        fixupexpiration: true
+        fixupexpiration: true,
+        render: function(list, wiki_page) {
+            var $link = $("<a/>").addClass("tag-type-" + wiki_page.category).text(wiki_page.label);
+            return $("<li/>").data("item.autocomplete", wiki_page).append($link).appendTo(list);
+        }
     },
     artist: {
         url: "/artists.json",
@@ -668,7 +680,11 @@ var NetworkSourceConfig = {
             return MinimumExpirationTime('artist');
         },
         fixupmetatag: false,
-        fixupexpiration: true
+        fixupexpiration: true,
+        render: function(list, artist) {
+            var $link = $("<a/>").addClass("tag-type-1").text(artist.label);
+            return $("<li/>").data("item.autocomplete", artist).append($link).appendTo(list);
+        }
     }
 }
 
@@ -890,90 +906,38 @@ function rebindSavedSearchAutocomplete() {
 
 //Initialization functions
 
-function WikiPageInitializeAutocompleteIndexed() {
-    var $fields = $("#search_title,#quick_search_title");
-
+function InitializeAutocompleteIndexed(selector,sourcefunc,type) {
+    var $fields = $(selector);
     $fields.autocomplete({
         minLength: 1,
         delay: 100,
-        source: WikiPageIndexed
+        source: sourcefunc
     });
+    if (NetworkSourceConfig[type].render) {
+        $fields.each(function(i, field) {
+            $(field).data("uiAutocomplete")._renderItem = NetworkSourceConfig[type].render;
+        });
+    }
+}
 
-    var render_wiki_page = function(list, wiki_page) {
-        var $link = $("<a/>").addClass("tag-type-" + wiki_page.category).text(wiki_page.label);
-        return $("<li/>").data("item.autocomplete", wiki_page).append($link).appendTo(list);
-    };
-
-    $fields.each(function(i, field) {
-        $(field).data("uiAutocomplete")._renderItem = render_wiki_page;
-    });
+function WikiPageInitializeAutocompleteIndexed() {
+    InitializeAutocompleteIndexed("#search_title,#quick_search_title",WikiPageIndexed,'wikipage');
 }
 
 function ArtistInitializeAutocompleteIndexed() {
-    var $fields = $("#search_name,#quick_search_name");
-
-    $fields.autocomplete({
-        minLength: 1,
-        delay: 100,
-        source: ArtistIndexed
-    });
-
-    var render_artist = function(list, artist) {
-      var $link = $("<a/>").addClass("tag-type-1").text(artist.label);
-      return $("<li/>").data("item.autocomplete", artist).append($link).appendTo(list);
-    };
-
-    $fields.each(function(i, field) {
-      $(field).data("uiAutocomplete")._renderItem = render_artist;
-    });
+    InitializeAutocompleteIndexed("#search_name,#quick_search_name",ArtistIndexed,'artist');
 }
 
 function PoolInitializeAutocompleteIndexed(selector) {
-    var $fields = $(selector);
-
-    $fields.autocomplete({
-        minLength: 1,
-        delay: 100,
-        source: function (req, resp) { PoolSourceIndexed(req.term, resp, "");}
-    });
-
-    var render_pool = function(list, pool) {
-        var $link = $("<a/>").addClass("pool-category-" + pool.category).text(pool.label);
-        return $("<li/>").data("item.autocomplete", pool).append($link).appendTo(list);
-    };
-
-    $fields.each(function(i, field) {
-        $(field).data("uiAutocomplete")._renderItem = render_pool;
-    });
+    InitializeAutocompleteIndexed(selector,function (req, resp) { PoolSourceIndexed(req.term, resp, ""); },'pool');
 }
 
 function UserInitializeAutocompleteIndexed(selector) {
-    var $fields = $(selector);
-
-    $fields.autocomplete({
-        minLength: 1,
-        delay: 100,
-        source: function (req, resp) { UserSourceIndexed(req.term, resp, "");}
-    });
-
-    var render_user = function(list, user) {
-        var $link = $("<a/>").addClass("user-" + user.level.toLowerCase()).addClass("with-style").text(user.label);
-        return $("<li/>").data("item.autocomplete", user).append($link).appendTo(list);
-    };
-
-    $fields.each(function(i, field) {
-        $(field).data("uiAutocomplete")._renderItem = render_user;
-    });
+    InitializeAutocompleteIndexed(selector,function (req, resp) { UserSourceIndexed(req.term, resp, ""); },'user');
 }
 
 function SavedSearchInitializeAutocompleteIndexed(selector) {
-    var $fields = $(selector);
-
-    $fields.autocomplete({
-        minLength: 1,
-        delay: 100,
-        source: function (req, resp) { SavedSearchSourceIndexed(req.term, resp, "");}
-    });
+    InitializeAutocompleteIndexed(selector,function (req, resp) { SavedSearchSourceIndexed(req.term, resp, ""); },'search');
 }
 
 //Name functions
