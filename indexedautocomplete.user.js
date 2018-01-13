@@ -942,21 +942,13 @@ function SavedSearchInitializeAutocompleteIndexed(selector) {
 
 //Name functions
 
-function GetShortNames() {
-    return ['art','char','copy','gen','meta'];
-}
-
 function GetShortName(category) {
-    let shortnames = GetShortNames();
+    let shortnames = ['art','char','copy','gen','meta'];
     for (let i = 0;i < shortnames.length ; i++) {
         if (category.search(RegExp(shortnames[i])) === 0) {
             return shortnames[i];
         }
     }
-}
-
-function ShortNameRegexString() {
-    return GetShortNames().join('|') ;
 }
 
 //Main program
