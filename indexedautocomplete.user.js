@@ -13,6 +13,8 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
 // ==/UserScript==
 
+/***Global variables***/
+
 //Set to true to switch the debug info on
 const debug_console = true;
 
@@ -100,7 +102,7 @@ const expiration_config = {
 
 //Validation variables
 
-var postcount_constraints = {
+const postcount_constraints = {
     presence: true,
     numericality: {
         noStrings: true,
@@ -130,7 +132,7 @@ function inclusion_constraints(array) {
     return { presence: true, inclusion: array };
 }
 
-var autocompleteconstraints = {
+const autocomplete_constraints = {
     entry: {
         expires : expires_constraints,
         value: {
@@ -184,7 +186,7 @@ var autocompleteconstraints = {
     }
 };
 
-var relatedtagconstraints = {
+const relatedtag_constraints = {
     entry: {
         expires : expires_constraints,
         value : {
@@ -207,316 +209,19 @@ var relatedtagconstraints = {
     }
 };
 
-//Time functions
+//Source variables
 
-function MinimumExpirationTime(type) {
-    return expiration_config[type].minimum_days * milliseconds_per_day;
-}
+const source_key = {
+    ac: 'tag',
+    pl: 'pool',
+    us: 'user',
+    fg: 'favgroup',
+    ss: 'savedsearch',
+    ar: 'artist',
+    wp: 'wikipage'
+};
 
-//Logarithmic increase of expiration time based upon a count
-function ExpirationTime(type,count) {
-    let config = expiration_config[type];
-    let expiration = Math.log10(10 * count/config.logarithmic_start) * config.minimum_days;
-    expiration = Math.max(expiration,config.minimum_days);
-    expiration = Math.min(expiration,config.maximum_days);
-    return Math.round(expiration * milliseconds_per_day);
-}
-
-//Debug output functions
-
-function debuglog(args) {
-    if (debug_console) {
-        console.log.apply(this,arguments);
-    }
-}
-
-function debugTime(str) {
-    if (debug_console) {
-        console.time(str);
-    }
-}
-
-function debugTimeEnd(str) {
-    if (debug_console) {
-        console.timeEnd(str);
-    }
-}
-
-//Data recording functions
-
-function recordTime(entryname,type) {
-    if (debug_console) {
-        let index = entryname + ',' + type;
-        recordTime.records[index] = {
-            entryname: entryname,
-            type: type,
-            starttime: performance.now(),
-            endtime: 0};
-    }
-}
-recordTime.records = {};
-
-function recordTimeEnd(entryname,type) {
-    if (debug_console) {
-        let index = entryname + ',' + type;
-        if (!(index in recordTime.records)) {
-            return;
-        }
-        if (recordTime.records[index].endtime === 0) {
-            recordTime.records[index].endtime = performance.now();
-        }
-    }
-}
-
-//Statistics functions
-
-function outputAdjustedMean() {
-    let outputtime = {};
-    $.each(recordTime.records,(i,val)=>{
-        if (!(val.type in outputtime)) {
-            outputtime[val.type] = [];
-        }
-        outputtime[val.type].push(val.endtime-val.starttime);
-    });
-    $.each(outputtime,(type,values)=>{
-        let adjvalues = removeOutliers(values);
-        debuglog(type + ':',"num",values.length,"avg",Math.round(100*average(adjvalues))/100,"rem",values.length-adjvalues.length);
-    });
-}
-
-function removeOutliers(values) {
-    do {
-        var length = values.length;
-        let avg = average(values);
-        let stddev = standardDeviation(values);
-        let adjvalues = values.filter(val=>{return (Math.abs(val-avg) < (2 * stddev));});
-        var newlength = adjvalues.length;
-        if (newlength === 0) {
-            return values;
-        }
-        values = adjvalues;
-    } while (length != newlength);
-    return values;
-}
-
-function standardDeviation(values) {
-    var avg = average(values);
-    return Math.sqrt(average(values.map(value=>{let diff = value - avg; return diff * diff;})));
-}
-
-function average(values) {
-    return values.reduce(function(a, b) { return a + b; })/values.length;
-}
-
-//Data interface functions
-
-async function retrieveData(key) {
-    if (!(use_indexed_db || use_local_storage)) {
-        return null;
-    }
-    let database = use_indexed_db ? "IndexDB" : "LocalStorage";
-    if (key in sessionStorage) {
-        debuglog("Found item (Session):",key);
-        recordTime(key,'Session');
-        let data = sessionStorage.getItem(key);
-        recordTimeEnd(key,'Session');
-        try {
-            return JSON.parse(data);
-        } catch (e) {
-            //Swallow exception
-        }
-    }
-    recordTime(key,database);
-    let value = await danboorustorage.getItem(key);
-    recordTimeEnd(key,database);
-    if (value !== null) {
-        debuglog(`Found item (${database}):`,key);
-        sessionStorage[key] = JSON.stringify(value);
-    }
-    return value;
-}
-
-function saveData(key,value) {
-    danboorustorage.setItem(key,value);
-    sessionStorage.setItem(key,JSON.stringify(value));
-}
-
-function hasDataExpired(storeditem) {
-    if (Date.now() > storeditem.expires) {
-        debuglog("Data has expired!");
-        return true;
-    }
-    return false;
-}
-
-function DataCopy(olddata) {
-    let newdata = [];
-    $.each(olddata, (i,data)=>{
-        newdata.push(jQuery.extend(true, {}, data));
-    });
-    return newdata;
-}
-
-//Validation functions
-
-validate.validators.array = function(value, options, key, attributes) {
-    if (options !== false) {
-        if (!validate.isArray(value)) {
-            return "is not an array";
-        }
-        if (options !== true && 'length' in options) {
-            let checkerror = validate({val:value},{val:{length: options.length}});
-            if (checkerror !== undefined) {
-                return JSON.stringify(checkerror,null,2);
-            }
-        }
-    }
-}
-
-validate.validators.tagentryarray = function(value, options, key, attributes) {
-    if (options !== false) {
-        if (!validate.isArray(value)) {
-            return "is not an array";
-        }
-        for (let i=0;i < value.length;i++) {
-            if (value[i].length !== 2) {
-                return "must have 2 entries in tag entry ["+i.toString()+"]";
-            }
-            if (!validate.isString(value[i][0])) {
-                return "must be a string ["+i.toString()+"][0]";;
-            }
-            if ([0,1,3,4,5].indexOf(value[i][1]) < 0) {
-                return "must be a valid tag category ["+i.toString()+"][1]";
-            }
-        }
-    }
-}
-
-validate.validators.string = function(value, options, key, attributes) {
-    if (options !== false) {
-        var message = "";
-        //Can't use presence validator so must catch it here
-        if (value === undefined) {
-            return "can't be missing";
-        }
-        if (validate.isString(value)) {
-            return;
-        }
-        message += "is not a string"
-        if (validate.isHash(options) && 'allowNull' in options && options.allowNull === true) {
-            if (value === null) {
-                return;
-            }
-            message += " or null"
-        }
-        return message;
-    }
-}
-
-function PrintValidateError(key,checkerror) {
-    console.log(key,':\r\n',JSON.stringify(checkerror,null,2));
-}
-
-function ValidateEntry(key,entry) {
-    if (entry === null) {
-        debuglog(key,"entry not found!");
-        return false;
-    }
-    if (key.match(/^(?:ac|pl|us|fg|ss|ar|wp)-/)) {
-        return ValidateAutocompleteEntry(key,entry);
-    } else if (key.match(/^rt(?:gen|char|copy|art)?-/)) {
-        return ValidateRelatedtagEntry(key,entry);
-    }
-    console.log("Shouldn't get here");
-    return false;
-}
-
-function ValidateAutocompleteEntry(key,entry) {
-    check = validate(entry,autocompleteconstraints.entry);
-    if (check !== undefined) {
-        PrintValidateError(key,check);
-        return false
-    }
-    for (let i=0;i < entry.value.length; i++) {
-        if (key.match(/^ac-/)) {
-            check = validate(entry.value[i],autocompleteconstraints.tag);
-        } else if (key.match(/^pl-/)) {
-            check = validate(entry.value[i],autocompleteconstraints.pool);
-        } else if (key.match(/^us-/)) {
-            check = validate(entry.value[i],autocompleteconstraints.user);
-        } else if (key.match(/^fg-/)) {
-            check = validate(entry.value[i],autocompleteconstraints.favgroup);
-        } else if (key.match(/^ss-/)) {
-            check = validate(entry.value[i],autocompleteconstraints.savedsearch);
-        } else if (key.match(/^ar-/)) {
-            check = validate(entry.value[i],autocompleteconstraints.artist);
-        } else if (key.match(/^wp-/)) {
-            check = validate(entry.value[i],autocompleteconstraints.wikipage);
-        }
-        if (check !== undefined) {
-            console.log("value["+i.toString()+"]");
-            PrintValidateError(key,check);
-            return false;
-        }
-    }
-    return true;
-}
-
-function ValidateRelatedtagEntry(key,entry) {
-    check = validate(entry,relatedtagconstraints.entry);
-    if (check !== undefined) {
-        PrintValidateError(key,check);
-        return false
-    }
-    check = validate(entry.value,relatedtagconstraints.value);
-    if (check !== undefined) {
-        PrintValidateError(key,check);
-        return false
-    }
-    for (let i = 0;i < entry.value.other_wikis.length; i++) {
-        check = validate(entry.value.other_wikis[i],relatedtagconstraints.other_wikis);
-        if (check !== undefined) {
-            console.log("value["+i.toString()+"]");
-            PrintValidateError(key,check);
-            return false
-        }
-    }
-    return true;
-}
-
-//Main helper functions
-
-async function CheckLocalDB(key) {
-    if (use_indexed_db || use_local_storage) {
-        var cached = await retrieveData(key);
-        debuglog("Checking",key);
-        if (!ValidateEntry(key,cached) || hasDataExpired(cached)) {
-            danboorustorage.removeItem(key);
-        } else {
-            return cached.value;
-        }
-    }
-}
-
-function FixupMetatag(value,metatag) {
-    switch(metatag) {
-        case "@":
-            value.value = "@" + value.name;
-            value.label = value.name;
-            break;
-        case "":
-            value.value = value.name;
-            value.label = value.name.replace(/_/g, " ");
-            break;
-        default:
-            value.value = metatag + ":" + value.name;
-            value.label = value.name.replace(/_/g, " ");
-    }
-}
-
-//Main execution functions
-
-var NetworkSourceConfig = {
+const source_config = {
     tag: {
         url: "/tags/autocomplete.json",
         data: function(term) {
@@ -686,24 +391,355 @@ var NetworkSourceConfig = {
             return $("<li/>").data("item.autocomplete", artist).append($link).appendTo(list);
         }
     }
+};
+
+/***Misc functions***/
+
+//Name functions
+
+function GetShortName(category) {
+    let shortnames = ['art','char','copy','gen','meta'];
+    for (let i = 0;i < shortnames.length ; i++) {
+        if (category.search(RegExp(shortnames[i])) === 0) {
+            return shortnames[i];
+        }
+    }
 }
+
+//Time functions
+
+function MinimumExpirationTime(type) {
+    return expiration_config[type].minimum_days * milliseconds_per_day;
+}
+
+//Logarithmic increase of expiration time based upon a count
+function ExpirationTime(type,count) {
+    let config = expiration_config[type];
+    let expiration = Math.log10(10 * count/config.logarithmic_start) * config.minimum_days;
+    expiration = Math.max(expiration,config.minimum_days);
+    expiration = Math.min(expiration,config.maximum_days);
+    return Math.round(expiration * milliseconds_per_day);
+}
+
+//Debug output functions
+
+function debuglog(args) {
+    if (debug_console) {
+        console.log.apply(this,arguments);
+    }
+}
+
+function debugTime(str) {
+    if (debug_console) {
+        console.time(str);
+    }
+}
+
+function debugTimeEnd(str) {
+    if (debug_console) {
+        console.timeEnd(str);
+    }
+}
+
+//Data recording functions
+
+function recordTime(entryname,type) {
+    if (debug_console) {
+        let index = entryname + ',' + type;
+        recordTime.records[index] = {
+            entryname: entryname,
+            type: type,
+            starttime: performance.now(),
+            endtime: 0};
+    }
+}
+recordTime.records = {};
+
+function recordTimeEnd(entryname,type) {
+    if (debug_console) {
+        let index = entryname + ',' + type;
+        if (!(index in recordTime.records)) {
+            return;
+        }
+        if (recordTime.records[index].endtime === 0) {
+            recordTime.records[index].endtime = performance.now();
+        }
+    }
+}
+
+//Statistics functions
+
+function outputAdjustedMean() {
+    let outputtime = {};
+    $.each(recordTime.records,(i,val)=>{
+        if (!(val.type in outputtime)) {
+            outputtime[val.type] = [];
+        }
+        outputtime[val.type].push(val.endtime-val.starttime);
+    });
+    $.each(outputtime,(type,values)=>{
+        let adjvalues = removeOutliers(values);
+        debuglog(type + ':',"num",values.length,"avg",Math.round(100*average(adjvalues))/100,"rem",values.length-adjvalues.length);
+    });
+}
+
+function removeOutliers(values) {
+    do {
+        var length = values.length;
+        let avg = average(values);
+        let stddev = standardDeviation(values);
+        let adjvalues = values.filter(val=>{return (Math.abs(val-avg) < (2 * stddev));});
+        var newlength = adjvalues.length;
+        if (newlength === 0) {
+            return values;
+        }
+        values = adjvalues;
+    } while (length != newlength);
+    return values;
+}
+
+function standardDeviation(values) {
+    var avg = average(values);
+    return Math.sqrt(average(values.map(value=>{let diff = value - avg; return diff * diff;})));
+}
+
+function average(values) {
+    return values.reduce(function(a, b) { return a + b; })/values.length;
+}
+
+//Data interface functions
+
+async function retrieveData(key) {
+    if (!(use_indexed_db || use_local_storage)) {
+        return null;
+    }
+    let database = use_indexed_db ? "IndexDB" : "LocalStorage";
+    if (key in sessionStorage) {
+        debuglog("Found item (Session):",key);
+        recordTime(key,'Session');
+        let data = sessionStorage.getItem(key);
+        recordTimeEnd(key,'Session');
+        try {
+            return JSON.parse(data);
+        } catch (e) {
+            //Swallow exception
+        }
+    }
+    recordTime(key,database);
+    let value = await danboorustorage.getItem(key);
+    recordTimeEnd(key,database);
+    if (value !== null) {
+        debuglog(`Found item (${database}):`,key);
+        sessionStorage[key] = JSON.stringify(value);
+    }
+    return value;
+}
+
+function saveData(key,value) {
+    danboorustorage.setItem(key,value);
+    sessionStorage.setItem(key,JSON.stringify(value));
+}
+
+function hasDataExpired(storeditem) {
+    if (Date.now() > storeditem.expires) {
+        debuglog("Data has expired!");
+        return true;
+    }
+    return false;
+}
+
+function DataCopy(olddata) {
+    let newdata = [];
+    $.each(olddata, (i,data)=>{
+        newdata.push(jQuery.extend(true, {}, data));
+    });
+    return newdata;
+}
+
+//Validation functions
+
+validate.validators.array = function(value, options, key, attributes) {
+    if (options !== false) {
+        if (!validate.isArray(value)) {
+            return "is not an array";
+        }
+        if (options !== true && 'length' in options) {
+            let checkerror = validate({val:value},{val:{length: options.length}});
+            if (checkerror !== undefined) {
+                return JSON.stringify(checkerror,null,2);
+            }
+        }
+    }
+};
+
+validate.validators.tagentryarray = function(value, options, key, attributes) {
+    if (options !== false) {
+        if (!validate.isArray(value)) {
+            return "is not an array";
+        }
+        for (let i=0;i < value.length;i++) {
+            if (value[i].length !== 2) {
+                return "must have 2 entries in tag entry ["+i.toString()+"]";
+            }
+            if (!validate.isString(value[i][0])) {
+                return "must be a string ["+i.toString()+"][0]";
+            }
+            if ([0,1,3,4,5].indexOf(value[i][1]) < 0) {
+                return "must be a valid tag category ["+i.toString()+"][1]";
+            }
+        }
+    }
+};
+
+validate.validators.string = function(value, options, key, attributes) {
+    if (options !== false) {
+        var message = "";
+        //Can't use presence validator so must catch it here
+        if (value === undefined) {
+            return "can't be missing";
+        }
+        if (validate.isString(value)) {
+            return;
+        }
+        message += "is not a string";
+        if (validate.isHash(options) && 'allowNull' in options && options.allowNull === true) {
+            if (value === null) {
+                return;
+            }
+            message += " or null";
+        }
+        return message;
+    }
+};
+
+function PrintValidateError(key,checkerror) {
+    console.log(key,':\r\n',JSON.stringify(checkerror,null,2));
+}
+
+function ValidateEntry(key,entry) {
+    if (entry === null) {
+        debuglog(key,"entry not found!");
+        return false;
+    }
+    if (key.match(/^(?:ac|pl|us|fg|ss|ar|wp)-/)) {
+        return ValidateAutocompleteEntry(key,entry);
+    } else if (key.match(/^rt(?:gen|char|copy|art)?-/)) {
+        return ValidateRelatedtagEntry(key,entry);
+    }
+    console.log("Shouldn't get here");
+    return false;
+}
+
+function ValidateAutocompleteEntry(key,entry) {
+    check = validate(entry,autocomplete_constraints.entry);
+    if (check !== undefined) {
+        PrintValidateError(key,check);
+        return false;
+    }
+    for (let i=0;i < entry.value.length; i++) {
+        let type = source_key[key.slice(0,2)];
+        check = validate(entry.value[i],autocomplete_constraints[type]);
+        if (check !== undefined) {
+            console.log("value["+i.toString()+"]");
+            PrintValidateError(key,check);
+            return false;
+        }
+    }
+    return true;
+}
+
+function ValidateRelatedtagEntry(key,entry) {
+    check = validate(entry,relatedtag_constraints.entry);
+    if (check !== undefined) {
+        PrintValidateError(key,check);
+        return false;
+    }
+    check = validate(entry.value,relatedtag_constraints.value);
+    if (check !== undefined) {
+        PrintValidateError(key,check);
+        return false;
+    }
+    for (let i = 0;i < entry.value.other_wikis.length; i++) {
+        check = validate(entry.value.other_wikis[i],relatedtag_constraints.other_wikis);
+        if (check !== undefined) {
+            console.log("value["+i.toString()+"]");
+            PrintValidateError(key,check);
+            return false;
+        }
+    }
+    return true;
+}
+
+/***Main helper functions***/
+
+async function CheckLocalDB(key) {
+    if (use_indexed_db || use_local_storage) {
+        var cached = await retrieveData(key);
+        debuglog("Checking",key);
+        if (!ValidateEntry(key,cached) || hasDataExpired(cached)) {
+            danboorustorage.removeItem(key);
+        } else {
+            return cached.value;
+        }
+    }
+}
+
+function FixupMetatag(value,metatag) {
+    switch(metatag) {
+        case "@":
+            value.value = "@" + value.name;
+            value.label = value.name;
+            break;
+        case "":
+            value.value = value.name;
+            value.label = value.name.replace(/_/g, " ");
+            break;
+        default:
+            value.value = metatag + ":" + value.name;
+            value.label = value.name.replace(/_/g, " ");
+    }
+}
+
+function FixExpirationCallback(key,value,tagname,type) {
+    debuglog("Fixing expiration:",tagname);
+    recordTime(key + 'callback',"Network");
+    $.ajax({
+        url: "/tags.json",
+        data: {
+            "search[name]": tagname,
+        },
+        method: "get",
+        success: function(data) {
+            recordTimeEnd(key + 'callback',"Network");
+            if (!data.length) {
+                return;
+            }
+            var expiration_time = ExpirationTime(type,data[0].post_count);
+            saveData(key, {"value": value, "expires": Date.now() + expiration_time});
+        }
+    });
+}
+
+/***Main execution functions***/
+
+//Autocomplete functions
 
 function NetworkSource(type,key,term,resp,metatag) {
     debuglog("Querying",type,':',term);
     recordTime(key,"Network");
     $.ajax({
-        url: NetworkSourceConfig[type].url,
-        data: NetworkSourceConfig[type].data(term),
+        url: source_config[type].url,
+        data: source_config[type].data(term),
         method: "get",
         success: function(data) {
             recordTimeEnd(key,"Network");
-            var d = $.map(data, NetworkSourceConfig[type].map);
-            var expiration_time = NetworkSourceConfig[type].expiration(d);
+            var d = $.map(data, source_config[type].map);
+            var expiration_time = source_config[type].expiration(d);
             saveData(key, {"value": DataCopy(d), "expires": Date.now() + expiration_time});
-            if (NetworkSourceConfig[type].fixupmetatag) {
+            if (source_config[type].fixupmetatag) {
                 $.each(d, (i,val)=> {FixupMetatag(val,metatag);});
             }
-            if (NetworkSourceConfig[type].fixupexpiration && d.length) {
+            if (source_config[type].fixupexpiration && d.length) {
                 setTimeout(()=>{FixExpirationCallback(key,d,d[0].value,type);},callback_interval);
             }
             resp(d);
@@ -711,7 +747,6 @@ function NetworkSource(type,key,term,resp,metatag) {
     });
 }
 
-//Function to rebind Autocomplete normal source function
 async function NormalSourceIndexed(term, resp) {
     var key = ("ac-" + term).toLowerCase();
     var value = await CheckLocalDB(key);
@@ -786,28 +821,6 @@ async function ArtistIndexed(req, resp) {
     NetworkSource('artist',key,req.term,resp,"");
 }
 
-//Callback functions
-
-function FixExpirationCallback(key,value,tagname,type) {
-    debuglog("Fixing expiration:",tagname);
-    recordTime(key + 'callback',"Network");
-    $.ajax({
-        url: "/tags.json",
-        data: {
-            "search[name]": tagname,
-        },
-        method: "get",
-        success: function(data) {
-            recordTimeEnd(key + 'callback',"Network");
-            if (!data.length) {
-                return;
-            }
-            var expiration_time = ExpirationTime(type,data[0].post_count);
-            saveData(key, {"value": value, "expires": Date.now() + expiration_time});
-        }
-    });
-}
-
 //Non-autocomplete storage
 
 function CommonBindIndexed(button_name, category) {
@@ -840,6 +853,8 @@ function CommonBindIndexed(button_name, category) {
         e.preventDefault();
     });
 }
+
+/***Setup functions***/
 
 //Rebind callback functions
 
@@ -913,9 +928,9 @@ function InitializeAutocompleteIndexed(selector,sourcefunc,type) {
         delay: 100,
         source: sourcefunc
     });
-    if (NetworkSourceConfig[type].render) {
+    if (source_config[type].render) {
         $fields.each(function(i, field) {
-            $(field).data("uiAutocomplete")._renderItem = NetworkSourceConfig[type].render;
+            $(field).data("uiAutocomplete")._renderItem = source_config[type].render;
         });
     }
 }
@@ -938,17 +953,6 @@ function UserInitializeAutocompleteIndexed(selector) {
 
 function SavedSearchInitializeAutocompleteIndexed(selector) {
     InitializeAutocompleteIndexed(selector,function (req, resp) { SavedSearchSourceIndexed(req.term, resp, ""); },'search');
-}
-
-//Name functions
-
-function GetShortName(category) {
-    let shortnames = ['art','char','copy','gen','meta'];
-    for (let i = 0;i < shortnames.length ; i++) {
-        if (category.search(RegExp(shortnames[i])) === 0) {
-            return shortnames[i];
-        }
-    }
 }
 
 //Main program
@@ -1024,7 +1028,7 @@ function programLoad() {
 }
 programLoad.retries = 0;
 
-//Execution start
+/***Execution start***/
 
 debugTime("IAC-programLoad");
 programLoad.timer = setInterval(programLoad,timer_poll_interval);
