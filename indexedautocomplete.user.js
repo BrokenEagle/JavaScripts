@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      12
+// @version      13
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -854,6 +854,60 @@ function CommonBindIndexed(button_name, category) {
     });
 }
 
+function GetSessionData(url) {
+    let key = 'af-' + url;
+    if (key in sessionStorage) {
+        try {
+            return JSON.parse(sessionStorage.getItem(key));
+        } catch(e) {
+            //swallow
+        }
+    }
+}
+
+function SaveSessionData(url,data) {
+    let key = 'af-' + url;
+    debuglog("Saving",key);
+    sessionStorage.setItem(key,JSON.stringify(data));
+}
+
+function CheckSource(domobj) {
+    if (domobj.val()) {
+        let data = GetSessionData(domobj.val());
+        if (data) {
+            debuglog("Found data",key);
+            Danbooru.RelatedTag.process_artist(data);
+            return true
+        }
+    }
+    console.log("Data not found",key);
+    return false
+}
+
+async function FindArtistSession(e) {
+    $("#artist-tags").html("<em>Loading...</em>");
+    var url = $("#upload_source,#post_source");
+    if (CheckSource(url)) {
+        return;
+    }
+    var referer_url = $("#upload_referer_url");
+    if ((url.val() !== referer.val()) && CheckSource(referer_url)) {
+        return;
+    }
+    debuglog("Checking network",url.val(),referer_url.val());
+    $.get("/artists/finder.json", {"url": url.val(), "referer_url": referer_url.val()}).
+        success((data)=>{
+            Danbooru.RelatedTag.process_artist(data);
+            if (url.val()) {
+                SaveSessionData(url.val(),data);
+            }
+            if ((url.val() !== referer.val()) && referer_url.val()) {
+                SaveSessionData(referer_url.val(),data);
+            }
+        });
+    e.preventDefault();
+}
+
 /***Setup functions***/
 
 //Rebind callback functions
@@ -861,7 +915,7 @@ function CommonBindIndexed(button_name, category) {
 function rebindRelatedTags() {
     //Only need to check one of them, since they're all bound at the same time
     let bounditems = $._data($("#related-tags-button")[0]);
-    debuglog("Bound items:",Object.keys(bounditems));
+    debuglog("Bound items (RT):",Object.keys(bounditems));
     if (!$.isEmptyObject(bounditems) && bounditems.events.click.length) {
         clearInterval(rebindRelatedTags.timer);
         $("#related-tags-button").off();
@@ -871,6 +925,17 @@ function rebindRelatedTags() {
             $(`#related-${category}-button`).off();
             Danbooru.RelatedTag.common_bind("#related-" + category + "-button", category);
         });
+    }
+}
+
+function rebindFindArtist() {
+    //Only need to check one of them, since they're all bound at the same time
+    let bounditems = $._data($("#find-artist-button")[0]);
+    debuglog("Bound items (FA):",Object.keys(bounditems));
+    if (!$.isEmptyObject(bounditems) && bounditems.events.click.length) {
+        clearInterval(rebindFindArtist.timer);
+        $("#find-artist-button").off();
+        $("#find-artist-button").click(Danbooru.RelatedTag.find_artist);
     }
 }
 
@@ -964,7 +1029,9 @@ function main() {
     Danbooru.Autocomplete.saved_search_source = SavedSearchSourceIndexed;
     if ($("#c-posts #a-show,#c-uploads #a-new").length) {
         Danbooru.RelatedTag.common_bind = CommonBindIndexed;
+        Danbooru.RelatedTag.find_artist = FindArtistSession;
         rebindRelatedTags.timer = setInterval(rebindRelatedTags,timer_poll_interval);
+        rebindFindArtist.timer = setInterval(rebindFindArtist,timer_poll_interval);
     }
     if ($("#c-wiki-pages,#c-wiki-page-versions").length) {
         Danbooru.WikiPage.initialize_autocomplete = WikiPageInitializeAutocompleteIndexed;
