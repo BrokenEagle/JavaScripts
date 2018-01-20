@@ -613,7 +613,7 @@ validate.validators.string = function(value, options, key, attributes) {
 };
 
 function PrintValidateError(key,checkerror) {
-    console.log(key,':\r\n',JSON.stringify(checkerror,null,2));
+    debuglog(key,':\r\n',JSON.stringify(checkerror,null,2));
 }
 
 function ValidateEntry(key,entry) {
@@ -626,7 +626,7 @@ function ValidateEntry(key,entry) {
     } else if (key.match(/^rt(?:gen|char|copy|art)?-/)) {
         return ValidateRelatedtagEntry(key,entry);
     }
-    console.log("Shouldn't get here");
+    debuglog("Shouldn't get here");
     return false;
 }
 
@@ -640,7 +640,7 @@ function ValidateAutocompleteEntry(key,entry) {
         let type = source_key[key.slice(0,2)];
         check = validate(entry.value[i],autocomplete_constraints[type]);
         if (check !== undefined) {
-            console.log("value["+i.toString()+"]");
+            debuglog("value["+i.toString()+"]");
             PrintValidateError(key,check);
             return false;
         }
@@ -662,7 +662,7 @@ function ValidateRelatedtagEntry(key,entry) {
     for (let i = 0;i < entry.value.other_wikis.length; i++) {
         check = validate(entry.value.other_wikis[i],relatedtag_constraints.other_wikis);
         if (check !== undefined) {
-            console.log("value["+i.toString()+"]");
+            debuglog("value["+i.toString()+"]");
             PrintValidateError(key,check);
             return false;
         }
@@ -880,7 +880,7 @@ function CheckSource(domobj) {
             return true
         }
     }
-    console.log("Data not found",key);
+    debuglog("Data not found",key);
     return false
 }
 
