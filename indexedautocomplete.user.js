@@ -858,11 +858,14 @@ function GetSessionData(url) {
     let key = 'af-' + url;
     if (key in sessionStorage) {
         try {
+            debuglog("Found data",key);
             return JSON.parse(sessionStorage.getItem(key));
         } catch(e) {
-            //swallow
+            debuglog("Data error",key);
+            return;
         }
     }
+    debuglog("Data not found",key);
 }
 
 function SaveSessionData(url,data) {
@@ -875,12 +878,10 @@ function CheckSource(domobj) {
     if (domobj.val()) {
         let data = GetSessionData(domobj.val());
         if (data) {
-            debuglog("Found data",key);
             Danbooru.RelatedTag.process_artist(data);
             return true
         }
     }
-    debuglog("Data not found",key);
     return false
 }
 
@@ -891,7 +892,7 @@ async function FindArtistSession(e) {
         return;
     }
     var referer_url = $("#upload_referer_url");
-    if ((url.val() !== referer.val()) && CheckSource(referer_url)) {
+    if ((url.val() !== referer_url.val()) && CheckSource(referer_url)) {
         return;
     }
     debuglog("Checking network",url.val(),referer_url.val());
@@ -901,7 +902,7 @@ async function FindArtistSession(e) {
             if (url.val()) {
                 SaveSessionData(url.val(),data);
             }
-            if ((url.val() !== referer.val()) && referer_url.val()) {
+            if ((url.val() !== referer_url.val()) && referer_url.val()) {
                 SaveSessionData(referer_url.val(),data);
             }
         });
