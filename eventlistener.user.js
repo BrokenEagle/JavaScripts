@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7
+// @version      8
 // @source       https://danbooru.donmai.us/users/23799
-// @description  Informs users of new events (flags,appeals,dmails,comments,forums)
+// @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes)
 // @author       BrokenEagle
 // @match        *://*.donmai.us/*
 // @grant        none
@@ -55,6 +55,10 @@ const notice_box = `
         <h1>You've got comments!</h1>
         <div id="comments-table"></div>
     </div>
+    <div id="notes-section"  style="display:none">
+        <h1>You've got notes!</h1>
+        <div id="notes-table"></div>
+    </div>
     <div id="spam-dmail-section"  style="display:none">
         <h1>You've got spam!</h1>
         <div id="spam-dmail-table"></div>
@@ -78,12 +82,16 @@ const eventlistener_css = `
 #event-notice #comments-section #comments-table .preview {
     margin-right: 0;
 }
-.striped .subscribe-topic a,
+.striped .subscribe-topic,
 .striped .unsubscribe-topic,
+.striped .subscribe-notes,
+.striped .unsubscribe-notes,
 #event-notice .show-full-forum,
 #event-notice .hide-full-forum,
 #event-notice .show-full-dmail,
-#event-notice .hide-full-dmail {
+#event-notice .hide-full-dmail,
+#event-notice .show-rendered-note,
+#event-notice .hide-rendered-note {
     font-family: monospace;
 }
 `;
@@ -194,6 +202,26 @@ function SetForumList(input) {
     localStorage['el-forumlist'] = JSON.stringify(forumlist);
 }
 
+function GetNoteList() {
+    let notelist = localStorage['el-notelist'];
+    if (notelist) {
+        return JSON.parse(notelist);
+    } else {
+        return [];
+    }
+}
+
+function SetNoteList(input) {
+    let notelist = GetNoteList();
+    if (input[0] == '-') {
+        notelist = notelist.filter((val)=>{return val != input.slice(1);});
+    } else {
+        notelist.push(parseInt(input));
+    }
+    notelist = $.unique(notelist);
+    localStorage['el-notelist'] = JSON.stringify(notelist);
+}
+
 function SaveLastID(key,lastid) {
     let previousid = localStorage[key];
     if (previousid) {
@@ -226,6 +254,12 @@ async function AddForumPost(forumid,$rowelement) {
     let $forum_post = $.parseHTML(forum_post);
     let $outerblock = $.parseHTML(`<tr id="full-forum-id-${forumid}"><td colspan="4"></td></tr>`);
     $("td",$outerblock).append($(".forum-post",$forum_post));
+    $($rowelement).after($outerblock);
+}
+
+function AddRenderedNote(noteid,$rowelement) {
+    let notehtml = $.parseHTML($.trim($("td:nth-of-type(4)",$rowelement)[0].innerHTML))[0].data;
+    let $outerblock = $.parseHTML(`<tr id="rendered-note-id-${noteid}"><td colspan="7">${notehtml}</td></tr>`);
     $($rowelement).after($outerblock);
 }
 
@@ -511,12 +545,86 @@ CheckForums.lastid = 0;
 CheckForums.hasevents = false;
 CheckForums.isdone = false;
 
+async function CheckNotes() {
+    let notelastid = localStorage['el-notelastid'];
+    let notelist = GetNoteList();
+    if (notelastid) {
+        var jsonnotes = [], subscribenotes = [];
+        if (!localStorage['el-savednotelist']) {
+            let tempnotes;
+            while (true) {
+                tempnotes = jsonnotes;
+                jsonnotes = await $.getJSON("/note_versions", {page: 'a' + notelastid, limit: display_limit});
+                subscribenotes = jsonnotes.filter((val)=>{return (val.updater_id !== userid) && (notelist.indexOf(val.post_id) >= 0);}).concat(subscribenotes);
+                if (jsonnotes.length === display_limit) {
+                    notelastid = jsonnotes[0].id.toString();
+                    debuglog("Rechecking @",notelastid);
+                    continue;
+                } else if (jsonnotes.length === 0) {
+                    jsonnotes = tempnotes;
+                }
+                break;
+            }
+            if (subscribenotes.length) {
+                localStorage['el-savednotelist'] = JSON.stringify(subscribenotes.map((val)=>{return {id:val.id,post:val.post_id};}));
+                subscribenotes = subscribenotes.map((val)=>{return val.id;});
+            }
+            if (jsonnotes.length) {
+                jsonnotes = [jsonnotes[0].id];
+                localStorage['el-savednotelastid'] = JSON.stringify(jsonnotes);
+            }
+        } else {
+            subscribenotes = JSON.parse(localStorage['el-savednotelist']);
+            subscribenotes = subscribenotes.filter(value=>{return notelist.indexOf(value.post) >= 0;});
+            jsonnotes = JSON.parse(localStorage['el-savednotelastid']);
+            if (!subscribenotes.length) {
+                debuglog("Deleting saved note values");
+                delete localStorage['el-savednotelist'];
+                delete localStorage['el-savednotelastid'];
+            } else {
+                subscribenotes = subscribenotes.map((val)=>{return val.id;});
+            }
+        }
+        if (subscribenotes.length) {
+            debuglog("Found notes!",jsonnotes[0]);
+            CheckNotes.lastid = jsonnotes[0];
+            let noteshtml = await $.get("/note_versions", {search: {id: subscribenotes.join(',')}, limit: subscribenotes.length});
+            let $notes = $(noteshtml);
+            let $notes_table = $("#notes-table");
+            $notes_table.append($(".striped",$notes));
+            InitializeNoteIndexLinks($notes_table);
+            InitializeOpenNoteLinks($notes_table);
+            $("#event-notice").show();
+            $("#notes-section").show();
+            CheckNotes.hasevents = true;
+        } else {
+            debuglog("No notes!");
+            if (jsonnotes.length && (localStorage['el-notelastid'] !== jsonnotes[0].toString())) {
+                SaveLastID('el-notelastid',jsonnotes[0]);
+                debuglog("Setting note last ID:",localStorage['el-notelastid']);
+            }
+        }
+    } else {
+        let jsonnotes = await $.getJSON("/note_versions", {limit: 1});
+        if (jsonnotes.length) {
+            SaveLastID('el-notelastid',jsonnotes[0].id);
+        } else {
+            SaveLastID('el-notelastid',0);
+        }
+        debuglog("Set note last ID:",localStorage['el-notelastid']);
+    }
+    CheckNotes.isdone = true;
+}
+CheckNotes.lastid = 0;
+CheckNotes.hasevents = false;
+CheckNotes.isdone = false;
+
 /****Callback functions****/
 
 function CheckAllEvents() {
-    if (CheckFlags.isdone && CheckAppeals.isdone && CheckDmails.isdone && CheckComments.isdone && CheckForums.isdone) {
+    if (CheckFlags.isdone && CheckAppeals.isdone && CheckDmails.isdone && CheckComments.isdone && CheckForums.isdone && CheckNotes.isdone) {
         clearInterval(CheckAllEvents.timer);
-        if (CheckFlags.hasevents || CheckAppeals.hasevents || CheckDmails.hasevents || CheckComments.hasevents || CheckForums.hasevents) {
+        if (CheckFlags.hasevents || CheckAppeals.hasevents || CheckDmails.hasevents || CheckComments.hasevents || CheckForums.hasevents || CheckNotes.hasevents) {
             localStorage['el-events'] = true;
         } else {
             localStorage['el-events'] = false;
@@ -543,9 +651,25 @@ function RenderForumTopicLinks(topicid,tag,ender,right=false) {
            `<${tag} data-topic-id="${topicid}" class="unsubscribe-topic" ${unsubscribe}"><a href="#">Unsubscribe${ender}</a></${tag}>`;
 }
 
+function RenderNoteLinks(postid,tag,ender,right=false) {
+    let notelist = GetNoteList();
+    let subscribe = (notelist.indexOf(postid) < 0 ? "style": 'style="display:none !important"');
+    let unsubscribe = (notelist.indexOf(postid) < 0 ? 'style="display:none !important"' : "style");
+    let spacer = (right ? "&nbsp;&nbsp;" : "");
+    return `<${tag} data-post-id="${postid}" class="subscribe-notes" ${subscribe}><a href="#">${spacer}Subscribe${ender}</a></${tag}>` +
+           `<${tag} data-post-id="${postid}" class="unsubscribe-notes" ${unsubscribe}"><a href="#">Unsubscribe${ender}</a></${tag}>`;
+}
+
 function RenderOpenForumLinks(forumid) {
     return `<span data-forum-id="${forumid}" class="show-full-forum" style><a href="#">Show</a></span>` +
            `<span data-forum-id="${forumid}" class="hide-full-forum" style="display:none !important"><a href="#">Hide</a></span>&nbsp;|&nbsp;`;
+}
+
+function RenderOpenNoteLinks(noteid) {
+    return `<p style="text-align:center">
+                <span data-note-id="${noteid}" class="show-rendered-note" style><a href="#">Render note</a></span>` +
+               `<span data-note-id="${noteid}" class="hide-rendered-note" style="display:none !important"><a href="#">Hide note</a></span>
+            </p>`;
 }
 
 function RenderOpenDmailLinks(dmailid) {
@@ -569,6 +693,15 @@ function InitializeOpenForumLinks($obj) {
     HideFullForumClick($obj);
 }
 
+function InitializeOpenNoteLinks($obj) {
+    $.each($(".striped tbody tr",$obj),(i,$row)=>{
+        let noteid = $("td:nth-of-type(3) a:first-of-type",$row)[0].innerHTML.replace('.','-');
+        $("td:nth-of-type(4)",$row).append(RenderOpenNoteLinks(noteid));
+    });
+    ShowRenderedNoteClick($obj);
+    HideRenderedNoteClick($obj);
+}
+
 function InitializeOpenDmailLinks($obj) {
     $.each($(".striped tbody tr",$obj),(i,$row)=>{
         let dmailid = $row.innerHTML.match(/\/dmails\/(\d+)/)[1];
@@ -583,6 +716,13 @@ function InitializePostCommentLinks() {
     $("#nav > menu:nth-child(2)").append(RenderCommentPartialPostLinks(postid,"li"," "));
     SubscribeCommentsClick();
     UnsubscribeCommentsClick();
+}
+
+function InitializePostNoteLinks() {
+    var postid = parseInt(Danbooru.meta('post-id'));
+    $("#nav > menu:nth-child(2)").append(RenderNoteLinks(postid,"li"," notes"));
+    SubscribeNotesClick();
+    UnsubscribeNotesClick();
 }
 
 function InitializeTopicShowLinks() {
@@ -607,6 +747,15 @@ function InitializeTopicIndexLinks($obj) {
     });
     SubscribeTopicClick();
     UnsubscribeTopicClick();
+}
+
+function InitializeNoteIndexLinks($obj) {
+    $.each($(".striped tbody tr",$obj), (i,entry)=>{
+        let postid = parseInt($("td:nth-of-type(2)",entry)[0].innerHTML.match(/\/posts\/(\d+)/)[1]);
+        $("td:nth-of-type(1)",entry).prepend(RenderNoteLinks(postid,"span","",true));
+    });
+    SubscribeNotesClick();
+    UnsubscribeNotesClick();
 }
 
 function InitializeCommentPartialPostLinks() {
@@ -667,14 +816,21 @@ function HideEventNoticeClick() {
             debuglog("Set last comment ID:",localStorage['el-commentlastid']);
             delete localStorage['el-savedcommentlist'];
             delete localStorage['el-savedcommentlastid'];
-            debuglog("Deleted saved values!");
+            debuglog("Deleted saved values! (comments)");
         }
         if (CheckForums.lastid) {
             SaveLastID('el-forumlastid',CheckForums.lastid);
-            debuglog("Set last comment ID:",localStorage['el-forumlastid']);
+            debuglog("Set last forum ID:",localStorage['el-forumlastid']);
             delete localStorage['el-savedforumlist'];
             delete localStorage['el-savedforumlastid'];
-            debuglog("Deleted saved values!");
+            debuglog("Deleted saved values! (forums)");
+        }
+        if (CheckNotes.lastid) {
+            SaveLastID('el-notelastid',CheckNotes.lastid);
+            debuglog("Set last note ID:",localStorage['el-notelastid']);
+            delete localStorage['el-savednotelist'];
+            delete localStorage['el-savednotelastid'];
+            debuglog("Deleted saved values! (notes)");
         }
         localStorage['el-events'] = false;
         e.preventDefault();
@@ -697,6 +853,26 @@ function UnsubscribeCommentsClick() {
         setTimeout(()=>{SetCommentList('-' + post);},1);
         FullHide(`.unsubscribe-comments[data-post-id=${post}]`);
         ClearHide(`.subscribe-comments[data-post-id=${post}]`);
+        e.preventDefault();
+    });
+}
+
+function SubscribeNotesClick() {
+    $(".subscribe-notes a").off().click((e)=>{
+        let post = $(e.target.parentElement).data('post-id');
+        setTimeout(()=>{SetNoteList(post);},1);
+        FullHide(`.subscribe-notes[data-post-id=${post}]`);
+        ClearHide(`.unsubscribe-notes[data-post-id=${post}]`);
+        e.preventDefault();
+    });
+}
+
+function UnsubscribeNotesClick() {
+    $(".unsubscribe-notes a").off().click((e)=>{
+        let post = $(e.target.parentElement).data('post-id');
+        setTimeout(()=>{SetNoteList('-' + post);},1);
+        FullHide(`.unsubscribe-notes[data-post-id=${post}]`);
+        ClearHide(`.subscribe-notes[data-post-id=${post}]`);
         e.preventDefault();
     });
 }
@@ -743,6 +919,32 @@ function HideFullForumClick($obj) {
         FullHide(`.hide-full-forum[data-forum-id=${forumid}]`);
         ClearHide(`.show-full-forum[data-forum-id=${forumid}]`);
         $(`#full-forum-id-${forumid}`).hide();
+        e.preventDefault();
+    });
+}
+
+function ShowRenderedNoteClick($obj) {
+    $(".show-rendered-note a").off().click(function(e){
+        let noteid = $(e.target.parentElement).data('note-id');
+        if (ShowRenderedNoteClick.openlist.indexOf(noteid) < 0) {
+            let $rowelement = e.target.parentElement.parentElement.parentElement.parentElement;
+            AddRenderedNote(noteid,$rowelement);
+            ShowRenderedNoteClick.openlist.push(noteid);
+        }
+        FullHide(`.show-rendered-note[data-note-id="${noteid}"]`);
+        ClearHide(`.hide-rendered-note[data-note-id="${noteid}"]`);
+        $(`#rendered-note-id-${noteid}`).show();
+        e.preventDefault();
+    });
+}
+ShowRenderedNoteClick.openlist = [];
+
+function HideRenderedNoteClick($obj) {
+    $(".hide-rendered-note a").off().click(function(e){
+        let noteid = $(e.target.parentElement).data('note-id');
+        FullHide(`.hide-rendered-note[data-note-id="${noteid}"]`);
+        ClearHide(`.show-rendered-note[data-note-id="${noteid}"]`);
+        $(`#rendered-note-id-${noteid}`).hide();
         e.preventDefault();
     });
 }
@@ -802,12 +1004,18 @@ function main() {
         } else {
             CheckForums.isdone = true;
         }
+        if (GetNoteList().length) {
+            CheckNotes();
+        } else {
+            CheckNotes.isdone = true;
+        }
         CheckAllEvents.timer = setInterval(CheckAllEvents,timer_poll_interval);
     } else {
         debuglog("Waiting...");
     }
     if ($("#c-posts #a-show").length) {
         InitializePostCommentLinks();
+        InitializePostNoteLinks();
     } else if ($("#c-comments #a-index #p-index-by-post").length) {
         InitializeCommentPartialPostLinks();
     } else if ($("#c-comments #a-index #p-index-by-comment").length) {
