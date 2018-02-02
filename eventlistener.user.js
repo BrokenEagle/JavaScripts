@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      8
+// @version      8.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes)
 // @author       BrokenEagle
@@ -781,7 +781,7 @@ function InitializeCommentPartialCommentLinks() {
 }
 
 function InitializeEventNoticeCommentLinks() {
-    $.each($("#event-notice .post-preview"), (i,$entry)=>{
+    $.each($("#event-notice #comments-section .post-preview"), (i,$entry)=>{
         var postid = parseInt($($entry).data('id'));
         var linkhtml = RenderCommentPartialPostLinks(postid,"div","<br>");
         var $table = $.parseHTML(`<table><tbody><tr><td></td></tr><tr><td>${linkhtml}</td></tr></tbody></table>`);
