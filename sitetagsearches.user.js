@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SiteTagSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2.2
+// @version      2.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Presents additional site links for the translated other wiki tags
 // @author       BrokenEagle
@@ -93,7 +93,10 @@ if ($("#c-wiki-pages #a-show,#c-posts #a-index").length) {
 
     $(".wiki-other-name").each((i,entry)=>{
         let tagname = entry.innerHTML;
-        let encoded_tagname = encodeURI(tagname);
+        let elem = document.createElement('textarea');
+        elem.innerHTML = tagname;
+        let decoded = elem.value;
+        let encoded_tagname = encodeURIComponent(decoded);
         entry.outerHTML = RenderSiteLinks(tagname,encoded_tagname,i);
     });
 
