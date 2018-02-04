@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         SiteTagSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2.1
+// @version      2.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Presents additional site links for the translated other wiki tags
 // @author       BrokenEagle
 // @match        *://*.donmai.us/wiki_pages/*
-// @match        *://*.donmai.us/posts?tags=*
+// @match        *://*.donmai.us/posts?*
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/sitetagsearches.user.js
