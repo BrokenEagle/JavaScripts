@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SiteTagSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2
+// @version      2.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Presents additional site links for the translated other wiki tags
 // @author       BrokenEagle
@@ -24,7 +24,7 @@ const program_css = `
         position: relative;
     }
 
-    .image-links {
+    .wiki-other-name .image-links {
         max-width: 100px;
         overflow: visible;
         position: absolute;
@@ -35,8 +35,17 @@ const program_css = `
         display: none;
     }
 
-    .image-links a {
+    .wiki-other-name .image-links ul {
         padding: 5px;
+        margin: 0;
+    }
+
+    .wiki-other-name .image-links li {
+        list-style-type: none;
+        margin: 0;
+    }
+
+    .wiki-other-name .image-links a {
         white-space: nowrap;
     }
 
@@ -61,16 +70,18 @@ function RenderSiteLinks(tagname,encoded_tagname,num) {
     <span class="other-name-tagtext">${tagname}</span>
     <a class="ui-icon collapsible-image-links ui-icon-triangle-1-e" data-id="${num}"></a>
     <div class="image-links" data-id="${num}">
-        <a href="http://www.pixiv.net/search.php?s_mode=s_tag_full&amp;word=${encoded_tagname}">Pixiv</a>
-        <a href="http://seiga.nicovideo.jp/tag/${encoded_tagname}">Seiga</a>
-        <a href="http://nijie.info/search.php?word=${encoded_tagname}">Nijie</a>
-        <a href="http://www.tinami.com/search/list?keyword=${encoded_tagname}">Tinami</a>
-        <a href="http://bcy.net/tags/name/${encoded_tagname}">BCY.net</a>
-        <a href="http://www.deviantart.com/tag/${encoded_tagname}">Deviantart</a>
-        <a href="http://www.artstation.com/search?q=${encoded_tagname}">Artstation</a>
-        <a href="http://www.tumblr.com/tagged/${encoded_tagname}">Tumblr</a>
-        <a href="http://twitter.com/hashtag/${encoded_tagname}">Twitter</a>
-        <a href="http://e-hentai.org/?f_search=${encoded_tagname}">E-Hentai</a>
+        <ul class="site-link-list">
+        <li class="site-link"><a href="http://www.pixiv.net/search.php?s_mode=s_tag_full&amp;word=${encoded_tagname}">Pixiv</a></li>
+        <li class="site-link"><a href="http://seiga.nicovideo.jp/tag/${encoded_tagname}">Nicoseiga</a></li>
+        <li class="site-link"><a href="http://nijie.info/search.php?word=${encoded_tagname}">Nijie</a></li>
+        <li class="site-link"><a href="http://www.tinami.com/search/list?keyword=${encoded_tagname}">Tinami</a></li>
+        <li class="site-link"><a href="http://bcy.net/tags/name/${encoded_tagname}">BCY.net</a></li>
+        <li class="site-link"><a href="http://www.deviantart.com/tag/${encoded_tagname}">Deviantart</a></li>
+        <li class="site-link"><a href="http://www.artstation.com/search?q=${encoded_tagname}">Artstation</a></li>
+        <li class="site-link"><a href="http://www.tumblr.com/tagged/${encoded_tagname}">Tumblr</a></li>
+        <li class="site-link"><a href="http://twitter.com/hashtag/${encoded_tagname}">Twitter</a></li>
+        <li class="site-link"><a href="http://e-hentai.org/?f_search=${encoded_tagname}">E-Hentai</a></li>
+        </ul>
     </div>
 </div>`;
 }
