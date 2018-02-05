@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SiteTagSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3
+// @version      3.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Presents additional site links for the wiki tag(s)
 // @author       BrokenEagle
@@ -15,35 +15,27 @@
 /***Global variables***/
 
 const program_css = `
-    .wiki-other-name,
-    .image-links {
-        display: inline-block;
-    }
-
     .wiki-other-name {
+        display: inline-block;
         position: relative;
     }
 
-    .wiki-other-name .image-links {
-        max-width: 100px;
-        overflow: visible;
+    .wiki-other-name .image-links,
+    .wiki-other-name .booru-links {
         position: absolute;
-        right: 0;
-        z-index: 20;
         background: white;
         border: lightgrey solid 1px;
         display: none;
     }
 
+    .wiki-other-name .image-links {
+        right: 0;
+        z-index: 20;
+    }
+
     .wiki-other-name .booru-links {
-        max-width: 100px;
-        overflow: visible;
-        position: absolute;
         left: 0;
-        z-index: 10;
-        background: white;
-        border: lightgrey solid 1px;
-        display: none;
+        z-index: 30;
     }
 
     .wiki-other-name .image-links ul,
@@ -55,12 +47,6 @@ const program_css = `
     .wiki-other-name .image-links li,
     .wiki-other-name .booru-links li    {
         list-style-type: none;
-        margin: 0;
-    }
-
-    .wiki-other-name .image-links a,
-    .wiki-other-name .booru-links a {
-        white-space: nowrap;
     }
 
     .ui-icon {
@@ -160,7 +146,12 @@ function main() {
         entry.outerHTML = RenderTranslatedTags(tagname,encoded_tagname,i+1);
     });
 
-    $(".wiki-other-name").parent().prepend(RenderMainTag(GetWikiName()));
+    if ($(".wiki-other-name").length) {
+        $(".wiki-other-name").parent().prepend(RenderMainTag(GetWikiName()));
+    } else {
+        let $elem = $('<p></p>').prepend(RenderMainTag(GetWikiName()));
+        $("#wiki-page-body").prepend($elem);
+    }
 
     $(".collapsible-image-links").click((e)=>{
         let id = $(e.target).data('id');
