@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      13
+// @version      13.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -942,7 +942,7 @@ function rebindFindArtist() {
 
 function rebindWikiPageAutocomplete() {
     var $fields = $("#search_title,#quick_search_title");
-    if ($fields.length && ('uiAutocomplete' in $.data($fields[0]))) {
+    if ($fields.length && ('ui-autocomplete' in $.data($fields[0]))) {
         clearInterval(rebindWikiPageAutocomplete.timer);
         $fields.off().removeData();
         Danbooru.WikiPage.initialize_autocomplete();
@@ -951,7 +951,7 @@ function rebindWikiPageAutocomplete() {
 
 function rebindArtistAutocomplete() {
     var $fields = $("#search_name,#quick_search_name");
-    if ($fields.length && (('uiAutocomplete' in $.data($fields[0])) || $("#c-artist-versions").length) ) {
+    if ($fields.length && (('ui-autocomplete' in $.data($fields[0])) || $("#c-artist-versions").length) ) {
         clearInterval(rebindArtistAutocomplete.timer);
         $fields.off().removeData();
         Danbooru.Artist.initialize_autocomplete();
@@ -960,7 +960,7 @@ function rebindArtistAutocomplete() {
 
 function rebindPoolAutocomplete() {
     var $fields = $("#search_name_matches,#quick_search_name_matches");
-    if ($fields.length && (('uiAutocomplete' in $.data($fields[0])) || $("#c-pool-versions").length)) {
+    if ($fields.length && (('ui-autocomplete' in $.data($fields[0])) || $("#c-pool-versions").length)) {
         clearInterval(rebindPoolAutocomplete.timer);
         $fields.off().removeData();
         Danbooru.Pool.initialize_autocomplete_for("#search_name_matches,#quick_search_name_matches");
@@ -969,7 +969,7 @@ function rebindPoolAutocomplete() {
 
 function rebindPostPoolAutocomplete() {
     var $fields = $("#add-to-pool-dialog input[type=text]");
-    if ($fields.length && ('uiAutocomplete' in $.data($fields[0]))) {
+    if ($fields.length && ('ui-autocomplete' in $.data($fields[0]))) {
         clearInterval(rebindPostPoolAutocomplete.timer);
         $fields.off().removeData();
         Danbooru.Pool.initialize_autocomplete_for("#add-to-pool-dialog input[type=text]");
@@ -978,7 +978,7 @@ function rebindPostPoolAutocomplete() {
 
 function rebindSavedSearchAutocomplete() {
     var $fields = $("#saved_search_labels");
-    if ($fields.length && ('uiAutocomplete' in $.data($fields[0]))) {
+    if ($fields.length && ('ui-autocomplete' in $.data($fields[0]))) {
         clearInterval(rebindSavedSearchAutocomplete.timer);
         $fields.off().removeData();
         SavedSearchInitializeAutocompleteIndexed("#saved_search_labels");
@@ -996,7 +996,7 @@ function InitializeAutocompleteIndexed(selector,sourcefunc,type) {
     });
     if (source_config[type].render) {
         $fields.each(function(i, field) {
-            $(field).data("uiAutocomplete")._renderItem = source_config[type].render;
+            $(field).data("ui-autocomplete")._renderItem = source_config[type].render;
         });
     }
 }
