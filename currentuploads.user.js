@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2
+// @version      3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Gives up-to-date stats on uploads
 // @author       BrokenEagle
@@ -41,20 +41,29 @@ const one_minute = 60 * 1000;
 const expirations = {'d':5,'w':60,'mo':24*60,'y':7*24*60,'at':30*24*60};
 const rti_expiration = 30*24*60 * one_minute; //one month
 
+//Network call configuration
+const max_post_limit_query = 100;
+const max_network_requests = 25;
+
 //Placeholders for setting during program execution
 var username;
 var use_dummy_value;
+var num_network_requests = 0;
 
 //Style information
 const program_css = `
 #upload-counts {
     border: lightgrey dotted;
-    max-width: ${max_column_characters + 30}em;
+    max-width: ${max_column_characters + 35}em;
 }
 #count-table {
     margin-bottom: 1em;
     display: none;
     white-space: nowrap;
+    max-height: 20em;
+    overflow-x: hidden;
+    overflow-y: auto;
+    border: lightgrey solid 1px;
 }
 #upload-counts > span,
 #upload-counts .striped {
@@ -233,6 +242,34 @@ function MaxEntryLength(string) {
     return string;
 }
 
+function RemoveDanbooruDuplicates(array) {
+    let seen_array = [];
+    return array.filter(value=>{
+        if ($.inArray(value.id,seen_array) >= 0) {
+            debuglog("Found duplicate",value.id);
+            return;
+        }
+        seen_array.push(value.id);
+        return value;
+    });
+}
+
+function IncrementCounter() {
+    num_network_requests += 1;
+    $('#loading-counter').html(num_network_requests);
+}
+
+function DecrementCounter() {
+    num_network_requests -= 1;
+    $('#loading-counter').html(num_network_requests);
+}
+
+async function RateLimit() {
+    while (num_network_requests >= max_network_requests) {
+        await sleep(1000);
+    }
+}
+
 //Network functions
 
 async function GetReverseTagImplication(tag) {
@@ -240,7 +277,9 @@ async function GetReverseTagImplication(tag) {
     var check = await checkLocalDB(key,ValidateEntry);
     if (!(check)) {
         debuglog("Network (implication):",key);
-        return $.getJSON('/tag_implications?search[antecedent_name]=' + encodeURIComponent(tag)).then(data=>{saveData(key, {'value':data.length,'expires':Date.now() + rti_expiration});});
+        await RateLimit();
+        IncrementCounter();
+        return $.getJSON('/tag_implications?search[antecedent_name]=' + encodeURIComponent(tag)).then(data=>{saveData(key, {'value':data.length,'expires':Date.now() + rti_expiration});}).always(()=>{DecrementCounter();});
     }
 }
 
@@ -259,24 +298,36 @@ async function GetCount(type,tag) {
     var check = await checkLocalDB(key,ValidateEntry);
     if (!(check)) {
         debuglog("Network (count):",key);
-        return $.getJSON('/counts/posts',BuildTagParams(type,tag)).then(data=>{saveData(key, {'value':data.counts.posts,'expires':Date.now() + expirations[type] * one_minute});});
+        await RateLimit();
+        IncrementCounter();
+        return $.getJSON('/counts/posts',BuildTagParams(type,tag)).then(data=>{saveData(key, {'value':data.counts.posts,'expires':Date.now() + expirations[type] * one_minute});}).always(()=>{DecrementCounter();});
     }
 }
 
 async function GetCurrentUploads(username) {
-    var check = await checkLocalDB('current-uploads',ValidateEntry);
+    let key = `current-uploads-${username}`;
+    var check = await checkLocalDB(key,ValidateEntry);
     if (!(check)) {
         debuglog("Network (current uploads)");
-        let data =  await $.getJSON('/posts',BuildTagParams('d',`user:${username}`));
-        saveData('current-uploads',{'value':data,'expires':Date.now() + 5 * one_minute});
+        let pagenum = 1;
+        let data = [];
+        while(true) {
+            let posts =  await $.getJSON('/posts',Object.assign(BuildTagParams('d',`user:${username}`),{limit: max_post_limit_query, page: pagenum}));
+            data = data.concat(posts);
+            if (posts.length !== max_post_limit_query) {
+                break;
+            }
+            pagenum += 1;
+        }
+        data = RemoveDanbooruDuplicates(data);
+        saveData(key,{'value':data,'expires':Date.now() + 5 * one_minute});
         return data;
     } else {
-        return getSessionData('current-uploads').value;
+        return getSessionData(key).value;
     }
 }
 
 async function GetCopyrights() {
-    var username = Danbooru.meta("current-user-name");
     var promise_array = [GetTagData(`user:${username}`)];
     var copyright_count = {};
     var data = await GetCurrentUploads(username);
@@ -316,11 +367,12 @@ function SetCountNoticeClick() {
 async function PopulateTable() {
     if (!PopulateTable.is_started) {
         PopulateTable.is_started = true;
+        $('#count-table').html(`<div id="empty-uploads">Loading data... (<span id="loading-counter">${num_network_requests}</span>)</div>`);
         let data = await GetCopyrights();
         if (data.length) {
-            $('#count-table').append(RenderTable());
+            $('#count-table').html(RenderTable());
         } else {
-            $('#count-table').append('<div id="empty-uploads">Feed me more uploads!</div>');
+            $('#count-table').html('<div id="empty-uploads">Feed me more uploads!</div>');
         }
     }
 }
