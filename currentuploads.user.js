@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3
+// @version      3.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Gives up-to-date stats on uploads
 // @author       BrokenEagle
@@ -385,7 +385,7 @@ function main() {
         return;
     }
     setCSSStyle(program_css,'program');
-    $('header').append(notice_box);
+    $('header#top').append(notice_box);
     SetCountNoticeClick();
     if (Danbooru.Cookie.get('hide-current-uploads') !== "1") {
         $("#hide-count-notice").click();
