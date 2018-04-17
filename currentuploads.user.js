@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.1
+// @version      3.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Gives up-to-date stats on uploads
 // @author       BrokenEagle
@@ -11,11 +11,11 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/currentuploads.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180416/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180416/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180416/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180416/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180416/lib/validate.js
 // ==/UserScript==
 
 /**GLOBAL VARIABLES**/
