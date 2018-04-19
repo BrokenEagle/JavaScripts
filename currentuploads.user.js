@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.2
+// @version      4
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Gives up-to-date stats on uploads
 // @author       BrokenEagle
@@ -213,12 +213,11 @@ function GetTableValue(key,type) {
 
 //Helper functions
 
-//Returns key array of a counted dictionary from highest to lowest
+//Returns a sorted key array from highest to lowest using the length of the array in each value
 function SortDict(dict) {
     var items = Object.keys(dict).map(function(key) {
-        return [key, dict[key]];
+        return [key, dict[key].length];
     });
-
     items.sort(function(first, second) {
         return second[1] - first[1];
     });
@@ -268,6 +267,54 @@ async function RateLimit() {
     while (num_network_requests >= max_network_requests) {
         await sleep(rate_limit_wait);
     }
+}
+
+function GetCopyrightCount(posts) {
+    let copyright_count = {};
+    $.each(posts,(i,entry)=>{
+        $.each(entry.tag_string_copyright.split(' '),(j,tag)=>{
+            copyright_count[tag] = (tag in copyright_count ? copyright_count[tag].concat([entry.id]): [entry.id]);
+        });
+    });
+    return copyright_count;
+}
+
+function CompareCopyrightCounts(dict1,dict2) {
+    let difference = [];
+    $.each($.unique(Object.keys(dict1).concat(Object.keys(dict2))),(i,key)=>{
+        if (dict1[key] === undefined || dict2[key] === undefined || setSymmetricDifference(dict1[key],dict2[key]).length) {
+            difference.push(key);
+        }
+    });
+    return difference;
+}
+
+function CheckCopyrightVelocity(tag) {
+    var dayuploads = getSessionData('ctd-' + tag);
+    var weekuploads = getSessionData('ctw-' + tag);
+    if (dayuploads === undefined || weekuploads === undefined) {
+        return true;
+    }
+    var day_gettime =  dayuploads.expires - expirations.d * one_minute; //Time data was originally retrieved
+    var week_velocity = (7 * 24 * 60 * one_minute) / (weekuploads.value | 1); //Milliseconds per upload
+    var adjusted_poll_interval = Math.min(week_velocity,24 * 60 * one_minute); //Max wait time is 1 day
+    return Date.now() > day_gettime + adjusted_poll_interval;
+}
+
+function GetDanbooruIDArray(data) {
+    return data.map(value=>{return value.id;});
+}
+
+function setUnique(array) {
+    return array.filter((value,index,self)=>{return self.indexOf(value) === index;});
+}
+
+function setUnion(array1,array2) {
+    return setUnique(array1.concat(array2));
+}
+
+function setSymmetricDifference(array1,array2) {
+    return setDifference(setUnion(array1,array2),setIntersection(array1,array2));
 }
 
 function GetTagData(tag) {
@@ -346,23 +393,33 @@ async function GetCurrentUploads(username) {
 //Main functions
 
 async function ProcessUploads() {
-    var promise_array = [GetTagData(`user:${username}`)];
-    var copyright_count = {};
+    var promise_array = [];
     var current_uploads = await GetCurrentUploads(username);
     if (current_uploads.length) {
-        $.each(current_uploads,(i,entry)=>{
-            $.each(entry.tag_string_copyright.split(' '),(j,tag)=>{
-                copyright_count[tag] = (tag in copyright_count ? copyright_count[tag] + 1: 1);
-            });
+        let previous_uploads = await retrieveData(`previous-uploads-${username}`);
+        let symmetric_difference = setSymmetricDifference(GetDanbooruIDArray(current_uploads),GetDanbooruIDArray(previous_uploads));
+        if (symmetric_difference.length) {
+            promise_array.push(GetTagData(`user:${username}`));
+        }
+        let curr_copyright_count = GetCopyrightCount(current_uploads);
+        let prev_copyright_count = GetCopyrightCount(previous_uploads);
+        await Promise.all($.map(curr_copyright_count,(val,key)=>{return GetReverseTagImplication(key);}));
+        ProcessUploads.copytags = SortDict(curr_copyright_count).filter(value=>{return getSessionData('rti-'+value).value == 0;});
+        let copyright_symdiff = CompareCopyrightCounts(curr_copyright_count,prev_copyright_count);
+        let copyright_changed = setIntersection(ProcessUploads.copytags,copyright_symdiff);
+        let copyright_nochange = setDifference(ProcessUploads.copytags,copyright_changed);
+        $.each(copyright_nochange,(i,val)=>{
+            if (CheckCopyrightVelocity(val)) {
+                promise_array.push(GetTagData(val));
+            }
         });
-        debuglog("All copyrights found:", copyright_count);
-        await Promise.all($.map(copyright_count,(val,key)=>{return GetReverseTagImplication(key);}));
-        ProcessUploads.copytags = SortDict(copyright_count);
-        ProcessUploads.copytags = ProcessUploads.copytags.filter(value=>{return getSessionData('rti-'+value).value == 0;});
-        promise_array = promise_array.concat($.map(ProcessUploads.copytags,(key)=>{return GetTagData(key);}));
-        promise_array = promise_array.concat($.map(ProcessUploads.copytags,(key)=>{return GetTagData(`user:${username} ${key}`);}));
+        $.each(copyright_changed,(i,val)=>{
+            promise_array.push(GetTagData(`user:${username} ${val}`));
+            promise_array.push(GetTagData(val));
+        });
         await Promise.all(promise_array);
     }
+    saveData(`previous-uploads-${username}`,current_uploads);
     return current_uploads;
 }
 
