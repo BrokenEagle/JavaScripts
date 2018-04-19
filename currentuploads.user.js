@@ -396,9 +396,10 @@ async function ProcessUploads() {
     var promise_array = [];
     var current_uploads = await GetCurrentUploads(username);
     if (current_uploads.length) {
-        let previous_uploads = await retrieveData(`previous-uploads-${username}`);
+        let is_new_tab = getSessionData(`previous-uploads-${username}`) === undefined;
+        let previous_uploads = await retrieveData(`previous-uploads-${username}`) || [];
         let symmetric_difference = setSymmetricDifference(GetDanbooruIDArray(current_uploads),GetDanbooruIDArray(previous_uploads));
-        if (symmetric_difference.length) {
+        if (is_new_tab || symmetric_difference.length) {
             promise_array.push(GetTagData(`user:${username}`));
         }
         let curr_copyright_count = GetCopyrightCount(current_uploads);
@@ -406,8 +407,8 @@ async function ProcessUploads() {
         await Promise.all($.map(curr_copyright_count,(val,key)=>{return GetReverseTagImplication(key);}));
         ProcessUploads.copytags = SortDict(curr_copyright_count).filter(value=>{return getSessionData('rti-'+value).value == 0;});
         let copyright_symdiff = CompareCopyrightCounts(curr_copyright_count,prev_copyright_count);
-        let copyright_changed = setIntersection(ProcessUploads.copytags,copyright_symdiff);
-        let copyright_nochange = setDifference(ProcessUploads.copytags,copyright_changed);
+        let copyright_changed = (is_new_tab ? ProcessUploads.copytags : setIntersection(ProcessUploads.copytags,copyright_symdiff));
+        let copyright_nochange = (is_new_tab ? [] : setDifference(ProcessUploads.copytags,copyright_changed));
         $.each(copyright_nochange,(i,val)=>{
             if (CheckCopyrightVelocity(val)) {
                 promise_array.push(GetTagData(val));
