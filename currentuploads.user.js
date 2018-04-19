@@ -44,6 +44,7 @@ const rti_expiration = 30*24*60 * one_minute; //one month
 //Network call configuration
 const max_post_limit_query = 100;
 const max_network_requests = 25;
+const rate_limit_wait = 500;
 
 //Placeholders for setting during program execution
 var username;
@@ -179,8 +180,8 @@ function RenderHeader() {
 
 function RenderBody() {
     var tabletext = RenderRow('');
-    for (let i = 0;i < GetCopyrights.copytags.length; i++) {
-        tabletext += RenderRow(GetCopyrights.copytags[i]);
+    for (let i = 0;i < ProcessUploads.copytags.length; i++) {
+        tabletext += RenderRow(ProcessUploads.copytags[i]);
     }
     return AddTableBody(tabletext);
 }
@@ -246,7 +247,6 @@ function RemoveDanbooruDuplicates(array) {
     let seen_array = [];
     return array.filter(value=>{
         if ($.inArray(value.id,seen_array) >= 0) {
-            debuglog("Found duplicate",value.id);
             return;
         }
         seen_array.push(value.id);
@@ -266,8 +266,18 @@ function DecrementCounter() {
 
 async function RateLimit() {
     while (num_network_requests >= max_network_requests) {
-        await sleep(1000);
+        await sleep(rate_limit_wait);
     }
+}
+
+function GetTagData(tag) {
+    return Promise.all([
+        GetCount('d',tag),
+        GetCount('w',tag),
+        GetCount('mo',tag),
+        GetCount('y',tag),
+        GetCount('at',tag)
+    ]);
 }
 
 //Network functions
@@ -281,16 +291,6 @@ async function GetReverseTagImplication(tag) {
         IncrementCounter();
         return $.getJSON('/tag_implications?search[antecedent_name]=' + encodeURIComponent(tag)).then(data=>{saveData(key, {'value':data.length,'expires':Date.now() + rti_expiration});}).always(()=>{DecrementCounter();});
     }
-}
-
-function GetTagData(tag) {
-    return Promise.all([
-        GetCount('d',tag),
-        GetCount('w',tag),
-        GetCount('mo',tag),
-        GetCount('y',tag),
-        GetCount('at',tag)
-    ]);
 }
 
 async function GetCount(type,tag) {
@@ -327,28 +327,28 @@ async function GetCurrentUploads(username) {
     }
 }
 
-async function GetCopyrights() {
+//Main functions
+
+async function ProcessUploads() {
     var promise_array = [GetTagData(`user:${username}`)];
     var copyright_count = {};
-    var data = await GetCurrentUploads(username);
-    if (data.length) {
-        $.each(data,(i,entry)=>{
+    var current_uploads = await GetCurrentUploads(username);
+    if (current_uploads.length) {
+        $.each(current_uploads,(i,entry)=>{
             $.each(entry.tag_string_copyright.split(' '),(j,tag)=>{
                 copyright_count[tag] = (tag in copyright_count ? copyright_count[tag] + 1: 1);
             });
         });
         debuglog("All copyrights found:", copyright_count);
         await Promise.all($.map(copyright_count,(val,key)=>{return GetReverseTagImplication(key);}));
-        GetCopyrights.copytags = SortDict(copyright_count);
-        GetCopyrights.copytags = GetCopyrights.copytags.filter(value=>{return getSessionData('rti-'+value).value == 0;});
-        promise_array = promise_array.concat($.map(GetCopyrights.copytags,(key)=>{return GetTagData(key);}));
-        promise_array = promise_array.concat($.map(GetCopyrights.copytags,(key)=>{return GetTagData(`user:${username} ${key}`);}));
+        ProcessUploads.copytags = SortDict(copyright_count);
+        ProcessUploads.copytags = ProcessUploads.copytags.filter(value=>{return getSessionData('rti-'+value).value == 0;});
+        promise_array = promise_array.concat($.map(ProcessUploads.copytags,(key)=>{return GetTagData(key);}));
+        promise_array = promise_array.concat($.map(ProcessUploads.copytags,(key)=>{return GetTagData(`user:${username} ${key}`);}));
         await Promise.all(promise_array);
     }
-    return data;
+    return current_uploads;
 }
-
-//Main functions
 
 function SetCountNoticeClick() {
     $("#hide-count-notice").click((e)=>{
@@ -368,7 +368,7 @@ async function PopulateTable() {
     if (!PopulateTable.is_started) {
         PopulateTable.is_started = true;
         $('#count-table').html(`<div id="empty-uploads">Loading data... (<span id="loading-counter">${num_network_requests}</span>)</div>`);
-        let data = await GetCopyrights();
+        let data = await ProcessUploads();
         if (data.length) {
             $('#count-table').html(RenderTable());
         } else {
