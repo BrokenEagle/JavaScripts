@@ -289,7 +289,14 @@ async function GetReverseTagImplication(tag) {
         debuglog("Network (implication):",key);
         await RateLimit();
         IncrementCounter();
-        return $.getJSON('/tag_implications?search[antecedent_name]=' + encodeURIComponent(tag)).then(data=>{saveData(key, {'value':data.length,'expires':Date.now() + rti_expiration});}).always(()=>{DecrementCounter();});
+        recordTime(key,'Network');
+        return $.getJSON('/tag_implications?search[antecedent_name]=' + encodeURIComponent(tag)
+        ).then(data=>{
+            saveData(key, {'value':data.length,'expires':Date.now() + rti_expiration});
+        }).always(()=>{
+            recordTimeEnd(key,'Network');
+            DecrementCounter();
+        });
     }
 }
 
@@ -300,7 +307,14 @@ async function GetCount(type,tag) {
         debuglog("Network (count):",key);
         await RateLimit();
         IncrementCounter();
-        return $.getJSON('/counts/posts',BuildTagParams(type,tag)).then(data=>{saveData(key, {'value':data.counts.posts,'expires':Date.now() + expirations[type] * one_minute});}).always(()=>{DecrementCounter();});
+        recordTime(key,'Network');
+        return $.getJSON('/counts/posts',BuildTagParams(type,tag)
+        ).then(data=>{
+            saveData(key, {'value':data.counts.posts,'expires':Date.now() + expirations[type] * one_minute});
+        }).always(()=>{
+            recordTimeEnd(key,'Network');
+            DecrementCounter();
+        });
     }
 }
 
@@ -312,7 +326,9 @@ async function GetCurrentUploads(username) {
         let pagenum = 1;
         let data = [];
         while(true) {
+            recordTime(key + '-page' + pagenum,'Network');
             let posts =  await $.getJSON('/posts',Object.assign(BuildTagParams('d',`user:${username}`),{limit: max_post_limit_query, page: pagenum}));
+            recordTimeEnd(key + '-page' + pagenum,'Network');
             data = data.concat(posts);
             if (posts.length !== max_post_limit_query) {
                 break;
@@ -389,6 +405,11 @@ function main() {
     SetCountNoticeClick();
     if (Danbooru.Cookie.get('hide-current-uploads') !== "1") {
         $("#hide-count-notice").click();
+    }
+    if (debug_console) {
+        window.onbeforeunload = function () {
+            outputAdjustedMean();
+        };
     }
 }
 
