@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4
+// @version      5
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Gives up-to-date stats on uploads
 // @author       BrokenEagle
@@ -11,21 +11,20 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/currentuploads.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180416/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180416/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180416/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180416/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180416/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/statistics.js
 // ==/UserScript==
 
 /**GLOBAL VARIABLES**/
 
 //Variables for debug.js
-const debug_console = true;
+JSPLib.debug.debug_console = true;
 
 //Variables for load.js
-const program_load_max_retries = 10;
-const program_load_variable_list = ['jQuery','Danbooru'];
 const program_load_required_variables = ['jQuery','Danbooru'];
 
 //Affects how much of a tag will be shown
@@ -89,7 +88,7 @@ var notice_box = `
 
 //Used for value validations
 const validation_constraints = {
-    countentry: postcount_constraints,
+    countentry: JSPLib.validate.postcount_constraints,
     implicationentry: {
         presence: true,
         numericality: {
@@ -120,19 +119,19 @@ function ValidationSelector(key) {
 
 function BuildValidator(key) {
     return {
-        expires: expires_constraints,
+        expires: JSPLib.validate.expires_constraints,
         value: validation_constraints[ValidationSelector(key)]
     };
 }
 
 function ValidateEntry(key,entry) {
     if (entry === null) {
-        debuglog(key,"entry not found!");
+        JSPLib.debug.debuglog(key,"entry not found!");
         return false;
     }
     check = validate(entry,BuildValidator(key));
     if (check !== undefined) {
-        printValidateError(key,check);
+        JSPLib.validate.printValidateError(key,check);
         return false;
     }
     return true;
@@ -204,10 +203,10 @@ function PostSearchLink(tag,text) {
 function GetTableValue(key,type) {
     if (key == '') {
         //Adding the '' to undefined changes it to a string
-        return (getSessionData('ct' + type + '-user:' + username).value + '').toString();
+        return (JSPLib.storage.getSessionData('ct' + type + '-user:' + username).value + '').toString();
     }
-    var useruploads = (getSessionData('ct' + type + '-user:' + username + ' ' + key).value + '').toString();
-    var alluploads = (getSessionData('ct' + type + '-' + key).value + '').toString();
+    var useruploads = (JSPLib.storage.getSessionData('ct' + type + '-user:' + username + ' ' + key).value + '').toString();
+    var alluploads = (JSPLib.storage.getSessionData('ct' + type + '-' + key).value + '').toString();
     return `(${useruploads}/${alluploads})`;
 }
 
@@ -265,7 +264,7 @@ function DecrementCounter() {
 
 async function RateLimit() {
     while (num_network_requests >= max_network_requests) {
-        await sleep(rate_limit_wait);
+        await JSPLib.utility.sleep(rate_limit_wait);
     }
 }
 
@@ -281,8 +280,8 @@ function GetCopyrightCount(posts) {
 
 function CompareCopyrightCounts(dict1,dict2) {
     let difference = [];
-    $.each($.unique(Object.keys(dict1).concat(Object.keys(dict2))),(i,key)=>{
-        if (dict1[key] === undefined || dict2[key] === undefined || setSymmetricDifference(dict1[key],dict2[key]).length) {
+    $.each(JSPLib.utility.setUnique(Object.keys(dict1).concat(Object.keys(dict2))),(i,key)=>{
+        if (dict1[key] === undefined || dict2[key] === undefined || JSPLib.utility.setSymmetricDifference(dict1[key],dict2[key]).length) {
             difference.push(key);
         }
     });
@@ -290,8 +289,8 @@ function CompareCopyrightCounts(dict1,dict2) {
 }
 
 function CheckCopyrightVelocity(tag) {
-    var dayuploads = getSessionData('ctd-' + tag);
-    var weekuploads = getSessionData('ctw-' + tag);
+    var dayuploads = JSPLib.storage.getSessionData('ctd-' + tag);
+    var weekuploads = JSPLib.storage.getSessionData('ctw-' + tag);
     if (dayuploads === undefined || weekuploads === undefined) {
         return true;
     }
@@ -303,18 +302,6 @@ function CheckCopyrightVelocity(tag) {
 
 function GetDanbooruIDArray(data) {
     return data.map(value=>{return value.id;});
-}
-
-function setUnique(array) {
-    return array.filter((value,index,self)=>{return self.indexOf(value) === index;});
-}
-
-function setUnion(array1,array2) {
-    return setUnique(array1.concat(array2));
-}
-
-function setSymmetricDifference(array1,array2) {
-    return setDifference(setUnion(array1,array2),setIntersection(array1,array2));
 }
 
 function GetTagData(tag) {
@@ -331,17 +318,17 @@ function GetTagData(tag) {
 
 async function GetReverseTagImplication(tag) {
     var key = 'rti' + '-' + tag;
-    var check = await checkLocalDB(key,ValidateEntry);
+    var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
     if (!(check)) {
-        debuglog("Network (implication):",key);
+        JSPLib.debug.debuglog("Network (implication):",key);
         await RateLimit();
         IncrementCounter();
-        recordTime(key,'Network');
+        JSPLib.debug.recordTime(key,'Network');
         return $.getJSON('/tag_implications?search[antecedent_name]=' + encodeURIComponent(tag)
         ).then(data=>{
-            saveData(key, {'value':data.length,'expires':Date.now() + rti_expiration});
+            JSPLib.storage.saveData(key, {'value':data.length,'expires':Date.now() + rti_expiration});
         }).always(()=>{
-            recordTimeEnd(key,'Network');
+            JSPLib.debug.recordTimeEnd(key,'Network');
             DecrementCounter();
         });
     }
@@ -349,17 +336,17 @@ async function GetReverseTagImplication(tag) {
 
 async function GetCount(type,tag) {
     var key = 'ct' + type + '-' + tag;
-    var check = await checkLocalDB(key,ValidateEntry);
+    var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
     if (!(check)) {
-        debuglog("Network (count):",key);
+        JSPLib.debug.debuglog("Network (count):",key);
         await RateLimit();
         IncrementCounter();
-        recordTime(key,'Network');
+        JSPLib.debug.recordTime(key,'Network');
         return $.getJSON('/counts/posts',BuildTagParams(type,tag)
         ).then(data=>{
-            saveData(key, {'value':data.counts.posts,'expires':Date.now() + expirations[type] * one_minute});
+            JSPLib.storage.saveData(key, {'value':data.counts.posts,'expires':Date.now() + expirations[type] * one_minute});
         }).always(()=>{
-            recordTimeEnd(key,'Network');
+            JSPLib.debug.recordTimeEnd(key,'Network');
             DecrementCounter();
         });
     }
@@ -367,15 +354,15 @@ async function GetCount(type,tag) {
 
 async function GetCurrentUploads(username) {
     let key = `current-uploads-${username}`;
-    var check = await checkLocalDB(key,ValidateEntry);
+    var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
     if (!(check)) {
-        debuglog("Network (current uploads)");
+        JSPLib.debug.debuglog("Network (current uploads)");
         let pagenum = 1;
         let data = [];
         while(true) {
-            recordTime(key + '-page' + pagenum,'Network');
+            JSPLib.debug.recordTime(key + '-page' + pagenum,'Network');
             let posts =  await $.getJSON('/posts',Object.assign(BuildTagParams('d',`user:${username}`),{limit: max_post_limit_query, page: pagenum}));
-            recordTimeEnd(key + '-page' + pagenum,'Network');
+            JSPLib.debug.recordTimeEnd(key + '-page' + pagenum,'Network');
             data = data.concat(posts);
             if (posts.length !== max_post_limit_query) {
                 break;
@@ -383,10 +370,10 @@ async function GetCurrentUploads(username) {
             pagenum += 1;
         }
         data = RemoveDanbooruDuplicates(data);
-        saveData(key,{'value':data,'expires':Date.now() + 5 * one_minute});
+        JSPLib.storage.saveData(key,{'value':data,'expires':Date.now() + 5 * one_minute});
         return data;
     } else {
-        return getSessionData(key).value;
+        return JSPLib.storage.getSessionData(key).value;
     }
 }
 
@@ -396,19 +383,19 @@ async function ProcessUploads() {
     var promise_array = [];
     var current_uploads = await GetCurrentUploads(username);
     if (current_uploads.length) {
-        let is_new_tab = getSessionData(`previous-uploads-${username}`) === undefined;
-        let previous_uploads = await retrieveData(`previous-uploads-${username}`) || [];
-        let symmetric_difference = setSymmetricDifference(GetDanbooruIDArray(current_uploads),GetDanbooruIDArray(previous_uploads));
+        let is_new_tab = JSPLib.storage.getSessionData(`previous-uploads-${username}`) === undefined;
+        let previous_uploads = await JSPLib.storage.retrieveData(`previous-uploads-${username}`) || [];
+        let symmetric_difference = JSPLib.utility.setSymmetricDifference(GetDanbooruIDArray(current_uploads),GetDanbooruIDArray(previous_uploads));
         if (is_new_tab || symmetric_difference.length) {
             promise_array.push(GetTagData(`user:${username}`));
         }
         let curr_copyright_count = GetCopyrightCount(current_uploads);
         let prev_copyright_count = GetCopyrightCount(previous_uploads);
         await Promise.all($.map(curr_copyright_count,(val,key)=>{return GetReverseTagImplication(key);}));
-        ProcessUploads.copytags = SortDict(curr_copyright_count).filter(value=>{return getSessionData('rti-'+value).value == 0;});
+        ProcessUploads.copytags = SortDict(curr_copyright_count).filter(value=>{return JSPLib.storage.getSessionData('rti-'+value).value == 0;});
         let copyright_symdiff = CompareCopyrightCounts(curr_copyright_count,prev_copyright_count);
-        let copyright_changed = (is_new_tab ? ProcessUploads.copytags : setIntersection(ProcessUploads.copytags,copyright_symdiff));
-        let copyright_nochange = (is_new_tab ? [] : setDifference(ProcessUploads.copytags,copyright_changed));
+        let copyright_changed = (is_new_tab ? ProcessUploads.copytags : JSPLib.utility.setIntersection(ProcessUploads.copytags,copyright_symdiff));
+        let copyright_nochange = (is_new_tab ? [] : JSPLib.utility.setDifference(ProcessUploads.copytags,copyright_changed));
         $.each(copyright_nochange,(i,val)=>{
             if (CheckCopyrightVelocity(val)) {
                 promise_array.push(GetTagData(val));
@@ -420,7 +407,7 @@ async function ProcessUploads() {
         });
         await Promise.all(promise_array);
     }
-    saveData(`previous-uploads-${username}`,current_uploads);
+    JSPLib.storage.saveData(`previous-uploads-${username}`,current_uploads);
     return current_uploads;
 }
 
@@ -458,17 +445,17 @@ function main() {
     if (username === "Anonymous") {
         return;
     }
-    setCSSStyle(program_css,'program');
+    JSPLib.utility.setCSSStyle(program_css,'program');
     $('header#top').append(notice_box);
     SetCountNoticeClick();
     if (Danbooru.Cookie.get('hide-current-uploads') !== "1") {
         $("#hide-count-notice").click();
     }
-    if (debug_console) {
+    if (JSPLib.debug.debug_console) {
         window.onbeforeunload = function () {
-            outputAdjustedMean();
+            JSPLib.statistics.outputAdjustedMean("CurrentUploads");
         };
     }
 }
 
-programInitialize(main,'CU');
+JSPLib.load.programInitialize(main,'CU',program_load_required_variables);
