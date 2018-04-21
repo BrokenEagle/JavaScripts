@@ -1,22 +1,22 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2.4
+// @version      2.5
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
 // @match        *://*/*
 // @grant        none
 // @run-at       document-end
-// @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version2/test/checklibraries.user.js
+// @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/test/checklibraries.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version2/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version2/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version2/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version2/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version2/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version2/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/debug.js
 // ==/UserScript==
 
 /****SETUP****/
