@@ -180,10 +180,10 @@ async function CheckUtilityLibrary() {
     JSPLib.debug.debuglog(`Object ${repr(deepobject1)} should have no values the same as ${repr(testobject1)}`,RecordResult(deepobject1.test !== 10 && deepobject1.value.deep !== 11));
 
     JSPLib.debug.debuglog("Checking setCSSStyle");
-    JSPLib.utility.setCSSStyle("body {background: black;}","test");
+    JSPLib.utility.setCSSStyle("body {background: black !important;}","test");
     JSPLib.debug.debuglog("Color set to black... changing color in 10 seconds.");
     await JSPLib.utility.sleep(csstyle_waittime);
-    JSPLib.utility.setCSSStyle("body {background: purple;}","test");
+    JSPLib.utility.setCSSStyle("body {background: purple !important;}","test");
     JSPLib.debug.debuglog("Color set to purple... validate that there is only 1 style element.");
     JSPLib.debug.debuglog(`Module global cssstyle ${repr(JSPLib.utility.cssstyle)} should have a length of 1`,RecordResult(Object.keys(JSPLib.utility.cssstyle).length === 1));
 
