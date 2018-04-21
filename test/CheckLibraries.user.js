@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2
+// @version      2.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -30,6 +30,7 @@ const csstyle_waittime = 10000;
 //Needs to be configured specific to each system
 const test_local_storage = false;
 const test_indexed_db = true;
+const test_storage = true;
 
 //Result variables
 var test_successes = 0;
@@ -265,6 +266,7 @@ async function CheckStorageLibrary() {
     JSPLib.debug.debuglog("Checking global variables");
     JSPLib.debug.debuglog(`use_local_storage should be ${ShowEnabled(test_local_storage)}`,RecordResult(JSPLib.storage.use_local_storage == test_local_storage));
     JSPLib.debug.debuglog(`use_indexed_db should be ${ShowEnabled(test_indexed_db)}`,RecordResult(JSPLib.storage.use_indexed_db == test_indexed_db));
+    JSPLib.debug.debuglog(`use_storage should be ${ShowEnabled(test_storage)}`,RecordResult(JSPLib.storage.use_storage == test_storage));
 
     JSPLib.debug.debuglog("Checking getSessionData");
     let data1 = `[check this]`;
