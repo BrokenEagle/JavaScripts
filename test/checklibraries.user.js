@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2.3
+// @version      2.4
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -199,7 +199,6 @@ function CheckStatisticsLibrary() {
     let result1 = JSPLib.statistics.average(data1);
     console.log(`Values of ${repr(data1)} should have an average of ${expected_result1}`,RecordResult(result1 === expected_result1));
 
-
     console.log("Checking standardDeviation");
     expected_result1 = 6.83;
     result1 = RoundToHundredth(JSPLib.statistics.standardDeviation(data1));
@@ -212,7 +211,7 @@ function CheckStatisticsLibrary() {
     console.log("Checking outputAdjustedMean()");
     JSPLib.debug.recordTime('statistics','test');
     JSPLib.debug.recordTimeEnd('statistics','test');
-    JSPLib.statistics.outputAdjustedMean();
+    JSPLib.statistics.outputAdjustedMean("Statistics Test");
     JSPLib.statistics.debug_console = true;
     JSPLib.statistics.outputAdjustedMean();
 
