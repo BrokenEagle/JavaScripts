@@ -452,9 +452,9 @@ function main() {
         $("#hide-count-notice").click();
     }
     if (JSPLib.debug.debug_console) {
-        window.onbeforeunload = function () {
+        window.addEventListener('beforeunload',function () {
             JSPLib.statistics.outputAdjustedMean("CurrentUploads");
-        };
+        });
     }
 }
 
