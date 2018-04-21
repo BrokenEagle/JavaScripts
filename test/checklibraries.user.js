@@ -5,7 +5,7 @@
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
-// @match        http://*/*
+// @match        *://*/*
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version2/test/checklibraries.user.js
@@ -95,7 +95,7 @@ async function LoadWait() {
 
 //Main functions
 
-async function ChecDebugLibrary() {
+async function CheckDebugLibrary() {
     ResetResult();
 
     console.log("Checking debuglog(): check this out");
@@ -119,7 +119,7 @@ async function ChecDebugLibrary() {
     console.log(`Should have recorded only 1 value`,RecordResult(Object.keys(JSPLib.debug.records).length === 1));
 
     JSPLib.debug.debug_console = true;
-    console.log(`ChecDebugLibrary results: ${test_successes} succeses, ${test_failures} failures`);
+    console.log(`CheckDebugLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
 
 async function CheckUtilityLibrary() {
@@ -355,7 +355,7 @@ async function CheckLoadLibrary() {
 }
 
 async function checklibrary() {
-    ChecDebugLibrary();
+    CheckDebugLibrary();
     await CheckUtilityLibrary();
     CheckStatisticsLibrary();
     CheckValidateLibrary();
