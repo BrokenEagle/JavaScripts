@@ -213,7 +213,7 @@ function CheckStatisticsLibrary() {
     JSPLib.debug.recordTimeEnd('statistics','test');
     JSPLib.statistics.outputAdjustedMean("Statistics Test");
     JSPLib.statistics.debug_console = true;
-    JSPLib.statistics.outputAdjustedMean();
+    JSPLib.statistics.outputAdjustedMean("Statistics Test");
 
     console.log(`CheckStatisticsLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
