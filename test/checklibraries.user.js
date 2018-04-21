@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2.1
+// @version      2.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -15,6 +15,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version2/lib/storage.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version2/lib/validate.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version2/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version2/lib/statistics.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version2/lib/debug.js
 // ==/UserScript==
 
@@ -96,6 +97,7 @@ async function LoadWait() {
 
 async function ChecDebugLibrary() {
     ResetResult();
+
     console.log("Checking debuglog(): check this out");
     JSPLib.debug.debuglog("check this out");
     JSPLib.debug.debug_console = false;
@@ -116,27 +118,7 @@ async function ChecDebugLibrary() {
     JSPLib.debug.recordTimeEnd('test2','test');
     console.log(`Should have recorded only 1 value`,RecordResult(Object.keys(JSPLib.debug.records).length === 1));
 
-    console.log("Checking average");
-    let data1 = [0,1,2,3,4,20];
-    let expected_result1 = 5;
-    let result1 = JSPLib.debug.average(data1);
-    console.log(`Values of ${repr(data1)} should have an average of ${expected_result1}`,RecordResult(result1 === expected_result1));
-
-
-    console.log("Checking standardDeviation");
-    expected_result1 = 6.83;
-    result1 = RoundToHundredth(JSPLib.debug.standardDeviation(data1));
-    console.log(`Values of ${repr(data1)} should have a standard deviation of ${expected_result1}`,RecordResult(result1 === expected_result1));
-
-    console.log("Checking removeOutliers");
-    result1 = JSPLib.debug.removeOutliers(data1);
-    console.log(`Values of ${repr(data1)} should have had 1 outlier removed`,RecordResult((data1.length - result1.length) === 1));
-
-    console.log("Checking outputAdjustedMean()");
-    JSPLib.debug.outputAdjustedMean();
     JSPLib.debug.debug_console = true;
-    JSPLib.debug.outputAdjustedMean();
-
     console.log(`ChecDebugLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
 
@@ -193,6 +175,35 @@ async function CheckUtilityLibrary() {
     JSPLib.debug.debuglog(`Module global cssstyle ${repr(JSPLib.utility.cssstyle)} should have a length of 1`,RecordResult(Object.keys(JSPLib.utility.cssstyle).length === 1));
 
     JSPLib.debug.debuglog(`CheckUtilityLibrary results: ${test_successes} succeses, ${test_failures} failures`);
+}
+
+function CheckStatisticsLibrary() {
+    ResetResult();
+
+    console.log("Checking average");
+    let data1 = [0,1,2,3,4,20];
+    let expected_result1 = 5;
+    let result1 = JSPLib.statistics.average(data1);
+    console.log(`Values of ${repr(data1)} should have an average of ${expected_result1}`,RecordResult(result1 === expected_result1));
+
+
+    console.log("Checking standardDeviation");
+    expected_result1 = 6.83;
+    result1 = RoundToHundredth(JSPLib.statistics.standardDeviation(data1));
+    console.log(`Values of ${repr(data1)} should have a standard deviation of ${expected_result1}`,RecordResult(result1 === expected_result1));
+
+    console.log("Checking removeOutliers");
+    result1 = JSPLib.statistics.removeOutliers(data1);
+    console.log(`Values of ${repr(data1)} should have had 1 outlier removed`,RecordResult((data1.length - result1.length) === 1));
+
+    console.log("Checking outputAdjustedMean()");
+    JSPLib.debug.recordTime('statistics','test');
+    JSPLib.debug.recordTimeEnd('statistics','test');
+    JSPLib.statistics.outputAdjustedMean();
+    JSPLib.statistics.debug_console = true;
+    JSPLib.statistics.outputAdjustedMean();
+
+    console.log(`CheckStatisticsLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
 
 function CheckValidateLibrary() {
@@ -346,6 +357,7 @@ async function CheckLoadLibrary() {
 async function checklibrary() {
     ChecDebugLibrary();
     await CheckUtilityLibrary();
+    CheckStatisticsLibrary();
     CheckValidateLibrary();
     await CheckStorageLibrary();
     await CheckLoadLibrary();
