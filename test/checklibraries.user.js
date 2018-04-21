@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2.2
+// @version      2.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -145,6 +145,11 @@ async function CheckUtilityLibrary() {
     JSPLib.debug.debuglog(`Array ${repr(resultarray1)} should have a length of zero`,RecordResult(resultarray1.length === 0));
     JSPLib.debug.debuglog(`Array ${repr(resultarray2)} should have a length of one`,RecordResult(resultarray2.length === 1));
 
+    JSPLib.debug.debuglog("Checking setUnique");
+    let testarray3 = ["testing","first","testing"];
+    resultarray1 = JSPLib.utility.setUnique(testarray3);
+    JSPLib.debug.debuglog(`Array ${repr(resultarray1)} should have a length of two`,RecordResult(resultarray1.length === 2));
+
     JSPLib.debug.debuglog("Checking setDifference");
     resultarray1 = JSPLib.utility.setDifference(testarray1,testarray2);
     resultarray2 = JSPLib.utility.setDifference(testarray2,testarray1);
@@ -155,7 +160,15 @@ async function CheckUtilityLibrary() {
     resultarray1 = JSPLib.utility.setIntersection(testarray1,testarray2);
     JSPLib.debug.debuglog(`Array [${resultarray1}] should have a length of two`,RecordResult(resultarray1.length === 2));
 
-    JSPLib.debug.debuglog("Checking setIntersection");
+    JSPLib.debug.debuglog("Checking setUnion");
+    resultarray1 = JSPLib.utility.setUnion(testarray1,testarray3);
+    JSPLib.debug.debuglog(`Array [${resultarray1}] should have a length of four`,RecordResult(resultarray1.length === 4));
+
+    JSPLib.debug.debuglog("Checking setSymmetricDifference");
+    resultarray1 = JSPLib.utility.setSymmetricDifference(testarray1,testarray3);
+    JSPLib.debug.debuglog(`Array [${resultarray1}] should have a length of three`,RecordResult(resultarray1.length === 3));
+
+    JSPLib.debug.debuglog("Checking dataCopy");
     let testobject1 = {'test':0,'value':{'deep':1}};
     let copyobject1 = testobject1;
     let shallowobject1 = Object.assign({},testobject1);
