@@ -113,7 +113,7 @@ function ValidationSelector(key) {
     } else if (key.match(/^rti-/)) {
         return 'implicationentry';
     }
-    else if (key === 'current-uploads') {
+    else if (key.match(/^current-uploads-/)) {
         return 'postentry';
     }
 }
