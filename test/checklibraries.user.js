@@ -130,18 +130,18 @@ async function CheckUtilityLibrary() {
     await JSPLib.utility.sleep(1000);
     JSPLib.debug.debugTimeEnd("sleep()");
 
-    JSPLib.debug.debuglog("Checking filterNull");
-    let testarray1 = ["test","first","nonnull"];
-    let testarray2 = ["test","first","null",""];
-    let resultarray1 = JSPLib.utility.filterNull(testarray1);
-    let resultarray2 = JSPLib.utility.filterNull(testarray2);
+    JSPLib.debug.debuglog("Checking filterEmpty");
+    let testarray1 = ["test","first","nonempty"];
+    let testarray2 = ["test","first","empty",""];
+    let resultarray1 = JSPLib.utility.filterEmpty(testarray1);
+    let resultarray2 = JSPLib.utility.filterEmpty(testarray2);
     JSPLib.debug.debuglog(`Array ${repr(testarray1)} should be equal in length to ${repr(resultarray1)}`,RecordResult(testarray1.length === resultarray1.length));
     JSPLib.debug.debuglog(`Array ${repr(testarray2)} should not be equal in length to ${repr(resultarray2)}`,RecordResult(testarray2.length !== resultarray2.length));
 
     JSPLib.debug.debuglog("Checking filterRegex");
-    let regex1 = /^(?:other|null)/;
-    resultarray1 = JSPLib.utility.regexFilter(testarray1,regex1);
-    resultarray2 = JSPLib.utility.regexFilter(testarray2,regex1);
+    let regex1 = /^(?:other|empty)/;
+    resultarray1 = JSPLib.utility.filterRegex(testarray1,regex1);
+    resultarray2 = JSPLib.utility.filterRegex(testarray2,regex1);
     JSPLib.debug.debuglog(`Array ${repr(resultarray1)} should have a length of zero`,RecordResult(resultarray1.length === 0));
     JSPLib.debug.debuglog(`Array ${repr(resultarray2)} should have a length of one`,RecordResult(resultarray2.length === 1));
 
