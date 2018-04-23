@@ -58,6 +58,8 @@ const program_css = `
 }
 #count-table {
     white-space: nowrap;
+}
+#count-table.overflowed {
     max-height: 20em;
     overflow-x: hidden;
     overflow-y: auto;
@@ -69,6 +71,7 @@ const program_css = `
 }
 #count-controls {
     margin-top: 1em;
+    margin-left: 1em;
 }
 #upload-counts {
     margin-left: 2em;
@@ -83,6 +86,8 @@ const program_css = `
     position: relative;
     display: inline-block;
     border-bottom: 1px dotted black;
+    min-width: 2em;
+    text-align: center;
 }
 .tooltip .tooltiptext {
     visibility: hidden;
@@ -101,16 +106,16 @@ const program_css = `
 .tooltip:hover .tooltiptext.activetooltip {
     visibility: visible;
 }
-tr:nth-child(1) .tooltiptext {
+#count-table.overflowed tr:nth-child(1) .tooltiptext {
     top: -30px;
 }
-tr:nth-child(2) .tooltiptext {
+#count-table.overflowed tr:nth-child(2) .tooltiptext {
     top: -45px;
 }
-tr:nth-last-child(2) .tooltiptext {
+#count-table.overflowed tr:nth-last-child(2) .tooltiptext {
     top: -60px;
 }
-tr:nth-last-child(1) .tooltiptext {
+#count-table.overflowed tr:nth-last-child(1) .tooltiptext {
     top: -75px;
 }
 .select-tooltip a {
@@ -236,6 +241,9 @@ function RenderHeader() {
 }
 
 function RenderBody() {
+    if (ProcessUploads.copytags.length > 3) {
+        $("#count-table").addClass("overflowed");
+    }
     var tabletext = RenderRow('');
     for (let i = 0;i < ProcessUploads.copytags.length; i++) {
         tabletext += RenderRow(ProcessUploads.copytags[i]);
