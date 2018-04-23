@@ -241,17 +241,6 @@ function MaxEntryLength(string) {
     return string;
 }
 
-function RemoveDanbooruDuplicates(array) {
-    let seen_array = [];
-    return array.filter(value=>{
-        if ($.inArray(value.id,seen_array) >= 0) {
-            return;
-        }
-        seen_array.push(value.id);
-        return value;
-    });
-}
-
 function IncrementCounter() {
     num_network_requests += 1;
     $('#loading-counter').html(num_network_requests);
@@ -300,8 +289,16 @@ function CheckCopyrightVelocity(tag) {
     return Date.now() > day_gettime + adjusted_poll_interval;
 }
 
-function GetDanbooruIDArray(data) {
-    return data.map(value=>{return value.id;});
+function GetObjectAttributes(array,attribute) {
+	return array.map(val=>{return val[attribute];});
+}
+
+function ValuesMax(array) {
+    return array.reduce(function(a, b) { return Math.max(a,b); });
+}
+
+function ValuesMin(array) {
+    return array.reduce(function(a, b) { return Math.min(a,b); });
 }
 
 function GetTagData(tag) {
@@ -315,6 +312,26 @@ function GetTagData(tag) {
 }
 
 //Network functions
+
+async function GetAllDanbooru(type,url_addons,limit) {
+    var return_items = [];
+    var page_addon = {};
+    var limit_addon = {limit: limit};
+    var lastid = 0;
+    while (true) {
+        let request_addons = Object.assign({},url_addons,page_addon,limit_addon);
+        let request_key = $.param(request_addons);
+        JSPLib.debug.recordTime(request_key,'Network');
+        let temp_items = await $.getJSON(`/${type}`,request_addons);
+        JSPLib.debug.recordTimeEnd(request_key,'Network');
+        return_items = return_items.concat(temp_items);
+        if (temp_items.length < limit) {
+            return return_items;
+        }
+        let lastid = ValuesMin(GetObjectAttributes(temp_items,'id'));
+        page_addon = {page:`b${lastid}`};
+    }
+}
 
 async function GetReverseTagImplication(tag) {
     var key = 'rti' + '-' + tag;
@@ -357,19 +374,7 @@ async function GetCurrentUploads(username) {
     var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
     if (!(check)) {
         JSPLib.debug.debuglog("Network (current uploads)");
-        let pagenum = 1;
-        let data = [];
-        while(true) {
-            JSPLib.debug.recordTime(key + '-page' + pagenum,'Network');
-            let posts =  await $.getJSON('/posts',Object.assign(BuildTagParams('d',`user:${username}`),{limit: max_post_limit_query, page: pagenum}));
-            JSPLib.debug.recordTimeEnd(key + '-page' + pagenum,'Network');
-            data = data.concat(posts);
-            if (posts.length !== max_post_limit_query) {
-                break;
-            }
-            pagenum += 1;
-        }
-        data = RemoveDanbooruDuplicates(data);
+        let data = await GetAllDanbooru('posts',BuildTagParams('d',`user:${username}`),max_post_limit_query);
         JSPLib.storage.saveData(key,{'value':data,'expires':Date.now() + 5 * one_minute});
         return data;
     } else {
@@ -385,7 +390,7 @@ async function ProcessUploads() {
     if (current_uploads.length) {
         let is_new_tab = JSPLib.storage.getSessionData(`previous-uploads-${username}`) === undefined;
         let previous_uploads = await JSPLib.storage.retrieveData(`previous-uploads-${username}`) || [];
-        let symmetric_difference = JSPLib.utility.setSymmetricDifference(GetDanbooruIDArray(current_uploads),GetDanbooruIDArray(previous_uploads));
+        let symmetric_difference = JSPLib.utility.setSymmetricDifference(GetObjectAttributes(current_uploads,'id'),GetObjectAttributes(previous_uploads,'id'));
         if (is_new_tab || symmetric_difference.length) {
             promise_array.push(GetTagData(`user:${username}`));
         }
