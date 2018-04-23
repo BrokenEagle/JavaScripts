@@ -322,10 +322,10 @@ function RenderStatistics(key,attribute) {
     return `
 <ul>
 <li>Max: ${score_max}</li>
-<li>Avg: ${RoundToHundredth(score_average)}</li>
-<li>StD: ${RoundToHundredth(score_stddev)}</li>
+<li>Avg: ${SetPrecision(score_average,2)}</li>
+<li>StD: ${SetPrecision(score_stddev,2)}</li>
 <li>Out: ${score_removed}</li>
-<li>Adj: ${RoundToHundredth(score_adjusted)}</li>
+<li>Adj: ${SetPrecision(score_adjusted,2)}</li>
 </ul>
 `;
 }
@@ -436,8 +436,8 @@ function ValuesMin(array) {
     return array.reduce(function(a, b) { return Math.min(a,b); });
 }
 
-function RoundToHundredth(number) {
-    return Math.round(100 * number) / 100;
+function SetPrecision(number,precision) {
+    return parseFloat(number.toFixed(precision));
 }
 
 function TagRegExp(str) {
