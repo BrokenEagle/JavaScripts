@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5
+// @version      6
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Gives up-to-date stats on uploads
 // @author       BrokenEagle
@@ -57,16 +57,20 @@ const program_css = `
     max-width: ${max_column_characters + 35}em;
 }
 #count-table {
-    margin-bottom: 1em;
-    display: none;
     white-space: nowrap;
     max-height: 20em;
     overflow-x: hidden;
     overflow-y: auto;
+}
+#count-module {
+    margin-bottom: 1em;
+    display: none;
     border: lightgrey solid 1px;
 }
-#upload-counts > span,
-#upload-counts .striped {
+#count-controls {
+    margin-top: 1em;
+}
+#upload-counts {
     margin-left: 2em;
 }
 #empty-uploads {
@@ -75,16 +79,70 @@ const program_css = `
     font-weight: bold;
     font-family: monospace;
 }
+.tooltip {
+    position: relative;
+    display: inline-block;
+    border-bottom: 1px dotted black;
+}
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 80px;
+    background-color: black;
+    color: #fff;
+    text-align: left;
+    border-radius: 6px;
+    padding: 5px;
+    /* Position the tooltip */
+    position: absolute;
+    z-index: 1;
+    top: -50px;
+    left: 105%;
+}
+.tooltip:hover .tooltiptext.activetooltip {
+    visibility: visible;
+}
+tr:nth-child(1) .tooltiptext {
+    top: -30px;
+}
+tr:nth-child(2) .tooltiptext {
+    top: -45px;
+}
+tr:nth-last-child(2) .tooltiptext {
+    top: -60px;
+}
+tr:nth-last-child(1) .tooltiptext {
+    top: -75px;
+}
+.select-tooltip a {
+    color: grey;
+    margin-right: 1em;
+}
+.select-tooltip.activetooltip a {
+    font-weight: bold;
+}
 `;
 
 //HTML for user interface
 var notice_box = `
 <div class="ui-corner-all" id="upload-counts">
-    <div id="count-table">
+    <div id="count-module">
+        <div id="count-table">
+        </div>
+        <div id="count-controls">
+        </div>
     </div>
     <span><a href="#" id="hide-count-notice">Toggle Upload Table</a></span>
 </div>
 `;
+
+const tooltip_metrics = {
+    score: 'score',
+    upscore: 'up_score',
+    downscore: 'down_score',
+    favcount: 'fav_count',
+    tagcount: 'tag_count',
+    gentags: 'tag_count_general'
+};
 
 //Used for value validations
 const validation_constraints = {
@@ -191,7 +249,12 @@ function RenderRow(key) {
     var rowtext = (key == ''? username : key).replace(/_/g,' ');
     var tabletext = AddTableData(PostSearchLink(rowtag,MaxEntryLength(rowtext)));
     for (let i = 0;i < timevalues.length; i++) {
-        tabletext += AddTableData(GetTableValue(key,timevalues[i]));
+        let data_text = GetTableValue(key,timevalues[i]);
+        if (i === 0) {
+            tabletext += AddTableData(RenderTooltipData(data_text,key));
+        } else {
+            tabletext += AddTableData(data_text);
+        }
     }
     return AddTableRow(tabletext);
 }
@@ -208,6 +271,63 @@ function GetTableValue(key,type) {
     var useruploads = (JSPLib.storage.getSessionData('ct' + type + '-user:' + username + ' ' + key).value + '').toString();
     var alluploads = (JSPLib.storage.getSessionData('ct' + type + '-' + key).value + '').toString();
     return `(${useruploads}/${alluploads})`;
+}
+
+function RenderTooltipData(text,key) {
+    return `
+<div class="tooltip">${text}
+${RenderAllToolPopups(key)}
+</div>
+`;
+}
+
+function RenderAllToolPopups(key) {
+    let html_text = "";
+    $.each(tooltip_metrics,(metric,attribute)=> {
+        html_text += RenderToolpopup(key,metric,attribute);
+    });
+    return html_text;
+}
+
+function RenderToolpopup(key,metric,attribute) {
+    return `
+<span class="tooltiptext" data-key="${key}" data-type="${metric}" data-attribute="${attribute}"></span>`;
+}
+
+function RenderAllTooltipControls() {
+    let html_text = "";
+    $.each(tooltip_metrics,(metric,attribute)=> {
+        html_text += RenderToolcontrol(metric);
+    });
+    return html_text;
+}
+
+function RenderToolcontrol(metric) {
+    return `
+<span class="select-tooltip" data-type="${metric}"><a href="#">${TitleizeString(metric)}</a></span>`;
+}
+
+function RenderStatistics(key,attribute) {
+    let current_uploads = JSPLib.storage.getSessionData(`current-uploads-${username}`).value;
+    if (key !== '') {
+        current_uploads = current_uploads.filter(val=>{return val.tag_string_copyright.match(TagRegExp(key));});
+    }
+    let upload_scores = GetObjectAttributes(current_uploads,attribute);
+    let score_max = ValuesMax(upload_scores);
+    let score_average = JSPLib.statistics.average(upload_scores);
+    let score_stddev = JSPLib.statistics.standardDeviation(upload_scores);
+    let score_outliers = JSPLib.statistics.removeOutliers(upload_scores);
+    let score_removed = upload_scores.length - score_outliers.length;
+    let score_adjusted = JSPLib.statistics.average(score_outliers);
+    return `
+<ul>
+<li>Max: ${score_max}</li>
+<li>Avg: ${RoundToHundredth(score_average)}</li>
+<li>StD: ${RoundToHundredth(score_stddev)}</li>
+<li>Out: ${score_removed}</li>
+<li>Adj: ${RoundToHundredth(score_adjusted)}</li>
+</ul>
+`;
 }
 
 //Helper functions
@@ -239,6 +359,21 @@ function MaxEntryLength(string) {
         string = string.slice(0,max_column_characters-1) + '…';
     }
     return string;
+}
+
+function TitleizeString(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+function RemoveDanbooruDuplicates(array) {
+    let seen_array = [];
+    return array.filter(value=>{
+        if ($.inArray(value.id,seen_array) >= 0) {
+            return;
+        }
+        seen_array.push(value.id);
+        return value;
+    });
 }
 
 function IncrementCounter() {
@@ -290,7 +425,7 @@ function CheckCopyrightVelocity(tag) {
 }
 
 function GetObjectAttributes(array,attribute) {
-	return array.map(val=>{return val[attribute];});
+    return array.map(val=>{return val[attribute];});
 }
 
 function ValuesMax(array) {
@@ -299,6 +434,14 @@ function ValuesMax(array) {
 
 function ValuesMin(array) {
     return array.reduce(function(a, b) { return Math.min(a,b); });
+}
+
+function RoundToHundredth(number) {
+    return Math.round(100 * number) / 100;
+}
+
+function TagRegExp(str) {
+    return RegExp('(?<!\S)'+str.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1") +'(?!\S)','gi');
 }
 
 function GetTagData(tag) {
@@ -416,19 +559,44 @@ async function ProcessUploads() {
     return current_uploads;
 }
 
+function SetTooltipHover() {
+    $(".tooltip").hover((e)=>{
+        let $tooltip_text = $(".activetooltip",e.target);
+        if ($tooltip_text.html() === "") {
+            let tooltip_key = $(".activetooltip",e.target).data('key');
+            let tooltip_metric = $(".activetooltip",e.target).data('type');
+            let tooltip_attribute = $(".activetooltip",e.target).data('attribute');
+            console.log("Hover:",tooltip_key,tooltip_metric,tooltip_attribute);
+            $tooltip_text.html("Loading!");
+            $tooltip_text.html(RenderStatistics(tooltip_key,tooltip_attribute));
+        }
+    });
+}
+
+function SetTooltipChangeClick() {
+    $(".select-tooltip").click((e)=>{
+        let tooltip_type = $(e.target.parentElement).data('type');
+        $(".select-tooltip,.tooltiptext").removeClass("activetooltip");
+        $(`.select-tooltip[data-type="${tooltip_type}"]`).addClass("activetooltip");
+        $(`.tooltiptext[data-type="${tooltip_type}"]`).addClass("activetooltip");
+        Danbooru.Cookie.put('cu-current-metric',tooltip_type);
+    });
+}
+
 function SetCountNoticeClick() {
     $("#hide-count-notice").click((e)=>{
-        if (!PopulateTable.is_started || Danbooru.Cookie.get('hide-current-uploads') === "1") {
-            Danbooru.Cookie.put('hide-current-uploads',0);
-            $('#count-table').show();
+        if (!PopulateTable.is_started || Danbooru.Cookie.get('cu-hide-current-uploads') === "1") {
+            Danbooru.Cookie.put('cu-hide-current-uploads',0);
+            $('#count-module').show();
         } else {
-            Danbooru.Cookie.put('hide-current-uploads',1);
-            $('#count-table').hide();
+            Danbooru.Cookie.put('cu-hide-current-uploads',1);
+            $('#count-module').hide();
         }
         PopulateTable();
         e.preventDefault();
     });
 }
+
 
 async function PopulateTable() {
     if (!PopulateTable.is_started) {
@@ -437,6 +605,11 @@ async function PopulateTable() {
         let data = await ProcessUploads();
         if (data.length) {
             $('#count-table').html(RenderTable());
+            $('#count-controls').html(RenderAllTooltipControls());
+            SetTooltipHover();
+            SetTooltipChangeClick();
+            let tooltip_type = Danbooru.Cookie.get('cu-current-metric') || 'score';
+            $(`.select-tooltip[data-type="${tooltip_type}"] a`).click();
         } else {
             $('#count-table').html('<div id="empty-uploads">Feed me more uploads!</div>');
         }
@@ -453,7 +626,7 @@ function main() {
     JSPLib.utility.setCSSStyle(program_css,'program');
     $('header#top').append(notice_box);
     SetCountNoticeClick();
-    if (Danbooru.Cookie.get('hide-current-uploads') !== "1") {
+    if (Danbooru.Cookie.get('cu-hide-current-uploads') !== "1") {
         $("#hide-count-notice").click();
     }
     if (JSPLib.debug.debug_console) {
