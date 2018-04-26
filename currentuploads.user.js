@@ -779,7 +779,7 @@ function main() {
     use_dummy_value = $('body').data('user-is-gold');
     JSPLib.utility.setCSSStyle(program_css,'program');
     $notice_box = $(notice_box);
-    $footer_notice = $('<span id="upload-counts-restore"> - <a href="#" id="restore-count-notice">Restore Count Table</a></span>');
+    $footer_notice = $('<span id="upload-counts-restore"> - <a href="#" id="restore-count-notice">Restore CurrentUploads</a></span>');
     if (Danbooru.Cookie.get('cu-stash-current-uploads') === "1") {
         $($notice_box).addClass('stashed');
         $($footer_notice).addClass('stashed');
