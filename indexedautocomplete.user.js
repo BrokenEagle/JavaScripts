@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      13.1
+// @version      14
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -11,15 +11,22 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/indexedautocomplete.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/statistics.js
 // ==/UserScript==
 
 /***Global variables***/
 
-//Set to true to switch the debug info on
-const debug_console = true;
+//Variables for debug.js
+JSPLib.debug.debug_console = true;
 
-//The number of retries before abandoning program load
-const program_load_max_retries = 100;
+//Variables for load.js
+const program_load_required_variables = ['window.jQuery','window.Danbooru','window.Danbooru.Autocomplete'];
+
 
 //Polling interval for checking program status
 const timer_poll_interval = 100;
@@ -52,16 +59,6 @@ const autocomplete_domlist = [
     "#add-to-pool-dialog input[type=text]"
     ].concat(autocomplete_userlist);
 
-//Gets own instance in case forage is used in another script
-var danboorustorage = localforage.createInstance({
-    name: 'Danbooru storage',
-    driver: [localforage.INDEXEDDB,
-             localforage.LOCALSTORAGE]
-    });
-
-//Set state variables that indicate which database is being used
-const use_indexed_db = danboorustorage.supports(danboorustorage.INDEXEDDB);
-const use_local_storage = !use_indexed_db && danboorustorage.supports(danboorustorage.LOCALSTORAGE);
 
 //Expiration variables
 
@@ -102,39 +99,9 @@ const expiration_config = {
 
 //Validation variables
 
-const postcount_constraints = {
-    presence: true,
-    numericality: {
-        noStrings: true,
-        onlyInteger: true,
-        greaterThan: 0,
-    }
-};
-
-const expires_constraints = {
-    presence: true,
-    numericality: {
-        onlyInteger: true,
-        greaterThan: 0,
-    }
-};
-
-const stringonly_constraints = {
-    string: true
-};
-
-const tagentryarray_constraints = {
-    presence: true,
-    tagentryarray: true
-};
-
-function inclusion_constraints(array) {
-    return { presence: true, inclusion: array };
-}
-
 const autocomplete_constraints = {
     entry: {
-        expires : expires_constraints,
+        expires : JSPLib.validate.expires_constraints,
         value: {
             presence: true,
             array: {
@@ -151,61 +118,61 @@ const autocomplete_constraints = {
                 allowNull: true
             }
         },
-        category: inclusion_constraints([0,1,3,4,5]),
-        label: stringonly_constraints,
-        post_count: postcount_constraints,
-        type: inclusion_constraints(["tag"]),
-        value: stringonly_constraints
+        category: JSPLib.validate.inclusion_constraints([0,1,3,4,5]),
+        label: JSPLib.validate.stringonly_constraints,
+        post_count: JSPLib.validate.postcount_constraints,
+        type: JSPLib.validate.inclusion_constraints(["tag"]),
+        value: JSPLib.validate.stringonly_constraints
     },
     pool: {
-        category: inclusion_constraints(["collection","series"]),
-        post_count: postcount_constraints,
-        type: inclusion_constraints(["pool"]),
-        name: stringonly_constraints
+        category: JSPLib.validate.inclusion_constraints(["collection","series"]),
+        post_count: JSPLib.validate.postcount_constraints,
+        type: JSPLib.validate.inclusion_constraints(["pool"]),
+        name: JSPLib.validate.stringonly_constraints
     },
     user: {
-        level: inclusion_constraints(["Member","Gold","Platinum","Builder","Moderator","Admin"]),
-        type: inclusion_constraints(["user"]),
-        name: stringonly_constraints
+        level: JSPLib.validate.inclusion_constraints(["Member","Gold","Platinum","Builder","Moderator","Admin"]),
+        type: JSPLib.validate.inclusion_constraints(["user"]),
+        name: JSPLib.validate.stringonly_constraints
     },
     favgroup: {
-        post_count: postcount_constraints,
-        name: stringonly_constraints
+        post_count: JSPLib.validate.postcount_constraints,
+        name: JSPLib.validate.stringonly_constraints
     },
     savedsearch: {
-        name: stringonly_constraints
+        name: JSPLib.validate.stringonly_constraints
     },
     artist: {
-        label: stringonly_constraints,
-        value: stringonly_constraints
+        label: JSPLib.validate.stringonly_constraints,
+        value: JSPLib.validate.stringonly_constraints
     },
     wikipage: {
-        label: stringonly_constraints,
-        value: stringonly_constraints,
-        category: inclusion_constraints([0,1,3,4,5])
+        label: JSPLib.validate.stringonly_constraints,
+        value: JSPLib.validate.stringonly_constraints,
+        category: JSPLib.validate.inclusion_constraints([0,1,3,4,5])
     }
 };
 
 const relatedtag_constraints = {
     entry: {
-        expires : expires_constraints,
+        expires : JSPLib.validate.expires_constraints,
         value : {
             presence: true
         }
     },
     value: {
-        category: inclusion_constraints(["","general","character","copyright","artist"]),
-        query: stringonly_constraints,
-        tags: tagentryarray_constraints,
-        wiki_page_tags: tagentryarray_constraints,
+        category: JSPLib.validate.inclusion_constraints(["","general","character","copyright","artist"]),
+        query: JSPLib.validate.stringonly_constraints,
+        tags: JSPLib.validate.tagentryarray_constraints,
+        wiki_page_tags: JSPLib.validate.tagentryarray_constraints,
         other_wikis: {
             presence: true,
             array: true
         }
     },
     other_wikis: {
-        title: stringonly_constraints,
-        wiki_page_tags: tagentryarray_constraints
+        title: JSPLib.validate.stringonly_constraints,
+        wiki_page_tags: JSPLib.validate.tagentryarray_constraints
     }
 };
 
@@ -421,204 +388,11 @@ function ExpirationTime(type,count) {
     return Math.round(expiration * milliseconds_per_day);
 }
 
-//Debug output functions
-
-function debuglog(args) {
-    if (debug_console) {
-        console.log.apply(this,arguments);
-    }
-}
-
-function debugTime(str) {
-    if (debug_console) {
-        console.time(str);
-    }
-}
-
-function debugTimeEnd(str) {
-    if (debug_console) {
-        console.timeEnd(str);
-    }
-}
-
-//Data recording functions
-
-function recordTime(entryname,type) {
-    if (debug_console) {
-        let index = entryname + ',' + type;
-        recordTime.records[index] = {
-            entryname: entryname,
-            type: type,
-            starttime: performance.now(),
-            endtime: 0};
-    }
-}
-recordTime.records = {};
-
-function recordTimeEnd(entryname,type) {
-    if (debug_console) {
-        let index = entryname + ',' + type;
-        if (!(index in recordTime.records)) {
-            return;
-        }
-        if (recordTime.records[index].endtime === 0) {
-            recordTime.records[index].endtime = performance.now();
-        }
-    }
-}
-
-//Statistics functions
-
-function outputAdjustedMean() {
-    let outputtime = {};
-    $.each(recordTime.records,(i,val)=>{
-        if (!(val.type in outputtime)) {
-            outputtime[val.type] = [];
-        }
-        outputtime[val.type].push(val.endtime-val.starttime);
-    });
-    $.each(outputtime,(type,values)=>{
-        let adjvalues = removeOutliers(values);
-        debuglog(type + ':',"num",values.length,"avg",Math.round(100*average(adjvalues))/100,"rem",values.length-adjvalues.length);
-    });
-}
-
-function removeOutliers(values) {
-    do {
-        var length = values.length;
-        let avg = average(values);
-        let stddev = standardDeviation(values);
-        let adjvalues = values.filter(val=>{return (Math.abs(val-avg) < (2 * stddev));});
-        var newlength = adjvalues.length;
-        if (newlength === 0) {
-            return values;
-        }
-        values = adjvalues;
-    } while (length != newlength);
-    return values;
-}
-
-function standardDeviation(values) {
-    var avg = average(values);
-    return Math.sqrt(average(values.map(value=>{let diff = value - avg; return diff * diff;})));
-}
-
-function average(values) {
-    return values.reduce(function(a, b) { return a + b; })/values.length;
-}
-
-//Data interface functions
-
-async function retrieveData(key) {
-    if (!(use_indexed_db || use_local_storage)) {
-        return null;
-    }
-    let database = use_indexed_db ? "IndexDB" : "LocalStorage";
-    if (key in sessionStorage) {
-        debuglog("Found item (Session):",key);
-        recordTime(key,'Session');
-        let data = sessionStorage.getItem(key);
-        recordTimeEnd(key,'Session');
-        try {
-            return JSON.parse(data);
-        } catch (e) {
-            //Swallow exception
-        }
-    }
-    recordTime(key,database);
-    let value = await danboorustorage.getItem(key);
-    recordTimeEnd(key,database);
-    if (value !== null) {
-        debuglog(`Found item (${database}):`,key);
-        sessionStorage[key] = JSON.stringify(value);
-    }
-    return value;
-}
-
-function saveData(key,value) {
-    danboorustorage.setItem(key,value);
-    sessionStorage.setItem(key,JSON.stringify(value));
-}
-
-function hasDataExpired(storeditem) {
-    if (Date.now() > storeditem.expires) {
-        debuglog("Data has expired!");
-        return true;
-    }
-    return false;
-}
-
-function DataCopy(olddata) {
-    let newdata = [];
-    $.each(olddata, (i,data)=>{
-        newdata.push(jQuery.extend(true, {}, data));
-    });
-    return newdata;
-}
-
 //Validation functions
-
-validate.validators.array = function(value, options, key, attributes) {
-    if (options !== false) {
-        if (!validate.isArray(value)) {
-            return "is not an array";
-        }
-        if (options !== true && 'length' in options) {
-            let checkerror = validate({val:value},{val:{length: options.length}});
-            if (checkerror !== undefined) {
-                return JSON.stringify(checkerror,null,2);
-            }
-        }
-    }
-};
-
-validate.validators.tagentryarray = function(value, options, key, attributes) {
-    if (options !== false) {
-        if (!validate.isArray(value)) {
-            return "is not an array";
-        }
-        for (let i=0;i < value.length;i++) {
-            if (value[i].length !== 2) {
-                return "must have 2 entries in tag entry ["+i.toString()+"]";
-            }
-            if (!validate.isString(value[i][0])) {
-                return "must be a string ["+i.toString()+"][0]";
-            }
-            if ([0,1,3,4,5].indexOf(value[i][1]) < 0) {
-                return "must be a valid tag category ["+i.toString()+"][1]";
-            }
-        }
-    }
-};
-
-validate.validators.string = function(value, options, key, attributes) {
-    if (options !== false) {
-        var message = "";
-        //Can't use presence validator so must catch it here
-        if (value === undefined) {
-            return "can't be missing";
-        }
-        if (validate.isString(value)) {
-            return;
-        }
-        message += "is not a string";
-        if (validate.isHash(options) && 'allowNull' in options && options.allowNull === true) {
-            if (value === null) {
-                return;
-            }
-            message += " or null";
-        }
-        return message;
-    }
-};
-
-function PrintValidateError(key,checkerror) {
-    debuglog(key,':\r\n',JSON.stringify(checkerror,null,2));
-}
 
 function ValidateEntry(key,entry) {
     if (entry === null) {
-        debuglog(key,"entry not found!");
+        JSPLib.debug.debuglog(key,"entry not found!");
         return false;
     }
     if (key.match(/^(?:ac|pl|us|fg|ss|ar|wp)-/)) {
@@ -626,7 +400,7 @@ function ValidateEntry(key,entry) {
     } else if (key.match(/^rt(?:gen|char|copy|art)?-/)) {
         return ValidateRelatedtagEntry(key,entry);
     }
-    debuglog("Shouldn't get here");
+    JSPLib.debug.debuglog("Shouldn't get here");
     return false;
 }
 
@@ -640,7 +414,7 @@ function ValidateAutocompleteEntry(key,entry) {
         let type = source_key[key.slice(0,2)];
         check = validate(entry.value[i],autocomplete_constraints[type]);
         if (check !== undefined) {
-            debuglog("value["+i.toString()+"]");
+            JSPLib.debug.debuglog("value["+i.toString()+"]");
             PrintValidateError(key,check);
             return false;
         }
@@ -662,7 +436,7 @@ function ValidateRelatedtagEntry(key,entry) {
     for (let i = 0;i < entry.value.other_wikis.length; i++) {
         check = validate(entry.value.other_wikis[i],relatedtag_constraints.other_wikis);
         if (check !== undefined) {
-            debuglog("value["+i.toString()+"]");
+            JSPLib.debug.debuglog("value["+i.toString()+"]");
             PrintValidateError(key,check);
             return false;
         }
@@ -671,18 +445,6 @@ function ValidateRelatedtagEntry(key,entry) {
 }
 
 /***Main helper functions***/
-
-async function CheckLocalDB(key) {
-    if (use_indexed_db || use_local_storage) {
-        var cached = await retrieveData(key);
-        debuglog("Checking",key);
-        if (!ValidateEntry(key,cached) || hasDataExpired(cached)) {
-            danboorustorage.removeItem(key);
-        } else {
-            return cached.value;
-        }
-    }
-}
 
 function FixupMetatag(value,metatag) {
     switch(metatag) {
@@ -701,8 +463,8 @@ function FixupMetatag(value,metatag) {
 }
 
 function FixExpirationCallback(key,value,tagname,type) {
-    debuglog("Fixing expiration:",tagname);
-    recordTime(key + 'callback',"Network");
+    JSPLib.debug.debuglog("Fixing expiration:",tagname);
+    JSPLib.debug.recordTime(key + 'callback',"Network");
     $.ajax({
         url: "/tags.json",
         data: {
@@ -710,12 +472,12 @@ function FixExpirationCallback(key,value,tagname,type) {
         },
         method: "get",
         success: function(data) {
-            recordTimeEnd(key + 'callback',"Network");
+            JSPLib.debug.recordTimeEnd(key + 'callback',"Network");
             if (!data.length) {
                 return;
             }
             var expiration_time = ExpirationTime(type,data[0].post_count);
-            saveData(key, {"value": value, "expires": Date.now() + expiration_time});
+            JSPLib.storage.saveData(key, {"value": value, "expires": Date.now() + expiration_time});
         }
     });
 }
@@ -725,17 +487,17 @@ function FixExpirationCallback(key,value,tagname,type) {
 //Autocomplete functions
 
 function NetworkSource(type,key,term,resp,metatag) {
-    debuglog("Querying",type,':',term);
-    recordTime(key,"Network");
+    JSPLib.debug.debuglog("Querying",type,':',term);
+    JSPLib.debug.recordTime(key,"Network");
     $.ajax({
         url: source_config[type].url,
         data: source_config[type].data(term),
         method: "get",
         success: function(data) {
-            recordTimeEnd(key,"Network");
+            JSPLib.debug.recordTimeEnd(key,"Network");
             var d = $.map(data, source_config[type].map);
             var expiration_time = source_config[type].expiration(d);
-            saveData(key, {"value": DataCopy(d), "expires": Date.now() + expiration_time});
+            JSPLib.storage.saveData(key, {"value": JSPLib.utility.dataCopy(d), "expires": Date.now() + expiration_time});
             if (source_config[type].fixupmetatag) {
                 $.each(d, (i,val)=> {FixupMetatag(val,metatag);});
             }
@@ -749,9 +511,9 @@ function NetworkSource(type,key,term,resp,metatag) {
 
 async function NormalSourceIndexed(term, resp) {
     var key = ("ac-" + term).toLowerCase();
-    var value = await CheckLocalDB(key);
-    if (value) {
-        resp(value);
+    var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
+    if (cached.value) {
+        resp(cached.value);
         return;
     }
     NetworkSource('tag',key,term,resp,"");
@@ -759,10 +521,10 @@ async function NormalSourceIndexed(term, resp) {
 
 async function PoolSourceIndexed(term, resp, metatag) {
     var key = ("pl-" + term).toLowerCase();
-    var value = await CheckLocalDB(key);
-    if (value) {
-        $.each(value, (i,val)=> {FixupMetatag(val,metatag);});
-        resp(value);
+    var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
+    if (cached.value) {
+        $.each(cached.value, (i,val)=> {FixupMetatag(val,metatag);});
+        resp(cached.value);
         return;
     }
     NetworkSource('pool',key,term,resp,metatag);
@@ -770,10 +532,10 @@ async function PoolSourceIndexed(term, resp, metatag) {
 
 async function UserSourceIndexed(term, resp, metatag) {
     var key = ("us-" + term).toLowerCase();
-    var value = await CheckLocalDB(key);
-    if (value) {
-        $.each(value, (i,val)=> {FixupMetatag(val,metatag);});
-        resp(value);
+    var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
+    if (cached) {
+        $.each(cached.value, (i,val)=> {FixupMetatag(val,metatag);});
+        resp(cached.value);
         return;
     }
     NetworkSource('user',key,term,resp,metatag);
@@ -781,10 +543,10 @@ async function UserSourceIndexed(term, resp, metatag) {
 
 async function FavoriteGroupSourceIndexed(term, resp, metatag) {
     var key = ("fg-" + term).toLowerCase();
-    var value = await CheckLocalDB(key);
-    if (value) {
-        $.each(value, (i,val)=> {FixupMetatag(val,metatag);});
-        resp(value);
+    var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
+    if (cached) {
+        $.each(cached.value, (i,val)=> {FixupMetatag(val,metatag);});
+        resp(cached.value);
         return;
     }
     NetworkSource('favgroup',key,term,resp,metatag);
@@ -792,10 +554,10 @@ async function FavoriteGroupSourceIndexed(term, resp, metatag) {
 
 async function SavedSearchSourceIndexed(term, resp, metatag = "search") {
     var key = ("ss-" + term).toLowerCase();
-    var value = await CheckLocalDB(key);
-    if (value) {
-        $.each(value, (i,val)=> {FixupMetatag(val,metatag);});
-        resp(value);
+    var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
+    if (cached.value) {
+        $.each(cached.value, (i,val)=> {FixupMetatag(val,metatag);});
+        resp(cached.value);
         return;
     }
     NetworkSource('search',key,term,resp,metatag);
@@ -803,9 +565,9 @@ async function SavedSearchSourceIndexed(term, resp, metatag = "search") {
 
 async function WikiPageIndexed(req, resp) {
     var key = ("wp-" + req.term).toLowerCase();
-    var value = await CheckLocalDB(key);
-    if (value) {
-        resp(value);
+    var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
+    if (cached) {
+        resp(cached.value);
         return;
     }
     NetworkSource('wikipage',key,req.term,resp,"");
@@ -813,9 +575,9 @@ async function WikiPageIndexed(req, resp) {
 
 async function ArtistIndexed(req, resp) {
     var key = ("ar-" + req.term).toLowerCase();
-    var value = await CheckLocalDB(key);
-    if (value) {
-        resp(value);
+    var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
+    if (cached) {
+        resp(cached.value);
         return;
     }
     NetworkSource('artist',key,req.term,resp,"");
@@ -833,54 +595,42 @@ function CommonBindIndexed(button_name, category) {
         var currenttag = $.trim(Danbooru.RelatedTag.current_tag());
         var keymodifier = (category.length ? GetShortName(category) : "");
         var key = ("rt" + keymodifier + "-" + currenttag).toLowerCase();
-        var cached = await retrieveData(key);
-        debuglog("Checking",key);
-        if (!ValidateEntry(key,cached) || hasDataExpired(cached)) {
-            danboorustorage.removeItem(key);
-            debuglog("Querying relatedtag:",currenttag,category);
-            recordTime(key,"Network");
+        var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
+        if (cached) {
+            Danbooru.RelatedTag.process_response(cached.value);
+        } else {
+            JSPLib.debug.debuglog("Querying relatedtag:",currenttag,category);
+            JSPLib.debug.recordTime(key,"Network");
             var data = await $.get("/related_tag.json", {
                 "query": currenttag,
                 "category": category
             });
-            recordTimeEnd(key,"Network");
-            saveData(key, {"value": data, "expires": Date.now() + MinimumExpirationTime('relatedtag')});
+            JSPLib.debug.recordTimeEnd(key,"Network");
+            JSPLib.storage.saveData(key, {"value": data, "expires": Date.now() + MinimumExpirationTime('relatedtag')});
             Danbooru.RelatedTag.process_response(data);
-        } else {
-            Danbooru.RelatedTag.process_response(cached.value);
         }
         $("#artist-tags-container").hide();
         e.preventDefault();
     });
 }
 
-function GetSessionData(url) {
-    let key = 'af-' + url;
-    if (key in sessionStorage) {
-        try {
-            debuglog("Found data",key);
-            return JSON.parse(sessionStorage.getItem(key));
-        } catch(e) {
-            debuglog("Data error",key);
-            return;
-        }
-    }
-    debuglog("Data not found",key);
-}
-
 function SaveSessionData(url,data) {
     let key = 'af-' + url;
-    debuglog("Saving",key);
+    JSPLib.debug.debuglog("Saving",key);
     sessionStorage.setItem(key,JSON.stringify(data));
 }
 
 function CheckSource(domobj) {
     if (domobj.val()) {
-        let data = GetSessionData(domobj.val());
+        let key = 'af-' + domobj.val();
+        JSPLib.debug.debuglog("Checking artist",key);
+        let data = JSPLib.storage.getSessionData(key);
         if (data) {
+            JSPLib.debug.debuglog("Found artist data",key);
             Danbooru.RelatedTag.process_artist(data);
             return true;
         }
+        JSPLib.debug.debuglog("Missing artist data",key);
     }
     return false;
 }
@@ -895,9 +645,9 @@ function FindArtistSession(e) {
     if ((url.val() !== referer_url.val()) && CheckSource(referer_url)) {
         return;
     }
-    debuglog("Checking network",url.val(),referer_url.val());
+    JSPLib.debug.debuglog("Checking network",url.val(),referer_url.val());
     $.get("/artists/finder.json", {"url": url.val(), "referer_url": referer_url.val()}).
-        success((data)=>{
+        then((data)=>{
             Danbooru.RelatedTag.process_artist(data);
             if (url.val()) {
                 SaveSessionData(url.val(),data);
@@ -916,7 +666,7 @@ function FindArtistSession(e) {
 function rebindRelatedTags() {
     //Only need to check one of them, since they're all bound at the same time
     let bounditems = $._data($("#related-tags-button")[0]);
-    debuglog("Bound items (RT):",Object.keys(bounditems));
+    JSPLib.debug.debuglog("Bound items (RT):",Object.keys(bounditems));
     if (!$.isEmptyObject(bounditems) && bounditems.events.click.length) {
         clearInterval(rebindRelatedTags.timer);
         $("#related-tags-button").off();
@@ -932,11 +682,12 @@ function rebindRelatedTags() {
 function rebindFindArtist() {
     //Only need to check one of them, since they're all bound at the same time
     let bounditems = $._data($("#find-artist-button")[0]);
-    debuglog("Bound items (FA):",Object.keys(bounditems));
+    JSPLib.debug.debuglog("Bound items (FA):",Object.keys(bounditems));
     if (!$.isEmptyObject(bounditems) && bounditems.events.click.length) {
         clearInterval(rebindFindArtist.timer);
         $("#find-artist-button").off();
-        $("#find-artist-button").click(Danbooru.RelatedTag.find_artist);
+        //$("#find-artist-button").click(Danbooru.RelatedTag.find_artist);
+        $("#find-artist-button").click(FindArtistSession);
     }
 }
 
@@ -1050,48 +801,13 @@ function main() {
     if ($('[placeholder="Search users"]').length) {
         UserInitializeAutocompleteIndexed("#search_name_matches,#quick_search_name_matches");
     }
-    }
-    if (debug_console) {
+    if (JSPLib.debug.debug_console) {
         window.addEventListener('beforeunload',function () {
-            if (Object.keys(recordTime.records).length) {
-                console.log("=====IndexedAutocomplete Metrics=====");
-                outputAdjustedMean();
-            }
+            JSPLib.statistics.outputAdjustedMean("IndexedAutocomplete");
         });
     }
 }
 
-//Wait until program is ready before executing
-function programLoad() {
-    if (programLoad.retries >= program_load_max_retries) {
-        debuglog("Abandoning program load!");
-        clearInterval(programLoad.timer);
-        return;
-    }
-    if (window.jQuery === undefined) {
-        debuglog("jQuery not installed yet!");
-        programLoad.retries += 1;
-        return;
-    }
-    if (window.Danbooru === undefined) {
-        debuglog("Danbooru not installed yet!");
-        programLoad.retries += 1;
-        return;
-    }
-    if (window.Danbooru.Autocomplete === undefined) {
-        debuglog("Danbooru Autocomplete not installed yet!");
-        programLoad.retries += 1;
-        return;
-    }
-    clearInterval(programLoad.timer);
-    if ($(autocomplete_domlist.join(',')).length) {
-        use_indexed_db && main();
-    }
-    debugTimeEnd("IAC-programLoad");
-}
-programLoad.retries = 0;
-
 /***Execution start***/
 
-debugTime("IAC-programLoad");
-programLoad.timer = setInterval(programLoad,timer_poll_interval);
+JSPLib.load.programInitialize(main,'IAC',program_load_required_variables);
