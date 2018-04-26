@@ -53,14 +53,20 @@ var num_network_requests = 0;
 //Style information
 const program_css = `
 #upload-counts {
-    border: lightgrey dotted;
+    border: #EEE dotted;
     max-width: ${max_column_characters + 35}em;
     margin-left: 2em;
+}
+#upload-counts.opened {
+    border: lightgrey dotted;
 }
 #count-module {
     margin-bottom: 1em;
     display: none;
     border: lightgrey solid 1px;
+}
+#upload-counts.opened #count-module {
+    display: block;
 }
 #count-table {
     white-space: nowrap;
@@ -79,6 +85,9 @@ const program_css = `
     font-size: 200%;
     font-weight: bold;
     font-family: monospace;
+}
+#upload-counts.opened #upload-counts-toggle {
+    margin: 0.5em;
 }
 .tooltip {
     position: relative;
@@ -134,7 +143,9 @@ var notice_box = `
         <div id="count-controls">
         </div>
     </div>
-    <span><a href="#" id="hide-count-notice">Toggle Upload Table</a></span>
+    <div id="upload-counts-toggle">
+        <a href="#" id="hide-count-notice">Toggle Upload Table</a>
+    </div>
 </div>
 `;
 
@@ -592,10 +603,10 @@ function SetCountNoticeClick() {
     $("#hide-count-notice").click((e)=>{
         if (!PopulateTable.is_started || Danbooru.Cookie.get('cu-hide-current-uploads') === "1") {
             Danbooru.Cookie.put('cu-hide-current-uploads',0);
-            $('#count-module').show();
+            $('#upload-counts').addClass('opened');
         } else {
             Danbooru.Cookie.put('cu-hide-current-uploads',1);
-            $('#count-module').hide();
+            $('#upload-counts').removeClass('opened');
         }
         PopulateTable();
         e.preventDefault();
