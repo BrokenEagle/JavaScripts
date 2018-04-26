@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6
+// @version      7
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Gives up-to-date stats on uploads
 // @author       BrokenEagle
@@ -48,10 +48,16 @@ const rate_limit_wait = 500;
 //Metrics used by statistics functions
 const tooltip_metrics = ['score','upscore','down_score','favcount','tagcount','gentags'];
 
+//Feedback messages
+const empty_uploads_message_owner = 'Feed me more uploads!';
+const empty_uploads_message_other = 'No uploads for this user.';
+var empty_uploads_message = empty_uploads_message_owner;
+
 //Placeholders for setting during program execution
 var username;
 var use_dummy_value;
 var num_network_requests = 0;
+var user_copytags = {};
 
 //Style information
 const program_css = `
@@ -85,6 +91,9 @@ const program_css = `
 #count-controls {
     margin-top: 1em;
     margin-left: 1em;
+}
+#count-query-user {
+    margin: 0.5em;
 }
 #stash-count-notice {
     color: #D44;
@@ -161,6 +170,10 @@ var notice_box = `
         <div id="count-table">
         </div>
         <div id="count-controls">
+        </div>
+        <div id="count-query-user">
+            <input id="count_query_user_id" placeholder="Search users" type="text">
+            <input id="count_submit_user_id" type="submit" value="Submit" class="btn">
         </div>
     </div>
     <div id="upload-counts-toggle">
@@ -301,12 +314,12 @@ function RenderHeader() {
 }
 
 function RenderBody() {
-    if (ProcessUploads.copytags.length > 3) {
+    if (user_copytags[username].length > 3) {
         $("#count-table").addClass("overflowed");
     }
     var tabletext = RenderRow('');
-    for (let i = 0;i < ProcessUploads.copytags.length; i++) {
-        tabletext += RenderRow(ProcessUploads.copytags[i]);
+    for (let i = 0;i < user_copytags[username].length; i++) {
+        tabletext += RenderRow(user_copytags[username][i]);
     }
     return AddTableBody(tabletext);
 }
@@ -596,6 +609,10 @@ async function GetCount(type,tag) {
     }
 }
 
+async function CheckUser(username) {
+    return $.getJSON('/users',{search:{name_matches:username}});
+}
+
 async function GetCurrentUploads(username) {
     let key = `current-uploads-${username}`;
     var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
@@ -626,10 +643,10 @@ async function ProcessUploads() {
         let curr_copyright_count = GetCopyrightCount(current_uploads);
         let prev_copyright_count = GetCopyrightCount(previous_uploads);
         await Promise.all($.map(curr_copyright_count,(val,key)=>{return GetReverseTagImplication(key);}));
-        ProcessUploads.copytags = SortDict(curr_copyright_count).filter(value=>{return JSPLib.storage.getSessionData('rti-'+value).value == 0;});
+        user_copytags[username] = SortDict(curr_copyright_count).filter(value=>{return JSPLib.storage.getSessionData('rti-'+value).value == 0;});
         let copyright_symdiff = CompareCopyrightCounts(curr_copyright_count,prev_copyright_count);
-        let copyright_changed = (is_new_tab ? ProcessUploads.copytags : JSPLib.utility.setIntersection(ProcessUploads.copytags,copyright_symdiff));
-        let copyright_nochange = (is_new_tab ? [] : JSPLib.utility.setDifference(ProcessUploads.copytags,copyright_changed));
+        let copyright_changed = (is_new_tab ? user_copytags[username] : JSPLib.utility.setIntersection(user_copytags[username],copyright_symdiff));
+        let copyright_nochange = (is_new_tab ? [] : JSPLib.utility.setDifference(user_copytags[username],copyright_changed));
         $.each(copyright_nochange,(i,val)=>{
             if (CheckCopyrightVelocity(val)) {
                 promise_array.push(GetTagData(val));
@@ -669,14 +686,17 @@ function SetTooltipChangeClick() {
 
 function SetCountNoticeClick() {
     $("#hide-count-notice").click((e)=>{
-        if (!PopulateTable.is_started || Danbooru.Cookie.get('cu-hide-current-uploads') === "1") {
+        if (Danbooru.Cookie.get('cu-hide-current-uploads') === "1") {
             Danbooru.Cookie.put('cu-hide-current-uploads',0);
             $('#upload-counts').addClass('opened');
+            //Prevent processing potentially bad usernames set by SetCheckUserClick
+            username = Danbooru.meta("current-user-name");
+            empty_uploads_message = empty_uploads_message_owner;
+            PopulateTable();
         } else {
             Danbooru.Cookie.put('cu-hide-current-uploads',1);
             $('#upload-counts').removeClass('opened');
         }
-        PopulateTable();
         e.preventDefault();
     });
 }
@@ -699,12 +719,46 @@ function SetRestoreNoticeClick() {
     });
 }
 
+function SetCheckUserClick() {
+    PopulateTable.checked_usernames = PopulateTable.checked_usernames || {};
+    $("#count_submit_user_id").click(async (e)=>{
+        //Don't change the username while currently processing
+        if (!PopulateTable.is_started) {
+            let check_user = [];
+            let check_username = $("#count_query_user_id").val();
+            if (check_username in PopulateTable.checked_usernames) {
+                check_user = PopulateTable.checked_usernames[check_username];
+            } else {
+                //Check each time no matter what as misses can be catastrophic
+                check_user = await CheckUser(check_username);
+            }
+            if (check_user.length) {
+                username = check_user[0].name;
+                PopulateTable.checked_usernames[check_username] = check_user;
+                empty_uploads_message = empty_uploads_message_other;
+                PopulateTable();
+            } else {
+                $('#count-table').html(`<div id="empty-uploads">User doesn't exist!</div>`);
+            }
+        }
+        e.preventDefault();
+    });
+}
+
 async function PopulateTable() {
+    PopulateTable.checked_users = PopulateTable.checked_users || [];
     if (!PopulateTable.is_started) {
-        PopulateTable.is_started = true;
-        $('#count-table').html(`<div id="empty-uploads">Loading data... (<span id="loading-counter">${num_network_requests}</span>)</div>`);
-        let data = await ProcessUploads();
-        if (data.length) {
+        var post_data = [];
+        if (PopulateTable.checked_users.indexOf(username) < 0) {
+            PopulateTable.is_started = true;
+            $('#count-table').html(`<div id="empty-uploads">Loading data... (<span id="loading-counter">${num_network_requests}</span>)</div>`);
+            post_data = await ProcessUploads();
+            PopulateTable.checked_users.push(username);
+            PopulateTable.is_started = false;
+        } else {
+            post_data = JSPLib.storage.getSessionData(`current-uploads-${username}`).value;
+        }
+        if (post_data.length) {
             $('#count-table').html(RenderTable());
             $('#count-controls').html(RenderAllTooltipControls());
             SetTooltipHover();
@@ -712,11 +766,10 @@ async function PopulateTable() {
             let tooltip_type = Danbooru.Cookie.get('cu-current-metric') || 'score';
             $(`.select-tooltip[data-type="${tooltip_type}"] a`).click();
         } else {
-            $('#count-table').html('<div id="empty-uploads">Feed me more uploads!</div>');
+            $('#count-table').html(`<div id="empty-uploads">${empty_uploads_message}</div>`);
         }
     }
 }
-PopulateTable.is_started = false;
 
 function main() {
     username = Danbooru.meta("current-user-name");
@@ -736,7 +789,10 @@ function main() {
     SetCountNoticeClick();
     SetStashNoticeClick();
     SetRestoreNoticeClick();
+    SetCheckUserClick();
     if (Danbooru.Cookie.get('cu-hide-current-uploads') !== "1") {
+        //Set to opposite so that click can be used and sets it back
+        Danbooru.Cookie.put('cu-hide-current-uploads',1);
         $("#hide-count-notice").click();
     }
     if (JSPLib.debug.debug_console) {
