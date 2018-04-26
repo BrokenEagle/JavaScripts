@@ -55,6 +55,12 @@ const program_css = `
 #upload-counts {
     border: lightgrey dotted;
     max-width: ${max_column_characters + 35}em;
+    margin-left: 2em;
+}
+#count-module {
+    margin-bottom: 1em;
+    display: none;
+    border: lightgrey solid 1px;
 }
 #count-table {
     white-space: nowrap;
@@ -64,17 +70,9 @@ const program_css = `
     overflow-x: hidden;
     overflow-y: auto;
 }
-#count-module {
-    margin-bottom: 1em;
-    display: none;
-    border: lightgrey solid 1px;
-}
 #count-controls {
     margin-top: 1em;
     margin-left: 1em;
-}
-#upload-counts {
-    margin-left: 2em;
 }
 #empty-uploads {
     margin: 1em;
@@ -574,7 +572,6 @@ function SetTooltipHover() {
             let tooltip_key = $(".activetooltip",e.target).data('key');
             let tooltip_metric = $(".activetooltip",e.target).data('type');
             let tooltip_attribute = $(".activetooltip",e.target).data('attribute');
-            console.log("Hover:",tooltip_key,tooltip_metric,tooltip_attribute);
             $tooltip_text.html("Loading!");
             $tooltip_text.html(RenderStatistics(tooltip_key,tooltip_attribute));
         }
@@ -627,10 +624,10 @@ PopulateTable.is_started = false;
 
 function main() {
     username = Danbooru.meta("current-user-name");
-    use_dummy_value = $('body').data('user-is-gold');
     if (username === "Anonymous") {
         return;
     }
+    use_dummy_value = $('body').data('user-is-gold');
     JSPLib.utility.setCSSStyle(program_css,'program');
     $('header#top').append(notice_box);
     SetCountNoticeClick();
