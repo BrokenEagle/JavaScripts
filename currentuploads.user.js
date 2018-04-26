@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7
+// @version      7.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Gives up-to-date stats on uploads
 // @author       BrokenEagle
@@ -172,7 +172,7 @@ var notice_box = `
         <div id="count-controls">
         </div>
         <div id="count-query-user">
-            <input id="count_query_user_id" placeholder="Search users" type="text">
+            <input id="count_query_user_id" placeholder="Check users" type="text">
             <input id="count_submit_user_id" type="submit" value="Submit" class="btn">
         </div>
     </div>
