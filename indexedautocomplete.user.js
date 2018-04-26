@@ -879,13 +879,13 @@ function CheckSource(domobj) {
         let data = GetSessionData(domobj.val());
         if (data) {
             Danbooru.RelatedTag.process_artist(data);
-            return true
+            return true;
         }
     }
-    return false
+    return false;
 }
 
-async function FindArtistSession(e) {
+function FindArtistSession(e) {
     $("#artist-tags").html("<em>Loading...</em>");
     var url = $("#upload_source,#post_source");
     if (CheckSource(url)) {
@@ -942,7 +942,7 @@ function rebindFindArtist() {
 
 function rebindWikiPageAutocomplete() {
     var $fields = $("#search_title,#quick_search_title");
-    if ($fields.length && ('ui-autocomplete' in $.data($fields[0]))) {
+    if ($fields.length && ('uiAutocomplete' in $.data($fields[0]))) {
         clearInterval(rebindWikiPageAutocomplete.timer);
         $fields.off().removeData();
         Danbooru.WikiPage.initialize_autocomplete();
@@ -951,7 +951,7 @@ function rebindWikiPageAutocomplete() {
 
 function rebindArtistAutocomplete() {
     var $fields = $("#search_name,#quick_search_name");
-    if ($fields.length && (('ui-autocomplete' in $.data($fields[0])) || $("#c-artist-versions").length) ) {
+    if ($fields.length && (('uiAutocomplete' in $.data($fields[0])) || $("#c-artist-versions").length) ) {
         clearInterval(rebindArtistAutocomplete.timer);
         $fields.off().removeData();
         Danbooru.Artist.initialize_autocomplete();
@@ -960,7 +960,7 @@ function rebindArtistAutocomplete() {
 
 function rebindPoolAutocomplete() {
     var $fields = $("#search_name_matches,#quick_search_name_matches");
-    if ($fields.length && (('ui-autocomplete' in $.data($fields[0])) || $("#c-pool-versions").length)) {
+    if ($fields.length && (('uiAutocomplete' in $.data($fields[0])) || $("#c-pool-versions").length)) {
         clearInterval(rebindPoolAutocomplete.timer);
         $fields.off().removeData();
         Danbooru.Pool.initialize_autocomplete_for("#search_name_matches,#quick_search_name_matches");
@@ -969,19 +969,10 @@ function rebindPoolAutocomplete() {
 
 function rebindPostPoolAutocomplete() {
     var $fields = $("#add-to-pool-dialog input[type=text]");
-    if ($fields.length && ('ui-autocomplete' in $.data($fields[0]))) {
+    if ($fields.length && ('uiAutocomplete' in $.data($fields[0]))) {
         clearInterval(rebindPostPoolAutocomplete.timer);
         $fields.off().removeData();
         Danbooru.Pool.initialize_autocomplete_for("#add-to-pool-dialog input[type=text]");
-    }
-}
-
-function rebindSavedSearchAutocomplete() {
-    var $fields = $("#saved_search_labels");
-    if ($fields.length && ('ui-autocomplete' in $.data($fields[0]))) {
-        clearInterval(rebindSavedSearchAutocomplete.timer);
-        $fields.off().removeData();
-        SavedSearchInitializeAutocompleteIndexed("#saved_search_labels");
     }
 }
 
@@ -996,7 +987,7 @@ function InitializeAutocompleteIndexed(selector,sourcefunc,type) {
     });
     if (source_config[type].render) {
         $fields.each(function(i, field) {
-            $(field).data("ui-autocomplete")._renderItem = source_config[type].render;
+            $(field).data("uiAutocomplete")._renderItem = source_config[type].render;
         });
     }
 }
@@ -1051,7 +1042,7 @@ function main() {
         rebindPostPoolAutocomplete.timer = setInterval(rebindPostPoolAutocomplete,timer_poll_interval);
     }
     if ($("#c-posts #a-index").length) {
-        rebindSavedSearchAutocomplete.timer = setInterval(rebindSavedSearchAutocomplete,timer_poll_interval);
+        SavedSearchInitializeAutocompleteIndexed("#saved_search_label_string");
     }
     if ($(autocomplete_userlist.join(',')).length) {
         UserInitializeAutocompleteIndexed(autocomplete_userlist.join(','));
@@ -1059,10 +1050,14 @@ function main() {
     if ($('[placeholder="Search users"]').length) {
         UserInitializeAutocompleteIndexed("#search_name_matches,#quick_search_name_matches");
     }
+    }
     if (debug_console) {
-        window.onbeforeunload = function () {
-            outputAdjustedMean();
-        };
+        window.addEventListener('beforeunload',function () {
+            if (Object.keys(recordTime.records).length) {
+                console.log("=====IndexedAutocomplete Metrics=====");
+                outputAdjustedMean();
+            }
+        });
     }
 }
 
