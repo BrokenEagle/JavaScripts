@@ -45,6 +45,9 @@ const max_post_limit_query = 100;
 const max_network_requests = 25;
 const rate_limit_wait = 500;
 
+//Metrics used by statistics functions
+const tooltip_metrics = ['score','upscore','down_score','favcount','tagcount','gentags'];
+
 //Placeholders for setting during program execution
 var username;
 var use_dummy_value;
@@ -59,6 +62,9 @@ const program_css = `
 }
 #upload-counts.opened {
     border: lightgrey dotted;
+}
+#upload-counts.stashed {
+    display: none;
 }
 #count-module {
     margin-bottom: 1em;
@@ -80,6 +86,11 @@ const program_css = `
     margin-top: 1em;
     margin-left: 1em;
 }
+#stash-count-notice {
+    color: #D44;
+    font-weight: bold;
+    font-size: 80%;
+}
 #empty-uploads {
     margin: 1em;
     font-size: 200%;
@@ -88,6 +99,15 @@ const program_css = `
 }
 #upload-counts.opened #upload-counts-toggle {
     margin: 0.5em;
+}
+#upload-counts-restore {
+    display: none;
+}
+#upload-counts-restore.stashed {
+    display: inline-block;
+}
+#upload-counts-restore a {
+    color: green;
 }
 .tooltip {
     position: relative;
@@ -144,33 +164,40 @@ var notice_box = `
         </div>
     </div>
     <div id="upload-counts-toggle">
-        <a href="#" id="hide-count-notice">Toggle Upload Table</a>
+        <a href="#" id="hide-count-notice">Toggle Upload Table</a>&nbsp;(<a href="#" id="stash-count-notice">STASH</a>)
     </div>
 </div>
 `;
 
-const tooltip_metrics = {
-    score: 'score',
-    upscore: 'up_score',
-    downscore: 'down_score',
-    favcount: 'fav_count',
-    tagcount: 'tag_count',
-    gentags: 'tag_count_general'
+//Validation values
+
+const integer_constraints = {
+    presence: true,
+    numericality: {
+        noStrings: true,
+        onlyInteger: true
+    }
 };
 
-//Used for value validations
 const validation_constraints = {
     countentry: JSPLib.validate.postcount_constraints,
-    implicationentry: {
-        presence: true,
-        numericality: {
-            noStrings: true,
-            onlyInteger: true
-        }
-    },
-    postentry: {
+    implicationentry: integer_constraints,
+    postentries: {
         presence: true,
         array: true
+    },
+    postentry: {
+        id: integer_constraints,
+        score: integer_constraints,
+        upscore: integer_constraints,
+        downscore: integer_constraints,
+        favcount: integer_constraints,
+        tagcount: integer_constraints,
+        gentags: integer_constraints,
+        copyrights: {
+            string: true
+        },
+        created: integer_constraints
     }
 };
 
@@ -185,14 +212,14 @@ function ValidationSelector(key) {
         return 'implicationentry';
     }
     else if (key.match(/^current-uploads-/)) {
-        return 'postentry';
+        return 'postentries';
     }
 }
 
-function BuildValidator(key) {
+function BuildValidator(validation_key) {
     return {
         expires: JSPLib.validate.expires_constraints,
-        value: validation_constraints[ValidationSelector(key)]
+        value: validation_constraints[validation_key]
     };
 }
 
@@ -201,10 +228,34 @@ function ValidateEntry(key,entry) {
         JSPLib.debug.debuglog(key,"entry not found!");
         return false;
     }
-    check = validate(entry,BuildValidator(key));
+    let validation_key = ValidationSelector(key);
+    check = validate(entry,BuildValidator(validation_key));
     if (check !== undefined) {
         JSPLib.validate.printValidateError(key,check);
         return false;
+    }
+    if (validation_key === 'postentries') {
+        return ValidatePostentries(key,entry.value);
+    }
+    return true;
+}
+
+function ValidatePostentries(key,postentries) {
+    if (postentries === null) {
+        JSPLib.debug.debuglog(key,"entry not found!");
+        return false;
+    }
+    check = validate({postentries: postentries},{postentries: validation_constraints.postentries});
+    if (check !== undefined) {
+        JSPLib.validate.printValidateError(key,check);
+        return false;
+    }
+    for (let i = 0;i < postentries.length;i++){
+        check = validate(postentries[i],validation_constraints.postentry);
+        if (check !== undefined) {
+            JSPLib.validate.printValidateError(key,check);
+            return false;
+        }
     }
     return true;
 }
@@ -300,20 +351,20 @@ ${RenderAllToolPopups(key)}
 
 function RenderAllToolPopups(key) {
     let html_text = "";
-    $.each(tooltip_metrics,(metric,attribute)=> {
-        html_text += RenderToolpopup(key,metric,attribute);
+    $.each(tooltip_metrics,(i,metric)=> {
+        html_text += RenderToolpopup(key,metric);
     });
     return html_text;
 }
 
-function RenderToolpopup(key,metric,attribute) {
+function RenderToolpopup(key,metric) {
     return `
-<span class="tooltiptext" data-key="${key}" data-type="${metric}" data-attribute="${attribute}"></span>`;
+<span class="tooltiptext" data-key="${key}" data-type="${metric}"></span>`;
 }
 
 function RenderAllTooltipControls() {
     let html_text = "";
-    $.each(tooltip_metrics,(metric,attribute)=> {
+    $.each(tooltip_metrics,(i,metric)=> {
         html_text += RenderToolcontrol(metric);
     });
     return html_text;
@@ -327,7 +378,7 @@ function RenderToolcontrol(metric) {
 function RenderStatistics(key,attribute) {
     let current_uploads = JSPLib.storage.getSessionData(`current-uploads-${username}`).value;
     if (key !== '') {
-        current_uploads = current_uploads.filter(val=>{return val.tag_string_copyright.match(TagRegExp(key));});
+        current_uploads = current_uploads.filter(val=>{return val.copyrights.match(TagRegExp(key));});
     }
     let upload_scores = GetObjectAttributes(current_uploads,attribute);
     let score_max = ValuesMax(upload_scores);
@@ -412,7 +463,7 @@ async function RateLimit() {
 function GetCopyrightCount(posts) {
     let copyright_count = {};
     $.each(posts,(i,entry)=>{
-        $.each(entry.tag_string_copyright.split(' '),(j,tag)=>{
+        $.each(entry.copyrights.split(' '),(j,tag)=>{
             copyright_count[tag] = (tag in copyright_count ? copyright_count[tag].concat([entry.id]): [entry.id]);
         });
     });
@@ -439,6 +490,22 @@ function CheckCopyrightVelocity(tag) {
     var week_velocity = (7 * 24 * 60 * one_minute) / (weekuploads.value | 1); //Milliseconds per upload
     var adjusted_poll_interval = Math.min(week_velocity,24 * 60 * one_minute); //Max wait time is 1 day
     return Date.now() > day_gettime + adjusted_poll_interval;
+}
+
+function MapPostData(posts) {
+    return posts.map((entry)=>{
+        return {
+            id: entry.id,
+            score: entry.score,
+            upscore: entry.up_score,
+            downscore: entry.down_score,
+            favcount: entry.fav_count,
+            tagcount: entry.tag_count,
+            gentags: entry.tag_count_general,
+            copyrights: entry.tag_string_copyright,
+            created: Date.parse(entry.created_at)
+        };
+    });
 }
 
 function GetObjectAttributes(array,attribute) {
@@ -535,8 +602,9 @@ async function GetCurrentUploads(username) {
     if (!(check)) {
         JSPLib.debug.debuglog("Network (current uploads)");
         let data = await GetAllDanbooru('posts',BuildTagParams('d',`user:${username}`),max_post_limit_query);
-        JSPLib.storage.saveData(key,{'value':data,'expires':Date.now() + 5 * one_minute});
-        return data;
+        let mapped_data = MapPostData(data);
+        JSPLib.storage.saveData(key,{'value':mapped_data,'expires':Date.now() + 5 * one_minute});
+        return mapped_data;
     } else {
         return JSPLib.storage.getSessionData(key).value;
     }
@@ -548,8 +616,9 @@ async function ProcessUploads() {
     var promise_array = [];
     var current_uploads = await GetCurrentUploads(username);
     if (current_uploads.length) {
-        let is_new_tab = JSPLib.storage.getSessionData(`previous-uploads-${username}`) === undefined;
-        let previous_uploads = await JSPLib.storage.retrieveData(`previous-uploads-${username}`) || [];
+        let previous_key = `previous-uploads-${username}`;
+        let is_new_tab = JSPLib.storage.getSessionData(previous_key) === undefined;
+        let previous_uploads = await JSPLib.storage.checkLocalDB(previous_key,ValidatePostentries) || [];
         let symmetric_difference = JSPLib.utility.setSymmetricDifference(GetObjectAttributes(current_uploads,'id'),GetObjectAttributes(previous_uploads,'id'));
         if (is_new_tab || symmetric_difference.length) {
             promise_array.push(GetTagData(`user:${username}`));
@@ -582,9 +651,8 @@ function SetTooltipHover() {
         if ($tooltip_text.html() === "") {
             let tooltip_key = $(".activetooltip",e.target).data('key');
             let tooltip_metric = $(".activetooltip",e.target).data('type');
-            let tooltip_attribute = $(".activetooltip",e.target).data('attribute');
             $tooltip_text.html("Loading!");
-            $tooltip_text.html(RenderStatistics(tooltip_key,tooltip_attribute));
+            $tooltip_text.html(RenderStatistics(tooltip_key,tooltip_metric));
         }
     });
 }
@@ -613,6 +681,23 @@ function SetCountNoticeClick() {
     });
 }
 
+function SetStashNoticeClick() {
+    $("#stash-count-notice").click((e)=>{
+        Danbooru.Cookie.put('cu-stash-current-uploads',1);
+        //Hide the table so that it doesn't always process on each page load
+        Danbooru.Cookie.put('cu-hide-current-uploads',1);
+        $('#upload-counts,#upload-counts-restore').addClass('stashed');
+        e.preventDefault();
+    });
+}
+
+function SetRestoreNoticeClick() {
+    $("#restore-count-notice").click((e)=>{
+        Danbooru.Cookie.put('cu-stash-current-uploads',0);
+        $('#upload-counts,#upload-counts-restore').removeClass('stashed');
+        e.preventDefault();
+    });
+}
 
 async function PopulateTable() {
     if (!PopulateTable.is_started) {
@@ -640,8 +725,17 @@ function main() {
     }
     use_dummy_value = $('body').data('user-is-gold');
     JSPLib.utility.setCSSStyle(program_css,'program');
-    $('header#top').append(notice_box);
+    $notice_box = $(notice_box);
+    $footer_notice = $('<span id="upload-counts-restore"> - <a href="#" id="restore-count-notice">Restore Count Table</a></span>');
+    if (Danbooru.Cookie.get('cu-stash-current-uploads') === "1") {
+        $($notice_box).addClass('stashed');
+        $($footer_notice).addClass('stashed');
+    }
+    $('header#top').append($notice_box);
+    $('footer#page-footer').append($footer_notice);
     SetCountNoticeClick();
+    SetStashNoticeClick();
+    SetRestoreNoticeClick();
     if (Danbooru.Cookie.get('cu-hide-current-uploads') !== "1") {
         $("#hide-count-notice").click();
     }
