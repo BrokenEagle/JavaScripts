@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      14
+// @version      14.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -512,7 +512,7 @@ function NetworkSource(type,key,term,resp,metatag) {
 async function NormalSourceIndexed(term, resp) {
     var key = ("ac-" + term).toLowerCase();
     var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
-    if (cached.value) {
+    if (cached) {
         resp(cached.value);
         return;
     }
@@ -522,7 +522,7 @@ async function NormalSourceIndexed(term, resp) {
 async function PoolSourceIndexed(term, resp, metatag) {
     var key = ("pl-" + term).toLowerCase();
     var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
-    if (cached.value) {
+    if (cached) {
         $.each(cached.value, (i,val)=> {FixupMetatag(val,metatag);});
         resp(cached.value);
         return;
@@ -555,7 +555,7 @@ async function FavoriteGroupSourceIndexed(term, resp, metatag) {
 async function SavedSearchSourceIndexed(term, resp, metatag = "search") {
     var key = ("ss-" + term).toLowerCase();
     var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
-    if (cached.value) {
+    if (cached) {
         $.each(cached.value, (i,val)=> {FixupMetatag(val,metatag);});
         resp(cached.value);
         return;
