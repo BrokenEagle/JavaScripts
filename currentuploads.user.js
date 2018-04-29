@@ -207,9 +207,7 @@ const validation_constraints = {
         favcount: integer_constraints,
         tagcount: integer_constraints,
         gentags: integer_constraints,
-        copyrights: {
-            string: true
-        },
+        copyrights: JSPLib.validate.stringonly_constraints,
         created: integer_constraints
     }
 };
