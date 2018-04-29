@@ -738,7 +738,10 @@ function InitializeAutocompleteIndexed(selector,sourcefunc,type) {
     $fields.autocomplete({
         minLength: 1,
         delay: 100,
-        source: sourcefunc
+        source: sourcefunc,
+        search: function() {
+            $(this).data("uiAutocomplete").menu.bindings = $();
+        }
     });
     if (source_config[type].render) {
         $fields.each(function(i, field) {
