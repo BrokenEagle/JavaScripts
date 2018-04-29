@@ -704,7 +704,7 @@ function SetStashNoticeClick() {
         Danbooru.Cookie.put('cu-stash-current-uploads',1);
         //Hide the table so that it doesn't always process on each page load
         Danbooru.Cookie.put('cu-hide-current-uploads',1);
-        $('#upload-counts,#upload-counts-restore').addClass('stashed');
+        $('#upload-counts,#upload-counts-restore').removeClass('opened').addClass('stashed');
         e.preventDefault();
     });
 }
