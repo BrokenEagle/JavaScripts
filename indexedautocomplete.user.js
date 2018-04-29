@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      14.1
+// @version      14.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -236,7 +236,8 @@ const source_config = {
         fixupexpiration: false,
         render: function(list, pool) {
             var $link = $("<a/>").addClass("pool-category-" + pool.category).text(pool.label);
-            return $("<li/>").data("item.autocomplete", pool).append($link).appendTo(list);
+            var $container = $("<div/>").append($link);
+            return $("<li/>").data("item.autocomplete", pool).append($container).appendTo(list);
         }
     },
     user: {
@@ -263,7 +264,8 @@ const source_config = {
         fixupexpiration: false,
         render: function(list, user) {
             var $link = $("<a/>").addClass("user-" + user.level.toLowerCase()).addClass("with-style").text(user.label);
-            return $("<li/>").data("item.autocomplete", user).append($link).appendTo(list);
+            var $container = $("<div/>").append($link);
+            return $("<li/>").data("item.autocomplete", user).append($container).appendTo(list);
         }
     },
     favgroup: {
@@ -329,7 +331,8 @@ const source_config = {
         fixupexpiration: true,
         render: function(list, wiki_page) {
             var $link = $("<a/>").addClass("tag-type-" + wiki_page.category).text(wiki_page.label);
-            return $("<li/>").data("item.autocomplete", wiki_page).append($link).appendTo(list);
+            var $container = $("<div/>").append($link);
+            return $("<li/>").data("item.autocomplete", wiki_page).append($container).appendTo(list);
         }
     },
     artist: {
@@ -355,7 +358,8 @@ const source_config = {
         fixupexpiration: true,
         render: function(list, artist) {
             var $link = $("<a/>").addClass("tag-type-1").text(artist.label);
-            return $("<li/>").data("item.autocomplete", artist).append($link).appendTo(list);
+            var $container = $("<div/>").append($link);
+            return $("<li/>").data("item.autocomplete", artist).append($container).appendTo(list);
         }
     }
 };
