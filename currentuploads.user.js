@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.1
+// @version      7.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Gives up-to-date stats on uploads
 // @author       BrokenEagle
@@ -46,7 +46,7 @@ const max_network_requests = 25;
 const rate_limit_wait = 500;
 
 //Metrics used by statistics functions
-const tooltip_metrics = ['score','upscore','down_score','favcount','tagcount','gentags'];
+const tooltip_metrics = ['score','upscore','downscore','favcount','tagcount','gentags'];
 
 //Feedback messages
 const empty_uploads_message_owner = 'Feed me more uploads!';
