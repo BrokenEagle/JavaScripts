@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      8.2
+// @version      9
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes)
 // @author       BrokenEagle
@@ -9,15 +9,18 @@
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/eventlistener.user.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/utility.js
 // ==/UserScript==
 
 /****Global variables****/
 
-//Set to true to switch the debug info on
-const debug_console = true;
+//Variables for debug.js
+JSPLib.debug.debug_console = true;
 
-//The number of retries before abandoning program load
-const program_load_max_retries = 100;
+//Variables for load.js
+const program_load_required_variables = ['window.jQuery','window.Danbooru'];
 
 //Polling interval for checking program status
 const timer_poll_interval = 100;
@@ -128,31 +131,6 @@ const forum_css = `
 }`;
 
 /****Helper functions****/
-
-function debuglog(args) {
-    if (debug_console) {
-        console.log.apply(this,arguments);
-    }
-}
-
-function debugTime(str) {
-    if (debug_console) {
-        console.time(str);
-    }
-}
-
-function debugTimeEnd(str) {
-    if (debug_console) {
-        console.timeEnd(str);
-    }
-}
-
-function setCSSStyle(csstext) {
-    var css_dom = document.createElement('style');
-    css_dom.type = 'text/css';
-    css_dom.innerHTML = csstext;
-    document.head.appendChild(css_dom);
-}
 
 function FullHide(selector) {
     $(selector).attr('style','display: none !important');
@@ -285,7 +263,7 @@ async function CheckFlags() {
         jsonflag = jsonflag.filter((val)=>{return !('creator_id' in val);});
         if (jsonflag.length) {
             let most_recent_flag = DanbooruArrayMax(jsonflag);
-            debuglog("Found flags!",most_recent_flag);
+            JSPLib.debug.debuglog("Found flags!",most_recent_flag);
             CheckFlags.lastid = most_recent_flag;
             let flaglist = jsonflag.map((val)=>{return val.id;});
             let flaghtml = await $.get("/post_flags", {search: {id: flaglist.join(',')}, limit: flaglist.length});
@@ -296,7 +274,7 @@ async function CheckFlags() {
             $("#flag-section").show();
             CheckFlags.hasevents = true;
         } else {
-            debuglog("No flags!");
+            JSPLib.debug.debuglog("No flags!");
         }
     } else {
         let jsonflag = await $.getJSON("/post_flags", {limit: 1});
@@ -305,7 +283,7 @@ async function CheckFlags() {
         } else {
             SaveLastID('el-flaglastid',0);
         }
-        debuglog("Set last flag ID:",localStorage['el-flaglastid']);
+        JSPLib.debug.debuglog("Set last flag ID:",localStorage['el-flaglastid']);
     }
     CheckFlags.isdone = true;
 }
@@ -320,7 +298,7 @@ async function CheckAppeals() {
         jsonappeal = jsonappeal.filter((val)=>{return val.creator_id !== userid;});
         if (jsonappeal.length) {
             let most_recent_appeal = DanbooruArrayMax(jsonappeal);
-            debuglog("Found appeals!",most_recent_appeal);
+            JSPLib.debug.debuglog("Found appeals!",most_recent_appeal);
             CheckAppeals.lastid = most_recent_appeal;
             let appeallist = jsonappeal.map((val)=>{return val.id;});
             let appealhtml = await $.get("/post_appeals", {search: {id: appeallist.join(',')}, limit: appeallist.length});
@@ -331,7 +309,7 @@ async function CheckAppeals() {
             $("#appeal-section").show();
             CheckAppeals.hasevents = true;
         } else {
-            debuglog("No appeals!");
+            JSPLib.debug.debuglog("No appeals!");
         }
     } else {
         let jsonappeal = await $.getJSON("/post_appeals", {limit: 1});
@@ -340,7 +318,7 @@ async function CheckAppeals() {
         } else {
             SaveLastID('el-appeallastid',0);
         }
-        debuglog("Set last appeal ID:",localStorage['el-appeallastid']);
+        JSPLib.debug.debuglog("Set last appeal ID:",localStorage['el-appeallastid']);
     }
     CheckAppeals.isdone = true;
 }
@@ -358,7 +336,7 @@ async function CheckDmails() {
             var most_recent_dmail = DanbooruArrayMax(jsondmail);
         }
         if (hamjsondmail.length) {
-            debuglog("Found ham dmails!",most_recent_dmail);
+            JSPLib.debug.debuglog("Found ham dmails!",most_recent_dmail);
             CheckDmails.lastid = most_recent_dmail;
             let hamdmailhtml = await $.get("/dmails", {search: {read: false},page: 'a' + dmaillastid});
             let $hamdmail = $(hamdmailhtml);
@@ -370,10 +348,10 @@ async function CheckDmails() {
             $("#ham-dmail-section").show();
             CheckDmails.hasevents = true;
         } else {
-            debuglog("No ham dmails!");
+            JSPLib.debug.debuglog("No ham dmails!");
         }
         if (spamjsondmail.length) {
-            debuglog("Found spam dmails!",most_recent_dmail);
+            JSPLib.debug.debuglog("Found spam dmails!",most_recent_dmail);
             CheckDmails.lastid = most_recent_dmail;
             let spamdmailhtml = await $.get("/dmails", {search: {read: false, is_spam: true},page: 'a' + dmaillastid});
             let $spamdmail = $(spamdmailhtml);
@@ -385,11 +363,11 @@ async function CheckDmails() {
             $("#spam-dmail-section").show();
             CheckDmails.hasevents = true;
         } else {
-            debuglog("No spam dmails!");
+            JSPLib.debug.debuglog("No spam dmails!");
         }
         if (!hamjsondmail.length && !spamjsondmail.length && jsondmail.length && (dmaillastid !== most_recent_dmail.toString())) {
             SaveLastID('el-dmaillastid',most_recent_dmail);
-            debuglog("Setting DMail last ID:",localStorage['el-dmaillastid']);
+            JSPLib.debug.debuglog("Setting DMail last ID:",localStorage['el-dmaillastid']);
         }
     } else {
         let jsondmail = await $.getJSON("/dmails", {limit: 1});
@@ -398,7 +376,7 @@ async function CheckDmails() {
         } else {
             SaveLastID('el-dmaillastid',0);
         }
-        debuglog("Set last dmail ID:",localStorage['el-dmaillastid']);
+        JSPLib.debug.debuglog("Set last dmail ID:",localStorage['el-dmaillastid']);
     }
     CheckDmails.isdone = true;
 }
@@ -419,7 +397,7 @@ async function CheckComments() {
                 subscribecomments = jsoncomments.filter((val)=>{return (val.creator_id !== userid) && (commentlist.indexOf(val.post_id) >= 0);}).concat(subscribecomments);
                 if (jsoncomments.length === display_limit) {
                     commentlastid = DanbooruArrayMax(jsoncomments).toString();
-                    debuglog("Rechecking @",commentlastid);
+                    JSPLib.debug.debuglog("Rechecking @",commentlastid);
                     continue;
                 } else if (jsoncomments.length === 0) {
                     jsoncomments = tempcomments;
@@ -439,7 +417,7 @@ async function CheckComments() {
             subscribecomments = subscribecomments.filter(value=>{return commentlist.indexOf(value.post) >= 0;});
             jsoncomments = JSON.parse(localStorage['el-savedcommentlastid']);
             if (!subscribecomments.length) {
-                debuglog("Deleting saved comment values");
+                JSPLib.debug.debuglog("Deleting saved comment values");
                 delete localStorage['el-savedcommentlist'];
                 delete localStorage['el-savedcommentlastid'];
             } else {
@@ -447,7 +425,7 @@ async function CheckComments() {
             }
         }
         if (subscribecomments.length) {
-            debuglog("Found comments!",jsoncomments[0]);
+            JSPLib.debug.debuglog("Found comments!",jsoncomments[0]);
             CheckComments.lastid = jsoncomments[0];
             let commentshtml = await $.get("/comments", {group_by: 'comment', search: {id: subscribecomments.join(',')}, limit: subscribecomments.length});
             let $comments = $(commentshtml);
@@ -459,10 +437,10 @@ async function CheckComments() {
             $("#comments-section").show();
             CheckComments.hasevents = true;
         } else {
-            debuglog("No comments!");
+            JSPLib.debug.debuglog("No comments!");
             if (jsoncomments.length && (localStorage['el-commentlastid'] !== jsoncomments[0].toString())) {
                 SaveLastID('el-commentlastid',jsoncomments[0]);
-                debuglog("Setting comment last ID:",localStorage['el-commentlastid']);
+                JSPLib.debug.debuglog("Setting comment last ID:",localStorage['el-commentlastid']);
             }
         }
     } else {
@@ -472,7 +450,7 @@ async function CheckComments() {
         } else {
             SaveLastID('el-commentlastid',0);
         }
-        debuglog("Set comment last ID:",localStorage['el-commentlastid']);
+        JSPLib.debug.debuglog("Set comment last ID:",localStorage['el-commentlastid']);
     }
     CheckComments.isdone = true;
 }
@@ -493,7 +471,7 @@ async function CheckForums() {
                 subscribeforums = jsonforums.filter((val)=>{return (val.creator_id !== userid) && (forumlist.indexOf(val.topic_id) >= 0);}).concat(subscribeforums);
                 if (jsonforums.length === display_limit) {
                     forumlastid = DanbooruArrayMax(jsonforums).toString();
-                    debuglog("Rechecking @",forumlastid);
+                    JSPLib.debug.debuglog("Rechecking @",forumlastid);
                     continue;
                 } else if (jsonforums.length === 0) {
                     jsonforums = tempforums;
@@ -513,7 +491,7 @@ async function CheckForums() {
             subscribeforums = subscribeforums.filter(value=>{return forumlist.indexOf(value.topic) >= 0;});
             jsonforums = JSON.parse(localStorage['el-savedforumlastid']);
             if (!subscribeforums.length) {
-                debuglog("Deleting saved forum values");
+                JSPLib.debug.debuglog("Deleting saved forum values");
                 delete localStorage['el-savedforumlist'];
                 delete localStorage['el-savedforumlastid'];
             } else {
@@ -521,7 +499,7 @@ async function CheckForums() {
             }
         }
         if (subscribeforums.length) {
-            debuglog("Found forums!",jsonforums[0]);
+            JSPLib.debug.debuglog("Found forums!",jsonforums[0]);
             CheckForums.lastid = jsonforums[0];
             let forumshtml = await $.get("/forum_posts", {search: {id: subscribeforums.join(',')}, limit: subscribeforums.length});
             let $forums = $(forumshtml);
@@ -533,10 +511,10 @@ async function CheckForums() {
             $("#forums-section").show();
             CheckForums.hasevents = true;
         } else {
-            debuglog("No forums!");
+            JSPLib.debug.debuglog("No forums!");
             if (jsonforums.length && (localStorage['el-forumlastid'] !== jsonforums[0].toString())) {
                 SaveLastID('el-forumlastid',jsonforums[0]);
-                debuglog("Setting forum last ID:",localStorage['el-forumlastid']);
+                JSPLib.debug.debuglog("Setting forum last ID:",localStorage['el-forumlastid']);
             }
         }
     } else {
@@ -546,7 +524,7 @@ async function CheckForums() {
         } else {
             SaveLastID('el-forumlastid',0);
         }
-        debuglog("Set forum last ID:",localStorage['el-forumlastid']);
+        JSPLib.debug.debuglog("Set forum last ID:",localStorage['el-forumlastid']);
     }
     CheckForums.isdone = true;
 }
@@ -567,7 +545,7 @@ async function CheckNotes() {
                 subscribenotes = jsonnotes.filter((val)=>{return (val.updater_id !== userid) && (notelist.indexOf(val.post_id) >= 0);}).concat(subscribenotes);
                 if (jsonnotes.length === display_limit) {
                     notelastid = DanbooruArrayMax(jsonnotes).toString();
-                    debuglog("Rechecking @",notelastid);
+                    JSPLib.debug.debuglog("Rechecking @",notelastid);
                     continue;
                 } else if (jsonnotes.length === 0) {
                     jsonnotes = tempnotes;
@@ -587,7 +565,7 @@ async function CheckNotes() {
             subscribenotes = subscribenotes.filter(value=>{return notelist.indexOf(value.post) >= 0;});
             jsonnotes = JSON.parse(localStorage['el-savednotelastid']);
             if (!subscribenotes.length) {
-                debuglog("Deleting saved note values");
+                JSPLib.debug.debuglog("Deleting saved note values");
                 delete localStorage['el-savednotelist'];
                 delete localStorage['el-savednotelastid'];
             } else {
@@ -595,7 +573,7 @@ async function CheckNotes() {
             }
         }
         if (subscribenotes.length) {
-            debuglog("Found notes!",jsonnotes[0]);
+            JSPLib.debug.debuglog("Found notes!",jsonnotes[0]);
             CheckNotes.lastid = jsonnotes[0];
             let noteshtml = await $.get("/note_versions", {search: {id: subscribenotes.join(',')}, limit: subscribenotes.length});
             let $notes = $(noteshtml);
@@ -607,10 +585,10 @@ async function CheckNotes() {
             $("#notes-section").show();
             CheckNotes.hasevents = true;
         } else {
-            debuglog("No notes!");
+            JSPLib.debug.debuglog("No notes!");
             if (jsonnotes.length && (localStorage['el-notelastid'] !== jsonnotes[0].toString())) {
                 SaveLastID('el-notelastid',jsonnotes[0]);
-                debuglog("Setting note last ID:",localStorage['el-notelastid']);
+                JSPLib.debug.debuglog("Setting note last ID:",localStorage['el-notelastid']);
             }
         }
     } else {
@@ -620,7 +598,7 @@ async function CheckNotes() {
         } else {
             SaveLastID('el-notelastid',0);
         }
-        debuglog("Set note last ID:",localStorage['el-notelastid']);
+        JSPLib.debug.debuglog("Set note last ID:",localStorage['el-notelastid']);
     }
     CheckNotes.isdone = true;
 }
@@ -809,37 +787,37 @@ function HideEventNoticeClick() {
         $("#event-notice").hide();
         if (CheckFlags.lastid) {
             SaveLastID('el-flaglastid',CheckFlags.lastid);
-            debuglog("Set last flag ID:",localStorage['el-flaglastid']);
+            JSPLib.debug.debuglog("Set last flag ID:",localStorage['el-flaglastid']);
         }
         if (CheckAppeals.lastid) {
             SaveLastID('el-appeallastid',CheckAppeals.lastid);
-            debuglog("Set last appeal ID:",localStorage['el-appeallastid']);
+            JSPLib.debug.debuglog("Set last appeal ID:",localStorage['el-appeallastid']);
         }
         if (CheckDmails.lastid) {
             SaveLastID('el-dmaillastid',CheckDmails.lastid);
-            debuglog("Set last dmail ID:",localStorage['el-dmaillastid']);
+            JSPLib.debug.debuglog("Set last dmail ID:",localStorage['el-dmaillastid']);
             $("#hide-dmail-notice").click();
         }
         if (CheckComments.lastid) {
             SaveLastID('el-commentlastid',CheckComments.lastid);
-            debuglog("Set last comment ID:",localStorage['el-commentlastid']);
+            JSPLib.debug.debuglog("Set last comment ID:",localStorage['el-commentlastid']);
             delete localStorage['el-savedcommentlist'];
             delete localStorage['el-savedcommentlastid'];
-            debuglog("Deleted saved values! (comments)");
+            JSPLib.debug.debuglog("Deleted saved values! (comments)");
         }
         if (CheckForums.lastid) {
             SaveLastID('el-forumlastid',CheckForums.lastid);
-            debuglog("Set last forum ID:",localStorage['el-forumlastid']);
+            JSPLib.debug.debuglog("Set last forum ID:",localStorage['el-forumlastid']);
             delete localStorage['el-savedforumlist'];
             delete localStorage['el-savedforumlastid'];
-            debuglog("Deleted saved values! (forums)");
+            JSPLib.debug.debuglog("Deleted saved values! (forums)");
         }
         if (CheckNotes.lastid) {
             SaveLastID('el-notelastid',CheckNotes.lastid);
-            debuglog("Set last note ID:",localStorage['el-notelastid']);
+            JSPLib.debug.debuglog("Set last note ID:",localStorage['el-notelastid']);
             delete localStorage['el-savednotelist'];
             delete localStorage['el-savednotelastid'];
-            debuglog("Deleted saved values! (notes)");
+            JSPLib.debug.debuglog("Deleted saved values! (notes)");
         }
         localStorage['el-events'] = false;
         e.preventDefault();
@@ -990,7 +968,7 @@ function main() {
     username = Danbooru.meta('current-user-name');
     userid = Danbooru.meta('current-user-id');
     if (!username || !userid || isNaN(userid)) {
-        debuglog("Invalid meta variables!");
+        JSPLib.debug.debuglog("Invalid meta variables!");
         return;
     }
     userid = parseInt(userid);
@@ -1002,13 +980,13 @@ function main() {
         CheckFlags();
         CheckAppeals();
         if (GetCommentList().length) {
-            setCSSStyle(comment_css);
+            JSPLib.utility.setCSSStyle(comment_css,'comment');
             CheckComments();
         } else {
             CheckComments.isdone = true;
         }
         if (GetForumList().length) {
-            setCSSStyle(forum_css);
+            JSPLib.utility.setCSSStyle(forum_css,'forum');
             CheckForums();
         } else {
             CheckForums.isdone = true;
@@ -1020,7 +998,7 @@ function main() {
         }
         CheckAllEvents.timer = setInterval(CheckAllEvents,timer_poll_interval);
     } else {
-        debuglog("Waiting...");
+        JSPLib.debug.debuglog("Waiting...");
     }
     if ($("#c-posts #a-show").length) {
         InitializePostCommentLinks();
@@ -1037,38 +1015,9 @@ function main() {
     } else if ($("#c-forum-topics #a-index,#c-forum-posts #a-index").length) {
         InitializeTopicIndexLinks(document);
     }
-    setCSSStyle(eventlistener_css);
+    JSPLib.utility.setCSSStyle(eventlistener_css,'program');
 }
-
-/****Program load****/
-
-//Wait until program is ready before executing
-function programLoad() {
-    if (programLoad.retries >= program_load_max_retries) {
-        debuglog("Abandoning program load!");
-        clearInterval(programLoad.timer);
-        return false;
-    }
-    if (window.jQuery === undefined) {
-        debuglog("jQuery not installed yet!");
-        programLoad.retries += 1;
-        return false;
-    }
-    if (window.Danbooru === undefined) {
-        debuglog("Danbooru not installed yet!");
-        programLoad.retries += 1;
-        return false;
-    }
-    clearInterval(programLoad.timer);
-    main();
-    debugTimeEnd("EL-programLoad");
-    return true;
-}
-programLoad.retries = 0;
 
 /****Execution start****/
 
-debugTime("EL-programLoad");
-if (!programLoad()) {
-    programLoad.timer = setInterval(programLoad,timer_poll_interval);
-}
+JSPLib.load.programInitialize(main,'EL',program_load_required_variables);
