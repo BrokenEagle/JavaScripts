@@ -38,6 +38,7 @@ const recheck_event_interval = one_minute * 5;
 var username;
 var userid;
 var usertype_lastids = {};
+var subscribetype_lastids = {};
 
 //HTML for the notice block
 const notice_box = `
@@ -218,6 +219,12 @@ function SetList(type,input) {
     localStorage.setItem(`el-${type}list`,JSON.stringify(typelist));
 }
 
+//Quicker way to check list existence; avoids unnecessarily parsing very long lists
+function CheckList(type) {
+    let typelist = localStorage.getItem(`el-${type}list`);
+    return typelist && typelist !== "[]";
+}
+
 function SaveLastID(type,lastid) {
     let key = `el-${type}lastid`;
     let previousid = localStorage.getItem(key);
@@ -288,6 +295,27 @@ function InsertDmails($dmailpage,type) {
     InitializeOpenDmailLinks($dmails_table);
 }
 
+function InsertComments($commentpage) {
+    $(".post-preview",$commentpage).addClass("blacklisted");
+    $(".edit_comment",$commentpage).hide();
+    $("#comments-table").append($(".list-of-comments",$commentpage));
+    InitializeEventNoticeCommentLinks();
+}
+
+function InsertForums($forumpage) {
+    let $forums_table = $("#forums-table");
+    $forums_table.append($(".striped",$forumpage));
+    InitializeTopicIndexLinks($forums_table);
+    InitializeOpenForumLinks($forums_table);
+}
+
+function InsertNotes($notepage) {
+    let $notes_table = $("#notes-table");
+    $notes_table.append($(".striped",$notepage));
+    InitializeNoteIndexLinks($notes_table);
+    InitializeOpenNoteLinks($notes_table);
+}
+
 var typedict = {
     flag: {
         controller: 'post_flags',
@@ -317,9 +345,24 @@ var typedict = {
         filter: function (array) {return array.filter((val)=>{return !val.is_read;});},
         insert: InsertDmails
     },
-    comment: {controller: 'comments'},
-    forum: {controller: 'forum_posts'},
-    note: {controller: 'note_versions'}
+    comment: {
+        controller: 'comments',
+        addons: {group_by: 'comment'},
+        filter: function (array,typelist) {return array.filter((val)=>{return (val.creator_id !== userid) && (typelist.indexOf(val.post_id) >= 0);});},
+        insert: InsertComments
+    },
+    forum: {
+        controller: 'forum_posts',
+        addons: {},
+        filter: function (array,typelist) {return array.filter((val)=>{return (val.creator_id !== userid) && (typelist.indexOf(val.topic_id) >= 0);});},
+        insert: InsertForums
+    },
+    note: {
+        controller: 'note_versions',
+        addons: {},
+        filter: function (array,typelist) {return array.filter((val)=>{return (val.updater_id !== userid) && (typelist.indexOf(val.post_id) >= 0);});},
+        insert: InsertNotes
+    },
 };
 
 async function CheckUserType(type) {
@@ -353,134 +396,47 @@ async function CheckUserType(type) {
     return false;
 }
 
-async function CheckComments() {
-    let commentlastid = localStorage['el-commentlastid'];
-    if (commentlastid) {
-        let commentlist = GetList('comment');
-        var subscribecommentlist = [], jsoncommentlist = [];
-        if (!localStorage['el-savedcommentlist']) {
-            let jsoncomments = await GetAllDanbooru('comments',query_limit,{page:commentlastid,addons:{group_by: 'comment'},reverse:true});
-            let subscribecomments = jsoncomments.filter((val)=>{return (val.creator_id !== userid) && (commentlist.indexOf(val.post_id) >= 0);});
-            if (subscribecomments.length) {
-                subscribecommentlist = GetObjectAttributes(subscribecomments,'id');
-                localStorage.setItem('el-savedcommentlist',JSON.stringify(subscribecommentlist));
+async function CheckSubscribeType(type) {
+    let lastidkey = `el-${type}lastid`;
+    let typelastid = localStorage.getItem(lastidkey);
+    if (typelastid) {
+        let typelist = GetList(type);
+        let savedlistkey = `el-saved${type}list`;
+        let savedlastidkey = `el-saved${type}lastid`;
+        var subscribetypelist = [], jsontypelist = [];
+        if (!localStorage.getItem(savedlistkey)) {
+            let jsontype = await GetAllDanbooru(typedict[type].controller,query_limit,{page:typelastid,addons:typedict[type].addons,reverse:true});
+            let subscribetype = typedict[type].filter(jsontype,typelist);
+            if (subscribetype.length) {
+                subscribetypelist = GetObjectAttributes(subscribetype,'id');
+                localStorage.setItem(savedlistkey,JSON.stringify(subscribetypelist));
             }
-            if (jsoncomments.length) {
-                jsoncommentlist = [DanbooruArrayMaxID(jsoncomments)];
-                localStorage.setItem('el-savedcommentlastid',JSON.stringify(jsoncommentlist));
+            if (jsontype.length) {
+                jsontypelist = [DanbooruArrayMaxID(jsontype)];
+                localStorage.setItem(savedlastidkey,JSON.stringify(jsontypelist));
             }
         } else {
-            subscribecommentlist = JSON.parse(localStorage.getItem('el-savedcommentlist'));
-            jsoncommentlist = JSON.parse(localStorage.getItem('el-savedcommentlastid'));
+            subscribetypelist = JSON.parse(localStorage.getItem(savedlistkey));
+            jsontypelist = JSON.parse(localStorage.getItem(savedlastidkey));
         }
-        if (subscribecommentlist.length) {
-            JSPLib.debug.debuglog("Found comments!",jsoncommentlist[0]);
-            CheckComments.lastid = jsoncommentlist[0];
-            let commentshtml = await $.get("/comments", {group_by: 'comment', search: {id: subscribecommentlist.join(',')}, limit: subscribecommentlist.length});
-            let $comments = $(commentshtml);
-            $(".post-preview",$comments).addClass("blacklisted");
-            $(".edit_comment",$comments).hide();
-            $("#comments-table").append($(".list-of-comments",$comments));
-            InitializeEventNoticeCommentLinks();
+        if (subscribetypelist.length) {
+            subscribetype_lastids[type] = jsontypelist[0];
+            JSPLib.debug.debuglog(`Found ${type}s!`,subscribetype_lastids[type]);
+            let url_addons = JoinArgs(typedict[type].addons,{search: {id: subscribetypelist.join(',')}, limit: subscribetypelist.length});
+            let typehtml = await $.get(`/${typedict[type].controller}`, url_addons);
+            let $typepage = $(typehtml);
+            typedict[type].insert($typepage);
             $("#event-notice").show();
-            $("#comments-section").show();
+            $(`#${type}s-section`).show();
             return true;
         } else {
-            JSPLib.debug.debuglog("No comments!");
-            if (jsoncommentlist.length && (localStorage['el-commentlastid'] !== jsoncommentlist[0].toString())) {
-                SaveLastID('comment',jsoncommentlist[0]);
+            JSPLib.debug.debuglog(`No ${type}s!`);
+            if (jsontypelist.length && (localStorage.getItem(lastidkey) !== jsontypelist[0].toString())) {
+                SaveLastID(type,jsontypelist[0]);
             }
         }
     } else {
-        SetRecentDanbooruID('comment');
-    }
-    return false;
-}
-
-async function CheckForums() {
-    let forumlastid = localStorage['el-forumlastid'];
-    if (forumlastid) {
-        let forumlist = GetList('forum');
-        var subscribeforumlist = [], jsonforumlist = [];
-        if (!localStorage['el-savedforumlist']) {
-            let jsonforums = await GetAllDanbooru('forum_posts',query_limit,{page:forumlastid,reverse:true});
-            let subscribeforums = jsonforums.filter((val)=>{return (val.creator_id !== userid) && (forumlist.indexOf(val.topic_id) >= 0);});
-            if (subscribeforums.length) {
-                subscribeforumlist = GetObjectAttributes(subscribeforums,'id');
-                localStorage.setItem('el-savedforumlist',JSON.stringify(subscribeforumlist));
-            }
-            if (jsonforums.length) {
-                jsonforumlist = [DanbooruArrayMaxID(jsonforums)];
-                localStorage.setItem('el-savedforumlastid',JSON.stringify(jsonforumlist));
-            }
-        } else {
-            subscribeforumlist = JSON.parse(localStorage.getItem('el-savedforumlist'));
-            jsonforumlist = JSON.parse(localStorage.getItem('el-savedforumlastid'));
-        }
-        if (subscribeforumlist.length) {
-            JSPLib.debug.debuglog("Found forums!",jsonforumlist[0]);
-            CheckForums.lastid = jsonforumlist[0];
-            let forumshtml = await $.get("/forum_posts", {search: {id: subscribeforumlist.join(',')}, limit: subscribeforumlist.length});
-            let $forums = $(forumshtml);
-            let $forums_table = $("#forums-table");
-            $forums_table.append($(".striped",$forums));
-            InitializeTopicIndexLinks($forums_table);
-            InitializeOpenForumLinks($forums_table);
-            $("#event-notice").show();
-            $("#forums-section").show();
-            return true;
-        } else {
-            JSPLib.debug.debuglog("No forums!");
-            if (jsonforumlist.length && (localStorage['el-forumlastid'] !== jsonforumlist[0].toString())) {
-                SaveLastID('forum',jsonforumlist[0]);
-            }
-        }
-    } else {
-        SetRecentDanbooruID('forum');
-    }
-    return false;
-}
-
-async function CheckNotes() {
-    let notelastid = localStorage['el-notelastid'];
-    if (notelastid) {
-        let notelist = GetList('note');
-        var subscribenotelist = [], jsonnotelist = [];
-        if (!localStorage['el-savednotelist']) {
-            let jsonnotes = await GetAllDanbooru('note_versions',query_limit,{page:notelastid,reverse:true});
-            let subscribenotes = jsonnotes.filter((val)=>{return (val.creator_id !== userid) && (notelist.indexOf(val.post_id) >= 0);});
-            if (subscribenotes.length) {
-                subscribenotelist = GetObjectAttributes(subscribenotes,'id');
-                localStorage.setItem('el-savednotelist',JSON.stringify(subscribenotelist));
-            }
-            if (jsonnotes.length) {
-                jsonnotelist = [DanbooruArrayMaxID(jsonnotes)];
-                localStorage.setItem('el-savednotelastid',JSON.stringify(jsonnotelist));
-            }
-        } else {
-            subscribenotelist = JSON.parse(localStorage.getItem('el-savednotelist'));
-            jsonnotelist = JSON.parse(localStorage.getItem('el-savednotelastid'));
-        }
-        if (subscribenotelist.length) {
-            JSPLib.debug.debuglog("Found notes!",jsonnotelist[0]);
-            CheckNotes.lastid = jsonnotelist[0];
-            let noteshtml = await $.get("/note_versions", {search: {id: subscribenotelist.join(',')}, limit: subscribenotelist.length});
-            let $notes = $(noteshtml);
-            let $notes_table = $("#notes-table");
-            $notes_table.append($(".striped",$notes));
-            InitializeNoteIndexLinks($notes_table);
-            InitializeOpenNoteLinks($notes_table);
-            $("#event-notice").show();
-            $("#notes-section").show();
-            return true;
-        } else {
-            JSPLib.debug.debuglog("No notes!");
-            if (jsonnotelist.length && (localStorage['el-notelastid'] !== jsonnotelist[0].toString())) {
-                SaveLastID('note',jsonnotelist[0]);
-            }
-        }
-    } else {
-        SetRecentDanbooruID('note');
+        SetRecentDanbooruID(type);
     }
     return false;
 }
@@ -660,24 +616,12 @@ function HideEventNoticeClick() {
         $.each(usertype_lastids,(type,value)=>{
             SaveLastID(type,value);
         });
-        if (CheckComments.lastid) {
-            SaveLastID('comment',CheckComments.lastid);
-            delete localStorage['el-savedcommentlist'];
-            delete localStorage['el-savedcommentlastid'];
-            JSPLib.debug.debuglog("Deleted saved values! (comments)");
-        }
-        if (CheckForums.lastid) {
-            SaveLastID('forum',CheckForums.lastid);
-            delete localStorage['el-savedforumlist'];
-            delete localStorage['el-savedforumlastid'];
-            JSPLib.debug.debuglog("Deleted saved values! (forums)");
-        }
-        if (CheckNotes.lastid) {
-            SaveLastID('note',CheckNotes.lastid);
-            delete localStorage['el-savednotelist'];
-            delete localStorage['el-savednotelastid'];
-            JSPLib.debug.debuglog("Deleted saved values! (notes)");
-        }
+        $.each(subscribetype_lastids,(type,value)=>{
+            SaveLastID(type,value);
+            delete localStorage[`el-saved${type}list`];
+            delete localStorage[`el-saved${type}lastid`];
+            JSPLib.debug.debuglog(`Deleted saved values! (${type}s)`);
+        });
         if ($("#hide-dmail-notice").length) {
             $("#hide-dmail-notice").click();
         }
@@ -843,16 +787,16 @@ function main() {
         promise_array.push(CheckUserType('flag'));
         promise_array.push(CheckUserType('appeal'));
         promise_array.push(CheckUserType('spam'));
-        if (GetList('comment').length) {
+        if (CheckList('comment')) {
             JSPLib.utility.setCSSStyle(comment_css,'comment');
-            promise_array.push(CheckComments());
+            promise_array.push(CheckSubscribeType('comment'));
         }
-        if (GetList('forum').length) {
+        if (CheckList('forum')) {
             JSPLib.utility.setCSSStyle(forum_css,'forum');
-            promise_array.push(CheckForums());
+            promise_array.push(CheckSubscribeType('forum'));
         }
-        if (GetList('note').length) {
-            promise_array.push(CheckNotes());
+        if (CheckList('note')) {
+            promise_array.push(CheckSubscribeType('note'));
         }
         CheckAllEvents(promise_array);
     } else {
