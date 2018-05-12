@@ -298,18 +298,15 @@ async function CheckFlags() {
             $("#flag-table .post-preview").addClass("blacklisted");
             $("#event-notice").show();
             $("#flag-section").show();
-            CheckFlags.hasevents = true;
+            return true;
         } else {
             JSPLib.debug.debuglog("No flags!");
         }
     } else {
         SetRecentDanbooruID('flag',true);
     }
-    CheckFlags.isdone = true;
+    return false;
 }
-CheckFlags.lastid = 0;
-CheckFlags.hasevents = false;
-CheckFlags.isdone = false;
 
 async function CheckAppeals() {
     let appeallastid = localStorage['el-appeallastid'];
@@ -327,22 +324,20 @@ async function CheckAppeals() {
             $("#appeal-table .post-preview").addClass("blacklisted");
             $("#event-notice").show();
             $("#appeal-section").show();
-            CheckAppeals.hasevents = true;
+            return true;
         } else {
             JSPLib.debug.debuglog("No appeals!");
         }
     } else {
         SetRecentDanbooruID('appeal',true);
     }
-    CheckAppeals.isdone = true;
+    return false;
 }
-CheckAppeals.lastid = 0;
-CheckAppeals.hasevents = false;
-CheckAppeals.isdone = false;
 
 async function CheckDmails() {
     let dmaillastid = localStorage['el-dmaillastid'];
     if (dmaillastid) {
+        let hasevents = false;
         let jsondmail = await GetAllDanbooru('dmails',query_limit,{page:dmaillastid,reverse:true});
         let hamjsondmail = jsondmail.filter((val)=>{return !val.is_read && !val.is_spam;});
         let spamjsondmail = jsondmail.filter((val)=>{return !val.is_read && val.is_spam;});
@@ -360,7 +355,7 @@ async function CheckDmails() {
             InitializeOpenDmailLinks($dmails_table);
             $("#event-notice").show();
             $("#ham-dmail-section").show();
-            CheckDmails.hasevents = true;
+            hasevents = true;
         } else {
             JSPLib.debug.debuglog("No ham dmails!");
         }
@@ -375,26 +370,24 @@ async function CheckDmails() {
             InitializeOpenDmailLinks($dmails_table);
             $("#event-notice").show();
             $("#spam-dmail-section").show();
-            CheckDmails.hasevents = true;
+            hasevents = true;
         } else {
             JSPLib.debug.debuglog("No spam dmails!");
         }
         if (!hamjsondmail.length && !spamjsondmail.length && jsondmail.length && (dmaillastid !== CheckDmails.lastid.toString())) {
             SaveLastID('dmail',CheckDmails.lastid);
         }
+        return hasevents;
     } else {
         SetRecentDanbooruID('dmail',true);
     }
-    CheckDmails.isdone = true;
+    return false;
 }
-CheckDmails.lastid = 0;
-CheckDmails.hasevents = false;
-CheckDmails.isdone = false;
 
 async function CheckComments() {
     let commentlastid = localStorage['el-commentlastid'];
-    let commentlist = GetList('comment');
     if (commentlastid) {
+        let commentlist = GetList('comment');
         var subscribecommentlist = [], jsoncommentlist = [];
         if (!localStorage['el-savedcommentlist']) {
             let jsoncomments = await GetAllDanbooru('comments',query_limit,{page:commentlastid,addons:{group_by: 'comment'},reverse:true});
@@ -422,7 +415,7 @@ async function CheckComments() {
             InitializeEventNoticeCommentLinks();
             $("#event-notice").show();
             $("#comments-section").show();
-            CheckComments.hasevents = true;
+            return true;
         } else {
             JSPLib.debug.debuglog("No comments!");
             if (jsoncommentlist.length && (localStorage['el-commentlastid'] !== jsoncommentlist[0].toString())) {
@@ -432,16 +425,13 @@ async function CheckComments() {
     } else {
         SetRecentDanbooruID('comment');
     }
-    CheckComments.isdone = true;
+    return false;
 }
-CheckComments.lastid = 0;
-CheckComments.hasevents = false;
-CheckComments.isdone = false;
 
 async function CheckForums() {
     let forumlastid = localStorage['el-forumlastid'];
-    let forumlist = GetList('forum');
     if (forumlastid) {
+        let forumlist = GetList('forum');
         var subscribeforumlist = [], jsonforumlist = [];
         if (!localStorage['el-savedforumlist']) {
             let jsonforums = await GetAllDanbooru('forum_posts',query_limit,{page:forumlastid,reverse:true});
@@ -469,7 +459,7 @@ async function CheckForums() {
             InitializeOpenForumLinks($forums_table);
             $("#event-notice").show();
             $("#forums-section").show();
-            CheckForums.hasevents = true;
+            return true;
         } else {
             JSPLib.debug.debuglog("No forums!");
             if (jsonforumlist.length && (localStorage['el-forumlastid'] !== jsonforumlist[0].toString())) {
@@ -479,16 +469,13 @@ async function CheckForums() {
     } else {
         SetRecentDanbooruID('forum');
     }
-    CheckForums.isdone = true;
+    return false;
 }
-CheckForums.lastid = 0;
-CheckForums.hasevents = false;
-CheckForums.isdone = false;
 
 async function CheckNotes() {
     let notelastid = localStorage['el-notelastid'];
-    let notelist = GetList('note');
     if (notelastid) {
+        let notelist = GetList('note');
         var subscribenotelist = [], jsonnotelist = [];
         if (!localStorage['el-savednotelist']) {
             let jsonnotes = await GetAllDanbooru('note_versions',query_limit,{page:notelastid,reverse:true});
@@ -516,7 +503,7 @@ async function CheckNotes() {
             InitializeOpenNoteLinks($notes_table);
             $("#event-notice").show();
             $("#notes-section").show();
-            CheckNotes.hasevents = true;
+            return true;
         } else {
             JSPLib.debug.debuglog("No notes!");
             if (jsonnotelist.length && (localStorage['el-notelastid'] !== jsonnotelist[0].toString())) {
@@ -526,23 +513,13 @@ async function CheckNotes() {
     } else {
         SetRecentDanbooruID('note');
     }
-    CheckNotes.isdone = true;
+    return false;
 }
-CheckNotes.lastid = 0;
-CheckNotes.hasevents = false;
-CheckNotes.isdone = false;
 
-/****Callback functions****/
-
-function CheckAllEvents() {
-    if (CheckFlags.isdone && CheckAppeals.isdone && CheckDmails.isdone && CheckComments.isdone && CheckForums.isdone && CheckNotes.isdone) {
-        clearInterval(CheckAllEvents.timer);
-        if (CheckFlags.hasevents || CheckAppeals.hasevents || CheckDmails.hasevents || CheckComments.hasevents || CheckForums.hasevents || CheckNotes.hasevents) {
-            localStorage['el-events'] = true;
-        } else {
-            localStorage['el-events'] = false;
-        }
-    }
+async function CheckAllEvents(promise_array) {
+    let hasevents_all = await Promise.all(promise_array);
+    let hasevents = hasevents_all.reduce((a,b)=>{return a || b;});
+    localStorage.setItem('el-events',hasevents);
 }
 
 /****Render functions****/
@@ -894,29 +871,24 @@ function main() {
     userid = parseInt(userid);
     $("#dmail-notice").hide();
     InitializeNoticeBox();
+    var promise_array = [];
     if (CheckTimeout() || HasEvents()) {
         SetRecheckTimeout();
-        CheckDmails();
-        CheckFlags();
-        CheckAppeals();
+        promise_array.push(CheckDmails());
+        promise_array.push(CheckFlags());
+        promise_array.push(CheckAppeals());
         if (GetList('comment').length) {
             JSPLib.utility.setCSSStyle(comment_css,'comment');
-            CheckComments();
-        } else {
-            CheckComments.isdone = true;
+            promise_array.push(CheckComments());
         }
         if (GetList('forum').length) {
             JSPLib.utility.setCSSStyle(forum_css,'forum');
-            CheckForums();
-        } else {
-            CheckForums.isdone = true;
+            promise_array.push(CheckForums());
         }
         if (GetList('note').length) {
-            CheckNotes();
-        } else {
-            CheckNotes.isdone = true;
+            promise_array.push(CheckNotes());
         }
-        CheckAllEvents.timer = setInterval(CheckAllEvents,timer_poll_interval);
+        CheckAllEvents(promise_array);
     } else {
         JSPLib.debug.debuglog("Waiting...");
     }
@@ -927,8 +899,7 @@ function main() {
         InitializeCommentPartialPostLinks();
     } else if ($("#c-comments #a-index #p-index-by-comment").length) {
         InitializeCommentPartialCommentLinks();
-    }
-    if ($("#c-forum-topics #a-show").length) {
+    } else if ($("#c-forum-topics #a-show").length) {
         InitializeTopicShowLinks();
         $('a[href$="/subscribe"]').text("Subscribe email");
         $('a[href$="/unsubscribe"]').text("Unsubscribe email");
