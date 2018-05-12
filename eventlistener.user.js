@@ -25,14 +25,14 @@ const program_load_required_variables = ['window.jQuery','window.Danbooru'];
 //Polling interval for checking program status
 const timer_poll_interval = 100;
 
-//The default number of items displayed per page
-const display_limit = 20;
-
 //The max number of items to grab with each network call
 const query_limit = 100;
 
-//Minimum amount of time between rechecks in milliseconds
-const recheck_event_interval = 1000 * 60;
+//Time constant
+const one_minute = 60 * 1000;
+
+//Minimum amount of time between rechecks
+const recheck_event_interval = one_minute * 5;
 
 //Controller lookup values
 const controller_dict = {
