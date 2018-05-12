@@ -395,46 +395,26 @@ async function CheckComments() {
     let commentlastid = localStorage['el-commentlastid'];
     let commentlist = GetList('comment');
     if (commentlastid) {
-        var jsoncomments = [], subscribecomments = [];
+        var subscribecommentlist = [], jsoncommentlist = [];
         if (!localStorage['el-savedcommentlist']) {
-            let tempcomments;
-            while (true) {
-                tempcomments = jsoncomments;
-                jsoncomments = await $.getJSON("/comments", {group_by: 'comment', page: 'a' + commentlastid, limit: display_limit});
-                subscribecomments = jsoncomments.filter((val)=>{return (val.creator_id !== userid) && (commentlist.indexOf(val.post_id) >= 0);}).concat(subscribecomments);
-                if (jsoncomments.length === display_limit) {
-                    commentlastid = DanbooruArrayMaxID(jsoncomments).toString();
-                    JSPLib.debug.debuglog("Rechecking @",commentlastid);
-                    continue;
-                } else if (jsoncomments.length === 0) {
-                    jsoncomments = tempcomments;
-                }
-                break;
-            }
+            let jsoncomments = await GetAllDanbooru('comments',query_limit,{page:commentlastid,addons:{group_by: 'comment'},reverse:true});
+            let subscribecomments = jsoncomments.filter((val)=>{return (val.creator_id !== userid) && (commentlist.indexOf(val.post_id) >= 0);});
             if (subscribecomments.length) {
-                localStorage['el-savedcommentlist'] = JSON.stringify(subscribecomments.map((val)=>{return {id:val.id,post:val.post_id};}));
-                subscribecomments = subscribecomments.map((val)=>{return val.id;});
+                subscribecommentlist = GetObjectAttributes(subscribecomments,'id');
+                localStorage.setItem('el-savedcommentlist',JSON.stringify(subscribecommentlist));
             }
             if (jsoncomments.length) {
-                jsoncomments = [DanbooruArrayMaxID(jsoncomments)];
-                localStorage['el-savedcommentlastid'] = JSON.stringify(jsoncomments);
+                jsoncommentlist = [DanbooruArrayMaxID(jsoncomments)];
+                localStorage.setItem('el-savedcommentlastid',JSON.stringify(jsoncommentlist));
             }
         } else {
-            subscribecomments = JSON.parse(localStorage['el-savedcommentlist']);
-            subscribecomments = subscribecomments.filter(value=>{return commentlist.indexOf(value.post) >= 0;});
-            jsoncomments = JSON.parse(localStorage['el-savedcommentlastid']);
-            if (!subscribecomments.length) {
-                JSPLib.debug.debuglog("Deleting saved comment values");
-                delete localStorage['el-savedcommentlist'];
-                delete localStorage['el-savedcommentlastid'];
-            } else {
-                subscribecomments = subscribecomments.map((val)=>{return val.id;});
-            }
+            subscribecommentlist = JSON.parse(localStorage.getItem('el-savedcommentlist'));
+            jsoncommentlist = JSON.parse(localStorage.getItem('el-savedcommentlastid'));
         }
-        if (subscribecomments.length) {
-            JSPLib.debug.debuglog("Found comments!",jsoncomments[0]);
-            CheckComments.lastid = jsoncomments[0];
-            let commentshtml = await $.get("/comments", {group_by: 'comment', search: {id: subscribecomments.join(',')}, limit: subscribecomments.length});
+        if (subscribecommentlist.length) {
+            JSPLib.debug.debuglog("Found comments!",jsoncommentlist[0]);
+            CheckComments.lastid = jsoncommentlist[0];
+            let commentshtml = await $.get("/comments", {group_by: 'comment', search: {id: subscribecommentlist.join(',')}, limit: subscribecommentlist.length});
             let $comments = $(commentshtml);
             $(".post-preview",$comments).addClass("blacklisted");
             $(".edit_comment",$comments).hide();
@@ -445,8 +425,8 @@ async function CheckComments() {
             CheckComments.hasevents = true;
         } else {
             JSPLib.debug.debuglog("No comments!");
-            if (jsoncomments.length && (localStorage['el-commentlastid'] !== jsoncomments[0].toString())) {
-                SaveLastID('comment',jsoncomments[0]);
+            if (jsoncommentlist.length && (localStorage['el-commentlastid'] !== jsoncommentlist[0].toString())) {
+                SaveLastID('comment',jsoncommentlist[0]);
             }
         }
     } else {
@@ -462,46 +442,26 @@ async function CheckForums() {
     let forumlastid = localStorage['el-forumlastid'];
     let forumlist = GetList('forum');
     if (forumlastid) {
-        var jsonforums = [], subscribeforums = [];
+        var subscribeforumlist = [], jsonforumlist = [];
         if (!localStorage['el-savedforumlist']) {
-            let tempforums;
-            while (true) {
-                tempforums = jsonforums;
-                jsonforums = await $.getJSON("/forum_posts", {page: 'a' + forumlastid, limit: display_limit});
-                subscribeforums = jsonforums.filter((val)=>{return (val.creator_id !== userid) && (forumlist.indexOf(val.topic_id) >= 0);}).concat(subscribeforums);
-                if (jsonforums.length === display_limit) {
-                    forumlastid = DanbooruArrayMaxID(jsonforums).toString();
-                    JSPLib.debug.debuglog("Rechecking @",forumlastid);
-                    continue;
-                } else if (jsonforums.length === 0) {
-                    jsonforums = tempforums;
-                }
-                break;
-            }
+            let jsonforums = await GetAllDanbooru('forum_posts',query_limit,{page:forumlastid,reverse:true});
+            let subscribeforums = jsonforums.filter((val)=>{return (val.creator_id !== userid) && (forumlist.indexOf(val.topic_id) >= 0);});
             if (subscribeforums.length) {
-                localStorage['el-savedforumlist'] = JSON.stringify(subscribeforums.map((val)=>{return {id:val.id,topic:val.topic_id};}));
-                subscribeforums = subscribeforums.map((val)=>{return val.id;});
+                subscribeforumlist = GetObjectAttributes(subscribeforums,'id');
+                localStorage.setItem('el-savedforumlist',JSON.stringify(subscribeforumlist));
             }
             if (jsonforums.length) {
-                jsonforums = [DanbooruArrayMaxID(jsonforums)];
-                localStorage['el-savedforumlastid'] = JSON.stringify(jsonforums);
+                jsonforumlist = [DanbooruArrayMaxID(jsonforums)];
+                localStorage.setItem('el-savedforumlastid',JSON.stringify(jsonforumlist));
             }
         } else {
-            subscribeforums = JSON.parse(localStorage['el-savedforumlist']);
-            subscribeforums = subscribeforums.filter(value=>{return forumlist.indexOf(value.topic) >= 0;});
-            jsonforums = JSON.parse(localStorage['el-savedforumlastid']);
-            if (!subscribeforums.length) {
-                JSPLib.debug.debuglog("Deleting saved forum values");
-                delete localStorage['el-savedforumlist'];
-                delete localStorage['el-savedforumlastid'];
-            } else {
-                subscribeforums = subscribeforums.map((val)=>{return val.id;});
-            }
+            subscribeforumlist = JSON.parse(localStorage.getItem('el-savedforumlist'));
+            jsonforumlist = JSON.parse(localStorage.getItem('el-savedforumlastid'));
         }
-        if (subscribeforums.length) {
-            JSPLib.debug.debuglog("Found forums!",jsonforums[0]);
-            CheckForums.lastid = jsonforums[0];
-            let forumshtml = await $.get("/forum_posts", {search: {id: subscribeforums.join(',')}, limit: subscribeforums.length});
+        if (subscribeforumlist.length) {
+            JSPLib.debug.debuglog("Found forums!",jsonforumlist[0]);
+            CheckForums.lastid = jsonforumlist[0];
+            let forumshtml = await $.get("/forum_posts", {search: {id: subscribeforumlist.join(',')}, limit: subscribeforumlist.length});
             let $forums = $(forumshtml);
             let $forums_table = $("#forums-table");
             $forums_table.append($(".striped",$forums));
@@ -512,8 +472,8 @@ async function CheckForums() {
             CheckForums.hasevents = true;
         } else {
             JSPLib.debug.debuglog("No forums!");
-            if (jsonforums.length && (localStorage['el-forumlastid'] !== jsonforums[0].toString())) {
-                SaveLastID('forum',jsonforums[0]);
+            if (jsonforumlist.length && (localStorage['el-forumlastid'] !== jsonforumlist[0].toString())) {
+                SaveLastID('forum',jsonforumlist[0]);
             }
         }
     } else {
@@ -529,46 +489,26 @@ async function CheckNotes() {
     let notelastid = localStorage['el-notelastid'];
     let notelist = GetList('note');
     if (notelastid) {
-        var jsonnotes = [], subscribenotes = [];
+        var subscribenotelist = [], jsonnotelist = [];
         if (!localStorage['el-savednotelist']) {
-            let tempnotes;
-            while (true) {
-                tempnotes = jsonnotes;
-                jsonnotes = await $.getJSON("/note_versions", {page: 'a' + notelastid, limit: display_limit});
-                subscribenotes = jsonnotes.filter((val)=>{return (val.updater_id !== userid) && (notelist.indexOf(val.post_id) >= 0);}).concat(subscribenotes);
-                if (jsonnotes.length === display_limit) {
-                    notelastid = DanbooruArrayMaxID(jsonnotes).toString();
-                    JSPLib.debug.debuglog("Rechecking @",notelastid);
-                    continue;
-                } else if (jsonnotes.length === 0) {
-                    jsonnotes = tempnotes;
-                }
-                break;
-            }
+            let jsonnotes = await GetAllDanbooru('note_versions',query_limit,{page:notelastid,reverse:true});
+            let subscribenotes = jsonnotes.filter((val)=>{return (val.creator_id !== userid) && (notelist.indexOf(val.post_id) >= 0);});
             if (subscribenotes.length) {
-                localStorage['el-savednotelist'] = JSON.stringify(subscribenotes.map((val)=>{return {id:val.id,post:val.post_id};}));
-                subscribenotes = subscribenotes.map((val)=>{return val.id;});
+                subscribenotelist = GetObjectAttributes(subscribenotes,'id');
+                localStorage.setItem('el-savednotelist',JSON.stringify(subscribenotelist));
             }
             if (jsonnotes.length) {
-                jsonnotes = [DanbooruArrayMaxID(jsonnotes)];
-                localStorage['el-savednotelastid'] = JSON.stringify(jsonnotes);
+                jsonnotelist = [DanbooruArrayMaxID(jsonnotes)];
+                localStorage.setItem('el-savednotelastid',JSON.stringify(jsonnotelist));
             }
         } else {
-            subscribenotes = JSON.parse(localStorage['el-savednotelist']);
-            subscribenotes = subscribenotes.filter(value=>{return notelist.indexOf(value.post) >= 0;});
-            jsonnotes = JSON.parse(localStorage['el-savednotelastid']);
-            if (!subscribenotes.length) {
-                JSPLib.debug.debuglog("Deleting saved note values");
-                delete localStorage['el-savednotelist'];
-                delete localStorage['el-savednotelastid'];
-            } else {
-                subscribenotes = subscribenotes.map((val)=>{return val.id;});
-            }
+            subscribenotelist = JSON.parse(localStorage.getItem('el-savednotelist'));
+            jsonnotelist = JSON.parse(localStorage.getItem('el-savednotelastid'));
         }
-        if (subscribenotes.length) {
-            JSPLib.debug.debuglog("Found notes!",jsonnotes[0]);
-            CheckNotes.lastid = jsonnotes[0];
-            let noteshtml = await $.get("/note_versions", {search: {id: subscribenotes.join(',')}, limit: subscribenotes.length});
+        if (subscribenotelist.length) {
+            JSPLib.debug.debuglog("Found notes!",jsonnotelist[0]);
+            CheckNotes.lastid = jsonnotelist[0];
+            let noteshtml = await $.get("/note_versions", {search: {id: subscribenotelist.join(',')}, limit: subscribenotelist.length});
             let $notes = $(noteshtml);
             let $notes_table = $("#notes-table");
             $notes_table.append($(".striped",$notes));
@@ -579,8 +519,8 @@ async function CheckNotes() {
             CheckNotes.hasevents = true;
         } else {
             JSPLib.debug.debuglog("No notes!");
-            if (jsonnotes.length && (localStorage['el-notelastid'] !== jsonnotes[0].toString())) {
-                SaveLastID('note',jsonnotes[0]);
+            if (jsonnotelist.length && (localStorage['el-notelastid'] !== jsonnotelist[0].toString())) {
+                SaveLastID('note',jsonnotelist[0]);
             }
         }
     } else {
