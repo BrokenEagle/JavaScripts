@@ -34,26 +34,17 @@ const one_minute = 60 * 1000;
 //Minimum amount of time between rechecks
 const recheck_event_interval = one_minute * 5;
 
-//Controller lookup values
-const controller_dict = {
-    flag: 'post_flags',
-    appeal: 'post_appeals',
-    dmail: 'dmails',
-    comment: 'comments',
-    forum: 'forum_posts',
-    note: 'note_versions'
-};
-
-//Placeholder for the current user
+//Placeholder for setting later;
 var username;
 var userid;
+var usertype_lastids = {};
 
 //HTML for the notice block
 const notice_box = `
 <div class="ui-corner-all ui-state-highlight" id="event-notice" style="display:none">
-    <div id="ham-dmail-section"  style="display:none">
+    <div id="dmail-section"  style="display:none">
         <h1>You've got mail!</h1>
-        <div id="ham-dmail-table"></div>
+        <div id="dmail-table"></div>
     </div>
     <div id="flag-section"  style="display:none">
         <h1>You've got flags!</h1>
@@ -75,9 +66,9 @@ const notice_box = `
         <h1>You've got notes!</h1>
         <div id="notes-table"></div>
     </div>
-    <div id="spam-dmail-section"  style="display:none">
+    <div id="spam-section"  style="display:none">
         <h1>You've got spam!</h1>
-        <div id="spam-dmail-table"></div>
+        <div id="spam-table"></div>
     </div>
     <p><a href="#" id="hide-event-notice">Close this</a></p>
 </div>
@@ -178,7 +169,7 @@ async function GetAllDanbooru(type,limit,options) {
     var limit_addon = {limit: limit};
     var return_items = [];
     while (true) {
-        let request_addons = Object.assign({},url_addons,page_addon,limit_addon);
+        let request_addons = JoinArgs(url_addons,page_addon,limit_addon);
         let request_key = $.param(request_addons);
         JSPLib.debug.recordTime(request_key,'Network');
         let temp_items = await $.getJSON(`/${type}`,request_addons);
@@ -194,8 +185,7 @@ async function GetAllDanbooru(type,limit,options) {
 }
 
 async function SetRecentDanbooruID(type,useritem=false) {
-    let controller = controller_dict[type];
-    let jsonitem = await $.getJSON(`/${controller}`, {limit: 1});
+    let jsonitem = await $.getJSON(`/${typedict[type].controller}`, JoinArgs(typedict[type].addons,{limit: 1}));
     if (jsonitem.length) {
         SaveLastID(type,DanbooruArrayMaxID(jsonitem));
     } else if (useritem) {
@@ -282,104 +272,83 @@ async function AddDmail(dmailid,$rowelement) {
 
 /****Main execution functions****/
 
-async function CheckFlags() {
-    let flaglastid = localStorage['el-flaglastid'];
-    if (flaglastid) {
-        let url_addons = {search: {category: 'normal',post_tags_match: "user:" + username}};
-        let jsonflag = await GetAllDanbooru('post_flags',query_limit,{addons:url_addons,page:flaglastid,reverse:true});
-        let otherjsonflag = jsonflag.filter((val)=>{return !('creator_id' in val);});
-        if (otherjsonflag.length) {
-            CheckFlags.lastid = DanbooruArrayMaxID(jsonflag);
-            JSPLib.debug.debuglog("Found flags!",CheckFlags.lastid);
-            let flaglist = GetObjectAttributes(otherjsonflag,'id');
-            let flaghtml = await $.get("/post_flags", {search: {id: flaglist.join(',')}, limit: flaglist.length});
-            let $flag = $(flaghtml);
-            $("#flag-table").append($(".striped",$flag));
-            $("#flag-table .post-preview").addClass("blacklisted");
-            $("#event-notice").show();
-            $("#flag-section").show();
-            return true;
-        } else {
-            JSPLib.debug.debuglog("No flags!");
-        }
-    } else {
-        SetRecentDanbooruID('flag',true);
-    }
-    return false;
+function JoinArgs() {
+    return jQuery.extend(true,{},...arguments);
 }
 
-async function CheckAppeals() {
-    let appeallastid = localStorage['el-appeallastid'];
-    if (appeallastid) {
-        let url_addons = {search: {post_tags_match: "user:" + username}};
-        let jsonappeal = await GetAllDanbooru('post_appeals',query_limit,{addons:url_addons,page:appeallastid,reverse:true});
-        otherjsonappeal = jsonappeal.filter((val)=>{return val.creator_id !== userid;});
-        if (otherjsonappeal.length) {
-            CheckAppeals.lastid = DanbooruArrayMaxID(jsonappeal);
-            JSPLib.debug.debuglog("Found appeals!",CheckAppeals.lastid);
-            let appeallist = GetObjectAttributes(otherjsonappeal,'id');
-            let appealhtml = await $.get("/post_appeals", {search: {id: appeallist.join(',')}, limit: appeallist.length});
-            let $appeal = $(appealhtml);
-            $("#appeal-table").append($(".striped",$appeal));
-            $("#appeal-table .post-preview").addClass("blacklisted");
-            $("#event-notice").show();
-            $("#appeal-section").show();
-            return true;
-        } else {
-            JSPLib.debug.debuglog("No appeals!");
-        }
-    } else {
-        SetRecentDanbooruID('appeal',true);
-    }
-    return false;
+function InsertEvents($eventpage,type) {
+    $(`#${type}-table`).append($(".striped",$eventpage));
+    $(`#${type}-table .post-preview`).addClass("blacklisted");
 }
 
-async function CheckDmails() {
-    let dmaillastid = localStorage['el-dmaillastid'];
-    if (dmaillastid) {
-        let hasevents = false;
-        let jsondmail = await GetAllDanbooru('dmails',query_limit,{page:dmaillastid,reverse:true});
-        let hamjsondmail = jsondmail.filter((val)=>{return !val.is_read && !val.is_spam;});
-        let spamjsondmail = jsondmail.filter((val)=>{return !val.is_read && val.is_spam;});
-        if (jsondmail.length) {
-            CheckDmails.lastid = DanbooruArrayMaxID(jsondmail);
-        }
-        if (hamjsondmail.length) {
-            JSPLib.debug.debuglog("Found ham dmails!",CheckDmails.lastid);
-            let hamdmaillist = GetObjectAttributes(hamjsondmail,'id');
-            let hamdmailhtml = await $.get("/dmails", {search: {id: hamdmaillist.join(',')}, limit: hamdmaillist.length});
-            let $hamdmail = $(hamdmailhtml);
-            $("tr.read-false", $hamdmail).css("font-weight","bold");
-            $("#ham-dmail-table").append($(".striped",$hamdmail));
-            let $dmails_table = $("#ham-dmail-table");
-            InitializeOpenDmailLinks($dmails_table);
+function InsertDmails($dmailpage,type) {
+    $("tr.read-false", $dmailpage).css("font-weight","bold");
+    $(`#${type}-table`).append($(".striped",$dmailpage));
+    let $dmails_table = $(`#${type}-table`);
+    InitializeOpenDmailLinks($dmails_table);
+}
+
+var typedict = {
+    flag: {
+        controller: 'post_flags',
+        addons: {},
+        useraddons: function (username) {return {search: {category: 'normal',post_tags_match: "user:" + username}};},
+        filter: function (array) {return array.filter((val)=>{return !('creator_id' in val);});},
+        insert: InsertEvents
+    },
+    appeal: {
+        controller: 'post_appeals',
+        addons: {},
+        useraddons: function (username) {return {search: {post_tags_match: "user:" + username}};},
+        filter: function (array) {return array.filter((val)=>{return val.creator_id !== userid;});},
+        insert: InsertEvents
+    },
+    dmail: {
+        controller: 'dmails',
+        addons: {search: {is_spam: false}},
+        useraddons: function (username) {return {};},
+        filter: function (array) {return array.filter((val)=>{return !val.is_read;});},
+        insert: InsertDmails
+    },
+    spam: {
+        controller: 'dmails',
+        addons: {search: {is_spam: true}},
+        useraddons: function (username) {return {};},
+        filter: function (array) {return array.filter((val)=>{return !val.is_read;});},
+        insert: InsertDmails
+    },
+    comment: {controller: 'comments'},
+    forum: {controller: 'forum_posts'},
+    note: {controller: 'note_versions'}
+};
+
+async function CheckUserType(type) {
+    let lastidkey = `el-${type}lastid`;
+    let typelastid = localStorage.getItem(lastidkey);
+    if (typelastid) {
+        let url_addons = JoinArgs(typedict[type].addons,typedict[type].useraddons(username));
+        let jsontype = await GetAllDanbooru(typedict[type].controller,query_limit,{addons:url_addons,page:typelastid,reverse:true});
+        let filtertype = typedict[type].filter(jsontype);
+        let lastusertype = (jsontype.length ? [DanbooruArrayMaxID(jsontype)] : []);
+        if (filtertype.length) {
+            usertype_lastids[type] = lastusertype[0];
+            JSPLib.debug.debuglog(`Found ${type}s!`,usertype_lastids[type]);
+            let idlist = GetObjectAttributes(filtertype,'id');
+            url_addons = JoinArgs(typedict[type].addons,{search: {id: idlist.join(',')}, limit: idlist.length});
+            let typehtml = await $.get(`/${typedict[type].controller}`, url_addons);
+            let $typepage = $(typehtml);
+            typedict[type].insert($typepage,type);
             $("#event-notice").show();
-            $("#ham-dmail-section").show();
-            hasevents = true;
+            $(`#${type}-section`).show();
+            return true;
         } else {
-            JSPLib.debug.debuglog("No ham dmails!");
+            JSPLib.debug.debuglog(`No ${type}s!`);
+            if (lastusertype.length && (localStorage.getItem(lastidkey) !== lastusertype[0].toString())) {
+                SaveLastID(type,lastusertype[0]);
+            }
         }
-        if (spamjsondmail.length) {
-            JSPLib.debug.debuglog("Found spam dmails!",CheckDmails.lastid);
-            let spammaillist = GetObjectAttributes(spamjsondmail,'id');
-            let spamdmailhtml = await $.get("/dmails", {search: {id: spammaillist.join(','),is_spam: true}, limit: spammaillist.length});
-            let $spamdmail = $(spamdmailhtml);
-            $("tr.read-false", $spamdmail).css("font-weight","bold");
-            $("#spam-dmail-table").append($(".striped",$spamdmail));
-            let $dmails_table = $("#spam-dmail-table");
-            InitializeOpenDmailLinks($dmails_table);
-            $("#event-notice").show();
-            $("#spam-dmail-section").show();
-            hasevents = true;
-        } else {
-            JSPLib.debug.debuglog("No spam dmails!");
-        }
-        if (!hamjsondmail.length && !spamjsondmail.length && jsondmail.length && (dmaillastid !== CheckDmails.lastid.toString())) {
-            SaveLastID('dmail',CheckDmails.lastid);
-        }
-        return hasevents;
     } else {
-        SetRecentDanbooruID('dmail',true);
+        SetRecentDanbooruID(type,true);
     }
     return false;
 }
@@ -688,16 +657,9 @@ function InitializeEventNoticeCommentLinks() {
 function HideEventNoticeClick() {
     $("#hide-event-notice").click((e)=>{
         $("#event-notice").hide();
-        if (CheckFlags.lastid) {
-            SaveLastID('flag',CheckFlags.lastid);
-        }
-        if (CheckAppeals.lastid) {
-            SaveLastID('appeal',CheckAppeals.lastid);
-        }
-        if (CheckDmails.lastid) {
-            SaveLastID('dmail',CheckDmails.lastid);
-            $("#hide-dmail-notice").click();
-        }
+        $.each(usertype_lastids,(type,value)=>{
+            SaveLastID(type,value);
+        });
         if (CheckComments.lastid) {
             SaveLastID('comment',CheckComments.lastid);
             delete localStorage['el-savedcommentlist'];
@@ -715,6 +677,9 @@ function HideEventNoticeClick() {
             delete localStorage['el-savednotelist'];
             delete localStorage['el-savednotelastid'];
             JSPLib.debug.debuglog("Deleted saved values! (notes)");
+        }
+        if ($("#hide-dmail-notice").length) {
+            $("#hide-dmail-notice").click();
         }
         localStorage['el-events'] = false;
         e.preventDefault();
@@ -874,9 +839,10 @@ function main() {
     var promise_array = [];
     if (CheckTimeout() || HasEvents()) {
         SetRecheckTimeout();
-        promise_array.push(CheckDmails());
-        promise_array.push(CheckFlags());
-        promise_array.push(CheckAppeals());
+        promise_array.push(CheckUserType('dmail'));
+        promise_array.push(CheckUserType('flag'));
+        promise_array.push(CheckUserType('appeal'));
+        promise_array.push(CheckUserType('spam'));
         if (GetList('comment').length) {
             JSPLib.utility.setCSSStyle(comment_css,'comment');
             promise_array.push(CheckComments());
