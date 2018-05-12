@@ -31,6 +31,16 @@ const display_limit = 20;
 //Minimum amount of time between rechecks in milliseconds
 const recheck_event_interval = 1000 * 60;
 
+//Controller lookup values
+const controller_dict = {
+    flag: 'post_flags',
+    appeal: 'post_appeals',
+    dmail: 'dmails',
+    comment: 'comments',
+    forum: 'forum_posts',
+    note: 'note_versions'
+};
+
 //Placeholder for the current user
 var username;
 var userid;
@@ -140,8 +150,18 @@ function ClearHide(selector) {
     $(selector).attr('style','');
 }
 
-function DanbooruArrayMax(array) {
+function DanbooruArrayMaxID(array) {
     return array.reduce((total,entry)=>{return Math.max(total,entry.id);},array[0].id);
+}
+
+async function SetRecentDanbooruID(type,useritem=false) {
+    let controller = controller_dict[type];
+    let jsonitem = await $.getJSON(`/${controller}`, {limit: 1});
+    if (jsonitem.length) {
+        SaveLastID(type,DanbooruArrayMaxID(jsonitem));
+    } else if (useritem) {
+        SaveLastID(type,0);
+    }
 }
 
 //Data storage functions
@@ -229,7 +249,7 @@ async function CheckFlags() {
         let jsonflag = await $.getJSON("/post_flags", {search: {category: 'normal',post_tags_match: "user:" + username},page: 'a' + flaglastid,limit: display_limit});
         jsonflag = jsonflag.filter((val)=>{return !('creator_id' in val);});
         if (jsonflag.length) {
-            let most_recent_flag = DanbooruArrayMax(jsonflag);
+            let most_recent_flag = DanbooruArrayMaxID(jsonflag);
             JSPLib.debug.debuglog("Found flags!",most_recent_flag);
             CheckFlags.lastid = most_recent_flag;
             let flaglist = jsonflag.map((val)=>{return val.id;});
@@ -244,10 +264,7 @@ async function CheckFlags() {
             JSPLib.debug.debuglog("No flags!");
         }
     } else {
-        let jsonflag = await $.getJSON("/post_flags", {limit: 1});
-        if (jsonflag.length) {
-            SaveLastID('flag',DanbooruArrayMax(jsonflag));
-        }
+        SetRecentDanbooruID('flag',true);
     }
     CheckFlags.isdone = true;
 }
@@ -261,7 +278,7 @@ async function CheckAppeals() {
         let jsonappeal = await $.getJSON("/post_appeals", {search: {post_tags_match: "user:" + username},page: 'a' + appeallastid,limit: display_limit});
         jsonappeal = jsonappeal.filter((val)=>{return val.creator_id !== userid;});
         if (jsonappeal.length) {
-            let most_recent_appeal = DanbooruArrayMax(jsonappeal);
+            let most_recent_appeal = DanbooruArrayMaxID(jsonappeal);
             JSPLib.debug.debuglog("Found appeals!",most_recent_appeal);
             CheckAppeals.lastid = most_recent_appeal;
             let appeallist = jsonappeal.map((val)=>{return val.id;});
@@ -276,10 +293,7 @@ async function CheckAppeals() {
             JSPLib.debug.debuglog("No appeals!");
         }
     } else {
-        let jsonappeal = await $.getJSON("/post_appeals", {limit: 1});
-        if (jsonappeal.length) {
-            SaveLastID('appeal',DanbooruArrayMax(jsonappeal));
-        }
+        SetRecentDanbooruID('appeal',true);
     }
     CheckAppeals.isdone = true;
 }
@@ -294,7 +308,7 @@ async function CheckDmails() {
         let hamjsondmail = jsondmail.filter((val)=>{return !val.is_read && !val.is_spam;});
         let spamjsondmail = jsondmail.filter((val)=>{return !val.is_read && val.is_spam;});
         if (jsondmail.length) {
-            var most_recent_dmail = DanbooruArrayMax(jsondmail);
+            var most_recent_dmail = DanbooruArrayMaxID(jsondmail);
         }
         if (hamjsondmail.length) {
             JSPLib.debug.debuglog("Found ham dmails!",most_recent_dmail);
@@ -330,11 +344,7 @@ async function CheckDmails() {
             SaveLastID('dmail',most_recent_dmail);
         }
     } else {
-        let jsondmail = await $.getJSON("/dmails", {limit: 1});
-        if (jsondmail.length) {
-            SaveLastID('dmail',DanbooruArrayMax(jsondmail));
-        }
-        JSPLib.debug.debuglog("Set last dmail ID:",localStorage['el-dmaillastid']);
+        SetRecentDanbooruID('dmail',true);
     }
     CheckDmails.isdone = true;
 }
@@ -354,7 +364,7 @@ async function CheckComments() {
                 jsoncomments = await $.getJSON("/comments", {group_by: 'comment', page: 'a' + commentlastid, limit: display_limit});
                 subscribecomments = jsoncomments.filter((val)=>{return (val.creator_id !== userid) && (commentlist.indexOf(val.post_id) >= 0);}).concat(subscribecomments);
                 if (jsoncomments.length === display_limit) {
-                    commentlastid = DanbooruArrayMax(jsoncomments).toString();
+                    commentlastid = DanbooruArrayMaxID(jsoncomments).toString();
                     JSPLib.debug.debuglog("Rechecking @",commentlastid);
                     continue;
                 } else if (jsoncomments.length === 0) {
@@ -367,7 +377,7 @@ async function CheckComments() {
                 subscribecomments = subscribecomments.map((val)=>{return val.id;});
             }
             if (jsoncomments.length) {
-                jsoncomments = [DanbooruArrayMax(jsoncomments)];
+                jsoncomments = [DanbooruArrayMaxID(jsoncomments)];
                 localStorage['el-savedcommentlastid'] = JSON.stringify(jsoncomments);
             }
         } else {
@@ -401,10 +411,7 @@ async function CheckComments() {
             }
         }
     } else {
-        let jsoncomment = await $.getJSON("/comments", {group_by: 'comment', limit: 1});
-        if (jsoncomment.length) {
-            SaveLastID('comment',DanbooruArrayMax(jsoncomment));
-        }
+        SetRecentDanbooruID('comment');
     }
     CheckComments.isdone = true;
 }
@@ -424,7 +431,7 @@ async function CheckForums() {
                 jsonforums = await $.getJSON("/forum_posts", {page: 'a' + forumlastid, limit: display_limit});
                 subscribeforums = jsonforums.filter((val)=>{return (val.creator_id !== userid) && (forumlist.indexOf(val.topic_id) >= 0);}).concat(subscribeforums);
                 if (jsonforums.length === display_limit) {
-                    forumlastid = DanbooruArrayMax(jsonforums).toString();
+                    forumlastid = DanbooruArrayMaxID(jsonforums).toString();
                     JSPLib.debug.debuglog("Rechecking @",forumlastid);
                     continue;
                 } else if (jsonforums.length === 0) {
@@ -437,7 +444,7 @@ async function CheckForums() {
                 subscribeforums = subscribeforums.map((val)=>{return val.id;});
             }
             if (jsonforums.length) {
-                jsonforums = [DanbooruArrayMax(jsonforums)];
+                jsonforums = [DanbooruArrayMaxID(jsonforums)];
                 localStorage['el-savedforumlastid'] = JSON.stringify(jsonforums);
             }
         } else {
@@ -471,10 +478,7 @@ async function CheckForums() {
             }
         }
     } else {
-        let jsonforum = await $.getJSON("/forum_posts", {limit: 1});
-        if (jsonforum.length) {
-            SaveLastID('forum',DanbooruArrayMax(jsonforum));
-        }
+        SetRecentDanbooruID('forum');
     }
     CheckForums.isdone = true;
 }
@@ -494,7 +498,7 @@ async function CheckNotes() {
                 jsonnotes = await $.getJSON("/note_versions", {page: 'a' + notelastid, limit: display_limit});
                 subscribenotes = jsonnotes.filter((val)=>{return (val.updater_id !== userid) && (notelist.indexOf(val.post_id) >= 0);}).concat(subscribenotes);
                 if (jsonnotes.length === display_limit) {
-                    notelastid = DanbooruArrayMax(jsonnotes).toString();
+                    notelastid = DanbooruArrayMaxID(jsonnotes).toString();
                     JSPLib.debug.debuglog("Rechecking @",notelastid);
                     continue;
                 } else if (jsonnotes.length === 0) {
@@ -507,7 +511,7 @@ async function CheckNotes() {
                 subscribenotes = subscribenotes.map((val)=>{return val.id;});
             }
             if (jsonnotes.length) {
-                jsonnotes = [DanbooruArrayMax(jsonnotes)];
+                jsonnotes = [DanbooruArrayMaxID(jsonnotes)];
                 localStorage['el-savednotelastid'] = JSON.stringify(jsonnotes);
             }
         } else {
@@ -541,10 +545,7 @@ async function CheckNotes() {
             }
         }
     } else {
-        let jsonnotes = await $.getJSON("/note_versions", {limit: 1});
-        if (jsonnotes.length) {
-            SaveLastID('note',DanbooruArrayMax(jsonnotes));
-        }
+        SetRecentDanbooruID('note');
     }
     CheckNotes.isdone = true;
 }
