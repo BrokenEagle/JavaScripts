@@ -40,6 +40,56 @@ var userid;
 var usertype_lastids = {};
 var subscribetype_lastids = {};
 
+//Type configurations
+const typedict = {
+    flag: {
+        controller: 'post_flags',
+        addons: {},
+        useraddons: function (username) {return {search: {category: 'normal',post_tags_match: "user:" + username}};},
+        filter: function (array) {return array.filter((val)=>{return !('creator_id' in val);});},
+        insert: InsertEvents
+    },
+    appeal: {
+        controller: 'post_appeals',
+        addons: {},
+        useraddons: function (username) {return {search: {post_tags_match: "user:" + username}};},
+        filter: function (array) {return array.filter((val)=>{return val.creator_id !== userid;});},
+        insert: InsertEvents
+    },
+    dmail: {
+        controller: 'dmails',
+        addons: {search: {is_spam: false}},
+        useraddons: function (username) {return {};},
+        filter: function (array) {return array.filter((val)=>{return !val.is_read;});},
+        insert: InsertDmails
+    },
+    spam: {
+        controller: 'dmails',
+        addons: {search: {is_spam: true}},
+        useraddons: function (username) {return {};},
+        filter: function (array) {return array.filter((val)=>{return !val.is_read;});},
+        insert: InsertDmails
+    },
+    comment: {
+        controller: 'comments',
+        addons: {group_by: 'comment'},
+        filter: function (array,typelist) {return array.filter((val)=>{return (val.creator_id !== userid) && (typelist.indexOf(val.post_id) >= 0);});},
+        insert: InsertComments
+    },
+    forum: {
+        controller: 'forum_posts',
+        addons: {},
+        filter: function (array,typelist) {return array.filter((val)=>{return (val.creator_id !== userid) && (typelist.indexOf(val.topic_id) >= 0);});},
+        insert: InsertForums
+    },
+    note: {
+        controller: 'note_versions',
+        addons: {},
+        filter: function (array,typelist) {return array.filter((val)=>{return (val.updater_id !== userid) && (typelist.indexOf(val.post_id) >= 0);});},
+        insert: InsertNotes
+    },
+};
+
 //HTML for the notice block
 const notice_box = `
 <div class="ui-corner-all ui-state-highlight" id="event-notice" style="display:none">
@@ -143,6 +193,10 @@ function FullHide(selector) {
 
 function ClearHide(selector) {
     $(selector).attr('style','');
+}
+
+function JoinArgs() {
+    return jQuery.extend(true,{},...arguments);
 }
 
 function DanbooruArrayMaxID(array) {
@@ -254,6 +308,10 @@ function SetRecheckTimeout() {
     localStorage.setItem('el-timeout',Date.now() + recheck_event_interval);
 }
 
+/****Auxiliary functions****/
+
+//Get single instance of various types and insert into table row
+
 async function AddForumPost(forumid,$rowelement) {
     let forum_post = await $.get(`/forum_posts/${forumid}`);
     let $forum_post = $.parseHTML(forum_post);
@@ -277,11 +335,7 @@ async function AddDmail(dmailid,$rowelement) {
     $($rowelement).after($outerblock);
 }
 
-/****Main execution functions****/
-
-function JoinArgs() {
-    return jQuery.extend(true,{},...arguments);
-}
+//Insert and process HTML onto page for various types
 
 function InsertEvents($eventpage,type) {
     $(`#${type}-table`).append($(".striped",$eventpage));
@@ -316,54 +370,7 @@ function InsertNotes($notepage) {
     InitializeOpenNoteLinks($notes_table);
 }
 
-var typedict = {
-    flag: {
-        controller: 'post_flags',
-        addons: {},
-        useraddons: function (username) {return {search: {category: 'normal',post_tags_match: "user:" + username}};},
-        filter: function (array) {return array.filter((val)=>{return !('creator_id' in val);});},
-        insert: InsertEvents
-    },
-    appeal: {
-        controller: 'post_appeals',
-        addons: {},
-        useraddons: function (username) {return {search: {post_tags_match: "user:" + username}};},
-        filter: function (array) {return array.filter((val)=>{return val.creator_id !== userid;});},
-        insert: InsertEvents
-    },
-    dmail: {
-        controller: 'dmails',
-        addons: {search: {is_spam: false}},
-        useraddons: function (username) {return {};},
-        filter: function (array) {return array.filter((val)=>{return !val.is_read;});},
-        insert: InsertDmails
-    },
-    spam: {
-        controller: 'dmails',
-        addons: {search: {is_spam: true}},
-        useraddons: function (username) {return {};},
-        filter: function (array) {return array.filter((val)=>{return !val.is_read;});},
-        insert: InsertDmails
-    },
-    comment: {
-        controller: 'comments',
-        addons: {group_by: 'comment'},
-        filter: function (array,typelist) {return array.filter((val)=>{return (val.creator_id !== userid) && (typelist.indexOf(val.post_id) >= 0);});},
-        insert: InsertComments
-    },
-    forum: {
-        controller: 'forum_posts',
-        addons: {},
-        filter: function (array,typelist) {return array.filter((val)=>{return (val.creator_id !== userid) && (typelist.indexOf(val.topic_id) >= 0);});},
-        insert: InsertForums
-    },
-    note: {
-        controller: 'note_versions',
-        addons: {},
-        filter: function (array,typelist) {return array.filter((val)=>{return (val.updater_id !== userid) && (typelist.indexOf(val.post_id) >= 0);});},
-        insert: InsertNotes
-    },
-};
+/****Main execution functions****/
 
 async function CheckUserType(type) {
     let lastidkey = `el-${type}lastid`;
