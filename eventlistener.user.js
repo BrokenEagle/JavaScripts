@@ -28,6 +28,9 @@ const timer_poll_interval = 100;
 //The default number of items displayed per page
 const display_limit = 20;
 
+//The max number of items to grab with each network call
+const query_limit = 100;
+
 //Minimum amount of time between rechecks in milliseconds
 const recheck_event_interval = 1000 * 60;
 
@@ -151,7 +154,43 @@ function ClearHide(selector) {
 }
 
 function DanbooruArrayMaxID(array) {
-    return array.reduce((total,entry)=>{return Math.max(total,entry.id);},array[0].id);
+    return ValuesMax(GetObjectAttributes(array,'id'));
+}
+
+function GetObjectAttributes(array,attribute) {
+    return array.map(val=>{return val[attribute];});
+}
+
+function ValuesMax(array) {
+    return array.reduce(function(a, b) { return Math.max(a,b); });
+}
+
+function ValuesMin(array) {
+    return array.reduce(function(a, b) { return Math.min(a,b); });
+}
+
+async function GetAllDanbooru(type,limit,options) {
+    var url_addons = options.addons || {};
+    var reverse = options.reverse || false;
+    var ChoooseID = (reverse ? ValuesMax : ValuesMin);
+    var page_modifier = (reverse ? 'a' : 'b');
+    var page_addon = (options.page ? {page:`${page_modifier}${options.page}`} : {});
+    var limit_addon = {limit: limit};
+    var return_items = [];
+    while (true) {
+        let request_addons = Object.assign({},url_addons,page_addon,limit_addon);
+        let request_key = $.param(request_addons);
+        JSPLib.debug.recordTime(request_key,'Network');
+        let temp_items = await $.getJSON(`/${type}`,request_addons);
+        JSPLib.debug.recordTimeEnd(request_key,'Network');
+        return_items = return_items.concat(temp_items);
+        if (temp_items.length < limit) {
+            return return_items;
+        }
+        let lastid = ChoooseID(GetObjectAttributes(temp_items,'id'));
+        page_addon = {page:`${page_modifier}${lastid}`};
+        JSPLib.debug.debuglog("Rechecking",type,"@",lastid);
+    }
 }
 
 async function SetRecentDanbooruID(type,useritem=false) {
@@ -246,13 +285,13 @@ async function AddDmail(dmailid,$rowelement) {
 async function CheckFlags() {
     let flaglastid = localStorage['el-flaglastid'];
     if (flaglastid) {
-        let jsonflag = await $.getJSON("/post_flags", {search: {category: 'normal',post_tags_match: "user:" + username},page: 'a' + flaglastid,limit: display_limit});
-        jsonflag = jsonflag.filter((val)=>{return !('creator_id' in val);});
-        if (jsonflag.length) {
-            let most_recent_flag = DanbooruArrayMaxID(jsonflag);
-            JSPLib.debug.debuglog("Found flags!",most_recent_flag);
-            CheckFlags.lastid = most_recent_flag;
-            let flaglist = jsonflag.map((val)=>{return val.id;});
+        let url_addons = {search: {category: 'normal',post_tags_match: "user:" + username}};
+        let jsonflag = await GetAllDanbooru('post_flags',query_limit,{addons:url_addons,page:flaglastid,reverse:true});
+        let otherjsonflag = jsonflag.filter((val)=>{return !('creator_id' in val);});
+        if (otherjsonflag.length) {
+            CheckFlags.lastid = DanbooruArrayMaxID(jsonflag);
+            JSPLib.debug.debuglog("Found flags!",CheckFlags.lastid);
+            let flaglist = GetObjectAttributes(otherjsonflag,'id');
             let flaghtml = await $.get("/post_flags", {search: {id: flaglist.join(',')}, limit: flaglist.length});
             let $flag = $(flaghtml);
             $("#flag-table").append($(".striped",$flag));
@@ -275,13 +314,13 @@ CheckFlags.isdone = false;
 async function CheckAppeals() {
     let appeallastid = localStorage['el-appeallastid'];
     if (appeallastid) {
-        let jsonappeal = await $.getJSON("/post_appeals", {search: {post_tags_match: "user:" + username},page: 'a' + appeallastid,limit: display_limit});
-        jsonappeal = jsonappeal.filter((val)=>{return val.creator_id !== userid;});
-        if (jsonappeal.length) {
-            let most_recent_appeal = DanbooruArrayMaxID(jsonappeal);
-            JSPLib.debug.debuglog("Found appeals!",most_recent_appeal);
-            CheckAppeals.lastid = most_recent_appeal;
-            let appeallist = jsonappeal.map((val)=>{return val.id;});
+        let url_addons = {search: {post_tags_match: "user:" + username}};
+        let jsonappeal = await GetAllDanbooru('post_appeals',query_limit,{addons:url_addons,page:appeallastid,reverse:true});
+        otherjsonappeal = jsonappeal.filter((val)=>{return val.creator_id !== userid;});
+        if (otherjsonappeal.length) {
+            CheckAppeals.lastid = DanbooruArrayMaxID(jsonappeal);
+            JSPLib.debug.debuglog("Found appeals!",CheckAppeals.lastid);
+            let appeallist = GetObjectAttributes(otherjsonappeal,'id');
             let appealhtml = await $.get("/post_appeals", {search: {id: appeallist.join(',')}, limit: appeallist.length});
             let $appeal = $(appealhtml);
             $("#appeal-table").append($(".striped",$appeal));
@@ -304,16 +343,16 @@ CheckAppeals.isdone = false;
 async function CheckDmails() {
     let dmaillastid = localStorage['el-dmaillastid'];
     if (dmaillastid) {
-        let jsondmail = await $.getJSON("/dmails", {page: 'a' + dmaillastid,limit: display_limit});
+        let jsondmail = await GetAllDanbooru('dmails',query_limit,{page:dmaillastid,reverse:true});
         let hamjsondmail = jsondmail.filter((val)=>{return !val.is_read && !val.is_spam;});
         let spamjsondmail = jsondmail.filter((val)=>{return !val.is_read && val.is_spam;});
         if (jsondmail.length) {
-            var most_recent_dmail = DanbooruArrayMaxID(jsondmail);
+            CheckDmails.lastid = DanbooruArrayMaxID(jsondmail);
         }
         if (hamjsondmail.length) {
-            JSPLib.debug.debuglog("Found ham dmails!",most_recent_dmail);
-            CheckDmails.lastid = most_recent_dmail;
-            let hamdmailhtml = await $.get("/dmails", {search: {read: false},page: 'a' + dmaillastid});
+            JSPLib.debug.debuglog("Found ham dmails!",CheckDmails.lastid);
+            let hamdmaillist = GetObjectAttributes(hamjsondmail,'id');
+            let hamdmailhtml = await $.get("/dmails", {search: {id: hamdmaillist.join(',')}, limit: hamdmaillist.length});
             let $hamdmail = $(hamdmailhtml);
             $("tr.read-false", $hamdmail).css("font-weight","bold");
             $("#ham-dmail-table").append($(".striped",$hamdmail));
@@ -326,9 +365,9 @@ async function CheckDmails() {
             JSPLib.debug.debuglog("No ham dmails!");
         }
         if (spamjsondmail.length) {
-            JSPLib.debug.debuglog("Found spam dmails!",most_recent_dmail);
-            CheckDmails.lastid = most_recent_dmail;
-            let spamdmailhtml = await $.get("/dmails", {search: {read: false, is_spam: true},page: 'a' + dmaillastid});
+            JSPLib.debug.debuglog("Found spam dmails!",CheckDmails.lastid);
+            let spammaillist = GetObjectAttributes(spamjsondmail,'id');
+            let spamdmailhtml = await $.get("/dmails", {search: {id: spammaillist.join(','),is_spam: true}, limit: spammaillist.length});
             let $spamdmail = $(spamdmailhtml);
             $("tr.read-false", $spamdmail).css("font-weight","bold");
             $("#spam-dmail-table").append($(".striped",$spamdmail));
@@ -340,8 +379,8 @@ async function CheckDmails() {
         } else {
             JSPLib.debug.debuglog("No spam dmails!");
         }
-        if (!hamjsondmail.length && !spamjsondmail.length && jsondmail.length && (dmaillastid !== most_recent_dmail.toString())) {
-            SaveLastID('dmail',most_recent_dmail);
+        if (!hamjsondmail.length && !spamjsondmail.length && jsondmail.length && (dmaillastid !== CheckDmails.lastid.toString())) {
+            SaveLastID('dmail',CheckDmails.lastid);
         }
     } else {
         SetRecentDanbooruID('dmail',true);
