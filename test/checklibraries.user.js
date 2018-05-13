@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2.5
+// @version      3.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -123,71 +123,86 @@ async function CheckDebugLibrary() {
 }
 
 async function CheckUtilityLibrary() {
+    console.log("++++++++++++++++++++CheckUtilityLibrary++++++++++++++++++++");
     ResetResult();
 
-    JSPLib.debug.debuglog("Checking sleep(): 1000ms");
+    console.log("Checking sleep(): 1000ms");
     JSPLib.debug.debugTime("sleep()");
     await JSPLib.utility.sleep(1000);
     JSPLib.debug.debugTimeEnd("sleep()");
 
-    JSPLib.debug.debuglog("Checking filterEmpty");
+    console.log("Checking setPrecision");
+    let testvalue1 = 1.22;
+    let testvalue2 = JSPLib.utility.setPrecision(1.2222222,2);
+    console.log(`Value ${repr(testvalue1)} should be equal to ${repr(testvalue2)} with a decimal precision of 2`,RecordResult(testvalue1 === testvalue2));
+
+    console.log("Checking maxLengthString");
+    testvalue1 = JSPLib.utility.maxLengthString("AUserNameThatIsWayTooLong");
+    console.log(`Value ${repr(testvalue1)} should have a string length of ${JSPLib.utility.max_column_characters}`,RecordResult(testvalue1.length === JSPLib.utility.max_column_characters));
+
+    console.log("Checking filterEmpty");
     let testarray1 = ["test","first","nonempty"];
     let testarray2 = ["test","first","empty",""];
     let resultarray1 = JSPLib.utility.filterEmpty(testarray1);
     let resultarray2 = JSPLib.utility.filterEmpty(testarray2);
-    JSPLib.debug.debuglog(`Array ${repr(testarray1)} should be equal in length to ${repr(resultarray1)}`,RecordResult(testarray1.length === resultarray1.length));
-    JSPLib.debug.debuglog(`Array ${repr(testarray2)} should not be equal in length to ${repr(resultarray2)}`,RecordResult(testarray2.length !== resultarray2.length));
+    console.log(`Array ${repr(testarray1)} should be equal in length to ${repr(resultarray1)}`,RecordResult(testarray1.length === resultarray1.length));
+    console.log(`Array ${repr(testarray2)} should not be equal in length to ${repr(resultarray2)}`,RecordResult(testarray2.length !== resultarray2.length));
 
-    JSPLib.debug.debuglog("Checking filterRegex");
+    console.log("Checking filterRegex");
     let regex1 = /^(?:other|empty)/;
     resultarray1 = JSPLib.utility.filterRegex(testarray1,regex1);
     resultarray2 = JSPLib.utility.filterRegex(testarray2,regex1);
-    JSPLib.debug.debuglog(`Array ${repr(resultarray1)} should have a length of zero`,RecordResult(resultarray1.length === 0));
-    JSPLib.debug.debuglog(`Array ${repr(resultarray2)} should have a length of one`,RecordResult(resultarray2.length === 1));
+    console.log(`Array ${repr(resultarray1)} should have a length of zero`,RecordResult(resultarray1.length === 0));
+    console.log(`Array ${repr(resultarray2)} should have a length of one`,RecordResult(resultarray2.length === 1));
 
-    JSPLib.debug.debuglog("Checking setUnique");
+    console.log("Checking setUnique");
     let testarray3 = ["testing","first","testing"];
     resultarray1 = JSPLib.utility.setUnique(testarray3);
-    JSPLib.debug.debuglog(`Array ${repr(resultarray1)} should have a length of two`,RecordResult(resultarray1.length === 2));
+    console.log(`Array ${repr(resultarray1)} should have a length of two`,RecordResult(resultarray1.length === 2));
 
-    JSPLib.debug.debuglog("Checking setDifference");
+    console.log("Checking setDifference");
     resultarray1 = JSPLib.utility.setDifference(testarray1,testarray2);
     resultarray2 = JSPLib.utility.setDifference(testarray2,testarray1);
-    JSPLib.debug.debuglog(`Array ${repr(resultarray1)} should have a length of one`,RecordResult(resultarray1.length === 1));
-    JSPLib.debug.debuglog(`Array ${repr(resultarray2)} should have a length of two`,RecordResult(resultarray2.length === 2));
+    console.log(`Array ${repr(resultarray1)} should have a length of one`,RecordResult(resultarray1.length === 1));
+    console.log(`Array ${repr(resultarray2)} should have a length of two`,RecordResult(resultarray2.length === 2));
 
-    JSPLib.debug.debuglog("Checking setIntersection");
+    console.log("Checking setIntersection");
     resultarray1 = JSPLib.utility.setIntersection(testarray1,testarray2);
-    JSPLib.debug.debuglog(`Array [${resultarray1}] should have a length of two`,RecordResult(resultarray1.length === 2));
+    console.log(`Array [${resultarray1}] should have a length of two`,RecordResult(resultarray1.length === 2));
 
-    JSPLib.debug.debuglog("Checking setUnion");
+    console.log("Checking setUnion");
     resultarray1 = JSPLib.utility.setUnion(testarray1,testarray3);
-    JSPLib.debug.debuglog(`Array [${resultarray1}] should have a length of four`,RecordResult(resultarray1.length === 4));
+    console.log(`Array [${resultarray1}] should have a length of four`,RecordResult(resultarray1.length === 4));
 
-    JSPLib.debug.debuglog("Checking setSymmetricDifference");
+    console.log("Checking setSymmetricDifference");
     resultarray1 = JSPLib.utility.setSymmetricDifference(testarray1,testarray3);
-    JSPLib.debug.debuglog(`Array [${resultarray1}] should have a length of three`,RecordResult(resultarray1.length === 3));
+    console.log(`Array [${resultarray1}] should have a length of three`,RecordResult(resultarray1.length === 3));
 
-    JSPLib.debug.debuglog("Checking dataCopy");
+    console.log("Checking getObjectAttributes");
+    let testobjectarray1 = [{id: 1},{id: 2}, {id: 3}];
+    resultarray1 = JSPLib.utility.getObjectAttributes(testobjectarray1,'id');
+    console.log(`Array [${resultarray1}] should contain only the values [1,2,3]`,RecordResult(resultarray1.length === 3 && resultarray1.includes(1) && resultarray1.includes(2) && resultarray1.includes(3)));
+
+    console.log("Checking dataCopy");
     let testobject1 = {'test':0,'value':{'deep':1}};
     let copyobject1 = testobject1;
     let shallowobject1 = Object.assign({},testobject1);
     let [deepobject1] = JSPLib.utility.dataCopy([testobject1]);
     testobject1.test = 10;
     testobject1.value.deep = 11;
-    JSPLib.debug.debuglog(`Object ${repr(copyobject1)} should have the same values as ${repr(testobject1)}`,RecordResult(copyobject1.test === 10 && copyobject1.value.deep === 11));
-    JSPLib.debug.debuglog(`Object ${repr(shallowobject1)} should have one value the same as ${repr(testobject1)}`,RecordResult(shallowobject1.test !== 10 && copyobject1.value.deep === 11));
-    JSPLib.debug.debuglog(`Object ${repr(deepobject1)} should have no values the same as ${repr(testobject1)}`,RecordResult(deepobject1.test !== 10 && deepobject1.value.deep !== 11));
+    console.log(`Object ${repr(copyobject1)} should have the same values as ${repr(testobject1)}`,RecordResult(copyobject1.test === 10 && copyobject1.value.deep === 11));
+    console.log(`Object ${repr(shallowobject1)} should have one value the same as ${repr(testobject1)}`,RecordResult(shallowobject1.test !== 10 && copyobject1.value.deep === 11));
+    console.log(`Object ${repr(deepobject1)} should have no values the same as ${repr(testobject1)}`,RecordResult(deepobject1.test !== 10 && deepobject1.value.deep !== 11));
 
-    JSPLib.debug.debuglog("Checking setCSSStyle");
+    console.log("Checking setCSSStyle");
     JSPLib.utility.setCSSStyle("body {background: black !important;}","test");
-    JSPLib.debug.debuglog("Color set to black... changing color in 10 seconds.");
+    console.log("Color set to black... changing color in 10 seconds.");
     await JSPLib.utility.sleep(csstyle_waittime);
     JSPLib.utility.setCSSStyle("body {background: purple !important;}","test");
-    JSPLib.debug.debuglog("Color set to purple... validate that there is only 1 style element.");
-    JSPLib.debug.debuglog(`Module global cssstyle ${repr(JSPLib.utility.cssstyle)} should have a length of 1`,RecordResult(Object.keys(JSPLib.utility.cssstyle).length === 1));
+    console.log("Color set to purple... validate that there is only 1 style element.");
+    console.log(`Module global cssstyle ${repr(JSPLib.utility.cssstyle)} should have a length of 1`,RecordResult(Object.keys(JSPLib.utility.cssstyle).length === 1));
 
-    JSPLib.debug.debuglog(`CheckUtilityLibrary results: ${test_successes} succeses, ${test_failures} failures`);
+    console.log(`CheckUtilityLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
 
 function CheckStatisticsLibrary() {
