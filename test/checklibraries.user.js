@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.1
+// @version      3.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -242,68 +242,77 @@ function CheckStatisticsLibrary() {
 }
 
 function CheckValidateLibrary() {
+    console.log("++++++++++++++++++++CheckValidateLibrary++++++++++++++++++++");
     ResetResult();
 
-    JSPLib.debug.debuglog("Checking postcount_constraints");
-    let testdata1 = {value: "1"};
-    let testdata2 = {value: 1};
-    let result1 = validate(testdata1,{value: JSPLib.validate.postcount_constraints});
-    let result2 = validate(testdata2,{value: JSPLib.validate.postcount_constraints});
-    JSPLib.debug.debuglog(`Object ${repr(testdata1)} should have 1 validation error`,RecordResult(GetValidationLength(result1) === 1));
-    JSPLib.debug.debuglog(`Object ${repr(testdata2)} should have 0 validation errors`,RecordResult(GetValidationLength(result2) === 0));
+    console.log("Checking integer_constraints");
+    let testdata1 = {value: "0"};
+    let testdata2 = {value: 0};
+    let result1 = validate(testdata1,{value: JSPLib.validate.integer_constraints});
+    let result2 = validate(testdata2,{value: JSPLib.validate.integer_constraints});
+    console.log(`Object ${repr(testdata1)} should have 1 validation error`,RecordResult(GetValidationLength(result1) === 1));
+    console.log(`Object ${repr(testdata2)} should have 0 validation errors`,RecordResult(GetValidationLength(result2) === 0));
 
-    JSPLib.debug.debuglog("Checking expires_constraints");
+    console.log("Checking postcount_constraints");
+    testdata1 = {value: "1"};
+    testdata2 = {value: 1};
+    result1 = validate(testdata1,{value: JSPLib.validate.postcount_constraints});
+    result2 = validate(testdata2,{value: JSPLib.validate.postcount_constraints});
+    console.log(`Object ${repr(testdata1)} should have 1 validation error`,RecordResult(GetValidationLength(result1) === 1));
+    console.log(`Object ${repr(testdata2)} should have 0 validation errors`,RecordResult(GetValidationLength(result2) === 0));
+
+    console.log("Checking expires_constraints");
     testdata1 = {value: 0};
     testdata2 = {value: "1"};
     result1 = validate(testdata1,{value: JSPLib.validate.expires_constraints});
     result2 = validate(testdata2,{value: JSPLib.validate.expires_constraints});
-    JSPLib.debug.debuglog(`Object ${repr(testdata1)} should have 1 validation error`,RecordResult(GetValidationLength(result1) === 1));
-    JSPLib.debug.debuglog(`Object ${repr(testdata2)} should have 0 validation errors`,RecordResult(GetValidationLength(result2) === 0));
+    console.log(`Object ${repr(testdata1)} should have 1 validation error`,RecordResult(GetValidationLength(result1) === 1));
+    console.log(`Object ${repr(testdata2)} should have 0 validation errors`,RecordResult(GetValidationLength(result2) === 0));
 
-    JSPLib.debug.debuglog("Checking stringonly_constraints");
+    console.log("Checking stringonly_constraints");
     testdata1 = {value: null};
     testdata2 = {value: "test"};
     result1 = validate(testdata1,{value: JSPLib.validate.stringonly_constraints});
     result2 = validate(testdata2,{value: JSPLib.validate.stringonly_constraints});
-    JSPLib.debug.debuglog(`Object ${repr(testdata1)} should have 1 validation error`,RecordResult(GetValidationLength(result1) === 1));
-    JSPLib.debug.debuglog(`Object ${repr(testdata2)} should have 0 validation errors`,RecordResult(GetValidationLength(result2) === 0));
+    console.log(`Object ${repr(testdata1)} should have 1 validation error`,RecordResult(GetValidationLength(result1) === 1));
+    console.log(`Object ${repr(testdata2)} should have 0 validation errors`,RecordResult(GetValidationLength(result2) === 0));
 
-    JSPLib.debug.debuglog("Checking tagentryarray_constraints");
+    console.log("Checking tagentryarray_constraints");
     testdata1 = {value: ["tag",0]};
     testdata2 = {value: [["tag",0]]};
     result1 = validate(testdata1,{value: JSPLib.validate.tagentryarray_constraints});
     result2 = validate(testdata2,{value: JSPLib.validate.tagentryarray_constraints});
-    JSPLib.debug.debuglog(`Object ${repr(testdata1)} should have 1 validation error`,RecordResult(GetValidationLength(result1) === 1));
-    JSPLib.debug.debuglog(`Object ${repr(testdata2)} should have 0 validation errors`,RecordResult(GetValidationLength(result2) === 0));
+    console.log(`Object ${repr(testdata1)} should have 1 validation error`,RecordResult(GetValidationLength(result1) === 1));
+    console.log(`Object ${repr(testdata2)} should have 0 validation errors`,RecordResult(GetValidationLength(result2) === 0));
 
-    JSPLib.debug.debuglog("Checking inclusion_constraints");
+    console.log("Checking inclusion_constraints");
     testdata1 = {value: null};
     testdata2 = {value: "dog"};
     let inclusion1 = ["dog","cat"];
     result1 = validate(testdata1,{value: JSPLib.validate.inclusion_constraints(inclusion1)});
     result2 = validate(testdata2,{value: JSPLib.validate.inclusion_constraints(inclusion1)});
-    JSPLib.debug.debuglog(`Object ${repr(testdata1)} with inclusion ${repr(inclusion1)} should have 1 validation error`,RecordResult(GetValidationLength(result1) === 1));
-    JSPLib.debug.debuglog(`Object ${repr(testdata2)} with inclusion ${repr(inclusion1)} should have 0 validation errors`,RecordResult(GetValidationLength(result2) === 0));
+    console.log(`Object ${repr(testdata1)} with inclusion ${repr(inclusion1)} should have 1 validation error`,RecordResult(GetValidationLength(result1) === 1));
+    console.log(`Object ${repr(testdata2)} with inclusion ${repr(inclusion1)} should have 0 validation errors`,RecordResult(GetValidationLength(result2) === 0));
 
-    JSPLib.debug.debuglog("Checking array validator");
+    console.log("Checking array validator");
     testdata1 = {value: [0,1,2]};
     testdata2 = {value: [0,1,2,3]};
     let validator1 = {value: {array: {length: 4}}};
     result1 = validate(testdata1,validator1);
     result2 = validate(testdata2,validator1);
-    JSPLib.debug.debuglog(`Object ${repr(testdata1)} with validator ${repr(validator1)} should have 1 validation error`,RecordResult(GetValidationLength(result1) === 1));
-    JSPLib.debug.debuglog(`Object ${repr(testdata2)} with validator ${repr(validator1)} should have 0 validation errors`,RecordResult(GetValidationLength(result2) === 0));
+    console.log(`Object ${repr(testdata1)} with validator ${repr(validator1)} should have 1 validation error`,RecordResult(GetValidationLength(result1) === 1));
+    console.log(`Object ${repr(testdata2)} with validator ${repr(validator1)} should have 0 validation errors`,RecordResult(GetValidationLength(result2) === 0));
 
-    JSPLib.debug.debuglog("Checking array validator");
+    console.log("Checking array validator");
     testdata1 = {value: undefined};
     testdata2 = {value: null};
     validator1 = {value: {string: {allowNull: true}}};
     result1 = validate(testdata1,validator1);
     result2 = validate(testdata2,validator1);
-    JSPLib.debug.debuglog(`Object ${repr(testdata1)} with validator ${repr(validator1)} should have 1 validation error`,RecordResult(GetValidationLength(result1) === 1));
-    JSPLib.debug.debuglog(`Object ${repr(testdata2)} with validator ${repr(validator1)} should have 0 validation errors`,RecordResult(GetValidationLength(result2) === 0));
+    console.log(`Object ${repr(testdata1)} with validator ${repr(validator1)} should have 1 validation error`,RecordResult(GetValidationLength(result1) === 1));
+    console.log(`Object ${repr(testdata2)} with validator ${repr(validator1)} should have 0 validation errors`,RecordResult(GetValidationLength(result2) === 0));
 
-    JSPLib.debug.debuglog(`CheckValidateLibrary results: ${test_successes} succeses, ${test_failures} failures`);
+    console.log(`CheckValidateLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
 
 async function CheckStorageLibrary() {
