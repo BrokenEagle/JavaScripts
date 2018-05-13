@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.0
+// @version      3.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -206,6 +206,7 @@ async function CheckUtilityLibrary() {
 }
 
 function CheckStatisticsLibrary() {
+    console.log("++++++++++++++++++++CheckStatisticsLibrary++++++++++++++++++++");
     ResetResult();
 
     console.log("Checking average");
@@ -224,10 +225,17 @@ function CheckStatisticsLibrary() {
     console.log(`Values of ${repr(data1)} should have had 1 outlier removed`,RecordResult((data1.length - result1.length) === 1));
 
     console.log("Checking outputAdjustedMean()");
+    console.log(JSPLib.debug.records);
+    JSPLib.debug.records = {};
+    console.log("Shouldn't see output #1");
+    JSPLib.statistics.outputAdjustedMean("Statistics Test");
     JSPLib.debug.recordTime('statistics','test');
     JSPLib.debug.recordTimeEnd('statistics','test');
+    console.log("Shouldn't see output #2");
+    JSPLib.debug.debug_console = false;
     JSPLib.statistics.outputAdjustedMean("Statistics Test");
-    JSPLib.statistics.debug_console = true;
+    console.log("Should see output #3");
+    JSPLib.debug.debug_console = true;
     JSPLib.statistics.outputAdjustedMean("Statistics Test");
 
     console.log(`CheckStatisticsLibrary results: ${test_successes} succeses, ${test_failures} failures`);
