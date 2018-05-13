@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.2
+// @version      7.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Gives up-to-date stats on uploads
 // @author       BrokenEagle
@@ -25,7 +25,7 @@
 JSPLib.debug.debug_console = true;
 
 //Variables for load.js
-const program_load_required_variables = ['jQuery','Danbooru'];
+const program_load_required_variables = ['window.jQuery','window.Danbooru'];
 
 //Affects how much of a tag will be shown
 const max_column_characters = 20;
