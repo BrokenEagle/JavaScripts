@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.3
+// @version      3.4
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -82,11 +82,11 @@ function ShowEnabled(bool) {
 async function LoadWait() {
     let numwaits = 0;
     do {
-        JSPLib.debug.debuglog("Sleeping 1000ms");
+        console.log("Sleeping 1000ms");
         await JSPLib.utility.sleep(1000);
         numwaits += 1;
         if (numwaits >= 10) {
-            JSPLib.debug.debuglog("Abandoning program test!");
+            console.log("Abandoning program test!");
             return false;
         }
     } while (typeof JSPLib.load.programLoad.timer !== 'boolean');
@@ -96,6 +96,7 @@ async function LoadWait() {
 //Main functions
 
 async function CheckDebugLibrary() {
+    console.log("++++++++++++++++++++CheckDebugLibrary++++++++++++++++++++");
     ResetResult();
 
     console.log("Checking debuglog(): check this out");
@@ -406,34 +407,35 @@ async function CheckStorageLibrary() {
 }
 
 async function CheckLoadLibrary() {
+    console.log("++++++++++++++++++++CheckLoadLibrary++++++++++++++++++++");
     ResetResult();
 
-    JSPLib.debug.debuglog("Checking programInitialize and programLoad");
-    let function1 = function() { JSPLib.debug.debuglog("Shouldn't run!");};
-    let function2 = function() { JSPLib.debug.debuglog("Should run!");};
+    console.log("Checking programInitialize and programLoad");
+    let function1 = function() { console.log("Shouldn't run!");};
+    let function2 = function() { console.log("Should run!");};
     window.goodvariable = true;
 
-    JSPLib.debug.debuglog("Starting bad program load");
+    console.log("Starting bad program load");
     JSPLib.load.programInitialize(function1,'timer1',['window.badvariable'],5);
     let test_success = await LoadWait();
     if (test_success) {
-        JSPLib.debug.debuglog(`program load waiting on "window.badvariable" should not have run`,RecordResult(JSPLib.load.programLoad.timer === false));
-        JSPLib.debug.debuglog(`program load waiting on "window.badvariable" should have tried 6 times`,RecordResult(JSPLib.load.program_load_retries.timer1 === 5));
+        console.log(`program load waiting on "window.badvariable" should not have run`,RecordResult(JSPLib.load.programLoad.timer === false));
+        console.log(`program load waiting on "window.badvariable" should have tried 6 times`,RecordResult(JSPLib.load.program_load_retries.timer1 === 5));
     } else {
         RecordResult(test_success);
     }
 
-    JSPLib.debug.debuglog("Starting good program load");
+    console.log("Starting good program load");
     JSPLib.load.programInitialize(function2,'timer2',['window.goodvariable'],5);
     test_success = await LoadWait();
     if (test_success) {
-        JSPLib.debug.debuglog(`program load waiting on "window.goodvariable" should have run`,RecordResult(JSPLib.load.programLoad.timer === true));
-        JSPLib.debug.debuglog(`program load waiting on "window.goodvariable" should have tried once`,RecordResult(JSPLib.load.program_load_retries.timer2 === 0));
+        console.log(`program load waiting on "window.goodvariable" should have run`,RecordResult(JSPLib.load.programLoad.timer === true));
+        console.log(`program load waiting on "window.goodvariable" should have tried once`,RecordResult(JSPLib.load.program_load_retries.timer2 === 0));
     } else {
         RecordResult(test_success);
     }
 
-    JSPLib.debug.debuglog(`CheckLoadLibrary results: ${test_successes} succeses, ${test_failures} failures`);
+    console.log(`CheckLoadLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
 
 async function checklibrary() {
@@ -444,7 +446,7 @@ async function checklibrary() {
     await CheckStorageLibrary();
     await CheckLoadLibrary();
 
-    JSPLib.debug.debuglog(`All library results: ${overall_test_successes} succeses, ${overall_test_failures} failures`);
+    console.log(`All library results: ${overall_test_successes} succeses, ${overall_test_failures} failures`);
 }
 
 /****PROGRAM START****/
