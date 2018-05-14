@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.4
+// @version      3.5
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -77,6 +77,21 @@ function ShowEnabled(bool) {
     return (bool ? "enabled" : "disabled");
 }
 
+function ObjectContains(obj,includes) {
+    if (typeof obj !== "object") {
+        return false;
+    }
+    if (Object.keys(obj).length !== includes.length) {
+        return false;
+    }
+    for (let i = 0;i < includes.length; i++) {
+        if (!(includes[i] in obj)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 //Program helper functions
 
 async function LoadWait() {
@@ -91,6 +106,12 @@ async function LoadWait() {
         }
     } while (typeof JSPLib.load.programLoad.timer !== 'boolean');
     return true;
+}
+
+async function RateLimit() {
+    console.log("Before rate limit...");
+    await JSPLib.danbooru.rateLimit();
+    console.log("After rate limit...");
 }
 
 //Main functions
@@ -406,6 +427,110 @@ async function CheckStorageLibrary() {
     console.log(`CheckStorageLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
 
+async function CheckDanbooruLibrary() {
+    console.log("++++++++++++++++++++CheckDanbooruLibrary++++++++++++++++++++");
+    ResetResult();
+
+    console.log("Checking joinArgs");
+    let object1 = {search: {id: "20,21,5"}};
+    let object2 = {search: {order: "customorder"}};
+    let result1 = JSPLib.danbooru.joinArgs(object1,object2);
+    console.log(`joining arguments ${repr(object1)} and ${repr(object2)} should have the 2 search arguments [${repr(result1)}]`,RecordResult(ObjectContains(result1,['search']) && ObjectContains(result1.search,['id','order']) && result1.search.id === "20,21,5" && result1.search.order === "customorder"));
+
+    console.log("Checking getNextPageID");
+    let array1 = [{id:25},{id:26},{id:27}];
+    result1 = JSPLib.danbooru.getNextPageID(array1,false);
+    let result2 = JSPLib.danbooru.getNextPageID(array1,true);
+    console.log(`for item array ${repr(array1)}, the next page ID going in forward should be 25 [${repr(result1)}]`,RecordResult(result1 === 25));
+    console.log(`for item array ${repr(array1)}, the next page ID going in reverse should be 27 [${repr(result2)}]`,RecordResult(result2 === 27));
+
+    console.log("Checking incrementCounter");
+    $("footer").prepend('<span id="checklibrary-count" style="font-size:400%">0</span>');
+    JSPLib.danbooru.counter_domname = "#checklibrary-count";
+    await JSPLib.utility.sleep(5000);
+    result1 = JSPLib.danbooru.num_network_requests;
+    JSPLib.danbooru.incrementCounter();
+    result2 = JSPLib.danbooru.num_network_requests;
+    console.log(`the counter should have incremented by 1 [${repr(result1)}]`,RecordResult((result2 - result1) === 1));
+
+    console.log("Checking decrementCounter");
+    await JSPLib.utility.sleep(5000);
+    result1 = JSPLib.danbooru.num_network_requests;
+    JSPLib.danbooru.decrementCounter();
+    result2 = JSPLib.danbooru.num_network_requests;
+    console.log(`the counter should have decremented by 1 [${repr(result1)}]`,RecordResult((result1 - result2) === 1));
+
+    console.log("Checking rateLimit");
+    JSPLib.danbooru.num_network_requests = JSPLib.danbooru.max_network_requests;
+    RateLimit();
+    await JSPLib.utility.sleep(5000);
+    JSPLib.danbooru.num_network_requests = 0;
+    await JSPLib.utility.sleep(2000);
+
+    console.log("Checking getShortName");
+    result1 = JSPLib.danbooru.getShortName('copyright');
+    result2 = JSPLib.danbooru.getShortName('general');
+    let result3 = JSPLib.danbooru.getShortName('artist');
+    let result4 = JSPLib.danbooru.getShortName('character');
+    console.log(`the short name for copyright should be copy [${repr(result1)}]`,RecordResult(result1 === 'copy'));
+    console.log(`the short name for general should be gen [${repr(result2)}]`,RecordResult(result2 === 'gen'));
+    console.log(`the short name for artist should be art [${repr(result2)}]`,RecordResult(result3 === 'art'));
+    console.log(`the short name for character should be char [${repr(result2)}]`,RecordResult(result4 === 'char'));
+
+    console.log("Checking randomDummyTag");
+    let string1 = JSPLib.danbooru.randomDummyTag();
+    let string2 = "notadummytag";
+    let regex1 = /^dummytag-[0-9a-z]{8}$/;
+    result1 = string1.match(regex1);
+    result2 = string2.match(regex1);
+    console.log(`the string ${repr(string1)} should be a dummy tag [${repr(result1)}]`,RecordResult(!!result1));
+    console.log(`the string ${repr(string2)} should not be a dummy tag [${repr(result2)}]`,RecordResult(!result2));
+
+    console.log("Checking tagRegExp");
+    string1 = "1girl solo aliased:_the_tag standing aliased:_the_tag short_hair";
+    string2 = "aliased:_the_tag";
+    let string3 = "alias_tag";
+    regex1 = JSPLib.danbooru.tagRegExp(string2);
+    regex2 = /(?<!S)aliased\:_the_tag(?!S)/gi;
+    result1 = string1.match(regex1);
+    result2 = string1.replace(regex1,string3);
+    console.log(`the tag ${repr(string2)} should produce the regex ${String(regex2)} [${String(regex1)}]`,RecordResult(String(regex1) === String(regex2)));
+    console.log(`the regex ${String(regex1)} should find two matches in the string ${repr(string1)} [${repr(result1)}]`,RecordResult(Array.isArray(result1) && result1.length === 2 && result1[0] === string2));
+    console.log(`the regex ${String(regex1)} should replace the tag ${repr(string2)} with ${repr(string3)} in the string ${repr(string1)} [${repr(result2)}]`,RecordResult(result2 === "1girl solo alias_tag standing alias_tag short_hair"));
+
+    console.log("Checking postSearchLink");
+    string1 = "1girl solo";
+    string2 =  "Check this link";
+    string3 = '<a href="/posts?tags=1girl+solo">Check this link</a>';
+    result1 = JSPLib.danbooru.postSearchLink(string1,string2);
+    console.log(`the tag ${repr(string1)} with text ${repr(string2)} should produce the link  ${repr(string3)} [${repr(result1)}]`,RecordResult(result1 === string3));
+
+    console.log("Checking submitRequest");
+    let type1 = 'posts';
+    let type2 = 'doesntexist';
+    let addons1 = {limit:1};
+    result1 = await JSPLib.danbooru.submitRequest(type1,addons1);
+    result2 = await JSPLib.danbooru.submitRequest(type2);
+    console.log(`with type ${type1} and addons ${repr(addons1)}, a single post should have been returned [${repr(result1)}]`,RecordResult(Array.isArray(result1) && result1.length === 1));
+    console.log(`with nonexistent type ${type2}, null should be returned [${repr(result2)}]`,RecordResult(result2 === null));
+
+    console.log("Checking getAllItems");
+    type1 = 'users';
+    addons1 = {search:{level:50}}; //Search for admins
+    let page1 = 1; //Except for the first admin
+    let limit1 = 1; //One at a time
+    let reverse1 = true; //Starting from lowest to highest ID
+    result1 = await JSPLib.danbooru.getAllItems(type1,limit1,{addons:addons1,page:page1,reverse:true});
+    result2 = JSPLib.utility.getObjectAttributes(result1,'id');
+    result3 = JSPLib.utility.getObjectAttributes(result1,'level').reduce((total,entry)=>{return total && entry === 50;},true);
+    console.log(`with type ${type1} and addons ${repr(addons1)}, four users should have been returned [${repr(result1)}]`,RecordResult(Array.isArray(result1) && result1.length === 4));
+    console.log(`should have also not returned the first user [${repr(result2)}]`,RecordResult(Array.isArray(result2) && !result2.includes(1)));
+    console.log(`should have also returned users in reverse order [${repr(result2)}]`,RecordResult(Array.isArray(result2) && result2.length === 4 && result2[0] < result2[1] && result2[1] < result2[2] && result2[2] < result2[3]));
+    console.log("should have also returned only admins",RecordResult(result3));
+
+    console.log(`CheckDanbooruLibrary results: ${test_successes} succeses, ${test_failures} failures`);
+}
+
 async function CheckLoadLibrary() {
     console.log("++++++++++++++++++++CheckLoadLibrary++++++++++++++++++++");
     ResetResult();
@@ -444,6 +569,7 @@ async function checklibrary() {
     CheckStatisticsLibrary();
     CheckValidateLibrary();
     await CheckStorageLibrary();
+    await CheckDanbooruLibrary();
     await CheckLoadLibrary();
 
     console.log(`All library results: ${overall_test_successes} succeses, ${overall_test_failures} failures`);
