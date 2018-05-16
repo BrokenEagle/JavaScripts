@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      14.2
+// @version      14.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -411,7 +411,7 @@ function ValidateEntry(key,entry) {
 function ValidateAutocompleteEntry(key,entry) {
     check = validate(entry,autocomplete_constraints.entry);
     if (check !== undefined) {
-        PrintValidateError(key,check);
+        JSPLib.validate.printValidateError(key,check);
         return false;
     }
     for (let i=0;i < entry.value.length; i++) {
@@ -419,7 +419,7 @@ function ValidateAutocompleteEntry(key,entry) {
         check = validate(entry.value[i],autocomplete_constraints[type]);
         if (check !== undefined) {
             JSPLib.debug.debuglog("value["+i.toString()+"]");
-            PrintValidateError(key,check);
+            JSPLib.validate.printValidateError(key,check);
             return false;
         }
     }
@@ -429,19 +429,19 @@ function ValidateAutocompleteEntry(key,entry) {
 function ValidateRelatedtagEntry(key,entry) {
     check = validate(entry,relatedtag_constraints.entry);
     if (check !== undefined) {
-        PrintValidateError(key,check);
+        JSPLib.validate.printValidateError(key,check);
         return false;
     }
     check = validate(entry.value,relatedtag_constraints.value);
     if (check !== undefined) {
-        PrintValidateError(key,check);
+        JSPLib.validate.printValidateError(key,check);
         return false;
     }
     for (let i = 0;i < entry.value.other_wikis.length; i++) {
         check = validate(entry.value.other_wikis[i],relatedtag_constraints.other_wikis);
         if (check !== undefined) {
             JSPLib.debug.debuglog("value["+i.toString()+"]");
-            PrintValidateError(key,check);
+            JSPLib.validate.printValidateError(key,check);
             return false;
         }
     }
