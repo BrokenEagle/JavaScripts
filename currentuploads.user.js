@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.3
+// @version      7.4
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Gives up-to-date stats on uploads
 // @author       BrokenEagle
@@ -314,6 +314,8 @@ function RenderHeader() {
 function RenderBody() {
     if (user_copytags[username].length > 3) {
         $("#count-table").addClass("overflowed");
+    } else {
+        $("#count-table").removeClass("overflowed");
     }
     var tabletext = RenderRow('');
     for (let i = 0;i < user_copytags[username].length; i++) {
