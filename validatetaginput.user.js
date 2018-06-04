@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      23
+// @version      24
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -60,7 +60,8 @@ const relation_constraints = {
 //HTML constants
 
 const submit_button = `
-<input id="validate-tags" type="button" class="ui-button ui-widget ui-corner-all" value="Submit">`;
+<input id="validate-tags" type="button" class="ui-button ui-widget ui-corner-all" value="Submit">
+<input id="check-tags" type="button" class="ui-button ui-widget ui-corner-all" value="Check">`;
 
 const input_validator = `
 <div id="validation-input" style="display:none">
@@ -242,15 +243,38 @@ function postModeMenuClick(e) {
     e.preventDefault();
 }
 
+async function checkTagsClick(e) {
+    //Prevent code from being reentrant until finished processing
+    if (checkTagsClick.isready) {
+        checkTagsClick.isready = false;
+        JSPLib.debug.debugTime("checkTagsClick");
+        $("#validate-tags")[0].setAttribute('disabled','true');
+        $("#check-tags")[0].setAttribute('disabled','true');
+        $("#check-tags")[0].setAttribute('value','Checking...');
+        let statuses = await Promise.all([validateTagAddsWrap(),validateTagRemovesWrap()]);
+        if (statuses[0] && statuses[1]) {
+            Danbooru.notice("Tags good to submit!")
+        } else {
+            Danbooru.notice("Validation failed!");
+        }
+        $("#validate-tags")[0].removeAttribute('disabled');
+        $("#check-tags")[0].removeAttribute('disabled');
+        $("#check-tags")[0].setAttribute('value','Check');
+        checkTagsClick.isready = true;
+        JSPLib.debug.debugTimeEnd("checkTagsClick");
+    }
+}
+checkTagsClick.isready = true;
+
 async function validateTagsClick(e) {
     //Prevent code from being reentrant until finished processing
     if (validateTagsClick.isready) {
         validateTagsClick.isready = false;
         JSPLib.debug.debugTime("validateTagsClick");
         $("#validate-tags")[0].setAttribute('disabled','true');
+        $("#check-tags")[0].setAttribute('disabled','true');
         $("#validate-tags")[0].setAttribute('value','Submitting...');
         let statuses = await Promise.all([validateTagAddsWrap(),validateTagRemovesWrap()]);
-        JSPLib.debug.debugTimeEnd("validateTagsClick");
         if (statuses[0] && statuses[1]) {
             JSPLib.debug.debuglog("Submit request!");
             $("#form,#quick-edit-form").trigger("submit");
@@ -266,6 +290,7 @@ async function validateTagsClick(e) {
                 setTimeout(()=>{
                     JSPLib.debug.debuglog("Ready for next edit!");
                     $("#validate-tags")[0].removeAttribute('disabled');
+                    $("#check-tags")[0].removeAttribute('disabled');
                     $("#validate-tags")[0].setAttribute('value','Submit');
                     $("#skip-validate-tags")[0].checked = false;
                     validateTagsClick.isready = true;
@@ -274,9 +299,11 @@ async function validateTagsClick(e) {
         } else {
             JSPLib.debug.debuglog("Validation failed!");
             $("#validate-tags")[0].removeAttribute('disabled');
+            $("#check-tags")[0].removeAttribute('disabled');
             $("#validate-tags")[0].setAttribute('value','Submit');
             validateTagsClick.isready = true;
         }
+        JSPLib.debug.debugTimeEnd("validateTagsClick");
     }
 }
 validateTagsClick.isready = true;
@@ -413,10 +440,11 @@ function main() {
         $("#quick-edit-form [type=submit][value=Cancel]").after(input_validator);
         $("#quick-edit-form").after(warning_messages);
     } else{
-        $("#validate-tags").after(input_validator);
+        $("#check-tags").after(input_validator);
         $("#related-tags-container").before(warning_messages);
     }
     $("#validate-tags").click(validateTagsClick);
+    $("#check-tags").click(checkTagsClick);
     rebindHotkey.timer = setInterval(rebindHotkey,timer_poll_interval);
     if (JSPLib.debug.debug_console) {
         window.addEventListener('beforeunload',function () {
