@@ -13,34 +13,27 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/validatetaginput.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180515/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180515/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180515/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180515/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180515/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180515/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180515/lib/danbooru.js
 // ==/UserScript==
 
 //Global variables
 
-//Set to true to switch the debug info on
-const debug_console = false;
+//Variables for debug.js
+JSPLib.debug.debug_console = true;
 
-//The number of retries before abandoning program load
-const program_load_max_retries = 100;
+//Variables for load.js
+const program_load_required_variables = ['window.jQuery','window.Danbooru'];
 
 //Holds the state of the tags in the textbox at page load
 var preedittags;
 
-//Gets own instance in case forage is used in another script
-var danboorustorage = localforage.createInstance({
-    name: 'Danbooru storage',
-    driver: [localforage.INDEXEDDB,
-             localforage.LOCALSTORAGE]
-    });
-
-//Set state variables that indicate which database is being used
-const use_indexed_db = danboorustorage.supports(danboorustorage.INDEXEDDB);
-const use_local_storage = !use_indexed_db && danboorustorage.supports(danboorustorage.LOCALSTORAGE);
-
-//Set the maximum cache size to 1M chars
-const maximum_cache_size = 1000000;
-
-//Sleep time to wait for async requests
+//JSPLib.utility.sleep time to wait for async requests
 const sleep_wait_time = 1000;
 
 //Wait time for quick edit box
@@ -60,21 +53,13 @@ const validatetag_expiration_time = milliseconds_per_day * validatetag_expiratio
 
 const relation_constraints = {
     entry: {
-        expires : {
-            presence: true,
-            numericality: {
-                onlyInteger: true,
-                greaterThan: 0,
-            }
-        },
+        expires : JSPLib.validate.expires_constraints,
         value: {
             presence: true,
             array: true
         }
     },
-    value: {
-        string: true
-    }
+    value: JSPLib.validate.stringonly_constraints
 };
 
 //HTML constants
@@ -99,93 +84,9 @@ const warning_messages = `
 <div id="warning-new-tags" class="error-messages ui-state-error ui-corner-all" style="display:none"></div>
 <div id="warning-bad-removes" class="error-messages ui-state-highlight ui-corner-all" style="display:none"></div>`;
 
-//Functions
+/**FUNCTIONS**/
 
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-function debuglog(args) {
-    if (debug_console) {
-        console.log.apply(this,arguments);
-    }
-}
-
-function debugTime(str) {
-    if (debug_console) {
-        console.time(str);
-    }
-}
-
-function debugTimeEnd(str) {
-    if (debug_console) {
-        console.timeEnd(str);
-    }
-}
-
-function recordTime(entryname,type) {
-    if (debug_console) {
-        let index = entryname + ',' + type;
-        recordTime.records[index] = {
-            entryname: entryname,
-            type: type,
-            starttime: performance.now(),
-            endtime: 0};
-    }
-}
-recordTime.records = {};
-
-function recordTimeEnd(entryname,type) {
-    if (debug_console) {
-        let index = entryname + ',' + type;
-        if (!(index in recordTime.records)) {
-            return;
-        }
-        if (recordTime.records[index].endtime === 0) {
-            recordTime.records[index].endtime = performance.now();
-        }
-    }
-}
-
-function outputAdjustedMean() {
-    let outputtime = {};
-    $.each(recordTime.records,(i,val)=>{
-        if (!(val.type in outputtime)) {
-            outputtime[val.type] = [];
-        }
-        outputtime[val.type].push(val.endtime-val.starttime);
-    });
-    $.each(outputtime,(type,values)=>{
-        let adjvalues = removeOutliers(values);
-        debuglog(type + ':',"num",values.length,"avg",Math.round(100*average(adjvalues))/100,"rem",values.length-adjvalues.length);
-    });
-}
-
-function removeOutliers(values) {
-    do {
-        var length = values.length;
-        let avg = average(values);
-        let stddev = standardDeviation(values);
-        let adjvalues = values.filter(val=>{return (Math.abs(val-avg) < (2 * stddev));});
-        var newlength = adjvalues.length;
-        if (newlength === 0) {
-            return values;
-        }
-        values = adjvalues;
-    } while (length != newlength);
-    return values;
-}
-
-function standardDeviation(values) {
-  var avg = average(values);
-  return Math.sqrt(average(values.map(value=>{let diff = value - avg; return diff * diff;})));
-}
-
-function average(values) {
-    return values.reduce(function(a, b) { return a + b; })/values.length;
-}
-
-//Program functions
+//Helper functions
 
 function getTagList() {
     return stripQuoteSourceMetatag($("#upload_tag_string,#post_tag_string").val()).split(/[\s\n]+/).map(tag=>{return tag.toLowerCase();});
@@ -193,10 +94,6 @@ function getTagList() {
 
 function stripQuoteSourceMetatag(str) {
     return str.replace(/source:"[^"]+"\s?/g,'');
-}
-
-function filterNull(array) {
-    return array.filter(value=>{return value !== '';});
 }
 
 function filterMetatags(array) {
@@ -212,10 +109,6 @@ function filterNegativetags(array) {
     return array.filter(value=>{return value[0]!='-';});
 }
 
-function regexFilter(array,regex) {
-    return array.filter(entry=>{return entry.match(regex);});
-}
-
 function getNegativetags(array) {
     return filterTypetags(array.filter(value=>{return value[0]=='-';}).map(value=>{return value.substring(1);}));
 }
@@ -224,128 +117,43 @@ function transformTypetags(array) {
     return array.map(value=>{return value.match(/(?:general:|gen:|artist:|art:|copyright:|copy:|co:|character:|char:|ch:|meta:)?(.*)/i)[1];});
 }
 
-function setDifference(array1,array2) {
-    return array1.filter(value=>{return array2.indexOf(value) < 0;});
-}
-
-function setIntersection(array1,array2) {
-    return array1.filter(value=>{return array2.indexOf(value) >= 0;});
-}
-
 function getCurrentTags() {
-    return filterMetatags(filterNull(getTagList()));
-}
-
-async function retrieveData(key) {
-    if (!(use_indexed_db || use_local_storage)) {
-        return null;
-    }
-    let database = use_indexed_db ? "IndexDB" : "LocalStorage";
-    if (key in sessionStorage) {
-        debuglog("Found item (Session):",key);
-        recordTime(key,'Session');
-        let data = sessionStorage.getItem(key);
-        recordTimeEnd(key,'Session');
-        try {
-            return JSON.parse(data);
-        } catch (e) {
-            //Swallow exception
-        }
-    }
-    recordTime(key,database);
-    let value = await danboorustorage.getItem(key);
-    recordTimeEnd(key,database);
-    if (value !== null) {
-        debuglog(`Found item (${database}):`,key);
-        sessionStorage[key] = JSON.stringify(value);
-    }
-    return value;
-}
-
-function saveData(key,value) {
-    danboorustorage.setItem(key,value);
-    sessionStorage.setItem(key,JSON.stringify(value));
-}
-
-function hasDataExpired(storeditem) {
-    if (Date.now() > storeditem.expires) {
-        debuglog("Data has expired!");
-        return true;
-    }
-    return false;
+    return filterMetatags(JSPLib.utility.filterEmpty(getTagList()));
 }
 
 //Validate functions
 
-validate.validators.array = function(value, options, key, attributes) {
-    if ((options === true) && (!validate.isArray(value))) {
-        return "is not an array";
-    }
-}
-
-validate.validators.string = function(value, options, key, attributes) {
-    if (options !== false) {
-        var message = "";
-        //Can't use presence validator so must catch it here
-        if (value === undefined) {
-            return "can't be missing";
-        }
-        if (validate.isString(value)) {
-            return;
-        }
-        message += "is not a string"
-        if (validate.isHash(options) && 'allowNull' in options && options.allowNull === true) {
-            if (value === null) {
-                return;
-            }
-            message += " or null"
-        }
-        return message;
-    }
-}
-
-function PrintValidateError(key,checkerror) {
-    debuglog(key,':\r\n',JSON.stringify(checkerror,null,2));
-}
-
 function ValidateRelationEntry(key,entry) {
     if (entry === null) {
-        debuglog(key,"entry not found!");
+        JSPLib.debug.debuglog(key,"entry not found!");
         return false;
     }
-    check = validate(entry,relation_constraints.entry);
+    let check = validate(entry,relation_constraints.entry);
     if (check !== undefined) {
-        PrintValidateError(key,check);
+        JSPLib.validate.printValidateError(key,check);
         return false
     }
-    check = validate(entry.value,relation_constraints.value);
-    if (check !== undefined) {
-        PrintValidateError(key,check);
-        return false
+    for (let i = 0;i < entry.value.length; i++) {
+        check = validate(entry.value[i],relation_constraints.value);
+        if (check !== undefined) {
+            JSPLib.validate.printValidateError(key,check);
+            return false
+        }
     }
     return true;
 }
 
 function deleteKeyEntries(store,regex) {
-    $.each(regexFilter(Object.keys(store),regex),(i,key)=>{
+    $.each(JSPLib.utility.filterRegex(Object.keys(store),regex),(i,key)=>{
         store.removeItem(key);
     });
 }
 
-function pruneCache() {
-    let current_cache_size = 0;
-    //Removes local storage used by Versions 16 and prior
-    if (use_local_storage) {
-         current_cache_size = regexFilter(Object.keys(localStorage),/^Danbooru storage\/(ti|ta)-/).reduce((total,key)=>{return total+localStorage[key].length;},0);
-    }
-    if (use_indexed_db || (current_cache_size > maximum_cache_size)) {
-        deleteKeyEntries(localStorage,/^(Danbooru storage\/)?(ti|ta)-/);
-    }
-}
+//Network functions
 
 //Queries aliases of added tags... can be called multiple times
 async function queryTagAliases(taglist) {
-    debugTime("queryTagAliases");
+    JSPLib.debug.debugTime("queryTagAliases");
     queryTagAliases.isdone = false;
     queryTagAliases.async_requests = 0;
     let consequent = "";
@@ -354,40 +162,31 @@ async function queryTagAliases(taglist) {
             continue;
         }
         let entryname = 'ta-'+taglist[i];
-        let storeditem = await retrieveData(entryname);
-        debuglog("Checking",entryname);
-        if (!ValidateRelationEntry(entryname,storeditem) || hasDataExpired(storeditem)) {
-            if (queryTagAliases.async_requests > 25) {
-                debuglog("Sleeping...");
-                let temp = await sleep(sleep_wait_time);
-            }
-            debuglog("Querying alias:",taglist[i]);
-            queryTagAliases.async_requests++;
-            recordTime(entryname,"Network");
-            resp = $.getJSON('/tag_aliases',{'search':{'antecedent_name':taglist[i],'status':'active'}},data=>{
-                recordTimeEnd(entryname,"Network");
-                if (data.length) {
-                    //Alias antecedents are unique, so no need to check the size
-                    debuglog("Alias:",taglist[i],data[0].consequent_name);
+        JSPLib.storage.checkLocalDB(entryname,ValidateRelationEntry).then((data)=>{
+            if (!storeditem) {
+                JSPLib.debug.debuglog("Querying alias:",taglist[i]);
+                queryTagAliases.async_requests++;
+                JSPLib.danbooru.submitRequest('tag_aliases',{search:{antecedent_name:taglist[i],status:'active'}},[],entryname).then((data)=>{
+                    if (data.length) {
+                        //Alias antecedents are unique, so no need to check the size
+                        JSPLib.debug.debuglog("Alias:",taglist[i],data[0].consequent_name);
+                        queryTagAliases.aliastags.push(taglist[i]);
+                        consequent = [data[0].consequent_name];
+                    } else {
+                        consequent = [];
+                    }
+                    JSPLib.storage.saveData(entryname,{'value':consequent,'expires':Date.now() + validatetag_expiration_time});
+                    queryTagAliases.async_requests--;
+                });
+            } else {
+                consequent = storeditem.value;
+                if (consequent.length) {
+                    JSPLib.debug.debuglog("Alias:",taglist[i],consequent[0]);
                     queryTagAliases.aliastags.push(taglist[i]);
-                    consequent = [data[0].consequent_name];
-                } else {
-                    consequent = [];
                 }
-                if (use_indexed_db || use_local_storage) {
-                    saveData(entryname,{'value':consequent,'expires':Date.now() + validatetag_expiration_time});
-                }
-                queryTagAliases.seenlist.push(taglist[i]);
-            }).always(()=>{
-                queryTagAliases.async_requests--;
-            });
-        } else {
-            consequent = storeditem.value;
-            if (consequent.length) {
-                debuglog("Alias:",taglist[i],consequent[0]);
-                queryTagAliases.aliastags.push(taglist[i]);
+                queryTagAliases.async_requests--
             }
-        }
+        });
     }
     queryTagAliasesCallback.timer = setInterval(queryTagAliasesCallback,timer_poll_interval);
 }
@@ -397,34 +196,26 @@ queryTagAliases.isdone = true;
 
 //Queries implications of preexisting tags... called once per image
 async function queryTagImplications(taglist) {
-    debugTime("queryTagImplications");
+    JSPLib.debug.debugTime("queryTagImplications");
     queryTagImplications.isdone = false;
     queryTagImplications.async_requests = 0;
     for (let i = 0;i < taglist.length;i++) {
         let entryname = 'ti-'+taglist[i];
-        let storeditem = await retrieveData(entryname);
-        debuglog("Checking",entryname);
-        if (!ValidateRelationEntry(entryname,storeditem) || hasDataExpired(storeditem)) {
-            if (queryTagImplications.async_requests > 25) {
-                debuglog("Sleeping...");
-                let temp = await sleep(sleep_wait_time);
-            }
-            debuglog("Querying implication:",taglist[i]);
-            queryTagImplications.async_requests++;
-            recordTime(entryname,"Network");
-            resp = $.getJSON('/tag_implications',{'limit':100,'search':{'consequent_name':taglist[i],'status':'active'}},data=>{
-                recordTimeEnd(entryname,"Network");
-                let implications = data.map(entry=>{return entry.antecedent_name;});
-                queryTagImplications.implicationdict[taglist[i]] = implications;
-                if (use_indexed_db || use_local_storage) {
-                    saveData(entryname,{'value':implications,'expires':Date.now() + validatetag_expiration_time});
-                }
-            }).always(()=>{
+        queryTagImplications.async_requests++;
+        JSPLib.storage.checkLocalDB(entryname,ValidateRelationEntry).then((storeditem)=>{
+            if (!storeditem) {
+                JSPLib.debug.debuglog("Querying implication:",taglist[i]);
+                JSPLib.danbooru.submitRequest('tag_implications',{limit:100,search:{consequent_name:taglist[i],status:'active'}},[],entryname).then((data)=>{
+                    let implications = data.map(entry=>{return entry.antecedent_name;});
+                    queryTagImplications.implicationdict[taglist[i]] = implications;
+                    JSPLib.storage.saveData(entryname,{'value':implications,'expires':Date.now() + validatetag_expiration_time});
+                    queryTagImplications.async_requests--;
+                });
+            } else {
+                queryTagImplications.implicationdict[taglist[i]] = storeditem.value;
                 queryTagImplications.async_requests--;
-            });
-        } else {
-            queryTagImplications.implicationdict[taglist[i]] = storeditem.value;
-        }
+            }
+        });
     }
     queryTagImplicationsCallback.timer = setInterval(queryTagImplicationsCallback,timer_poll_interval);
 }
@@ -445,34 +236,24 @@ function getAllRelations(tag,implicationdict) {
     }
 }
 
-function validateTagAdds() {
-    debugTime("validateTagAdds");
+//Main execution functions
+
+async function validateTagAdds() {
+    JSPLib.debug.debugTime("validateTagAdds");
     validateTagAdds.isready = false;
     validateTagAdds.submitrequest = false;
     let postedittags = getCurrentTags();
-    validateTagAdds.addedtags = setDifference(setDifference(filterNegativetags(filterTypetags(postedittags)),preedittags),getNegativetags(postedittags));
-    debuglog("Added tags:",validateTagAdds.addedtags);
+    validateTagAdds.addedtags = JSPLib.utility.setDifference(JSPLib.utility.setDifference(filterNegativetags(filterTypetags(postedittags)),preedittags),getNegativetags(postedittags));
+    JSPLib.debug.debuglog("Added tags:",validateTagAdds.addedtags);
     if ((validateTagAdds.addedtags.length === 0) || $("#skip-validate-tags")[0].checked) {
-        debuglog("Tag Add Validation - Skipping!",validateTagAdds.addedtags.length === 0,$("#skip-validate-tags")[0].checked);
+        JSPLib.debug.debuglog("Tag Add Validation - Skipping!",validateTagAdds.addedtags.length === 0,$("#skip-validate-tags")[0].checked);
         $("#warning-new-tags").hide();
         validateTagAdds.isready = true;
         validateTagAdds.submitrequest = true;
         return;
     }
-    validateTagAdds.checktags = [];
-    validateTagAdds.async_requests = 0;
-    for (let i = 0;i < validateTagAdds.addedtags.length;i+=100) {
-        validateTagAdds.async_requests++;
-        let querystring = validateTagAdds.addedtags.slice(i,i+100).join(',');
-        debuglog("Tag query string:",i,querystring);
-        resp = $.getJSON('/tags',{'limit':100,'search':{'name':validateTagAdds.addedtags.slice(i,i+100).join(','),'hide_empty':'yes'}},data=>{
-            let foundtags = data.map(entry=>{return entry.name;});
-            debuglog("Found tags:",i,foundtags);
-            validateTagAdds.checktags = validateTagAdds.checktags.concat(foundtags);
-        }).always(()=>{
-            validateTagAdds.async_requests--;
-        });
-    }
+    let data = await JSPLib.danbooru.getAllItems('tags',100,{addons:{search:{name:validateTagAdds.addedtags.join(','),hide_empty:'yes'}}});
+    validateTagAdds.checktags = data.map(entry=>{return entry.name;});
     queryTagAliases(validateTagAdds.addedtags);
     validateTagAddsCallback.timer = setInterval(validateTagAddsCallback,timer_poll_interval);
 }
@@ -482,32 +263,32 @@ function validateTagRemoves() {
     validateTagRemoves.submitrequest = false;
     if (!queryTagImplications.isdone || $("#skip-validate-tags")[0].checked) {
         //Validate tag removals are not as critical, so don't hold up any tag editing if it's not done yet
-        debuglog("Tag Remove Validation - Skipping!",queryTagImplications.isdone,$("#skip-validate-tags")[0].checked);
+        JSPLib.debug.debuglog("Tag Remove Validation - Skipping!",queryTagImplications.isdone,$("#skip-validate-tags")[0].checked);
         $("#warning-bad-removes").hide();
         validateTagRemoves.submitrequest = true;
         return;
     }
     let postedittags = transformTypetags(getCurrentTags());
-    let removedtags = (setDifference(preedittags,postedittags)).concat(setIntersection(getNegativetags(postedittags),postedittags));
-    let finaltags = setDifference(postedittags,removedtags);
-    debuglog("Final tags:",finaltags);
-    debuglog("Removed tags:",removedtags);
+    let removedtags = (JSPLib.utility.setDifference(preedittags,postedittags)).concat(JSPLib.utility.setIntersection(getNegativetags(postedittags),postedittags));
+    let finaltags = JSPLib.utility.setDifference(postedittags,removedtags);
+    JSPLib.debug.debuglog("Final tags:",finaltags);
+    JSPLib.debug.debuglog("Removed tags:",removedtags);
     let allrelations = [];
     $.each(removedtags,(i,tag)=>{
-        let badremoves = setIntersection(getAllRelations(tag,queryTagImplications.implicationdict),finaltags);
+        let badremoves = JSPLib.utility.setIntersection(getAllRelations(tag,queryTagImplications.implicationdict),finaltags);
         if (badremoves.length) {
             allrelations.push(badremoves.toString() + ' -> ' + tag);
         }
     });
     if (allrelations.length) {
-        debuglog("Tag Remove Validation - Badremove tags!");
-        $.each(allrelations,(i,relation)=>{debuglog(i,relation);});
+        JSPLib.debug.debuglog("Tag Remove Validation - Badremove tags!");
+        $.each(allrelations,(i,relation)=>{JSPLib.debug.debuglog(i,relation);});
         $("#validation-input").show();
         $("#warning-bad-removes").show();
         let removelist = allrelations.join('<br>');
         $("#warning-bad-removes")[0].innerHTML = '<strong>Notice</strong>: The following implication relations prevent certain tag removes:<br>' + removelist;
     } else {
-        debuglog("Tag Remove Validation - Free and clear to submit!");
+        JSPLib.debug.debuglog("Tag Remove Validation - Free and clear to submit!");
         $("#warning-bad-removes").hide();
         validateTagRemoves.submitrequest = true;
     }
@@ -522,7 +303,7 @@ function postModeMenuClick(e) {
         let post_id = $(e.target).closest("article").data("id");
         let $post = $("#post_" + post_id);
         preedittags = $post.data("tags").split(' ');
-        debuglog("Preedit tags:",preedittags);
+        JSPLib.debug.debuglog("Preedit tags:",preedittags);
         //Wait until the edit box loads before querying implications
         setTimeout(()=>{queryTagImplications(preedittags);},quickedit_wait_time);
     } else if (s === "view") {
@@ -534,7 +315,7 @@ function postModeMenuClick(e) {
 function validateTagsClick(e) {
     //Prevent code from being reentrant until finished processing
     if (validateTagsClick.isready) {
-        debugTime("validateTagsClick");
+        JSPLib.debug.debugTime("validateTagsClick");
         validateTagsClick.isready = false;
         $("#validate-tags")[0].setAttribute('disabled','true');
         $("#validate-tags")[0].setAttribute('value','Submitting...');
@@ -562,37 +343,37 @@ function resetLocalStorageClick(e) {
 
 function queryTagAliasesCallback() {
     if (queryTagAliases.async_requests === 0) {
-        debugTimeEnd("queryTagAliases");
+        JSPLib.debug.debugTimeEnd("queryTagAliases");
         clearInterval(queryTagAliasesCallback.timer);
         queryTagAliases.isdone = true;
-        debuglog("Check aliases:",queryTagAliases.aliastags);
+        JSPLib.debug.debuglog("Check aliases:",queryTagAliases.aliastags);
     }
 }
 
 function queryTagImplicationsCallback() {
     if (queryTagImplications.async_requests === 0) {
-        debugTimeEnd("queryTagImplications");
+        JSPLib.debug.debugTimeEnd("queryTagImplications");
         clearInterval(queryTagImplicationsCallback.timer);
         queryTagImplications.isdone = true;
-        debuglog("Implications:",queryTagImplications.implicationdict);
+        JSPLib.debug.debuglog("Implications:",queryTagImplications.implicationdict);
     }
 }
 
 function validateTagAddsCallback() {
-    debuglog("Waiting:",validateTagAdds.async_requests,queryTagAliases.isdone);
-    if (validateTagAdds.async_requests===0 && queryTagAliases.isdone) {
-        debugTimeEnd("validateTagAdds");
+    JSPLib.debug.debuglog("Waiting:",queryTagAliases.isdone);
+    if (queryTagAliases.isdone) {
+        JSPLib.debug.debugTimeEnd("validateTagAdds");
         clearInterval(validateTagAddsCallback.timer);
-        nonexisttags = setDifference(setDifference(validateTagAdds.addedtags,validateTagAdds.checktags),queryTagAliases.aliastags);
+        let nonexisttags = JSPLib.utility.setDifference(JSPLib.utility.setDifference(validateTagAdds.addedtags,validateTagAdds.checktags),queryTagAliases.aliastags);
         if (nonexisttags.length > 0) {
-            debuglog("Tag Add Validation - Nonexistant tags!");
-            $.each(nonexisttags,(i,tag)=>{debuglog(i,tag);});
+            JSPLib.debug.debuglog("Tag Add Validation - Nonexistant tags!");
+            $.each(nonexisttags,(i,tag)=>{JSPLib.debug.debuglog(i,tag);});
             $("#validation-input").show();
             $("#warning-new-tags").show();
             let taglist = nonexisttags.join(', ');
             $("#warning-new-tags")[0].innerHTML = '<strong>Warning</strong>: The following new tags will be created:  ' + taglist;
         } else {
-            debuglog("Tag Add Validation - Free and clear to submit!");
+            JSPLib.debug.debuglog("Tag Add Validation - Free and clear to submit!");
             $("#warning-new-tags").hide();
             validateTagAdds.submitrequest = true;
         }
@@ -603,13 +384,13 @@ function validateTagAddsCallback() {
 function validateTagsClickCallback() {
     //Wait on asynchronous functions
     if(validateTagAdds.isready) {
-        debugTimeEnd("validateTagsClick");
+        JSPLib.debug.debugTimeEnd("validateTagsClick");
         clearInterval(validateTagsClickCallback.timer);
         if (validateTagAdds.submitrequest && validateTagRemoves.submitrequest) {
-            debuglog("Submit request!");
+            JSPLib.debug.debuglog("Submit request!");
             $("#form,#quick-edit-form").trigger("submit");
             if ($("#c-uploads #a-new,#c-posts #a-show").length) {
-                debuglog("Disabling return key!");
+                JSPLib.debug.debuglog("Disabling return key!");
                 $("#upload_tag_string,#post_tag_string").off("keydown.danbooru.submit");
             }
             if ($("#c-uploads #a-new").length) {
@@ -618,14 +399,14 @@ function validateTagsClickCallback() {
             } else if ($("#c-posts #a-index").length) {
                 //Wait until the edit box closes to reenable the submit button click
                 setTimeout(()=>{
-                    debuglog("Ready for next edit!");
+                    JSPLib.debug.debuglog("Ready for next edit!");
                     $("#validate-tags")[0].removeAttribute('disabled');
                     $("#validate-tags")[0].setAttribute('value','Submit');
                     validateTagsClick.isready = true;
                 },quickedit_wait_time);
             }
         } else {
-            debuglog("Validation failed!");
+            JSPLib.debug.debuglog("Validation failed!");
             $("#validate-tags")[0].removeAttribute('disabled');
             $("#validate-tags")[0].setAttribute('value','Submit');
             validateTagsClick.isready = true;
@@ -636,7 +417,7 @@ function validateTagsClickCallback() {
 function reenableSubmitCallback() {
     if ($("#client-errors").css("display") !== "none") {
         clearInterval(reenableSubmitCallback.timer);
-        debuglog("Danbooru's client validation failed!");
+        JSPLib.debug.debuglog("Danbooru's client validation failed!");
         $("#validate-tags")[0].removeAttribute('disabled');
         $("#validate-tags")[0].setAttribute('value','Submit');
         $("#upload_tag_string").on("keydown.danbooru.submit", null, "return", e=>{
@@ -649,7 +430,7 @@ function reenableSubmitCallback() {
 
 function rebindHotkey() {
     let boundevents = $.map($._data($("#upload_tag_string,#post_tag_string")[0], "events").keydown,(entry)=>{return entry.namespace;});
-    debuglog("Bound events:",boundevents);
+    JSPLib.debug.debuglog("Bound events:",boundevents);
     if ($.inArray('danbooru.submit',boundevents) >= 0) {
         clearInterval(rebindHotkey.timer);
         $("#upload_tag_string,#post_tag_string").off("keydown.danbooru.submit").on("keydown.danbooru.submit", null, "return", e=>{
@@ -659,51 +440,29 @@ function rebindHotkey() {
     }
 }
 
-function programLoad() {
-    if (programLoad.retries >= program_load_max_retries) {
-        debuglog("Abandoning program load!");
-        clearInterval(programLoad.timer);
-        return;
-    }
-    if (window.jQuery === undefined) {
-        debuglog("jQuery not installed yet!");
-        programLoad.retries += 1;
-        return;
-    }
-    if (window.Danbooru === undefined) {
-        debuglog("Danbooru not installed yet!");
-        programLoad.retries += 1;
-        return;
-    }
-    clearInterval(programLoad.timer);
-    if ($("#c-uploads #a-new,#c-posts #a-show,#c-posts #a-index").length) {
-        main();
-    } else if ($("#c-users #a-edit").length) {
-        $("#basic-settings-section > .user_time_zone").before(reset_storage);
-        $("#reset-storage-link").click(resetLocalStorageClick);
-    }
-    debugTimeEnd("VTI-programLoad");
-}
-programLoad.retries = 0;
-
 //Main
 
 function main() {
-    debuglog("========STARTING MAIN========");
-    pruneCache();
+    JSPLib.debug.debuglog("========STARTING MAIN========");
+    if ($("#c-users #a-edit").length) {
+        $("#basic-settings-section > .user_time_zone").before(reset_storage);
+        $("#reset-storage-link").click(resetLocalStorageClick);
+        return;
+    }
+    //pruneCache();
     if ($("#c-uploads #a-new").length) {
         //Upload tags will always start out blank
         preedittags = [];
     } else if ($("#c-posts #a-show").length) {
-        preedittags = filterNull(getTagList());
+        preedittags = JSPLib.utility.filterEmpty(getTagList());
         queryTagImplications(preedittags);
     } else if ($("#c-posts #a-index #mode-box").length){
         $(".post-preview a").click(postModeMenuClick);
     } else {
-        debuglog("Nothing found!");
+        JSPLib.debug.debuglog("Nothing found!");
         return;
     }
-    debuglog("Preedit tags:",preedittags);
+    JSPLib.debug.debuglog("Preedit tags:",preedittags);
     $("#form [type=submit],#quick-edit-form [type=submit][value=Submit]").after(submit_button);
     $("#form [type=submit],#quick-edit-form [type=submit][value=Submit]").hide();
     if ($("#c-posts #a-index").length) {
@@ -715,14 +474,13 @@ function main() {
     }
     $("#validate-tags").click(validateTagsClick);
     rebindHotkey.timer = setInterval(rebindHotkey,timer_poll_interval);
-    if (debug_console) {
-        window.onbeforeunload = function () {
-            outputAdjustedMean();
-        };
+    if (JSPLib.debug.debug_console) {
+        window.addEventListener('beforeunload',function () {
+            JSPLib.statistics.outputAdjustedMean("ValidateTagInput");
+        });
     }
 }
 
 //Execution start
 
-debugTime("VTI-programLoad");
-programLoad.timer = setInterval(programLoad,timer_poll_interval);
+JSPLib.load.programInitialize(main,'VTI',program_load_required_variables);
