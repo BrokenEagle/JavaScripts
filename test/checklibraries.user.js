@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.0
+// @version      4.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -39,6 +39,21 @@ var test_successes = 0;
 var test_failures = 0;
 var overall_test_successes = 0;
 var overall_test_failures = 0;
+
+//Utility variables
+const walkdom_test = `
+<div id="grandparent" class="generation0">
+    <div id="parent0" class="generation1">
+        <div id="child0a" class="generation2"></div>
+        <div id="child0b" class="generation2"></div>
+    </div>
+    <div id="parent1" class="generation1">
+        <div id="child1a" class="generation2"></div>
+        <div id="child1b" class="generation2"></div>
+    </div>
+</div>
+`;
+
 
 /****FUNCTIONS****/
 
@@ -237,6 +252,25 @@ async function CheckUtilityLibrary() {
     JSPLib.utility.setCSSStyle("body {background: purple !important;}","test");
     console.log("Color set to purple... validate that there is only 1 style element.");
     console.log(`Module global cssstyle ${repr(JSPLib.utility.cssstyle)} should have a length of 1`,RecordResult(Object.keys(JSPLib.utility.cssstyle).length === 1));
+
+    console.log("Checking getNthParent");
+    let $domtest = $.parseHTML(walkdom_test);
+    let child1 = $("#child0a",$domtest)[0];
+    let result1 = JSPLib.utility.getNthParent(child1,1);
+    console.log(`Node ${child1.id} should have parent0 as a parent [${result1.id}]`,RecordResult(result1.id === "parent0"));
+
+    console.log("Checking getNthChild");
+    let parent1 = $("#parent0",$domtest)[0];
+    result1 = JSPLib.utility.getNthChild(parent1,2);
+    console.log(`Node ${parent1.id} should have child0b as the 2nd child [${result1.id}]`,RecordResult(result1.id === "child0b"));
+
+    console.log("Checking getNthSibling");
+    result1 = JSPLib.utility.getNthSibling(child1,1);
+    console.log(`Node ${child1.id} should have child0b as its first sibling [${result1.id}]`,RecordResult(result1.id === "child0b"));
+
+    console.log("Checking walkDOM");
+    result1 = JSPLib.utility.walkDOM(child1,[[0,1],[1,0],[0,-2]]);
+    console.log(`Node ${child1.id} should have child1b as the second child of its parent's first sibling [${result1.id}]`,RecordResult(result1.id === "child1b"));
 
     console.log(`CheckUtilityLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
