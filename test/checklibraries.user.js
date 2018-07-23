@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.3
+// @version      4.4
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -558,16 +558,23 @@ async function CheckDanbooruLibrary() {
     console.log(`the string ${repr(string2)} should not be a dummy tag [${repr(result2)}]`,RecordResult(!result2));
 
     console.log("Checking tagRegExp");
-    string1 = "1girl solo aliased:_the_tag standing aliased:_the_tag short_hair";
+    string1 = "1girl solo aliased:_the_tag standing aliased:_the_tag character_(qualifier) short_hair";
     string2 = "aliased:_the_tag";
     let string3 = "alias_tag";
+    let string4 = "qualifier animated 1girl";
+    let string5 = "qualifier";
     regex1 = JSPLib.danbooru.tagRegExp(string2);
-    regex2 = /(?<!S)aliased\:_the_tag(?!S)/gi;
+    regex2 = /(?<=(?:^|\s))aliased\:_the_tag(?=(?:$|\s))/gi;
+    let regex3 = JSPLib.danbooru.tagRegExp(string5);
     result1 = string1.match(regex1);
     result2 = string1.replace(regex1,string3);
+    result3 = string1.match(regex3);
+    result4 = string4.match(regex3);
     console.log(`the tag ${repr(string2)} should produce the regex ${String(regex2)} [${String(regex1)}]`,RecordResult(String(regex1) === String(regex2)));
     console.log(`the regex ${String(regex1)} should find two matches in the string ${repr(string1)} [${repr(result1)}]`,RecordResult(Array.isArray(result1) && result1.length === 2 && result1[0] === string2));
-    console.log(`the regex ${String(regex1)} should replace the tag ${repr(string2)} with ${repr(string3)} in the string ${repr(string1)} [${repr(result2)}]`,RecordResult(result2 === "1girl solo alias_tag standing alias_tag short_hair"));
+    console.log(`the regex ${String(regex1)} should replace the tag ${repr(string2)} with ${repr(string3)} in the string ${repr(string1)} [${repr(result2)}]`,RecordResult(result2 === "1girl solo alias_tag standing alias_tag character_(qualifier) short_hair"));
+    console.log(`the regex ${String(regex3)} should find no matches in the string ${repr(string1)} [${repr(result3)}]`,RecordResult(result3 === null));
+    console.log(`the regex ${String(regex3)} should find one match in the string ${repr(string4)} [${repr(result4)}]`,RecordResult(Array.isArray(result4) && result4.length === 1 && result4[0] === string5));
 
     console.log("Checking postSearchLink");
     string1 = "1girl solo";
@@ -598,6 +605,13 @@ async function CheckDanbooruLibrary() {
     console.log(`should have also not returned the first user [${repr(result2)}]`,RecordResult(Array.isArray(result2) && !result2.includes(1)));
     console.log(`should have also returned users in reverse order [${repr(result2)}]`,RecordResult(Array.isArray(result2) && result2.length === 4 && result2[0] < result2[1] && result2[1] < result2[2] && result2[2] < result2[3]));
     console.log("should have also returned only admins",RecordResult(result3));
+
+    console.log("Checking rateLimit #2");
+    JSPLib.danbooru.num_network_requests = JSPLib.danbooru.max_network_requests;
+    JSPLib.danbooru.submitRequest(type1,addons1).then(()=>{console.log("Finished submitting request!");});
+    await JSPLib.utility.sleep(5000);
+    JSPLib.danbooru.num_network_requests = 0;
+    await JSPLib.utility.sleep(2000);
 
     console.log(`CheckDanbooruLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
