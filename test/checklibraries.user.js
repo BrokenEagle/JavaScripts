@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.4
+// @version      4.5
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -624,23 +624,55 @@ async function CheckLoadLibrary() {
     let function1 = function() { console.log("Shouldn't run!");};
     let function2 = function() { console.log("Should run!");};
     window.goodvariable = true;
+    $("body").append(`<div id="id-does-exist">`);
+    $("body").append(`<div class="class-does-exist">`);
 
-    console.log("Starting bad program load");
-    JSPLib.load.programInitialize(function1,'timer1',['window.badvariable'],5);
+    console.log("Starting program load with bad variable");
+    JSPLib.load.programInitialize(function1,'timer1',['window.badvariable'],[],[],[],5);
     let test_success = await LoadWait();
     if (test_success) {
         console.log(`program load waiting on "window.badvariable" should not have run`,RecordResult(JSPLib.load.programLoad.timer === false));
-        console.log(`program load waiting on "window.badvariable" should have tried 6 times`,RecordResult(JSPLib.load.program_load_retries.timer1 === 5));
+        console.log(`program load waiting on "window.badvariable" should have tried 6 times [${JSPLib.load.program_load_retries.timer1}]`,RecordResult(JSPLib.load.program_load_retries.timer1 === 5));
+    } else {
+        RecordResult(test_success);
+    }
+
+    console.log("Starting program load with bad DOM id");
+    JSPLib.load.programInitialize(function1,'timer2',[],['id-doesnt-exist'],[],[],1);
+    test_success = await LoadWait();
+    if (test_success) {
+        console.log(`program load waiting on #id-doesnt-exist should not have run`,RecordResult(JSPLib.load.programLoad.timer === false));
+        console.log(`program load waiting on #id-doesnt-exist should have tried 2 times [${JSPLib.load.program_load_retries.timer2}]`,RecordResult(JSPLib.load.program_load_retries.timer2 === 1));
+    } else {
+        RecordResult(test_success);
+    }
+
+    console.log("Starting program load with bad DOM class");
+    JSPLib.load.programInitialize(function1,'timer3',[],[],['class-doesnt-exist'],[],0);
+    test_success = await LoadWait();
+    if (test_success) {
+        console.log(`program load waiting on .class-doesnt-exist should not have run`,RecordResult(JSPLib.load.programLoad.timer === false));
+        console.log(`program load waiting on .class-doesnt-exist should have tried once [${JSPLib.load.program_load_retries.timer3}]`,RecordResult(JSPLib.load.program_load_retries.timer3 === 0));
+    } else {
+        RecordResult(test_success);
+    }
+
+    console.log("Starting program load with bad DOM tagname");
+    JSPLib.load.programInitialize(function1,'timer4',[],[],[],['badtag'],0);
+    test_success = await LoadWait();
+    if (test_success) {
+        console.log(`program load waiting on <badtag> should not have run`,RecordResult(JSPLib.load.programLoad.timer === false));
+        console.log(`program load waiting on <badtag> should have tried once [${JSPLib.load.program_load_retries.timer4}]`,RecordResult(JSPLib.load.program_load_retries.timer4 === 0));
     } else {
         RecordResult(test_success);
     }
 
     console.log("Starting good program load");
-    JSPLib.load.programInitialize(function2,'timer2',['window.goodvariable'],5);
+    JSPLib.load.programInitialize(function2,'timer5',['window.goodvariable'],['id-does-exist'],['class-does-exist'],['body'],5);
     test_success = await LoadWait();
     if (test_success) {
         console.log(`program load waiting on "window.goodvariable" should have run`,RecordResult(JSPLib.load.programLoad.timer === true));
-        console.log(`program load waiting on "window.goodvariable" should have tried once`,RecordResult(JSPLib.load.program_load_retries.timer2 === 0));
+        console.log(`program load waiting on "window.goodvariable" should have tried once [${JSPLib.load.program_load_retries.timer5}]`,RecordResult(JSPLib.load.program_load_retries.timer5 === 0));
     } else {
         RecordResult(test_success);
     }
