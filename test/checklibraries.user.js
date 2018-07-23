@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.5
+// @version      4.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -126,7 +126,19 @@ async function CheckDebugLibrary() {
     JSPLib.debug.debug_console = false;
     JSPLib.debug.debuglog("check this out");
 
+    console.log("Checking debuglogLevel(): WARNING+");
+    JSPLib.debug.debug_console = true;
+    JSPLib.debug.pretext = "CheckLibraries:";
+    JSPLib.debug.level = JSPLib.debug.WARNING;
+    JSPLib.debug.debuglogLevel("ALL",JSPLib.debug.ALL);
+    JSPLib.debug.debuglogLevel("VERBOSE",JSPLib.debug.VERBOSE);
+    JSPLib.debug.debuglogLevel("DEBUG",JSPLib.debug.DEBUG);
+    JSPLib.debug.debuglogLevel("INFO",JSPLib.debug.INFO);
+    JSPLib.debug.debuglogLevel("WARNING",JSPLib.debug.WARNING);
+    JSPLib.debug.debuglogLevel("ERROR",JSPLib.debug.ERROR);
+
     console.log("Checking debug timer");
+    JSPLib.debug.debug_console = false;
     JSPLib.debug.debugTime("check");
     JSPLib.debug.debugTimeEnd("check");
     JSPLib.debug.debug_console = true;
@@ -142,6 +154,7 @@ async function CheckDebugLibrary() {
     console.log(`Should have recorded only 1 value`,RecordResult(Object.keys(JSPLib.debug.records).length === 1));
 
     JSPLib.debug.debug_console = true;
+    JSPLib.debug.level = JSPLib.debug.ALL;
     console.log(`CheckDebugLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
 
