@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.2
+// @version      4.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -432,31 +432,6 @@ async function CheckStorageLibrary() {
     console.log(`good-value with data ${repr(data2)} should return value [${repr(result2)}]`,RecordResult(result2 && result2[0] === "check this"));
     console.log(`nonexistant-value with default value [0] should return default value [${repr(result3)}]`,RecordResult(result3 && result3[0] === 0));
 
-    console.log("Checking saveData");
-    await JSPLib.storage.saveData('good-value',data2);
-    result1 = JSPLib.storage.getStorageData('good-value',sessionStorage);
-    result2 = await JSPLib.storage.danboorustorage.getItem('good-value');
-    console.log(`good-value with data ${repr(data2)} should return value (sessionStorage) [${repr(result1)}]`,RecordResult(result1 && result1[0] === "check this"));
-    console.log(`good-value with data ${repr(data2)} should return value (indexedDB) [${repr(result2)}]`,RecordResult(result2 && result2[0] === "check this"));
-
-    console.log("Checking retrieveData");
-    sessionStorage.removeItem('bad-value');
-    await JSPLib.storage.danboorustorage.removeItem('bad-value');
-    result1 = await JSPLib.storage.retrieveData('bad-value');
-    result2 = await JSPLib.storage.retrieveData('good-value');
-    sessionStorage.removeItem('good-value');
-    result3 = await JSPLib.storage.retrieveData('good-value');
-    console.log(`bad-value with no entry should return null [${repr(result1)}]`,RecordResult(result1 === null));
-    console.log(`good-value with data ${repr(data1)} should return value (sessionStorage) [${repr(result2)}]`,RecordResult(result2 && result2[0] === "check this"));
-    console.log(`good-value with data ${repr(data1)} should return value (indexedDB) [${repr(result3)}]`,RecordResult(result3 && result3[0] === "check this"));
-
-    console.log("Checking removeData");
-    JSPLib.storage.removeData('good-value');
-    result1 = JSPLib.storage.getStorageData('good-value',sessionStorage);
-    result2 = await JSPLib.storage.danboorustorage.getItem('good-value');
-    console.log(`good-value with data deleted should return null (sessionStorage) [${repr(result1)}]`,RecordResult(result1 === null));
-    console.log(`good-value with data deleted should return null (indexedDB) [${repr(result2)}]`,RecordResult(result2 === null));
-
     console.log("Checking hasDataExpired");
     let data3 = {expires: Date.now() - 10000, value: data2};
     let data4 = {expires: Date.now() + 10000, value: data2};
@@ -469,24 +444,56 @@ async function CheckStorageLibrary() {
     console.log(`data with expires ${repr(data3)} should have expired [${repr(result3)}]`,RecordResult(result3 === true));
     console.log(`data with expires ${repr(data4)} should not have expired [${repr(result4)}]`,RecordResult(result4 === false));
 
-    console.log("Checking checkLocalDB");
-    await JSPLib.storage.saveData('expired-value',data3);
-    await JSPLib.storage.saveData('good-value',data4);
-    let validator1 = function (key,cached) { return true;};
-    let validator2 = function (key,cached) { return false;};
-    result1 = await JSPLib.storage.checkLocalDB('expired-value',validator1);
-    result2 = await JSPLib.storage.checkLocalDB('good-value',validator2);
-    result3 = await JSPLib.storage.checkLocalDB('good-value',validator1);
-    console.log(`expired-value with data ${repr(data3)} should return null [${repr(result1)}]`,RecordResult(result1 === null));
-    console.log(`good-value with data ${repr(data4)} with false validation should return null [${repr(result2)}]`,RecordResult(result2 === null));
-    console.log(`good-value with data ${repr(data4)} with true validation should return value [${repr(result3)}]`,RecordResult(result3 && result3.value && result3.value[0] === "check this"));
+    //For checking library with/without localforage installed
+    if (JSPLib.storage.use_storage) {
+        console.log("Checking saveData");
+        await JSPLib.storage.saveData('good-value',data2);
+        result1 = JSPLib.storage.getStorageData('good-value',sessionStorage);
+        result2 = await JSPLib.storage.danboorustorage.getItem('good-value');
+        console.log(`good-value with data ${repr(data2)} should return value (sessionStorage) [${repr(result1)}]`,RecordResult(result1 && result1[0] === "check this"));
+        console.log(`good-value with data ${repr(data2)} should return value (indexedDB) [${repr(result2)}]`,RecordResult(result2 && result2[0] === "check this"));
 
-    console.log("Checking pruneDB");
-    await JSPLib.storage.pruneLocalDB(/-value$/);
-    result1 = await JSPLib.storage.retrieveData('expired-value');
-    result2 = await JSPLib.storage.retrieveData('good-value');
-    console.log(`expired-value should be pruned and return null with retrieveData [${repr(result1)}]`,RecordResult(result1 === null));
-    console.log(`good-value shouldn't be pruned and return value with retrieveData [${repr(result2)}]`,RecordResult(result2 && result2.value && result2.value[0] === "check this"));
+        console.log("Checking retrieveData");
+        sessionStorage.removeItem('bad-value');
+        await JSPLib.storage.danboorustorage.removeItem('bad-value');
+        result1 = await JSPLib.storage.retrieveData('bad-value');
+        result2 = await JSPLib.storage.retrieveData('good-value');
+        sessionStorage.removeItem('good-value');
+        result3 = await JSPLib.storage.retrieveData('good-value');
+        console.log(`bad-value with no entry should return null [${repr(result1)}]`,RecordResult(result1 === null));
+        console.log(`good-value with data ${repr(data1)} should return value (sessionStorage) [${repr(result2)}]`,RecordResult(result2 && result2[0] === "check this"));
+        console.log(`good-value with data ${repr(data1)} should return value (indexedDB) [${repr(result3)}]`,RecordResult(result3 && result3[0] === "check this"));
+
+        console.log("Checking removeData");
+        JSPLib.storage.removeData('good-value');
+        result1 = JSPLib.storage.getStorageData('good-value',sessionStorage);
+        result2 = await JSPLib.storage.danboorustorage.getItem('good-value');
+        console.log(`good-value with data deleted should return null (sessionStorage) [${repr(result1)}]`,RecordResult(result1 === null));
+        console.log(`good-value with data deleted should return null (indexedDB) [${repr(result2)}]`,RecordResult(result2 === null));
+
+        console.log("Checking checkLocalDB");
+        let data5 = {expires: 0, value: data2};
+        await JSPLib.storage.saveData('expired-value',data3);
+        await JSPLib.storage.saveData('good-value',data4);
+        await JSPLib.storage.saveData('persistent-value',data5);
+        let validator1 = function (key,cached) { return true;};
+        let validator2 = function (key,cached) { return false;};
+        result1 = await JSPLib.storage.checkLocalDB('expired-value',validator1);
+        result2 = await JSPLib.storage.checkLocalDB('good-value',validator2);
+        result3 = await JSPLib.storage.checkLocalDB('good-value',validator1);
+        result4 = await JSPLib.storage.checkLocalDB('persistent-value',validator1);
+        console.log(`expired-value with data ${repr(data3)} should return null [${repr(result1)}]`,RecordResult(result1 === null));
+        console.log(`good-value with data ${repr(data4)} with false validation should return null [${repr(result2)}]`,RecordResult(result2 === null));
+        console.log(`good-value with data ${repr(data4)} with true validation should return value [${repr(result3)}]`,RecordResult(result3 && result3.value && result3.value[0] === "check this"));
+        console.log(`persistent-value with data ${repr(data5)} should return value [${repr(result4)}]`,RecordResult(result4 && result4.expires === 0 && result4.value && result4.value[0] === "check this"));
+
+        console.log("Checking pruneDB");
+        await JSPLib.storage.pruneLocalDB(/-value$/);
+        result1 = await JSPLib.storage.retrieveData('expired-value');
+        result2 = await JSPLib.storage.retrieveData('good-value');
+        console.log(`expired-value should be pruned and return null with retrieveData [${repr(result1)}]`,RecordResult(result1 === null));
+        console.log(`good-value shouldn't be pruned and return value with retrieveData [${repr(result2)}]`,RecordResult(result2 && result2.value && result2.value[0] === "check this"));
+    }
 
     console.log(`CheckStorageLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
