@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      24
+// @version      24.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -13,19 +13,21 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/validatetaginput.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180515/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180515/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180515/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180515/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180515/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180515/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180515/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/danbooru.js
 // ==/UserScript==
 
 //Global variables
 
 //Variables for debug.js
 JSPLib.debug.debug_console = true;
+JSPLib.debug.pretext = "VTI:";
+JSPLib.debug.level = JSPLib.debug.INFO;
 
 //Variables for load.js
 const program_load_required_variables = ['window.jQuery','window.Danbooru'];
@@ -49,10 +51,7 @@ var preedittags;
 const relation_constraints = {
     entry: {
         expires : JSPLib.validate.expires_constraints,
-        value: {
-            presence: true,
-            array: true
-        }
+        value: JSPLib.validate.array_constraints
     },
     value: JSPLib.validate.stringonly_constraints
 };
@@ -416,7 +415,7 @@ async function validateTagRemoves() {
 }
 
 function main() {
-    JSPLib.debug.debuglog("========STARTING VTI MAIN========");
+    JSPLib.debug.debuglog("========STARTING MAIN========");
     if ($("#c-users #a-edit").length) {
         //Placeholder for revamped cache controls
         return;
