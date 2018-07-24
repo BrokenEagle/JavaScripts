@@ -747,6 +747,14 @@ function SavedSearchInitializeAutocompleteIndexed(selector) {
 
 //Main program
 function main() {
+    if (!JSPLib.storage.use_indexed_db) {
+        JSPLib.debug.debuglog("No Indexed DB! Exiting...");
+        return;
+    }
+    if ($(autocomplete_domlist.join(',')).length === 0) {
+        JSPLib.debug.debuglog("No autocomplete inputs! Exiting...");
+        return;
+    }
     Danbooru.Autocomplete.normal_source = NormalSourceIndexed;
     Danbooru.Autocomplete.pool_source = PoolSourceIndexed;
     Danbooru.Autocomplete.user_source = UserSourceIndexed;
