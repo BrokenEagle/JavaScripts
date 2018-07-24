@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.4
+// @version      8.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Gives up-to-date stats on uploads
 // @author       BrokenEagle
@@ -11,34 +11,41 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/currentuploads.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/danbooru.js
 // ==/UserScript==
 
 /**GLOBAL VARIABLES**/
 
 //Variables for debug.js
 JSPLib.debug.debug_console = true;
+JSPLib.debug.pretext = "CU:";
+JSPLib.debug.level = JSPLib.debug.INFO;
 
 //Variables for load.js
 const program_load_required_variables = ['window.jQuery','window.Danbooru'];
+const program_load_required_ids = ["top","page-footer"];
 
-//Affects how much of a tag will be shown
-const max_column_characters = 20;
+//Variables for danbooru.js
+JSPLib.danbooru.counter_domname = "#loading-counter";
 
 //Column headers of the count table
 const column_headers = ['Name','Day','Week','Month','Year','All-time'];
 
-//Time constant
-const one_minute = 60 * 1000;
-
 //Value expirations
-const expirations = {'d':5,'w':60,'mo':24*60,'y':7*24*60,'at':30*24*60};
-const rti_expiration = 30*24*60 * one_minute; //one month
+const expirations = {
+    'd': 5 * JSPLib.utility.one_minute,
+    'w': JSPLib.utility.one_hour,
+    'mo': JSPLib.utility.one_day,
+    'y': JSPLib.utility.one_week,
+    'at': JSPLib.utility.one_month
+};
+const rti_expiration = JSPLib.utility.one_month; //one month
 
 //Network call configuration
 const max_post_limit_query = 100;
@@ -63,7 +70,7 @@ var user_copytags = {};
 const program_css = `
 #upload-counts {
     border: #EEE dotted;
-    max-width: ${max_column_characters + 35}em;
+    max-width: ${JSPLib.utility.max_column_characters + 35}em;
     margin-left: 2em;
 }
 #upload-counts.opened {
@@ -164,7 +171,7 @@ const program_css = `
 `;
 
 //HTML for user interface
-var notice_box = `
+const notice_box = `
 <div class="ui-corner-all" id="upload-counts">
     <div id="count-module">
         <div id="count-table">
@@ -182,33 +189,24 @@ var notice_box = `
 </div>
 `;
 
-//Validation values
+const unstash_notice = '<span id="upload-counts-restore"> - <a href="#" id="restore-count-notice">Restore CurrentUploads</a></span>';
 
-const integer_constraints = {
-    presence: true,
-    numericality: {
-        noStrings: true,
-        onlyInteger: true
-    }
-};
+//Validation values
 
 const validation_constraints = {
     countentry: JSPLib.validate.postcount_constraints,
-    implicationentry: integer_constraints,
-    postentries: {
-        presence: true,
-        array: true
-    },
+    implicationentry: JSPLib.validate.integer_constraints,
+    postentries: JSPLib.validate.array_constraints,
     postentry: {
-        id: integer_constraints,
-        score: integer_constraints,
-        upscore: integer_constraints,
-        downscore: integer_constraints,
-        favcount: integer_constraints,
-        tagcount: integer_constraints,
-        gentags: integer_constraints,
+        id: JSPLib.validate.integer_constraints,
+        score: JSPLib.validate.integer_constraints,
+        upscore: JSPLib.validate.integer_constraints,
+        downscore: JSPLib.validate.integer_constraints,
+        favcount: JSPLib.validate.integer_constraints,
+        tagcount: JSPLib.validate.integer_constraints,
+        gentags: JSPLib.validate.integer_constraints,
         copyrights: JSPLib.validate.stringonly_constraints,
-        created: integer_constraints
+        created: JSPLib.validate.integer_constraints
     }
 };
 
@@ -222,7 +220,7 @@ function ValidationSelector(key) {
     } else if (key.match(/^rti-/)) {
         return 'implicationentry';
     }
-    else if (key.match(/^current-uploads-/)) {
+    else if (key.match(/^(?:current|previous)-uploads-/)) {
         return 'postentries';
     }
 }
@@ -326,9 +324,9 @@ function RenderBody() {
 
 function RenderRow(key) {
     const timevalues = ['d','w','mo','y','at'];
-    var rowtag = encodeURIComponent(key == ''? 'user:' + username : key);
+    var rowtag = key == ''? 'user:' + username : key;
     var rowtext = (key == ''? username : key).replace(/_/g,' ');
-    var tabletext = AddTableData(PostSearchLink(rowtag,MaxEntryLength(rowtext)));
+    var tabletext = AddTableData(JSPLib.danbooru.postSearchLink(rowtag,JSPLib.utility.maxLengthString(rowtext)));
     for (let i = 0;i < timevalues.length; i++) {
         let data_text = GetTableValue(key,timevalues[i]);
         if (i === 0) {
@@ -340,17 +338,12 @@ function RenderRow(key) {
     return AddTableRow(tabletext);
 }
 
-function PostSearchLink(tag,text) {
-    return `<a href=/posts?tags=${tag}>${text}</a>`;
-}
-
 function GetTableValue(key,type) {
     if (key == '') {
-        //Adding the '' to undefined changes it to a string
-        return (JSPLib.storage.getSessionData('ct' + type + '-user:' + username).value + '').toString();
+        return JSPLib.storage.getStorageData('ct' + type + '-user:' + username, sessionStorage, {value:'N/A'}).value.toString();
     }
-    var useruploads = (JSPLib.storage.getSessionData('ct' + type + '-user:' + username + ' ' + key).value + '').toString();
-    var alluploads = (JSPLib.storage.getSessionData('ct' + type + '-' + key).value + '').toString();
+    var useruploads = JSPLib.storage.getStorageData('ct' + type + '-user:' + username + ' ' + key, sessionStorage, {value:'N/A'}).value.toString();
+    var alluploads = JSPLib.storage.getStorageData('ct' + type + '-' + key, sessionStorage, {value:'N/A'}).value.toString();
     return `(${useruploads}/${alluploads})`;
 }
 
@@ -385,16 +378,16 @@ function RenderAllTooltipControls() {
 
 function RenderToolcontrol(metric) {
     return `
-<span class="select-tooltip" data-type="${metric}"><a href="#">${TitleizeString(metric)}</a></span>`;
+<span class="select-tooltip" data-type="${metric}"><a href="#">${JSPLib.utility.titleizeString(metric)}</a></span>`;
 }
 
 function RenderStatistics(key,attribute) {
-    let current_uploads = JSPLib.storage.getSessionData(`current-uploads-${username}`).value;
+    let current_uploads = JSPLib.storage.getStorageData(`current-uploads-${username}`,sessionStorage).value;
     if (key !== '') {
-        current_uploads = current_uploads.filter(val=>{return val.copyrights.match(TagRegExp(key));});
+        current_uploads = current_uploads.filter(val=>{return val.copyrights.match(JSPLib.danbooru.tagRegExp(key));});
     }
-    let upload_scores = GetObjectAttributes(current_uploads,attribute);
-    let score_max = ValuesMax(upload_scores);
+    let upload_scores = JSPLib.utility.getObjectAttributes(current_uploads,attribute);
+    let score_max = Math.max(...upload_scores);
     let score_average = JSPLib.statistics.average(upload_scores);
     let score_stddev = JSPLib.statistics.standardDeviation(upload_scores);
     let score_outliers = JSPLib.statistics.removeOutliers(upload_scores);
@@ -403,10 +396,10 @@ function RenderStatistics(key,attribute) {
     return `
 <ul>
 <li>Max: ${score_max}</li>
-<li>Avg: ${SetPrecision(score_average,2)}</li>
-<li>StD: ${SetPrecision(score_stddev,2)}</li>
+<li>Avg: ${JSPLib.utility.setPrecision(score_average,2)}</li>
+<li>StD: ${JSPLib.utility.setPrecision(score_stddev,2)}</li>
 <li>Out: ${score_removed}</li>
-<li>Adj: ${SetPrecision(score_adjusted,2)}</li>
+<li>Adj: ${JSPLib.utility.setPrecision(score_adjusted,2)}</li>
 </ul>
 `;
 }
@@ -424,53 +417,8 @@ function SortDict(dict) {
     return items.map(entry=>{return entry[0];});
 }
 
-function RandomDummyTag() {
-    const chars = '0123456789abcdefghijklmnopqrstuvwxyz';
-    var result = '';
-    for (var i = 8; i > 0; --i) result += chars[Math.floor(Math.random() * chars.length)];
-    return 'dummytag-' + result;
-}
-
 function BuildTagParams(type,tag) {
-    return {'tags':(type === 'at' ? '' : ('age:..1' + type + ' ')) + tag + (use_dummy_value ? ' -' + RandomDummyTag() : '')};
-}
-
-function MaxEntryLength(string) {
-    if (string.length > max_column_characters) {
-        string = string.slice(0,max_column_characters-1) + '…';
-    }
-    return string;
-}
-
-function TitleizeString(string) {
-    return string.charAt(0).toUpperCase() + string.slice(1);
-}
-
-function RemoveDanbooruDuplicates(array) {
-    let seen_array = [];
-    return array.filter(value=>{
-        if ($.inArray(value.id,seen_array) >= 0) {
-            return;
-        }
-        seen_array.push(value.id);
-        return value;
-    });
-}
-
-function IncrementCounter() {
-    num_network_requests += 1;
-    $('#loading-counter').html(num_network_requests);
-}
-
-function DecrementCounter() {
-    num_network_requests -= 1;
-    $('#loading-counter').html(num_network_requests);
-}
-
-async function RateLimit() {
-    while (num_network_requests >= max_network_requests) {
-        await JSPLib.utility.sleep(rate_limit_wait);
-    }
+    return {'tags':(type === 'at' ? '' : ('age:..1' + type + ' ')) + tag + (use_dummy_value ? ' -' + JSPLib.danbooru.randomDummyTag() : '')};
 }
 
 function GetCopyrightCount(posts) {
@@ -494,14 +442,14 @@ function CompareCopyrightCounts(dict1,dict2) {
 }
 
 function CheckCopyrightVelocity(tag) {
-    var dayuploads = JSPLib.storage.getSessionData('ctd-' + tag);
-    var weekuploads = JSPLib.storage.getSessionData('ctw-' + tag);
+    var dayuploads = JSPLib.storage.getStorageData('ctd-' + tag,sessionStorage);
+    var weekuploads = JSPLib.storage.getStorageData('ctw-' + tag,sessionStorage);
     if (dayuploads === undefined || weekuploads === undefined) {
         return true;
     }
-    var day_gettime =  dayuploads.expires - expirations.d * one_minute; //Time data was originally retrieved
-    var week_velocity = (7 * 24 * 60 * one_minute) / (weekuploads.value | 1); //Milliseconds per upload
-    var adjusted_poll_interval = Math.min(week_velocity,24 * 60 * one_minute); //Max wait time is 1 day
+    var day_gettime =  dayuploads.expires - expirations.d; //Time data was originally retrieved
+    var week_velocity = (JSPLib.utility.one_week) / (weekuploads.value | 1); //Milliseconds per upload
+    var adjusted_poll_interval = Math.min(week_velocity, JSPLib.utility.one_day); //Max wait time is 1 day
     return Date.now() > day_gettime + adjusted_poll_interval;
 }
 
@@ -521,26 +469,6 @@ function MapPostData(posts) {
     });
 }
 
-function GetObjectAttributes(array,attribute) {
-    return array.map(val=>{return val[attribute];});
-}
-
-function ValuesMax(array) {
-    return array.reduce(function(a, b) { return Math.max(a,b); });
-}
-
-function ValuesMin(array) {
-    return array.reduce(function(a, b) { return Math.min(a,b); });
-}
-
-function SetPrecision(number,precision) {
-    return parseFloat(number.toFixed(precision));
-}
-
-function TagRegExp(str) {
-    return RegExp('(?<!\S)'+str.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1") +'(?!\S)','gi');
-}
-
 function GetTagData(tag) {
     return Promise.all([
         GetCount('d',tag),
@@ -553,40 +481,14 @@ function GetTagData(tag) {
 
 //Network functions
 
-async function GetAllDanbooru(type,url_addons,limit) {
-    var return_items = [];
-    var page_addon = {};
-    var limit_addon = {limit: limit};
-    var lastid = 0;
-    while (true) {
-        let request_addons = Object.assign({},url_addons,page_addon,limit_addon);
-        let request_key = $.param(request_addons);
-        JSPLib.debug.recordTime(request_key,'Network');
-        let temp_items = await $.getJSON(`/${type}`,request_addons);
-        JSPLib.debug.recordTimeEnd(request_key,'Network');
-        return_items = return_items.concat(temp_items);
-        if (temp_items.length < limit) {
-            return return_items;
-        }
-        let lastid = ValuesMin(GetObjectAttributes(temp_items,'id'));
-        page_addon = {page:`b${lastid}`};
-    }
-}
-
 async function GetReverseTagImplication(tag) {
     var key = 'rti' + '-' + tag;
     var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
     if (!(check)) {
         JSPLib.debug.debuglog("Network (implication):",key);
-        await RateLimit();
-        IncrementCounter();
-        JSPLib.debug.recordTime(key,'Network');
-        return $.getJSON('/tag_implications?search[antecedent_name]=' + encodeURIComponent(tag)
-        ).then(data=>{
+        return JSPLib.danbooru.submitRequest('tag_implications',{search: {antecedent_name: tag}},[],key)
+        .then(data=>{
             JSPLib.storage.saveData(key, {'value':data.length,'expires':Date.now() + rti_expiration});
-        }).always(()=>{
-            JSPLib.debug.recordTimeEnd(key,'Network');
-            DecrementCounter();
         });
     }
 }
@@ -596,21 +498,15 @@ async function GetCount(type,tag) {
     var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
     if (!(check)) {
         JSPLib.debug.debuglog("Network (count):",key);
-        await RateLimit();
-        IncrementCounter();
-        JSPLib.debug.recordTime(key,'Network');
-        return $.getJSON('/counts/posts',BuildTagParams(type,tag)
-        ).then(data=>{
-            JSPLib.storage.saveData(key, {'value':data.counts.posts,'expires':Date.now() + expirations[type] * one_minute});
-        }).always(()=>{
-            JSPLib.debug.recordTimeEnd(key,'Network');
-            DecrementCounter();
+        return JSPLib.danbooru.submitRequest('counts/posts',BuildTagParams(type,tag),{counts: {posts: 0}},key)
+        .then(data=>{
+            JSPLib.storage.saveData(key, {'value':data.counts.posts,'expires':Date.now() + expirations[type]});
         });
     }
 }
 
 async function CheckUser(username) {
-    return $.getJSON('/users',{search:{name_matches:username}});
+    return JSPLib.danbooru.submitRequest('users',{search:{name_matches:username}});
 }
 
 async function GetCurrentUploads(username) {
@@ -618,12 +514,12 @@ async function GetCurrentUploads(username) {
     var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
     if (!(check)) {
         JSPLib.debug.debuglog("Network (current uploads)");
-        let data = await GetAllDanbooru('posts',BuildTagParams('d',`user:${username}`),max_post_limit_query);
+        let data = await JSPLib.danbooru.getAllItems('posts',max_post_limit_query,{addons: BuildTagParams('d',`user:${username}`)});
         let mapped_data = MapPostData(data);
-        JSPLib.storage.saveData(key,{'value':mapped_data,'expires':Date.now() + 5 * one_minute});
+        JSPLib.storage.saveData(key,{'value':mapped_data,'expires':Date.now() + expirations.d});
         return mapped_data;
     } else {
-        return JSPLib.storage.getSessionData(key).value;
+        return JSPLib.storage.getStorageData(key,sessionStorage).value;
     }
 }
 
@@ -634,16 +530,17 @@ async function ProcessUploads() {
     var current_uploads = await GetCurrentUploads(username);
     if (current_uploads.length) {
         let previous_key = `previous-uploads-${username}`;
-        let is_new_tab = JSPLib.storage.getSessionData(previous_key) === undefined;
-        let previous_uploads = await JSPLib.storage.checkLocalDB(previous_key,ValidatePostentries) || [];
-        let symmetric_difference = JSPLib.utility.setSymmetricDifference(GetObjectAttributes(current_uploads,'id'),GetObjectAttributes(previous_uploads,'id'));
+        let is_new_tab = JSPLib.storage.getStorageData(previous_key,sessionStorage) === null;
+        let previous_uploads = await JSPLib.storage.checkLocalDB(previous_key,ValidationSelector) || {value: []};
+        previous_uploads = previous_uploads.value;
+        let symmetric_difference = JSPLib.utility.setSymmetricDifference(JSPLib.utility.getObjectAttributes(current_uploads,'id'),JSPLib.utility.getObjectAttributes(previous_uploads,'id'));
         if (is_new_tab || symmetric_difference.length) {
             promise_array.push(GetTagData(`user:${username}`));
         }
         let curr_copyright_count = GetCopyrightCount(current_uploads);
         let prev_copyright_count = GetCopyrightCount(previous_uploads);
         await Promise.all($.map(curr_copyright_count,(val,key)=>{return GetReverseTagImplication(key);}));
-        user_copytags[username] = SortDict(curr_copyright_count).filter(value=>{return JSPLib.storage.getSessionData('rti-'+value).value == 0;});
+        user_copytags[username] = SortDict(curr_copyright_count).filter(value=>{return JSPLib.storage.getStorageData('rti-'+value,sessionStorage).value == 0;});
         let copyright_symdiff = CompareCopyrightCounts(curr_copyright_count,prev_copyright_count);
         let copyright_changed = (is_new_tab ? user_copytags[username] : JSPLib.utility.setIntersection(user_copytags[username],copyright_symdiff));
         let copyright_nochange = (is_new_tab ? [] : JSPLib.utility.setDifference(user_copytags[username],copyright_changed));
@@ -658,7 +555,7 @@ async function ProcessUploads() {
         });
         await Promise.all(promise_array);
     }
-    JSPLib.storage.saveData(`previous-uploads-${username}`,current_uploads);
+    JSPLib.storage.saveData(`previous-uploads-${username}`,{value: current_uploads, expires: 0});
     return current_uploads;
 }
 
@@ -756,7 +653,7 @@ async function PopulateTable() {
             PopulateTable.checked_users.push(username);
             PopulateTable.is_started = false;
         } else {
-            post_data = JSPLib.storage.getSessionData(`current-uploads-${username}`).value;
+            post_data = JSPLib.storage.getStorageData(`current-uploads-${username}`,sessionStorage).value;
         }
         if (post_data.length) {
             $('#count-table').html(RenderTable());
@@ -779,7 +676,7 @@ function main() {
     use_dummy_value = $('body').data('user-is-gold');
     JSPLib.utility.setCSSStyle(program_css,'program');
     $notice_box = $(notice_box);
-    $footer_notice = $('<span id="upload-counts-restore"> - <a href="#" id="restore-count-notice">Restore CurrentUploads</a></span>');
+    $footer_notice = $(unstash_notice);
     if (Danbooru.Cookie.get('cu-stash-current-uploads') === "1") {
         $($notice_box).addClass('stashed');
         $($footer_notice).addClass('stashed');
@@ -802,4 +699,4 @@ function main() {
     }
 }
 
-JSPLib.load.programInitialize(main,'CU',program_load_required_variables);
+JSPLib.load.programInitialize(main,'CU',program_load_required_variables,program_load_required_ids);
