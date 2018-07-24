@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      14.4
+// @version      14.5
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -25,6 +25,7 @@
 //Variables for debug.js
 JSPLib.debug.debug_console = true;
 JSPLib.debug.pretext = "IAC:";
+JSPLib.debug.level = JSPLib.debug.INFO;
 
 //Variables for load.js
 const program_load_required_variables = ['window.jQuery','window.Danbooru','window.Danbooru.Autocomplete'];
