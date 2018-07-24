@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      14.3
+// @version      14.4
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -11,31 +11,29 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/indexedautocomplete.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/danbooru.js
 // ==/UserScript==
 
 /***Global variables***/
 
 //Variables for debug.js
 JSPLib.debug.debug_console = true;
+JSPLib.debug.pretext = "IAC:";
 
 //Variables for load.js
 const program_load_required_variables = ['window.jQuery','window.Danbooru','window.Danbooru.Autocomplete'];
-
 
 //Polling interval for checking program status
 const timer_poll_interval = 100;
 
 //Interval for fixup callback functions
 const callback_interval = 1000;
-
-//Used for expiration time calculations
-const milliseconds_per_day = 1000 * 60 * 60 * 24;
 
 const autocomplete_userlist = [
     "#search_to_name",
@@ -63,37 +61,37 @@ const autocomplete_domlist = [
 //Expiration variables
 
 const expiration_config = {
-    'tag' : {
-        'logarithmic_start': 100,
-        'minimum_days': 7,
-        'maximum_days': 28
+    tag: {
+        logarithmic_start: 100,
+        minimum: JSPLib.utility.one_week,
+        maximum: JSPLib.utility.one_month
     },
-    'pool' : {
-        'logarithmic_start': 10,
-        'minimum_days': 7,
-        'maximum_days': 28
+    pool: {
+        logarithmic_start: 10,
+        minimum: JSPLib.utility.one_week,
+        maximum: JSPLib.utility.one_month
     },
-    'user' : {
-        'minimum_days': 28
+    user: {
+        minimum: JSPLib.utility.one_month
     },
-    'favgroup' : {
-        'minimum_days': 7
+    favgroup: {
+        minimum: JSPLib.utility.one_week
     },
-    'search' : {
-        'minimum_days': 7
+    search: {
+        minimum: JSPLib.utility.one_week
     },
-    'relatedtag' : {
-        'minimum_days': 7
+    relatedtag: {
+        minimum: JSPLib.utility.one_week
     },
-    'wikipage' : {
-        'logarithmic_start': 100,
-        'minimum_days': 7,
-        'maximum_days': 28
+    wikipage: {
+        logarithmic_start: 100,
+        minimum: JSPLib.utility.one_week,
+        maximum: JSPLib.utility.one_month
     },
-    'artist' : {
-        'logarithmic_start': 10,
-        'minimum_days': 7,
-        'maximum_days': 28
+    artist: {
+        logarithmic_start: 10,
+        minimum: JSPLib.utility.one_week,
+        maximum: JSPLib.utility.one_month
     }
 };
 
@@ -156,19 +154,14 @@ const autocomplete_constraints = {
 const relatedtag_constraints = {
     entry: {
         expires : JSPLib.validate.expires_constraints,
-        value : {
-            presence: true
-        }
+        value : {presence: true}
     },
     value: {
         category: JSPLib.validate.inclusion_constraints(["","general","character","copyright","artist"]),
         query: JSPLib.validate.stringonly_constraints,
         tags: JSPLib.validate.tagentryarray_constraints,
         wiki_page_tags: JSPLib.validate.tagentryarray_constraints,
-        other_wikis: {
-            presence: true,
-            array: true
-        }
+        other_wikis: JSPLib.validate.array_constraints
     },
     other_wikis: {
         title: JSPLib.validate.stringonly_constraints,
@@ -190,13 +183,15 @@ const source_key = {
 
 const source_config = {
     tag: {
-        url: "/tags/autocomplete.json",
-        data: function(term) {
+        url: "tags/autocomplete",
+        data: (term)=>{
             return {
-                "search[name_matches]": term + "*"
+                search: {
+                    name_matches: term + "*"
+                }
             };
         },
-        map: function(tag) {
+        map: (tag)=>{
             return {
                 type: "tag",
                 label: tag.name.replace(/_/g, " "),
@@ -206,22 +201,24 @@ const source_config = {
                 post_count: tag.post_count
             };
         },
-        expiration: function(d) {
+        expiration: (d)=>{
             return (d.length ? ExpirationTime('tag',d[0].post_count) : MinimumExpirationTime('tag'));
         },
         fixupmetatag: false,
         fixupexpiration: false
     },
     pool: {
-        url: "/pools.json",
-        data: function(term) {
+        url: "pools",
+        data: (term)=>{
             return {
-                "search[order]": "post_count",
-                "search[name_matches]": term,
-                "limit": 10
+                search: {
+                    order: "post_count",
+                    name_matches: term
+                },
+                limit: 10
             };
         },
-        map: function(pool) {
+        map: (pool)=>{
             return {
                 type: "pool",
                 name: pool.name,
@@ -229,134 +226,144 @@ const source_config = {
                 category: pool.category
             };
         },
-        expiration: function(d) {
+        expiration: (d)=>{
             return (d.length ? ExpirationTime('pool',d[0].post_count) : MinimumExpirationTime('pool'));
         },
         fixupmetatag: true,
         fixupexpiration: false,
-        render: function(list, pool) {
+        render: (list, pool)=>{
             var $link = $("<a/>").addClass("pool-category-" + pool.category).text(pool.label);
             var $container = $("<div/>").append($link);
             return $("<li/>").data("item.autocomplete", pool).append($container).appendTo(list);
         }
     },
     user: {
-        url: "/users.json",
-        data: function(term) {
+        url: "users",
+        data: (term)=>{
             return {
-                "search[order]": "post_upload_count",
-                "search[current_user_first]": "true",
-                "search[name_matches]": term + "*",
-                "limit": 10
+                search: {
+                    order: "post_upload_count",
+                    current_user_first: true,
+                    name_matches: term + "*"
+                },
+                limit: 10
             };
         },
-        map: function(user) {
+        map: (user)=>{
             return {
                 type: "user",
                 name: user.name,
                 level: user.level_string
             };
         },
-        expiration: function(d) {
+        expiration: (d)=>{
             return MinimumExpirationTime('user');
         },
         fixupmetatag: true,
         fixupexpiration: false,
-        render: function(list, user) {
+        render: (list, user)=>{
             var $link = $("<a/>").addClass("user-" + user.level.toLowerCase()).addClass("with-style").text(user.label);
             var $container = $("<div/>").append($link);
             return $("<li/>").data("item.autocomplete", user).append($container).appendTo(list);
         }
     },
     favgroup: {
-        url: "/favorite_groups.json",
-        data: function(term) {
+        url: "favorite_groups",
+        data: (term)=>{
             return {
-                "search[name_matches]": term,
-                "limit": 10
+                search: {
+                    name_matches: term
+                },
+                limit: 10
             };
         },
-        map: function(favgroup) {
+        map: (favgroup)=>{
             return {
                 name: favgroup.name,
                 post_count: favgroup.post_count
             };
         },
-        expiration: function(d) {
+        expiration: (d)=>{
             return MinimumExpirationTime('favgroup');
         },
         fixupmetatag: true,
         fixupexpiration: false
     },
     search: {
-        url: "/saved_searches/labels.json",
-        data: function(term) {
+        url: "saved_searches/labels",
+        data: (term)=>{
             return {
-                "search[label]": term + "*",
-                "limit": 10
+                search: {
+                    label: term + "*"
+                },
+                limit: 10
             };
         },
-        map: function(label) {
+        map: (label)=>{
             return {
                 name: label
             };
         },
-        expiration: function(d) {
+        expiration: (d)=>{
             return MinimumExpirationTime('search');
         },
         fixupmetatag: true,
         fixupexpiration: false
     },
     wikipage: {
-        url: "/wiki_pages.json",
-        data: function(term) {
+        url: "wiki_pages",
+        data: (term)=>{
             return {
-                "search[title]": term + "*",
-                "search[hide_deleted]": "Yes",
-                "search[order]": "post_count",
-                "limit": 10
+                search: {
+                    order: "post_count",
+                    hide_deleted: true,
+                    title: term + "*"
+                },
+                limit: 10
             };
         },
-        map: function(wikipage) {
+        map: (wikipage)=>{
             return {
                 label: wikipage.title.replace(/_/g, " "),
                 value: wikipage.title,
                 category: wikipage.category_name
             };
         },
-        expiration: function(d) {
+        expiration: (d)=>{
             return MinimumExpirationTime('wikipage');
         },
         fixupmetatag: false,
         fixupexpiration: true,
-        render: function(list, wiki_page) {
+        render: (list, wiki_page)=>{
             var $link = $("<a/>").addClass("tag-type-" + wiki_page.category).text(wiki_page.label);
             var $container = $("<div/>").append($link);
             return $("<li/>").data("item.autocomplete", wiki_page).append($container).appendTo(list);
         }
     },
     artist: {
-        url: "/artists.json",
-        data: function(term) {
+        url: "artists",
+        data: (term)=>{
             return {
-                "search[name]": term + "*",
-                "search[is_active]": true,
-                "search[order]": "post_count",
-                "limit": 10
+                search: {
+                    order: "post_count",
+                    is_active: true,
+                    name: term + "*"
+                },
+                limit: 10
             };
         },
-        map: function(artist) {
+        map: (artist)=>{
             return {
                 label: artist.name.replace(/_/g, " "),
                 value: artist.name
             };
         },
-        expiration: function(d) {
+        expiration: (d)=>{
             return MinimumExpirationTime('artist');
         },
         fixupmetatag: false,
         fixupexpiration: true,
-        render: function(list, artist) {
+        render: (list, artist)=>{
             var $link = $("<a/>").addClass("tag-type-1").text(artist.label);
             var $container = $("<div/>").append($link);
             return $("<li/>").data("item.autocomplete", artist).append($container).appendTo(list);
@@ -366,30 +373,19 @@ const source_config = {
 
 /***Misc functions***/
 
-//Name functions
-
-function GetShortName(category) {
-    let shortnames = ['art','char','copy','gen','meta'];
-    for (let i = 0;i < shortnames.length ; i++) {
-        if (category.search(RegExp(shortnames[i])) === 0) {
-            return shortnames[i];
-        }
-    }
-}
-
 //Time functions
 
 function MinimumExpirationTime(type) {
-    return expiration_config[type].minimum_days * milliseconds_per_day;
+    return expiration_config[type].minimum;
 }
 
 //Logarithmic increase of expiration time based upon a count
 function ExpirationTime(type,count) {
     let config = expiration_config[type];
-    let expiration = Math.log10(10 * count/config.logarithmic_start) * config.minimum_days;
-    expiration = Math.max(expiration,config.minimum_days);
-    expiration = Math.min(expiration,config.maximum_days);
-    return Math.round(expiration * milliseconds_per_day);
+    let expiration = Math.log10(10 * count/config.logarithmic_start) * config.minimum;
+    expiration = Math.max(expiration, config.minimum);
+    expiration = Math.min(expiration, config.maximum);
+    return Math.round(expiration);
 }
 
 //Validation functions
@@ -468,21 +464,12 @@ function FixupMetatag(value,metatag) {
 
 function FixExpirationCallback(key,value,tagname,type) {
     JSPLib.debug.debuglog("Fixing expiration:",tagname);
-    JSPLib.debug.recordTime(key + 'callback',"Network");
-    $.ajax({
-        url: "/tags.json",
-        data: {
-            "search[name]": tagname,
-        },
-        method: "get",
-        success: function(data) {
-            JSPLib.debug.recordTimeEnd(key + 'callback',"Network");
-            if (!data.length) {
-                return;
-            }
-            var expiration_time = ExpirationTime(type,data[0].post_count);
-            JSPLib.storage.saveData(key, {"value": value, "expires": Date.now() + expiration_time});
+    JSPLib.danbooru.submitRequest('tags',{search: {name: tagname}}).then((data)=>{
+        if (!data.length) {
+            return;
         }
+        var expiration_time = ExpirationTime(type,data[0].post_count);
+        JSPLib.storage.saveData(key, {"value": value, "expires": Date.now() + expiration_time});
     });
 }
 
@@ -492,24 +479,17 @@ function FixExpirationCallback(key,value,tagname,type) {
 
 function NetworkSource(type,key,term,resp,metatag) {
     JSPLib.debug.debuglog("Querying",type,':',term);
-    JSPLib.debug.recordTime(key,"Network");
-    $.ajax({
-        url: source_config[type].url,
-        data: source_config[type].data(term),
-        method: "get",
-        success: function(data) {
-            JSPLib.debug.recordTimeEnd(key,"Network");
-            var d = $.map(data, source_config[type].map);
-            var expiration_time = source_config[type].expiration(d);
-            JSPLib.storage.saveData(key, {"value": JSPLib.utility.dataCopy(d), "expires": Date.now() + expiration_time});
-            if (source_config[type].fixupmetatag) {
-                $.each(d, (i,val)=> {FixupMetatag(val,metatag);});
-            }
-            if (source_config[type].fixupexpiration && d.length) {
-                setTimeout(()=>{FixExpirationCallback(key,d,d[0].value,type);},callback_interval);
-            }
-            resp(d);
+    JSPLib.danbooru.submitRequest(source_config[type].url,source_config[type].data(term)).then((data)=>{
+        var d = $.map(data, source_config[type].map);
+        var expiration_time = source_config[type].expiration(d);
+        JSPLib.storage.saveData(key, {"value": JSPLib.utility.dataCopy(d), "expires": Date.now() + expiration_time});
+        if (source_config[type].fixupmetatag) {
+            $.each(d, (i,val)=> {FixupMetatag(val,metatag);});
         }
+        if (source_config[type].fixupexpiration && d.length) {
+            setTimeout(()=>{FixExpirationCallback(key,d,d[0].value,type);},callback_interval);
+        }
+        resp(d);
     });
 }
 
@@ -590,26 +570,21 @@ async function ArtistIndexed(req, resp) {
 //Non-autocomplete storage
 
 function CommonBindIndexed(button_name, category) {
-    $(button_name).click(async function(e) {
+    $(button_name).click(async (e)=>{
         var $dest = $("#related-tags");
         $dest.empty();
         Danbooru.RelatedTag.build_recent_and_frequent($dest);
         $dest.append("<em>Loading...</em>");
         $("#related-tags-container").show();
         var currenttag = $.trim(Danbooru.RelatedTag.current_tag());
-        var keymodifier = (category.length ? GetShortName(category) : "");
+        var keymodifier = (category.length ? JSPLib.danbooru.getShortName(category) : "");
         var key = ("rt" + keymodifier + "-" + currenttag).toLowerCase();
         var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
         if (cached) {
             Danbooru.RelatedTag.process_response(cached.value);
         } else {
             JSPLib.debug.debuglog("Querying relatedtag:",currenttag,category);
-            JSPLib.debug.recordTime(key,"Network");
-            var data = await $.get("/related_tag.json", {
-                "query": currenttag,
-                "category": category
-            });
-            JSPLib.debug.recordTimeEnd(key,"Network");
+            var data = await JSPLib.danbooru.submitRequest("related_tag", {query: currenttag, category: category});
             JSPLib.storage.saveData(key, {"value": data, "expires": Date.now() + MinimumExpirationTime('relatedtag')});
             Danbooru.RelatedTag.process_response(data);
         }
@@ -628,7 +603,7 @@ function CheckSource(domobj) {
     if (domobj.val()) {
         let key = 'af-' + domobj.val();
         JSPLib.debug.debuglog("Checking artist",key);
-        let data = JSPLib.storage.getSessionData(key);
+        let data = JSPLib.storage.getStorageData(key,sessionStorage);
         if (data) {
             JSPLib.debug.debuglog("Found artist data",key);
             Danbooru.RelatedTag.process_artist(data);
@@ -650,8 +625,8 @@ function FindArtistSession(e) {
         return;
     }
     JSPLib.debug.debuglog("Checking network",url.val(),referer_url.val());
-    $.get("/artists/finder.json", {"url": url.val(), "referer_url": referer_url.val()}).
-        then((data)=>{
+    JSPLib.danbooru.submitRequest("artists/finder", {url: url.val(), referer_url: referer_url.val()})
+        .then((data)=>{
             Danbooru.RelatedTag.process_artist(data);
             if (url.val()) {
                 SaveSessionData(url.val(),data);
@@ -676,7 +651,7 @@ function rebindRelatedTags() {
         $("#related-tags-button").off();
         Danbooru.RelatedTag.common_bind("#related-tags-button", "");
         var related_buttons = ['general','artist','character','copyright'];
-        $.each(related_buttons, function(i,category) {
+        $.each(related_buttons, (i,category)=>{
             $(`#related-${category}-button`).off();
             Danbooru.RelatedTag.common_bind("#related-" + category + "-button", category);
         });
@@ -744,7 +719,7 @@ function InitializeAutocompleteIndexed(selector,sourcefunc,type) {
         }
     });
     if (source_config[type].render) {
-        $fields.each(function(i, field) {
+        $fields.each((i, field)=>{
             $(field).data("uiAutocomplete")._renderItem = source_config[type].render;
         });
     }
@@ -759,15 +734,15 @@ function ArtistInitializeAutocompleteIndexed() {
 }
 
 function PoolInitializeAutocompleteIndexed(selector) {
-    InitializeAutocompleteIndexed(selector,function (req, resp) { PoolSourceIndexed(req.term, resp, ""); },'pool');
+    InitializeAutocompleteIndexed(selector, (req,resp)=>{ PoolSourceIndexed(req.term, resp, ""); },'pool');
 }
 
 function UserInitializeAutocompleteIndexed(selector) {
-    InitializeAutocompleteIndexed(selector,function (req, resp) { UserSourceIndexed(req.term, resp, ""); },'user');
+    InitializeAutocompleteIndexed(selector, (req,resp)=>{ UserSourceIndexed(req.term, resp, ""); },'user');
 }
 
 function SavedSearchInitializeAutocompleteIndexed(selector) {
-    InitializeAutocompleteIndexed(selector,function (req, resp) { SavedSearchSourceIndexed(req.term, resp, ""); },'search');
+    InitializeAutocompleteIndexed(selector, (req,resp)=>{ SavedSearchSourceIndexed(req.term, resp, ""); },'search');
 }
 
 //Main program
@@ -809,7 +784,7 @@ function main() {
         UserInitializeAutocompleteIndexed("#search_name_matches,#quick_search_name_matches");
     }
     if (JSPLib.debug.debug_console) {
-        window.addEventListener('beforeunload',function () {
+        window.addEventListener('beforeunload', ()=>{
             JSPLib.statistics.outputAdjustedMean("IndexedAutocomplete");
         });
     }
