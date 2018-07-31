@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      8.0
+// @version      8.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Gives up-to-date stats on uploads
 // @author       BrokenEagle
@@ -193,6 +193,14 @@ const unstash_notice = '<span id="upload-counts-restore"> - <a href="#" id="rest
 
 //Validation values
 
+const fix_expires_constraints = {
+    presence: true,
+    numericality: {
+        onlyInteger: true,
+        greaterThan: -1,
+    }
+}
+
 const validation_constraints = {
     countentry: JSPLib.validate.postcount_constraints,
     implicationentry: JSPLib.validate.integer_constraints,
@@ -227,7 +235,7 @@ function ValidationSelector(key) {
 
 function BuildValidator(validation_key) {
     return {
-        expires: JSPLib.validate.expires_constraints,
+        expires: fix_expires_constraints,
         value: validation_constraints[validation_key]
     };
 }
@@ -384,7 +392,7 @@ function RenderToolcontrol(metric) {
 function RenderStatistics(key,attribute) {
     let current_uploads = JSPLib.storage.getStorageData(`current-uploads-${username}`,sessionStorage).value;
     if (key !== '') {
-        current_uploads = current_uploads.filter(val=>{return val.copyrights.match(JSPLib.danbooru.tagRegExp(key));});
+        current_uploads = current_uploads.filter(val=>{return val.copyrights.split(' ').includes(key);});
     }
     let upload_scores = JSPLib.utility.getObjectAttributes(current_uploads,attribute);
     let score_max = Math.max(...upload_scores);
@@ -531,7 +539,7 @@ async function ProcessUploads() {
     if (current_uploads.length) {
         let previous_key = `previous-uploads-${username}`;
         let is_new_tab = JSPLib.storage.getStorageData(previous_key,sessionStorage) === null;
-        let previous_uploads = await JSPLib.storage.checkLocalDB(previous_key,ValidationSelector) || {value: []};
+        let previous_uploads = await JSPLib.storage.checkLocalDB(previous_key,ValidateEntry) || {value: []};
         previous_uploads = previous_uploads.value;
         let symmetric_difference = JSPLib.utility.setSymmetricDifference(JSPLib.utility.getObjectAttributes(current_uploads,'id'),JSPLib.utility.getObjectAttributes(previous_uploads,'id'));
         if (is_new_tab || symmetric_difference.length) {
