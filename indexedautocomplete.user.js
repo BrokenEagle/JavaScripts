@@ -23,7 +23,7 @@
 /***Global variables***/
 
 //Variables for debug.js
-JSPLib.debug.debug_console = true;
+JSPLib.debug.debug_console = false;
 JSPLib.debug.pretext = "IAC:";
 JSPLib.debug.level = JSPLib.debug.INFO;
 

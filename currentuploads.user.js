@@ -23,7 +23,7 @@
 /**GLOBAL VARIABLES**/
 
 //Variables for debug.js
-JSPLib.debug.debug_console = true;
+JSPLib.debug.debug_console = false;
 JSPLib.debug.pretext = "CU:";
 JSPLib.debug.level = JSPLib.debug.INFO;
 

@@ -17,7 +17,7 @@
 /****Global variables****/
 
 //Variables for debug.js
-JSPLib.debug.debug_console = true;
+JSPLib.debug.debug_console = false;
 
 //Variables for load.js
 const program_load_required_variables = ['window.jQuery','window.Danbooru','Danbooru.meta'];
