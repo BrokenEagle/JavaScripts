@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         BetterSavedSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2.0
+// @version      2.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Provides an alternative mechanism and UI for saved searches
 // @author       BrokenEagle
@@ -31,7 +31,7 @@ JSPLib.utility.max_column_characters = 15;
 JSPLib.danbooru.counter_domname = "#bss-initialize-counter";
 
 //Variables for load.js
-const program_load_required_variables = ['window.jQuery','window.Danbooru'];
+const program_load_required_variables = ['window.jQuery','window.Danbooru','Danbooru.Cookie','Danbooru.notice','Danbooru.meta','Danbooru.Autocomplete'];
 
 //Shouldn't be larger than the query size
 const max_posts_size = 200;

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9
+// @version      9.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes)
 // @author       BrokenEagle
@@ -20,7 +20,7 @@
 JSPLib.debug.debug_console = true;
 
 //Variables for load.js
-const program_load_required_variables = ['window.jQuery','window.Danbooru'];
+const program_load_required_variables = ['window.jQuery','window.Danbooru','Danbooru.meta'];
 
 //Polling interval for checking program status
 const timer_poll_interval = 100;

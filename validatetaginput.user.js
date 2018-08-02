@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      24.1
+// @version      24.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -30,7 +30,7 @@ JSPLib.debug.pretext = "VTI:";
 JSPLib.debug.level = JSPLib.debug.INFO;
 
 //Variables for load.js
-const program_load_required_variables = ['window.jQuery','window.Danbooru'];
+const program_load_required_variables = ['window.jQuery','window.Danbooru','Danbooru.notice'];
 
 //Wait time for quick edit box
 // 1. Let box close before reenabling the submit button
