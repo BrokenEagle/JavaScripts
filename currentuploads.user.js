@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      8.2
+// @version      8.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Gives up-to-date stats on uploads
 // @author       BrokenEagle
@@ -28,7 +28,7 @@ JSPLib.debug.pretext = "CU:";
 JSPLib.debug.level = JSPLib.debug.INFO;
 
 //Variables for load.js
-const program_load_required_variables = ['window.jQuery','window.Danbooru','Danbooru.Cookie','Danbooru.meta'];
+const program_load_required_variables = ['window.jQuery'];
 const program_load_required_ids = ["top","page-footer"];
 
 //Variables for danbooru.js
@@ -275,6 +275,18 @@ function ValidatePostentries(key,postentries) {
         }
     }
     return true;
+}
+
+//Library functions
+
+function DebugExecute(func) {
+    if (JSPLib.debug.debug_console) {
+        func();
+    }
+}
+
+function GetMeta(key) {
+  return $("meta[name=" + key + "]").attr("content");
 }
 
 //Table functions
@@ -585,21 +597,21 @@ function SetTooltipChangeClick() {
         $(".select-tooltip,.tooltiptext").removeClass("activetooltip");
         $(`.select-tooltip[data-type="${tooltip_type}"]`).addClass("activetooltip");
         $(`.tooltiptext[data-type="${tooltip_type}"]`).addClass("activetooltip");
-        Danbooru.Cookie.put('cu-current-metric',tooltip_type);
+        JSPLib.storage.setStorageData('cu-current-metric',tooltip_type,localStorage);
     });
 }
 
 function SetCountNoticeClick() {
     $("#hide-count-notice").click((e)=>{
-        if (Danbooru.Cookie.get('cu-hide-current-uploads') === "1") {
-            Danbooru.Cookie.put('cu-hide-current-uploads',0);
+        if (JSPLib.storage.getStorageData('cu-hide-current-uploads',localStorage,0) === 1) {
+            JSPLib.storage.setStorageData('cu-hide-current-uploads',0,localStorage);
             $('#upload-counts').addClass('opened');
             //Prevent processing potentially bad usernames set by SetCheckUserClick
-            username = Danbooru.meta("current-user-name");
+            username = GetMeta("current-user-name");
             empty_uploads_message = empty_uploads_message_owner;
             PopulateTable();
         } else {
-            Danbooru.Cookie.put('cu-hide-current-uploads',1);
+            JSPLib.storage.setStorageData('cu-hide-current-uploads',1,localStorage);
             $('#upload-counts').removeClass('opened');
         }
         e.preventDefault();
@@ -608,9 +620,9 @@ function SetCountNoticeClick() {
 
 function SetStashNoticeClick() {
     $("#stash-count-notice").click((e)=>{
-        Danbooru.Cookie.put('cu-stash-current-uploads',1);
+        JSPLib.storage.setStorageData('cu-stash-current-uploads',1,localStorage);
         //Hide the table so that it doesn't always process on each page load
-        Danbooru.Cookie.put('cu-hide-current-uploads',1);
+        JSPLib.storage.setStorageData('cu-hide-current-uploads',1,localStorage);
         $('#upload-counts,#upload-counts-restore').removeClass('opened').addClass('stashed');
         e.preventDefault();
     });
@@ -618,7 +630,7 @@ function SetStashNoticeClick() {
 
 function SetRestoreNoticeClick() {
     $("#restore-count-notice").click((e)=>{
-        Danbooru.Cookie.put('cu-stash-current-uploads',0);
+        JSPLib.storage.setStorageData('cu-stash-current-uploads',0,localStorage);
         $('#upload-counts,#upload-counts-restore').removeClass('stashed');
         e.preventDefault();
     });
@@ -668,7 +680,7 @@ async function PopulateTable() {
             $('#count-controls').html(RenderAllTooltipControls());
             SetTooltipHover();
             SetTooltipChangeClick();
-            let tooltip_type = Danbooru.Cookie.get('cu-current-metric') || 'score';
+            let tooltip_type = JSPLib.storage.getStorageData('cu-current-metric',localStorage,'score');
             $(`.select-tooltip[data-type="${tooltip_type}"] a`).click();
         } else {
             $('#count-table').html(`<div id="empty-uploads">${empty_uploads_message}</div>`);
@@ -677,7 +689,7 @@ async function PopulateTable() {
 }
 
 function main() {
-    username = Danbooru.meta("current-user-name");
+    username = GetMeta("current-user-name");
     if (username === "Anonymous") {
         return;
     }
@@ -685,7 +697,7 @@ function main() {
     JSPLib.utility.setCSSStyle(program_css,'program');
     $notice_box = $(notice_box);
     $footer_notice = $(unstash_notice);
-    if (Danbooru.Cookie.get('cu-stash-current-uploads') === "1") {
+    if (JSPLib.storage.getStorageData('cu-stash-current-uploads',localStorage,0) === 1) {
         $($notice_box).addClass('stashed');
         $($footer_notice).addClass('stashed');
     }
@@ -695,16 +707,16 @@ function main() {
     SetStashNoticeClick();
     SetRestoreNoticeClick();
     SetCheckUserClick();
-    if (Danbooru.Cookie.get('cu-hide-current-uploads') !== "1") {
+    if (JSPLib.storage.getStorageData('cu-hide-current-uploads',localStorage,0) === 0) {
         //Set to opposite so that click can be used and sets it back
-        Danbooru.Cookie.put('cu-hide-current-uploads',1);
+        JSPLib.storage.setStorageData('cu-hide-current-uploads',1,localStorage);
         $("#hide-count-notice").click();
     }
-    if (JSPLib.debug.debug_console) {
+    DebugExecute(()=>{
         window.addEventListener('beforeunload',function () {
             JSPLib.statistics.outputAdjustedMean("CurrentUploads");
         });
-    }
+    });
 }
 
 JSPLib.load.programInitialize(main,'CU',program_load_required_variables,program_load_required_ids);

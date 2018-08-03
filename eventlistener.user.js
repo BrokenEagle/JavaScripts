@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9.1
+// @version      9.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes)
 // @author       BrokenEagle
@@ -20,7 +20,7 @@
 JSPLib.debug.debug_console = false;
 
 //Variables for load.js
-const program_load_required_variables = ['window.jQuery','window.Danbooru','Danbooru.meta'];
+const program_load_required_variables = ['window.jQuery'];
 
 //Polling interval for checking program status
 const timer_poll_interval = 100;
@@ -186,6 +186,10 @@ const forum_css = `
 }`;
 
 /****Helper functions****/
+
+function GetMeta(key) {
+  return $("meta[name=" + key + "]").attr("content");
+}
 
 function FullHide(selector) {
     $(selector).attr('style','display: none !important');
@@ -534,14 +538,14 @@ function InitializeOpenDmailLinks($obj) {
 }
 
 function InitializePostCommentLinks() {
-    var postid = parseInt(Danbooru.meta('post-id'));
+    var postid = parseInt(GetMeta('post-id'));
     $("#nav > menu:nth-child(2)").append(RenderCommentPartialPostLinks(postid,"li"," "));
     SubscribeCommentsClick();
     UnsubscribeCommentsClick();
 }
 
 function InitializePostNoteLinks() {
-    var postid = parseInt(Danbooru.meta('post-id'));
+    var postid = parseInt(GetMeta('post-id'));
     $("#nav > menu:nth-child(2)").append(RenderNoteLinks(postid,"li"," notes"));
     SubscribeNotesClick();
     UnsubscribeNotesClick();
@@ -778,8 +782,8 @@ function HideFullDmailClick($obj) {
 /****Main****/
 
 function main() {
-    username = Danbooru.meta('current-user-name');
-    userid = Danbooru.meta('current-user-id');
+    username = GetMeta('current-user-name');
+    userid = GetMeta('current-user-id');
     if (!username || !userid || isNaN(userid)) {
         JSPLib.debug.debuglog("Invalid meta variables!");
         return;

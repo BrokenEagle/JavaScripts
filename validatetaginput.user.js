@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      24.2
+// @version      24.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -30,7 +30,7 @@ JSPLib.debug.pretext = "VTI:";
 JSPLib.debug.level = JSPLib.debug.INFO;
 
 //Variables for load.js
-const program_load_required_variables = ['window.jQuery','window.Danbooru','Danbooru.notice'];
+const program_load_required_variables = ['window.jQuery'];
 
 //Wait time for quick edit box
 // 1. Let box close before reenabling the submit button
@@ -101,6 +101,14 @@ function ValidateRelationEntry(key,entry) {
         }
     }
     return true;
+}
+
+//Library functions
+
+function DebugExecute(func) {
+    if (JSPLib.debug.debug_console) {
+        func();
+    }
 }
 
 //Helper functions
@@ -252,9 +260,9 @@ async function checkTagsClick(e) {
         $("#check-tags")[0].setAttribute('value','Checking...');
         let statuses = await Promise.all([validateTagAddsWrap(),validateTagRemovesWrap()]);
         if (statuses[0] && statuses[1]) {
-            Danbooru.notice("Tags good to submit!")
+            $(window).trigger("danbooru:notice","Tags good to submit!");
         } else {
-            Danbooru.notice("Validation failed!");
+            $(window).trigger("danbooru:error","Tag validation failed!");
         }
         $("#validate-tags")[0].removeAttribute('disabled');
         $("#check-tags")[0].removeAttribute('disabled');
@@ -445,11 +453,11 @@ function main() {
     $("#validate-tags").click(validateTagsClick);
     $("#check-tags").click(checkTagsClick);
     rebindHotkey.timer = setInterval(rebindHotkey,timer_poll_interval);
-    if (JSPLib.debug.debug_console) {
+    DebugExecute(()=>{
         window.addEventListener('beforeunload',function () {
             JSPLib.statistics.outputAdjustedMean("ValidateTagInput");
         });
-    }
+    });
 }
 
 //Execution start

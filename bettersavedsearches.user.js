@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         BetterSavedSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2.1
+// @version      2.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Provides an alternative mechanism and UI for saved searches
 // @author       BrokenEagle
@@ -31,7 +31,7 @@ JSPLib.utility.max_column_characters = 15;
 JSPLib.danbooru.counter_domname = "#bss-initialize-counter";
 
 //Variables for load.js
-const program_load_required_variables = ['window.jQuery','window.Danbooru','Danbooru.Cookie','Danbooru.notice','Danbooru.meta','Danbooru.Autocomplete'];
+const program_load_required_variables = ['window.jQuery'];
 
 //Shouldn't be larger than the query size
 const max_posts_size = 200;
@@ -63,6 +63,16 @@ const metatag_window_expires = 8 * JSPLib.utility.one_hour;
 //Timeouts/intervals
 const noncritical_tasks_timeout = JSPLib.utility.one_minute;
 const polling_interval = 100;
+
+//REGEXes
+
+const ALL_META_TAGS = new RegExp('^(-?user|-?approver|commenter|comm|noter|noteupdater|' +
+                               'artcomm|-?pool|ordpool|-?favgroup|-?fav|ordfav|md5|' +
+                               '-?rating|-?locked|width|height|mpixels|ratio|score|' +
+                               'favcount|filesize|-?source|-?id|date|age|order|limit|' +
+                               '-?status|tagcount|-?parent|child|pixiv_id|pixiv|search|' +
+                               'upvote|downvote|-?filetype|-?flagger|-?appealer|' +
+                               'gentags|chartags|copytags|arttags|metatags):(.*)$','i');
 
 //Only includes those metatags that aren't being handled
 const META_TAGS = new RegExp('^(commenter|comm|noter|noteupdater|artcomm|ordpool|' +
@@ -364,6 +374,10 @@ function ReverseIDFilter(items,idlist) {
 
 function TagOnlyRegExp (str) {
     return RegExp('^'+str.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1") +'$','i');
+}
+
+function GetMeta(key) {
+  return $("meta[name=" + key + "]").attr("content");
 }
 
 //Helper functions
@@ -912,10 +926,10 @@ function DetailedSearchesToggle() {
 function MainToggle() {
     $("#toggle-bss-saved-searches").off().click((e)=>{
         $("#bss-saved-search-list").slideToggle(100);
-        if (Danbooru.Cookie.get('bss-hide-saved-searches') !== "1") {
-            Danbooru.Cookie.put('bss-hide-saved-searches',1);
+        if (JSPLib.storage.getStorageData('bss-hide-saved-searches',localStorage,0) === 0) {
+            JSPLib.storage.setStorageData('bss-hide-saved-searches',1,localStorage);
         } else {
-            Danbooru.Cookie.put('bss-hide-saved-searches',0);
+            JSPLib.storage.setStorageData('bss-hide-saved-searches',0,localStorage);
         }
         e.preventDefault();
     });
@@ -970,7 +984,7 @@ function RefreshLinkClick() {
             RefreshLinkCount();
             FullHide("#bss-loading-saved-searches");
             FullShow("#bss-refresh-saved-searches");
-            Danbooru.notice("Saved searches updated.");
+            $(window).trigger("danbooru:notice","Saved searches updated.");
             RefreshLinkClick.reserved = false;
         }
         e.preventDefault;
@@ -986,14 +1000,14 @@ function SubmitNewQueryClick() {
         } catch (e) {
             e = (typeof e === "object" && 'status' in e && 'responseText' in e ? e : {status: 999, responseText: "Bad error code!"});
             JSPLib.debug.debuglog("POST error:",e.status,e.responseText);
-            Danbooru.notice(`HTTP Error ${e.status} creating saved search!`);
+            $(window).trigger("danbooru:error",`HTTP Error ${e.status} creating saved search!`);
             return;
         }
         let html = RenderTableRow(saved_search);
         $(".striped tbody").append(html);
         SubmitDeleteClick();
         RefreshLinkCount();
-        Danbooru.notice(`Saved search "${saved_search.query}" has been added.`);
+        $(window).trigger("danbooru:notice",`Saved search "${saved_search.query}" has been added.`);
     });
 }
 
@@ -1185,7 +1199,7 @@ async function NormalizeBSSEntries(writes,overide=false) {
         await ReplacePoolNamesWithIDs();
         RemoveDuplicateBSSEntries();
         DebugExecute(()=>{
-            for (let i = 0; JSPLib.debug.debug_console && i < old_entries.length; i++) {
+            for (let i = 0; i < old_entries.length; i++) {
                 if (JSON.stringify(old_entries[i]) != JSON.stringify(Danbooru.BSS.entries[i])) {
                     JSPLib.debug.debuglog("NormalizeBSSEntries: Changed Entry!",old_entries[i],'->',Danbooru.BSS.entries[i]);
                 }
@@ -1208,7 +1222,7 @@ function ResetBSSEntries() {
 
 async function UnaliasBSSEntries() {
     JSPLib.debug.debuglog("UnaliasBSSEntries");
-    let all_tags = GetAllTags().filter((tag)=>{return !tag.match(Danbooru.Autocomplete.METATAGS);});
+    let all_tags = GetAllTags().filter((tag)=>{return !tag.match(ALL_META_TAGS);});
     let alias_entries = await Promise.all(all_tags.map((tag)=>{return QueryTagAlias(tag);}));
     //Convert array of hashes into one hash
     let tag_aliases = alias_entries.reduce((a,b)=>{return Object.assign(a,b);});
@@ -1476,7 +1490,7 @@ function InitializeUI() {
     sessionStorage.removeItem('bss-active-query');
     $("#bss-saved-search-list").html(RenderSavedSearchList());
     RecalculateMain();
-    if (Danbooru.Cookie.get('bss-hide-saved-searches') !== "1") {
+    if (JSPLib.storage.getStorageData('bss-hide-saved-searches',localStorage,0) === 0) {
         $("#bss-saved-search-list").show();
         $("#bss-message").hide();
     }
@@ -1498,7 +1512,7 @@ function InitializeUI() {
 
 //Main function
 async function main() {
-    if (Danbooru.meta('current-user-name') === "Anonymous") {
+    if (GetMeta('current-user-name') === "Anonymous") {
         JSPLib.debug.debuglog("User must log in!");
         return;
     }
@@ -1514,7 +1528,7 @@ async function main() {
     if (post_index) {
         JSPLib.debug.debuglog("Adding user interface!");
         $("#tag-box").before(saved_search_box);
-        if (Danbooru.Cookie.get('bss-hide-saved-searches') !== "1") {
+        if (JSPLib.storage.getStorageData('bss-hide-saved-searches',localStorage,0) === 0) {
             $("#bss-message").show();
         }
     } else if (searches_index) {
