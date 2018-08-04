@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      14.7
+// @version      14.8
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -658,6 +658,86 @@ Danbooru.RelatedTag.hide = function() {
   $("#toggle-related-tags-link").text("»");
 }
 
+Danbooru.Upload = Danbooru.Upload || {};
+
+Danbooru.Upload.initialize_info_manual = function() {
+  $("#fetch-data-manual").click(function(e) {
+    var source = $("#upload_source,#post_source").val();
+    var referer = $("#upload_referer_url").val();
+
+    if (/^https?:\/\//.test(source)) {
+      $("#source-info span#loading-data").show();
+      Danbooru.Upload.fetch_source_data(source, referer);
+    }
+
+    e.preventDefault();
+  });
+};
+
+Danbooru.Upload.fetch_source_data = function(url, referer_url) {
+  return $.getJSON("/source.json", { url: url, ref: referer_url })
+    .then(Danbooru.Upload.fill_source_info)
+    .catch(function(data) {
+      $("#source-info span#loading-data").html("Error: " + data.responseJSON["message"])
+    });
+};
+
+Danbooru.Upload.fill_source_info = function(data) {
+  $("#source-tags").empty();
+  $.each(data.tags, function(i, v) {
+    $("<a>").attr("href", v[1]).text(v[0]).appendTo("#source-tags");
+  });
+
+  $("#source-artist-profile").attr("href", data.profile_url).text(data.artist_name);
+
+  Danbooru.RelatedTag.process_artist(data.artists);
+  Danbooru.RelatedTag.translated_tags = data.translated_tags;
+  Danbooru.RelatedTag.build_all();
+
+  if (data.artists.length === 0) {
+    var new_artist_params = $.param({
+      artist: {
+        name: data.unique_id,
+        other_names: data.artist_name,
+        url_string: $.uniqueSort([data.profile_url, data.normalized_for_artist_finder_url]).join("\n")
+      }
+    });
+
+    var link = $("<a>").attr("href", "/artists/new?" + new_artist_params).text("Create new artist");
+    $("#source-danbooru-artists").html(link);
+  } else {
+    var artistLinks = data.artists.map(function (artist) {
+      return $('<a class="tag-type-1">').attr("href", "/artists/" + artist.id).text(artist.name);
+    });
+
+    $("#source-danbooru-artists").html(artistLinks);
+  }
+
+  if (data.image_urls.length > 1) {
+    $("#gallery-warning").show();
+  } else {
+    $("#gallery-warning").hide();
+  }
+
+  $("#upload_artist_commentary_title").val(data.artist_commentary.dtext_title);
+  $("#upload_artist_commentary_desc").val(data.artist_commentary.dtext_description);
+  Danbooru.Upload.toggle_commentary();
+
+  $("#source-info span#loading-data").hide();
+  $("#source-info ul").show();
+};
+
+
+Danbooru.Upload.toggle_commentary = function() {
+  if ($(".artist-commentary").is(":visible")) {
+    $("#toggle-artist-commentary").text("show »");
+  } else {
+    $("#toggle-artist-commentary").text("« hide");
+  }
+
+  $(".artist-commentary").slideToggle();
+};
+
 }
 
 /***Misc functions***/
@@ -971,6 +1051,18 @@ function FindArtistSession(e) {
 
 /***Setup functions***/
 
+//TEMPORARY DANBOORU PATCH//
+
+function rebindFetchManual() {
+    let bounditems = $._data($("#fetch-data-manual")[0]);
+    JSPLib.debug.debuglog("Bound items (FM):",Object.keys(bounditems));
+    if (!$.isEmptyObject(bounditems) && bounditems.events.click.length) {
+        clearInterval(rebindFetchManual.timer);
+        $("#fetch-data-manual").off();
+        Danbooru.Upload.initialize_info_manual();
+    }
+}
+
 //Rebind callback functions
 
 function rebindRelatedTags() {
@@ -1095,6 +1187,7 @@ function main() {
     if ($("#c-posts #a-show,#c-uploads #a-new").length) {
         rebindRelatedTags.timer = setInterval(rebindRelatedTags,timer_poll_interval);
         rebindFindArtist.timer = setInterval(rebindFindArtist,timer_poll_interval);
+        rebindFetchManual.timer = setInterval(rebindFetchManual,timer_poll_interval);
     }
     if ($("#c-wiki-pages,#c-wiki-page-versions").length) {
         rebindWikiPageAutocomplete.timer = setInterval(rebindWikiPageAutocomplete,timer_poll_interval);
