@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9.3
+// @version      9.4
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes)
 // @author       BrokenEagle
@@ -152,7 +152,7 @@ const eventlistener_css = `
 #event-notice .hide-rendered-note {
     font-family: monospace;
 }
-#event-notice a {
+.ui-state-highlight a {
     color: #0073ff;
 }
 `;
