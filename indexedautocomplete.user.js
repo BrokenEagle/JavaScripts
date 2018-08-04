@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      14.8
+// @version      14.9
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -1063,6 +1063,21 @@ function rebindFetchManual() {
     }
 }
 
+function fetchTranslatedTags() {
+    if ($("#translated-related-tags-column a").length) {
+        clearInterval(fetchTranslatedTags.timer);
+        Danbooru.RelatedTag.translated_tags = Danbooru.RelatedTag.translated_tags || $("#translated-related-tags-column a").map((i,entry)=>{return [[entry.innerHTML.replace(/\s/g,'_'),parseInt(entry.className.match(/\d/)[0])]];}).toArray();
+    }
+}
+
+function fetchArtistData() {
+    if (rebindFindArtist.timer === true) {
+        clearInterval(fetchArtistData.timer);
+        //Gleaning the artist info is a lot more convoluted, so just do a click
+        $("#find-artist-button").click();
+    }
+}
+
 //Rebind callback functions
 
 function rebindRelatedTags() {
@@ -1089,6 +1104,7 @@ function rebindFindArtist() {
         clearInterval(rebindFindArtist.timer);
         $("#find-artist-button").off();
         $("#find-artist-button").click(FindArtistSession);
+        rebindFindArtist.timer = true;
     }
 }
 
@@ -1184,6 +1200,12 @@ function main() {
     Danbooru.Autocomplete.user_source = UserSourceIndexed;
     Danbooru.Autocomplete.favorite_group_source = FavoriteGroupSourceIndexed;
     Danbooru.Autocomplete.saved_search_source = SavedSearchSourceIndexed;
+
+    //Temporary patch
+    if ($("#c-uploads #a-new").length) {
+        fetchTranslatedTags.timer = setInterval(fetchTranslatedTags,timer_poll_interval);
+        fetchArtistData.timer = setInterval(fetchArtistData,timer_poll_interval);
+    }
     if ($("#c-posts #a-show,#c-uploads #a-new").length) {
         rebindRelatedTags.timer = setInterval(rebindRelatedTags,timer_poll_interval);
         rebindFindArtist.timer = setInterval(rebindFindArtist,timer_poll_interval);
