@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      14.9
+// @version      14.10
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -506,10 +506,10 @@ Danbooru.RelatedTag.build_all = function() {
 Danbooru.RelatedTag.build_recent_and_frequent = function($dest) {
   var recent_tags = ReadCookie("recent_tags_with_categories");
   var favorite_tags = ReadCookie("favorite_tags_with_categories");
-  if (recent_tags.length) {
+  if (recent_tags) {
     $dest.append(this.build_html("recent", this.other_tags(recent_tags), "recent"));
   }
-  if (favorite_tags.length) {
+  if (favorite_tags) {
     $dest.append(this.build_html("frequent", this.other_tags(favorite_tags), "frequent"));
   }
 }
