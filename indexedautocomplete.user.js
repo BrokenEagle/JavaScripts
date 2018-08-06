@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      14.10
+// @version      14.11
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -35,6 +35,12 @@ const timer_poll_interval = 100;
 
 //Interval for fixup callback functions
 const callback_interval = 1000;
+
+//Main function expires
+const prune_expires = JSPLib.utility.one_day;
+
+//Maximum number of entries to prune in one go
+const prune_limit = 1000;
 
 const autocomplete_userlist = [
     "#search_to_name",
@@ -784,6 +790,39 @@ function ReadCookie(name) {
     CreateCookie(name, "", -1);
 }
 
+function GetExpiration(expires) {
+    return Date.now() + expires;
+}
+
+function ValidateExpires(actual_expires,expected_expires) {
+    //Resolve to true if the actual_expires is bogus, has expired, or the expiration is too long
+    return !Number.isInteger(actual_expires) || (Date.now() > actual_expires) || ((actual_expires - Date.now()) > expected_expires);
+}
+
+async function PruneStorage(regex) {
+    if (JSPLib.storage.use_storage) {
+        let pruned_items = 0;
+        let total_items = 0;
+        let promise_array = [];
+        await JSPLib.storage.danboorustorage.iterate((value,key)=>{
+            if (key.match(regex)) {
+                if (JSPLib.storage.hasDataExpired(value)) {
+                    JSPLib.debug.debuglog("Deleting",key);
+                    promise_array.push(JSPLib.storage.removeData(key));
+                    pruned_items += 1;
+                }
+                total_items += 1;
+                if (pruned_items >= prune_limit) {
+                    JSPLib.debug.debuglog("Prune limit reached!");
+                    return true;
+                }
+            }
+        });
+        JSPLib.debug.debuglog(`Pruning ${pruned_items}/${total_items} items!`);
+        return Promise.all(promise_array);
+    }
+}
+
 //Time functions
 
 function MinimumExpirationTime(type) {
@@ -882,6 +921,21 @@ function FixExpirationCallback(key,value,tagname,type) {
         var expiration_time = ExpirationTime(type,data[0].post_count);
         JSPLib.storage.saveData(key, {"value": value, "expires": Date.now() + expiration_time});
     });
+}
+
+function PruneIACEntries() {
+    JSPLib.debug.debugTime('IAC-PruneIACEntries');
+    let expires = JSPLib.storage.getStorageData('iac-prune-expires',localStorage,0);
+    if (ValidateExpires(expires, prune_expires)) {
+        JSPLib.debug.debuglog("PruneIACEntries");
+        PruneStorage(/^(?:ac|pl|us|fg|ss|ar|wp|rt(?:gen|char|copy|art)?)-/).then(()=>{
+            JSPLib.debug.debuglog("Pruning complete!");
+            JSPLib.debug.debugTimeEnd('IAC-PruneIACEntries');
+        });
+        JSPLib.storage.setStorageData('iac-prune-expires', GetExpiration(prune_expires), localStorage);;
+    } else {
+        JSPLib.debug.debuglog("No prune of autocomplete entries!");
+    }
 }
 
 /***Main execution functions***/
@@ -1237,6 +1291,10 @@ function main() {
             JSPLib.statistics.outputAdjustedMean("IndexedAutocomplete");
         });
     });
+    //Take care of other non-critical tasks at a later time
+    setTimeout(()=>{
+        PruneIACEntries();
+    },JSPLib.utility.one_minute);
 }
 
 /***Execution start***/
