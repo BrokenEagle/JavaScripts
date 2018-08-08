@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9.4
+// @version      9.5
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes)
 // @author       BrokenEagle
@@ -9,36 +9,37 @@
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/eventlistener.user.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180421/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/danbooru.js
 // ==/UserScript==
 
 /****Global variables****/
 
 //Variables for debug.js
 JSPLib.debug.debug_console = false;
+JSPLib.debug.level = JSPLib.debug.INFO;
+JSPLib.debug.pretext = "EL:";
 
 //Variables for load.js
 const program_load_required_variables = ['window.jQuery'];
-
-//Polling interval for checking program status
-const timer_poll_interval = 100;
+const program_load_required_ids = ["page"];
 
 //The max number of items to grab with each network call
 const query_limit = 100;
 
-//Time constant
-const one_minute = 60 * 1000;
-
-//Minimum amount of time between rechecks
-const recheck_event_interval = one_minute * 5;
+//Various program expirations
+const recheck_event_expires = 5 * JSPLib.utility.one_minute;
+const process_semaphore_expires = 5 * JSPLib.utility.one_minute;
 
 //Placeholder for setting later;
 var username;
 var userid;
 var usertype_lastids = {};
 var subscribetype_lastids = {};
+var type_alllist = {};
 
 //Type configurations
 const typedict = {
@@ -188,7 +189,9 @@ const forum_css = `
     margin-left: 14em;
 }`;
 
-/****Helper functions****/
+/****Functions****/
+
+//Library functions
 
 function GetMeta(key) {
   return $("meta[name=" + key + "]").attr("content");
@@ -202,54 +205,53 @@ function ClearHide(selector) {
     $(selector).attr('style','');
 }
 
-function JoinArgs() {
-    return jQuery.extend(true,{},...arguments);
+function GetExpiration(expires) {
+    return Date.now() + expires;
 }
 
-function DanbooruArrayMaxID(array) {
-    return ValuesMax(GetObjectAttributes(array,'id'));
+function ValidateExpires(actual_expires,expected_expires) {
+    //Resolve to true if the actual_expires is bogus, has expired, or the expiration is too long
+    return !Number.isInteger(actual_expires) || (Date.now() > actual_expires) || ((actual_expires - Date.now()) > expected_expires);
 }
 
-function GetObjectAttributes(array,attribute) {
-    return array.map(val=>{return val[attribute];});
+function ValidateID(num) {
+    return Number.isInteger(num) && (num > 0);
 }
 
-function ValuesMax(array) {
-    return array.reduce(function(a, b) { return Math.max(a,b); });
+function ValidateIDList(array) {
+    return Array.isArray(array) && (array.length > 0) && array.reduce((total,val)=>{return ValidateID(val) && total;},true);
 }
 
-function ValuesMin(array) {
-    return array.reduce(function(a, b) { return Math.min(a,b); });
+function CheckSemaphore() {
+    let semaphore = JSPLib.storage.getStorageData('el-process-semaphore',localStorage,0);
+    return ValidateExpires(semaphore, process_semaphore_expires);
 }
 
-async function GetAllDanbooru(type,limit,options) {
-    var url_addons = options.addons || {};
-    var reverse = options.reverse || false;
-    var ChoooseID = (reverse ? ValuesMax : ValuesMin);
-    var page_modifier = (reverse ? 'a' : 'b');
-    var page_addon = (options.page ? {page:`${page_modifier}${options.page}`} : {});
-    var limit_addon = {limit: limit};
-    var return_items = [];
-    while (true) {
-        let request_addons = JoinArgs(url_addons,page_addon,limit_addon);
-        let request_key = $.param(request_addons);
-        JSPLib.debug.recordTime(request_key,'Network');
-        let temp_items = await $.getJSON(`/${type}`,request_addons);
-        JSPLib.debug.recordTimeEnd(request_key,'Network');
-        return_items = return_items.concat(temp_items);
-        if (temp_items.length < limit) {
-            return return_items;
-        }
-        let lastid = ChoooseID(GetObjectAttributes(temp_items,'id'));
-        page_addon = {page:`${page_modifier}${lastid}`};
-        JSPLib.debug.debuglog("Rechecking",type,"@",lastid);
+function FreeSemaphore() {
+    $(window).off('beforeunload.el.semaphore');
+    JSPLib.storage.setStorageData('el-process-semaphore',0,localStorage);
+}
+
+async function ReserveSemaphore() {
+    if (CheckSemaphore()) {
+        //Guarantee that leaving/closing tab reverts the semaphore
+        $(window).on('beforeunload.el.semaphore',function () {
+            JSPLib.storage.setStorageData('el-process-semaphore',0,localStorage);
+        });
+        //Set semaphore with an expires in case the program crashes
+        let semaphore = GetExpiration(process_semaphore_expires);
+        JSPLib.storage.setStorageData('el-process-semaphore', semaphore, localStorage);
+        return semaphore;
     }
+    return null;
 }
+
+//Helper functions
 
 async function SetRecentDanbooruID(type,useritem=false) {
-    let jsonitem = await $.getJSON(`/${typedict[type].controller}`, JoinArgs(typedict[type].addons,{limit: 1}));
+    let jsonitem = await JSPLib.danbooru.submitRequest(typedict[type].controller,JSPLib.danbooru.joinArgs(typedict[type].addons,{limit: 1}),[]);
     if (jsonitem.length) {
-        SaveLastID(type,DanbooruArrayMaxID(jsonitem));
+        SaveLastID(type,JSPLib.danbooru.getNextPageID(jsonitem,true));
     } else if (useritem) {
         SaveLastID(type,0);
     }
@@ -258,15 +260,8 @@ async function SetRecentDanbooruID(type,useritem=false) {
 //Data storage functions
 
 function GetList(type) {
-    let typelist = localStorage.getItem(`el-${type}list`);
-    if (typelist) {
-        try {
-            return JSON.parse(typelist);
-        } catch (e) {
-            //Swallow exception
-        }
-    }
-    return [];
+    type_alllist[type] = type_alllist[type] || JSPLib.storage.getStorageData(`el-${type}list`,localStorage,[]);
+    return type_alllist[type];
 }
 
 function SetList(type,input) {
@@ -276,8 +271,8 @@ function SetList(type,input) {
     } else {
         typelist.push(parseInt(input));
     }
-    typelist = JSPLib.utility.setUnique(typelist);
-    localStorage.setItem(`el-${type}list`,JSON.stringify(typelist));
+    type_alllist[type] = JSPLib.utility.setUnique(typelist);
+    JSPLib.storage.setStorageData(`el-${type}list`,type_alllist[type],localStorage);
 }
 
 //Quicker way to check list existence; avoids unnecessarily parsing very long lists
@@ -288,31 +283,34 @@ function CheckList(type) {
 
 function SaveLastID(type,lastid) {
     let key = `el-${type}lastid`;
-    let previousid = localStorage.getItem(key);
-    if (previousid) {
-        lastid = Math.max(parseInt(previousid),lastid);
-    }
-    localStorage.setItem(key,lastid);
-    JSPLib.debug.debuglog(`Set last ${type} ID:`,localStorage.getItem(key));
-}
-
-function CheckTimeout() {
-    let timeout = localStorage.getItem('el-timeout');
-    if (timeout === null || isNaN(timeout) || (Date.now() > parseInt(timeout))) {
-        return true;
-    }
-    return false;
+    let previousid = JSPLib.storage.getStorageData(key,localStorage,0);
+    lastid = Math.max(previousid,lastid);
+    JSPLib.storage.setStorageData(key,lastid,localStorage);
+    JSPLib.debug.debuglog(`Set last ${type} ID:`,lastid);
 }
 
 function HasEvents() {
-    if (localStorage.getItem('el-events') === "true") {
-        return true;
-    }
-    return false;
+    return JSPLib.storage.getStorageData('el-events',localStorage,false);
+}
+
+function CheckTimeout() {
+    let expires = JSPLib.storage.getStorageData('el-timeout',localStorage,0);
+    return ValidateExpires(expires,recheck_event_expires);
 }
 
 function SetRecheckTimeout() {
-    localStorage.setItem('el-timeout',Date.now() + recheck_event_interval);
+    JSPLib.storage.setStorageData('el-timeout',GetExpiration(recheck_event_expires),localStorage);
+}
+
+//Return true if there are no saved events at all, or saved events for the input type
+function CheckWaiting(inputtype) {
+    CheckWaiting.all_waits = CheckWaiting.all_waits || {};
+    if (Object.keys(CheckWaiting.all_waits).length == 0) {
+        $.each(['dmail','flag','appeal','spam','comment','forum','note'],(i,type)=>{
+            CheckWaiting.all_waits[type] = JSPLib.storage.getStorageData(`el-saved${type}lastid`,localStorage,[]).length > 0;
+        });
+    }
+    return !(Object.values(CheckWaiting.all_waits).reduce((total,entry)=>{return total || entry;},false)) || CheckWaiting.all_waits[inputtype];
 }
 
 /****Auxiliary functions****/
@@ -381,17 +379,17 @@ function InsertNotes($notepage) {
 
 async function CheckUserType(type) {
     let lastidkey = `el-${type}lastid`;
-    let typelastid = localStorage.getItem(lastidkey);
-    if (typelastid) {
-        let url_addons = JoinArgs(typedict[type].addons,typedict[type].useraddons(username));
-        let jsontype = await GetAllDanbooru(typedict[type].controller,query_limit,{addons:url_addons,page:typelastid,reverse:true});
+    let typelastid = JSPLib.storage.getStorageData(lastidkey,localStorage,0);
+    if (ValidateID(typelastid)) {
+        let url_addons = JSPLib.danbooru.joinArgs(typedict[type].addons,typedict[type].useraddons(username));
+        let jsontype = await JSPLib.danbooru.getAllItems(typedict[type].controller,query_limit,{addons:url_addons,page:typelastid,reverse:true});
         let filtertype = typedict[type].filter(jsontype);
-        let lastusertype = (jsontype.length ? [DanbooruArrayMaxID(jsontype)] : []);
+        let lastusertype = (jsontype.length ? [JSPLib.danbooru.getNextPageID(jsontype,true)] : []);
         if (filtertype.length) {
             usertype_lastids[type] = lastusertype[0];
             JSPLib.debug.debuglog(`Found ${type}s!`,usertype_lastids[type]);
-            let idlist = GetObjectAttributes(filtertype,'id');
-            url_addons = JoinArgs(typedict[type].addons,{search: {id: idlist.join(',')}, limit: idlist.length});
+            let idlist = JSPLib.utility.getObjectAttributes(filtertype,'id');
+            url_addons = JSPLib.danbooru.joinArgs(typedict[type].addons,{search: {id: idlist.join(',')}, limit: idlist.length});
             let typehtml = await $.get(`/${typedict[type].controller}`, url_addons);
             let $typepage = $(typehtml);
             typedict[type].insert($typepage,type);
@@ -400,7 +398,7 @@ async function CheckUserType(type) {
             return true;
         } else {
             JSPLib.debug.debuglog(`No ${type}s!`);
-            if (lastusertype.length && (localStorage.getItem(lastidkey) !== lastusertype[0].toString())) {
+            if (lastusertype.length && (typelastid !== lastusertype[0])) {
                 SaveLastID(type,lastusertype[0]);
             }
         }
@@ -412,31 +410,33 @@ async function CheckUserType(type) {
 
 async function CheckSubscribeType(type) {
     let lastidkey = `el-${type}lastid`;
-    let typelastid = localStorage.getItem(lastidkey);
-    if (typelastid) {
+    let typelastid = JSPLib.storage.getStorageData(lastidkey,localStorage,0);
+    if (ValidateID(typelastid)) {
         let typelist = GetList(type);
         let savedlistkey = `el-saved${type}list`;
         let savedlastidkey = `el-saved${type}lastid`;
         var subscribetypelist = [], jsontypelist = [];
-        if (!localStorage.getItem(savedlistkey)) {
-            let jsontype = await GetAllDanbooru(typedict[type].controller,query_limit,{page:typelastid,addons:typedict[type].addons,reverse:true});
+        let savedlastid = JSPLib.storage.getStorageData(savedlastidkey,localStorage);
+        let savedlist = JSPLib.storage.getStorageData(savedlistkey,localStorage);
+        if (!ValidateIDList(savedlastid) || !ValidateIDList(savedlist)) {
+            let jsontype = await JSPLib.danbooru.getAllItems(typedict[type].controller,query_limit,{page:typelastid,addons:typedict[type].addons,reverse:true});
             let subscribetype = typedict[type].filter(jsontype,typelist);
-            if (subscribetype.length) {
-                subscribetypelist = GetObjectAttributes(subscribetype,'id');
-                localStorage.setItem(savedlistkey,JSON.stringify(subscribetypelist));
-            }
             if (jsontype.length) {
-                jsontypelist = [DanbooruArrayMaxID(jsontype)];
-                localStorage.setItem(savedlastidkey,JSON.stringify(jsontypelist));
+                jsontypelist = [JSPLib.danbooru.getNextPageID(jsontype,true)];
+            }
+            if (subscribetype.length) {
+                subscribetypelist = JSPLib.utility.getObjectAttributes(subscribetype,'id');
+                JSPLib.storage.setStorageData(savedlistkey,subscribetypelist,localStorage);
+                JSPLib.storage.setStorageData(savedlastidkey,jsontypelist,localStorage);
             }
         } else {
-            subscribetypelist = JSON.parse(localStorage.getItem(savedlistkey));
-            jsontypelist = JSON.parse(localStorage.getItem(savedlastidkey));
+            jsontypelist = savedlastid;
+            subscribetypelist = savedlist;
         }
         if (subscribetypelist.length) {
             subscribetype_lastids[type] = jsontypelist[0];
             JSPLib.debug.debuglog(`Found ${type}s!`,subscribetype_lastids[type]);
-            let url_addons = JoinArgs(typedict[type].addons,{search: {id: subscribetypelist.join(',')}, limit: subscribetypelist.length});
+            let url_addons = JSPLib.danbooru.joinArgs(typedict[type].addons,{search: {id: subscribetypelist.join(',')}, limit: subscribetypelist.length});
             let typehtml = await $.get(`/${typedict[type].controller}`, url_addons);
             let $typepage = $(typehtml);
             typedict[type].insert($typepage);
@@ -445,7 +445,7 @@ async function CheckSubscribeType(type) {
             return true;
         } else {
             JSPLib.debug.debuglog(`No ${type}s!`);
-            if (jsontypelist.length && (localStorage.getItem(lastidkey) !== jsontypelist[0].toString())) {
+            if (jsontypelist.length && (typelastid !== jsontypelist[0])) {
                 SaveLastID(type,jsontypelist[0]);
             }
         }
@@ -458,7 +458,7 @@ async function CheckSubscribeType(type) {
 async function CheckAllEvents(promise_array) {
     let hasevents_all = await Promise.all(promise_array);
     let hasevents = hasevents_all.reduce((a,b)=>{return a || b;});
-    localStorage.setItem('el-events',hasevents);
+    JSPLib.storage.setStorageData('el-events',hasevents,localStorage);
 }
 
 /****Render functions****/
@@ -786,33 +786,37 @@ function HideFullDmailClick($obj) {
 
 function main() {
     username = GetMeta('current-user-name');
-    userid = GetMeta('current-user-id');
-    if (!username || !userid || isNaN(userid)) {
+    userid = parseInt(GetMeta('current-user-id'));
+    if (username === "Anonymous") {
+        JSPLib.debug.debuglog("User must log in!");
+        return;
+    } else if ((typeof username !== "string") || !ValidateID(userid)) {
         JSPLib.debug.debuglog("Invalid meta variables!");
         return;
     }
-    userid = parseInt(userid);
     $("#dmail-notice").hide();
     InitializeNoticeBox();
     var promise_array = [];
-    if (CheckTimeout() || HasEvents()) {
+    if ((CheckTimeout() || HasEvents()) && ReserveSemaphore()) {
         SetRecheckTimeout();
-        promise_array.push(CheckUserType('dmail'));
-        promise_array.push(CheckUserType('flag'));
-        promise_array.push(CheckUserType('appeal'));
-        promise_array.push(CheckUserType('spam'));
-        if (CheckList('comment')) {
+        CheckWaiting('dmail') && promise_array.push(CheckUserType('dmail'));
+        CheckWaiting('flag') && promise_array.push(CheckUserType('flag'));
+        CheckWaiting('appeal') && promise_array.push(CheckUserType('appeal'));
+        CheckWaiting('spam') && promise_array.push(CheckUserType('spam'));
+        if (CheckList('comment') && CheckWaiting('comment')) {
             JSPLib.utility.setCSSStyle(comment_css,'comment');
             promise_array.push(CheckSubscribeType('comment'));
         }
-        if (CheckList('forum')) {
+        if (CheckList('forum') && CheckWaiting('forum')) {
             JSPLib.utility.setCSSStyle(forum_css,'forum');
             promise_array.push(CheckSubscribeType('forum'));
         }
-        if (CheckList('note')) {
+        if (CheckList('note') && CheckWaiting('note')) {
             promise_array.push(CheckSubscribeType('note'));
         }
-        CheckAllEvents(promise_array);
+        CheckAllEvents(promise_array).then(()=>{
+            FreeSemaphore();
+        });
     } else {
         JSPLib.debug.debuglog("Waiting...");
     }
@@ -835,4 +839,4 @@ function main() {
 
 /****Execution start****/
 
-JSPLib.load.programInitialize(main,'EL',program_load_required_variables);
+JSPLib.load.programInitialize(main,'EL',program_load_required_variables,program_load_required_ids);
