@@ -88,7 +88,7 @@ var empty_uploads_message;
 
 //Placeholders for setting during program execution
 var username;
-var use_dummy_value;
+var is_gold_user;
 var user_copytags = {};
 
 //Style information
@@ -504,7 +504,7 @@ function SortDict(dict) {
 }
 
 function BuildTagParams(type,tag) {
-    return (type === 'at' ? '' : ('age:..1' + type + ' ')) + tag + (use_dummy_value ? ' -' + JSPLib.danbooru.randomDummyTag() : '');
+    return (type === 'at' ? '' : ('age:..1' + type + ' ')) + tag + (is_gold_user ? ' -' + JSPLib.danbooru.randomDummyTag() : '');
 }
 
 function GetCopyrightCount(posts) {
@@ -715,7 +715,7 @@ function SetCountNoticeClick() {
             $('#upload-counts').addClass('opened');
             //Prevent processing potentially bad usernames set by SetCheckUserClick
             username = GetMeta("current-user-name");
-            empty_uploads_message = empty_uploads_message_owner;
+            empty_uploads_message = (username === "Anonymous" ? empty_uploads_message_anonymous : empty_uploads_message_owner);
             PopulateTable();
         } else {
             JSPLib.storage.setStorageData('cu-hide-current-uploads',1,localStorage);
@@ -787,7 +787,10 @@ function SetTooltipHover() {
 
 async function ProcessUploads() {
     var promise_array = [];
-    var current_uploads = await GetPeriodUploads(username,'d');
+    var current_uploads = [];
+    if (username !== "Anonymous") {
+        var current_uploads = await GetPeriodUploads(username,'d');
+    }
     if (current_uploads.length) {
         let previous_key = `previous-uploads-${username}`;
         let is_new_tab = JSPLib.storage.getStorageData(previous_key,sessionStorage) === null;
@@ -797,22 +800,26 @@ async function ProcessUploads() {
         if (is_new_tab || symmetric_difference.length) {
             promise_array.push(GetTagData(`user:${username}`));
         }
-        let curr_copyright_count = GetCopyrightCount(current_uploads);
-        let prev_copyright_count = GetCopyrightCount(previous_uploads);
-        await Promise.all($.map(curr_copyright_count,(val,key)=>{return GetReverseTagImplication(key);}));
-        user_copytags[username] = SortDict(curr_copyright_count).filter(value=>{return JSPLib.storage.getStorageData('rti-'+value,sessionStorage).value == 0;});
-        let copyright_symdiff = CompareCopyrightCounts(curr_copyright_count,prev_copyright_count);
-        let copyright_changed = (is_new_tab ? user_copytags[username] : JSPLib.utility.setIntersection(user_copytags[username],copyright_symdiff));
-        let copyright_nochange = (is_new_tab ? [] : JSPLib.utility.setDifference(user_copytags[username],copyright_changed));
-        $.each(copyright_nochange,(i,val)=>{
-            if (CheckCopyrightVelocity(val)) {
+        if (is_gold_user) {
+            let curr_copyright_count = GetCopyrightCount(current_uploads);
+            let prev_copyright_count = GetCopyrightCount(previous_uploads);
+            await Promise.all($.map(curr_copyright_count,(val,key)=>{return GetReverseTagImplication(key);}));
+            user_copytags[username] = SortDict(curr_copyright_count).filter(value=>{return JSPLib.storage.getStorageData('rti-'+value,sessionStorage).value == 0;});
+            let copyright_symdiff = CompareCopyrightCounts(curr_copyright_count,prev_copyright_count);
+            let copyright_changed = (is_new_tab ? user_copytags[username] : JSPLib.utility.setIntersection(user_copytags[username],copyright_symdiff));
+            let copyright_nochange = (is_new_tab ? [] : JSPLib.utility.setDifference(user_copytags[username],copyright_changed));
+            $.each(copyright_nochange,(i,val)=>{
+                if (CheckCopyrightVelocity(val)) {
+                    promise_array.push(GetTagData(val));
+                }
+            });
+            $.each(copyright_changed,(i,val)=>{
+                promise_array.push(GetTagData(`user:${username} ${val}`));
                 promise_array.push(GetTagData(val));
-            }
-        });
-        $.each(copyright_changed,(i,val)=>{
-            promise_array.push(GetTagData(`user:${username} ${val}`));
-            promise_array.push(GetTagData(val));
-        });
+            });
+        } else {
+            user_copytags[username] = [];
+        }
         await Promise.all(promise_array);
     }
     JSPLib.storage.saveData(`previous-uploads-${username}`,{value: PreCompressData(current_uploads), expires: 0});
@@ -849,10 +856,7 @@ async function PopulateTable() {
 
 function main() {
     username = GetMeta("current-user-name");
-    if (username === "Anonymous") {
-        return;
-    }
-    use_dummy_value = $('body').data('user-is-gold');
+    is_gold_user = $('body').data('user-is-gold');
     JSPLib.utility.setCSSStyle(program_css,'program');
     $notice_box = $(notice_box);
     $footer_notice = $(unstash_notice);
