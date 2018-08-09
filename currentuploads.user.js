@@ -89,7 +89,6 @@ var empty_uploads_message;
 //Placeholders for setting during program execution
 var username;
 var use_dummy_value;
-var num_network_requests = 0;
 var user_copytags = {};
 
 //Style information
