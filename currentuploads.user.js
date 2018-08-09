@@ -25,7 +25,7 @@
 //Variables for debug.js
 JSPLib.debug.debug_console = false;
 JSPLib.debug.pretext = "CU:";
-JSPLib.debug.level = JSPLib.debug.INFO;
+JSPLib.debug.level = JSPLib.debug.DEBUG;
 
 //Variables for load.js
 const program_load_required_variables = ['window.jQuery'];
@@ -37,7 +37,7 @@ JSPLib.danbooru.counter_domname = "#loading-counter";
 //Time periods
 const timevalues = ['d','w','mo','y','at'];
 const manual_periods = ['w','mo'];
-const check_periods = ['d','w','mo'];
+const limited_periods = ['y','at'];
 
 //Period constants
 const period_info = {
@@ -193,6 +193,10 @@ const program_css = `
 .cu-select-tooltip.cu-activetooltip a {
     font-weight: bold;
 }
+.cu-manual:hover,
+.cu-limited:hover {
+    color: grey;
+}
 `;
 
 //HTML for user interface
@@ -240,10 +244,16 @@ const fix_expires_constraints = {
     }
 }
 
+const number_constraints = {
+    presence: true,
+    numericality: true
+}
+
 const validation_constraints = {
     countentry: JSPLib.validate.postcount_constraints,
     implicationentry: JSPLib.validate.integer_constraints,
     postentries: JSPLib.validate.array_constraints,
+    statentries: JSPLib.validate.hash_constraints,
     postentry: [
         JSPLib.validate.integer_constraints,    //ID
         JSPLib.validate.integer_constraints,    //SCORE
@@ -253,7 +263,22 @@ const validation_constraints = {
         JSPLib.validate.integer_constraints,    //TAGCOUNT
         JSPLib.validate.integer_constraints,    //GENTAGS
         JSPLib.validate.stringonly_constraints  //COPYRIGHTS
-    ]
+    ],
+    postmetric: {
+        score: hash_constraints,
+        upscore: hash_constraints,
+        downscore: hash_constraints,
+        favcount: hash_constraints,
+        tagcount: hash_constraints,
+        gentags: hash_constraints
+    },
+    poststat: {
+        max: JSPLib.validate.integer_constraints,
+        average: number_constraints,
+        stddev: number_constraints,
+        outlier: JSPLib.validate.integer_constraints,
+        adjusted: number_constraints
+    }
 };
 
 /**FUNCTIONS**/
@@ -288,8 +313,10 @@ function ValidationSelector(key) {
     } else if (key.match(/^rti-/)) {
         return 'implicationentry';
     }
-    else if (key.match(/^(?:daily|weekly|monthly|yearly|previous)-uploads-/)) {
+    else if (key.match(/^(?:daily|weekly|monthly|previous)-uploads-/)) {
         return 'postentries';
+    } else if (key.match(/^(?:yearly|alltime)-uploads-/)) {
+        return 'statentries';
     }
 }
 
@@ -313,6 +340,9 @@ function ValidateEntry(key,entry) {
     if (validation_key === 'postentries') {
         return ValidatePostentries(key,entry.value);
     }
+    if (validation_key === 'statentries') {
+        return ValidateStatEntries(key,entry.value);
+    }
     return true;
 }
 
@@ -325,6 +355,23 @@ function ValidatePostentries(key,postentries) {
         check = validate(postentries[i],validation_constraints.postentry);
         if (check !== undefined) {
             JSPLib.validate.printValidateError(value_key,check);
+            return false;
+        }
+    }
+    return true;
+}
+
+function ValidateStatEntries(key,statentries) {
+    check = validate(statentries,validation_constraints.postmetric);
+    if (check !== undefined) {
+        JSPLib.validate.printValidateError(key,check);
+        return false;
+    }
+    for (let i = 0; i < tooltip_metrics.length; i++) {
+        let metric = tooltip_metrics[i];
+        check = validate(statentries[metric],validation_constraints.poststat);
+        if (check !== undefined) {
+            JSPLib.validate.printValidateError(key + '.' + metric,check);
             return false;
         }
     }
@@ -381,10 +428,12 @@ function RenderTable() {
 
 function RenderHeader() {
     var tabletext = AddTableHeader('Name');
+    let click_periods = manual_periods.concat(limited_periods);
     $.each(timevalues,(i,period)=>{
         let header = period_info.header[period];
-        if (manual_periods.includes(period)) {
-            tabletext += AddTableHeader(`<a>${header}</a><span class="cu-display" style="display:none">&nbsp;(<span class="cu-counter">...</span>)</span>`,`data-period="${period}"`);
+        if (click_periods.includes(period)) {
+            let class_name = (manual_periods.includes(period) ? 'cu-manual' : 'cu-limited');
+            tabletext += AddTableHeader(`<a class="${class_name}">${header}</a><span class="cu-display" style="display:none">&nbsp;(<span class="cu-counter">...</span>)</span>`,`data-period="${period}"`);
         } else {
             tabletext += AddTableHeader(header);
         }
@@ -412,7 +461,11 @@ function RenderRow(key) {
     for (let i = 0;i < timevalues.length; i++) {
         let period = timevalues[i];
         let data_text = GetTableValue(key,period);
-        if (CheckPeriodStatus(period,'available')) {
+        let is_available = CheckPeriodStatus(period,'available');
+        let is_limited = limited_periods.includes(period);
+        if (is_available && is_limited && key == '') {
+            tabletext += AddTableData(RenderTooltipData(data_text,timevalues[i],true));
+        } else if (is_available && !is_limited) {
             tabletext += AddTableData(RenderTooltipData(data_text,timevalues[i]));
         } else {
             tabletext += AddTableData(`<span class="cu-uploads">${data_text}</span>`);
@@ -430,24 +483,26 @@ function GetTableValue(key,type) {
     return `(${useruploads}/${alluploads})`;
 }
 
-function RenderTooltipData(text,period) {
+function RenderTooltipData(text,period,limited=false) {
+    let tooltip_html = RenderAllToolPopups(period,limited);
     return `
-<div class="cu-tooltip" data-period="${period}"><span class="cu-uploads">${text}</span>${RenderAllToolPopups()}
+<div class="cu-tooltip" data-period="${period}"><span class="cu-uploads">${text}</span>${tooltip_html}
 </div>
 `;
 }
 
-function RenderAllToolPopups() {
+function RenderAllToolPopups(period,limited) {
     let html_text = "";
     $.each(tooltip_metrics,(i,metric)=> {
-        html_text += RenderToolpopup(metric);
+        html_text += RenderToolpopup(metric,period,limited);
     });
     return html_text;
 }
 
-function RenderToolpopup(metric) {
+function RenderToolpopup(metric,period,limited) {
+    let inner_text = (limited ? RenderStatistics('',metric,period,true) : '');
     return `
-    <span class="cu-tooltiptext" data-type="${metric}"></span>`;
+    <span class="cu-tooltiptext" data-type="${metric}">${inner_text}</span>`;
 }
 
 function RenderAllTooltipControls() {
@@ -463,31 +518,55 @@ function RenderToolcontrol(metric) {
 <span class="cu-select-tooltip" data-type="${metric}"><a href="#">${JSPLib.utility.titleizeString(metric)}</a></span>`;
 }
 
-function RenderStatistics(key,attribute,period) {
+function RenderStatistics(key,attribute,period,limited=false) {
     let period_name = period_info.longname[period];
-    let current_uploads = PostDecompressData(JSPLib.storage.getStorageData(`${period_name}-uploads-${username}`,sessionStorage,{value:[]}).value);
-    if (current_uploads.length == 0) {
+    let data = JSPLib.storage.getStorageData(`${period_name}-uploads-${username}`,sessionStorage);
+    if (!data) {
         return "No data!";
     }
-    if (key !== '') {
-        current_uploads = current_uploads.filter(val=>{return val.copyrights.split(' ').includes(key);});
+    let stat = data.value;
+    if (!limited) {
+        let uploads = PostDecompressData(stat);
+        if (key !== '') {
+            uploads = uploads.filter(val=>{return val.copyrights.split(' ').includes(key);});
+        }
+        //It's possible with their longer expirations for daily copyrights that don't exist in other periods
+        if (uploads.length === 0) {
+            return "No data!";
+        }
+        stat = GetPostStatistics(uploads,attribute);
+    } else {
+        stat = stat[attribute];
     }
-    let upload_scores = JSPLib.utility.getObjectAttributes(current_uploads,attribute);
-    let score_max = Math.max(...upload_scores);
-    let score_average = JSPLib.statistics.average(upload_scores);
-    let score_stddev = JSPLib.statistics.standardDeviation(upload_scores);
-    let score_outliers = JSPLib.statistics.removeOutliers(upload_scores);
-    let score_removed = upload_scores.length - score_outliers.length;
-    let score_adjusted = JSPLib.statistics.average(score_outliers);
+    return RenderStatlist(stat);
+}
+
+function RenderStatlist(stat) {
     return `
 <ul>
-<li>Max: ${score_max}</li>
-<li>Avg: ${JSPLib.utility.setPrecision(score_average,2)}</li>
-<li>StD: ${JSPLib.utility.setPrecision(score_stddev,2)}</li>
-<li>Out: ${score_removed}</li>
-<li>Adj: ${JSPLib.utility.setPrecision(score_adjusted,2)}</li>
-</ul>
-`;
+    <li>Max: ${stat.max}</li>
+    <li>Avg: ${stat.average}</li>
+    <li>StD: ${stat.stddev}</li>
+    <li>Out: ${stat.outlier}</li>
+    <li>Adj: ${stat.adjusted}</li>
+</ul>`;
+}
+
+function GetPostStatistics(posts,attribute) {
+    let data = JSPLib.utility.getObjectAttributes(posts,attribute);
+    let data_max = Math.max(...data);
+    let data_average = JSPLib.statistics.average(data);
+    let data_stddev = JSPLib.statistics.standardDeviation(data);
+    let data_outliers = JSPLib.statistics.removeOutliers(data);
+    let data_removed = data.length - data_outliers.length;
+    let data_adjusted = JSPLib.statistics.average(data_outliers);
+    return {
+        max: data_max,
+        average: JSPLib.utility.setPrecision(data_average,2),
+        stddev: JSPLib.utility.setPrecision(data_stddev,2),
+        outlier: data_removed,
+        adjusted: JSPLib.utility.setPrecision(data_adjusted,2)
+    };
 }
 
 //Helper functions
@@ -545,7 +624,7 @@ function MapPostData(posts) {
             id: entry.id,
             score: entry.score,
             upscore: entry.up_score,
-            downscore: entry.down_score,
+            downscore: -entry.down_score,
             favcount: entry.fav_count,
             tagcount: entry.tag_count,
             gentags: entry.tag_count_general,
@@ -587,8 +666,8 @@ function GetTagData(tag) {
 
 async function CheckPeriodUploads() {
     CheckPeriodUploads[username] = CheckPeriodUploads[username] || {};
-    for (let i = 0; i < check_periods.length; i++) {
-        let period = check_periods[i];
+    for (let i = 0; i < timevalues.length; i++) {
+        let period = timevalues[i];
         if (period in CheckPeriodUploads[username]) {
             continue;
         }
@@ -613,10 +692,16 @@ async function GetPostsCountdown(limit,searchstring,domname) {
     let limit_addon = {limit: limit};
     let page_addon = {};
     var return_items = [];
-    let page_num = Math.ceil((await JSPLib.danbooru.submitRequest('counts/posts',tag_addon,{counts: {posts: 0}})).counts.posts / limit);
+    let page_num = 0;
+    if (domname) {
+        let total_posts = (await JSPLib.danbooru.submitRequest('counts/posts',tag_addon,{counts: {posts: 0}})).counts.posts;
+        page_num = Math.ceil(total_posts/limit);
+    }
     while (true) {
-        JSPLib.debug.debuglog("Pages left #",page_num);
-        domname && jQuery(domname).html(page_num);
+        if (domname) {
+            JSPLib.debug.debuglog("Pages left #",page_num);
+            domname && jQuery(domname).html(page_num);
+        }
         let request_addons = JSPLib.danbooru.joinArgs(tag_addon,limit_addon,page_addon);
         let request_key = 'posts-' + jQuery.param(request_addons);
         let temp_items = await JSPLib.danbooru.submitRequest('posts',request_addons,[],request_key);
@@ -658,7 +743,7 @@ function CheckUser(username) {
     return JSPLib.danbooru.submitRequest('users', {search: {name_matches: username}});
 }
 
-async function GetPeriodUploads(username,period,domname=null) {
+async function GetPeriodUploads(username,period,limited=false,domname=null) {
     let period_name = period_info.longname[period];
     let key = `${period_name}-uploads-${username}`;
     var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
@@ -666,32 +751,47 @@ async function GetPeriodUploads(username,period,domname=null) {
         JSPLib.debug.debuglog(`Network (${period_name} uploads)`);
         let data = await GetPostsCountdown(max_post_limit_query,BuildTagParams(period,`user:${username}`),domname);
         let mapped_data = MapPostData(data);
-        JSPLib.storage.saveData(key, {value: PreCompressData(mapped_data), expires: GetExpiration(period_info.uploadexpires[period])});
+        if (limited) {
+            mapped_data = Object.assign(...tooltip_metrics.map((metric)=>{return {[metric]: GetPostStatistics(mapped_data,metric)};}));
+            JSPLib.storage.saveData(key, {value: mapped_data, expires: GetExpiration(period_info.uploadexpires[period])});
+        } else {
+            JSPLib.storage.saveData(key, {value: PreCompressData(mapped_data), expires: GetExpiration(period_info.uploadexpires[period])});
+        }
         return mapped_data;
     } else {
-        return PostDecompressData(check.value);
+        if (limited) {
+            return check.value;
+        } else {
+            return PostDecompressData(check.value);
+        }
     }
 }
 
 //Event handlers
 
-function SetPeriodClick() {
-    $("#count-table [data-period] a").off().click(async (e)=>{
+function GetPeriodClick() {
+    $("#count-table .cu-manual,#count-table .cu-limited").click(async (e)=>{
         let header = e.target.parentElement;
         if ($(header).hasClass("cu-processed")) {
             return;
         }
+        let is_limited = $(e.target).hasClass("cu-limited");
         let period = header.dataset.period;
         $(`#count-table th[data-period=${period}] .cu-display`).show();
-        await GetPeriodUploads(username,period,`#count-table th[data-period=${period}] .cu-counter`);
-        $(`#count-table th[data-period=${period}] .cu-display`).hide();
+        await GetPeriodUploads(username,period,is_limited,`#count-table th[data-period=${period}] .cu-counter`);
         let column = header.cellIndex;
         let $cells = $(`#count-table td:nth-of-type(${column + 1})`);
-        $.each($cells,(i,cell)=>{
-            let value = $(".cu-uploads",cell).html();
-            $(cell).html(RenderTooltipData(value,period));
-        });
-        SetTooltipHover();
+        if (is_limited) {
+            let value = $(".cu-uploads",$cells[0]).html()
+            $($cells[0]).html(RenderTooltipData(value,period,true));
+        } else {
+            $.each($cells,(i,cell)=>{
+                let value = $(".cu-uploads",cell).html();
+                $(cell).html(RenderTooltipData(value,period));
+            });
+            SetTooltipHover();
+        }
+        $(`#count-table th[data-period=${period}] .cu-display`).hide();
         let tooltip_type = JSPLib.storage.getStorageData('cu-current-metric',localStorage,'score');
         $(`.cu-select-tooltip[data-type="${tooltip_type}"] a`).click();
         $(header).addClass("cu-processed");
@@ -845,7 +945,7 @@ async function PopulateTable() {
             $('#count-controls').html(RenderAllTooltipControls());
             SetTooltipHover();
             SetTooltipChangeClick();
-            SetPeriodClick();
+            GetPeriodClick();
             let tooltip_type = JSPLib.storage.getStorageData('cu-current-metric',localStorage,'score');
             $(`.cu-select-tooltip[data-type="${tooltip_type}"] a`).click();
         } else {
