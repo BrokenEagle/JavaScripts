@@ -526,12 +526,21 @@ function RenderRow(key) {
     return AddTableRow(tabletext,`data-key="${key}"`);
 }
 
+//Get the data and validate it without checking the expires
+function GetCountData(key,default_val=null) {
+    let count_data = JSPLib.storage.getStorageData(key, sessionStorage);
+    if (!ValidateEntry(key,count_data)) {
+        return default_val;
+    }
+    return count_data.value;
+}
+
 function GetTableValue(key,type) {
     if (key == '') {
-        return JSPLib.storage.getStorageData('ct' + type + '-user:' + username, sessionStorage, {value:'N/A'}).value.toString();
+        return GetCountData('ct' + type + '-user:' + username,"N/A");
     }
-    var useruploads = JSPLib.storage.getStorageData('ct' + type + '-user:' + username + ' ' + key, sessionStorage, {value:'N/A'}).value.toString();
-    var alluploads = JSPLib.storage.getStorageData('ct' + type + '-' + key, sessionStorage, {value:'N/A'}).value.toString();
+    var useruploads = GetCountData('ct' + type + '-user:' + username + ' ' + key,"N/A");
+    var alluploads = GetCountData('ct' + type + '-' + key,"N/A");
     return `(${useruploads}/${alluploads})`;
 }
 
@@ -671,7 +680,7 @@ function CheckCopyrightVelocity(tag) {
 }
 
 function IsMissingTag(tag) {
-    return timevalues.reduce((total,period)=>{return total || (sessionStorage.getItem(`ct${period}-${tag}`,sessionStorage) === null);},false);
+    return timevalues.reduce((total,period)=>{return total || !GetCountData(`ct${period}-${tag}`);},false);
 }
 
 function MapPostData(posts) {
