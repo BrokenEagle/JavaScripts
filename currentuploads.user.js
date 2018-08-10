@@ -314,7 +314,7 @@ function ValidateIsHash(key,entry) {
 }
 
 function ValidationSelector(key) {
-    if (key.match(/^ct-/)) {
+    if (key.match(/^ct(?:d|w|mo|y|at)?-/)) {
         return 'countentry';
     } else if (key.match(/^rti-/)) {
         return 'implicationentry';
@@ -661,13 +661,17 @@ function CompareCopyrightCounts(dict1,dict2) {
 function CheckCopyrightVelocity(tag) {
     var dayuploads = JSPLib.storage.getStorageData('ctd-' + tag,sessionStorage);
     var weekuploads = JSPLib.storage.getStorageData('ctw-' + tag,sessionStorage);
-    if (dayuploads === undefined || weekuploads === undefined) {
+    if (dayuploads === null || weekuploads === null) {
         return true;
     }
     var day_gettime =  dayuploads.expires - period_info.countexpires.d; //Time data was originally retrieved
     var week_velocity = (JSPLib.utility.one_week) / (weekuploads.value | 1); //Milliseconds per upload
     var adjusted_poll_interval = Math.min(week_velocity, JSPLib.utility.one_day); //Max wait time is 1 day
     return Date.now() > day_gettime + adjusted_poll_interval;
+}
+
+function IsMissingTag(tag) {
+    return timevalues.reduce((total,period)=>{return total || (sessionStorage.getItem(`ct${period}-${tag}`,sessionStorage) === null);},false);
 }
 
 function MapPostData(posts) {
@@ -949,7 +953,7 @@ async function ProcessUploads() {
         let previous_uploads = await JSPLib.storage.checkLocalDB(previous_key,ValidateEntry) || {value: []};
         previous_uploads = PostDecompressData(previous_uploads.value);
         let symmetric_difference = JSPLib.utility.setSymmetricDifference(JSPLib.utility.getObjectAttributes(current_uploads,'id'),JSPLib.utility.getObjectAttributes(previous_uploads,'id'));
-        if (is_new_tab || symmetric_difference.length) {
+        if (is_new_tab || symmetric_difference.length || IsMissingTag(`user:${username}`)) {
             promise_array.push(GetTagData(`user:${username}`));
         }
         if (is_gold_user) {
@@ -961,8 +965,11 @@ async function ProcessUploads() {
             let copyright_changed = (is_new_tab ? user_copytags[username] : JSPLib.utility.setIntersection(user_copytags[username],copyright_symdiff));
             let copyright_nochange = (is_new_tab ? [] : JSPLib.utility.setDifference(user_copytags[username],copyright_changed));
             $.each(copyright_nochange,(i,val)=>{
-                if (CheckCopyrightVelocity(val)) {
+                if (CheckCopyrightVelocity(val) || IsMissingTag(val)) {
                     promise_array.push(GetTagData(val));
+                }
+                if (IsMissingTag(`user:${username} ${val}`)) {
+                    promise_array.push(GetTagData(`user:${username} ${val}`));
                 }
             });
             $.each(copyright_changed,(i,val)=>{
