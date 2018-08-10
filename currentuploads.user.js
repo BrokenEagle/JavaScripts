@@ -34,6 +34,12 @@ const program_load_required_ids = ["top","page-footer"];
 //Variables for danbooru.js
 JSPLib.danbooru.counter_domname = "#loading-counter";
 
+//Main function expires
+const prune_expires = JSPLib.utility.one_day;
+
+//Maximum number of entries to prune in one go
+const prune_limit = 1000;
+
 //Time periods
 const timevalues = ['d','w','mo','y','at'];
 const manual_periods = ['w','mo'];
@@ -392,6 +398,52 @@ function GetMeta(key) {
 
 function GetExpiration(expires) {
     return Date.now() + expires;
+}
+
+function ValidateExpires(actual_expires,expected_expires) {
+    //Resolve to true if the actual_expires is bogus, has expired, or the expiration is too long
+    return !Number.isInteger(actual_expires) || (Date.now() > actual_expires) || ((actual_expires - Date.now()) > expected_expires);
+}
+
+function PruneEntries(modulename,regex) {
+    let timer_name = modulename + '-' + "PruneEntries";
+    let expire_name = modulename + '-prune-expires';
+    JSPLib.debug.debugTime(timer_name);
+    let expires = JSPLib.storage.getStorageData(expire_name,localStorage,0);
+    if (ValidateExpires(expires, prune_expires)) {
+        JSPLib.debug.debuglog("PruneIACEntries");
+        PruneStorage(regex).then(()=>{
+            JSPLib.debug.debuglog("Pruning complete!");
+            JSPLib.debug.debugTimeEnd(timer_name);
+        });
+        JSPLib.storage.setStorageData(expire_name, GetExpiration(prune_expires), localStorage);;
+    } else {
+        JSPLib.debug.debuglog("No prune of entries!");
+    }
+}
+
+async function PruneStorage(regex) {
+    if (JSPLib.storage.use_storage) {
+        let pruned_items = 0;
+        let total_items = 0;
+        let promise_array = [];
+        await JSPLib.storage.danboorustorage.iterate((value,key)=>{
+            if (key.match(regex)) {
+                if (JSPLib.storage.hasDataExpired(value)) {
+                    JSPLib.debug.debuglog("Deleting",key);
+                    promise_array.push(JSPLib.storage.removeData(key));
+                    pruned_items += 1;
+                }
+                total_items += 1;
+                if (pruned_items >= prune_limit) {
+                    JSPLib.debug.debuglog("Prune limit reached!");
+                    return true;
+                }
+            }
+        });
+        JSPLib.debug.debuglog(`Pruning ${pruned_items}/${total_items} items!`);
+        return Promise.all(promise_array);
+    }
 }
 
 //Table functions
@@ -980,6 +1032,10 @@ function main() {
             JSPLib.statistics.outputAdjustedMean("CurrentUploads");
         });
     });
+    //Take care of other non-critical tasks at a later time
+    setTimeout(()=>{
+        PruneEntries('CU',/^rti-|ct(?:d|w|mo|y|at)?-|(?:daily|weekly|monthly|previous)-uploads-/);
+    },JSPLib.utility.one_minute);
 }
 
 JSPLib.load.programInitialize(main,'CU',program_load_required_variables,program_load_required_ids);
