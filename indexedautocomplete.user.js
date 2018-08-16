@@ -169,7 +169,7 @@ const autocomplete_constraints = {
         post_count: JSPLib.validate.postcount_constraints,
         name: JSPLib.validate.stringonly_constraints
     },
-    savedsearch: {
+    search: {
         name: JSPLib.validate.stringonly_constraints
     },
     artist: {
@@ -212,7 +212,7 @@ const source_key = {
     pl: 'pool',
     us: 'user',
     fg: 'favgroup',
-    ss: 'savedsearch',
+    ss: 'search',
     ar: 'artist',
     wp: 'wikipage',
     ft: 'forumtopic'
@@ -268,11 +268,7 @@ const source_config = {
         },
         fixupmetatag: true,
         fixupexpiration: false,
-        render: (list, pool)=>{
-            var $link = $("<a/>").addClass("pool-category-" + pool.category).text(pool.label);
-            var $container = $("<div/>").append($link);
-            return $("<li/>").data("item.autocomplete", pool).append($container).appendTo(list);
-        }
+        render: RenderListItem(($domobj,item)=>{return $domobj.addClass("pool-category-" + item.category).text(item.label);})
     },
     user: {
         url: "users",
@@ -298,11 +294,7 @@ const source_config = {
         },
         fixupmetatag: true,
         fixupexpiration: false,
-        render: (list, user)=>{
-            var $link = $("<a/>").addClass("user-" + user.level.toLowerCase()).addClass("with-style").text(user.label);
-            var $container = $("<div/>").append($link);
-            return $("<li/>").data("item.autocomplete", user).append($container).appendTo(list);
-        }
+        render: RenderListItem(($domobj,item)=>{return $domobj.addClass("user-" + item.level.toLowerCase()).addClass("with-style").text(item.label);})
     },
     favgroup: {
         url: "favorite_groups",
@@ -371,11 +363,7 @@ const source_config = {
         },
         fixupmetatag: false,
         fixupexpiration: true,
-        render: (list, wiki_page)=>{
-            var $link = $("<a/>").addClass("tag-type-" + wiki_page.category).text(wiki_page.label);
-            var $container = $("<div/>").append($link);
-            return $("<li/>").data("item.autocomplete", wiki_page).append($container).appendTo(list);
-        }
+        render: RenderListItem(($domobj,item)=>{return $domobj.addClass("tag-type-" + item.category).text(item.label);})
     },
     artist: {
         url: "artists",
@@ -400,11 +388,7 @@ const source_config = {
         },
         fixupmetatag: false,
         fixupexpiration: true,
-        render: (list, artist)=>{
-            var $link = $("<a/>").addClass("tag-type-1").text(artist.label);
-            var $container = $("<div/>").append($link);
-            return $("<li/>").data("item.autocomplete", artist).append($container).appendTo(list);
-        }
+        render: RenderListItem(($domobj,item)=>{return $domobj.addClass("tag-type-1").text(item.label);})
     },
     forumtopic: {
         url: "forum_topics",
@@ -428,11 +412,7 @@ const source_config = {
         },
         fixupmetatag: false,
         fixupexpiration: false,
-        render: (list, forumtopic)=>{
-            var $link = $("<a/>").addClass("forum-topic-category-" + forumtopic.category).text(forumtopic.value);
-            var $container = $("<div/>").append($link);
-            return $("<li/>").data("item.autocomplete", forumtopic).append($container).appendTo(list);
-        }
+        render: RenderListItem(($domobj,item)=>{return $domobj.addClass("forum-topic-category-" + item.category).text(item.value);})
     }
 };
 
@@ -586,6 +566,14 @@ function ValidateRelatedtagEntry(key,entry) {
 
 /***Main helper functions***/
 
+function RenderListItem(alink_func) {
+    return (list, item)=>{
+        var $link = alink_func($("<a/>"), item);
+        var $container = $("<div/>").append($link);
+        return $("<li/>").data("item.autocomplete", item).append($container).appendTo(list);
+    }
+}
+
 function FixupMetatag(value,metatag) {
     switch(metatag) {
         case "@":
@@ -609,7 +597,7 @@ function FixExpirationCallback(key,value,tagname,type) {
             return;
         }
         var expiration_time = ExpirationTime(type,data[0].post_count);
-        JSPLib.storage.saveData(key, {"value": value, "expires": Date.now() + expiration_time});
+        JSPLib.storage.saveData(key, {value: value, expires: Date.now() + expiration_time});
     });
 }
 
@@ -637,7 +625,7 @@ function NetworkSource(type,key,term,resp,metatag) {
     JSPLib.danbooru.submitRequest(source_config[type].url,source_config[type].data(term)).then((data)=>{
         var d = $.map(data, source_config[type].map);
         var expiration_time = source_config[type].expiration(d);
-        JSPLib.storage.saveData(key, {"value": JSPLib.utility.dataCopy(d), "expires": Date.now() + expiration_time});
+        JSPLib.storage.saveData(key, {value: JSPLib.utility.dataCopy(d), expires: Date.now() + expiration_time});
         if (source_config[type].fixupmetatag) {
             $.each(d, (i,val)=> {FixupMetatag(val,metatag);});
         }
@@ -648,88 +636,22 @@ function NetworkSource(type,key,term,resp,metatag) {
     });
 }
 
-async function NormalSourceIndexed(term, resp) {
-    var key = ("ac-" + term).toLowerCase();
-    var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
-    if (cached) {
-        resp(cached.value);
-        return;
+function AnySourceIndexed(keycode,default_metatag='') {
+    var type = source_key[keycode];
+    return async function (req, resp, input_metatag) {
+        var term = (req.term ? req.term : req);
+        var key = (keycode + "-" + term).toLowerCase();
+        var use_metatag = (input_metatag ? input_metatag : default_metatag);
+        var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
+        if (cached) {
+            if (source_config[type].fixupmetatag) {
+                $.each(cached.value, (i,val)=> {FixupMetatag(val, use_metatag);});
+            }
+            resp(cached.value);
+            return;
+        }
+        NetworkSource(type, key, term, resp, use_metatag);
     }
-    NetworkSource('tag',key,term,resp,"");
-}
-
-async function PoolSourceIndexed(term, resp, metatag) {
-    var key = ("pl-" + term).toLowerCase();
-    var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
-    if (cached) {
-        $.each(cached.value, (i,val)=> {FixupMetatag(val,metatag);});
-        resp(cached.value);
-        return;
-    }
-    NetworkSource('pool',key,term,resp,metatag);
-}
-
-async function UserSourceIndexed(term, resp, metatag) {
-    var key = ("us-" + term).toLowerCase();
-    var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
-    if (cached) {
-        $.each(cached.value, (i,val)=> {FixupMetatag(val,metatag);});
-        resp(cached.value);
-        return;
-    }
-    NetworkSource('user',key,term,resp,metatag);
-}
-
-async function FavoriteGroupSourceIndexed(term, resp, metatag) {
-    var key = ("fg-" + term).toLowerCase();
-    var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
-    if (cached) {
-        $.each(cached.value, (i,val)=> {FixupMetatag(val,metatag);});
-        resp(cached.value);
-        return;
-    }
-    NetworkSource('favgroup',key,term,resp,metatag);
-}
-
-async function SavedSearchSourceIndexed(term, resp, metatag = "search") {
-    var key = ("ss-" + term).toLowerCase();
-    var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
-    if (cached) {
-        $.each(cached.value, (i,val)=> {FixupMetatag(val,metatag);});
-        resp(cached.value);
-        return;
-    }
-    NetworkSource('search',key,term,resp,metatag);
-}
-
-async function WikiPageIndexed(req, resp) {
-    var key = ("wp-" + req.term).toLowerCase();
-    var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
-    if (cached) {
-        resp(cached.value);
-        return;
-    }
-    NetworkSource('wikipage',key,req.term,resp,"");
-}
-
-async function ArtistIndexed(req, resp) {
-    var key = ("ar-" + req.term).toLowerCase();
-    var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
-    if (cached) {
-        resp(cached.value);
-        return;
-    }
-    NetworkSource('artist',key,req.term,resp,"");
-}
-
-async function ForumTopicIndexed(req, resp) {
-    var key = ("ft-" + req.term).toLowerCase();
-    var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
-    if (cached) {
-        resp(cached.value);
-        return;
-    }
-    NetworkSource('forumtopic',key,req.term,resp,"");
 }
 
 //Non-autocomplete storage
@@ -750,18 +672,12 @@ function CommonBindIndexed(button_name, category) {
         } else {
             JSPLib.debug.debuglog("Querying relatedtag:",currenttag,category);
             var data = await JSPLib.danbooru.submitRequest("related_tag", {query: currenttag, category: category});
-            JSPLib.storage.saveData(key, {"value": data, "expires": Date.now() + MinimumExpirationTime('relatedtag')});
+            JSPLib.storage.saveData(key, {value: data, expires: Date.now() + MinimumExpirationTime('relatedtag')});
             Danbooru.RelatedTag.process_response(data);
         }
         $("#artist-tags-container").hide();
         e.preventDefault();
     });
-}
-
-function SaveSessionData(url,data) {
-    let key = 'af-' + url;
-    JSPLib.debug.debuglog("Saving",key);
-    sessionStorage.setItem(key,JSON.stringify(data));
 }
 
 function CheckSource(domobj) {
@@ -794,10 +710,10 @@ function FindArtistSession(e) {
         .then((data)=>{
             Danbooru.RelatedTag.process_artist(data);
             if (url.val()) {
-                SaveSessionData(url.val(),data);
+                JSPLib.storage.setStorageData('af-' + url.val(), data, sessionStorage);
             }
             if ((url.val() !== referer_url.val()) && referer_url.val()) {
-                SaveSessionData(referer_url.val(),data);
+                JSPLib.storage.setStorageData('af-' + referer_url.val(), data, sessionStorage);
             }
         });
     e.preventDefault();
@@ -835,50 +751,29 @@ function rebindFindArtist() {
     }
 }
 
-function rebindWikiPageAutocomplete() {
-    var $fields = $("#search_title,#quick_search_title");
+function rebindAnyAutocomplete(selector, keycode) {
+    var $fields = $(selector);
     if ($fields.length && ('uiAutocomplete' in $.data($fields[0]))) {
-        clearInterval(rebindWikiPageAutocomplete.timer);
+        clearInterval(rebindAnyAutocomplete.timer[keycode]);
         $fields.off().removeData();
-        WikiPageInitializeAutocompleteIndexed();
-    }
+        InitializeAutocompleteIndexed(selector, keycode);
+    }    
 }
+rebindAnyAutocomplete.timer = {};
 
-function rebindArtistAutocomplete() {
-    var $fields = $("#search_name,#quick_search_name");
-    if ($fields.length && (('uiAutocomplete' in $.data($fields[0])) || $("#c-artist-versions").length) ) {
-        clearInterval(rebindArtistAutocomplete.timer);
-        $fields.off().removeData();
-        ArtistInitializeAutocompleteIndexed();
-    }
-}
-
-function rebindPoolAutocomplete() {
-    var $fields = $("#search_name_matches,#quick_search_name_matches");
-    if ($fields.length && (('uiAutocomplete' in $.data($fields[0])) || $("#c-pool-versions").length)) {
-        clearInterval(rebindPoolAutocomplete.timer);
-        $fields.off().removeData();
-        PoolInitializeAutocompleteIndexed("#search_name_matches,#quick_search_name_matches");
-    }
-}
-
-function rebindPostPoolAutocomplete() {
-    var $fields = $("#add-to-pool-dialog input[type=text]");
-    if ($fields.length && ('uiAutocomplete' in $.data($fields[0]))) {
-        clearInterval(rebindPostPoolAutocomplete.timer);
-        $fields.off().removeData();
-        PoolInitializeAutocompleteIndexed("#add-to-pool-dialog input[type=text]");
-    }
+function setRebindInterval(selector, keycode, alt_choose) {
+    rebindAnyAutocomplete.timer[keycode] = setInterval(()=>{rebindAnyAutocomplete(selector,keycode,alt_choose)},timer_poll_interval);
 }
 
 //Initialization functions
 
-function InitializeAutocompleteIndexed(selector,sourcefunc,type) {
+function InitializeAutocompleteIndexed(selector, keycode) {
+    let type = source_key[keycode];
     var $fields = $(selector);
     $fields.autocomplete({
         minLength: 1,
         delay: 100,
-        source: sourcefunc,
+        source: AnySourceIndexed(keycode),
         search: function() {
             $(this).data("uiAutocomplete").menu.bindings = $();
         }
@@ -888,30 +783,6 @@ function InitializeAutocompleteIndexed(selector,sourcefunc,type) {
             $(field).data("uiAutocomplete")._renderItem = source_config[type].render;
         });
     }
-}
-
-function WikiPageInitializeAutocompleteIndexed() {
-    InitializeAutocompleteIndexed("#search_title,#quick_search_title",WikiPageIndexed,'wikipage');
-}
-
-function ArtistInitializeAutocompleteIndexed() {
-    InitializeAutocompleteIndexed("#search_name,#quick_search_name",ArtistIndexed,'artist');
-}
-
-function PoolInitializeAutocompleteIndexed(selector) {
-    InitializeAutocompleteIndexed(selector, (req,resp)=>{ PoolSourceIndexed(req.term, resp, ""); },'pool');
-}
-
-function UserInitializeAutocompleteIndexed(selector) {
-    InitializeAutocompleteIndexed(selector, (req,resp)=>{ UserSourceIndexed(req.term, resp, ""); },'user');
-}
-
-function SavedSearchInitializeAutocompleteIndexed(selector) {
-    InitializeAutocompleteIndexed(selector, (req,resp)=>{ SavedSearchSourceIndexed(req.term, resp, ""); },'search');
-}
-
-function ForumTopicInitializeAutocompleteIndexed(selector) {
-    InitializeAutocompleteIndexed(selector, ForumTopicIndexed,'forumtopic');
 }
 
 //Main program
@@ -924,48 +795,48 @@ function main() {
         JSPLib.debug.debuglog("No autocomplete inputs! Exiting...");
         return;
     }
-    Danbooru.Autocomplete.normal_source = NormalSourceIndexed;
-    Danbooru.Autocomplete.pool_source = PoolSourceIndexed;
-    Danbooru.Autocomplete.user_source = UserSourceIndexed;
-    Danbooru.Autocomplete.favorite_group_source = FavoriteGroupSourceIndexed;
-    Danbooru.Autocomplete.saved_search_source = SavedSearchSourceIndexed;
+    Danbooru.Autocomplete.normal_source = AnySourceIndexed('ac');
+    Danbooru.Autocomplete.pool_source = AnySourceIndexed('pl');
+    Danbooru.Autocomplete.user_source = AnySourceIndexed('us');
+    Danbooru.Autocomplete.favorite_group_source = AnySourceIndexed('fg');
+    Danbooru.Autocomplete.saved_search_source = AnySourceIndexed('ss','search');
     if ($("#c-posts #a-show,#c-uploads #a-new").length) {
         rebindRelatedTags.timer = setInterval(rebindRelatedTags,timer_poll_interval);
         rebindFindArtist.timer = setInterval(rebindFindArtist,timer_poll_interval);
     }
     if ($("#c-wiki-pages,#c-wiki-page-versions").length) {
-        rebindWikiPageAutocomplete.timer = setInterval(rebindWikiPageAutocomplete,timer_poll_interval);
+        setRebindInterval("#search_title,#quick_search_title", 'wp');
     }
     if ($("#c-artists,#c-artist-versions").length) {
-        rebindArtistAutocomplete.timer = setInterval(rebindArtistAutocomplete,timer_poll_interval);
+        setRebindInterval("#search_name,#quick_search_name", 'ar');
     }
     if ($("#c-pools,#c-pool-versions").length) {
-        rebindPoolAutocomplete.timer = setInterval(rebindPoolAutocomplete,timer_poll_interval);
+        setRebindInterval("#search_name_matches,#quick_search_name_matches", 'pl');
     }
     if ($("#c-posts #a-show").length) {
-        rebindPostPoolAutocomplete.timer = setInterval(rebindPostPoolAutocomplete,timer_poll_interval);
+        setRebindInterval("#add-to-pool-dialog input[type=text]", 'pl');
     }
     if ($("#c-posts #a-index").length) {
-        SavedSearchInitializeAutocompleteIndexed("#saved_search_label_string");
+        InitializeAutocompleteIndexed("#saved_search_label_string",'ss');
     }
     if ($("#c-forum-topics").length) {
         JSPLib.utility.setCSSStyle(forum_css);
         $("#quick_search_body_matches").parent().parent().after(forum_topic_search);
-        ForumTopicInitializeAutocompleteIndexed("#quick_search_title_matches");
+        InitializeAutocompleteIndexed("#quick_search_title_matches", 'ft');
     }
     if ($("#c-forum-posts #a-search").length) {
         JSPLib.utility.setCSSStyle(forum_css);
-        ForumTopicInitializeAutocompleteIndexed("#search_topic_title_matches");
+        InitializeAutocompleteIndexed("#search_topic_title_matches", 'ft');
     }
     if ($("#c-uploads #a-index").length) {
         $("#search_post_tags_match").attr('data-autocomplete','tag-query');
         setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, timer_poll_interval);
     }
     if ($(autocomplete_userlist.join(',')).length) {
-        UserInitializeAutocompleteIndexed(autocomplete_userlist.join(','));
+        InitializeAutocompleteIndexed(autocomplete_userlist.join(','), 'us');
     }
     if ($('[placeholder="Search users"]').length) {
-        UserInitializeAutocompleteIndexed("#search_name_matches,#quick_search_name_matches");
+        InitializeAutocompleteIndexed("#search_name_matches,#quick_search_name_matches", 'us');
     }
     DebugExecute(()=>{
         window.addEventListener('beforeunload', ()=>{
