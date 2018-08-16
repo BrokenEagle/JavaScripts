@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      14.12
+// @version      15.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -61,8 +61,29 @@ const autocomplete_domlist = [
     "#search_title,#quick_search_title",
     "#search_name,#quick_search_name",
     "#search_name_matches,#quick_search_name_matches",
-    "#add-to-pool-dialog input[type=text]"
+    "#add-to-pool-dialog input[type=text]",
+    "#quick_search_body_matches",
+    "#search_topic_title_matches"
     ].concat(autocomplete_userlist);
+
+const forum_topic_search = `
+<li>
+    <form action="/forum_topics" accept-charset="UTF-8" method="get">
+        <input name="utf8" type="hidden" value="✓">
+        <input id="quick_search_title_matches" placeholder="Search topic" type="text" name="search[title_matches]" class="ui-autocomplete-input" autocomplete="off">
+    </form>
+</li>`;
+
+const forum_css = `
+.ui-menu-item .forum-topic-category-0 {
+    color: blue;
+}
+.ui-menu-item .forum-topic-category-1 {
+    color: green;
+}
+.ui-menu-item .forum-topic-category-2 {
+    color: red;
+}`;
 
 
 //Expiration variables
@@ -99,7 +120,10 @@ const expiration_config = {
         logarithmic_start: 10,
         minimum: JSPLib.utility.one_week,
         maximum: JSPLib.utility.one_month
-    }
+    },
+    forumtopic: {
+        minimum: JSPLib.utility.one_week
+    },
 };
 
 //Validation variables
@@ -155,6 +179,10 @@ const autocomplete_constraints = {
         label: JSPLib.validate.stringonly_constraints,
         value: JSPLib.validate.stringonly_constraints,
         category: JSPLib.validate.inclusion_constraints([0,1,3,4,5])
+    },
+    forumtopic: {
+        value: JSPLib.validate.stringonly_constraints,
+        category: JSPLib.validate.inclusion_constraints([0,1,2])
     }
 };
 
@@ -185,7 +213,8 @@ const source_key = {
     fg: 'favgroup',
     ss: 'savedsearch',
     ar: 'artist',
-    wp: 'wikipage'
+    wp: 'wikipage',
+    ft: 'forumtopic'
 };
 
 const source_config = {
@@ -375,6 +404,34 @@ const source_config = {
             var $container = $("<div/>").append($link);
             return $("<li/>").data("item.autocomplete", artist).append($container).appendTo(list);
         }
+    },
+    forumtopic: {
+        url: "forum_topics",
+        data: (term)=>{
+            return {
+                search: {
+                    order: "sticky",
+                    title_matches: "*" + term + "*"
+                },
+                limit: 10
+            };
+        },
+        map: (forumtopic)=>{
+            return {
+                value: forumtopic.title,
+                category: forumtopic.category_id
+            };
+        },
+        expiration: (d)=>{
+            return MinimumExpirationTime('forumtopic');
+        },
+        fixupmetatag: false,
+        fixupexpiration: false,
+        render: (list, forumtopic)=>{
+            var $link = $("<a/>").addClass("forum-topic-category-" + forumtopic.category).text(forumtopic.value);
+            var $container = $("<div/>").append($link);
+            return $("<li/>").data("item.autocomplete", forumtopic).append($container).appendTo(list);
+        }
     }
 };
 
@@ -477,7 +534,7 @@ function ValidateEntry(key,entry) {
         JSPLib.debug.debuglog(key,"entry not found!");
         return false;
     }
-    if (key.match(/^(?:ac|pl|us|fg|ss|ar|wp)-/)) {
+    if (key.match(/^(?:ac|pl|us|fg|ss|ar|wp|ft)-/)) {
         return ValidateAutocompleteEntry(key,entry);
     } else if (key.match(/^rt(?:gen|char|copy|art)?-/)) {
         return ValidateRelatedtagEntry(key,entry);
@@ -560,7 +617,7 @@ function PruneIACEntries() {
     let expires = JSPLib.storage.getStorageData('iac-prune-expires',localStorage,0);
     if (ValidateExpires(expires, prune_expires)) {
         JSPLib.debug.debuglog("PruneIACEntries");
-        PruneStorage(/^(?:ac|pl|us|fg|ss|ar|wp|rt(?:gen|char|copy|art)?)-/).then(()=>{
+        PruneStorage(/^(?:ac|pl|us|fg|ss|ar|wp|ft|rt(?:gen|char|copy|art)?)-/).then(()=>{
             JSPLib.debug.debuglog("Pruning complete!");
             JSPLib.debug.debugTimeEnd('IAC-PruneIACEntries');
         });
@@ -662,6 +719,16 @@ async function ArtistIndexed(req, resp) {
         return;
     }
     NetworkSource('artist',key,req.term,resp,"");
+}
+
+async function ForumTopicIndexed(req, resp) {
+    var key = ("ft-" + req.term).toLowerCase();
+    var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
+    if (cached) {
+        resp(cached.value);
+        return;
+    }
+    NetworkSource('forumtopic',key,req.term,resp,"");
 }
 
 //Non-autocomplete storage
@@ -842,6 +909,10 @@ function SavedSearchInitializeAutocompleteIndexed(selector) {
     InitializeAutocompleteIndexed(selector, (req,resp)=>{ SavedSearchSourceIndexed(req.term, resp, ""); },'search');
 }
 
+function ForumTopicInitializeAutocompleteIndexed(selector) {
+    InitializeAutocompleteIndexed(selector, ForumTopicIndexed,'forumtopic');
+}
+
 //Main program
 function main() {
     if (!JSPLib.storage.use_indexed_db) {
@@ -875,6 +946,15 @@ function main() {
     }
     if ($("#c-posts #a-index").length) {
         SavedSearchInitializeAutocompleteIndexed("#saved_search_label_string");
+    }
+    if ($("#c-forum-topics").length) {
+        JSPLib.utility.setCSSStyle(forum_css);
+        $("#quick_search_body_matches").parent().parent().after(forum_topic_search);
+        ForumTopicInitializeAutocompleteIndexed("#quick_search_title_matches");
+    }
+    if ($("#c-forum-posts #a-search").length) {
+        JSPLib.utility.setCSSStyle(forum_css);
+        ForumTopicInitializeAutocompleteIndexed("#search_topic_title_matches");
     }
     if ($(autocomplete_userlist.join(',')).length) {
         UserInitializeAutocompleteIndexed(autocomplete_userlist.join(','));
