@@ -50,7 +50,8 @@ const autocomplete_userlist = [
     "#search_banner_name",
     "#search_creator_name",
     "#search_approver_name",
-    "#search_updater_name"
+    "#search_updater_name",
+    "#search_uploader_name"
 ];
 //DOM elements with autocomplete
 const autocomplete_domlist = [
@@ -955,6 +956,10 @@ function main() {
     if ($("#c-forum-posts #a-search").length) {
         JSPLib.utility.setCSSStyle(forum_css);
         ForumTopicInitializeAutocompleteIndexed("#search_topic_title_matches");
+    }
+    if ($("#c-uploads #a-index").length) {
+        $("#search_post_tags_match").attr('data-autocomplete','tag-query');
+        setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, timer_poll_interval);
     }
     if ($(autocomplete_userlist.join(',')).length) {
         UserInitializeAutocompleteIndexed(autocomplete_userlist.join(','));
