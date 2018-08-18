@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.5
+// @version      5.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -186,14 +186,32 @@ async function CheckUtilityLibrary() {
     await JSPLib.utility.sleep(1000);
     JSPLib.debug.debugTimeEnd("sleep()");
 
+    console.log("Checking getExpiration");
+    let date1 = Date.now();
+    let testexpire1 = JSPLib.utility.getExpiration(100);
+    console.log(`Value ${testexpire1} should be 100 ms greater than ${Date.now()} within 1-2ms`,RecordResult(Math.abs(testexpire1 - (Date.now() + 100)) <= 2));
+
+    console.log("Checking not");
+    let testvalue1 = null;
+    let resultbool1 = JSPLib.utility.not(testvalue1,false);
+    let resultbool2 = JSPLib.utility.not(testvalue1,true);
+    console.log(`Value ${testvalue1} should not be truthy ${bracket(resultbool1)}`,RecordResult(!resultbool1));
+    console.log(`The NOT of value ${testvalue1} should be truthy ${bracket(resultbool2)}`,RecordResult(resultbool2));
+
     console.log("Checking setPrecision");
-    let testvalue1 = 1.22;
+    testvalue1 = 1.22;
     let testvalue2 = JSPLib.utility.setPrecision(1.2222222,2);
-    console.log(`Value ${repr(testvalue1)} should be equal to ${repr(testvalue2)} with a decimal precision of 2`,RecordResult(testvalue1 === testvalue2));
+    console.log(`Value ${testvalue1} should be equal to ${testvalue2} with a decimal precision of 2`,RecordResult(testvalue1 === testvalue2));
 
     console.log("Checking maxLengthString");
     testvalue1 = JSPLib.utility.maxLengthString("AUserNameThatIsWayTooLong");
     console.log(`Value ${repr(testvalue1)} should have a string length of ${JSPLib.utility.max_column_characters}`,RecordResult(testvalue1.length === JSPLib.utility.max_column_characters));
+
+    console.log("Checking regexpEscape");
+    let string1 = "tag_(qualifier)";
+    let regexstring1 = "tag_\\(qualifier\\)";
+    let teststring1 = JSPLib.utility.regexpEscape(string1);
+    console.log(`Value ${repr(string1)} should should be regex escaped to ${repr(regexstring1)} ${bracket(repr(teststring1))}`,RecordResult(teststring1 === regexstring1));
 
     console.log("Checking filterEmpty");
     let testarray1 = ["test","first","nonempty"];
@@ -223,20 +241,31 @@ async function CheckUtilityLibrary() {
 
     console.log("Checking setIntersection");
     resultarray1 = JSPLib.utility.setIntersection(testarray1,testarray2);
-    console.log(`Array [${resultarray1}] should have a length of two`,RecordResult(resultarray1.length === 2));
+    console.log(`Array ${repr(resultarray1)} should have a length of two`,RecordResult(resultarray1.length === 2));
 
     console.log("Checking setUnion");
     resultarray1 = JSPLib.utility.setUnion(testarray1,testarray3);
-    console.log(`Array [${resultarray1}] should have a length of four`,RecordResult(resultarray1.length === 4));
+    console.log(`Array ${repr(resultarray1)} should have a length of four`,RecordResult(resultarray1.length === 4));
 
     console.log("Checking setSymmetricDifference");
     resultarray1 = JSPLib.utility.setSymmetricDifference(testarray1,testarray3);
-    console.log(`Array [${resultarray1}] should have a length of three`,RecordResult(resultarray1.length === 3));
+    console.log(`Array ${repr(resultarray1)} should have a length of three`,RecordResult(resultarray1.length === 3));
+
+    console.log("Checking listFilter");
+    let testobjectarray1 = [{id: 1, type: 'a'},{id: 2, type: 'b'}, {id: 3, type: 'b'}];
+    testarray1 = [1,3];
+    testarray2 = ['a'];
+    let expectedobjectarray1 = [{id: 1, type: 'a'}, {id: 3, type: 'b'}];
+    let expectedobjectarray2 = [{id: 2, type: 'b'}, {id: 3, type: 'b'}];
+    let resultobjectarray1 = JSPLib.utility.listFilter(testobjectarray1,testarray1,'id');
+    let resultobjectarray2 = JSPLib.utility.listFilter(testobjectarray1,testarray2,'type',true);
+    console.log(`Object array ${repr(testobjectarray1)} with id filters on ${repr(testarray1)} should be equal to ${repr(expectedobjectarray1)} ${bracket(repr(resultobjectarray1))}`,RecordResult(JSON.stringify(resultobjectarray1) === JSON.stringify(expectedobjectarray1)));
+    console.log(`Object array ${repr(testobjectarray1)} with reverse type filters on ${repr(testarray2)} should be equal to ${repr(expectedobjectarray2)} ${bracket(repr(resultobjectarray2))}`,RecordResult(JSON.stringify(resultobjectarray2) === JSON.stringify(expectedobjectarray2)));
 
     console.log("Checking getObjectAttributes");
-    let testobjectarray1 = [{id: 1},{id: 2}, {id: 3}];
+    let expectedarray1 = [1,2,3];
     resultarray1 = JSPLib.utility.getObjectAttributes(testobjectarray1,'id');
-    console.log(`Array [${resultarray1}] should contain only the values [1,2,3]`,RecordResult(resultarray1.length === 3 && resultarray1.includes(1) && resultarray1.includes(2) && resultarray1.includes(3)));
+    console.log(`Object array ${repr(testobjectarray1)} with getting the id attributes should be equal to ${repr(expectedarray1)} ${bracket(repr(resultarray1))}`,RecordResult(JSON.stringify(resultarray1) === JSON.stringify(expectedarray1)));
 
     console.log("Checking dataCopy");
     let testobject1 = {'test':0,'value':{'deep':1}};
@@ -249,6 +278,15 @@ async function CheckUtilityLibrary() {
     console.log(`Object ${repr(shallowobject1)} should have one value the same as ${repr(testobject1)}`,RecordResult(shallowobject1.test !== 10 && copyobject1.value.deep === 11));
     console.log(`Object ${repr(deepobject1)} should have no values the same as ${repr(testobject1)}`,RecordResult(deepobject1.test !== 10 && deepobject1.value.deep !== 11));
 
+    console.log("Checking hijackFunction");
+    let add_function = function (a,b) {return a + b};
+    let subtract_one = function (data,a,b) {return data - 1;}
+    let hijacked_function = JSPLib.utility.hijackFunction(add_function,subtract_one);
+    testvalue1 = add_function(3,4);
+    testvalue2 = hijacked_function(3,4);
+    console.log(`Original add function should produce a result of 7`,RecordResult(testvalue1 === 7));
+    console.log(`Hijacked add function should produce a result of 6`,RecordResult(testvalue2 === 6));
+
     console.log("Checking setCSSStyle");
     JSPLib.utility.setCSSStyle("body {background: black !important;}","test");
     console.log("Color set to black... changing color in 10 seconds.");
@@ -257,24 +295,64 @@ async function CheckUtilityLibrary() {
     console.log("Color set to purple... validate that there is only 1 style element.");
     console.log(`Module global cssstyle ${repr(JSPLib.utility.cssstyle)} should have a length of 1`,RecordResult(Object.keys(JSPLib.utility.cssstyle).length === 1));
 
+    console.log("Checking fullHide");
+    let selector1 = "#page";
+    JSPLib.utility.fullHide(selector1);
+    let expectedstyletext1 = "display: none !important;";
+    let resultstyletext1 = document.querySelector(selector1).style.cssText;
+    console.log(`DOM ${selector1} should have the CSS style of ${repr(expectedstyletext1)} ${bracket(repr(resultstyletext1))}`,RecordResult(expectedstyletext1 === resultstyletext1));
+
+    console.log("Sleeping 10 seconds for visual confirmation.");
+    await JSPLib.utility.sleep(csstyle_waittime);
+
+    console.log("Checking clearHide");
+    JSPLib.utility.clearHide(selector1);
+    expectedstyletext1 = "";
+    resultstyletext1 = document.querySelector(selector1).style.cssText;
+    console.log(`DOM ${selector1} should have the CSS style of ${repr(expectedstyletext1)} ${bracket(repr(resultstyletext1))}`,RecordResult(expectedstyletext1 === resultstyletext1));
+
+    console.log("Checking getMeta");
+    let metaselector1 = "csrf-param";
+    let expectedmeta1 = "authenticity_token";
+    let resultmeta1 = JSPLib.utility.getMeta(metaselector1);
+    console.log(`Meta ${metaselector1} should have the content of ${repr(expectedmeta1)} ${bracket(repr(resultmeta1))}`,RecordResult(expectedmeta1 === resultmeta1));
+
     console.log("Checking getNthParent");
     let $domtest = $.parseHTML(walkdom_test);
     let child1 = $("#child0a",$domtest)[0];
     let result1 = JSPLib.utility.getNthParent(child1,1);
-    console.log(`Node ${child1.id} should have parent0 as a parent [${result1.id}]`,RecordResult(result1.id === "parent0"));
+    console.log(`Node ${child1.id} should have parent0 as a parent ${bracket(result1.id)}`,RecordResult(result1 && result1.id === "parent0"));
 
     console.log("Checking getNthChild");
     let parent1 = $("#parent0",$domtest)[0];
     result1 = JSPLib.utility.getNthChild(parent1,2);
-    console.log(`Node ${parent1.id} should have child0b as the 2nd child from the start [${result1.id}]`,RecordResult(result1 && result1.id === "child0b"));
+    result2 = JSPLib.utility.getNthChild(parent1,-2);
+    console.log(`Node ${parent1.id} should have child0b as the 2nd child from the start ${bracket(result1.id)}`,RecordResult(result1 && result1.id === "child0b"));
+    console.log(`Node ${parent1.id} should have child0a as the 2nd child from the end ${bracket(result2.id)}`,RecordResult(result2 && result2.id === "child0a"));
 
     console.log("Checking getNthSibling");
     result1 = JSPLib.utility.getNthSibling(child1,1);
-    console.log(`Node ${child1.id} should have child0b as its first sibling [${result1.id}]`,RecordResult(result1.id === "child0b"));
+    console.log(`Node ${child1.id} should have child0b as its first sibling ${bracket(result1.id)}`,RecordResult(result1 && result1.id === "child0b"));
 
     console.log("Checking walkDOM");
-    result1 = JSPLib.utility.walkDOM(child1,[[0,1],[1,0],[0,-2]]);
-    console.log(`Node ${child1.id} should have child1b as the second child of its parent's first sibling [${result1.id}]`,RecordResult(result1.id === "child1b"));
+    result1 = JSPLib.utility.walkDOM(child1,[[0,-1],[1,0],[0,2]])
+    console.log(`Node ${child1.id} should have child1b as the second child of its parent's first sibling ${bracket(result1.id)}`,RecordResult(result1 && result1.id === "child1b"));
+
+    console.log("Checking readCookie");
+    let cookiename1 = "doesnt-exist";
+    result1 = JSPLib.utility.readCookie(cookiename1);
+    console.log(`Cookie ${cookiename1} should not exist ${bracket(result1)}`,RecordResult(result1 === null));
+
+    console.log("Checking createCookie");
+    let value1 = 'doesexist';
+    JSPLib.utility.createCookie(cookiename1,value1);
+    result1 = JSPLib.utility.readCookie(cookiename1);
+    console.log(`Cookie ${cookiename1} should now exist with value 'doesexist' ${bracket(result1)}`,RecordResult(result1 === value1));
+
+    console.log("Checking eraseCookie");
+    JSPLib.utility.eraseCookie(cookiename1)
+    result1 = JSPLib.utility.readCookie(cookiename1);
+    console.log(`Cookie ${cookiename1} should now not exist after being erased ${bracket(result1)}`,RecordResult(result1 === null));
 
     console.log(`CheckUtilityLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
