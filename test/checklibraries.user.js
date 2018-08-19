@@ -11,13 +11,13 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/test/checklibraries.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/debug.js
 // ==/UserScript==
 
 /****SETUP****/
@@ -79,6 +79,10 @@ function RecordResult(bool) {
 
 function repr(data) {
     return JSON.stringify(data);
+}
+
+function bracket(string) {
+    return `《${string}》`;
 }
 
 function RoundToHundredth(number) {
@@ -262,7 +266,7 @@ async function CheckUtilityLibrary() {
     console.log("Checking getNthChild");
     let parent1 = $("#parent0",$domtest)[0];
     result1 = JSPLib.utility.getNthChild(parent1,2);
-    console.log(`Node ${parent1.id} should have child0b as the 2nd child [${result1.id}]`,RecordResult(result1.id === "child0b"));
+    console.log(`Node ${parent1.id} should have child0b as the 2nd child from the start [${result1.id}]`,RecordResult(result1 && result1.id === "child0b"));
 
     console.log("Checking getNthSibling");
     result1 = JSPLib.utility.getNthSibling(child1,1);
@@ -438,7 +442,7 @@ async function CheckStorageLibrary() {
     result1 = JSPLib.storage.hasDataExpired(undefined);
     result2 = JSPLib.storage.hasDataExpired(data2);
     result3 = JSPLib.storage.hasDataExpired(data3);
-    result4 = JSPLib.storage.hasDataExpired(data4);
+    let result4 = JSPLib.storage.hasDataExpired(data4);
     console.log(`undefined data should have expired [${repr(result1)}]`,RecordResult(result1 === true));
     console.log(`data with no expires ${repr(data2)} should have expired [${repr(result2)}]`,RecordResult(result2 === true));
     console.log(`data with expires ${repr(data3)} should have expired [${repr(result3)}]`,RecordResult(result3 === true));
@@ -564,7 +568,7 @@ async function CheckDanbooruLibrary() {
     let string4 = "qualifier animated 1girl";
     let string5 = "qualifier";
     regex1 = JSPLib.danbooru.tagRegExp(string2);
-    regex2 = /(?<=(?:^|\s))aliased\:_the_tag(?=(?:$|\s))/gi;
+    let regex2 = /(?<=(?:^|\s))aliased\:_the_tag(?=(?:$|\s))/gi;
     let regex3 = JSPLib.danbooru.tagRegExp(string5);
     result1 = string1.match(regex1);
     result2 = string1.replace(regex1,string3);
@@ -578,7 +582,7 @@ async function CheckDanbooruLibrary() {
 
     console.log("Checking postSearchLink");
     string1 = "1girl solo";
-    string2 =  "Check this link";
+    string2 = "Check this link";
     string3 = '<a href="/posts?tags=1girl+solo">Check this link</a>';
     result1 = JSPLib.danbooru.postSearchLink(string1,string2);
     console.log(`the tag ${repr(string1)} with text ${repr(string2)} should produce the link  ${repr(string3)} [${repr(result1)}]`,RecordResult(result1 === string3));
