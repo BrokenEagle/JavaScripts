@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.0
+// @version      5.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -141,9 +141,11 @@ async function CheckDebugLibrary() {
     ResetResult();
 
     console.log("Checking debuglog(): check this out");
+    JSPLib.debug.pretext = "Check:";
     JSPLib.debug.debuglog("check this out");
     JSPLib.debug.debug_console = false;
     JSPLib.debug.debuglog("check this out");
+    JSPLib.debug.pretext = "";
 
     console.log("Checking debuglogLevel(): WARNING+");
     JSPLib.debug.debug_console = true;
@@ -157,12 +159,14 @@ async function CheckDebugLibrary() {
     JSPLib.debug.debuglogLevel("ERROR",JSPLib.debug.ERROR);
 
     console.log("Checking debug timer");
+    JSPLib.debug.pretimer = "CL-";
     JSPLib.debug.debug_console = false;
     JSPLib.debug.debugTime("check");
     JSPLib.debug.debugTimeEnd("check");
     JSPLib.debug.debug_console = true;
     JSPLib.debug.debugTime("check");
     JSPLib.debug.debugTimeEnd("check");
+    JSPLib.debug.pretimer = "";
 
     console.log("Checking record timer");
     JSPLib.debug.recordTime('test1','test');
@@ -172,7 +176,31 @@ async function CheckDebugLibrary() {
     JSPLib.debug.recordTimeEnd('test2','test');
     console.log(`Should have recorded only 1 value`,RecordResult(Object.keys(JSPLib.debug.records).length === 1));
 
+    console.log("Checking debugExecute");
+    let testvalue1 = 4;
+    JSPLib.debug.debugExecute(()=>{
+        testvalue1 += 1;
+    });
     JSPLib.debug.debug_console = true;
+    JSPLib.debug.debugExecute(()=>{
+        testvalue1 += 2;
+    });
+    console.log(`Test value should be 6 ${bracket(testvalue1)}`,RecordResult(testvalue1 === 6));
+
+    console.log("Checking debugSyncTimer");
+    testvalue1 = 4;
+    let testvalue2 = 1;
+    let testfunc = JSPLib.debug.debugSyncTimer((a,b)=>{return a + b;},"testfunc-sync");
+    let result1 = testfunc(4,1);
+    console.log(`Result value should be 5 ${bracket(result1)}`,RecordResult(result1 === 5));
+
+    console.log("Checking debugAsyncTimer");
+    testfunc = JSPLib.debug.debugAsyncTimer((a,b)=>{return a + b;},"testfunc-async");
+    result1 = testfunc(4,1);
+    let result2 = await result1;
+    console.log(`Result value should be a promise ${bracket(result1)}`,RecordResult(result1 && result1.constructor && result1.constructor.name === "Promise"));
+    console.log(`Result promise value should be 5 ${bracket(result2)}`,RecordResult(result2 === 5));
+
     JSPLib.debug.level = JSPLib.debug.ALL;
     console.log(`CheckDebugLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
