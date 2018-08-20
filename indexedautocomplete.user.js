@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      15.0
+// @version      16.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -86,6 +86,14 @@ const forum_css = `
     color: red;
 }`;
 
+const program_css = `
+.iac-user-choice {
+    font-weight: bold;
+}
+.iac-tag-alias {
+    font-style: italic;
+}
+`;
 
 //Expiration variables
 
@@ -166,7 +174,14 @@ const autocomplete_constraints = {
         name: JSPLib.validate.stringonly_constraints
     },
     favgroup: {
-        post_count: JSPLib.validate.postcount_constraints,
+        post_count: {
+            presence: true,
+            numericality: {
+                noStrings: true,
+                onlyInteger: true,
+                greaterThan: -1,
+            }
+        },
         name: JSPLib.validate.stringonly_constraints
     },
     search: {
@@ -242,7 +257,8 @@ const source_config = {
             return (d.length ? ExpirationTime('tag',d[0].post_count) : MinimumExpirationTime('tag'));
         },
         fixupmetatag: false,
-        fixupexpiration: false
+        fixupexpiration: false,
+        searchstart: true
     },
     pool: {
         url: "pools",
@@ -268,6 +284,7 @@ const source_config = {
         },
         fixupmetatag: true,
         fixupexpiration: false,
+        searchstart: false,
         render: RenderListItem(($domobj,item)=>{return $domobj.addClass("pool-category-" + item.category).text(item.label);})
     },
     user: {
@@ -294,6 +311,7 @@ const source_config = {
         },
         fixupmetatag: true,
         fixupexpiration: false,
+        searchstart: true,
         render: RenderListItem(($domobj,item)=>{return $domobj.addClass("user-" + item.level.toLowerCase()).addClass("with-style").text(item.label);})
     },
     favgroup: {
@@ -316,7 +334,8 @@ const source_config = {
             return MinimumExpirationTime('favgroup');
         },
         fixupmetatag: true,
-        fixupexpiration: false
+        fixupexpiration: false,
+        searchstart: false
     },
     search: {
         url: "saved_searches/labels",
@@ -337,7 +356,8 @@ const source_config = {
             return MinimumExpirationTime('search');
         },
         fixupmetatag: true,
-        fixupexpiration: false
+        fixupexpiration: false,
+        searchstart: true
     },
     wikipage: {
         url: "wiki_pages",
@@ -363,6 +383,7 @@ const source_config = {
         },
         fixupmetatag: false,
         fixupexpiration: true,
+        searchstart: true,
         render: RenderListItem(($domobj,item)=>{return $domobj.addClass("tag-type-" + item.category).text(item.label);})
     },
     artist: {
@@ -388,6 +409,7 @@ const source_config = {
         },
         fixupmetatag: false,
         fixupexpiration: true,
+        searchstart: true,
         render: RenderListItem(($domobj,item)=>{return $domobj.addClass("tag-type-1").text(item.label);})
     },
     forumtopic: {
@@ -412,6 +434,7 @@ const source_config = {
         },
         fixupmetatag: false,
         fixupexpiration: false,
+        searchstart: false,
         render: RenderListItem(($domobj,item)=>{return $domobj.addClass("forum-topic-category-" + item.category).text(item.value);})
     }
 };
@@ -493,6 +516,14 @@ async function PruneStorage(regex) {
     }
 }
 
+function HijackFunction(oldfunc,newfunc) {
+    return function() {
+        let data = oldfunc(...arguments);
+        data = newfunc(data,...arguments);
+        return data;
+    }
+}
+
 //Time functions
 
 function MinimumExpirationTime(type) {
@@ -564,12 +595,86 @@ function ValidateRelatedtagEntry(key,entry) {
     return true;
 }
 
+//Scalpel validation... removes only data that is bad instead of tossing everything
+function CorrectUsageData() {
+    let choice_order = Danbooru.IAC.choice_order;
+    let choice_data = Danbooru.IAC.choice_data;
+    let old_choice_order = Danbooru.IAC.old_choice_order = JSPLib.utility.dataCopy(choice_order);
+    let old_choice_data = Danbooru.IAC.old_choice_data = JSPLib.utility.dataCopy(choice_data);
+    if (!validate.isHash(choice_order) || !validate.isHash(choice_data)) {
+        JSPLib.debug.debuglog("Usage data is corrupted beyond repair!",choice_order,!validate.isHash(choice_data));
+        Danbooru.IAC.choice_orde = {};
+        Danbooru.IAC.choice_data = {};
+        StoreUsageData('reset');
+        return;
+    }
+    //Validate choice order
+    for (let type in choice_order) {
+        if (!validate.isArray(choice_order[type])) {
+            JSPLib.debug.debuglog(`choice_order[${type}] is not an array`)
+            delete choice_order[type];
+            continue;
+        }
+        for (let i = 0; i < choice_order[type]; i++) {
+            if (!validate.isString(choice_order[type][i])) {
+                JSPLib.debug.debuglog(`choice_order[${type}][${i}] is not a string`)
+                choice_order[type].splice(i,1);
+                i--;
+            }
+        }
+    }
+    //Validate choice data
+    for (let type in choice_data) {
+        if (!validate.isHash(choice_data[type])) {
+            JSPLib.debug.debuglog(`choice_data[${type}] is not a hash`)
+            delete choice_data[type];
+            continue;
+        }
+        for (let key in choice_data[type]) {
+            let check = validate(choice_data[type][key],autocomplete_constraints[type]);
+            if (check !== undefined) {
+                JSPLib.debug.debuglog(`choice_data[${type}][${key}]`);
+                JSPLib.validate.printValidateError(key,check);
+                delete choice_data[type][key];
+            }
+        }
+    }
+    //Validate same types between both
+    let type_diff = JSPLib.utility.setSymmetricDifference(Object.keys(choice_order),Object.keys(choice_data));
+    if (type_diff.length) {
+        JSPLib.debug.debuglog("Type difference!",type_diff);
+        $.each(type_diff,(i,type)=>{
+            delete choice_order[type];
+            delete choice_data[type];
+        });
+    }
+    //Validate same keys between both
+    for (let type in choice_order) {
+        let key_diff = JSPLib.utility.setSymmetricDifference(choice_order[type],Object.keys(choice_data[type]));
+        if (key_diff.length) {
+            JSPLib.debug.debuglog("Key difference!",type,key_diff);
+            $.each(key_diff,(i,key)=>{
+                choice_order[type] = JSPLib.utility.setDifference(choice_order[type],[key]);
+                delete choice_data[type][key];
+            });
+        }
+    }
+
+    if ((JSON.stringify(choice_order) !== JSON.stringify(old_choice_order)) || (JSON.stringify(choice_data) !== JSON.stringify(old_choice_data))) {
+        JSPLib.debug.debuglog("Corrections to usage data detected!");
+        StoreUsageData('correction');
+    } else {
+        JSPLib.debug.debuglog("Usage data is valid.");
+    }
+}
+
 /***Main helper functions***/
 
 function RenderListItem(alink_func) {
     return (list, item)=>{
         var $link = alink_func($("<a/>"), item);
         var $container = $("<div/>").append($link);
+        HighlightSelected($container, list, item);
         return $("<li/>").data("item.autocomplete", item).append($container).appendTo(list);
     }
 }
@@ -587,6 +692,21 @@ function FixupMetatag(value,metatag) {
         default:
             value.value = metatag + ":" + value.name;
             value.label = value.name.replace(/_/g, " ");
+    }
+}
+
+function MoveAliases(type,data) {
+    if (type !== 'tag') {
+        return;
+    }
+    let length = data.length;
+    for (let i = 0; i < length; i++) {
+        if (data[i].antecedent) {
+            let item = data.splice(i,1);
+            data.push(item[0]);
+            length--;
+            i--;
+        }
     }
 }
 
@@ -616,23 +736,154 @@ function PruneIACEntries() {
     }
 }
 
-/***Main execution functions***/
+//Usage functions
 
-//Autocomplete functions
+function KeepSourceData(type,metatag,data) {
+    let slicepos = (metatag === '' ? 0 : metatag.length + 1);
+    Danbooru.IAC.source_data[type] = Danbooru.IAC.source_data[type] || {};
+    $.each(data, (i,val)=>{
+        let key = (val.antecedent ? val.antecedent : val.value.slice(slicepos));
+        Danbooru.IAC.source_data[type][key] = val;
+    });
+}
+
+function AddUserSelected(type,metatag,term,data) {
+    let order = Danbooru.IAC.choice_order[type];
+    let choice = Danbooru.IAC.choice_data[type];
+    if (!order || !choice) {
+        return;
+    }
+    let tagterm = term.toLowerCase();
+    for (let i = order.length - 1; i >= 0; i--) {
+        let queryterm = order[i].toLowerCase();
+        let queryindex = queryterm.indexOf(tagterm);
+        if (queryindex === 0 || (!source_config[type].searchstart && queryindex > 0)) {
+            let checkterm = (metatag === '' ? order[i] : metatag + ':' + order[i]);
+            //Splice out Danbooru data if it exists
+            for (let j = 0; j < data.length; j++) {
+                let compareterm = (data[j].antecedent ? data[j].antecedent : data[j].value);
+                if (compareterm === checkterm) {
+                    data.splice(j,1);
+                    //Should only be one of these at most
+                    break;
+                }
+            }
+            let add_data = choice[order[i]];
+            if (source_config[type].fixupmetatag) {
+                FixupMetatag(add_data, metatag);
+            }
+            data.unshift(add_data);
+        }
+    }
+    data.splice(10);
+}
+
+//For autocomplete select
+function InsertUserSelected(data,input,selected) {
+    var type,item,term,source_data;
+    //Being hamstrung by Danbooru's select function of the multi-source tag complete
+    if (typeof selected === "string") {
+        let autocomplete = $(input).autocomplete("instance");
+        let list_container = autocomplete.menu.element[0];
+        let $links = $('.ui-state-active',list_container).parent();
+        if ($links.length === 0) {
+            $links = $(".ui-menu-item:first-of-type",list_container);
+        }
+        item = $links.data("item.autocomplete");
+        if (!item) {
+            JSPLib.debug.debuglog("Error: No autocomplete data found!",$links,item);
+            return;
+        }
+        type = item.type;
+        if (!type) {
+            let match = selected.match(Danbooru.Autocomplete.METATAGS_REGEX);
+            type = (match ? match[1] : 'tag');
+        }
+    } else {
+        item = selected;
+        type = source_key[data];
+    }
+    if (item.antecedent) {
+        term = item.antecedent;
+    } else if (item.name) {
+        term = item.name;
+    } else {
+        term = item.value;
+    }
+    //Final failsafe
+    if (!Danbooru.IAC.source_data[type] || !Danbooru.IAC.source_data[type][term]) {
+        if (!Danbooru.IAC.choice_data[type] || !Danbooru.IAC.choice_data[type][term]) {
+            JSPLib.debug.debuglog("Error: Bad data selector!",type,term,selected,data,item);
+            return;
+        }
+        source_data = Danbooru.IAC.choice_data[type][term];
+    } else {
+        source_data = Danbooru.IAC.source_data[type][term];
+    }
+    Danbooru.IAC.choice_order[type] = Danbooru.IAC.choice_order[type] || [];
+    Danbooru.IAC.choice_data[type] = Danbooru.IAC.choice_data[type] || {};
+    Danbooru.IAC.choice_order[type].unshift(term);
+    Danbooru.IAC.choice_order[type] = JSPLib.utility.setUnique(Danbooru.IAC.choice_order[type]);
+    Danbooru.IAC.choice_data[type][term] = source_data;
+    Danbooru.IAC.choice_data[type][term].expires = GetExpiration(JSPLib.utility.one_day);
+    StoreUsageData('insert',term);
+}
+
+//For autocomplete render
+function HighlightSelected($link,list,item) {
+    if (item.expires) {
+        $('a',$link).addClass('iac-user-choice');
+    }
+    if (item.antecedent) {
+        $('a',$link).addClass('iac-tag-alias');
+    }
+    return $link;
+}
+
+function PruneUsageData() {
+    let is_dirty = false;
+    $.each(Danbooru.IAC.choice_data,(type_key,type_entry)=>{
+        $.each(type_entry,(key,entry)=>{
+            if (ValidateExpires(entry.expires, JSPLib.utility.one_day)) {
+                JSPLib.debug.debuglog("Pruning choice data!",type_key,key);
+                Danbooru.IAC.choice_order[type_key] = JSPLib.utility.setDifference(Danbooru.IAC.choice_order[type_key],[key])
+                delete type_entry[key];
+                is_dirty = true;
+            }
+        });
+    });
+    if (is_dirty) {
+        StoreUsageData("prune");
+    }
+}
+
+function StoreUsageData(name,key='') {
+    JSPLib.storage.setStorageData('iac-choice-order',Danbooru.IAC.choice_order,localStorage);
+    JSPLib.storage.setStorageData('iac-choice-data',Danbooru.IAC.choice_data,localStorage);
+    Danbooru.IAC.channel.postMessage({type: "reload", name: name, key: key, choice_order: Danbooru.IAC.choice_order, choice_data: Danbooru.IAC.choice_data});
+}
+
+function UsageBroadcast(ev) {
+    JSPLib.debug.debuglog(`BroadcastChannel (${ev.data.type}):`,ev.data.name,ev.data.key);
+    if (ev.data.type == "reload") {
+        Danbooru.IAC.choice_order = ev.data.choice_order;
+        Danbooru.IAC.choice_data = ev.data.choice_data;
+    }
+}
+
+/***Main execution functions***/
 
 function NetworkSource(type,key,term,resp,metatag) {
     JSPLib.debug.debuglog("Querying",type,':',term);
     JSPLib.danbooru.submitRequest(source_config[type].url,source_config[type].data(term)).then((data)=>{
         var d = $.map(data, source_config[type].map);
         var expiration_time = source_config[type].expiration(d);
-        JSPLib.storage.saveData(key, {value: JSPLib.utility.dataCopy(d), expires: Date.now() + expiration_time});
-        if (source_config[type].fixupmetatag) {
-            $.each(d, (i,val)=> {FixupMetatag(val,metatag);});
-        }
+        var save_data = JSPLib.utility.dataCopy(d);
+        JSPLib.storage.saveData(key, {value: save_data, expires: GetExpiration(expiration_time)});
         if (source_config[type].fixupexpiration && d.length) {
-            setTimeout(()=>{FixExpirationCallback(key,d,d[0].value,type);},callback_interval);
+            setTimeout(()=>{FixExpirationCallback(key, save_data, save_data[0].value, type);}, callback_interval);
         }
-        resp(d);
+        ProcessSourceData(type,metatag,term,d,resp);
     });
 }
 
@@ -644,14 +895,21 @@ function AnySourceIndexed(keycode,default_metatag='') {
         var use_metatag = (input_metatag ? input_metatag : default_metatag);
         var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
         if (cached) {
-            if (source_config[type].fixupmetatag) {
-                $.each(cached.value, (i,val)=> {FixupMetatag(val, use_metatag);});
-            }
-            resp(cached.value);
+            ProcessSourceData(type, use_metatag, term, cached.value, resp);
             return;
         }
         NetworkSource(type, key, term, resp, use_metatag);
     }
+}
+
+function ProcessSourceData(type,metatag,term,data,resp) {
+    if (source_config[type].fixupmetatag) {
+        $.each(data, (i,val)=> {FixupMetatag(val,metatag);});
+    }
+    KeepSourceData(type, metatag, data);
+    MoveAliases(type, data)
+    AddUserSelected(type, metatag, term, data);
+    resp(data);
 }
 
 //Non-autocomplete storage
@@ -757,7 +1015,7 @@ function rebindAnyAutocomplete(selector, keycode) {
         clearInterval(rebindAnyAutocomplete.timer[keycode]);
         $fields.off().removeData();
         InitializeAutocompleteIndexed(selector, keycode);
-    }    
+    }
 }
 rebindAnyAutocomplete.timer = {};
 
@@ -776,6 +1034,10 @@ function InitializeAutocompleteIndexed(selector, keycode) {
         source: AnySourceIndexed(keycode),
         search: function() {
             $(this).data("uiAutocomplete").menu.bindings = $();
+        },
+        select: function(event,ui) {
+            InsertUserSelected(keycode, this, ui.item);
+            return ui.item.value;
         }
     });
     if (source_config[type].render) {
@@ -795,11 +1057,22 @@ function main() {
         JSPLib.debug.debuglog("No autocomplete inputs! Exiting...");
         return;
     }
+    JSPLib.utility.setCSSStyle(program_css,'program');
+    Danbooru.IAC = {source_data: {},
+        choice_order: JSPLib.storage.getStorageData('iac-choice-order',localStorage,{}),
+        choice_data: JSPLib.storage.getStorageData('iac-choice-data',localStorage,{}),
+        channel: new BroadcastChannel('IndexedAutocomplete')
+    };
+    Danbooru.IAC.channel.onmessage = UsageBroadcast;
+    PruneUsageData();
+    CorrectUsageData();
     Danbooru.Autocomplete.normal_source = AnySourceIndexed('ac');
     Danbooru.Autocomplete.pool_source = AnySourceIndexed('pl');
     Danbooru.Autocomplete.user_source = AnySourceIndexed('us');
     Danbooru.Autocomplete.favorite_group_source = AnySourceIndexed('fg');
     Danbooru.Autocomplete.saved_search_source = AnySourceIndexed('ss','search');
+    Danbooru.Autocomplete.insert_completion = HijackFunction(Danbooru.Autocomplete.insert_completion,InsertUserSelected);
+    Danbooru.Autocomplete.render_item = HijackFunction(Danbooru.Autocomplete.render_item,HighlightSelected);
     if ($("#c-posts #a-show,#c-uploads #a-new").length) {
         rebindRelatedTags.timer = setInterval(rebindRelatedTags,timer_poll_interval);
         rebindFindArtist.timer = setInterval(rebindFindArtist,timer_poll_interval);
@@ -825,12 +1098,16 @@ function main() {
         InitializeAutocompleteIndexed("#quick_search_title_matches", 'ft');
     }
     if ($("#c-forum-posts #a-search").length) {
-        JSPLib.utility.setCSSStyle(forum_css);
+        JSPLib.utility.setCSSStyle(forum_css,'forum');
         InitializeAutocompleteIndexed("#search_topic_title_matches", 'ft');
     }
     if ($("#c-uploads #a-index").length) {
         $("#search_post_tags_match").attr('data-autocomplete','tag-query');
+        //The initialize code doesn't work properly unless some time has elapsed after setting the attribute
         setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, timer_poll_interval);
+    }
+    if ($('[data-autocomplete="tag"]').length) {
+        setRebindInterval('[data-autocomplete="tag"]', 'ac');
     }
     if ($(autocomplete_userlist.join(',')).length) {
         InitializeAutocompleteIndexed(autocomplete_userlist.join(','), 'us');
