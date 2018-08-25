@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9.5
+// @version      10.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes)
 // @author       BrokenEagle
@@ -9,11 +9,12 @@
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/eventlistener.user.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/danbooru.js
 // ==/UserScript==
 
 /****Global variables****/
@@ -22,10 +23,11 @@
 JSPLib.debug.debug_console = false;
 JSPLib.debug.level = JSPLib.debug.INFO;
 JSPLib.debug.pretext = "EL:";
+JSPLib.debug.pretimer = "EL-";
 
 //Variables for load.js
-const program_load_required_variables = ['window.jQuery'];
-const program_load_required_ids = ["page"];
+const program_load_required_variables = ['window.jQuery','window.Danbooru'];
+const program_load_required_selectors = ["#nav","#page"];
 
 //The max number of items to grab with each network call
 const query_limit = 100;
@@ -33,13 +35,6 @@ const query_limit = 100;
 //Various program expirations
 const recheck_event_expires = 5 * JSPLib.utility.one_minute;
 const process_semaphore_expires = 5 * JSPLib.utility.one_minute;
-
-//Placeholder for setting later;
-var username;
-var userid;
-var usertype_lastids = {};
-var subscribetype_lastids = {};
-var type_alllist = {};
 
 //Type configurations
 const typedict = {
@@ -54,7 +49,7 @@ const typedict = {
         controller: 'post_appeals',
         addons: {},
         useraddons: function (username) {return {search: {post_tags_match: "user:" + username}};},
-        filter: function (array) {return array.filter((val)=>{return val.creator_id !== userid;});},
+        filter: function (array) {return array.filter((val)=>{return val.creator_id !== Danbooru.EL.userid;});},
         insert: InsertEvents
     },
     dmail: {
@@ -74,21 +69,27 @@ const typedict = {
     comment: {
         controller: 'comments',
         addons: {group_by: 'comment'},
-        filter: function (array,typelist) {return array.filter((val)=>{return (val.creator_id !== userid) && (typelist.indexOf(val.post_id) >= 0);});},
+        filter: function (array,typelist) {return array.filter((val)=>{return (val.creator_id !== Danbooru.EL.userid) && (typelist.indexOf(val.post_id) >= 0);});},
         insert: InsertComments
     },
     forum: {
         controller: 'forum_posts',
         addons: {},
-        filter: function (array,typelist) {return array.filter((val)=>{return (val.creator_id !== userid) && (typelist.indexOf(val.topic_id) >= 0);});},
+        filter: function (array,typelist) {return array.filter((val)=>{return (val.creator_id !== Danbooru.EL.userid) && (typelist.indexOf(val.topic_id) >= 0);});},
         insert: InsertForums
     },
     note: {
         controller: 'note_versions',
         addons: {},
-        filter: function (array,typelist) {return array.filter((val)=>{return (val.updater_id !== userid) && (typelist.indexOf(val.post_id) >= 0);});},
+        filter: function (array,typelist) {return array.filter((val)=>{return (val.updater_id !== Danbooru.EL.userid) && (typelist.indexOf(val.post_id) >= 0);});},
         insert: InsertNotes
     },
+    commentary: {
+        controller: 'artist_commentary_versions',
+        addons: {},
+        filter: function (array,typelist) {return array.filter((val)=>{return (val.updater_id !== Danbooru.EL.userid) && typelist.includes(val.post_id);});},
+        insert: InsertEvents
+    }
 };
 
 //HTML for the notice block
@@ -106,17 +107,21 @@ const notice_box = `
         <h1>You've got appeals!</h1>
         <div id="appeal-table"></div>
     </div>
-    <div id="forums-section"  style="display:none">
+    <div id="forum-section"  style="display:none">
         <h1>You've got forums!</h1>
-        <div id="forums-table"></div>
+        <div id="forum-table"></div>
     </div>
-    <div id="comments-section"  class="comments-for-post" style="display:none">
+    <div id="comment-section"  class="comments-for-post" style="display:none">
         <h1>You've got comments!</h1>
-        <div id="comments-table"></div>
+        <div id="comment-table"></div>
     </div>
-    <div id="notes-section"  style="display:none">
+    <div id="note-section"  style="display:none">
         <h1>You've got notes!</h1>
-        <div id="notes-table"></div>
+        <div id="note-table"></div>
+    </div>
+    <div id="commentary-section"  style="display:none">
+        <h1>You've got commentaries!</h1>
+        <div id="commentary-table"></div>
     </div>
     <div id="spam-section"  style="display:none">
         <h1>You've got spam!</h1>
@@ -126,14 +131,19 @@ const notice_box = `
 </div>
 `;
 
+const menu_html = `
+<menu id="el-subscribe-events">
+    Subscribe (<span id="el-add-links"></span>)
+</menu>`;
+
 //Program CSS
 const eventlistener_css = `
-#c-comments #a-index #p-index-by-post .subscribe-comments,
-#c-comments #a-index #p-index-by-post .unsubscribe-comments {
+#c-comments #a-index #p-index-by-post .subscribe-comment,
+#c-comments #a-index #p-index-by-post .unsubscribe-comment {
     margin: 1em 0;
 }
 #c-comments #a-index #p-index-by-comment table,
-#event-notice #comments-section #comments-table table {
+#event-notice #comments-section #comment-table table {
     float: left;
     text-align: center;
 }
@@ -141,26 +151,41 @@ const eventlistener_css = `
 #event-notice #comments-section #comments-table .preview {
     margin-right: 0;
 }
-.striped .subscribe-topic,
-.striped .unsubscribe-topic,
-.striped .subscribe-notes,
-.striped .unsubscribe-notes,
+.striped .subscribe-forum,
+.striped .unsubscribe-forum,
+.striped .subscribe-note,
+.striped .unsubscribe-note,
 #event-notice .show-full-forum,
 #event-notice .hide-full-forum,
 #event-notice .show-full-dmail,
 #event-notice .hide-full-dmail,
-#event-notice .show-rendered-note,
-#event-notice .hide-rendered-note {
+#event-notice .show-full-note,
+#event-notice .hide-full-note {
     font-family: monospace;
 }
 .ui-state-highlight a {
     color: #0073ff;
 }
+#nav #el-subscribe-events {
+    padding-left: 2em;
+    font-weight: bold;
+}
+#el-subscribe-events #el-add-links li {
+    margin: 0 -6px;
+}
+#el-subscribe-events .el-subscribed a,
+#el-subscribe-events a[href$="/unsubscribe"] {
+    color: green;
+}
+#el-subscribe-events .el-unsubscribed a,
+#el-subscribe-events a[href$="/subscribe"] {
+    color: darkorange;
+}
 `;
 
 //Fix for showing comments
 const comment_css = `
-#event-notice #comments-section #comments-table .preview {
+#event-notice #comment-section #comment-table .preview {
     float: left;
     width: 154px;
     height: 154px;
@@ -168,7 +193,7 @@ const comment_css = `
     overflow: hidden;
     text-align; center;
 }
-#event-notice #comments-section #comments-table .comment {
+#event-notice #comment-section #comment-table .comment {
     margin-left: 184px;
     margin-bottom: 2em;
     word-wrap: break-word;
@@ -179,12 +204,12 @@ const comment_css = `
 
 //Fix for showing forum posts
 const forum_css = `
-#event-notice #forums-section #forums-table .author {
+#event-notice #forum-section #forum-table .author {
     padding: 1em 1em 0 1em;
     width: 12em;
     float: left;
 }
-#event-notice #forums-section #forums-table .content {
+#event-notice #forum-section #forum-table .content {
     padding: 1em;
     margin-left: 14em;
 }`;
@@ -193,38 +218,9 @@ const forum_css = `
 
 //Library functions
 
-function GetMeta(key) {
-  return $("meta[name=" + key + "]").attr("content");
-}
-
-function FullHide(selector) {
-    $(selector).attr('style','display: none !important');
-}
-
-function ClearHide(selector) {
-    $(selector).attr('style','');
-}
-
-function GetExpiration(expires) {
-    return Date.now() + expires;
-}
-
-function ValidateExpires(actual_expires,expected_expires) {
-    //Resolve to true if the actual_expires is bogus, has expired, or the expiration is too long
-    return !Number.isInteger(actual_expires) || (Date.now() > actual_expires) || ((actual_expires - Date.now()) > expected_expires);
-}
-
-function ValidateID(num) {
-    return Number.isInteger(num) && (num > 0);
-}
-
-function ValidateIDList(array) {
-    return Array.isArray(array) && (array.length > 0) && array.reduce((total,val)=>{return ValidateID(val) && total;},true);
-}
-
 function CheckSemaphore() {
     let semaphore = JSPLib.storage.getStorageData('el-process-semaphore',localStorage,0);
-    return ValidateExpires(semaphore, process_semaphore_expires);
+    return !JSPLib.validate.validateExpires(semaphore, process_semaphore_expires);
 }
 
 function FreeSemaphore() {
@@ -232,14 +228,14 @@ function FreeSemaphore() {
     JSPLib.storage.setStorageData('el-process-semaphore',0,localStorage);
 }
 
-async function ReserveSemaphore() {
+function ReserveSemaphore() {
     if (CheckSemaphore()) {
         //Guarantee that leaving/closing tab reverts the semaphore
         $(window).on('beforeunload.el.semaphore',function () {
             JSPLib.storage.setStorageData('el-process-semaphore',0,localStorage);
         });
         //Set semaphore with an expires in case the program crashes
-        let semaphore = GetExpiration(process_semaphore_expires);
+        let semaphore = JSPLib.utility.getExpiration(process_semaphore_expires);
         JSPLib.storage.setStorageData('el-process-semaphore', semaphore, localStorage);
         return semaphore;
     }
@@ -260,8 +256,22 @@ async function SetRecentDanbooruID(type,useritem=false) {
 //Data storage functions
 
 function GetList(type) {
-    type_alllist[type] = type_alllist[type] || JSPLib.storage.getStorageData(`el-${type}list`,localStorage,[]);
-    return type_alllist[type];
+    if (Danbooru.EL.subscribelist[type]) {
+        return Danbooru.EL.subscribelist[type];
+    }
+    Danbooru.EL.subscribelist[type] = JSPLib.storage.getStorageData(`el-${type}list`,localStorage,[]);
+    if (!JSPLib.validate.validateIDList(Danbooru.EL.subscribelist[type])) {
+        JSPLib.debug.debuglog(`Corrupted data on ${type} list!`);
+        Danbooru.EL.old_subscribelist = Danbooru.EL.old_subscribelist || {};
+        Danbooru.EL.old_subscribelist[type] = Danbooru.EL.subscribelist[type];
+        Danbooru.EL.subscribelist[type] = (Array.isArray(Danbooru.EL.subscribelist[type]) ? Danbooru.EL.subscribelist[type].filter((id)=>{return JSPLib.validate.validateID(id);}) : []);
+        JSPLib.debug.debugExecute(()=>{
+            let validation_error = (Array.isArray(Danbooru.EL.old_subscribelist[type]) ? JSPLib.utility.setDifference(Danbooru.EL.old_subscribelist[type],Danbooru.EL.subscribelist[type]) : Danbooru.EL.old_subscribelist[type]);
+            JSPLib.debug.debuglog("Validation error:",validation_error);
+        });
+        setTimeout(()=>{JSPLib.storage.setStorageData(`el-${type}list`,Danbooru.EL.subscribelist[type],localStorage);}, 1);
+    }
+    return Danbooru.EL.subscribelist[type];
 }
 
 function SetList(type,input) {
@@ -271,8 +281,8 @@ function SetList(type,input) {
     } else {
         typelist.push(parseInt(input));
     }
-    type_alllist[type] = JSPLib.utility.setUnique(typelist);
-    JSPLib.storage.setStorageData(`el-${type}list`,type_alllist[type],localStorage);
+    Danbooru.EL.subscribelist[type] = JSPLib.utility.setUnique(typelist);
+    JSPLib.storage.setStorageData(`el-${type}list`,Danbooru.EL.subscribelist[type],localStorage);
 }
 
 //Quicker way to check list existence; avoids unnecessarily parsing very long lists
@@ -295,18 +305,18 @@ function HasEvents() {
 
 function CheckTimeout() {
     let expires = JSPLib.storage.getStorageData('el-timeout',localStorage,0);
-    return ValidateExpires(expires,recheck_event_expires);
+    return !JSPLib.validate.validateExpires(expires,recheck_event_expires);
 }
 
 function SetRecheckTimeout() {
-    JSPLib.storage.setStorageData('el-timeout',GetExpiration(recheck_event_expires),localStorage);
+    JSPLib.storage.setStorageData('el-timeout',JSPLib.utility.getExpiration(recheck_event_expires),localStorage);
 }
 
 //Return true if there are no saved events at all, or saved events for the input type
 function CheckWaiting(inputtype) {
     CheckWaiting.all_waits = CheckWaiting.all_waits || {};
     if (Object.keys(CheckWaiting.all_waits).length == 0) {
-        $.each(['dmail','flag','appeal','spam','comment','forum','note'],(i,type)=>{
+        $.each(typedict,(type)=>{
             CheckWaiting.all_waits[type] = JSPLib.storage.getStorageData(`el-saved${type}lastid`,localStorage,[]).length > 0;
         });
     }
@@ -327,7 +337,7 @@ async function AddForumPost(forumid,$rowelement) {
 
 function AddRenderedNote(noteid,$rowelement) {
     let notehtml = $.parseHTML($.trim($("td:nth-of-type(4)",$rowelement)[0].innerHTML))[0].data;
-    let $outerblock = $.parseHTML(`<tr id="rendered-note-id-${noteid}"><td colspan="7">${notehtml}</td></tr>`);
+    let $outerblock = $.parseHTML(`<tr id="full-note-id-${noteid}"><td colspan="7">${notehtml}</td></tr>`);
     $($rowelement).after($outerblock);
 }
 
@@ -357,19 +367,19 @@ function InsertDmails($dmailpage,type) {
 function InsertComments($commentpage) {
     $(".post-preview",$commentpage).addClass("blacklisted");
     $(".edit_comment",$commentpage).hide();
-    $("#comments-table").append($(".list-of-comments",$commentpage));
-    InitializeEventNoticeCommentLinks();
+    $("#comment-table").append($(".list-of-comments",$commentpage));
+    InitializeCommentPartialCommentLinks("#event-notice #comments-section .post-preview");
 }
 
 function InsertForums($forumpage) {
-    let $forums_table = $("#forums-table");
+    let $forums_table = $("#forum-table");
     $forums_table.append($(".striped",$forumpage));
     InitializeTopicIndexLinks($forums_table);
     InitializeOpenForumLinks($forums_table);
 }
 
 function InsertNotes($notepage) {
-    let $notes_table = $("#notes-table");
+    let $notes_table = $("#note-table");
     $notes_table.append($(".striped",$notepage));
     InitializeNoteIndexLinks($notes_table);
     InitializeOpenNoteLinks($notes_table);
@@ -380,14 +390,14 @@ function InsertNotes($notepage) {
 async function CheckUserType(type) {
     let lastidkey = `el-${type}lastid`;
     let typelastid = JSPLib.storage.getStorageData(lastidkey,localStorage,0);
-    if (ValidateID(typelastid)) {
-        let url_addons = JSPLib.danbooru.joinArgs(typedict[type].addons,typedict[type].useraddons(username));
+    if (JSPLib.validate.validateID(typelastid)) {
+        let url_addons = JSPLib.danbooru.joinArgs(typedict[type].addons,typedict[type].useraddons(Danbooru.EL.username));
         let jsontype = await JSPLib.danbooru.getAllItems(typedict[type].controller,query_limit,{addons:url_addons,page:typelastid,reverse:true});
         let filtertype = typedict[type].filter(jsontype);
         let lastusertype = (jsontype.length ? [JSPLib.danbooru.getNextPageID(jsontype,true)] : []);
         if (filtertype.length) {
-            usertype_lastids[type] = lastusertype[0];
-            JSPLib.debug.debuglog(`Found ${type}s!`,usertype_lastids[type]);
+            Danbooru.EL.lastids.user[type] = lastusertype[0];
+            JSPLib.debug.debuglog(`Found ${type}(s)!`,Danbooru.EL.lastids.user[type]);
             let idlist = JSPLib.utility.getObjectAttributes(filtertype,'id');
             url_addons = JSPLib.danbooru.joinArgs(typedict[type].addons,{search: {id: idlist.join(',')}, limit: idlist.length});
             let typehtml = await $.get(`/${typedict[type].controller}`, url_addons);
@@ -397,7 +407,7 @@ async function CheckUserType(type) {
             $(`#${type}-section`).show();
             return true;
         } else {
-            JSPLib.debug.debuglog(`No ${type}s!`);
+            JSPLib.debug.debuglog(`No ${type}(s)!`);
             if (lastusertype.length && (typelastid !== lastusertype[0])) {
                 SaveLastID(type,lastusertype[0]);
             }
@@ -411,14 +421,14 @@ async function CheckUserType(type) {
 async function CheckSubscribeType(type) {
     let lastidkey = `el-${type}lastid`;
     let typelastid = JSPLib.storage.getStorageData(lastidkey,localStorage,0);
-    if (ValidateID(typelastid)) {
+    if (JSPLib.validate.validateID(typelastid)) {
         let typelist = GetList(type);
         let savedlistkey = `el-saved${type}list`;
         let savedlastidkey = `el-saved${type}lastid`;
         var subscribetypelist = [], jsontypelist = [];
         let savedlastid = JSPLib.storage.getStorageData(savedlastidkey,localStorage);
         let savedlist = JSPLib.storage.getStorageData(savedlistkey,localStorage);
-        if (!ValidateIDList(savedlastid) || !ValidateIDList(savedlist)) {
+        if (!JSPLib.validate.validateIDList(savedlastid) || !JSPLib.validate.validateIDList(savedlist)) {
             let jsontype = await JSPLib.danbooru.getAllItems(typedict[type].controller,query_limit,{page:typelastid,addons:typedict[type].addons,reverse:true});
             let subscribetype = typedict[type].filter(jsontype,typelist);
             if (jsontype.length) {
@@ -434,17 +444,17 @@ async function CheckSubscribeType(type) {
             subscribetypelist = savedlist;
         }
         if (subscribetypelist.length) {
-            subscribetype_lastids[type] = jsontypelist[0];
-            JSPLib.debug.debuglog(`Found ${type}s!`,subscribetype_lastids[type]);
+            Danbooru.EL.lastids.subscribe[type] = jsontypelist[0];
+            JSPLib.debug.debuglog(`Found ${type}(s)!`,Danbooru.EL.lastids.subscribe[type]);
             let url_addons = JSPLib.danbooru.joinArgs(typedict[type].addons,{search: {id: subscribetypelist.join(',')}, limit: subscribetypelist.length});
             let typehtml = await $.get(`/${typedict[type].controller}`, url_addons);
             let $typepage = $(typehtml);
-            typedict[type].insert($typepage);
+            typedict[type].insert($typepage,type);
             $("#event-notice").show();
-            $(`#${type}s-section`).show();
+            $(`#${type}-section`).show();
             return true;
         } else {
-            JSPLib.debug.debuglog(`No ${type}s!`);
+            JSPLib.debug.debuglog(`No ${type}(s)!`);
             if (jsontypelist.length && (typelastid !== jsontypelist[0])) {
                 SaveLastID(type,jsontypelist[0]);
             }
@@ -463,47 +473,28 @@ async function CheckAllEvents(promise_array) {
 
 /****Render functions****/
 
-function RenderCommentPartialPostLinks(postid,tag,separator) {
-    let commentlist = GetList('comment');
-    let subscribe = (commentlist.indexOf(postid) < 0 ? "style": 'style="display:none !important"');
-    let unsubscribe = (commentlist.indexOf(postid) < 0 ? 'style="display:none !important"' : "style");
-    return `<${tag} data-post-id="${postid}" class="subscribe-comments" ${subscribe}><a href="#">Subscribe${separator}comments</a></${tag}>` +
-           `<${tag} data-post-id="${postid}" class="unsubscribe-comments" ${unsubscribe}"><a href="#">Unsubscribe${separator}comments</a></${tag}>`;
-}
-
-function RenderForumTopicLinks(topicid,tag,ender,right=false) {
-    let forumlist = GetList('forum');
-    let subscribe = (forumlist.indexOf(topicid) < 0 ? "style": 'style="display:none !important"');
-    let unsubscribe = (forumlist.indexOf(topicid) < 0 ? 'style="display:none !important"' : "style");
+function RenderSubscribeDualLinks(type,itemid,tag,separator,ender,right=false) {
+    let typelist = GetList(type);
+    let subscribe = (typelist.includes(itemid) ? 'style="display:none !important"' : 'style');
+    let unsubscribe = (typelist.includes(itemid) ? 'style' : 'style="display:none !important"');
     let spacer = (right ? "&nbsp;&nbsp;" : "");
-    return `<${tag} data-topic-id="${topicid}" class="subscribe-topic" ${subscribe}><a href="#">${spacer}Subscribe${ender}</a></${tag}>` +
-           `<${tag} data-topic-id="${topicid}" class="unsubscribe-topic" ${unsubscribe}"><a href="#">Unsubscribe${ender}</a></${tag}>`;
+    return `<${tag} data-id="${itemid}" class="subscribe-${type}" ${subscribe}><a href="#">${spacer}Subscribe${separator}${ender}</a></${tag}>` +
+           `<${tag} data-id="${itemid}" class="unsubscribe-${type}" ${unsubscribe}"><a href="#">Unsubscribe${separator}${ender}</a></${tag}>`;
 }
 
-function RenderNoteLinks(postid,tag,ender,right=false) {
-    let notelist = GetList('note');
-    let subscribe = (notelist.indexOf(postid) < 0 ? "style": 'style="display:none !important"');
-    let unsubscribe = (notelist.indexOf(postid) < 0 ? 'style="display:none !important"' : "style");
-    let spacer = (right ? "&nbsp;&nbsp;" : "");
-    return `<${tag} data-post-id="${postid}" class="subscribe-notes" ${subscribe}><a href="#">${spacer}Subscribe${ender}</a></${tag}>` +
-           `<${tag} data-post-id="${postid}" class="unsubscribe-notes" ${unsubscribe}"><a href="#">Unsubscribe${ender}</a></${tag}>`;
+function RenderSubscribeMultiLinks(name,typelist,itemid,separator) {
+    let itemdict = {};
+    $.each(typelist,(i,type)=>{
+        itemdict[type] = GetList(type);
+    });
+    let classname = (typelist.reduce((total,type)=>{return total && itemdict[type].includes(itemid);},true) ? 'el-subscribed' : 'el-unsubscribed');
+    let idname = 'el-' + name.toLowerCase().replace(/[ _]/g,'-') + '-link';
+    return `${separator}<li id="${idname}" data-id="${itemid}" data-type="${typelist}" class="${classname}"><a href="#">${name}</a></li>`;
 }
 
-function RenderOpenForumLinks(forumid) {
-    return `<span data-forum-id="${forumid}" class="show-full-forum" style><a href="#">Show</a></span>` +
-           `<span data-forum-id="${forumid}" class="hide-full-forum" style="display:none !important"><a href="#">Hide</a></span>&nbsp;|&nbsp;`;
-}
-
-function RenderOpenNoteLinks(noteid) {
-    return `<p style="text-align:center">
-                <span data-note-id="${noteid}" class="show-rendered-note" style><a href="#">Render note</a></span>` +
-               `<span data-note-id="${noteid}" class="hide-rendered-note" style="display:none !important"><a href="#">Hide note</a></span>
-            </p>`;
-}
-
-function RenderOpenDmailLinks(dmailid) {
-    return `<span data-dmail-id="${dmailid}" class="show-full-dmail" style><a href="#">Show</a></span>` +
-           `<span data-dmail-id="${dmailid}" class="hide-full-dmail" style="display:none !important"><a href="#">Hide</a></span>&nbsp;|&nbsp;`;
+function RenderOpenItemLinks(type,itemid,showtext="Show",hidetext="Hide") {
+    return `<span data-id="${itemid}" class="show-full-${type}" style><a href="#">${showtext}</a></span>` +
+           `<span data-id="${itemid}" class="hide-full-${type}" style="display:none !important"><a href="#">${hidetext}</a></span>`;
 }
 
 /****Initialize functions****/
@@ -516,45 +507,42 @@ function InitializeNoticeBox() {
 function InitializeOpenForumLinks($obj) {
     $.each($(".striped tbody tr",$obj),(i,$row)=>{
         let forumid = $row.id.match(/(\d+)$/)[1];
-        $(".forum-post-excerpt",$row).prepend(RenderOpenForumLinks(forumid));
+        $(".forum-post-excerpt",$row).prepend(RenderOpenItemLinks('forum',forumid) + '&nbsp;|&nbsp;');
     });
-    ShowFullForumClick($obj);
-    HideFullForumClick($obj);
+    OpenItemClick('forum',$obj,3,AddForumPost);
 }
 
 function InitializeOpenNoteLinks($obj) {
     $.each($(".striped tbody tr",$obj),(i,$row)=>{
         let noteid = $("td:nth-of-type(3) a:first-of-type",$row)[0].innerHTML.replace('.','-');
-        $("td:nth-of-type(4)",$row).append(RenderOpenNoteLinks(noteid));
+        $("td:nth-of-type(4)",$row).append('<p style="text-align:center">' + RenderOpenItemLinks('note',noteid,"Render note","Hide note") + '</p>');
     });
-    ShowRenderedNoteClick($obj);
-    HideRenderedNoteClick($obj);
+    OpenItemClick('note',$obj,4,AddRenderedNote);
 }
 
 function InitializeOpenDmailLinks($obj) {
     $.each($(".striped tbody tr",$obj),(i,$row)=>{
         let dmailid = $row.innerHTML.match(/\/dmails\/(\d+)/)[1];
-        $("td:nth-of-type(4)",$row).prepend(RenderOpenDmailLinks(dmailid));
+        $("td:nth-of-type(4)",$row).prepend(RenderOpenItemLinks('dmail',dmailid) + '&nbsp;|&nbsp;');
     });
-    ShowFullDmailClick($obj);
-    HideFullDmailClick($obj);
+    OpenItemClick('dmail',$obj,3,AddDmail);
 }
 
-function InitializePostCommentLinks() {
-    var postid = parseInt(GetMeta('post-id'));
-    $("#nav > menu:nth-child(2)").append(RenderCommentPartialPostLinks(postid,"li"," "));
-    SubscribeCommentsClick();
-    UnsubscribeCommentsClick();
+//#C-POSTS #A-SHOW
+function InitializePostShowMenu() {
+    let menu_obj = $.parseHTML(menu_html);
+    var postid = parseInt(JSPLib.utility.getMeta('post-id'));
+    $("#el-add-links",menu_obj).append(RenderSubscribeMultiLinks("Comments",['comment'],postid,''));
+    $("#el-add-links",menu_obj).append(RenderSubscribeMultiLinks("Notes",['note'],postid,' | '));
+    $("#el-add-links",menu_obj).append(RenderSubscribeMultiLinks("Artist commentary",['commentary'],postid,' | '));
+    $("#el-add-links",menu_obj).append(RenderSubscribeMultiLinks("Translations",['note','commentary'],postid,' | '));
+    $("#el-add-links",menu_obj).append(RenderSubscribeMultiLinks("All",['comment','note','commentary'],postid,' | '));
+    $("nav#nav").append(menu_obj);
+    SubscribeMultiLinkClick();
 }
 
-function InitializePostNoteLinks() {
-    var postid = parseInt(GetMeta('post-id'));
-    $("#nav > menu:nth-child(2)").append(RenderNoteLinks(postid,"li"," notes"));
-    SubscribeNotesClick();
-    UnsubscribeNotesClick();
-}
-
-function InitializeTopicShowLinks() {
+//#C-FORUM-TOPICS #A-SHOW
+function InitializeTopicShowMenu() {
     var topicid = parseInt($("#forum_post_topic_id").attr("value"));
     if (!topicid) {
         let $obj = $('a[href$="/subscribe"],a[href$="/unsubscribe"]');
@@ -564,62 +552,56 @@ function InitializeTopicShowLinks() {
         }
         topicid = parseInt(match[1]);
     }
-    $("#nav > menu:nth-child(2)").append(RenderForumTopicLinks(topicid,"li"," topic"));
-    SubscribeTopicClick();
-    UnsubscribeTopicClick();
+    let menu_obj = $.parseHTML(menu_html);
+    $("#el-add-links",menu_obj).append(RenderSubscribeMultiLinks("Topic",['forum'],topicid,'') + ' | ');
+    $('a[href$="/subscribe"],a[href$="/unsubscribe"]').text("Email");
+    let $email = $('a[href$="/subscribe"],a[href$="/unsubscribe"]').parent().detach();
+    $("#el-add-links",menu_obj).append($email);
+    $("nav#nav").append(menu_obj);
+    SubscribeMultiLinkClick();
 }
 
+//#C-FORUM-TOPICS #A-INDEX
 function InitializeTopicIndexLinks($obj) {
     $.each($(".striped tr td:first-of-type",$obj), (i,entry)=>{
         let topicid = parseInt(entry.innerHTML.match(/\/forum_topics\/(\d+)/)[1]);
-        $(entry).prepend(RenderForumTopicLinks(topicid,"span","",true)+'&nbsp|&nbsp');
+        let linkhtml = RenderSubscribeDualLinks('forum',topicid,"span","","",true);
+        $(entry).prepend(linkhtml + '&nbsp|&nbsp');
     });
-    SubscribeTopicClick();
-    UnsubscribeTopicClick();
+    SubscribeDualLinkClick('forum');
 }
 
+//EVENT NOTICE
 function InitializeNoteIndexLinks($obj) {
     $.each($(".striped tbody tr",$obj), (i,entry)=>{
         let postid = parseInt($("td:nth-of-type(2)",entry)[0].innerHTML.match(/\/posts\/(\d+)/)[1]);
-        $("td:nth-of-type(1)",entry).prepend(RenderNoteLinks(postid,"span","",true));
+        let linkhtml = RenderSubscribeDualLinks('note',postid,"span","","",true);
+        $("td:nth-of-type(1)",entry).prepend(linkhtml);
     });
-    SubscribeNotesClick();
-    UnsubscribeNotesClick();
+    SubscribeDualLinkClick('note');
 }
 
+//#C-COMMENTS #P-INDEX-BY-POST
 function InitializeCommentPartialPostLinks() {
     $.each($("#p-index-by-post .comments-for-post"), (i,$entry)=>{
         let postid = parseInt($($entry).data('post-id'));
-        $(".header",$entry).after(RenderCommentPartialPostLinks(postid,"div"," "));
+        let linkhtml = RenderSubscribeDualLinks('comment',postid,"div"," ","comments");
+        $(".header",$entry).after(linkhtml);
     });
-    SubscribeCommentsClick();
-    UnsubscribeCommentsClick();
+    SubscribeDualLinkClick('comment');
 }
 
-function InitializeCommentPartialCommentLinks() {
-    $.each($("#p-index-by-comment .post-preview"), (i,$entry)=>{
+//#C-COMMENTS #P-INDEX-BY-COMMENT
+function InitializeCommentPartialCommentLinks(selector) {
+    $.each($(selector), (i,$entry)=>{
         var postid = parseInt($($entry).data('id'));
-        var linkhtml = RenderCommentPartialPostLinks(postid,"div","<br>");
+        var linkhtml = RenderSubscribeDualLinks('comment',postid,"div","<br>","comments");
         var $table = $.parseHTML(`<table><tbody><tr><td></td></tr><tr><td>${linkhtml}</td></tr></tbody></table>`);
         var $preview = $(".preview",$entry).detach();
         $("tr:nth-of-type(1) td",$table).append($preview);
         $entry.prepend($table[0]);
     });
-    SubscribeCommentsClick();
-    UnsubscribeCommentsClick();
-}
-
-function InitializeEventNoticeCommentLinks() {
-    $.each($("#event-notice #comments-section .post-preview"), (i,$entry)=>{
-        var postid = parseInt($($entry).data('id'));
-        var linkhtml = RenderCommentPartialPostLinks(postid,"div","<br>");
-        var $table = $.parseHTML(`<table><tbody><tr><td></td></tr><tr><td>${linkhtml}</td></tr></tbody></table>`);
-        var $preview = $(".preview",$entry).detach();
-        $("tr:nth-of-type(1) td",$table).append($preview);
-        $entry.prepend($table[0]);
-    });
-    SubscribeCommentsClick();
-    UnsubscribeCommentsClick();
+    SubscribeDualLinkClick('comment');
 }
 
 /****Click functions****/
@@ -627,157 +609,83 @@ function InitializeEventNoticeCommentLinks() {
 function HideEventNoticeClick() {
     $("#hide-event-notice").click((e)=>{
         $("#event-notice").hide();
-        $.each(usertype_lastids,(type,value)=>{
+        $.each(Danbooru.EL.lastids.user,(type,value)=>{
             SaveLastID(type,value);
         });
-        $.each(subscribetype_lastids,(type,value)=>{
+        $.each(Danbooru.EL.lastids.subscribe,(type,value)=>{
             SaveLastID(type,value);
             delete localStorage[`el-saved${type}list`];
             delete localStorage[`el-saved${type}lastid`];
-            JSPLib.debug.debuglog(`Deleted saved values! (${type}s)`);
+            JSPLib.debug.debuglog(`Deleted saved values! (${type})`);
         });
         if ($("#hide-dmail-notice").length) {
             $("#hide-dmail-notice").click();
         }
         localStorage['el-events'] = false;
+        Danbooru.EL.channel.postMessage({type: "hide"});
         e.preventDefault();
     });
 }
 
-function SubscribeCommentsClick() {
-    $(".subscribe-comments a").off().click((e)=>{
-        let post = $(e.target.parentElement).data('post-id');
-        setTimeout(()=>{SetList('comment',post);},1);
-        FullHide(`.subscribe-comments[data-post-id=${post}]`);
-        ClearHide(`.unsubscribe-comments[data-post-id=${post}]`);
+function SubscribeMultiLinkClick() {
+    $("#el-subscribe-events a").off().click((e)=>{
+        let $container = $(e.target.parentElement);
+        let post = $container.data('id');
+        let typelist = $container.data('type').split(',');
+        let subscribed = ($container.hasClass('el-subscribed') ? true : false);
+        let current_subscribed = JSPLib.utility.setUnique($("#el-subscribe-events .el-subscribed").map((i,entry)=>{return entry.dataset.type.split(',');}).toArray());
+        let new_subscribed = (subscribed ? JSPLib.utility.setDifference(current_subscribed,typelist) : JSPLib.utility.setUnion(current_subscribed,typelist));
+        $.each($("#el-subscribe-events .el-subscribed,#el-subscribe-events .el-unsubscribed"),(i,entry)=>{
+            let entry_typelist = entry.dataset.type.split(',');
+            if (JSPLib.utility.setIntersection(entry_typelist,new_subscribed).length === entry_typelist.length) {
+                $(entry).removeClass().addClass('el-subscribed');
+            } else {
+                $(entry).removeClass().addClass('el-unsubscribed');
+            }
+        });
+        let prefix = (subscribed ? '-' : '');
+        $.each(typelist,(i,type)=>{
+            setTimeout(()=>{SetList(type,prefix + post);},1);
+        });
         e.preventDefault();
     });
 }
 
-function UnsubscribeCommentsClick() {
-    $(".unsubscribe-comments a").off().click((e)=>{
-        let post = $(e.target.parentElement).data('post-id');
-        setTimeout(()=>{SetList('comment','-' + post);},1);
-        FullHide(`.unsubscribe-comments[data-post-id=${post}]`);
-        ClearHide(`.subscribe-comments[data-post-id=${post}]`);
+function SubscribeDualLinkClick(type) {
+    $(`.subscribe-${type} a,.unsubscribe-${type} a`).off().click((e)=>{
+        let $container = $(e.target.parentElement);
+        let itemid = $container.data('id');
+        let subscribed = GetList(type).includes(itemid);
+        let prefix = (subscribed ? '-' : '');
+        setTimeout(()=>{SetList(type,prefix + itemid);},1);
+        let show = (subscribed ? 'subscribe' : 'unsubscribe');
+        let hide = (subscribed ? 'unsubscribe' : 'subscribe');
+        JSPLib.utility.fullHide(`.${hide}-${type}[data-id="${itemid}"]`);
+        JSPLib.utility.clearHide(`.${show}-${type}[data-id="${itemid}"]`);
         e.preventDefault();
     });
 }
 
-function SubscribeNotesClick() {
-    $(".subscribe-notes a").off().click((e)=>{
-        let post = $(e.target.parentElement).data('post-id');
-        setTimeout(()=>{SetList('note',post);},1);
-        FullHide(`.subscribe-notes[data-post-id=${post}]`);
-        ClearHide(`.unsubscribe-notes[data-post-id=${post}]`);
-        e.preventDefault();
-    });
-}
-
-function UnsubscribeNotesClick() {
-    $(".unsubscribe-notes a").off().click((e)=>{
-        let post = $(e.target.parentElement).data('post-id');
-        setTimeout(()=>{SetList('note','-' + post);},1);
-        FullHide(`.unsubscribe-notes[data-post-id=${post}]`);
-        ClearHide(`.subscribe-notes[data-post-id=${post}]`);
-        e.preventDefault();
-    });
-}
-
-function SubscribeTopicClick() {
-    $(".subscribe-topic a").off().click((e)=>{
-        let topic = $(e.target.parentElement).data('topic-id');
-        setTimeout(()=>{SetList('forum',topic);},1);
-        FullHide(`.subscribe-topic[data-topic-id=${topic}]`);
-        ClearHide(`.unsubscribe-topic[data-topic-id=${topic}]`);
-        e.preventDefault();
-    });
-}
-
-function UnsubscribeTopicClick() {
-    $(".unsubscribe-topic a").off().click((e)=>{
-        let topic = $(e.target.parentElement).data('topic-id');
-        setTimeout(()=>{SetList('forum','-' + topic);},1);
-        FullHide(`.unsubscribe-topic[data-topic-id=${topic}]`);
-        ClearHide(`.subscribe-topic[data-topic-id=${topic}]`);
-        e.preventDefault();
-    });
-}
-
-function ShowFullForumClick($obj) {
-    $(".show-full-forum a").off().click(function(e){
-        let forumid = $(e.target.parentElement).data('forum-id');
-        if (ShowFullForumClick.openlist.indexOf(forumid) < 0) {
-            let $rowelement = e.target.parentElement.parentElement.parentElement;
-            AddForumPost(forumid,$rowelement);
-            ShowFullForumClick.openlist.push(forumid);
+function OpenItemClick(type,$obj,parentlevel,htmlfunc) {
+    $(`.show-full-${type} a,.hide-full-${type} a`).off().click(function(e){
+        Danbooru.EL.openlist[type] = Danbooru.EL.openlist[type] || [];
+        let $container = $(e.target.parentElement);
+        let itemid = $container.data('id');
+        let openitem = $container.hasClass(`show-full-${type}`);
+        if (openitem && !Danbooru.EL.openlist[type].includes(itemid)) {
+            let rowelement = JSPLib.utility.getNthParent(e.target,parentlevel);
+            htmlfunc(itemid,rowelement);
+            Danbooru.EL.openlist[type].push(itemid);
         }
-        FullHide(`.show-full-forum[data-forum-id=${forumid}]`);
-        ClearHide(`.hide-full-forum[data-forum-id=${forumid}]`);
-        $(`#full-forum-id-${forumid}`).show();
-        e.preventDefault();
-    });
-}
-ShowFullForumClick.openlist = [];
-
-function HideFullForumClick($obj) {
-    $(".hide-full-forum a").off().click(function(e){
-        let forumid = $(e.target.parentElement).data('forum-id');
-        FullHide(`.hide-full-forum[data-forum-id=${forumid}]`);
-        ClearHide(`.show-full-forum[data-forum-id=${forumid}]`);
-        $(`#full-forum-id-${forumid}`).hide();
-        e.preventDefault();
-    });
-}
-
-function ShowRenderedNoteClick($obj) {
-    $(".show-rendered-note a").off().click(function(e){
-        let noteid = $(e.target.parentElement).data('note-id');
-        if (ShowRenderedNoteClick.openlist.indexOf(noteid) < 0) {
-            let $rowelement = e.target.parentElement.parentElement.parentElement.parentElement;
-            AddRenderedNote(noteid,$rowelement);
-            ShowRenderedNoteClick.openlist.push(noteid);
+        let hide = (openitem ? 'show' : 'hide');
+        let show = (openitem ? 'hide' : 'show');
+        JSPLib.utility.fullHide(`.${hide}-full-${type}[data-id="${itemid}"]`);
+        JSPLib.utility.clearHide(`.${show}-full-${type}[data-id="${itemid}"]`);
+        if (openitem) {
+            $(`#full-${type}-id-${itemid}`).show();
+        } else {
+            $(`#full-${type}-id-${itemid}`).hide();
         }
-        FullHide(`.show-rendered-note[data-note-id="${noteid}"]`);
-        ClearHide(`.hide-rendered-note[data-note-id="${noteid}"]`);
-        $(`#rendered-note-id-${noteid}`).show();
-        e.preventDefault();
-    });
-}
-ShowRenderedNoteClick.openlist = [];
-
-function HideRenderedNoteClick($obj) {
-    $(".hide-rendered-note a").off().click(function(e){
-        let noteid = $(e.target.parentElement).data('note-id');
-        FullHide(`.hide-rendered-note[data-note-id="${noteid}"]`);
-        ClearHide(`.show-rendered-note[data-note-id="${noteid}"]`);
-        $(`#rendered-note-id-${noteid}`).hide();
-        e.preventDefault();
-    });
-}
-
-function ShowFullDmailClick($obj) {
-    $(".show-full-dmail a").off().click(function(e){
-        let dmailid = $(e.target.parentElement).data('dmail-id');
-        if (ShowFullDmailClick.openlist.indexOf(dmailid) < 0) {
-            let $rowelement = e.target.parentElement.parentElement.parentElement;
-            AddDmail(dmailid,$rowelement);
-            ShowFullDmailClick.openlist.push(dmailid);
-        }
-        FullHide(`.show-full-dmail[data-dmail-id=${dmailid}]`);
-        ClearHide(`.hide-full-dmail[data-dmail-id=${dmailid}]`);
-        $(`#full-dmail-id-${dmailid}`).show();
-        e.preventDefault();
-    });
-}
-ShowFullDmailClick.openlist = [];
-
-function HideFullDmailClick($obj) {
-    $(".hide-full-dmail a").off().click(function(e){
-        let dmailid = $(e.target.parentElement).data('dmail-id');
-        FullHide(`.hide-full-dmail[data-dmail-id=${dmailid}]`);
-        ClearHide(`.show-full-dmail[data-dmail-id=${dmailid}]`);
-        $(`#full-dmail-id-${dmailid}`).hide();
         e.preventDefault();
     });
 }
@@ -785,16 +693,30 @@ function HideFullDmailClick($obj) {
 /****Main****/
 
 function main() {
-    username = GetMeta('current-user-name');
-    userid = parseInt(GetMeta('current-user-id'));
-    if (username === "Anonymous") {
+    Danbooru.EL = {
+        username: JSPLib.utility.getMeta('current-user-name'),
+        userid: parseInt(JSPLib.utility.getMeta('current-user-id')),
+        lastids: {
+            user: {},
+            subscribe: {}
+        },
+        subscribelist: {},
+        openlist: {}
+    };
+    if (Danbooru.EL.username === "Anonymous") {
         JSPLib.debug.debuglog("User must log in!");
         return;
-    } else if ((typeof username !== "string") || !ValidateID(userid)) {
+    } else if ((typeof Danbooru.EL.username !== "string") || !JSPLib.validate.validateID(Danbooru.EL.userid)) {
         JSPLib.debug.debuglog("Invalid meta variables!");
         return;
     }
     $("#dmail-notice").hide();
+    Danbooru.EL.channel = new BroadcastChannel('EventListener');
+    Danbooru.EL.channel.onmessage = (ev)=>{
+        if (ev.data.type === "hide") {
+            $("#event-notice").hide();
+        }
+    };
     InitializeNoticeBox();
     var promise_array = [];
     if ((CheckTimeout() || HasEvents()) && ReserveSemaphore()) {
@@ -814,6 +736,9 @@ function main() {
         if (CheckList('note') && CheckWaiting('note')) {
             promise_array.push(CheckSubscribeType('note'));
         }
+        if (CheckList('commentary') && CheckWaiting('commentary')) {
+            promise_array.push(CheckSubscribeType('commentary'));
+        }
         CheckAllEvents(promise_array).then(()=>{
             FreeSemaphore();
         });
@@ -821,16 +746,13 @@ function main() {
         JSPLib.debug.debuglog("Waiting...");
     }
     if ($("#c-posts #a-show").length) {
-        InitializePostCommentLinks();
-        InitializePostNoteLinks();
+        InitializePostShowMenu();
     } else if ($("#c-comments #a-index #p-index-by-post").length) {
         InitializeCommentPartialPostLinks();
     } else if ($("#c-comments #a-index #p-index-by-comment").length) {
-        InitializeCommentPartialCommentLinks();
-    } else if ($("#c-forum-topics #a-show").length) {
-        InitializeTopicShowLinks();
-        $('a[href$="/subscribe"]').text("Subscribe email");
-        $('a[href$="/unsubscribe"]').text("Unsubscribe email");
+        InitializeCommentPartialCommentLinks("#p-index-by-comment .post-preview");
+    } else if ($("#c-forum-topics #a-show,#c-forum-posts #a-show").length) {
+        InitializeTopicShowMenu();
     } else if ($("#c-forum-topics #a-index,#c-forum-posts #a-index").length) {
         InitializeTopicIndexLinks(document);
     }
@@ -839,4 +761,4 @@ function main() {
 
 /****Execution start****/
 
-JSPLib.load.programInitialize(main,'EL',program_load_required_variables,program_load_required_ids);
+JSPLib.load.programInitialize(main,'EL',program_load_required_variables,program_load_required_selectors);
