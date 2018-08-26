@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.0
+// @version      16.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -142,11 +142,12 @@ const autocomplete_constraints = {
         expires : JSPLib.validate.expires_constraints,
         value: {
             presence: true,
-            array: {
-                length: {
-                    maximum : 10,
-                    tooLong : "array is too long (maximum is %{count} items"
-                }
+            array: true,
+            length: {
+                maximum : 10,
+                minimum: 1,
+                tooShort: "array is too short (minimum is %{count} items)",
+                tooLong : "array is too long (maximum is %{count} items)"
             }
         }
     },
