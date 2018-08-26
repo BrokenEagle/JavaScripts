@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.1
+// @version      17.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -41,6 +41,11 @@ const prune_expires = JSPLib.utility.one_day;
 
 //Maximum number of entries to prune in one go
 const prune_limit = 1000;
+
+//Usage order variables
+const usage_multiplier = 0.9;
+const usage_maximum = 20;
+const usage_expires = 2 * JSPLib.utility.one_day;
 
 const autocomplete_userlist = [
     "#search_to_name",
@@ -218,6 +223,15 @@ const relatedtag_constraints = {
     other_wikis: {
         title: JSPLib.validate.stringonly_constraints,
         wiki_page_tags: JSPLib.validate.tagentryarray_constraints
+    }
+};
+
+const usage_constraints = {
+    expires: JSPLib.validate.expires_constraints,
+    use_count: {
+        numericality: {
+            greaterThanOrEqualTo: 0
+        }
     }
 };
 
@@ -632,7 +646,8 @@ function CorrectUsageData() {
             continue;
         }
         for (let key in choice_data[type]) {
-            let check = validate(choice_data[type][key],autocomplete_constraints[type]);
+            let validator = Object.assign({},autocomplete_constraints[type],usage_constraints);
+            let check = validate(choice_data[type][key],validator);
             if (check !== undefined) {
                 JSPLib.debug.debuglog(`choice_data[${type}][${key}]`);
                 JSPLib.validate.printValidateError(key,check);
@@ -748,33 +763,45 @@ function KeepSourceData(type,metatag,data) {
     });
 }
 
+function GetChoiceOrder(type,query) {
+    let queryterm = query.toLowerCase();
+    let available_choices = Danbooru.IAC.choice_order[type].filter((tag)=>{
+        let tagterm = tag.toLowerCase();
+        let queryindex = tagterm.indexOf(queryterm);
+        return queryindex === 0 || (!source_config[type].searchstart && queryindex > 0);
+    });
+    let sortable_choices = available_choices.filter((tag)=>{return Danbooru.IAC.choice_data[type][tag].use_count > 0});
+    sortable_choices.sort((a,b)=>{
+        return Danbooru.IAC.choice_data[type][b].use_count - Danbooru.IAC.choice_data[type][a].use_count;
+    });
+    return JSPLib.utility.setUnique(sortable_choices.concat(available_choices));
+}
+
 function AddUserSelected(type,metatag,term,data) {
     let order = Danbooru.IAC.choice_order[type];
     let choice = Danbooru.IAC.choice_data[type];
     if (!order || !choice) {
         return;
     }
-    let tagterm = term.toLowerCase();
-    for (let i = order.length - 1; i >= 0; i--) {
-        let queryterm = order[i].toLowerCase();
-        let queryindex = queryterm.indexOf(tagterm);
-        if (queryindex === 0 || (!source_config[type].searchstart && queryindex > 0)) {
-            let checkterm = (metatag === '' ? order[i] : metatag + ':' + order[i]);
-            //Splice out Danbooru data if it exists
-            for (let j = 0; j < data.length; j++) {
-                let compareterm = (data[j].antecedent ? data[j].antecedent : data[j].value);
-                if (compareterm === checkterm) {
-                    data.splice(j,1);
-                    //Should only be one of these at most
-                    break;
-                }
+    Danbooru.IAC.shown_data = [];
+    let user_order = GetChoiceOrder(type,term);
+    for (let i = user_order.length - 1; i >= 0; i--) {
+        let checkterm = (metatag === '' ? user_order[i] : metatag + ':' + user_order[i]);
+        //Splice out Danbooru data if it exists
+        for (let j = 0; j < data.length; j++) {
+            let compareterm = (data[j].antecedent ? data[j].antecedent : data[j].value);
+            if (compareterm === checkterm) {
+                data.splice(j,1);
+                //Should only be one of these at most
+                break;
             }
-            let add_data = choice[order[i]];
-            if (source_config[type].fixupmetatag) {
-                FixupMetatag(add_data, metatag);
-            }
-            data.unshift(add_data);
         }
+        let add_data = choice[user_order[i]];
+        if (source_config[type].fixupmetatag) {
+            FixupMetatag(add_data, metatag);
+        }
+        data.unshift(add_data);
+        Danbooru.IAC.shown_data.push(user_order[i]);
     }
     data.splice(10);
 }
@@ -825,8 +852,16 @@ function InsertUserSelected(data,input,selected) {
     Danbooru.IAC.choice_data[type] = Danbooru.IAC.choice_data[type] || {};
     Danbooru.IAC.choice_order[type].unshift(term);
     Danbooru.IAC.choice_order[type] = JSPLib.utility.setUnique(Danbooru.IAC.choice_order[type]);
+    //So the use count doesn't get squashed by the new variable assignment
+    let use_count = (Danbooru.IAC.choice_data[type][term] && Danbooru.IAC.choice_data[type][term].use_count) || 0;
     Danbooru.IAC.choice_data[type][term] = source_data;
-    Danbooru.IAC.choice_data[type][term].expires = GetExpiration(JSPLib.utility.one_day);
+    Danbooru.IAC.choice_data[type][term].expires = GetExpiration(usage_expires);
+    Danbooru.IAC.choice_data[type][term].use_count = use_count + 1;
+    $.each(Danbooru.IAC.shown_data,(i,key)=>{
+        if (key !== term) {
+            Danbooru.IAC.choice_data[type][key].use_count = (Danbooru.IAC.choice_data[type][key].use_count ? Math.min(usage_multiplier * Danbooru.IAC.choice_data[type][key].use_count, usage_maximum) : 0);
+        }
+    });
     StoreUsageData('insert',term);
 }
 
@@ -845,7 +880,7 @@ function PruneUsageData() {
     let is_dirty = false;
     $.each(Danbooru.IAC.choice_data,(type_key,type_entry)=>{
         $.each(type_entry,(key,entry)=>{
-            if (ValidateExpires(entry.expires, JSPLib.utility.one_day)) {
+            if (ValidateExpires(entry.expires, usage_expires)) {
                 JSPLib.debug.debuglog("Pruning choice data!",type_key,key);
                 Danbooru.IAC.choice_order[type_key] = JSPLib.utility.setDifference(Danbooru.IAC.choice_order[type_key],[key])
                 delete type_entry[key];
