@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      17.0
+// @version      17.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -856,10 +856,10 @@ function InsertUserSelected(data,input,selected) {
     let use_count = (Danbooru.IAC.choice_data[type][term] && Danbooru.IAC.choice_data[type][term].use_count) || 0;
     Danbooru.IAC.choice_data[type][term] = source_data;
     Danbooru.IAC.choice_data[type][term].expires = GetExpiration(usage_expires);
-    Danbooru.IAC.choice_data[type][term].use_count = use_count + 1;
+    Danbooru.IAC.choice_data[type][term].use_count = Math.min(use_count + 1,usage_maximum);
     $.each(Danbooru.IAC.shown_data,(i,key)=>{
         if (key !== term) {
-            Danbooru.IAC.choice_data[type][key].use_count = (Danbooru.IAC.choice_data[type][key].use_count ? Math.min(usage_multiplier * Danbooru.IAC.choice_data[type][key].use_count, usage_maximum) : 0);
+            Danbooru.IAC.choice_data[type][key].use_count = (Danbooru.IAC.choice_data[type][key].use_count ? usage_multiplier * Danbooru.IAC.choice_data[type][key].use_count : 0);
         }
     });
     StoreUsageData('insert',term);
