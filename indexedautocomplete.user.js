@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      17.1
+// @version      17.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -473,7 +473,7 @@ function CreateCookie(name, value, days) {
     if (days) {
         var date = new Date();
         date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-        var expires = "; expires=" + date.toGMTString();
+        expires = "; expires=" + date.toGMTString();
     }
 
     document.cookie = name + "=" + value + expires + "; path=/";
@@ -571,7 +571,7 @@ function ValidateEntry(key,entry) {
 }
 
 function ValidateAutocompleteEntry(key,entry) {
-    check = validate(entry,autocomplete_constraints.entry);
+    let check = validate(entry,autocomplete_constraints.entry);
     if (check !== undefined) {
         JSPLib.validate.printValidateError(key,check);
         return false;
@@ -589,7 +589,7 @@ function ValidateAutocompleteEntry(key,entry) {
 }
 
 function ValidateRelatedtagEntry(key,entry) {
-    check = validate(entry,relatedtag_constraints.entry);
+    let check = validate(entry,relatedtag_constraints.entry);
     if (check !== undefined) {
         JSPLib.validate.printValidateError(key,check);
         return false;
@@ -618,7 +618,7 @@ function CorrectUsageData() {
     let old_choice_data = Danbooru.IAC.old_choice_data = JSPLib.utility.dataCopy(choice_data);
     if (!validate.isHash(choice_order) || !validate.isHash(choice_data)) {
         JSPLib.debug.debuglog("Usage data is corrupted beyond repair!",choice_order,!validate.isHash(choice_data));
-        Danbooru.IAC.choice_orde = {};
+        Danbooru.IAC.choice_order = {};
         Danbooru.IAC.choice_data = {};
         StoreUsageData('reset');
         return;
@@ -630,7 +630,7 @@ function CorrectUsageData() {
             delete choice_order[type];
             continue;
         }
-        for (let i = 0; i < choice_order[type]; i++) {
+        for (let i = 0; i < choice_order[type].length; i++) {
             if (!validate.isString(choice_order[type][i])) {
                 JSPLib.debug.debuglog(`choice_order[${type}][${i}] is not a string`)
                 choice_order[type].splice(i,1);
@@ -1100,8 +1100,8 @@ function main() {
         channel: new BroadcastChannel('IndexedAutocomplete')
     };
     Danbooru.IAC.channel.onmessage = UsageBroadcast;
-    PruneUsageData();
     CorrectUsageData();
+    PruneUsageData();
     Danbooru.Autocomplete.normal_source = AnySourceIndexed('ac');
     Danbooru.Autocomplete.pool_source = AnySourceIndexed('pl');
     Danbooru.Autocomplete.user_source = AnySourceIndexed('us');
