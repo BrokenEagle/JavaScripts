@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.1
+// @version      10.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes)
 // @author       BrokenEagle
@@ -94,7 +94,7 @@ const typedict = {
 
 //HTML for the notice block
 const notice_box = `
-<div class="ui-corner-all ui-state-highlight" id="event-notice" style="display:none">
+<div id="event-notice" style="display:none">
     <div id="dmail-section"  style="display:none">
         <h1>You've got mail!</h1>
         <div id="dmail-table"></div>
@@ -127,17 +127,16 @@ const notice_box = `
         <h1>You've got spam!</h1>
         <div id="spam-table"></div>
     </div>
-    <p><a href="#" id="hide-event-notice">Close this</a></p>
+    <p><a href="#" id="hide-event-notice">Close this</a> [<a href="#" id="lock-event-notice">LOCK</a>]</p>
 </div>
 `;
 
-const menu_html = `
-<menu id="el-subscribe-events">
-    Subscribe (<span id="el-add-links"></span>)
-</menu>`;
-
 //Program CSS
 const eventlistener_css = `
+#event-notice {
+    background: #fdf5d9;
+    border: 1px solid #fceec1;
+}
 #c-comments #a-index #p-index-by-post .subscribe-comment,
 #c-comments #a-index #p-index-by-post .unsubscribe-comment {
     margin: 1em 0;
@@ -163,9 +162,6 @@ const eventlistener_css = `
 #event-notice .hide-full-note {
     font-family: monospace;
 }
-.ui-state-highlight a {
-    color: #0073ff;
-}
 #nav #el-subscribe-events {
     padding-left: 2em;
     font-weight: bold;
@@ -180,6 +176,13 @@ const eventlistener_css = `
 #el-subscribe-events .el-unsubscribed a,
 #el-subscribe-events a[href$="/subscribe"] {
     color: darkorange;
+}
+#lock-event-notice {
+    font-weight: bold;
+    color: green;
+}
+#lock-event-notice.el-locked {
+    color: red;
 }
 `;
 
@@ -276,13 +279,19 @@ function GetList(type) {
 
 function SetList(type,input) {
     let typelist = GetList(type);
+    let was_subscribed, itemid;
     if (input[0] == '-') {
-        typelist = JSPLib.utility.setDifference(typelist,[parseInt(input.slice(1))]);
+        itemid = parseInt(input.slice(1));
+        typelist = JSPLib.utility.setDifference(typelist,[itemid]);
+        was_subscribed = true;
     } else {
-        typelist.push(parseInt(input));
+        itemid = parseInt(input);
+        typelist.push(itemid);
+        was_subscribed = false;
     }
     Danbooru.EL.subscribelist[type] = JSPLib.utility.setUnique(typelist);
     JSPLib.storage.setStorageData(`el-${type}list`,Danbooru.EL.subscribelist[type],localStorage);
+    Danbooru.EL.channel.postMessage({type: "subscribe", eventtype: type, was_subscribed: was_subscribed, itemid: itemid, eventlist: Danbooru.EL.subscribelist[type]});
 }
 
 //Quicker way to check list existence; avoids unnecessarily parsing very long lists
@@ -325,6 +334,16 @@ function CheckWaiting(inputtype) {
 
 /****Auxiliary functions****/
 
+function BroadcastEL(ev) {
+    if (ev.data.type === "hide" && !Danbooru.EL.locked_notice) {
+        $("#event-notice").hide();
+    } else if (ev.data.type === "subscribe") {
+        Danbooru.EL.subscribelist[ev.data.eventtype] = ev.data.eventlist;
+        UpdateMultiLink([ev.data.eventtype],ev.data.was_subscribed,ev.data.itemid);
+        UpdateDualLink(ev.data.eventtype,ev.data.was_subscribed,ev.data.itemid);
+    }
+}
+
 //Get single instance of various types and insert into table row
 
 async function AddForumPost(forumid,$rowelement) {
@@ -333,6 +352,12 @@ async function AddForumPost(forumid,$rowelement) {
     let $outerblock = $.parseHTML(`<tr id="full-forum-id-${forumid}"><td colspan="4"></td></tr>`);
     $("td",$outerblock).append($(".forum-post",$forum_post));
     $($rowelement).after($outerblock);
+    let topic_link = $("td:first-of-type > a",$rowelement);
+    let topic_path = topic_link.length && topic_link[0].pathname;
+    let topic_match = topic_path && topic_path.match(/^\/forum_topics\/(\d+)/);
+    if (topic_match) {
+        ReadForumTopic(topic_match[1]);
+    }
 }
 
 function AddRenderedNote(noteid,$rowelement) {
@@ -348,6 +373,28 @@ async function AddDmail(dmailid,$rowelement) {
     let $outerblock = $.parseHTML(`<tr id="full-dmail-id-${dmailid}"><td colspan="4"></td></tr>`);
     $("td",$outerblock).append($(".dmail",$dmail));
     $($rowelement).after($outerblock);
+}
+
+//Update links
+
+function UpdateMultiLink(typelist,subscribed,itemid) {
+    let current_subscribed = JSPLib.utility.setUnique($("#el-subscribe-events .el-subscribed").map((i,entry)=>{return entry.dataset.type.split(',');}).toArray());
+    let new_subscribed = (subscribed ? JSPLib.utility.setDifference(current_subscribed,typelist) : JSPLib.utility.setUnion(current_subscribed,typelist));
+    $.each($(`#el-subscribe-events[data-id="${itemid}"] .el-subscribed,#el-subscribe-events[data-id="${itemid}"] .el-unsubscribed`),(i,entry)=>{
+        let entry_typelist = entry.dataset.type.split(',');
+        if (JSPLib.utility.setIntersection(entry_typelist,new_subscribed).length === entry_typelist.length) {
+            $(entry).removeClass().addClass('el-subscribed');
+        } else {
+            $(entry).removeClass().addClass('el-unsubscribed');
+        }
+    });
+}
+
+function UpdateDualLink(type,subscribed,itemid) {
+    let show = (subscribed ? 'subscribe' : 'unsubscribe');
+    let hide = (subscribed ? 'unsubscribe' : 'subscribe');
+    JSPLib.utility.fullHide(`.${hide}-${type}[data-id="${itemid}"]`);
+    JSPLib.utility.clearHide(`.${show}-${type}[data-id="${itemid}"]`);
 }
 
 //Insert and process HTML onto page for various types
@@ -381,8 +428,41 @@ function InsertForums($forumpage) {
 function InsertNotes($notepage) {
     let $notes_table = $("#note-table");
     $notes_table.append($(".striped",$notepage));
+    OrderNotesTable($notes_table);
     InitializeNoteIndexLinks($notes_table);
     InitializeOpenNoteLinks($notes_table);
+}
+
+//Misc functions
+
+function ReadForumTopic(topicid) {
+    $.ajax({
+        type: "HEAD",
+        url:'/forum_topics/' + topicid,
+        headers: {
+            Accept: "text/html",
+        }
+    });
+}
+
+function OrderNotesTable($obj) {
+    let $rows = $(".striped tr[id]",$obj);
+    let sort_rows = {};
+    $rows.each((i,row)=>{
+        let post = $(`td:nth-of-type(2) > a:first-of-type`,row).html();
+        sort_rows[post] = sort_rows[post] || [];
+        sort_rows[post].push($(row).detach());
+    });
+    let sort_posts = Object.keys(sort_rows).sort().reverse();
+    $.each(sort_posts,(i,post)=>{
+        $.each(sort_rows[post],(j,row)=>{
+            $(".striped tbody",$obj).append(row);
+        });
+        //Add a spacer for all but the last group
+        if (i !== (sort_posts.length - 1)) {
+            $(".striped tbody",$obj).append(`<tr><td colspan="7" style="padding:2px;background-color:#EEE"></td></tr>`);
+        }
+    });
 }
 
 /****Main execution functions****/
@@ -473,6 +553,13 @@ async function CheckAllEvents(promise_array) {
 
 /****Render functions****/
 
+function RenderMultilinkMenu(itemid) {
+    return `
+<menu id="el-subscribe-events" data-id="${itemid}">
+    Subscribe (<span id="el-add-links"></span>)
+</menu>`;
+}
+
 function RenderSubscribeDualLinks(type,itemid,tag,separator,ender,right=false) {
     let typelist = GetList(type);
     let subscribe = (typelist.includes(itemid) ? 'style="display:none !important"' : 'style');
@@ -489,7 +576,7 @@ function RenderSubscribeMultiLinks(name,typelist,itemid,separator) {
     });
     let classname = (typelist.reduce((total,type)=>{return total && itemdict[type].includes(itemid);},true) ? 'el-subscribed' : 'el-unsubscribed');
     let idname = 'el-' + name.toLowerCase().replace(/[ _]/g,'-') + '-link';
-    return `${separator}<li id="${idname}" data-id="${itemid}" data-type="${typelist}" class="${classname}"><a href="#">${name}</a></li>`;
+    return `${separator}<li id="${idname}" data-type="${typelist}" class="${classname}"><a href="#">${name}</a></li>`;
 }
 
 function RenderOpenItemLinks(type,itemid,showtext="Show",hidetext="Hide") {
@@ -502,6 +589,7 @@ function RenderOpenItemLinks(type,itemid,showtext="Show",hidetext="Hide") {
 function InitializeNoticeBox() {
     $("#page").prepend(notice_box);
     HideEventNoticeClick();
+    LockEventNoticeClick();
 }
 
 function InitializeOpenForumLinks($obj) {
@@ -513,7 +601,7 @@ function InitializeOpenForumLinks($obj) {
 }
 
 function InitializeOpenNoteLinks($obj) {
-    $.each($(".striped tbody tr",$obj),(i,$row)=>{
+    $.each($(".striped tr[id]",$obj),(i,$row)=>{
         let noteid = $("td:nth-of-type(3) a:first-of-type",$row)[0].innerHTML.replace('.','-');
         $("td:nth-of-type(4)",$row).append('<p style="text-align:center">' + RenderOpenItemLinks('note',noteid,"Render note","Hide note") + '</p>');
     });
@@ -530,8 +618,8 @@ function InitializeOpenDmailLinks($obj) {
 
 //#C-POSTS #A-SHOW
 function InitializePostShowMenu() {
-    let menu_obj = $.parseHTML(menu_html);
     var postid = parseInt(JSPLib.utility.getMeta('post-id'));
+    let menu_obj = $.parseHTML(RenderMultilinkMenu(postid));
     $("#el-add-links",menu_obj).append(RenderSubscribeMultiLinks("Comments",['comment'],postid,''));
     $("#el-add-links",menu_obj).append(RenderSubscribeMultiLinks("Notes",['note'],postid,' | '));
     $("#el-add-links",menu_obj).append(RenderSubscribeMultiLinks("Artist commentary",['commentary'],postid,' | '));
@@ -552,7 +640,7 @@ function InitializeTopicShowMenu() {
         }
         topicid = parseInt(match[1]);
     }
-    let menu_obj = $.parseHTML(menu_html);
+    let menu_obj = $.parseHTML(RenderMultilinkMenu(topicid));
     $("#el-add-links",menu_obj).append(RenderSubscribeMultiLinks("Topic",['forum'],topicid,'') + ' | ');
     $('a[href$="/subscribe"],a[href$="/unsubscribe"]').text("Email");
     let $email = $('a[href$="/subscribe"],a[href$="/unsubscribe"]').parent().detach();
@@ -573,7 +661,7 @@ function InitializeTopicIndexLinks($obj) {
 
 //EVENT NOTICE
 function InitializeNoteIndexLinks($obj) {
-    $.each($(".striped tbody tr",$obj), (i,entry)=>{
+    $.each($(".striped tr[id]",$obj), (i,entry)=>{
         let postid = parseInt($("td:nth-of-type(2)",entry)[0].innerHTML.match(/\/posts\/(\d+)/)[1]);
         let linkhtml = RenderSubscribeDualLinks('note',postid,"span","","",true);
         $("td:nth-of-type(1)",entry).prepend(linkhtml);
@@ -627,26 +715,27 @@ function HideEventNoticeClick() {
     });
 }
 
+function LockEventNoticeClick() {
+    $("#lock-event-notice").click((e)=>{
+        $(e.target).addClass("el-locked");
+        Danbooru.EL.locked_notice = true;
+        e.preventDefault();
+    });
+}
+
 function SubscribeMultiLinkClick() {
     $("#el-subscribe-events a").off().click((e)=>{
+        let $menu = $(e.target.parentElement.parentElement.parentElement);
         let $container = $(e.target.parentElement);
-        let post = $container.data('id');
+        let itemid = $menu.data('id');
         let typelist = $container.data('type').split(',');
         let subscribed = ($container.hasClass('el-subscribed') ? true : false);
-        let current_subscribed = JSPLib.utility.setUnique($("#el-subscribe-events .el-subscribed").map((i,entry)=>{return entry.dataset.type.split(',');}).toArray());
-        let new_subscribed = (subscribed ? JSPLib.utility.setDifference(current_subscribed,typelist) : JSPLib.utility.setUnion(current_subscribed,typelist));
-        $.each($("#el-subscribe-events .el-subscribed,#el-subscribe-events .el-unsubscribed"),(i,entry)=>{
-            let entry_typelist = entry.dataset.type.split(',');
-            if (JSPLib.utility.setIntersection(entry_typelist,new_subscribed).length === entry_typelist.length) {
-                $(entry).removeClass().addClass('el-subscribed');
-            } else {
-                $(entry).removeClass().addClass('el-unsubscribed');
-            }
-        });
         let prefix = (subscribed ? '-' : '');
         $.each(typelist,(i,type)=>{
-            setTimeout(()=>{SetList(type,prefix + post);},1);
+            setTimeout(()=>{SetList(type,prefix + itemid);},1);
+            UpdateDualLink(type,subscribed,itemid);
         });
+        UpdateMultiLink(typelist,subscribed,itemid);
         e.preventDefault();
     });
 }
@@ -658,10 +747,8 @@ function SubscribeDualLinkClick(type) {
         let subscribed = GetList(type).includes(itemid);
         let prefix = (subscribed ? '-' : '');
         setTimeout(()=>{SetList(type,prefix + itemid);},1);
-        let show = (subscribed ? 'subscribe' : 'unsubscribe');
-        let hide = (subscribed ? 'unsubscribe' : 'subscribe');
-        JSPLib.utility.fullHide(`.${hide}-${type}[data-id="${itemid}"]`);
-        JSPLib.utility.clearHide(`.${show}-${type}[data-id="${itemid}"]`);
+        UpdateDualLink(type,subscribed,itemid);
+        UpdateMultiLink([type],subscribed,itemid);
         e.preventDefault();
     });
 }
@@ -701,7 +788,8 @@ function main() {
             subscribe: {}
         },
         subscribelist: {},
-        openlist: {}
+        openlist: {},
+        locked_notice: false
     };
     if (Danbooru.EL.username === "Anonymous") {
         JSPLib.debug.debuglog("User must log in!");
@@ -712,11 +800,7 @@ function main() {
     }
     $("#dmail-notice").hide();
     Danbooru.EL.channel = new BroadcastChannel('EventListener');
-    Danbooru.EL.channel.onmessage = (ev)=>{
-        if (ev.data.type === "hide") {
-            $("#event-notice").hide();
-        }
-    };
+    Danbooru.EL.channel.onmessage = BroadcastEL;
     InitializeNoticeBox();
     var promise_array = [];
     if ((CheckTimeout() || HasEvents()) && ReserveSemaphore()) {
