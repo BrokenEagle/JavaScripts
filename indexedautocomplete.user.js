@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      17.2
+// @version      17.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -254,7 +254,7 @@ const source_config = {
         data: (term)=>{
             return {
                 search: {
-                    name_matches: term + "*"
+                    name_matches: term
                 }
             };
         },
