@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      17.3
+// @version      17.4
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -250,11 +250,13 @@ const source_key = {
 
 const source_config = {
     tag: {
-        url: "tags/autocomplete",
+        url: "tags",
         data: (term)=>{
             return {
                 search: {
-                    name_matches: term
+                    name_matches: term + "*",
+                    hide_empty: true,
+                    order: "count"
                 }
             };
         },
@@ -262,7 +264,7 @@ const source_config = {
             return {
                 type: "tag",
                 label: tag.name.replace(/_/g, " "),
-                antecedent: tag.antecedent_name || null,
+                antecedent: null,
                 value: tag.name,
                 category: tag.category,
                 post_count: tag.post_count
