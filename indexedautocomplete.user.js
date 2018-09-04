@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      17.4
+// @version      18.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -9,6 +9,7 @@
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/indexedautocomplete.user.js
+// @require      https://raw.githubusercontent.com/jquery/jquery-ui/1.12.1/ui/widgets/tabs.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/debug.js
@@ -42,10 +43,19 @@ const prune_expires = JSPLib.utility.one_day;
 //Maximum number of entries to prune in one go
 const prune_limit = 1000;
 
-//Usage order variables
-const usage_multiplier = 0.9;
-const usage_maximum = 20;
-const usage_expires = 2 * JSPLib.utility.one_day;
+//Regex that matches the prefix of all program cache data
+const program_cache_regex = /^(?:ac|pl|us|fg|ss|ar|wp|ft|rt(?:gen|char|copy|art)?)-/;
+
+//For factory reset
+const localstorage_keys = [
+    'iac-prune-expires',
+    'iac-choice-order',
+    'iac-choice-data'
+];
+const program_reset_keys = {
+    choice_order:{},
+    choice_data:{}
+};
 
 const autocomplete_userlist = [
     "#search_to_name",
@@ -249,7 +259,33 @@ const source_key = {
 };
 
 const source_config = {
-    tag: {
+    tag1: {
+        url: "tags/autocomplete",
+        data: (term)=>{
+            return {
+                search: {
+                    name_matches: term
+                }
+            };
+        },
+        map: (tag)=>{
+            return {
+                type: "tag",
+                label: tag.name.replace(/_/g, " "),
+                antecedent: tag.antecedent_name || null,
+                value: tag.name,
+                category: tag.category,
+                post_count: tag.post_count
+            };
+        },
+        expiration: (d)=>{
+            return (d.length ? ExpirationTime('tag',d[0].post_count) : MinimumExpirationTime('tag'));
+        },
+        fixupmetatag: false,
+        fixupexpiration: false,
+        searchstart: true
+    },
+    tag2: {
         url: "tags",
         data: (term)=>{
             return {
@@ -541,6 +577,52 @@ function HijackFunction(oldfunc,newfunc) {
     }
 }
 
+function GetDOMDataKeys(selector) {
+    return Object.keys($(selector).data());
+}
+
+function HasDOMDataKey(selector,key) {
+    return GetDOMDataKeys(selector).includes(key);
+}
+
+function IsNamespaceBound(selector,eventtype,namespace) {
+    let namespaces = GetBoundEventNames(selector,eventtype);
+    return namespaces.includes(namespace);
+}
+
+function GetBoundEventNames(selector,eventtype) {
+    let $obj = $(selector);
+    if ($obj.length === 0) {
+        return [];
+    }
+    let boundevents = $._data($obj[0], "events");
+    if (!boundevents || !(eventtype in boundevents)) {
+        return [];
+    }
+    return $.map(boundevents[eventtype],(entry)=>{return entry.namespace;});
+}
+
+function AddStyleSheet(url,title='') {
+    AddStyleSheet.cssstyle = AddStyleSheet.cssstyle || {};
+    if (title in AddStyleSheet.cssstyle) {
+        AddStyleSheet.cssstyle[title].href = url;
+    } else {
+        AddStyleSheet.cssstyle[title] = document.createElement('link');
+        AddStyleSheet.cssstyle[title].rel = 'stylesheet';
+        AddStyleSheet.cssstyle[title].type = 'text/css';
+        AddStyleSheet.cssstyle[title].href = url;
+        document.head.appendChild(AddStyleSheet.cssstyle[title]);
+    }
+}
+
+function KebabCase(string) {
+    return string.replace(/([a-z])([A-Z])/g, '$1-$2').replace(/[\s_]+/g,'-').toLowerCase();
+}
+
+function DisplayCase(string) {
+    return JSPLib.utility.titleizeString(string.toLowerCase().replace(/[_]/g,' '));
+}
+
 //Time functions
 
 function MinimumExpirationTime(type) {
@@ -744,7 +826,7 @@ function PruneIACEntries() {
     let expires = JSPLib.storage.getStorageData('iac-prune-expires',localStorage,0);
     if (ValidateExpires(expires, prune_expires)) {
         JSPLib.debug.debuglog("PruneIACEntries");
-        PruneStorage(/^(?:ac|pl|us|fg|ss|ar|wp|ft|rt(?:gen|char|copy|art)?)-/).then(()=>{
+        PruneStorage(program_cache_regex).then(()=>{
             JSPLib.debug.debuglog("Pruning complete!");
             JSPLib.debug.debugTimeEnd('IAC-PruneIACEntries');
         });
@@ -857,11 +939,15 @@ function InsertUserSelected(data,input,selected) {
     //So the use count doesn't get squashed by the new variable assignment
     let use_count = (Danbooru.IAC.choice_data[type][term] && Danbooru.IAC.choice_data[type][term].use_count) || 0;
     Danbooru.IAC.choice_data[type][term] = source_data;
-    Danbooru.IAC.choice_data[type][term].expires = GetExpiration(usage_expires);
-    Danbooru.IAC.choice_data[type][term].use_count = Math.min(use_count + 1,usage_maximum);
+    Danbooru.IAC.choice_data[type][term].expires = GetExpiration(Danbooru.IAC.user_settings.usage_expires * JSPLib.utility.one_day);
+    Danbooru.IAC.choice_data[type][term].use_count = use_count + 1, Danbooru.IAC.user_settings.usage_maximum;
+    if (Danbooru.IAC.user_settings.usage_maximum > 0) {
+        Danbooru.IAC.choice_data[type][term].use_count = Math.min(Danbooru.IAC.choice_data[type][term].use_count, Danbooru.IAC.user_settings.usage_maximum);
+    }
     $.each(Danbooru.IAC.shown_data,(i,key)=>{
         if (key !== term) {
-            Danbooru.IAC.choice_data[type][key].use_count = (Danbooru.IAC.choice_data[type][key].use_count ? usage_multiplier * Danbooru.IAC.choice_data[type][key].use_count : 0);
+            Danbooru.IAC.choice_data[type][key].use_count = Danbooru.IAC.choice_data[type][key].use_count || 0;
+            Danbooru.IAC.choice_data[type][key].use_count *= Danbooru.IAC.user_settings.usage_multiplier;
         }
     });
     StoreUsageData('insert',term);
@@ -882,7 +968,7 @@ function PruneUsageData() {
     let is_dirty = false;
     $.each(Danbooru.IAC.choice_data,(type_key,type_entry)=>{
         $.each(type_entry,(key,entry)=>{
-            if (ValidateExpires(entry.expires, usage_expires)) {
+            if (ValidateExpires(entry.expires, Danbooru.IAC.user_settings.usage_expires * JSPLib.utility.one_day)) {
                 JSPLib.debug.debuglog("Pruning choice data!",type_key,key);
                 Danbooru.IAC.choice_order[type_key] = JSPLib.utility.setDifference(Danbooru.IAC.choice_order[type_key],[key])
                 delete type_entry[key];
@@ -901,11 +987,24 @@ function StoreUsageData(name,key='') {
     Danbooru.IAC.channel.postMessage({type: "reload", name: name, key: key, choice_order: Danbooru.IAC.choice_order, choice_data: Danbooru.IAC.choice_data});
 }
 
-function UsageBroadcast(ev) {
-    JSPLib.debug.debuglog(`BroadcastChannel (${ev.data.type}):`,ev.data.name,ev.data.key);
-    if (ev.data.type == "reload") {
+function BroadcastIAC(ev) {
+    JSPLib.debug.debuglog(`BroadcastChannel (${ev.data.type}):`,(ev.data.type === "reload" ? `${ev.data.name} ${ev.data.key}` : ev.data));
+    if (ev.data.type === "reload") {
         Danbooru.IAC.choice_order = ev.data.choice_order;
         Danbooru.IAC.choice_data = ev.data.choice_data;
+    } else if (ev.data.type === "settings") {
+        Danbooru.IAC.user_settings = ev.data.user_settings;
+        SetTagAutocompleteSource();
+    } else if (ev.data.type === "reset") {
+        Danbooru.IAC.user_settings = ev.data.user_settings;
+        SetTagAutocompleteSource();
+        Object.assign(Danbooru.IAC,program_reset_keys);
+    } else if (ev.data.type === "purge") {
+        $.each(sessionStorage,(key)=>{
+            if (key.match(program_cache_regex)) {
+                sessionStorage.removeItem(key);
+            }
+        });
     }
 }
 
@@ -931,10 +1030,12 @@ function AnySourceIndexed(keycode,default_metatag='') {
         var term = (req.term ? req.term : req);
         var key = (keycode + "-" + term).toLowerCase();
         var use_metatag = (input_metatag ? input_metatag : default_metatag);
-        var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
-        if (cached) {
-            ProcessSourceData(type, use_metatag, term, cached.value, resp);
-            return;
+        if (!Danbooru.IAC.user_settings.network_only_mode) {
+            var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
+            if (cached) {
+                ProcessSourceData(type, use_metatag, term, cached.value, resp);
+                return;
+            }
         }
         NetworkSource(type, key, term, resp, use_metatag);
     }
@@ -945,8 +1046,10 @@ function ProcessSourceData(type,metatag,term,data,resp) {
         $.each(data, (i,val)=> {FixupMetatag(val,metatag);});
     }
     KeepSourceData(type, metatag, data);
-    MoveAliases(type, data)
-    AddUserSelected(type, metatag, term, data);
+    MoveAliases(type, data);
+    if (Danbooru.IAC.user_settings.usage_enabled) {
+        AddUserSelected(type, metatag, term, data);
+    }
     resp(data);
 }
 
@@ -1021,37 +1124,30 @@ function FindArtistSession(e) {
 
 function rebindRelatedTags() {
     //Only need to check one of them, since they're all bound at the same time
-    let bounditems = $._data($("#related-tags-button")[0]);
-    JSPLib.debug.debuglog("Bound items (RT):",Object.keys(bounditems));
-    if (!$.isEmptyObject(bounditems) && bounditems.events.click.length) {
+    if (GetBoundEventNames("#related-tags-button",'click').length) {
         clearInterval(rebindRelatedTags.timer);
         $("#related-tags-button").off();
         CommonBindIndexed("#related-tags-button", "");
-        var related_buttons = ['general','artist','character','copyright'];
-        $.each(related_buttons, (i,category)=>{
+        $.each(['general','artist','character','copyright'], (i,category)=>{
             $(`#related-${category}-button`).off();
             CommonBindIndexed("#related-" + category + "-button", category);
         });
+        rebindRelatedTags.timer = true;
     }
 }
 
 function rebindFindArtist() {
-    //Only need to check one of them, since they're all bound at the same time
-    let bounditems = $._data($("#find-artist-button")[0]);
-    JSPLib.debug.debuglog("Bound items (FA):",Object.keys(bounditems));
-    if (!$.isEmptyObject(bounditems) && bounditems.events.click.length) {
+    if (GetBoundEventNames("#find-artist-button",'click').length) {
         clearInterval(rebindFindArtist.timer);
-        $("#find-artist-button").off();
-        $("#find-artist-button").click(FindArtistSession);
+        $("#find-artist-button").off().click(FindArtistSession);
         rebindFindArtist.timer = true;
     }
 }
 
 function rebindAnyAutocomplete(selector, keycode) {
-    var $fields = $(selector);
-    if ($fields.length && ('uiAutocomplete' in $.data($fields[0]))) {
+    if (HasDOMDataKey(selector,'uiAutocomplete')) {
         clearInterval(rebindAnyAutocomplete.timer[keycode]);
-        $fields.off().removeData();
+        $(selector).off().removeData();
         InitializeAutocompleteIndexed(selector, keycode);
     }
 }
@@ -1085,6 +1181,396 @@ function InitializeAutocompleteIndexed(selector, keycode) {
     }
 }
 
+///Settings menu
+
+function RenderTextinput(program_shortcut,setting_name,length=20) {
+    let program_key = program_shortcut.toUpperCase();
+    let setting_key = KebabCase(setting_name);
+    let display_name = DisplayCase(setting_name);
+    let value = Danbooru[program_key].user_settings[setting_name];
+    let hint = settings_config[setting_name].hint;
+    return `
+<div class="${program_shortcut}-textinput" data-setting="${setting_name}" style="margin:0.5em">
+    <h4>${display_name}</h4>
+    <div style="margin-left:0.5em">
+        <input type="text" class="${program_shortcut}-setting" name="${program_shortcut}-setting-${setting_key}" id="${program_shortcut}-setting-${setting_key}" value="${value}" size="${length}" autocomplete="off" class="text" style="padding:1px 0.5em">
+        <span class="${program_shortcut}-setting-tooltip" style="display:block;font-style:italic;color:#666">${hint}</span>
+    </div>
+</div>`;
+}
+
+function RenderCheckbox(program_shortcut,setting_name) {
+    let program_key = program_shortcut.toUpperCase();
+    let setting_key = KebabCase(setting_name);
+    let display_name = DisplayCase(setting_name);
+    let checked = (Danbooru[program_key].user_settings[setting_name] ? "checked" : "");
+    let hint = settings_config[setting_name].hint;
+    return `
+<div class="${program_shortcut}-checkbox" data-setting="${setting_name}" style="margin:0.5em">
+    <h4>${display_name}</h4>
+    <div style="margin-left:0.5em">
+        <input type="checkbox" ${checked} class="${program_shortcut}-setting" name="${program_shortcut}-enable-${setting_key}" id="${program_shortcut}-enable-${setting_key}">
+        <span class="${program_shortcut}-setting-tooltip" style="display:inline;font-style:italic;color:#666">${hint}</span>
+    </div>
+</div>`;
+}
+
+function RenderLinkclick(program_shortcut,setting_name,display_name,link_text) {
+    let setting_key = KebabCase(setting_name);
+    return `
+<div class="${program_shortcut}-linkclick" style="margin:0.5em">
+    <h4>${display_name}</h4>
+    <div style="margin-left:0.5em">
+        <span class="${program_shortcut}-control-linkclick" style="display:block"><a href="#" id="${program_shortcut}-setting-${setting_key}" style="color:#0073ff">${link_text}</a></span>
+    </div>
+</div>`;
+}
+const usage_settings = `
+<div id="iac-settings" style="float:left;width:50%">
+    <div id="iac-script-message" class="prose">
+        <h2>IndexedAutocomplete</h2>
+        <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/14701" style="color:#0073ff">topic #14701</a>).</p>
+    </div>
+    <div id="iac-usage-settings" style="margin-bottom:2em">
+        <div id="iac-usage-message" class="prose">
+            <h4>Usage settings</h4>
+            <p>These settings control how items get sorted in the autocomplete popup.</p>
+            <h5>Equations</h5>
+            <ul>
+                <li><b>Hit:</b> <span style="font-family:monospace;font-size:125%">usage_count = Max( usage_count + 1 , usage_maximum)</span>
+                <li><b>Miss:</b> <span style="font-family:monospace;font-size:125%">usage_count = usage_count * usage_multiplier</span>
+            </ul>
+        </div>
+    </div>
+    <div id="iac-network-settings" style="margin-bottom:2em">
+        <div id="iac-network-message" class="prose">
+            <h4>Network settings</h4>
+            <ul>
+                <li><b>Alternate tag source:</b> Uses the <code>/tags</code> controller instead of the normal autocomplete source.
+                    <ul>
+                        <li>No aliases.</li>
+                        <li>No fuzzy or intelligent autocomplete.</li>
+                        <li>All results will be exact matches.</li>
+                    </ul>
+                </li>
+                <li><b>Network only mode:</b> Always goes to network.
+                    <ul>
+                        <li>Can be used to correct cache data that has been changed on the server.</li>
+                        <li><span style="color:red;font-weight:bold">Warning!</span> <span style="font-style:italic">As this negates the benefits of using local cached data, it should only be used sparingly.</span></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div id="iac-cache-settings" style="margin-bottom:2em">
+        <div id="iac-cache-message" class="prose">
+            <h4>Cache settings</h4>
+            <h5>Cache data</h5>
+            <ul>
+                <li><b>Autocomplete data:</b> Data from every combination of keys in the text input.
+                    <ul style="font-size:80%">
+                        <li>tags</li>
+                        <li>pools</li>
+                        <li>users</li>
+                        <li>favorite groups</li>
+                        <li>saved searches</li>
+                        <li>wiki pages</li>
+                        <li>artists</li>
+                        <li>forum topics</li>
+                    </ul>
+                </li>
+                <li><b>Related tag data:</b> Data from every use of the related tag functions (<span style="font-size:80%"><i>right beneath the tag edit box</i></span>).
+                    <ul style="font-size:80%">
+                        <li>related tags</li>
+                        <li>general</li>
+                        <li>artists</li>
+                        <li>characters</li>
+                        <li>copyrights</li>
+                    </ul>
+                </li>
+            </ul>
+            <h5>Cache controls</h5>
+            <ul>
+                <li><b>Purge cache:</b> Dumps all of the cached data related to IndexedAutocomplete.</li>
+            </ul>
+        </div>
+    </div>
+    <hr>
+    <div id="iac-settings-buttons" style="margin-top:1em">
+        <input type="button" id="iac-commit" value="Save">
+        <input type="button" id="iac-resetall" value="Factory Reset">
+    </div>
+</div>`;
+
+const settings_config = {
+    usage_multiplier: {
+        default: 0.9,
+        parse: parseFloat,
+        validate: (data)=>{return validate.isNumber(data) && data >= 0.0 && data <= 1.0;},
+        hint: "Valid values: 0.0 - 1.0."
+    },
+    usage_maximum: {
+        default: 20,
+        parse: parseFloat,
+        validate: (data)=>{return validate.isNumber(data) && data >= 0.0;},
+        hint: "Set to 0 for no maximum."
+    },
+    usage_expires: {
+        default: 2,
+        parse: parseInt,
+        validate: (data)=>{return Number.isInteger(data) && data > 0;},
+        hint: "Number of days."
+    },
+    usage_enabled: {
+        default: true,
+        validate: (data)=>{return validate.isBoolean(data);},
+        hint: "Uncheck to turn off usage mechanism."
+    },
+    alternate_tag_source: {
+        default: false,
+        validate: (data)=>{return validate.isBoolean(data);},
+        hint: "Click to turn on."
+    },
+    network_only_mode: {
+        default: false,
+        validate: (data)=>{return validate.isBoolean(data);},
+        hint: "Click to turn on."
+    }
+}
+
+function SetTagAutocompleteSource() {
+    if (Danbooru.IAC.user_settings.alternate_tag_source) {
+        source_config.tag = source_config.tag2;
+    } else {
+        source_config.tag = source_config.tag1;
+    }
+}
+
+function LoadUserSettings(program_shortcut) {
+    let user_settings = JSPLib.storage.getStorageData(`${program_shortcut}-user-settings`,localStorage,{});
+    let is_dirty = false;
+    $.each(settings_config,(setting)=>{
+        if (!(setting in user_settings) || !settings_config[setting].validate(user_settings[setting])) {
+            JSPLib.debug.debuglog("Loading default:",setting,user_settings[setting]);
+            user_settings[setting] = settings_config[setting].default;
+            is_dirty = true;
+        }
+    });
+    let valid_settings = Object.keys(settings_config);
+    $.each(user_settings,(setting)=>{
+        if (!valid_settings.includes(setting)) {
+            JSPLib.debug.debuglog("Deleting invalid setting:",setting,user_settings[setting]);
+            delete user_settings[setting];
+            is_dirty = true;
+        }
+    });
+    if (is_dirty) {
+        JSPLib.debug.debuglog("Saving change to user settings!");
+        JSPLib.storage.setStorageData(`${program_shortcut}-user-settings`,user_settings,localStorage);
+    }
+    return user_settings;
+}
+
+function SaveUserSettingsClick(program_shortcut,program_name) {
+    let program_key = program_shortcut.toUpperCase();
+    $(`#${program_shortcut}-commit`).click((e)=>{
+        let invalid_setting = false;
+        let temp_selectors = {};
+        $(`#${program_shortcut}-settings .${program_shortcut}-setting[id]`).each((i,entry)=>{
+            let setting_name = $(entry).parent().parent().data('setting');
+            if (entry.type === "checkbox") {
+                let selector = $(entry).data('selector');
+                if (selector) {
+                    temp_selectors[setting_name] = temp_selectors[setting_name] || [];
+                    if (entry.checked) {
+                        temp_selectors[setting_name].push(selector);
+                    }
+                } else {
+                    Danbooru[program_key].user_settings[setting_name] = entry.checked;
+                }
+            } else if (entry.type === "text") {
+                 let user_setting = settings_config[setting_name].parse($(entry).val());
+                 if (settings_config[setting_name].validate(user_setting)) {
+                    Danbooru[program_key].user_settings[setting_name] = user_setting;
+                 } else {
+                    invalid_setting = true;
+                 }
+                 $(entry).val(Danbooru[program_key].user_settings[setting_name]);
+            }
+        });
+        $.each(temp_selectors,(setting_name)=>{
+            Danbooru[program_key].user_settings[setting_name] = temp_selectors[setting_name];
+        });
+        JSPLib.storage.setStorageData(`${program_shortcut}-user-settings`,Danbooru[program_key].user_settings,localStorage);
+        Danbooru[program_key].channel && Danbooru[program_key].channel.postMessage({type: "settings", user_settings: Danbooru[program_key].user_settings});
+        if (!invalid_setting) {
+            Danbooru.Utility.notice(`${program_name}: Settings updated!`);
+        } else {
+            Danbooru.Utility.error("Error: Some settings were invalid!")
+        }
+    });
+}
+
+function ResetUserSettingsClick(program_shortcut,program_name,delete_keys,reset_settings) {
+    let program_key = program_shortcut.toUpperCase();
+    $(`#${program_shortcut}-resetall`).click((e)=>{
+        if (confirm(`This will reset all of ${program_name}'s settings.\n\nAre you sure?`)) {
+            $.each(settings_config,(setting)=>{
+                Danbooru[program_key].user_settings[setting] = settings_config[setting].default;
+            });
+            $(`#${program_shortcut}-settings .${program_shortcut}-setting[id]`).each((i,entry)=>{
+                let $input = $(entry);
+                let setting_name = $input.parent().parent().data('setting');
+                if (entry.type === "checkbox") {
+                    let selector = $input.data('selector');
+                    if (selector) {
+                        $input.prop('checked', IsSettingEnabled(setting_name,selector));
+                        $input.checkboxradio("refresh");
+                    } else {
+                        $input.prop('checked', Danbooru[program_key].user_settings[setting_name]);
+                    }
+                } else if (entry.type === "text") {
+                     $input.val(Danbooru[program_key].user_settings[setting_name]);
+                }
+            });
+            $.each(delete_keys,(i,key)=>{
+                localStorage.removeItem(key);
+            });
+            Object.assign(Danbooru[program_key],reset_settings);
+            JSPLib.storage.setStorageData(`${program_shortcut}-user-settings`,Danbooru[program_key].user_settings,localStorage);
+            Danbooru[program_key].channel && Danbooru[program_key].channel.postMessage({type: "reset", user_settings: Danbooru[program_key].user_settings});
+            Danbooru.Utility.notice(`${program_name}: Settings reset to defaults!`);
+        }
+    });
+}
+
+async function PurgeCache(regex,domname) {
+    Danbooru.Utility.notice("Starting cache deletion...");
+    let promise_array = [];
+    let purged_count = 0;
+    let remaining_count = 0;
+    await JSPLib.storage.danboorustorage.iterate((value,key)=>{
+        if (key.match(regex)) {
+            JSPLib.debug.debuglogLevel("Deleting",key,JSPLib.debug.DEBUG);
+            let resp = JSPLib.storage.removeData(key).then(()=>{
+                domname && $(domname).html(--remaining_count);
+            });
+            promise_array.push(resp);
+            purged_count += 1;
+            domname && $(domname).html(++remaining_count);
+        }
+    });
+    Danbooru.Utility.notice(`Deleting ${purged_count} items...`);
+    JSPLib.debug.debuglogLevel(`Deleting ${purged_count} items...`,JSPLib.debug.INFO);
+    //Wait at least 5 seconds
+    await JSPLib.utility.sleep(5000);
+    await Promise.all(promise_array);
+    Danbooru.Utility.notice("Finished deleting cached data!");
+    JSPLib.debug.debuglogLevel("Finished deleting cached data!",JSPLib.debug.INFO);
+}
+
+function PurgeCacheClick(program_shortcut,program_name,regex,domname) {
+    let program_key = program_shortcut.toUpperCase();
+    $(`#${program_shortcut}-setting-purge-cache`).click((e)=>{
+        if (!PurgeCacheClick.is_started && confirm(`This will delete all of ${program_name}'s cached data.\n\nAre you sure?`)) {
+            PurgeCacheClick.is_started = true;
+            PurgeCache(regex,domname).then(()=>{
+                Danbooru[program_key].channel && Danbooru[program_key].channel.postMessage({type: "purge"});
+                PurgeCacheClick.is_started = false;
+            });;
+        }
+        e.preventDefault();
+    });
+}
+
+function RenderSettingsMenu() {
+    $("#indexed-autocomplete").append(usage_settings);
+    $("#iac-usage-settings").append(RenderTextinput("iac",'usage_multiplier'));
+    $("#iac-usage-settings").append(RenderTextinput("iac",'usage_maximum'));
+    $("#iac-usage-settings").append(RenderTextinput("iac",'usage_expires'));
+    $("#iac-usage-settings").append(RenderCheckbox("iac",'usage_enabled'));
+    $("#iac-network-settings").append(RenderCheckbox("iac",'alternate_tag_source'));
+    $("#iac-network-settings").append(RenderCheckbox("iac",'network_only_mode'));
+    $("#iac-cache-settings").append(RenderLinkclick("iac",'purge_cache',`Purge cache (<span id="iac-purge-counter">...</span>)`,"Click to purge"));
+    SaveUserSettingsClick('iac','IndexedAutocomplete');
+    ResetUserSettingsClick('iac','IndexedAutocomplete',localstorage_keys,program_reset_keys);
+    PurgeCacheClick('iac','IndexedAutocomplete',program_cache_regex,"#iac-purge-counter");
+}
+
+//Main menu tabs
+
+const css_themes_url = 'https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/themes/base/jquery-ui.css';
+
+const settings_field = `
+<fieldset id="userscript-settings-menu" style="display:none">
+  <ul id="userscript-settings-tabs">
+  </ul>
+  <div id="userscript-settings-sections">
+  </div>
+</fieldset>`;
+
+function RenderTab(program_name,program_key) {
+    return `<li><a href="#${program_key}">${program_name}</a></li>`;
+}
+
+function RenderSection(program_key) {
+    return `<div id="${program_key}"></div>`;
+}
+
+function MainSettingsClick() {
+    if (!IsNamespaceBound(`[href="#userscript-menu"`,'click','jsplib.menuchange')) {
+        $(`[href="#userscript-menu"`).on('click.jsplib.menuchange',(e)=>{
+            $(`#edit-options a[href$="settings"]`).removeClass("active");
+            $(e.target).addClass("active");
+            $(".edit_user > fieldset").hide();
+            $("#userscript-settings-menu").show();
+            $('[name=commit]').hide();
+            e.preventDefault();
+        });
+    }
+}
+function OtherSettingsClicks() {
+    if (!IsNamespaceBound("#edit-options a[href$=settings]",'click','jsplib.menuchange')) {
+        $("#edit-options a[href$=settings]").on('click.jsplib.menuchange',(e)=>{
+            $(`[href="#userscript-menu"`).removeClass('active');
+            $("#userscript-settings-menu").hide();
+            $('[name=commit]').show();
+            e.preventDefault()
+        });
+    }
+}
+
+function InstallSettingsMenu(program_name) {
+    let program_key = KebabCase(program_name);
+    if ($("#userscript-settings-menu").length === 0) {
+        $(`input[name="commit"]`).before(settings_field);
+        $("#edit-options").append('| <a href="#userscript-menu">Userscript Menus</a>');
+        //Periodic recheck in case other programs remove/rebind click events
+        setInterval(()=>{
+            MainSettingsClick();
+            OtherSettingsClicks();
+        },1000);
+        AddStyleSheet(css_themes_url);
+    } else {
+        $("#userscript-settings-menu").tabs("destroy");
+    }
+    $("#userscript-settings-tabs").append(RenderTab(program_name,program_key));
+    $("#userscript-settings-sections").append(RenderSection(program_key));
+    //Sort the tabs alphabetically
+    $("#userscript-settings-tabs li").sort(function(a, b) {
+        try {
+            return a.children[0].innerText.localeCompare(b.children[0].innerText);
+        } catch (e) {
+            return 0;
+        }
+    }).each(function() {
+        var elem = $(this);
+        elem.remove();
+        $(elem).appendTo("#userscript-settings-tabs");
+    });
+    $("#userscript-settings-menu").tabs();
+}
+
 //Main program
 function main() {
     if (!JSPLib.storage.use_indexed_db) {
@@ -1099,9 +1585,11 @@ function main() {
     Danbooru.IAC = {source_data: {},
         choice_order: JSPLib.storage.getStorageData('iac-choice-order',localStorage,{}),
         choice_data: JSPLib.storage.getStorageData('iac-choice-data',localStorage,{}),
+        user_settings: LoadUserSettings('iac'),
         channel: new BroadcastChannel('IndexedAutocomplete')
     };
-    Danbooru.IAC.channel.onmessage = UsageBroadcast;
+    SetTagAutocompleteSource();
+    Danbooru.IAC.channel.onmessage = BroadcastIAC;
     CorrectUsageData();
     PruneUsageData();
     Danbooru.Autocomplete.normal_source = AnySourceIndexed('ac');
@@ -1152,6 +1640,10 @@ function main() {
     }
     if ($('[placeholder="Search users"]').length) {
         InitializeAutocompleteIndexed("#search_name_matches,#quick_search_name_matches", 'us');
+    }
+     if ($("#c-users #a-edit").length) {
+        InstallSettingsMenu("IndexedAutocomplete");
+        RenderSettingsMenu();
     }
     DebugExecute(()=>{
         window.addEventListener('beforeunload', ()=>{
