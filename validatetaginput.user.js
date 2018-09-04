@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      24.3
+// @version      25.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -11,6 +11,7 @@
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/validatetaginput.user.js
+// @require      https://raw.githubusercontent.com/jquery/jquery-ui/1.12.1/ui/widgets/tabs.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/debug.js
@@ -30,7 +31,7 @@ JSPLib.debug.pretext = "VTI:";
 JSPLib.debug.level = JSPLib.debug.INFO;
 
 //Variables for load.js
-const program_load_required_variables = ['window.jQuery'];
+const program_load_required_variables = ['window.jQuery','window.Danbooru'];
 
 //Wait time for quick edit box
 // 1. Let box close before reenabling the submit button
@@ -43,8 +44,8 @@ const timer_poll_interval = 100;
 //Expiration time is one month
 const validatetag_expiration_time = JSPLib.utility.one_month;
 
-//Holds the state of the tags in the textbox at page load
-var preedittags;
+//Regex that matches the prefix of all program cache data
+const program_cache_regex = /^(?:ti|ta)-/;
 
 //Validate constants
 
@@ -111,7 +112,70 @@ function DebugExecute(func) {
     }
 }
 
+function GetExpiration(expires) {
+    return Date.now() + expires;
+}
+
+function ValidateExpires(actual_expires,expected_expires) {
+    //Resolve to true if the actual_expires is bogus, has expired, or the expiration is too long
+    return !Number.isInteger(actual_expires) || (Date.now() > actual_expires) || ((actual_expires - Date.now()) > expected_expires);
+}
+
+function IsNamespaceBound(selector,eventtype,namespace) {
+    let namespaces = GetBoundEventNames(selector,eventtype);
+    return namespaces.includes(namespace);
+}
+
+function GetBoundEventNames(selector,eventtype) {
+    let $obj = $(selector);
+    if ($obj.length === 0) {
+        return [];
+    }
+    let boundevents = $._data($obj[0], "events");
+    if (!boundevents || !(eventtype in boundevents)) {
+        return [];
+    }
+    return $.map(boundevents[eventtype],(entry)=>{return entry.namespace;});
+}
+
+function AddStyleSheet(url,title='') {
+    AddStyleSheet.cssstyle = AddStyleSheet.cssstyle || {};
+    if (title in AddStyleSheet.cssstyle) {
+        AddStyleSheet.cssstyle[title].href = url;
+    } else {
+        AddStyleSheet.cssstyle[title] = document.createElement('link');
+        AddStyleSheet.cssstyle[title].rel = 'stylesheet';
+        AddStyleSheet.cssstyle[title].type = 'text/css';
+        AddStyleSheet.cssstyle[title].href = url;
+        document.head.appendChild(AddStyleSheet.cssstyle[title]);
+    }
+}
+
+function KebabCase(string) {
+    return string.replace(/([a-z])([A-Z])/g, '$1-$2').replace(/[\s_]+/g,'-').toLowerCase();
+}
+
+function DisplayCase(string) {
+    return JSPLib.utility.titleizeString(string.toLowerCase().replace(/[_]/g,' '));
+}
+
 //Helper functions
+
+function BroadcastVTI(ev) {
+    JSPLib.debug.debuglog(`BroadcastChannel (${ev.data.type}):`,ev.data);
+    if (ev.data.type === "settings") {
+        Danbooru.VTI.user_settings = ev.data.user_settings;
+    } else if (ev.data.type === "reset") {
+        Danbooru.VTI.user_settings = ev.data.user_settings;
+        Object.assign(Danbooru.VTI,program_reset_keys);
+    } else if (ev.data.type === "purge") {
+        $.each(sessionStorage,(key)=>{
+            if (key.match(program_cache_regex)) {
+                sessionStorage.removeItem(key);
+            }
+        });
+    }
+}
 
 function getTagList() {
     return stripQuoteSourceMetatag($("#upload_tag_string,#post_tag_string").val()).split(/[\s\n]+/).map(tag=>{return tag.toLowerCase();});
@@ -172,7 +236,7 @@ async function queryTagAlias(tag) {
         if (data.length) {
             //Alias antecedents are unique, so no need to check the size
             JSPLib.debug.debuglog("Alias:",tag,data[0].consequent_name);
-            queryTagAliases.aliastags.push(tag);
+            Danbooru.VTI.aliastags.push(tag);
             consequent = [data[0].consequent_name];
         } else {
             consequent = [];
@@ -182,7 +246,7 @@ async function queryTagAlias(tag) {
         consequent = storeditem.value;
         if (consequent.length) {
             JSPLib.debug.debuglog("Alias:",tag,consequent[0]);
-            queryTagAliases.aliastags.push(tag);
+            Danbooru.VTI.aliastags.push(tag);
         }
     }
 }
@@ -191,19 +255,16 @@ async function queryTagAlias(tag) {
 async function queryTagAliases(taglist) {
     JSPLib.debug.debugTime("queryTagAliases");
     for (let i = 0;i < taglist.length;i++) {
-        if (queryTagAliases.seenlist.includes(taglist[i])) {
+        if (Danbooru.VTI.seenlist.includes(taglist[i])) {
             continue;
         }
-        queryTagAliases.seenlist.push(taglist[i]);
-        queryTagAliases.promise_array.push(queryTagAlias(taglist[i]));
+        Danbooru.VTI.seenlist.push(taglist[i]);
+        Danbooru.VTI.aliases_promise_array.push(queryTagAlias(taglist[i]));
     }
-    await Promise.all(queryTagAliases.promise_array);
+    await Promise.all(Danbooru.VTI.aliases_promise_array);
     JSPLib.debug.debugTimeEnd("queryTagAliases");
-    JSPLib.debug.debuglog("Aliases:",queryTagAliases.aliastags);
+    JSPLib.debug.debuglog("Aliases:",Danbooru.VTI.aliastags);
 }
-queryTagAliases.aliastags = [];
-queryTagAliases.seenlist = [];
-queryTagAliases.promise_array = [];
 
 async function queryTagImplication(tag) {
     let entryname = 'ti-'+tag;
@@ -212,10 +273,10 @@ async function queryTagImplication(tag) {
         JSPLib.debug.debuglog("Querying implication:",tag);
         let data = await JSPLib.danbooru.submitRequest('tag_implications',{limit:100,search:{consequent_name:tag,status:'active'}},[],entryname);
         let implications = data.map(entry=>{return entry.antecedent_name;});
-        queryTagImplications.implicationdict[tag] = implications;
+        Danbooru.VTI.implicationdict[tag] = implications;
         JSPLib.storage.saveData(entryname,{'value':implications,'expires':Date.now() + validatetag_expiration_time});
     } else {
-        queryTagImplications.implicationdict[tag] = storeditem.value;
+        Danbooru.VTI.implicationdict[tag] = storeditem.value;
     }
 }
 
@@ -223,14 +284,12 @@ async function queryTagImplication(tag) {
 async function queryTagImplications(taglist) {
     JSPLib.debug.debugTime("queryTagImplications");
     for (let i = 0;i < taglist.length;i++) {
-        queryTagImplications.promise_array.push(queryTagImplication(taglist[i]));
+        Danbooru.VTI.implications_promise_array.push(queryTagImplication(taglist[i]));
     }
-    await Promise.all(queryTagImplications.promise_array);
+    await Promise.all(Danbooru.VTI.implications_promise_array);
     JSPLib.debug.debugTimeEnd("queryTagImplications");
-    JSPLib.debug.debuglog("Implications:",queryTagImplications.implicationdict);
+    JSPLib.debug.debuglog("Implications:",Danbooru.VTI.implicationdict);
 }
-queryTagImplications.implicationdict = {};
-queryTagImplications.promise_array = [];
 
 //Click functions
 
@@ -240,10 +299,12 @@ function postModeMenuClick(e) {
         $("#validation-input,#warning-no-rating,#warning-new-tags,#warning-bad-removes").hide();
         let post_id = $(e.target).closest("article").data("id");
         let $post = $("#post_" + post_id);
-        preedittags = $post.data("tags").split(' ');
-        JSPLib.debug.debuglog("Preedit tags:",preedittags);
+        Danbooru.VTI.preedittags = $post.data("tags").split(' ');
+        JSPLib.debug.debuglog("Preedit tags:",Danbooru.VTI.preedittags);
         //Wait until the edit box loads before querying implications
-        setTimeout(()=>{queryTagImplications(preedittags);},quickedit_wait_time);
+        if (Danbooru.VTI.user_settings.implication_check_enabled) {
+            setTimeout(()=>{queryTagImplications(Danbooru.VTI.preedittags);},quickedit_wait_time);
+        }
     } else if (s === "view") {
         return;
     }
@@ -332,11 +393,9 @@ function reenableSubmitCallback() {
 }
 
 function rebindHotkey() {
-    let boundevents = $.map($._data($("#upload_tag_string,#post_tag_string")[0], "events").keydown,(entry)=>{return entry.namespace;});
-    JSPLib.debug.debuglog("Bound events:",boundevents);
-    if ($.inArray('danbooru.submit',boundevents) >= 0) {
+    if (IsNamespaceBound("#upload_tag_string,#post_tag_string",'keydown','danbooru.submit')) {
         clearInterval(rebindHotkey.timer);
-        $("#upload_tag_string,#post_tag_string").off("keydown.danbooru.submit").on("keydown.danbooru.submit", null, "return", e=>{
+        $("#upload_tag_string,#post_tag_string").off("keydown.danbooru.submit").on("keydown.danbooru.submit", null, "return", (e)=>{
             $("#validate-tags").click();
             e.preventDefault();
         });
@@ -353,19 +412,21 @@ async function validateTagAddsWrap() {
 }
 
 async function validateTagAdds() {
-    validateTagAdds.isready = false;
     let postedittags = getCurrentTags();
-    validateTagAdds.addedtags = JSPLib.utility.setDifference(JSPLib.utility.setDifference(filterNegativetags(filterTypetags(postedittags)),preedittags),getNegativetags(postedittags));
-    JSPLib.debug.debuglog("Added tags:",validateTagAdds.addedtags);
-    if ((validateTagAdds.addedtags.length === 0) || $("#skip-validate-tags")[0].checked) {
-        JSPLib.debug.debuglog("Tag Add Validation - Skipping!",validateTagAdds.addedtags.length === 0,$("#skip-validate-tags")[0].checked);
+    Danbooru.VTI.addedtags = JSPLib.utility.setDifference(JSPLib.utility.setDifference(filterNegativetags(filterTypetags(postedittags)),Danbooru.VTI.preedittags),getNegativetags(postedittags));
+    JSPLib.debug.debuglog("Added tags:",Danbooru.VTI.addedtags);
+    if ((Danbooru.VTI.addedtags.length === 0) || $("#skip-validate-tags")[0].checked) {
+        JSPLib.debug.debuglog("Tag Add Validation - Skipping!",Danbooru.VTI.addedtags.length === 0,$("#skip-validate-tags")[0].checked);
         $("#warning-new-tags").hide();
         return true;
     }
-    let alltags = JSPLib.danbooru.getAllItems('tags',100,{addons:{search:{name:validateTagAdds.addedtags.join(','),hide_empty:'yes'}}});
-    alltags.then((data)=>{validateTagAdds.checktags = data.map(entry=>{return entry.name;});});
-    await Promise.all([alltags,queryTagAliases(validateTagAdds.addedtags)]);
-    let nonexisttags = JSPLib.utility.setDifference(JSPLib.utility.setDifference(validateTagAdds.addedtags,validateTagAdds.checktags),queryTagAliases.aliastags);
+    let alltags = await JSPLib.danbooru.getAllItems('tags',100,{addons:{search:{name:Danbooru.VTI.addedtags.join(','),hide_empty:'yes'}}});
+    Danbooru.VTI.checktags = alltags.map(entry=>{return entry.name;});
+    let nonexisttags = JSPLib.utility.setDifference(Danbooru.VTI.addedtags,Danbooru.VTI.checktags);
+    if (Danbooru.VTI.user_settings.alias_check_enabled) {
+        await queryTagAliases(Danbooru.VTI.addedtags);
+        nonexisttags = JSPLib.utility.setDifference(nonexisttags,Danbooru.VTI.aliastags);
+    }
     if (nonexisttags.length > 0) {
         JSPLib.debug.debuglog("Tag Add Validation - Nonexistant tags!");
         $.each(nonexisttags,(i,tag)=>{JSPLib.debug.debuglog(i,tag);});
@@ -389,20 +450,20 @@ async function validateTagRemovesWrap() {
 }
 
 async function validateTagRemoves() {
-    if ($("#skip-validate-tags")[0].checked) {
+    if (!Danbooru.VTI.user_settings.implication_check_enabled || $("#skip-validate-tags")[0].checked) {
         JSPLib.debug.debuglog("Tag Remove Validation - Skipping!",$("#skip-validate-tags")[0].checked);
         $("#warning-bad-removes").hide();
         return true;
     }
-    await Promise.all(queryTagImplications.promise_array);
+    await Promise.all(Danbooru.VTI.implications_promise_array);
     let postedittags = transformTypetags(getCurrentTags());
-    let removedtags = (JSPLib.utility.setDifference(preedittags,postedittags)).concat(JSPLib.utility.setIntersection(getNegativetags(postedittags),postedittags));
+    let removedtags = (JSPLib.utility.setDifference(Danbooru.VTI.preedittags,postedittags)).concat(JSPLib.utility.setIntersection(getNegativetags(postedittags),postedittags));
     let finaltags = JSPLib.utility.setDifference(postedittags,removedtags);
     JSPLib.debug.debuglog("Final tags:",finaltags);
     JSPLib.debug.debuglog("Removed tags:",removedtags);
     let allrelations = [];
     $.each(removedtags,(i,tag)=>{
-        let badremoves = JSPLib.utility.setIntersection(getAllRelations(tag,queryTagImplications.implicationdict),finaltags);
+        let badremoves = JSPLib.utility.setIntersection(getAllRelations(tag,Danbooru.VTI.implicationdict),finaltags);
         if (badremoves.length) {
             allrelations.push(badremoves.toString() + ' -> ' + tag);
         }
@@ -422,19 +483,342 @@ async function validateTagRemoves() {
     return false;
 }
 
+///Settings menu
+
+function RenderCheckbox(program_shortcut,setting_name) {
+    let program_key = program_shortcut.toUpperCase();
+    let setting_key = KebabCase(setting_name);
+    let display_name = DisplayCase(setting_name);
+    let checked = (Danbooru[program_key].user_settings[setting_name] ? "checked" : "");
+    let hint = settings_config[setting_name].hint;
+    return `
+<div class="${program_shortcut}-checkbox" data-setting="${setting_name}" style="margin:0.5em">
+    <h4>${display_name}</h4>
+    <div style="margin-left:0.5em">
+        <input type="checkbox" ${checked} class="${program_shortcut}-setting" name="${program_shortcut}-enable-${setting_key}" id="${program_shortcut}-enable-${setting_key}">
+        <span class="${program_shortcut}-setting-tooltip" style="display:inline;font-style:italic;color:#666">${hint}</span>
+    </div>
+</div>`;
+}
+
+function RenderLinkclick(program_shortcut,setting_name,display_name,link_text) {
+    let setting_key = KebabCase(setting_name);
+    return `
+<div class="${program_shortcut}-linkclick" style="margin:0.5em">
+    <h4>${display_name}</h4>
+    <div style="margin-left:0.5em">
+        <span class="${program_shortcut}-control-linkclick" style="display:block"><a href="#" id="${program_shortcut}-setting-${setting_key}" style="color:#0073ff">${link_text}</a></span>
+    </div>
+</div>`;
+}
+
+const vti_menu = `
+<div id="vti-settings" style="float:left;width:50%">
+    <div id="vti-script-message" class="prose">
+        <h2>ValidateTagInput</h2>
+        <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/14474" style="color:#0073ff">topic #14474</a>).</p>
+    </div>
+    <div id="vti-process-settings" style="margin-bottom:2em">
+        <div id="vti-process-message" class="prose">
+            <h4>Process settings</h4>
+            <ul>
+                <li><b>Alias check enabled:</b> Checks and removes aliased tags from tag add validation.
+                    <ul>
+                        <li>Turning off no longer queries all tag adds for aliases.</li>
+                    </ul>
+                </li>
+                <li><b>Implications check enabled:</b> Used as the primary source for tag remove validation.
+                    <ul>
+                        <li>Turning off no longer queries all tags on page load for implications.</li>
+                        <li><b>Note:</b> This effectively turns off tag remove validation.</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div id="vti-cache-settings" style="margin-bottom:2em">
+        <div id="vti-cache-message" class="prose">
+            <h4>Cache settings</h4>
+            <h5>Cache data</h5>
+            <ul>
+                <li><b>Tag aliases:</b> Used to determine which removes are bad.</li>
+                <li><b>Tag implications:</b> Used to determine if a tag is bad or an alias.</li>
+            </ul>
+            <h5>Cache controls</h5>
+            <ul>
+                <li><b>Purge cache:</b> Dumps all of the cached data related to ValidateTagInput.</li>
+            </ul>
+        </div>
+    </div>
+    <hr>
+    <div id="vti-settings-buttons" style="margin-top:1em">
+        <input type="button" id="vti-commit" value="Save">
+        <input type="button" id="vti-resetall" value="Factory Reset">
+    </div>
+</div>`;
+
+const settings_config = {
+    alias_check_enabled: {
+        default: true,
+        validate: (data)=>{return validate.isBoolean(data);},
+        hint: "Uncheck to turn off."
+    },
+    implication_check_enabled: {
+        default: true,
+        validate: (data)=>{return validate.isBoolean(data);},
+        hint: "Uncheck to turn off."
+    }
+}
+
+function LoadUserSettings(program_shortcut) {
+    let user_settings = JSPLib.storage.getStorageData(`${program_shortcut}-user-settings`,localStorage,{});
+    let is_dirty = false;
+    $.each(settings_config,(setting)=>{
+        if (!(setting in user_settings) || !settings_config[setting].validate(user_settings[setting])) {
+            JSPLib.debug.debuglog("Loading default:",setting,user_settings[setting]);
+            user_settings[setting] = settings_config[setting].default;
+            is_dirty = true;
+        }
+    });
+    let valid_settings = Object.keys(settings_config);
+    $.each(user_settings,(setting)=>{
+        if (!valid_settings.includes(setting)) {
+            JSPLib.debug.debuglog("Deleting invalid setting:",setting,user_settings[setting]);
+            delete user_settings[setting];
+            is_dirty = true;
+        }
+    });
+    if (is_dirty) {
+        JSPLib.debug.debuglog("Saving change to user settings!");
+        JSPLib.storage.setStorageData(`${program_shortcut}-user-settings`,user_settings,localStorage);
+    }
+    return user_settings;
+}
+
+function SaveUserSettingsClick(program_shortcut,program_name) {
+    let program_key = program_shortcut.toUpperCase();
+    $(`#${program_shortcut}-commit`).click((e)=>{
+        let invalid_setting = false;
+        let temp_selectors = {};
+        $(`#${program_shortcut}-settings .${program_shortcut}-setting[id]`).each((i,entry)=>{
+            let setting_name = $(entry).parent().parent().data('setting');
+            if (entry.type === "checkbox") {
+                let selector = $(entry).data('selector');
+                if (selector) {
+                    temp_selectors[setting_name] = temp_selectors[setting_name] || [];
+                    if (entry.checked) {
+                        temp_selectors[setting_name].push(selector);
+                    }
+                } else {
+                    Danbooru[program_key].user_settings[setting_name] = entry.checked;
+                }
+            } else if (entry.type === "text") {
+                 let user_setting = settings_config[setting_name].parse($(entry).val());
+                 if (settings_config[setting_name].validate(user_setting)) {
+                    Danbooru[program_key].user_settings[setting_name] = user_setting;
+                 } else {
+                    invalid_setting = true;
+                 }
+                 $(entry).val(Danbooru[program_key].user_settings[setting_name]);
+            }
+        });
+        $.each(temp_selectors,(setting_name)=>{
+            Danbooru[program_key].user_settings[setting_name] = temp_selectors[setting_name];
+        });
+        JSPLib.storage.setStorageData(`${program_shortcut}-user-settings`,Danbooru[program_key].user_settings,localStorage);
+        Danbooru[program_key].channel && Danbooru[program_key].channel.postMessage({type: "settings", user_settings: Danbooru[program_key].user_settings});
+        if (!invalid_setting) {
+            Danbooru.Utility.notice(`${program_name}: Settings updated!`);
+        } else {
+            Danbooru.Utility.error("Error: Some settings were invalid!")
+        }
+    });
+}
+
+function ResetUserSettingsClick(program_shortcut,program_name,delete_keys,reset_settings) {
+    let program_key = program_shortcut.toUpperCase();
+    $(`#${program_shortcut}-resetall`).click((e)=>{
+        if (confirm(`This will reset all of ${program_name}'s settings.\n\nAre you sure?`)) {
+            $.each(settings_config,(setting)=>{
+                Danbooru[program_key].user_settings[setting] = settings_config[setting].default;
+            });
+            $(`#${program_shortcut}-settings .${program_shortcut}-setting[id]`).each((i,entry)=>{
+                let $input = $(entry);
+                let setting_name = $input.parent().parent().data('setting');
+                if (entry.type === "checkbox") {
+                    let selector = $input.data('selector');
+                    if (selector) {
+                        $input.prop('checked', IsSettingEnabled(setting_name,selector));
+                        $input.checkboxradio("refresh");
+                    } else {
+                        $input.prop('checked', Danbooru[program_key].user_settings[setting_name]);
+                    }
+                } else if (entry.type === "text") {
+                     $input.val(Danbooru[program_key].user_settings[setting_name]);
+                }
+            });
+            $.each(delete_keys,(i,key)=>{
+                localStorage.removeItem(key);
+            });
+            Object.assign(Danbooru[program_key],reset_settings);
+            JSPLib.storage.setStorageData(`${program_shortcut}-user-settings`,Danbooru[program_key].user_settings,localStorage);
+            Danbooru[program_key].channel && Danbooru[program_key].channel.postMessage({type: "reset", user_settings: Danbooru[program_key].user_settings});
+            Danbooru.Utility.notice(`${program_name}: Settings reset to defaults!`);
+        }
+    });
+}
+
+async function PurgeCache(regex,domname) {
+    Danbooru.Utility.notice("Starting cache deletion...");
+    let promise_array = [];
+    let purged_count = 0;
+    let remaining_count = 0;
+    await JSPLib.storage.danboorustorage.iterate((value,key)=>{
+        if (key.match(regex)) {
+            JSPLib.debug.debuglogLevel("Deleting",key,JSPLib.debug.DEBUG);
+            let resp = JSPLib.storage.removeData(key).then(()=>{
+                domname && $(domname).html(--remaining_count);
+            });
+            promise_array.push(resp);
+            purged_count += 1;
+            domname && $(domname).html(++remaining_count);
+        }
+    });
+    Danbooru.Utility.notice(`Deleting ${purged_count} items...`);
+    JSPLib.debug.debuglogLevel(`Deleting ${purged_count} items...`,JSPLib.debug.INFO);
+    //Wait at least 5 seconds
+    await JSPLib.utility.sleep(5000);
+    await Promise.all(promise_array);
+    Danbooru.Utility.notice("Finished deleting cached data!");
+    JSPLib.debug.debuglogLevel("Finished deleting cached data!",JSPLib.debug.INFO);
+}
+
+function PurgeCacheClick(program_shortcut,program_name,regex,domname) {
+    let program_key = program_shortcut.toUpperCase();
+    $(`#${program_shortcut}-setting-purge-cache`).click((e)=>{
+        if (!PurgeCacheClick.is_started && confirm(`This will delete all of ${program_name}'s cached data.\n\nAre you sure?`)) {
+            PurgeCacheClick.is_started = true;
+            PurgeCache(regex,domname).then(()=>{
+                Danbooru[program_key].channel && Danbooru[program_key].channel.postMessage({type: "purge"});
+                PurgeCacheClick.is_started = false;
+            });;
+        }
+        e.preventDefault();
+    });
+}
+
+function RenderSettingsMenu() {
+    $("#validate-tag-input").append(vti_menu);
+    $("#vti-process-settings").append(RenderCheckbox("vti",'alias_check_enabled'));
+    $("#vti-process-settings").append(RenderCheckbox("vti",'implication_check_enabled'));
+    $("#vti-cache-settings").append(RenderLinkclick("vti",'purge_cache',`Purge cache (<span id="vti-purge-counter">...</span>)`,"Click to purge"));
+    SaveUserSettingsClick('vti','ValidateTagInput');
+    ResetUserSettingsClick('vti','ValidateTagInput',[],{});
+    PurgeCacheClick('vti','ValidateTagInput',program_cache_regex,"#vti-purge-counter");
+}
+
+//Main menu tabs
+
+const css_themes_url = 'https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/themes/base/jquery-ui.css';
+
+const settings_field = `
+<fieldset id="userscript-settings-menu" style="display:none">
+  <ul id="userscript-settings-tabs">
+  </ul>
+  <div id="userscript-settings-sections">
+  </div>
+</fieldset>`;
+
+function RenderTab(program_name,program_key) {
+    return `<li><a href="#${program_key}">${program_name}</a></li>`;
+}
+
+function RenderSection(program_key) {
+    return `<div id="${program_key}"></div>`;
+}
+
+function MainSettingsClick() {
+    if (!IsNamespaceBound(`[href="#userscript-menu"`,'click','jsplib.menuchange')) {
+        $(`[href="#userscript-menu"`).on('click.jsplib.menuchange',(e)=>{
+            $(`#edit-options a[href$="settings"]`).removeClass("active");
+            $(e.target).addClass("active");
+            $(".edit_user > fieldset").hide();
+            $("#userscript-settings-menu").show();
+            $('[name=commit]').hide();
+            e.preventDefault();
+        });
+    }
+}
+
+function OtherSettingsClicks() {
+    if (!IsNamespaceBound("#edit-options a[href$=settings]",'click','jsplib.menuchange')) {
+        $("#edit-options a[href$=settings]").on('click.jsplib.menuchange',(e)=>{
+            $(`[href="#userscript-menu"`).removeClass('active');
+            $("#userscript-settings-menu").hide();
+            $('[name=commit]').show();
+            e.preventDefault()
+        });
+    }
+}
+
+function InstallSettingsMenu(program_name) {
+    let program_key = KebabCase(program_name);
+    if ($("#userscript-settings-menu").length === 0) {
+        $(`input[name="commit"]`).before(settings_field);
+        $("#edit-options").append('| <a href="#userscript-menu">Userscript Menus</a>');
+        //Periodic recheck in case other programs remove/rebind click events
+        setInterval(()=>{
+            MainSettingsClick();
+            OtherSettingsClicks();
+        },1000);
+        AddStyleSheet(css_themes_url);
+    } else {
+        $("#userscript-settings-menu").tabs("destroy");
+    }
+    $("#userscript-settings-tabs").append(RenderTab(program_name,program_key));
+    $("#userscript-settings-sections").append(RenderSection(program_key));
+    //Sort the tabs alphabetically
+    $("#userscript-settings-tabs li").sort(function(a, b) {
+        try {
+            return a.children[0].innerText.localeCompare(b.children[0].innerText);
+        } catch (e) {
+            return 0;
+        }
+    }).each(function() {
+        var elem = $(this);
+        elem.remove();
+        $(elem).appendTo("#userscript-settings-tabs");
+    });
+    $("#userscript-settings-menu").tabs();
+}
+
+//Main program
+
 function main() {
-    JSPLib.debug.debuglog("========STARTING MAIN========");
+    Danbooru.VTI = {
+        user_settings: LoadUserSettings('vti'),
+        channel: new BroadcastChannel('ValidateTagInput'),
+        aliastags: [],
+        seenlist: [],
+        aliases_promise_array: [],
+        implicationdict: {},
+        implications_promise_array: []
+    }
+    Danbooru.VTI.channel.onmessage = BroadcastVTI;
     if ($("#c-users #a-edit").length) {
-        //Placeholder for revamped cache controls
+        InstallSettingsMenu("ValidateTagInput");
+        RenderSettingsMenu();
         return;
     }
     if ($("#c-uploads #a-new").length) {
         //Upload tags will always start out blank
-        preedittags = [];
+        Danbooru.VTI.preedittags = [];
     } else if ($("#c-posts #a-show").length) {
-        preedittags = JSPLib.utility.filterEmpty(getTagList());
-        JSPLib.debug.debuglog("Preedit tags:",preedittags);
-        queryTagImplications(preedittags);
+        Danbooru.VTI.preedittags = JSPLib.utility.filterEmpty(getTagList());
+        JSPLib.debug.debuglog("Preedit tags:",Danbooru.VTI.preedittags);
+        if (Danbooru.VTI.user_settings.implication_check_enabled) {
+            queryTagImplications(Danbooru.VTI.preedittags);
+        }
     } else if ($("#c-posts #a-index #mode-box").length){
         $(".post-preview a").click(postModeMenuClick);
     } else {
