@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      18.0
+// @version      18.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -293,7 +293,8 @@ const source_config = {
                     name_matches: term + "*",
                     hide_empty: true,
                     order: "count"
-                }
+                },
+                limit: 10
             };
         },
         map: (tag)=>{
