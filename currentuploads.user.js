@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9.0
+// @version      10.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Gives up-to-date stats on uploads
 // @author       BrokenEagle
@@ -9,6 +9,7 @@
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/currentuploads.user.js
+// @require      https://raw.githubusercontent.com/jquery/jquery-ui/1.12.1/ui/widgets/tabs.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/debug.js
@@ -25,10 +26,10 @@
 //Variables for debug.js
 JSPLib.debug.debug_console = false;
 JSPLib.debug.pretext = "CU:";
-JSPLib.debug.level = JSPLib.debug.DEBUG;
+JSPLib.debug.level = JSPLib.debug.INFO;
 
 //Variables for load.js
-const program_load_required_variables = ['window.jQuery'];
+const program_load_required_variables = ['window.jQuery','window.Danbooru'];
 const program_load_required_ids = ["top","page-footer"];
 
 //Variables for danbooru.js
@@ -40,7 +41,25 @@ const prune_expires = JSPLib.utility.one_day;
 //Maximum number of entries to prune in one go
 const prune_limit = 1000;
 
+//Regex that matches the prefix of all program cache data
+const program_cache_regex = /^rti-|ct(?:d|w|mo|y|at)?-|(?:daily|weekly|monthly|yearly|alltime|previous)-uploads-/
+
+//For factory reset
+const localstorage_keys = [
+    'cu-prune-expires',
+    'cu-current-metric',
+    'cu-hide-current-uploads',
+    'cu-stash-current-uploads'
+];
+const program_reset_keys = {
+    checked_usernames: {},
+    checked_users: [],
+    user_copytags: {},
+    period_available: {}
+};
+
 //Time periods
+const period_selectors = ['daily','weekly','monthly','yearly','alltime'];
 const timevalues = ['d','w','mo','y','at'];
 const manual_periods = ['w','mo'];
 const limited_periods = ['y','at'];
@@ -77,6 +96,14 @@ const period_info = {
     }
 }
 
+const longname_key = {
+    daily: 'd',
+    weekly: 'w',
+    monthly: 'mo',
+    yearly: 'y',
+    alltime: 'at'
+}
+
 //Reverse tag implication expiration
 const rti_expiration = JSPLib.utility.one_month; //one month
 
@@ -91,11 +118,6 @@ const empty_uploads_message_owner = 'Feed me more uploads!';
 const empty_uploads_message_other = 'No uploads for this user.';
 const empty_uploads_message_anonymous = 'User is Anonymous, so no uploads.';
 var empty_uploads_message;
-
-//Placeholders for setting during program execution
-var username;
-var is_gold_user;
-var user_copytags = {};
 
 //Style information
 const program_css = `
@@ -446,6 +468,44 @@ async function PruneStorage(regex) {
     }
 }
 
+function IsNamespaceBound(selector,eventtype,namespace) {
+    let namespaces = GetBoundEventNames(selector,eventtype);
+    return namespaces.includes(namespace);
+}
+
+function GetBoundEventNames(selector,eventtype) {
+    let $obj = $(selector);
+    if ($obj.length === 0) {
+        return [];
+    }
+    let boundevents = $._data($obj[0], "events");
+    if (!boundevents || !(eventtype in boundevents)) {
+        return [];
+    }
+    return $.map(boundevents[eventtype],(entry)=>{return entry.namespace;});
+}
+
+function AddStyleSheet(url,title='') {
+    AddStyleSheet.cssstyle = AddStyleSheet.cssstyle || {};
+    if (title in AddStyleSheet.cssstyle) {
+        AddStyleSheet.cssstyle[title].href = url;
+    } else {
+        AddStyleSheet.cssstyle[title] = document.createElement('link');
+        AddStyleSheet.cssstyle[title].rel = 'stylesheet';
+        AddStyleSheet.cssstyle[title].type = 'text/css';
+        AddStyleSheet.cssstyle[title].href = url;
+        document.head.appendChild(AddStyleSheet.cssstyle[title]);
+    }
+}
+
+function KebabCase(string) {
+    return string.replace(/([a-z])([A-Z])/g, '$1-$2').replace(/[\s_]+/g,'-').toLowerCase();
+}
+
+function DisplayCase(string) {
+    return JSPLib.utility.titleizeString(string.toLowerCase().replace(/[_]/g,' '));
+}
+
 //Table functions
 
 function AddTable(input,inner_args="") {
@@ -481,7 +541,8 @@ function RenderTable() {
 function RenderHeader() {
     var tabletext = AddTableHeader('Name');
     let click_periods = manual_periods.concat(limited_periods);
-    $.each(timevalues,(i,period)=>{
+    let times_shown = GetShownPeriodKeys();
+    $.each(times_shown,(i,period)=>{
         let header = period_info.header[period];
         if (click_periods.includes(period)) {
             let class_name = (manual_periods.includes(period) ? 'cu-manual' : 'cu-limited');
@@ -494,31 +555,32 @@ function RenderHeader() {
 }
 
 function RenderBody() {
-    if (user_copytags[username].length > 3) {
+    if (Danbooru.CU.user_copytags[Danbooru.CU.current_username].length > 3) {
         $("#count-table").addClass("overflowed");
     } else {
         $("#count-table").removeClass("overflowed");
     }
     var tabletext = RenderRow('');
-    for (let i = 0;i < user_copytags[username].length; i++) {
-        tabletext += RenderRow(user_copytags[username][i]);
+    for (let i = 0;i < Danbooru.CU.user_copytags[Danbooru.CU.current_username].length; i++) {
+        tabletext += RenderRow(Danbooru.CU.user_copytags[Danbooru.CU.current_username][i]);
     }
     return AddTableBody(tabletext);
 }
 
 function RenderRow(key) {
-    var rowtag = key == ''? 'user:' + username : key;
-    var rowtext = (key == ''? username : key).replace(/_/g,' ');
+    var rowtag = key == ''? 'user:' + Danbooru.CU.current_username : key;
+    var rowtext = (key == ''? Danbooru.CU.current_username : key).replace(/_/g,' ');
     var tabletext = AddTableData(JSPLib.danbooru.postSearchLink(rowtag,JSPLib.utility.maxLengthString(rowtext)));
-    for (let i = 0;i < timevalues.length; i++) {
-        let period = timevalues[i];
+    let times_shown = GetShownPeriodKeys();
+    for (let i = 0;i < times_shown.length; i++) {
+        let period = times_shown[i];
         let data_text = GetTableValue(key,period);
-        let is_available = CheckPeriodStatus(period,'available');
+        let is_available = Danbooru.CU.period_available[Danbooru.CU.current_username][period];
         let is_limited = limited_periods.includes(period);
         if (is_available && is_limited && key == '') {
-            tabletext += AddTableData(RenderTooltipData(data_text,timevalues[i],true));
+            tabletext += AddTableData(RenderTooltipData(data_text,times_shown[i],true));
         } else if (is_available && !is_limited) {
-            tabletext += AddTableData(RenderTooltipData(data_text,timevalues[i]));
+            tabletext += AddTableData(RenderTooltipData(data_text,times_shown[i]));
         } else {
             tabletext += AddTableData(`<span class="cu-uploads">${data_text}</span>`);
         }
@@ -537,9 +599,9 @@ function GetCountData(key,default_val=null) {
 
 function GetTableValue(key,type) {
     if (key == '') {
-        return GetCountData('ct' + type + '-user:' + username,"N/A");
+        return GetCountData('ct' + type + '-user:' + Danbooru.CU.current_username,"N/A");
     }
-    var useruploads = GetCountData('ct' + type + '-user:' + username + ' ' + key,"N/A");
+    var useruploads = GetCountData('ct' + type + '-user:' + Danbooru.CU.current_username + ' ' + key,"N/A");
     var alluploads = GetCountData('ct' + type + '-' + key,"N/A");
     return `(${useruploads}/${alluploads})`;
 }
@@ -581,7 +643,7 @@ function RenderToolcontrol(metric) {
 
 function RenderStatistics(key,attribute,period,limited=false) {
     let period_name = period_info.longname[period];
-    let data = JSPLib.storage.getStorageData(`${period_name}-uploads-${username}`,sessionStorage);
+    let data = JSPLib.storage.getStorageData(`${period_name}-uploads-${Danbooru.CU.current_username}`,sessionStorage);
     if (!data) {
         return "No data!";
     }
@@ -632,6 +694,40 @@ function GetPostStatistics(posts,attribute) {
 
 //Helper functions
 
+function BroadcastCU(ev) {
+    JSPLib.debug.debuglog("Broadcast",ev.data);
+    if (ev.data.type === "hide") {
+        $('#upload-counts').removeClass('opened');
+    } else if (ev.data.type === "show") {
+        $('#upload-counts').addClass('opened');
+    } else if (ev.data.type === "stash") {
+        $('#upload-counts,#upload-counts-restore').addClass('stashed');
+    } else if (ev.data.type === "unstash") {
+        $('#upload-counts,#upload-counts-restore').removeClass('stashed');
+    } else if (ev.data.type === "settings") {
+        Danbooru.CU.user_settings = ev.data.user_settings;
+    } else if (ev.data.type === "reset") {
+        $('#upload-counts').removeClass('opened');
+        JSPLib.storage.setStorageData('cu-hide-current-uploads',1,localStorage);
+        Danbooru.CU.user_settings = ev.data.user_settings;
+        Object.assign(Danbooru.CU,program_reset_keys);
+    } else if (ev.data.type === "purge") {
+        $.each(sessionStorage,(key)=>{
+            if (key.match(program_cache_regex)) {
+                sessionStorage.removeItem(key);
+            }
+        });
+    }
+}
+
+function IsSettingEnabled(setting_name,selector) {
+    return Danbooru.CU.user_settings[setting_name].includes(selector);
+}
+
+function GetShownPeriodKeys() {
+    return timevalues.filter((period_key)=>{return Danbooru.CU.user_settings.periods_shown.includes(period_info.longname[period_key]);});
+}
+
 //Returns a sorted key array from highest to lowest using the length of the array in each value
 function SortDict(dict) {
     var items = Object.keys(dict).map(function(key) {
@@ -644,7 +740,7 @@ function SortDict(dict) {
 }
 
 function BuildTagParams(type,tag) {
-    return (type === 'at' ? '' : ('age:..1' + type + ' ')) + tag + (is_gold_user ? ' -' + JSPLib.danbooru.randomDummyTag() : '');
+    return (type === 'at' ? '' : ('age:..1' + type + ' ')) + tag + (Danbooru.CU.is_gold_user ? ' -' + JSPLib.danbooru.randomDummyTag() : '');
 }
 
 function GetCopyrightCount(posts) {
@@ -680,7 +776,8 @@ function CheckCopyrightVelocity(tag) {
 }
 
 function IsMissingTag(tag) {
-    return timevalues.reduce((total,period)=>{return total || !GetCountData(`ct${period}-${tag}`);},false);
+    let times_shown = GetShownPeriodKeys();
+    return times_shown.reduce((total,period)=>{return total || !GetCountData(`ct${period}-${tag}`);},false);
 }
 
 function MapPostData(posts) {
@@ -720,34 +817,26 @@ function PostDecompressData(posts) {
 }
 
 function GetTagData(tag) {
-    return Promise.all([
-        GetCount('d',tag),
-        GetCount('w',tag),
-        GetCount('mo',tag),
-        GetCount('y',tag),
-        GetCount('at',tag)
-    ]);
+    let promise_array = [];
+    $.each(Danbooru.CU.user_settings.periods_shown,(i,period)=>{
+        let period_key = longname_key[period];
+        promise_array.push(GetCount(period_key,tag));
+    });
+    return Promise.all(promise_array);
 }
 
-async function CheckPeriodUploads() {
-    CheckPeriodUploads[username] = CheckPeriodUploads[username] || {};
-    for (let i = 0; i < timevalues.length; i++) {
-        let period = timevalues[i];
-        if (period in CheckPeriodUploads[username]) {
+async function CheckPeriodUploads(username) {
+    Danbooru.CU.period_available[username] = Danbooru.CU.period_available[username] || {};
+    let times_shown = GetShownPeriodKeys();
+    for (let i = 0; i < times_shown.length; i++) {
+        let period = times_shown[i];
+        if (period in Danbooru.CU.period_available[username]) {
             continue;
         }
-        CheckPeriodUploads[username][period] = CheckPeriodUploads[username][period] || {available: false};
         let period_name = period_info.longname[period];
-        let key = `${period_name}-uploads-${username}`;
-        var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
-        if (check) {
-            CheckPeriodUploads[username][period].available = true;
-        }
+        var check = await JSPLib.storage.checkLocalDB(`${period_name}-uploads-${username}`,ValidateEntry);
+        Danbooru.CU.period_available[username][period] = Boolean(check);
     }
-}
-
-function CheckPeriodStatus(period,stat) {
-    return (period in CheckPeriodUploads[username]) && CheckPeriodUploads[username][period][stat];
 }
 
 //Network functions
@@ -843,7 +932,7 @@ function GetPeriodClick() {
         let is_limited = $(e.target).hasClass("cu-limited");
         let period = header.dataset.period;
         $(`#count-table th[data-period=${period}] .cu-display`).show();
-        await GetPeriodUploads(username,period,is_limited,`#count-table th[data-period=${period}] .cu-counter`);
+        await GetPeriodUploads(Danbooru.CU.current_username,period,is_limited,`#count-table th[data-period=${period}] .cu-counter`);
         let column = header.cellIndex;
         let $cells = $(`#count-table td:nth-of-type(${column + 1})`);
         if (is_limited) {
@@ -878,13 +967,15 @@ function SetCountNoticeClick() {
         if (JSPLib.storage.getStorageData('cu-hide-current-uploads',localStorage,0) === 1) {
             JSPLib.storage.setStorageData('cu-hide-current-uploads',0,localStorage);
             $('#upload-counts').addClass('opened');
-            //Prevent processing potentially bad usernames set by SetCheckUserClick
-            username = GetMeta("current-user-name");
-            empty_uploads_message = (username === "Anonymous" ? empty_uploads_message_anonymous : empty_uploads_message_owner);
-            PopulateTable();
+            //Always show current user on open to prevent processing potentially bad usernames set by SetCheckUserClick
+            empty_uploads_message = (Danbooru.CU.username === "Anonymous" ? empty_uploads_message_anonymous : empty_uploads_message_owner);
+            Danbooru.CU.current_username = Danbooru.CU.username;
+            PopulateTable(Danbooru.CU.current_username);
+            Danbooru.CU.channel.postMessage({type: "show"});
         } else {
             JSPLib.storage.setStorageData('cu-hide-current-uploads',1,localStorage);
             $('#upload-counts').removeClass('opened');
+            Danbooru.CU.channel.postMessage({type: "hide"});
         }
         e.preventDefault();
     });
@@ -896,6 +987,7 @@ function SetStashNoticeClick() {
         //Hide the table so that it doesn't always process on each page load
         JSPLib.storage.setStorageData('cu-hide-current-uploads',1,localStorage);
         $('#upload-counts,#upload-counts-restore').removeClass('opened').addClass('stashed');
+        Danbooru.CU.channel.postMessage({type: "stash"});
         e.preventDefault();
     });
 }
@@ -904,28 +996,30 @@ function SetRestoreNoticeClick() {
     $("#restore-count-notice").click((e)=>{
         JSPLib.storage.setStorageData('cu-stash-current-uploads',0,localStorage);
         $('#upload-counts,#upload-counts-restore').removeClass('stashed');
+        Danbooru.CU.channel.postMessage({type: "unstash"});
         e.preventDefault();
     });
 }
 
 function SetCheckUserClick() {
-    PopulateTable.checked_usernames = PopulateTable.checked_usernames || {};
     $("#count_submit_user_id").click(async (e)=>{
         //Don't change the username while currently processing
         if (!PopulateTable.is_started) {
-            let check_user = [];
+            let check_user;
             let check_username = $("#count_query_user_id").val();
-            if (check_username in PopulateTable.checked_usernames) {
-                check_user = PopulateTable.checked_usernames[check_username];
+            if (check_username === "") {
+                check_user = [];
+            } else if (check_username in Danbooru.CU.checked_usernames) {
+                check_user = Danbooru.CU.checked_usernames[check_username];
             } else {
                 //Check each time no matter what as misses can be catastrophic
                 check_user = await CheckUser(check_username);
             }
             if (check_user.length) {
-                username = check_user[0].name;
-                PopulateTable.checked_usernames[check_username] = check_user;
+                Danbooru.CU.current_username = check_user[0].name;
+                Danbooru.CU.checked_usernames[check_username] = check_user;
                 empty_uploads_message = empty_uploads_message_other;
-                PopulateTable();
+                PopulateTable(Danbooru.CU.current_username);
             } else {
                 $('#count-table').html(`<div id="empty-uploads">User doesn't exist!</div>`);
             }
@@ -950,11 +1044,11 @@ function SetTooltipHover() {
 
 //Main functions
 
-async function ProcessUploads() {
+async function ProcessUploads(username) {
     var promise_array = [];
     var current_uploads = [];
     if (username !== "Anonymous") {
-        var current_uploads = await GetPeriodUploads(username,'d');
+        current_uploads = await GetPeriodUploads(username,'d');
     }
     if (current_uploads.length) {
         let previous_key = `previous-uploads-${username}`;
@@ -965,14 +1059,17 @@ async function ProcessUploads() {
         if (is_new_tab || symmetric_difference.length || IsMissingTag(`user:${username}`)) {
             promise_array.push(GetTagData(`user:${username}`));
         }
-        if (is_gold_user) {
+        if (Danbooru.CU.is_gold_user && Danbooru.CU.user_settings.copyrights_enabled) {
             let curr_copyright_count = GetCopyrightCount(current_uploads);
             let prev_copyright_count = GetCopyrightCount(previous_uploads);
-            await Promise.all($.map(curr_copyright_count,(val,key)=>{return GetReverseTagImplication(key);}));
-            user_copytags[username] = SortDict(curr_copyright_count).filter(value=>{return JSPLib.storage.getStorageData('rti-'+value,sessionStorage).value == 0;});
+            Danbooru.CU.user_copytags[username] = SortDict(curr_copyright_count);
+            if (Danbooru.CU.user_settings.copyrights_merge) {
+                await Promise.all($.map(curr_copyright_count,(val,key)=>{return GetReverseTagImplication(key);}));
+                Danbooru.CU.user_copytags[username] = Danbooru.CU.user_copytags[username].filter(value=>{return JSPLib.storage.getStorageData('rti-'+value,sessionStorage).value == 0;});
+            }
             let copyright_symdiff = CompareCopyrightCounts(curr_copyright_count,prev_copyright_count);
-            let copyright_changed = (is_new_tab ? user_copytags[username] : JSPLib.utility.setIntersection(user_copytags[username],copyright_symdiff));
-            let copyright_nochange = (is_new_tab ? [] : JSPLib.utility.setDifference(user_copytags[username],copyright_changed));
+            let copyright_changed = (is_new_tab ? Danbooru.CU.user_copytags[username] : JSPLib.utility.setIntersection(Danbooru.CU.user_copytags[username],copyright_symdiff));
+            let copyright_nochange = (is_new_tab ? [] : JSPLib.utility.setDifference(Danbooru.CU.user_copytags[username],copyright_changed));
             $.each(copyright_nochange,(i,val)=>{
                 if (CheckCopyrightVelocity(val) || IsMissingTag(val)) {
                     promise_array.push(GetTagData(val));
@@ -986,7 +1083,7 @@ async function ProcessUploads() {
                 promise_array.push(GetTagData(val));
             });
         } else {
-            user_copytags[username] = [];
+            Danbooru.CU.user_copytags[username] = [];
         }
         await Promise.all(promise_array);
     }
@@ -994,21 +1091,21 @@ async function ProcessUploads() {
     return current_uploads;
 }
 
-async function PopulateTable() {
-    PopulateTable.checked_users = PopulateTable.checked_users || [];
+async function PopulateTable(username) {
+    //Prevent function from being reentrant while processing uploads
     if (!PopulateTable.is_started) {
         var post_data = [];
-        if (PopulateTable.checked_users.indexOf(username) < 0) {
+        if (!Danbooru.CU.checked_users.includes(username)) {
             PopulateTable.is_started = true;
             $('#count-table').html(`<div id="empty-uploads">Loading data... (<span id="loading-counter">...</span>)</div>`);
-            post_data = await ProcessUploads();
-            PopulateTable.checked_users.push(username);
+            post_data = await ProcessUploads(username);
+            Danbooru.CU.checked_users.push(username);
             PopulateTable.is_started = false;
         } else {
             post_data = JSPLib.storage.getStorageData(`daily-uploads-${username}`,sessionStorage).value;
         }
         if (post_data.length) {
-            await CheckPeriodUploads();
+            await CheckPeriodUploads(username);
             $('#count-table').html(RenderTable());
             $('#count-controls').html(RenderAllTooltipControls());
             SetTooltipHover();
@@ -1022,9 +1119,371 @@ async function PopulateTable() {
     }
 }
 
+//Settings menu
+
+function RenderTextinput(program_shortcut,setting_name,length=20) {
+    let program_key = program_shortcut.toUpperCase();
+    let setting_key = KebabCase(setting_name);
+    let display_name = DisplayCase(setting_name);
+    let value = Danbooru[program_key].user_settings[setting_name];
+    let hint = settings_config[setting_name].hint;
+    return `
+<div class="${program_shortcut}-textinput" data-setting="${setting_name}" style="margin:0.5em">
+    <h4>${display_name}</h4>
+    <div style="margin-left:0.5em">
+        <input type="text" class="${program_shortcut}-setting" id="${program_shortcut}-setting-${setting_key}" value="${value}" size="${length}" autocomplete="off" class="text" style="padding:1px 0.5em">
+        <span class="${program_shortcut}-setting-tooltip" style="display:block;font-style:italic;color:#666">${hint}</span>
+    </div>
+</div>`;
+}
+
+function RenderCheckbox(program_shortcut,setting_name) {
+    let program_key = program_shortcut.toUpperCase();
+    let setting_key = KebabCase(setting_name);
+    let display_name = DisplayCase(setting_name);
+    let checked = (Danbooru[program_key].user_settings[setting_name] ? "checked" : "");
+    let hint = settings_config[setting_name].hint;
+    return `
+<div class="${program_shortcut}-checkbox" data-setting="${setting_name}" style="margin:0.5em">
+    <h4>${display_name}</h4>
+    <div style="margin-left:0.5em">
+        <input type="checkbox" ${checked} class="${program_shortcut}-setting" id="${program_shortcut}-enable-${setting_key}">
+        <span class="${program_shortcut}-setting-tooltip" style="display:inline;font-style:italic;color:#666">${hint}</span>
+    </div>
+</div>`;
+}
+
+function RenderInputSelectors(program_shortcut,setting_name,type) {
+    let program_key = program_shortcut.toUpperCase();
+    let setting_key = KebabCase(setting_name);
+    let display_name = DisplayCase(setting_name);
+    let all_selectors = settings_config[setting_name].allitems;
+    let hint = settings_config[setting_name].hint;
+    let html = '';
+    $.each(all_selectors,(i,selector)=>{
+        let checked = (Danbooru[program_key].user_settings[setting_name].includes(selector) ? "checked" : "");
+        let display_selection = DisplayCase(selector);
+        let selection_name = `${program_shortcut}-${setting_key}`;
+        let selection_key = `${program_shortcut}-${setting_key}-${selector}`;
+        html += `
+            <label for="${selection_key}" style="width:100px">${display_selection}</label>
+            <input type="${type}" ${checked} class="${program_shortcut}-setting" name="${selection_name}" id="${selection_key}" data-selector="${selector}">`;
+    });
+    return `
+<div class="${program_shortcut}-selectors" data-setting="${setting_name}" style="margin:0.5em">
+    <h4>${display_name}</h4>
+    <div style="margin-left:0.5em">
+        ${html}
+        <span class="${program_shortcut}-setting-tooltip" style="display:block;font-style:italic;color:#666">${hint}</span>
+    </div>
+</div>
+`;
+}
+function RenderLinkclick(program_shortcut,setting_name,display_name,link_text) {
+    let setting_key = KebabCase(setting_name);
+    return `
+<div class="${program_shortcut}-linkclick" style="margin:0.5em">
+    <h4>${display_name}</h4>
+    <div style="margin-left:0.5em">
+        <span class="${program_shortcut}-control-linkclick" style="display:block"><a href="#" id="${program_shortcut}-setting-${setting_key}" style="color:#0073ff">${link_text}</a></span>
+    </div>
+</div>`;
+}
+
+const cu_menu = `
+<div id="cu-settings" style="float:left;;width:60em">
+    <div id="cu-script-message" class="prose">
+        <h2>CurrentUploads</h2>
+        <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/15169" style="color:#0073ff">topic #15169</a>).</p>
+    </div>
+    <div id="cu-display-settings" style="margin-bottom:2em">
+        <div id="cu-display-message" class="prose">
+            <h4>Display settings</h4>
+            <ul>
+                <li><b>Period selectors:</b> Select which periods to process and show.</li>
+            </ul>
+        </div>
+    </div>
+    <div id="cu-cache-settings" style="margin-bottom:2em">
+        <div id="cu-cache-message" class="prose">
+            <h4>Cache settings</h4>
+            <h5>Cache data</h5>
+            <ul>
+                <li><b>Count data:</b> Main data shown in the table.</li>
+                <li><b>Post data:</b> Used to determine post statistics shown in the tooltips.</li>
+                <li><b>Reverse tag implications:</b> Used to determine the base copyright tag.</li>
+            </ul>
+            <h5>Cache controls</h5>
+            <ul>
+                <li><b>Purge cache:</b> Dumps all of the cached data related to CurrentUploads.</li>
+            </ul>
+        </div>
+    </div>
+    <hr>
+    <div id="cu-settings-buttons" style="margin-top:1em">
+        <input type="button" id="cu-commit" value="Save">
+        <input type="button" id="cu-resetall" value="Factory Reset">
+    </div>
+</div>`;
+
+const settings_config = {
+    copyrights_merge: {
+        default: true,
+        validate: (data)=>{return validate.isBoolean(data);},
+        hint: "Merge all implied copyrights to their base copyright. Ex: (splatoon_1, splatoon_2) -> splatoon."
+    },
+    copyrights_enabled: {
+        default: true,
+        validate: (data)=>{return validate.isBoolean(data);},
+        hint: "Process and show user copyright uploads."
+    },
+    periods_shown: {
+        allitems: period_selectors,
+        default: period_selectors,
+        validate: (data)=>{return Array.isArray(data) && data.reduce((is_string,val)=>{return is_string && (typeof val === 'string') && period_selectors.includes(val);},true)},
+        hint: "Uncheck to turn off event type."
+    },
+}
+
+function LoadUserSettings(program_shortcut) {
+    let user_settings = JSPLib.storage.getStorageData(`${program_shortcut}-user-settings`,localStorage,{});
+    let is_dirty = false;
+    $.each(settings_config,(setting)=>{
+        if (!(setting in user_settings) || !settings_config[setting].validate(user_settings[setting])) {
+            JSPLib.debug.debuglog("Loading default:",setting,user_settings[setting]);
+            user_settings[setting] = settings_config[setting].default;
+            is_dirty = true;
+        }
+    });
+    let valid_settings = Object.keys(settings_config);
+    $.each(user_settings,(setting)=>{
+        if (!valid_settings.includes(setting)) {
+            JSPLib.debug.debuglog("Deleting invalid setting:",setting,user_settings[setting]);
+            delete user_settings[setting];
+            is_dirty = true;
+        }
+    });
+    if (is_dirty) {
+        JSPLib.debug.debuglog("Saving change to user settings!");
+        JSPLib.storage.setStorageData(`${program_shortcut}-user-settings`,user_settings,localStorage);
+    }
+    return user_settings;
+}
+
+function SaveUserSettingsClick(program_shortcut,program_name) {
+    let program_key = program_shortcut.toUpperCase();
+    $(`#${program_shortcut}-commit`).click((e)=>{
+        let invalid_setting = false;
+        let temp_selectors = {};
+        $(`#${program_shortcut}-settings .${program_shortcut}-setting[id]`).each((i,entry)=>{
+            let setting_name = $(entry).parent().parent().data('setting');
+            if (entry.type === "checkbox") {
+                let selector = $(entry).data('selector');
+                if (selector) {
+                    temp_selectors[setting_name] = temp_selectors[setting_name] || [];
+                    if (entry.checked) {
+                        temp_selectors[setting_name].push(selector);
+                    }
+                } else {
+                    Danbooru[program_key].user_settings[setting_name] = entry.checked;
+                }
+            } else if (entry.type === "text") {
+                 let user_setting = settings_config[setting_name].parse($(entry).val());
+                 if (settings_config[setting_name].validate(user_setting)) {
+                    Danbooru[program_key].user_settings[setting_name] = user_setting;
+                 } else {
+                    invalid_setting = true;
+                 }
+                 $(entry).val(Danbooru[program_key].user_settings[setting_name]);
+            }
+        });
+        $.each(temp_selectors,(setting_name)=>{
+            Danbooru[program_key].user_settings[setting_name] = temp_selectors[setting_name];
+        });
+        JSPLib.storage.setStorageData(`${program_shortcut}-user-settings`,Danbooru[program_key].user_settings,localStorage);
+        Danbooru[program_key].channel && Danbooru[program_key].channel.postMessage({type: "settings", user_settings: Danbooru[program_key].user_settings});
+        if (!invalid_setting) {
+            Danbooru.Utility.notice(`${program_name}: Settings updated!`);
+        } else {
+            Danbooru.Utility.error("Error: Some settings were invalid!")
+        }
+    });
+}
+
+function ResetUserSettingsClick(program_shortcut,program_name,delete_keys,reset_settings) {
+    let program_key = program_shortcut.toUpperCase();
+    $(`#${program_shortcut}-resetall`).click((e)=>{
+        if (confirm(`This will reset all of ${program_name}'s settings.\n\nAre you sure?`)) {
+            $.each(settings_config,(setting)=>{
+                Danbooru[program_key].user_settings[setting] = settings_config[setting].default;
+            });
+            $(`#${program_shortcut}-settings .${program_shortcut}-setting[id]`).each((i,entry)=>{
+                let $input = $(entry);
+                let setting_name = $input.parent().parent().data('setting');
+                if (entry.type === "checkbox") {
+                    let selector = $input.data('selector');
+                    if (selector) {
+                        $input.prop('checked', IsSettingEnabled(setting_name,selector));
+                        $input.checkboxradio("refresh");
+                    } else {
+                        $input.prop('checked', Danbooru[program_key].user_settings[setting_name]);
+                    }
+                } else if (entry.type === "text") {
+                     $input.val(Danbooru[program_key].user_settings[setting_name]);
+                }
+            });
+            $.each(delete_keys,(i,key)=>{
+                localStorage.removeItem(key);
+            });
+            Object.assign(Danbooru[program_key],reset_settings);
+            JSPLib.storage.setStorageData(`${program_shortcut}-user-settings`,Danbooru[program_key].user_settings,localStorage);
+            Danbooru[program_key].channel && Danbooru[program_key].channel.postMessage({type: "reset", user_settings: Danbooru[program_key].user_settings});
+            Danbooru.Utility.notice(`${program_name}: Settings reset to defaults!`);
+        }
+    });
+}
+
+async function PurgeCache(regex,domname) {
+    Danbooru.Utility.notice("Starting cache deletion...");
+    let promise_array = [];
+    let purged_count = 0;
+    let remaining_count = 0;
+    await JSPLib.storage.danboorustorage.iterate((value,key)=>{
+        if (key.match(regex)) {
+            JSPLib.debug.debuglogLevel("Deleting",key,JSPLib.debug.DEBUG);
+            let resp = JSPLib.storage.removeData(key).then(()=>{
+                domname && $(domname).html(--remaining_count);
+            });
+            promise_array.push(resp);
+            purged_count += 1;
+            domname && $(domname).html(++remaining_count);
+        }
+    });
+    Danbooru.Utility.notice(`Deleting ${purged_count} items...`);
+    JSPLib.debug.debuglogLevel(`Deleting ${purged_count} items...`,JSPLib.debug.INFO);
+    //Wait at least 5 seconds
+    await JSPLib.utility.sleep(5000);
+    await Promise.all(promise_array);
+    Danbooru.Utility.notice("Finished deleting cached data!");
+    JSPLib.debug.debuglogLevel("Finished deleting cached data!",JSPLib.debug.INFO);
+}
+
+function PurgeCacheClick(program_shortcut,program_name,regex,domname) {
+    let program_key = program_shortcut.toUpperCase();
+    $(`#${program_shortcut}-setting-purge-cache`).click((e)=>{
+        if (!PurgeCacheClick.is_started && confirm(`This will delete all of ${program_name}'s cached data.\n\nAre you sure?`)) {
+            PurgeCacheClick.is_started = true;
+            PurgeCache(regex,domname).then(()=>{
+                Danbooru[program_key].channel && Danbooru[program_key].channel.postMessage({type: "purge"});
+                PurgeCacheClick.is_started = false;
+            });;
+        }
+        e.preventDefault();
+    });
+}
+
+function RenderSettingsMenu() {
+    $("#current-uploads").append(cu_menu);
+    $("#cu-display-settings").append(RenderCheckbox('cu','copyrights_merge'));
+    $("#cu-display-settings").append(RenderCheckbox('cu','copyrights_enabled'));
+    $("#cu-display-settings").append(RenderInputSelectors('cu','periods_shown','checkbox'));
+    $("#cu-cache-settings").append(RenderLinkclick("cu",'purge_cache',`Purge cache (<span id="cu-purge-counter">...</span>)`,"Click to purge"));
+    $(".cu-selectors input").checkboxradio();
+    $(".cu-selectors .ui-state-hover").removeClass('ui-state-hover'); //Because of jQuery-UI bug
+    $("#cu-periods-shown-daily").checkboxradio("disable"); //Daily period is mandatory
+    SaveUserSettingsClick('cu','CurrentUploads');
+    ResetUserSettingsClick('cu','CurrentUploads',localstorage_keys,program_reset_keys);
+    PurgeCacheClick('cu','CurrentUploads',program_cache_regex,"#cu-purge-counter");
+}
+
+//Main menu tabs
+
+const css_themes_url = 'https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/themes/base/jquery-ui.css';
+
+const settings_field = `
+<fieldset id="userscript-settings-menu" style="display:none">
+  <ul id="userscript-settings-tabs">
+  </ul>
+  <div id="userscript-settings-sections">
+  </div>
+</fieldset>`;
+
+function RenderTab(program_name,program_key) {
+    return `<li><a href="#${program_key}">${program_name}</a></li>`;
+}
+
+function RenderSection(program_key) {
+    return `<div id="${program_key}"></div>`;
+}
+
+function MainSettingsClick() {
+    if (!IsNamespaceBound(`[href="#userscript-menu"`,'click','jsplib.menuchange')) {
+        $(`[href="#userscript-menu"`).on('click.jsplib.menuchange',(e)=>{
+            $(`#edit-options a[href$="settings"]`).removeClass("active");
+            $(e.target).addClass("active");
+            $(".edit_user > fieldset").hide();
+            $("#userscript-settings-menu").show();
+            $('[name=commit]').hide();
+            e.preventDefault();
+        });
+    }
+}
+function OtherSettingsClicks() {
+    if (!IsNamespaceBound("#edit-options a[href$=settings]",'click','jsplib.menuchange')) {
+        $("#edit-options a[href$=settings]").on('click.jsplib.menuchange',(e)=>{
+            $(`[href="#userscript-menu"`).removeClass('active');
+            $("#userscript-settings-menu").hide();
+            $('[name=commit]').show();
+            e.preventDefault()
+        });
+    }
+}
+
+function InstallSettingsMenu(program_name) {
+    let program_key = KebabCase(program_name);
+    if ($("#userscript-settings-menu").length === 0) {
+        $(`input[name="commit"]`).before(settings_field);
+        $("#edit-options").append('| <a href="#userscript-menu">Userscript Menus</a>');
+        //Periodic recheck in case other programs remove/rebind click events
+        setInterval(()=>{
+            MainSettingsClick();
+            OtherSettingsClicks();
+        },1000);
+        AddStyleSheet(css_themes_url);
+    } else {
+        $("#userscript-settings-menu").tabs("destroy");
+    }
+    $("#userscript-settings-tabs").append(RenderTab(program_name,program_key));
+    $("#userscript-settings-sections").append(RenderSection(program_key));
+    //Sort the tabs alphabetically
+    $("#userscript-settings-tabs li").sort(function(a, b) {
+        try {
+            return a.children[0].innerText.localeCompare(b.children[0].innerText);
+        } catch (e) {
+            return 0;
+        }
+    }).each(function() {
+        var elem = $(this);
+        elem.remove();
+        $(elem).appendTo("#userscript-settings-tabs");
+    });
+    $("#userscript-settings-menu").tabs();
+}
+
+/****MAIN****/
+
 function main() {
-    username = GetMeta("current-user-name");
-    is_gold_user = $('body').data('user-is-gold');
+    Danbooru.CU = {
+        username: GetMeta("current-user-name"),
+        is_gold_user: $('body').data('user-is-gold'),
+        user_settings: LoadUserSettings('cu'),
+        channel: new BroadcastChannel('CurrentUploads'),
+        checked_usernames: {},
+        checked_users: [],
+        user_copytags: {},
+        period_available: {}
+    };
+    Danbooru.CU.channel.onmessage = BroadcastCU;
     JSPLib.utility.setCSSStyle(program_css,'program');
     $notice_box = $(notice_box);
     $footer_notice = $(unstash_notice);
@@ -1043,6 +1502,10 @@ function main() {
         JSPLib.storage.setStorageData('cu-hide-current-uploads',1,localStorage);
         $("#hide-count-notice").click();
     }
+    if ($("#c-users #a-edit").length) {
+        InstallSettingsMenu("CurrentUploads");
+        RenderSettingsMenu();
+    }
     DebugExecute(()=>{
         window.addEventListener('beforeunload',function () {
             JSPLib.statistics.outputAdjustedMean("CurrentUploads");
@@ -1050,7 +1513,7 @@ function main() {
     });
     //Take care of other non-critical tasks at a later time
     setTimeout(()=>{
-        PruneEntries('CU',/^rti-|ct(?:d|w|mo|y|at)?-|(?:daily|weekly|monthly|previous)-uploads-/);
+        PruneEntries('CU',program_cache_regex);
     },JSPLib.utility.one_minute);
 }
 
