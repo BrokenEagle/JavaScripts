@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      18.1
+// @version      18.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -9,7 +9,6 @@
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/indexedautocomplete.user.js
-// @require      https://raw.githubusercontent.com/jquery/jquery-ui/1.12.1/ui/widgets/tabs.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/debug.js
@@ -616,6 +615,14 @@ function AddStyleSheet(url,title='') {
     }
 }
 
+function InstallScript(url) {
+    return $.ajax({
+        url: url,
+        dataType: "script",
+        cache: true
+    });
+}
+
 function KebabCase(string) {
     return string.replace(/([a-z])([A-Z])/g, '$1-$2').replace(/[\s_]+/g,'-').toLowerCase();
 }
@@ -1047,7 +1054,9 @@ function ProcessSourceData(type,metatag,term,data,resp) {
         $.each(data, (i,val)=> {FixupMetatag(val,metatag);});
     }
     KeepSourceData(type, metatag, data);
-    MoveAliases(type, data);
+    if (Danbooru.IAC.user_settings.move_aliases) {
+        MoveAliases(type, data);
+    }
     if (Danbooru.IAC.user_settings.usage_enabled) {
         AddUserSelected(type, metatag, term, data);
     }
@@ -1243,6 +1252,11 @@ const usage_settings = `
             </ul>
         </div>
     </div>
+    <div id="iac-display-settings" style="margin-bottom:2em">
+        <div id="iac-display-message" class="prose">
+            <h4>Display settings</h4>
+        </div>
+    </div>
     <div id="iac-network-settings" style="margin-bottom:2em">
         <div id="iac-network-message" class="prose">
             <h4>Network settings</h4>
@@ -1327,15 +1341,20 @@ const settings_config = {
         validate: (data)=>{return validate.isBoolean(data);},
         hint: "Uncheck to turn off usage mechanism."
     },
+    move_aliases: {
+        default: true,
+        validate: (data)=>{return validate.isBoolean(data);},
+        hint: "Check to move aliases to the end of the autocomplete list."
+    },
     alternate_tag_source: {
         default: false,
         validate: (data)=>{return validate.isBoolean(data);},
-        hint: "Click to turn on."
+        hint: "Check to turn on."
     },
     network_only_mode: {
         default: false,
         validate: (data)=>{return validate.isBoolean(data);},
-        hint: "Click to turn on."
+        hint: "Check to turn on."
     }
 }
 
@@ -1490,6 +1509,7 @@ function RenderSettingsMenu() {
     $("#iac-usage-settings").append(RenderTextinput("iac",'usage_maximum'));
     $("#iac-usage-settings").append(RenderTextinput("iac",'usage_expires'));
     $("#iac-usage-settings").append(RenderCheckbox("iac",'usage_enabled'));
+    $("#iac-display-settings").append(RenderCheckbox("iac",'move_aliases'));
     $("#iac-network-settings").append(RenderCheckbox("iac",'alternate_tag_source'));
     $("#iac-network-settings").append(RenderCheckbox("iac",'network_only_mode'));
     $("#iac-cache-settings").append(RenderLinkclick("iac",'purge_cache',`Purge cache (<span id="iac-purge-counter">...</span>)`,"Click to purge"));
@@ -1642,9 +1662,11 @@ function main() {
     if ($('[placeholder="Search users"]').length) {
         InitializeAutocompleteIndexed("#search_name_matches,#quick_search_name_matches", 'us');
     }
-     if ($("#c-users #a-edit").length) {
-        InstallSettingsMenu("IndexedAutocomplete");
-        RenderSettingsMenu();
+    if ($("#c-users #a-edit").length) {
+        InstallScript("https://cdn.rawgit.com/jquery/jquery-ui/1.12.1/ui/widgets/tabs.js").done(()=>{
+            InstallSettingsMenu("IndexedAutocomplete");
+            RenderSettingsMenu();
+        });
     }
     DebugExecute(()=>{
         window.addEventListener('beforeunload', ()=>{
