@@ -37,8 +37,6 @@ JSPLib.danbooru.counter_domname = "#loading-counter";
 
 //Main function expires
 const prune_expires = JSPLib.utility.one_day;
-
-//Maximum number of entries to prune in one go
 const prune_limit = 1000;
 
 //Regex that matches the prefix of all program cache data
@@ -53,7 +51,7 @@ const localstorage_keys = [
 ];
 const program_reset_keys = {
     checked_usernames: {},
-    checked_users: [],
+    checked_users: {},
     user_copytags: {},
     period_available: {}
 };
@@ -117,7 +115,6 @@ const tooltip_metrics = ['score','upscore','downscore','favcount','tagcount','ge
 const empty_uploads_message_owner = 'Feed me more uploads!';
 const empty_uploads_message_other = 'No uploads for this user.';
 const empty_uploads_message_anonymous = 'User is Anonymous, so no uploads.';
-var empty_uploads_message;
 
 //Style information
 const program_css = `
@@ -241,7 +238,7 @@ const notice_box = `
         </div>
     </div>
     <div id="upload-counts-toggle">
-        <a href="#" id="hide-count-notice">Toggle Upload Table</a>&nbsp;(<a href="#" id="stash-count-notice">STASH</a>)
+        <a href="#" id="toggle-count-notice">Toggle Upload Table</a>&nbsp;(<a href="#" id="stash-count-notice">STASH</a>)
     </div>
 </div>
 `;
@@ -514,11 +511,7 @@ function RenderTooltipData(text,period,limited=false) {
 }
 
 function RenderAllToolPopups(period,limited) {
-    let html_text = "";
-    $.each(tooltip_metrics,(i,metric)=> {
-        html_text += RenderToolpopup(metric,period,limited);
-    });
-    return html_text;
+    return tooltip_metrics.map((metric)=>{return RenderToolpopup(metric,period,limited);}).join('');
 }
 
 function RenderToolpopup(metric,period,limited) {
@@ -528,11 +521,7 @@ function RenderToolpopup(metric,period,limited) {
 }
 
 function RenderAllTooltipControls() {
-    let html_text = "";
-    $.each(tooltip_metrics,(i,metric)=> {
-        html_text += RenderToolcontrol(metric);
-    });
-    return html_text;
+    return tooltip_metrics.map((metric)=>{return RenderToolcontrol(metric);}).join('');
 }
 
 function RenderToolcontrol(metric) {
@@ -596,12 +585,17 @@ function GetPostStatistics(posts,attribute) {
 function BroadcastCU(ev) {
     JSPLib.debug.debuglog("Broadcast",ev.data);
     if (ev.data.type === "hide") {
+        Danbooru.CU.hidden = 1;
         $('#upload-counts').removeClass('opened');
     } else if (ev.data.type === "show") {
+        Danbooru.CU.hidden = 0;
         $('#upload-counts').addClass('opened');
     } else if (ev.data.type === "stash") {
+        Danbooru.CU.stashed = 1;
+        Danbooru.CU.hidden = 1;
         $('#upload-counts,#upload-counts-restore').addClass('stashed');
     } else if (ev.data.type === "unstash") {
+        Danbooru.CU.stashed = 0;
         $('#upload-counts,#upload-counts-restore').removeClass('stashed');
     } else if (ev.data.type === "settings") {
         Danbooru.CU.user_settings = ev.data.user_settings;
@@ -629,13 +623,13 @@ function GetShownPeriodKeys() {
 
 //Returns a sorted key array from highest to lowest using the length of the array in each value
 function SortDict(dict) {
-    var items = Object.keys(dict).map(function(key) {
+    var items = Object.keys(dict).map((key)=>{
         return [key, dict[key].length];
     });
-    items.sort(function(first, second) {
+    items.sort((first, second)=>{
         return second[1] - first[1];
     });
-    return items.map(entry=>{return entry[0];});
+    return items.map((entry)=>{return entry[0];});
 }
 
 function BuildTagParams(type,tag) {
@@ -646,7 +640,8 @@ function GetCopyrightCount(posts) {
     let copyright_count = {};
     $.each(posts,(i,entry)=>{
         $.each(entry.copyrights.split(' '),(j,tag)=>{
-            copyright_count[tag] = (tag in copyright_count ? copyright_count[tag].concat([entry.id]): [entry.id]);
+            copyright_count[tag] = copyright_count[tag] || [];
+            copyright_count[tag] = copyright_count[tag].concat([entry.id]);
         });
     });
     return copyright_count;
@@ -675,8 +670,7 @@ function CheckCopyrightVelocity(tag) {
 }
 
 function IsMissingTag(tag) {
-    let times_shown = GetShownPeriodKeys();
-    return times_shown.reduce((total,period)=>{return total || !GetCountData(`ct${period}-${tag}`);},false);
+    return GetShownPeriodKeys().reduce((total,period)=>{return total || !GetCountData(`ct${period}-${tag}`);},false);
 }
 
 function MapPostData(posts) {
@@ -716,12 +710,7 @@ function PostDecompressData(posts) {
 }
 
 function GetTagData(tag) {
-    let promise_array = [];
-    $.each(Danbooru.CU.user_settings.periods_shown,(i,period)=>{
-        let period_key = longname_key[period];
-        promise_array.push(GetCount(period_key,tag));
-    });
-    return Promise.all(promise_array);
+    return Danbooru.CU.user_settings.periods_shown.map((period)=>{return GetCount(longname_key[period],tag);});
 }
 
 async function CheckPeriodUploads(username) {
@@ -774,11 +763,11 @@ async function GetReverseTagImplication(tag) {
     var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry,rti_expiration);
     if (!(check)) {
         JSPLib.debug.debuglog("Network (implication):",key);
-        return JSPLib.danbooru.submitRequest('tag_implications',{search: {antecedent_name: tag}},[],key)
-        .then(data=>{
-            JSPLib.storage.saveData(key, {'value':data.length,'expires':Date.now() + rti_expiration});
-        });
+        let data = await JSPLib.danbooru.submitRequest('tag_implications',{search: {antecedent_name: tag}},[],key)
+        JSPLib.storage.saveData(key, {value: data.length, expires: JSPLib.utility.getExpiration(rti_expiration)});
+        return data.length;
     }
+    return check.value;
 }
 
 async function GetCount(type,tag) {
@@ -848,48 +837,57 @@ function GetPeriodClick() {
             SetTooltipHover();
         }
         $(`#count-table th[data-period=${period}] .cu-display`).hide();
-        let tooltip_type = JSPLib.storage.getStorageData('cu-current-metric',localStorage,'score');
-        $(`.cu-select-tooltip[data-type="${tooltip_type}"] a`).click();
+        $(`.cu-select-tooltip[data-type="${Danbooru.CU.current_metric}"] a`).click();
         $(header).addClass("cu-processed");
     });
 }
 
 function SetTooltipChangeClick() {
     $(".cu-select-tooltip").click((e)=>{
-        let tooltip_type = $(e.target.parentElement).data('type');
+        Danbooru.CU.current_metric = $(e.target.parentElement).data('type');
         $(".cu-select-tooltip,.cu-tooltiptext").removeClass("cu-activetooltip");
-        $(`.cu-select-tooltip[data-type="${tooltip_type}"]`).addClass("cu-activetooltip");
-        $(`.cu-tooltiptext[data-type="${tooltip_type}"]`).addClass("cu-activetooltip");
-        JSPLib.storage.setStorageData('cu-current-metric',tooltip_type,localStorage);
+        $(`.cu-select-tooltip[data-type="${Danbooru.CU.current_metric}"]`).addClass("cu-activetooltip");
+        $(`.cu-tooltiptext[data-type="${Danbooru.CU.current_metric}"]`).addClass("cu-activetooltip");
+        JSPLib.storage.setStorageData('cu-current-metric',Danbooru.CU.current_metric,localStorage);
     });
 }
 
-function SetCountNoticeClick() {
-    $("#hide-count-notice").click((e)=>{
-        if (JSPLib.storage.getStorageData('cu-hide-current-uploads',localStorage,0) === 1) {
-            JSPLib.storage.setStorageData('cu-hide-current-uploads',0,localStorage);
+function SetToggleNoticeClick() {
+    $("#toggle-count-notice").click((e)=>{
+        if (Danbooru.CU.hidden === 1) {
+            Danbooru.CU.hidden = 0;
             $('#upload-counts').addClass('opened');
-            //Always show current user on open to prevent processing potentially bad usernames set by SetCheckUserClick
-            empty_uploads_message = (Danbooru.CU.username === "Anonymous" ? empty_uploads_message_anonymous : empty_uploads_message_owner);
-            Danbooru.CU.current_username = Danbooru.CU.username;
-            PopulateTable(Danbooru.CU.current_username);
+            if (!PopulateTable.is_started) {
+                //Always show current user on open to prevent processing potentially bad usernames set by SetCheckUserClick
+                Danbooru.CU.empty_uploads_message = (Danbooru.CU.username === "Anonymous" ? empty_uploads_message_anonymous : empty_uploads_message_owner);
+                Danbooru.CU.current_username = Danbooru.CU.username;
+                PopulateTable(Danbooru.CU.current_username);
+            }
             Danbooru.CU.channel.postMessage({type: "show"});
         } else {
-            JSPLib.storage.setStorageData('cu-hide-current-uploads',1,localStorage);
+            Danbooru.CU.hidden = 1;
             $('#upload-counts').removeClass('opened');
             Danbooru.CU.channel.postMessage({type: "hide"});
         }
+        JSPLib.storage.setStorageData('cu-hide-current-uploads',Danbooru.CU.hidden,localStorage)
         e.preventDefault();
     });
 }
 
 function SetStashNoticeClick() {
-    $("#stash-count-notice").click((e)=>{
-        JSPLib.storage.setStorageData('cu-stash-current-uploads',1,localStorage);
-        //Hide the table so that it doesn't always process on each page load
-        JSPLib.storage.setStorageData('cu-hide-current-uploads',1,localStorage);
-        $('#upload-counts,#upload-counts-restore').removeClass('opened').addClass('stashed');
-        Danbooru.CU.channel.postMessage({type: "stash"});
+    $("#stash-count-notice,#restore-count-notice").click((e)=>{
+        if (Danbooru.CU.stashed === 1) {
+            Danbooru.CU.stashed = 0;
+            $('#upload-counts,#upload-counts-restore').removeClass('stashed');
+            Danbooru.CU.channel.postMessage({type: "unstash"});
+        } else {
+            Danbooru.CU.stashed = 1;
+            Danbooru.CU.hidden = 1;
+            $('#upload-counts,#upload-counts-restore').removeClass('opened').addClass('stashed');
+            Danbooru.CU.channel.postMessage({type: "stash"});
+        }
+        JSPLib.storage.setStorageData('cu-stash-current-uploads',Danbooru.CU.stashed,localStorage);
+        JSPLib.storage.setStorageData('cu-hide-current-uploads',Danbooru.CU.hidden,localStorage);
         e.preventDefault();
     });
 }
@@ -916,11 +914,11 @@ function SetCheckUserClick() {
             } else {
                 //Check each time no matter what as misses can be catastrophic
                 check_user = await CheckUser(check_username);
+                Danbooru.CU.checked_usernames[check_username] = check_user;
             }
             if (check_user.length) {
                 Danbooru.CU.current_username = check_user[0].name;
-                Danbooru.CU.checked_usernames[check_username] = check_user;
-                empty_uploads_message = empty_uploads_message_other;
+                Danbooru.CU.empty_uploads_message = empty_uploads_message_other;
                 PopulateTable(Danbooru.CU.current_username);
             } else {
                 $('#count-table').html(`<div id="empty-uploads">User doesn't exist!</div>`);
@@ -966,8 +964,9 @@ async function ProcessUploads(username) {
             let prev_copyright_count = GetCopyrightCount(previous_uploads);
             Danbooru.CU.user_copytags[username] = SortDict(curr_copyright_count);
             if (Danbooru.CU.user_settings.copyrights_merge) {
-                await Promise.all($.map(curr_copyright_count,(val,key)=>{return GetReverseTagImplication(key);}));
-                Danbooru.CU.user_copytags[username] = Danbooru.CU.user_copytags[username].filter(value=>{return JSPLib.storage.getStorageData('rti-'+value,sessionStorage).value == 0;});
+                let query_implications = JSPLib.utility.setDifference(Object.keys(curr_copyright_count),Object.keys(Danbooru.CU.reverse_implications));
+                Object.assign(Danbooru.CU.reverse_implications,...(await Promise.all(query_implications.map(async (key)=>{return {[key]:await GetReverseTagImplication(key)};}))));
+                Danbooru.CU.user_copytags[username] = Danbooru.CU.user_copytags[username].filter(value=>{return Danbooru.CU.reverse_implications[value] === 0;});
             }
             let copyright_symdiff = CompareCopyrightCounts(curr_copyright_count,prev_copyright_count);
             let copyright_changed = (is_new_tab ? Danbooru.CU.user_copytags[username] : JSPLib.utility.setIntersection(Danbooru.CU.user_copytags[username],copyright_symdiff));
@@ -995,30 +994,25 @@ async function ProcessUploads(username) {
 
 async function PopulateTable(username) {
     //Prevent function from being reentrant while processing uploads
-    if (!PopulateTable.is_started) {
-        var post_data = [];
-        if (!Danbooru.CU.checked_users.includes(username)) {
-            PopulateTable.is_started = true;
-            $('#count-table').html(`<div id="empty-uploads">Loading data... (<span id="loading-counter">...</span>)</div>`);
-            post_data = await ProcessUploads(username);
-            Danbooru.CU.checked_users.push(username);
-            PopulateTable.is_started = false;
-        } else {
-            post_data = JSPLib.storage.getStorageData(`daily-uploads-${username}`,sessionStorage).value;
-        }
-        if (post_data.length) {
-            await CheckPeriodUploads(username);
-            $('#count-table').html(RenderTable());
-            $('#count-controls').html(RenderAllTooltipControls());
-            SetTooltipHover();
-            SetTooltipChangeClick();
-            GetPeriodClick();
-            let tooltip_type = JSPLib.storage.getStorageData('cu-current-metric',localStorage,'score');
-            $(`.cu-select-tooltip[data-type="${tooltip_type}"] a`).click();
-        } else {
-            $('#count-table').html(`<div id="empty-uploads">${empty_uploads_message}</div>`);
-        }
+    PopulateTable.is_started = true;
+    var post_data = [];
+    if (Danbooru.CU.checked_users[username] === undefined) {
+        $('#count-table').html(`<div id="empty-uploads">Loading data... (<span id="loading-counter">...</span>)</div>`);
+        post_data = await ProcessUploads(username);
+        Danbooru.CU.checked_users[username] = post_data.length;
     }
+    if (Danbooru.CU.checked_users[username]) {
+        await CheckPeriodUploads(username);
+        $('#count-table').html(RenderTable());
+        $('#count-controls').html(RenderAllTooltipControls());
+        SetTooltipHover();
+        SetTooltipChangeClick();
+        GetPeriodClick();
+        $(`.cu-select-tooltip[data-type="${Danbooru.CU.current_metric}"] a`).click();
+    } else {
+        $('#count-table').html(`<div id="empty-uploads">${Danbooru.CU.empty_uploads_message}</div>`);
+    }
+    PopulateTable.is_started = false;
 }
 
 //Settings menu
@@ -1381,28 +1375,31 @@ function main() {
         user_settings: LoadUserSettings('cu'),
         channel: new BroadcastChannel('CurrentUploads'),
         checked_usernames: {},
-        checked_users: [],
+        checked_users: {},
         user_copytags: {},
-        period_available: {}
+        period_available: {},
+        reverse_implications: {},
+        current_metric: JSPLib.storage.getStorageData('cu-current-metric',localStorage,'score'),
+        hidden: JSPLib.storage.getStorageData('cu-hide-current-uploads',localStorage,0),
+        stashed: JSPLib.storage.getStorageData('cu-stash-current-uploads',localStorage,0)
     };
     Danbooru.CU.channel.onmessage = BroadcastCU;
     JSPLib.utility.setCSSStyle(program_css,'program');
     $notice_box = $(notice_box);
     $footer_notice = $(unstash_notice);
-    if (JSPLib.storage.getStorageData('cu-stash-current-uploads',localStorage,0) === 1) {
+    if (Danbooru.CU.stashed === 1) {
         $($notice_box).addClass('stashed');
         $($footer_notice).addClass('stashed');
     }
     $('header#top').append($notice_box);
     $('footer#page-footer').append($footer_notice);
-    SetCountNoticeClick();
+    SetToggleNoticeClick();
     SetStashNoticeClick();
-    SetRestoreNoticeClick();
     SetCheckUserClick();
-    if (JSPLib.storage.getStorageData('cu-hide-current-uploads',localStorage,0) === 0) {
+    if (Danbooru.CU.hidden === 0) {
         //Set to opposite so that click can be used and sets it back
-        JSPLib.storage.setStorageData('cu-hide-current-uploads',1,localStorage);
-        $("#hide-count-notice").click();
+        Danbooru.CU.hidden = 1;
+        $("#toggle-count-notice").click();
     }
     if ($("#c-users #a-edit").length) {
         InstallScript("https://cdn.rawgit.com/jquery/jquery-ui/1.12.1/ui/widgets/tabs.js").done(()=>{
