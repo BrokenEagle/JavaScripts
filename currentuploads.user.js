@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.0
+// @version      10.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Gives up-to-date stats on uploads
 // @author       BrokenEagle
@@ -11,13 +11,13 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/currentuploads.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/danbooru.js
 // ==/UserScript==
 
 /**GLOBAL VARIABLES**/
@@ -25,11 +25,12 @@
 //Variables for debug.js
 JSPLib.debug.debug_console = false;
 JSPLib.debug.pretext = "CU:";
+JSPLib.debug.pretimer = "CU-";
 JSPLib.debug.level = JSPLib.debug.INFO;
 
 //Variables for load.js
 const program_load_required_variables = ['window.jQuery','window.Danbooru'];
-const program_load_required_ids = ["top","page-footer"];
+const program_load_required_selectors = ["#top","#page-footer"];
 
 //Variables for danbooru.js
 JSPLib.danbooru.counter_domname = "#loading-counter";
@@ -249,33 +250,6 @@ const unstash_notice = '<span id="upload-counts-restore"> - <a href="#" id="rest
 
 //Validation values
 
-validate.validators.hash = function(value, options, key, attributes) {
-    if (options !== false) {
-        if (validate.isHash(value)) {
-            return;
-        }
-        return "is not a hash";
-    }
-};
-
-const hash_constraints = {
-    presence: true,
-    hash: true
-}
-
-const fix_expires_constraints = {
-    presence: true,
-    numericality: {
-        onlyInteger: true,
-        greaterThan: -1,
-    }
-}
-
-const number_constraints = {
-    presence: true,
-    numericality: true
-}
-
 const validation_constraints = {
     countentry: JSPLib.validate.postcount_constraints,
     implicationentry: JSPLib.validate.integer_constraints,
@@ -292,47 +266,25 @@ const validation_constraints = {
         JSPLib.validate.stringonly_constraints  //COPYRIGHTS
     ],
     postmetric: {
-        score: hash_constraints,
-        upscore: hash_constraints,
-        downscore: hash_constraints,
-        favcount: hash_constraints,
-        tagcount: hash_constraints,
-        gentags: hash_constraints
+        score: JSPLib.validate.hash_constraints,
+        upscore: JSPLib.validate.hash_constraints,
+        downscore: JSPLib.validate.hash_constraints,
+        favcount: JSPLib.validate.hash_constraints,
+        tagcount: JSPLib.validate.hash_constraints,
+        gentags: JSPLib.validate.hash_constraints
     },
     poststat: {
         max: JSPLib.validate.integer_constraints,
-        average: number_constraints,
-        stddev: number_constraints,
+        average: JSPLib.validate.number_constraints,
+        stddev: JSPLib.validate.number_constraints,
         outlier: JSPLib.validate.integer_constraints,
-        adjusted: number_constraints
+        adjusted: JSPLib.validate.number_constraints
     }
 };
 
 /**FUNCTIONS**/
 
 //Validation functions
-
-function ValidateIsArray(key,entry,length) {
-    let array_validator = {
-        presence: true,
-        array: (length ? {length: length} : true)
-     };
-    let check = validate({value: entry}, {value: array_validator});
-    if (check !== undefined) {
-        JSPLib.validate.printValidateError(key,check);
-        return false;
-    }
-    return true;
-}
-
-function ValidateIsHash(key,entry) {
-    let check = validate({value: entry}, {value: hash_constraints});
-    if (check !== undefined) {
-        JSPLib.validate.printValidateError(key,check);
-        return false;
-    }
-    return true;
-}
 
 function ValidationSelector(key) {
     if (key.match(/^ct(?:d|w|mo|y|at)?-/)) {
@@ -349,13 +301,13 @@ function ValidationSelector(key) {
 
 function BuildValidator(validation_key) {
     return {
-        expires: fix_expires_constraints,
+        expires: JSPLib.validate.expires_constraints,
         value: validation_constraints[validation_key]
     };
 }
 
 function ValidateEntry(key,entry) {
-    if (!ValidateIsHash(key,entry)) {
+    if (!JSPLib.validate.validateIsHash(key,entry)) {
         return false
     }
     let validation_key = ValidationSelector(key);
@@ -376,7 +328,7 @@ function ValidateEntry(key,entry) {
 function ValidatePostentries(key,postentries) {
     for (let i = 0;i < postentries.length;i++){
         let value_key = key + `[${i}]`;
-        if (!ValidateIsArray(value_key, postentries[i], validation_constraints.postentry.length)) {
+        if (!JSPLib.validate.validateIsArray(value_key, postentries[i], validation_constraints.postentry.length)) {
             return false;
         }
         check = validate(postentries[i],validation_constraints.postentry);
@@ -406,66 +358,6 @@ function ValidateStatEntries(key,statentries) {
 }
 
 //Library functions
-
-function DebugExecute(func) {
-    if (JSPLib.debug.debug_console) {
-        func();
-    }
-}
-
-function GetMeta(key) {
-  return $("meta[name=" + key + "]").attr("content");
-}
-
-function GetExpiration(expires) {
-    return Date.now() + expires;
-}
-
-function ValidateExpires(actual_expires,expected_expires) {
-    //Resolve to true if the actual_expires is bogus, has expired, or the expiration is too long
-    return !Number.isInteger(actual_expires) || (Date.now() > actual_expires) || ((actual_expires - Date.now()) > expected_expires);
-}
-
-function PruneEntries(modulename,regex) {
-    let timer_name = modulename + '-' + "PruneEntries";
-    let expire_name = modulename + '-prune-expires';
-    JSPLib.debug.debugTime(timer_name);
-    let expires = JSPLib.storage.getStorageData(expire_name,localStorage,0);
-    if (ValidateExpires(expires, prune_expires)) {
-        JSPLib.debug.debuglog("PruneIACEntries");
-        PruneStorage(regex).then(()=>{
-            JSPLib.debug.debuglog("Pruning complete!");
-            JSPLib.debug.debugTimeEnd(timer_name);
-        });
-        JSPLib.storage.setStorageData(expire_name, GetExpiration(prune_expires), localStorage);;
-    } else {
-        JSPLib.debug.debuglog("No prune of entries!");
-    }
-}
-
-async function PruneStorage(regex) {
-    if (JSPLib.storage.use_storage) {
-        let pruned_items = 0;
-        let total_items = 0;
-        let promise_array = [];
-        await JSPLib.storage.danboorustorage.iterate((value,key)=>{
-            if (key.match(regex)) {
-                if (JSPLib.storage.hasDataExpired(value)) {
-                    JSPLib.debug.debuglog("Deleting",key);
-                    promise_array.push(JSPLib.storage.removeData(key));
-                    pruned_items += 1;
-                }
-                total_items += 1;
-                if (pruned_items >= prune_limit) {
-                    JSPLib.debug.debuglog("Prune limit reached!");
-                    return true;
-                }
-            }
-        });
-        JSPLib.debug.debuglog(`Pruning ${pruned_items}/${total_items} items!`);
-        return Promise.all(promise_array);
-    }
-}
 
 function IsNamespaceBound(selector,eventtype,namespace) {
     let namespaces = GetBoundEventNames(selector,eventtype);
@@ -841,7 +733,8 @@ async function CheckPeriodUploads(username) {
             continue;
         }
         let period_name = period_info.longname[period];
-        var check = await JSPLib.storage.checkLocalDB(`${period_name}-uploads-${username}`,ValidateEntry);
+        let max_expires = period_info.uploadexpires[period]
+        var check = await JSPLib.storage.checkLocalDB(`${period_name}-uploads-${username}`,ValidateEntry,max_expires);
         Danbooru.CU.period_available[username][period] = Boolean(check);
     }
 }
@@ -878,7 +771,7 @@ async function GetPostsCountdown(limit,searchstring,domname) {
 
 async function GetReverseTagImplication(tag) {
     var key = 'rti' + '-' + tag;
-    var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
+    var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry,rti_expiration);
     if (!(check)) {
         JSPLib.debug.debuglog("Network (implication):",key);
         return JSPLib.danbooru.submitRequest('tag_implications',{search: {antecedent_name: tag}},[],key)
@@ -889,13 +782,14 @@ async function GetReverseTagImplication(tag) {
 }
 
 async function GetCount(type,tag) {
+    let max_expires = period_info.countexpires[type]
     var key = 'ct' + type + '-' + tag;
-    var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
+    var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry,max_expires);
     if (!(check)) {
         JSPLib.debug.debuglog("Network (count):",key);
         return JSPLib.danbooru.submitRequest('counts/posts',{tags: BuildTagParams(type,tag)},{counts: {posts: 0}},key)
         .then(data=>{
-            JSPLib.storage.saveData(key, {value: data.counts.posts, expires: GetExpiration(period_info.countexpires[type])});
+            JSPLib.storage.saveData(key, {value: data.counts.posts, expires: JSPLib.utility.getExpiration(max_expires)});
         });
     }
 }
@@ -906,17 +800,18 @@ function CheckUser(username) {
 
 async function GetPeriodUploads(username,period,limited=false,domname=null) {
     let period_name = period_info.longname[period];
+    let max_expires = period_info.uploadexpires[period]
     let key = `${period_name}-uploads-${username}`;
-    var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
+    var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry,max_expires);
     if (!(check)) {
         JSPLib.debug.debuglog(`Network (${period_name} uploads)`);
         let data = await GetPostsCountdown(max_post_limit_query,BuildTagParams(period,`user:${username}`),domname);
         let mapped_data = MapPostData(data);
         if (limited) {
             mapped_data = Object.assign(...tooltip_metrics.map((metric)=>{return {[metric]: GetPostStatistics(mapped_data,metric)};}));
-            JSPLib.storage.saveData(key, {value: mapped_data, expires: GetExpiration(period_info.uploadexpires[period])});
+            JSPLib.storage.saveData(key, {value: mapped_data, expires: JSPLib.utility.getExpiration(max_expires)});
         } else {
-            JSPLib.storage.saveData(key, {value: PreCompressData(mapped_data), expires: GetExpiration(period_info.uploadexpires[period])});
+            JSPLib.storage.saveData(key, {value: PreCompressData(mapped_data), expires: JSPLib.utility.getExpiration(max_expires)});
         }
         return mapped_data;
     } else {
@@ -1481,7 +1376,7 @@ function InstallSettingsMenu(program_name) {
 
 function main() {
     Danbooru.CU = {
-        username: GetMeta("current-user-name"),
+        username: JSPLib.utility.getMeta("current-user-name"),
         is_gold_user: $('body').data('user-is-gold'),
         user_settings: LoadUserSettings('cu'),
         channel: new BroadcastChannel('CurrentUploads'),
@@ -1515,15 +1410,15 @@ function main() {
             RenderSettingsMenu();
         });
     }
-    DebugExecute(()=>{
+    JSPLib.debug.debugExecute(()=>{
         window.addEventListener('beforeunload',function () {
             JSPLib.statistics.outputAdjustedMean("CurrentUploads");
         });
     });
     //Take care of other non-critical tasks at a later time
     setTimeout(()=>{
-        PruneEntries('CU',program_cache_regex);
+        JSPLib.storage.pruneEntries('cu',program_cache_regex,prune_expires);
     },JSPLib.utility.one_minute);
 }
 
-JSPLib.load.programInitialize(main,'CU',program_load_required_variables,program_load_required_ids);
+JSPLib.load.programInitialize(main,'CU',program_load_required_variables,program_load_required_selectors);
