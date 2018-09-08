@@ -9,7 +9,6 @@
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/currentuploads.user.js
-// @require      https://raw.githubusercontent.com/jquery/jquery-ui/1.12.1/ui/widgets/tabs.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/debug.js
@@ -496,6 +495,14 @@ function AddStyleSheet(url,title='') {
         AddStyleSheet.cssstyle[title].href = url;
         document.head.appendChild(AddStyleSheet.cssstyle[title]);
     }
+}
+
+function InstallScript(url) {
+    return $.ajax({
+        url: url,
+        dataType: "script",
+        cache: true
+    });
 }
 
 function KebabCase(string) {
@@ -1503,8 +1510,10 @@ function main() {
         $("#hide-count-notice").click();
     }
     if ($("#c-users #a-edit").length) {
-        InstallSettingsMenu("CurrentUploads");
-        RenderSettingsMenu();
+        InstallScript("https://cdn.rawgit.com/jquery/jquery-ui/1.12.1/ui/widgets/tabs.js").done(()=>{
+            InstallSettingsMenu("CurrentUploads");
+            RenderSettingsMenu();
+        });
     }
     DebugExecute(()=>{
         window.addEventListener('beforeunload',function () {
