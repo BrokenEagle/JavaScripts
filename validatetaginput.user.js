@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      25.1
+// @version      25.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -47,6 +47,10 @@ const validatetag_expiration_time = JSPLib.utility.one_month;
 
 //Regex that matches the prefix of all program cache data
 const program_cache_regex = /^(?:ti|ta)-/;
+
+//For factory reset
+const localstorage_keys = [];
+const program_reset_keys = {};
 
 //Main program expires
 const prune_expires = JSPLib.utility.one_day;
@@ -724,7 +728,7 @@ function RenderSettingsMenu() {
     $("#vti-process-settings").append(RenderCheckbox("vti",'upload_check_enabled'));
     $("#vti-cache-settings").append(RenderLinkclick("vti",'purge_cache',`Purge cache (<span id="vti-purge-counter">...</span>)`,"Click to purge"));
     SaveUserSettingsClick('vti','ValidateTagInput');
-    ResetUserSettingsClick('vti','ValidateTagInput',[],{});
+    ResetUserSettingsClick('vti','ValidateTagInput',localstorage_keys,program_reset_keys);
     PurgeCacheClick('vti','ValidateTagInput',program_cache_regex,"#vti-purge-counter");
 }
 
