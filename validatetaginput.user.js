@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      25.2
+// @version      25.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -190,7 +190,7 @@ function transformTypetags(array) {
 }
 
 function getCurrentTags() {
-    return JSPLib.utility.filterRegex(getTagList(),metatags_regex,true);
+    return JSPLib.utility.filterRegex(JSPLib.utility.filterRegex(getTagList(),metatags_regex,true),typetags_regex,true);
 }
 
 function getAllRelations(tag,implicationdict) {
@@ -470,7 +470,6 @@ function ValidateUpload() {
     if (!ratingtag && !ratingradio) {
         errormessages.push("Must specify a rating.");
     }
-    
     if ($("#upload_file,#upload_source,#upload_md5_confirmation").toArray().every((input)=>{return $(input).val() === "";})) {
         errormessages.push("Must choose file or specify source.");
     }
