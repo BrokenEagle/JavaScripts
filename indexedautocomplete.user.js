@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      18.2
+// @version      18.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -11,13 +11,13 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/indexedautocomplete.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180723/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/danbooru.js
 // ==/UserScript==
 
 /***Global variables***/
@@ -25,6 +25,7 @@
 //Variables for debug.js
 JSPLib.debug.debug_console = false;
 JSPLib.debug.pretext = "IAC:";
+JSPLib.debug.pretimer = "IAC-";
 JSPLib.debug.level = JSPLib.debug.INFO;
 
 //Variables for load.js
@@ -38,9 +39,6 @@ const callback_interval = 1000;
 
 //Main function expires
 const prune_expires = JSPLib.utility.one_day;
-
-//Maximum number of entries to prune in one go
-const prune_limit = 1000;
 
 //Regex that matches the prefix of all program cache data
 const program_cache_regex = /^(?:ac|pl|us|fg|ss|ar|wp|ft|rt(?:gen|char|copy|art)?)-/;
@@ -166,11 +164,7 @@ const autocomplete_constraints = {
         }
     },
     tag: {
-        antecedent: {
-            string: {
-                allowNull: true
-            }
-        },
+        antecedent: JSPLib.validate.stringnull_constraints,
         category: JSPLib.validate.inclusion_constraints([0,1,3,4,5]),
         label: JSPLib.validate.stringonly_constraints,
         post_count: JSPLib.validate.postcount_constraints,
@@ -189,14 +183,7 @@ const autocomplete_constraints = {
         name: JSPLib.validate.stringonly_constraints
     },
     favgroup: {
-        post_count: {
-            presence: true,
-            numericality: {
-                noStrings: true,
-                onlyInteger: true,
-                greaterThan: -1,
-            }
-        },
+        post_count: JSPLib.validate.counting_constraints,
         name: JSPLib.validate.stringonly_constraints
     },
     search: {
@@ -220,7 +207,7 @@ const autocomplete_constraints = {
 const relatedtag_constraints = {
     entry: {
         expires : JSPLib.validate.expires_constraints,
-        value : {presence: true}
+        value : JSPLib.validate.hash_constraints
     },
     value: {
         category: JSPLib.validate.inclusion_constraints(["","general","character","copyright","artist"]),
@@ -496,85 +483,8 @@ const source_config = {
 
 //Library functions
 
-function DebugExecute(func) {
-    if (JSPLib.debug.debug_console) {
-        func();
-    }
-}
-
 function RegexpEscape(string) {
   return string.replace(/([.?*+^$[\]\\(){}|-])/g, "\\$1");
-}
-
-function CreateCookie(name, value, days) {
-    var expires = "";
-    if (days) {
-        var date = new Date();
-        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-        expires = "; expires=" + date.toGMTString();
-    }
-
-    document.cookie = name + "=" + value + expires + "; path=/";
-}
-
-function ReadCookie(name) {
-    var nameEQ = name + "=";
-    var ca = document.cookie.split(';');
-    for (var i = 0; i < ca.length; i++) {
-        var c = ca[i];
-        while (c.charAt(0) == ' ') {
-            c = c.substring(1, c.length)
-        }
-        if (c.indexOf(nameEQ) == 0) {
-            return decodeURIComponent(c.substring(nameEQ.length, c.length).replace(/\+/g, " "));
-        }
-    }
-    return null;
-}
-
- function EraseCookie(name) {
-    CreateCookie(name, "", -1);
-}
-
-function GetExpiration(expires) {
-    return Date.now() + expires;
-}
-
-function ValidateExpires(actual_expires,expected_expires) {
-    //Resolve to true if the actual_expires is bogus, has expired, or the expiration is too long
-    return !Number.isInteger(actual_expires) || (Date.now() > actual_expires) || ((actual_expires - Date.now()) > expected_expires);
-}
-
-async function PruneStorage(regex) {
-    if (JSPLib.storage.use_storage) {
-        let pruned_items = 0;
-        let total_items = 0;
-        let promise_array = [];
-        await JSPLib.storage.danboorustorage.iterate((value,key)=>{
-            if (key.match(regex)) {
-                if (JSPLib.storage.hasDataExpired(value)) {
-                    JSPLib.debug.debuglog("Deleting",key);
-                    promise_array.push(JSPLib.storage.removeData(key));
-                    pruned_items += 1;
-                }
-                total_items += 1;
-                if (pruned_items >= prune_limit) {
-                    JSPLib.debug.debuglog("Prune limit reached!");
-                    return true;
-                }
-            }
-        });
-        JSPLib.debug.debuglog(`Pruning ${pruned_items}/${total_items} items!`);
-        return Promise.all(promise_array);
-    }
-}
-
-function HijackFunction(oldfunc,newfunc) {
-    return function() {
-        let data = oldfunc(...arguments);
-        data = newfunc(data,...arguments);
-        return data;
-    }
 }
 
 function GetDOMDataKeys(selector) {
@@ -637,6 +547,10 @@ function MinimumExpirationTime(type) {
     return expiration_config[type].minimum;
 }
 
+function MaximumExpirationTime(type) {
+    return (expiration_config[type].maximum ? expiration_config[type].maximum : expiration_config[type].minimum);
+}
+
 //Logarithmic increase of expiration time based upon a count
 function ExpirationTime(type,count) {
     let config = expiration_config[type];
@@ -649,9 +563,8 @@ function ExpirationTime(type,count) {
 //Validation functions
 
 function ValidateEntry(key,entry) {
-    if (entry === null) {
-        JSPLib.debug.debuglog(key,"entry not found!");
-        return false;
+    if (!JSPLib.validate.validateIsHash(key,entry)) {
+        return false
     }
     if (key.match(/^(?:ac|pl|us|fg|ss|ar|wp|ft)-/)) {
         return ValidateAutocompleteEntry(key,entry);
@@ -668,8 +581,8 @@ function ValidateAutocompleteEntry(key,entry) {
         JSPLib.validate.printValidateError(key,check);
         return false;
     }
+    let type = source_key[key.slice(0,2)];
     for (let i=0;i < entry.value.length; i++) {
-        let type = source_key[key.slice(0,2)];
         check = validate(entry.value[i],autocomplete_constraints[type]);
         if (check !== undefined) {
             JSPLib.debug.debuglog("value["+i.toString()+"]");
@@ -825,23 +738,8 @@ function FixExpirationCallback(key,value,tagname,type) {
             return;
         }
         var expiration_time = ExpirationTime(type,data[0].post_count);
-        JSPLib.storage.saveData(key, {value: value, expires: Date.now() + expiration_time});
+        JSPLib.storage.saveData(key, {value: value, expires: JSPLib.utility.getExpiration(expiration_time)});
     });
-}
-
-function PruneIACEntries() {
-    JSPLib.debug.debugTime('IAC-PruneIACEntries');
-    let expires = JSPLib.storage.getStorageData('iac-prune-expires',localStorage,0);
-    if (ValidateExpires(expires, prune_expires)) {
-        JSPLib.debug.debuglog("PruneIACEntries");
-        PruneStorage(program_cache_regex).then(()=>{
-            JSPLib.debug.debuglog("Pruning complete!");
-            JSPLib.debug.debugTimeEnd('IAC-PruneIACEntries');
-        });
-        JSPLib.storage.setStorageData('iac-prune-expires', GetExpiration(prune_expires), localStorage);;
-    } else {
-        JSPLib.debug.debuglog("No prune of autocomplete entries!");
-    }
 }
 
 //Usage functions
@@ -947,7 +845,7 @@ function InsertUserSelected(data,input,selected) {
     //So the use count doesn't get squashed by the new variable assignment
     let use_count = (Danbooru.IAC.choice_data[type][term] && Danbooru.IAC.choice_data[type][term].use_count) || 0;
     Danbooru.IAC.choice_data[type][term] = source_data;
-    Danbooru.IAC.choice_data[type][term].expires = GetExpiration(Danbooru.IAC.user_settings.usage_expires * JSPLib.utility.one_day);
+    Danbooru.IAC.choice_data[type][term].expires = JSPLib.utility.getExpiration(Danbooru.IAC.user_settings.usage_expires * JSPLib.utility.one_day);
     Danbooru.IAC.choice_data[type][term].use_count = use_count + 1, Danbooru.IAC.user_settings.usage_maximum;
     if (Danbooru.IAC.user_settings.usage_maximum > 0) {
         Danbooru.IAC.choice_data[type][term].use_count = Math.min(Danbooru.IAC.choice_data[type][term].use_count, Danbooru.IAC.user_settings.usage_maximum);
@@ -976,7 +874,7 @@ function PruneUsageData() {
     let is_dirty = false;
     $.each(Danbooru.IAC.choice_data,(type_key,type_entry)=>{
         $.each(type_entry,(key,entry)=>{
-            if (ValidateExpires(entry.expires, Danbooru.IAC.user_settings.usage_expires * JSPLib.utility.one_day)) {
+            if (!JSPLib.validate.validateExpires(entry.expires, Danbooru.IAC.user_settings.usage_expires * JSPLib.utility.one_day)) {
                 JSPLib.debug.debuglog("Pruning choice data!",type_key,key);
                 Danbooru.IAC.choice_order[type_key] = JSPLib.utility.setDifference(Danbooru.IAC.choice_order[type_key],[key])
                 delete type_entry[key];
@@ -1024,7 +922,7 @@ function NetworkSource(type,key,term,resp,metatag) {
         var d = $.map(data, source_config[type].map);
         var expiration_time = source_config[type].expiration(d);
         var save_data = JSPLib.utility.dataCopy(d);
-        JSPLib.storage.saveData(key, {value: save_data, expires: GetExpiration(expiration_time)});
+        JSPLib.storage.saveData(key, {value: save_data, expires: JSPLib.utility.getExpiration(expiration_time)});
         if (source_config[type].fixupexpiration && d.length) {
             setTimeout(()=>{FixExpirationCallback(key, save_data, save_data[0].value, type);}, callback_interval);
         }
@@ -1039,7 +937,8 @@ function AnySourceIndexed(keycode,default_metatag='') {
         var key = (keycode + "-" + term).toLowerCase();
         var use_metatag = (input_metatag ? input_metatag : default_metatag);
         if (!Danbooru.IAC.user_settings.network_only_mode) {
-            var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
+            var max_expiration = MaximumExpirationTime(type);
+            var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry,max_expiration);
             if (cached) {
                 ProcessSourceData(type, use_metatag, term, cached.value, resp);
                 return;
@@ -1075,13 +974,14 @@ function CommonBindIndexed(button_name, category) {
         var currenttag = $.trim(Danbooru.RelatedTag.current_tag());
         var keymodifier = (category.length ? JSPLib.danbooru.getShortName(category) : "");
         var key = ("rt" + keymodifier + "-" + currenttag).toLowerCase();
-        var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry);
+        var max_expiration = MaximumExpirationTime('relatedtag');
+        var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry,max_expiration);
         if (cached) {
             Danbooru.RelatedTag.process_response(cached.value);
         } else {
             JSPLib.debug.debuglog("Querying relatedtag:",currenttag,category);
             var data = await JSPLib.danbooru.submitRequest("related_tag", {query: currenttag, category: category});
-            JSPLib.storage.saveData(key, {value: data, expires: Date.now() + MinimumExpirationTime('relatedtag')});
+            JSPLib.storage.saveData(key, {value: data, expires: JSPLib.utility.getExpiration(MinimumExpirationTime('relatedtag'))});
             Danbooru.RelatedTag.process_response(data);
         }
         $("#artist-tags-container").hide();
@@ -1618,8 +1518,8 @@ function main() {
     Danbooru.Autocomplete.user_source = AnySourceIndexed('us');
     Danbooru.Autocomplete.favorite_group_source = AnySourceIndexed('fg');
     Danbooru.Autocomplete.saved_search_source = AnySourceIndexed('ss','search');
-    Danbooru.Autocomplete.insert_completion = HijackFunction(Danbooru.Autocomplete.insert_completion,InsertUserSelected);
-    Danbooru.Autocomplete.render_item = HijackFunction(Danbooru.Autocomplete.render_item,HighlightSelected);
+    Danbooru.Autocomplete.insert_completion = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.insert_completion,InsertUserSelected);
+    Danbooru.Autocomplete.render_item = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.render_item,HighlightSelected);
     if ($("#c-posts #a-show,#c-uploads #a-new").length) {
         rebindRelatedTags.timer = setInterval(rebindRelatedTags,timer_poll_interval);
         rebindFindArtist.timer = setInterval(rebindFindArtist,timer_poll_interval);
@@ -1668,14 +1568,14 @@ function main() {
             RenderSettingsMenu();
         });
     }
-    DebugExecute(()=>{
+    JSPLib.debug.debugExecute(()=>{
         window.addEventListener('beforeunload', ()=>{
             JSPLib.statistics.outputAdjustedMean("IndexedAutocomplete");
         });
     });
     //Take care of other non-critical tasks at a later time
     setTimeout(()=>{
-        PruneIACEntries();
+        JSPLib.storage.pruneEntries('cu',program_cache_regex,prune_expires);
     },JSPLib.utility.one_minute);
 }
 
