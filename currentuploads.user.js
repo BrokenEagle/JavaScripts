@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.1
+// @version      10.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Gives up-to-date stats on uploads
 // @author       BrokenEagle
@@ -710,7 +710,7 @@ function PostDecompressData(posts) {
 }
 
 function GetTagData(tag) {
-    return Danbooru.CU.user_settings.periods_shown.map((period)=>{return GetCount(longname_key[period],tag);});
+    return Promise.all(Danbooru.CU.user_settings.periods_shown.map((period)=>{return GetCount(longname_key[period],tag);}));
 }
 
 async function CheckPeriodUploads(username) {
