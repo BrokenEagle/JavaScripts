@@ -965,7 +965,7 @@ function ProcessSourceData(type,metatag,term,data,resp) {
 //Non-autocomplete storage
 
 function CommonBindIndexed(button_name, category) {
-    $(button_name).click(async (e)=>{
+    $(button_name).on('click.IAC',async (e)=>{
         var $dest = $("#related-tags");
         $dest.empty();
         Danbooru.RelatedTag.build_recent_and_frequent($dest);
@@ -1034,12 +1034,12 @@ function FindArtistSession(e) {
 
 function rebindRelatedTags() {
     //Only need to check one of them, since they're all bound at the same time
-    if (GetBoundEventNames("#related-tags-button",'click').length) {
+    if (IsNamespaceBound("#related-tags-button",'click','danbooru')) {
         clearInterval(rebindRelatedTags.timer);
-        $("#related-tags-button").off();
+        $("#related-tags-button").off('click.danbooru');
         CommonBindIndexed("#related-tags-button", "");
         $.each(['general','artist','character','copyright'], (i,category)=>{
-            $(`#related-${category}-button`).off();
+            $(`#related-${category}-button`).off('click.danbooru');
             CommonBindIndexed("#related-" + category + "-button", category);
         });
         rebindRelatedTags.timer = true;
@@ -1047,9 +1047,9 @@ function rebindRelatedTags() {
 }
 
 function rebindFindArtist() {
-    if (GetBoundEventNames("#find-artist-button",'click').length) {
+    if (IsNamespaceBound("#find-artist-button",'click','danbooru')) {
         clearInterval(rebindFindArtist.timer);
-        $("#find-artist-button").off().click(FindArtistSession);
+        $("#find-artist-button").off('click.danbooru').on('click.IAC',FindArtistSession);
         rebindFindArtist.timer = true;
     }
 }
@@ -1057,7 +1057,7 @@ function rebindFindArtist() {
 function rebindAnyAutocomplete(selector, keycode) {
     if (HasDOMDataKey(selector,'uiAutocomplete')) {
         clearInterval(rebindAnyAutocomplete.timer[keycode]);
-        $(selector).off().removeData();
+        $(selector).autocomplete("destroy").off('keydown.Autocomplete.tab');
         InitializeAutocompleteIndexed(selector, keycode);
     }
 }
