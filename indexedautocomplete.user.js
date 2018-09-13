@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      18.3
+// @version      18.4
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -63,7 +63,11 @@ const autocomplete_userlist = [
     "#search_creator_name",
     "#search_approver_name",
     "#search_updater_name",
-    "#search_uploader_name"
+    "#search_uploader_name",
+    ".c-users #search_name_matches",
+    ".c-users #quick_search_name_matches",
+    ".c-user-upgrades #quick_search_name_matches",
+    "#user_feedback_user_name"
 ];
 //DOM elements with autocomplete
 const autocomplete_domlist = [
@@ -76,7 +80,8 @@ const autocomplete_domlist = [
     "#search_name_matches,#quick_search_name_matches",
     "#add-to-pool-dialog input[type=text]",
     "#quick_search_body_matches",
-    "#search_topic_title_matches"
+    "#search_topic_title_matches",
+    "#saved_search_label_string"
     ].concat(autocomplete_userlist);
 
 const forum_topic_search = `
@@ -935,10 +940,25 @@ function NetworkSource(type,key,term,resp,metatag) {
     });
 }
 
-function AnySourceIndexed(keycode,default_metatag='') {
+function AnySourceIndexed(keycode,default_metatag='',multiple=false) {
     var type = source_key[keycode];
     return async function (req, resp, input_metatag) {
-        var term = (req.term ? req.term : req);
+        var term;
+        //Only for instances set with InitializeAutocompleteIndexed, i.e. not the hooked "tag-query" source functions
+        if (multiple) {
+            term = Danbooru.Autocomplete.parse_query(req.term, this.element.get(0).selectionStart).term;
+            if (!term) {
+                resp([]);
+                return;
+            }
+        } else {
+            term = (req.term ? req.term : req);
+            if (term.match(/\S\s/)) {
+                resp([]);
+                return;
+            }
+            term = term.trim();
+        }
         var key = (keycode + "-" + term).toLowerCase();
         var use_metatag = (input_metatag ? input_metatag : default_metatag);
         if (!Danbooru.IAC.user_settings.network_only_mode) {
@@ -1059,33 +1079,40 @@ function rebindFindArtist() {
     }
 }
 
-function rebindAnyAutocomplete(selector, keycode) {
+function rebindAnyAutocomplete(selector, keycode, multiple) {
     if (HasDOMDataKey(selector,'uiAutocomplete')) {
         clearInterval(rebindAnyAutocomplete.timer[keycode]);
         $(selector).autocomplete("destroy").off('keydown.Autocomplete.tab');
-        InitializeAutocompleteIndexed(selector, keycode);
+        InitializeAutocompleteIndexed(selector, keycode, multiple);
     }
 }
 rebindAnyAutocomplete.timer = {};
 
-function setRebindInterval(selector, keycode, alt_choose) {
-    rebindAnyAutocomplete.timer[keycode] = setInterval(()=>{rebindAnyAutocomplete(selector,keycode,alt_choose)},timer_poll_interval);
+function setRebindInterval(selector, keycode, multiple) {
+    rebindAnyAutocomplete.timer[keycode] = setInterval(()=>{rebindAnyAutocomplete(selector,keycode,multiple)},timer_poll_interval);
 }
 
 //Initialization functions
 
-function InitializeAutocompleteIndexed(selector, keycode) {
+function InitializeAutocompleteIndexed(selector, keycode, multiple=false) {
     let type = source_key[keycode];
     var $fields = $(selector);
     $fields.autocomplete({
         minLength: 1,
         delay: 100,
-        source: AnySourceIndexed(keycode),
+        source: AnySourceIndexed(keycode,'',multiple),
         search: function() {
             $(this).data("uiAutocomplete").menu.bindings = $();
         },
         select: function(event,ui) {
             InsertUserSelected(keycode, this, ui.item);
+            if (multiple) {
+                if (event.key === "Enter") {
+                    event.stopImmediatePropagation();
+                }
+                Danbooru.Autocomplete.insert_completion(this, ui.item.value);
+                return false;
+            }
             return ui.item.value;
         }
     });
@@ -1093,7 +1120,15 @@ function InitializeAutocompleteIndexed(selector, keycode) {
         $fields.each((i, field)=>{
             $(field).data("uiAutocomplete")._renderItem = source_config[type].render;
         });
+    } else {
+        $fields.each((i, field)=>{
+            $(field).data("uiAutocomplete")._renderItem = RenderListItem(($domobj,item)=>{return $domobj.text(item.value);});
+        });
     }
+    if (!IsNamespaceBound(selector,'keydown','Autocomplete.tab')) {
+        $fields.on("keydown.Autocomplete.tab", null, "tab", Danbooru.Autocomplete.on_tab);
+    }
+    $fields.data('autocomplete',type);
 }
 
 ///Settings menu
@@ -1497,6 +1532,7 @@ function InstallSettingsMenu(program_name) {
     $("#userscript-settings-menu").tabs();
 }
 
+
 //Main program
 function main() {
     if (!JSPLib.storage.use_indexed_db) {
@@ -1527,7 +1563,8 @@ function main() {
     Danbooru.Autocomplete.render_item = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.render_item,HighlightSelected);
     if ($("#c-posts #a-show,#c-uploads #a-new").length) {
         rebindRelatedTags.timer = setInterval(rebindRelatedTags,timer_poll_interval);
-        rebindFindArtist.timer = setInterval(rebindFindArtist,timer_poll_interval);
+        //Need to fix this so it captures fetch source instead
+        //rebindFindArtist.timer = setInterval(rebindFindArtist,timer_poll_interval);
     }
     if ($("#c-wiki-pages,#c-wiki-page-versions").length) {
         setRebindInterval("#search_title,#quick_search_title", 'wp');
@@ -1542,7 +1579,10 @@ function main() {
         setRebindInterval("#add-to-pool-dialog input[type=text]", 'pl');
     }
     if ($("#c-posts #a-index").length) {
-        InitializeAutocompleteIndexed("#saved_search_label_string",'ss');
+        setRebindInterval("#saved_search_label_string", 'ss', true);
+    }
+    if ($("#c-saved-searches #a-edit").length) {
+        InitializeAutocompleteIndexed("#saved_search_label_string", 'ss', true);
     }
     if ($("#c-forum-topics").length) {
         JSPLib.utility.setCSSStyle(forum_css);
@@ -1558,14 +1598,8 @@ function main() {
         //The initialize code doesn't work properly unless some time has elapsed after setting the attribute
         setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, timer_poll_interval);
     }
-    if ($('[data-autocomplete="tag"]').length) {
-        setRebindInterval('[data-autocomplete="tag"]', 'ac');
-    }
     if ($(autocomplete_userlist.join(',')).length) {
         InitializeAutocompleteIndexed(autocomplete_userlist.join(','), 'us');
-    }
-    if ($('[placeholder="Search users"]').length) {
-        InitializeAutocompleteIndexed("#search_name_matches,#quick_search_name_matches", 'us');
     }
     if ($("#c-users #a-edit").length) {
         InstallScript("https://cdn.rawgit.com/jquery/jquery-ui/1.12.1/ui/widgets/tabs.js").done(()=>{
