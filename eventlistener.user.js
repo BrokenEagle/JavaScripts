@@ -1,15 +1,14 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      11.0
+// @version      11.1
 // @source       https://danbooru.donmai.us/users/23799
-// @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes)
+// @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries)
 // @author       BrokenEagle
 // @match        *://*.donmai.us/*
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/eventlistener.user.js
-// @require      https://raw.githubusercontent.com/jquery/jquery-ui/1.12.1/ui/widgets/tabs.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/debug.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/load.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/utility.js
@@ -315,6 +314,14 @@ function AddStyleSheet(url,title='') {
         AddStyleSheet.cssstyle[title].href = url;
         document.head.appendChild(AddStyleSheet.cssstyle[title]);
     }
+}
+
+function InstallScript(url) {
+    return $.ajax({
+        url: url,
+        dataType: "script",
+        cache: true
+    });
 }
 
 function KebabCase(string) {
@@ -1458,9 +1465,11 @@ function main() {
     } else if ($("#c-forum-topics #a-index,#c-forum-posts #a-index").length) {
         InitializeTopicIndexLinks(document);
     }
-     if ($("#c-users #a-edit").length) {
-        InstallSettingsMenu("EventListener");
-        RenderSettingsMenu();
+    if ($("#c-users #a-edit").length) {
+        InstallScript("https://cdn.rawgit.com/jquery/jquery-ui/1.12.1/ui/widgets/tabs.js").done(()=>{
+            InstallSettingsMenu("EventListener");
+            RenderSettingsMenu();
+        });
     }
     if ($(`#image-container[data-uploader-id="${Danbooru.EL.userid}"]`).length) {
         SubscribeMultiLinkCallback();
