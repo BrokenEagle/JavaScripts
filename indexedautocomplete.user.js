@@ -83,7 +83,7 @@ const forum_topic_search = `
 <li>
     <form action="/forum_topics" accept-charset="UTF-8" method="get">
         <input name="utf8" type="hidden" value="✓">
-        <input id="quick_search_title_matches" placeholder="Search topic" type="text" name="search[title_matches]" class="ui-autocomplete-input" autocomplete="off">
+        <input id="quick_search_title_matches" placeholder="Search topic" type="text" name="search[title_matches]" class="ui-autocomplete-input" data-autocomplete="forum-topic" autocomplete="off">
     </form>
 </li>`;
 
@@ -814,8 +814,13 @@ function InsertUserSelected(data,input,selected) {
         }
         type = item.type;
         if (!type) {
-            let match = selected.match(Danbooru.Autocomplete.METATAGS_REGEX);
-            type = (match ? match[1] : 'tag');
+            let autocomplete_type = $(input).data('autocomplete');
+            if (autocomplete_type == 'tag-query') {
+                let match = selected.match(Danbooru.Autocomplete.METATAGS_REGEX);
+                type = (match ? match[1] : 'tag');
+            } else {
+                type = autocomplete_type.replace(/-/g,'');
+            }
         }
     } else {
         item = selected;
