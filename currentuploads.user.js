@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.2
+// @version      11.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Gives up-to-date stats on uploads
 // @author       BrokenEagle
@@ -109,7 +109,7 @@ const rti_expiration = JSPLib.utility.one_month; //one month
 const max_post_limit_query = 100;
 
 //Metrics used by statistics functions
-const tooltip_metrics = ['score','upscore','downscore','favcount','tagcount','gentags'];
+const tooltip_metrics = ['score','upscore','downscore','favcount','tagcount','gentags','week','day'];
 
 //Feedback messages
 const empty_uploads_message_owner = 'Feed me more uploads!';
@@ -260,7 +260,8 @@ const validation_constraints = {
         JSPLib.validate.integer_constraints,    //FAVCOUNT
         JSPLib.validate.integer_constraints,    //TAGCOUNT
         JSPLib.validate.integer_constraints,    //GENTAGS
-        JSPLib.validate.stringonly_constraints  //COPYRIGHTS
+        JSPLib.validate.stringonly_constraints, //COPYRIGHTS
+        JSPLib.validate.integer_constraints     //CREATED
     ],
     postmetric: {
         score: JSPLib.validate.hash_constraints,
@@ -268,7 +269,9 @@ const validation_constraints = {
         downscore: JSPLib.validate.hash_constraints,
         favcount: JSPLib.validate.hash_constraints,
         tagcount: JSPLib.validate.hash_constraints,
-        gentags: JSPLib.validate.hash_constraints
+        gentags: JSPLib.validate.hash_constraints,
+        week: JSPLib.validate.array_constraints,
+        day: JSPLib.validate.array_constraints
     },
     poststat: {
         max: JSPLib.validate.integer_constraints,
@@ -345,10 +348,16 @@ function ValidateStatEntries(key,statentries) {
     }
     for (let i = 0; i < tooltip_metrics.length; i++) {
         let metric = tooltip_metrics[i];
-        check = validate(statentries[metric],validation_constraints.poststat);
-        if (check !== undefined) {
-            JSPLib.validate.printValidateError(key + '.' + metric,check);
-            return false;
+        if (metric === 'week' || metric === 'day') {
+            if (!JSPLib.validate.validateArrayValues(key + '.' + metric,statentries[metric],JSPLib.validate.number_constraints)) {
+                return false;
+            }
+        } else {
+            check = validate(statentries[metric],validation_constraints.poststat);
+            if (check !== undefined) {
+                JSPLib.validate.printValidateError(key + '.' + metric,check);
+                return false;
+            }
         }
     }
     return true;
@@ -545,11 +554,46 @@ function RenderStatistics(key,attribute,period,limited=false) {
         if (uploads.length === 0) {
             return "No data!";
         }
-        stat = GetPostStatistics(uploads,attribute);
+        stat = GetAllStatistics(uploads,attribute);
     } else {
         stat = stat[attribute];
     }
-    return RenderStatlist(stat);
+    return RenderAllStats(stat,attribute);
+}
+
+function RenderAllStats(stat,attribute) {
+    if (attribute === 'week') {
+        return RenderWeeklist(stat);
+    } else if (attribute === 'day') {
+        return RenderDaylist(stat);
+    } else {
+        return RenderStatlist(stat);
+    }
+}
+
+function RenderWeeklist(stat) {
+    return `
+<ul style="font-family:monospace;font-size:12px">
+    <li>Sun: ${stat[0]}</li>
+    <li>Mon: ${stat[1]}</li>
+    <li>Tue: ${stat[2]}</li>
+    <li>Wed: ${stat[3]}</li>
+    <li>Thu: ${stat[4]}</li>
+    <li>Fri: ${stat[5]}</li>
+    <li>Sat: ${stat[6]}</li>
+</ul>`;
+}
+
+function RenderDaylist(stat) {
+    return `
+<ul style="font-family:monospace;font-size:12px">
+    <li>00-04: ${stat[0]}</li>
+    <li>04-08: ${stat[1]}</li>
+    <li>08-12: ${stat[2]}</li>
+    <li>12-16: ${stat[3]}</li>
+    <li>16-20: ${stat[4]}</li>
+    <li>20-24: ${stat[5]}</li>
+</ul>`;
 }
 
 function RenderStatlist(stat) {
@@ -561,6 +605,42 @@ function RenderStatlist(stat) {
     <li>Out: ${stat.outlier}</li>
     <li>Adj: ${stat.adjusted}</li>
 </ul>`;
+}
+
+function GetAllStatistics(posts,attribute) {
+    if (attribute === 'week') {
+        return GetWeekStatistics(posts);
+    } else if (attribute === 'day') {
+        return GetDayStatistics(posts);
+    } else {
+        return GetPostStatistics(posts,attribute);
+    }
+}
+
+function GetWeekStatistics(posts) {
+    let week_days = new Array(7).fill(0);
+    posts.forEach((upload)=>{
+        let timeindex = new Date(upload.created).getUTCDay();
+        week_days[timeindex] += 1;
+    });
+    let week_stats = week_days.map((day)=>{
+        let percent = (100 * day / posts.length);
+        return (percent === 0 || percent === 100 ? percent : JSPLib.utility.setPrecision(percent,1));
+    });
+    return week_stats;
+}
+
+function GetDayStatistics(posts) {
+    let day_hours = new Array(6).fill(0);
+    posts.forEach((upload)=>{
+        let timeindex = Math.floor(new Date(upload.created).getUTCHours() / 4);
+        day_hours[timeindex] += 1;
+    });
+    let day_stats = day_hours.map((day)=>{
+        let percent = (100 * day / posts.length);
+        return (percent === 0 || percent === 100 ? percent : JSPLib.utility.setPrecision(percent,1));
+    });
+    return day_stats;
 }
 
 function GetPostStatistics(posts,attribute) {
@@ -683,14 +763,15 @@ function MapPostData(posts) {
             favcount: entry.fav_count,
             tagcount: entry.tag_count,
             gentags: entry.tag_count_general,
-            copyrights: entry.tag_string_copyright
+            copyrights: entry.tag_string_copyright,
+            created: new Date(entry.created_at).getTime()
         };
     });
 }
 
 function PreCompressData(posts) {
     return posts.map((entry)=>{
-        return [entry.id,entry.score,entry.upscore,entry.downscore,entry.favcount,entry.tagcount,entry.gentags,entry.copyrights]
+        return [entry.id,entry.score,entry.upscore,entry.downscore,entry.favcount,entry.tagcount,entry.gentags,entry.copyrights,entry.created]
     });
 }
 
@@ -705,6 +786,7 @@ function PostDecompressData(posts) {
             tagcount: entry[5],
             gentags: entry[6],
             copyrights: entry[7],
+            created: entry[8]
         };
     });
 }
@@ -797,7 +879,7 @@ async function GetPeriodUploads(username,period,limited=false,domname=null) {
         let data = await GetPostsCountdown(max_post_limit_query,BuildTagParams(period,`user:${username}`),domname);
         let mapped_data = MapPostData(data);
         if (limited) {
-            mapped_data = Object.assign(...tooltip_metrics.map((metric)=>{return {[metric]: GetPostStatistics(mapped_data,metric)};}));
+            mapped_data = Object.assign(...tooltip_metrics.map((metric)=>{return {[metric]: GetAllStatistics(mapped_data,metric)};}));
             JSPLib.storage.saveData(key, {value: mapped_data, expires: JSPLib.utility.getExpiration(max_expires)});
         } else {
             JSPLib.storage.saveData(key, {value: PreCompressData(mapped_data), expires: JSPLib.utility.getExpiration(max_expires)});
