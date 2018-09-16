@@ -1582,16 +1582,16 @@ function main() {
         setRebindInterval("#saved_search_label_string", 'ss', true);
     }
     if ($("#c-saved-searches #a-edit").length) {
-        InitializeAutocompleteIndexed("#saved_search_label_string", 'ss', true);
+        setTimeout(()=>{InitializeAutocompleteIndexed("#saved_search_label_string", 'ss', true);}, timer_poll_interval);
     }
     if ($("#c-forum-topics").length) {
         JSPLib.utility.setCSSStyle(forum_css);
         $("#quick_search_body_matches").parent().parent().after(forum_topic_search);
-        InitializeAutocompleteIndexed("#quick_search_title_matches", 'ft');
+        setTimeout(()=>{InitializeAutocompleteIndexed("#quick_search_title_matches", 'ft');}, timer_poll_interval);
     }
     if ($("#c-forum-posts #a-search").length) {
         JSPLib.utility.setCSSStyle(forum_css,'forum');
-        InitializeAutocompleteIndexed("#search_topic_title_matches", 'ft');
+        setTimeout(()=>{InitializeAutocompleteIndexed("#search_topic_title_matches", 'ft');}, timer_poll_interval);
     }
     if ($("#c-uploads #a-index").length) {
         $("#search_post_tags_match").attr('data-autocomplete','tag-query');
@@ -1599,7 +1599,7 @@ function main() {
         setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, timer_poll_interval);
     }
     if ($(autocomplete_userlist.join(',')).length) {
-        InitializeAutocompleteIndexed(autocomplete_userlist.join(','), 'us');
+        setTimeout(()=>{InitializeAutocompleteIndexed(autocomplete_userlist.join(','), 'us');}, timer_poll_interval);
     }
     if ($("#c-users #a-edit").length) {
         InstallScript("https://cdn.rawgit.com/jquery/jquery-ui/1.12.1/ui/widgets/tabs.js").done(()=>{
