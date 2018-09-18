@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      18.4
+// @version      19.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -104,12 +104,59 @@ const forum_css = `
 }`;
 
 const program_css = `
-.iac-user-choice {
+.iac-user-choice a {
     font-weight: bold;
 }
-.iac-tag-alias {
+.iac-tag-alias a {
     font-style: italic;
 }
+.iac-tag-highlight {
+    margin-top: -5px;
+}
+.iac-tag-highlight > div::before {
+    content: "●";
+    padding-right: 4px;
+    font-weight: bold;
+    font-size: 150%;
+}
+.iac-tag-exact > div::before {
+    color: #EEE;
+}
+.iac-tag-prefix > div::before {
+    color: hotpink;
+}
+.iac-tag-alias > div::before {
+    color: gold;
+}
+.iac-tag-correct > div::before {
+    color: cyan;
+}
+/*
+.iac-tag-exact .ui-menu-item-wrapper {
+    background: #fff;
+}
+.iac-tag-exact .ui-menu-item-wrapper.ui-state-active {
+    background: #eee;
+}
+.iac-tag-prefix .ui-menu-item-wrapper {
+    background: #eff;
+}
+.iac-tag-prefix .ui-menu-item-wrapper.ui-state-active {
+    background: #dee;
+}
+.iac-tag-alias .ui-menu-item-wrapper {
+    background: #ffe;
+}
+.iac-tag-alias .ui-menu-item-wrapper.ui-state-active {
+    background: #eed;
+}
+.iac-tag-correct .ui-menu-item-wrapper {
+    background: #fef;
+}
+.iac-tag-correct .ui-menu-item-wrapper.ui-state-active {
+    background: #ede;
+}
+*/
 `;
 
 //Expiration variables
@@ -174,7 +221,8 @@ const autocomplete_constraints = {
         label: JSPLib.validate.stringonly_constraints,
         post_count: JSPLib.validate.postcount_constraints,
         type: JSPLib.validate.inclusion_constraints(["tag"]),
-        value: JSPLib.validate.stringonly_constraints
+        value: JSPLib.validate.stringonly_constraints,
+        source: JSPLib.validate.stringonly_constraints
     },
     pool: {
         category: JSPLib.validate.inclusion_constraints(["collection","series"]),
@@ -266,7 +314,8 @@ const source_config = {
                 antecedent: tag.antecedent_name || null,
                 value: tag.name,
                 category: tag.category,
-                post_count: tag.post_count
+                post_count: tag.post_count,
+                source: tag.source
             };
         },
         expiration: (d)=>{
@@ -295,7 +344,8 @@ const source_config = {
                 antecedent: null,
                 value: tag.name,
                 category: tag.category,
-                post_count: tag.post_count
+                post_count: tag.post_count,
+                source: "exact"
             };
         },
         expiration: (d)=>{
@@ -721,19 +771,13 @@ function FixupMetatag(value,metatag) {
     }
 }
 
-function MoveAliases(type,data) {
-    if (type !== 'tag') {
-        return;
-    }
-    let length = data.length;
-    for (let i = 0; i < length; i++) {
-        if (data[i].antecedent) {
-            let item = data.splice(i,1);
-            data.push(item[0]);
-            length--;
-            i--;
-        }
-    }
+function SortSources(type,data) {
+    let source_order = Danbooru.IAC.user_settings.source_order;
+    data.sort((a,b)=>{
+        return source_order.indexOf(a.source) - source_order.indexOf(b.source);
+    }).forEach((entry,i)=>{
+        data[i] = entry;
+    });
 }
 
 function FixExpirationCallback(key,value,tagname,type) {
@@ -871,11 +915,22 @@ function InsertUserSelected(data,input,selected) {
 
 //For autocomplete render
 function HighlightSelected($link,list,item) {
-    if (item.expires) {
-        $('a',$link).addClass('iac-user-choice');
-    }
-    if (item.antecedent) {
-        $('a',$link).addClass('iac-tag-alias');
+    if (Danbooru.IAC.user_settings.source_highlight_enabled) {
+        if (item.expires) {
+            $($link).addClass('iac-user-choice');
+        }
+        if (item.type === 'tag') {
+            $($link).addClass('iac-tag-highlight');
+            if (item.source === 'exact') {
+                $($link).addClass('iac-tag-exact');
+            } else if (item.source === 'prefix') {
+                $($link).addClass('iac-tag-prefix');
+            } else if (item.source === 'alias') {
+                $($link).addClass('iac-tag-alias');
+            } else if (item.source === 'correct') {
+                $($link).addClass('iac-tag-correct');
+            }
+        }
     }
     return $link;
 }
@@ -978,8 +1033,8 @@ function ProcessSourceData(type,metatag,term,data,resp) {
         $.each(data, (i,val)=> {FixupMetatag(val,metatag);});
     }
     KeepSourceData(type, metatag, data);
-    if (Danbooru.IAC.user_settings.move_aliases) {
-        MoveAliases(type, data);
+    if (Danbooru.IAC.user_settings.source_sorting_enabled && type === 'tag') {
+        SortSources(type, data);
     }
     if (Danbooru.IAC.user_settings.usage_enabled) {
         AddUserSelected(type, metatag, term, data);
@@ -1143,7 +1198,7 @@ function RenderTextinput(program_shortcut,setting_name,length=20) {
 <div class="${program_shortcut}-textinput" data-setting="${setting_name}" style="margin:0.5em">
     <h4>${display_name}</h4>
     <div style="margin-left:0.5em">
-        <input type="text" class="${program_shortcut}-setting" name="${program_shortcut}-setting-${setting_key}" id="${program_shortcut}-setting-${setting_key}" value="${value}" size="${length}" autocomplete="off" class="text" style="padding:1px 0.5em">
+        <input type="text" class="${program_shortcut}-setting" name="${program_shortcut}-setting-${setting_key}" id="${program_shortcut}-setting-${setting_key}" value="${value}" size="${length}" autocomplete="off" class="text" style="padding:1px 0.5em"  data-parent="2">
         <span class="${program_shortcut}-setting-tooltip" style="display:block;font-style:italic;color:#666">${hint}</span>
     </div>
 </div>`;
@@ -1159,10 +1214,38 @@ function RenderCheckbox(program_shortcut,setting_name) {
 <div class="${program_shortcut}-checkbox" data-setting="${setting_name}" style="margin:0.5em">
     <h4>${display_name}</h4>
     <div style="margin-left:0.5em">
-        <input type="checkbox" ${checked} class="${program_shortcut}-setting" name="${program_shortcut}-enable-${setting_key}" id="${program_shortcut}-enable-${setting_key}">
+        <input type="checkbox" ${checked} class="${program_shortcut}-setting" name="${program_shortcut}-enable-${setting_key}" id="${program_shortcut}-enable-${setting_key}"  data-parent="2">
         <span class="${program_shortcut}-setting-tooltip" style="display:inline;font-style:italic;color:#666">${hint}</span>
     </div>
 </div>`;
+}
+
+function RenderSortlist(program_shortcut,setting_name) {
+    let program_key = program_shortcut.toUpperCase();
+    let setting_key = KebabCase(setting_name);
+    let display_name = DisplayCase(setting_name);
+    let sort_list = Danbooru[program_key].user_settings[setting_name];
+    let hint = settings_config[setting_name].hint;
+    let html = '';
+    $.each(sort_list,(i,sortitem)=>{
+        let display_sortitem = DisplayCase(sortitem);
+        html += `
+<li class="ui-state-default" style="width:5.5em;font-size:125%">
+    <input type="hidden" class="${program_shortcut}-setting" name="${program_shortcut}-enable-${setting_key}" id="${program_shortcut}-enable-${setting_key}" data-sort="${sortitem}" data-parent="3">
+    <div style="padding:5px">
+        <span class="ui-icon ui-icon-arrowthick-2-n-s"></span>
+        ${display_sortitem}
+    </div>
+</li>`;
+    });
+    return `
+<div class="${program_shortcut}-sortlist" data-setting="${setting_name}" style="margin:0.5em">
+    <h4>${display_name}</h4>
+    <ul style="margin:0.5em">
+        ${html}
+    </ul>
+    <span class="${program_shortcut}-setting-tooltip" style="display:inline;font-style:italic;color:#666">${hint}</span>
+</div>`
 }
 
 function RenderLinkclick(program_shortcut,setting_name,display_name,link_text) {
@@ -1175,6 +1258,7 @@ function RenderLinkclick(program_shortcut,setting_name,display_name,link_text) {
     </div>
 </div>`;
 }
+
 const usage_settings = `
 <div id="iac-settings" style="float:left;width:50%">
     <div id="iac-script-message" class="prose">
@@ -1195,6 +1279,33 @@ const usage_settings = `
     <div id="iac-display-settings" style="margin-bottom:2em">
         <div id="iac-display-message" class="prose">
             <h4>Display settings</h4>
+            <p>These settings affect the presentation of autocomplete data to the user.</p>
+            <ul>
+                <li><b>Source highlight enabled:</b> Adds highlights and stylings to the HTML classes set by the program.
+                    <ul>
+                        <li><code>.iac-user-choice</code> - bold text</li>
+                        <li><code>.iac-tag-exact</code> - grey dot</li>
+                        <li><code>.iac-tag-prefix</code> - pink dot</li>
+                        <li><code>.iac-tag-alias</code> - gold dot, italic text</li>
+                        <li><code>.iac-tag-correct</code> - cyan dot</li>
+                    </ul>
+                </li>
+                <li><b>Source sorting enabled:</b> Groups the results by tag autocomplete sources.
+                    <ul>
+                        <li>When not enabled, the default is to order using the post count and a weighting scheme.</li>
+                        <li><code>sort_value = post_count x weight_value</code></li>
+                        <li>The different weights are: (Exact: 1.0), (Prefix: 0.8), (Alias: 0.2), (Correct: 0.1).</li>
+                    </ul>
+                </li>
+                <li><b>Source order:</b> The different autocomplete sources use alternate methods for querying results based upon what has been typed in so far.
+                    <ul>
+                        <li><b>Exact:</b> Matches exactly letter for letter.</li>
+                        <li><b>Prefix:</b> Matches the first letter of each word.</li>
+                        <li><b>Alias:</b> Same as exact, but it checks aliases.</li>
+                        <li><b>Correct:</b> Tags off by 1-3 letters, i.e. mispellings.</li>
+                    </ul>
+                </li>
+            </ul>
         </div>
     </div>
     <div id="iac-network-settings" style="margin-bottom:2em">
@@ -1257,6 +1368,8 @@ const usage_settings = `
     </div>
 </div>`;
 
+const tag_sources = ['exact','prefix','alias','correct'];
+
 const settings_config = {
     usage_multiplier: {
         default: 0.9,
@@ -1281,10 +1394,21 @@ const settings_config = {
         validate: (data)=>{return validate.isBoolean(data);},
         hint: "Uncheck to turn off usage mechanism."
     },
-    move_aliases: {
+    source_highlight_enabled: {
         default: true,
         validate: (data)=>{return validate.isBoolean(data);},
-        hint: "Check to move aliases to the end of the autocomplete list."
+        hint: "Check to add highlights to tag autocomplete by source."
+    },
+    source_sorting_enabled: {
+        default: true,
+        validate: (data)=>{return validate.isBoolean(data);},
+        hint: "Check to group tag autocomplete results by source."
+    },
+    source_order: {
+        allitems: tag_sources,
+        default: tag_sources,
+        validate: (data)=>{return Array.isArray(data) && JSPLib.utility.setSymmetricDifference(data,tag_sources).length === 0},
+        hint: "Drag and drop the sources to determine the order."
     },
     alternate_tag_source: {
         default: false,
@@ -1337,7 +1461,9 @@ function SaveUserSettingsClick(program_shortcut,program_name) {
         let invalid_setting = false;
         let temp_selectors = {};
         $(`#${program_shortcut}-settings .${program_shortcut}-setting[id]`).each((i,entry)=>{
-            let setting_name = $(entry).parent().parent().data('setting');
+            let parent_level = $(entry).data('parent');
+            let container = JSPLib.utility.getNthParent(entry,parent_level);
+            let setting_name = $(container).data('setting');
             if (entry.type === "checkbox") {
                 let selector = $(entry).data('selector');
                 if (selector) {
@@ -1356,6 +1482,12 @@ function SaveUserSettingsClick(program_shortcut,program_name) {
                     invalid_setting = true;
                  }
                  $(entry).val(Danbooru[program_key].user_settings[setting_name]);
+            } else if (entry.type === "hidden") {
+                let sortitem = $(entry).data('sort');
+                if (sortitem) {
+                    temp_selectors[setting_name] = temp_selectors[setting_name] || [];
+                    temp_selectors[setting_name].push(sortitem);
+                }
             }
         });
         $.each(temp_selectors,(setting_name)=>{
@@ -1449,10 +1581,13 @@ function RenderSettingsMenu() {
     $("#iac-usage-settings").append(RenderTextinput("iac",'usage_maximum'));
     $("#iac-usage-settings").append(RenderTextinput("iac",'usage_expires'));
     $("#iac-usage-settings").append(RenderCheckbox("iac",'usage_enabled'));
-    $("#iac-display-settings").append(RenderCheckbox("iac",'move_aliases'));
+    $("#iac-display-settings").append(RenderCheckbox("iac",'source_highlight_enabled'));
+    $("#iac-display-settings").append(RenderCheckbox("iac",'source_sorting_enabled'));
+    $("#iac-display-settings").append(RenderSortlist("iac",'source_order'));
     $("#iac-network-settings").append(RenderCheckbox("iac",'alternate_tag_source'));
     $("#iac-network-settings").append(RenderCheckbox("iac",'network_only_mode'));
     $("#iac-cache-settings").append(RenderLinkclick("iac",'purge_cache',`Purge cache (<span id="iac-purge-counter">...</span>)`,"Click to purge"));
+    $(".iac-sortlist ul").sortable();
     SaveUserSettingsClick('iac','IndexedAutocomplete');
     ResetUserSettingsClick('iac','IndexedAutocomplete',localstorage_keys,program_reset_keys);
     PurgeCacheClick('iac','IndexedAutocomplete',program_cache_regex,"#iac-purge-counter");
@@ -1461,6 +1596,11 @@ function RenderSettingsMenu() {
 //Main menu tabs
 
 const css_themes_url = 'https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/themes/base/jquery-ui.css';
+
+const settings_css = `
+.ui-tabs {
+    position: inherit;
+}`;
 
 const settings_field = `
 <fieldset id="userscript-settings-menu" style="display:none">
@@ -1512,6 +1652,8 @@ function InstallSettingsMenu(program_name) {
             OtherSettingsClicks();
         },1000);
         AddStyleSheet(css_themes_url);
+        JSPLib.utility.setCSSStyle(settings_css,'settings');
+        InstallSettingsMenu.install_script = true;
     } else {
         $("#userscript-settings-menu").tabs("destroy");
     }
@@ -1544,7 +1686,8 @@ function main() {
         return;
     }
     JSPLib.utility.setCSSStyle(program_css,'program');
-    Danbooru.IAC = {source_data: {},
+    Danbooru.IAC = {
+        source_data: {},
         choice_order: JSPLib.storage.getStorageData('iac-choice-order',localStorage,{}),
         choice_data: JSPLib.storage.getStorageData('iac-choice-data',localStorage,{}),
         user_settings: LoadUserSettings('iac'),
@@ -1585,7 +1728,7 @@ function main() {
         setTimeout(()=>{InitializeAutocompleteIndexed("#saved_search_label_string", 'ss', true);}, timer_poll_interval);
     }
     if ($("#c-forum-topics").length) {
-        JSPLib.utility.setCSSStyle(forum_css);
+        JSPLib.utility.setCSSStyle(forum_css,'forum');
         $("#quick_search_body_matches").parent().parent().after(forum_topic_search);
         setTimeout(()=>{InitializeAutocompleteIndexed("#quick_search_title_matches", 'ft');}, timer_poll_interval);
     }
@@ -1605,6 +1748,9 @@ function main() {
         InstallScript("https://cdn.rawgit.com/jquery/jquery-ui/1.12.1/ui/widgets/tabs.js").done(()=>{
             InstallSettingsMenu("IndexedAutocomplete");
             RenderSettingsMenu();
+            if (!InstallSettingsMenu.install_script) {
+                JSPLib.utility.setCSSStyle(settings_css,'settings');
+            }
         });
     }
     JSPLib.debug.debugExecute(()=>{
