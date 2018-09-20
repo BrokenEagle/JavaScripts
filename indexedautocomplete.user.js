@@ -209,8 +209,6 @@ const autocomplete_constraints = {
             array: true,
             length: {
                 maximum : 10,
-                minimum: 1,
-                tooShort: "array is too short (minimum is %{count} items)",
                 tooLong : "array is too long (maximum is %{count} items)"
             }
         }
@@ -984,6 +982,9 @@ function BroadcastIAC(ev) {
 function NetworkSource(type,key,term,resp,metatag) {
     JSPLib.debug.debuglog("Querying",type,':',term);
     JSPLib.danbooru.submitRequest(source_config[type].url,source_config[type].data(term)).then((data)=>{
+        if (!data || !Array.isArray(data)) {
+            resp([]);
+        }
         var d = $.map(data, source_config[type].map);
         var expiration_time = source_config[type].expiration(d);
         var save_data = JSPLib.utility.dataCopy(d);
