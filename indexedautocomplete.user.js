@@ -131,32 +131,6 @@ const program_css = `
 .iac-tag-correct > div::before {
     color: cyan;
 }
-/*
-.iac-tag-exact .ui-menu-item-wrapper {
-    background: #fff;
-}
-.iac-tag-exact .ui-menu-item-wrapper.ui-state-active {
-    background: #eee;
-}
-.iac-tag-prefix .ui-menu-item-wrapper {
-    background: #eff;
-}
-.iac-tag-prefix .ui-menu-item-wrapper.ui-state-active {
-    background: #dee;
-}
-.iac-tag-alias .ui-menu-item-wrapper {
-    background: #ffe;
-}
-.iac-tag-alias .ui-menu-item-wrapper.ui-state-active {
-    background: #eed;
-}
-.iac-tag-correct .ui-menu-item-wrapper {
-    background: #fef;
-}
-.iac-tag-correct .ui-menu-item-wrapper.ui-state-active {
-    background: #ede;
-}
-*/
 `;
 
 //Expiration variables
