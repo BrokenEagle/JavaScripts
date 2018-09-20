@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      19.0
+// @version      20.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -743,7 +743,31 @@ function FixupMetatag(value,metatag) {
     }
 }
 
-function SortSources(type,data) {
+function SortSources(data) {
+    var scaler;
+    switch(Danbooru.IAC.user_settings.postcount_scale[0]) {
+        case "logarithmic":
+            scaler = ((num)=>{return Math.log(num);});
+            break;
+        case "square_root":
+            scaler = ((num)=>{return Math.sqrt(num);});
+            break;
+        case "linear":
+        default:
+            scaler = ((num)=>{return num;});
+    }
+    data.sort((a,b)=>{
+        let mult_a = Danbooru.IAC.user_settings[`${a.source}_source_weight`];
+        let mult_b = Danbooru.IAC.user_settings[`${b.source}_source_weight`];
+        let weight_a = mult_a * scaler(a.post_count);
+        let weight_b = mult_b * scaler(b.post_count);
+        return weight_b - weight_a;
+    }).forEach((entry,i)=>{
+        data[i] = entry;
+    });
+}
+
+function GroupSources(data) {
     let source_order = Danbooru.IAC.user_settings.source_order;
     data.sort((a,b)=>{
         return source_order.indexOf(a.source) - source_order.indexOf(b.source);
@@ -872,7 +896,7 @@ function InsertUserSelected(data,input,selected) {
     let use_count = (Danbooru.IAC.choice_data[type][term] && Danbooru.IAC.choice_data[type][term].use_count) || 0;
     Danbooru.IAC.choice_data[type][term] = source_data;
     Danbooru.IAC.choice_data[type][term].expires = JSPLib.utility.getExpiration(Danbooru.IAC.user_settings.usage_expires * JSPLib.utility.one_day);
-    Danbooru.IAC.choice_data[type][term].use_count = use_count + 1, Danbooru.IAC.user_settings.usage_maximum;
+    Danbooru.IAC.choice_data[type][term].use_count = use_count + 1;
     if (Danbooru.IAC.user_settings.usage_maximum > 0) {
         Danbooru.IAC.choice_data[type][term].use_count = Math.min(Danbooru.IAC.choice_data[type][term].use_count, Danbooru.IAC.user_settings.usage_maximum);
     }
@@ -1008,8 +1032,13 @@ function ProcessSourceData(type,metatag,term,data,resp) {
         $.each(data, (i,val)=> {FixupMetatag(val,metatag);});
     }
     KeepSourceData(type, metatag, data);
-    if (Danbooru.IAC.user_settings.source_sorting_enabled && type === 'tag') {
-        SortSources(type, data);
+    if (type === 'tag') {
+        if (Danbooru.IAC.user_settings.alternate_sorting_enabled) {
+            SortSources(data);
+        }
+        if (Danbooru.IAC.user_settings.source_grouping_enabled) {
+            GroupSources(data);
+        }
     }
     if (Danbooru.IAC.user_settings.usage_enabled) {
         AddUserSelected(type, metatag, term, data);
@@ -1173,7 +1202,7 @@ function RenderTextinput(program_shortcut,setting_name,length=20) {
 <div class="${program_shortcut}-textinput" data-setting="${setting_name}" style="margin:0.5em">
     <h4>${display_name}</h4>
     <div style="margin-left:0.5em">
-        <input type="text" class="${program_shortcut}-setting" name="${program_shortcut}-setting-${setting_key}" id="${program_shortcut}-setting-${setting_key}" value="${value}" size="${length}" autocomplete="off" class="text" style="padding:1px 0.5em"  data-parent="2">
+        <input type="text" class="${program_shortcut}-setting" name="${program_shortcut}-setting-${setting_key}" id="${program_shortcut}-setting-${setting_key}" value="${value}" size="${length}" autocomplete="off" class="text" style="padding:1px 0.5em" data-parent="2">
         <span class="${program_shortcut}-setting-tooltip" style="display:block;font-style:italic;color:#666">${hint}</span>
     </div>
 </div>`;
@@ -1193,6 +1222,33 @@ function RenderCheckbox(program_shortcut,setting_name) {
         <span class="${program_shortcut}-setting-tooltip" style="display:inline;font-style:italic;color:#666">${hint}</span>
     </div>
 </div>`;
+}
+
+function RenderInputSelectors(program_shortcut,setting_name,type) {
+    let program_key = program_shortcut.toUpperCase();
+    let setting_key = KebabCase(setting_name);
+    let display_name = DisplayCase(setting_name);
+    let all_selectors = settings_config[setting_name].allitems;
+    let hint = settings_config[setting_name].hint;
+    let html = '';
+    $.each(all_selectors,(i,selector)=>{
+        let checked = (Danbooru[program_key].user_settings[setting_name].includes(selector) ? "checked" : "");
+        let display_selection = DisplayCase(selector);
+        let selection_name = `${program_shortcut}-${setting_key}`;
+        let selection_key = `${program_shortcut}-${setting_key}-${selector}`;
+        html += `
+            <label for="${selection_key}" style="width:100px">${display_selection}</label>
+            <input type="${type}" ${checked} class="${program_shortcut}-setting" name="${selection_name}" id="${selection_key}" data-selector="${selector}" data-parent="2">`;
+    });
+    return `
+<div class="${program_shortcut}-selectors" data-setting="${setting_name}" style="margin:0.5em">
+    <h4>${display_name}</h4>
+    <div style="margin-left:0.5em">
+        ${html}
+        <span class="${program_shortcut}-setting-tooltip" style="display:block;font-style:italic;color:#666">${hint}</span>
+    </div>
+</div>
+`;
 }
 
 function RenderSortlist(program_shortcut,setting_name) {
@@ -1246,8 +1302,8 @@ const usage_settings = `
             <p>These settings control how items get sorted in the autocomplete popup.</p>
             <h5>Equations</h5>
             <ul>
-                <li><b>Hit:</b> <span style="font-family:monospace;font-size:125%">usage_count = Max( usage_count + 1 , usage_maximum)</span>
-                <li><b>Miss:</b> <span style="font-family:monospace;font-size:125%">usage_count = usage_count * usage_multiplier</span>
+                <li><span style="width:5em;display:inline-block"><b>Hit:</b></span><span style="font-family:monospace;font-size:125%">usage_count = Min( usage_count + 1 , usage_maximum )</span></li>
+                <li><span style="width:5em;display:inline-block"><b>Miss:</b></span><span style="font-family:monospace;font-size:125%">usage_count = usage_count * usage_multiplier</span></li>
             </ul>
         </div>
     </div>
@@ -1265,7 +1321,7 @@ const usage_settings = `
                         <li><code>.iac-tag-correct</code> - cyan dot</li>
                     </ul>
                 </li>
-                <li><b>Source sorting enabled:</b> Groups the results by tag autocomplete sources.
+                <li><b>Source grouping enabled:</b> Groups the results by tag autocomplete sources.
                     <ul>
                         <li>When not enabled, the default is to order using the post count and a weighting scheme.</li>
                         <li><code>sort_value = post_count x weight_value</code></li>
@@ -1280,6 +1336,19 @@ const usage_settings = `
                         <li><b>Correct:</b> Tags off by 1-3 letters, i.e. mispellings.</li>
                     </ul>
                 </li>
+            </ul>
+        </div>
+    </div>
+    <div id="iac-sort-settings" style="margin-bottom:2em">
+        <div id="iac-sort-message" class="prose">
+            <h4>Sort settings</h4>
+            <p>These settings affect the order of tag autocomplete data.</p>
+            <p><span style="font-size:80%;color:#888"><b>Note:</b> These settings won't affect anything if source grouping is enabled under "Display settings" above.</span></p>
+            <h5>Equations</h5>
+            <ul>
+                <li><span style="width:8em;display:inline-block"><b>Linear:</b></span><span style="font-family:monospace;font-size:125%">tag_weight = source_weight x post_count</span></li>
+                <li><span style="width:8em;display:inline-block"><b>Square root:</b></span><span style="font-family:monospace;font-size:125%">tag_weight = source_weight x Sqrt( post_count )</span></li>
+                <li><span style="width:8em;display:inline-block"><b>Logarithmic:</b></span><span style="font-family:monospace;font-size:125%">tag_weight = source_weight x Log( post_count )</span></li>
             </ul>
         </div>
     </div>
@@ -1344,6 +1413,7 @@ const usage_settings = `
 </div>`;
 
 const tag_sources = ['exact','prefix','alias','correct'];
+const scale_types = ['linear','square_root','logarithmic'];
 
 const settings_config = {
     usage_multiplier: {
@@ -1369,12 +1439,47 @@ const settings_config = {
         validate: (data)=>{return validate.isBoolean(data);},
         hint: "Uncheck to turn off usage mechanism."
     },
+    alternate_sorting_enabled: {
+        default: false,
+        validate: (data)=>{return validate.isBoolean(data);},
+        hint: "Check to use alternate weights and/or scales for sorting calculations."
+    },
+    postcount_scale: {
+        allitems: scale_types,
+        default: ['linear'],
+        validate: (data)=>{return Array.isArray(data) && data.length === 1 && scale_types.includes(data[0])},
+        hint: "Select the type of scaling to be applied to the post count."
+    },
+    exact_source_weight: {
+        default: 1.0,
+        parse: parseFloat,
+        validate: (data)=>{return validate.isNumber(data) && data >= 0.0 && data <= 1.0;},
+        hint: "Valid values: 0.0 - 1.0."
+    },
+    prefix_source_weight: {
+        default: 0.8,
+        parse: parseFloat,
+        validate: (data)=>{return validate.isNumber(data) && data >= 0.0 && data <= 1.0;},
+        hint: "Valid values: 0.0 - 1.0."
+    },
+    alias_source_weight: {
+        default: 0.2,
+        parse: parseFloat,
+        validate: (data)=>{return validate.isNumber(data) && data >= 0.0 && data <= 1.0;},
+        hint: "Valid values: 0.0 - 1.0."
+    },
+    correct_source_weight: {
+        default: 0.1,
+        parse: parseFloat,
+        validate: (data)=>{return validate.isNumber(data) && data >= 0.0 && data <= 1.0;},
+        hint: "Valid values: 0.0 - 1.0."
+    },
     source_highlight_enabled: {
         default: true,
         validate: (data)=>{return validate.isBoolean(data);},
         hint: "Check to add highlights to tag autocomplete by source."
     },
-    source_sorting_enabled: {
+    source_grouping_enabled: {
         default: true,
         validate: (data)=>{return validate.isBoolean(data);},
         hint: "Check to group tag autocomplete results by source."
@@ -1383,7 +1488,7 @@ const settings_config = {
         allitems: tag_sources,
         default: tag_sources,
         validate: (data)=>{return Array.isArray(data) && JSPLib.utility.setSymmetricDifference(data,tag_sources).length === 0},
-        hint: "Drag and drop the sources to determine the order."
+        hint: "Drag and drop the sources to determine the group order."
     },
     alternate_tag_source: {
         default: false,
@@ -1439,7 +1544,7 @@ function SaveUserSettingsClick(program_shortcut,program_name) {
             let parent_level = $(entry).data('parent');
             let container = JSPLib.utility.getNthParent(entry,parent_level);
             let setting_name = $(container).data('setting');
-            if (entry.type === "checkbox") {
+            if (entry.type === "checkbox" || entry.type === "radio") {
                 let selector = $(entry).data('selector');
                 if (selector) {
                     temp_selectors[setting_name] = temp_selectors[setting_name] || [];
@@ -1491,7 +1596,7 @@ function ResetUserSettingsClick(program_shortcut,program_name,delete_keys,reset_
                 if (entry.type === "checkbox") {
                     let selector = $input.data('selector');
                     if (selector) {
-                        $input.prop('checked', IsSettingEnabled(setting_name,selector));
+                        $input.prop('checked', Danbooru[program_key].user_settings[setting_name].includes(selector));
                         $input.checkboxradio("refresh");
                     } else {
                         $input.prop('checked', Danbooru[program_key].user_settings[setting_name]);
@@ -1552,17 +1657,25 @@ function PurgeCacheClick(program_shortcut,program_name,regex,domname) {
 
 function RenderSettingsMenu() {
     $("#indexed-autocomplete").append(usage_settings);
+    $("#iac-usage-settings").append(RenderCheckbox("iac",'usage_enabled'));
     $("#iac-usage-settings").append(RenderTextinput("iac",'usage_multiplier'));
     $("#iac-usage-settings").append(RenderTextinput("iac",'usage_maximum'));
     $("#iac-usage-settings").append(RenderTextinput("iac",'usage_expires'));
-    $("#iac-usage-settings").append(RenderCheckbox("iac",'usage_enabled'));
     $("#iac-display-settings").append(RenderCheckbox("iac",'source_highlight_enabled'));
-    $("#iac-display-settings").append(RenderCheckbox("iac",'source_sorting_enabled'));
+    $("#iac-display-settings").append(RenderCheckbox("iac",'source_grouping_enabled'));
     $("#iac-display-settings").append(RenderSortlist("iac",'source_order'));
+    $("#iac-sort-settings").append(RenderCheckbox("iac",'alternate_sorting_enabled'));
+    $("#iac-sort-settings").append(RenderInputSelectors("iac",'postcount_scale','radio'));
+    $("#iac-sort-settings").append(RenderTextinput("iac",'exact_source_weight',5));
+    $("#iac-sort-settings").append(RenderTextinput("iac",'prefix_source_weight',5));
+    $("#iac-sort-settings").append(RenderTextinput("iac",'alias_source_weight',5));
+    $("#iac-sort-settings").append(RenderTextinput("iac",'correct_source_weight',5));
     $("#iac-network-settings").append(RenderCheckbox("iac",'alternate_tag_source'));
     $("#iac-network-settings").append(RenderCheckbox("iac",'network_only_mode'));
     $("#iac-cache-settings").append(RenderLinkclick("iac",'purge_cache',`Purge cache (<span id="iac-purge-counter">...</span>)`,"Click to purge"));
     $(".iac-sortlist ul").sortable();
+    $(".iac-selectors input").checkboxradio();
+    $(".iac-selectors .ui-state-hover").removeClass('ui-state-hover');
     SaveUserSettingsClick('iac','IndexedAutocomplete');
     ResetUserSettingsClick('iac','IndexedAutocomplete',localstorage_keys,program_reset_keys);
     PurgeCacheClick('iac','IndexedAutocomplete',program_cache_regex,"#iac-purge-counter");
