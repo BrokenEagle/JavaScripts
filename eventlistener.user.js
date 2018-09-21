@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      11.1
+// @version      11.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries)
 // @author       BrokenEagle
@@ -517,6 +517,7 @@ function InsertEvents($eventpage,type) {
 }
 
 function InsertDmails($dmailpage,type) {
+    DecodeProtectedEmail($dmailpage);
     $("tr.read-false", $dmailpage).css("font-weight","bold");
     $(`#${type}-table`).append($(".striped",$dmailpage));
     let $dmails_table = $(`#${type}-table`);
@@ -524,6 +525,7 @@ function InsertDmails($dmailpage,type) {
 }
 
 function InsertComments($commentpage) {
+    DecodeProtectedEmail($commentpage);
     $(".post-preview",$commentpage).addClass("blacklisted");
     $(".edit_comment",$commentpage).hide();
     $("#comment-table").append($(".list-of-comments",$commentpage));
@@ -531,6 +533,7 @@ function InsertComments($commentpage) {
 }
 
 function InsertForums($forumpage) {
+    DecodeProtectedEmail($forumpage);
     let $forums_table = $("#forum-table");
     $forums_table.append($(".striped",$forumpage));
     InitializeTopicIndexLinks($forums_table);
@@ -538,6 +541,7 @@ function InsertForums($forumpage) {
 }
 
 function InsertNotes($notepage) {
+    DecodeProtectedEmail($notepage);
     let $notes_table = $("#note-table");
     $notes_table.append($(".striped",$notepage));
     OrderNotesTable($notes_table);
@@ -554,6 +558,18 @@ function ReadForumTopic(topicid) {
         headers: {
             Accept: "text/html",
         }
+    });
+}
+
+function DecodeProtectedEmail(obj) {
+    $('[data-cfemail]',obj).each((i,entry)=>{
+        let encoded_email = $(entry).data('cfemail');
+        let percent_decode = '';
+        let xorkey = '0x'+encoded_email.substr(0,2) | 0;
+        for(let n = 2; encoded_email.length - n; n += 2) {
+            percent_decode+='%'+('0'+('0x'+encoded_email.substr(n,2)^xorkey).toString(16)).slice(-2);
+        }
+        entry.outerHTML = decodeURIComponent(percent_decode);
     });
 }
 
