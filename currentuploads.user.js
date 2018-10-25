@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      12.0
+// @version      13.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Gives up-to-date stats on uploads
 // @author       BrokenEagle
@@ -61,6 +61,7 @@ const period_selectors = ['daily','weekly','monthly','yearly','alltime'];
 const timevalues = ['d','w','mo','y','at'];
 const manual_periods = ['w','mo'];
 const limited_periods = ['y','at'];
+const copyright_periods = ['d','w','mo'];
 
 //Period constants
 const period_info = {
@@ -147,6 +148,7 @@ const program_css = `
     overflow-y: auto;
 }
 #count-controls {
+    display: none;
     margin-top: 1em;
     margin-left: 1em;
 }
@@ -223,21 +225,68 @@ const program_css = `
 .cu-limited:hover {
     color: grey;
 }
+#count-copyrights {
+    margin: 1em;
+    display: none;
+}
+#count-copyrights-header {
+    font-size: 1.25em;
+    font-weight: bold;
+}
+#count-copyrights-section {
+    margin: 0.5em;
+    display: none;
+}
+.cu-select-period a {
+    color: grey;
+    margin-right: 1em;
+}
+.cu-select-period.cu-active-period a {
+    font-weight: bold;
+}
+#count-copyrights-list {
+    line-height: 150%;
+}
+#count-copyrights-list .cu-active-copyright a {
+    background: #0073ff;
+    color: #FFF;
+}
+#empty-statistics {
+    margin: 1em;
+    font-weight: bold;
+    font-size: 16px;
+}
+#count-copyrights-manual {
+    margin: 1em;
+    display: none;
+}
 `;
 
 //HTML for user interface
 const notice_box = `
 <div class="ui-corner-all" id="upload-counts">
     <div id="count-module">
-        <div id="count-table">
-        </div>
-        <div id="count-controls">
+        <div id="count-table"></div>
+        <div id="count-controls"></div>
+        <div id="count-copyrights">
+            <div id="count-copyrights-header">Copyrights<a class="ui-icon ui-icon-triangle-1-e"></a><span id="count-copyrights-counter"></span></div>
+            <div id="count-copyrights-section">
+                <div id="count-copyrights-controls"></div>
+                <div id="count-copyrights-list"></div>
+                <div id="count-copyrights-manual">
+                    <input id="count_query_copyright" placeholder="Check copyright" type="text">
+                    <input id="count_add_copyright" type="submit" value="Add" class="btn">
+                </div>
+            </div>
         </div>
         <div id="count-query-user">
             <input id="count_query_user_id" placeholder="Check users" type="text">
             <input id="count_submit_user_id" type="submit" value="Submit" class="btn">
+            <input id="count_refresh_user_id" type="submit" value="Refresh" class="btn">
             <label for="count_approver_select" style="color:black;background-color:lightgrey">Approvals</label>
-            <input id="count_approver_select" type="checkbox">
+            <input id="count_approver_select" class="cu-checkbox" type="checkbox">
+            <label for="count_override_select" style="color:black;background-color:lightgrey">Override</label>
+            <input id="count_override_select" class="cu-checkbox" type="checkbox">
         </div>
     </div>
     <div id="upload-counts-toggle">
@@ -247,11 +296,14 @@ const notice_box = `
 `;
 
 const unstash_notice = '<span id="upload-counts-restore"> - <a href="#" id="restore-count-notice">Restore CurrentUploads</a></span>';
+const copyright_counter = '(<span id="loading-counter">...</span>)';
+const copyright_no_uploads = 'No uploads, so no copyrights available for this period.';
+const copyright_no_statistics = 'No statistics available for this period (<span style="font-size:80%;color:grey">click the table header</span>).';
 
 //Validation values
 
 const validation_constraints = {
-    countentry: JSPLib.validate.postcount_constraints,
+    countentry: JSPLib.validate.counting_constraints,
     implicationentry: JSPLib.validate.integer_constraints,
     postentries: JSPLib.validate.array_constraints,
     statentries: JSPLib.validate.hash_constraints,
@@ -442,6 +494,8 @@ function AddTableData(input,inner_args="") {
 
 //Render functions
 
+//Render table
+
 function RenderTable() {
     return AddTable(RenderHeader() + RenderBody(),'class="striped"');
 }
@@ -463,14 +517,14 @@ function RenderHeader() {
 }
 
 function RenderBody() {
-    if (Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username].length > 3) {
+    if (Danbooru.CU.active_copytags.length > 3) {
         $("#count-table").addClass("overflowed");
     } else {
         $("#count-table").removeClass("overflowed");
     }
     var tabletext = RenderRow('');
-    for (let i = 0;i < Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username].length; i++) {
-        tabletext += RenderRow(Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username][i]);
+    for (let i = 0;i < Danbooru.CU.active_copytags.length; i++) {
+        tabletext += RenderRow(Danbooru.CU.active_copytags[i]);
     }
     return AddTableBody(tabletext);
 }
@@ -513,6 +567,26 @@ function GetTableValue(key,type) {
     var alluploads = GetCountData('ct' + type + '-' + key,"N/A");
     return `(${useruploads}/${alluploads})`;
 }
+
+//Render copyrights
+
+function RenderCopyrights(period) {
+    let copytags = Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username][period].sort();
+    return copytags.map((copyright)=>{
+        let taglink = JSPLib.danbooru.postSearchLink(copyright,JSPLib.utility.maxLengthString(copyright));
+        let active = Danbooru.CU.active_copytags.includes(copyright) ? ' class="cu-active-copyright"' : '';
+        return `<span title="${copyright}" data-copyright="${copyright}"${active}>${taglink}</span>`;
+    }).join(' ');
+}
+
+function RenderCopyrightControls() {
+    return copyright_periods.map((period)=>{
+        let period_name = period_info.longname[period];
+        return `<span class="cu-select-period" data-type="${period}"><a href="#">${JSPLib.utility.titleizeString(period_name)}</a></span>`;
+    }).join(' ') + '<span class="cu-select-period" data-type="manual"><a href="#">Manual</a></span>';
+}
+
+//Render Tooltips
 
 function RenderTooltipData(text,period,limited=false) {
     let tooltip_html = RenderAllToolPopups(period,limited);
@@ -710,7 +784,11 @@ function SortDict(dict) {
         return [key, dict[key].length];
     });
     items.sort((first, second)=>{
-        return second[1] - first[1];
+        if (first[1] !== second[1]) {
+            return second[1] - first[1];
+        } else {
+            return first[0].localeCompare(second[0]);
+        }
     });
     return items.map((entry)=>{return entry[0];});
 }
@@ -936,7 +1014,74 @@ function SetTooltipChangeClick() {
         $(`.cu-select-tooltip[data-type="${Danbooru.CU.current_metric}"]`).addClass("cu-activetooltip");
         $(`.cu-tooltiptext[data-type="${Danbooru.CU.current_metric}"]`).addClass("cu-activetooltip");
         JSPLib.storage.setStorageData('cu-current-metric',Danbooru.CU.current_metric,localStorage);
+        e.preventDefault();
     });
+}
+
+function SetToggleCopyrightsSectionClick() {
+    $("#count-copyrights-header a").click((e)=>{
+        $(e.target).toggleClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
+        $('#count-copyrights-section').slideToggle(100);
+    });
+}
+
+function SetToggleCopyrightTagClick() {
+    $("#count-copyrights-list a").off().click((e)=>{
+        let $container = $(e.target.parentElement);
+        $container.toggleClass("cu-active-copyright");
+        let copyright = $container.data('copyright');
+        if ($container.hasClass("cu-active-copyright")) {
+            Danbooru.CU.active_copytags.push(copyright);
+        } else {
+            Danbooru.CU.active_copytags.splice(Danbooru.CU.active_copytags.indexOf(copyright),1);
+        }
+        e.preventDefault();
+    })
+}
+
+function SetCopyrightPeriodClick() {
+    $(".cu-select-period a").click(async (e)=>{
+        let short_period = Danbooru.CU.copyright_period = $(e.target.parentElement).data('type');
+        $(".cu-select-period").removeClass("cu-active-period");
+        $(`.cu-select-period[data-type="${short_period}"]`).addClass("cu-active-period");
+        if (short_period === 'manual') {
+            $("#count-copyrights-manual").show();
+            $('#count-copyrights-list').html(RenderCopyrights('manual'));
+            SetToggleCopyrightTagClick();
+        } else {
+            $("#count-copyrights-manual").hide();
+            let current_period = period_info.longname[short_period];
+            let is_period_enabled = Danbooru.CU.period_available[Danbooru.CU.usertag][Danbooru.CU.current_username][short_period];
+            if (is_period_enabled) {
+                if (Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username][current_period] === undefined) {
+                    let data = JSPLib.storage.getStorageData(`${current_period}-${Danbooru.CU.counttype}-${Danbooru.CU.current_username}`,sessionStorage);
+                    let copyright_count = GetCopyrightCount(PostDecompressData(data.value));
+                    let user_copytags = SortDict(copyright_count);
+                    if (Danbooru.CU.user_settings.copyrights_merge) {
+                        $("#count-copyrights-counter").html(copyright_counter);
+                        user_copytags = await MergeCopyrightTags(user_copytags);
+                        $("#count-copyrights-counter").html('');
+                    }
+                    Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username][current_period] = user_copytags;
+                }
+                if (Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username][current_period].length === 0) {
+                    $('#count-copyrights-list').html(`<div id="empty-statistics">${copyright_no_uploads}</div>`);
+                } else {
+                    $('#count-copyrights-list').html(RenderCopyrights(current_period));
+                    SetToggleCopyrightTagClick();
+                }
+            } else {
+                $('#count-copyrights-list').html(`<div id="empty-statistics">${copyright_no_statistics}</div>`);
+            }
+        }
+        e.preventDefault();
+    });
+}
+
+async function MergeCopyrightTags(user_copytags) {
+    let query_implications = JSPLib.utility.setDifference(user_copytags,Object.keys(Danbooru.CU.reverse_implications));
+    Object.assign(Danbooru.CU.reverse_implications,...(await Promise.all(query_implications.map(async (key)=>{return {[key]:await GetReverseTagImplication(key)};}))));
+    return user_copytags.filter(value=>{return Danbooru.CU.reverse_implications[value] === 0;});
 }
 
 function SetToggleNoticeClick() {
@@ -955,8 +1100,8 @@ function SetToggleNoticeClick() {
         } else {
             Danbooru.CU.hidden = 1;
             $('#upload-counts').removeClass('opened');
-            $('#count_approver_select').prop('checked', false);
-            $('#count_approver_select').checkboxradio("refresh");
+            $('.cu-checkbox').prop('checked', false);
+            $('.cu-checkbox').checkboxradio("refresh");
             Danbooru.CU.channel.postMessage({type: "hide"});
         }
         JSPLib.storage.setStorageData('cu-hide-current-uploads',Danbooru.CU.hidden,localStorage)
@@ -974,8 +1119,8 @@ function SetStashNoticeClick() {
             Danbooru.CU.stashed = 1;
             Danbooru.CU.hidden = 1;
             $('#upload-counts,#upload-counts-restore').removeClass('opened').addClass('stashed');
-            $('#count_approver_select').prop('checked', false);
-            $('#count_approver_select').checkboxradio("refresh");
+            $('.cu-checkbox').prop('checked', false);
+            $('.cu-checkbox').checkboxradio("refresh");
             Danbooru.CU.channel.postMessage({type: "stash"});
         }
         JSPLib.storage.setStorageData('cu-stash-current-uploads',Danbooru.CU.stashed,localStorage);
@@ -990,6 +1135,25 @@ function SetRestoreNoticeClick() {
         $('#upload-counts,#upload-counts-restore').removeClass('stashed');
         Danbooru.CU.channel.postMessage({type: "unstash"});
         e.preventDefault();
+    });
+}
+
+function SetRefreshUserClick() {
+    $("#count_refresh_user_id").click(async (e)=>{
+        $("#count-copyrights-counter").html(copyright_counter);
+        let diff_tags = JSPLib.utility.setDifference(Danbooru.CU.active_copytags,Danbooru.CU.shown_copytags);
+        let promise_array = [];
+        $.each((diff_tags),(i,val)=>{
+            promise_array.push(GetTagData(`${Danbooru.CU.usertag}:${Danbooru.CU.current_username} ${val}`));
+            promise_array.push(GetTagData(val));
+        });
+        await Promise.all(promise_array);
+        $("#count-copyrights-counter").html('');
+        Danbooru.CU.shown_copytags = JSPLib.utility.dataCopy(Danbooru.CU.active_copytags);
+        $('#count-table').html(RenderTable());
+        SetTooltipHover();
+        GetPeriodClick();
+        $(`.cu-select-tooltip[data-type="${Danbooru.CU.current_metric}"] a`).click();
     });
 }
 
@@ -1016,10 +1180,30 @@ function SetCheckUserClick() {
                 Danbooru.CU.counttype = is_approvals ? 'approvals' : 'uploads';
                 PopulateTable();
             } else {
+                $('#count-controls,#count-copyrights').hide();
                 $('#count-table').html(`<div id="empty-uploads">User doesn't exist!</div>`);
             }
         }
         e.preventDefault();
+    });
+}
+
+function SetAddCopyrightClick() {
+    $("#count_add_copyright").click(async (e)=>{
+        let user_copytags = Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username];
+        let tag = $("#count_query_copyright").val();
+        let tagdata = await JSPLib.danbooru.submitRequest('tags',{search:{name: tag}},[]);
+        if (tagdata.length === 0) {
+            Danbooru.Utility.notice('Tag not valid');
+            return;
+        }
+        tag = tagdata[0].name;
+        user_copytags.manual.push(tag);
+        user_copytags.manual = JSPLib.utility.setUnique(user_copytags.manual);
+        Danbooru.CU.active_copytags.push(tag);
+        Danbooru.CU.active_copytags = JSPLib.utility.setUnique(Danbooru.CU.active_copytags);
+        $('#count-copyrights-list').html(RenderCopyrights('manual'));
+        SetToggleCopyrightTagClick();
     });
 }
 
@@ -1042,6 +1226,7 @@ function SetTooltipHover() {
 async function ProcessUploads() {
     var promise_array = [];
     var current_uploads = [];
+    var user_copytags = [];
     if (Danbooru.CU.current_username !== "Anonymous") {
         current_uploads = await GetPeriodUploads(Danbooru.CU.current_username,'d');
     }
@@ -1057,15 +1242,13 @@ async function ProcessUploads() {
         if (Danbooru.CU.is_gold_user && Danbooru.CU.user_settings.copyrights_enabled) {
             let curr_copyright_count = GetCopyrightCount(current_uploads);
             let prev_copyright_count = GetCopyrightCount(previous_uploads);
-            Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username] = SortDict(curr_copyright_count);
+            user_copytags = SortDict(curr_copyright_count);
             if (Danbooru.CU.user_settings.copyrights_merge) {
-                let query_implications = JSPLib.utility.setDifference(Object.keys(curr_copyright_count),Object.keys(Danbooru.CU.reverse_implications));
-                Object.assign(Danbooru.CU.reverse_implications,...(await Promise.all(query_implications.map(async (key)=>{return {[key]:await GetReverseTagImplication(key)};}))));
-                Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username] = Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username].filter(value=>{return Danbooru.CU.reverse_implications[value] === 0;});
+                user_copytags = await MergeCopyrightTags(user_copytags);
             }
             let copyright_symdiff = CompareCopyrightCounts(curr_copyright_count,prev_copyright_count);
-            let copyright_changed = (is_new_tab ? Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username] : JSPLib.utility.setIntersection(Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username],copyright_symdiff));
-            let copyright_nochange = (is_new_tab ? [] : JSPLib.utility.setDifference(Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username],copyright_changed));
+            let copyright_changed = (is_new_tab ? user_copytags : JSPLib.utility.setIntersection(user_copytags,copyright_symdiff));
+            let copyright_nochange = (is_new_tab ? [] : JSPLib.utility.setDifference(user_copytags,copyright_changed));
             $.each(copyright_nochange,(i,val)=>{
                 if (CheckCopyrightVelocity(val) || IsMissingTag(val)) {
                     promise_array.push(GetTagData(val));
@@ -1078,11 +1261,12 @@ async function ProcessUploads() {
                 promise_array.push(GetTagData(`${Danbooru.CU.usertag}:${Danbooru.CU.current_username} ${val}`));
                 promise_array.push(GetTagData(val));
             });
-        } else {
-            Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username] = [];
         }
         await Promise.all(promise_array);
+    } else if (IsMissingTag(`${Danbooru.CU.usertag}:${Danbooru.CU.current_username}`)) {
+        await GetTagData(`${Danbooru.CU.usertag}:${Danbooru.CU.current_username}`);
     }
+    Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username] = {daily: user_copytags, manual: []};
     JSPLib.storage.saveData(`previous-${Danbooru.CU.counttype}-${Danbooru.CU.current_username}`,{value: PreCompressData(current_uploads), expires: 0});
     return current_uploads;
 }
@@ -1096,16 +1280,26 @@ async function PopulateTable() {
         post_data = await ProcessUploads(Danbooru.CU.current_username);
         Danbooru.CU.checked_users[Danbooru.CU.usertag][Danbooru.CU.current_username] = post_data.length;
     }
-    if (Danbooru.CU.checked_users[Danbooru.CU.usertag][Danbooru.CU.current_username]) {
+    let is_override = $("#count_override_select")[0].checked;
+    if (is_override || Danbooru.CU.checked_users[Danbooru.CU.usertag][Danbooru.CU.current_username]) {
+        Danbooru.CU.active_copytags = JSPLib.utility.dataCopy(Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username].daily);
+        Danbooru.CU.shown_copytags = JSPLib.utility.dataCopy(Danbooru.CU.active_copytags);
         await CheckPeriodUploads(Danbooru.CU.current_username);
         $('#count-table').html(RenderTable());
-        $('#count-controls').html(RenderAllTooltipControls());
+        if ($('#count-controls').html() === "") { //have a better condition
+            $('#count-controls').html(RenderAllTooltipControls()); //TODO - Make this only happen once
+            $('#count-copyrights-controls').html(RenderCopyrightControls());
+            SetTooltipChangeClick();
+            SetCopyrightPeriodClick();
+        }
+        $('#count-controls,#count-copyrights').show();
         SetTooltipHover();
-        SetTooltipChangeClick();
         GetPeriodClick();
         $(`.cu-select-tooltip[data-type="${Danbooru.CU.current_metric}"] a`).click();
+        $(`.cu-select-period[data-type="${Danbooru.CU.copyright_period}"] a`).click();
     } else {
         $('#count-table').html(`<div id="empty-uploads">${Danbooru.CU.empty_uploads_message}</div>`);
+        $('#count-controls,#count-copyrights').hide();
     }
     PopulateTable.is_started = false;
 }
@@ -1478,7 +1672,8 @@ function main() {
         reverse_implications: {},
         current_metric: JSPLib.storage.getStorageData('cu-current-metric',localStorage,'score'),
         hidden: JSPLib.storage.getStorageData('cu-hide-current-uploads',localStorage,0),
-        stashed: JSPLib.storage.getStorageData('cu-stash-current-uploads',localStorage,0)
+        stashed: JSPLib.storage.getStorageData('cu-stash-current-uploads',localStorage,0),
+        copyright_period: 'd'
     };
     Danbooru.CU.channel.onmessage = BroadcastCU;
     JSPLib.utility.setCSSStyle(program_css,'program');
@@ -1489,11 +1684,14 @@ function main() {
         $($footer_notice).addClass('stashed');
     }
     $('header#top').append($notice_box);
-    $('#count_approver_select').checkboxradio()
+    $('.cu-checkbox').checkboxradio()
     $('footer#page-footer').append($footer_notice);
+    SetToggleCopyrightsSectionClick();
     SetToggleNoticeClick();
     SetStashNoticeClick();
     SetCheckUserClick();
+    SetAddCopyrightClick();
+    SetRefreshUserClick();
     if (Danbooru.CU.hidden === 0) {
         //Set to opposite so that click can be used and sets it back
         Danbooru.CU.hidden = 1;
