@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.5
+// @version      6.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -11,13 +11,13 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/test/checklibraries.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/debug.js
 // ==/UserScript==
 
 /****SETUP****/
@@ -27,7 +27,7 @@ JSPLib.debug.debug_console = true;
 /****GLOBAL VARIABLES****/
 
 //Time to wait before switching the page style
-const csstyle_waittime = 10000;
+const csstyle_waittime = 5000;
 
 //Needs to be configured specific to each system
 const test_local_storage = false;
@@ -54,6 +54,7 @@ const walkdom_test = `
 </div>
 `;
 
+const domdata_test = `<div data-test1="test1" data-test2="2"></div>`;
 
 /****FUNCTIONS****/
 
@@ -99,13 +100,16 @@ function ShowEnabled(bool) {
 
 function ObjectContains(obj,includes) {
     if (typeof obj !== "object") {
+        console.log("Object is not an object");
         return false;
     }
     if (Object.keys(obj).length !== includes.length) {
+        console.log("Object does not contain the right amount of keys");
         return false;
     }
     for (let i = 0;i < includes.length; i++) {
         if (!(includes[i] in obj)) {
+            console.log("Object does not contain the key:",includes[i]);
             return false;
         }
     }
@@ -241,6 +245,22 @@ async function CheckUtilityLibrary() {
     let teststring1 = JSPLib.utility.regexpEscape(string1);
     console.log(`Value ${repr(string1)} should should be regex escaped to ${repr(regexstring1)} ${bracket(repr(teststring1))}`,RecordResult(teststring1 === regexstring1));
 
+    console.log("Checking kebabCase");
+    string1 = "testKebabCase";
+    let string2 = "test-kebab-case";
+    teststring1 = JSPLib.utility.kebabCase(string1);
+    console.log(`Value ${repr(string1)} should should be changed to ${repr(string2)} ${bracket(repr(teststring1))}`,RecordResult(teststring1 === string2));
+
+    console.log("Checking camelCase");
+    teststring1 = JSPLib.utility.camelCase(string2);
+    console.log(`Value ${repr(string2)} should should be changed to ${repr(string1)} ${bracket(repr(teststring1))}`,RecordResult(teststring1 === string1));
+
+    console.log("Checking displayCase");
+    string1 = "test_display_case";
+    string2 = "Test display case";
+    teststring1 = JSPLib.utility.displayCase(string1);
+    console.log(`Value ${repr(string1)} should should be changed to ${repr(string2)} ${bracket(repr(teststring1))}`,RecordResult(teststring1 === string2));
+
     console.log("Checking filterEmpty");
     let testarray1 = ["test","first","nonempty"];
     let testarray2 = ["test","first","empty",""];
@@ -315,13 +335,90 @@ async function CheckUtilityLibrary() {
     console.log(`Original add function should produce a result of 7`,RecordResult(testvalue1 === 7));
     console.log(`Hijacked add function should produce a result of 6`,RecordResult(testvalue2 === 6));
 
+    console.log("Checking DOMtoArray");
+    let $domtest = $.parseHTML(domdata_test)[0];
+    let array1 = JSPLib.utility.DOMtoArray($domtest.attributes);
+    let array2 = array1.map((entry)=>{return entry.value;});
+    let array3 = ['test1','2'];
+    console.log(`Object returned should be an array`,RecordResult(Array.isArray(array1)));
+    console.log(`Data values for object should be ${repr(array3)} ${bracket(repr(array2))}`,RecordResult(JSON.stringify(array2) === JSON.stringify(array3)));
+
+    console.log("Checking DOMtoHash");
+    let hash1 = JSPLib.utility.DOMtoHash($domtest.dataset);
+    array2 = Object.keys(hash1).map((entry)=>{return hash1[entry];});
+    console.log(`Object returned should be a hash`,RecordResult(hash1.constructor === Object));
+    console.log(`Data values for object should be ${repr(array3)} ${bracket(repr(array2))}`,RecordResult(JSON.stringify(array2) === JSON.stringify(array3)));
+
+    console.log("Checking getDataAttributes");
+    hash1 = JSPLib.utility.getDataAttributes($domtest);
+    let hash2 = {test1: "test1", test2: 2};
+    console.log(`Object returned should be a hash`,RecordResult(hash1.constructor === Object));
+    console.log(`Data values for object should be ${repr(hash2)} ${bracket(repr(hash1))}`,RecordResult(ObjectContains(hash1,['test1','test2']) && hash1.test1 === hash2.test1 && hash1.test2 === hash2.test2));
+
+    console.log("Checking installScript");
+    let script1 = "https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js";
+    let state1 = typeof jQuery.ui.tabs;
+    await JSPLib.utility.installScript(script1);
+    let state2 = typeof jQuery.ui.tabs;
+    console.log(`Initial state of jQuery tabs should be undefined ${bracket(repr(state1))}`,RecordResult(state1 === "undefined"));
+    console.log(`Subsequent state of jQuery tabs should be a function ${bracket(repr(state2))}`,RecordResult(state2 === "function"));
+
+    //Setup for data functions
+    let jqueryobj = $("#checklibrary-count");
+    jqueryobj.on("mouseenter.checklibraries.test_hover",(e)=>{
+        console.log("Hovering over count...");
+    });
+    let testdata1 = {test_data: 'check'};
+    jqueryobj.data(testdata1);
+    let $domobj = jqueryobj[0];
+
+    console.log("Checking getPrivateData");
+    let data1 = JSPLib.utility.getPrivateData($domobj);
+    console.log(`data should be object with 2 keys and 1 subkey ${bracket(repr(data1))}`,RecordResult(ObjectContains(data1,['events','handle']) && ObjectContains(data1.events,['mouseover'])));
+
+    console.log("Checking getPublicData");
+    data1 = JSPLib.utility.getPublicData($domobj);
+    console.log(`data should be object ${repr(testdata1)} ${bracket(repr(data1))}`,RecordResult(ObjectContains(data1,['test_data']) && data1.test_data === "check"));
+
+    console.log("Checking getBoundEventNames");
+    array1 = JSPLib.utility.getBoundEventNames("#checklibrary-count",'mouseover');
+    array2 = ['checklibraries.test_hover'];
+    console.log(`Bound event names for object should be ${repr(array2)} ${bracket(repr(array1))}`,RecordResult(JSON.stringify(array1) === JSON.stringify(array2)));
+
+    console.log("Checking isNamespaceBound");
+    string1 = 'checklibraries.test_hover';
+    resultbool1 = JSPLib.utility.isNamespaceBound("#checklibrary-count",'mouseover',string1);
+    console.log(`Bound event names for object should include ${repr(string1)} ${bracket(repr(resultbool1))}`,RecordResult(resultbool1));
+
+    console.log("Checking getDOMDataKeys");
+    array1 = JSPLib.utility.getDOMDataKeys("#checklibrary-count");
+    array2 = ['test_data'];
+    console.log(`DOM data keys for object should be ${repr(array2)} ${bracket(repr(array1))}`,RecordResult(JSON.stringify(array1) === JSON.stringify(array2)));
+
+    console.log("Checking hasDOMDataKey");
+    string1 = 'test_data';
+    resultbool1 = JSPLib.utility.hasDOMDataKey("#checklibrary-count",string1);
+    console.log(`DOM data keys for object should include ${repr(string1)} ${bracket(repr(resultbool1))}`,RecordResult(resultbool1));
+
+    console.log("Checking addStyleSheet");
+    JSPLib.utility.addStyleSheet("https://cdn.jsdelivr.net/gh/BrokenEagle/JavaScripts@stable/test/test-css-1.css","test");
+    console.log("Color set to green... changing color in 5 seconds.");
+    await JSPLib.utility.sleep(csstyle_waittime);
+    JSPLib.utility.addStyleSheet("https://cdn.jsdelivr.net/gh/BrokenEagle/JavaScripts@stable/test/test-css-2.css","test");
+    console.log("Color set to orange... validate that there is only 1 style element.");
+    console.log(`Module global cssstyle ${repr(JSPLib.utility.csssheet)} should have a length of 1`,RecordResult(Object.keys(JSPLib.utility.csssheet).length === 1));
+    await JSPLib.utility.sleep(csstyle_waittime);
+    JSPLib.utility.addStyleSheet("","test");
+
     console.log("Checking setCSSStyle");
     JSPLib.utility.setCSSStyle("body {background: black !important;}","test");
-    console.log("Color set to black... changing color in 10 seconds.");
+    console.log("Color set to black... changing color in 5 seconds.");
     await JSPLib.utility.sleep(csstyle_waittime);
     JSPLib.utility.setCSSStyle("body {background: purple !important;}","test");
     console.log("Color set to purple... validate that there is only 1 style element.");
     console.log(`Module global cssstyle ${repr(JSPLib.utility.cssstyle)} should have a length of 1`,RecordResult(Object.keys(JSPLib.utility.cssstyle).length === 1));
+    await JSPLib.utility.sleep(csstyle_waittime);
+    JSPLib.utility.setCSSStyle("","test");
 
     console.log("Checking fullHide");
     let selector1 = "#page";
@@ -330,7 +427,7 @@ async function CheckUtilityLibrary() {
     let resultstyletext1 = document.querySelector(selector1).style.cssText;
     console.log(`DOM ${selector1} should have the CSS style of ${repr(expectedstyletext1)} ${bracket(repr(resultstyletext1))}`,RecordResult(expectedstyletext1 === resultstyletext1));
 
-    console.log("Sleeping 10 seconds for visual confirmation.");
+    console.log("Sleeping 5 seconds for visual confirmation.");
     await JSPLib.utility.sleep(csstyle_waittime);
 
     console.log("Checking clearHide");
@@ -346,7 +443,7 @@ async function CheckUtilityLibrary() {
     console.log(`Meta ${metaselector1} should have the content of ${repr(expectedmeta1)} ${bracket(repr(resultmeta1))}`,RecordResult(expectedmeta1 === resultmeta1));
 
     console.log("Checking getNthParent");
-    let $domtest = $.parseHTML(walkdom_test);
+    $domtest = $.parseHTML(walkdom_test);
     let child1 = $("#child0a",$domtest)[0];
     let result1 = JSPLib.utility.getNthParent(child1,1);
     console.log(`Node ${child1.id} should have parent0 as a parent ${bracket(result1.id)}`,RecordResult(result1 && result1.id === "parent0"));
@@ -679,6 +776,27 @@ async function CheckStorageLibrary() {
     console.log(`good-value with data ${repr(data2)} should return value ${bracket(repr(result2))}]`,RecordResult(result2 && result2[0] === "check this"));
     console.log(`nonexistant-value with default value [0] should return default value ${bracket(repr(result3))}`,RecordResult(result3 && result3[0] === 0));
 
+    console.log("Checking pruneStorageData");
+    let testvalue = "test".repeat(1000);
+    JSPLib.storage.setStorageData('testremove',{expires: 1, value: testvalue},sessionStorage);
+    JSPLib.storage.setStorageData('teststay',{expires: 0, value: testvalue},sessionStorage);
+    JSPLib.storage.pruneStorageData(sessionStorage);
+    result1 = JSPLib.storage.getStorageData('testremove',sessionStorage);
+    result2 = JSPLib.storage.getStorageData('teststay',sessionStorage);
+    console.log(`testremove should be pruned and return null with getStorageData ${bracket(repr(result1))}`,RecordResult(result1 === null));
+    console.log(`teststay shouldn't be pruned and return value with getStorageData ${bracket(repr(result2))}`,RecordResult(result2 && result2.value && result2.value === testvalue));
+
+    console.log("Checking storage quota exceeded");
+    JSPLib.debug.level = JSPLib.debug.WARNING;
+    let testsize1 = JSON.stringify(sessionStorage).length;
+    for (let i = 0; i < 2000; i++) {
+        JSPLib.storage.setStorageData('test'+i,{expires: 1, value: testvalue},sessionStorage);
+        testsize1 += testvalue.length;
+    }
+    let testsize2 = JSON.stringify(sessionStorage).length;
+    console.log(`expected size of storage ${bracket(testsize1)}} should be greater than actual size ${bracket(testsize2)}`,RecordResult(testsize1 > testsize2));
+    JSPLib.debug.level = JSPLib.debug.VERBOSE;
+
     console.log("Checking hasDataExpired");
     let data3 = {expires: Date.now() - 10000, value: data2};
     let data4 = {expires: Date.now() + 10000, value: data2};
@@ -746,12 +864,26 @@ async function CheckStorageLibrary() {
         console.log("Checking pruneEntries");
         await JSPLib.storage.saveData('expired-value',data3);
         await JSPLib.storage.saveData('good-value',data4);
-        JSPLib.storage.pruneEntries('cl', /-value$/, JSPLib.utility.one_minute);
-        console.log("Waiting 10 seconds for prune to finish...");
-        await JSPLib.utility.sleep(JSPLib.utility.one_second * 10);
+        await JSPLib.storage.pruneEntries('cl', /-value$/, JSPLib.utility.one_minute);
+        result1 = await JSPLib.storage.retrieveData('expired-value');
+        result2 = await JSPLib.storage.retrieveData('good-value');
         console.log(`expired-value should be pruned and return null with retrieveData ${bracket(repr(result1))}`,RecordResult(result1 === null));
         console.log(`good-value shouldn't be pruned and return value with retrieveData ${bracket(repr(result2))}`,RecordResult(result2 && result2.value && result2.value[0] === "check this"));
+
+        console.log("Checking purgeCache");
+        await JSPLib.storage.saveData('expired-value',data3);
+        await JSPLib.storage.saveData('good-value',data4);
+        await JSPLib.storage.purgeCache(/-value$/,"#checklibrary-count");
+        result1 = await JSPLib.storage.retrieveData('expired-value');
+        result2 = await JSPLib.storage.retrieveData('good-value');
+        result3 = await JSPLib.storage.retrieveData('persistent-value');
+        console.log(`expired-value should be pruned and return null with retrieveData ${bracket(repr(result1))}`,RecordResult(result1 === null));
+        console.log(`good-value should be pruned and return null with retrieveData ${bracket(repr(result2))}`,RecordResult(result2 === null));
+        console.log(`persistent-value should be pruned and return null with retrieveData ${bracket(repr(result3))}`,RecordResult(result3 === null));
     }
+
+    //Cleanup actions
+    sessionStorage.clear();
 
     console.log(`CheckStorageLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
@@ -774,7 +906,6 @@ async function CheckDanbooruLibrary() {
     console.log(`for item array ${repr(array1)}, the next page ID going in reverse should be 27 [${repr(result2)}]`,RecordResult(result2 === 27));
 
     console.log("Checking incrementCounter");
-    $("footer").prepend('<span id="checklibrary-count" style="font-size:400%">0</span>');
     JSPLib.danbooru.counter_domname = "#checklibrary-count";
     await JSPLib.utility.sleep(5000);
     result1 = JSPLib.danbooru.num_network_requests;
@@ -858,8 +989,9 @@ async function CheckDanbooruLibrary() {
     console.log("Checking postSearchLink");
     string1 = "1girl solo";
     string2 = "Check this link";
-    let string3 = '<a href="/posts?tags=1girl+solo">Check this link</a>';
-    result1 = JSPLib.danbooru.postSearchLink(string1,string2);
+    let option1 = `class="search-tag"`;
+    let string3 = '<a class="search-tag" href="/posts?tags=1girl+solo">Check this link</a>';
+    result1 = JSPLib.danbooru.postSearchLink(string1,string2,option1);
     console.log(`the tag ${repr(string1)} with text ${repr(string2)} should produce the link  ${repr(string3)} [${repr(result1)}]`,RecordResult(result1 === string3));
 
     console.log("Checking submitRequest");
@@ -898,6 +1030,13 @@ async function CheckDanbooruLibrary() {
 async function CheckLoadLibrary() {
     console.log("++++++++++++++++++++CheckLoadLibrary++++++++++++++++++++");
     ResetResult();
+
+    console.log("Checking isVariableDefined");
+    window.doesexist = null;
+    let test1 = JSPLib.load._isVariableDefined('window.doesexist');
+    let test2 = JSPLib.load._isVariableDefined('window.doesntexist');
+    console.log(`variable 'window.doesexist' should exist`,RecordResult(test1 === true));
+    console.log(`variable 'window.doesntexist' shouldn't exist`,RecordResult(test2 === false));
 
     console.log("Checking programInitialize and programLoad");
     let function1 = function() { console.log("Shouldn't run!");};
@@ -960,6 +1099,7 @@ async function CheckLoadLibrary() {
 }
 
 async function checklibrary() {
+    $("footer").prepend('<span id="checklibrary-count" style="font-size:400%">0</span>');
     CheckDebugLibrary();
     await CheckUtilityLibrary();
     CheckStatisticsLibrary();
