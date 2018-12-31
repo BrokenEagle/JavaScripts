@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      20.0
+// @version      20.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -1848,7 +1848,7 @@ function main() {
     });
     //Take care of other non-critical tasks at a later time
     setTimeout(()=>{
-        JSPLib.storage.pruneEntries('cu',program_cache_regex,prune_expires);
+        JSPLib.storage.pruneEntries('iac',program_cache_regex,prune_expires);
     },JSPLib.utility.one_minute);
 }
 

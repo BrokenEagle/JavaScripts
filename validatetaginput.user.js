@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      25.3
+// @version      25.4
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -861,7 +861,7 @@ function main() {
         });
     });
     setTimeout(()=>{
-        JSPLib.storage.pruneEntries('cu',program_cache_regex,prune_expires);
+        JSPLib.storage.pruneEntries('vti',program_cache_regex,prune_expires);
     },JSPLib.utility.one_minute);
 }
 
