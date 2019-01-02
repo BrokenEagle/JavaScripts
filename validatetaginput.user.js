@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      25.4
+// @version      25.5
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -13,13 +13,14 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/validatetaginput.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/menu.js
 // ==/UserScript==
 
 //Global variables
@@ -109,51 +110,7 @@ function ValidateRelationEntry(key,entry) {
 
 //Library functions
 
-function IsNamespaceBound(selector,eventtype,namespace) {
-    let namespaces = GetBoundEventNames(selector,eventtype);
-    return namespaces.includes(namespace);
-}
-
-function GetBoundEventNames(selector,eventtype) {
-    let $obj = $(selector);
-    if ($obj.length === 0) {
-        return [];
-    }
-    let boundevents = $._data($obj[0], "events");
-    if (!boundevents || !(eventtype in boundevents)) {
-        return [];
-    }
-    return $.map(boundevents[eventtype],(entry)=>{return entry.namespace;});
-}
-
-function AddStyleSheet(url,title='') {
-    AddStyleSheet.cssstyle = AddStyleSheet.cssstyle || {};
-    if (title in AddStyleSheet.cssstyle) {
-        AddStyleSheet.cssstyle[title].href = url;
-    } else {
-        AddStyleSheet.cssstyle[title] = document.createElement('link');
-        AddStyleSheet.cssstyle[title].rel = 'stylesheet';
-        AddStyleSheet.cssstyle[title].type = 'text/css';
-        AddStyleSheet.cssstyle[title].href = url;
-        document.head.appendChild(AddStyleSheet.cssstyle[title]);
-    }
-}
-
-function InstallScript(url) {
-    return $.ajax({
-        url: url,
-        dataType: "script",
-        cache: true
-    });
-}
-
-function KebabCase(string) {
-    return string.replace(/([a-z])([A-Z])/g, '$1-$2').replace(/[\s_]+/g,'-').toLowerCase();
-}
-
-function DisplayCase(string) {
-    return JSPLib.utility.titleizeString(string.toLowerCase().replace(/[_]/g,' '));
-}
+//// NONE
 
 //Helper functions
 
@@ -378,7 +335,7 @@ function reenableSubmitCallback() {
 }
 
 function rebindHotkey() {
-    if (IsNamespaceBound("#upload_tag_string,#post_tag_string",'keydown','danbooru.submit')) {
+    if (JSPLib.utility.isNamespaceBound("#upload_tag_string,#post_tag_string",'keydown','danbooru.submit')) {
         clearInterval(rebindHotkey.timer);
         $("#upload_tag_string,#post_tag_string").off("keydown.danbooru.submit").on("keydown.danbooru.submit", null, "return", (e)=>{
             $("#validate-tags").click();
@@ -487,40 +444,13 @@ function ValidateUpload() {
 
 ///Settings menu
 
-function RenderCheckbox(program_shortcut,setting_name) {
-    let program_key = program_shortcut.toUpperCase();
-    let setting_key = KebabCase(setting_name);
-    let display_name = DisplayCase(setting_name);
-    let checked = (Danbooru[program_key].user_settings[setting_name] ? "checked" : "");
-    let hint = settings_config[setting_name].hint;
-    return `
-<div class="${program_shortcut}-checkbox" data-setting="${setting_name}" style="margin:0.5em">
-    <h4>${display_name}</h4>
-    <div style="margin-left:0.5em">
-        <input type="checkbox" ${checked} class="${program_shortcut}-setting" name="${program_shortcut}-enable-${setting_key}" id="${program_shortcut}-enable-${setting_key}">
-        <span class="${program_shortcut}-setting-tooltip" style="display:inline;font-style:italic;color:#666">${hint}</span>
-    </div>
-</div>`;
-}
-
-function RenderLinkclick(program_shortcut,setting_name,display_name,link_text) {
-    let setting_key = KebabCase(setting_name);
-    return `
-<div class="${program_shortcut}-linkclick" style="margin:0.5em">
-    <h4>${display_name}</h4>
-    <div style="margin-left:0.5em">
-        <span class="${program_shortcut}-control-linkclick" style="display:block"><a href="#" id="${program_shortcut}-setting-${setting_key}" style="color:#0073ff">${link_text}</a></span>
-    </div>
-</div>`;
-}
-
 const vti_menu = `
-<div id="vti-settings" style="float:left;width:50%">
+<div id="vti-settings" class="jsplib-outer-menu">
     <div id="vti-script-message" class="prose">
         <h2>ValidateTagInput</h2>
         <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/14474" style="color:#0073ff">topic #14474</a>).</p>
     </div>
-    <div id="vti-process-settings" style="margin-bottom:2em">
+    <div id="vti-process-settings" class="jsplib-settings-grouping">
         <div id="vti-process-message" class="prose">
             <h4>Process settings</h4>
             <ul>
@@ -544,7 +474,7 @@ const vti_menu = `
             </ul>
         </div>
     </div>
-    <div id="vti-cache-settings" style="margin-bottom:2em">
+    <div id="vti-cache-settings" class="jsplib-settings-grouping">
         <div id="vti-cache-message" class="prose">
             <h4>Cache settings</h4>
             <h5>Cache data</h5>
@@ -559,7 +489,7 @@ const vti_menu = `
         </div>
     </div>
     <hr>
-    <div id="vti-settings-buttons" style="margin-top:1em">
+    <div id="vti-settings-buttons" class="jsplib-settings-buttons">
         <input type="button" id="vti-commit" value="Save">
         <input type="button" id="vti-resetall" value="Factory Reset">
     </div>
@@ -583,246 +513,35 @@ const settings_config = {
     }
 }
 
-function LoadUserSettings(program_shortcut) {
-    let user_settings = JSPLib.storage.getStorageData(`${program_shortcut}-user-settings`,localStorage,{});
-    let is_dirty = false;
-    $.each(settings_config,(setting)=>{
-        if (!(setting in user_settings) || !settings_config[setting].validate(user_settings[setting])) {
-            JSPLib.debug.debuglog("Loading default:",setting,user_settings[setting]);
-            user_settings[setting] = settings_config[setting].default;
-            is_dirty = true;
-        }
-    });
-    let valid_settings = Object.keys(settings_config);
-    $.each(user_settings,(setting)=>{
-        if (!valid_settings.includes(setting)) {
-            JSPLib.debug.debuglog("Deleting invalid setting:",setting,user_settings[setting]);
-            delete user_settings[setting];
-            is_dirty = true;
-        }
-    });
-    if (is_dirty) {
-        JSPLib.debug.debuglog("Saving change to user settings!");
-        JSPLib.storage.setStorageData(`${program_shortcut}-user-settings`,user_settings,localStorage);
-    }
-    return user_settings;
-}
-
-function SaveUserSettingsClick(program_shortcut,program_name) {
-    let program_key = program_shortcut.toUpperCase();
-    $(`#${program_shortcut}-commit`).click((e)=>{
-        let invalid_setting = false;
-        let temp_selectors = {};
-        $(`#${program_shortcut}-settings .${program_shortcut}-setting[id]`).each((i,entry)=>{
-            let setting_name = $(entry).parent().parent().data('setting');
-            if (entry.type === "checkbox") {
-                let selector = $(entry).data('selector');
-                if (selector) {
-                    temp_selectors[setting_name] = temp_selectors[setting_name] || [];
-                    if (entry.checked) {
-                        temp_selectors[setting_name].push(selector);
-                    }
-                } else {
-                    Danbooru[program_key].user_settings[setting_name] = entry.checked;
-                }
-            } else if (entry.type === "text") {
-                 let user_setting = settings_config[setting_name].parse($(entry).val());
-                 if (settings_config[setting_name].validate(user_setting)) {
-                    Danbooru[program_key].user_settings[setting_name] = user_setting;
-                 } else {
-                    invalid_setting = true;
-                 }
-                 $(entry).val(Danbooru[program_key].user_settings[setting_name]);
-            }
-        });
-        $.each(temp_selectors,(setting_name)=>{
-            Danbooru[program_key].user_settings[setting_name] = temp_selectors[setting_name];
-        });
-        JSPLib.storage.setStorageData(`${program_shortcut}-user-settings`,Danbooru[program_key].user_settings,localStorage);
-        Danbooru[program_key].channel && Danbooru[program_key].channel.postMessage({type: "settings", user_settings: Danbooru[program_key].user_settings});
-        if (!invalid_setting) {
-            Danbooru.Utility.notice(`${program_name}: Settings updated!`);
-        } else {
-            Danbooru.Utility.error("Error: Some settings were invalid!")
-        }
-    });
-}
-
-function ResetUserSettingsClick(program_shortcut,program_name,delete_keys,reset_settings) {
-    let program_key = program_shortcut.toUpperCase();
-    $(`#${program_shortcut}-resetall`).click((e)=>{
-        if (confirm(`This will reset all of ${program_name}'s settings.\n\nAre you sure?`)) {
-            $.each(settings_config,(setting)=>{
-                Danbooru[program_key].user_settings[setting] = settings_config[setting].default;
-            });
-            $(`#${program_shortcut}-settings .${program_shortcut}-setting[id]`).each((i,entry)=>{
-                let $input = $(entry);
-                let setting_name = $input.parent().parent().data('setting');
-                if (entry.type === "checkbox") {
-                    let selector = $input.data('selector');
-                    if (selector) {
-                        $input.prop('checked', IsSettingEnabled(setting_name,selector));
-                        $input.checkboxradio("refresh");
-                    } else {
-                        $input.prop('checked', Danbooru[program_key].user_settings[setting_name]);
-                    }
-                } else if (entry.type === "text") {
-                     $input.val(Danbooru[program_key].user_settings[setting_name]);
-                }
-            });
-            $.each(delete_keys,(i,key)=>{
-                localStorage.removeItem(key);
-            });
-            Object.assign(Danbooru[program_key],reset_settings);
-            JSPLib.storage.setStorageData(`${program_shortcut}-user-settings`,Danbooru[program_key].user_settings,localStorage);
-            Danbooru[program_key].channel && Danbooru[program_key].channel.postMessage({type: "reset", user_settings: Danbooru[program_key].user_settings});
-            Danbooru.Utility.notice(`${program_name}: Settings reset to defaults!`);
-        }
-    });
-}
-
-async function PurgeCache(regex,domname) {
-    Danbooru.Utility.notice("Starting cache deletion...");
-    let promise_array = [];
-    let purged_count = 0;
-    let remaining_count = 0;
-    await JSPLib.storage.danboorustorage.iterate((value,key)=>{
-        if (key.match(regex)) {
-            JSPLib.debug.debuglogLevel("Deleting",key,JSPLib.debug.DEBUG);
-            let resp = JSPLib.storage.removeData(key).then(()=>{
-                domname && $(domname).html(--remaining_count);
-            });
-            promise_array.push(resp);
-            purged_count += 1;
-            domname && $(domname).html(++remaining_count);
-        }
-    });
-    Danbooru.Utility.notice(`Deleting ${purged_count} items...`);
-    JSPLib.debug.debuglogLevel(`Deleting ${purged_count} items...`,JSPLib.debug.INFO);
-    //Wait at least 5 seconds
-    await JSPLib.utility.sleep(5000);
-    await Promise.all(promise_array);
-    Danbooru.Utility.notice("Finished deleting cached data!");
-    JSPLib.debug.debuglogLevel("Finished deleting cached data!",JSPLib.debug.INFO);
-}
-
-function PurgeCacheClick(program_shortcut,program_name,regex,domname) {
-    let program_key = program_shortcut.toUpperCase();
-    $(`#${program_shortcut}-setting-purge-cache`).click((e)=>{
-        if (!PurgeCacheClick.is_started && confirm(`This will delete all of ${program_name}'s cached data.\n\nAre you sure?`)) {
-            PurgeCacheClick.is_started = true;
-            PurgeCache(regex,domname).then(()=>{
-                Danbooru[program_key].channel && Danbooru[program_key].channel.postMessage({type: "purge"});
-                PurgeCacheClick.is_started = false;
-            });;
-        }
-        e.preventDefault();
-    });
-}
-
 function RenderSettingsMenu() {
     $("#validate-tag-input").append(vti_menu);
-    $("#vti-process-settings").append(RenderCheckbox("vti",'alias_check_enabled'));
-    $("#vti-process-settings").append(RenderCheckbox("vti",'implication_check_enabled'));
-    $("#vti-process-settings").append(RenderCheckbox("vti",'upload_check_enabled'));
-    $("#vti-cache-settings").append(RenderLinkclick("vti",'purge_cache',`Purge cache (<span id="vti-purge-counter">...</span>)`,"Click to purge"));
-    SaveUserSettingsClick('vti','ValidateTagInput');
-    ResetUserSettingsClick('vti','ValidateTagInput',localstorage_keys,program_reset_keys);
-    PurgeCacheClick('vti','ValidateTagInput',program_cache_regex,"#vti-purge-counter");
-}
-
-//Main menu tabs
-
-const css_themes_url = 'https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/themes/base/jquery-ui.css';
-
-const settings_field = `
-<fieldset id="userscript-settings-menu" style="display:none">
-  <ul id="userscript-settings-tabs">
-  </ul>
-  <div id="userscript-settings-sections">
-  </div>
-</fieldset>`;
-
-function RenderTab(program_name,program_key) {
-    return `<li><a href="#${program_key}">${program_name}</a></li>`;
-}
-
-function RenderSection(program_key) {
-    return `<div id="${program_key}"></div>`;
-}
-
-function MainSettingsClick() {
-    if (!IsNamespaceBound(`[href="#userscript-menu"`,'click','jsplib.menuchange')) {
-        $(`[href="#userscript-menu"`).on('click.jsplib.menuchange',(e)=>{
-            $(`#edit-options a[href$="settings"]`).removeClass("active");
-            $(e.target).addClass("active");
-            $(".edit_user > fieldset").hide();
-            $("#userscript-settings-menu").show();
-            $('[name=commit]').hide();
-            e.preventDefault();
-        });
-    }
-}
-
-function OtherSettingsClicks() {
-    if (!IsNamespaceBound("#edit-options a[href$=settings]",'click','jsplib.menuchange')) {
-        $("#edit-options a[href$=settings]").on('click.jsplib.menuchange',(e)=>{
-            $(`[href="#userscript-menu"`).removeClass('active');
-            $("#userscript-settings-menu").hide();
-            $('[name=commit]').show();
-            e.preventDefault()
-        });
-    }
-}
-
-function InstallSettingsMenu(program_name) {
-    let program_key = KebabCase(program_name);
-    if ($("#userscript-settings-menu").length === 0) {
-        $(`input[name="commit"]`).before(settings_field);
-        $("#edit-options").append('| <a href="#userscript-menu">Userscript Menus</a>');
-        //Periodic recheck in case other programs remove/rebind click events
-        setInterval(()=>{
-            MainSettingsClick();
-            OtherSettingsClicks();
-        },1000);
-        AddStyleSheet(css_themes_url);
-    } else {
-        $("#userscript-settings-menu").tabs("destroy");
-    }
-    $("#userscript-settings-tabs").append(RenderTab(program_name,program_key));
-    $("#userscript-settings-sections").append(RenderSection(program_key));
-    //Sort the tabs alphabetically
-    $("#userscript-settings-tabs li").sort(function(a, b) {
-        try {
-            return a.children[0].innerText.localeCompare(b.children[0].innerText);
-        } catch (e) {
-            return 0;
-        }
-    }).each(function() {
-        var elem = $(this);
-        elem.remove();
-        $(elem).appendTo("#userscript-settings-tabs");
-    });
-    $("#userscript-settings-menu").tabs();
+    $("#vti-process-settings").append(JSPLib.menu.renderCheckbox("vti",'alias_check_enabled'));
+    $("#vti-process-settings").append(JSPLib.menu.renderCheckbox("vti",'implication_check_enabled'));
+    $("#vti-process-settings").append(JSPLib.menu.renderCheckbox("vti",'upload_check_enabled'));
+    $("#vti-cache-settings").append(JSPLib.menu.renderLinkclick("vti",'purge_cache',`Purge cache (<span id="vti-purge-counter">...</span>)`,"Click to purge"));
+    JSPLib.menu.saveUserSettingsClick('vti','ValidateTagInput');
+    JSPLib.menu.resetUserSettingsClick('vti','ValidateTagInput',localstorage_keys,program_reset_keys);
+    JSPLib.menu.purgeCacheClick('vti','ValidateTagInput',program_cache_regex,"#vti-purge-counter");
 }
 
 //Main program
 
 function main() {
     Danbooru.VTI = {
-        user_settings: LoadUserSettings('vti'),
         channel: new BroadcastChannel('ValidateTagInput'),
         aliastags: [],
         seenlist: [],
         aliases_promise_array: [],
         implicationdict: {},
         implications_promise_array: [],
-        is_upload: false
+        is_upload: false,
+        settings_config: settings_config
     }
+    Danbooru.VTI.user_settings = JSPLib.menu.loadUserSettings('vti');
     Danbooru.VTI.channel.onmessage = BroadcastVTI;
     if ($("#c-users #a-edit").length) {
-        InstallScript("https://cdn.rawgit.com/jquery/jquery-ui/1.12.1/ui/widgets/tabs.js").done(()=>{
-            InstallSettingsMenu("ValidateTagInput");
+        JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
+            JSPLib.menu.installSettingsMenu("ValidateTagInput");
             RenderSettingsMenu();
         });
         return;
