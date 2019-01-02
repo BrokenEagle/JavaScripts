@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      20.1
+// @version      20.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -11,13 +11,14 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/indexedautocomplete.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20180827/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version7/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version7/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version7/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version7/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version7/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version7/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version7/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version7/lib/menu.js
 // ==/UserScript==
 
 /***Global variables***/
@@ -170,7 +171,7 @@ const expiration_config = {
     },
     forumtopic: {
         minimum: JSPLib.utility.one_week
-    },
+    }
 };
 
 //Validation variables
@@ -510,63 +511,7 @@ const source_config = {
 
 //Library functions
 
-function RegexpEscape(string) {
-  return string.replace(/([.?*+^$[\]\\(){}|-])/g, "\\$1");
-}
-
-function GetDOMDataKeys(selector) {
-    return Object.keys($(selector).data());
-}
-
-function HasDOMDataKey(selector,key) {
-    return GetDOMDataKeys(selector).includes(key);
-}
-
-function IsNamespaceBound(selector,eventtype,namespace) {
-    let namespaces = GetBoundEventNames(selector,eventtype);
-    return namespaces.includes(namespace);
-}
-
-function GetBoundEventNames(selector,eventtype) {
-    let $obj = $(selector);
-    if ($obj.length === 0) {
-        return [];
-    }
-    let boundevents = $._data($obj[0], "events");
-    if (!boundevents || !(eventtype in boundevents)) {
-        return [];
-    }
-    return $.map(boundevents[eventtype],(entry)=>{return entry.namespace;});
-}
-
-function AddStyleSheet(url,title='') {
-    AddStyleSheet.cssstyle = AddStyleSheet.cssstyle || {};
-    if (title in AddStyleSheet.cssstyle) {
-        AddStyleSheet.cssstyle[title].href = url;
-    } else {
-        AddStyleSheet.cssstyle[title] = document.createElement('link');
-        AddStyleSheet.cssstyle[title].rel = 'stylesheet';
-        AddStyleSheet.cssstyle[title].type = 'text/css';
-        AddStyleSheet.cssstyle[title].href = url;
-        document.head.appendChild(AddStyleSheet.cssstyle[title]);
-    }
-}
-
-function InstallScript(url) {
-    return $.ajax({
-        url: url,
-        dataType: "script",
-        cache: true
-    });
-}
-
-function KebabCase(string) {
-    return string.replace(/([a-z])([A-Z])/g, '$1-$2').replace(/[\s_]+/g,'-').toLowerCase();
-}
-
-function DisplayCase(string) {
-    return JSPLib.utility.titleizeString(string.toLowerCase().replace(/[_]/g,' '));
-}
+//// NONE
 
 //Time functions
 
@@ -1118,7 +1063,7 @@ function FindArtistSession(e) {
 
 function rebindRelatedTags() {
     //Only need to check one of them, since they're all bound at the same time
-    if (IsNamespaceBound("#related-tags-button",'click','danbooru')) {
+    if (JSPLib.utility.isNamespaceBound("#related-tags-button",'click','danbooru')) {
         clearInterval(rebindRelatedTags.timer);
         $("#related-tags-button").off('click.danbooru');
         CommonBindIndexed("#related-tags-button", "");
@@ -1131,7 +1076,7 @@ function rebindRelatedTags() {
 }
 
 function rebindFindArtist() {
-    if (IsNamespaceBound("#find-artist-button",'click','danbooru')) {
+    if (JSPLib.utility.isNamespaceBound("#find-artist-button",'click','danbooru')) {
         clearInterval(rebindFindArtist.timer);
         $("#find-artist-button").off('click.danbooru').on('click.IAC',FindArtistSession);
         rebindFindArtist.timer = true;
@@ -1139,7 +1084,7 @@ function rebindFindArtist() {
 }
 
 function rebindAnyAutocomplete(selector, keycode, multiple) {
-    if (HasDOMDataKey(selector,'uiAutocomplete')) {
+    if (JSPLib.utility.hasDOMDataKey(selector,'uiAutocomplete')) {
         clearInterval(rebindAnyAutocomplete.timer[keycode]);
         $(selector).autocomplete("destroy").off('keydown.Autocomplete.tab');
         InitializeAutocompleteIndexed(selector, keycode, multiple);
@@ -1184,7 +1129,7 @@ function InitializeAutocompleteIndexed(selector, keycode, multiple=false) {
             $(field).data("uiAutocomplete")._renderItem = RenderListItem(($domobj,item)=>{return $domobj.text(item.value);});
         });
     }
-    if (!IsNamespaceBound(selector,'keydown','Autocomplete.tab')) {
+    if (!JSPLib.utility.isNamespaceBound(selector,'keydown','Autocomplete.tab')) {
         $fields.on("keydown.Autocomplete.tab", null, "tab", Danbooru.Autocomplete.on_tab);
     }
     $fields.data('autocomplete',type);
@@ -1192,111 +1137,13 @@ function InitializeAutocompleteIndexed(selector, keycode, multiple=false) {
 
 ///Settings menu
 
-function RenderTextinput(program_shortcut,setting_name,length=20) {
-    let program_key = program_shortcut.toUpperCase();
-    let setting_key = KebabCase(setting_name);
-    let display_name = DisplayCase(setting_name);
-    let value = Danbooru[program_key].user_settings[setting_name];
-    let hint = settings_config[setting_name].hint;
-    return `
-<div class="${program_shortcut}-textinput" data-setting="${setting_name}" style="margin:0.5em">
-    <h4>${display_name}</h4>
-    <div style="margin-left:0.5em">
-        <input type="text" class="${program_shortcut}-setting" name="${program_shortcut}-setting-${setting_key}" id="${program_shortcut}-setting-${setting_key}" value="${value}" size="${length}" autocomplete="off" class="text" style="padding:1px 0.5em" data-parent="2">
-        <span class="${program_shortcut}-setting-tooltip" style="display:block;font-style:italic;color:#666">${hint}</span>
-    </div>
-</div>`;
-}
-
-function RenderCheckbox(program_shortcut,setting_name) {
-    let program_key = program_shortcut.toUpperCase();
-    let setting_key = KebabCase(setting_name);
-    let display_name = DisplayCase(setting_name);
-    let checked = (Danbooru[program_key].user_settings[setting_name] ? "checked" : "");
-    let hint = settings_config[setting_name].hint;
-    return `
-<div class="${program_shortcut}-checkbox" data-setting="${setting_name}" style="margin:0.5em">
-    <h4>${display_name}</h4>
-    <div style="margin-left:0.5em">
-        <input type="checkbox" ${checked} class="${program_shortcut}-setting" name="${program_shortcut}-enable-${setting_key}" id="${program_shortcut}-enable-${setting_key}"  data-parent="2">
-        <span class="${program_shortcut}-setting-tooltip" style="display:inline;font-style:italic;color:#666">${hint}</span>
-    </div>
-</div>`;
-}
-
-function RenderInputSelectors(program_shortcut,setting_name,type) {
-    let program_key = program_shortcut.toUpperCase();
-    let setting_key = KebabCase(setting_name);
-    let display_name = DisplayCase(setting_name);
-    let all_selectors = settings_config[setting_name].allitems;
-    let hint = settings_config[setting_name].hint;
-    let html = '';
-    $.each(all_selectors,(i,selector)=>{
-        let checked = (Danbooru[program_key].user_settings[setting_name].includes(selector) ? "checked" : "");
-        let display_selection = DisplayCase(selector);
-        let selection_name = `${program_shortcut}-${setting_key}`;
-        let selection_key = `${program_shortcut}-${setting_key}-${selector}`;
-        html += `
-            <label for="${selection_key}" style="width:100px">${display_selection}</label>
-            <input type="${type}" ${checked} class="${program_shortcut}-setting" name="${selection_name}" id="${selection_key}" data-selector="${selector}" data-parent="2">`;
-    });
-    return `
-<div class="${program_shortcut}-selectors" data-setting="${setting_name}" style="margin:0.5em">
-    <h4>${display_name}</h4>
-    <div style="margin-left:0.5em">
-        ${html}
-        <span class="${program_shortcut}-setting-tooltip" style="display:block;font-style:italic;color:#666">${hint}</span>
-    </div>
-</div>
-`;
-}
-
-function RenderSortlist(program_shortcut,setting_name) {
-    let program_key = program_shortcut.toUpperCase();
-    let setting_key = KebabCase(setting_name);
-    let display_name = DisplayCase(setting_name);
-    let sort_list = Danbooru[program_key].user_settings[setting_name];
-    let hint = settings_config[setting_name].hint;
-    let html = '';
-    $.each(sort_list,(i,sortitem)=>{
-        let display_sortitem = DisplayCase(sortitem);
-        html += `
-<li class="ui-state-default" style="width:5.5em;font-size:125%">
-    <input type="hidden" class="${program_shortcut}-setting" name="${program_shortcut}-enable-${setting_key}" id="${program_shortcut}-enable-${setting_key}" data-sort="${sortitem}" data-parent="3">
-    <div style="padding:5px">
-        <span class="ui-icon ui-icon-arrowthick-2-n-s"></span>
-        ${display_sortitem}
-    </div>
-</li>`;
-    });
-    return `
-<div class="${program_shortcut}-sortlist" data-setting="${setting_name}" style="margin:0.5em">
-    <h4>${display_name}</h4>
-    <ul style="margin:0.5em">
-        ${html}
-    </ul>
-    <span class="${program_shortcut}-setting-tooltip" style="display:inline;font-style:italic;color:#666">${hint}</span>
-</div>`
-}
-
-function RenderLinkclick(program_shortcut,setting_name,display_name,link_text) {
-    let setting_key = KebabCase(setting_name);
-    return `
-<div class="${program_shortcut}-linkclick" style="margin:0.5em">
-    <h4>${display_name}</h4>
-    <div style="margin-left:0.5em">
-        <span class="${program_shortcut}-control-linkclick" style="display:block"><a href="#" id="${program_shortcut}-setting-${setting_key}" style="color:#0073ff">${link_text}</a></span>
-    </div>
-</div>`;
-}
-
-const usage_settings = `
-<div id="iac-settings" style="float:left;width:50%">
+const iac_menu = `
+<div id="iac-settings" class="jsplib-outer-menu">
     <div id="iac-script-message" class="prose">
         <h2>IndexedAutocomplete</h2>
         <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/14701" style="color:#0073ff">topic #14701</a>).</p>
     </div>
-    <div id="iac-usage-settings" style="margin-bottom:2em">
+    <div id="iac-usage-settings" class="jsplib-settings-grouping">
         <div id="iac-usage-message" class="prose">
             <h4>Usage settings</h4>
             <p>These settings control how items get sorted in the autocomplete popup.</p>
@@ -1307,7 +1154,7 @@ const usage_settings = `
             </ul>
         </div>
     </div>
-    <div id="iac-display-settings" style="margin-bottom:2em">
+    <div id="iac-display-settings" class="jsplib-settings-grouping">
         <div id="iac-display-message" class="prose">
             <h4>Display settings</h4>
             <p>These settings affect the presentation of autocomplete data to the user.</p>
@@ -1339,7 +1186,7 @@ const usage_settings = `
             </ul>
         </div>
     </div>
-    <div id="iac-sort-settings" style="margin-bottom:2em">
+    <div id="iac-sort-settings" class="jsplib-settings-grouping">
         <div id="iac-sort-message" class="prose">
             <h4>Sort settings</h4>
             <p>These settings affect the order of tag autocomplete data.</p>
@@ -1352,7 +1199,7 @@ const usage_settings = `
             </ul>
         </div>
     </div>
-    <div id="iac-network-settings" style="margin-bottom:2em">
+    <div id="iac-network-settings" class="jsplib-settings-grouping">
         <div id="iac-network-message" class="prose">
             <h4>Network settings</h4>
             <ul>
@@ -1372,7 +1219,7 @@ const usage_settings = `
             </ul>
         </div>
     </div>
-    <div id="iac-cache-settings" style="margin-bottom:2em">
+    <div id="iac-cache-settings" class="jsplib-settings-grouping">
         <div id="iac-cache-message" class="prose">
             <h4>Cache settings</h4>
             <h5>Cache data</h5>
@@ -1406,7 +1253,7 @@ const usage_settings = `
         </div>
     </div>
     <hr>
-    <div id="iac-settings-buttons" style="margin-top:1em">
+    <div id="iac-settings-buttons" class="jsplib-settings-buttons">
         <input type="button" id="iac-commit" value="Save">
         <input type="button" id="iac-resetall" value="Factory Reset">
     </div>
@@ -1510,258 +1357,29 @@ function SetTagAutocompleteSource() {
     }
 }
 
-function LoadUserSettings(program_shortcut) {
-    let user_settings = JSPLib.storage.getStorageData(`${program_shortcut}-user-settings`,localStorage,{});
-    let is_dirty = false;
-    $.each(settings_config,(setting)=>{
-        if (!(setting in user_settings) || !settings_config[setting].validate(user_settings[setting])) {
-            JSPLib.debug.debuglog("Loading default:",setting,user_settings[setting]);
-            user_settings[setting] = settings_config[setting].default;
-            is_dirty = true;
-        }
-    });
-    let valid_settings = Object.keys(settings_config);
-    $.each(user_settings,(setting)=>{
-        if (!valid_settings.includes(setting)) {
-            JSPLib.debug.debuglog("Deleting invalid setting:",setting,user_settings[setting]);
-            delete user_settings[setting];
-            is_dirty = true;
-        }
-    });
-    if (is_dirty) {
-        JSPLib.debug.debuglog("Saving change to user settings!");
-        JSPLib.storage.setStorageData(`${program_shortcut}-user-settings`,user_settings,localStorage);
-    }
-    return user_settings;
-}
-
-function SaveUserSettingsClick(program_shortcut,program_name) {
-    let program_key = program_shortcut.toUpperCase();
-    $(`#${program_shortcut}-commit`).click((e)=>{
-        let invalid_setting = false;
-        let temp_selectors = {};
-        $(`#${program_shortcut}-settings .${program_shortcut}-setting[id]`).each((i,entry)=>{
-            let parent_level = $(entry).data('parent');
-            let container = JSPLib.utility.getNthParent(entry,parent_level);
-            let setting_name = $(container).data('setting');
-            if (entry.type === "checkbox" || entry.type === "radio") {
-                let selector = $(entry).data('selector');
-                if (selector) {
-                    temp_selectors[setting_name] = temp_selectors[setting_name] || [];
-                    if (entry.checked) {
-                        temp_selectors[setting_name].push(selector);
-                    }
-                } else {
-                    Danbooru[program_key].user_settings[setting_name] = entry.checked;
-                }
-            } else if (entry.type === "text") {
-                 let user_setting = settings_config[setting_name].parse($(entry).val());
-                 if (settings_config[setting_name].validate(user_setting)) {
-                    Danbooru[program_key].user_settings[setting_name] = user_setting;
-                 } else {
-                    invalid_setting = true;
-                 }
-                 $(entry).val(Danbooru[program_key].user_settings[setting_name]);
-            } else if (entry.type === "hidden") {
-                let sortitem = $(entry).data('sort');
-                if (sortitem) {
-                    temp_selectors[setting_name] = temp_selectors[setting_name] || [];
-                    temp_selectors[setting_name].push(sortitem);
-                }
-            }
-        });
-        $.each(temp_selectors,(setting_name)=>{
-            Danbooru[program_key].user_settings[setting_name] = temp_selectors[setting_name];
-        });
-        JSPLib.storage.setStorageData(`${program_shortcut}-user-settings`,Danbooru[program_key].user_settings,localStorage);
-        Danbooru[program_key].channel && Danbooru[program_key].channel.postMessage({type: "settings", user_settings: Danbooru[program_key].user_settings});
-        if (!invalid_setting) {
-            Danbooru.Utility.notice(`${program_name}: Settings updated!`);
-        } else {
-            Danbooru.Utility.error("Error: Some settings were invalid!")
-        }
-    });
-}
-
-function ResetUserSettingsClick(program_shortcut,program_name,delete_keys,reset_settings) {
-    let program_key = program_shortcut.toUpperCase();
-    $(`#${program_shortcut}-resetall`).click((e)=>{
-        if (confirm(`This will reset all of ${program_name}'s settings.\n\nAre you sure?`)) {
-            $.each(settings_config,(setting)=>{
-                Danbooru[program_key].user_settings[setting] = settings_config[setting].default;
-            });
-            $(`#${program_shortcut}-settings .${program_shortcut}-setting[id]`).each((i,entry)=>{
-                let $input = $(entry);
-                let setting_name = $input.parent().parent().data('setting');
-                if (entry.type === "checkbox") {
-                    let selector = $input.data('selector');
-                    if (selector) {
-                        $input.prop('checked', Danbooru[program_key].user_settings[setting_name].includes(selector));
-                        $input.checkboxradio("refresh");
-                    } else {
-                        $input.prop('checked', Danbooru[program_key].user_settings[setting_name]);
-                    }
-                } else if (entry.type === "text") {
-                     $input.val(Danbooru[program_key].user_settings[setting_name]);
-                }
-            });
-            $.each(delete_keys,(i,key)=>{
-                localStorage.removeItem(key);
-            });
-            Object.assign(Danbooru[program_key],reset_settings);
-            JSPLib.storage.setStorageData(`${program_shortcut}-user-settings`,Danbooru[program_key].user_settings,localStorage);
-            Danbooru[program_key].channel && Danbooru[program_key].channel.postMessage({type: "reset", user_settings: Danbooru[program_key].user_settings});
-            Danbooru.Utility.notice(`${program_name}: Settings reset to defaults!`);
-        }
-    });
-}
-
-async function PurgeCache(regex,domname) {
-    Danbooru.Utility.notice("Starting cache deletion...");
-    let promise_array = [];
-    let purged_count = 0;
-    let remaining_count = 0;
-    await JSPLib.storage.danboorustorage.iterate((value,key)=>{
-        if (key.match(regex)) {
-            JSPLib.debug.debuglogLevel("Deleting",key,JSPLib.debug.DEBUG);
-            let resp = JSPLib.storage.removeData(key).then(()=>{
-                domname && $(domname).html(--remaining_count);
-            });
-            promise_array.push(resp);
-            purged_count += 1;
-            domname && $(domname).html(++remaining_count);
-        }
-    });
-    Danbooru.Utility.notice(`Deleting ${purged_count} items...`);
-    JSPLib.debug.debuglogLevel(`Deleting ${purged_count} items...`,JSPLib.debug.INFO);
-    //Wait at least 5 seconds
-    await JSPLib.utility.sleep(5000);
-    await Promise.all(promise_array);
-    Danbooru.Utility.notice("Finished deleting cached data!");
-    JSPLib.debug.debuglogLevel("Finished deleting cached data!",JSPLib.debug.INFO);
-}
-
-function PurgeCacheClick(program_shortcut,program_name,regex,domname) {
-    let program_key = program_shortcut.toUpperCase();
-    $(`#${program_shortcut}-setting-purge-cache`).click((e)=>{
-        if (!PurgeCacheClick.is_started && confirm(`This will delete all of ${program_name}'s cached data.\n\nAre you sure?`)) {
-            PurgeCacheClick.is_started = true;
-            PurgeCache(regex,domname).then(()=>{
-                Danbooru[program_key].channel && Danbooru[program_key].channel.postMessage({type: "purge"});
-                PurgeCacheClick.is_started = false;
-            });;
-        }
-        e.preventDefault();
-    });
-}
-
 function RenderSettingsMenu() {
-    $("#indexed-autocomplete").append(usage_settings);
-    $("#iac-usage-settings").append(RenderCheckbox("iac",'usage_enabled'));
-    $("#iac-usage-settings").append(RenderTextinput("iac",'usage_multiplier'));
-    $("#iac-usage-settings").append(RenderTextinput("iac",'usage_maximum'));
-    $("#iac-usage-settings").append(RenderTextinput("iac",'usage_expires'));
-    $("#iac-display-settings").append(RenderCheckbox("iac",'source_highlight_enabled'));
-    $("#iac-display-settings").append(RenderCheckbox("iac",'source_grouping_enabled'));
-    $("#iac-display-settings").append(RenderSortlist("iac",'source_order'));
-    $("#iac-sort-settings").append(RenderCheckbox("iac",'alternate_sorting_enabled'));
-    $("#iac-sort-settings").append(RenderInputSelectors("iac",'postcount_scale','radio'));
-    $("#iac-sort-settings").append(RenderTextinput("iac",'exact_source_weight',5));
-    $("#iac-sort-settings").append(RenderTextinput("iac",'prefix_source_weight',5));
-    $("#iac-sort-settings").append(RenderTextinput("iac",'alias_source_weight',5));
-    $("#iac-sort-settings").append(RenderTextinput("iac",'correct_source_weight',5));
-    $("#iac-network-settings").append(RenderCheckbox("iac",'alternate_tag_source'));
-    $("#iac-network-settings").append(RenderCheckbox("iac",'network_only_mode'));
-    $("#iac-cache-settings").append(RenderLinkclick("iac",'purge_cache',`Purge cache (<span id="iac-purge-counter">...</span>)`,"Click to purge"));
-    $(".iac-sortlist ul").sortable();
-    $(".iac-selectors input").checkboxradio();
-    $(".iac-selectors .ui-state-hover").removeClass('ui-state-hover');
-    SaveUserSettingsClick('iac','IndexedAutocomplete');
-    ResetUserSettingsClick('iac','IndexedAutocomplete',localstorage_keys,program_reset_keys);
-    PurgeCacheClick('iac','IndexedAutocomplete',program_cache_regex,"#iac-purge-counter");
+    $("#indexed-autocomplete").append(iac_menu);
+    $("#iac-usage-settings").append(JSPLib.menu.renderCheckbox("iac",'usage_enabled'));
+    $("#iac-usage-settings").append(JSPLib.menu.renderTextinput("iac",'usage_multiplier'));
+    $("#iac-usage-settings").append(JSPLib.menu.renderTextinput("iac",'usage_maximum'));
+    $("#iac-usage-settings").append(JSPLib.menu.renderTextinput("iac",'usage_expires'));
+    $("#iac-display-settings").append(JSPLib.menu.renderCheckbox("iac",'source_highlight_enabled'));
+    $("#iac-display-settings").append(JSPLib.menu.renderCheckbox("iac",'source_grouping_enabled'));
+    $("#iac-display-settings").append(JSPLib.menu.renderSortlist("iac",'source_order'));
+    $("#iac-sort-settings").append(JSPLib.menu.renderCheckbox("iac",'alternate_sorting_enabled'));
+    $("#iac-sort-settings").append(JSPLib.menu.renderInputSelectors("iac",'postcount_scale','radio'));
+    $("#iac-sort-settings").append(JSPLib.menu.renderTextinput("iac",'exact_source_weight',5));
+    $("#iac-sort-settings").append(JSPLib.menu.renderTextinput("iac",'prefix_source_weight',5));
+    $("#iac-sort-settings").append(JSPLib.menu.renderTextinput("iac",'alias_source_weight',5));
+    $("#iac-sort-settings").append(JSPLib.menu.renderTextinput("iac",'correct_source_weight',5));
+    $("#iac-network-settings").append(JSPLib.menu.renderCheckbox("iac",'alternate_tag_source'));
+    $("#iac-network-settings").append(JSPLib.menu.renderCheckbox("iac",'network_only_mode'));
+    $("#iac-cache-settings").append(JSPLib.menu.renderLinkclick("iac",'purge_cache',`Purge cache (<span id="iac-purge-counter">...</span>)`,"Click to purge"));
+    JSPLib.menu.engageUI('iac',true,true);
+    JSPLib.menu.saveUserSettingsClick('iac','IndexedAutocomplete');
+    JSPLib.menu.resetUserSettingsClick('iac','IndexedAutocomplete',localstorage_keys,program_reset_keys);
+    JSPLib.menu.purgeCacheClick('iac','IndexedAutocomplete',program_cache_regex,"#iac-purge-counter");
 }
-
-//Main menu tabs
-
-const css_themes_url = 'https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/themes/base/jquery-ui.css';
-
-const settings_css = `
-.ui-tabs {
-    position: inherit;
-}`;
-
-const settings_field = `
-<fieldset id="userscript-settings-menu" style="display:none">
-  <ul id="userscript-settings-tabs">
-  </ul>
-  <div id="userscript-settings-sections">
-  </div>
-</fieldset>`;
-
-function RenderTab(program_name,program_key) {
-    return `<li><a href="#${program_key}">${program_name}</a></li>`;
-}
-
-function RenderSection(program_key) {
-    return `<div id="${program_key}"></div>`;
-}
-
-function MainSettingsClick() {
-    if (!IsNamespaceBound(`[href="#userscript-menu"`,'click','jsplib.menuchange')) {
-        $(`[href="#userscript-menu"`).on('click.jsplib.menuchange',(e)=>{
-            $(`#edit-options a[href$="settings"]`).removeClass("active");
-            $(e.target).addClass("active");
-            $(".edit_user > fieldset").hide();
-            $("#userscript-settings-menu").show();
-            $('[name=commit]').hide();
-            e.preventDefault();
-        });
-    }
-}
-function OtherSettingsClicks() {
-    if (!IsNamespaceBound("#edit-options a[href$=settings]",'click','jsplib.menuchange')) {
-        $("#edit-options a[href$=settings]").on('click.jsplib.menuchange',(e)=>{
-            $(`[href="#userscript-menu"`).removeClass('active');
-            $("#userscript-settings-menu").hide();
-            $('[name=commit]').show();
-            e.preventDefault()
-        });
-    }
-}
-
-function InstallSettingsMenu(program_name) {
-    let program_key = KebabCase(program_name);
-    if ($("#userscript-settings-menu").length === 0) {
-        $(`input[name="commit"]`).before(settings_field);
-        $("#edit-options").append('| <a href="#userscript-menu">Userscript Menus</a>');
-        //Periodic recheck in case other programs remove/rebind click events
-        setInterval(()=>{
-            MainSettingsClick();
-            OtherSettingsClicks();
-        },1000);
-        AddStyleSheet(css_themes_url);
-        JSPLib.utility.setCSSStyle(settings_css,'settings');
-        InstallSettingsMenu.install_script = true;
-    } else {
-        $("#userscript-settings-menu").tabs("destroy");
-    }
-    $("#userscript-settings-tabs").append(RenderTab(program_name,program_key));
-    $("#userscript-settings-sections").append(RenderSection(program_key));
-    //Sort the tabs alphabetically
-    $("#userscript-settings-tabs li").sort(function(a, b) {
-        try {
-            return a.children[0].innerText.localeCompare(b.children[0].innerText);
-        } catch (e) {
-            return 0;
-        }
-    }).each(function() {
-        var elem = $(this);
-        elem.remove();
-        $(elem).appendTo("#userscript-settings-tabs");
-    });
-    $("#userscript-settings-menu").tabs();
-}
-
 
 //Main program
 function main() {
@@ -1778,9 +1396,10 @@ function main() {
         source_data: {},
         choice_order: JSPLib.storage.getStorageData('iac-choice-order',localStorage,{}),
         choice_data: JSPLib.storage.getStorageData('iac-choice-data',localStorage,{}),
-        user_settings: LoadUserSettings('iac'),
+        settings_config: settings_config,
         channel: new BroadcastChannel('IndexedAutocomplete')
     };
+    Danbooru.IAC.user_settings = JSPLib.menu.loadUserSettings('iac');
     SetTagAutocompleteSource();
     Danbooru.IAC.channel.onmessage = BroadcastIAC;
     CorrectUsageData();
@@ -1833,12 +1452,9 @@ function main() {
         setTimeout(()=>{InitializeAutocompleteIndexed(autocomplete_userlist.join(','), 'us');}, timer_poll_interval);
     }
     if ($("#c-users #a-edit").length) {
-        InstallScript("https://cdn.rawgit.com/jquery/jquery-ui/1.12.1/ui/widgets/tabs.js").done(()=>{
-            InstallSettingsMenu("IndexedAutocomplete");
+        JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
+            JSPLib.menu.installSettingsMenu("IndexedAutocomplete");
             RenderSettingsMenu();
-            if (!InstallSettingsMenu.install_script) {
-                JSPLib.utility.setCSSStyle(settings_css,'settings');
-            }
         });
     }
     JSPLib.debug.debugExecute(()=>{
