@@ -30,13 +30,6 @@ JSPLib.debug.pretimer = "EL-";
 const program_load_required_variables = ['window.jQuery','window.Danbooru'];
 const program_load_required_selectors = ["#nav","#page"];
 
-//The max number of items to grab with each network call
-const query_limit = 100;
-
-//Various program expirations
-const recheck_event_expires = 5 * JSPLib.utility.one_minute;
-const process_semaphore_expires = 5 * JSPLib.utility.one_minute;
-
 //For factory reset
 const localstorage_keys = [
     'el-process-semaphore','el-events', 'el-timeout',
@@ -53,6 +46,245 @@ const localstorage_keys = [
 ];
 //Not handling reset event yet
 const program_reset_keys = {};
+
+//Available setting values
+const enable_events = ['flag','appeal','dmail','spam','comment','note','commentary','forum'];
+const autosubscribe_events = ['comment','note','commentary'];
+
+//Main settings
+const settings_config = {
+    autolock_notices: {
+        default: false,
+        validate: (data)=>{return typeof data === "boolean";},
+        hint: "Closing a notice will no longer close all other notices."
+    },
+    mark_read_topics: {
+        default: true,
+        validate: (data)=>{return typeof data === "boolean";},
+        hint: "Reading a forum post from the notice will mark the topic as read."
+    },
+    filter_user_events: {
+        default: true,
+        validate: (data)=>{return typeof data === "boolean";},
+        hint: "Only show events not created by the user."
+    },
+    filter_untranslated_commentary: {
+        default: true,
+        validate: (data)=>{return typeof data === "boolean";},
+        hint: "Only show new commentary that has translated sections."
+    },
+    recheck_interval: {
+        default: 5,
+        parse: parseInt,
+        validate: (data)=>{return Number.isInteger(data) && data > 0;},
+        hint: "How often to check for new events (# of minutes)."
+    },
+    events_enabled: {
+        allitems: enable_events,
+        default: enable_events,
+        validate: (data)=>{return Array.isArray(data) && data.reduce((is_string,val)=>{return is_string && (typeof val === 'string') && enable_events.includes(val);},true)},
+        hint: "Uncheck to turn off event type."
+    },
+    autosubscribe_enabled: {
+        allitems: autosubscribe_events,
+        default: [],
+        validate: (data)=>{return Array.isArray(data) && data.reduce((is_string,val)=>{return is_string && (typeof val === 'string') && autosubscribe_events.includes(val);},true)},
+        hint: "Check to autosubscribe event type."
+    }
+}
+
+//CSS Constants
+
+const program_css = `
+#event-notice {
+    background: #fdf5d9;
+    border: 1px solid #fceec1;
+}
+#c-comments #a-index #p-index-by-post .subscribe-comment,
+#c-comments #a-index #p-index-by-post .unsubscribe-comment {
+    margin: 1em 0;
+}
+#c-comments #a-index #p-index-by-comment table,
+#event-notice #comments-section #comment-table table {
+    float: left;
+    text-align: center;
+}
+#c-comments #a-index #p-index-by-comment .preview,
+#event-notice #comments-section #comments-table .preview {
+    margin-right: 0;
+}
+.striped .subscribe-forum,
+.striped .unsubscribe-forum,
+.striped .subscribe-note,
+.striped .unsubscribe-note,
+#event-notice .show-full-forum,
+#event-notice .hide-full-forum,
+#event-notice .show-full-dmail,
+#event-notice .hide-full-dmail,
+#event-notice .show-full-note,
+#event-notice .hide-full-note {
+    font-family: monospace;
+}
+#nav #el-subscribe-events {
+    padding-left: 2em;
+    font-weight: bold;
+}
+#el-subscribe-events #el-add-links li {
+    margin: 0 -6px;
+}
+#el-subscribe-events .el-subscribed a,
+#el-subscribe-events a[href$="/unsubscribe"] {
+    color: green;
+}
+#el-subscribe-events .el-unsubscribed a,
+#el-subscribe-events a[href$="/subscribe"] {
+    color: darkorange;
+}
+#lock-event-notice {
+    font-weight: bold;
+    color: green;
+}
+#lock-event-notice.el-locked {
+    color: red;
+}
+`;
+
+const comment_css = `
+#event-notice #comment-section #comment-table .preview {
+    float: left;
+    width: 154px;
+    height: 154px;
+    margin-right: 30px;
+    overflow: hidden;
+    text-align; center;
+}
+#event-notice #comment-section #comment-table .comment {
+    margin-left: 184px;
+    margin-bottom: 2em;
+    word-wrap: break-word;
+    padding: 5px;
+    display: block;
+}
+`;
+
+const forum_css = `
+#event-notice #forum-section #forum-table .author {
+    padding: 1em 1em 0 1em;
+    width: 12em;
+    float: left;
+}
+#event-notice #forum-section #forum-table .content {
+    padding: 1em;
+    margin-left: 14em;
+}`;
+
+//HTML constants
+
+const notice_box = `
+<div id="event-notice" style="display:none">
+    <div id="dmail-section"  style="display:none">
+        <h1>You've got mail!</h1>
+        <div id="dmail-table"></div>
+    </div>
+    <div id="flag-section"  style="display:none">
+        <h1>You've got flags!</h1>
+        <div id="flag-table"></div>
+    </div>
+    <div id="appeal-section"  style="display:none">
+        <h1>You've got appeals!</h1>
+        <div id="appeal-table"></div>
+    </div>
+    <div id="forum-section"  style="display:none">
+        <h1>You've got forums!</h1>
+        <div id="forum-table"></div>
+    </div>
+    <div id="comment-section"  class="comments-for-post" style="display:none">
+        <h1>You've got comments!</h1>
+        <div id="comment-table"></div>
+    </div>
+    <div id="note-section"  style="display:none">
+        <h1>You've got notes!</h1>
+        <div id="note-table"></div>
+    </div>
+    <div id="commentary-section"  style="display:none">
+        <h1>You've got commentaries!</h1>
+        <div id="commentary-table"></div>
+    </div>
+    <div id="spam-section"  style="display:none">
+        <h1>You've got spam!</h1>
+        <div id="spam-table"></div>
+    </div>
+    <p><a href="#" id="hide-event-notice">Close this</a> [<a href="#" id="lock-event-notice">LOCK</a>]</p>
+</div>
+`;
+
+//Since append is primarily used, these need to be separate ***CSS THE STYLING!!!***
+const display_counter = `
+<div id="el-search-query-display" style="margin:0.5em;font-size:150%;border:lightgrey solid 1px;padding:0.5em;width:7.5em;display:none">
+    Pages left: <span id="el-search-query-counter">...</span>
+</div>`;
+
+const el_menu = `
+<div id="el-settings" class="jsplib-outer-menu">
+    <div id="el-script-message" class="prose">
+        <h2>EventListener</h2>
+        <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/14747" style="color:#0073ff">topic #14747</a>).</p>
+    </div>
+    <div id="el-notice-settings" class="jsplib-settings-grouping">
+        <div id="el-network-message" class="prose">
+            <h4>Notice settings</h4>
+        </div>
+    </div>
+    <div id="el-event-settings" class="jsplib-settings-grouping">
+        <div id="el-event-message" class="prose">
+            <h4>Event settings</h4>
+            <ul>
+                <li><b>Events enabled:</b> Select which events to check for.
+                    <ul>
+                        <li>Subscription-type events will not be checked unless there is more than one subscribed item.</li>
+                        <li>These include comments, notes, commentaries, and forums.</li>
+                    </ul>
+                </li>
+                <li><b>Autosubscribe enabled:</b> Select which events on items created by the user will be automatically subscribed.
+                    <ul>
+                        <li>This will be the uploader for comments, notes and commentaries.</li>
+                        <li>Events will only be subscribed on the post page for that upload.</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div id="el-network-settings" class="jsplib-settings-grouping">
+        <div id="el-network-message" class="prose">
+            <h4>Network settings</h4>
+        </div>
+    </div>
+    <div id="el-subscribe-controls" class="jsplib-settings-grouping">
+        <div id="el-subscribe-message" class="prose">
+            <h4>Subscribe controls</h4>
+            <p>Subscribe to events using search queries instead of individually.</p>
+            <p><span style="color:red"><b>Warning!</b></span> Very large lists have issues:</p>
+            <ul>
+                <li>Higher performance delays.</li>
+                <li>Could fill up the cache.</li>
+                <li>Which could crash the program or other scripts.</li>
+                <li>I.e. don't subscribe to <b><u>ALL</u></b> of Danbooru!</li>
+            </ul>
+        </div>
+    </div>
+    <hr>
+    <div id="el-settings-buttons" class="jsplib-settings-buttons">
+        <input type="button" id="el-commit" value="Save">
+        <input type="button" id="el-resetall" value="Factory Reset">
+    </div>
+</div>`;
+
+//The max number of items to grab with each network call
+const query_limit = 100;
+
+//Various program expirations
+const recheck_event_expires = 5 * JSPLib.utility.one_minute;
+const process_semaphore_expires = 5 * JSPLib.utility.one_minute;
 
 //Type configurations
 const typedict = {
@@ -110,156 +342,7 @@ const typedict = {
     }
 };
 
-function IsShownData(val,typelist,user_key=null,subscribe_key=null,other_filters=null) {
-    if (Danbooru.EL.user_settings.filter_user_events && user_key && val[user_key] === Danbooru.EL.userid) {
-        return false;
-    }
-    if (subscribe_key && !typelist.includes(val[subscribe_key])) {
-        return false;
-    }
-    if (other_filters && !other_filters(val)) {
-        return false;
-    }
-    return true;
-}
-
-function IsShownCommentary(val) {
-    if (!Danbooru.EL.user_settings.filter_untranslated_commentary) {
-        return true;
-    }
-    return (Boolean(val.translated_title) || Boolean(val.translated_description));
-}
-
-function GetRecheckExpires() {
-    return Danbooru.EL.user_settings.recheck_interval * JSPLib.utility.one_minute;
-}
-
-//HTML for the notice block
-const notice_box = `
-<div id="event-notice" style="display:none">
-    <div id="dmail-section"  style="display:none">
-        <h1>You've got mail!</h1>
-        <div id="dmail-table"></div>
-    </div>
-    <div id="flag-section"  style="display:none">
-        <h1>You've got flags!</h1>
-        <div id="flag-table"></div>
-    </div>
-    <div id="appeal-section"  style="display:none">
-        <h1>You've got appeals!</h1>
-        <div id="appeal-table"></div>
-    </div>
-    <div id="forum-section"  style="display:none">
-        <h1>You've got forums!</h1>
-        <div id="forum-table"></div>
-    </div>
-    <div id="comment-section"  class="comments-for-post" style="display:none">
-        <h1>You've got comments!</h1>
-        <div id="comment-table"></div>
-    </div>
-    <div id="note-section"  style="display:none">
-        <h1>You've got notes!</h1>
-        <div id="note-table"></div>
-    </div>
-    <div id="commentary-section"  style="display:none">
-        <h1>You've got commentaries!</h1>
-        <div id="commentary-table"></div>
-    </div>
-    <div id="spam-section"  style="display:none">
-        <h1>You've got spam!</h1>
-        <div id="spam-table"></div>
-    </div>
-    <p><a href="#" id="hide-event-notice">Close this</a> [<a href="#" id="lock-event-notice">LOCK</a>]</p>
-</div>
-`;
-
-//Program CSS
-const eventlistener_css = `
-#event-notice {
-    background: #fdf5d9;
-    border: 1px solid #fceec1;
-}
-#c-comments #a-index #p-index-by-post .subscribe-comment,
-#c-comments #a-index #p-index-by-post .unsubscribe-comment {
-    margin: 1em 0;
-}
-#c-comments #a-index #p-index-by-comment table,
-#event-notice #comments-section #comment-table table {
-    float: left;
-    text-align: center;
-}
-#c-comments #a-index #p-index-by-comment .preview,
-#event-notice #comments-section #comments-table .preview {
-    margin-right: 0;
-}
-.striped .subscribe-forum,
-.striped .unsubscribe-forum,
-.striped .subscribe-note,
-.striped .unsubscribe-note,
-#event-notice .show-full-forum,
-#event-notice .hide-full-forum,
-#event-notice .show-full-dmail,
-#event-notice .hide-full-dmail,
-#event-notice .show-full-note,
-#event-notice .hide-full-note {
-    font-family: monospace;
-}
-#nav #el-subscribe-events {
-    padding-left: 2em;
-    font-weight: bold;
-}
-#el-subscribe-events #el-add-links li {
-    margin: 0 -6px;
-}
-#el-subscribe-events .el-subscribed a,
-#el-subscribe-events a[href$="/unsubscribe"] {
-    color: green;
-}
-#el-subscribe-events .el-unsubscribed a,
-#el-subscribe-events a[href$="/subscribe"] {
-    color: darkorange;
-}
-#lock-event-notice {
-    font-weight: bold;
-    color: green;
-}
-#lock-event-notice.el-locked {
-    color: red;
-}
-`;
-
-//Fix for showing comments
-const comment_css = `
-#event-notice #comment-section #comment-table .preview {
-    float: left;
-    width: 154px;
-    height: 154px;
-    margin-right: 30px;
-    overflow: hidden;
-    text-align; center;
-}
-#event-notice #comment-section #comment-table .comment {
-    margin-left: 184px;
-    margin-bottom: 2em;
-    word-wrap: break-word;
-    padding: 5px;
-    display: block;
-}
-`;
-
-//Fix for showing forum posts
-const forum_css = `
-#event-notice #forum-section #forum-table .author {
-    padding: 1em 1em 0 1em;
-    width: 12em;
-    float: left;
-}
-#event-notice #forum-section #forum-table .content {
-    padding: 1em;
-    margin-left: 14em;
-}`;
-
-/****Functions****/
+/***Functions***/
 
 //Library functions
 
@@ -374,39 +457,7 @@ function CheckWaiting(inputtype) {
     return !(Object.values(CheckWaiting.all_waits).reduce((total,entry)=>{return total || entry;},false)) || CheckWaiting.all_waits[inputtype];
 }
 
-/****Auxiliary functions****/
-
-function BroadcastEL(ev) {
-    JSPLib.debug.debuglog("Broadcast",ev.data);
-    if (ev.data.type === "hide" && !Danbooru.EL.locked_notice) {
-        $("#event-notice").hide();
-    } else if (ev.data.type === "settings") {
-        Danbooru.EL.user_settings = ev.data.user_settings;
-    } else if (ev.data.type === "reset") {
-        //Not handling this yet, so just hide everything until the next page refresh
-        JSPLib.utility.fullHide("#event-notice,#el-subscribe-events,.el-subscribe-dual-links");
-    } else if (ev.data.type === "subscribe") {
-        Danbooru.EL.subscribelist[ev.data.eventtype] = ev.data.eventlist;
-        UpdateMultiLink([ev.data.eventtype],ev.data.was_subscribed,ev.data.itemid);
-        UpdateDualLink(ev.data.eventtype,ev.data.was_subscribed,ev.data.itemid);
-    } else if (ev.data.type === "reload") {
-        Danbooru.EL.subscribelist[ev.data.eventtype] = ev.data.eventlist;
-        let menuid = $("#el-subscribe-events").data('id');
-        if (ev.data.was_subscribed.includes(menuid)) {
-            UpdateMultiLink([ev.data.eventtype],true,menuid);
-        } else if (ev.data.new_subscribed.includes(menuid)) {
-            UpdateMultiLink([ev.data.eventtype],false,menuid);
-        }
-        $(`.subscribe-${ev.data.eventtype}[data-id]`).each((i,entry)=>{
-            let linkid = $(entry).data('id');
-            if (ev.data.was_subscribed.includes(linkid)) {
-                UpdateDualLink(ev.data.eventtype,true,linkid);
-            } else if (ev.data.new_subscribed.includes(linkid)) {
-                UpdateDualLink(ev.data.eventtype,false,linkid);
-            }
-        });
-    }
-}
+//Auxiliary functions
 
 //Get single instance of various types and insert into table row
 
@@ -576,93 +627,7 @@ async function GetPostsCountdown(limit,searchstring,domname) {
     }
 }
 
-/****Main execution functions****/
-
-async function CheckUserType(type) {
-    let lastidkey = `el-${type}lastid`;
-    let typelastid = JSPLib.storage.getStorageData(lastidkey,localStorage,0);
-    if (JSPLib.validate.validateID(typelastid)) {
-        let url_addons = JSPLib.danbooru.joinArgs(typedict[type].addons,typedict[type].useraddons(Danbooru.EL.username));
-        let jsontype = await JSPLib.danbooru.getAllItems(typedict[type].controller,query_limit,{addons:url_addons,page:typelastid,reverse:true});
-        let filtertype = typedict[type].filter(jsontype);
-        let lastusertype = (jsontype.length ? [JSPLib.danbooru.getNextPageID(jsontype,true)] : []);
-        if (filtertype.length) {
-            Danbooru.EL.lastids.user[type] = lastusertype[0];
-            JSPLib.debug.debuglog(`Found ${type}(s)!`,Danbooru.EL.lastids.user[type]);
-            let idlist = JSPLib.utility.getObjectAttributes(filtertype,'id');
-            url_addons = JSPLib.danbooru.joinArgs(typedict[type].addons,{search: {id: idlist.join(',')}, limit: idlist.length});
-            let typehtml = await $.get(`/${typedict[type].controller}`, url_addons);
-            let $typepage = $(typehtml);
-            typedict[type].insert($typepage,type);
-            $("#event-notice").show();
-            $(`#${type}-section`).show();
-            return true;
-        } else {
-            JSPLib.debug.debuglog(`No ${type}(s)!`);
-            if (lastusertype.length && (typelastid !== lastusertype[0])) {
-                SaveLastID(type,lastusertype[0]);
-            }
-        }
-    } else {
-        SetRecentDanbooruID(type,true);
-    }
-    return false;
-}
-
-async function CheckSubscribeType(type) {
-    let lastidkey = `el-${type}lastid`;
-    let typelastid = JSPLib.storage.getStorageData(lastidkey,localStorage,0);
-    if (JSPLib.validate.validateID(typelastid)) {
-        let typelist = GetList(type);
-        let savedlistkey = `el-saved${type}list`;
-        let savedlastidkey = `el-saved${type}lastid`;
-        var subscribetypelist = [], jsontypelist = [];
-        let savedlastid = JSPLib.storage.getStorageData(savedlastidkey,localStorage);
-        let savedlist = JSPLib.storage.getStorageData(savedlistkey,localStorage);
-        if (!JSPLib.validate.validateIDList(savedlastid) || !JSPLib.validate.validateIDList(savedlist)) {
-            let jsontype = await JSPLib.danbooru.getAllItems(typedict[type].controller,query_limit,{page:typelastid,addons:typedict[type].addons,reverse:true});
-            let subscribetype = typedict[type].filter(jsontype,typelist);
-            if (jsontype.length) {
-                jsontypelist = [JSPLib.danbooru.getNextPageID(jsontype,true)];
-            }
-            if (subscribetype.length) {
-                subscribetypelist = JSPLib.utility.getObjectAttributes(subscribetype,'id');
-                JSPLib.storage.setStorageData(savedlistkey,subscribetypelist,localStorage);
-                JSPLib.storage.setStorageData(savedlastidkey,jsontypelist,localStorage);
-            }
-        } else {
-            jsontypelist = savedlastid;
-            subscribetypelist = savedlist;
-        }
-        if (subscribetypelist.length) {
-            Danbooru.EL.lastids.subscribe[type] = jsontypelist[0];
-            JSPLib.debug.debuglog(`Found ${type}(s)!`,Danbooru.EL.lastids.subscribe[type]);
-            let url_addons = JSPLib.danbooru.joinArgs(typedict[type].addons,{search: {id: subscribetypelist.join(',')}, limit: subscribetypelist.length});
-            let typehtml = await $.get(`/${typedict[type].controller}`, url_addons);
-            let $typepage = $(typehtml);
-            typedict[type].insert($typepage,type);
-            $("#event-notice").show();
-            $(`#${type}-section`).show();
-            return true;
-        } else {
-            JSPLib.debug.debuglog(`No ${type}(s)!`);
-            if (jsontypelist.length && (typelastid !== jsontypelist[0])) {
-                SaveLastID(type,jsontypelist[0]);
-            }
-        }
-    } else {
-        SetRecentDanbooruID(type);
-    }
-    return false;
-}
-
-async function CheckAllEvents(promise_array) {
-    let hasevents_all = await Promise.all(promise_array);
-    let hasevents = hasevents_all.reduce((a,b)=>{return a || b;});
-    JSPLib.storage.setStorageData('el-events',hasevents,localStorage);
-}
-
-/****Render functions****/
+//Render functions
 
 function RenderMultilinkMenu(itemid) {
     return `
@@ -699,7 +664,7 @@ function RenderOpenItemLinks(type,itemid,showtext="Show",hidetext="Hide") {
            `<span data-id="${itemid}" class="hide-full-${type}" style="display:none !important"><a href="#">${hidetext}</a></span>`;
 }
 
-/****Initialize functions****/
+//Initialize functions
 
 function InitializeNoticeBox() {
     $("#page").prepend(notice_box);
@@ -901,113 +866,6 @@ function SubscribeMultiLinkCallback() {
     });
 }
 
-///Settings menu
-
-const el_menu = `
-<div id="el-settings" class="jsplib-outer-menu">
-    <div id="el-script-message" class="prose">
-        <h2>EventListener</h2>
-        <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/14747" style="color:#0073ff">topic #14747</a>).</p>
-    </div>
-    <div id="el-notice-settings" class="jsplib-settings-grouping">
-        <div id="el-network-message" class="prose">
-            <h4>Notice settings</h4>
-        </div>
-    </div>
-    <div id="el-event-settings" class="jsplib-settings-grouping">
-        <div id="el-event-message" class="prose">
-            <h4>Event settings</h4>
-            <ul>
-                <li><b>Events enabled:</b> Select which events to check for.
-                    <ul>
-                        <li>Subscription-type events will not be checked unless there is more than one subscribed item.</li>
-                        <li>These include comments, notes, commentaries, and forums.</li>
-                    </ul>
-                </li>
-                <li><b>Autosubscribe enabled:</b> Select which events on items created by the user will be automatically subscribed.
-                    <ul>
-                        <li>This will be the uploader for comments, notes and commentaries.</li>
-                        <li>Events will only be subscribed on the post page for that upload.</li>
-                    </ul>
-                </li>
-            </ul>
-        </div>
-    </div>
-    <div id="el-network-settings" class="jsplib-settings-grouping">
-        <div id="el-network-message" class="prose">
-            <h4>Network settings</h4>
-        </div>
-    </div>
-    <div id="el-subscribe-controls" class="jsplib-settings-grouping">
-        <div id="el-subscribe-message" class="prose">
-            <h4>Subscribe controls</h4>
-            <p>Subscribe to events using search queries instead of individually.</p>
-            <p><span style="color:red"><b>Warning!</b></span> Very large lists have issues:</p>
-            <ul>
-                <li>Higher performance delays.</li>
-                <li>Could fill up the cache.</li>
-                <li>Which could crash the program or other scripts.</li>
-                <li>I.e. don't subscribe to <b><u>ALL</u></b> of Danbooru!</li>
-            </ul>
-        </div>
-    </div>
-    <hr>
-    <div id="el-settings-buttons" class="jsplib-settings-buttons">
-        <input type="button" id="el-commit" value="Save">
-        <input type="button" id="el-resetall" value="Factory Reset">
-    </div>
-</div>`;
-
-//Since append is primarily used, these need to be separate ***CSS THE STYLING!!!***
-const display_counter = `
-<div id="el-search-query-display" style="margin:0.5em;font-size:150%;border:lightgrey solid 1px;padding:0.5em;width:7.5em;display:none">
-    Pages left: <span id="el-search-query-counter">...</span>
-</div>`;
-
-const enable_events = ['flag','appeal','dmail','spam','comment','note','commentary','forum'];
-const autosubscribe_events = ['comment','note','commentary'];
-
-const settings_config = {
-    autolock_notices: {
-        default: false,
-        validate: (data)=>{return typeof data === "boolean";},
-        hint: "Closing a notice will no longer close all other notices."
-    },
-    mark_read_topics: {
-        default: true,
-        validate: (data)=>{return typeof data === "boolean";},
-        hint: "Reading a forum post from the notice will mark the topic as read."
-    },
-    filter_user_events: {
-        default: true,
-        validate: (data)=>{return typeof data === "boolean";},
-        hint: "Only show events not created by the user."
-    },
-    filter_untranslated_commentary: {
-        default: true,
-        validate: (data)=>{return typeof data === "boolean";},
-        hint: "Only show new commentary that has translated sections."
-    },
-    recheck_interval: {
-        default: 5,
-        parse: parseInt,
-        validate: (data)=>{return Number.isInteger(data) && data > 0;},
-        hint: "How often to check for new events (# of minutes)."
-    },
-    events_enabled: {
-        allitems: enable_events,
-        default: enable_events,
-        validate: (data)=>{return Array.isArray(data) && data.reduce((is_string,val)=>{return is_string && (typeof val === 'string') && enable_events.includes(val);},true)},
-        hint: "Uncheck to turn off event type."
-    },
-    autosubscribe_enabled: {
-        allitems: autosubscribe_events,
-        default: [],
-        validate: (data)=>{return Array.isArray(data) && data.reduce((is_string,val)=>{return is_string && (typeof val === 'string') && autosubscribe_events.includes(val);},true)},
-        hint: "Check to autosubscribe event type."
-    }
-}
-
 function PostEventPopulateControl() {
     $("#el-search-query-get").click(async (e)=>{
         let post_events = JSPLib.menu.getCheckboxRadioSelected(`[data-setting="post_events"] [data-selector]`);
@@ -1054,6 +912,150 @@ function PostEventPopulateControl() {
             Danbooru.Utility.notice(`Subscriptions were changed by ${post_changes.length} posts!`);
         }
     });
+}
+
+//Main execution functions
+
+async function CheckUserType(type) {
+    let lastidkey = `el-${type}lastid`;
+    let typelastid = JSPLib.storage.getStorageData(lastidkey,localStorage,0);
+    if (JSPLib.validate.validateID(typelastid)) {
+        let url_addons = JSPLib.danbooru.joinArgs(typedict[type].addons,typedict[type].useraddons(Danbooru.EL.username));
+        let jsontype = await JSPLib.danbooru.getAllItems(typedict[type].controller,query_limit,{addons:url_addons,page:typelastid,reverse:true});
+        let filtertype = typedict[type].filter(jsontype);
+        let lastusertype = (jsontype.length ? [JSPLib.danbooru.getNextPageID(jsontype,true)] : []);
+        if (filtertype.length) {
+            Danbooru.EL.lastids.user[type] = lastusertype[0];
+            JSPLib.debug.debuglog(`Found ${type}(s)!`,Danbooru.EL.lastids.user[type]);
+            let idlist = JSPLib.utility.getObjectAttributes(filtertype,'id');
+            url_addons = JSPLib.danbooru.joinArgs(typedict[type].addons,{search: {id: idlist.join(',')}, limit: idlist.length});
+            let typehtml = await $.get(`/${typedict[type].controller}`, url_addons);
+            let $typepage = $(typehtml);
+            typedict[type].insert($typepage,type);
+            $("#event-notice").show();
+            $(`#${type}-section`).show();
+            return true;
+        } else {
+            JSPLib.debug.debuglog(`No ${type}(s)!`);
+            if (lastusertype.length && (typelastid !== lastusertype[0])) {
+                SaveLastID(type,lastusertype[0]);
+            }
+        }
+    } else {
+        SetRecentDanbooruID(type,true);
+    }
+    return false;
+}
+
+async function CheckSubscribeType(type) {
+    let lastidkey = `el-${type}lastid`;
+    let typelastid = JSPLib.storage.getStorageData(lastidkey,localStorage,0);
+    if (JSPLib.validate.validateID(typelastid)) {
+        let typelist = GetList(type);
+        let savedlistkey = `el-saved${type}list`;
+        let savedlastidkey = `el-saved${type}lastid`;
+        var subscribetypelist = [], jsontypelist = [];
+        let savedlastid = JSPLib.storage.getStorageData(savedlastidkey,localStorage);
+        let savedlist = JSPLib.storage.getStorageData(savedlistkey,localStorage);
+        if (!JSPLib.validate.validateIDList(savedlastid) || !JSPLib.validate.validateIDList(savedlist)) {
+            let jsontype = await JSPLib.danbooru.getAllItems(typedict[type].controller,query_limit,{page:typelastid,addons:typedict[type].addons,reverse:true});
+            let subscribetype = typedict[type].filter(jsontype,typelist);
+            if (jsontype.length) {
+                jsontypelist = [JSPLib.danbooru.getNextPageID(jsontype,true)];
+            }
+            if (subscribetype.length) {
+                subscribetypelist = JSPLib.utility.getObjectAttributes(subscribetype,'id');
+                JSPLib.storage.setStorageData(savedlistkey,subscribetypelist,localStorage);
+                JSPLib.storage.setStorageData(savedlastidkey,jsontypelist,localStorage);
+            }
+        } else {
+            jsontypelist = savedlastid;
+            subscribetypelist = savedlist;
+        }
+        if (subscribetypelist.length) {
+            Danbooru.EL.lastids.subscribe[type] = jsontypelist[0];
+            JSPLib.debug.debuglog(`Found ${type}(s)!`,Danbooru.EL.lastids.subscribe[type]);
+            let url_addons = JSPLib.danbooru.joinArgs(typedict[type].addons,{search: {id: subscribetypelist.join(',')}, limit: subscribetypelist.length});
+            let typehtml = await $.get(`/${typedict[type].controller}`, url_addons);
+            let $typepage = $(typehtml);
+            typedict[type].insert($typepage,type);
+            $("#event-notice").show();
+            $(`#${type}-section`).show();
+            return true;
+        } else {
+            JSPLib.debug.debuglog(`No ${type}(s)!`);
+            if (jsontypelist.length && (typelastid !== jsontypelist[0])) {
+                SaveLastID(type,jsontypelist[0]);
+            }
+        }
+    } else {
+        SetRecentDanbooruID(type);
+    }
+    return false;
+}
+
+async function CheckAllEvents(promise_array) {
+    let hasevents_all = await Promise.all(promise_array);
+    let hasevents = hasevents_all.reduce((a,b)=>{return a || b;});
+    JSPLib.storage.setStorageData('el-events',hasevents,localStorage);
+}
+
+//Settings functions
+
+function BroadcastEL(ev) {
+    JSPLib.debug.debuglog("Broadcast",ev.data);
+    if (ev.data.type === "hide" && !Danbooru.EL.locked_notice) {
+        $("#event-notice").hide();
+    } else if (ev.data.type === "settings") {
+        Danbooru.EL.user_settings = ev.data.user_settings;
+    } else if (ev.data.type === "reset") {
+        //Not handling this yet, so just hide everything until the next page refresh
+        JSPLib.utility.fullHide("#event-notice,#el-subscribe-events,.el-subscribe-dual-links");
+    } else if (ev.data.type === "subscribe") {
+        Danbooru.EL.subscribelist[ev.data.eventtype] = ev.data.eventlist;
+        UpdateMultiLink([ev.data.eventtype],ev.data.was_subscribed,ev.data.itemid);
+        UpdateDualLink(ev.data.eventtype,ev.data.was_subscribed,ev.data.itemid);
+    } else if (ev.data.type === "reload") {
+        Danbooru.EL.subscribelist[ev.data.eventtype] = ev.data.eventlist;
+        let menuid = $("#el-subscribe-events").data('id');
+        if (ev.data.was_subscribed.includes(menuid)) {
+            UpdateMultiLink([ev.data.eventtype],true,menuid);
+        } else if (ev.data.new_subscribed.includes(menuid)) {
+            UpdateMultiLink([ev.data.eventtype],false,menuid);
+        }
+        $(`.subscribe-${ev.data.eventtype}[data-id]`).each((i,entry)=>{
+            let linkid = $(entry).data('id');
+            if (ev.data.was_subscribed.includes(linkid)) {
+                UpdateDualLink(ev.data.eventtype,true,linkid);
+            } else if (ev.data.new_subscribed.includes(linkid)) {
+                UpdateDualLink(ev.data.eventtype,false,linkid);
+            }
+        });
+    }
+}
+
+function IsShownData(val,typelist,user_key=null,subscribe_key=null,other_filters=null) {
+    if (Danbooru.EL.user_settings.filter_user_events && user_key && val[user_key] === Danbooru.EL.userid) {
+        return false;
+    }
+    if (subscribe_key && !typelist.includes(val[subscribe_key])) {
+        return false;
+    }
+    if (other_filters && !other_filters(val)) {
+        return false;
+    }
+    return true;
+}
+
+function IsShownCommentary(val) {
+    if (!Danbooru.EL.user_settings.filter_untranslated_commentary) {
+        return true;
+    }
+    return (Boolean(val.translated_title) || Boolean(val.translated_description));
+}
+
+function GetRecheckExpires() {
+    return Danbooru.EL.user_settings.recheck_interval * JSPLib.utility.one_minute;
 }
 
 function RenderSettingsMenu() {
@@ -1158,7 +1160,7 @@ function main() {
     if ($(`#image-container[data-uploader-id="${Danbooru.EL.userid}"]`).length) {
         SubscribeMultiLinkCallback();
     }
-    JSPLib.utility.setCSSStyle(eventlistener_css,'program');
+    JSPLib.utility.setCSSStyle(program_css,'program');
 }
 
 /****Execution start****/

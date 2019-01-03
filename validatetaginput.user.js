@@ -23,7 +23,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/menu.js
 // ==/UserScript==
 
-//Global variables
+/***Global variables***/
 
 //Variables for debug.js
 JSPLib.debug.debug_console = false;
@@ -35,39 +35,34 @@ JSPLib.debug.level = JSPLib.debug.INFO;
 const program_load_required_variables = ['window.jQuery','window.Danbooru'];
 const program_load_required_selectors = ['#page'];
 
-//Wait time for quick edit box
-// 1. Let box close before reenabling the submit button
-// 2. Let box open before querying the implications
-const quickedit_wait_time = 1000;
-
-//Polling interval for checking program status
-const timer_poll_interval = 100;
-
-//Expiration time is one month
-const validatetag_expiration_time = JSPLib.utility.one_month;
-
 //Regex that matches the prefix of all program cache data
 const program_cache_regex = /^(?:ti|ta)-/;
+
+//Main program expires
+const prune_expires = JSPLib.utility.one_day;
 
 //For factory reset
 const localstorage_keys = [];
 const program_reset_keys = {};
 
-//Main program expires
-const prune_expires = JSPLib.utility.one_day;
-
-//Validate constants
-
-const relation_constraints = {
-    entry: JSPLib.validate.arrayentry_constraints,
-    value: JSPLib.validate.stringonly_constraints
-};
-
-//Tag regexes
-const metatags_regex = /^(?:rating|-?parent|source|-?locked|-?pool|newpool|-?fav|child|-?favgroup|upvote|downvote):/i;
-const typetags_regex = /^-?(?:general|gen|artist|art|copyright|copy|co|character|char|ch|meta):/i;
-const negative_regex = /^-/;
-const striptype_regex = /^(-?)(?:general:|gen:|artist:|art:|copyright:|copy:|co:|character:|char:|ch:|meta:)?(.*)/i
+//Main settings
+const settings_config = {
+    alias_check_enabled: {
+        default: true,
+        validate: (data)=>{return validate.isBoolean(data);},
+        hint: "Uncheck to turn off."
+    },
+    implication_check_enabled: {
+        default: true,
+        validate: (data)=>{return validate.isBoolean(data);},
+        hint: "Uncheck to turn off."
+    },
+    upload_check_enabled: {
+        default: false,
+        validate: (data)=>{return validate.isBoolean(data);},
+        hint: "Check to turn on."
+    }
+}
 
 //HTML constants
 
@@ -91,358 +86,6 @@ const warning_messages = `
 <div id="warning-bad-upload" class="error-messages ui-state-error ui-corner-all" style="display:none"></div>
 <div id="warning-new-tags" class="error-messages ui-state-error ui-corner-all" style="display:none"></div>
 <div id="warning-bad-removes" class="error-messages ui-state-highlight ui-corner-all" style="display:none"></div>`;
-
-/**FUNCTIONS**/
-
-//Validate functions
-
-function ValidateRelationEntry(key,entry) {
-    if (!JSPLib.validate.validateIsHash(key,entry)) {
-        return false
-    }
-    let check = validate(entry,relation_constraints.entry);
-    if (check !== undefined) {
-        JSPLib.validate.printValidateError(key,check);
-        return false
-    }
-    return JSPLib.validate.validateArrayValues(key + '.value', entry.value, relation_constraints.value);
-}
-
-//Library functions
-
-//// NONE
-
-//Helper functions
-
-function BroadcastVTI(ev) {
-    JSPLib.debug.debuglog(`BroadcastChannel (${ev.data.type}):`,ev.data);
-    if (ev.data.type === "settings") {
-        Danbooru.VTI.user_settings = ev.data.user_settings;
-    } else if (ev.data.type === "reset") {
-        Danbooru.VTI.user_settings = ev.data.user_settings;
-        Object.assign(Danbooru.VTI,program_reset_keys);
-    } else if (ev.data.type === "purge") {
-        $.each(sessionStorage,(key)=>{
-            if (key.match(program_cache_regex)) {
-                sessionStorage.removeItem(key);
-            }
-        });
-    }
-}
-
-function getTagList() {
-    return JSPLib.utility.filterEmpty(stripQuoteSourceMetatag($("#upload_tag_string,#post_tag_string").val()).split(/[\s\n]+/).map(tag=>{return tag.toLowerCase();}));
-}
-
-function stripQuoteSourceMetatag(str) {
-    return str.replace(/source:"[^"]+"\s?/g,'');
-}
-
-function getNegativetags(array) {
-    return JSPLib.utility.filterRegex(array,negative_regex,false).map((value)=>{return value.substring(1);});
-}
-
-function transformTypetags(array) {
-    return array.map((value)=>{return value.match(striptype_regex).splice(1).join('');});
-}
-
-function getCurrentTags() {
-    return JSPLib.utility.filterRegex(JSPLib.utility.filterRegex(getTagList(),metatags_regex,true),typetags_regex,true);
-}
-
-function getAllRelations(tag,implicationdict) {
-    var tmp = [];
-    if (tag in implicationdict) {
-        for(let i=0;i<implicationdict[tag].length;i++) {
-            tmp.push(implicationdict[tag][i]);
-            let tmp2 = getAllRelations(implicationdict[tag][i],implicationdict);
-            tmp = tmp.concat(tmp2);
-        }
-        return tmp;
-    } else {
-        return [];
-    }
-}
-
-function IsSkipValidate() {
-    return $("#skip-validate-tags")[0].checked;
-}
-
-function DisableUI(type) {
-    $("#validate-tags")[0].setAttribute('disabled','true');
-    $("#check-tags")[0].setAttribute('disabled','true');
-    if (type === "submit") {
-        $("#validate-tags")[0].setAttribute('value','Submitting...');
-    } else if (type === "check") {
-        $("#check-tags")[0].setAttribute('value','Checking...');
-    }
-}
-
-function EnableUI(type) {
-    $("#validate-tags")[0].removeAttribute('disabled');
-    $("#check-tags")[0].removeAttribute('disabled');
-    if (type === "submit") {
-        $("#validate-tags")[0].setAttribute('value','Submit');
-    } else if (type === "check") {
-        $("#check-tags")[0].setAttribute('value','Check');
-    }
-}
-
-//Network functions
-
-async function queryTagAlias(tag) {
-    let consequent = "";
-    let entryname = 'ta-'+tag;
-    let storeditem = await JSPLib.storage.checkLocalDB(entryname,ValidateRelationEntry,validatetag_expiration_time);
-    if (!storeditem) {
-        JSPLib.debug.debuglog("Querying alias:",tag);
-        let data = await JSPLib.danbooru.submitRequest('tag_aliases',{search:{antecedent_name:tag,status:'active'}},[],entryname);
-        if (data.length) {
-            //Alias antecedents are unique, so no need to check the size
-            JSPLib.debug.debuglog("Alias:",tag,data[0].consequent_name);
-            Danbooru.VTI.aliastags.push(tag);
-            consequent = [data[0].consequent_name];
-        } else {
-            consequent = [];
-        }
-        JSPLib.storage.saveData(entryname, {value: consequent, expires: Date.now() + validatetag_expiration_time});
-    } else {
-        consequent = storeditem.value;
-        if (consequent.length) {
-            JSPLib.debug.debuglog("Alias:",tag,consequent[0]);
-            Danbooru.VTI.aliastags.push(tag);
-        }
-    }
-}
-
-//Queries aliases of added tags... can be called multiple times
-const queryTagAliases = JSPLib.debug.debugAsyncTimer(async (taglist)=>{
-    for (let i = 0;i < taglist.length;i++) {
-        if (Danbooru.VTI.seenlist.includes(taglist[i])) {
-            continue;
-        }
-        Danbooru.VTI.seenlist.push(taglist[i]);
-        Danbooru.VTI.aliases_promise_array.push(queryTagAlias(taglist[i]));
-    }
-    await Promise.all(Danbooru.VTI.aliases_promise_array);
-    JSPLib.debug.debuglog("Aliases:",Danbooru.VTI.aliastags);
-},"queryTagAliases");
-
-async function queryTagImplication(tag) {
-    let entryname = 'ti-'+tag;
-    let storeditem = await JSPLib.storage.checkLocalDB(entryname,ValidateRelationEntry,validatetag_expiration_time);
-    if (!storeditem) {
-        JSPLib.debug.debuglog("Querying implication:",tag);
-        let data = await JSPLib.danbooru.submitRequest('tag_implications',{limit:100,search:{consequent_name:tag,status:'active'}},[],entryname);
-        let implications = data.map(entry=>{return entry.antecedent_name;});
-        Danbooru.VTI.implicationdict[tag] = implications;
-        JSPLib.storage.saveData(entryname, {value: implications, expires: Date.now() + validatetag_expiration_time});
-    } else {
-        Danbooru.VTI.implicationdict[tag] = storeditem.value;
-    }
-}
-
-//Queries implications of preexisting tags... called once per image
-const queryTagImplications = JSPLib.debug.debugAsyncTimer(async (taglist)=>{
-    for (let i = 0;i < taglist.length;i++) {
-        Danbooru.VTI.implications_promise_array.push(queryTagImplication(taglist[i]));
-    }
-    await Promise.all(Danbooru.VTI.implications_promise_array);
-    JSPLib.debug.debuglog("Implications:",Danbooru.VTI.implicationdict);
-},"queryTagImplications");
-
-//Click functions
-
-function postModeMenuClick(e) {
-    let s = $("#mode-box select").val();
-    if (s === "edit") {
-        $("#validation-input,#warning-bad-upload,#warning-new-tags,#warning-bad-removes").hide();
-        let post_id = $(e.target).closest("article").data("id");
-        let $post = $("#post_" + post_id);
-        Danbooru.VTI.preedittags = $post.data("tags").split(' ');
-        JSPLib.debug.debuglog("Preedit tags:",Danbooru.VTI.preedittags);
-        //Wait until the edit box loads before querying implications
-        if (Danbooru.VTI.user_settings.implication_check_enabled) {
-            setTimeout(()=>{queryTagImplications(Danbooru.VTI.preedittags);},quickedit_wait_time);
-        }
-        e.preventDefault();
-    }
-}
-
-async function checkTagsClick(e) {
-    //Prevent code from being reentrant until finished processing
-        JSPLib.debug.debugTime("checkTagsClick");
-        DisableUI("check");
-        let statuses = (await Promise.all([validateTagAdds(),validateTagRemoves(),ValidateUpload()]));
-        if (statuses.every((item)=>{return item;})) {
-            Danbooru.Utility.notice("Tags good to submit!");
-        } else {
-            Danbooru.Utility.error("Tag validation failed!");
-        }
-        EnableUI("check");
-        JSPLib.debug.debugTimeEnd("checkTagsClick");
-}
-
-async function validateTagsClick(e) {
-    //Prevent code from being reentrant until finished processing
-    if (validateTagsClick.isready) {
-        validateTagsClick.isready = false;
-        JSPLib.debug.debugTime("validateTagsClick");
-        DisableUI("submit");
-        let statuses = await Promise.all([validateTagAdds(),validateTagRemoves(),ValidateUpload()]);
-        if (statuses.every((item)=>{return item;})) {
-            JSPLib.debug.debuglog("Submit request!");
-            $("#form,#quick-edit-form").trigger("submit");
-            if ($("#c-uploads #a-new,#c-posts #a-show").length) {
-                JSPLib.debug.debuglog("Disabling return key!");
-                $("#upload_tag_string,#post_tag_string").off("keydown.danbooru.submit");
-            }
-            if (Danbooru.VTI.is_upload) {
-                //Check for the triggering of Danbooru's client validation (file/source/rating)
-                reenableSubmitCallback.timer = setInterval(reenableSubmitCallback,timer_poll_interval);
-            } else if ($("#c-posts #a-index").length) {
-                //Wait until the edit box closes to reenable the submit button click
-                setTimeout(()=>{
-                    JSPLib.debug.debuglog("Ready for next edit!");
-                    EnableUI("submit");
-                    $("#skip-validate-tags")[0].checked = false;
-                    validateTagsClick.isready = true;
-                },quickedit_wait_time);
-            }
-        } else {
-            JSPLib.debug.debuglog("Validation failed!");
-            EnableUI("submit");
-            validateTagsClick.isready = true;
-        }
-        JSPLib.debug.debugTimeEnd("validateTagsClick");
-    }
-}
-validateTagsClick.isready = true;
-
-//Timer/callback functions
-
-function reenableSubmitCallback() {
-    if ($("#client-errors").css("display") !== "none") {
-        clearInterval(reenableSubmitCallback.timer);
-        JSPLib.debug.debuglog("Danbooru's client validation failed!");
-        EnableUI("submit");
-        $("#upload_tag_string").on("keydown.danbooru.submit", null, "return", (e)=>{
-            $("#validate-tags").click();
-            e.preventDefault();
-        });
-        validateTagsClick.isready = true;
-    }
-}
-
-function rebindHotkey() {
-    if (JSPLib.utility.isNamespaceBound("#upload_tag_string,#post_tag_string",'keydown','danbooru.submit')) {
-        clearInterval(rebindHotkey.timer);
-        $("#upload_tag_string,#post_tag_string").off("keydown.danbooru.submit").on("keydown.danbooru.submit", null, "return", (e)=>{
-            $("#validate-tags").click();
-            e.preventDefault();
-        });
-    }
-}
-
-//Main execution functions
-
-const validateTagAdds = JSPLib.debug.debugAsyncTimer(async ()=>{
-    let postedittags = getCurrentTags();
-    let positivetags = JSPLib.utility.filterRegex(postedittags,negative_regex,true);
-    let useraddtags = JSPLib.utility.setDifference(positivetags,Danbooru.VTI.preedittags);
-    Danbooru.VTI.addedtags = JSPLib.utility.setDifference(useraddtags,getNegativetags(postedittags));
-    JSPLib.debug.debuglog("Added tags:",Danbooru.VTI.addedtags);
-    if ((Danbooru.VTI.addedtags.length === 0) || IsSkipValidate()) {
-        JSPLib.debug.debuglog("Tag Add Validation - Skipping!");
-        $("#warning-new-tags").hide();
-        return true;
-    }
-    let alltags = await JSPLib.danbooru.getAllItems('tags',100,{addons:{search:{name:Danbooru.VTI.addedtags.join(','),hide_empty:'yes'}}});
-    Danbooru.VTI.checktags = alltags.map(entry=>{return entry.name;});
-    let nonexisttags = JSPLib.utility.setDifference(Danbooru.VTI.addedtags,Danbooru.VTI.checktags);
-    if (Danbooru.VTI.user_settings.alias_check_enabled) {
-        await queryTagAliases(Danbooru.VTI.addedtags);
-        nonexisttags = JSPLib.utility.setDifference(nonexisttags,Danbooru.VTI.aliastags);
-    }
-    if (nonexisttags.length > 0) {
-        JSPLib.debug.debuglog("Tag Add Validation - Nonexistant tags!");
-        $.each(nonexisttags,(i,tag)=>{JSPLib.debug.debuglog(i,tag);});
-        $("#validation-input").show();
-        $("#warning-new-tags").show();
-        let taglist = nonexisttags.join(', ');
-        $("#warning-new-tags")[0].innerHTML = '<strong>Warning</strong>: The following new tags will be created:  ' + taglist;
-        return false;
-    }
-    JSPLib.debug.debuglog("Tag Add Validation - Free and clear to submit!");
-    $("#warning-new-tags").hide();
-    return true;
-},"validateTagAdds");
-
-const validateTagRemoves = JSPLib.debug.debugAsyncTimer(async ()=>{
-    if (!Danbooru.VTI.user_settings.implication_check_enabled || IsSkipValidate()) {
-        JSPLib.debug.debuglog("Tag Remove Validation - Skipping!");
-        $("#warning-bad-removes").hide();
-        return true;
-    }
-    await Promise.all(Danbooru.VTI.implications_promise_array);
-    let postedittags = transformTypetags(getCurrentTags());
-    let deletedtags = JSPLib.utility.setDifference(Danbooru.VTI.preedittags,postedittags);
-    let negatedtags = JSPLib.utility.setIntersection(getNegativetags(postedittags),postedittags);
-    let removedtags = deletedtags.concat(negatedtags);
-    let finaltags = JSPLib.utility.setDifference(postedittags,removedtags);
-    JSPLib.debug.debuglog("Final tags:",finaltags);
-    JSPLib.debug.debuglog("Removed tags:",deletedtags,negatedtags);
-    let allrelations = [];
-    $.each(removedtags,(i,tag)=>{
-        let badremoves = JSPLib.utility.setIntersection(getAllRelations(tag,Danbooru.VTI.implicationdict),finaltags);
-        if (badremoves.length) {
-            allrelations.push(badremoves.toString() + ' -> ' + tag);
-        }
-    });
-    if (allrelations.length) {
-        JSPLib.debug.debugExecute(()=>{
-            JSPLib.debug.debuglog("Tag Remove Validation - Badremove tags!");
-            $.each(allrelations,(i,relation)=>{JSPLib.debug.debuglog(i,relation);});
-        });
-        $("#validation-input").show();
-        $("#warning-bad-removes").show();
-        let removelist = allrelations.join('<br>');
-        $("#warning-bad-removes")[0].innerHTML = '<strong>Notice</strong>: The following implication relations prevent certain tag removes:<br>' + removelist;
-        return false;
-    }
-    JSPLib.debug.debuglog("Tag Remove Validation - Free and clear to submit!");
-    $("#warning-bad-removes").hide();
-    return true;
-},"validateTagRemoves");
-
-function ValidateUpload() {
-    if (!Danbooru.VTI.user_settings.upload_check_enabled || !Danbooru.VTI.is_upload || IsSkipValidate()) {
-        JSPLib.debug.debuglog("Upload Validation - Skipping!");
-        $("#warning-bad-upload").hide();
-        return true;
-    }
-    let errormessages = [];
-    let ratingtag = Boolean(JSPLib.utility.filterRegex(getTagList(),/^rating:[sqe]/i).length);
-    let ratingradio = $(".ratings input").toArray().some((input)=>{return input.checked;});
-    if (!ratingtag && !ratingradio) {
-        errormessages.push("Must specify a rating.");
-    }
-    if ($("#upload_file,#upload_source,#upload_md5_confirmation").toArray().every((input)=>{return $(input).val() === "";})) {
-        errormessages.push("Must choose file or specify source.");
-    }
-    if (errormessages.length) {
-        JSPLib.debug.debuglog("Upload Validation: " + errormessages.join(' '));
-        $("#validation-input").show();
-        $("#warning-bad-upload").show();
-        $("#warning-bad-upload")[0].innerHTML = '<strong>Warning</strong>: ' + errormessages.join(' ');
-        return false;
-    }
-    JSPLib.debug.debuglog("Upload Validation - Free and clear to submit!");
-    $("#warning-bad-upload").hide();
-    return true;
-}
-
-///Settings menu
 
 const vti_menu = `
 <div id="vti-settings" class="jsplib-outer-menu">
@@ -495,21 +138,379 @@ const vti_menu = `
     </div>
 </div>`;
 
-const settings_config = {
-    alias_check_enabled: {
-        default: true,
-        validate: (data)=>{return validate.isBoolean(data);},
-        hint: "Uncheck to turn off."
-    },
-    implication_check_enabled: {
-        default: true,
-        validate: (data)=>{return validate.isBoolean(data);},
-        hint: "Uncheck to turn off."
-    },
-    upload_check_enabled: {
-        default: false,
-        validate: (data)=>{return validate.isBoolean(data);},
-        hint: "Check to turn on."
+//Wait time for quick edit box
+// 1. Let box close before reenabling the submit button
+// 2. Let box open before querying the implications
+const quickedit_wait_time = 1000;
+
+//Polling interval for checking program status
+const timer_poll_interval = 100;
+
+//Expiration time is one month
+const validatetag_expiration_time = JSPLib.utility.one_month;
+
+//Tag regexes
+const metatags_regex = /^(?:rating|-?parent|source|-?locked|-?pool|newpool|-?fav|child|-?favgroup|upvote|downvote):/i;
+const typetags_regex = /^-?(?:general|gen|artist|art|copyright|copy|co|character|char|ch|meta):/i;
+const negative_regex = /^-/;
+const striptype_regex = /^(-?)(?:general:|gen:|artist:|art:|copyright:|copy:|co:|character:|char:|ch:|meta:)?(.*)/i
+
+//Validate constants
+
+const relation_constraints = {
+    entry: JSPLib.validate.arrayentry_constraints,
+    value: JSPLib.validate.stringonly_constraints
+};
+
+/***Functions***/
+
+//Validate functions
+
+function ValidateRelationEntry(key,entry) {
+    if (!JSPLib.validate.validateIsHash(key,entry)) {
+        return false
+    }
+    let check = validate(entry,relation_constraints.entry);
+    if (check !== undefined) {
+        JSPLib.validate.printValidateError(key,check);
+        return false
+    }
+    return JSPLib.validate.validateArrayValues(key + '.value', entry.value, relation_constraints.value);
+}
+
+//Library functions
+
+//// NONE
+
+//Helper functions
+
+function GetTagList() {
+    return JSPLib.utility.filterEmpty(StripQuoteSourceMetatag($("#upload_tag_string,#post_tag_string").val()).split(/[\s\n]+/).map(tag=>{return tag.toLowerCase();}));
+}
+
+function StripQuoteSourceMetatag(str) {
+    return str.replace(/source:"[^"]+"\s?/g,'');
+}
+
+function GetNegativetags(array) {
+    return JSPLib.utility.filterRegex(array,negative_regex,false).map((value)=>{return value.substring(1);});
+}
+
+function TransformTypetags(array) {
+    return array.map((value)=>{return value.match(striptype_regex).splice(1).join('');});
+}
+
+function GetCurrentTags() {
+    return JSPLib.utility.filterRegex(JSPLib.utility.filterRegex(GetTagList(),metatags_regex,true),typetags_regex,true);
+}
+
+function GetAllRelations(tag,implicationdict) {
+    var tmp = [];
+    if (tag in implicationdict) {
+        for(let i=0;i<implicationdict[tag].length;i++) {
+            tmp.push(implicationdict[tag][i]);
+            let tmp2 = GetAllRelations(implicationdict[tag][i],implicationdict);
+            tmp = tmp.concat(tmp2);
+        }
+        return tmp;
+    } else {
+        return [];
+    }
+}
+
+function IsSkipValidate() {
+    return $("#skip-validate-tags")[0].checked;
+}
+
+function DisableUI(type) {
+    $("#validate-tags")[0].setAttribute('disabled','true');
+    $("#check-tags")[0].setAttribute('disabled','true');
+    if (type === "submit") {
+        $("#validate-tags")[0].setAttribute('value','Submitting...');
+    } else if (type === "check") {
+        $("#check-tags")[0].setAttribute('value','Checking...');
+    }
+}
+
+function EnableUI(type) {
+    $("#validate-tags")[0].removeAttribute('disabled');
+    $("#check-tags")[0].removeAttribute('disabled');
+    if (type === "submit") {
+        $("#validate-tags")[0].setAttribute('value','Submit');
+    } else if (type === "check") {
+        $("#check-tags")[0].setAttribute('value','Check');
+    }
+}
+
+//Network functions
+
+async function QueryTagAlias(tag) {
+    let consequent = "";
+    let entryname = 'ta-'+tag;
+    let storeditem = await JSPLib.storage.checkLocalDB(entryname,ValidateRelationEntry,validatetag_expiration_time);
+    if (!storeditem) {
+        JSPLib.debug.debuglog("Querying alias:",tag);
+        let data = await JSPLib.danbooru.submitRequest('tag_aliases',{search:{antecedent_name:tag,status:'active'}},[],entryname);
+        if (data.length) {
+            //Alias antecedents are unique, so no need to check the size
+            JSPLib.debug.debuglog("Alias:",tag,data[0].consequent_name);
+            Danbooru.VTI.aliastags.push(tag);
+            consequent = [data[0].consequent_name];
+        } else {
+            consequent = [];
+        }
+        JSPLib.storage.saveData(entryname, {value: consequent, expires: Date.now() + validatetag_expiration_time});
+    } else {
+        consequent = storeditem.value;
+        if (consequent.length) {
+            JSPLib.debug.debuglog("Alias:",tag,consequent[0]);
+            Danbooru.VTI.aliastags.push(tag);
+        }
+    }
+}
+
+//Queries aliases of added tags... can be called multiple times
+const QueryTagAliases = JSPLib.debug.debugAsyncTimer(async (taglist)=>{
+    for (let i = 0;i < taglist.length;i++) {
+        if (Danbooru.VTI.seenlist.includes(taglist[i])) {
+            continue;
+        }
+        Danbooru.VTI.seenlist.push(taglist[i]);
+        Danbooru.VTI.aliases_promise_array.push(QueryTagAlias(taglist[i]));
+    }
+    await Promise.all(Danbooru.VTI.aliases_promise_array);
+    JSPLib.debug.debuglog("Aliases:",Danbooru.VTI.aliastags);
+},"QueryTagAliases");
+
+async function QueryTagImplication(tag) {
+    let entryname = 'ti-'+tag;
+    let storeditem = await JSPLib.storage.checkLocalDB(entryname,ValidateRelationEntry,validatetag_expiration_time);
+    if (!storeditem) {
+        JSPLib.debug.debuglog("Querying implication:",tag);
+        let data = await JSPLib.danbooru.submitRequest('tag_implications',{limit:100,search:{consequent_name:tag,status:'active'}},[],entryname);
+        let implications = data.map(entry=>{return entry.antecedent_name;});
+        Danbooru.VTI.implicationdict[tag] = implications;
+        JSPLib.storage.saveData(entryname, {value: implications, expires: Date.now() + validatetag_expiration_time});
+    } else {
+        Danbooru.VTI.implicationdict[tag] = storeditem.value;
+    }
+}
+
+//Queries implications of preexisting tags... called once per image
+const QueryTagImplications = JSPLib.debug.debugAsyncTimer(async (taglist)=>{
+    for (let i = 0;i < taglist.length;i++) {
+        Danbooru.VTI.implications_promise_array.push(QueryTagImplication(taglist[i]));
+    }
+    await Promise.all(Danbooru.VTI.implications_promise_array);
+    JSPLib.debug.debuglog("Implications:",Danbooru.VTI.implicationdict);
+},"QueryTagImplications");
+
+//Click functions
+
+function PostModeMenuClick(e) {
+    let s = $("#mode-box select").val();
+    if (s === "edit") {
+        $("#validation-input,#warning-bad-upload,#warning-new-tags,#warning-bad-removes").hide();
+        let post_id = $(e.target).closest("article").data("id");
+        let $post = $("#post_" + post_id);
+        Danbooru.VTI.preedittags = $post.data("tags").split(' ');
+        JSPLib.debug.debuglog("Preedit tags:",Danbooru.VTI.preedittags);
+        //Wait until the edit box loads before querying implications
+        if (Danbooru.VTI.user_settings.implication_check_enabled) {
+            setTimeout(()=>{QueryTagImplications(Danbooru.VTI.preedittags);},quickedit_wait_time);
+        }
+        e.preventDefault();
+    }
+}
+
+async function CheckTagsClick(e) {
+    //Prevent code from being reentrant until finished processing
+        JSPLib.debug.debugTime("CheckTagsClick");
+        DisableUI("check");
+        let statuses = (await Promise.all([ValidateTagAdds(),ValidateTagRemoves(),ValidateUpload()]));
+        if (statuses.every((item)=>{return item;})) {
+            Danbooru.Utility.notice("Tags good to submit!");
+        } else {
+            Danbooru.Utility.error("Tag validation failed!");
+        }
+        EnableUI("check");
+        JSPLib.debug.debugTimeEnd("CheckTagsClick");
+}
+
+async function ValidateTagsClick(e) {
+    //Prevent code from being reentrant until finished processing
+    if (ValidateTagsClick.isready) {
+        ValidateTagsClick.isready = false;
+        JSPLib.debug.debugTime("ValidateTagsClick");
+        DisableUI("submit");
+        let statuses = await Promise.all([ValidateTagAdds(),ValidateTagRemoves(),ValidateUpload()]);
+        if (statuses.every((item)=>{return item;})) {
+            JSPLib.debug.debuglog("Submit request!");
+            $("#form,#quick-edit-form").trigger("submit");
+            if ($("#c-uploads #a-new,#c-posts #a-show").length) {
+                JSPLib.debug.debuglog("Disabling return key!");
+                $("#upload_tag_string,#post_tag_string").off("keydown.danbooru.submit");
+            }
+            if (Danbooru.VTI.is_upload) {
+                //Check for the triggering of Danbooru's client validation (file/source/rating)
+                ReenableSubmitCallback.timer = setInterval(ReenableSubmitCallback,timer_poll_interval);
+            } else if ($("#c-posts #a-index").length) {
+                //Wait until the edit box closes to reenable the submit button click
+                setTimeout(()=>{
+                    JSPLib.debug.debuglog("Ready for next edit!");
+                    EnableUI("submit");
+                    $("#skip-validate-tags")[0].checked = false;
+                    ValidateTagsClick.isready = true;
+                },quickedit_wait_time);
+            }
+        } else {
+            JSPLib.debug.debuglog("Validation failed!");
+            EnableUI("submit");
+            ValidateTagsClick.isready = true;
+        }
+        JSPLib.debug.debugTimeEnd("ValidateTagsClick");
+    }
+}
+ValidateTagsClick.isready = true;
+
+//Timer/callback functions
+
+function ReenableSubmitCallback() {
+    if ($("#client-errors").css("display") !== "none") {
+        clearInterval(ReenableSubmitCallback.timer);
+        JSPLib.debug.debuglog("Danbooru's client validation failed!");
+        EnableUI("submit");
+        $("#upload_tag_string").on("keydown.danbooru.submit", null, "return", (e)=>{
+            $("#validate-tags").click();
+            e.preventDefault();
+        });
+        ValidateTagsClick.isready = true;
+    }
+}
+
+function RebindHotkey() {
+    if (JSPLib.utility.isNamespaceBound("#upload_tag_string,#post_tag_string",'keydown','danbooru.submit')) {
+        clearInterval(RebindHotkey.timer);
+        $("#upload_tag_string,#post_tag_string").off("keydown.danbooru.submit").on("keydown.danbooru.submit", null, "return", (e)=>{
+            $("#validate-tags").click();
+            e.preventDefault();
+        });
+    }
+}
+
+//Main execution functions
+
+const ValidateTagAdds = JSPLib.debug.debugAsyncTimer(async ()=>{
+    let postedittags = GetCurrentTags();
+    let positivetags = JSPLib.utility.filterRegex(postedittags,negative_regex,true);
+    let useraddtags = JSPLib.utility.setDifference(positivetags,Danbooru.VTI.preedittags);
+    Danbooru.VTI.addedtags = JSPLib.utility.setDifference(useraddtags,GetNegativetags(postedittags));
+    JSPLib.debug.debuglog("Added tags:",Danbooru.VTI.addedtags);
+    if ((Danbooru.VTI.addedtags.length === 0) || IsSkipValidate()) {
+        JSPLib.debug.debuglog("Tag Add Validation - Skipping!");
+        $("#warning-new-tags").hide();
+        return true;
+    }
+    let alltags = await JSPLib.danbooru.getAllItems('tags',100,{addons:{search:{name:Danbooru.VTI.addedtags.join(','),hide_empty:'yes'}}});
+    Danbooru.VTI.checktags = alltags.map(entry=>{return entry.name;});
+    let nonexisttags = JSPLib.utility.setDifference(Danbooru.VTI.addedtags,Danbooru.VTI.checktags);
+    if (Danbooru.VTI.user_settings.alias_check_enabled) {
+        await QueryTagAliases(Danbooru.VTI.addedtags);
+        nonexisttags = JSPLib.utility.setDifference(nonexisttags,Danbooru.VTI.aliastags);
+    }
+    if (nonexisttags.length > 0) {
+        JSPLib.debug.debuglog("Tag Add Validation - Nonexistant tags!");
+        $.each(nonexisttags,(i,tag)=>{JSPLib.debug.debuglog(i,tag);});
+        $("#validation-input").show();
+        $("#warning-new-tags").show();
+        let taglist = nonexisttags.join(', ');
+        $("#warning-new-tags")[0].innerHTML = '<strong>Warning</strong>: The following new tags will be created:  ' + taglist;
+        return false;
+    }
+    JSPLib.debug.debuglog("Tag Add Validation - Free and clear to submit!");
+    $("#warning-new-tags").hide();
+    return true;
+},"ValidateTagAdds");
+
+const ValidateTagRemoves = JSPLib.debug.debugAsyncTimer(async ()=>{
+    if (!Danbooru.VTI.user_settings.implication_check_enabled || IsSkipValidate()) {
+        JSPLib.debug.debuglog("Tag Remove Validation - Skipping!");
+        $("#warning-bad-removes").hide();
+        return true;
+    }
+    await Promise.all(Danbooru.VTI.implications_promise_array);
+    let postedittags = TransformTypetags(GetCurrentTags());
+    let deletedtags = JSPLib.utility.setDifference(Danbooru.VTI.preedittags,postedittags);
+    let negatedtags = JSPLib.utility.setIntersection(GetNegativetags(postedittags),postedittags);
+    let removedtags = deletedtags.concat(negatedtags);
+    let finaltags = JSPLib.utility.setDifference(postedittags,removedtags);
+    JSPLib.debug.debuglog("Final tags:",finaltags);
+    JSPLib.debug.debuglog("Removed tags:",deletedtags,negatedtags);
+    let allrelations = [];
+    $.each(removedtags,(i,tag)=>{
+        let badremoves = JSPLib.utility.setIntersection(GetAllRelations(tag,Danbooru.VTI.implicationdict),finaltags);
+        if (badremoves.length) {
+            allrelations.push(badremoves.toString() + ' -> ' + tag);
+        }
+    });
+    if (allrelations.length) {
+        JSPLib.debug.debugExecute(()=>{
+            JSPLib.debug.debuglog("Tag Remove Validation - Badremove tags!");
+            $.each(allrelations,(i,relation)=>{JSPLib.debug.debuglog(i,relation);});
+        });
+        $("#validation-input").show();
+        $("#warning-bad-removes").show();
+        let removelist = allrelations.join('<br>');
+        $("#warning-bad-removes")[0].innerHTML = '<strong>Notice</strong>: The following implication relations prevent certain tag removes:<br>' + removelist;
+        return false;
+    }
+    JSPLib.debug.debuglog("Tag Remove Validation - Free and clear to submit!");
+    $("#warning-bad-removes").hide();
+    return true;
+},"ValidateTagRemoves");
+
+function ValidateUpload() {
+    if (!Danbooru.VTI.user_settings.upload_check_enabled || !Danbooru.VTI.is_upload || IsSkipValidate()) {
+        JSPLib.debug.debuglog("Upload Validation - Skipping!");
+        $("#warning-bad-upload").hide();
+        return true;
+    }
+    let errormessages = [];
+    let ratingtag = Boolean(JSPLib.utility.filterRegex(GetTagList(),/^rating:[sqe]/i).length);
+    let ratingradio = $(".ratings input").toArray().some((input)=>{return input.checked;});
+    if (!ratingtag && !ratingradio) {
+        errormessages.push("Must specify a rating.");
+    }
+    if ($("#upload_file,#upload_source,#upload_md5_confirmation").toArray().every((input)=>{return $(input).val() === "";})) {
+        errormessages.push("Must choose file or specify source.");
+    }
+    if (errormessages.length) {
+        JSPLib.debug.debuglog("Upload Validation: " + errormessages.join(' '));
+        $("#validation-input").show();
+        $("#warning-bad-upload").show();
+        $("#warning-bad-upload")[0].innerHTML = '<strong>Warning</strong>: ' + errormessages.join(' ');
+        return false;
+    }
+    JSPLib.debug.debuglog("Upload Validation - Free and clear to submit!");
+    $("#warning-bad-upload").hide();
+    return true;
+}
+
+//Settings functions
+
+function BroadcastVTI(ev) {
+    JSPLib.debug.debuglog(`BroadcastChannel (${ev.data.type}):`,ev.data);
+    if (ev.data.type === "settings") {
+        Danbooru.VTI.user_settings = ev.data.user_settings;
+    } else if (ev.data.type === "reset") {
+        Danbooru.VTI.user_settings = ev.data.user_settings;
+        Object.assign(Danbooru.VTI,program_reset_keys);
+    } else if (ev.data.type === "purge") {
+        $.each(sessionStorage,(key)=>{
+            if (key.match(program_cache_regex)) {
+                sessionStorage.removeItem(key);
+            }
+        });
     }
 }
 
@@ -551,13 +552,13 @@ function main() {
         Danbooru.VTI.preedittags = [];
         Danbooru.VTI.is_upload = true;
     } else if ($("#c-posts #a-show").length) {
-        Danbooru.VTI.preedittags = getTagList();
+        Danbooru.VTI.preedittags = GetTagList();
         JSPLib.debug.debuglog("Preedit tags:",Danbooru.VTI.preedittags);
         if (Danbooru.VTI.user_settings.implication_check_enabled) {
-            queryTagImplications(Danbooru.VTI.preedittags);
+            QueryTagImplications(Danbooru.VTI.preedittags);
         }
     } else if ($("#c-posts #a-index #mode-box").length){
-        $(".post-preview a").click(postModeMenuClick);
+        $(".post-preview a").click(PostModeMenuClick);
     } else {
         JSPLib.debug.debuglog("Nothing found!");
         return;
@@ -571,9 +572,9 @@ function main() {
         $("#check-tags").after(input_validator);
         $("#related-tags-container").before(warning_messages);
     }
-    $("#validate-tags").click(validateTagsClick);
-    $("#check-tags").click(checkTagsClick);
-    rebindHotkey.timer = setInterval(rebindHotkey,timer_poll_interval);
+    $("#validate-tags").click(ValidateTagsClick);
+    $("#check-tags").click(CheckTagsClick);
+    RebindHotkey.timer = setInterval(RebindHotkey,timer_poll_interval);
     JSPLib.debug.debugExecute(()=>{
         window.addEventListener('beforeunload',function () {
             JSPLib.statistics.outputAdjustedMean("ValidateTagInput");

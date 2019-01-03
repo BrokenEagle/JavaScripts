@@ -36,12 +36,11 @@ const program_load_required_selectors = ["#top","#page-footer"];
 //Variables for danbooru.js
 JSPLib.danbooru.counter_domname = "#loading-counter";
 
-//Main function expires
-const prune_expires = JSPLib.utility.one_day;
-const prune_limit = 1000;
-
 //Regex that matches the prefix of all program cache data
 const program_cache_regex = /^rti-|ct(?:d|w|mo|y|at)?-|(?:daily|weekly|monthly|yearly|alltime|previous)-uploads-/
+
+//Main program expires
+const prune_expires = JSPLib.utility.one_day;
 
 //For factory reset
 const localstorage_keys = [
@@ -57,67 +56,30 @@ const program_reset_keys = {
     period_available: { user:{}, approver:{} }
 };
 
-//Time periods
+//Available setting values
 const period_selectors = ['daily','weekly','monthly','yearly','alltime'];
-const timevalues = ['d','w','mo','y','at'];
-const manual_periods = ['w','mo'];
-const limited_periods = ['y','at'];
-const copyright_periods = ['d','w','mo'];
 
-//Period constants
-const period_info = {
-    countexpires: {
-        d: 5 * JSPLib.utility.one_minute,
-        w: JSPLib.utility.one_hour,
-        mo: JSPLib.utility.one_day,
-        y: JSPLib.utility.one_week,
-        at: JSPLib.utility.one_month
+//Main settings
+const settings_config = {
+    copyrights_merge: {
+        default: true,
+        validate: (data)=>{return validate.isBoolean(data);},
+        hint: "Merge all implied copyrights to their base copyright. Ex: (splatoon_1, splatoon_2) -> splatoon."
     },
-    uploadexpires: {
-        d: 5 * JSPLib.utility.one_minute,
-        w: JSPLib.utility.one_day,
-        mo: JSPLib.utility.one_week,
-        y: JSPLib.utility.one_month,
-        at: JSPLib.utility.one_year
+    copyrights_enabled: {
+        default: true,
+        validate: (data)=>{return validate.isBoolean(data);},
+        hint: "Process and show user copyright uploads."
     },
-    longname: {
-        d: 'daily',
-        w: 'weekly',
-        mo: 'monthly',
-        y: 'yearly',
-        at: 'alltime'
+    periods_shown: {
+        allitems: period_selectors,
+        default: period_selectors,
+        validate: (data)=>{return Array.isArray(data) && data.reduce((is_string,val)=>{return is_string && (typeof val === 'string') && period_selectors.includes(val);},true)},
+        hint: "Uncheck to turn off event type."
     },
-    header: {
-        d: 'Day',
-        w: 'Week',
-        mo: 'Month',
-        y: 'Year',
-        at: 'All-time'
-    }
 }
 
-const longname_key = {
-    daily: 'd',
-    weekly: 'w',
-    monthly: 'mo',
-    yearly: 'y',
-    alltime: 'at'
-}
-
-//Reverse tag implication expiration
-const rti_expiration = JSPLib.utility.one_month; //one month
-
-//Network call configuration
-const max_post_limit_query = 100;
-
-//Metrics used by statistics functions
-const tooltip_metrics = ['score','upscore','downscore','favcount','tagcount','gentags','week','day'];
-
-//Feedback messages
-const empty_uploads_message_owner = 'Feed me more uploads!';
-const empty_uploads_message_other = 'No uploads for this user.';
-const empty_approvals_message_other = 'No approvals for this user.';
-const empty_uploads_message_anonymous = 'User is Anonymous, so no uploads.';
+//CSS Constants
 
 //Style information
 const program_css = `
@@ -263,7 +225,8 @@ const program_css = `
 }
 `;
 
-//HTML for user interface
+//HTML constants
+
 const notice_box = `
 <div class="ui-corner-all" id="upload-counts">
     <div id="count-module">
@@ -298,6 +261,104 @@ const notice_box = `
 
 const unstash_notice = '<span id="upload-counts-restore"> - <a href="#" id="restore-count-notice">Restore CurrentUploads</a></span>';
 const copyright_counter = '(<span id="loading-counter">...</span>)';
+
+const cu_menu = `
+<div id="cu-settings" class="jsplib-outer-menu">
+    <div id="cu-script-message" class="prose">
+        <h2>CurrentUploads</h2>
+        <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/15169" style="color:#0073ff">topic #15169</a>).</p>
+    </div>
+    <div id="cu-display-settings" class="jsplib-settings-grouping">
+        <div id="cu-display-message" class="prose">
+            <h4>Display settings</h4>
+            <ul>
+                <li><b>Period selectors:</b> Select which periods to process and show.</li>
+            </ul>
+        </div>
+    </div>
+    <div id="cu-cache-settings" class="jsplib-settings-grouping">
+        <div id="cu-cache-message" class="prose">
+            <h4>Cache settings</h4>
+            <h5>Cache data</h5>
+            <ul>
+                <li><b>Count data:</b> Main data shown in the table.</li>
+                <li><b>Post data:</b> Used to determine post statistics shown in the tooltips.</li>
+                <li><b>Reverse tag implications:</b> Used to determine the base copyright tag.</li>
+            </ul>
+            <h5>Cache controls</h5>
+            <ul>
+                <li><b>Purge cache:</b> Dumps all of the cached data related to CurrentUploads.</li>
+            </ul>
+        </div>
+    </div>
+    <hr>
+    <div id="cu-settings-buttons" class="jsplib-settings-buttons">
+        <input type="button" id="cu-commit" value="Save">
+        <input type="button" id="cu-resetall" value="Factory Reset">
+    </div>
+</div>
+`;
+
+//Time periods
+const timevalues = ['d','w','mo','y','at'];
+const manual_periods = ['w','mo'];
+const limited_periods = ['y','at'];
+const copyright_periods = ['d','w','mo'];
+
+//Period constants
+const period_info = {
+    countexpires: {
+        d: 5 * JSPLib.utility.one_minute,
+        w: JSPLib.utility.one_hour,
+        mo: JSPLib.utility.one_day,
+        y: JSPLib.utility.one_week,
+        at: JSPLib.utility.one_month
+    },
+    uploadexpires: {
+        d: 5 * JSPLib.utility.one_minute,
+        w: JSPLib.utility.one_day,
+        mo: JSPLib.utility.one_week,
+        y: JSPLib.utility.one_month,
+        at: JSPLib.utility.one_year
+    },
+    longname: {
+        d: 'daily',
+        w: 'weekly',
+        mo: 'monthly',
+        y: 'yearly',
+        at: 'alltime'
+    },
+    header: {
+        d: 'Day',
+        w: 'Week',
+        mo: 'Month',
+        y: 'Year',
+        at: 'All-time'
+    }
+}
+
+const longname_key = {
+    daily: 'd',
+    weekly: 'w',
+    monthly: 'mo',
+    yearly: 'y',
+    alltime: 'at'
+}
+
+//Reverse tag implication expiration
+const rti_expiration = JSPLib.utility.one_month; //one month
+
+//Network call configuration
+const max_post_limit_query = 100;
+
+//Metrics used by statistics functions
+const tooltip_metrics = ['score','upscore','downscore','favcount','tagcount','gentags','week','day'];
+
+//Feedback messages
+const empty_uploads_message_owner = 'Feed me more uploads!';
+const empty_uploads_message_other = 'No uploads for this user.';
+const empty_approvals_message_other = 'No approvals for this user.';
+const empty_uploads_message_anonymous = 'User is Anonymous, so no uploads.';
 const copyright_no_uploads = 'No uploads, so no copyrights available for this period.';
 const copyright_no_statistics = 'No statistics available for this period (<span style="font-size:80%;color:grey">click the table header</span>).';
 
@@ -695,45 +756,6 @@ function GetPostStatistics(posts,attribute) {
 }
 
 //Helper functions
-
-function BroadcastCU(ev) {
-    JSPLib.debug.debuglog("Broadcast",ev.data);
-    if (ev.data.type === "hide") {
-        Danbooru.CU.hidden = 1;
-        $('#upload-counts').removeClass('opened');
-    } else if (ev.data.type === "show") {
-        Danbooru.CU.hidden = 0;
-        $('#upload-counts').addClass('opened');
-    } else if (ev.data.type === "stash") {
-        Danbooru.CU.stashed = 1;
-        Danbooru.CU.hidden = 1;
-        $('#upload-counts,#upload-counts-restore').addClass('stashed');
-    } else if (ev.data.type === "unstash") {
-        Danbooru.CU.stashed = 0;
-        $('#upload-counts,#upload-counts-restore').removeClass('stashed');
-    } else if (ev.data.type === "settings") {
-        Danbooru.CU.user_settings = ev.data.user_settings;
-    } else if (ev.data.type === "reset") {
-        $('#upload-counts').removeClass('opened');
-        JSPLib.storage.setStorageData('cu-hide-current-uploads',1,localStorage);
-        Danbooru.CU.user_settings = ev.data.user_settings;
-        Object.assign(Danbooru.CU,program_reset_keys);
-    } else if (ev.data.type === "purge") {
-        $.each(sessionStorage,(key)=>{
-            if (key.match(program_cache_regex)) {
-                sessionStorage.removeItem(key);
-            }
-        });
-    }
-}
-
-function IsSettingEnabled(setting_name,selector) {
-    return Danbooru.CU.user_settings[setting_name].includes(selector);
-}
-
-function GetShownPeriodKeys() {
-    return timevalues.filter((period_key)=>{return Danbooru.CU.user_settings.periods_shown.includes(period_info.longname[period_key]);});
-}
 
 //Returns a sorted key array from highest to lowest using the length of the array in each value
 function SortDict(dict) {
@@ -1178,7 +1200,7 @@ function SetTooltipHover() {
     });
 }
 
-//Main functions
+//Main execution functions
 
 async function ProcessUploads() {
     var promise_array = [];
@@ -1261,61 +1283,45 @@ async function PopulateTable() {
     PopulateTable.is_started = false;
 }
 
-//Settings menu
+//Settings functions
 
-const cu_menu = `
-<div id="cu-settings" class="jsplib-outer-menu">
-    <div id="cu-script-message" class="prose">
-        <h2>CurrentUploads</h2>
-        <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/15169" style="color:#0073ff">topic #15169</a>).</p>
-    </div>
-    <div id="cu-display-settings" class="jsplib-settings-grouping">
-        <div id="cu-display-message" class="prose">
-            <h4>Display settings</h4>
-            <ul>
-                <li><b>Period selectors:</b> Select which periods to process and show.</li>
-            </ul>
-        </div>
-    </div>
-    <div id="cu-cache-settings" class="jsplib-settings-grouping">
-        <div id="cu-cache-message" class="prose">
-            <h4>Cache settings</h4>
-            <h5>Cache data</h5>
-            <ul>
-                <li><b>Count data:</b> Main data shown in the table.</li>
-                <li><b>Post data:</b> Used to determine post statistics shown in the tooltips.</li>
-                <li><b>Reverse tag implications:</b> Used to determine the base copyright tag.</li>
-            </ul>
-            <h5>Cache controls</h5>
-            <ul>
-                <li><b>Purge cache:</b> Dumps all of the cached data related to CurrentUploads.</li>
-            </ul>
-        </div>
-    </div>
-    <hr>
-    <div id="cu-settings-buttons" class="jsplib-settings-buttons">
-        <input type="button" id="cu-commit" value="Save">
-        <input type="button" id="cu-resetall" value="Factory Reset">
-    </div>
-</div>`;
+function BroadcastCU(ev) {
+    JSPLib.debug.debuglog("Broadcast",ev.data);
+    if (ev.data.type === "hide") {
+        Danbooru.CU.hidden = 1;
+        $('#upload-counts').removeClass('opened');
+    } else if (ev.data.type === "show") {
+        Danbooru.CU.hidden = 0;
+        $('#upload-counts').addClass('opened');
+    } else if (ev.data.type === "stash") {
+        Danbooru.CU.stashed = 1;
+        Danbooru.CU.hidden = 1;
+        $('#upload-counts,#upload-counts-restore').addClass('stashed');
+    } else if (ev.data.type === "unstash") {
+        Danbooru.CU.stashed = 0;
+        $('#upload-counts,#upload-counts-restore').removeClass('stashed');
+    } else if (ev.data.type === "settings") {
+        Danbooru.CU.user_settings = ev.data.user_settings;
+    } else if (ev.data.type === "reset") {
+        $('#upload-counts').removeClass('opened');
+        JSPLib.storage.setStorageData('cu-hide-current-uploads',1,localStorage);
+        Danbooru.CU.user_settings = ev.data.user_settings;
+        Object.assign(Danbooru.CU,program_reset_keys);
+    } else if (ev.data.type === "purge") {
+        $.each(sessionStorage,(key)=>{
+            if (key.match(program_cache_regex)) {
+                sessionStorage.removeItem(key);
+            }
+        });
+    }
+}
 
-const settings_config = {
-    copyrights_merge: {
-        default: true,
-        validate: (data)=>{return validate.isBoolean(data);},
-        hint: "Merge all implied copyrights to their base copyright. Ex: (splatoon_1, splatoon_2) -> splatoon."
-    },
-    copyrights_enabled: {
-        default: true,
-        validate: (data)=>{return validate.isBoolean(data);},
-        hint: "Process and show user copyright uploads."
-    },
-    periods_shown: {
-        allitems: period_selectors,
-        default: period_selectors,
-        validate: (data)=>{return Array.isArray(data) && data.reduce((is_string,val)=>{return is_string && (typeof val === 'string') && period_selectors.includes(val);},true)},
-        hint: "Uncheck to turn off event type."
-    },
+function IsSettingEnabled(setting_name,selector) {
+    return Danbooru.CU.user_settings[setting_name].includes(selector);
+}
+
+function GetShownPeriodKeys() {
+    return timevalues.filter((period_key)=>{return Danbooru.CU.user_settings.periods_shown.includes(period_info.longname[period_key]);});
 }
 
 function RenderSettingsMenu() {
@@ -1331,7 +1337,7 @@ function RenderSettingsMenu() {
     JSPLib.menu.purgeCacheClick('cu','CurrentUploads',program_cache_regex,"#cu-purge-counter");
 }
 
-/****MAIN****/
+//Main function
 
 function main() {
     Danbooru.CU = {
