@@ -58,6 +58,15 @@ const striptype_regex = /^(-?)(?:general:|gen:|artist:|art:|copyright:|copy:|co:
 //Misc tag categories
 const alias_tag_category = 100;
 const deleted_tag_category = 200;
+const notfound_tag_category = 300;
+
+//For when new data has yet to be loaded by another tab
+const default_tag_data = {
+    category: notfound_tag_category,
+    is_alias: false,
+    is_deleted: false,
+    postcount: 0
+};
 
 let program_css = `
 .category-2 a:link,
@@ -88,6 +97,9 @@ let program_css = `
     color: black;
     background-color: white;
     font-weight: bold;
+}
+.category-${notfound_tag_category} a {
+    text-decoration: underline dotted grey;
 }
 `;
 
@@ -369,7 +381,16 @@ function RenderSettingsMenu() {
 
 function BroadcastRTC(ev) {
     JSPLib.debug.debuglog(`BroadcastChannel (${ev.data.type}):`, ev.data);
-    if (ev.data.type === "settings") {
+    if (ev.data.type === "reload") {
+        Danbooru.RTC.recent_tags = ev.data.recent_tags;
+        if (DisplayRecentTags.run_once) {
+            let keyarray = ev.data.new_recent_tags.map((value)=>{return 'tag-' + value;});
+            BatchStorageCheck(keyarray,ValidateEntry,tag_expires)
+            .then(()=>{
+                DisplayRecentTags();
+            });
+        }
+    } else if (ev.data.type === "settings") {
         Danbooru.RTC.user_settings = ev.data.user_settings;
         Danbooru.RTC.tag_order = GetTagOrderType();
     } else if (ev.data.type === "reset") {
@@ -433,7 +454,7 @@ function GetTagData(tag) {
         return {postcount:postcount,category:2};
     }
     if (!(tag in Danbooru.RTC.tag_data)) {
-        Danbooru.RTC.tag_data[tag] = JSPLib.storage.getStorageData('tag-'+tag,sessionStorage).value;
+        Danbooru.RTC.tag_data[tag] = JSPLib.storage.getStorageData('tag-'+tag,sessionStorage,{value:default_tag_data}).value;
     }
     if (Danbooru.RTC.tag_data[tag].is_alias) {
         Danbooru.RTC.tag_data[tag].category = 100;
@@ -453,7 +474,9 @@ async function DisplayRecentTags() {
     $tag_column.html(html);
     $tag_column.removeClass("is-empty-true").addClass("is-empty-false");
     Danbooru.RelatedTag.update_selected();
+    DisplayRecentTags.run_once = true;
 }
+DisplayRecentTags.run_once = false;
 
 function RenderRecentTags() {
     let html = "";
@@ -483,7 +506,6 @@ function GetTagOrderType() {
 function SetFormSubmit() {
     $("#form").submit((e)=>{
         CaptureTagSubmission();
-        JSPLib.storage.setStorageData('rtc-recent-tags',Danbooru.RTC.recent_tags,localStorage);
     });
 }
 
@@ -662,6 +684,7 @@ function AddRecentTags(newtags) {
     }
     RTC.recent_tags = RTC.recent_tags.slice(0,RTC.user_settings.maximum_tags);
     JSPLib.storage.setStorageData('rtc-recent-tags',RTC.recent_tags,localStorage);
+    Danbooru.RTC.channel.postMessage({type: "reload", recent_tags: RTC.recent_tags, new_recent_tags: newtags});
 }
 
 //Main function
