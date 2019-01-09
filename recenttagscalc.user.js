@@ -34,6 +34,15 @@ JSPLib.debug.level = JSPLib.debug.INFO;
 const program_load_required_variables = ['window.jQuery','window.Danbooru'];
 const program_load_required_selectors = ['#page'];
 
+//Main program variable
+var RTC;
+
+//Regex that matches the prefix of all program cache data
+const program_cache_regex = /^(?:ta|tag)-/;
+
+//Main program expires
+const prune_expires = JSPLib.utility.one_day;
+
 //For factory reset
 const localstorage_keys = [
     'rtc-recent-tags',
@@ -46,34 +55,79 @@ const program_reset_keys = {
     tag_data:{}
 };
 
-//Regex that matches the prefix of all program cache data
-const program_cache_regex = /^(?:ta|tag)-/;
+const order_types = ['alphabetic','form_order','post_count','category','tag_usage'];
+const disabled_order_types = ['category','tag_usage'];
+const list_types = ['queue','single','multiple'];
+const disabled_list_types = ['multiple'];
 
-//Expirations
-const tag_expires = JSPLib.utility.one_week;
-const tagalias_expires = JSPLib.utility.one_month;
-const prune_expires = JSPLib.utility.one_day;
-const frequent_tags_expires = JSPLib.utility.one_week;
-const process_semaphore_expires = JSPLib.utility.one_minute;
-
-//Tag regexes
-const negative_regex = /^-/;
-const metatags_regex = /^(?:rating|-?parent|source|-?locked|-?pool|newpool|-?fav|child|-?favgroup|upvote|downvote):/i;
-const striptype_regex = /^(-?)(?:general:|gen:|artist:|art:|copyright:|copy:|co:|character:|char:|ch:|meta:)?(.*)/i;
+const settings_config = {
+    uploads_order: {
+        allitems: order_types,
+        default: ['form_order'],
+        validate: (data)=>{return Array.isArray(data) && data.length === 1 && order_types.includes(data[0])},
+        hint: "Select the type of order to be applied on tags from an upload."
+    },
+    post_edits_order: {
+        allitems: order_types,
+        default: ['alphabetic'],
+        validate: (data)=>{return Array.isArray(data) && data.length === 1 && order_types.includes(data[0])},
+        hint: "Select the type of order to be applied on tags from a post edit."
+    },
+    metatags_first: {
+        default: true,
+        validate: (data)=>{return typeof data === "boolean";},
+        hint: "Uncheck to turn off."
+    },
+    aliases_first: {
+        default: true,
+        validate: (data)=>{return typeof data === "boolean";},
+        hint: "Uncheck to turn off."
+    },
+    list_type: {
+        allitems: list_types,
+        default: ['queue'],
+        validate: (data)=>{return Array.isArray(data) && data.length === 1 && list_types.includes(data[0])},
+        hint: "Select the type of list to use when adding recent tags."
+    },
+    maximum_tags: {
+        default: 25,
+        parse: parseInt,
+        validate: (data)=>{return Number.isInteger(data) && data > 0;},
+        hint: "Number of tags to show."
+    },
+    include_metatags: {
+        default: true,
+        validate: (data)=>{return typeof data === "boolean";},
+        hint: "Uncheck to turn off."
+    },
+    include_unchanged_tags: {
+        default: true,
+        validate: (data)=>{return typeof data === "boolean";},
+        hint: "Uncheck to turn off."
+    },
+    include_removed_tags: {
+        default: false,
+        validate: (data)=>{return typeof data === "boolean";},
+        hint: "Check to turn on."
+    },
+    include_deleted_tags: {
+        default: false,
+        validate: (data)=>{return typeof data === "boolean";},
+        hint: "Check to turn on."
+    },
+    cache_frequent_tags: {
+        default: true,
+        validate: (data)=>{return typeof data === "boolean";},
+        hint: "Check to turn off."
+    }
+}
 
 //Misc tag categories
 const alias_tag_category = 100;
 const deleted_tag_category = 200;
 const notfound_tag_category = 300;
 
-//For when new data has yet to be loaded by another tab
-const default_tag_data = {
-    category: notfound_tag_category,
-    is_alias: false,
-    is_deleted: false,
-    postcount: 0
-};
-
+//CSS Constants
 let program_css = `
 .rtc-user-related-tags-columns {
     display: flex;
@@ -112,13 +166,17 @@ let program_css = `
 }
 `;
 
-//Menu values
+//HTML Constants
+
+const usertag_columns_html = `
+<div class="tag-column recent-related-tags-column is-empty-false"></div>
+<div class="tag-column frequent-related-tags-column is-empty-false"></div>`;
 
 const rtc_menu = `
 <div id="rtc-settings" class="jsplib-outer-menu">
     <div id="rtc-script-message" class="prose">
         <h2>RecentTagsCalc</h2>
-        <p>Check the forum for the latest on information and updates (TO BE ADDED LATER).</p>
+        <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/15851" style="color:#0073ff">topic #15851</a>).</p>
     </div>
     <div id="rtc-order-settings" class="jsplib-settings-grouping">
         <div id="rtc-order-message" class="prose">
@@ -238,77 +296,31 @@ const rtc_menu = `
     </div>
 </div>`;
 
-const usertag_columns_html = `
-<div class="tag-column recent-related-tags-column is-empty-false"></div>
-<div class="tag-column frequent-related-tags-column is-empty-false"></div>
-`;
+//Expirations
+const tag_expires = JSPLib.utility.one_week;
+const tagalias_expires = JSPLib.utility.one_month;
+const frequent_tags_expires = JSPLib.utility.one_week;
+const process_semaphore_expires = JSPLib.utility.one_minute;
 
-const order_types = ['alphabetic','form_order','post_count','category','tag_usage'];
-const disabled_order_types = ['category','tag_usage'];
-const list_types = ['queue','single','multiple'];
-const disabled_list_types = ['multiple'];
+//Tag regexes
+const negative_regex = /^-/;
+const metatags_regex = /^(?:rating|-?parent|source|-?locked|-?pool|newpool|-?fav|child|-?favgroup|upvote|downvote):/i;
+const striptype_regex = /^(-?)(?:general:|gen:|artist:|art:|copyright:|copy:|co:|character:|char:|ch:|meta:)?(.*)/i;
 
-const settings_config = {
-    uploads_order: {
-        allitems: order_types,
-        default: ['form_order'],
-        validate: (data)=>{return Array.isArray(data) && data.length === 1 && order_types.includes(data[0])},
-        hint: "Select the type of order to be applied on tags from an upload."
-    },
-    post_edits_order: {
-        allitems: order_types,
-        default: ['alphabetic'],
-        validate: (data)=>{return Array.isArray(data) && data.length === 1 && order_types.includes(data[0])},
-        hint: "Select the type of order to be applied on tags from a post edit."
-    },
-    metatags_first: {
-        default: true,
-        validate: (data)=>{return typeof data === "boolean";},
-        hint: "Uncheck to turn off."
-    },
-    aliases_first: {
-        default: true,
-        validate: (data)=>{return typeof data === "boolean";},
-        hint: "Uncheck to turn off."
-    },
-    list_type: {
-        allitems: list_types,
-        default: ['queue'],
-        validate: (data)=>{return Array.isArray(data) && data.length === 1 && list_types.includes(data[0])},
-        hint: "Select the type of list to use when adding recent tags."
-    },
-    maximum_tags: {
-        default: 25,
-        parse: parseInt,
-        validate: (data)=>{return Number.isInteger(data) && data > 0;},
-        hint: "Number of tags to show."
-    },
-    include_metatags: {
-        default: true,
-        validate: (data)=>{return typeof data === "boolean";},
-        hint: "Uncheck to turn off."
-    },
-    include_unchanged_tags: {
-        default: true,
-        validate: (data)=>{return typeof data === "boolean";},
-        hint: "Uncheck to turn off."
-    },
-    include_removed_tags: {
-        default: false,
-        validate: (data)=>{return typeof data === "boolean";},
-        hint: "Check to turn on."
-    },
-    include_deleted_tags: {
-        default: false,
-        validate: (data)=>{return typeof data === "boolean";},
-        hint: "Check to turn on."
-    },
-    cache_frequent_tags: {
-        default: true,
-        validate: (data)=>{return typeof data === "boolean";},
-        hint: "Check to turn off."
-    }
-}
+//For when new data has yet to be loaded by another tab
+const default_tag_data = {
+    category: notfound_tag_category,
+    is_alias: false,
+    is_deleted: false,
+    postcount: 0
+};
+
+const deleted_tag_data = {
+    category: deleted_tag_category,
+    postcount: 0,
+    is_alias: false,
+    is_deleted: true
+};
 
 //Misc constants
 const timer_poll_interval = 100;
@@ -428,90 +440,6 @@ async function BatchStorageCheck(keyarray,validator,expires) {
     return missing_array;
 }
 
-//Menu functions
-
-function RenderSettingsMenu() {
-    $("#recent-tags-calc").append(rtc_menu);
-    $("#rtc-order-settings").append(JSPLib.menu.renderInputSelectors("rtc",'uploads_order','radio'));
-    $("#rtc-order-settings").append(JSPLib.menu.renderInputSelectors("rtc",'post_edits_order','radio'));
-    $("#rtc-order-settings").append(JSPLib.menu.renderCheckbox("rtc",'metatags_first'));
-    $("#rtc-order-settings").append(JSPLib.menu.renderCheckbox("rtc",'aliases_first'));
-    $("#rtc-list-settings").append(JSPLib.menu.renderInputSelectors("rtc",'list_type','radio'));
-    $("#rtc-list-settings").append(JSPLib.menu.renderTextinput("rtc",'maximum_tags',5));
-    $("#rtc-inclusion-settings").append(JSPLib.menu.renderCheckbox("rtc",'include_metatags'));
-    $("#rtc-inclusion-settings").append(JSPLib.menu.renderCheckbox("rtc",'include_unchanged_tags'));
-    $("#rtc-inclusion-settings").append(JSPLib.menu.renderCheckbox("rtc",'include_removed_tags'));
-    $("#rtc-inclusion-settings").append(JSPLib.menu.renderCheckbox("rtc",'include_deleted_tags'));
-    $("#rtc-frequent-settings").append(JSPLib.menu.renderCheckbox("rtc",'cache_frequent_tags'));
-    $("#rtc-frequent-settings").append(JSPLib.menu.renderLinkclick("rtc",'refresh_frequent_tags',"Refresh frequent tags","Click to refresh"));
-    $("#rtc-cache-settings").append(JSPLib.menu.renderLinkclick("rtc",'purge_cache',`Purge cache (<span id="rtc-purge-counter">...</span>)`,"Click to purge"));
-    JSPLib.menu.engageUI('rtc',true);
-    disabled_order_types.forEach((type)=>{
-        $(`#rtc-select-uploads-order-${type}`).checkboxradio("disable");
-        $(`#rtc-select-post-edits-order-${type}`).checkboxradio("disable");
-    });
-    disabled_list_types.forEach((type)=>{
-        $(`#rtc-select-list-type-${type}`).checkboxradio("disable");
-    });
-    SetReloadFrequentTagsClick();
-    JSPLib.menu.saveUserSettingsClick('rtc','RecentTagsCalc');
-    JSPLib.menu.resetUserSettingsClick('rtc','RecentTagsCalc',localstorage_keys,program_reset_keys);
-    JSPLib.menu.purgeCacheClick('rtc','RecentTagsCalc',program_cache_regex,"#rtc-purge-counter");
-}
-
-function RecheckAndDisplay(name) {
-    BatchStorageCheck(TagToKeyTransform(Danbooru.RTC[name+'_tags']),ValidateEntry,tag_expires)
-    .then(()=>{
-        switch(name) {
-            case "recent":
-                DisplayRecentTags();
-                break;
-            case "frequent":
-                DisplayFrequentTags();
-                break;
-            default:
-                //do nothing
-        }
-    });
-}
-
-function RecheckSemaphoreCallback(name) {
-    if (CheckSemaphore(name)) {
-        clearInterval(RecheckSemaphoreCallback.timers[name]);
-        JSPLib.debug.debuglog("RecheckSemaphoreCallback:",name);
-        RecheckAndDisplay(name);
-    }
-}
-RecheckSemaphoreCallback.timers = {};
-
-function BroadcastRTC(ev) {
-    JSPLib.debug.debuglog(`BroadcastChannel (${ev.data.type}):`, ev.data);
-    switch (ev.data.type) {
-        case "reload_recent":
-            Danbooru.RTC.recent_tags = ev.data.recent_tags;
-            RecheckAndDisplay("recent");
-            break;
-        case "reload_frequent":
-            Danbooru.RTC.frequent_tags = ev.data.frequent_tags;
-            RecheckAndDisplay("frequent");
-            break;
-        case "reset":
-            Object.assign(Danbooru.RTC,program_reset_keys);
-        case "settings":
-            Danbooru.RTC.user_settings = ev.data.user_settings;
-            Danbooru.RTC.tag_order = GetTagOrderType();
-            break;
-        case "purge":
-            $.each(sessionStorage,(key)=>{
-                if (key.match(program_cache_regex)) {
-                    sessionStorage.removeItem(key);
-                }
-            });
-        default:
-            //do nothing
-    }
-}
-
 //Auxiliary functions
 
 function GetTagList() {
@@ -548,7 +476,7 @@ function KeyToTagTransform(keylist) {
 
 function GetCurrentTags() {
     let tag_list = GetTagList();
-    if (!Danbooru.RTC.user_settings.include_metatags) {
+    if (!RTC.user_settings.include_metatags) {
         tag_list = JSPLib.utility.filterRegex(GetTagList(),metatags_regex,true);
     }
     return TransformTypetags(tag_list);
@@ -564,39 +492,68 @@ function GetTagCategory(tag) {
 
 function GetTagData(tag) {
     if (tag.match(metatags_regex)) {
-        let postcount = (Danbooru.RTC.user_settings.metatags_first ? metatags_first_post_count : 0)
+        let postcount = (RTC.user_settings.metatags_first ? metatags_first_post_count : 0)
         return {postcount:postcount,category:2};
     }
-    if (!(tag in Danbooru.RTC.tag_data) || Danbooru.RTC.tag_data[tag].category === notfound_tag_category) {
-        Danbooru.RTC.tag_data[tag] = JSPLib.storage.getStorageData('tag-'+tag,sessionStorage,{value:default_tag_data}).value;
+    if (!(tag in RTC.tag_data) || RTC.tag_data[tag].category === notfound_tag_category) {
+        RTC.tag_data[tag] = JSPLib.storage.getStorageData('tag-'+tag,sessionStorage,{value:default_tag_data}).value;
     }
-    if (Danbooru.RTC.tag_data[tag].is_alias) {
-        Danbooru.RTC.tag_data[tag].category = alias_tag_category;
-        Danbooru.RTC.tag_data[tag].postcount = (Danbooru.RTC.user_settings.aliases_first ? aliases_first_post_count : 0);
-    } else if (Danbooru.RTC.tag_data[tag].is_deleted) {
-        Danbooru.RTC.tag_data[tag].category = deleted_tag_category;
+    if (RTC.tag_data[tag].is_alias) {
+        RTC.tag_data[tag].category = alias_tag_category;
+        RTC.tag_data[tag].postcount = (RTC.user_settings.aliases_first ? aliases_first_post_count : 0);
+    } else if (RTC.tag_data[tag].is_deleted) {
+        RTC.tag_data[tag].category = deleted_tag_category;
     }
-    return Danbooru.RTC.tag_data[tag];
+    return RTC.tag_data[tag];
 }
 
 //Display functions
 
 async function DisplayRecentTags() {
-    await Danbooru.RTC.pageload_recentcheck;
+    await RTC.pageload_recentcheck;
     let $tag_column = $(".rtc-user-related-tags-columns .recent-related-tags-column");
-    let html = RenderTaglist(Danbooru.RTC.recent_tags,"Recent");
+    let html = RenderTaglist(RTC.recent_tags,"Recent");
     $tag_column.html(html);
     $tag_column.removeClass("is-empty-true").addClass("is-empty-false");
     Danbooru.RelatedTag.update_selected();
 }
 
 async function DisplayFrequentTags() {
-    await Danbooru.RTC.pageload_frequentcheck;
+    await RTC.pageload_frequentcheck;
     let $tag_column = $(".rtc-user-related-tags-columns .frequent-related-tags-column");
-    let html = RenderTaglist(Danbooru.RTC.frequent_tags,"Frequent");
+    let html = RenderTaglist(RTC.frequent_tags,"Frequent");
     $tag_column.html(html);
     $tag_column.removeClass("is-empty-true").addClass("is-empty-false");
     Danbooru.RelatedTag.update_selected();
+}
+
+function RecheckAndDisplay(name) {
+    BatchStorageCheck(TagToKeyTransform(RTC[name+'_tags']),ValidateEntry,tag_expires)
+    .then(()=>{
+        switch(name) {
+            case "recent":
+                DisplayRecentTags();
+                break;
+            case "frequent":
+                DisplayFrequentTags();
+                break;
+            default:
+                //do nothing
+        }
+    });
+}
+
+function RecheckDisplaySemaphoreCallback(name) {
+    if (CheckSemaphore(name)) {
+        clearInterval(RecheckDisplaySemaphoreCallback.timers[name]);
+        JSPLib.debug.debuglog("RecheckDisplaySemaphoreCallback:",name);
+        RecheckAndDisplay(name);
+    }
+}
+RecheckDisplaySemaphoreCallback.timers = {};
+
+function SetRecheckDisplayInterval(name) {
+    RecheckDisplaySemaphoreCallback.timers[name] = setInterval(()=>{RecheckDisplaySemaphoreCallback(name);},timer_poll_interval);
 }
 
 function RenderTaglist(taglist,columnname) {
@@ -616,14 +573,6 @@ ${html.slice(0,-1)}
 
 //Setup functions
 
-function GetTagOrderType() {
-    if (Danbooru.RTC.is_upload) {
-        return Danbooru.RTC.user_settings.uploads_order[0];
-    } else {
-        return Danbooru.RTC.user_settings.post_edits_order[0];
-    }
-}
-
 function SetFormSubmit() {
     $("#form").submit((e)=>{
         CaptureTagSubmission();
@@ -636,7 +585,7 @@ function SetupMutationObserver() {
             if (mutation.type == "childList" && mutation.removedNodes.length === 1 && mutation.removedNodes[0].className === "user-related-tags-columns") {
                 JSPLib.debug.debuglog("Server: User related tags have been added!");
                 DisplayRecentTags();
-                Danbooru.RTC.mutation_observer.disconnect();
+                RTC.mutation_observer.disconnect();
             }
         });
     });
@@ -650,7 +599,7 @@ function SetReloadFrequentTagsClick() {
     });
 }
 
-//Auxiliary functions
+//Main helper functions
 
 async function CheckMissingTags(tag_list,list_name="") {
     let missing_keys = await BatchStorageCheck(TagToKeyTransform(tag_list),ValidateEntry,tag_expires);
@@ -660,7 +609,7 @@ async function CheckMissingTags(tag_list,list_name="") {
     } else {
         JSPLib.debug.debuglog(`${list_name} - No missing tags in DB!`);
     }
-    return missing_keys
+    return missing_keys;
 }
 
 async function QueryMissingTags(missing_taglist) {
@@ -675,27 +624,21 @@ async function QueryMissingTags(missing_taglist) {
             is_alias: tagentry.post_count === 0,
             is_deleted: false
         };
-        Danbooru.RTC.tag_data[tagentry.name] = value;
+        RTC.tag_data[tagentry.name] = value;
         promise_array.push(JSPLib.storage.saveData(entryname, {value: value, expires: Date.now() + tag_expires}));
     });
     let unfound_tags = JSPLib.utility.setDifference(missing_taglist,JSPLib.utility.getObjectAttributes(queried_tags,'name'));
-    JSPLib.debug.debuglog("Unfound tags:",unfound_tags);
+    JSPLib.debug.debuglog("QueryMissingTags: unfound_tags",unfound_tags);
     unfound_tags.forEach((tag)=>{
         let entryname = 'tag-' + tag;
-        let value = {
-            category: deleted_tag_category,
-            postcount: 0,
-            is_alias: false,
-            is_deleted: true
-        };
-        Danbooru.RTC.tag_data[tag] = value;
-        promise_array.push(JSPLib.storage.saveData(entryname, {value: value, expires: Date.now() + tag_expires}));
+        RTC.tag_data[tag] = deleted_tag_data;
+        promise_array.push(JSPLib.storage.saveData(entryname, {value: deleted_tag_data, expires: Date.now() + tag_expires}));
     });
     return Promise.all(promise_array);
 }
 
 async function CheckTagDeletion() {
-    let RTC = Danbooru.RTC;
+    let promise_array = [];
     for (let tag in RTC.tag_data) {
         if (RTC.tag_data[tag].is_alias) {
             let alias_entryname = 'ta-' + tag;
@@ -705,7 +648,6 @@ async function CheckTagDeletion() {
                 if (data) {
                     return data;
                 }
-                has_alias_query = true;
                 return JSPLib.danbooru.submitRequest('tag_aliases',{search:{antecedent_name:tag,status:'active'}},[],alias_entryname)
                 .then((data)=>{
                     JSPLib.debug.debuglog("Step 2 (optional): Check server for alias",data);
@@ -736,7 +678,6 @@ async function CheckTagDeletion() {
 }
 
 function FilterDeletedTags() {
-    let RTC = Danbooru.RTC;
     JSPLib.debug.debugExecute(()=>{
         RTC.deleted_saved_recent_tags = RTC.saved_recent_tags.filter((tag)=>{return GetTagCategory(tag) === deleted_tag_category;});
         RTC.deleted_recent_tags = RTC.recent_tags.filter((tag)=>{return GetTagCategory(tag) === deleted_tag_category;});
@@ -767,7 +708,6 @@ function SortTagData(tag_list) {
 ////Recent tags
 
 function CaptureTagSubmission(submit=true) {
-    let RTC = Danbooru.RTC;
     RTC.postedittags = GetCurrentTags();
     RTC.new_recent_tags = NormalizeTags(RTC.postedittags);
     RTC.positivetags = JSPLib.utility.filterRegex(RTC.postedittags,negative_regex,true);
@@ -803,11 +743,10 @@ function CaptureTagSubmission(submit=true) {
 
 async function CheckAllRecentTags() {
     if (!ReserveSemaphore("recent")) {
-        RecheckSemaphoreCallback.timers.recent = setInterval((RecheckSemaphoreCallback('recent');)=>{},timer_poll_interval);
+        SetRecheckDisplayInterval("recent");
         return;
     }
     JSPLib.debug.debugTime("CheckAllRecentTags");
-    let RTC = Danbooru.RTC;
     let original_recent_tags = JSPLib.utility.dataCopy(RTC.recent_tags);
     RTC.saved_recent_tags = [];
     let tag_list = FilterMetatags(RTC.recent_tags);
@@ -832,7 +771,6 @@ async function CheckAllRecentTags() {
 }
 
 function AddRecentTags(newtags) {
-    let RTC = Danbooru.RTC;
     switch (RTC.user_settings.list_type[0]) {
         case "single":
             RTC.recent_tags = newtags;
@@ -849,19 +787,18 @@ function AddRecentTags(newtags) {
 ////Frequent tags
 
 async function LoadFrequentTags() {
-    if (!Danbooru.RTC.userid) {
+    if (!RTC.userid) {
         //User must have an account to have frequent tags
         return;
     }
-    Danbooru.RTC.frequent_tags = JSPLib.storage.getStorageData('rtc-frequent-tags',localStorage);
-    if (Danbooru.RTC.frequent_tags === null || CheckTimeout('rtc-frequent-tags-expires',frequent_tags_expires)) {
+    RTC.frequent_tags = JSPLib.storage.getStorageData('rtc-frequent-tags',localStorage);
+    if (RTC.frequent_tags === null || CheckTimeout('rtc-frequent-tags-expires',frequent_tags_expires)) {
         QueryFrequentTags();
     }
 }
 
 async function QueryFrequentTags() {
-    let RTC = Danbooru.RTC;
-    let user_account = await JSPLib.danbooru.submitRequest('users/'+Danbooru.RTC.userid);
+    let user_account = await JSPLib.danbooru.submitRequest('users/'+RTC.userid);
     if (!user_account) {
         //Should never get here, but just in case
         return;
@@ -874,27 +811,93 @@ async function QueryFrequentTags() {
 }
 
 async function CheckAllFrequentTags() {
-    let RTC = Danbooru.RTC;
     await LoadFrequentTags();
     if (ReserveSemaphore("frequent")) {
         RTC.missing_frequent_keys = await CheckMissingTags(RTC.frequent_tags,"Frequent");
         FreeSemaphore("frequent");
     } else {
-        RecheckSemaphoreCallback.timers.frequent = setInterval((RecheckSemaphoreCallback('frequent');)=>{},timer_poll_interval);
+        SetRecheckDisplayInterval("frequent");
     }
+}
+
+//Settings functions
+
+function BroadcastRTC(ev) {
+    JSPLib.debug.debuglog(`BroadcastChannel (${ev.data.type}):`, ev.data);
+    switch (ev.data.type) {
+        case "reload_recent":
+            RTC.recent_tags = ev.data.recent_tags;
+            RecheckAndDisplay("recent");
+            break;
+        case "reload_frequent":
+            RTC.frequent_tags = ev.data.frequent_tags;
+            RecheckAndDisplay("frequent");
+            break;
+        case "reset":
+            Object.assign(RTC,program_reset_keys);
+        case "settings":
+            RTC.user_settings = ev.data.user_settings;
+            RTC.tag_order = GetTagOrderType();
+            break;
+        case "purge":
+            $.each(sessionStorage,(key)=>{
+                if (key.match(program_cache_regex)) {
+                    sessionStorage.removeItem(key);
+                }
+            });
+        default:
+            //do nothing
+    }
+}
+
+function GetTagOrderType() {
+    if (RTC.is_upload) {
+        return RTC.user_settings.uploads_order[0];
+    } else {
+        return RTC.user_settings.post_edits_order[0];
+    }
+}
+
+function RenderSettingsMenu() {
+    $("#recent-tags-calc").append(rtc_menu);
+    $("#rtc-order-settings").append(JSPLib.menu.renderInputSelectors("rtc",'uploads_order','radio'));
+    $("#rtc-order-settings").append(JSPLib.menu.renderInputSelectors("rtc",'post_edits_order','radio'));
+    $("#rtc-order-settings").append(JSPLib.menu.renderCheckbox("rtc",'metatags_first'));
+    $("#rtc-order-settings").append(JSPLib.menu.renderCheckbox("rtc",'aliases_first'));
+    $("#rtc-list-settings").append(JSPLib.menu.renderInputSelectors("rtc",'list_type','radio'));
+    $("#rtc-list-settings").append(JSPLib.menu.renderTextinput("rtc",'maximum_tags',5));
+    $("#rtc-inclusion-settings").append(JSPLib.menu.renderCheckbox("rtc",'include_metatags'));
+    $("#rtc-inclusion-settings").append(JSPLib.menu.renderCheckbox("rtc",'include_unchanged_tags'));
+    $("#rtc-inclusion-settings").append(JSPLib.menu.renderCheckbox("rtc",'include_removed_tags'));
+    $("#rtc-inclusion-settings").append(JSPLib.menu.renderCheckbox("rtc",'include_deleted_tags'));
+    $("#rtc-frequent-settings").append(JSPLib.menu.renderCheckbox("rtc",'cache_frequent_tags'));
+    $("#rtc-frequent-settings").append(JSPLib.menu.renderLinkclick("rtc",'refresh_frequent_tags',"Refresh frequent tags","Click to refresh"));
+    $("#rtc-cache-settings").append(JSPLib.menu.renderLinkclick("rtc",'purge_cache',`Purge cache (<span id="rtc-purge-counter">...</span>)`,"Click to purge"));
+    JSPLib.menu.engageUI('rtc',true);
+    disabled_order_types.forEach((type)=>{
+        $(`#rtc-select-uploads-order-${type}`).checkboxradio("disable");
+        $(`#rtc-select-post-edits-order-${type}`).checkboxradio("disable");
+    });
+    disabled_list_types.forEach((type)=>{
+        $(`#rtc-select-list-type-${type}`).checkboxradio("disable");
+    });
+    SetReloadFrequentTagsClick();
+    JSPLib.menu.saveUserSettingsClick('rtc','RecentTagsCalc');
+    JSPLib.menu.resetUserSettingsClick('rtc','RecentTagsCalc',localstorage_keys,program_reset_keys);
+    JSPLib.menu.purgeCacheClick('rtc','RecentTagsCalc',program_cache_regex,"#rtc-purge-counter");
 }
 
 //Main function
 
 function main() {
-    Danbooru.RTC = {
+    Danbooru.RTC = RTC = {
         userid: JSPLib.utility.getMeta("current-user-id"),
         settings_config: settings_config,
         channel: new BroadcastChannel('RecentTagsCalc'),
         tag_data: {}
     };
-    Danbooru.RTC.user_settings = JSPLib.menu.loadUserSettings('rtc');
-    Danbooru.RTC.channel.onmessage = BroadcastRTC;
+    RTC.user_settings = JSPLib.menu.loadUserSettings('rtc');
+    RTC.channel.onmessage = BroadcastRTC;
     if ($("#c-users #a-edit").length) {
         JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
             JSPLib.menu.installSettingsMenu("RecentTagsCalc");
@@ -902,15 +905,15 @@ function main() {
         });
         return;
     }
-    Danbooru.RTC.tag_order = GetTagOrderType();
-    Danbooru.RTC.preedittags = GetTagList();
-    Danbooru.RTC.is_upload = Boolean($("#c-uploads #a-new").length);
-    Danbooru.RTC.recent_tags = JSPLib.storage.getStorageData('rtc-recent-tags',localStorage,[]);
-    Danbooru.RTC.frequent_tags = [];
-    Danbooru.RTC.pageload_recentcheck = CheckAllRecentTags();
-    Danbooru.RTC.pageload_frequentcheck = CheckAllFrequentTags();
+    RTC.tag_order = GetTagOrderType();
+    RTC.preedittags = GetTagList();
+    RTC.is_upload = Boolean($("#c-uploads #a-new").length);
+    RTC.recent_tags = JSPLib.storage.getStorageData('rtc-recent-tags',localStorage,[]);
+    RTC.frequent_tags = [];
+    RTC.pageload_recentcheck = CheckAllRecentTags();
+    RTC.pageload_frequentcheck = CheckAllFrequentTags();
     SetFormSubmit();
-    if (Danbooru.RTC.user_settings.cache_frequent_tags) {
+    if (RTC.user_settings.cache_frequent_tags) {
         $(".user-related-tags-columns")
             .addClass("rtc-user-related-tags-columns")
             .removeClass("user-related-tags-columns")
@@ -920,8 +923,8 @@ function main() {
     } else if ($(".recent-related-tags-column").length) {
         DisplayRecentTags();
     } else {
-        Danbooru.RTC.mutation_observer = SetupMutationObserver();
-        Danbooru.RTC.mutation_observer.observe($(".related-tags")[0], {
+        RTC.mutation_observer = SetupMutationObserver();
+        RTC.mutation_observer.observe($(".related-tags")[0], {
             childList: true
         });
     }
