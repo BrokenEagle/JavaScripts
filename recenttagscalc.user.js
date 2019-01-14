@@ -914,12 +914,14 @@ function main() {
     RTC.pageload_frequentcheck = CheckAllFrequentTags();
     SetFormSubmit();
     if (RTC.user_settings.cache_frequent_tags) {
-        Danbooru.RTC.cached_data = true;
-        $(document).off("danbooru:show-related-tags");
-        if (!Danbooru.IAC || !Danbooru.IAC.cached_data) {
-            $(document).one("danbooru:show-related-tags", Danbooru.Upload.fetch_data_manual);
-        } else {
-            $(document).one("danbooru:show-related-tags", Danbooru.IAC.FindArtistSession);
+        if ($("#c-posts #a-show").length) {
+            Danbooru.RTC.cached_data = true;
+            $(document).off("danbooru:show-related-tags");
+            if (!Danbooru.IAC || !Danbooru.IAC.cached_data) {
+                $(document).one("danbooru:show-related-tags", Danbooru.Upload.fetch_data_manual);
+            } else {
+                $(document).one("danbooru:show-related-tags", Danbooru.IAC.FindArtistSession);
+            }
         }
         $(".user-related-tags-columns")
             .addClass("rtc-user-related-tags-columns")
