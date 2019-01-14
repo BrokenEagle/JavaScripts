@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      20.2
+// @version      20.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -11,6 +11,7 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/indexedautocomplete.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version7/lib/debug.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version7/lib/load.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version7/lib/storage.js
@@ -708,11 +709,7 @@ const relatedtag_constraints = {
         query: JSPLib.validate.stringonly_constraints,
         tags: JSPLib.validate.tagentryarray_constraints,
         wiki_page_tags: JSPLib.validate.tagentryarray_constraints,
-        other_wikis: JSPLib.validate.array_constraints
-    },
-    other_wikis: {
-        title: JSPLib.validate.stringonly_constraints,
-        wiki_page_tags: JSPLib.validate.tagentryarray_constraints
+        other_wikis: JSPLib.validate.hash_constraints
     }
 };
 
@@ -771,11 +768,17 @@ function ValidateRelatedtagEntry(key,entry) {
         JSPLib.validate.printValidateError(key,check);
         return false;
     }
-    for (let i = 0;i < entry.value.other_wikis.length; i++) {
-        check = validate(entry.value.other_wikis[i],relatedtag_constraints.other_wikis);
+    for (let title in entry.value.other_wikis) {
+        let value = entry.value.other_wikis[title];
+        let wiki_key = key + '.value.other_wikis.' + title;
+        check = validate({title: title},{title: JSPLib.validate.stringonly_constraints});
         if (check !== undefined) {
-            JSPLib.debug.debuglog("value["+i.toString()+"]");
-            JSPLib.validate.printValidateError(key,check);
+            JSPLib.validate.printValidateError(wiki_key,check);
+            return false;
+        }
+        check = validate({value: value},{value: JSPLib.validate.tagentryarray_constraints});
+        if (check !== undefined) {
+            JSPLib.validate.printValidateError(wiki_key,check);
             return false;
         }
     }
@@ -858,7 +861,45 @@ function CorrectUsageData() {
 
 //Library functions
 
-//// NONE
+function FixGetBoundEventNames(root,eventtype,selector) {
+    let $obj = (root === document ? document : document.querySelector(root));
+    if ($obj === null) {
+        return [];
+    }
+    let private_data = JSPLib.utility.getPrivateData($obj);
+    let boundevents = 'events' in private_data && private_data.events;
+    if (!boundevents || !(eventtype in boundevents)) {
+        return [];
+    }
+    return boundevents[eventtype].filter((entry)=>{return entry.selector === selector;}).map((entry)=>{return entry.namespace;});
+}
+
+function FixIsNamespaceBound(root,eventtype,namespace,selector) {
+    let namespaces = FixGetBoundEventNames(root,eventtype,selector);
+    return namespaces.includes(namespace);
+}
+
+function IsGlobalFunctionBound(name) {
+    let private_data = JSPLib.utility.getPrivateData(document);
+    return private_data && 'events' in private_data && Object.keys(private_data.events).includes(name);
+}
+
+function SetupMutationObserver(selector,func) {
+    return new MutationObserver(function(mutations,observer) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type == "childList" && mutation.removedNodes.length === 1) {
+                let type = selector.slice(0,1);
+                let name = selector.slice(1);
+                let node = mutation.removedNodes[0];
+                if ((type === "." && name === node.className) || (type === "#" && name === node.id)) {
+                    JSPLib.debug.debuglog(`Server: ${selector} has been modified!`);
+                    func();
+                    observer.disconnect();
+                }
+            }
+        });
+    });
+}
 
 //Time functions
 
@@ -879,7 +920,52 @@ function ExpirationTime(type,count) {
     return Math.round(expiration);
 }
 
-/***Main helper functions***/
+//Render functions
+
+function RenderWikiLink(tag) {
+    return `<a href="/wiki_pages/show_or_new?title=${tag}">wiki:${tag.replace(/_/g,' ')}</a>`;
+}
+
+function RenderTaglist(taglist,columnname) {
+    let html = "";
+    taglist.forEach((tagdata)=>{
+        let tag = tagdata[0];
+        let category = tagdata[1];
+        let search_link = JSPLib.danbooru.postSearchLink(tag,tag.replace(/_/g,' '),`class="search-tag"`);
+        html += `    <li class="category-${category}">${search_link}</li>\n`;
+    });
+    return `
+<h6>${columnname}</h6>
+<ul>
+${html.slice(0,-1)}
+</ul>
+`;
+}
+
+function RenderTagColumns(data) {
+    let is_empty = data.tags.length === 0;
+    let column = (is_empty ? "" : RenderTaglist(data.tags,data.query.replace(/_/g,' ')));
+    let html = `
+<div class="tag-column general-related-tags-column is-empty-${is_empty}">
+${column}
+</div>`;
+    is_empty = data.wiki_page_tags.length === 0;
+    column = (is_empty ? "" : RenderTaglist(data.wiki_page_tags,RenderWikiLink(data.query)));
+    html += `
+<div class="tag-column wiki-related-tags-column is-empty-${false}">
+${column}
+</div>`;
+    if (Object.keys(data.other_wikis).length) {
+        for (let title in data.other_wikis) {
+            column = RenderTaglist(data.other_wikis[title],RenderWikiLink(title));
+            html += `
+<div class="tag-column wiki-related-tags-column is-empty-false">
+${column}
+</div>`;
+        }
+    }
+    return html;
+}
 
 function RenderListItem(alink_func) {
     return (list, item)=>{
@@ -889,6 +975,8 @@ function RenderListItem(alink_func) {
         return $("<li/>").data("item.autocomplete", item).append($container).appendTo(list);
     }
 }
+
+//Main helper functions
 
 function FixupMetatag(value,metatag) {
     switch(metatag) {
@@ -948,6 +1036,38 @@ function FixExpirationCallback(key,value,tagname,type) {
         var expiration_time = ExpirationTime(type,data[0].post_count);
         JSPLib.storage.saveData(key, {value: value, expires: JSPLib.utility.getExpiration(expiration_time)});
     });
+}
+
+function GetArtistData(url) {
+        let urlkey = 'af-' + url;
+        let refkey = 'ref-' + url;
+        let data = JSPLib.storage.getStorageData(urlkey, sessionStorage);
+        if (data) {
+            return data;
+        }
+        let redirect = JSPLib.storage.getStorageData(refkey, sessionStorage);
+        if (redirect) {
+            JSPLib.debug.debuglog("Redirect found!",redirect);
+            return JSPLib.storage.getStorageData(redirect, sessionStorage);
+        }
+}
+
+function SaveArtistData() {
+    let url = $("#upload_source,#post_source").val();
+    let ref = $("#upload_referer_url").val();
+    if (!url.match(/^https?:\/\//)) {
+        return;
+    }
+    let urlkey = 'af-' + url;
+    let refkey = 'ref-' + ref;
+    let source_info = LZString.compressToUTF16($("#source-info").html());
+    let source_column = LZString.compressToUTF16($(".source-related-tags-columns").html());
+    JSPLib.debug.debuglog("Saving",urlkey);
+    JSPLib.storage.setStorageData(urlkey, {source_info: source_info, source_column: source_column}, sessionStorage);
+    if (ref) {
+        JSPLib.debug.debuglog("Saving",refkey);
+        JSPLib.storage.setStorageData(refkey, urlkey, sessionStorage);
+    }
 }
 
 //Usage functions
@@ -1119,92 +1239,74 @@ function StoreUsageData(name,key='') {
 
 //Non-autocomplete storage
 
-function CommonBindIndexed(button_name, category) {
-    $(button_name).on('click.IAC',async (e)=>{
-        var $dest = $("#related-tags");
-        $dest.empty();
-        Danbooru.RelatedTag.build_recent_and_frequent($dest);
-        $dest.append("<em>Loading...</em>");
-        $("#related-tags-container").show();
-        var currenttag = $.trim(Danbooru.RelatedTag.current_tag());
-        var keymodifier = (category.length ? JSPLib.danbooru.getShortName(category) : "");
-        var key = ("rt" + keymodifier + "-" + currenttag).toLowerCase();
-        var max_expiration = MaximumExpirationTime('relatedtag');
-        var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry,max_expiration);
-        if (cached) {
-            Danbooru.RelatedTag.process_response(cached.value);
-        } else {
-            JSPLib.debug.debuglog("Querying relatedtag:",currenttag,category);
-            var data = await JSPLib.danbooru.submitRequest("related_tag", {query: currenttag, category: category});
-            JSPLib.storage.saveData(key, {value: data, expires: JSPLib.utility.getExpiration(MinimumExpirationTime('relatedtag'))});
-            Danbooru.RelatedTag.process_response(data);
-        }
-        $("#artist-tags-container").hide();
-        e.preventDefault();
-    });
-}
-
-function CheckSource(domobj) {
-    if (domobj.val()) {
-        let key = 'af-' + domobj.val();
-        JSPLib.debug.debuglog("Checking artist",key);
-        let data = JSPLib.storage.getStorageData(key,sessionStorage);
-        if (data) {
-            JSPLib.debug.debuglog("Found artist data",key);
-            Danbooru.RelatedTag.process_artist(data);
-            return true;
-        }
-        JSPLib.debug.debuglog("Missing artist data",key);
+async function RelatedTagsButton(e) {
+    let category = $(e.target).data("category") || "";
+    let currenttag = $.trim(Danbooru.RelatedTag.current_tag());
+    let keymodifier = (category ? JSPLib.danbooru.getShortName(category) : "");
+    let key = ("rt" + keymodifier + "-" + currenttag).toLowerCase();
+    let max_expiration = MaximumExpirationTime('relatedtag');
+    let cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry,max_expiration);
+    if (cached) {
+        $("#related-tags-container .current-related-tags-columns").html(RenderTagColumns(cached.value));
+    } else {
+        JSPLib.debug.debuglog("Querying relatedtag:",currenttag,category);
+        var data = await JSPLib.danbooru.submitRequest("related_tag", {query: currenttag, category: category});
+        //inclusion_constraints doesn't allow for null...yet
+        data.category = category;
+        JSPLib.storage.saveData(key, {value: data, expires: JSPLib.utility.getExpiration(MinimumExpirationTime('relatedtag'))});
+        $("#related-tags-container .current-related-tags-columns").html(RenderTagColumns(data));
     }
-    return false;
+    Danbooru.RelatedTag.update_selected();
+    Danbooru.RelatedTag.show();
 }
 
 function FindArtistSession(e) {
-    $("#artist-tags").html("<em>Loading...</em>");
-    var url = $("#upload_source,#post_source");
-    if (CheckSource(url)) {
+    var url = $("#post_source").val();
+    if (!url.match(/^https?:\/\//)) {
         return;
     }
-    var referer_url = $("#upload_referer_url");
-    if ((url.val() !== referer_url.val()) && CheckSource(referer_url)) {
-        return;
-    }
-    JSPLib.debug.debuglog("Checking network",url.val(),referer_url.val());
-    JSPLib.danbooru.submitRequest("artists/finder", {url: url.val(), referer_url: referer_url.val()})
-        .then((data)=>{
-            Danbooru.RelatedTag.process_artist(data);
-            if (url.val()) {
-                JSPLib.storage.setStorageData('af-' + url.val(), data, sessionStorage);
-            }
-            if ((url.val() !== referer_url.val()) && referer_url.val()) {
-                JSPLib.storage.setStorageData('af-' + referer_url.val(), data, sessionStorage);
-            }
+    let urlkey = 'af-' + url;
+    //let refkey = ref && 'ref-' + ref;
+    JSPLib.debug.debuglog("Checking artist", urlkey);
+    let data = GetArtistData(url);
+    if (data) {
+        JSPLib.debug.debuglog("Found artist data", urlkey);
+        $("#source-info").html(LZString.decompressFromUTF16(data.source_info));
+        $(".source-related-tags-columns").html(LZString.decompressFromUTF16(data.source_column))
+    } else {
+        JSPLib.debug.debuglog("Missing artist data", urlkey);
+        $("#source-info").addClass("loading");
+        $.get("/source.js", {url: url}).then(()=>{
+            SaveArtistData();
+        }).always(()=>{
+            $("#source-info").removeClass("loading");
         });
-    e.preventDefault();
+    }
 }
 
-//Setup functions
+////Setup functions
 
 //Rebind callback functions
 
 function RebindRelatedTags() {
     //Only need to check one of them, since they're all bound at the same time
-    if (JSPLib.utility.isNamespaceBound("#related-tags-button",'click','danbooru')) {
+    if (FixIsNamespaceBound(document,'click','danbooru',".related-tags-button")) {
         clearInterval(RebindRelatedTags.timer);
-        $("#related-tags-button").off('click.danbooru');
-        CommonBindIndexed("#related-tags-button", "");
-        $.each(['general','artist','character','copyright'], (i,category)=>{
-            $(`#related-${category}-button`).off('click.danbooru');
-            CommonBindIndexed("#related-" + category + "-button", category);
-        });
+        $(document).off("click.danbooru",".related-tags-button");
+        $(document).on("click.danbooru",".related-tags-button",RelatedTagsButton);
         RebindRelatedTags.timer = true;
     }
 }
 
 function RebindFindArtist() {
-    if (JSPLib.utility.isNamespaceBound("#find-artist-button",'click','danbooru')) {
+    if(IsGlobalFunctionBound("danbooru:show-related-tags")) {
         clearInterval(RebindFindArtist.timer);
-        $("#find-artist-button").off('click.danbooru').on('click.IAC',FindArtistSession);
+        Danbooru.IAC.cached_data = true;
+        $(document).off("danbooru:show-related-tags");
+        if (!Danbooru.RTC || !Danbooru.RTC.cached_data) {
+            $(document).one("danbooru:show-related-tags", Danbooru.RelatedTag.initialize_recent_and_favorite_tags);
+        }
+        $(document).one("danbooru:show-related-tags", Danbooru.IAC.FindArtistSession);
         RebindFindArtist.timer = true;
     }
 }
@@ -1403,6 +1505,7 @@ function main() {
         source_data: {},
         choice_order: JSPLib.storage.getStorageData('iac-choice-order',localStorage,{}),
         choice_data: JSPLib.storage.getStorageData('iac-choice-data',localStorage,{}),
+        FindArtistSession: FindArtistSession,
         settings_config: settings_config,
         channel: new BroadcastChannel('IndexedAutocomplete')
     };
@@ -1420,8 +1523,20 @@ function main() {
     Danbooru.Autocomplete.render_item = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.render_item,HighlightSelected);
     if ($("#c-posts #a-show,#c-uploads #a-new").length) {
         RebindRelatedTags.timer = setInterval(RebindRelatedTags,timer_poll_interval);
-        //Need to fix this so it captures fetch source instead
-        //RebindFindArtist.timer = setInterval(RebindFindArtist,timer_poll_interval);
+        if ($("#c-posts #a-show").length) {
+            RebindFindArtist.timer = setInterval(RebindFindArtist,timer_poll_interval);
+        } else if ($("#c-uploads #a-new").length) {
+            //Is source column empty?
+            if (/^\s+$/.test($(".source-related-tags-columns").html())) {
+                JSPLib.debug.debuglog("Setting up mutation observer for source data.");
+                SetupMutationObserver(".source-related-tags-columns",()=>{SaveArtistData();})
+                .observe($(".related-tags")[0], {
+                    childList: true
+                });
+            } else {
+                SaveArtistData();
+            }
+        }
     }
     if ($("#c-wiki-pages,#c-wiki-page-versions").length) {
         SetRebindInterval("#search_title,#quick_search_title", 'wp');
