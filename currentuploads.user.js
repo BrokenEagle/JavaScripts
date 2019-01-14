@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      13.1
+// @version      13.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Gives up-to-date stats on uploads
 // @author       BrokenEagle
@@ -11,14 +11,14 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/currentuploads.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version7/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version7/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version7/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version7/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version7/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version7/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version7/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/library-version7/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/menu.js
 // ==/UserScript==
 
 /**GLOBAL VARIABLES**/
