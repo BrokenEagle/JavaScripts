@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RecentTagsCalc
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.0
+// @version      3.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Use different mechanism to calculate RecentTags
 // @author       BrokenEagle
@@ -914,6 +914,13 @@ function main() {
     RTC.pageload_frequentcheck = CheckAllFrequentTags();
     SetFormSubmit();
     if (RTC.user_settings.cache_frequent_tags) {
+        Danbooru.RTC.cached_data = true;
+        $(document).off("danbooru:show-related-tags");
+        if (!Danbooru.IAC || !Danbooru.IAC.cached_data) {
+            $(document).one("danbooru:show-related-tags", Danbooru.Upload.fetch_data_manual);
+        } else {
+            $(document).one("danbooru:show-related-tags", Danbooru.IAC.FindArtistSession);
+        }
         $(".user-related-tags-columns")
             .addClass("rtc-user-related-tags-columns")
             .removeClass("user-related-tags-columns")
