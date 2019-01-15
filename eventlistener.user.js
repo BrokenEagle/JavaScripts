@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      12.0
+// @version      12.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries)
 // @author       BrokenEagle
@@ -370,7 +370,7 @@ const typedict = {
         addons: {},
         limit: 200,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'updater_id','post_id');})},
-        insert: InsertEvents
+        insert: InsertPosts
     }
 };
 
@@ -564,7 +564,7 @@ async function AddForumPost(forumid,$rowelement) {
 }
 
 function AddRenderedNote(noteid,$rowelement) {
-    let notehtml = $.parseHTML($.trim($("td:nth-of-type(4)",$rowelement)[0].innerHTML))[0].data;
+    let notehtml = $.parseHTML($.trim($(".el-note-body",$rowelement)[0].innerHTML))[0].data;
     let $outerblock = $.parseHTML(`<tr id="full-note-id-${noteid}"><td colspan="7">${notehtml}</td></tr>`);
     $($rowelement).after($outerblock);
 }
@@ -635,9 +635,20 @@ function InsertNotes($notepage) {
     DecodeProtectedEmail($notepage);
     let $notes_table = $("#note-table");
     $notes_table.append($(".striped",$notepage));
-    OrderNotesTable($notes_table);
-    InitializeNoteIndexLinks($notes_table);
+    $("th:first-of-type,td:first-of-type",$notes_table).remove();
+    $("td:nth-of-type(1)",$notes_table).addClass("el-post-id");
+    $("td:nth-of-type(2)",$notes_table).addClass("el-note-id");
+    $("td:nth-of-type(3)",$notes_table).addClass("el-note-body");
+    AddThumbnails($notes_table);
+    InitializePostNoteIndexLinks('note',$notes_table);
     InitializeOpenNoteLinks($notes_table);
+}
+
+function InsertPosts($postpage) {
+    let $posts_table = $("#post-table");
+    $posts_table.append($(".striped",$postpage));
+    AddThumbnails($posts_table);
+    InitializePostNoteIndexLinks('post',$posts_table);
 }
 
 //Misc functions
@@ -664,24 +675,56 @@ function DecodeProtectedEmail(obj) {
     });
 }
 
-function OrderNotesTable($obj) {
-    let $rows = $(".striped tr[id]",$obj);
-    let sort_rows = {};
-    $rows.each((i,row)=>{
-        let post = $(`td:nth-of-type(2) > a:first-of-type`,row).html();
-        sort_rows[post] = sort_rows[post] || [];
-        sort_rows[post].push($(row).detach());
-    });
-    let sort_posts = Object.keys(sort_rows).sort().reverse();
-    $.each(sort_posts,(i,post)=>{
-        $.each(sort_rows[post],(j,row)=>{
-            $(".striped tbody",$obj).append(row);
-        });
-        //Add a spacer for all but the last group
-        if (i !== (sort_posts.length - 1)) {
-            $(".striped tbody",$obj).append(`<tr><td colspan="7" style="padding:2px;background-color:#EEE"></td></tr>`);
+function AddThumbnails($dompage) {
+    $(".striped thead tr",$dompage).prepend("<th>Thumb</th>");
+    var row_save = {};
+    var post_ids = [];
+    $(".striped tr[id]",$dompage).each((i,row)=>{
+        let $postlink = $("td:first-of-type a:first-of-type",row);
+        let match = $postlink && $postlink[0].href.match(/https?:\/\/[^.]+\.donmai\.us\/posts\/(\d+)/);
+        if (!match) {
+            //Something is wrong... break loop
+            return false;
         }
+        let postid = parseInt(match[1]);
+        post_ids.push(postid);
+        row_save[postid] = row_save[postid] || [];
+        row_save[postid].push($(row).detach());
     });
+    post_ids = JSPLib.utility.setUnique(post_ids).sort().reverse();
+    var $body = $(".striped tbody",$dompage);
+    post_ids.forEach((postid)=>{
+        row_save[postid][0].prepend(`<td rowspan="${row_save[postid].length}" class="el-post-thumbnail" data-postid="${postid}"></td>`);
+        row_save[postid].forEach((row)=>{
+            $body.append(row);
+        });
+    });
+    Danbooru.EL.post_ids = JSPLib.utility.setUnion(Danbooru.EL.post_ids, post_ids);
+}
+
+function GetThumbnails() {
+    if (Danbooru.EL.post_ids.length === 0) {
+        return;
+    }
+    var url_addon = {tags: `id:${Danbooru.EL.post_ids.join(',')} limit:${Danbooru.EL.post_ids.length}`};
+    $.get("/posts",url_addon).then((resp)=>{
+        var $posts = $.parseHTML(resp);
+        var $thumbs = $(".post-preview",$posts);
+        $thumbs.each((i,thumb)=>{
+            let $thumb = $(thumb);
+            $thumb.addClass("blacklisted");
+            let postid = $thumb.data('id');
+            $(`.striped .el-post-thumbnail[data-postid=${postid}]`).prepend(thumb);
+        });
+    });
+}
+
+function AdjustRowspan(rowelement,openitem) {
+    let postid = $(".el-post-id a:first-of-type",rowelement).html();
+    let $thumb_cont = $(`#note-table .el-post-thumbnail[data-postid=${postid}]`);
+    let current_rowspan = $thumb_cont.attr("rowspan");
+    let new_rowspan = parseInt(current_rowspan) + (openitem ? 1 : -1);
+    $thumb_cont.attr("rowspan",new_rowspan);
 }
 
 async function GetPostsCountdown(limit,searchstring,domname) {
@@ -770,10 +813,10 @@ function InitializeOpenForumLinks($obj) {
 
 function InitializeOpenNoteLinks($obj) {
     $.each($(".striped tr[id]",$obj),(i,$row)=>{
-        let noteid = $("td:nth-of-type(3) a:first-of-type",$row)[0].innerHTML.replace('.','-');
-        $("td:nth-of-type(4)",$row).append('<p style="text-align:center">' + RenderOpenItemLinks('note',noteid,"Render note","Hide note") + '</p>');
+        let noteid = $(".el-note-id a",$row)[0].innerHTML.replace('.','-');
+        $(".el-note-body",$row).append('<p style="text-align:center">' + RenderOpenItemLinks('note',noteid,"Render note","Hide note") + '</p>');
     });
-    OpenItemClick('note',$obj,4,AddRenderedNote);
+    OpenItemClick('note',$obj,4,AddRenderedNote,AdjustRowspan);
 }
 
 function InitializeOpenDmailLinks($obj) {
@@ -829,13 +872,17 @@ function InitializeTopicIndexLinks($obj) {
 }
 
 //EVENT NOTICE
-function InitializeNoteIndexLinks($obj) {
-    $.each($(".striped tr[id]",$obj), (i,entry)=>{
-        let postid = parseInt($("td:nth-of-type(2)",entry)[0].innerHTML.match(/\/posts\/(\d+)/)[1]);
-        let linkhtml = RenderSubscribeDualLinks('note',postid,"span","","",true);
-        $("td:nth-of-type(1)",entry).prepend(linkhtml);
+
+function InitializePostNoteIndexLinks(type,$obj) {
+    $(".striped tr[id]",$obj).each((i,row)=>{
+        if ($(".el-post-thumbnail",row).length === 0) {
+            return;
+        }
+        let postid = $(".el-post-thumbnail",row).data('postid');
+        let linkhtml = RenderSubscribeDualLinks(type,postid,"span","","",true);
+        $("td:first-of-type",row).prepend(`<div style="text-align:center">${linkhtml}</div>`);
     });
-    SubscribeDualLinkClick('note');
+    SubscribeDualLinkClick(type);
 }
 
 //#C-COMMENTS #P-INDEX-BY-POST
@@ -956,14 +1003,14 @@ function SubscribeDualLinkClick(type) {
     });
 }
 
-function OpenItemClick(type,$obj,parentlevel,htmlfunc) {
+function OpenItemClick(type,$obj,parentlevel,htmlfunc,otherfunc=(()=>{})) {
     $(`.show-full-${type} a,.hide-full-${type} a`).off().click(function(e){
         Danbooru.EL.openlist[type] = Danbooru.EL.openlist[type] || [];
         let $container = $(e.target.parentElement);
         let itemid = $container.data('id');
         let openitem = $container.hasClass(`show-full-${type}`);
+        let rowelement = JSPLib.utility.getNthParent(e.target,parentlevel);
         if (openitem && !Danbooru.EL.openlist[type].includes(itemid)) {
-            let rowelement = JSPLib.utility.getNthParent(e.target,parentlevel);
             htmlfunc(itemid,rowelement);
             Danbooru.EL.openlist[type].push(itemid);
         }
@@ -976,6 +1023,7 @@ function OpenItemClick(type,$obj,parentlevel,htmlfunc) {
         } else {
             $(`#full-${type}-id-${itemid}`).hide();
         }
+        otherfunc(rowelement,openitem);
         e.preventDefault();
     });
 }
@@ -1130,6 +1178,7 @@ async function CheckAllEvents(promise_array) {
     let hasevents_all = await Promise.all(promise_array);
     let hasevents = hasevents_all.reduce((a,b)=>{return a || b;});
     JSPLib.storage.setStorageData('el-events',hasevents,localStorage);
+    GetThumbnails();
     //Only save overflow if it wasn't just a display reload
     if (!Danbooru.EL.had_events) {
         JSPLib.storage.setStorageData('el-overflow',Danbooru.EL.item_overflow,localStorage);
@@ -1240,6 +1289,7 @@ function main() {
         item_overflow: false,
         had_events: HasEvents(),
         no_limit: false,
+        post_ids: [],
         settings_config: settings_config
     };
     if (Danbooru.EL.username === "Anonymous") {
