@@ -507,6 +507,7 @@ function CheckOverflow(inputtype) {
     if (Object.keys(CheckOverflow.all_overflows).length == 0) {
         $.each(typedict,(type)=>{
             CheckOverflow.all_overflows[type] = JSPLib.storage.getStorageData(`el-${type}overflow`,localStorage,false);
+            CheckOverflow.any_overflow = CheckOverflow.any_overflow || CheckOverflow.all_overflows[type];
         });
     }
     return !(Object.values(CheckOverflow.all_overflows).reduce((total,entry)=>{return total || entry;},false)) || CheckOverflow.all_overflows[inputtype];
@@ -521,7 +522,13 @@ function ProcessEvent(inputtype) {
         return [];
     }
     //Waits always have priority over overflows
-    if (CheckWaiting(inputtype) || (CheckOverflow(inputtype) && !CheckWaiting.any_waits)) {
+    JSPLib.debug.debuglog("ProcessEvent:",inputtype,
+                          (CheckWaiting(inputtype) && CheckWaiting.any_waits),
+                          (CheckOverflow(inputtype) && !CheckWaiting.any_waits && CheckOverflow.any_overflow),
+                          (!CheckWaiting.any_waits && !CheckOverflow.any_overflow));
+    if ((CheckWaiting(inputtype) && CheckWaiting.any_waits) || /*Check for any wait event*/
+        (CheckOverflow(inputtype) && !CheckWaiting.any_waits && CheckOverflow.any_overflow) || /*Check for any overflow event but not a wait event*/
+        (!CheckWaiting.any_waits && !CheckOverflow.any_overflow) /*Check for neither waits nor overflows*/) {
         typedict[inputtype].process && typedict[inputtype].process();
         if (user_events.includes(inputtype)) {
             return CheckUserType(inputtype);
