@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      12.1
+// @version      12.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries)
 // @author       BrokenEagle
@@ -338,7 +338,7 @@ const typedict = {
     comment: {
         controller: 'comments',
         addons: {group_by: 'comment'},
-        limit: 1000,
+        limit: 999,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'creator_id','post_id');})},
         insert: InsertComments,
         process: function () {JSPLib.utility.setCSSStyle(comment_css,'comment');}
@@ -346,7 +346,7 @@ const typedict = {
     forum: {
         controller: 'forum_posts',
         addons: {},
-        limit: 1000,
+        limit: 999,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'creator_id','topic_id');})},
         insert: InsertForums,
         process: function () {JSPLib.utility.setCSSStyle(forum_css,'forum');}
@@ -354,21 +354,21 @@ const typedict = {
     note: {
         controller: 'note_versions',
         addons: {},
-        limit: 1000,
+        limit: 999,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'updater_id','post_id');})},
         insert: InsertNotes
     },
     commentary: {
         controller: 'artist_commentary_versions',
         addons: {},
-        limit: 1000,
+        limit: 999,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'updater_id','post_id',IsShownCommentary);})},
         insert: InsertEvents
     },
     post: {
         controller: 'post_versions',
         addons: {},
-        limit: 200,
+        limit: 199,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'updater_id','post_id');})},
         insert: InsertPosts
     }
