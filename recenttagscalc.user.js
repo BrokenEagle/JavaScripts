@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RecentTagsCalc
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.1
+// @version      4.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Use different mechanism to calculate RecentTags
 // @author       BrokenEagle
@@ -56,7 +56,8 @@ const program_reset_keys = {
 };
 
 const order_types = ['alphabetic','form_order','post_count','category','tag_usage'];
-const disabled_order_types = ['category','tag_usage'];
+const category_orders = ['general','artist','copyright','character','meta','alias','metatag'];
+const disabled_order_types = ['tag_usage'];
 const list_types = ['queue','single','multiple'];
 const disabled_list_types = ['multiple'];
 
@@ -82,6 +83,12 @@ const settings_config = {
         default: true,
         validate: (data)=>{return typeof data === "boolean";},
         hint: "Uncheck to turn off."
+    },
+    category_order: {
+        allitems: category_orders,
+        default: category_orders,
+        validate: (data)=>{return Array.isArray(data) && JSPLib.utility.setSymmetricDifference(data,category_orders).length === 0},
+        hint: "Drag and drop the categories to determine the group order."
     },
     list_type: {
         allitems: list_types,
@@ -126,18 +133,29 @@ const settings_config = {
 const alias_tag_category = 100;
 const deleted_tag_category = 200;
 const notfound_tag_category = 300;
+const metatags_category = 400;
+const category_name = {
+    0: "general",
+    1: "artist",
+    3: "copyright",
+    4: "character",
+    5: "meta",
+    [alias_tag_category]: "alias",
+    [metatags_category]: "metatag",
+    [deleted_tag_category]: "deleted"
+};
 
 //CSS Constants
 let program_css = `
 .rtc-user-related-tags-columns {
     display: flex;
 }
-.category-2 a:link,
-.category-2 a:visited {
+.category-${metatags_category} a:link,
+.category-${metatags_category} a:visited {
     color: darkgoldenrod;
     font-weight: bold;
 }
-.category-2 a:hover {
+.category-${metatags_category} a:hover {
     color: goldenrod;
     font-weight: bold;
 }
@@ -166,6 +184,18 @@ let program_css = `
 }
 `;
 
+const menu_css = `
+#rtc-settings .rtc-sortlist li {
+    width: 6.5em;
+}
+#rtc-settings #rtc-order-type {
+    padding-left: 0.5em;
+    margin: 0.5em;
+    width: 30em;
+    border: lightgrey solid 1px;
+}
+`;
+
 //HTML Constants
 
 const usertag_columns_html = `
@@ -186,31 +216,24 @@ const rtc_menu = `
                 <li><b>Post edits order:</b> Sets the order to use on tags from a post edit.</li>
                 <li><b>Metatags first:</b> Sets the post count high for metatags.
                     <ul>
-                        <li><i>Only effective with the post count order.</i></li>
+                        <li><i>Only effective with the <u>post count</u> order type.</i></li>
                     </ul>
                 </li>
                 <li><b>Aliases first:</b> Sets the post count high for aliases.
                     <ul>
-                        <li><i>Only effective with the post count order.</i></li>
+                        <li><i>Only effective with the <u>post count</u> order type.</i></li>
                     </ul>
                 </li>
+                <li><b>Category order:</b> Sets the order for the <u>category</u> order type.</li>
             </ul>
-            <span><i><b>Note:</b> With post count, metatags are rated higher than aliases.</i></span>
-            <div style="margin-left:0.5em">
+            <span><i><b>Note:</b> With <u>post count</u>, metatags are rated higher than aliases.</i></span>
+            <div id="rtc-order-type">
                 <h5>Order types</h5>
                 <ul>
                     <li><b>Alphabetic</b></li>
                     <li><b>Form order:</b> The order of tags in the tag edit box.</li>
-                    <li><b>Post count:</b> Highest to lowest.
-                        <ul>
-                            <li><i>Not implemented yet.</i></li>
-                        </ul>
-                    </li>
-                    <li><b>Category:</b> Tag category.
-                        <ul>
-                            <li><i>Not implemented yet.</i></li>
-                        </ul>
-                    </li>
+                    <li><b>Post count:</b> Highest to lowest.</li>
+                    <li><b>Category:</b> Tag category.</li>
                     <li><b>Tag usage:</b> Ordered by recent tag usage.
                         <ul>
                             <li><i>Not implemented yet.</i></li>
@@ -493,7 +516,7 @@ function GetTagCategory(tag) {
 function GetTagData(tag) {
     if (tag.match(metatags_regex)) {
         let postcount = (RTC.user_settings.metatags_first ? metatags_first_post_count : 0)
-        return {postcount:postcount,category:2};
+        return {postcount:postcount,category:metatags_category};
     }
     if (!(tag in RTC.tag_data) || RTC.tag_data[tag].category === notfound_tag_category) {
         RTC.tag_data[tag] = JSPLib.storage.getStorageData('tag-'+tag,sessionStorage,{value:default_tag_data}).value;
@@ -689,17 +712,22 @@ function FilterDeletedTags() {
     RTC.recent_tags = RTC.recent_tags.filter((tag)=>{return GetTagCategory(tag) !== deleted_tag_category;});
 }
 
-function SortTagData(tag_list) {
+function SortTagData(tag_list,type) {
     JSPLib.debug.debuglog("SortTagData (pre):",tag_list);
-    tag_list.sort((a,b)=>{
-        let a_data = GetTagData(a);
-        let b_data = GetTagData(b);
-        if (a_data.post_count === b_data.post_count) {
-            return a.localeCompare(b);
-        } else {
+    if (type === "post_count") {
+        tag_list.sort((a,b)=>{
+            let a_data = GetTagData(a);
+            let b_data = GetTagData(b);
             return b_data.postcount - a_data.postcount;
-        }
-    });
+        });
+    } else if (type === "category") {
+        let category_order = RTC.user_settings.category_order.concat(['deleted']);
+        tag_list.sort((a,b)=>{
+            let a_data = GetTagCategory(a);
+            let b_data = GetTagCategory(b);
+            return category_order.indexOf(category_name[a_data]) - category_order.indexOf(category_name[b_data]);
+        });
+    }
     JSPLib.debug.debuglog("SortTagData (post):",tag_list);
 }
 
@@ -728,6 +756,7 @@ function CaptureTagSubmission(submit=true) {
             RTC.new_recent_tags.sort();
             break;
         case "post_count":
+        case "category":
             JSPLib.storage.setStorageData('rtc-new-recent-tags',RTC.new_recent_tags,localStorage);
             RTC.new_recent_tags = RTC.recent_tags;
             break;
@@ -750,7 +779,7 @@ async function CheckAllRecentTags() {
     let original_recent_tags = JSPLib.utility.dataCopy(RTC.recent_tags);
     RTC.saved_recent_tags = [];
     let tag_list = FilterMetatags(RTC.recent_tags);
-    if (RTC.tag_order === "post_count") {
+    if (RTC.tag_order === "post_count" || RTC.tag_order === "category") {
         RTC.saved_recent_tags = JSPLib.storage.getStorageData('rtc-new-recent-tags',localStorage,[]);
         tag_list = JSPLib.utility.setUnion(tag_list,FilterMetatags(RTC.saved_recent_tags));
     }
@@ -759,8 +788,8 @@ async function CheckAllRecentTags() {
     if (!RTC.user_settings.include_deleted_tags) {
         FilterDeletedTags();
     }
-    if (RTC.tag_order === "post_count" && RTC.saved_recent_tags.length) {
-        SortTagData(RTC.saved_recent_tags);
+    if ((RTC.tag_order === "post_count" || RTC.tag_order === "category") && RTC.saved_recent_tags.length) {
+        SortTagData(RTC.saved_recent_tags,RTC.tag_order);
     }
     localStorage.removeItem('rtc-new-recent-tags');
     if (JSPLib.utility.setSymmetricDifference(original_recent_tags,RTC.recent_tags).length || RTC.saved_recent_tags.length) {
@@ -864,6 +893,7 @@ function RenderSettingsMenu() {
     $("#rtc-order-settings").append(JSPLib.menu.renderInputSelectors("rtc",'post_edits_order','radio'));
     $("#rtc-order-settings").append(JSPLib.menu.renderCheckbox("rtc",'metatags_first'));
     $("#rtc-order-settings").append(JSPLib.menu.renderCheckbox("rtc",'aliases_first'));
+    $("#rtc-order-settings").append(JSPLib.menu.renderSortlist("rtc",'category_order'));
     $("#rtc-list-settings").append(JSPLib.menu.renderInputSelectors("rtc",'list_type','radio'));
     $("#rtc-list-settings").append(JSPLib.menu.renderTextinput("rtc",'maximum_tags',5));
     $("#rtc-inclusion-settings").append(JSPLib.menu.renderCheckbox("rtc",'include_metatags'));
@@ -873,7 +903,7 @@ function RenderSettingsMenu() {
     $("#rtc-frequent-settings").append(JSPLib.menu.renderCheckbox("rtc",'cache_frequent_tags'));
     $("#rtc-frequent-settings").append(JSPLib.menu.renderLinkclick("rtc",'refresh_frequent_tags',"Refresh frequent tags","Click to refresh"));
     $("#rtc-cache-settings").append(JSPLib.menu.renderLinkclick("rtc",'purge_cache',`Purge cache (<span id="rtc-purge-counter">...</span>)`,"Click to purge"));
-    JSPLib.menu.engageUI('rtc',true);
+    JSPLib.menu.engageUI('rtc',true,true);
     disabled_order_types.forEach((type)=>{
         $(`#rtc-select-uploads-order-${type}`).checkboxradio("disable");
         $(`#rtc-select-post-edits-order-${type}`).checkboxradio("disable");
@@ -903,6 +933,7 @@ function main() {
             JSPLib.menu.installSettingsMenu("RecentTagsCalc");
             RenderSettingsMenu();
         });
+        JSPLib.utility.setCSSStyle(menu_css,'menu');
         return;
     }
     RTC.tag_order = GetTagOrderType();
