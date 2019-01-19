@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      20.3
+// @version      21.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -142,6 +142,9 @@ const settings_config = {
     }
 }
 
+//Misc tag categories
+const bur_tag_category = 400;
+
 //CSS Constants
 
 const program_css = `
@@ -160,6 +163,9 @@ const program_css = `
     font-weight: bold;
     font-size: 150%;
 }
+.iac-tag-bur > div::before {
+    color: #000;
+}
 .iac-tag-exact > div::before {
     color: #EEE;
 }
@@ -171,6 +177,12 @@ const program_css = `
 }
 .iac-tag-correct > div::before {
     color: cyan;
+}
+.iac-tag-highlight .tag-type-${bur_tag_category}:link {
+    color: #888;
+}
+.iac-tag-highlight .tag-type-${bur_tag_category}:hover {
+    color: #CCC;
 }
 `;
 
@@ -317,6 +329,19 @@ const iac_menu = `
     </div>
 </div>`;
 
+//BUR constants
+const bur_keywords = ['->','alias','imply','update','unalias','unimply','category'];
+const bur_data = bur_keywords.map((tag)=>{
+    return {
+        type: 'tag',
+        label: tag,
+        value: tag,
+        post_count: 0,
+        source: 'bur',
+        category: bur_tag_category
+    };
+});
+
 //Polling interval for checking program status
 const timer_poll_interval = 100;
 
@@ -350,7 +375,9 @@ const autocomplete_domlist = [
     "#add-to-pool-dialog input[type=text]",
     "#quick_search_body_matches",
     "#search_topic_title_matches",
-    "#saved_search_label_string"
+    "#saved_search_label_string",
+    "#search_post_tags_match",
+    "#bulk_update_request_script"
     ].concat(autocomplete_userlist);
 
 //Expiration variables
@@ -597,7 +624,7 @@ const source_config = {
                 search: {
                     order: "post_count",
                     is_active: true,
-                    name: term + "*"
+                    name_like: term.trim().replace(/\s+/g, "_") + "*"
                 },
                 limit: 10
             };
@@ -1154,6 +1181,9 @@ function InsertUserSelected(data,input,selected) {
         item = selected;
         type = source_key[data];
     }
+    if (item.category === bur_tag_category) {
+        return;
+    }
     if (item.antecedent) {
         term = item.antecedent;
     } else if (item.name) {
@@ -1208,6 +1238,8 @@ function HighlightSelected($link,list,item) {
                 $($link).addClass('iac-tag-alias');
             } else if (item.source === 'correct') {
                 $($link).addClass('iac-tag-correct');
+            } else if (item.source === "bur") {
+                $($link).addClass('iac-tag-bur');
             }
         }
     }
@@ -1431,6 +1463,11 @@ function ProcessSourceData(type,metatag,term,data,resp) {
     if (Danbooru.IAC.user_settings.usage_enabled) {
         AddUserSelected(type, metatag, term, data);
     }
+    console.log(data);
+    if (Danbooru.IAC.is_bur) {
+        let add_data = bur_data.filter((data)=>{return term.length === 1 || data.value.startsWith(term);});
+        data.unshift(...add_data);
+    }
     resp(data);
 }
 
@@ -1505,6 +1542,7 @@ function main() {
         source_data: {},
         choice_order: JSPLib.storage.getStorageData('iac-choice-order',localStorage,{}),
         choice_data: JSPLib.storage.getStorageData('iac-choice-data',localStorage,{}),
+        is_bur: Boolean($("#c-bulk-update-requests #a-new").length),
         FindArtistSession: FindArtistSession,
         settings_config: settings_config,
         channel: new BroadcastChannel('IndexedAutocomplete')
@@ -1514,6 +1552,7 @@ function main() {
     Danbooru.IAC.channel.onmessage = BroadcastIAC;
     CorrectUsageData();
     PruneUsageData();
+    /**Autocomplete bindings**/
     Danbooru.Autocomplete.normal_source = AnySourceIndexed('ac');
     Danbooru.Autocomplete.pool_source = AnySourceIndexed('pl');
     Danbooru.Autocomplete.user_source = AnySourceIndexed('us');
@@ -1521,6 +1560,40 @@ function main() {
     Danbooru.Autocomplete.saved_search_source = AnySourceIndexed('ss','search');
     Danbooru.Autocomplete.insert_completion = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.insert_completion,InsertUserSelected);
     Danbooru.Autocomplete.render_item = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.render_item,HighlightSelected);
+    if ($("#c-wiki-pages,#c-wiki-page-versions").length) {
+        SetRebindInterval('[data-autocomplete="wiki-page"]', 'wp');
+    }
+    if ($("#c-artists,#c-artist-versions,#c-artist-urls").length) {
+        SetRebindInterval('[data-autocomplete="artist"]', 'ar');
+    }
+    if ($("#c-pools,#c-pool-versions").length) {
+        SetRebindInterval('[data-autocomplete="pool"]', 'pl');
+    }
+    if ($("#c-posts #a-index").length) {
+        SetRebindInterval("#saved_search_label_string", 'ss', true);
+    }
+    if ($("#c-saved-searches #a-edit").length) {
+        setTimeout(()=>{InitializeAutocompleteIndexed("#saved_search_label_string", 'ss', true);}, timer_poll_interval);
+    }
+    if ($("#c-forum-topics").length) {
+        JSPLib.utility.setCSSStyle(forum_css,'forum');
+        $("#quick_search_body_matches").parent().parent().after(forum_topic_search);
+        setTimeout(()=>{InitializeAutocompleteIndexed("#quick_search_title_matches", 'ft');}, timer_poll_interval);
+    }
+    if ($("#c-forum-posts #a-search").length) {
+        JSPLib.utility.setCSSStyle(forum_css,'forum');
+        setTimeout(()=>{InitializeAutocompleteIndexed("#search_topic_title_matches", 'ft');}, timer_poll_interval);
+    }
+    if ($("#c-uploads #a-index,#c-bulk-update-requests #a-new").length) {
+        $("#search_post_tags_match").attr('data-autocomplete','tag-query');
+        $("#bulk_update_request_script").attr('data-autocomplete','tag-edit');
+        //The initialize code doesn't work properly unless some time has elapsed after setting the attribute
+        setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, timer_poll_interval);
+    }
+    if ($(autocomplete_userlist.join(',')).length) {
+        setTimeout(()=>{InitializeAutocompleteIndexed(autocomplete_userlist.join(','), 'us');}, timer_poll_interval);
+    }
+    /**Non-autocomplete bindings**/
     if ($("#c-posts #a-show,#c-uploads #a-new").length) {
         RebindRelatedTags.timer = setInterval(RebindRelatedTags,timer_poll_interval);
         if ($("#c-posts #a-show").length) {
@@ -1538,47 +1611,14 @@ function main() {
             }
         }
     }
-    if ($("#c-wiki-pages,#c-wiki-page-versions").length) {
-        SetRebindInterval("#search_title,#quick_search_title", 'wp');
-    }
-    if ($("#c-artists,#c-artist-versions").length) {
-        SetRebindInterval("#search_name,#quick_search_name", 'ar');
-    }
-    if ($("#c-pools,#c-pool-versions").length) {
-        SetRebindInterval("#search_name_matches,#quick_search_name_matches", 'pl');
-    }
-    if ($("#c-posts #a-show").length) {
-        SetRebindInterval("#add-to-pool-dialog input[type=text]", 'pl');
-    }
-    if ($("#c-posts #a-index").length) {
-        SetRebindInterval("#saved_search_label_string", 'ss', true);
-    }
-    if ($("#c-saved-searches #a-edit").length) {
-        setTimeout(()=>{InitializeAutocompleteIndexed("#saved_search_label_string", 'ss', true);}, timer_poll_interval);
-    }
-    if ($("#c-forum-topics").length) {
-        JSPLib.utility.setCSSStyle(forum_css,'forum');
-        $("#quick_search_body_matches").parent().parent().after(forum_topic_search);
-        setTimeout(()=>{InitializeAutocompleteIndexed("#quick_search_title_matches", 'ft');}, timer_poll_interval);
-    }
-    if ($("#c-forum-posts #a-search").length) {
-        JSPLib.utility.setCSSStyle(forum_css,'forum');
-        setTimeout(()=>{InitializeAutocompleteIndexed("#search_topic_title_matches", 'ft');}, timer_poll_interval);
-    }
-    if ($("#c-uploads #a-index").length) {
-        $("#search_post_tags_match").attr('data-autocomplete','tag-query');
-        //The initialize code doesn't work properly unless some time has elapsed after setting the attribute
-        setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, timer_poll_interval);
-    }
-    if ($(autocomplete_userlist.join(',')).length) {
-        setTimeout(()=>{InitializeAutocompleteIndexed(autocomplete_userlist.join(','), 'us');}, timer_poll_interval);
-    }
+    /**Menu setup**/
     if ($("#c-users #a-edit").length) {
         JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
             JSPLib.menu.installSettingsMenu("IndexedAutocomplete");
             RenderSettingsMenu();
         });
     }
+    /**Other setup**/
     JSPLib.debug.debugExecute(()=>{
         window.addEventListener('beforeunload', ()=>{
             JSPLib.statistics.outputAdjustedMean("IndexedAutocomplete");
