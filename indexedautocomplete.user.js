@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      21.1
+// @version      22.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -184,6 +184,22 @@ const program_css = `
 .iac-tag-highlight .tag-type-${bur_tag_category}:hover {
     color: #CCC;
 }
+#iac-cache-viewer textarea {
+    width: 100%;
+    min-width: 40em;
+    height: 50em;
+    padding: 5px;
+}
+#iac-cache-editor-errors {
+    display: none;
+    border: solid lightgrey 1px;
+    margin: 0.5em;
+    padding: 0.5em;
+}
+.jsplib-console {
+    width: 100%;
+    min-width: 100em;
+}
 `;
 
 const forum_css = `
@@ -208,126 +224,155 @@ const forum_topic_search = `
 </li>`;
 
 const iac_menu = `
-<div id="iac-settings" class="jsplib-outer-menu">
-    <div id="iac-script-message" class="prose">
-        <h2>IndexedAutocomplete</h2>
-        <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/14701" style="color:#0073ff">topic #14701</a>).</p>
-    </div>
-    <div id="iac-usage-settings" class="jsplib-settings-grouping">
-        <div id="iac-usage-message" class="prose">
-            <h4>Usage settings</h4>
-            <p>These settings control how items get sorted in the autocomplete popup.</p>
-            <h5>Equations</h5>
-            <ul>
-                <li><span style="width:5em;display:inline-block"><b>Hit:</b></span><span style="font-family:monospace;font-size:125%">usage_count = Min( usage_count + 1 , usage_maximum )</span></li>
-                <li><span style="width:5em;display:inline-block"><b>Miss:</b></span><span style="font-family:monospace;font-size:125%">usage_count = usage_count * usage_multiplier</span></li>
-            </ul>
+<div id="iac-script-message" class="prose">
+    <h2>IndexedAutocomplete</h2>
+    <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/14701" style="color:#0073ff">topic #14701</a>).</p>
+</div>
+<div id="iac-console" class="jsplib-console">
+    <div id="iac-settings" class="jsplib-outer-menu">
+        <div id="iac-usage-settings" class="jsplib-settings-grouping">
+            <div id="iac-usage-message" class="prose">
+                <h4>Usage settings</h4>
+                <p>These settings control how items get sorted in the autocomplete popup.</p>
+                <h5>Equations</h5>
+                <ul>
+                    <li><span style="width:5em;display:inline-block"><b>Hit:</b></span><span style="font-family:monospace;font-size:125%">usage_count = Min( usage_count + 1 , usage_maximum )</span></li>
+                    <li><span style="width:5em;display:inline-block"><b>Miss:</b></span><span style="font-family:monospace;font-size:125%">usage_count = usage_count * usage_multiplier</span></li>
+                </ul>
+            </div>
+        </div>
+        <div id="iac-display-settings" class="jsplib-settings-grouping">
+            <div id="iac-display-message" class="prose">
+                <h4>Display settings</h4>
+                <p>These settings affect the presentation of autocomplete data to the user.</p>
+                <ul>
+                    <li><b>Source highlight enabled:</b> Adds highlights and stylings to the HTML classes set by the program.
+                        <ul>
+                            <li><code>.iac-user-choice</code> - bold text</li>
+                            <li><code>.iac-tag-exact</code> - grey dot</li>
+                            <li><code>.iac-tag-prefix</code> - pink dot</li>
+                            <li><code>.iac-tag-alias</code> - gold dot, italic text</li>
+                            <li><code>.iac-tag-correct</code> - cyan dot</li>
+                        </ul>
+                    </li>
+                    <li><b>Source grouping enabled:</b> Groups the results by tag autocomplete sources.
+                        <ul>
+                            <li>When not enabled, the default is to order using the post count and a weighting scheme.</li>
+                            <li><code>sort_value = post_count x weight_value</code></li>
+                            <li>The different weights are: (Exact: 1.0), (Prefix: 0.8), (Alias: 0.2), (Correct: 0.1).</li>
+                        </ul>
+                    </li>
+                    <li><b>Source order:</b> The different autocomplete sources use alternate methods for querying results based upon what has been typed in so far.
+                        <ul>
+                            <li><b>Exact:</b> Matches exactly letter for letter.</li>
+                            <li><b>Prefix:</b> Matches the first letter of each word.</li>
+                            <li><b>Alias:</b> Same as exact, but it checks aliases.</li>
+                            <li><b>Correct:</b> Tags off by 1-3 letters, i.e. mispellings.</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div id="iac-sort-settings" class="jsplib-settings-grouping">
+            <div id="iac-sort-message" class="prose">
+                <h4>Sort settings</h4>
+                <p>These settings affect the order of tag autocomplete data.</p>
+                <p><span style="font-size:80%;color:#888"><b>Note:</b> These settings won't affect anything if source grouping is enabled under "Display settings" above.</span></p>
+                <h5>Equations</h5>
+                <ul>
+                    <li><span style="width:8em;display:inline-block"><b>Linear:</b></span><span style="font-family:monospace;font-size:125%">tag_weight = source_weight x post_count</span></li>
+                    <li><span style="width:8em;display:inline-block"><b>Square root:</b></span><span style="font-family:monospace;font-size:125%">tag_weight = source_weight x Sqrt( post_count )</span></li>
+                    <li><span style="width:8em;display:inline-block"><b>Logarithmic:</b></span><span style="font-family:monospace;font-size:125%">tag_weight = source_weight x Log( post_count )</span></li>
+                </ul>
+            </div>
+        </div>
+        <div id="iac-network-settings" class="jsplib-settings-grouping">
+            <div id="iac-network-message" class="prose">
+                <h4>Network settings</h4>
+                <ul>
+                    <li><b>Alternate tag source:</b> Uses the <code>/tags</code> controller instead of the normal autocomplete source.
+                        <ul>
+                            <li>No aliases.</li>
+                            <li>No fuzzy or intelligent autocomplete.</li>
+                            <li>All results will be exact matches.</li>
+                        </ul>
+                    </li>
+                    <li><b>Network only mode:</b> Always goes to network.
+                        <ul>
+                            <li>Can be used to correct cache data that has been changed on the server.</li>
+                            <li><span style="color:red;font-weight:bold">Warning!</span> <span style="font-style:italic">As this negates the benefits of using local cached data, it should only be used sparingly.</span></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div id="iac-cache-settings" class="jsplib-settings-grouping">
+            <div id="iac-cache-message" class="prose">
+                <h4>Cache settings</h4>
+                <h5>Cache data</h5>
+                <ul>
+                    <li><b>Autocomplete data:</b> Data from every combination of keys in the text input.
+                        <ul style="font-size:80%">
+                            <li>tags</li>
+                            <li>pools</li>
+                            <li>users</li>
+                            <li>favorite groups</li>
+                            <li>saved searches</li>
+                            <li>wiki pages</li>
+                            <li>artists</li>
+                            <li>forum topics</li>
+                        </ul>
+                    </li>
+                    <li><b>Related tag data:</b> Data from every use of the related tag functions (<span style="font-size:80%"><i>right beneath the tag edit box</i></span>).
+                        <ul style="font-size:80%">
+                            <li>related tags</li>
+                            <li>general</li>
+                            <li>artists</li>
+                            <li>characters</li>
+                            <li>copyrights</li>
+                        </ul>
+                    </li>
+                </ul>
+                <h5>Cache controls</h5>
+                <ul>
+                    <li><b>Purge cache:</b> Dumps all of the cached data related to IndexedAutocomplete.</li>
+                </ul>
+            </div>
+        </div>
+        <hr>
+        <div id="iac-settings-buttons" class="jsplib-settings-buttons">
+            <input type="button" id="iac-commit" value="Save">
+            <input type="button" id="iac-resetall" value="Factory Reset">
         </div>
     </div>
-    <div id="iac-display-settings" class="jsplib-settings-grouping">
-        <div id="iac-display-message" class="prose">
-            <h4>Display settings</h4>
-            <p>These settings affect the presentation of autocomplete data to the user.</p>
-            <ul>
-                <li><b>Source highlight enabled:</b> Adds highlights and stylings to the HTML classes set by the program.
-                    <ul>
-                        <li><code>.iac-user-choice</code> - bold text</li>
-                        <li><code>.iac-tag-exact</code> - grey dot</li>
-                        <li><code>.iac-tag-prefix</code> - pink dot</li>
-                        <li><code>.iac-tag-alias</code> - gold dot, italic text</li>
-                        <li><code>.iac-tag-correct</code> - cyan dot</li>
-                    </ul>
-                </li>
-                <li><b>Source grouping enabled:</b> Groups the results by tag autocomplete sources.
-                    <ul>
-                        <li>When not enabled, the default is to order using the post count and a weighting scheme.</li>
-                        <li><code>sort_value = post_count x weight_value</code></li>
-                        <li>The different weights are: (Exact: 1.0), (Prefix: 0.8), (Alias: 0.2), (Correct: 0.1).</li>
-                    </ul>
-                </li>
-                <li><b>Source order:</b> The different autocomplete sources use alternate methods for querying results based upon what has been typed in so far.
-                    <ul>
-                        <li><b>Exact:</b> Matches exactly letter for letter.</li>
-                        <li><b>Prefix:</b> Matches the first letter of each word.</li>
-                        <li><b>Alias:</b> Same as exact, but it checks aliases.</li>
-                        <li><b>Correct:</b> Tags off by 1-3 letters, i.e. mispellings.</li>
-                    </ul>
-                </li>
-            </ul>
+    <div id="iac-cache-editor" class="jsplib-outer-menu">
+        <div id="iac-editor-message" class="prose">
+            <h4>Cache editor</h4>
+            <p>See the <b><a href="#iac-cache-message" style="color:#0073ff">Cache Data</a></b> settings for the list of all cache data and what they do.</p>
+        </div>
+        <div id="iac-cache-editor-controls"></div>
+        <div id="iac-cache-editor-errors"></div>
+        <div id="iac-cache-viewer">
+            <textarea readonly></textarea>
         </div>
     </div>
-    <div id="iac-sort-settings" class="jsplib-settings-grouping">
-        <div id="iac-sort-message" class="prose">
-            <h4>Sort settings</h4>
-            <p>These settings affect the order of tag autocomplete data.</p>
-            <p><span style="font-size:80%;color:#888"><b>Note:</b> These settings won't affect anything if source grouping is enabled under "Display settings" above.</span></p>
-            <h5>Equations</h5>
-            <ul>
-                <li><span style="width:8em;display:inline-block"><b>Linear:</b></span><span style="font-family:monospace;font-size:125%">tag_weight = source_weight x post_count</span></li>
-                <li><span style="width:8em;display:inline-block"><b>Square root:</b></span><span style="font-family:monospace;font-size:125%">tag_weight = source_weight x Sqrt( post_count )</span></li>
-                <li><span style="width:8em;display:inline-block"><b>Logarithmic:</b></span><span style="font-family:monospace;font-size:125%">tag_weight = source_weight x Log( post_count )</span></li>
-            </ul>
-        </div>
-    </div>
-    <div id="iac-network-settings" class="jsplib-settings-grouping">
-        <div id="iac-network-message" class="prose">
-            <h4>Network settings</h4>
-            <ul>
-                <li><b>Alternate tag source:</b> Uses the <code>/tags</code> controller instead of the normal autocomplete source.
-                    <ul>
-                        <li>No aliases.</li>
-                        <li>No fuzzy or intelligent autocomplete.</li>
-                        <li>All results will be exact matches.</li>
-                    </ul>
-                </li>
-                <li><b>Network only mode:</b> Always goes to network.
-                    <ul>
-                        <li>Can be used to correct cache data that has been changed on the server.</li>
-                        <li><span style="color:red;font-weight:bold">Warning!</span> <span style="font-style:italic">As this negates the benefits of using local cached data, it should only be used sparingly.</span></li>
-                    </ul>
-                </li>
-            </ul>
-        </div>
-    </div>
-    <div id="iac-cache-settings" class="jsplib-settings-grouping">
-        <div id="iac-cache-message" class="prose">
-            <h4>Cache settings</h4>
-            <h5>Cache data</h5>
-            <ul>
-                <li><b>Autocomplete data:</b> Data from every combination of keys in the text input.
-                    <ul style="font-size:80%">
-                        <li>tags</li>
-                        <li>pools</li>
-                        <li>users</li>
-                        <li>favorite groups</li>
-                        <li>saved searches</li>
-                        <li>wiki pages</li>
-                        <li>artists</li>
-                        <li>forum topics</li>
-                    </ul>
-                </li>
-                <li><b>Related tag data:</b> Data from every use of the related tag functions (<span style="font-size:80%"><i>right beneath the tag edit box</i></span>).
-                    <ul style="font-size:80%">
-                        <li>related tags</li>
-                        <li>general</li>
-                        <li>artists</li>
-                        <li>characters</li>
-                        <li>copyrights</li>
-                    </ul>
-                </li>
-            </ul>
-            <h5>Cache controls</h5>
-            <ul>
-                <li><b>Purge cache:</b> Dumps all of the cached data related to IndexedAutocomplete.</li>
-            </ul>
-        </div>
-    </div>
-    <hr>
-    <div id="iac-settings-buttons" class="jsplib-settings-buttons">
-        <input type="button" id="iac-commit" value="Save">
-        <input type="button" id="iac-resetall" value="Factory Reset">
-    </div>
-</div>`;
+</div>
+`;
+
+//Cache editor constants
+
+const all_source_types = ['indexed_db','local_storage'];
+const all_data_types = ['tag','pool','user','artist','wiki','forum','saved_search','favorite_group','related_tag','custom'];
+const reverse_source_key = {
+    tag: 'ac',
+    pool: 'pl',
+    user: 'us',
+    artist: 'ar',
+    wiki: 'wp',
+    forum: 'ft',
+    saved_search: 'ss',
+    favorite_group: 'fg',
+};
 
 //BUR constants
 const bur_keywords = ['->','alias','imply','update','unalias','unimply','category'];
@@ -348,6 +393,14 @@ const timer_poll_interval = 100;
 //Interval for fixup callback functions
 const callback_interval = 1000;
 
+//Data inclusion lists
+const all_categories = [0,1,3,4,5];
+const all_topics = [0,1,2];
+const all_pools = ["collection","series"]
+const all_related = ['','general','copyright','character','artist'];
+const all_users = ["Member","Gold","Platinum","Builder","Moderator","Admin"];
+
+//Both of the following are used to determine when to run the script
 const autocomplete_userlist = [
     "#search_to_name",
     "#search_from_name",
@@ -686,21 +739,21 @@ const autocomplete_constraints = {
     },
     tag: {
         antecedent: JSPLib.validate.stringnull_constraints,
-        category: JSPLib.validate.inclusion_constraints([0,1,3,4,5]),
+        category: JSPLib.validate.inclusion_constraints(all_categories),
         label: JSPLib.validate.stringonly_constraints,
         post_count: JSPLib.validate.postcount_constraints,
         type: JSPLib.validate.inclusion_constraints(["tag"]),
         value: JSPLib.validate.stringonly_constraints,
-        source: JSPLib.validate.stringonly_constraints
+        source: JSPLib.validate.inclusion_constraints(tag_sources)
     },
     pool: {
-        category: JSPLib.validate.inclusion_constraints(["collection","series"]),
+        category: JSPLib.validate.inclusion_constraints(),
         post_count: JSPLib.validate.postcount_constraints,
         type: JSPLib.validate.inclusion_constraints(["pool"]),
         name: JSPLib.validate.stringonly_constraints
     },
     user: {
-        level: JSPLib.validate.inclusion_constraints(["Member","Gold","Platinum","Builder","Moderator","Admin"]),
+        level: JSPLib.validate.inclusion_constraints(all_users),
         type: JSPLib.validate.inclusion_constraints(["user"]),
         name: JSPLib.validate.stringonly_constraints
     },
@@ -718,11 +771,11 @@ const autocomplete_constraints = {
     wikipage: {
         label: JSPLib.validate.stringonly_constraints,
         value: JSPLib.validate.stringonly_constraints,
-        category: JSPLib.validate.inclusion_constraints([0,1,3,4,5])
+        category: JSPLib.validate.inclusion_constraints(all_categories)
     },
     forumtopic: {
         value: JSPLib.validate.stringonly_constraints,
-        category: JSPLib.validate.inclusion_constraints([0,1,2])
+        category: JSPLib.validate.inclusion_constraints(all_topics)
     }
 };
 
@@ -732,7 +785,7 @@ const relatedtag_constraints = {
         value : JSPLib.validate.hash_constraints
     },
     value: {
-        category: JSPLib.validate.inclusion_constraints(["","general","character","copyright","artist"]),
+        category: JSPLib.validate.inclusion_constraints(all_related),
         query: JSPLib.validate.stringonly_constraints,
         tags: JSPLib.validate.tagentryarray_constraints,
         wiki_page_tags: JSPLib.validate.tagentryarray_constraints,
@@ -755,6 +808,7 @@ const usage_constraints = {
 
 function ValidateEntry(key,entry) {
     if (!JSPLib.validate.validateIsHash(key,entry)) {
+        RenderValidateError(key,"\r\n\r\nData is not a hash.");
         return false
     }
     if (key.match(/^(?:ac|pl|us|fg|ss|ar|wp|ft)-/)) {
@@ -769,15 +823,15 @@ function ValidateEntry(key,entry) {
 function ValidateAutocompleteEntry(key,entry) {
     let check = validate(entry,autocomplete_constraints.entry);
     if (check !== undefined) {
-        JSPLib.validate.printValidateError(key,check);
+        OutputValidateError(key,check);
         return false;
     }
     let type = source_key[key.slice(0,2)];
     for (let i=0;i < entry.value.length; i++) {
         check = validate(entry.value[i],autocomplete_constraints[type]);
         if (check !== undefined) {
-            JSPLib.debug.debuglog("value["+i.toString()+"]");
-            JSPLib.validate.printValidateError(key,check);
+            let output_key = `${key}.value[${i}]`;
+            OutputValidateError(output_key,check);
             return false;
         }
     }
@@ -787,12 +841,12 @@ function ValidateAutocompleteEntry(key,entry) {
 function ValidateRelatedtagEntry(key,entry) {
     let check = validate(entry,relatedtag_constraints.entry);
     if (check !== undefined) {
-        JSPLib.validate.printValidateError(key,check);
+        OutputValidateError(key,check);
         return false;
     }
     check = validate(entry.value,relatedtag_constraints.value);
     if (check !== undefined) {
-        JSPLib.validate.printValidateError(key,check);
+        OutputValidateError(key,check);
         return false;
     }
     for (let title in entry.value.other_wikis) {
@@ -800,12 +854,12 @@ function ValidateRelatedtagEntry(key,entry) {
         let wiki_key = key + '.value.other_wikis.' + title;
         check = validate({title: title},{title: JSPLib.validate.stringonly_constraints});
         if (check !== undefined) {
-            JSPLib.validate.printValidateError(wiki_key,check);
+            OutputValidateError(wiki_key,check);
             return false;
         }
         check = validate({value: value},{value: JSPLib.validate.tagentryarray_constraints});
         if (check !== undefined) {
-            JSPLib.validate.printValidateError(wiki_key,check);
+            OutputValidateError(wiki_key,check);
             return false;
         }
     }
@@ -926,6 +980,82 @@ function SetupMutationObserver(selector,func) {
             }
         });
     });
+}
+
+function OutputValidateError(key,checkerror) {
+    JSPLib.validate.printValidateError(key,checkerror);
+    JSPLib.validate.dom_output && RenderValidateError(key,JSON.stringify(checkerror,null,2));
+}
+
+function RenderValidateError(key,error_message) {
+    if (JSPLib.validate.dom_output) {
+        let output_text = `<b>${key}:</b>\r\n<pre>${error_message}</pre>`;
+        $(JSPLib.validate.dom_output).html(output_text).show();
+    }
+}
+
+function RenderKeyselect(program_shortcut,setting_name,control=false,value='',all_options=[],hint='') {
+    let config, setting_key, display_name, item;
+    [config,setting_key,display_name,item] = JSPLib.menu.getProgramValues(program_shortcut,setting_name);
+    let menu_type = (control ? "control" : "setting");
+    let keyselect_key = `${program_shortcut}-${menu_type}-${setting_key}`;
+    if (!control) {
+        all_options = config[setting_name].allitems;
+        hint = config[setting_name].hint;
+        value = item;
+    }
+    let hint_html = JSPLib.menu.renderSettingHint(program_shortcut,"inline",hint);
+    let html = "";
+    all_options.forEach((option)=>{
+        let selected = (option === value ? 'selected="selected"' : '');
+        let display_option = JSPLib.utility.displayCase(option);
+        html += `<option ${selected} value="${option}">${display_option}</option>`;
+    });
+    return `
+<div class="${program_shortcut}-options jsplib-options jsplib-menu-item" data-setting="${setting_name}">
+    <h4>${display_name}</h4>
+    <div>
+        <select name="${keyselect_key}" id="${keyselect_key}" data-parent="2">;
+            ${html}
+        </select>
+        ${hint_html}
+    </div>
+</div>
+`;
+}
+
+function FixRenderTextinput(program_shortcut,setting_name,length=20,control=false,hint='',buttons=[]) {
+    let config, setting_key, display_name, item;
+    [config,setting_key,display_name,item] = JSPLib.menu.getProgramValues(program_shortcut,setting_name);
+    let textinput_key = `${program_shortcut}-setting-${setting_key}`;
+    let menu_type = (control ? "control" : "setting");
+    let submit_control = '';
+    if (control && buttons.length) {
+        buttons.forEach((button)=>{
+            submit_control += FixRenderControlButton(program_shortcut,setting_key,button,2);
+        });
+    }
+    let value = '';
+    if (!control) {
+        hint = config[setting_name].hint;
+        value = item;
+    }
+    let hint_html = JSPLib.menu.renderSettingHint(program_shortcut,"block",hint);
+    return `
+<div class="${program_shortcut}-textinput jsplib-textinput jsplib-menu-item" data-setting="${setting_name}">
+    <h4>${display_name}</h4>
+    <div>
+        <input type="text" class="${program_shortcut}-${menu_type} jsplib-${menu_type}" name="${textinput_key}" id="${textinput_key}" value="${value}" size="${length}" autocomplete="off" data-parent="2">
+        ${submit_control}
+        ${hint_html}
+    </div>
+</div>`;
+}
+
+function FixRenderControlButton(program_shortcut,setting_key,button_name,parent_level) {
+    let button_key = `${program_shortcut}-${setting_key}-${button_name}`;
+    let display_name = JSPLib.utility.displayCase(button_name);
+    return `<input type="button" class="jsplib-control ${program_shortcut}-control" name="${button_key}" id="${button_key}" value="${display_name}" data-parent="${parent_level}">`;
 }
 
 //Time functions
@@ -1095,6 +1225,10 @@ function SaveArtistData() {
         JSPLib.debug.debuglog("Saving",refkey);
         JSPLib.storage.setStorageData(refkey, urlkey, sessionStorage);
     }
+}
+
+function GetRelatedKeyModifer(category) {
+    return 'rt' + (category ? JSPLib.danbooru.getShortName(category) : "");
 }
 
 //Usage functions
@@ -1274,7 +1408,7 @@ function StoreUsageData(name,key='') {
 async function RelatedTagsButton(e) {
     let category = $(e.target).data("category") || "";
     let currenttag = $.trim(Danbooru.RelatedTag.current_tag());
-    let keymodifier = (category ? JSPLib.danbooru.getShortName(category) : "");
+    let keymodifier = GetRelatedKeyModifer(category);
     let key = ("rt" + keymodifier + "-" + currenttag).toLowerCase();
     let max_expiration = MaximumExpirationTime('relatedtag');
     let cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry,max_expiration);
@@ -1470,6 +1604,114 @@ function ProcessSourceData(type,metatag,term,data,resp) {
     resp(data);
 }
 
+////Cache editor
+
+//Cache helper functions
+
+async function LoadStorageKeys() {
+    let storage_keys = await JSPLib.storage.danboorustorage.keys();
+    Danbooru.IAC.storage_keys.indexed_db = storage_keys.filter((key)=>{return key.match(program_cache_regex);});
+    storage_keys = Object.keys(localStorage);
+    Danbooru.IAC.storage_keys.local_storage = storage_keys.filter((key)=>{return key.startsWith("iac-");});
+}
+
+function GetCacheDatakey() {
+    Danbooru.IAC.data_source = $("#iac-control-data-source").val();
+    Danbooru.IAC.data_type = $("#iac-control-data-type").val();
+    Danbooru.IAC.category = $("#iac-control-related-tag-type").val();
+    Danbooru.IAC.data_value = data_key = $("#iac-setting-data-name").val().trim().replace(/\s+/g,'_');
+    if (Danbooru.IAC.data_source === "local_storage") {
+        data_key = 'iac-' + Danbooru.IAC.data_value;
+    } else if (Danbooru.IAC.data_type !== "custom") {
+        let key_modifier = (Danbooru.IAC.data_type === "related_tag" ? GetRelatedKeyModifer(Danbooru.IAC.category) : reverse_source_key[Danbooru.IAC.data_type]);
+        data_key = key_modifier + '-' + Danbooru.IAC.data_value;
+    }
+    return data_key;
+}
+
+function CacheSource(req,resp) {
+    let check_key = GetCacheDatakey();
+    if (Danbooru.IAC.data_source === "indexed_db" && Danbooru.IAC.data_value.length === 0) {
+        resp([]);
+        return;
+    }
+    let source_keys = Danbooru.IAC.storage_keys[Danbooru.IAC.data_source];
+    let available_keys = source_keys.filter((key)=>{return key.startsWith(check_key);});
+    let transformed_keys = available_keys.slice(0,10);
+    if (Danbooru.IAC.data_source === 'local_storage' || Danbooru.IAC.data_type !== "custom") {
+        transformed_keys = transformed_keys.map((key)=>{return key.slice(key.indexOf('-')+1);});
+    }
+    resp(transformed_keys);
+}
+
+//Cache event functions
+
+function GetCacheClick() {
+    $("#iac-data-name-get").on("click.iac",(e)=>{
+        let storage_key = GetCacheDatakey();
+        if (Danbooru.IAC.data_source === "local_storage") {
+            let data = JSPLib.storage.getStorageData(storage_key,localStorage);
+            $("#iac-cache-viewer textarea").val(JSON.stringify(data,null,2)).prop('readonly',true);
+        } else {
+            JSPLib.storage.retrieveData(storage_key).then((data)=>{
+                $("#iac-cache-viewer textarea").val(JSON.stringify(data,null,2)).prop('readonly',false);;
+            });
+        }
+    });
+}
+
+function SaveCacheClick() {
+    $("#iac-data-name-save").on("click.iac",(e)=>{
+        let storage_key = GetCacheDatakey();
+        if (Danbooru.IAC.data_source === "local_storage") {
+            Danbooru.Utility.error("Unable to edit program data!");
+        } else {
+            try {
+                var data = JSON.parse($("#iac-cache-viewer textarea").val());
+            } catch (e) {
+                Danbooru.Utility.error("Invalid JSON data! Unable to save.");
+                return;
+            }
+            if (ValidateEntry(storage_key,data)) {
+                JSPLib.storage.saveData(storage_key,data).then(()=>{
+                    Danbooru.Utility.notice("Data was saved.");
+                });
+            } else {
+                Danbooru.Utility.error("Data is invalid! Unable to save.");
+            }
+        }
+    });
+}
+
+function DeleteCacheClick() {
+    $("#iac-data-name-delete").on("click.iac",(e)=>{
+        let storage_key = GetCacheDatakey();
+        if (Danbooru.IAC.data_source === "local_storage") {
+            if (confirm("This will delete program data that may cause problems until the page can be refreshed.\n\nAre you sure?")) {
+                localStorage.removeItem(storage_key);
+                Danbooru.Utility.notice("Data has been deleted.");
+            }
+        } else {
+            JSPLib.storage.removeData(storage_key).then((data)=>{
+                Danbooru.Utility.notice("Data has been deleted.");
+            });
+        }
+    });
+}
+
+function CacheAutocomplete() {
+    $("#iac-setting-data-name").autocomplete({
+        minLength: 0,
+        delay: 0,
+        source: CacheSource,
+        search: function() {
+            $(this).data("uiAutocomplete").menu.bindings = $();
+        }
+    }).off('keydown.Autocomplete.tab');
+}
+
+/****MAKE SURE TO ADD GLOBAL VARIABLE LIKE I DID WITH RTC!!!!****/
+
 //Settings functions
 
 function BroadcastIAC(ev) {
@@ -1519,10 +1761,18 @@ function RenderSettingsMenu() {
     $("#iac-network-settings").append(JSPLib.menu.renderCheckbox("iac",'alternate_tag_source'));
     $("#iac-network-settings").append(JSPLib.menu.renderCheckbox("iac",'network_only_mode'));
     $("#iac-cache-settings").append(JSPLib.menu.renderLinkclick("iac",'purge_cache',`Purge cache (<span id="iac-purge-counter">...</span>)`,"Click to purge"));
+    $("#iac-cache-editor-controls").append(RenderKeyselect('iac','data_source',true,'indexed_db',all_source_types,"Indexed DB is <b>Cache Data</b> and is editable, whereas Local Storage is <b>Program Data</b> and is not."));
+    $("#iac-cache-editor-controls").append(RenderKeyselect('iac','data_type',true,'tag',all_data_types,"Only applies to Indexed DB.  Use <b>Custom</b> for querying by keyname."));
+    $("#iac-cache-editor-controls").append(RenderKeyselect('iac','related_tag_type',true,'',all_related,"Only applies to related tag data."));
+    $("#iac-cache-editor-controls").append(FixRenderTextinput('iac','data_name',20,true,"Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.",['get','save','delete']));
     JSPLib.menu.engageUI('iac',true,true);
     JSPLib.menu.saveUserSettingsClick('iac','IndexedAutocomplete');
     JSPLib.menu.resetUserSettingsClick('iac','IndexedAutocomplete',localstorage_keys,program_reset_keys);
     JSPLib.menu.purgeCacheClick('iac','IndexedAutocomplete',program_cache_regex,"#iac-purge-counter");
+    GetCacheClick();
+    SaveCacheClick();
+    DeleteCacheClick();
+    CacheAutocomplete();
 }
 
 //Main program
@@ -1543,6 +1793,7 @@ function main() {
         choice_data: JSPLib.storage.getStorageData('iac-choice-data',localStorage,{}),
         is_bur: Boolean($("#c-bulk-update-requests #a-new,#c-bulk-update-requests #a-edit").length),
         FindArtistSession: FindArtistSession,
+        storage_keys: {indexed_db: [], local_storage: []},
         settings_config: settings_config,
         channel: new BroadcastChannel('IndexedAutocomplete')
     };
@@ -1612,6 +1863,8 @@ function main() {
     }
     /**Menu setup**/
     if ($("#c-users #a-edit").length) {
+        JSPLib.validate.dom_output = "#iac-cache-editor-errors";
+        LoadStorageKeys();
         JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
             JSPLib.menu.installSettingsMenu("IndexedAutocomplete");
             RenderSettingsMenu();
