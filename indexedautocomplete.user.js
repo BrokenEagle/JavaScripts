@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      21.0
+// @version      21.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -1463,7 +1463,6 @@ function ProcessSourceData(type,metatag,term,data,resp) {
     if (Danbooru.IAC.user_settings.usage_enabled) {
         AddUserSelected(type, metatag, term, data);
     }
-    console.log(data);
     if (Danbooru.IAC.is_bur) {
         let add_data = bur_data.filter((data)=>{return term.length === 1 || data.value.startsWith(term);});
         data.unshift(...add_data);
@@ -1542,7 +1541,7 @@ function main() {
         source_data: {},
         choice_order: JSPLib.storage.getStorageData('iac-choice-order',localStorage,{}),
         choice_data: JSPLib.storage.getStorageData('iac-choice-data',localStorage,{}),
-        is_bur: Boolean($("#c-bulk-update-requests #a-new").length),
+        is_bur: Boolean($("#c-bulk-update-requests #a-new,#c-bulk-update-requests #a-edit").length),
         FindArtistSession: FindArtistSession,
         settings_config: settings_config,
         channel: new BroadcastChannel('IndexedAutocomplete')
@@ -1584,7 +1583,7 @@ function main() {
         JSPLib.utility.setCSSStyle(forum_css,'forum');
         setTimeout(()=>{InitializeAutocompleteIndexed("#search_topic_title_matches", 'ft');}, timer_poll_interval);
     }
-    if ($("#c-uploads #a-index,#c-bulk-update-requests #a-new").length) {
+    if ($("#c-uploads #a-index").length || Danbooru.IAC.is_bur) {
         $("#search_post_tags_match").attr('data-autocomplete','tag-query');
         $("#bulk_update_request_script").attr('data-autocomplete','tag-edit');
         //The initialize code doesn't work properly unless some time has elapsed after setting the attribute
