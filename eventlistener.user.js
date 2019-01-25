@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      12.2
+// @version      12.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries)
 // @author       BrokenEagle
@@ -298,6 +298,9 @@ const el_menu = `
         <input type="button" id="el-resetall" value="Factory Reset">
     </div>
 </div>`;
+
+//Polling interval for checking program status
+const timer_poll_interval = 100;
 
 //The max number of items to grab with each network call
 const query_limit = 100;
@@ -1089,6 +1092,16 @@ function PostEventPopulateControl() {
     });
 }
 
+function RebindMenuAutocomplete() {
+    if (JSPLib.utility.hasDOMDataKey("#user_blacklisted_tags,#user_favorite_tags",'uiAutocomplete')) {
+        clearInterval(RebindMenuAutocomplete.timer);
+        $("#user_blacklisted_tags,#user_favorite_tags").autocomplete("destroy").off('keydown.Autocomplete.tab');
+        $("#el-setting-search-query").attr('data-autocomplete','tag-query');
+        setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, timer_poll_interval);
+    }
+}
+RebindMenuAutocomplete.timer = {};
+
 //Main execution functions
 
 async function CheckUserType(type) {
@@ -1277,6 +1290,7 @@ function RenderSettingsMenu() {
     JSPLib.menu.saveUserSettingsClick('el','EventListener');
     JSPLib.menu.resetUserSettingsClick('el','EventListener',localstorage_keys,program_reset_keys);
     PostEventPopulateControl();
+    RebindMenuAutocomplete.timer = setInterval(()=>{RebindMenuAutocomplete();},timer_poll_interval);
 }
 
 /****Main****/
