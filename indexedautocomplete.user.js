@@ -32,6 +32,10 @@ JSPLib.debug.level = JSPLib.debug.INFO;
 
 //Variables for load.js
 const program_load_required_variables = ['window.jQuery','window.Danbooru','Danbooru.Autocomplete','Danbooru.RelatedTag'];
+const program_load_required_selectors = ['#top','#page'];
+
+//Main program variable
+var IAC;
 
 //Regex that matches the prefix of all program cache data
 const program_cache_regex = /^(?:ac|pl|us|fg|ss|ar|wp|ft|rt(?:gen|char|copy|art)?)-/;
@@ -868,14 +872,14 @@ function ValidateRelatedtagEntry(key,entry) {
 
 //Scalpel validation... removes only data that is bad instead of tossing everything
 function CorrectUsageData() {
-    let choice_order = Danbooru.IAC.choice_order;
-    let choice_data = Danbooru.IAC.choice_data;
-    let old_choice_order = Danbooru.IAC.old_choice_order = JSPLib.utility.dataCopy(choice_order);
-    let old_choice_data = Danbooru.IAC.old_choice_data = JSPLib.utility.dataCopy(choice_data);
+    let choice_order = IAC.choice_order;
+    let choice_data = IAC.choice_data;
+    let old_choice_order = IAC.old_choice_order = JSPLib.utility.dataCopy(choice_order);
+    let old_choice_data = IAC.old_choice_data = JSPLib.utility.dataCopy(choice_data);
     if (!validate.isHash(choice_order) || !validate.isHash(choice_data)) {
         JSPLib.debug.debuglog("Usage data is corrupted beyond repair!",choice_order,!validate.isHash(choice_data));
-        Danbooru.IAC.choice_order = {};
-        Danbooru.IAC.choice_data = {};
+        IAC.choice_order = {};
+        IAC.choice_data = {};
         StoreUsageData('reset');
         return;
     }
@@ -1153,7 +1157,7 @@ function FixupMetatag(value,metatag) {
 
 function SortSources(data) {
     var scaler;
-    switch(Danbooru.IAC.user_settings.postcount_scale[0]) {
+    switch(IAC.user_settings.postcount_scale[0]) {
         case "logarithmic":
             scaler = ((num)=>{return Math.log(num);});
             break;
@@ -1165,8 +1169,8 @@ function SortSources(data) {
             scaler = ((num)=>{return num;});
     }
     data.sort((a,b)=>{
-        let mult_a = Danbooru.IAC.user_settings[`${a.source}_source_weight`];
-        let mult_b = Danbooru.IAC.user_settings[`${b.source}_source_weight`];
+        let mult_a = IAC.user_settings[`${a.source}_source_weight`];
+        let mult_b = IAC.user_settings[`${b.source}_source_weight`];
         let weight_a = mult_a * scaler(a.post_count);
         let weight_b = mult_b * scaler(b.post_count);
         return weight_b - weight_a;
@@ -1176,7 +1180,7 @@ function SortSources(data) {
 }
 
 function GroupSources(data) {
-    let source_order = Danbooru.IAC.user_settings.source_order;
+    let source_order = IAC.user_settings.source_order;
     data.sort((a,b)=>{
         return source_order.indexOf(a.source) - source_order.indexOf(b.source);
     }).forEach((entry,i)=>{
@@ -1235,34 +1239,34 @@ function GetRelatedKeyModifer(category) {
 
 function KeepSourceData(type,metatag,data) {
     let slicepos = (metatag === '' ? 0 : metatag.length + 1);
-    Danbooru.IAC.source_data[type] = Danbooru.IAC.source_data[type] || {};
+    IAC.source_data[type] = IAC.source_data[type] || {};
     $.each(data, (i,val)=>{
         let key = (val.antecedent ? val.antecedent : val.value.slice(slicepos));
-        Danbooru.IAC.source_data[type][key] = val;
+        IAC.source_data[type][key] = val;
     });
 }
 
 function GetChoiceOrder(type,query) {
     let queryterm = query.toLowerCase();
-    let available_choices = Danbooru.IAC.choice_order[type].filter((tag)=>{
+    let available_choices = IAC.choice_order[type].filter((tag)=>{
         let tagterm = tag.toLowerCase();
         let queryindex = tagterm.indexOf(queryterm);
         return queryindex === 0 || (!source_config[type].searchstart && queryindex > 0);
     });
-    let sortable_choices = available_choices.filter((tag)=>{return Danbooru.IAC.choice_data[type][tag].use_count > 0});
+    let sortable_choices = available_choices.filter((tag)=>{return IAC.choice_data[type][tag].use_count > 0});
     sortable_choices.sort((a,b)=>{
-        return Danbooru.IAC.choice_data[type][b].use_count - Danbooru.IAC.choice_data[type][a].use_count;
+        return IAC.choice_data[type][b].use_count - IAC.choice_data[type][a].use_count;
     });
     return JSPLib.utility.setUnique(sortable_choices.concat(available_choices));
 }
 
 function AddUserSelected(type,metatag,term,data) {
-    let order = Danbooru.IAC.choice_order[type];
-    let choice = Danbooru.IAC.choice_data[type];
+    let order = IAC.choice_order[type];
+    let choice = IAC.choice_data[type];
     if (!order || !choice) {
         return;
     }
-    Danbooru.IAC.shown_data = [];
+    IAC.shown_data = [];
     let user_order = GetChoiceOrder(type,term);
     for (let i = user_order.length - 1; i >= 0; i--) {
         let checkterm = (metatag === '' ? user_order[i] : metatag + ':' + user_order[i]);
@@ -1280,7 +1284,7 @@ function AddUserSelected(type,metatag,term,data) {
             FixupMetatag(add_data, metatag);
         }
         data.unshift(add_data);
-        Danbooru.IAC.shown_data.push(user_order[i]);
+        IAC.shown_data.push(user_order[i]);
     }
     data.splice(10);
 }
@@ -1326,31 +1330,31 @@ function InsertUserSelected(data,input,selected) {
         term = item.value;
     }
     //Final failsafe
-    if (!Danbooru.IAC.source_data[type] || !Danbooru.IAC.source_data[type][term]) {
-        if (!Danbooru.IAC.choice_data[type] || !Danbooru.IAC.choice_data[type][term]) {
+    if (!IAC.source_data[type] || !IAC.source_data[type][term]) {
+        if (!IAC.choice_data[type] || !IAC.choice_data[type][term]) {
             JSPLib.debug.debuglog("Error: Bad data selector!",type,term,selected,data,item);
             return;
         }
-        source_data = Danbooru.IAC.choice_data[type][term];
+        source_data = IAC.choice_data[type][term];
     } else {
-        source_data = Danbooru.IAC.source_data[type][term];
+        source_data = IAC.source_data[type][term];
     }
-    Danbooru.IAC.choice_order[type] = Danbooru.IAC.choice_order[type] || [];
-    Danbooru.IAC.choice_data[type] = Danbooru.IAC.choice_data[type] || {};
-    Danbooru.IAC.choice_order[type].unshift(term);
-    Danbooru.IAC.choice_order[type] = JSPLib.utility.setUnique(Danbooru.IAC.choice_order[type]);
+    IAC.choice_order[type] = IAC.choice_order[type] || [];
+    IAC.choice_data[type] = IAC.choice_data[type] || {};
+    IAC.choice_order[type].unshift(term);
+    IAC.choice_order[type] = JSPLib.utility.setUnique(IAC.choice_order[type]);
     //So the use count doesn't get squashed by the new variable assignment
-    let use_count = (Danbooru.IAC.choice_data[type][term] && Danbooru.IAC.choice_data[type][term].use_count) || 0;
-    Danbooru.IAC.choice_data[type][term] = source_data;
-    Danbooru.IAC.choice_data[type][term].expires = JSPLib.utility.getExpiration(Danbooru.IAC.user_settings.usage_expires * JSPLib.utility.one_day);
-    Danbooru.IAC.choice_data[type][term].use_count = use_count + 1;
-    if (Danbooru.IAC.user_settings.usage_maximum > 0) {
-        Danbooru.IAC.choice_data[type][term].use_count = Math.min(Danbooru.IAC.choice_data[type][term].use_count, Danbooru.IAC.user_settings.usage_maximum);
+    let use_count = (IAC.choice_data[type][term] && IAC.choice_data[type][term].use_count) || 0;
+    IAC.choice_data[type][term] = source_data;
+    IAC.choice_data[type][term].expires = JSPLib.utility.getExpiration(IAC.user_settings.usage_expires * JSPLib.utility.one_day);
+    IAC.choice_data[type][term].use_count = use_count + 1;
+    if (IAC.user_settings.usage_maximum > 0) {
+        IAC.choice_data[type][term].use_count = Math.min(IAC.choice_data[type][term].use_count, IAC.user_settings.usage_maximum);
     }
-    $.each(Danbooru.IAC.shown_data,(i,key)=>{
+    $.each(IAC.shown_data,(i,key)=>{
         if (key !== term) {
-            Danbooru.IAC.choice_data[type][key].use_count = Danbooru.IAC.choice_data[type][key].use_count || 0;
-            Danbooru.IAC.choice_data[type][key].use_count *= Danbooru.IAC.user_settings.usage_multiplier;
+            IAC.choice_data[type][key].use_count = IAC.choice_data[type][key].use_count || 0;
+            IAC.choice_data[type][key].use_count *= IAC.user_settings.usage_multiplier;
         }
     });
     StoreUsageData('insert',term);
@@ -1358,7 +1362,7 @@ function InsertUserSelected(data,input,selected) {
 
 //For autocomplete render
 function HighlightSelected($link,list,item) {
-    if (Danbooru.IAC.user_settings.source_highlight_enabled) {
+    if (IAC.user_settings.source_highlight_enabled) {
         if (item.expires) {
             $($link).addClass('iac-user-choice');
         }
@@ -1382,11 +1386,11 @@ function HighlightSelected($link,list,item) {
 
 function PruneUsageData() {
     let is_dirty = false;
-    $.each(Danbooru.IAC.choice_data,(type_key,type_entry)=>{
+    $.each(IAC.choice_data,(type_key,type_entry)=>{
         $.each(type_entry,(key,entry)=>{
-            if (!JSPLib.validate.validateExpires(entry.expires, Danbooru.IAC.user_settings.usage_expires * JSPLib.utility.one_day)) {
+            if (!JSPLib.validate.validateExpires(entry.expires, IAC.user_settings.usage_expires * JSPLib.utility.one_day)) {
                 JSPLib.debug.debuglog("Pruning choice data!",type_key,key);
-                Danbooru.IAC.choice_order[type_key] = JSPLib.utility.setDifference(Danbooru.IAC.choice_order[type_key],[key])
+                IAC.choice_order[type_key] = JSPLib.utility.setDifference(IAC.choice_order[type_key],[key])
                 delete type_entry[key];
                 is_dirty = true;
             }
@@ -1398,9 +1402,9 @@ function PruneUsageData() {
 }
 
 function StoreUsageData(name,key='') {
-    JSPLib.storage.setStorageData('iac-choice-order',Danbooru.IAC.choice_order,localStorage);
-    JSPLib.storage.setStorageData('iac-choice-data',Danbooru.IAC.choice_data,localStorage);
-    Danbooru.IAC.channel.postMessage({type: "reload", name: name, key: key, choice_order: Danbooru.IAC.choice_order, choice_data: Danbooru.IAC.choice_data});
+    JSPLib.storage.setStorageData('iac-choice-order',IAC.choice_order,localStorage);
+    JSPLib.storage.setStorageData('iac-choice-data',IAC.choice_data,localStorage);
+    IAC.channel.postMessage({type: "reload", name: name, key: key, choice_order: IAC.choice_order, choice_data: IAC.choice_data});
 }
 
 //Non-autocomplete storage
@@ -1467,12 +1471,12 @@ function RebindRelatedTags() {
 function RebindFindArtist() {
     if(IsGlobalFunctionBound("danbooru:show-related-tags")) {
         clearInterval(RebindFindArtist.timer);
-        Danbooru.IAC.cached_data = true;
+        IAC.cached_data = true;
         $(document).off("danbooru:show-related-tags");
         if (!Danbooru.RTC || !Danbooru.RTC.cached_data) {
             $(document).one("danbooru:show-related-tags", Danbooru.RelatedTag.initialize_recent_and_favorite_tags);
         }
-        $(document).one("danbooru:show-related-tags", Danbooru.IAC.FindArtistSession);
+        $(document).one("danbooru:show-related-tags", IAC.FindArtistSession);
         RebindFindArtist.timer = true;
     }
 }
@@ -1569,7 +1573,7 @@ function AnySourceIndexed(keycode,default_metatag='',multiple=false) {
         }
         var key = (keycode + "-" + term).toLowerCase();
         var use_metatag = (input_metatag ? input_metatag : default_metatag);
-        if (!Danbooru.IAC.user_settings.network_only_mode) {
+        if (!IAC.user_settings.network_only_mode) {
             var max_expiration = MaximumExpirationTime(type);
             var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry,max_expiration);
             if (cached) {
@@ -1587,17 +1591,17 @@ function ProcessSourceData(type,metatag,term,data,resp) {
     }
     KeepSourceData(type, metatag, data);
     if (type === 'tag') {
-        if (Danbooru.IAC.user_settings.alternate_sorting_enabled) {
+        if (IAC.user_settings.alternate_sorting_enabled) {
             SortSources(data);
         }
-        if (Danbooru.IAC.user_settings.source_grouping_enabled) {
+        if (IAC.user_settings.source_grouping_enabled) {
             GroupSources(data);
         }
     }
-    if (Danbooru.IAC.user_settings.usage_enabled) {
+    if (IAC.user_settings.usage_enabled) {
         AddUserSelected(type, metatag, term, data);
     }
-    if (Danbooru.IAC.is_bur) {
+    if (IAC.is_bur) {
         let add_data = bur_data.filter((data)=>{return term.length === 1 || data.value.startsWith(term);});
         data.unshift(...add_data);
     }
@@ -1610,35 +1614,35 @@ function ProcessSourceData(type,metatag,term,data,resp) {
 
 async function LoadStorageKeys() {
     let storage_keys = await JSPLib.storage.danboorustorage.keys();
-    Danbooru.IAC.storage_keys.indexed_db = storage_keys.filter((key)=>{return key.match(program_cache_regex);});
+    IAC.storage_keys.indexed_db = storage_keys.filter((key)=>{return key.match(program_cache_regex);});
     storage_keys = Object.keys(localStorage);
-    Danbooru.IAC.storage_keys.local_storage = storage_keys.filter((key)=>{return key.startsWith("iac-");});
+    IAC.storage_keys.local_storage = storage_keys.filter((key)=>{return key.startsWith("iac-");});
 }
 
 function GetCacheDatakey() {
-    Danbooru.IAC.data_source = $("#iac-control-data-source").val();
-    Danbooru.IAC.data_type = $("#iac-control-data-type").val();
-    Danbooru.IAC.category = $("#iac-control-related-tag-type").val();
-    Danbooru.IAC.data_value = data_key = $("#iac-setting-data-name").val().trim().replace(/\s+/g,'_');
-    if (Danbooru.IAC.data_source === "local_storage") {
-        data_key = 'iac-' + Danbooru.IAC.data_value;
-    } else if (Danbooru.IAC.data_type !== "custom") {
-        let key_modifier = (Danbooru.IAC.data_type === "related_tag" ? GetRelatedKeyModifer(Danbooru.IAC.category) : reverse_source_key[Danbooru.IAC.data_type]);
-        data_key = key_modifier + '-' + Danbooru.IAC.data_value;
+    IAC.data_source = $("#iac-control-data-source").val();
+    IAC.data_type = $("#iac-control-data-type").val();
+    IAC.category = $("#iac-control-related-tag-type").val();
+    IAC.data_value = data_key = $("#iac-setting-data-name").val().trim().replace(/\s+/g,'_');
+    if (IAC.data_source === "local_storage") {
+        data_key = 'iac-' + IAC.data_value;
+    } else if (IAC.data_type !== "custom") {
+        let key_modifier = (IAC.data_type === "related_tag" ? GetRelatedKeyModifer(IAC.category) : reverse_source_key[IAC.data_type]);
+        data_key = key_modifier + '-' + IAC.data_value;
     }
     return data_key;
 }
 
 function CacheSource(req,resp) {
     let check_key = GetCacheDatakey();
-    if (Danbooru.IAC.data_source === "indexed_db" && Danbooru.IAC.data_value.length === 0) {
+    if (IAC.data_source === "indexed_db" && IAC.data_value.length === 0) {
         resp([]);
         return;
     }
-    let source_keys = Danbooru.IAC.storage_keys[Danbooru.IAC.data_source];
+    let source_keys = IAC.storage_keys[IAC.data_source];
     let available_keys = source_keys.filter((key)=>{return key.startsWith(check_key);});
     let transformed_keys = available_keys.slice(0,10);
-    if (Danbooru.IAC.data_source === 'local_storage' || Danbooru.IAC.data_type !== "custom") {
+    if (IAC.data_source === 'local_storage' || IAC.data_type !== "custom") {
         transformed_keys = transformed_keys.map((key)=>{return key.slice(key.indexOf('-')+1);});
     }
     resp(transformed_keys);
@@ -1649,7 +1653,7 @@ function CacheSource(req,resp) {
 function GetCacheClick() {
     $("#iac-data-name-get").on("click.iac",(e)=>{
         let storage_key = GetCacheDatakey();
-        if (Danbooru.IAC.data_source === "local_storage") {
+        if (IAC.data_source === "local_storage") {
             let data = JSPLib.storage.getStorageData(storage_key,localStorage);
             $("#iac-cache-viewer textarea").val(JSON.stringify(data,null,2)).prop('readonly',true);
         } else {
@@ -1663,7 +1667,7 @@ function GetCacheClick() {
 function SaveCacheClick() {
     $("#iac-data-name-save").on("click.iac",(e)=>{
         let storage_key = GetCacheDatakey();
-        if (Danbooru.IAC.data_source === "local_storage") {
+        if (IAC.data_source === "local_storage") {
             Danbooru.Utility.error("Unable to edit program data!");
         } else {
             try {
@@ -1686,7 +1690,7 @@ function SaveCacheClick() {
 function DeleteCacheClick() {
     $("#iac-data-name-delete").on("click.iac",(e)=>{
         let storage_key = GetCacheDatakey();
-        if (Danbooru.IAC.data_source === "local_storage") {
+        if (IAC.data_source === "local_storage") {
             if (confirm("This will delete program data that may cause problems until the page can be refreshed.\n\nAre you sure?")) {
                 localStorage.removeItem(storage_key);
                 Danbooru.Utility.notice("Data has been deleted.");
@@ -1717,15 +1721,15 @@ function CacheAutocomplete() {
 function BroadcastIAC(ev) {
     JSPLib.debug.debuglog(`BroadcastChannel (${ev.data.type}):`,(ev.data.type === "reload" ? `${ev.data.name} ${ev.data.key}` : ev.data));
     if (ev.data.type === "reload") {
-        Danbooru.IAC.choice_order = ev.data.choice_order;
-        Danbooru.IAC.choice_data = ev.data.choice_data;
+        IAC.choice_order = ev.data.choice_order;
+        IAC.choice_data = ev.data.choice_data;
     } else if (ev.data.type === "settings") {
-        Danbooru.IAC.user_settings = ev.data.user_settings;
+        IAC.user_settings = ev.data.user_settings;
         SetTagAutocompleteSource();
     } else if (ev.data.type === "reset") {
-        Danbooru.IAC.user_settings = ev.data.user_settings;
+        IAC.user_settings = ev.data.user_settings;
         SetTagAutocompleteSource();
-        Object.assign(Danbooru.IAC,program_reset_keys);
+        Object.assign(IAC,program_reset_keys);
     } else if (ev.data.type === "purge") {
         $.each(sessionStorage,(key)=>{
             if (key.match(program_cache_regex)) {
@@ -1736,7 +1740,7 @@ function BroadcastIAC(ev) {
 }
 
 function SetTagAutocompleteSource() {
-    if (Danbooru.IAC.user_settings.alternate_tag_source) {
+    if (IAC.user_settings.alternate_tag_source) {
         source_config.tag = source_config.tag2;
     } else {
         source_config.tag = source_config.tag1;
@@ -1787,7 +1791,7 @@ function main() {
         return;
     }
     JSPLib.utility.setCSSStyle(program_css,'program');
-    Danbooru.IAC = {
+    Danbooru.IAC = IAC = {
         source_data: {},
         choice_order: JSPLib.storage.getStorageData('iac-choice-order',localStorage,{}),
         choice_data: JSPLib.storage.getStorageData('iac-choice-data',localStorage,{}),
@@ -1797,9 +1801,9 @@ function main() {
         settings_config: settings_config,
         channel: new BroadcastChannel('IndexedAutocomplete')
     };
-    Danbooru.IAC.user_settings = JSPLib.menu.loadUserSettings('iac');
+    IAC.user_settings = JSPLib.menu.loadUserSettings('iac');
     SetTagAutocompleteSource();
-    Danbooru.IAC.channel.onmessage = BroadcastIAC;
+    IAC.channel.onmessage = BroadcastIAC;
     CorrectUsageData();
     PruneUsageData();
     /**Autocomplete bindings**/
@@ -1834,7 +1838,7 @@ function main() {
         JSPLib.utility.setCSSStyle(forum_css,'forum');
         setTimeout(()=>{InitializeAutocompleteIndexed("#search_topic_title_matches", 'ft');}, timer_poll_interval);
     }
-    if ($("#c-uploads #a-index").length || Danbooru.IAC.is_bur) {
+    if ($("#c-uploads #a-index").length || IAC.is_bur) {
         $("#search_post_tags_match").attr('data-autocomplete','tag-query');
         $("#bulk_update_request_script").attr('data-autocomplete','tag-edit');
         //The initialize code doesn't work properly unless some time has elapsed after setting the attribute
@@ -1884,4 +1888,4 @@ function main() {
 
 /***Execution start***/
 
-JSPLib.load.programInitialize(main,'IAC',program_load_required_variables);
+JSPLib.load.programInitialize(main,'IAC',program_load_required_variables,program_load_required_selectors);
