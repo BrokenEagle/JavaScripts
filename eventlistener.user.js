@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      12.3
+// @version      13.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries)
 // @author       BrokenEagle
@@ -308,6 +308,16 @@ const query_limit = 100;
 //Various program expirations
 const process_semaphore_expires = 5 * JSPLib.utility.one_minute;
 
+//Subscribe menu constants
+const post_display_names = {
+    post: "Edits",
+    comment: "Comments",
+    note: "Notes",
+    commentary: "Artist commentary"
+}
+const all_post_events = ['post','comment','note','commentary'];
+const all_translate_events = ['note','commentary'];
+
 //Type configurations
 const typedict = {
     flag: {
@@ -414,6 +424,18 @@ async function SetRecentDanbooruID(type,useritem=false) {
     } else if (useritem) {
         SaveLastID(type,0);
     }
+}
+
+function IsEventEnabled(type) {
+    return Danbooru.EL.user_settings.events_enabled.includes(type);
+}
+
+function IsAnyEventEnabled(event_list) {
+    return Boolean(JSPLib.utility.setIntersection(event_list,Danbooru.EL.user_settings.events_enabled).length);
+}
+
+function AreAllEventsEnabled(event_list) {
+    return !JSPLib.utility.setDifference(event_list,Danbooru.EL.user_settings.events_enabled).length;
 }
 
 //Data storage functions
@@ -610,6 +632,30 @@ function UpdateDualLink(type,subscribed,itemid) {
     JSPLib.utility.clearHide(`.${show}-${type}[data-id="${itemid}"]`);
 }
 
+function ToggleSubscribeLinks() {
+    subscribe_events.forEach((type)=>{
+        if (IsEventEnabled(type)) {
+            $(`.el-subscribe-${type}-container`).show();
+        } else {
+            $(`.el-subscribe-${type}-container`).hide();
+        }
+    });
+    if ($("#c-posts #a-show").length) {
+        if (AreAllEventsEnabled(all_translate_events)) {
+            $(".el-subscribe-translated-container").show();
+        } else {
+            $(".el-subscribe-translated-container").hide();
+        }
+        if (IsAnyEventEnabled(all_post_events)) {
+            $("#el-subscribe-events").show();
+            let enabled_post_events = JSPLib.utility.setIntersection(all_post_events,Danbooru.EL.user_settings.events_enabled);
+            $("#el-all-link").attr('data-type',enabled_post_events);
+        } else {
+            $("#el-subscribe-events").hide();
+        }
+    }
+}
+
 //Insert and process HTML onto page for various types
 
 function InsertEvents($eventpage,type) {
@@ -767,9 +813,10 @@ async function GetPostsCountdown(limit,searchstring,domname) {
 
 //Render functions
 
-function RenderMultilinkMenu(itemid) {
+function RenderMultilinkMenu(itemid,all_types=[]) {
+    let shown = (all_types.length === 0 || IsAnyEventEnabled(all_types) ? '' : 'style="display:none"');
     return `
-<menu id="el-subscribe-events" data-id="${itemid}">
+<menu id="el-subscribe-events" data-id="${itemid}" ${shown}>
     Subscribe (<span id="el-add-links"></span>)
 </menu>`;
 }
@@ -787,14 +834,14 @@ function RenderSubscribeDualLinks(type,itemid,tag,separator,ender,right=false) {
 `;
 }
 
-function RenderSubscribeMultiLinks(name,typelist,itemid,separator) {
+function RenderSubscribeMultiLinks(name,typelist,itemid) {
     let itemdict = {};
     $.each(typelist,(i,type)=>{
         itemdict[type] = GetList(type);
     });
     let classname = (typelist.reduce((total,type)=>{return total && itemdict[type].includes(itemid);},true) ? 'el-subscribed' : 'el-unsubscribed');
     let idname = 'el-' + name.toLowerCase().replace(/[ _]/g,'-') + '-link';
-    return `${separator}<li id="${idname}" data-type="${typelist}" class="${classname}"><a href="#">${name}</a></li>`;
+    return `<li id="${idname}" data-type="${typelist}" class="${classname}"><a href="#">${name}</a></li>`;
 }
 
 function RenderOpenItemLinks(type,itemid,showtext="Show",hidetext="Hide") {
@@ -840,13 +887,18 @@ function InitializeOpenDmailLinks($obj) {
 //#C-POSTS #A-SHOW
 function InitializePostShowMenu() {
     var postid = parseInt(JSPLib.utility.getMeta('post-id'));
-    let menu_obj = $.parseHTML(RenderMultilinkMenu(postid));
-    $("#el-add-links",menu_obj).append(RenderSubscribeMultiLinks("Edits",['post'],postid,''));
-    $("#el-add-links",menu_obj).append(RenderSubscribeMultiLinks("Comments",['comment'],postid,' | '));
-    $("#el-add-links",menu_obj).append(RenderSubscribeMultiLinks("Notes",['note'],postid,' | '));
-    $("#el-add-links",menu_obj).append(RenderSubscribeMultiLinks("Artist commentary",['commentary'],postid,' | '));
-    $("#el-add-links",menu_obj).append(RenderSubscribeMultiLinks("Translations",['note','commentary'],postid,' | '));
-    $("#el-add-links",menu_obj).append(RenderSubscribeMultiLinks("All",['post','comment','note','commentary'],postid,' | '));
+    let menu_obj = $.parseHTML(RenderMultilinkMenu(postid,all_post_events));
+    all_post_events.forEach((type)=>{
+        let linkhtml = RenderSubscribeMultiLinks(post_display_names[type],[type],postid);
+        let shownhtml = (IsEventEnabled(type) ? '' : 'style="display:none"');
+        $("#el-add-links",menu_obj).append(`<span class="el-subscribe-${type}-container "${shownhtml}>${linkhtml} | </span>`);
+    });
+    let shownhtml = (AreAllEventsEnabled(all_translate_events) ? '' : 'style="display:none"');
+    let linkhtml = RenderSubscribeMultiLinks("Translations",all_translate_events,postid,' | ');
+    $("#el-add-links",menu_obj).append(`<span class="el-subscribe-translated-container "${shownhtml}>${linkhtml} | </span>`);
+    //The All link is always shown when the outer menu is shown, so no need to individually hide it
+    let enabled_post_events = JSPLib.utility.setIntersection(all_post_events,Danbooru.EL.user_settings.events_enabled);
+    $("#el-add-links",menu_obj).append(RenderSubscribeMultiLinks("All",enabled_post_events,postid,' | '));
     $("nav#nav").append(menu_obj);
     SubscribeMultiLinkClick();
 }
@@ -862,10 +914,11 @@ function InitializeTopicShowMenu() {
         }
         topicid = parseInt(match[1]);
     }
-    let menu_obj = $.parseHTML(RenderMultilinkMenu(topicid));
-    $("#el-add-links",menu_obj).append(RenderSubscribeMultiLinks("Topic",['forum'],topicid,'') + ' | ');
-    $('a[href$="/subscribe"],a[href$="/unsubscribe"]').text("Email");
-    let $email = $('a[href$="/subscribe"],a[href$="/unsubscribe"]').parent().detach();
+    let menu_obj = $.parseHTML(RenderMultilinkMenu(topicid,['forum']));
+    let linkhtml = RenderSubscribeMultiLinks("Topic",['forum'],topicid,'');
+    let shownhtml = (IsEventEnabled('forum') ? '' : 'style="display:none"');
+    $("#el-add-links",menu_obj).append(`<span class="el-subscribe-forum-container "${shownhtml}>${linkhtml} | </span>`);
+    let $email = $('#subnav-subscribe').detach().find("a").text("Email");
     $("#el-add-links",menu_obj).append($email);
     $("nav#nav").append(menu_obj);
     SubscribeMultiLinkClick();
@@ -876,7 +929,8 @@ function InitializeTopicIndexLinks($obj) {
     $.each($(".striped tr td:first-of-type",$obj), (i,entry)=>{
         let topicid = parseInt(entry.innerHTML.match(/\/forum_topics\/(\d+)/)[1]);
         let linkhtml = RenderSubscribeDualLinks('forum',topicid,"span","","",true);
-        $(entry).prepend(linkhtml + '&nbsp|&nbsp');
+        let shownhtml = (IsEventEnabled('forum') ? '' : 'style="display:none"');
+        $(entry).prepend(`<span class="el-subscribe-forum-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
     });
     SubscribeDualLinkClick('forum');
 }
@@ -900,7 +954,8 @@ function InitializeCommentPartialPostLinks() {
     $.each($("#p-index-by-post .comments-for-post"), (i,$entry)=>{
         let postid = parseInt($($entry).data('post-id'));
         let linkhtml = RenderSubscribeDualLinks('comment',postid,"div"," ","comments");
-        $(".header",$entry).after(linkhtml);
+        let shownhtml = (IsEventEnabled('comment') ? '' : 'style="display:none"');
+        $(".header",$entry).after(`<div class="el-subscribe-comment-container "${shownhtml}>${linkhtml}</div>`);
     });
     SubscribeDualLinkClick('comment');
 }
@@ -910,7 +965,9 @@ function InitializeCommentPartialCommentLinks(selector) {
     $.each($(selector), (i,$entry)=>{
         var postid = parseInt($($entry).data('id'));
         var linkhtml = RenderSubscribeDualLinks('comment',postid,"div","<br>","comments");
-        var $table = $.parseHTML(`<table><tbody><tr><td></td></tr><tr><td>${linkhtml}</td></tr></tbody></table>`);
+        let shownhtml = (IsEventEnabled('comment') ? '' : 'style="display:none"');
+        /****NEED TO SEE IF I CAN DO THIS WITHOUT A TABLE****/
+        var $table = $.parseHTML(`<table><tbody><tr><td></td></tr><tr><td class="el-subscribe-comment-container "${shownhtml}>${linkhtml}</td></tr></tbody></table>`);
         var $preview = $(".preview",$entry).detach();
         $("tr:nth-of-type(1) td",$table).append($preview);
         $entry.prepend($table[0]);
@@ -985,7 +1042,7 @@ ResetAllClick.run_once = false;
 
 function SubscribeMultiLinkClick() {
     $("#el-subscribe-events a").off().click((e)=>{
-        let $menu = $(e.target.parentElement.parentElement.parentElement);
+        let $menu = $(JSPLib.utility.getNthParent(e.target,4));
         let $container = $(e.target.parentElement);
         let itemid = $menu.data('id');
         let typelist = $container.data('type').split(',');
@@ -1223,6 +1280,7 @@ function BroadcastEL(ev) {
         $("#event-notice").hide();
     } else if (ev.data.type === "settings") {
         Danbooru.EL.user_settings = ev.data.user_settings;
+        ToggleSubscribeLinks();
     } else if (ev.data.type === "reset") {
         //Not handling this yet, so just hide everything until the next page refresh
         JSPLib.utility.fullHide("#event-notice,#el-subscribe-events,.el-subscribe-dual-links");
