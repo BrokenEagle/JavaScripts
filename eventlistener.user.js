@@ -47,7 +47,7 @@ const localstorage_keys = lastid_keys.concat(other_keys).concat([
 const program_reset_keys = {};
 
 //Available setting values
-const enable_events = ['flag','appeal','dmail','spam','post','comment','note','commentary','forum'];
+const enable_events = ['flag','appeal','dmail','comment','note','commentary','forum'];
 const autosubscribe_events = ['post','comment','note','commentary'];
 
 //Main settings
@@ -79,9 +79,9 @@ const settings_config = {
         hint: "How often to check for new events (# of minutes)."
     },
     events_enabled: {
-        allitems: enable_events,
+        allitems: all_events,
         default: enable_events,
-        validate: (data)=>{return Array.isArray(data) && data.reduce((is_string,val)=>{return is_string && (typeof val === 'string') && enable_events.includes(val);},true)},
+        validate: (data)=>{return Array.isArray(data) && data.reduce((is_string,val)=>{return is_string && (typeof val === 'string') && all_events.includes(val);},true)},
         hint: "Uncheck to turn off event type."
     },
     autosubscribe_enabled: {
@@ -1272,6 +1272,16 @@ function ProcessAllEvents(func) {
     });
 }
 
+function EventStatusCheck() {
+    let disabled_events = JSPLib.utility.setDifference(all_events,Danbooru.EL.user_settings.events_enabled);
+    disabled_events.forEach((type)=>{
+        //Delete every associated value but the list
+        localStorage.removeItem(`el-${type}lastid`);
+        localStorage.removeItem(`el-saved${type}lastid`);
+        localStorage.removeItem(`el-saved${type}list`);
+    });
+}
+
 //Settings functions
 
 function BroadcastEL(ev) {
@@ -1379,6 +1389,7 @@ function main() {
         return;
     }
     Danbooru.EL.user_settings = JSPLib.menu.loadUserSettings('el');
+    EventStatusCheck();
     Danbooru.EL.locked_notice = Danbooru.EL.user_settings.autolock_notices;
     Danbooru.EL.channel = new BroadcastChannel('EventListener');
     Danbooru.EL.channel.onmessage = BroadcastEL;
