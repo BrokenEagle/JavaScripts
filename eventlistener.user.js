@@ -35,7 +35,7 @@ const user_events = ['flag','appeal','dmail','spam'];
 const subscribe_events = ['comment','forum','note','commentary','post'];
 const all_events = user_events.concat(subscribe_events);
 const lastid_keys = all_events.map((type)=>{return `el-${type}lastid`;});
-const other_keys = subscribe_events.map((type)=>{return [`el-${type}list`,`el-saved${type}list`,`el-saved${type}lastid`];}).flat();
+const other_keys = subscribe_events.map((type)=>{return [`el-${type}list`,`el-saved${type}list`,`el-saved${type}lastid`,`el-${type}overflow`];}).flat();
 const localstorage_keys = lastid_keys.concat(other_keys).concat([
     'el-process-semaphore',
     'el-events',
@@ -182,6 +182,18 @@ const forum_css = `
     margin-left: 14em;
 }`;
 
+const menu_css = `
+#el-cache-viewer textarea {
+    width: 100%;
+    min-width: 40em;
+    height: 50em;
+    padding: 5px;
+}
+#el-console {
+    width: 100%;
+    min-width: 100em;
+}`;
+
 //HTML constants
 
 const notice_box = `
@@ -245,57 +257,99 @@ const display_counter = `
 </div>`;
 
 const el_menu = `
-<div id="el-settings" class="jsplib-outer-menu">
-    <div id="el-script-message" class="prose">
-        <h2>EventListener</h2>
-        <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/14747" style="color:#0073ff">topic #14747</a>).</p>
-    </div>
-    <div id="el-notice-settings" class="jsplib-settings-grouping">
-        <div id="el-network-message" class="prose">
-            <h4>Notice settings</h4>
+<div id="el-script-message" class="prose">
+    <h2>EventListener</h2>
+    <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/14747" style="color:#0073ff">topic #14747</a>).</p>
+</div>
+<div id="el-console" class="jsplib-console">
+    <div id="el-settings" class="jsplib-outer-menu">
+        <div id="el-notice-settings" class="jsplib-settings-grouping">
+            <div id="el-network-message" class="prose">
+                <h4>Notice settings</h4>
+            </div>
+        </div>
+        <div id="el-event-settings" class="jsplib-settings-grouping">
+            <div id="el-event-message" class="prose">
+                <h4>Event settings</h4>
+                <ul>
+                    <li><b>Events enabled:</b> Select which events to check for.
+                        <ul>
+                            <li>Subscription-type events will not be checked unless there is more than one subscribed item.</li>
+                            <li>These include comments, notes, commentaries, and forums.</li>
+                        </ul>
+                    </li>
+                    <li><b>Autosubscribe enabled:</b> Select which events on items created by the user will be automatically subscribed.
+                        <ul>
+                            <li>This will be the uploader for comments, notes and commentaries.</li>
+                            <li>Events will only be subscribed on the post page for that upload.</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div id="el-network-settings" class="jsplib-settings-grouping">
+            <div id="el-network-message" class="prose">
+                <h4>Network settings</h4>
+            </div>
+        </div>
+        <div id="el-subscribe-controls" class="jsplib-settings-grouping">
+            <div id="el-subscribe-message" class="prose">
+                <h4>Subscribe controls</h4>
+                <p>Subscribe to events using search queries instead of individually.</p>
+                <p><span style="color:red"><b>Warning!</b></span> Very large lists have issues:</p>
+                <ul>
+                    <li>Higher performance delays.</li>
+                    <li>Could fill up the cache.</li>
+                    <li>Which could crash the program or other scripts.</li>
+                    <li>I.e. don't subscribe to <b><u>ALL</u></b> of Danbooru!</li>
+                </ul>
+            </div>
+        </div>
+        <hr>
+        <div id="el-settings-buttons" class="jsplib-settings-buttons">
+            <input type="button" id="el-commit" value="Save">
+            <input type="button" id="el-resetall" value="Factory Reset">
         </div>
     </div>
-    <div id="el-event-settings" class="jsplib-settings-grouping">
-        <div id="el-event-message" class="prose">
-            <h4>Event settings</h4>
-            <ul>
-                <li><b>Events enabled:</b> Select which events to check for.
+    <div id="el-cache-editor" class="jsplib-outer-menu">
+        <div id="el-editor-message" class="prose">
+            <h4>Cache editor</h4>
+            <p><b>Program Data</b> currently cannot be edited; just viewed or deleted.</p>
+            <div class="expandable">
+                <div class="expandable-header">
+                    <span>Program Data details</span>
+                    <input type="button" value="Show" class="expandable-button">
+                </div>
+                <div class="expandable-content">
+                    <p class="tn">All timestamps are in milliseconds since the epoch (<a href="https://www.epochconverter.com" style="color:#0073ff">Epoch converter</a>).</p>
                     <ul>
-                        <li>Subscription-type events will not be checked unless there is more than one subscribed item.</li>
-                        <li>These include comments, notes, commentaries, and forums.</li>
+                        <li>General data
+                            <ul>
+                                <li><b>events:</b> Were events found and showing up in the event notice? This controls whether or not the script will do a reload at the next page refresh regardless of the timeout.</li>
+                                <li><b>last-seen:</b> When was the last recheck? This controls when the absence tracker will launch.</li>
+                                <li><b>overflow:</b> Did any of the events overflow last page refresh? This controls whether or not the script will do a recheck at the next page refresh regardless of the timeout.</li>
+                                <li><b>process-semaphore:</b> Prevents two tabs from processing the same data at the same time.</li>
+                                <li><b>timeout:</b> When the script is scheduled next to do a recheck.</li>
+                                <li><b>user-settings:</b> All configurable settings.</li>
+                            </ul>
+                        </li>
+                        <li>Type data: <code>TYPE</code> is a placeholder for all available event types.
+                            <ul>
+                                <li><b>TYPElist:</b> The list of all posts/topic IDs that are subscribed.</li>
+                                <li><b>TYPElastid:</b> Bookmark for the ID of the last seen event. This is where the script starts searching when it does a recheck.</li>
+                                <li><b>savedTYPElist:</b> Used to temporarily store found values for the event notice when events are found.</li>
+                                <li><b>savedTYPElastid:</b> Used to temporarily store found values for the event notice when events are found.</li>
+                                <li><b>TYPEoverflow:</b> Did this event reach the query limit last page load? Absence of this key indicates false. This controls whether or not and event will process at the next page refresh.</li>
+                            </ul>
+                        </li>
                     </ul>
-                </li>
-                <li><b>Autosubscribe enabled:</b> Select which events on items created by the user will be automatically subscribed.
-                    <ul>
-                        <li>This will be the uploader for comments, notes and commentaries.</li>
-                        <li>Events will only be subscribed on the post page for that upload.</li>
-                    </ul>
-                </li>
-            </ul>
+                </div>
+            </div>
         </div>
-    </div>
-    <div id="el-network-settings" class="jsplib-settings-grouping">
-        <div id="el-network-message" class="prose">
-            <h4>Network settings</h4>
+        <div id="el-cache-editor-controls"></div>
+        <div id="el-cache-viewer">
+            <textarea readonly></textarea>
         </div>
-    </div>
-    <div id="el-subscribe-controls" class="jsplib-settings-grouping">
-        <div id="el-subscribe-message" class="prose">
-            <h4>Subscribe controls</h4>
-            <p>Subscribe to events using search queries instead of individually.</p>
-            <p><span style="color:red"><b>Warning!</b></span> Very large lists have issues:</p>
-            <ul>
-                <li>Higher performance delays.</li>
-                <li>Could fill up the cache.</li>
-                <li>Which could crash the program or other scripts.</li>
-                <li>I.e. don't subscribe to <b><u>ALL</u></b> of Danbooru!</li>
-            </ul>
-        </div>
-    </div>
-    <hr>
-    <div id="el-settings-buttons" class="jsplib-settings-buttons">
-        <input type="button" id="el-commit" value="Save">
-        <input type="button" id="el-resetall" value="Factory Reset">
     </div>
 </div>`;
 
@@ -413,6 +467,40 @@ function ReserveSemaphore() {
         return semaphore;
     }
     return null;
+}
+
+function FixRenderTextinput(program_shortcut,setting_name,length=20,control=false,hint='',buttons=[]) {
+    let config, setting_key, display_name, item;
+    [config,setting_key,display_name,item] = JSPLib.menu.getProgramValues(program_shortcut,setting_name);
+    let textinput_key = `${program_shortcut}-setting-${setting_key}`;
+    let menu_type = (control ? "control" : "setting");
+    let submit_control = '';
+    if (control && buttons.length) {
+        buttons.forEach((button)=>{
+            submit_control += FixRenderControlButton(program_shortcut,setting_key,button,2);
+        });
+    }
+    let value = '';
+    if (!control) {
+        hint = config[setting_name].hint;
+        value = item;
+    }
+    let hint_html = JSPLib.menu.renderSettingHint(program_shortcut,"block",hint);
+    return `
+<div class="${program_shortcut}-textinput jsplib-textinput jsplib-menu-item" data-setting="${setting_name}">
+    <h4>${display_name}</h4>
+    <div>
+        <input type="text" class="${program_shortcut}-${menu_type} jsplib-${menu_type}" name="${textinput_key}" id="${textinput_key}" value="${value}" size="${length}" autocomplete="off" data-parent="2">
+        ${submit_control}
+        ${hint_html}
+    </div>
+</div>`;
+}
+
+function FixRenderControlButton(program_shortcut,setting_key,button_name,parent_level) {
+    let button_key = `${program_shortcut}-${setting_key}-${button_name}`;
+    let display_name = JSPLib.utility.displayCase(button_name);
+    return `<input type="button" class="jsplib-control ${program_shortcut}-control" name="${button_key}" id="${button_key}" value="${display_name}" data-parent="${parent_level}">`;
 }
 
 //Helper functions
@@ -1282,6 +1370,61 @@ function EventStatusCheck() {
     });
 }
 
+////Cache editor
+
+//Cache helper functions
+
+async function LoadStorageKeys() {
+    storage_keys = Object.keys(localStorage);
+    Danbooru.EL.storage_keys.local_storage = storage_keys.filter((key)=>{return key.startsWith("el-");});
+}
+
+function GetCacheDatakey() {
+    Danbooru.EL.data_value = $("#el-setting-data-name").val().trim().replace(/\s+/g,'_');
+    return 'el-' + Danbooru.EL.data_value;
+}
+
+function CacheSource(req,resp) {
+    let check_key = GetCacheDatakey();
+    let source_keys = Danbooru.EL.storage_keys.local_storage;
+    let available_keys = source_keys.filter((key)=>{return key.startsWith(check_key);});
+    let transformed_keys = available_keys.slice(0,20);
+    transformed_keys = transformed_keys.map((key)=>{return key.slice(key.indexOf('-')+1);});
+    resp(transformed_keys);
+}
+
+//Cache event functions
+
+function GetCacheClick() {
+    $("#el-data-name-get").on("click.el",(e)=>{
+        let storage_key = GetCacheDatakey();
+        let data = JSPLib.storage.getStorageData(storage_key,localStorage);
+        $("#el-cache-viewer textarea").val(JSON.stringify(data,null,2));
+    });
+}
+
+function DeleteCacheClick() {
+    $("#el-data-name-delete").on("click.el",(e)=>{
+        let storage_key = GetCacheDatakey();
+        if (confirm("This will delete program data that may cause problems until the page can be refreshed.\n\nAre you sure?")) {
+            localStorage.removeItem(storage_key);
+            Danbooru.Utility.notice("Data has been deleted.");
+        }
+    });
+}
+
+function CacheAutocomplete() {
+    $("#el-setting-data-name").autocomplete({
+        minLength: 0,
+        delay: 0,
+        source: CacheSource,
+        search: function() {
+            $(this).data("uiAutocomplete").menu.bindings = $();
+        }
+    }).off('keydown.Autocomplete.tab');
+}
+
+
 //Settings functions
 
 function BroadcastEL(ev) {
@@ -1354,10 +1497,14 @@ function RenderSettingsMenu() {
     $("#el-subscribe-controls").append(JSPLib.menu.renderInputSelectors('el','operation','radio',true,['add','subtract','overwrite'],['add'],'Select how the query will affect existing subscriptions.'));
     $("#el-subscribe-controls").append(JSPLib.menu.renderTextinput('el','search_query',50,true,'Enter a tag search query to populate. See <a href="/wiki_pages/43049" style="color:#0073ff">Help:Cheatsheet</a> for more info.',true));
     $("#el-subscribe-controls").append(display_counter);
+    $("#el-cache-editor-controls").append(FixRenderTextinput('el','data_name',20,true,"Click <b>Get</b> to see the data and <b>Delete</b> to remove it.",['get','delete']));
     JSPLib.menu.engageUI('el',true);
     JSPLib.menu.saveUserSettingsClick('el','EventListener');
     JSPLib.menu.resetUserSettingsClick('el','EventListener',localstorage_keys,program_reset_keys);
     PostEventPopulateControl();
+    GetCacheClick();
+    DeleteCacheClick();
+    CacheAutocomplete();
     RebindMenuAutocomplete.timer = setInterval(()=>{RebindMenuAutocomplete();},timer_poll_interval);
 }
 
@@ -1379,6 +1526,7 @@ function main() {
         had_events: HasEvents(),
         no_limit: false,
         post_ids: [],
+        storage_keys: {local_storage: []},
         settings_config: settings_config
     };
     if (Danbooru.EL.username === "Anonymous") {
@@ -1427,10 +1575,12 @@ function main() {
         InitializeTopicIndexLinks(document);
     }
     if ($("#c-users #a-edit").length) {
+        LoadStorageKeys();
         JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
             JSPLib.menu.installSettingsMenu("EventListener");
             RenderSettingsMenu();
         });
+        JSPLib.utility.setCSSStyle(menu_css,'menu');
     }
     if ($(`#image-container[data-uploader-id="${Danbooru.EL.userid}"]`).length) {
         SubscribeMultiLinkCallback();
