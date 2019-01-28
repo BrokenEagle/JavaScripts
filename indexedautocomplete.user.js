@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      22.0
+// @version      22.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -1413,7 +1413,7 @@ async function RelatedTagsButton(e) {
     let category = $(e.target).data("category") || "";
     let currenttag = $.trim(Danbooru.RelatedTag.current_tag());
     let keymodifier = GetRelatedKeyModifer(category);
-    let key = ("rt" + keymodifier + "-" + currenttag).toLowerCase();
+    let key = (keymodifier + "-" + currenttag).toLowerCase();
     let max_expiration = MaximumExpirationTime('relatedtag');
     let cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry,max_expiration);
     if (cached) {
