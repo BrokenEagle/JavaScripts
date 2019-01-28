@@ -50,32 +50,32 @@ const settings_config = {
     alias_check_enabled: {
         default: true,
         validate: (data)=>{return validate.isBoolean(data);},
-        hint: "Uncheck to turn off."
+        hint: "Checks and removes aliased tags from tag add validation."
     },
     implication_check_enabled: {
         default: true,
         validate: (data)=>{return validate.isBoolean(data);},
-        hint: "Uncheck to turn off."
+        hint: "Turns off querying implications for tag remove validation."
     },
     upload_check_enabled: {
         default: false,
         validate: (data)=>{return validate.isBoolean(data);},
-        hint: "Check to turn on."
+        hint: "Performs the same rating and source checks that Danbooru does."
     },
     artist_check_enabled: {
         default: true,
         validate: (data)=>{return validate.isBoolean(data);},
-        hint: "Check to turn off."
+        hint: "Does a check for any artist tags or artist entries."
     },
     copyright_check_enabled: {
         default: true,
         validate: (data)=>{return validate.isBoolean(data);},
-        hint: "Check to turn off."
+        hint: 'Checks for the existence of any copyright tag or the <a href="/wiki_pages/show_or_new?title=copyright_request">copyright request</a> tag.'
     },
     general_check_enabled: {
         default: true,
         validate: (data)=>{return validate.isBoolean(data);},
-        hint: "Check to turn off."
+        hint: "Performs a general tag count with up to three warning thresholds."
     },
     general_minimum_threshold: {
         default: 10,
@@ -84,13 +84,13 @@ const settings_config = {
         hint: "The bare minimum number of general tags."
     },
     general_low_threshold: {
-        default: 25,
+        default: 20,
         parse: parseInt,
         validate: (data)=>{return Number.isInteger(data) && data >= 0;},
         hint: "Threshold for a low amount of general tags. Enter 0 to disable this threshold."
     },
     general_moderate_threshold: {
-        default: 35,
+        default: 30,
         parse: parseInt,
         validate: (data)=>{return Number.isInteger(data) && data >= 0;},
         hint: "Threshold for a moderate amount of general tags. Enter 0 to disable this threshold."
@@ -126,6 +126,9 @@ const warning_messages = `
 <div id="warning-bad-removes" class="error-messages ui-state-highlight ui-corner-all" style="display:none"></div>`;
 
 const menu_css = `
+#vti-console .expandable {
+    width: 90%;
+}
 #vti-cache-viewer textarea {
     width: 100%;
     min-width: 40em;
@@ -141,12 +144,23 @@ const menu_css = `
 .jsplib-console {
     width: 100%;
     min-width: 100em;
-}`;
+}
+.vti-linkclick.jsplib-linkclick .vti-control.jsplib-control {
+    display: inline;
+}
+#userscript-settings-menu .ui-widget-content a,
+#notice .ui-widget-content a {
+    color:#0073ff
+}
+#notice.ui-state-highlight {
+    color: #363636;
+}
+`;
 
 const vti_menu = `
 <div id="vti-script-message" class="prose">
     <h2>ValidateTagInput</h2>
-    <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/14474" style="color:#0073ff">topic #14474</a>).</p>
+    <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/14474">topic #14474</a>).</p>
 </div>
 <div id="vti-console" class="jsplib-console">
     <div id="vti-settings" class="jsplib-outer-menu">
@@ -154,55 +168,71 @@ const vti_menu = `
             <div id="vti-pre-edit-message" class="prose">
                 <h4>Pre edit settings</h4>
                 <p>These settings affect validations when a post page is initially loaded.</p>
-                <ul>
-                    <li><b>Artist check enabled:</b> Does a check for any artist tags or artist entries.
+                <div class="expandable">
+                    <div class="expandable-header">
+                        <span>Additional setting details</span>
+                        <input type="button" value="Show" class="expandable-button">
+                    </div>
+                    <div class="expandable-content">
                         <ul>
-                            <li>Posts with <a href="/wiki_pages/show_or_new?title=artist_request" style="color:#0073ff">artist request</a> or <a href="/wiki_pages/show_or_new?title=official_art" style="color:#0073ff">official art</a> are ignored.</li>
-                            <li>Artist tags on posts get checked for artist entries.</li>
+                            <li><b>Artist check enabled:</b>
+                                <ul>
+                                    <li>Posts with <a href="/wiki_pages/show_or_new?title=artist_request">artist request</a> or <a href="/wiki_pages/show_or_new?title=official_art">official art</a> are ignored.</li>
+                                    <li>All artist tags on a post get checked for artist entries.</li>
+                                </ul>
+                            </li>
+                            <li><b>General check enabled:</b>
+                                <ul>
+                                    <li>The only difference between the thresholds is in the warning message given.</li>
+                                </ul>
+                            </li>
                         </ul>
-                    </li>
-                    <li><b>Copyright check enabled:</b> Checks for the existence of any copyright tag or the <a href="/wiki_pages/show_or_new?title=copyright_request" style="color:#0073ff">copyright request</a> tag.</li>
-                    <li><b>General check enabled:</b> Performs a general tag count with up to 3 warning thresholds.</li>
-                </ul>
+                    </div>
+                </div>
             </div>
         </div>
         <div id="vti-post-edit-settings" class="jsplib-settings-grouping">
             <div id="vti-post-edit-message" class="prose">
                 <h4>Post edit settings</h4>
                 <p>These settings affect validations when submitting a post edit.</p>
-                <ul>
-                    <li><b>Alias check enabled:</b> Checks and removes aliased tags from tag add validation.
+                <div class="expandable">
+                    <div class="expandable-header">
+                        <span>Additional setting details</span>
+                        <input type="button" value="Show" class="expandable-button">
+                    </div>
+                    <div class="expandable-content">
                         <ul>
-                            <li>Turning off no longer queries all tag adds for aliases.</li>
+                            <li><b>Implications check enabled:</b>
+                                <ul>
+                                    <li>Turning this off effectively turns off tag remove validation.</li>
+                                </ul>
+                            </li>
+                            <li><b>Upload check enabled:</b>
+                                <ul>
+                                    <li>The main benefit is it moves the warning message closer to the submit button.</li>
+                                    <li>I.e in the same location as the other <i>ValidateTagInput</i> warning messages.</li>
+                                </ul>
+                            </li>
                         </ul>
-                    </li>
-                    <li><b>Implications check enabled:</b> Used as the primary source for tag remove validation.
-                        <ul>
-                            <li>Turning off no longer queries all tags on page load for implications.</li>
-                            <li><b>Note:</b> This effectively turns off tag remove validation.</li>
-                        </ul>
-                    </li>
-                    <li><b>Upload check enabled:</b> Performs the same rating and source checks that Danbooru does.
-                        <ul>
-                            <li>The main benefit is it moves the warning message closer to the submit button.</li>
-                            <li>I.e in the same location as the other <i>ValidateTagInput</i> warning messages.</li>
-                        </ul>
-                    </li>
-                </ul>
+                    </div>
+                </div>
             </div>
         </div>
         <div id="vti-cache-settings" class="jsplib-settings-grouping">
             <div id="vti-cache-message" class="prose">
                 <h4>Cache settings</h4>
-                <h5>Cache data</h5>
-                <ul>
-                    <li><b>Tag aliases:</b> Used to determine if an added tag is bad or an alias.</li>
-                    <li><b>Tag implications:</b> Used to determine which tag removes are bad.</li>
-                </ul>
-                <h5>Cache controls</h5>
-                <ul>
-                    <li><b>Purge cache:</b> Dumps all of the cached data related to ValidateTagInput.</li>
-                </ul>
+                <div class="expandable">
+                    <div class="expandable-header">
+                        <span>Cache Data details</span>
+                        <input type="button" value="Show" class="expandable-button">
+                    </div>
+                    <div class="expandable-content">
+                        <ul>
+                            <li><b>Tag aliases:</b> Used to determine if an added tag is bad or an alias.</li>
+                            <li><b>Tag implications:</b> Used to determine which tag removes are bad.</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
         <hr>
@@ -214,15 +244,14 @@ const vti_menu = `
     <div id="vti-cache-editor" class="jsplib-outer-menu">
         <div id="vti-editor-message" class="prose">
             <h4>Cache editor</h4>
-            <p>See the <b><a href="#vti-cache-message" style="color:#0073ff">Cache Data</a></b> settings for the list of all cache data and what they do.</p>
-            <p><b>Program Data</b> currently cannot be edited; just viewed or deleted.</p>
+            <p>See the <b><a href="#vti-cache-message">Cache settings</a></b> settings for the list of all cache data and what they do.</p>
             <div class="expandable">
                 <div class="expandable-header">
                     <span>Program Data details</span>
                     <input type="button" value="Show" class="expandable-button">
                 </div>
                 <div class="expandable-content">
-                    <p class="tn">All timestamps are in milliseconds since the epoch (<a href="https://www.epochconverter.com" style="color:#0073ff">Epoch converter</a>).</p>
+                    <p class="tn">All timestamps are in milliseconds since the epoch (<a href="https://www.epochconverter.com">Epoch converter</a>).</p>
                     <ul>
                         <li>General data
                             <ul>
@@ -237,7 +266,7 @@ const vti_menu = `
         <div id="vti-cache-editor-controls"></div>
         <div id="vti-cache-editor-errors"></div>
         <div id="vti-cache-viewer">
-            <textarea readonly></textarea>
+            <textarea></textarea>
         </div>
     </div>
 </div>`;
@@ -279,17 +308,72 @@ const relation_constraints = {
 
 function ValidateRelationEntry(key,entry) {
     if (!JSPLib.validate.validateIsHash(key,entry)) {
-        return false
+        RenderValidateError(key,["Data is not a hash."]);
+        return false;
     }
     let check = validate(entry,relation_constraints.entry);
     if (check !== undefined) {
-        JSPLib.validate.printValidateError(key,check);
-        return false
+        OutputValidateError(key,check);
+        return false;
     }
-    return JSPLib.validate.validateArrayValues(key + '.value', entry.value, relation_constraints.value);
+    let extra_keys = JSPLib.utility.setDifference(Object.keys(entry),Object.keys(relation_constraints.entry));
+    if (extra_keys.length) {
+        OutputValidateError(key,["Hash contains extra keys.",extra_keys]);
+        return false;
+    }
+    return FixValidateArrayValues(key + '.value', entry.value, relation_constraints.value);
+}
+
+function ValidateProgramData(key,entry) {
+    var checkerror;
+    switch (key) {
+        case 'vti-user-settings':
+            var checkerror = ValidateUserSettings(entry,Danbooru.VTI.settings_config);
+            break;
+        case 'vti-prune-expires':
+            if (!Number.isInteger(entry)) {
+                checkerror = ["Value is not an integer."];
+            }
+            break;
+        default:
+            checkerror = ["Not a valid program data key."];
+    }
+    if (checkerror) {
+        OutputValidateError(key,checkerror);
+        return false;
+    }
+    return true;
 }
 
 //Library functions
+
+function OutputValidateError(key,checkerror) {
+    JSPLib.validate.printValidateError(key,checkerror);
+    JSPLib.validate.dom_output && RenderValidateError(key,JSON.stringify(checkerror,null,2));
+}
+
+function RenderValidateError(key,error_message) {
+    if (JSPLib.validate.dom_output) {
+        let output_text = `<b>${key}:</b>\r\n<pre>${error_message}</pre>`;
+        $(JSPLib.validate.dom_output).html(output_text).show();
+    }
+}
+
+function HideValidateError() {
+    JSPLib.validate.dom_output && $(JSPLib.validate.dom_output).hide();
+    $("#close-notice-link").click();
+}
+
+function FixValidateArrayValues(key,array,validator) {
+    for (let i = 0;i < array.length; i++) {
+        let check = validate({value: array[i]},{value: validator});
+        if (check !== undefined) {
+            OutputValidateError(key + `[${i}]`,check);
+            return false;
+        }
+    }
+    return true;
+}
 
 function RenderKeyselect(program_shortcut,setting_name,control=false,value='',all_options=[],hint='') {
     let config, setting_key, display_name, item;
@@ -353,6 +437,50 @@ function FixRenderControlButton(program_shortcut,setting_key,button_name,parent_
     let button_key = `${program_shortcut}-${setting_key}-${button_name}`;
     let display_name = JSPLib.utility.displayCase(button_name);
     return `<input type="button" class="jsplib-control ${program_shortcut}-control" name="${button_key}" id="${button_key}" value="${display_name}" data-parent="${parent_level}">`;
+}
+
+function FixRenderLinkclick(program_shortcut,setting_name,display_name,link_text,hint) {
+    let setting_key = JSPLib.utility.kebabCase(setting_name);
+    return `
+<div class="${program_shortcut}-linkclick jsplib-linkclick jsplib-menu-item">
+    <h4>${display_name}</h4>
+    <div>
+        <b>[
+            <span class="${program_shortcut}-control jsplib-control">
+                <a href="#" id="${program_shortcut}-setting-${setting_key}">${link_text}</a>
+            </span>
+        ]</b>
+        &emsp;
+        <span class="${program_shortcut}-setting-tooltip jsplib-inline-tooltip">${hint}</span>
+    </div>
+</div>`;
+}
+
+function ValidateUserSettings(settings,config) {
+    let error_messages = [];
+    if (!validate.isHash(settings)) {
+        return ["User settings are not a hash."];
+    }
+    for (let setting in config) {
+        if (!(setting in settings) || !config[setting].validate(settings[setting])) {
+            if (!(setting in settings)) {
+                error_messages.push(`'${setting}' setting not found.`);
+            } else {
+                error_messages.push(`'${setting}' contains invalid data.`);
+            }
+            JSPLib.debug.debuglogLevel("Loading default:",setting,settings[setting],JSPLib.debug.WARNING);
+            settings[setting] = config[setting].default;
+        }
+    }
+    let valid_settings = Object.keys(config);
+    for (let setting in settings) {
+        if (!valid_settings.includes(setting)) {
+            JSPLib.debug.debuglogLevel("Deleting invalid setting:",setting,settings[setting],JSPLib.debug.WARNING);
+            delete settings[setting];
+            error_messages.push(`'${setting}' is an invalid setting.`);
+        }
+    }
+    return error_messages;
 }
 
 //Helper functions
@@ -734,7 +862,7 @@ function ValidateCopyright() {
     Danbooru.Utility.notice(Danbooru.VTI.validate_lines.join('<br>'),true);
 }
 
-let how_to_tag = `Read <a href="/wiki_pages/show_or_new?title=howto%3atag">howto:tag</a> for guidelines on how to tag.`;
+let how_to_tag = `Read <a href="/wiki_pages/show_or_new?title=howto%3atag">howto:tag</a> for how to tag.`;
 
 function ValidateGeneral() {
     let general_tags_length = $(".general-tag-list .category-0 .wiki-link").length;
@@ -807,31 +935,39 @@ function GetCacheClick(program_shortcut) {
         let storage_key = GetCacheDatakey(program_shortcut);
         if (Danbooru[program_key].data_source === "local_storage") {
             let data = JSPLib.storage.getStorageData(storage_key,localStorage);
-            $(`#${program_shortcut}-cache-viewer textarea`).val(JSON.stringify(data,null,2)).prop('readonly',true);
+            $(`#${program_shortcut}-cache-viewer textarea`).val(JSON.stringify(data,null,2));
         } else {
             JSPLib.storage.retrieveData(storage_key).then((data)=>{
-                $(`#${program_shortcut}-cache-viewer textarea`).val(JSON.stringify(data,null,2)).prop('readonly',false);;
+                $(`#${program_shortcut}-cache-viewer textarea`).val(JSON.stringify(data,null,2));
             });
         }
+        HideValidateError();
     });
 }
 
-function SaveCacheClick(program_shortcut,validatefunc) {
+function SaveCacheClick(program_shortcut,localvalidator,indexvalidator) {
     let program_key = program_shortcut.toUpperCase();
-    $(`#-data-name-save`).on(`click.${program_shortcut}`,(e)=>{
+    $(`#${program_shortcut}-data-name-save`).on(`click.${program_shortcut}`,(e)=>{
+        try {
+            var data = JSON.parse($(`#${program_shortcut}-cache-viewer textarea`).val());
+        } catch (e) {
+            Danbooru.Utility.error("Invalid JSON data! Unable to save.");
+            return;
+        }
         let storage_key = GetCacheDatakey(program_shortcut);
         if (Danbooru[program_key].data_source === "local_storage") {
-            Danbooru.Utility.error("Unable to edit program data!");
-        } else {
-            try {
-                var data = JSON.parse($(`#${program_shortcut}-cache-viewer textarea`).val());
-            } catch (e) {
-                Danbooru.Utility.error("Invalid JSON data! Unable to save.");
-                return;
+            if (localvalidator(storage_key,data)) {
+                JSPLib.storage.setStorageData(storage_key,data,localStorage);
+                Danbooru.Utility.notice("Data was saved.");
+                HideValidateError();
+            } else {
+                Danbooru.Utility.error("Data is invalid! Unable to save.");
             }
-            if (validatefunc(storage_key,data)) {
+        } else {
+            if (indexvalidator(storage_key,data)) {
                 JSPLib.storage.saveData(storage_key,data).then(()=>{
                     Danbooru.Utility.notice("Data was saved.");
+                    HideValidateError();
                 });
             } else {
                 Danbooru.Utility.error("Data is invalid! Unable to save.");
@@ -848,10 +984,12 @@ function DeleteCacheClick(program_shortcut) {
             if (confirm("This will delete program data that may cause problems until the page can be refreshed.\n\nAre you sure?")) {
                 localStorage.removeItem(storage_key);
                 Danbooru.Utility.notice("Data has been deleted.");
+                HideValidateError();
             }
         } else {
             JSPLib.storage.removeData(storage_key).then((data)=>{
                 Danbooru.Utility.notice("Data has been deleted.");
+                HideValidateError();
             });
         }
     });
@@ -899,15 +1037,15 @@ function RenderSettingsMenu() {
     $("#vti-post-edit-settings").append(JSPLib.menu.renderCheckbox("vti",'alias_check_enabled'));
     $("#vti-post-edit-settings").append(JSPLib.menu.renderCheckbox("vti",'implication_check_enabled'));
     $("#vti-post-edit-settings").append(JSPLib.menu.renderCheckbox("vti",'upload_check_enabled'));
-    $("#vti-cache-settings").append(JSPLib.menu.renderLinkclick("vti",'purge_cache',`Purge cache (<span id="vti-purge-counter">...</span>)`,"Click to purge"));
-    $("#vti-cache-editor-controls").append(RenderKeyselect('vti','data_source',true,'indexed_db',all_source_types,"Indexed DB is <b>Cache Data</b> and is editable, whereas Local Storage is <b>Program Data</b> and is not."));
+    $("#vti-cache-settings").append(FixRenderLinkclick("vti",'purge_cache',`Purge cache (<span id="vti-purge-counter">...</span>)`,"Click to purge","Dumps all of the cached data related to ValidateTagInput."));
+    $("#vti-cache-editor-controls").append(RenderKeyselect('vti','data_source',true,'indexed_db',all_source_types,"Indexed DB is <b>Cache Data</b> and Local Storage is <b>Program Data</b>."));
     $("#vti-cache-editor-controls").append(RenderKeyselect('vti','data_type',true,'tag',all_data_types,"Only applies to Indexed DB.  Use <b>Custom</b> for querying by keyname."));
     $("#vti-cache-editor-controls").append(FixRenderTextinput('vti','data_name',20,true,"Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.",['get','save','delete']));
     JSPLib.menu.saveUserSettingsClick('vti','ValidateTagInput');
     JSPLib.menu.resetUserSettingsClick('vti','ValidateTagInput',localstorage_keys,program_reset_keys);
     JSPLib.menu.purgeCacheClick('vti','ValidateTagInput',program_cache_regex,"#vti-purge-counter");
     GetCacheClick('vti');
-    SaveCacheClick('vti');
+    SaveCacheClick('vti',ValidateProgramData,ValidateRelationEntry);
     DeleteCacheClick('vti');
     CacheAutocomplete('vti');
 }
