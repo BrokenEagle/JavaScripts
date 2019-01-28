@@ -125,73 +125,129 @@ const warning_messages = `
 <div id="warning-new-tags" class="error-messages ui-state-error ui-corner-all" style="display:none"></div>
 <div id="warning-bad-removes" class="error-messages ui-state-highlight ui-corner-all" style="display:none"></div>`;
 
+const menu_css = `
+#vti-cache-viewer textarea {
+    width: 100%;
+    min-width: 40em;
+    height: 50em;
+    padding: 5px;
+}
+#vti-cache-editor-errors {
+    display: none;
+    border: solid lightgrey 1px;
+    margin: 0.5em;
+    padding: 0.5em;
+}
+.jsplib-console {
+    width: 100%;
+    min-width: 100em;
+}`;
+
 const vti_menu = `
-<div id="vti-settings" class="jsplib-outer-menu">
-    <div id="vti-script-message" class="prose">
-        <h2>ValidateTagInput</h2>
-        <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/14474" style="color:#0073ff">topic #14474</a>).</p>
-    </div>
-    <div id="vti-pre-edit-settings" class="jsplib-settings-grouping">
-        <div id="vti-pre-edit-message" class="prose">
-            <h4>Pre edit settings</h4>
-            <p>These settings affect validations when a post page is initially loaded.</p>
-            <ul>
-                <li><b>Artist check enabled:</b> Does a check for any artist tags or artist entries.
-                    <ul>
-                        <li>Posts with <a href="/wiki_pages/show_or_new?title=artist_request" style="color:#0073ff">artist request</a> or <a href="/wiki_pages/show_or_new?title=official_art" style="color:#0073ff">official art</a> are ignored.</li>
-                        <li>Artist tags on posts get checked for artist entries.</li>
-                    </ul>
-                </li>
-                <li><b>Copyright check enabled:</b> Checks for the existence of any copyright tag or the <a href="/wiki_pages/show_or_new?title=copyright_request" style="color:#0073ff">copyright request</a> tag.</li>
-                <li><b>General check enabled:</b> Performs a general tag count with up to 3 warning thresholds.</li>
-            </ul>
+<div id="vti-script-message" class="prose">
+    <h2>ValidateTagInput</h2>
+    <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/14474" style="color:#0073ff">topic #14474</a>).</p>
+</div>
+<div id="vti-console" class="jsplib-console">
+    <div id="vti-settings" class="jsplib-outer-menu">
+        <div id="vti-pre-edit-settings" class="jsplib-settings-grouping">
+            <div id="vti-pre-edit-message" class="prose">
+                <h4>Pre edit settings</h4>
+                <p>These settings affect validations when a post page is initially loaded.</p>
+                <ul>
+                    <li><b>Artist check enabled:</b> Does a check for any artist tags or artist entries.
+                        <ul>
+                            <li>Posts with <a href="/wiki_pages/show_or_new?title=artist_request" style="color:#0073ff">artist request</a> or <a href="/wiki_pages/show_or_new?title=official_art" style="color:#0073ff">official art</a> are ignored.</li>
+                            <li>Artist tags on posts get checked for artist entries.</li>
+                        </ul>
+                    </li>
+                    <li><b>Copyright check enabled:</b> Checks for the existence of any copyright tag or the <a href="/wiki_pages/show_or_new?title=copyright_request" style="color:#0073ff">copyright request</a> tag.</li>
+                    <li><b>General check enabled:</b> Performs a general tag count with up to 3 warning thresholds.</li>
+                </ul>
+            </div>
+        </div>
+        <div id="vti-post-edit-settings" class="jsplib-settings-grouping">
+            <div id="vti-post-edit-message" class="prose">
+                <h4>Post edit settings</h4>
+                <p>These settings affect validations when submitting a post edit.</p>
+                <ul>
+                    <li><b>Alias check enabled:</b> Checks and removes aliased tags from tag add validation.
+                        <ul>
+                            <li>Turning off no longer queries all tag adds for aliases.</li>
+                        </ul>
+                    </li>
+                    <li><b>Implications check enabled:</b> Used as the primary source for tag remove validation.
+                        <ul>
+                            <li>Turning off no longer queries all tags on page load for implications.</li>
+                            <li><b>Note:</b> This effectively turns off tag remove validation.</li>
+                        </ul>
+                    </li>
+                    <li><b>Upload check enabled:</b> Performs the same rating and source checks that Danbooru does.
+                        <ul>
+                            <li>The main benefit is it moves the warning message closer to the submit button.</li>
+                            <li>I.e in the same location as the other <i>ValidateTagInput</i> warning messages.</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div id="vti-cache-settings" class="jsplib-settings-grouping">
+            <div id="vti-cache-message" class="prose">
+                <h4>Cache settings</h4>
+                <h5>Cache data</h5>
+                <ul>
+                    <li><b>Tag aliases:</b> Used to determine if an added tag is bad or an alias.</li>
+                    <li><b>Tag implications:</b> Used to determine which tag removes are bad.</li>
+                </ul>
+                <h5>Cache controls</h5>
+                <ul>
+                    <li><b>Purge cache:</b> Dumps all of the cached data related to ValidateTagInput.</li>
+                </ul>
+            </div>
+        </div>
+        <hr>
+        <div id="vti-settings-buttons" class="jsplib-settings-buttons">
+            <input type="button" id="vti-commit" value="Save">
+            <input type="button" id="vti-resetall" value="Factory Reset">
         </div>
     </div>
-    <div id="vti-post-edit-settings" class="jsplib-settings-grouping">
-        <div id="vti-post-edit-message" class="prose">
-            <h4>Post edit settings</h4>
-            <p>These settings affect validations when submitting a post edit.</p>
-            <ul>
-                <li><b>Alias check enabled:</b> Checks and removes aliased tags from tag add validation.
+    <div id="vti-cache-editor" class="jsplib-outer-menu">
+        <div id="vti-editor-message" class="prose">
+            <h4>Cache editor</h4>
+            <p>See the <b><a href="#vti-cache-message" style="color:#0073ff">Cache Data</a></b> settings for the list of all cache data and what they do.</p>
+            <p><b>Program Data</b> currently cannot be edited; just viewed or deleted.</p>
+            <div class="expandable">
+                <div class="expandable-header">
+                    <span>Program Data details</span>
+                    <input type="button" value="Show" class="expandable-button">
+                </div>
+                <div class="expandable-content">
+                    <p class="tn">All timestamps are in milliseconds since the epoch (<a href="https://www.epochconverter.com" style="color:#0073ff">Epoch converter</a>).</p>
                     <ul>
-                        <li>Turning off no longer queries all tag adds for aliases.</li>
+                        <li>General data
+                            <ul>
+                                <li><b>prune-expires:</b> When the program will next check for cache data that has expired.</li>
+                                <li><b>user-settings:</b> All configurable settings.</li>
+                            </ul>
+                        </li>
                     </ul>
-                </li>
-                <li><b>Implications check enabled:</b> Used as the primary source for tag remove validation.
-                    <ul>
-                        <li>Turning off no longer queries all tags on page load for implications.</li>
-                        <li><b>Note:</b> This effectively turns off tag remove validation.</li>
-                    </ul>
-                </li>
-                <li><b>Upload check enabled:</b> Performs the same rating and source checks that Danbooru does.
-                    <ul>
-                        <li>The main benefit is it moves the warning message closer to the submit button.</li>
-                        <li>I.e in the same location as the other <i>ValidateTagInput</i> warning messages.</li>
-                    </ul>
-                </li>
-            </ul>
+                </div>
+            </div>
         </div>
-    </div>
-    <div id="vti-cache-settings" class="jsplib-settings-grouping">
-        <div id="vti-cache-message" class="prose">
-            <h4>Cache settings</h4>
-            <h5>Cache data</h5>
-            <ul>
-                <li><b>Tag aliases:</b> Used to determine which removes are bad.</li>
-                <li><b>Tag implications:</b> Used to determine if a tag is bad or an alias.</li>
-            </ul>
-            <h5>Cache controls</h5>
-            <ul>
-                <li><b>Purge cache:</b> Dumps all of the cached data related to ValidateTagInput.</li>
-            </ul>
+        <div id="vti-cache-editor-controls"></div>
+        <div id="vti-cache-editor-errors"></div>
+        <div id="vti-cache-viewer">
+            <textarea readonly></textarea>
         </div>
-    </div>
-    <hr>
-    <div id="vti-settings-buttons" class="jsplib-settings-buttons">
-        <input type="button" id="vti-commit" value="Save">
-        <input type="button" id="vti-resetall" value="Factory Reset">
     </div>
 </div>`;
+
+const all_source_types = ['indexed_db','local_storage'];
+const all_data_types = ['tag_alias','tag_implication','custom'];
+const reverse_data_key = {
+    tag_alias: 'ta',
+    tag_implication: 'ti'
+};
 
 //Wait time for quick edit box
 // 1. Let box close before reenabling the submit button
@@ -235,7 +291,69 @@ function ValidateRelationEntry(key,entry) {
 
 //Library functions
 
-//// NONE
+function RenderKeyselect(program_shortcut,setting_name,control=false,value='',all_options=[],hint='') {
+    let config, setting_key, display_name, item;
+    [config,setting_key,display_name,item] = JSPLib.menu.getProgramValues(program_shortcut,setting_name);
+    let menu_type = (control ? "control" : "setting");
+    let keyselect_key = `${program_shortcut}-${menu_type}-${setting_key}`;
+    if (!control) {
+        all_options = config[setting_name].allitems;
+        hint = config[setting_name].hint;
+        value = item;
+    }
+    let hint_html = JSPLib.menu.renderSettingHint(program_shortcut,"inline",hint);
+    let html = "";
+    all_options.forEach((option)=>{
+        let selected = (option === value ? 'selected="selected"' : '');
+        let display_option = JSPLib.utility.displayCase(option);
+        html += `<option ${selected} value="${option}">${display_option}</option>`;
+    });
+    return `
+<div class="${program_shortcut}-options jsplib-options jsplib-menu-item" data-setting="${setting_name}">
+    <h4>${display_name}</h4>
+    <div>
+        <select name="${keyselect_key}" id="${keyselect_key}" data-parent="2">;
+            ${html}
+        </select>
+        ${hint_html}
+    </div>
+</div>
+`;
+}
+
+function FixRenderTextinput(program_shortcut,setting_name,length=20,control=false,hint='',buttons=[]) {
+    let config, setting_key, display_name, item;
+    [config,setting_key,display_name,item] = JSPLib.menu.getProgramValues(program_shortcut,setting_name);
+    let textinput_key = `${program_shortcut}-setting-${setting_key}`;
+    let menu_type = (control ? "control" : "setting");
+    let submit_control = '';
+    if (control && buttons.length) {
+        buttons.forEach((button)=>{
+            submit_control += FixRenderControlButton(program_shortcut,setting_key,button,2);
+        });
+    }
+    let value = '';
+    if (!control) {
+        hint = config[setting_name].hint;
+        value = item;
+    }
+    let hint_html = JSPLib.menu.renderSettingHint(program_shortcut,"block",hint);
+    return `
+<div class="${program_shortcut}-textinput jsplib-textinput jsplib-menu-item" data-setting="${setting_name}">
+    <h4>${display_name}</h4>
+    <div>
+        <input type="text" class="${program_shortcut}-${menu_type} jsplib-${menu_type}" name="${textinput_key}" id="${textinput_key}" value="${value}" size="${length}" autocomplete="off" data-parent="2">
+        ${submit_control}
+        ${hint_html}
+    </div>
+</div>`;
+}
+
+function FixRenderControlButton(program_shortcut,setting_key,button_name,parent_level) {
+    let button_key = `${program_shortcut}-${setting_key}-${button_name}`;
+    let display_name = JSPLib.utility.displayCase(button_name);
+    return `<input type="button" class="jsplib-control ${program_shortcut}-control" name="${button_key}" id="${button_key}" value="${display_name}" data-parent="${parent_level}">`;
+}
 
 //Helper functions
 
@@ -634,6 +752,123 @@ function ValidateGeneral() {
     Danbooru.Utility.notice(Danbooru.VTI.validate_lines.join('<br>'),true);
 }
 
+////Cache editor
+
+//Cache helper functions
+
+async function LoadStorageKeys(program_shortcut) {
+    let program_key = program_shortcut.toUpperCase();
+    let storage_keys = await JSPLib.storage.danboorustorage.keys();
+    Danbooru[program_key].storage_keys.indexed_db = storage_keys.filter((key)=>{return key.match(program_cache_regex);});
+    storage_keys = Object.keys(localStorage);
+    Danbooru[program_key].storage_keys.local_storage = storage_keys.filter((key)=>{return key.startsWith(program_shortcut + "-");});
+}
+
+function GetCacheDatakey(program_shortcut) {
+    let program_key = program_shortcut.toUpperCase();
+    let program_data = Danbooru[program_key];
+    program_data.data_source = $(`#${program_shortcut}-control-data-source`).val();
+    program_data.data_type = $(`#${program_shortcut}-control-data-type`).val();
+    program_data.category = $(`#${program_shortcut}-control-related-tag-type`).val();
+    program_data.data_value = data_key = $(`#${program_shortcut}-setting-data-name`).val().trim().replace(/\s+/g,'_');
+    if (program_data.data_source === "local_storage") {
+        data_key = program_shortcut + '-' + program_data.data_value;
+    } else if (program_data.data_type !== "custom") {
+        let key_modifier = program_data.reverse_data_key[program_data.data_type];
+        data_key = key_modifier + '-' + program_data.data_value;
+    }
+    return data_key;
+}
+
+function CacheSource(program_shortcut) {
+    let program_key = program_shortcut.toUpperCase();
+    let program_data = Danbooru[program_key];
+    return function (req,resp) {
+        let check_key = GetCacheDatakey(program_shortcut);
+        if (program_data.data_source === "indexed_db" && program_data.data_value.length === 0) {
+            resp([]);
+            return;
+        }
+        let source_keys = program_data.storage_keys[program_data.data_source];
+        let available_keys = source_keys.filter((key)=>{return key.startsWith(check_key);});
+        let transformed_keys = available_keys.slice(0,10);
+        if (program_data.data_source === 'local_storage' || program_data.data_type !== "custom") {
+            transformed_keys = transformed_keys.map((key)=>{return key.slice(key.indexOf('-')+1);});
+        }
+        resp(transformed_keys);
+    }
+}
+
+//Cache event functions
+
+function GetCacheClick(program_shortcut) {
+    let program_key = program_shortcut.toUpperCase();
+    $(`#${program_shortcut}-data-name-get`).on(`click.${program_shortcut}`,(e)=>{
+        let storage_key = GetCacheDatakey(program_shortcut);
+        if (Danbooru[program_key].data_source === "local_storage") {
+            let data = JSPLib.storage.getStorageData(storage_key,localStorage);
+            $(`#${program_shortcut}-cache-viewer textarea`).val(JSON.stringify(data,null,2)).prop('readonly',true);
+        } else {
+            JSPLib.storage.retrieveData(storage_key).then((data)=>{
+                $(`#${program_shortcut}-cache-viewer textarea`).val(JSON.stringify(data,null,2)).prop('readonly',false);;
+            });
+        }
+    });
+}
+
+function SaveCacheClick(program_shortcut,validatefunc) {
+    let program_key = program_shortcut.toUpperCase();
+    $(`#-data-name-save`).on(`click.${program_shortcut}`,(e)=>{
+        let storage_key = GetCacheDatakey(program_shortcut);
+        if (Danbooru[program_key].data_source === "local_storage") {
+            Danbooru.Utility.error("Unable to edit program data!");
+        } else {
+            try {
+                var data = JSON.parse($(`#${program_shortcut}-cache-viewer textarea`).val());
+            } catch (e) {
+                Danbooru.Utility.error("Invalid JSON data! Unable to save.");
+                return;
+            }
+            if (validatefunc(storage_key,data)) {
+                JSPLib.storage.saveData(storage_key,data).then(()=>{
+                    Danbooru.Utility.notice("Data was saved.");
+                });
+            } else {
+                Danbooru.Utility.error("Data is invalid! Unable to save.");
+            }
+        }
+    });
+}
+
+function DeleteCacheClick(program_shortcut) {
+    let program_key = program_shortcut.toUpperCase();
+    $(`#${program_shortcut}-data-name-delete`).on(`click.${program_shortcut}`,(e)=>{
+        let storage_key = GetCacheDatakey(program_shortcut);
+        if (Danbooru[program_key].data_source === "local_storage") {
+            if (confirm("This will delete program data that may cause problems until the page can be refreshed.\n\nAre you sure?")) {
+                localStorage.removeItem(storage_key);
+                Danbooru.Utility.notice("Data has been deleted.");
+            }
+        } else {
+            JSPLib.storage.removeData(storage_key).then((data)=>{
+                Danbooru.Utility.notice("Data has been deleted.");
+            });
+        }
+    });
+}
+
+function CacheAutocomplete(program_shortcut) {
+    let program_key = program_shortcut.toUpperCase();
+    $(`#${program_shortcut}-setting-data-name`).autocomplete({
+        minLength: 0,
+        delay: 0,
+        source: CacheSource(program_shortcut),
+        search: function() {
+            $(this).data("uiAutocomplete").menu.bindings = $();
+        }
+    }).off('keydown.Autocomplete.tab');
+}
+
 //Settings functions
 
 function BroadcastVTI(ev) {
@@ -665,9 +900,16 @@ function RenderSettingsMenu() {
     $("#vti-post-edit-settings").append(JSPLib.menu.renderCheckbox("vti",'implication_check_enabled'));
     $("#vti-post-edit-settings").append(JSPLib.menu.renderCheckbox("vti",'upload_check_enabled'));
     $("#vti-cache-settings").append(JSPLib.menu.renderLinkclick("vti",'purge_cache',`Purge cache (<span id="vti-purge-counter">...</span>)`,"Click to purge"));
+    $("#vti-cache-editor-controls").append(RenderKeyselect('vti','data_source',true,'indexed_db',all_source_types,"Indexed DB is <b>Cache Data</b> and is editable, whereas Local Storage is <b>Program Data</b> and is not."));
+    $("#vti-cache-editor-controls").append(RenderKeyselect('vti','data_type',true,'tag',all_data_types,"Only applies to Indexed DB.  Use <b>Custom</b> for querying by keyname."));
+    $("#vti-cache-editor-controls").append(FixRenderTextinput('vti','data_name',20,true,"Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.",['get','save','delete']));
     JSPLib.menu.saveUserSettingsClick('vti','ValidateTagInput');
     JSPLib.menu.resetUserSettingsClick('vti','ValidateTagInput',localstorage_keys,program_reset_keys);
     JSPLib.menu.purgeCacheClick('vti','ValidateTagInput',program_cache_regex,"#vti-purge-counter");
+    GetCacheClick('vti');
+    SaveCacheClick('vti');
+    DeleteCacheClick('vti');
+    CacheAutocomplete('vti');
 }
 
 //Main program
@@ -683,15 +925,20 @@ function main() {
         is_upload: false,
         was_upload: JSPLib.storage.getStorageData('vti-was-upload',sessionStorage,false),
         validate_lines: [],
+        reverse_data_key: reverse_data_key,
+        storage_keys: {indexed_db: [], local_storage: []},
         settings_config: settings_config
     }
     Danbooru.VTI.user_settings = JSPLib.menu.loadUserSettings('vti');
     Danbooru.VTI.channel.onmessage = BroadcastVTI;
     if ($("#c-users #a-edit").length) {
+        JSPLib.validate.dom_output = "#vti-cache-editor-errors";
+        LoadStorageKeys('vti');
         JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
             JSPLib.menu.installSettingsMenu("ValidateTagInput");
             RenderSettingsMenu();
         });
+        JSPLib.utility.setCSSStyle(menu_css,'menu');
         return;
     }
     if ($("#c-uploads #a-new").length) {
