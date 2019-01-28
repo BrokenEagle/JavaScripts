@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      25.5
+// @version      26.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -61,6 +61,44 @@ const settings_config = {
         default: false,
         validate: (data)=>{return validate.isBoolean(data);},
         hint: "Check to turn on."
+    },
+    artist_check_enabled: {
+        default: true,
+        validate: (data)=>{return validate.isBoolean(data);},
+        hint: "Check to turn off."
+    },
+    copyright_check_enabled: {
+        default: true,
+        validate: (data)=>{return validate.isBoolean(data);},
+        hint: "Check to turn off."
+    },
+    general_check_enabled: {
+        default: true,
+        validate: (data)=>{return validate.isBoolean(data);},
+        hint: "Check to turn off."
+    },
+    general_minimum_threshold: {
+        default: 10,
+        parse: parseInt,
+        validate: (data)=>{return Number.isInteger(data) && data > 0;},
+        hint: "The bare minimum number of general tags."
+    },
+    general_low_threshold: {
+        default: 25,
+        parse: parseInt,
+        validate: (data)=>{return Number.isInteger(data) && data >= 0;},
+        hint: "Threshold for a low amount of general tags. Enter 0 to disable this threshold."
+    },
+    general_moderate_threshold: {
+        default: 35,
+        parse: parseInt,
+        validate: (data)=>{return Number.isInteger(data) && data >= 0;},
+        hint: "Threshold for a moderate amount of general tags. Enter 0 to disable this threshold."
+    },
+    single_session_warning: {
+        default: true,
+        validate: (data)=>{return validate.isBoolean(data);},
+        hint: "Pre-edit warnings will only appear once per post per tab session."
     }
 }
 
@@ -93,9 +131,26 @@ const vti_menu = `
         <h2>ValidateTagInput</h2>
         <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/14474" style="color:#0073ff">topic #14474</a>).</p>
     </div>
-    <div id="vti-process-settings" class="jsplib-settings-grouping">
-        <div id="vti-process-message" class="prose">
-            <h4>Process settings</h4>
+    <div id="vti-pre-edit-settings" class="jsplib-settings-grouping">
+        <div id="vti-pre-edit-message" class="prose">
+            <h4>Pre edit settings</h4>
+            <p>These settings affect validations when a post page is initially loaded.</p>
+            <ul>
+                <li><b>Artist check enabled:</b> Does a check for any artist tags or artist entries.
+                    <ul>
+                        <li>Posts with <a href="/wiki_pages/show_or_new?title=artist_request" style="color:#0073ff">artist request</a> or <a href="/wiki_pages/show_or_new?title=official_art" style="color:#0073ff">official art</a> are ignored.</li>
+                        <li>Artist tags on posts get checked for artist entries.</li>
+                    </ul>
+                </li>
+                <li><b>Copyright check enabled:</b> Checks for the existence of any copyright tag or the <a href="/wiki_pages/show_or_new?title=copyright_request" style="color:#0073ff">copyright request</a> tag.</li>
+                <li><b>General check enabled:</b> Performs a general tag count with up to 3 warning thresholds.</li>
+            </ul>
+        </div>
+    </div>
+    <div id="vti-post-edit-settings" class="jsplib-settings-grouping">
+        <div id="vti-post-edit-message" class="prose">
+            <h4>Post edit settings</h4>
+            <p>These settings affect validations when submitting a post edit.</p>
             <ul>
                 <li><b>Alias check enabled:</b> Checks and removes aliased tags from tag add validation.
                     <ul>
@@ -496,6 +551,89 @@ function ValidateUpload() {
     return true;
 }
 
+async function ValidateArtist() {
+    let source_url = $("#post_source").val();
+    let new_artist_source = $.param({artist: {source: source_url}});
+    let artist_names = $(".artist-tag-list .category-1 .wiki-link").map((i,entry)=>{return decodeURI(entry.search.split("=")[1]);}).toArray();
+    if (artist_names.length === 0) {
+        //Validate no artist tag
+        let option_html = "";
+        if (!source_url.match(/https?:\/\//)) {
+            JSPLib.debug.debuglog("ValidateArtist: Not a URL.");
+            return;
+        }
+        let source_resp = await JSPLib.danbooru.submitRequest('source',{url: source_url},{artist: {name: null}});
+        if (source_resp.artist.name === null) {
+            JSPLib.debug.debuglog("ValidateArtist: Not a first-party source.");
+            return;
+        }
+        if (source_resp.artists.length) {
+            let artist_list = source_resp.artists.map((artist)=>{return `<a href="/artists/show_or_new?name=${artist.name}">${artist.name}</a>`;});
+            let artist_html = `There is an available artist tag for this post [${artist_list.join(', ')}]. Open the edit menu and consider adding it.`;
+            Danbooru.VTI.validate_lines.push(artist_html);
+        } else {
+            if (JSPLib.utility.setIntersection(Danbooru.VTI.preedittags,['artist_request','official_art']).length === 0) {
+                option_html = `<br>...or, consider adding at least <a href="/wiki_pages/show_or_new?title=artist_request">artist request</a> or <a href="/wiki_pages/show_or_new?title=official_art">official art</a> as applicable.`;
+            }
+            let artist_html = `Artist tag is required. <a href="/artists/new?${new_artist_source}">Create new artist entry</a>. Ask on the forum if you need naming help.`;
+            Danbooru.VTI.validate_lines = Danbooru.VTI.validate_lines.concat([artist_html + option_html]);
+        }
+    } else {
+        //Validate artists have entry
+        let promise_array = artist_names.map((name)=>{return JSPLib.danbooru.submitRequest('artists',{search: {name_like: name}});});
+        let artists = (await Promise.all(promise_array)).flat();
+        if (artists.includes(null)) {
+            JSPLib.debug.debuglog("ValidateArtist: Bad HTTP request.");
+            return;
+        }
+        let found_artists = JSPLib.utility.getObjectAttributes(artists,'name');
+        let missing_artists = JSPLib.utility.setDifference(artist_names,found_artists);
+        if (missing_artists.length === 0) {
+            JSPLib.debug.debuglog("ValidateArtist: No missing artists.");
+            return;
+        }
+        let artist_lines = artist_names.map((artist)=>{
+            return  `
+            Artist <a href="/artists/show_or_new?name=${artist}">${artist}</a> requires an artist entry.
+            <a href="/artists/new?${new_artist_source}">Create new artist entry</a>`;
+        });
+        Danbooru.VTI.validate_lines = Danbooru.VTI.validate_lines.concat(artist_lines);
+    }
+    Danbooru.Utility.notice(Danbooru.VTI.validate_lines.join('<hr>'),true);
+}
+
+function ValidateCopyright() {
+    let copyright_names_length = $(".copyright-tag-list .category-3 .wiki-link").length;
+    if (copyright_names_length) {
+        JSPLib.debug.debuglog("ValidateCopyright: Has a copyright.");
+        return;
+    } else if (Danbooru.VTI.preedittags.includes('copyright_request')) {
+        JSPLib.debug.debuglog("ValidateCopyright: Has copyright request.");
+        return;
+    }
+    let copyright_html = `Copyright tag is required. Consider adding <a href="/wiki_pages/show_or_new?title=copyright_request">copyright request</a> or <a href="/wiki_pages/show_or_new?title=original">original</a>.`
+    Danbooru.VTI.validate_lines.push(copyright_html);
+    Danbooru.Utility.notice(Danbooru.VTI.validate_lines.join('<br>'),true);
+}
+
+let how_to_tag = `Read <a href="/wiki_pages/show_or_new?title=howto%3atag">howto:tag</a> for guidelines on how to tag.`;
+
+function ValidateGeneral() {
+    let general_tags_length = $(".general-tag-list .category-0 .wiki-link").length;
+    //Have 3 user settings for the following thresholds...maybe
+    if (general_tags_length < Danbooru.VTI.user_settings.general_minimum_threshold) {
+        Danbooru.VTI.validate_lines.push("Posts must have at least 10 general tags. Please add some more tags. " + how_to_tag);
+    } else if (Danbooru.VTI.user_settings.general_low_threshold && general_tags_length < Danbooru.VTI.user_settings.general_low_threshold) {
+        Danbooru.VTI.validate_lines.push("The post has a low amount of general tags. Consider adding more. " + how_to_tag);
+    } else if (Danbooru.VTI.user_settings.general_moderate_threshold && general_tags_length < Danbooru.VTI.user_settings.general_moderate_threshold) {
+        Danbooru.VTI.validate_lines.push("The post has a moderate amount of general tags, but could potentially need more. " + how_to_tag);
+    } else {
+        JSPLib.debug.debuglog("ValidateGeneral: Has enough tags.");
+        return;
+    }
+    Danbooru.Utility.notice(Danbooru.VTI.validate_lines.join('<br>'),true);
+}
+
 //Settings functions
 
 function BroadcastVTI(ev) {
@@ -516,9 +654,16 @@ function BroadcastVTI(ev) {
 
 function RenderSettingsMenu() {
     $("#validate-tag-input").append(vti_menu);
-    $("#vti-process-settings").append(JSPLib.menu.renderCheckbox("vti",'alias_check_enabled'));
-    $("#vti-process-settings").append(JSPLib.menu.renderCheckbox("vti",'implication_check_enabled'));
-    $("#vti-process-settings").append(JSPLib.menu.renderCheckbox("vti",'upload_check_enabled'));
+    $("#vti-pre-edit-settings").append(JSPLib.menu.renderCheckbox("vti",'single_session_warning'));
+    $("#vti-pre-edit-settings").append(JSPLib.menu.renderCheckbox("vti",'artist_check_enabled'));
+    $("#vti-pre-edit-settings").append(JSPLib.menu.renderCheckbox("vti",'copyright_check_enabled'));
+    $("#vti-pre-edit-settings").append(JSPLib.menu.renderCheckbox("vti",'general_check_enabled'));
+    $("#vti-pre-edit-settings").append(JSPLib.menu.renderTextinput("vti",'general_minimum_threshold',10));
+    $("#vti-pre-edit-settings").append(JSPLib.menu.renderTextinput("vti",'general_low_threshold',10));
+    $("#vti-pre-edit-settings").append(JSPLib.menu.renderTextinput("vti",'general_moderate_threshold',10));
+    $("#vti-post-edit-settings").append(JSPLib.menu.renderCheckbox("vti",'alias_check_enabled'));
+    $("#vti-post-edit-settings").append(JSPLib.menu.renderCheckbox("vti",'implication_check_enabled'));
+    $("#vti-post-edit-settings").append(JSPLib.menu.renderCheckbox("vti",'upload_check_enabled'));
     $("#vti-cache-settings").append(JSPLib.menu.renderLinkclick("vti",'purge_cache',`Purge cache (<span id="vti-purge-counter">...</span>)`,"Click to purge"));
     JSPLib.menu.saveUserSettingsClick('vti','ValidateTagInput');
     JSPLib.menu.resetUserSettingsClick('vti','ValidateTagInput',localstorage_keys,program_reset_keys);
@@ -536,6 +681,8 @@ function main() {
         implicationdict: {},
         implications_promise_array: [],
         is_upload: false,
+        was_upload: JSPLib.storage.getStorageData('vti-was-upload',sessionStorage,false),
+        validate_lines: [],
         settings_config: settings_config
     }
     Danbooru.VTI.user_settings = JSPLib.menu.loadUserSettings('vti');
@@ -551,12 +698,30 @@ function main() {
         //Upload tags will always start out blank
         Danbooru.VTI.preedittags = [];
         Danbooru.VTI.is_upload = true;
+        JSPLib.storage.setStorageData('vti-was-upload',true,sessionStorage);
     } else if ($("#c-posts #a-show").length) {
         Danbooru.VTI.preedittags = GetTagList();
         JSPLib.debug.debuglog("Preedit tags:",Danbooru.VTI.preedittags);
         if (Danbooru.VTI.user_settings.implication_check_enabled) {
             QueryTagImplications(Danbooru.VTI.preedittags);
         }
+        let post_id = parseInt(JSPLib.utility.getMeta('post-id'));
+        let seen_post_list = JSPLib.storage.getStorageData('vti-seen-postlist',sessionStorage,[]);
+        if (!Danbooru.VTI.was_upload && (!Danbooru.VTI.user_settings.single_session_warning || !seen_post_list.includes(post_id))) {
+            if (Danbooru.VTI.user_settings.artist_check_enabled) {
+                ValidateArtist();
+            }
+            if (Danbooru.VTI.user_settings.copyright_check_enabled) {
+                ValidateCopyright();
+            }
+            if (Danbooru.VTI.user_settings.general_check_enabled) {
+                ValidateGeneral();
+            }
+        } else {
+            JSPLib.debug.debuglog("Already pre-validated post.");
+        }
+        JSPLib.storage.setStorageData('vti-seen-postlist',seen_post_list.concat(post_id),sessionStorage);
+        JSPLib.storage.setStorageData('vti-was-upload',false,sessionStorage);
     } else if ($("#c-posts #a-index #mode-box").length){
         $(".post-preview a").click(PostModeMenuClick);
     } else {
