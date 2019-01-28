@@ -35,6 +35,9 @@ JSPLib.debug.level = JSPLib.debug.INFO;
 const program_load_required_variables = ['window.jQuery','window.Danbooru'];
 const program_load_required_selectors = ['#page'];
 
+//Main program variable
+var VTI;
+
 //Regex that matches the prefix of all program cache data
 const program_cache_regex = /^(?:ti|ta)-/;
 
@@ -328,7 +331,7 @@ function ValidateProgramData(key,entry) {
     var checkerror;
     switch (key) {
         case 'vti-user-settings':
-            var checkerror = ValidateUserSettings(entry,Danbooru.VTI.settings_config);
+            var checkerror = ValidateUserSettings(entry,VTI.settings_config);
             break;
         case 'vti-prune-expires':
             if (!Number.isInteger(entry)) {
@@ -555,7 +558,7 @@ async function QueryTagAlias(tag) {
         if (data.length) {
             //Alias antecedents are unique, so no need to check the size
             JSPLib.debug.debuglog("Alias:",tag,data[0].consequent_name);
-            Danbooru.VTI.aliastags.push(tag);
+            VTI.aliastags.push(tag);
             consequent = [data[0].consequent_name];
         } else {
             consequent = [];
@@ -565,7 +568,7 @@ async function QueryTagAlias(tag) {
         consequent = storeditem.value;
         if (consequent.length) {
             JSPLib.debug.debuglog("Alias:",tag,consequent[0]);
-            Danbooru.VTI.aliastags.push(tag);
+            VTI.aliastags.push(tag);
         }
     }
 }
@@ -573,14 +576,14 @@ async function QueryTagAlias(tag) {
 //Queries aliases of added tags... can be called multiple times
 const QueryTagAliases = JSPLib.debug.debugAsyncTimer(async (taglist)=>{
     for (let i = 0;i < taglist.length;i++) {
-        if (Danbooru.VTI.seenlist.includes(taglist[i])) {
+        if (VTI.seenlist.includes(taglist[i])) {
             continue;
         }
-        Danbooru.VTI.seenlist.push(taglist[i]);
-        Danbooru.VTI.aliases_promise_array.push(QueryTagAlias(taglist[i]));
+        VTI.seenlist.push(taglist[i]);
+        VTI.aliases_promise_array.push(QueryTagAlias(taglist[i]));
     }
-    await Promise.all(Danbooru.VTI.aliases_promise_array);
-    JSPLib.debug.debuglog("Aliases:",Danbooru.VTI.aliastags);
+    await Promise.all(VTI.aliases_promise_array);
+    JSPLib.debug.debuglog("Aliases:",VTI.aliastags);
 },"QueryTagAliases");
 
 async function QueryTagImplication(tag) {
@@ -590,20 +593,20 @@ async function QueryTagImplication(tag) {
         JSPLib.debug.debuglog("Querying implication:",tag);
         let data = await JSPLib.danbooru.submitRequest('tag_implications',{limit:100,search:{consequent_name:tag,status:'active'}},[],entryname);
         let implications = data.map(entry=>{return entry.antecedent_name;});
-        Danbooru.VTI.implicationdict[tag] = implications;
+        VTI.implicationdict[tag] = implications;
         JSPLib.storage.saveData(entryname, {value: implications, expires: Date.now() + validatetag_expiration_time});
     } else {
-        Danbooru.VTI.implicationdict[tag] = storeditem.value;
+        VTI.implicationdict[tag] = storeditem.value;
     }
 }
 
 //Queries implications of preexisting tags... called once per image
 const QueryTagImplications = JSPLib.debug.debugAsyncTimer(async (taglist)=>{
     for (let i = 0;i < taglist.length;i++) {
-        Danbooru.VTI.implications_promise_array.push(QueryTagImplication(taglist[i]));
+        VTI.implications_promise_array.push(QueryTagImplication(taglist[i]));
     }
-    await Promise.all(Danbooru.VTI.implications_promise_array);
-    JSPLib.debug.debuglog("Implications:",Danbooru.VTI.implicationdict);
+    await Promise.all(VTI.implications_promise_array);
+    JSPLib.debug.debuglog("Implications:",VTI.implicationdict);
 },"QueryTagImplications");
 
 //Click functions
@@ -614,11 +617,11 @@ function PostModeMenuClick(e) {
         $("#validation-input,#warning-bad-upload,#warning-new-tags,#warning-bad-removes").hide();
         let post_id = $(e.target).closest("article").data("id");
         let $post = $("#post_" + post_id);
-        Danbooru.VTI.preedittags = $post.data("tags").split(' ');
-        JSPLib.debug.debuglog("Preedit tags:",Danbooru.VTI.preedittags);
+        VTI.preedittags = $post.data("tags").split(' ');
+        JSPLib.debug.debuglog("Preedit tags:",VTI.preedittags);
         //Wait until the edit box loads before querying implications
-        if (Danbooru.VTI.user_settings.implication_check_enabled) {
-            setTimeout(()=>{QueryTagImplications(Danbooru.VTI.preedittags);},quickedit_wait_time);
+        if (VTI.user_settings.implication_check_enabled) {
+            setTimeout(()=>{QueryTagImplications(VTI.preedittags);},quickedit_wait_time);
         }
         e.preventDefault();
     }
@@ -652,7 +655,7 @@ async function ValidateTagsClick(e) {
                 JSPLib.debug.debuglog("Disabling return key!");
                 $("#upload_tag_string,#post_tag_string").off("keydown.danbooru.submit");
             }
-            if (Danbooru.VTI.is_upload) {
+            if (VTI.is_upload) {
                 //Check for the triggering of Danbooru's client validation (file/source/rating)
                 ReenableSubmitCallback.timer = setInterval(ReenableSubmitCallback,timer_poll_interval);
             } else if ($("#c-posts #a-index").length) {
@@ -704,20 +707,20 @@ function RebindHotkey() {
 const ValidateTagAdds = JSPLib.debug.debugAsyncTimer(async ()=>{
     let postedittags = GetCurrentTags();
     let positivetags = JSPLib.utility.filterRegex(postedittags,negative_regex,true);
-    let useraddtags = JSPLib.utility.setDifference(positivetags,Danbooru.VTI.preedittags);
-    Danbooru.VTI.addedtags = JSPLib.utility.setDifference(useraddtags,GetNegativetags(postedittags));
-    JSPLib.debug.debuglog("Added tags:",Danbooru.VTI.addedtags);
-    if ((Danbooru.VTI.addedtags.length === 0) || IsSkipValidate()) {
+    let useraddtags = JSPLib.utility.setDifference(positivetags,VTI.preedittags);
+    VTI.addedtags = JSPLib.utility.setDifference(useraddtags,GetNegativetags(postedittags));
+    JSPLib.debug.debuglog("Added tags:",VTI.addedtags);
+    if ((VTI.addedtags.length === 0) || IsSkipValidate()) {
         JSPLib.debug.debuglog("Tag Add Validation - Skipping!");
         $("#warning-new-tags").hide();
         return true;
     }
-    let alltags = await JSPLib.danbooru.getAllItems('tags',100,{addons:{search:{name:Danbooru.VTI.addedtags.join(','),hide_empty:'yes'}}});
-    Danbooru.VTI.checktags = alltags.map(entry=>{return entry.name;});
-    let nonexisttags = JSPLib.utility.setDifference(Danbooru.VTI.addedtags,Danbooru.VTI.checktags);
-    if (Danbooru.VTI.user_settings.alias_check_enabled) {
-        await QueryTagAliases(Danbooru.VTI.addedtags);
-        nonexisttags = JSPLib.utility.setDifference(nonexisttags,Danbooru.VTI.aliastags);
+    let alltags = await JSPLib.danbooru.getAllItems('tags',100,{addons:{search:{name:VTI.addedtags.join(','),hide_empty:'yes'}}});
+    VTI.checktags = alltags.map(entry=>{return entry.name;});
+    let nonexisttags = JSPLib.utility.setDifference(VTI.addedtags,VTI.checktags);
+    if (VTI.user_settings.alias_check_enabled) {
+        await QueryTagAliases(VTI.addedtags);
+        nonexisttags = JSPLib.utility.setDifference(nonexisttags,VTI.aliastags);
     }
     if (nonexisttags.length > 0) {
         JSPLib.debug.debuglog("Tag Add Validation - Nonexistant tags!");
@@ -734,14 +737,14 @@ const ValidateTagAdds = JSPLib.debug.debugAsyncTimer(async ()=>{
 },"ValidateTagAdds");
 
 const ValidateTagRemoves = JSPLib.debug.debugAsyncTimer(async ()=>{
-    if (!Danbooru.VTI.user_settings.implication_check_enabled || IsSkipValidate()) {
+    if (!VTI.user_settings.implication_check_enabled || IsSkipValidate()) {
         JSPLib.debug.debuglog("Tag Remove Validation - Skipping!");
         $("#warning-bad-removes").hide();
         return true;
     }
-    await Promise.all(Danbooru.VTI.implications_promise_array);
+    await Promise.all(VTI.implications_promise_array);
     let postedittags = TransformTypetags(GetCurrentTags());
-    let deletedtags = JSPLib.utility.setDifference(Danbooru.VTI.preedittags,postedittags);
+    let deletedtags = JSPLib.utility.setDifference(VTI.preedittags,postedittags);
     let negatedtags = JSPLib.utility.setIntersection(GetNegativetags(postedittags),postedittags);
     let removedtags = deletedtags.concat(negatedtags);
     let finaltags = JSPLib.utility.setDifference(postedittags,removedtags);
@@ -749,7 +752,7 @@ const ValidateTagRemoves = JSPLib.debug.debugAsyncTimer(async ()=>{
     JSPLib.debug.debuglog("Removed tags:",deletedtags,negatedtags);
     let allrelations = [];
     $.each(removedtags,(i,tag)=>{
-        let badremoves = JSPLib.utility.setIntersection(GetAllRelations(tag,Danbooru.VTI.implicationdict),finaltags);
+        let badremoves = JSPLib.utility.setIntersection(GetAllRelations(tag,VTI.implicationdict),finaltags);
         if (badremoves.length) {
             allrelations.push(badremoves.toString() + ' -> ' + tag);
         }
@@ -771,7 +774,7 @@ const ValidateTagRemoves = JSPLib.debug.debugAsyncTimer(async ()=>{
 },"ValidateTagRemoves");
 
 function ValidateUpload() {
-    if (!Danbooru.VTI.user_settings.upload_check_enabled || !Danbooru.VTI.is_upload || IsSkipValidate()) {
+    if (!VTI.user_settings.upload_check_enabled || !VTI.is_upload || IsSkipValidate()) {
         JSPLib.debug.debuglog("Upload Validation - Skipping!");
         $("#warning-bad-upload").hide();
         return true;
@@ -816,13 +819,13 @@ async function ValidateArtist() {
         if (source_resp.artists.length) {
             let artist_list = source_resp.artists.map((artist)=>{return `<a href="/artists/show_or_new?name=${artist.name}">${artist.name}</a>`;});
             let artist_html = `There is an available artist tag for this post [${artist_list.join(', ')}]. Open the edit menu and consider adding it.`;
-            Danbooru.VTI.validate_lines.push(artist_html);
+            VTI.validate_lines.push(artist_html);
         } else {
-            if (JSPLib.utility.setIntersection(Danbooru.VTI.preedittags,['artist_request','official_art']).length === 0) {
+            if (JSPLib.utility.setIntersection(VTI.preedittags,['artist_request','official_art']).length === 0) {
                 option_html = `<br>...or, consider adding at least <a href="/wiki_pages/show_or_new?title=artist_request">artist request</a> or <a href="/wiki_pages/show_or_new?title=official_art">official art</a> as applicable.`;
             }
             let artist_html = `Artist tag is required. <a href="/artists/new?${new_artist_source}">Create new artist entry</a>. Ask on the forum if you need naming help.`;
-            Danbooru.VTI.validate_lines = Danbooru.VTI.validate_lines.concat([artist_html + option_html]);
+            VTI.validate_lines = VTI.validate_lines.concat([artist_html + option_html]);
         }
     } else {
         //Validate artists have entry
@@ -843,9 +846,9 @@ async function ValidateArtist() {
             Artist <a href="/artists/show_or_new?name=${artist}">${artist}</a> requires an artist entry.
             <a href="/artists/new?${new_artist_source}">Create new artist entry</a>`;
         });
-        Danbooru.VTI.validate_lines = Danbooru.VTI.validate_lines.concat(artist_lines);
+        VTI.validate_lines = VTI.validate_lines.concat(artist_lines);
     }
-    Danbooru.Utility.notice(Danbooru.VTI.validate_lines.join('<hr>'),true);
+    Danbooru.Utility.notice(VTI.validate_lines.join('<hr>'),true);
 }
 
 function ValidateCopyright() {
@@ -853,13 +856,13 @@ function ValidateCopyright() {
     if (copyright_names_length) {
         JSPLib.debug.debuglog("ValidateCopyright: Has a copyright.");
         return;
-    } else if (Danbooru.VTI.preedittags.includes('copyright_request')) {
+    } else if (VTI.preedittags.includes('copyright_request')) {
         JSPLib.debug.debuglog("ValidateCopyright: Has copyright request.");
         return;
     }
     let copyright_html = `Copyright tag is required. Consider adding <a href="/wiki_pages/show_or_new?title=copyright_request">copyright request</a> or <a href="/wiki_pages/show_or_new?title=original">original</a>.`
-    Danbooru.VTI.validate_lines.push(copyright_html);
-    Danbooru.Utility.notice(Danbooru.VTI.validate_lines.join('<br>'),true);
+    VTI.validate_lines.push(copyright_html);
+    Danbooru.Utility.notice(VTI.validate_lines.join('<br>'),true);
 }
 
 let how_to_tag = `Read <a href="/wiki_pages/show_or_new?title=howto%3atag">howto:tag</a> for how to tag.`;
@@ -867,17 +870,17 @@ let how_to_tag = `Read <a href="/wiki_pages/show_or_new?title=howto%3atag">howto
 function ValidateGeneral() {
     let general_tags_length = $(".general-tag-list .category-0 .wiki-link").length;
     //Have 3 user settings for the following thresholds...maybe
-    if (general_tags_length < Danbooru.VTI.user_settings.general_minimum_threshold) {
-        Danbooru.VTI.validate_lines.push("Posts must have at least 10 general tags. Please add some more tags. " + how_to_tag);
-    } else if (Danbooru.VTI.user_settings.general_low_threshold && general_tags_length < Danbooru.VTI.user_settings.general_low_threshold) {
-        Danbooru.VTI.validate_lines.push("The post has a low amount of general tags. Consider adding more. " + how_to_tag);
-    } else if (Danbooru.VTI.user_settings.general_moderate_threshold && general_tags_length < Danbooru.VTI.user_settings.general_moderate_threshold) {
-        Danbooru.VTI.validate_lines.push("The post has a moderate amount of general tags, but could potentially need more. " + how_to_tag);
+    if (general_tags_length < VTI.user_settings.general_minimum_threshold) {
+        VTI.validate_lines.push("Posts must have at least 10 general tags. Please add some more tags. " + how_to_tag);
+    } else if (VTI.user_settings.general_low_threshold && general_tags_length < VTI.user_settings.general_low_threshold) {
+        VTI.validate_lines.push("The post has a low amount of general tags. Consider adding more. " + how_to_tag);
+    } else if (VTI.user_settings.general_moderate_threshold && general_tags_length < VTI.user_settings.general_moderate_threshold) {
+        VTI.validate_lines.push("The post has a moderate amount of general tags, but could potentially need more. " + how_to_tag);
     } else {
         JSPLib.debug.debuglog("ValidateGeneral: Has enough tags.");
         return;
     }
-    Danbooru.Utility.notice(Danbooru.VTI.validate_lines.join('<br>'),true);
+    Danbooru.Utility.notice(VTI.validate_lines.join('<br>'),true);
 }
 
 ////Cache editor
@@ -1012,9 +1015,9 @@ function CacheAutocomplete(program_shortcut) {
 function BroadcastVTI(ev) {
     JSPLib.debug.debuglog(`BroadcastChannel (${ev.data.type}):`,ev.data);
     if (ev.data.type === "settings") {
-        Danbooru.VTI.user_settings = ev.data.user_settings;
+        VTI.user_settings = ev.data.user_settings;
     } else if (ev.data.type === "reset") {
-        Danbooru.VTI.user_settings = ev.data.user_settings;
+        VTI.user_settings = ev.data.user_settings;
         Object.assign(Danbooru.VTI,program_reset_keys);
     } else if (ev.data.type === "purge") {
         $.each(sessionStorage,(key)=>{
@@ -1053,7 +1056,7 @@ function RenderSettingsMenu() {
 //Main program
 
 function main() {
-    Danbooru.VTI = {
+    Danbooru.VTI = VTI = {
         channel: new BroadcastChannel('ValidateTagInput'),
         aliastags: [],
         seenlist: [],
@@ -1067,8 +1070,8 @@ function main() {
         storage_keys: {indexed_db: [], local_storage: []},
         settings_config: settings_config
     }
-    Danbooru.VTI.user_settings = JSPLib.menu.loadUserSettings('vti');
-    Danbooru.VTI.channel.onmessage = BroadcastVTI;
+    VTI.user_settings = JSPLib.menu.loadUserSettings('vti');
+    VTI.channel.onmessage = BroadcastVTI;
     if ($("#c-users #a-edit").length) {
         JSPLib.validate.dom_output = "#vti-cache-editor-errors";
         LoadStorageKeys('vti');
@@ -1081,25 +1084,25 @@ function main() {
     }
     if ($("#c-uploads #a-new").length) {
         //Upload tags will always start out blank
-        Danbooru.VTI.preedittags = [];
-        Danbooru.VTI.is_upload = true;
+        VTI.preedittags = [];
+        VTI.is_upload = true;
         JSPLib.storage.setStorageData('vti-was-upload',true,sessionStorage);
     } else if ($("#c-posts #a-show").length) {
-        Danbooru.VTI.preedittags = GetTagList();
-        JSPLib.debug.debuglog("Preedit tags:",Danbooru.VTI.preedittags);
-        if (Danbooru.VTI.user_settings.implication_check_enabled) {
-            QueryTagImplications(Danbooru.VTI.preedittags);
+        VTI.preedittags = GetTagList();
+        JSPLib.debug.debuglog("Preedit tags:",VTI.preedittags);
+        if (VTI.user_settings.implication_check_enabled) {
+            QueryTagImplications(VTI.preedittags);
         }
         let post_id = parseInt(JSPLib.utility.getMeta('post-id'));
         let seen_post_list = JSPLib.storage.getStorageData('vti-seen-postlist',sessionStorage,[]);
-        if (!Danbooru.VTI.was_upload && (!Danbooru.VTI.user_settings.single_session_warning || !seen_post_list.includes(post_id))) {
-            if (Danbooru.VTI.user_settings.artist_check_enabled) {
+        if (!VTI.was_upload && (!VTI.user_settings.single_session_warning || !seen_post_list.includes(post_id))) {
+            if (VTI.user_settings.artist_check_enabled) {
                 ValidateArtist();
             }
-            if (Danbooru.VTI.user_settings.copyright_check_enabled) {
+            if (VTI.user_settings.copyright_check_enabled) {
                 ValidateCopyright();
             }
-            if (Danbooru.VTI.user_settings.general_check_enabled) {
+            if (VTI.user_settings.general_check_enabled) {
                 ValidateGeneral();
             }
         } else {
