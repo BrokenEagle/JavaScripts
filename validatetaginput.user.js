@@ -841,7 +841,7 @@ async function ValidateArtist() {
     let source_url = $("#post_source").val();
     let new_artist_source = $.param({artist: {source: source_url}});
     let artist_names = $(".artist-tag-list .category-1 .wiki-link").map((i,entry)=>{return decodeURI(entry.search.split("=")[1]);}).toArray();
-    if (artist_names.length === 0) {
+    if (artist_names.length === 0 && !VTI.preedittags.includes('official_art')) {
         //Validate no artist tag
         let option_html = "";
         if (!source_url.match(/https?:\/\//)) {
@@ -858,7 +858,7 @@ async function ValidateArtist() {
             let artist_html = `There is an available artist tag for this post [${artist_list.join(', ')}]. Open the edit menu and consider adding it.`;
             VTI.validate_lines.push(artist_html);
         } else {
-            if (JSPLib.utility.setIntersection(VTI.preedittags,['artist_request','official_art']).length === 0) {
+            if (!VTI.preedittags.includes('artist_request')) {
                 option_html = `<br>...or, consider adding at least <a href="/wiki_pages/show_or_new?title=artist_request">artist request</a> or <a href="/wiki_pages/show_or_new?title=official_art">official art</a> as applicable.`;
             }
             let artist_html = `Artist tag is required. <a href="/artists/new?${new_artist_source}">Create new artist entry</a>. Ask on the forum if you need naming help.`;
