@@ -341,7 +341,7 @@ function ValidateProgramData(key,entry) {
         default:
             checkerror = ["Not a valid program data key."];
     }
-    if (checkerror) {
+    if (checkerror.length) {
         OutputValidateError(key,checkerror);
         return false;
     }
@@ -364,7 +364,6 @@ function RenderValidateError(key,error_message) {
 
 function HideValidateError() {
     JSPLib.validate.dom_output && $(JSPLib.validate.dom_output).hide();
-    $("#close-notice-link").click();
 }
 
 function FixValidateArrayValues(key,array,validator) {
@@ -484,6 +483,44 @@ function ValidateUserSettings(settings,config) {
         }
     }
     return error_messages;
+}
+
+function UpdateUserSettings(program_shortcut) {
+    let program_key = program_shortcut.toUpperCase();
+    let settings = Danbooru[program_key].user_settings;
+    jQuery(`#${program_shortcut}-settings .${program_shortcut}-setting[id]`).each((i,entry)=>{
+        let $input = jQuery(entry);
+        let parent_level = $input.data('parent');
+        let container = JSPLib.utility.getNthParent(entry,parent_level);
+        let setting_name = jQuery(container).data('setting');
+        if (entry.type === "checkbox" || entry.type === "radio") {
+            let selector = $input.data('selector');
+            if (selector) {
+                $input.prop('checked', JSPLib.menu.isSettingEnabled(program_key,setting_name,selector));
+                $input.checkboxradio("refresh");
+            } else {
+                $input.prop('checked', settings[setting_name]);
+            }
+        } else if (entry.type === "text") {
+             $input.val(settings[setting_name]);
+        } else if (entry.type === "hidden") {
+            if (!$(container).hasClass("sorted")) {
+                $("ul",container).sortable("destroy");
+                let sortlist = $("li",container).detach();
+                sortlist.sort((a, b)=>{
+                    let sort_a = $("input",a).data('sort');
+                    let sort_b = $("input",b).data('sort');
+                    return settings[setting_name].indexOf(sort_a) - settings[setting_name].indexOf(sort_b);
+                });
+                sortlist.each((i,entry)=>{
+                    $("ul",container).append(entry);
+                });
+                $("ul",container).sortable();
+                $(container).addClass("sorted");
+            }
+        }
+    });
+    $(".jsplib-sortlist").removeClass("sorted");
 }
 
 //Helper functions
@@ -869,7 +906,6 @@ let how_to_tag = `Read <a href="/wiki_pages/show_or_new?title=howto%3atag">howto
 
 function ValidateGeneral() {
     let general_tags_length = $(".general-tag-list .category-0 .wiki-link").length;
-    //Have 3 user settings for the following thresholds...maybe
     if (general_tags_length < VTI.user_settings.general_minimum_threshold) {
         VTI.validate_lines.push("Posts must have at least 10 general tags. Please add some more tags. " + how_to_tag);
     } else if (VTI.user_settings.general_low_threshold && general_tags_length < VTI.user_settings.general_low_threshold) {
@@ -945,6 +981,7 @@ function GetCacheClick(program_shortcut) {
             });
         }
         HideValidateError();
+        $("#close-notice-link").click();
     });
 }
 
@@ -963,6 +1000,10 @@ function SaveCacheClick(program_shortcut,localvalidator,indexvalidator) {
                 JSPLib.storage.setStorageData(storage_key,data,localStorage);
                 Danbooru.Utility.notice("Data was saved.");
                 HideValidateError();
+                if (storage_key === `${program_shortcut}-user-settings`) {
+                    VTI.user_settings = data;
+                    UpdateUserSettings(program_shortcut);
+                }
             } else {
                 Danbooru.Utility.error("Data is invalid! Unable to save.");
             }
@@ -1014,17 +1055,21 @@ function CacheAutocomplete(program_shortcut) {
 
 function BroadcastVTI(ev) {
     JSPLib.debug.debuglog(`BroadcastChannel (${ev.data.type}):`,ev.data);
-    if (ev.data.type === "settings") {
-        VTI.user_settings = ev.data.user_settings;
-    } else if (ev.data.type === "reset") {
-        VTI.user_settings = ev.data.user_settings;
-        Object.assign(Danbooru.VTI,program_reset_keys);
-    } else if (ev.data.type === "purge") {
-        $.each(sessionStorage,(key)=>{
-            if (key.match(program_cache_regex)) {
-                sessionStorage.removeItem(key);
-            }
-        });
+    switch (ev.data.type) {
+        case "reset":
+            Object.assign(VTI,program_reset_keys);
+        case "settings":
+            VTI.user_settings = ev.data.user_settings;
+            VTI.is_setting_menu && UpdateUserSettings('vti');
+            break;
+        case "purge":
+            $.each(sessionStorage,(key)=>{
+                if (key.match(program_cache_regex)) {
+                    sessionStorage.removeItem(key);
+                }
+            });
+        default:
+            //do nothing
     }
 }
 
@@ -1063,16 +1108,17 @@ function main() {
         aliases_promise_array: [],
         implicationdict: {},
         implications_promise_array: [],
-        is_upload: false,
+        is_upload: Boolean($("#c-uploads #a-new").length),
         was_upload: JSPLib.storage.getStorageData('vti-was-upload',sessionStorage,false),
         validate_lines: [],
         reverse_data_key: reverse_data_key,
         storage_keys: {indexed_db: [], local_storage: []},
+        is_setting_menu: Boolean($("#c-users #a-edit").length),
         settings_config: settings_config
     }
     VTI.user_settings = JSPLib.menu.loadUserSettings('vti');
     VTI.channel.onmessage = BroadcastVTI;
-    if ($("#c-users #a-edit").length) {
+    if (VTI.is_setting_menu) {
         JSPLib.validate.dom_output = "#vti-cache-editor-errors";
         LoadStorageKeys('vti');
         JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
@@ -1082,10 +1128,9 @@ function main() {
         JSPLib.utility.setCSSStyle(menu_css,'menu');
         return;
     }
-    if ($("#c-uploads #a-new").length) {
+    if (VTI.is_upload) {
         //Upload tags will always start out blank
         VTI.preedittags = [];
-        VTI.is_upload = true;
         JSPLib.storage.setStorageData('vti-was-upload',true,sessionStorage);
     } else if ($("#c-posts #a-show").length) {
         VTI.preedittags = GetTagList();
