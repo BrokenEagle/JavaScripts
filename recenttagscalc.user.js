@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RecentTagsCalc
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.0
+// @version      4.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Use different mechanism to calculate RecentTags
 // @author       BrokenEagle
@@ -463,6 +463,44 @@ async function BatchStorageCheck(keyarray,validator,expires) {
     return missing_array;
 }
 
+function UpdateUserSettings(program_shortcut) {
+    let program_key = program_shortcut.toUpperCase();
+    let settings = Danbooru[program_key].user_settings;
+    jQuery(`#${program_shortcut}-settings .${program_shortcut}-setting[id]`).each((i,entry)=>{
+        let $input = jQuery(entry);
+        let parent_level = $input.data('parent');
+        let container = JSPLib.utility.getNthParent(entry,parent_level);
+        let setting_name = jQuery(container).data('setting');
+        if (entry.type === "checkbox" || entry.type === "radio") {
+            let selector = $input.data('selector');
+            if (selector) {
+                $input.prop('checked', JSPLib.menu.isSettingEnabled(program_key,setting_name,selector));
+                $input.checkboxradio("refresh");
+            } else {
+                $input.prop('checked', settings[setting_name]);
+            }
+        } else if (entry.type === "text") {
+             $input.val(settings[setting_name]);
+        } else if (entry.type === "hidden") {
+            if (!$(container).hasClass("sorted")) {
+                $("ul",container).sortable("destroy");
+                let sortlist = $("li",container).detach();
+                sortlist.sort((a, b)=>{
+                    let sort_a = $("input",a).data('sort');
+                    let sort_b = $("input",b).data('sort');
+                    return settings[setting_name].indexOf(sort_a) - settings[setting_name].indexOf(sort_b);
+                });
+                sortlist.each((i,entry)=>{
+                    $("ul",container).append(entry);
+                });
+                $("ul",container).sortable();
+                $(container).addClass("sorted");
+            }
+        }
+    });
+    $(".jsplib-sortlist").removeClass("sorted");
+}
+
 //Auxiliary functions
 
 function GetTagList() {
@@ -856,17 +894,18 @@ function BroadcastRTC(ev) {
     switch (ev.data.type) {
         case "reload_recent":
             RTC.recent_tags = ev.data.recent_tags;
-            RecheckAndDisplay("recent");
+            !RTC.is_setting_menu && RecheckAndDisplay("recent");
             break;
         case "reload_frequent":
             RTC.frequent_tags = ev.data.frequent_tags;
-            RecheckAndDisplay("frequent");
+            !RTC.is_setting_menu && RecheckAndDisplay("frequent");
             break;
         case "reset":
             Object.assign(RTC,program_reset_keys);
         case "settings":
             RTC.user_settings = ev.data.user_settings;
             RTC.tag_order = GetTagOrderType();
+            RTC.is_setting_menu && UpdateUserSettings('rtc');
             break;
         case "purge":
             $.each(sessionStorage,(key)=>{
@@ -922,13 +961,14 @@ function RenderSettingsMenu() {
 function main() {
     Danbooru.RTC = RTC = {
         userid: JSPLib.utility.getMeta("current-user-id"),
+        is_setting_menu: Boolean($("#c-users #a-edit").length),
         settings_config: settings_config,
         channel: new BroadcastChannel('RecentTagsCalc'),
         tag_data: {}
     };
     RTC.user_settings = JSPLib.menu.loadUserSettings('rtc');
     RTC.channel.onmessage = BroadcastRTC;
-    if ($("#c-users #a-edit").length) {
+    if (RTC.is_setting_menu) {
         JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
             JSPLib.menu.installSettingsMenu("RecentTagsCalc");
             RenderSettingsMenu();
