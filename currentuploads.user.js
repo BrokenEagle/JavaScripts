@@ -228,10 +228,8 @@ const program_css = `
 }
 #count-table .cu-manual,
 #count-table .cu-limited {
-    border-left: 1px solid #CCC;
-}
-#count-table .cu-manual {
     background-color: LightCyan;
+    border-left: 1px solid #CCC;
 }
 #count-copyrights {
     margin: 1em;
@@ -385,15 +383,21 @@ const period_info = {
     },
     points: {
         w: 7,
-        mo: 30
+        mo: 30,
+        y: 12,
+        at: 0
     },
     xlabel: {
         w: "Days ago",
-        mo: "Days ago"
+        mo: "Days ago",
+        y: "Months ago",
+        at: "Months ago"
     },
     divisor: {
         w: JSPLib.utility.one_day,
-        mo: JSPLib.utility.one_day
+        mo: JSPLib.utility.one_day,
+        y: JSPLib.utility.one_month,
+        at: JSPLib.utility.one_month,
     }
 }
 
@@ -456,6 +460,7 @@ const validation_constraints = {
         JSPLib.validate.integer_constraints     //CREATED
     ],
     postmetric: {
+        chart_data: JSPLib.validate.hash_constraints,
         score: JSPLib.validate.hash_constraints,
         upscore: JSPLib.validate.hash_constraints,
         downscore: JSPLib.validate.hash_constraints,
@@ -471,6 +476,19 @@ const validation_constraints = {
         stddev: JSPLib.validate.number_constraints,
         outlier: JSPLib.validate.integer_constraints,
         adjusted: JSPLib.validate.number_constraints
+    },
+    chartentry: {
+        score: JSPLib.validate.array_constraints,
+        upscore: JSPLib.validate.array_constraints,
+        downscore: JSPLib.validate.array_constraints,
+        favcount: JSPLib.validate.array_constraints,
+        tagcount: JSPLib.validate.array_constraints,
+        gentags: JSPLib.validate.array_constraints,
+        uploads: JSPLib.validate.array_constraints
+    },
+    chartdata: {
+        x: JSPLib.validate.integer_constraints,
+        y: JSPLib.validate.number_constraints
     }
 };
 
@@ -509,10 +527,10 @@ function ValidateEntry(key,entry) {
         return false;
     }
     if (validation_key === 'postentries') {
-        return ValidatePostentries(key,entry.value);
+        return ValidatePostentries(key+'.value',entry.value);
     }
     if (validation_key === 'statentries') {
-        return ValidateStatEntries(key,entry.value);
+        return ValidateStatEntries(key+'.value',entry.value);
     }
     return true;
 }
@@ -523,7 +541,7 @@ function ValidatePostentries(key,postentries) {
         if (!JSPLib.validate.validateIsArray(value_key, postentries[i], validation_constraints.postentry.length)) {
             return false;
         }
-        check = validate(postentries[i],validation_constraints.postentry);
+        let check = validate(postentries[i],validation_constraints.postentry);
         if (check !== undefined) {
             JSPLib.validate.printValidateError(value_key,check);
             return false;
@@ -533,7 +551,7 @@ function ValidatePostentries(key,postentries) {
 }
 
 function ValidateStatEntries(key,statentries) {
-    check = validate(statentries,validation_constraints.postmetric);
+    let check = validate(statentries,validation_constraints.postmetric);
     if (check !== undefined) {
         JSPLib.validate.printValidateError(key,check);
         return false;
@@ -552,12 +570,33 @@ function ValidateStatEntries(key,statentries) {
             }
         }
     }
+    return ValidateChartEntries(key+'.chart_data',statentries.chart_data);
+}
+
+function ValidateChartEntries(key,chartentries) {
+    let check = validate(chartentries,validation_constraints.chartentry);
+    if (check !== undefined) {
+        JSPLib.validate.printValidateError(key,check);
+        return false;
+    }
+    for (let chart_key in chartentries) {
+        for (let i = 0; i < chartentries[chart_key].length; i ++ ) {
+            check = validate(chartentries[chart_key][i],validation_constraints.chartdata);
+            if (check !== undefined) {
+                JSPLib.validate.printValidateError(`${key}.${chart_key}[${i}]`,check);
+                return false;
+            }
+        }
+    }
     return true;
 }
 
 //Library functions
 
-//// NONE
+//Prevents the same object from filling up the array
+function BetterArrayFill(length,stringified_json) {
+    return Array(length).fill().map(()=>{return JSON.parse(stringified_json);});
+}
 
 //Table functions
 
@@ -832,82 +871,46 @@ function GetPostStatistics(posts,attribute) {
     };
 }
 
-function RenderChartClick() {
-    $("#count-table .cu-manual").click((e)=>{
-        if (e.target.tagName !== "TD" || !chart_metrics.includes(Danbooru.CU.current_metric)) {
-            return;
+function AssignPostIndexes(period,posts,time_offset) {
+    let points = period_info.points[period];
+    //Have to do it this way to avoid getting the same object
+    let periods = BetterArrayFill(points, "[]");
+    posts.forEach((post)=>{
+        let index = Math.floor((Date.now() - post.created - time_offset)/(period_info.divisor[period]));
+        index = (points ? Math.min(points-1,index) : index);
+        index = Math.max(0,index);
+        if (index >= periods.length) {
+            periods = periods.concat(BetterArrayFill(index + 1 - periods.length, "[]"));
         }
-        let period = $(e.target).data('period');
-        let longname = period_info.longname[period];
-        let points = period_info.points[period];
-        let data = JSPLib.storage.getStorageData(`${longname}-${Danbooru.CU.counttype}-${Danbooru.CU.current_username}`,sessionStorage);
-        if (!data || data.value.length === 0) {
-            Danbooru.Utility.notice(`${period_info.header[period]} period not populated! Click the period header to activate the chart.`);
-            return;
-        }
-        let time_offset = Date.now() - (data.expires - period_info.uploadexpires[period]);
-        let posts = PostDecompressData(data.value);
-        //Have to do it this way to avoid getting the same object
-        let periods = Array(points).fill().map(()=>{return [];});
-        posts.forEach((post)=>{
-            let index = Math.max(0,Math.min(points-1,Math.floor((Date.now() - post.created - time_offset)/(period_info.divisor[period]))));
-            periods[index].push(post);
-        })
-        let period_averages = [];
-        let period_uploads = [];
-        for (let index in periods) {
-            if (!periods[index].length) continue;
-            let data_point = {
-                x: parseInt(index),
-                y: JSPLib.statistics.average(periods[index].map((post)=>{return post[Danbooru.CU.current_metric];}))
-            };
-            period_averages.push(data_point);
-            data_point = {
-                x: parseInt(index),
-                y: periods[index].length
-            };
-            period_uploads.push(data_point);
-        }
-        Danbooru.CU.period_averages = period_averages;
-        Danbooru.CU.period_uploads = period_uploads;
-        let metric_display = JSPLib.utility.displayCase(Danbooru.CU.current_metric);
-        $("#count-chart").show();
-        var chart = new CanvasJS.Chart("count-chart",{
-            title:{
-                text: `${JSPLib.utility.displayCase(longname)} uploads - Average post ${Danbooru.CU.current_metric}`
-            },
-            axisX: {
-                title: period_info.xlabel[period],
-                minimum: 0,
-                maximum: points - 1
-            },
-            axisY: {
-                title: `${metric_display}`
-            },
-            axisY2:{
-                title: "Uploads",
-            },
-            legend: {
-                horizontalAlign: "right", // left, center ,right 
-                verticalAlign: "bottom",  // top, center, bottom
-            },
-            data: [{
-                showInLegend: true,
-                legendText: `${metric_display}`,
-                type: "line",
-                dataPoints: period_averages
-            },
-            {
-                showInLegend: true,
-                legendText: "Uploads",
-                type: "line",
-                axisYType: "secondary",
-                dataPoints: period_uploads
-            }]
-        });
-        chart.render();
-        $(".canvasjs-chart-credit").css('top',"400px");
+        periods[index].push(post);
     });
+    return periods;
+}
+
+function GetPeriodAverages(indexed_posts,metric) {
+    let period_averages = [];
+    for (let index in indexed_posts) {
+        if (!indexed_posts[index].length) continue;
+        let data_point = {
+            x: parseInt(index),
+            y: JSPLib.utility.setPrecision(JSPLib.statistics.average(JSPLib.utility.getObjectAttributes(indexed_posts[index],metric)),2)
+        };
+        period_averages.push(data_point);
+    }
+    return period_averages;
+}
+
+function GetPeriodPosts(indexed_posts) {
+    let period_uploads = [];
+    for (let index in indexed_posts) {
+        if (!indexed_posts[index].length) continue;
+        data_point = {
+            x: parseInt(index),
+            y: indexed_posts[index].length
+        };
+        period_uploads.push(data_point);
+    }
+    return period_uploads;
 }
 
 //Helper functions
@@ -962,6 +965,12 @@ function CheckCopyrightVelocity(tag) {
     var week_velocity = (JSPLib.utility.one_week) / (weekuploads.value | 1); //Milliseconds per upload
     var adjusted_poll_interval = Math.min(week_velocity, JSPLib.utility.one_day); //Max wait time is 1 day
     return Date.now() > day_gettime + adjusted_poll_interval;
+}
+
+async function MergeCopyrightTags(user_copytags) {
+    let query_implications = JSPLib.utility.setDifference(user_copytags,Object.keys(Danbooru.CU.reverse_implications));
+    Object.assign(Danbooru.CU.reverse_implications,...(await Promise.all(query_implications.map(async (key)=>{return {[key]:await GetReverseTagImplication(key)};}))));
+    return user_copytags.filter(value=>{return Danbooru.CU.reverse_implications[value] === 0;});
 }
 
 function IsMissingTag(tag) {
@@ -1023,6 +1032,63 @@ async function CheckPeriodUploads() {
         var check = await JSPLib.storage.checkLocalDB(`${period_name}-${Danbooru.CU.counttype}-${Danbooru.CU.current_username}`,ValidateEntry,max_expires);
         Danbooru.CU.period_available[Danbooru.CU.usertag][Danbooru.CU.current_username][period] = Boolean(check);
     }
+}
+
+async function PopulateTable() {
+    //Prevent function from being reentrant while processing uploads
+    PopulateTable.is_started = true;
+    var post_data = [];
+    if (Danbooru.CU.checked_users[Danbooru.CU.usertag][Danbooru.CU.current_username] === undefined) {
+        TableMessage(`<div id="empty-uploads">Loading data... (<span id="loading-counter">...</span>)</div>`);
+        post_data = await ProcessUploads(Danbooru.CU.current_username);
+        Danbooru.CU.checked_users[Danbooru.CU.usertag][Danbooru.CU.current_username] = post_data.length;
+    }
+    let is_override = $("#count_override_select")[0].checked;
+    if (is_override || Danbooru.CU.checked_users[Danbooru.CU.usertag][Danbooru.CU.current_username]) {
+        Danbooru.CU.active_copytags = JSPLib.utility.dataCopy(Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username].daily);
+        await CheckPeriodUploads(Danbooru.CU.current_username);
+        InitializeControls();
+        InitializeTable();
+    } else {
+        TableMessage(`<div id="empty-uploads">${Danbooru.CU.empty_uploads_message}</div>`);
+    }
+    PopulateTable.is_started = false;
+}
+
+function InitializeControls() {
+    //Render the controls only once when the table is first opened
+    if ($("#count-controls").html() === "") {
+        $('.cu-program-checkbox').checkboxradio();
+        $("#count-controls").html(RenderAllTooltipControls());
+        $("#count-copyrights-controls").html(RenderCopyrightControls());
+        SetTooltipChangeClick();
+        SetCopyrightPeriodClick();
+        SetToggleCopyrightsSectionClick();
+        SetCheckUserClick();
+        SetRefreshUserClick();
+        SetAddCopyrightClick();
+    }
+}
+
+function InitializeTable() {
+    $("#count-header").html(AddTable(RenderHeader(),'class="striped"'));
+    $("#count-table").html(AddTable(RenderBody(),'class="striped"'));
+    $("#count-order").html(RenderOrderMessage("d",0));
+    SetTooltipHover();
+    GetPeriodClick();
+    SortTableClick();
+    RenderChartClick();
+    $("#count-controls,#count-copyrights,#count-header").show();
+    $(`.cu-select-tooltip[data-type="${Danbooru.CU.current_metric}"] a`).click();
+    Danbooru.CU.sorttype = 0;
+    Danbooru.CU.sortperiod = "d";
+    Danbooru.CU.copyright_period && $(`.cu-select-period[data-type="${Danbooru.CU.copyright_period}"] a`).click();
+    Danbooru.CU.shown_copytags = JSPLib.utility.dataCopy(Danbooru.CU.active_copytags);
+}
+
+function TableMessage(message) {
+    $("#count-table").html(message);
+    $("#count-controls,#count-copyrights,#count-header,#count-chart").hide();
 }
 
 //Network functions
@@ -1095,7 +1161,10 @@ async function GetPeriodUploads(username,period,limited=false,domname=null) {
         let data = await GetPostsCountdown(max_post_limit_query,BuildTagParams(period,`${Danbooru.CU.usertag}:${username}`),domname);
         let mapped_data = MapPostData(data);
         if (limited) {
+            let indexed_posts = AssignPostIndexes(period,mapped_data,0);
             mapped_data = Object.assign(...tooltip_metrics.map((metric)=>{return {[metric]: GetAllStatistics(mapped_data,metric)};}));
+            mapped_data.chart_data = Object.assign(...chart_metrics.map((metric)=>{return {[metric]: GetPeriodAverages(indexed_posts,metric)};}));
+            mapped_data.chart_data.uploads = GetPeriodPosts(indexed_posts);
             JSPLib.storage.saveData(key, {value: mapped_data, expires: JSPLib.utility.getExpiration(max_expires)});
         } else {
             JSPLib.storage.saveData(key, {value: PreCompressData(mapped_data), expires: JSPLib.utility.getExpiration(max_expires)});
@@ -1183,6 +1252,72 @@ function SortTableClick() {
     });
 }
 
+function RenderChartClick() {
+    $("#count-table .cu-manual,#count-table .cu-limited").click((e)=>{
+        if (e.target.tagName !== "TD" || !chart_metrics.includes(Danbooru.CU.current_metric)) {
+            return;
+        }
+        let period = $(e.target).data('period');
+        let is_limited = $(e.target).hasClass("cu-limited");
+        let longname = period_info.longname[period];
+        let points = period_info.points[period];
+        let data = JSPLib.storage.getStorageData(`${longname}-${Danbooru.CU.counttype}-${Danbooru.CU.current_username}`,sessionStorage);
+        if (!data || (!is_limited && data.value.length === 0) || (is_limited && !data.value.chart_data)) {
+            Danbooru.Utility.notice(`${period_info.header[period]} period not populated! Click the period header to activate the chart.`);
+            return;
+        }
+        if (!is_limited) {
+            let time_offset = Date.now() - (data.expires - period_info.uploadexpires[period]);
+            let posts = PostDecompressData(data.value);
+            let indexed_posts = AssignPostIndexes(period,posts,time_offset);
+            var period_averages = GetPeriodAverages(indexed_posts,Danbooru.CU.current_metric);
+            var period_uploads = GetPeriodPosts(indexed_posts);
+        } else {
+            var period_averages = data.value.chart_data[Danbooru.CU.current_metric];
+            var period_uploads = data.value.chart_data.uploads;
+        }
+        let metric_display = JSPLib.utility.displayCase(Danbooru.CU.current_metric);
+        let type_display = JSPLib.utility.displayCase(Danbooru.CU.counttype);
+        let chart_data = {
+            title:{
+                text: `${JSPLib.utility.displayCase(longname)} ${Danbooru.CU.counttype} - Average post ${Danbooru.CU.current_metric}`
+            },
+            axisX: {
+                title: period_info.xlabel[period],
+                minimum: 0,
+                maximum: (points ? points - 1 : period_uploads.slice(-1)[0].x)
+            },
+            axisY: {
+                title: `${metric_display}`
+            },
+            axisY2:{
+                title: `${type_display}`,
+            },
+            legend: {
+                horizontalAlign: "right",
+                verticalAlign: "bottom",
+            },
+            data: [{
+                showInLegend: true,
+                legendText: `${metric_display}`,
+                type: "line",
+                dataPoints: period_averages
+            },
+            {
+                showInLegend: true,
+                legendText: `${type_display}`,
+                type: "line",
+                axisYType: "secondary",
+                dataPoints: period_uploads
+            }]
+        };
+        $("#count-chart").show();
+        var chart = new CanvasJS.Chart("count-chart",chart_data);
+        chart.render();
+        $(".canvasjs-chart-credit").css('top',"400px");
+    });
+}
+
 function SetTooltipChangeClick() {
     $(".cu-select-tooltip").click((e)=>{
         Danbooru.CU.current_metric = $(e.target.parentElement).data('type');
@@ -1254,12 +1389,6 @@ function SetCopyrightPeriodClick() {
     });
 }
 
-async function MergeCopyrightTags(user_copytags) {
-    let query_implications = JSPLib.utility.setDifference(user_copytags,Object.keys(Danbooru.CU.reverse_implications));
-    Object.assign(Danbooru.CU.reverse_implications,...(await Promise.all(query_implications.map(async (key)=>{return {[key]:await GetReverseTagImplication(key)};}))));
-    return user_copytags.filter(value=>{return Danbooru.CU.reverse_implications[value] === 0;});
-}
-
 function SetToggleNoticeClick() {
     $("#toggle-count-notice").click((e)=>{
         if (Danbooru.CU.hidden === 1) {
@@ -1327,17 +1456,7 @@ function SetRefreshUserClick() {
         });
         await Promise.all(promise_array);
         $("#count-copyrights-counter").html('');
-        Danbooru.CU.shown_copytags = JSPLib.utility.dataCopy(Danbooru.CU.active_copytags);
-        $('#count-header').html(AddTable(RenderHeader(),'class="striped"'));
-        $('#count-table').html(AddTable(RenderBody(),'class="striped"'));
-        $("#count-order").html(RenderOrderMessage("d",0));
-        Danbooru.CU.sorttype = 0;
-        Danbooru.CU.sortperiod = "d";
-        SetTooltipHover();
-        GetPeriodClick();
-        SortTableClick();
-        RenderChartClick();
-        $(`.cu-select-tooltip[data-type="${Danbooru.CU.current_metric}"] a`).click();
+        InitializeTable();
     });
 }
 
@@ -1345,6 +1464,7 @@ function SetCheckUserClick() {
     $("#count_submit_user_id").click(async (e)=>{
         //Don't change the username while currently processing
         if (!PopulateTable.is_started) {
+            $("#count-chart").hide();
             let check_user;
             let check_username = $("#count_query_user_id").val();
             if (check_username === "") {
@@ -1364,8 +1484,7 @@ function SetCheckUserClick() {
                 Danbooru.CU.counttype = is_approvals ? 'approvals' : 'uploads';
                 PopulateTable();
             } else {
-                $('#count-table').html(`<div id="empty-uploads">User doesn't exist!</div>`);
-                $("#count-controls,#count-copyrights,#count-header,#count-chart").hide();
+                TableMessage(`<div id="empty-uploads">User doesn't exist!</div>`);
             }
         }
         e.preventDefault();
@@ -1455,46 +1574,6 @@ async function ProcessUploads() {
     return current_uploads;
 }
 
-async function PopulateTable() {
-    //Prevent function from being reentrant while processing uploads
-    PopulateTable.is_started = true;
-    var post_data = [];
-    if (Danbooru.CU.checked_users[Danbooru.CU.usertag][Danbooru.CU.current_username] === undefined) {
-        $("#count-table").html(`<div id="empty-uploads">Loading data... (<span id="loading-counter">...</span>)</div>`);
-        $("#count-controls,#count-copyrights,#count-header,#count-chart").hide();
-        post_data = await ProcessUploads(Danbooru.CU.current_username);
-        Danbooru.CU.checked_users[Danbooru.CU.usertag][Danbooru.CU.current_username] = post_data.length;
-    }
-    let is_override = $("#count_override_select")[0].checked;
-    if (is_override || Danbooru.CU.checked_users[Danbooru.CU.usertag][Danbooru.CU.current_username]) {
-        Danbooru.CU.active_copytags = JSPLib.utility.dataCopy(Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username].daily);
-        Danbooru.CU.shown_copytags = JSPLib.utility.dataCopy(Danbooru.CU.active_copytags);
-        await CheckPeriodUploads(Danbooru.CU.current_username);
-        $("#count-header").html(AddTable(RenderHeader(),'class="striped"'));
-        $("#count-table").html(AddTable(RenderBody(),'class="striped"'));
-        $("#count-order").html(RenderOrderMessage("d",0));
-        Danbooru.CU.sorttype = 0;
-        Danbooru.CU.sortperiod = "d";
-        if ($("#count-controls").html() === "") { //have a better condition
-            $("#count-controls").html(RenderAllTooltipControls()); //TODO - Make this only happen once
-            $("#count-copyrights-controls").html(RenderCopyrightControls());
-            SetTooltipChangeClick();
-            SetCopyrightPeriodClick();
-        }
-        $("#count-controls,#count-copyrights,#count-header").show();
-        SetTooltipHover();
-        GetPeriodClick();
-        SortTableClick();
-        RenderChartClick();
-        $(`.cu-select-tooltip[data-type="${Danbooru.CU.current_metric}"] a`).click();
-        $(`.cu-select-period[data-type="${Danbooru.CU.copyright_period}"] a`).click();
-    } else {
-        $("#count-table").html(`<div id="empty-uploads">${Danbooru.CU.empty_uploads_message}</div>`);
-        $("#count-controls,#count-copyrights,#count-header,#count-chart").hide();
-    }
-    PopulateTable.is_started = false;
-}
-
 //Settings functions
 
 function BroadcastCU(ev) {
@@ -1575,18 +1654,13 @@ function main() {
     $notice_box = $(notice_box);
     $footer_notice = $(unstash_notice);
     if (Danbooru.CU.stashed === 1) {
-        $($notice_box).addClass('stashed');
-        $($footer_notice).addClass('stashed');
+        $notice_box.addClass('stashed');
+        $footer_notice.addClass('stashed');
     }
     $('header#top').append($notice_box);
-    $('.cu-program-checkbox').checkboxradio()
     $('footer#page-footer').append($footer_notice);
-    SetToggleCopyrightsSectionClick();
     SetToggleNoticeClick();
     SetStashNoticeClick();
-    SetCheckUserClick();
-    SetAddCopyrightClick();
-    SetRefreshUserClick();
     if (Danbooru.CU.hidden === 0) {
         //Set to opposite so that click can be used and sets it back
         Danbooru.CU.hidden = 1;
