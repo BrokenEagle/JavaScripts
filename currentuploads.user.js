@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      13.2
+// @version      14.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Gives up-to-date stats on uploads
 // @author       BrokenEagle
@@ -85,7 +85,7 @@ const settings_config = {
 const program_css = `
 #upload-counts {
     border: #EEE dotted;
-    max-width: ${JSPLib.utility.max_column_characters + 35}em;
+    max-width: 70em;
     margin-left: 2em;
 }
 #upload-counts.opened {
@@ -102,17 +102,42 @@ const program_css = `
 #upload-counts.opened #count-module {
     display: block;
 }
+#count-header {
+    margin-left: 1em;
+}
 #count-table {
     white-space: nowrap;
+    margin-left: 1em;
+}
+#count-header th,
+#count-table td {
+    width: 10em;
+    text-align: center;
+}
+#count-header th:first-of-type,
+#count-table td:first-of-type {
+    width: 12em;
+    text-align: left;
 }
 #count-table.overflowed {
     max-height: 20em;
     overflow-x: hidden;
     overflow-y: auto;
 }
+#count-order {
+    color: #666;
+    font-style: italic;
+    margin-right: 4em;
+    font-size: 70%;
+    text-align: right;
+}
+#count-chart {
+    height: 400px;
+    width: 100%;
+    display: none;
+}
 #count-controls {
     display: none;
-    margin-top: 1em;
     margin-left: 1em;
 }
 #count-query-user {
@@ -166,10 +191,13 @@ const program_css = `
     visibility: visible;
 }
 #count-table.overflowed tr:nth-child(1) .cu-tooltiptext {
-    top: -30px;
+    top: -5px;
 }
 #count-table.overflowed tr:nth-child(2) .cu-tooltiptext {
-    top: -45px;
+    top: -25px;
+}
+#count-table.overflowed tr:nth-child(3) .cu-tooltiptext {
+    top: -40px;
 }
 #count-table.overflowed tr:nth-last-child(2) .cu-tooltiptext {
     top: -60px;
@@ -230,7 +258,9 @@ const program_css = `
 const notice_box = `
 <div class="ui-corner-all" id="upload-counts">
     <div id="count-module">
+        <div id="count-header"></div>
         <div id="count-table"></div>
+        <div id="count-order"></div>
         <div id="count-controls"></div>
         <div id="count-copyrights">
             <div id="count-copyrights-header">Copyrights<a class="ui-icon ui-icon-triangle-1-e"></a><span id="count-copyrights-counter"></span></div>
@@ -248,9 +278,9 @@ const notice_box = `
             <input id="count_submit_user_id" type="submit" value="Submit" class="btn">
             <input id="count_refresh_user_id" type="submit" value="Refresh" class="btn">
             <label for="count_approver_select" style="color:black;background-color:lightgrey">Approvals</label>
-            <input id="count_approver_select" class="cu-checkbox" type="checkbox">
+            <input id="count_approver_select" class="cu-program-checkbox" type="checkbox">
             <label for="count_override_select" style="color:black;background-color:lightgrey">Override</label>
-            <input id="count_override_select" class="cu-checkbox" type="checkbox">
+            <input id="count_override_select" class="cu-program-checkbox" type="checkbox">
         </div>
     </div>
     <div id="upload-counts-toggle">
@@ -361,6 +391,20 @@ const empty_approvals_message_other = 'No approvals for this user.';
 const empty_uploads_message_anonymous = 'User is Anonymous, so no uploads.';
 const copyright_no_uploads = 'No uploads, so no copyrights available for this period.';
 const copyright_no_statistics = 'No statistics available for this period (<span style="font-size:80%;color:grey">click the table header</span>).';
+
+function RenderOrderMessage(period,sorttype) {
+    let header = period_info.header[period];
+    switch (sorttype) {
+        case 0:
+            return `Copyrights ordered by user postcount; ${header} period; H -> L`;
+        case 1:
+            return `Copyrights ordered by user postcount; ${header} period; L -> H`;
+        case 2:
+            return `Copyrights ordered by site postcount; ${header} period; H -> L`;
+        case 3:
+            return `Copyrights ordered by site postcount; ${header} period; L -> H`;
+    }
+}
 
 //Validation values
 
@@ -514,10 +558,6 @@ function AddTableData(input,inner_args="") {
 
 //Render table
 
-function RenderTable() {
-    return AddTable(RenderHeader() + RenderBody(),'class="striped"');
-}
-
 function RenderHeader() {
     var tabletext = AddTableHeader('Name');
     let click_periods = manual_periods.concat(limited_periods);
@@ -526,16 +566,16 @@ function RenderHeader() {
         let header = period_info.header[period];
         if (click_periods.includes(period)) {
             let class_name = (manual_periods.includes(period) ? 'cu-manual' : 'cu-limited');
-            tabletext += AddTableHeader(`<a class="${class_name}">${header}</a><span class="cu-display" style="display:none">&nbsp;(<span class="cu-counter">...</span>)</span>`,`data-period="${period}"`);
+            tabletext += AddTableHeader(`<a class="${class_name}">${header}</a><span class="cu-display" style="display:none">&nbsp;(<span class="cu-counter">...</span>)</span>`,`class="cu-period-header" data-period="${period}"`);
         } else {
-            tabletext += AddTableHeader(header);
+            tabletext += AddTableHeader(header,`class="cu-period-header" data-period="${period}"`);
         }
     });
     return AddTableHead(AddTableRow(tabletext));
 }
 
 function RenderBody() {
-    if (Danbooru.CU.active_copytags.length > 3) {
+    if (Danbooru.CU.active_copytags.length > 5) {
         $("#count-table").addClass("overflowed");
     } else {
         $("#count-table").removeClass("overflowed");
@@ -958,15 +998,15 @@ async function GetPeriodUploads(username,period,limited=false,domname=null) {
 //Event handlers
 
 function GetPeriodClick() {
-    $("#count-table .cu-manual,#count-table .cu-limited").click(async (e)=>{
+    $("#count-header .cu-manual,#count-header .cu-limited").click(async (e)=>{
         let header = e.target.parentElement;
         if ($(header).hasClass("cu-processed")) {
             return;
         }
         let is_limited = $(e.target).hasClass("cu-limited");
         let period = header.dataset.period;
-        $(`#count-table th[data-period=${period}] .cu-display`).show();
-        await GetPeriodUploads(Danbooru.CU.current_username,period,is_limited,`#count-table th[data-period=${period}] .cu-counter`);
+        $(`#count-header th[data-period=${period}] .cu-display`).show();
+        await GetPeriodUploads(Danbooru.CU.current_username,period,is_limited,`#count-header th[data-period=${period}] .cu-counter`);
         Danbooru.CU.period_available[Danbooru.CU.usertag][Danbooru.CU.current_username][period] = true;
         let column = header.cellIndex;
         let $cells = $(`#count-table td:nth-of-type(${column + 1})`);
@@ -980,9 +1020,51 @@ function GetPeriodClick() {
             });
             SetTooltipHover();
         }
-        $(`#count-table th[data-period=${period}] .cu-display`).hide();
+        $(`#count-header th[data-period=${period}] .cu-display`).hide();
         $(`.cu-select-tooltip[data-type="${Danbooru.CU.current_metric}"] a`).click();
         $(header).addClass("cu-processed");
+    });
+}
+
+function SortTableClick() {
+    $("#count-header th").click((e)=>{
+        if (e.target.tagName !== "TH") {
+            return;
+        }
+        let column = e.target.cellIndex + 1;
+        let period = $(`#count-header th:nth-of-type(${column})`).data('period');
+        if (Danbooru.CU.sortperiod !== period) {
+            Danbooru.CU.sorttype = 3;
+            Danbooru.CU.sortperiod = period;
+        }
+        let rows = [];
+        $("#count-table tr").each((i,row)=>{
+            if (i === 0) {
+                return;
+            }
+            let data = $(`td:nth-of-type(${column}) .cu-uploads`,row).html();
+            let posts = data.match(/\((\d+)\/(\d+)\)/).slice(1,3).map(Number);
+            rows.push({
+                domobj: $(row).detach(),
+                posts: posts
+            });
+        });
+        rows.sort((a,b)=>{
+            switch (Danbooru.CU.sorttype) {
+                case 0:
+                    return a.posts[0] - b.posts[0];
+                case 1:
+                    return b.posts[1] - a.posts[1];
+                case 2:
+                    return a.posts[1] - b.posts[1];
+                case 3:
+                    return b.posts[0] - a.posts[0];
+            }
+        }).forEach((row)=>{
+            $("#count-table tbody").append(row.domobj);
+        });
+        Danbooru.CU.sorttype = (Danbooru.CU.sorttype + 1) % 4;
+        $("#count-order").html(RenderOrderMessage(period,Danbooru.CU.sorttype));
     });
 }
 
@@ -1079,8 +1161,8 @@ function SetToggleNoticeClick() {
         } else {
             Danbooru.CU.hidden = 1;
             $('#upload-counts').removeClass('opened');
-            $('.cu-checkbox').prop('checked', false);
-            $('.cu-checkbox').checkboxradio("refresh");
+            $('.cu-program-checkbox').prop('checked', false);
+            $('.cu-program-checkbox').checkboxradio("refresh");
             Danbooru.CU.channel.postMessage({type: "hide"});
         }
         JSPLib.storage.setStorageData('cu-hide-current-uploads',Danbooru.CU.hidden,localStorage)
@@ -1098,8 +1180,8 @@ function SetStashNoticeClick() {
             Danbooru.CU.stashed = 1;
             Danbooru.CU.hidden = 1;
             $('#upload-counts,#upload-counts-restore').removeClass('opened').addClass('stashed');
-            $('.cu-checkbox').prop('checked', false);
-            $('.cu-checkbox').checkboxradio("refresh");
+            $('.cu-program-checkbox').prop('checked', false);
+            $('.cu-program-checkbox').checkboxradio("refresh");
             Danbooru.CU.channel.postMessage({type: "stash"});
         }
         JSPLib.storage.setStorageData('cu-stash-current-uploads',Danbooru.CU.stashed,localStorage);
@@ -1129,9 +1211,14 @@ function SetRefreshUserClick() {
         await Promise.all(promise_array);
         $("#count-copyrights-counter").html('');
         Danbooru.CU.shown_copytags = JSPLib.utility.dataCopy(Danbooru.CU.active_copytags);
-        $('#count-table').html(RenderTable());
+        $('#count-header').html(AddTable(RenderHeader(),'class="striped"'));
+        $('#count-table').html(AddTable(RenderBody(),'class="striped"'));
+        $("#count-order").html(RenderOrderMessage("d",0));
+        Danbooru.CU.sorttype = 0;
+        Danbooru.CU.sortperiod = "d";
         SetTooltipHover();
         GetPeriodClick();
+        SortTableClick();
         $(`.cu-select-tooltip[data-type="${Danbooru.CU.current_metric}"] a`).click();
     });
 }
@@ -1159,8 +1246,8 @@ function SetCheckUserClick() {
                 Danbooru.CU.counttype = is_approvals ? 'approvals' : 'uploads';
                 PopulateTable();
             } else {
-                $('#count-controls,#count-copyrights').hide();
                 $('#count-table').html(`<div id="empty-uploads">User doesn't exist!</div>`);
+                $("#count-controls,#count-copyrights,#count-header").hide();
             }
         }
         e.preventDefault();
@@ -1255,7 +1342,8 @@ async function PopulateTable() {
     PopulateTable.is_started = true;
     var post_data = [];
     if (Danbooru.CU.checked_users[Danbooru.CU.usertag][Danbooru.CU.current_username] === undefined) {
-        $('#count-table').html(`<div id="empty-uploads">Loading data... (<span id="loading-counter">...</span>)</div>`);
+        $("#count-table").html(`<div id="empty-uploads">Loading data... (<span id="loading-counter">...</span>)</div>`);
+        $("#count-controls,#count-copyrights,#count-header").hide();
         post_data = await ProcessUploads(Danbooru.CU.current_username);
         Danbooru.CU.checked_users[Danbooru.CU.usertag][Danbooru.CU.current_username] = post_data.length;
     }
@@ -1264,21 +1352,26 @@ async function PopulateTable() {
         Danbooru.CU.active_copytags = JSPLib.utility.dataCopy(Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username].daily);
         Danbooru.CU.shown_copytags = JSPLib.utility.dataCopy(Danbooru.CU.active_copytags);
         await CheckPeriodUploads(Danbooru.CU.current_username);
-        $('#count-table').html(RenderTable());
-        if ($('#count-controls').html() === "") { //have a better condition
-            $('#count-controls').html(RenderAllTooltipControls()); //TODO - Make this only happen once
-            $('#count-copyrights-controls').html(RenderCopyrightControls());
+        $("#count-header").html(AddTable(RenderHeader(),'class="striped"'));
+        $("#count-table").html(AddTable(RenderBody(),'class="striped"'));
+        $("#count-order").html(RenderOrderMessage("d",0));
+        Danbooru.CU.sorttype = 0;
+        Danbooru.CU.sortperiod = "d";
+        if ($("#count-controls").html() === "") { //have a better condition
+            $("#count-controls").html(RenderAllTooltipControls()); //TODO - Make this only happen once
+            $("#count-copyrights-controls").html(RenderCopyrightControls());
             SetTooltipChangeClick();
             SetCopyrightPeriodClick();
         }
-        $('#count-controls,#count-copyrights').show();
+        $("#count-controls,#count-copyrights,#count-header").show();
         SetTooltipHover();
         GetPeriodClick();
+        SortTableClick();
         $(`.cu-select-tooltip[data-type="${Danbooru.CU.current_metric}"] a`).click();
         $(`.cu-select-period[data-type="${Danbooru.CU.copyright_period}"] a`).click();
     } else {
-        $('#count-table').html(`<div id="empty-uploads">${Danbooru.CU.empty_uploads_message}</div>`);
-        $('#count-controls,#count-copyrights').hide();
+        $("#count-table").html(`<div id="empty-uploads">${Danbooru.CU.empty_uploads_message}</div>`);
+        $("#count-controls,#count-copyrights,#count-header").hide();
     }
     PopulateTable.is_started = false;
 }
@@ -1367,7 +1460,7 @@ function main() {
         $($footer_notice).addClass('stashed');
     }
     $('header#top').append($notice_box);
-    $('.cu-checkbox').checkboxradio()
+    $('.cu-program-checkbox').checkboxradio()
     $('footer#page-footer').append($footer_notice);
     SetToggleCopyrightsSectionClick();
     SetToggleNoticeClick();
