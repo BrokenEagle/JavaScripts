@@ -2115,7 +2115,7 @@ function RenderSettingsMenu() {
     $("#cu-cache-settings").append(FixRenderLinkclick("cu",'purge_cache',`Purge cache (<span id="cu-purge-counter">...</span>)`,"Click to purge","Dumps all of the cached data related to CurrentUploads."));
     $("#cu-cache-editor-controls").append(RenderKeyselect('cu','data_source',true,'indexed_db',all_source_types,"Indexed DB is <b>Cache Data</b> and Local Storage is <b>Program Data</b>."));
     $("#cu-cache-editor-controls").append(RenderKeyselect('cu','data_type',true,'count',all_data_types,"Only applies to Indexed DB.  Use <b>Custom</b> for querying by keyname."));
-    $("#cu-cache-editor-controls").append(RenderKeyselect('cu','data_period',true,'daily',period_selectors.concat(['previous']),"Period is only for <b>Count, <b>Uploads</b> and <b>approvals</b>. <b>Count</b> cannot use the 'Previous' period."));
+    $("#cu-cache-editor-controls").append(RenderKeyselect('cu','data_period',true,'daily',period_selectors.concat(['previous']),"Period is only for <b>Count</b>, <b>Uploads</b> and <b>Approvals</b>. <b>Count</b> cannot use the 'Previous' period."));
     $("#cu-cache-editor-controls").append(FixRenderTextinput('cu','data_name',20,true,"Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.",['get','save','delete']));
     JSPLib.menu.engageUI('cu',true);
     $("#cu-select-periods-shown-daily").checkboxradio("disable"); //Daily period is mandatory
