@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      22.1
+// @version      22.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -1797,6 +1797,7 @@ function main() {
         choice_data: JSPLib.storage.getStorageData('iac-choice-data',localStorage,{}),
         is_bur: Boolean($("#c-bulk-update-requests #a-new,#c-bulk-update-requests #a-edit").length),
         FindArtistSession: FindArtistSession,
+        InitializeAutocompleteIndexed: InitializeAutocompleteIndexed,
         storage_keys: {indexed_db: [], local_storage: []},
         settings_config: settings_config,
         channel: new BroadcastChannel('IndexedAutocomplete')
