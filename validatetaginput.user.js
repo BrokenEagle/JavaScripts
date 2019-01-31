@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      26.2
+// @version      26.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -39,7 +39,7 @@ const program_load_required_selectors = ['#page'];
 var VTI;
 
 //Regex that matches the prefix of all program cache data
-const program_cache_regex = /^(?:ti|ta)-/;
+const program_cache_regex = /^(?:ti|ta|are)-/;
 
 //Main program expires
 const prune_expires = JSPLib.utility.one_day;
@@ -233,6 +233,7 @@ const vti_menu = `
                         <ul>
                             <li><b>Tag aliases:</b> Used to determine if an added tag is bad or an alias.</li>
                             <li><b>Tag implications:</b> Used to determine which tag removes are bad.</li>
+                            <li><b>Artist entry:</b> Created if an artist entry exists.</li>
                         </ul>
                     </div>
                 </div>
@@ -275,10 +276,11 @@ const vti_menu = `
 </div>`;
 
 const all_source_types = ['indexed_db','local_storage'];
-const all_data_types = ['tag_alias','tag_implication','custom'];
+const all_data_types = ['tag_alias','tag_implication','artist_entry','custom'];
 const reverse_data_key = {
     tag_alias: 'ta',
-    tag_implication: 'ti'
+    tag_implication: 'ti',
+    artist_entry: 'are'
 };
 
 //Wait time for quick edit box
@@ -305,6 +307,11 @@ const relation_constraints = {
     value: JSPLib.validate.stringonly_constraints
 };
 
+const artist_constraints = {
+    expires : JSPLib.validate.expires_constraints,
+    value: JSPLib.validate.boolean_constraints
+}
+
 /***Functions***/
 
 //Validate functions
@@ -325,6 +332,19 @@ function ValidateRelationEntry(key,entry) {
         return false;
     }
     return FixValidateArrayValues(key + '.value', entry.value, relation_constraints.value);
+}
+
+function ValidateArtistEntry(key,entry) {
+    if (!JSPLib.validate.validateIsHash(key,entry)) {
+        RenderValidateError(key,["Data is not a hash."]);
+        return false;
+    }
+    let check = validate(entry,artist_constraints);
+    if (check !== undefined) {
+        OutputValidateError(key,check);
+        return false;
+    }
+    return true;
 }
 
 function ValidateProgramData(key,entry) {
@@ -349,6 +369,29 @@ function ValidateProgramData(key,entry) {
 }
 
 //Library functions
+
+function NameToKeyTransform(namelist,prefix) {
+    return namelist.map((value)=>{return prefix + '-' + value;});
+}
+
+function KeyToNameTransform(keylist,prefix) {
+    return keylist.map((key)=>{return key.replace(RegExp('^' + prefix + '-'),'');});
+}
+
+async function BatchStorageCheck(keyarray,validator,expires) {
+    let promise_array = [];
+    keyarray.forEach((key)=>{
+        promise_array.push(JSPLib.storage.checkLocalDB(key,validator,expires));
+    });
+    let result_array = await Promise.all(promise_array);
+    let missing_array = [];
+    result_array.forEach((result,i)=>{
+        if (!result) {
+            missing_array.push(keyarray[i]);
+        }
+    });
+    return missing_array;
+}
 
 function OutputValidateError(key,checkerror) {
     JSPLib.validate.printValidateError(key,checkerror);
@@ -526,7 +569,7 @@ function UpdateUserSettings(program_shortcut) {
 //Helper functions
 
 function GetTagList() {
-    return JSPLib.utility.filterEmpty(StripQuoteSourceMetatag($("#upload_tag_string,#post_tag_string").val()).split(/[\s\n]+/).map(tag=>{return tag.toLowerCase();}));
+    return JSPLib.utility.filterEmpty(StripQuoteSourceMetatag($("#upload_tag_string,#post_tag_string").val() || "").split(/[\s\n]+/).map(tag=>{return tag.toLowerCase();}));
 }
 
 function StripQuoteSourceMetatag(str) {
@@ -866,17 +909,22 @@ async function ValidateArtist() {
         }
     } else {
         //Validate artists have entry
-        let promise_array = artist_names.map((name)=>{return JSPLib.danbooru.submitRequest('artists',{search: {name_like: name}});});
-        let artist_resp = await Promise.all(promise_array);
-        let artists = [].concat.apply([], artist_resp);
-        if (artists.includes(null)) {
-            JSPLib.debug.debuglog("ValidateArtist: Bad HTTP request.");
+        let missing_keys = await BatchStorageCheck(NameToKeyTransform(artist_names,'are'),ValidateArtistEntry,JSPLib.utility.one_week)
+        if (missing_keys.length === 0) {
+            JSPLib.debug.debuglog("ValidateArtist: No missing artists. [cache hit]");
             return;
         }
-        let found_artists = JSPLib.utility.getObjectAttributes(artists,'name');
-        let missing_artists = JSPLib.utility.setDifference(artist_names,found_artists);
+        let uncached_artists = KeyToNameTransform(missing_keys,'are');
+        let tag_resp = await JSPLib.danbooru.submitRequest('tags',{search: {name: uncached_artists.join(','), has_artist: true}}).then((data)=>{
+            data.forEach((entry)=>{
+                JSPLib.storage.saveData('are-' + entry.name,{value: true, expires: JSPLib.utility.getExpiration(JSPLib.utility.one_week)});
+            });
+            return data;
+        });
+        let found_artists = JSPLib.utility.getObjectAttributes(tag_resp,'name');
+        let missing_artists = JSPLib.utility.setDifference(uncached_artists,found_artists);
         if (missing_artists.length === 0) {
-            JSPLib.debug.debuglog("ValidateArtist: No missing artists.");
+            JSPLib.debug.debuglog("ValidateArtist: No missing artists. [cache miss]");
             return;
         }
         let artist_lines = artist_names.map((artist)=>{
