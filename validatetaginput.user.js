@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      26.1
+// @version      26.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -867,7 +867,8 @@ async function ValidateArtist() {
     } else {
         //Validate artists have entry
         let promise_array = artist_names.map((name)=>{return JSPLib.danbooru.submitRequest('artists',{search: {name_like: name}});});
-        let artists = (await Promise.all(promise_array)).flat();
+        let artist_resp = await Promise.all(promise_array);
+        let artists = [].concat.apply([], artist_resp);
         if (artists.includes(null)) {
             JSPLib.debug.debuglog("ValidateArtist: Bad HTTP request.");
             return;
