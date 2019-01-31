@@ -37,6 +37,9 @@ const program_load_required_selectors = ["#top","#page-footer"];
 //Variables for danbooru.js
 JSPLib.danbooru.counter_domname = "#loading-counter";
 
+//Main program variable
+var CU;
+
 //Regex that matches the prefix of all program cache data
 const program_cache_regex = /^rti-|ct(?:d|w|mo|y|at)?-|(?:daily|weekly|monthly|yearly|alltime|previous)-uploads-/
 
@@ -240,8 +243,12 @@ const program_css = `
 }
 #count-table .cu-manual,
 #count-table .cu-limited {
-    background-color: LightCyan;
+    background-color: lightcyan;
     border-left: 1px solid #CCC;
+}
+#count-table .cu-uploads {
+    background-color: white;
+    padding: 0 5px;
 }
 #count-copyrights {
     margin: 1em;
@@ -940,21 +947,21 @@ function RenderHeader() {
 }
 
 function RenderBody() {
-    if (Danbooru.CU.active_copytags.length > 5) {
+    if (CU.active_copytags.length > 5) {
         $("#count-table").addClass("overflowed");
     } else {
         $("#count-table").removeClass("overflowed");
     }
     var tabletext = RenderRow('');
-    for (let i = 0;i < Danbooru.CU.active_copytags.length; i++) {
-        tabletext += RenderRow(Danbooru.CU.active_copytags[i]);
+    for (let i = 0;i < CU.active_copytags.length; i++) {
+        tabletext += RenderRow(CU.active_copytags[i]);
     }
     return AddTableBody(tabletext);
 }
 
 function RenderRow(key) {
-    var rowtag = (key === ''? `${Danbooru.CU.usertag}:` + Danbooru.CU.current_username : key);
-    var rowtext = (key === ''? Danbooru.CU.current_username : key).replace(/_/g,' ');
+    var rowtag = (key === ''? `${CU.usertag}:` + CU.current_username : key);
+    var rowtext = (key === ''? CU.current_username : key).replace(/_/g,' ');
     var tabletext = AddTableData(JSPLib.danbooru.postSearchLink(rowtag,JSPLib.utility.maxLengthString(rowtext)));
     let times_shown = GetShownPeriodKeys();
     let click_periods = manual_periods.concat(limited_periods);
@@ -966,7 +973,7 @@ function RenderRow(key) {
             let class_name = (manual_periods.includes(period) ? 'cu-manual' : 'cu-limited');
             rowdata = (key === ''? `class="${class_name}" data-period="${period}"` : "");
         }
-        let is_available = Danbooru.CU.period_available[Danbooru.CU.usertag][Danbooru.CU.current_username][period];
+        let is_available = CU.period_available[CU.usertag][CU.current_username][period];
         let is_limited = limited_periods.includes(period);
         if (is_available && is_limited && key == '') {
             tabletext += AddTableData(RenderTooltipData(data_text,times_shown[i],true),rowdata);
@@ -1004,9 +1011,9 @@ function GetCountData(key,default_val=null) {
 
 function GetTableValue(key,type) {
     if (key == '') {
-        return GetCountData('ct' + type + `-${Danbooru.CU.usertag}:` + Danbooru.CU.current_username,"N/A");
+        return GetCountData('ct' + type + `-${CU.usertag}:` + CU.current_username,"N/A");
     }
-    var useruploads = GetCountData('ct' + type + `-${Danbooru.CU.usertag}:` + Danbooru.CU.current_username + ' ' + key,"N/A");
+    var useruploads = GetCountData('ct' + type + `-${CU.usertag}:` + CU.current_username + ' ' + key,"N/A");
     var alluploads = GetCountData('ct' + type + '-' + key,"N/A");
     return `(${useruploads}/${alluploads})`;
 }
@@ -1014,10 +1021,10 @@ function GetTableValue(key,type) {
 //Render copyrights
 
 function RenderCopyrights(period) {
-    let copytags = Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username][period].sort();
+    let copytags = CU.user_copytags[CU.usertag][CU.current_username][period].sort();
     return copytags.map((copyright)=>{
         let taglink = JSPLib.danbooru.postSearchLink(copyright,JSPLib.utility.maxLengthString(copyright));
-        let active = Danbooru.CU.active_copytags.includes(copyright) ? ' class="cu-active-copyright"' : '';
+        let active = CU.active_copytags.includes(copyright) ? ' class="cu-active-copyright"' : '';
         return `<span title="${copyright}" data-copyright="${copyright}"${active}>${taglink}</span>`;
     }).join(' ');
 }
@@ -1239,7 +1246,7 @@ function SortDict(dict) {
 }
 
 function BuildTagParams(type,tag) {
-    return (type === 'at' ? '' : ('age:..1' + type + ' ')) + tag + (Danbooru.CU.is_gold_user ? ' -' + JSPLib.danbooru.randomDummyTag() : '');
+    return (type === 'at' ? '' : ('age:..1' + type + ' ')) + tag;
 }
 
 function GetCopyrightCount(posts) {
@@ -1250,9 +1257,9 @@ function GetCopyrightCount(posts) {
             copyright_count[tag] = copyright_count[tag].concat([entry.id]);
         });
     });
-    if (Danbooru.CU.user_settings.postcount_threshold) {
+    if (CU.user_settings.postcount_threshold) {
         for (let copyright in copyright_count) {
-            if (copyright_count[copyright].length < Danbooru.CU.user_settings.postcount_threshold) {
+            if (copyright_count[copyright].length < CU.user_settings.postcount_threshold) {
                 delete copyright_count[copyright];
             }
         }
@@ -1283,9 +1290,9 @@ function CheckCopyrightVelocity(tag) {
 }
 
 async function MergeCopyrightTags(user_copytags) {
-    let query_implications = JSPLib.utility.setDifference(user_copytags,Object.keys(Danbooru.CU.reverse_implications));
-    Object.assign(Danbooru.CU.reverse_implications,...(await Promise.all(query_implications.map(async (key)=>{return {[key]:await GetReverseTagImplication(key)};}))));
-    return user_copytags.filter(value=>{return Danbooru.CU.reverse_implications[value] === 0;});
+    let query_implications = JSPLib.utility.setDifference(user_copytags,Object.keys(CU.reverse_implications));
+    Object.assign(CU.reverse_implications,...(await Promise.all(query_implications.map(async (key)=>{return {[key]:await GetReverseTagImplication(key)};}))));
+    return user_copytags.filter(value=>{return CU.reverse_implications[value] === 0;});
 }
 
 function IsMissingTag(tag) {
@@ -1331,25 +1338,25 @@ function PostDecompressData(posts) {
 }
 
 function GetTagData(tag) {
-    return Promise.all(Danbooru.CU.user_settings.periods_shown.map((period)=>{return GetCount(longname_key[period],tag);}));
+    return Promise.all(CU.user_settings.periods_shown.map((period)=>{return GetCount(longname_key[period],tag);}));
 }
 
 function GetPeriodKey(period_name) {
-    return `${period_name}-${Danbooru.CU.counttype}-${Danbooru.CU.current_username}`;
+    return `${period_name}-${CU.counttype}-${CU.current_username}`;
 }
 
 async function CheckPeriodUploads() {
-    Danbooru.CU.period_available[Danbooru.CU.usertag][Danbooru.CU.current_username] = Danbooru.CU.period_available[Danbooru.CU.usertag][Danbooru.CU.current_username] || {};
+    CU.period_available[CU.usertag][CU.current_username] = CU.period_available[CU.usertag][CU.current_username] || {};
     let times_shown = GetShownPeriodKeys();
     for (let i = 0; i < times_shown.length; i++) {
         let period = times_shown[i];
-        if (period in Danbooru.CU.period_available[Danbooru.CU.usertag][Danbooru.CU.current_username]) {
+        if (period in CU.period_available[CU.usertag][CU.current_username]) {
             continue;
         }
         let data_key = GetPeriodKey(period_info.longname[period]);
         let max_expires = period_info.uploadexpires[period]
         var check = await JSPLib.storage.checkLocalDB(data_key,ValidateEntry,max_expires);
-        Danbooru.CU.period_available[Danbooru.CU.usertag][Danbooru.CU.current_username][period] = Boolean(check);
+        CU.period_available[CU.usertag][CU.current_username][period] = Boolean(check);
         if (!check) {
             sessionStorage.removeItem(data_key);
         }
@@ -1361,18 +1368,18 @@ async function PopulateTable() {
     PopulateTable.is_started = true;
     var post_data = [];
     InitializeControls();
-    if (Danbooru.CU.checked_users[Danbooru.CU.usertag][Danbooru.CU.current_username] === undefined) {
+    if (CU.checked_users[CU.usertag][CU.current_username] === undefined) {
         TableMessage(`<div id="empty-uploads">Loading data... (<span id="loading-counter">...</span>)</div>`);
-        post_data = await ProcessUploads(Danbooru.CU.current_username);
-        Danbooru.CU.checked_users[Danbooru.CU.usertag][Danbooru.CU.current_username] = post_data.length;
+        post_data = await ProcessUploads(CU.current_username);
+        CU.checked_users[CU.usertag][CU.current_username] = post_data.length;
     }
     let is_override = $("#count_override_select")[0].checked;
-    if (is_override || Danbooru.CU.checked_users[Danbooru.CU.usertag][Danbooru.CU.current_username]) {
-        Danbooru.CU.active_copytags = JSPLib.utility.dataCopy(Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username].daily);
-        await CheckPeriodUploads(Danbooru.CU.current_username);
+    if (is_override || CU.checked_users[CU.usertag][CU.current_username]) {
+        CU.active_copytags = JSPLib.utility.dataCopy(CU.user_copytags[CU.usertag][CU.current_username].daily);
+        await CheckPeriodUploads(CU.current_username);
         InitializeTable();
     } else {
-        TableMessage(`<div id="empty-uploads">${Danbooru.CU.empty_uploads_message}</div>`);
+        TableMessage(`<div id="empty-uploads">${CU.empty_uploads_message}</div>`);
     }
     PopulateTable.is_started = false;
 }
@@ -1389,7 +1396,7 @@ function InitializeControls() {
         SetCheckUserClick();
         SetRefreshUserClick();
         SetAddCopyrightClick();
-        Danbooru.CU.controls_initialized = true;
+        CU.controls_initialized = true;
         setTimeout(()=>{Danbooru.IAC && Danbooru.IAC.InitializeAutocompleteIndexed && Danbooru.IAC.InitializeAutocompleteIndexed("#count_query_user_id",'us');},1000);
     }
 }
@@ -1403,11 +1410,11 @@ function InitializeTable() {
     SortTableClick();
     RenderChartClick();
     $("#count-controls,#count-copyrights,#count-header").show();
-    $(`.cu-select-tooltip[data-type="${Danbooru.CU.current_metric}"] a`).click();
-    Danbooru.CU.sorttype = 0;
-    Danbooru.CU.sortperiod = "d";
-    Danbooru.CU.copyright_period && $(`.cu-select-period[data-type="${Danbooru.CU.copyright_period}"] a`).click();
-    Danbooru.CU.shown_copytags = JSPLib.utility.dataCopy(Danbooru.CU.active_copytags);
+    $(`.cu-select-tooltip[data-type="${CU.current_metric}"] a`).click();
+    CU.sorttype = 0;
+    CU.sortperiod = "d";
+    CU.copyright_period && $(`.cu-select-period[data-type="${CU.copyright_period}"] a`).click();
+    CU.shown_copytags = JSPLib.utility.dataCopy(CU.active_copytags);
 }
 
 function TableMessage(message) {
@@ -1463,7 +1470,7 @@ async function GetCount(type,tag) {
     var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry,max_expires);
     if (!(check)) {
         JSPLib.debug.debuglog("Network (count):",key);
-        return JSPLib.danbooru.submitRequest('counts/posts',{tags: BuildTagParams(type,tag)},{counts: {posts: 0}},key)
+        return JSPLib.danbooru.submitRequest('counts/posts',{tags: BuildTagParams(type,tag), skip_cache: true},{counts: {posts: 0}},key)
         .then(data=>{
             JSPLib.storage.saveData(key, {value: data.counts.posts, expires: JSPLib.utility.getExpiration(max_expires)});
         });
@@ -1481,8 +1488,8 @@ async function GetPeriodUploads(username,period,limited=false,domname=null) {
     let key = GetPeriodKey(period_name);
     var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry,max_expires);
     if (!(check)) {
-        JSPLib.debug.debuglog(`Network (${period_name} ${Danbooru.CU.counttype})`);
-        let data = await GetPostsCountdown(max_post_limit_query,BuildTagParams(period,`${Danbooru.CU.usertag}:${username}`),domname);
+        JSPLib.debug.debuglog(`Network (${period_name} ${CU.counttype})`);
+        let data = await GetPostsCountdown(max_post_limit_query,BuildTagParams(period,`${CU.usertag}:${username}`),domname);
         let mapped_data = MapPostData(data);
         if (limited) {
             let indexed_posts = AssignPostIndexes(period,mapped_data,0);
@@ -1514,8 +1521,8 @@ function GetPeriodClick() {
         let is_limited = $(e.target).hasClass("cu-limited");
         let period = header.dataset.period;
         $(`#count-header th[data-period=${period}] .cu-display`).show();
-        await GetPeriodUploads(Danbooru.CU.current_username,period,is_limited,`#count-header th[data-period=${period}] .cu-counter`);
-        Danbooru.CU.period_available[Danbooru.CU.usertag][Danbooru.CU.current_username][period] = true;
+        await GetPeriodUploads(CU.current_username,period,is_limited,`#count-header th[data-period=${period}] .cu-counter`);
+        CU.period_available[CU.usertag][CU.current_username][period] = true;
         let column = header.cellIndex;
         let $cells = $(`#count-table td:nth-of-type(${column + 1})`);
         if (is_limited) {
@@ -1529,7 +1536,7 @@ function GetPeriodClick() {
             SetTooltipHover();
         }
         $(`#count-header th[data-period=${period}] .cu-display`).hide();
-        $(`.cu-select-tooltip[data-type="${Danbooru.CU.current_metric}"] a`).click();
+        $(`.cu-select-tooltip[data-type="${CU.current_metric}"] a`).click();
         $(header).addClass("cu-processed");
     });
 }
@@ -1541,9 +1548,9 @@ function SortTableClick() {
         }
         let column = e.target.cellIndex + 1;
         let period = $(`#count-header th:nth-of-type(${column})`).data('period');
-        if (Danbooru.CU.sortperiod !== period) {
-            Danbooru.CU.sorttype = 3;
-            Danbooru.CU.sortperiod = period;
+        if (CU.sortperiod !== period) {
+            CU.sorttype = 3;
+            CU.sortperiod = period;
         }
         let rows = [];
         $("#count-table tr").each((i,row)=>{
@@ -1558,7 +1565,7 @@ function SortTableClick() {
             });
         });
         rows.sort((a,b)=>{
-            switch (Danbooru.CU.sorttype) {
+            switch (CU.sorttype) {
                 case 0:
                     return a.posts[0] - b.posts[0];
                 case 1:
@@ -1571,14 +1578,14 @@ function SortTableClick() {
         }).forEach((row)=>{
             $("#count-table tbody").append(row.domobj);
         });
-        Danbooru.CU.sorttype = (Danbooru.CU.sorttype + 1) % 4;
-        $("#count-order").html(RenderOrderMessage(period,Danbooru.CU.sorttype));
+        CU.sorttype = (CU.sorttype + 1) % 4;
+        $("#count-order").html(RenderOrderMessage(period,CU.sorttype));
     });
 }
 
 function RenderChartClick() {
     $("#count-table .cu-manual,#count-table .cu-limited").click((e)=>{
-        if (e.target.tagName !== "TD" || !chart_metrics.includes(Danbooru.CU.current_metric)) {
+        if (e.target.tagName !== "TD" || !chart_metrics.includes(CU.current_metric)) {
             return;
         }
         let period = $(e.target).data('period');
@@ -1594,17 +1601,17 @@ function RenderChartClick() {
             let time_offset = Date.now() - (data.expires - period_info.uploadexpires[period]);
             let posts = PostDecompressData(data.value);
             let indexed_posts = AssignPostIndexes(period,posts,time_offset);
-            var period_averages = GetPeriodAverages(indexed_posts,Danbooru.CU.current_metric);
+            var period_averages = GetPeriodAverages(indexed_posts,CU.current_metric);
             var period_uploads = GetPeriodPosts(indexed_posts);
         } else {
-            var period_averages = data.value.chart_data[Danbooru.CU.current_metric];
+            var period_averages = data.value.chart_data[CU.current_metric];
             var period_uploads = data.value.chart_data.uploads;
         }
-        let metric_display = JSPLib.utility.displayCase(Danbooru.CU.current_metric);
-        let type_display = JSPLib.utility.displayCase(Danbooru.CU.counttype);
+        let metric_display = JSPLib.utility.displayCase(CU.current_metric);
+        let type_display = JSPLib.utility.displayCase(CU.counttype);
         let chart_data = {
             title:{
-                text: `${JSPLib.utility.displayCase(longname)} ${Danbooru.CU.counttype} - Average post ${Danbooru.CU.current_metric}`
+                text: `${JSPLib.utility.displayCase(longname)} ${CU.counttype} - Average post ${CU.current_metric}`
             },
             axisX: {
                 title: period_info.xlabel[period],
@@ -1644,11 +1651,11 @@ function RenderChartClick() {
 
 function SetTooltipChangeClick() {
     $(".cu-select-tooltip").click((e)=>{
-        Danbooru.CU.current_metric = $(e.target.parentElement).data('type');
+        CU.current_metric = $(e.target.parentElement).data('type');
         $(".cu-select-tooltip,.cu-tooltiptext").removeClass("cu-activetooltip");
-        $(`.cu-select-tooltip[data-type="${Danbooru.CU.current_metric}"]`).addClass("cu-activetooltip");
-        $(`.cu-tooltiptext[data-type="${Danbooru.CU.current_metric}"]`).addClass("cu-activetooltip");
-        JSPLib.storage.setStorageData('cu-current-metric',Danbooru.CU.current_metric,localStorage);
+        $(`.cu-select-tooltip[data-type="${CU.current_metric}"]`).addClass("cu-activetooltip");
+        $(`.cu-tooltiptext[data-type="${CU.current_metric}"]`).addClass("cu-activetooltip");
+        JSPLib.storage.setStorageData('cu-current-metric',CU.current_metric,localStorage);
         e.preventDefault();
     });
 }
@@ -1666,9 +1673,9 @@ function SetToggleCopyrightTagClick() {
         $container.toggleClass("cu-active-copyright");
         let copyright = $container.data('copyright');
         if ($container.hasClass("cu-active-copyright")) {
-            Danbooru.CU.active_copytags.push(copyright);
+            CU.active_copytags.push(copyright);
         } else {
-            Danbooru.CU.active_copytags.splice(Danbooru.CU.active_copytags.indexOf(copyright),1);
+            CU.active_copytags.splice(CU.active_copytags.indexOf(copyright),1);
         }
         e.preventDefault();
     })
@@ -1676,7 +1683,7 @@ function SetToggleCopyrightTagClick() {
 
 function SetCopyrightPeriodClick() {
     $(".cu-select-period a").click(async (e)=>{
-        let short_period = Danbooru.CU.copyright_period = $(e.target.parentElement).data('type');
+        let short_period = CU.copyright_period = $(e.target.parentElement).data('type');
         $(".cu-select-period").removeClass("cu-active-period");
         $(`.cu-select-period[data-type="${short_period}"]`).addClass("cu-active-period");
         if (short_period === 'manual') {
@@ -1686,20 +1693,20 @@ function SetCopyrightPeriodClick() {
         } else {
             $("#count-copyrights-manual").hide();
             let current_period = period_info.longname[short_period];
-            let is_period_enabled = Danbooru.CU.period_available[Danbooru.CU.usertag][Danbooru.CU.current_username][short_period];
+            let is_period_enabled = CU.period_available[CU.usertag][CU.current_username][short_period];
             if (is_period_enabled) {
-                if (Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username][current_period] === undefined) {
+                if (CU.user_copytags[CU.usertag][CU.current_username][current_period] === undefined) {
                     let data = JSPLib.storage.getStorageData(GetPeriodKey(current_period),sessionStorage);
                     let copyright_count = GetCopyrightCount(PostDecompressData(data.value));
                     let user_copytags = SortDict(copyright_count);
-                    if (Danbooru.CU.user_settings.copyrights_merge) {
+                    if (CU.user_settings.copyrights_merge) {
                         $("#count-copyrights-counter").html(copyright_counter);
                         user_copytags = await MergeCopyrightTags(user_copytags);
                         $("#count-copyrights-counter").html('');
                     }
-                    Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username][current_period] = user_copytags;
+                    CU.user_copytags[CU.usertag][CU.current_username][current_period] = user_copytags;
                 }
-                if (Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username][current_period].length === 0) {
+                if (CU.user_copytags[CU.usertag][CU.current_username][current_period].length === 0) {
                     $('#count-copyrights-list').html(`<div id="empty-statistics">${copyright_no_uploads}</div>`);
                 } else {
                     $('#count-copyrights-list').html(RenderCopyrights(current_period));
@@ -1715,57 +1722,57 @@ function SetCopyrightPeriodClick() {
 
 function SetToggleNoticeClick() {
     $("#toggle-count-notice").click((e)=>{
-        if (Danbooru.CU.hidden === true) {
-            Danbooru.CU.hidden = false;
+        if (CU.hidden === true) {
+            CU.hidden = false;
             $('#upload-counts').addClass('opened');
             if (!PopulateTable.is_started) {
                 //Always show current user on open to prevent processing potentially bad usernames set by SetCheckUserClick
-                Danbooru.CU.empty_uploads_message = (Danbooru.CU.username === "Anonymous" ? empty_uploads_message_anonymous : empty_uploads_message_owner);
-                Danbooru.CU.current_username = Danbooru.CU.username;
-                Danbooru.CU.usertag = 'user';
+                CU.empty_uploads_message = (CU.username === "Anonymous" ? empty_uploads_message_anonymous : empty_uploads_message_owner);
+                CU.current_username = CU.username;
+                CU.usertag = 'user';
                 PopulateTable();
             }
-            Danbooru.CU.channel.postMessage({type: "show"});
+            CU.channel.postMessage({type: "show"});
         } else {
-            Danbooru.CU.hidden = true;
+            CU.hidden = true;
             $('#upload-counts').removeClass('opened');
             $('.cu-program-checkbox').prop('checked', false);
-            Danbooru.CU.controls_initialized && $('.cu-program-checkbox').checkboxradio("refresh");
+            CU.controls_initialized && $('.cu-program-checkbox').checkboxradio("refresh");
             $("#count-chart").hide();
-            Danbooru.CU.channel.postMessage({type: "hide"});
+            CU.channel.postMessage({type: "hide"});
         }
-        JSPLib.storage.setStorageData('cu-hide-current-uploads',Danbooru.CU.hidden,localStorage)
+        JSPLib.storage.setStorageData('cu-hide-current-uploads',CU.hidden,localStorage)
         e.preventDefault();
     });
 }
 
 function SetStashNoticeClick() {
     $("#stash-count-notice,#restore-count-notice").click((e)=>{
-        if (Danbooru.CU.stashed === true) {
-            Danbooru.CU.stashed = false;
+        if (CU.stashed === true) {
+            CU.stashed = false;
             $('#upload-counts,#upload-counts-restore').removeClass('stashed');
-            Danbooru.CU.channel.postMessage({type: "unstash"});
+            CU.channel.postMessage({type: "unstash"});
         } else {
-            Danbooru.CU.stashed = true;
-            Danbooru.CU.hidden = true;
+            CU.stashed = true;
+            CU.hidden = true;
             $('#upload-counts,#upload-counts-restore').removeClass('opened').addClass('stashed');
             $('.cu-program-checkbox').prop('checked', false);
-            Danbooru.CU.controls_initialized && $('.cu-program-checkbox').checkboxradio("refresh");
+            CU.controls_initialized && $('.cu-program-checkbox').checkboxradio("refresh");
             $("#count-chart").hide();
-            Danbooru.CU.channel.postMessage({type: "stash"});
+            CU.channel.postMessage({type: "stash"});
         }
-        JSPLib.storage.setStorageData('cu-stash-current-uploads',Danbooru.CU.stashed,localStorage);
-        JSPLib.storage.setStorageData('cu-hide-current-uploads',Danbooru.CU.hidden,localStorage);
+        JSPLib.storage.setStorageData('cu-stash-current-uploads',CU.stashed,localStorage);
+        JSPLib.storage.setStorageData('cu-hide-current-uploads',CU.hidden,localStorage);
         e.preventDefault();
     });
 }
 
 function SetRestoreNoticeClick() {
     $("#restore-count-notice").click((e)=>{
-        Danbooru.CU.stashed = false;
-        JSPLib.storage.setStorageData('cu-stash-current-uploads',Danbooru.CU.stashed,localStorage);
+        CU.stashed = false;
+        JSPLib.storage.setStorageData('cu-stash-current-uploads',CU.stashed,localStorage);
         $('#upload-counts,#upload-counts-restore').removeClass('stashed');
-        Danbooru.CU.channel.postMessage({type: "unstash"});
+        CU.channel.postMessage({type: "unstash"});
         e.preventDefault();
     });
 }
@@ -1773,10 +1780,10 @@ function SetRestoreNoticeClick() {
 function SetRefreshUserClick() {
     $("#count_refresh_user_id").click(async (e)=>{
         $("#count-copyrights-counter").html(copyright_counter);
-        let diff_tags = JSPLib.utility.setDifference(Danbooru.CU.active_copytags,Danbooru.CU.shown_copytags);
+        let diff_tags = JSPLib.utility.setDifference(CU.active_copytags,CU.shown_copytags);
         let promise_array = [];
         $.each((diff_tags),(i,val)=>{
-            promise_array.push(GetTagData(`${Danbooru.CU.usertag}:${Danbooru.CU.current_username} ${val}`));
+            promise_array.push(GetTagData(`${CU.usertag}:${CU.current_username} ${val}`));
             promise_array.push(GetTagData(val));
         });
         await Promise.all(promise_array);
@@ -1794,19 +1801,19 @@ function SetCheckUserClick() {
             let check_username = $("#count_query_user_id").val();
             if (check_username === "") {
                 check_user = [];
-            } else if (check_username in Danbooru.CU.checked_usernames) {
-                check_user = Danbooru.CU.checked_usernames[check_username];
+            } else if (check_username in CU.checked_usernames) {
+                check_user = CU.checked_usernames[check_username];
             } else {
                 //Check each time no matter what as misses can be catastrophic
                 check_user = await CheckUser(check_username);
-                Danbooru.CU.checked_usernames[check_username] = check_user;
+                CU.checked_usernames[check_username] = check_user;
             }
             if (check_user.length) {
-                Danbooru.CU.current_username = check_user[0].name;
+                CU.current_username = check_user[0].name;
                 let is_approvals = $("#count_approver_select")[0].checked;
-                Danbooru.CU.empty_uploads_message = is_approvals ? empty_approvals_message_other : empty_uploads_message_other;
-                Danbooru.CU.usertag = is_approvals ? 'approver' : 'user';
-                Danbooru.CU.counttype = is_approvals ? 'approvals' : 'uploads';
+                CU.empty_uploads_message = is_approvals ? empty_approvals_message_other : empty_uploads_message_other;
+                CU.usertag = is_approvals ? 'approver' : 'user';
+                CU.counttype = is_approvals ? 'approvals' : 'uploads';
                 PopulateTable();
             } else {
                 TableMessage(`<div id="empty-uploads">User doesn't exist!</div>`);
@@ -1818,7 +1825,7 @@ function SetCheckUserClick() {
 
 function SetAddCopyrightClick() {
     $("#count_add_copyright").click(async (e)=>{
-        let user_copytags = Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username];
+        let user_copytags = CU.user_copytags[CU.usertag][CU.current_username];
         let tag = $("#count_query_copyright").val();
         let tagdata = await JSPLib.danbooru.submitRequest('tags',{search:{name: tag}},[]);
         if (tagdata.length === 0) {
@@ -1828,8 +1835,8 @@ function SetAddCopyrightClick() {
         tag = tagdata[0].name;
         user_copytags.manual.push(tag);
         user_copytags.manual = JSPLib.utility.setUnique(user_copytags.manual);
-        Danbooru.CU.active_copytags.push(tag);
-        Danbooru.CU.active_copytags = JSPLib.utility.setUnique(Danbooru.CU.active_copytags);
+        CU.active_copytags.push(tag);
+        CU.active_copytags = JSPLib.utility.setUnique(CU.active_copytags);
         $('#count-copyrights-list').html(RenderCopyrights('manual'));
         SetToggleCopyrightTagClick();
     });
@@ -1855,8 +1862,8 @@ async function ProcessUploads() {
     var promise_array = [];
     var current_uploads = [];
     var user_copytags = [];
-    if (Danbooru.CU.current_username !== "Anonymous") {
-        current_uploads = await GetPeriodUploads(Danbooru.CU.current_username,'d');
+    if (CU.current_username !== "Anonymous") {
+        current_uploads = await GetPeriodUploads(CU.current_username,'d');
     }
     let previous_key = GetPeriodKey("previous");
     if (current_uploads.length) {
@@ -1864,18 +1871,18 @@ async function ProcessUploads() {
         let previous_uploads = await JSPLib.storage.checkLocalDB(previous_key,ValidateEntry) || {value: []};
         previous_uploads = PostDecompressData(previous_uploads.value);
         let symmetric_difference = JSPLib.utility.setSymmetricDifference(JSPLib.utility.getObjectAttributes(current_uploads,'id'),JSPLib.utility.getObjectAttributes(previous_uploads,'id'));
-        if (is_new_tab || symmetric_difference.length || IsMissingTag(`${Danbooru.CU.usertag}:${Danbooru.CU.current_username}`)) {
-            promise_array.push(GetTagData(`${Danbooru.CU.usertag}:${Danbooru.CU.current_username}`));
+        if (is_new_tab || symmetric_difference.length || IsMissingTag(`${CU.usertag}:${CU.current_username}`)) {
+            promise_array.push(GetTagData(`${CU.usertag}:${CU.current_username}`));
         }
-        if (Danbooru.CU.is_gold_user && Danbooru.CU.user_settings.copyrights_enabled) {
+        if (CU.is_gold_user && CU.user_settings.copyrights_enabled) {
             let curr_copyright_count = GetCopyrightCount(current_uploads);
             let prev_copyright_count = GetCopyrightCount(previous_uploads);
             user_copytags = SortDict(curr_copyright_count);
-            if (Danbooru.CU.user_settings.copyrights_merge) {
+            if (CU.user_settings.copyrights_merge) {
                 user_copytags = await MergeCopyrightTags(user_copytags);
             }
-            if (Danbooru.CU.user_settings.copyrights_threshold) {
-                user_copytags = user_copytags.slice(0,Danbooru.CU.user_settings.copyrights_threshold);
+            if (CU.user_settings.copyrights_threshold) {
+                user_copytags = user_copytags.slice(0,CU.user_settings.copyrights_threshold);
             }
             let copyright_symdiff = CompareCopyrightCounts(curr_copyright_count,prev_copyright_count);
             let copyright_changed = (is_new_tab ? user_copytags : JSPLib.utility.setIntersection(user_copytags,copyright_symdiff));
@@ -1884,20 +1891,20 @@ async function ProcessUploads() {
                 if (CheckCopyrightVelocity(val) || IsMissingTag(val)) {
                     promise_array.push(GetTagData(val));
                 }
-                if (IsMissingTag(`${Danbooru.CU.usertag}:${Danbooru.CU.current_username} ${val}`)) {
-                    promise_array.push(GetTagData(`${Danbooru.CU.usertag}:${Danbooru.CU.current_username} ${val}`));
+                if (IsMissingTag(`${CU.usertag}:${CU.current_username} ${val}`)) {
+                    promise_array.push(GetTagData(`${CU.usertag}:${CU.current_username} ${val}`));
                 }
             });
             $.each(copyright_changed,(i,val)=>{
-                promise_array.push(GetTagData(`${Danbooru.CU.usertag}:${Danbooru.CU.current_username} ${val}`));
+                promise_array.push(GetTagData(`${CU.usertag}:${CU.current_username} ${val}`));
                 promise_array.push(GetTagData(val));
             });
         }
         await Promise.all(promise_array);
-    } else if (IsMissingTag(`${Danbooru.CU.usertag}:${Danbooru.CU.current_username}`)) {
-        await GetTagData(`${Danbooru.CU.usertag}:${Danbooru.CU.current_username}`);
+    } else if (IsMissingTag(`${CU.usertag}:${CU.current_username}`)) {
+        await GetTagData(`${CU.usertag}:${CU.current_username}`);
     }
-    Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username] = {daily: user_copytags, manual: []};
+    CU.user_copytags[CU.usertag][CU.current_username] = {daily: user_copytags, manual: []};
     JSPLib.storage.saveData(previous_key,{value: PreCompressData(current_uploads), expires: 0});
     return current_uploads;
 }
@@ -1907,19 +1914,19 @@ async function ProcessUploads() {
 //Program cache function
 
 function OptionCacheDataKey(data_type,data_value) {
-    Danbooru.CU.data_period = $("#cu-control-data-period").val();
+    CU.data_period = $("#cu-control-data-period").val();
     if (data_type === "reverse_implication") {
         return 'rti-' + data_value;
     }
     if (data_type === "count") {
-        if (Danbooru.CU.data_period == "previous") {
-            Danbooru.CU.data_value = "";
+        if (CU.data_period == "previous") {
+            CU.data_value = "";
             return "";
         }
-        let shortkey = (Danbooru.CU.data_period !== "" ? longname_key[Danbooru.CU.data_period] : "");
+        let shortkey = (CU.data_period !== "" ? longname_key[CU.data_period] : "");
         return `ct${shortkey}-${data_value}`;
     } else {
-        return `${Danbooru.CU.data_period}-${data_type}-${data_value}`;
+        return `${CU.data_period}-${data_type}-${data_value}`;
     }
 }
 
@@ -2007,7 +2014,7 @@ function SaveCacheClick(program_shortcut,localvalidator,indexvalidator,option) {
                 Danbooru.Utility.notice("Data was saved.");
                 HideValidateError();
                 if (storage_key === `${program_shortcut}-user-settings`) {
-                    Danbooru.CU.user_settings = data;
+                    CU.user_settings = data;
                     UpdateUserSettings(program_shortcut);
                 }
             } else {
@@ -2062,25 +2069,25 @@ function CacheAutocomplete(program_shortcut,data_regex,option) {
 function BroadcastCU(ev) {
     JSPLib.debug.debuglog("Broadcast",ev.data);
     if (ev.data.type === "hide") {
-        Danbooru.CU.hidden = true;
+        CU.hidden = true;
         $('#upload-counts').removeClass('opened');
     } else if (ev.data.type === "show") {
-        Danbooru.CU.hidden = false;
+        CU.hidden = false;
         $('#upload-counts').addClass('opened');
     } else if (ev.data.type === "stash") {
-        Danbooru.CU.stashed = true;
-        Danbooru.CU.hidden = true;
+        CU.stashed = true;
+        CU.hidden = true;
         $('#upload-counts,#upload-counts-restore').addClass('stashed');
     } else if (ev.data.type === "unstash") {
-        Danbooru.CU.stashed = false;
+        CU.stashed = false;
         $('#upload-counts,#upload-counts-restore').removeClass('stashed');
     } else if (ev.data.type === "settings") {
-        Danbooru.CU.user_settings = ev.data.user_settings;
+        CU.user_settings = ev.data.user_settings;
     } else if (ev.data.type === "reset") {
         $('#upload-counts').removeClass('opened');
         JSPLib.storage.setStorageData('cu-hide-current-uploads',true,localStorage);
-        Danbooru.CU.user_settings = ev.data.user_settings;
-        Object.assign(Danbooru.CU,program_reset_keys);
+        CU.user_settings = ev.data.user_settings;
+        Object.assign(CU,program_reset_keys);
     } else if (ev.data.type === "purge") {
         $.each(sessionStorage,(key)=>{
             if (key.match(program_cache_regex)) {
@@ -2091,11 +2098,11 @@ function BroadcastCU(ev) {
 }
 
 function IsSettingEnabled(setting_name,selector) {
-    return Danbooru.CU.user_settings[setting_name].includes(selector);
+    return CU.user_settings[setting_name].includes(selector);
 }
 
 function GetShownPeriodKeys() {
-    return timevalues.filter((period_key)=>{return Danbooru.CU.user_settings.periods_shown.includes(period_info.longname[period_key]);});
+    return timevalues.filter((period_key)=>{return CU.user_settings.periods_shown.includes(period_info.longname[period_key]);});
 }
 
 function RenderSettingsMenu() {
@@ -2124,7 +2131,7 @@ function RenderSettingsMenu() {
 //Main function
 
 function main() {
-    Danbooru.CU = {
+    Danbooru.CU = CU = {
         username: JSPLib.utility.getMeta("current-user-name"),
         is_gold_user: $('body').data('user-is-gold'),
         usertag: 'user',
@@ -2143,24 +2150,24 @@ function main() {
         storage_keys: {indexed_db: [], local_storage: []},
         settings_config: settings_config
     };
-    Danbooru.CU.user_settings = JSPLib.menu.loadUserSettings('cu');
-    Danbooru.CU.channel.onmessage = BroadcastCU;
+    CU.user_settings = JSPLib.menu.loadUserSettings('cu');
+    CU.channel.onmessage = BroadcastCU;
     JSPLib.utility.setCSSStyle(program_css,'program');
     $notice_box = $(notice_box);
     $footer_notice = $(unstash_notice);
-    if (Danbooru.CU.stashed === true) {
+    if (CU.stashed === true) {
         $notice_box.addClass('stashed');
         $footer_notice.addClass('stashed');
         //The table needs to be hidden when it's stashed
-        Danbooru.CU.hidden = true;
+        CU.hidden = true;
     }
     $('header#top').append($notice_box);
     $('footer#page-footer').append($footer_notice);
     SetToggleNoticeClick();
     SetStashNoticeClick();
-    if (Danbooru.CU.hidden === false) {
+    if (CU.hidden === false) {
         //Set to opposite so that click can be used and sets it back
-        Danbooru.CU.hidden = true;
+        CU.hidden = true;
         $("#toggle-count-notice").click();
     }
     if ($("#c-users #a-edit").length) {
