@@ -75,9 +75,21 @@ const settings_config = {
     periods_shown: {
         allitems: period_selectors,
         default: period_selectors,
-        validate: (data)=>{return Array.isArray(data) && data.reduce((is_string,val)=>{return is_string && (typeof val === 'string') && period_selectors.includes(val);},true)},
-        hint: "Uncheck to turn off event type."
+        validate: (data)=>{return Array.isArray(data) && data.reduce((is_string,val)=>{return is_string && (typeof val === 'string') && period_selectors.includes(val);},true) && data.includes('daily');},
+        hint: "Select which periods to process and show."
     },
+    copyrights_threshold: {
+        default: 0,
+        parse: parseInt,
+        validate: (data)=>{return Number.isInteger(data) && data >= 0;},
+        hint: "Maximum number of copyrights to display. Enter 0 to disable this threshold."
+    },
+    postcount_threshold: {
+        default: 0,
+        parse: parseInt,
+        validate: (data)=>{return Number.isInteger(data) && data >= 0;},
+        hint: "Minimum postcount to display copyright. Enter 0 to disable this threshold."
+    }
 }
 
 //CSS Constants
@@ -268,6 +280,40 @@ const program_css = `
 }
 `;
 
+const menu_css = `
+#cu-settings hr,
+#cu-console .expandable {
+    width: 90%;
+    margin-left: 0;
+}
+#cu-cache-viewer textarea {
+    width: 100%;
+    min-width: 40em;
+    height: 50em;
+    padding: 5px;
+}
+#cu-cache-editor-errors {
+    display: none;
+    border: solid lightgrey 1px;
+    margin: 0.5em;
+    padding: 0.5em;
+}
+.jsplib-console {
+    width: 100%;
+    min-width: 100em;
+}
+.cu-linkclick.jsplib-linkclick .cu-control.jsplib-control {
+    display: inline;
+}
+#userscript-settings-menu .ui-widget-content a,
+#notice .ui-widget-content a {
+    color:#0073ff
+}
+#notice.ui-state-highlight {
+    color: #363636;
+}
+`;
+
 //HTML constants
 
 const notice_box = `
@@ -309,41 +355,98 @@ const unstash_notice = '<span id="upload-counts-restore"> - <a href="#" id="rest
 const copyright_counter = '(<span id="loading-counter">...</span>)';
 
 const cu_menu = `
-<div id="cu-settings" class="jsplib-outer-menu">
-    <div id="cu-script-message" class="prose">
-        <h2>CurrentUploads</h2>
-        <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/15169" style="color:#0073ff">topic #15169</a>).</p>
-    </div>
-    <div id="cu-display-settings" class="jsplib-settings-grouping">
-        <div id="cu-display-message" class="prose">
-            <h4>Display settings</h4>
-            <ul>
-                <li><b>Period selectors:</b> Select which periods to process and show.</li>
-            </ul>
-        </div>
-    </div>
-    <div id="cu-cache-settings" class="jsplib-settings-grouping">
-        <div id="cu-cache-message" class="prose">
-            <h4>Cache settings</h4>
-            <h5>Cache data</h5>
-            <ul>
-                <li><b>Count data:</b> Main data shown in the table.</li>
-                <li><b>Post data:</b> Used to determine post statistics shown in the tooltips.</li>
-                <li><b>Reverse tag implications:</b> Used to determine the base copyright tag.</li>
-            </ul>
-            <h5>Cache controls</h5>
-            <ul>
-                <li><b>Purge cache:</b> Dumps all of the cached data related to CurrentUploads.</li>
-            </ul>
-        </div>
-    </div>
-    <hr>
-    <div id="cu-settings-buttons" class="jsplib-settings-buttons">
-        <input type="button" id="cu-commit" value="Save">
-        <input type="button" id="cu-resetall" value="Factory Reset">
-    </div>
+<div id="cu-script-message" class="prose">
+    <h2>CurrentUploads</h2>
+    <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/15169" style="color:#0073ff">topic #15169</a>).</p>
 </div>
-`;
+<div id="cu-console" class="jsplib-console">
+    <div id="cu-settings" class="jsplib-outer-menu">
+        <div id="cu-display-settings" class="jsplib-settings-grouping">
+            <div id="cu-display-message" class="prose">
+                <h4>Display settings</h4>
+            </div>
+        </div>
+        <div id="cu-cache-settings" class="jsplib-settings-grouping">
+            <div id="cu-cache-message" class="prose">
+                <h4>Cache settings</h4>
+                <div class="expandable">
+                    <div class="expandable-header">
+                        <span>Cache Data details</span>
+                        <input type="button" value="Show" class="expandable-button">
+                    </div>
+                    <div class="expandable-content">
+                        <ul>
+                            <li><b>Count data:</b> Main data shown in the table.</li>
+                            <li><b>Post data:</b> Used to determine post statistics shown in the tooltips and chart data.
+                                <ul>
+                                    <li>For <i>daily</i>, <i>weekly</i>, <i>monthly</i> and <i>previous</i>, the data represents actual post values.
+                                        <ul>
+                                            <li>The data has been compressed into an array to save space, but the following is what each index represents:</li>
+                                            <li>0. Post ID</li>
+                                            <li>1. Score</li>
+                                            <li>2. Upscore</li>
+                                            <li>3. Downscore</li>
+                                            <li>4. Favcount</li>
+                                            <li>5. Tagcount</li>
+                                            <li>6. Gentags</li>
+                                            <li>7. Copyrights string</li>
+                                            <li>8. Created timestamp</li>
+                                        </ul>
+                                    </li>
+                                    <li>For <i>yearly</i> and <i>alltime</i>, the data represents the finalized statistics.
+                                </ul>
+                            </li>
+                            <li><b>Reverse tag implications:</b>The number of tags that a tag implicates. Used to determine the base copyright tag.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <hr>
+        <div id="cu-settings-buttons" class="jsplib-settings-buttons">
+            <input type="button" id="cu-commit" value="Save">
+            <input type="button" id="cu-resetall" value="Factory Reset">
+        </div>
+    </div>
+    <div id="cu-cache-editor" class="jsplib-outer-menu">
+        <div id="cu-editor-message" class="prose">
+            <h4>Cache editor</h4>
+            <p>See the <b><a href="#cu-cache-message">Cache settings</a></b> settings for the list of all cache data and what they do.</p>
+            <div class="expandable">
+                <div class="expandable-header">
+                    <span>Program Data details</span>
+                    <input type="button" value="Show" class="expandable-button">
+                </div>
+                <div class="expandable-content">
+                    <p class="tn">All timestamps are in milliseconds since the epoch (<a href="https://www.epochconverter.com">Epoch converter</a>).</p>
+                    <ul>
+                        <li>General data
+                            <ul>
+                                <li><b>prune-expires:</b> When the program will next check for cache data that has expired.</li>
+                                <li><b>user-settings:</b> All configurable settings.</li>
+                            </ul>
+                        </li>
+                        <li>Status data
+                            <ul>
+                                <li><b>current-metric:</b> Which metric to show upon first opening the table.</li>
+                                <li><b>hide-current-uploads:</b> Should the table be opened on page load?</li>
+                                <li><b>stash-current-uploads:</b> Should the table be hidden and the restore link shown? Takes precedence over <code>hide-current-uploads</code>.</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div id="cu-cache-editor-controls"></div>
+        <div id="cu-cache-editor-errors"></div>
+        <div id="cu-cache-viewer">
+            <textarea></textarea>
+        </div>
+    </div>
+</div>`;
+
+const all_source_types = ['indexed_db','local_storage'];
+const all_data_types = ['count','uploads','approvals','reverse_implication','custom'];
 
 //Time periods
 const timevalues = ['d','w','mo','y','at'];
@@ -427,20 +530,6 @@ const empty_uploads_message_anonymous = 'User is Anonymous, so no uploads.';
 const copyright_no_uploads = 'No uploads, so no copyrights available for this period.';
 const copyright_no_statistics = 'No statistics available for this period (<span style="font-size:80%;color:grey">click the table header</span>).';
 
-function RenderOrderMessage(period,sorttype) {
-    let header = period_info.header[period];
-    switch (sorttype) {
-        case 0:
-            return `Copyrights ordered by user postcount; ${header} period; H -> L`;
-        case 1:
-            return `Copyrights ordered by user postcount; ${header} period; L -> H`;
-        case 2:
-            return `Copyrights ordered by site postcount; ${header} period; H -> L`;
-        case 3:
-            return `Copyrights ordered by site postcount; ${header} period; L -> H`;
-    }
-}
-
 //Validation values
 
 const validation_constraints = {
@@ -518,12 +607,13 @@ function BuildValidator(validation_key) {
 
 function ValidateEntry(key,entry) {
     if (!JSPLib.validate.validateIsHash(key,entry)) {
+        RenderValidateError(key,["Data is not a hash."]);
         return false
     }
     let validation_key = ValidationSelector(key);
     check = validate(entry,BuildValidator(validation_key));
     if (check !== undefined) {
-        JSPLib.validate.printValidateError(key,check);
+        OutputValidateError(key,check);
         return false;
     }
     if (validation_key === 'postentries') {
@@ -543,7 +633,7 @@ function ValidatePostentries(key,postentries) {
         }
         let check = validate(postentries[i],validation_constraints.postentry);
         if (check !== undefined) {
-            JSPLib.validate.printValidateError(value_key,check);
+            OutputValidateError(value_key,check);
             return false;
         }
     }
@@ -553,19 +643,19 @@ function ValidatePostentries(key,postentries) {
 function ValidateStatEntries(key,statentries) {
     let check = validate(statentries,validation_constraints.postmetric);
     if (check !== undefined) {
-        JSPLib.validate.printValidateError(key,check);
+        OutputValidateError(key,check);
         return false;
     }
     for (let i = 0; i < tooltip_metrics.length; i++) {
         let metric = tooltip_metrics[i];
         if (metric === 'week' || metric === 'day') {
-            if (!JSPLib.validate.validateArrayValues(key + '.' + metric,statentries[metric],JSPLib.validate.number_constraints)) {
+            if (!FixValidateArrayValues(key + '.' + metric,statentries[metric],JSPLib.validate.number_constraints)) {
                 return false;
             }
         } else {
             check = validate(statentries[metric],validation_constraints.poststat);
             if (check !== undefined) {
-                JSPLib.validate.printValidateError(key + '.' + metric,check);
+                OutputValidateError(key + '.' + metric,check);
                 return false;
             }
         }
@@ -576,14 +666,14 @@ function ValidateStatEntries(key,statentries) {
 function ValidateChartEntries(key,chartentries) {
     let check = validate(chartentries,validation_constraints.chartentry);
     if (check !== undefined) {
-        JSPLib.validate.printValidateError(key,check);
+        OutputValidateError(key,check);
         return false;
     }
     for (let chart_key in chartentries) {
         for (let i = 0; i < chartentries[chart_key].length; i ++ ) {
             check = validate(chartentries[chart_key][i],validation_constraints.chartdata);
             if (check !== undefined) {
-                JSPLib.validate.printValidateError(`${key}.${chart_key}[${i}]`,check);
+                OutputValidateError(`${key}.${chart_key}[${i}]`,check);
                 return false;
             }
         }
@@ -591,7 +681,212 @@ function ValidateChartEntries(key,chartentries) {
     return true;
 }
 
+function ValidateProgramData(key,entry) {
+    var checkerror = [];
+    switch (key) {
+        case 'cu-user-settings':
+            var checkerror = ValidateUserSettings(entry,settings_config);
+            break;
+        case 'cu-prune-expires':
+            if (!Number.isInteger(entry)) {
+                checkerror = ["Value is not an integer."];
+            }
+            break;
+        case 'cu-current-metric':
+            if (!tooltip_metrics.includes(entry)) {
+                checkerror = [`Value not in list: ${tooltip_metrics}`];
+            }
+            break;
+        case 'cu-hide-current-uploads':
+        case 'cu-stash-current-uploads':
+            if (!validate.isBoolean(entry)) {
+                checkerror = ['Value is not a boolean.'];
+            }
+            break;
+        default:
+            checkerror = ["Not a valid program data key."];
+    }
+    if (checkerror.length) {
+        OutputValidateError(key,checkerror);
+        return false;
+    }
+    return true;
+}
+
 //Library functions
+
+function OutputValidateError(key,checkerror) {
+    JSPLib.validate.printValidateError(key,checkerror);
+    JSPLib.validate.dom_output && RenderValidateError(key,JSON.stringify(checkerror,null,2));
+}
+
+function RenderValidateError(key,error_message) {
+    if (JSPLib.validate.dom_output) {
+        let output_text = `<b>${key}:</b>\r\n<pre>${error_message}</pre>`;
+        $(JSPLib.validate.dom_output).html(output_text).show();
+    }
+}
+
+function HideValidateError() {
+    JSPLib.validate.dom_output && $(JSPLib.validate.dom_output).hide();
+}
+
+function FixValidateArrayValues(key,array,validator) {
+    for (let i = 0;i < array.length; i++) {
+        let check = validate({value: array[i]},{value: validator});
+        if (check !== undefined) {
+            OutputValidateError(key + `[${i}]`,check);
+            return false;
+        }
+    }
+    return true;
+}
+
+function RenderKeyselect(program_shortcut,setting_name,control=false,value='',all_options=[],hint='') {
+    let config, setting_key, display_name, item;
+    [config,setting_key,display_name,item] = JSPLib.menu.getProgramValues(program_shortcut,setting_name);
+    let menu_type = (control ? "control" : "setting");
+    let keyselect_key = `${program_shortcut}-${menu_type}-${setting_key}`;
+    if (!control) {
+        all_options = config[setting_name].allitems;
+        hint = config[setting_name].hint;
+        value = item;
+    }
+    let hint_html = JSPLib.menu.renderSettingHint(program_shortcut,"inline",hint);
+    let html = "";
+    all_options.forEach((option)=>{
+        let selected = (option === value ? 'selected="selected"' : '');
+        let display_option = JSPLib.utility.displayCase(option);
+        html += `<option ${selected} value="${option}">${display_option}</option>`;
+    });
+    return `
+<div class="${program_shortcut}-options jsplib-options jsplib-menu-item" data-setting="${setting_name}">
+    <h4>${display_name}</h4>
+    <div>
+        <select name="${keyselect_key}" id="${keyselect_key}" data-parent="2">;
+            ${html}
+        </select>
+        ${hint_html}
+    </div>
+</div>
+`;
+}
+
+function FixRenderTextinput(program_shortcut,setting_name,length=20,control=false,hint='',buttons=[]) {
+    let config, setting_key, display_name, item;
+    [config,setting_key,display_name,item] = JSPLib.menu.getProgramValues(program_shortcut,setting_name);
+    let textinput_key = `${program_shortcut}-setting-${setting_key}`;
+    let menu_type = (control ? "control" : "setting");
+    let submit_control = '';
+    if (control && buttons.length) {
+        buttons.forEach((button)=>{
+            submit_control += FixRenderControlButton(program_shortcut,setting_key,button,2);
+        });
+    }
+    let value = '';
+    if (!control) {
+        hint = config[setting_name].hint;
+        value = item;
+    }
+    let hint_html = JSPLib.menu.renderSettingHint(program_shortcut,"block",hint);
+    return `
+<div class="${program_shortcut}-textinput jsplib-textinput jsplib-menu-item" data-setting="${setting_name}">
+    <h4>${display_name}</h4>
+    <div>
+        <input type="text" class="${program_shortcut}-${menu_type} jsplib-${menu_type}" name="${textinput_key}" id="${textinput_key}" value="${value}" size="${length}" autocomplete="off" data-parent="2">
+        ${submit_control}
+        ${hint_html}
+    </div>
+</div>`;
+}
+
+function FixRenderControlButton(program_shortcut,setting_key,button_name,parent_level) {
+    let button_key = `${program_shortcut}-${setting_key}-${button_name}`;
+    let display_name = JSPLib.utility.displayCase(button_name);
+    return `<input type="button" class="jsplib-control ${program_shortcut}-control" name="${button_key}" id="${button_key}" value="${display_name}" data-parent="${parent_level}">`;
+}
+
+function FixRenderLinkclick(program_shortcut,setting_name,display_name,link_text,hint) {
+    let setting_key = JSPLib.utility.kebabCase(setting_name);
+    return `
+<div class="${program_shortcut}-linkclick jsplib-linkclick jsplib-menu-item">
+    <h4>${display_name}</h4>
+    <div>
+        <b>[
+            <span class="${program_shortcut}-control jsplib-control">
+                <a href="#" id="${program_shortcut}-setting-${setting_key}">${link_text}</a>
+            </span>
+        ]</b>
+        &emsp;
+        <span class="${program_shortcut}-setting-tooltip jsplib-inline-tooltip">${hint}</span>
+    </div>
+</div>`;
+}
+
+function ValidateUserSettings(settings,config) {
+    let error_messages = [];
+    if (!validate.isHash(settings)) {
+        return ["User settings are not a hash."];
+    }
+    for (let setting in config) {
+        if (!(setting in settings) || !config[setting].validate(settings[setting])) {
+            if (!(setting in settings)) {
+                error_messages.push(`'${setting}' setting not found.`);
+            } else {
+                error_messages.push(`'${setting}' contains invalid data.`);
+            }
+            JSPLib.debug.debuglogLevel("Loading default:",setting,settings[setting],JSPLib.debug.WARNING);
+            settings[setting] = config[setting].default;
+        }
+    }
+    let valid_settings = Object.keys(config);
+    for (let setting in settings) {
+        if (!valid_settings.includes(setting)) {
+            JSPLib.debug.debuglogLevel("Deleting invalid setting:",setting,settings[setting],JSPLib.debug.WARNING);
+            delete settings[setting];
+            error_messages.push(`'${setting}' is an invalid setting.`);
+        }
+    }
+    return error_messages;
+}
+
+function UpdateUserSettings(program_shortcut) {
+    let program_key = program_shortcut.toUpperCase();
+    let settings = Danbooru[program_key].user_settings;
+    jQuery(`#${program_shortcut}-settings .${program_shortcut}-setting[id]`).each((i,entry)=>{
+        let $input = jQuery(entry);
+        let parent_level = $input.data('parent');
+        let container = JSPLib.utility.getNthParent(entry,parent_level);
+        let setting_name = jQuery(container).data('setting');
+        if (entry.type === "checkbox" || entry.type === "radio") {
+            let selector = $input.data('selector');
+            if (selector) {
+                $input.prop('checked', JSPLib.menu.isSettingEnabled(program_key,setting_name,selector));
+                $input.checkboxradio("refresh");
+            } else {
+                $input.prop('checked', settings[setting_name]);
+            }
+        } else if (entry.type === "text") {
+             $input.val(settings[setting_name]);
+        } else if (entry.type === "hidden") {
+            if (!$(container).hasClass("sorted")) {
+                $("ul",container).sortable("destroy");
+                let sortlist = $("li",container).detach();
+                sortlist.sort((a, b)=>{
+                    let sort_a = $("input",a).data('sort');
+                    let sort_b = $("input",b).data('sort');
+                    return settings[setting_name].indexOf(sort_a) - settings[setting_name].indexOf(sort_b);
+                });
+                sortlist.each((i,entry)=>{
+                    $("ul",container).append(entry);
+                });
+                $("ul",container).sortable();
+                $(container).addClass("sorted");
+            }
+        }
+    });
+    $(".jsplib-sortlist").removeClass("sorted");
+}
 
 //Prevents the same object from filling up the array
 function BetterArrayFill(length,stringified_json) {
@@ -684,6 +979,20 @@ function RenderRow(key) {
     return AddTableRow(tabletext,`data-key="${key}"`);
 }
 
+function RenderOrderMessage(period,sorttype) {
+    let header = period_info.header[period];
+    switch (sorttype) {
+        case 0:
+            return `Copyrights ordered by user postcount; ${header} period; H -> L`;
+        case 1:
+            return `Copyrights ordered by user postcount; ${header} period; L -> H`;
+        case 2:
+            return `Copyrights ordered by site postcount; ${header} period; H -> L`;
+        case 3:
+            return `Copyrights ordered by site postcount; ${header} period; L -> H`;
+    }
+}
+
 //Get the data and validate it without checking the expires
 function GetCountData(key,default_val=null) {
     let count_data = JSPLib.storage.getStorageData(key, sessionStorage);
@@ -750,8 +1059,7 @@ function RenderToolcontrol(metric) {
 }
 
 function RenderStatistics(key,attribute,period,limited=false) {
-    let period_name = period_info.longname[period];
-    let data = JSPLib.storage.getStorageData(`${period_name}-${Danbooru.CU.counttype}-${Danbooru.CU.current_username}`,sessionStorage);
+    let data = JSPLib.storage.getStorageData(GetPeriodKey(period_info.longname[period]),sessionStorage);
     if (!data) {
         return "No data!";
     }
@@ -942,6 +1250,13 @@ function GetCopyrightCount(posts) {
             copyright_count[tag] = copyright_count[tag].concat([entry.id]);
         });
     });
+    if (Danbooru.CU.user_settings.postcount_threshold) {
+        for (let copyright in copyright_count) {
+            if (copyright_count[copyright].length < Danbooru.CU.user_settings.postcount_threshold) {
+                delete copyright_count[copyright];
+            }
+        }
+    }
     return copyright_count;
 }
 
@@ -1019,6 +1334,10 @@ function GetTagData(tag) {
     return Promise.all(Danbooru.CU.user_settings.periods_shown.map((period)=>{return GetCount(longname_key[period],tag);}));
 }
 
+function GetPeriodKey(period_name) {
+    return `${period_name}-${Danbooru.CU.counttype}-${Danbooru.CU.current_username}`;
+}
+
 async function CheckPeriodUploads() {
     Danbooru.CU.period_available[Danbooru.CU.usertag][Danbooru.CU.current_username] = Danbooru.CU.period_available[Danbooru.CU.usertag][Danbooru.CU.current_username] || {};
     let times_shown = GetShownPeriodKeys();
@@ -1027,10 +1346,13 @@ async function CheckPeriodUploads() {
         if (period in Danbooru.CU.period_available[Danbooru.CU.usertag][Danbooru.CU.current_username]) {
             continue;
         }
-        let period_name = period_info.longname[period];
+        let data_key = GetPeriodKey(period_info.longname[period]);
         let max_expires = period_info.uploadexpires[period]
-        var check = await JSPLib.storage.checkLocalDB(`${period_name}-${Danbooru.CU.counttype}-${Danbooru.CU.current_username}`,ValidateEntry,max_expires);
+        var check = await JSPLib.storage.checkLocalDB(data_key,ValidateEntry,max_expires);
         Danbooru.CU.period_available[Danbooru.CU.usertag][Danbooru.CU.current_username][period] = Boolean(check);
+        if (!check) {
+            sessionStorage.removeItem(data_key);
+        }
     }
 }
 
@@ -1038,6 +1360,7 @@ async function PopulateTable() {
     //Prevent function from being reentrant while processing uploads
     PopulateTable.is_started = true;
     var post_data = [];
+    InitializeControls();
     if (Danbooru.CU.checked_users[Danbooru.CU.usertag][Danbooru.CU.current_username] === undefined) {
         TableMessage(`<div id="empty-uploads">Loading data... (<span id="loading-counter">...</span>)</div>`);
         post_data = await ProcessUploads(Danbooru.CU.current_username);
@@ -1047,7 +1370,6 @@ async function PopulateTable() {
     if (is_override || Danbooru.CU.checked_users[Danbooru.CU.usertag][Danbooru.CU.current_username]) {
         Danbooru.CU.active_copytags = JSPLib.utility.dataCopy(Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username].daily);
         await CheckPeriodUploads(Danbooru.CU.current_username);
-        InitializeControls();
         InitializeTable();
     } else {
         TableMessage(`<div id="empty-uploads">${Danbooru.CU.empty_uploads_message}</div>`);
@@ -1067,6 +1389,8 @@ function InitializeControls() {
         SetCheckUserClick();
         SetRefreshUserClick();
         SetAddCopyrightClick();
+        Danbooru.CU.controls_initialized = true;
+        setTimeout(()=>{Danbooru.IAC && Danbooru.IAC.InitializeAutocompleteIndexed && Danbooru.IAC.InitializeAutocompleteIndexed("#count_query_user_id",'us');},1000);
     }
 }
 
@@ -1154,7 +1478,7 @@ function CheckUser(username) {
 async function GetPeriodUploads(username,period,limited=false,domname=null) {
     let period_name = period_info.longname[period];
     let max_expires = period_info.uploadexpires[period]
-    let key = `${period_name}-${Danbooru.CU.counttype}-${username}`;
+    let key = GetPeriodKey(period_name);
     var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry,max_expires);
     if (!(check)) {
         JSPLib.debug.debuglog(`Network (${period_name} ${Danbooru.CU.counttype})`);
@@ -1261,7 +1585,7 @@ function RenderChartClick() {
         let is_limited = $(e.target).hasClass("cu-limited");
         let longname = period_info.longname[period];
         let points = period_info.points[period];
-        let data = JSPLib.storage.getStorageData(`${longname}-${Danbooru.CU.counttype}-${Danbooru.CU.current_username}`,sessionStorage);
+        let data = JSPLib.storage.getStorageData(GetPeriodKey(longname),sessionStorage);
         if (!data || (!is_limited && data.value.length === 0) || (is_limited && !data.value.chart_data)) {
             Danbooru.Utility.notice(`${period_info.header[period]} period not populated! Click the period header to activate the chart.`);
             return;
@@ -1365,7 +1689,7 @@ function SetCopyrightPeriodClick() {
             let is_period_enabled = Danbooru.CU.period_available[Danbooru.CU.usertag][Danbooru.CU.current_username][short_period];
             if (is_period_enabled) {
                 if (Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username][current_period] === undefined) {
-                    let data = JSPLib.storage.getStorageData(`${current_period}-${Danbooru.CU.counttype}-${Danbooru.CU.current_username}`,sessionStorage);
+                    let data = JSPLib.storage.getStorageData(GetPeriodKey(current_period),sessionStorage);
                     let copyright_count = GetCopyrightCount(PostDecompressData(data.value));
                     let user_copytags = SortDict(copyright_count);
                     if (Danbooru.CU.user_settings.copyrights_merge) {
@@ -1391,8 +1715,8 @@ function SetCopyrightPeriodClick() {
 
 function SetToggleNoticeClick() {
     $("#toggle-count-notice").click((e)=>{
-        if (Danbooru.CU.hidden === 1) {
-            Danbooru.CU.hidden = 0;
+        if (Danbooru.CU.hidden === true) {
+            Danbooru.CU.hidden = false;
             $('#upload-counts').addClass('opened');
             if (!PopulateTable.is_started) {
                 //Always show current user on open to prevent processing potentially bad usernames set by SetCheckUserClick
@@ -1403,10 +1727,10 @@ function SetToggleNoticeClick() {
             }
             Danbooru.CU.channel.postMessage({type: "show"});
         } else {
-            Danbooru.CU.hidden = 1;
+            Danbooru.CU.hidden = true;
             $('#upload-counts').removeClass('opened');
             $('.cu-program-checkbox').prop('checked', false);
-            $('.cu-program-checkbox').checkboxradio("refresh");
+            Danbooru.CU.controls_initialized && $('.cu-program-checkbox').checkboxradio("refresh");
             $("#count-chart").hide();
             Danbooru.CU.channel.postMessage({type: "hide"});
         }
@@ -1417,16 +1741,16 @@ function SetToggleNoticeClick() {
 
 function SetStashNoticeClick() {
     $("#stash-count-notice,#restore-count-notice").click((e)=>{
-        if (Danbooru.CU.stashed === 1) {
-            Danbooru.CU.stashed = 0;
+        if (Danbooru.CU.stashed === true) {
+            Danbooru.CU.stashed = false;
             $('#upload-counts,#upload-counts-restore').removeClass('stashed');
             Danbooru.CU.channel.postMessage({type: "unstash"});
         } else {
-            Danbooru.CU.stashed = 1;
-            Danbooru.CU.hidden = 1;
+            Danbooru.CU.stashed = true;
+            Danbooru.CU.hidden = true;
             $('#upload-counts,#upload-counts-restore').removeClass('opened').addClass('stashed');
             $('.cu-program-checkbox').prop('checked', false);
-            $('.cu-program-checkbox').checkboxradio("refresh");
+            Danbooru.CU.controls_initialized && $('.cu-program-checkbox').checkboxradio("refresh");
             $("#count-chart").hide();
             Danbooru.CU.channel.postMessage({type: "stash"});
         }
@@ -1438,7 +1762,8 @@ function SetStashNoticeClick() {
 
 function SetRestoreNoticeClick() {
     $("#restore-count-notice").click((e)=>{
-        JSPLib.storage.setStorageData('cu-stash-current-uploads',0,localStorage);
+        Danbooru.CU.stashed = false;
+        JSPLib.storage.setStorageData('cu-stash-current-uploads',Danbooru.CU.stashed,localStorage);
         $('#upload-counts,#upload-counts-restore').removeClass('stashed');
         Danbooru.CU.channel.postMessage({type: "unstash"});
         e.preventDefault();
@@ -1533,8 +1858,8 @@ async function ProcessUploads() {
     if (Danbooru.CU.current_username !== "Anonymous") {
         current_uploads = await GetPeriodUploads(Danbooru.CU.current_username,'d');
     }
+    let previous_key = GetPeriodKey("previous");
     if (current_uploads.length) {
-        let previous_key = `previous-${Danbooru.CU.counttype}-${Danbooru.CU.current_username}`;
         let is_new_tab = JSPLib.storage.getStorageData(previous_key,sessionStorage) === null;
         let previous_uploads = await JSPLib.storage.checkLocalDB(previous_key,ValidateEntry) || {value: []};
         previous_uploads = PostDecompressData(previous_uploads.value);
@@ -1548,6 +1873,9 @@ async function ProcessUploads() {
             user_copytags = SortDict(curr_copyright_count);
             if (Danbooru.CU.user_settings.copyrights_merge) {
                 user_copytags = await MergeCopyrightTags(user_copytags);
+            }
+            if (Danbooru.CU.user_settings.copyrights_threshold) {
+                user_copytags = user_copytags.slice(0,Danbooru.CU.user_settings.copyrights_threshold);
             }
             let copyright_symdiff = CompareCopyrightCounts(curr_copyright_count,prev_copyright_count);
             let copyright_changed = (is_new_tab ? user_copytags : JSPLib.utility.setIntersection(user_copytags,copyright_symdiff));
@@ -1570,8 +1898,163 @@ async function ProcessUploads() {
         await GetTagData(`${Danbooru.CU.usertag}:${Danbooru.CU.current_username}`);
     }
     Danbooru.CU.user_copytags[Danbooru.CU.usertag][Danbooru.CU.current_username] = {daily: user_copytags, manual: []};
-    JSPLib.storage.saveData(`previous-${Danbooru.CU.counttype}-${Danbooru.CU.current_username}`,{value: PreCompressData(current_uploads), expires: 0});
+    JSPLib.storage.saveData(previous_key,{value: PreCompressData(current_uploads), expires: 0});
     return current_uploads;
+}
+
+////Cache editor
+
+//Program cache function
+
+function OptionCacheDataKey(data_type,data_value) {
+    Danbooru.CU.data_period = $("#cu-control-data-period").val();
+    if (data_type === "reverse_implication") {
+        return 'rti-' + data_value;
+    }
+    if (data_type === "count") {
+        if (Danbooru.CU.data_period == "previous") {
+            Danbooru.CU.data_value = "";
+            return "";
+        }
+        let shortkey = (Danbooru.CU.data_period !== "" ? longname_key[Danbooru.CU.data_period] : "");
+        return `ct${shortkey}-${data_value}`;
+    } else {
+        return `${Danbooru.CU.data_period}-${data_type}-${data_value}`;
+    }
+}
+
+//Cache helper functions
+
+async function LoadStorageKeys(program_shortcut) {
+    let program_key = program_shortcut.toUpperCase();
+    let storage_keys = await JSPLib.storage.danboorustorage.keys();
+    Danbooru[program_key].storage_keys.indexed_db = storage_keys.filter((key)=>{return key.match(program_cache_regex);});
+    storage_keys = Object.keys(localStorage);
+    Danbooru[program_key].storage_keys.local_storage = storage_keys.filter((key)=>{return key.startsWith(program_shortcut + "-");});
+}
+
+function GetCacheDatakey(program_shortcut,option) {
+    let program_key = program_shortcut.toUpperCase();
+    let program_data = Danbooru[program_key];
+    program_data.data_source = $(`#${program_shortcut}-control-data-source`).val();
+    program_data.data_type = $(`#${program_shortcut}-control-data-type`).val();
+    program_data.data_value = data_key = $(`#${program_shortcut}-setting-data-name`).val().trim().replace(/\s+/g,'_');
+    if (program_data.data_source === "local_storage") {
+        data_key = program_shortcut + '-' + program_data.data_value;
+    } else if (program_data.data_type !== "custom") {
+        if (typeof option === "function") {
+            data_key = option(program_data.data_type,program_data.data_value);
+        } else if (typeof option === "object") {
+            data_key = option[program_data.data_type] + '-' + program_data.data_value;
+        }
+    }
+    return data_key;
+}
+
+function CacheSource(program_shortcut,data_regex,option) {
+    let program_key = program_shortcut.toUpperCase();
+    let program_data = Danbooru[program_key];
+    return function (req,resp) {
+        let check_key = GetCacheDatakey(program_shortcut,option);
+        if (program_data.data_source === "indexed_db" && program_data.data_value.length === 0) {
+            resp([]);
+            return;
+        }
+        let source_keys = program_data.storage_keys[program_data.data_source];
+        let available_keys = source_keys.filter((key)=>{return key.toLowerCase().startsWith(check_key.toLowerCase());});
+        let transformed_keys = available_keys.slice(0,10);
+        if (program_data.data_source === 'local_storage') {
+            transformed_keys = transformed_keys.map((key)=>{return key.replace(RegExp(`^${program_shortcut}-`),'');});
+        } else if (program_data.data_type !== "custom") {
+            transformed_keys = transformed_keys.map((key)=>{return key.replace(data_regex,'');});
+        }
+        resp(transformed_keys);
+    }
+}
+
+//Cache event functions
+
+function GetCacheClick(program_shortcut,option) {
+    let program_key = program_shortcut.toUpperCase();
+    $(`#${program_shortcut}-data-name-get`).on(`click.${program_shortcut}`,(e)=>{
+        let storage_key = GetCacheDatakey(program_shortcut,option);
+        if (Danbooru[program_key].data_source === "local_storage") {
+            let data = JSPLib.storage.getStorageData(storage_key,localStorage);
+            $(`#${program_shortcut}-cache-viewer textarea`).val(JSON.stringify(data,null,2));
+        } else {
+            JSPLib.storage.retrieveData(storage_key).then((data)=>{
+                $(`#${program_shortcut}-cache-viewer textarea`).val(JSON.stringify(data,null,2));
+            });
+        }
+        HideValidateError();
+        $("#close-notice-link").click();
+    });
+}
+
+function SaveCacheClick(program_shortcut,localvalidator,indexvalidator,option) {
+    let program_key = program_shortcut.toUpperCase();
+    $(`#${program_shortcut}-data-name-save`).on(`click.${program_shortcut}`,(e)=>{
+        try {
+            var data = JSON.parse($(`#${program_shortcut}-cache-viewer textarea`).val());
+        } catch (e) {
+            Danbooru.Utility.error("Invalid JSON data! Unable to save.");
+            return;
+        }
+        let storage_key = GetCacheDatakey(program_shortcut,option);
+        if (Danbooru[program_key].data_source === "local_storage") {
+            if (localvalidator(storage_key,data)) {
+                JSPLib.storage.setStorageData(storage_key,data,localStorage);
+                Danbooru.Utility.notice("Data was saved.");
+                HideValidateError();
+                if (storage_key === `${program_shortcut}-user-settings`) {
+                    Danbooru.CU.user_settings = data;
+                    UpdateUserSettings(program_shortcut);
+                }
+            } else {
+                Danbooru.Utility.error("Data is invalid! Unable to save.");
+            }
+        } else {
+            if (indexvalidator(storage_key,data)) {
+                JSPLib.storage.saveData(storage_key,data).then(()=>{
+                    Danbooru.Utility.notice("Data was saved.");
+                    HideValidateError();
+                });
+            } else {
+                Danbooru.Utility.error("Data is invalid! Unable to save.");
+            }
+        }
+    });
+}
+
+function DeleteCacheClick(program_shortcut,option) {
+    let program_key = program_shortcut.toUpperCase();
+    $(`#${program_shortcut}-data-name-delete`).on(`click.${program_shortcut}`,(e)=>{
+        let storage_key = GetCacheDatakey(program_shortcut,option);
+        if (Danbooru[program_key].data_source === "local_storage") {
+            if (confirm("This will delete program data that may cause problems until the page can be refreshed.\n\nAre you sure?")) {
+                localStorage.removeItem(storage_key);
+                Danbooru.Utility.notice("Data has been deleted.");
+                HideValidateError();
+            }
+        } else {
+            JSPLib.storage.removeData(storage_key).then((data)=>{
+                Danbooru.Utility.notice("Data has been deleted.");
+                HideValidateError();
+            });
+        }
+    });
+}
+
+function CacheAutocomplete(program_shortcut,data_regex,option) {
+    let program_key = program_shortcut.toUpperCase();
+    $(`#${program_shortcut}-setting-data-name`).autocomplete({
+        minLength: 0,
+        delay: 0,
+        source: CacheSource(program_shortcut,data_regex,option),
+        search: function() {
+            $(this).data("uiAutocomplete").menu.bindings = $();
+        }
+    }).off('keydown.Autocomplete.tab');
 }
 
 //Settings functions
@@ -1579,23 +2062,23 @@ async function ProcessUploads() {
 function BroadcastCU(ev) {
     JSPLib.debug.debuglog("Broadcast",ev.data);
     if (ev.data.type === "hide") {
-        Danbooru.CU.hidden = 1;
+        Danbooru.CU.hidden = true;
         $('#upload-counts').removeClass('opened');
     } else if (ev.data.type === "show") {
-        Danbooru.CU.hidden = 0;
+        Danbooru.CU.hidden = false;
         $('#upload-counts').addClass('opened');
     } else if (ev.data.type === "stash") {
-        Danbooru.CU.stashed = 1;
-        Danbooru.CU.hidden = 1;
+        Danbooru.CU.stashed = true;
+        Danbooru.CU.hidden = true;
         $('#upload-counts,#upload-counts-restore').addClass('stashed');
     } else if (ev.data.type === "unstash") {
-        Danbooru.CU.stashed = 0;
+        Danbooru.CU.stashed = false;
         $('#upload-counts,#upload-counts-restore').removeClass('stashed');
     } else if (ev.data.type === "settings") {
         Danbooru.CU.user_settings = ev.data.user_settings;
     } else if (ev.data.type === "reset") {
         $('#upload-counts').removeClass('opened');
-        JSPLib.storage.setStorageData('cu-hide-current-uploads',1,localStorage);
+        JSPLib.storage.setStorageData('cu-hide-current-uploads',true,localStorage);
         Danbooru.CU.user_settings = ev.data.user_settings;
         Object.assign(Danbooru.CU,program_reset_keys);
     } else if (ev.data.type === "purge") {
@@ -1619,13 +2102,23 @@ function RenderSettingsMenu() {
     $("#current-uploads").append(cu_menu);
     $("#cu-display-settings").append(JSPLib.menu.renderCheckbox('cu','copyrights_merge'));
     $("#cu-display-settings").append(JSPLib.menu.renderCheckbox('cu','copyrights_enabled'));
+    $("#cu-display-settings").append(JSPLib.menu.renderTextinput("cu",'copyrights_threshold',10));
+    $("#cu-display-settings").append(JSPLib.menu.renderTextinput("cu",'postcount_threshold',10));
     $("#cu-display-settings").append(JSPLib.menu.renderInputSelectors('cu','periods_shown','checkbox'));
-    $("#cu-cache-settings").append(JSPLib.menu.renderLinkclick("cu",'purge_cache',`Purge cache (<span id="cu-purge-counter">...</span>)`,"Click to purge"));
+    $("#cu-cache-settings").append(FixRenderLinkclick("cu",'purge_cache',`Purge cache (<span id="cu-purge-counter">...</span>)`,"Click to purge","Dumps all of the cached data related to CurrentUploads."));
+    $("#cu-cache-editor-controls").append(RenderKeyselect('cu','data_source',true,'indexed_db',all_source_types,"Indexed DB is <b>Cache Data</b> and Local Storage is <b>Program Data</b>."));
+    $("#cu-cache-editor-controls").append(RenderKeyselect('cu','data_type',true,'count',all_data_types,"Only applies to Indexed DB.  Use <b>Custom</b> for querying by keyname."));
+    $("#cu-cache-editor-controls").append(RenderKeyselect('cu','data_period',true,'daily',period_selectors.concat(['previous']),"Period is only for <b>Count, <b>Uploads</b> and <b>approvals</b>. <b>Count</b> cannot use the 'Previous' period."));
+    $("#cu-cache-editor-controls").append(FixRenderTextinput('cu','data_name',20,true,"Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.",['get','save','delete']));
     JSPLib.menu.engageUI('cu',true);
     $("#cu-select-periods-shown-daily").checkboxradio("disable"); //Daily period is mandatory
     JSPLib.menu.saveUserSettingsClick('cu','CurrentUploads');
     JSPLib.menu.resetUserSettingsClick('cu','CurrentUploads',localstorage_keys,program_reset_keys);
     JSPLib.menu.purgeCacheClick('cu','CurrentUploads',program_cache_regex,"#cu-purge-counter");
+    GetCacheClick('cu',OptionCacheDataKey);
+    SaveCacheClick('cu',ValidateProgramData,ValidateEntry,OptionCacheDataKey);
+    DeleteCacheClick('cu',OptionCacheDataKey);
+    CacheAutocomplete('cu',program_cache_regex,OptionCacheDataKey);
 }
 
 //Main function
@@ -1643,9 +2136,11 @@ function main() {
         period_available: { user:{}, approver:{} },
         reverse_implications: {},
         current_metric: JSPLib.storage.getStorageData('cu-current-metric',localStorage,'score'),
-        hidden: JSPLib.storage.getStorageData('cu-hide-current-uploads',localStorage,0),
-        stashed: JSPLib.storage.getStorageData('cu-stash-current-uploads',localStorage,0),
+        hidden: Boolean(JSPLib.storage.getStorageData('cu-hide-current-uploads',localStorage,false)),
+        stashed: Boolean(JSPLib.storage.getStorageData('cu-stash-current-uploads',localStorage,false)),
+        controls_initialized: false,
         copyright_period: 'd',
+        storage_keys: {indexed_db: [], local_storage: []},
         settings_config: settings_config
     };
     Danbooru.CU.user_settings = JSPLib.menu.loadUserSettings('cu');
@@ -1653,24 +2148,29 @@ function main() {
     JSPLib.utility.setCSSStyle(program_css,'program');
     $notice_box = $(notice_box);
     $footer_notice = $(unstash_notice);
-    if (Danbooru.CU.stashed === 1) {
+    if (Danbooru.CU.stashed === true) {
         $notice_box.addClass('stashed');
         $footer_notice.addClass('stashed');
+        //The table needs to be hidden when it's stashed
+        Danbooru.CU.hidden = true;
     }
     $('header#top').append($notice_box);
     $('footer#page-footer').append($footer_notice);
     SetToggleNoticeClick();
     SetStashNoticeClick();
-    if (Danbooru.CU.hidden === 0) {
+    if (Danbooru.CU.hidden === false) {
         //Set to opposite so that click can be used and sets it back
-        Danbooru.CU.hidden = 1;
+        Danbooru.CU.hidden = true;
         $("#toggle-count-notice").click();
     }
     if ($("#c-users #a-edit").length) {
+        JSPLib.validate.dom_output = "#cu-cache-editor-errors";
+        LoadStorageKeys('cu');
         JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
             JSPLib.menu.installSettingsMenu("CurrentUploads");
             RenderSettingsMenu();
         });
+        JSPLib.utility.setCSSStyle(menu_css,'menu');
     }
     JSPLib.debug.debugExecute(()=>{
         window.addEventListener('beforeunload',function () {
