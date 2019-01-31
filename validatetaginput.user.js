@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      26.0
+// @version      26.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -328,10 +328,10 @@ function ValidateRelationEntry(key,entry) {
 }
 
 function ValidateProgramData(key,entry) {
-    var checkerror;
+    var checkerror=[];
     switch (key) {
         case 'vti-user-settings':
-            var checkerror = ValidateUserSettings(entry,VTI.settings_config);
+            var checkerror = ValidateUserSettings(entry,settings_config);
             break;
         case 'vti-prune-expires':
             if (!Number.isInteger(entry)) {
