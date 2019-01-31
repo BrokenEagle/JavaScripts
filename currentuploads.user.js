@@ -1386,7 +1386,7 @@ async function PopulateTable() {
 
 function InitializeControls() {
     //Render the controls only once when the table is first opened
-    if ($("#count-controls").html() === "") {
+    if (!CU.controls_initialized) {
         $('.cu-program-checkbox').checkboxradio();
         $("#count-controls").html(RenderAllTooltipControls());
         $("#count-copyrights-controls").html(RenderCopyrightControls());
