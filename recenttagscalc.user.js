@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RecentTagsCalc
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.1
+// @version      5.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Use different mechanism to calculate RecentTags
 // @author       BrokenEagle
@@ -25,7 +25,7 @@
 /***Global variables***/
 
 //Variables for debug.js
-JSPLib.debug.debug_console = true;
+JSPLib.debug.debug_console = false;
 JSPLib.debug.pretext = "RTC:";
 JSPLib.debug.pretimer = "RTC-";
 JSPLib.debug.level = JSPLib.debug.INFO;
@@ -101,6 +101,12 @@ const settings_config = {
         parse: parseInt,
         validate: (data)=>{return Number.isInteger(data) && data > 0;},
         hint: "Number of tags to show."
+    },
+    maximum_tag_groups: {
+        default: 5,
+        parse: parseInt,
+        validate: (data)=>{return Number.isInteger(data) && data > 0;},
+        hint: "Number of tag groups to store and show. Only affects the <b>Multiple</b> list type."
     },
     include_metatags: {
         default: true,
@@ -570,13 +576,36 @@ function GetTagData(tag) {
 
 //Display functions
 
+function PinnedTagsClick() {
+    $(".recent-related-tags-column .ui-icon").click((e)=>{
+        $(e.target).toggleClass("ui-icon-radio-off ui-icon-pin-s");
+        let tag_name = $(".search-tag",e.target.parentElement).text().replace(/\s/g,'_');
+        RTC.pinned_tags = JSPLib.utility.setSymmetricDifference(RTC.pinned_tags,[tag_name]);
+        JSPLib.storage.setStorageData('rtc-pinned-tags',RTC.pinned_tags,localStorage);
+        RTC.channel.postMessage({type: "reload_recent", recent_tags: RTC.recent_tags, pinned_tags: RTC.pinned_tags, updated_pin_tag: tag_name});
+    });
+}
+
 async function DisplayRecentTags() {
     await RTC.pageload_recentcheck;
     let $tag_column = $(".rtc-user-related-tags-columns .recent-related-tags-column");
-    let html = RenderTaglist(RTC.recent_tags,"Recent");
+    let html = RenderTaglist(RTC.recent_tags,"Recent",RTC.pinned_tags);
+    if (RTC.user_settings.list_type[0] === "multiple") {
+        let upload = 1, edit = 1;
+        let shown_tags = JSPLib.utility.setUnion(RTC.recent_tags,RTC.pinned_tags);
+        RTC.other_recent.forEach((recent_entry)=>{
+            let title = (recent_entry.was_upload ? `Upload ${upload++}` : `Edit ${edit++}`);
+            let display_tags = JSPLib.utility.setDifference(recent_entry.tags,shown_tags);
+            if (display_tags.length) {
+                html += RenderTaglist(display_tags,title,[]);
+            }
+            shown_tags = JSPLib.utility.setUnion(shown_tags,display_tags);
+        });
+    }
     $tag_column.html(html);
     $tag_column.removeClass("is-empty-true").addClass("is-empty-false");
     Danbooru.RelatedTag.update_selected();
+    PinnedTagsClick();
 }
 
 async function DisplayFrequentTags() {
@@ -589,7 +618,7 @@ async function DisplayFrequentTags() {
 }
 
 function RecheckAndDisplay(name) {
-    BatchStorageCheck(TagToKeyTransform(RTC[name+'_tags']),ValidateEntry,tag_expires)
+    BatchStorageCheck(TagToKeyTransform(FilterMetatags(RTC[name+'_tags'])),ValidateEntry,tag_expires)
     .then(()=>{
         switch(name) {
             case "recent":
@@ -617,13 +646,22 @@ function SetRecheckDisplayInterval(name) {
     RecheckDisplaySemaphoreCallback.timers[name] = setInterval(()=>{RecheckDisplaySemaphoreCallback(name);},timer_poll_interval);
 }
 
-function RenderTaglist(taglist,columnname) {
-    let html = "";
-    taglist.forEach((tag)=>{
+function RenderTaglines(taglist,addon) {
+    return taglist.map((tag)=>{
         let category = GetTagCategory(tag);
         let search_link = JSPLib.danbooru.postSearchLink(tag,tag.replace(/_/g,' '),`class="search-tag"`);
-        html += `    <li class="category-${category}">${search_link}</li>\n`;
-    });
+        return `    <li class="category-${category}">${addon}${search_link}</li>\n`;
+    }).join('');
+}
+
+function RenderTaglist(taglist,columnname,pinned_tags) {
+    let html = "";
+    if (pinned_tags && pinned_tags.length) {
+        html += RenderTaglines(pinned_tags,`<a class="ui-icon ui-icon-pin-s" style="min-width:unset"></a>&thinsp;`);
+        taglist = JSPLib.utility.setDifference(taglist,pinned_tags);
+    }
+    let pin_html = (pinned_tags ? `<a class="ui-icon ui-icon-radio-off" style="min-width:unset"></a>&thinsp;` :  '');
+    html += RenderTaglines(taglist,pin_html);
     return `
 <h6>${columnname}</h6>
 <ul>
@@ -821,6 +859,12 @@ async function CheckAllRecentTags() {
         RTC.saved_recent_tags = JSPLib.storage.getStorageData('rtc-new-recent-tags',localStorage,[]);
         tag_list = JSPLib.utility.setUnion(tag_list,FilterMetatags(RTC.saved_recent_tags));
     }
+    if (RTC.user_settings.list_type[0] === "multiple") {
+        RTC.other_recent = JSPLib.storage.getStorageData('rtc-other-recent',localStorage,[]);
+        RTC.other_recent.forEach((recent_entry)=>{
+            tag_list = JSPLib.utility.setUnion(tag_list,recent_entry.tags);
+        });
+    }
     RTC.missing_recent_tags = await CheckMissingTags(tag_list,"Recent");
     await CheckTagDeletion();
     if (!RTC.user_settings.include_deleted_tags) {
@@ -839,8 +883,21 @@ async function CheckAllRecentTags() {
 
 function AddRecentTags(newtags) {
     switch (RTC.user_settings.list_type[0]) {
+        case "multiple":
+            RTC.was_upload = JSPLib.storage.getStorageData('rtc-was-upload',localStorage,false);
+            if (newtags.length && RTC.recent_tags.length) {
+                RTC.other_recent.unshift({
+                    was_upload: RTC.was_upload,
+                    tags: RTC.recent_tags
+                });
+                RTC.other_recent = RTC.other_recent.slice(0,RTC.user_settings.maximum_tag_groups);
+                JSPLib.storage.setStorageData('rtc-other-recent',RTC.other_recent,localStorage);
+            }
+            JSPLib.storage.setStorageData('rtc-was-upload',RTC.is_upload,localStorage);
         case "single":
-            RTC.recent_tags = newtags;
+            if (newtags.length) {
+                RTC.recent_tags = newtags;
+            }
             break;
         case "queue":
         default:
@@ -848,7 +905,7 @@ function AddRecentTags(newtags) {
     }
     RTC.recent_tags = RTC.recent_tags.slice(0,RTC.user_settings.maximum_tags);
     JSPLib.storage.setStorageData('rtc-recent-tags',RTC.recent_tags,localStorage);
-    RTC.channel.postMessage({type: "reload_recent", recent_tags: RTC.recent_tags, new_recent_tags: newtags});
+    RTC.channel.postMessage({type: "reload_recent", recent_tags: RTC.recent_tags, pinned_tags: RTC.pinned_tags, new_recent_tags: newtags});
 }
 
 ////Frequent tags
@@ -893,6 +950,7 @@ function BroadcastRTC(ev) {
     JSPLib.debug.debuglog(`BroadcastChannel (${ev.data.type}):`, ev.data);
     switch (ev.data.type) {
         case "reload_recent":
+            RTC.pinned_tags = ev.data.pinned_tags;
             RTC.recent_tags = ev.data.recent_tags;
             !RTC.is_setting_menu && RecheckAndDisplay("recent");
             break;
@@ -980,6 +1038,7 @@ function main() {
     RTC.preedittags = GetTagList();
     RTC.is_upload = Boolean($("#c-uploads #a-new").length);
     RTC.recent_tags = JSPLib.storage.getStorageData('rtc-recent-tags',localStorage,[]);
+    RTC.pinned_tags = JSPLib.storage.getStorageData('rtc-pinned-tags',localStorage,[]);
     RTC.frequent_tags = [];
     RTC.pageload_recentcheck = CheckAllRecentTags();
     RTC.pageload_frequentcheck = CheckAllFrequentTags();
@@ -1007,6 +1066,10 @@ function main() {
         RTC.mutation_observer.observe($(".related-tags")[0], {
             childList: true
         });
+    }
+    if (RTC.user_settings.list_type[0] !== "multiple") {
+        localStorage.removeItem('rtc-other-recent');
+        localStorage.removeItem('rtc-was-upload');
     }
     JSPLib.utility.setCSSStyle(program_css,'program');
     setTimeout(()=>{
