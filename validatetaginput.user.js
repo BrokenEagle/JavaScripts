@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      26.3
+// @version      26.4
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -883,7 +883,7 @@ function ValidateUpload() {
 async function ValidateArtist() {
     let source_url = $("#post_source").val();
     let new_artist_source = $.param({artist: {source: source_url}});
-    let artist_names = $(".artist-tag-list .category-1 .wiki-link").map((i,entry)=>{return decodeURI(entry.search.split("=")[1]);}).toArray();
+    let artist_names = $(".artist-tag-list .category-1 .wiki-link").map((i,entry)=>{return decodeURIComponent(entry.search.split("=")[1]);}).toArray();
     if (artist_names.length === 0 && !VTI.preedittags.includes('official_art')) {
         //Validate no artist tag
         let option_html = "";
