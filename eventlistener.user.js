@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      13.0
+// @version      13.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries)
 // @author       BrokenEagle
@@ -993,14 +993,15 @@ function InitializePostShowMenu() {
     all_post_events.forEach((type)=>{
         let linkhtml = RenderSubscribeMultiLinks(post_display_names[type],[type],postid);
         let shownhtml = (IsEventEnabled(type) ? '' : 'style="display:none"');
-        $("#el-add-links",menu_obj).append(`<span class="el-subscribe-${type}-container "${shownhtml}>${linkhtml} | </span>`);
+        $("#el-add-links",menu_obj).append(`<span class="el-subscribe-${type}-container" ${shownhtml}>${linkhtml} | </span>`);
     });
     let shownhtml = (AreAllEventsEnabled(all_translate_events) ? '' : 'style="display:none"');
-    let linkhtml = RenderSubscribeMultiLinks("Translations",all_translate_events,postid,' | ');
-    $("#el-add-links",menu_obj).append(`<span class="el-subscribe-translated-container "${shownhtml}>${linkhtml} | </span>`);
+    let linkhtml = RenderSubscribeMultiLinks("Translations",all_translate_events,postid);
+    $("#el-add-links",menu_obj).append(`<span class="el-subscribe-translated-container" ${shownhtml}>${linkhtml} | </span>`);
     //The All link is always shown when the outer menu is shown, so no need to individually hide it
     let enabled_post_events = JSPLib.utility.setIntersection(all_post_events,EL.user_settings.events_enabled);
-    $("#el-add-links",menu_obj).append(RenderSubscribeMultiLinks("All",enabled_post_events,postid,' | '));
+    linkhtml = RenderSubscribeMultiLinks("All",enabled_post_events,postid);
+    $("#el-add-links",menu_obj).append(`<span class="el-subscribe-all-container">${linkhtml}</span>`);
     $("nav#nav").append(menu_obj);
     SubscribeMultiLinkClick();
 }
