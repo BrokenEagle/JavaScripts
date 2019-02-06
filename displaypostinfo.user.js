@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DisplayPostInfo
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.0
+// @version      4.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Display views, uploader, and other info to the user.
 // @author       BrokenEagle
@@ -54,6 +54,11 @@ const settings_config = {
         validate: (data)=>{return typeof data === "boolean";},
         hint: "Shows top tagger on the post page."
     },
+    basic_post_tooltip: {
+        default: true,
+        validate: (data)=>{return typeof data === "boolean";},
+        hint: "Adds the post uploader to the basic post tooltips."
+    },
     advanced_post_tooltip: {
         default: true,
         validate: (data)=>{return typeof data === "boolean";},
@@ -66,7 +71,8 @@ const settings_config = {
 const dpi_menu = `
 <div id="dpi-script-message" class="prose">
     <h2>DisplayPostInfo</h2>
-    <p>Check the original forum for information on the earlier versions (<a class="dtext-link dtext-id-link dtext-forum-post-id-link" href="/forum_posts/154468">forum #154468</a>).</p>
+    <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/15926" style="color:#0073ff">topic #15926</a>).</p>
+    <p>Check the original forum for information on earlier versions (<a class="dtext-link dtext-id-link dtext-forum-post-id-link" href="/forum_posts/154468">forum #154468</a>).</p>
 </div>
 <div id="dpi-console" class="jsplib-console">
     <div id="dpi-settings" class="jsplib-outer-menu">
@@ -83,6 +89,8 @@ const dpi_menu = `
     </div>
 </div>
 `;
+
+const thumbnail_hover_delay = 250;
 
 /****FUNCTIONS****/
 
@@ -203,6 +211,30 @@ function RenderTooltip (event, qtip) {
     });
 }
 
+function PostThumbnailHover() {
+    $(document).on("mouseenter.DPI",".post-preview:not(.dpi-processed)",(e)=>{
+        let $post = $(e.currentTarget);
+        let timer = setTimeout(()=>{
+            let $image = $("img",e.currentTarget);
+            let uploader_id = $post.data('uploader-id');
+            let title = $image.attr('title');
+            JSPLib.debug.debuglog("Getting post uploader info:", uploader_id);
+            JSPLib.danbooru.submitRequest("users", {search: {id: uploader_id}, expiry: 30}, [BlankUser(uploader_id)]).then((data)=>{
+                let user_data = (data.length ? data[0] : BlankUser(uploader_id));
+                $image.attr('title',`${title} user:${user_data.name}`);
+            });
+            $post.addClass("dpi-processed");
+        },thumbnail_hover_delay);
+        $post.data('dpi-timer',timer);
+    });
+    $(document).on("mouseleave.DPI",".post-preview:not(.dpi-processed)",(e)=>{
+        let timer = $(e.currentTarget).data('dpi-timer');
+        if (timer) {
+            clearTimeout(timer);
+        }
+    });
+}
+
 //Settings functions
 
 function RenderSettingsMenu() {
@@ -219,6 +251,7 @@ function RenderSettingsMenu() {
 
 function main() {
     Danbooru.DPI = DPI = {
+        basic_tooltips: JSON.parse(Danbooru.Utility.meta('disable-post-tooltips')),
         settings_config: settings_config
     };
     DPI.user_settings = JSPLib.menu.loadUserSettings('dpi');
@@ -236,8 +269,10 @@ function main() {
             DisplayTopTagger();
         }
     } else if ($("#c-posts #a-index").length) {
-        if (DPI.user_settings.advanced_post_tooltip) {
+        if (!Danbooru.DPI.basic_tooltips && DPI.user_settings.advanced_post_tooltip) {
             Danbooru.PostTooltip.QTIP_OPTIONS.content = RenderTooltip;
+        } else if (Danbooru.DPI.basic_tooltips && DPI.user_settings.basic_post_tooltip) {
+            PostThumbnailHover();
         }
     } else if ($("#c-users #a-edit").length) {
         JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
