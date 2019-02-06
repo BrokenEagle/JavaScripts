@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DisplayPostInfo
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.0
+// @version      5.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Display views, uploader, and other info to the user.
 // @author       BrokenEagle
@@ -10,9 +10,13 @@
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/displaypostinfo.user.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.2/rollups/md5.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/debug.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/load.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/validate.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/storage.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/danbooru.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/menu.js
@@ -33,6 +37,12 @@ const program_load_required_selectors = ["#post-information,#c-posts #a-index,#c
 //Main program variable
 var DPI;
 
+//Regex that matches the prefix of all program cache data
+const program_cache_regex = /^tt-/
+
+//Main program expires
+const prune_expires = JSPLib.utility.one_day;
+
 //For factory reset
 const localstorage_keys = [];
 const program_reset_keys = {};
@@ -41,17 +51,17 @@ const program_reset_keys = {};
 const settings_config = {
     post_views_enabled: {
         default: true,
-        validate: (data)=>{return typeof data === "boolean";},
+        validate: (data)=>{return validate.isBoolean(data);},
         hint: "Shows post views on the post page."
     },
     post_uploader_enabled: {
         default: true,
-        validate: (data)=>{return typeof data === "boolean";},
+        validate: (data)=>{return validate.isBoolean(data);},
         hint: "Shows the post uploader on the post page."
     },
     top_tagger_enabled: {
         default: false,
-        validate: (data)=>{return typeof data === "boolean";},
+        validate: (data)=>{return validate.isBoolean(data);},
         hint: "Shows top tagger on the post page."
     },
     basic_post_tooltip: {
@@ -61,7 +71,7 @@ const settings_config = {
     },
     advanced_post_tooltip: {
         default: true,
-        validate: (data)=>{return typeof data === "boolean";},
+        validate: (data)=>{return validate.isBoolean(data);},
         hint: "Adds the post uploader to the advanced post tooltips."
     }
 }
@@ -90,9 +100,34 @@ const dpi_menu = `
 </div>
 `;
 
+
+//Time constants
 const thumbnail_hover_delay = 250;
+const top_tagger_expiration = JSPLib.utility.one_month;
+
+//Validate constants
+
+const top_tagger_constraints = {
+    expires: JSPLib.validate.expires_constraints,
+    value: JSPLib.validate.postcount_constraints
+};
 
 /****FUNCTIONS****/
+
+////Validate functions
+
+function ValidateEntry(key,entry) {
+    if (!JSPLib.validate.validateIsHash(key,entry)) {
+        JSPLib.debug.debuglog(key,"Data is not a hash.");
+        return false;
+    }
+    let check = validate(entry,top_tagger_constraints);
+    if (check !== undefined) {
+        JSPLib.validate.printValidateError(key,check);
+        return false;
+    }
+    return true;
+}
 
 ////Auxiliary functions
 
@@ -106,7 +141,7 @@ function BlankUser(user_id) {
 }
 
 function RenderUsername(user_data) {
-    let uploader_name = JSPLib.utility.maxLengthString(user_data.name);
+    let uploader_name = JSPLib.utility.maxLengthString(user_data.name.replace(/_/g,' '));
     let level_class = "user-" + user_data.level_string.toLowerCase();
     let unlimited_class = (user_data.can_upload_free ? " user-post-uploader" : "");
     let approver_class = (user_data.can_approve_posts ? " user-post-approver" : "");
@@ -127,19 +162,19 @@ function PopulateUserTags(current_tags,added_tags,user_tags,version_order,update
 async function DisplayPostViews() {
     var post_views;
     let post_id = JSPLib.utility.getMeta('post-id');
-    JSPLib.debug.debuglog("Checking post views:", post_id);
+    JSPLib.debug.debuglog("DisplayPostViews - Checking post views:", post_id);
     try {
         post_views = await $.get(`https://isshiki.donmai.us/post_views/${post_id}`);
     } catch(e) {
         post_views = `${e.status} ${e.responseText || e.statusText}`;
-        JSPLib.debug.debuglog("DisplayPostViews error:", e.status, e.responseText || e.statusText);
+        JSPLib.debug.debuglog("DisplayPostViews - error:", e.status, e.responseText || e.statusText);
     }
     $("#dpi-post-views").html(`Views: ${post_views}`).show();
 }
 
 function DisplayPostUploader() {
     let uploader_id = $("#image-container").data('uploader-id');
-    JSPLib.debug.debuglog("Getting post uploader info:", uploader_id);
+    JSPLib.debug.debuglog("DisplayPostUploader - Getting post uploader info:", uploader_id);
     JSPLib.danbooru.submitRequest("users", {search: {id: uploader_id}, expiry: 30}, [BlankUser(uploader_id)]).then((data)=>{
         let user_data = (data.length ? data[0] : BlankUser(uploader_id));
         let name_html = RenderUsername(user_data);
@@ -149,42 +184,56 @@ function DisplayPostUploader() {
 }
 
 async function DisplayTopTagger() {
-    var name_html;
+    var name_html, top_tagger;
     let $image = $("#image-container");
     let uploader_id = $image.data('uploader-id');
     let post_id = $image.data('id');
-    //Hashed so that it's mutable
-    let current_tags = {tags: $image.data('tags').split(' ')};
-    let user_tags = DPI.user_tags = {};
-    let version_order = DPI.version_order = [];
-    let post_versions = await JSPLib.danbooru.submitRequest('post_versions',{search: {post_id: post_id}, limit: 1000});
-    if (post_versions && post_versions.length) {
-        post_versions.sort((a,b)=>{return a.version - b.version;});
-        if (post_versions[0].unchanged_tags.length !== 0) {
-            let true_adds = JSPLib.utility.setIntersection(current_tags.tags,post_versions[0].unchanged_tags.split(' '));
-            PopulateUserTags(current_tags,true_adds,user_tags,version_order,uploader_id);
-        }
-        post_versions.forEach((postver)=>{
-            let true_adds = JSPLib.utility.setIntersection(postver.added_tags,current_tags.tags);
-            if (true_adds.length) {
-                let updater_id = postver.updater_id || 13;
-                PopulateUserTags(current_tags,true_adds,user_tags,version_order,updater_id);
+    let tag_string = $image.data('tags')
+    let tag_hash = CryptoJS.MD5(tag_string).toString();
+    let key_hash = `tt-${post_id}-${tag_hash}`;
+    let data = await JSPLib.storage.checkLocalDB(key_hash, ValidateEntry, top_tagger_expiration);
+    if (!data) {
+        JSPLib.debug.debuglog("DisplayTopTagger - cache miss:",key_hash);
+        //Hashed so that it's mutable
+        let current_tags = {tags: tag_string.split(' ')};
+        let user_tags = DPI.user_tags = {};
+        let version_order = DPI.version_order = [];
+        let post_versions = await JSPLib.danbooru.submitRequest('post_versions',{search: {post_id: post_id}, limit: 1000});
+        if (post_versions && post_versions.length) {
+            post_versions.sort((a,b)=>{return a.version - b.version;});
+            if (post_versions[0].unchanged_tags.length !== 0) {
+                let true_adds = JSPLib.utility.setIntersection(current_tags.tags,post_versions[0].unchanged_tags.split(' '));
+                PopulateUserTags(current_tags,true_adds,user_tags,version_order,uploader_id);
             }
-        });
-        version_order = JSPLib.utility.setUnique(version_order);
-        let user_order = Object.keys(user_tags).map(Number).sort((a,b)=>{return user_tags[b].length - user_tags[a].length;});
-        let top_taggers = user_order.filter((user)=>{return user_tags[user].length === user_tags[user_order[0]].length;});
-        if (top_taggers.length > 1) {
-            top_taggers.sort((a,b)=>{return version_order.indexOf(b) - version_order.indexOf(a);});
+            post_versions.forEach((postver)=>{
+                let true_adds = JSPLib.utility.setIntersection(postver.added_tags,current_tags.tags);
+                if (true_adds.length) {
+                    let updater_id = postver.updater_id || 13;
+                    PopulateUserTags(current_tags,true_adds,user_tags,version_order,updater_id);
+                }
+            });
+            version_order = JSPLib.utility.setUnique(version_order);
+            let user_order = Object.keys(user_tags).map(Number).sort((a,b)=>{return user_tags[b].length - user_tags[a].length;});
+            let top_taggers = user_order.filter((user)=>{return user_tags[user].length === user_tags[user_order[0]].length;});
+            if (top_taggers.length > 1) {
+                top_taggers.sort((a,b)=>{return version_order.indexOf(b) - version_order.indexOf(a);});
+            }
+            top_tagger = top_taggers[0];
+            JSPLib.debug.debuglog("DisplayTopTagger - top tagger found:",top_tagger);
+            JSPLib.storage.saveData(key_hash,{value: top_tagger, expires: JSPLib.utility.getExpiration(top_tagger_expiration)});
+        } else {
+            JSPLib.debug.debuglog("DisplayTopTagger - error: No post versions found",post_versions);
+            name_html = "No data!";
         }
-        let top_tagger = top_taggers[0];
-        JSPLib.debug.debuglog("Top tagger found:",top_tagger);
+    } else {
+        top_tagger = data.value;
+        JSPLib.debug.debuglog("DisplayTopTagger - cache hit:",key_hash);
+    }
+    if (top_tagger) {
+        JSPLib.debug.debuglog("DisplayTopTagger - Getting top tagger info:", uploader_id);
         let data = await JSPLib.danbooru.submitRequest("users", {search: {id: top_tagger}, expiry: 30}, [BlankUser(top_tagger)]);
         let user_data = (data.length ? data[0] : BlankUser(top_tagger));
         name_html = RenderUsername(user_data);
-    } else {
-        JSPLib.debug.debuglog("Error: No post versions found",post_versions);
-        name_html = "No data!";
     }
     $("#dpi-top-tagger").after(`<li>Top tagger: ${name_html}</li>`).show();
 }
@@ -194,9 +243,9 @@ async function DisplayTopTagger() {
 function RenderTooltip (event, qtip) {
     var post_id = $(this).parents("[data-id]").data("id");
     var uploader_id = $(this).parents("[data-uploader-id]").data("uploader-id");
-    JSPLib.debug.debuglog("Getting post uploader info:", uploader_id);
+    JSPLib.debug.debuglog("RenderTooltip - Getting post uploader info:", uploader_id);
     var uploader_resp = JSPLib.danbooru.submitRequest("users", {search: {id: uploader_id}, expiry: 30}, [BlankUser(uploader_id)]);
-    JSPLib.debug.debuglog("Getting tooltip info:", post_id);
+    JSPLib.debug.debuglog("RenderTooltip - Getting tooltip info:", post_id);
     $.get("/posts/" + post_id, {variant: "tooltip"}).then((html)=>{
         qtip.set("content.text", html);
         qtip.elements.tooltip.removeClass("post-tooltip-loading");
@@ -218,7 +267,7 @@ function PostThumbnailHover() {
             let $image = $("img",e.currentTarget);
             let uploader_id = $post.data('uploader-id');
             let title = $image.attr('title');
-            JSPLib.debug.debuglog("Getting post uploader info:", uploader_id);
+            JSPLib.debug.debuglog("PostThumbnailHover - Getting post uploader info:", uploader_id);
             JSPLib.danbooru.submitRequest("users", {search: {id: uploader_id}, expiry: 30}, [BlankUser(uploader_id)]).then((data)=>{
                 let user_data = (data.length ? data[0] : BlankUser(uploader_id));
                 $image.attr('title',`${title} user:${user_data.name}`);
@@ -280,6 +329,9 @@ function main() {
             RenderSettingsMenu();
         });
     }
+    setTimeout(()=>{
+        JSPLib.storage.pruneEntries('dpi',program_cache_regex,prune_expires);
+    },JSPLib.utility.one_minute);
 }
 
 //Execution start
