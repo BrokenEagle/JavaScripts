@@ -129,6 +129,16 @@ function ValidateEntry(key,entry) {
     return true;
 }
 
+////Library functions
+
+function AddFunctionLogs(funclist) {
+    funclist.forEach((func)=>{
+        func.debuglog = function () {
+            JSPLib.debug.debuglog(`${func.name} - `,...arguments);
+        };
+    });
+}
+
 ////Auxiliary functions
 
 function BlankUser(user_id) {
@@ -141,11 +151,11 @@ function BlankUser(user_id) {
 }
 
 function RenderUsername(user_data) {
-    let uploader_name = JSPLib.utility.maxLengthString(user_data.name.replace(/_/g,' '));
+    let user_name = JSPLib.utility.maxLengthString(user_data.name.replace(/_/g,' '));
     let level_class = "user-" + user_data.level_string.toLowerCase();
     let unlimited_class = (user_data.can_upload_free ? " user-post-uploader" : "");
     let approver_class = (user_data.can_approve_posts ? " user-post-approver" : "");
-    return `<a class="${level_class}${unlimited_class}${approver_class} with-style" href="/users/${user_data.id}">${uploader_name}</a>`;
+    return `<a class="${level_class}${unlimited_class}${approver_class} with-style" href="/users/${user_data.id}">${user_name}</a>`;
 }
 
 function PopulateUserTags(current_tags,added_tags,user_tags,version_order,updater_id) {
@@ -162,19 +172,19 @@ function PopulateUserTags(current_tags,added_tags,user_tags,version_order,update
 async function DisplayPostViews() {
     var post_views;
     let post_id = JSPLib.utility.getMeta('post-id');
-    JSPLib.debug.debuglog("DisplayPostViews - Checking post views:", post_id);
+    DisplayPostViews.debuglog("Checking post views:", post_id);
     try {
         post_views = await $.get(`https://isshiki.donmai.us/post_views/${post_id}`);
     } catch(e) {
         post_views = `${e.status} ${e.responseText || e.statusText}`;
-        JSPLib.debug.debuglog("DisplayPostViews - error:", e.status, e.responseText || e.statusText);
+        DisplayPostViews.debuglog("Error:", e.status, e.responseText || e.statusText);
     }
     $("#dpi-post-views").html(`Views: ${post_views}`).show();
 }
 
 function DisplayPostUploader() {
     let uploader_id = $("#image-container").data('uploader-id');
-    JSPLib.debug.debuglog("DisplayPostUploader - Getting post uploader info:", uploader_id);
+    DisplayPostUploader.debuglog("Getting post uploader info:", uploader_id);
     JSPLib.danbooru.submitRequest("users", {search: {id: uploader_id}, expiry: 30}, [BlankUser(uploader_id)]).then((data)=>{
         let user_data = (data.length ? data[0] : BlankUser(uploader_id));
         let name_html = RenderUsername(user_data);
@@ -193,7 +203,7 @@ async function DisplayTopTagger() {
     let key_hash = `tt-${post_id}-${tag_hash}`;
     let data = await JSPLib.storage.checkLocalDB(key_hash, ValidateEntry, top_tagger_expiration);
     if (!data) {
-        JSPLib.debug.debuglog("DisplayTopTagger - cache miss:",key_hash);
+        DisplayTopTagger.debuglog("Cache miss:",key_hash);
         //Hashed so that it's mutable
         let current_tags = {tags: tag_string.split(' ')};
         let user_tags = DPI.user_tags = {};
@@ -219,18 +229,18 @@ async function DisplayTopTagger() {
                 top_taggers.sort((a,b)=>{return version_order.indexOf(b) - version_order.indexOf(a);});
             }
             top_tagger = top_taggers[0];
-            JSPLib.debug.debuglog("DisplayTopTagger - top tagger found:",top_tagger);
+            DisplayTopTagger.debuglog("Top tagger found:",top_tagger);
             JSPLib.storage.saveData(key_hash,{value: top_tagger, expires: JSPLib.utility.getExpiration(top_tagger_expiration)});
         } else {
-            JSPLib.debug.debuglog("DisplayTopTagger - error: No post versions found",post_versions);
+            DisplayTopTagger.debuglog("Error: No post versions found",post_versions);
             name_html = "No data!";
         }
     } else {
         top_tagger = data.value;
-        JSPLib.debug.debuglog("DisplayTopTagger - cache hit:",key_hash);
+        DisplayTopTagger.debuglog("Cache hit:",key_hash);
     }
     if (top_tagger) {
-        JSPLib.debug.debuglog("DisplayTopTagger - Getting top tagger info:", uploader_id);
+        DisplayTopTagger.debuglog("Getting top tagger info:", uploader_id);
         let data = await JSPLib.danbooru.submitRequest("users", {search: {id: top_tagger}, expiry: 30}, [BlankUser(top_tagger)]);
         let user_data = (data.length ? data[0] : BlankUser(top_tagger));
         name_html = RenderUsername(user_data);
@@ -243,9 +253,9 @@ async function DisplayTopTagger() {
 function RenderTooltip (event, qtip) {
     var post_id = $(this).parents("[data-id]").data("id");
     var uploader_id = $(this).parents("[data-uploader-id]").data("uploader-id");
-    JSPLib.debug.debuglog("RenderTooltip - Getting post uploader info:", uploader_id);
+    RenderTooltip.debuglog("Getting post uploader info:", uploader_id);
     var uploader_resp = JSPLib.danbooru.submitRequest("users", {search: {id: uploader_id}, expiry: 30}, [BlankUser(uploader_id)]);
-    JSPLib.debug.debuglog("RenderTooltip - Getting tooltip info:", post_id);
+    RenderTooltip.debuglog("Getting tooltip info:", post_id);
     $.get("/posts/" + post_id, {variant: "tooltip"}).then((html)=>{
         qtip.set("content.text", html);
         qtip.elements.tooltip.removeClass("post-tooltip-loading");
@@ -267,7 +277,7 @@ function PostThumbnailHover() {
             let $image = $("img",e.currentTarget);
             let uploader_id = $post.data('uploader-id');
             let title = $image.attr('title');
-            JSPLib.debug.debuglog("PostThumbnailHover - Getting post uploader info:", uploader_id);
+            PostThumbnailHover.debuglog("Getting post uploader info:", uploader_id);
             JSPLib.danbooru.submitRequest("users", {search: {id: uploader_id}, expiry: 30}, [BlankUser(uploader_id)]).then((data)=>{
                 let user_data = (data.length ? data[0] : BlankUser(uploader_id));
                 $image.attr('title',`${title} user:${user_data.name}`);
@@ -335,5 +345,7 @@ function main() {
 }
 
 //Execution start
+
+AddFunctionLogs([DisplayPostViews,DisplayPostUploader,DisplayTopTagger,RenderTooltip,PostThumbnailHover]);
 
 JSPLib.load.programInitialize(main,'DPI',program_load_required_variables,program_load_required_selectors);
