@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      14.0
+// @version      14.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Gives up-to-date stats on uploads
 // @author       BrokenEagle
@@ -41,7 +41,7 @@ JSPLib.danbooru.counter_domname = "#loading-counter";
 var CU;
 
 //Regex that matches the prefix of all program cache data
-const program_cache_regex = /^rti-|ct(?:d|w|mo|y|at)?-|(?:daily|weekly|monthly|yearly|alltime|previous)-uploads-/
+const program_cache_regex = /^rti-|ct(d|w|mo|y|at)-|(daily|weekly|monthly|yearly|alltime|previous)-(uploads|approvals)-/
 
 //Main program expires
 const prune_expires = JSPLib.utility.one_day;
