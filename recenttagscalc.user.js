@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RecentTagsCalc
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.0
+// @version      5.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Use different mechanism to calculate RecentTags
 // @author       BrokenEagle
@@ -1200,17 +1200,17 @@ async function CheckAllRecentTags() {
     JSPLib.debug.debugTime("CheckAllRecentTags");
     let original_recent_tags = JSPLib.utility.dataCopy(RTC.recent_tags);
     RTC.saved_recent_tags = [];
-    let tag_list = FilterMetatags(RTC.recent_tags);
+    let tag_list = RTC.recent_tags.concat(RTC.pinned_tags);
     if (RTC.tag_order === "post_count" || RTC.tag_order === "category") {
         RTC.saved_recent_tags = JSPLib.storage.getStorageData('rtc-new-recent-tags',localStorage,[]);
-        tag_list = JSPLib.utility.setUnion(tag_list,FilterMetatags(RTC.saved_recent_tags));
+        tag_list = JSPLib.utility.setUnion(tag_list,RTC.saved_recent_tags);
     }
     if (RTC.user_settings.list_type[0] === "multiple") {
         RTC.other_recent.forEach((recent_entry)=>{
             tag_list = JSPLib.utility.setUnion(tag_list,recent_entry.tags);
         });
     }
-    RTC.missing_recent_tags = await CheckMissingTags(tag_list,"Recent");
+    RTC.missing_recent_tags = await CheckMissingTags(FilterMetatags(tag_list),"Recent");
     await CheckTagDeletion();
     if (!RTC.user_settings.include_deleted_tags) {
         FilterDeletedTags();
