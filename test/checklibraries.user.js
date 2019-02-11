@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.0
+// @version      7.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -333,6 +333,21 @@ async function CheckUtilityLibrary() {
     console.log(`Object ${repr(shallowobject1)} should have one value the same as ${repr(testobject1)}`,RecordResult(shallowobject1.test !== 10 && copyobject1.value.deep === 11));
     console.log(`Object ${repr(deepobject1)} should have no values the same as ${repr(testobject1)}`,RecordResult(deepobject1.test !== 10 && deepobject1.value.deep !== 11));
 
+    console.log("Checking arrayFill");
+    string1 = "[]";
+    testarray1 = JSPLib.utility.arrayFill(10,string1);
+    //Compare to see if any entry is equal to any other entry
+    resultbool1 = !testarray1.reduce((isequal,entry,i,array)=>{
+        return isequal || ((i < array.length - 1) && array.slice(i+1,array.length-1).reduce((subisequal,subentry)=>{
+            return subisequal || (subentry === entry);
+        },false));
+    },false);
+    //Compare to see if all entries are equal to the JSON string when stringified
+    resultbool2 = testarray1.reduce((isequal,entry)=>{return isequal && JSON.stringify(entry) === string1;},true);
+    console.log(`Object ${repr(testarray1)} should have a length of 10 ${bracket(testarray1.length)}`,RecordResult(testarray1.length === 10));
+    console.log(`Object ${repr(testarray1)} should have no entries equal to each other ${bracket(resultbool1)}`,RecordResult(resultbool1));
+    console.log(`Object ${repr(testarray1)} should have all entries equal to the stringified JSON} ${bracket(resultbool2)}`,RecordResult(resultbool2));
+
     console.log("Checking hijackFunction");
     let add_function = function (a,b) {return a + b};
     let subtract_one = function (data,a,b) {return data - 1;}
@@ -378,6 +393,7 @@ async function CheckUtilityLibrary() {
     let testdata1 = {test_data: 'check'};
     jqueryobj.data(testdata1);
     let $domobj = jqueryobj[0];
+    $(document).on("checklibraries:log-this",()=>{console.log("Check this out")});
 
     console.log("Checking getPrivateData");
     let data1 = JSPLib.utility.getPrivateData($domobj);
@@ -388,7 +404,7 @@ async function CheckUtilityLibrary() {
     console.log(`data should be object ${repr(testdata1)} ${bracket(repr(data1))}`,RecordResult(ObjectContains(data1,['test_data']) && data1.test_data === "check"));
 
     console.log("Checking getBoundEventNames");
-    array1 = JSPLib.utility.getBoundEventNames("#checklibrary-count",'mouseover');
+    array1 = JSPLib.utility.getBoundEventNames("#checklibrary-count",'mouseover',null);
     array2 = ['checklibraries.test_hover'];
     console.log(`Bound event names for object should be ${repr(array2)} ${bracket(repr(array1))}`,RecordResult(JSON.stringify(array1) === JSON.stringify(array2)));
 
@@ -396,6 +412,11 @@ async function CheckUtilityLibrary() {
     string1 = 'checklibraries.test_hover';
     resultbool1 = JSPLib.utility.isNamespaceBound("#checklibrary-count",'mouseover',string1);
     console.log(`Bound event names for object should include ${repr(string1)} ${bracket(repr(resultbool1))}`,RecordResult(resultbool1));
+
+    console.log("Checking isGlobalFunctionBound");
+    string1 = 'checklibraries:log-this';
+    resultbool1 = JSPLib.utility.isGlobalFunctionBound(string1);
+    console.log(`Global functions should include ${repr(string1)} ${bracket(repr(resultbool1))}`,RecordResult(resultbool1));
 
     console.log("Checking getDOMDataKeys");
     array1 = JSPLib.utility.getDOMDataKeys("#checklibrary-count");
@@ -458,7 +479,7 @@ async function CheckUtilityLibrary() {
     console.log("Checking getNthChild");
     let parent1 = $("#parent0",$domtest)[0];
     result1 = JSPLib.utility.getNthChild(parent1,2);
-    result2 = JSPLib.utility.getNthChild(parent1,-2);
+    let result2 = JSPLib.utility.getNthChild(parent1,-2);
     console.log(`Node ${parent1.id} should have child0b as the 2nd child from the start ${bracket(result1.id)}`,RecordResult(result1 && result1.id === "child0b"));
     console.log(`Node ${parent1.id} should have child0a as the 2nd child from the end ${bracket(result2.id)}`,RecordResult(result2 && result2.id === "child0a"));
 
@@ -485,6 +506,16 @@ async function CheckUtilityLibrary() {
     JSPLib.utility.eraseCookie(cookiename1)
     result1 = JSPLib.utility.readCookie(cookiename1);
     console.log(`Cookie ${cookiename1} should now not exist after being erased ${bracket(result1)}`,RecordResult(result1 === null));
+
+    console.log("Checking setupMutationObserver");
+    $("#checklibrary-count").after('<span id="checklibrary-observe"></span>');
+    string1 = 'nothing';
+    string2 = 'something';
+    value1 = string1;
+    JSPLib.utility.setupMutationRemoveObserver("footer","#checklibrary-observe",()=>{console.log("Observation found!");value1 = string2;});
+    $("#checklibrary-observe").replaceWith('<span id="checklibrary-observe">Observed</span>');
+    await JSPLib.utility.sleep(1000);
+    console.log(`Value ${repr(value1)} should be equal to ${repr(string2)}`,RecordResult(value1 === string2));
 
     console.log(`CheckUtilityLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
