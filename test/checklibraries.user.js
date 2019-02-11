@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.0
+// @version      7.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -11,13 +11,14 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/test/checklibraries.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/debug.js
 // ==/UserScript==
 
 /****SETUP****/
@@ -194,16 +195,22 @@ async function CheckDebugLibrary() {
     console.log("Checking debugSyncTimer");
     testvalue1 = 4;
     let testvalue2 = 1;
-    let testfunc = JSPLib.debug.debugSyncTimer((a,b)=>{return a + b;},"testfunc-sync");
+    let testfunc = JSPLib.debug.debugSyncTimer(function TestfuncSync (a,b) {return a + b;});
     let result1 = testfunc(4,1);
     console.log(`Result value should be 5 ${bracket(result1)}`,RecordResult(result1 === 5));
 
     console.log("Checking debugAsyncTimer");
-    testfunc = JSPLib.debug.debugAsyncTimer((a,b)=>{return a + b;},"testfunc-async");
+    testfunc = JSPLib.debug.debugAsyncTimer(function TestfuncAsync (a,b) {return a + b;});
     result1 = testfunc(4,1);
     let result2 = await result1;
     console.log(`Result value should be a promise ${bracket(result1)}`,RecordResult(result1 && result1.constructor && result1.constructor.name === "Promise"));
     console.log(`Result promise value should be 5 ${bracket(result2)}`,RecordResult(result2 === 5));
+
+    console.log("Checking addFunctionLogs");
+    testfunc = function FunctionLogs (a,b) {FunctionLogs.debuglog("check this out");};
+    JSPLib.debug.addFunctionLogs([testfunc]);
+    testfunc();
+    console.log(`Function should have debuglog as a function attribute`,RecordResult('debuglog' in testfunc && typeof testfunc.debuglog === "function"));
 
     JSPLib.debug.level = JSPLib.debug.ALL;
     console.log(`CheckDebugLibrary results: ${test_successes} succeses, ${test_failures} failures`);
@@ -1100,7 +1107,7 @@ async function CheckLoadLibrary() {
 
 async function checklibrary() {
     $("footer").prepend('<span id="checklibrary-count" style="font-size:400%">0</span>');
-    CheckDebugLibrary();
+    await CheckDebugLibrary();
     await CheckUtilityLibrary();
     CheckStatisticsLibrary();
     CheckValidateLibrary();
@@ -1113,4 +1120,4 @@ async function checklibrary() {
 
 /****PROGRAM START****/
 
-JSPLib.load.programInitialize(checklibrary,'CL',['window.jQuery','window.Danbooru']);
+JSPLib.load.programInitialize(checklibrary,'CL',['window.jQuery','window.Danbooru'],["footer"]);
