@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.3
+// @version      7.4
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -852,7 +852,16 @@ async function CheckStorageLibrary() {
     console.log(`good-value with data ${repr(data2)} should return value ${bracket(repr(result2))}]`,RecordResult(result2 && result2[0] === "check this"));
     console.log(`nonexistant-value with default value [0] should return default value ${bracket(repr(result3))}`,RecordResult(result3 && result3[0] === 0));
 
+    console.log("Checking checkStorageData");
+    let validator1 = function (key,cached) { return true;};
+    let validator2 = function (key,cached) { return false;};
+    result1 = JSPLib.storage.checkStorageData('good-value',validator1,sessionStorage);
+    result2 = JSPLib.storage.checkStorageData('good-value',validator2,sessionStorage);
+    console.log(`good-value with data ${repr(data2)} with good validate should return value ${bracket(repr(result1))}]`,RecordResult(result1 && result1[0] === "check this"));
+    console.log(`good-value with data ${repr(data2)} with bad validate should return undefined ${bracket(repr(result2))}]`,RecordResult(result2 === undefined));
+
     console.log("Checking pruneStorageData");
+    JSPLib.debug.level = JSPLib.debug.WARNING;
     let testvalue = "test".repeat(1000);
     JSPLib.storage.setStorageData('testremove',{expires: 1, value: testvalue},sessionStorage);
     JSPLib.storage.setStorageData('teststay',{expires: 0, value: testvalue},sessionStorage);
@@ -863,7 +872,6 @@ async function CheckStorageLibrary() {
     console.log(`teststay shouldn't be pruned and return value with getStorageData ${bracket(repr(result2))}`,RecordResult(result2 && result2.value && result2.value === testvalue));
 
     console.log("Checking storage quota exceeded");
-    JSPLib.debug.level = JSPLib.debug.WARNING;
     let testsize1 = JSON.stringify(sessionStorage).length;
     for (let i = 0; i < 2000; i++) {
         JSPLib.storage.setStorageData('test'+i,{expires: 1, value: testvalue},sessionStorage);
@@ -874,8 +882,9 @@ async function CheckStorageLibrary() {
     JSPLib.debug.level = JSPLib.debug.VERBOSE;
 
     console.log("Checking hasDataExpired");
-    let data3 = {expires: Date.now() - 10000, value: data2};
-    let data4 = {expires: Date.now() + 10000, value: data2};
+    let max_expiration1 = 10000;
+    let data3 = {expires: Date.now() - max_expiration1, value: data2};
+    let data4 = {expires: Date.now() + max_expiration1, value: data2};
     result1 = JSPLib.storage.hasDataExpired("result1",undefined);
     result2 = JSPLib.storage.hasDataExpired("result2",data2);
     result3 = JSPLib.storage.hasDataExpired("result3",data3);
@@ -919,13 +928,19 @@ async function CheckStorageLibrary() {
         await JSPLib.storage.saveData('expired-value',data3);
         await JSPLib.storage.saveData('good-value',data4);
         await JSPLib.storage.saveData('persistent-value',data5);
-        let validator1 = function (key,cached) { return true;};
-        let validator2 = function (key,cached) { return false;};
-        result1 = await JSPLib.storage.checkLocalDB('expired-value',validator1);
-        result2 = await JSPLib.storage.checkLocalDB('good-value',validator2);
-        result3 = await JSPLib.storage.checkLocalDB('good-value',validator1);
-        result4 = await JSPLib.storage.checkLocalDB('persistent-value',validator1);
+        result1 = await JSPLib.storage.checkLocalDB('expired-value',validator1,max_expiration1);
+        result2 = await JSPLib.storage.checkLocalDB('good-value',validator2,max_expiration1);
+        result3 = await JSPLib.storage.checkLocalDB('good-value',validator1,max_expiration1);
+        result4 = await JSPLib.storage.checkLocalDB('persistent-value',validator1,max_expiration1);
         console.log(`expired-value with data ${repr(data3)} should return null ${bracket(repr(result1))}`,RecordResult(result1 === null));
+        console.log(`good-value with data ${repr(data4)} with false validation should return null ${bracket(repr(result2))}`,RecordResult(result2 === null));
+        console.log(`good-value with data ${repr(data4)} with true validation should return value ${bracket(repr(result3))}`,RecordResult(result3 && result3.value && result3.value[0] === "check this"));
+        console.log(`persistent-value with data ${repr(data5)} should return value ${bracket(repr(result4))}`,RecordResult(result4 && result4.expires === 0 && result4.value && result4.value[0] === "check this"));
+
+        console.log("Checking batchStorageCheck");
+        let keyarray1 = ['expired-value','good-value','persistent-value'];
+        result1 = await JSPLib.storage.batchStorageCheck(keyarray1,validator1,max_expiration1);
+        console.log(`batch check of ${repr(keyarray1)} should return expired-value in an array ${bracket(result1)}`,RecordResult(Array.isArray(result1) && result1.length === 1 && result1.includes('expired-value')));
         console.log(`good-value with data ${repr(data4)} with false validation should return null ${bracket(repr(result2))}`,RecordResult(result2 === null));
         console.log(`good-value with data ${repr(data4)} with true validation should return value ${bracket(repr(result3))}`,RecordResult(result3 && result3.value && result3.value[0] === "check this"));
         console.log(`persistent-value with data ${repr(data5)} should return value ${bracket(repr(result4))}`,RecordResult(result4 && result4.expires === 0 && result4.value && result4.value[0] === "check this"));
@@ -949,14 +964,34 @@ async function CheckStorageLibrary() {
         console.log("Checking purgeCache");
         await JSPLib.storage.saveData('expired-value',data3);
         await JSPLib.storage.saveData('good-value',data4);
-        await JSPLib.storage.purgeCache(/-value$/,"#checklibrary-count");
+        await JSPLib.storage.purgeCache(/^(good|expired|persistent)-value$/,"#checklibrary-count");
         result1 = await JSPLib.storage.retrieveData('expired-value');
         result2 = await JSPLib.storage.retrieveData('good-value');
         result3 = await JSPLib.storage.retrieveData('persistent-value');
         console.log(`expired-value should be pruned and return null with retrieveData ${bracket(repr(result1))}`,RecordResult(result1 === null));
         console.log(`good-value should be pruned and return null with retrieveData ${bracket(repr(result2))}`,RecordResult(result2 === null));
         console.log(`persistent-value should be pruned and return null with retrieveData ${bracket(repr(result3))}`,RecordResult(result3 === null));
+
+        console.log("Checking programCacheInfo");
+        await JSPLib.storage.saveData('expired-value',data3);
+        await JSPLib.storage.saveData('good-value',data4);
+        result1 = await JSPLib.storage.programCacheInfo('cl',/^(good|expired)-value$/);
+        result2 = Object.keys(result1);
+        console.log(`Cache info should have 3 storage keys ${bracket(result2)}`,RecordResult(result2.length === 3 && JSPLib.utility.setSymmetricDifference(result2,['index','session','local']).length === 0));
+        console.log(`Cache info should have 2 Index DB items ${bracket(result1.index.program_items)}`,RecordResult(result1.index.program_items === 2));
+        console.log(`Cache info should have 2 session storage items ${bracket(result1.session.program_items)}`,RecordResult(result1.session.program_items === 2));
+        console.log(`Cache info should have 1 local storage items ${bracket(result1.local.program_items)}`,RecordResult(result1.local.program_items === 1));
     }
+
+    console.log("Checking nameToKeyTransform");
+    data1 = ["test1","test2"];
+    data2 = ["cl-test1","cl-test2"];
+    result1 = JSPLib.storage.nameToKeyTransform(data1,'cl');
+    console.log(`Name list ${repr(data1)} should be transformed to ${repr(data2)} ${bracket(result1)}`,RecordResult(JSON.stringify(result1) === JSON.stringify(data2)));
+
+    console.log("Checking keyToNameTransform");
+    result1 = JSPLib.storage.keyToNameTransform(data2,'cl');
+    console.log(`Name list ${repr(data2)} should be transformed to ${repr(data1)} ${bracket(result1)}`,RecordResult(JSON.stringify(result1) === JSON.stringify(data1)));
 
     //Cleanup actions
     sessionStorage.clear();
