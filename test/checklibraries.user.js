@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.2
+// @version      7.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -972,14 +972,14 @@ async function CheckDanbooruLibrary() {
     let object1 = {search: {id: "20,21,5"}};
     let object2 = {search: {order: "customorder"}};
     let result1 = JSPLib.danbooru.joinArgs(object1,object2);
-    console.log(`joining arguments ${repr(object1)} and ${repr(object2)} should have the 2 search arguments [${repr(result1)}]`,RecordResult(ObjectContains(result1,['search']) && ObjectContains(result1.search,['id','order']) && result1.search.id === "20,21,5" && result1.search.order === "customorder"));
+    console.log(`joining arguments ${repr(object1)} and ${repr(object2)} should have the 2 search arguments ${bracket(result1)}`,RecordResult(ObjectContains(result1,['search']) && ObjectContains(result1.search,['id','order']) && result1.search.id === "20,21,5" && result1.search.order === "customorder"));
 
     console.log("Checking getNextPageID");
     let array1 = [{id:25},{id:26},{id:27}];
     result1 = JSPLib.danbooru.getNextPageID(array1,false);
     let result2 = JSPLib.danbooru.getNextPageID(array1,true);
-    console.log(`for item array ${repr(array1)}, the next page ID going in forward should be 25 [${repr(result1)}]`,RecordResult(result1 === 25));
-    console.log(`for item array ${repr(array1)}, the next page ID going in reverse should be 27 [${repr(result2)}]`,RecordResult(result2 === 27));
+    console.log(`for item array ${repr(array1)}, the next page ID going in forward should be 25 ${bracket(result1)}`,RecordResult(result1 === 25));
+    console.log(`for item array ${repr(array1)}, the next page ID going in reverse should be 27 ${bracket(result2)}`,RecordResult(result2 === 27));
 
     console.log("Checking incrementCounter");
     JSPLib.danbooru.counter_domname = "#checklibrary-count";
@@ -987,14 +987,14 @@ async function CheckDanbooruLibrary() {
     result1 = JSPLib.danbooru.num_network_requests;
     JSPLib.danbooru.incrementCounter();
     result2 = JSPLib.danbooru.num_network_requests;
-    console.log(`the counter should have incremented by 1 [${repr(result1)}]`,RecordResult((result2 - result1) === 1));
+    console.log(`the counter should have incremented by 1 ${bracket(result1)}`,RecordResult((result2 - result1) === 1));
 
     console.log("Checking decrementCounter");
     await JSPLib.utility.sleep(5000);
     result1 = JSPLib.danbooru.num_network_requests;
     JSPLib.danbooru.decrementCounter();
     result2 = JSPLib.danbooru.num_network_requests;
-    console.log(`the counter should have decremented by 1 [${repr(result1)}]`,RecordResult((result1 - result2) === 1));
+    console.log(`the counter should have decremented by 1 ${bracket(result1)}`,RecordResult((result1 - result2) === 1));
 
     console.log("Checking rateLimit");
     JSPLib.danbooru.num_network_requests = JSPLib.danbooru.max_network_requests;
@@ -1008,10 +1008,10 @@ async function CheckDanbooruLibrary() {
     result2 = JSPLib.danbooru.getShortName('general');
     let result3 = JSPLib.danbooru.getShortName('artist');
     let result4 = JSPLib.danbooru.getShortName('character');
-    console.log(`the short name for copyright should be copy [${repr(result1)}]`,RecordResult(result1 === 'copy'));
-    console.log(`the short name for general should be gen [${repr(result2)}]`,RecordResult(result2 === 'gen'));
-    console.log(`the short name for artist should be art [${repr(result2)}]`,RecordResult(result3 === 'art'));
-    console.log(`the short name for character should be char [${repr(result2)}]`,RecordResult(result4 === 'char'));
+    console.log(`the short name for copyright should be copy ${bracket(result1)}`,RecordResult(result1 === 'copy'));
+    console.log(`the short name for general should be gen ${bracket(result2)}`,RecordResult(result2 === 'gen'));
+    console.log(`the short name for artist should be art ${bracket(result2)}`,RecordResult(result3 === 'art'));
+    console.log(`the short name for character should be char ${bracket(result2)}`,RecordResult(result4 === 'char'));
 
     console.log("Checking randomDummyTag");
     let string1 = JSPLib.danbooru.randomDummyTag();
@@ -1019,20 +1019,17 @@ async function CheckDanbooruLibrary() {
     let regex1 = /^dummytag-[0-9a-z]{8}$/;
     result1 = string1.match(regex1);
     result2 = string2.match(regex1);
-    console.log(`the string ${repr(string1)} should be a dummy tag [${repr(result1)}]`,RecordResult(!!result1));
-    console.log(`the string ${repr(string2)} should not be a dummy tag [${repr(result2)}]`,RecordResult(!result2));
+    console.log(`the string ${repr(string1)} should be a dummy tag ${bracket(result1)}`,RecordResult(!!result1));
+    console.log(`the string ${repr(string2)} should not be a dummy tag ${bracket(result2)}`,RecordResult(!result2));
 
     console.log("Checking tagOnlyRegExp");
     string1 = "character_(qualifier)";
     string2 = "qualifier";
     regex1 = JSPLib.danbooru.tagOnlyRegExp(string1);
     let regex2 = /^character_\(qualifier\)$/i;
-    let regex3 = JSPLib.danbooru.tagRegExp(string2);
     result1 = string1.match(regex1);
-    result2 = string1.match(regex3);
     console.log(`the tag ${repr(string1)} should produce the regex ${String(regex2)} ${bracket(String(regex1))}`,RecordResult(String(regex1) === String(regex2)));
     console.log(`the regex ${String(regex1)} should find one match in the string ${repr(string1)} ${bracket(repr(result1))}`,RecordResult(Array.isArray(result1) && result1.length === 1 && result1[0] === string1));
-    console.log(`the regex ${String(regex3)} should find no matches in the string ${repr(string1)} ${bracket(repr(result2))}`,RecordResult(result2 === null));
 
     var skip_test = false;
     try {
@@ -1049,17 +1046,17 @@ async function CheckDanbooruLibrary() {
         let string4 = "qualifier animated 1girl";
         let string5 = "qualifier";
         regex1 = JSPLib.danbooru.tagRegExp(string2);
-        regex2 = /(?<=(?:^|\s))aliased\:_the_tag(?=(?:$|\s))/gi;
-        regex3 = JSPLib.danbooru.tagRegExp(string5);
+        regex2 = RegExp('(?<=(?:^|\s))aliased\:_the_tag(?=(?:$|\s))','gi');
+        let regex3 = JSPLib.danbooru.tagRegExp(string5);
         result1 = string1.match(regex1);
         result2 = string1.replace(regex1,string3);
         result3 = string1.match(regex3);
         result4 = string4.match(regex3);
-        console.log(`the tag ${repr(string2)} should produce the regex ${String(regex2)} [${String(regex1)}]`,RecordResult(String(regex1) === String(regex2)));
-        console.log(`the regex ${String(regex1)} should find two matches in the string ${repr(string1)} [${repr(result1)}]`,RecordResult(Array.isArray(result1) && result1.length === 2 && result1[0] === string2));
-        console.log(`the regex ${String(regex1)} should replace the tag ${repr(string2)} with ${repr(string3)} in the string ${repr(string1)} [${repr(result2)}]`,RecordResult(result2 === "1girl solo alias_tag standing alias_tag character_(qualifier) short_hair"));
-        console.log(`the regex ${String(regex3)} should find no matches in the string ${repr(string1)} [${repr(result3)}]`,RecordResult(result3 === null));
-        console.log(`the regex ${String(regex3)} should find one match in the string ${repr(string4)} [${repr(result4)}]`,RecordResult(Array.isArray(result4) && result4.length === 1 && result4[0] === string5));
+        console.log(`the tag ${repr(string2)} should produce the regex ${String(regex2)} ${bracket(String(regex1))}`,RecordResult(String(regex1) === String(regex2)));
+        console.log(`the regex ${String(regex1)} should find two matches in the string ${repr(string1)} ${bracket(result1)}`,RecordResult(Array.isArray(result1) && result1.length === 2 && result1[0] === string2));
+        console.log(`the regex ${String(regex1)} should replace the tag ${repr(string2)} with ${repr(string3)} in the string ${repr(string1)} ${bracket(result2)}`,RecordResult(result2 === "1girl solo alias_tag standing alias_tag character_(qualifier) short_hair"));
+        console.log(`the regex ${String(regex3)} should find no matches in the string ${repr(string1)} ${bracket(result3)}`,RecordResult(result3 === null));
+        console.log(`the regex ${String(regex3)} should find one match in the string ${repr(string4)} ${bracket(result4)}`,RecordResult(Array.isArray(result4) && result4.length === 1 && result4[0] === string5));
     }
 
     console.log("Checking postSearchLink");
@@ -1068,7 +1065,14 @@ async function CheckDanbooruLibrary() {
     let option1 = `class="search-tag"`;
     let string3 = '<a class="search-tag" href="/posts?tags=1girl+solo">Check this link</a>';
     result1 = JSPLib.danbooru.postSearchLink(string1,string2,option1);
-    console.log(`the tag ${repr(string1)} with text ${repr(string2)} should produce the link  ${repr(string3)} [${repr(result1)}]`,RecordResult(result1 === string3));
+    console.log(`the tag ${repr(string1)} with text ${repr(string2)} should produce the link  ${repr(string3)} ${bracket(result1)}`,RecordResult(result1 === string3));
+
+    console.log("Checking wikiLink");
+    string1 = "1girl";
+    string2 = "Wiki link";
+    string3 = '<a href="/wiki_pages/show_or_new?title=1girl">Wiki link</a>';
+    result1 = JSPLib.danbooru.wikiLink(string1,string2);
+    console.log(`the tag ${repr(string1)} with text ${repr(string2)} should produce the link  ${repr(string3)} ${bracket(result1)}`,RecordResult(result1 === string3));
 
     console.log("Checking submitRequest");
     let type1 = 'posts';
@@ -1076,7 +1080,7 @@ async function CheckDanbooruLibrary() {
     let addons1 = {limit:1};
     result1 = await JSPLib.danbooru.submitRequest(type1,addons1);
     result2 = await JSPLib.danbooru.submitRequest(type2);
-    console.log(`with type ${type1} and addons ${repr(addons1)}, a single post should have been returned [${repr(result1)}]`,RecordResult(Array.isArray(result1) && result1.length === 1));
+    console.log(`with type ${type1} and addons ${repr(addons1)}, a single post should have been returned ${bracket(result1)}`,RecordResult(Array.isArray(result1) && result1.length === 1));
     console.log(`with nonexistent type ${type2}, null should be returned [${repr(result2)}]`,RecordResult(result2 === null));
 
     console.log("Checking getAllItems");
