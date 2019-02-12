@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.4
+// @version      7.5
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -999,6 +999,55 @@ async function CheckStorageLibrary() {
     console.log(`CheckStorageLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
 
+async function CheckConcurrencyLibrary() {
+    console.log("++++++++++++++++++++CheckConcurrencyLibrary++++++++++++++++++++");
+    ResetResult();
+
+    console.log("Checking getSemaphoreName");
+    let key1 = 'cl-process-semaphore-test';
+    let key2 = 'cl.semaphore.test';
+    let result1 = JSPLib.concurrency.getSemaphoreName('cl','test',true);
+    let result2 = JSPLib.concurrency.getSemaphoreName('cl','test',false);
+    console.log(`Key for storage should be equal to ${repr(key1)} ${bracket(result1)}`,RecordResult(key1 === result1));
+    console.log(`Key for storage should be equal to ${repr(key2)} ${bracket(result2)}`,RecordResult(key2 === result2));
+
+    console.log("Checking reserveSemaphore");
+    localStorage.removeItem(key1);
+    result1 = JSPLib.concurrency.reserveSemaphore('cl','test');
+    result2 = JSPLib.storage.getStorageData(key1,localStorage);
+    let result3 = JSPLib.utility.isNamespaceBound(window,'beforeunload',key2);
+    console.log(`Semaphore ${result1} should be equal to saved data ${bracket(result2)}`,RecordResult(result1 === result2));
+    console.log(`Before unload event should have been created ${bracket(result3)}`,RecordResult(result3 === true));
+
+    console.log("Checking checkSemaphore");
+    result1 = JSPLib.concurrency.checkSemaphore('cl','test');
+    console.log(`Semaphore should not be available ${bracket(result1)}`,RecordResult(result1 === false));
+
+    console.log("Checking freeSemaphore");
+    JSPLib.concurrency.freeSemaphore('cl','test');
+    result1 = JSPLib.concurrency.checkSemaphore('cl','test');
+    result2 = JSPLib.utility.isNamespaceBound(window,'beforeunload',key2);
+    console.log(`Semaphore should be available ${bracket(result1)}`,RecordResult(result1 === true));
+    console.log(`Before unload event should have been cleared ${bracket(result2)}`,RecordResult(result2 === false));
+
+    console.log("Checking checkTimeout");
+    let key3 = 'cl-timeout';
+    let expiration1 = JSPLib.utility.one_second * 10;
+    result1 = JSPLib.concurrency.checkTimeout(key3,expiration1);
+    console.log(`Timeout should be not set / expired ${bracket(result1)}`,RecordResult(result1 === true));
+
+    console.log("Checking setRecheckTimeout");
+    JSPLib.concurrency.setRecheckTimeout(key3,expiration1);
+    result1 = JSPLib.concurrency.checkTimeout(key3,expiration1);
+    console.log(`Timeout should be set and unexpired ${bracket(result1)}`,RecordResult(result1 === false));
+
+    //Cleanup actions
+    localStorage.removeItem(key1);
+    localStorage.removeItem(key3);
+
+    console.log(`CheckConcurrencyLibrary results: ${test_successes} succeses, ${test_failures} failures`);
+}
+
 async function CheckDanbooruLibrary() {
     console.log("++++++++++++++++++++CheckDanbooruLibrary++++++++++++++++++++");
     ResetResult();
@@ -1220,6 +1269,7 @@ async function checklibrary() {
     CheckStatisticsLibrary();
     CheckValidateLibrary();
     await CheckStorageLibrary();
+    CheckConcurrencyLibrary();
     await CheckDanbooruLibrary();
     await CheckLoadLibrary();
 
