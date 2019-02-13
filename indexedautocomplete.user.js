@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      22.2
+// @version      23.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -12,17 +12,17 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/menu.js
 // ==/UserScript==
 
-/***Global variables***/
+/****Global variables****/
 
 //Variables for debug.js
 JSPLib.debug.debug_console = false;
@@ -37,8 +37,11 @@ const program_load_required_selectors = ['#top','#page'];
 //Main program variable
 var IAC;
 
+//Timer function hash
+const Timer = {};
+
 //Regex that matches the prefix of all program cache data
-const program_cache_regex = /^(?:ac|pl|us|fg|ss|ar|wp|ft|rt(?:gen|char|copy|art)?)-/;
+const program_cache_regex = /^(af|ref|ac|pl|us|fg|ss|ar|wp|ft|rt(gen|char|copy|art)?)-/;
 
 //Main program expires
 const prune_expires = JSPLib.utility.one_day;
@@ -63,13 +66,13 @@ const settings_config = {
     usage_multiplier: {
         default: 0.9,
         parse: parseFloat,
-        validate: (data)=>{return validate.isNumber(data) && data >= 0.0 && data <= 1.0;},
+        validate: (data)=>{return JSPLib.validate.isNumber(data) && data >= 0.0 && data <= 1.0;},
         hint: "Valid values: 0.0 - 1.0."
     },
     usage_maximum: {
         default: 20,
         parse: parseFloat,
-        validate: (data)=>{return validate.isNumber(data) && data >= 0.0;},
+        validate: (data)=>{return JSPLib.validate.isNumber(data) && data >= 0.0;},
         hint: "Set to 0 for no maximum."
     },
     usage_expires: {
@@ -80,12 +83,12 @@ const settings_config = {
     },
     usage_enabled: {
         default: true,
-        validate: (data)=>{return validate.isBoolean(data);},
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
         hint: "Uncheck to turn off usage mechanism."
     },
     alternate_sorting_enabled: {
         default: false,
-        validate: (data)=>{return validate.isBoolean(data);},
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
         hint: "Check to use alternate weights and/or scales for sorting calculations."
     },
     postcount_scale: {
@@ -97,56 +100,57 @@ const settings_config = {
     exact_source_weight: {
         default: 1.0,
         parse: parseFloat,
-        validate: (data)=>{return validate.isNumber(data) && data >= 0.0 && data <= 1.0;},
+        validate: (data)=>{return JSPLib.validate.isNumber(data) && data >= 0.0 && data <= 1.0;},
         hint: "Valid values: 0.0 - 1.0."
     },
     prefix_source_weight: {
         default: 0.8,
         parse: parseFloat,
-        validate: (data)=>{return validate.isNumber(data) && data >= 0.0 && data <= 1.0;},
+        validate: (data)=>{return JSPLib.validate.isNumber(data) && data >= 0.0 && data <= 1.0;},
         hint: "Valid values: 0.0 - 1.0."
     },
     alias_source_weight: {
         default: 0.2,
         parse: parseFloat,
-        validate: (data)=>{return validate.isNumber(data) && data >= 0.0 && data <= 1.0;},
+        validate: (data)=>{return JSPLib.validate.isNumber(data) && data >= 0.0 && data <= 1.0;},
         hint: "Valid values: 0.0 - 1.0."
     },
     correct_source_weight: {
         default: 0.1,
         parse: parseFloat,
-        validate: (data)=>{return validate.isNumber(data) && data >= 0.0 && data <= 1.0;},
+        validate: (data)=>{return JSPLib.validate.isNumber(data) && data >= 0.0 && data <= 1.0;},
         hint: "Valid values: 0.0 - 1.0."
     },
     source_highlight_enabled: {
         default: true,
-        validate: (data)=>{return validate.isBoolean(data);},
-        hint: "Check to add highlights to tag autocomplete by source."
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
+        hint: "Adds highlights and stylings to the HTML classes set by the program."
     },
     source_grouping_enabled: {
         default: true,
-        validate: (data)=>{return validate.isBoolean(data);},
-        hint: "Check to group tag autocomplete results by source."
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
+        hint: "Groups the results by tag autocomplete sources."
     },
     source_order: {
         allitems: tag_sources,
         default: tag_sources,
         validate: (data)=>{return Array.isArray(data) && JSPLib.utility.setSymmetricDifference(data,tag_sources).length === 0},
-        hint: "Drag and drop the sources to determine the group order."
+        hint: "Used when source grouping is enabled. Drag and drop the sources to determine the group order."
     },
     alternate_tag_source: {
         default: false,
-        validate: (data)=>{return validate.isBoolean(data);},
-        hint: "Check to turn on."
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
+        hint: "Uses the <code>/tags</code> controller instead of the normal autocomplete source."
     },
     network_only_mode: {
         default: false,
-        validate: (data)=>{return validate.isBoolean(data);},
-        hint: "Check to turn on."
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
+        hint: `Always goes to network. <b><span style="color:red">Warning:</span> This negates the benefit of cached data!</b>`
     }
 }
 
-//Misc tag categories
+//Pre-CSS/HTML constants
+
 const bur_tag_category = 400;
 
 //CSS Constants
@@ -188,6 +192,28 @@ const program_css = `
 .iac-tag-highlight .tag-type-${bur_tag_category}:hover {
     color: #CCC;
 }
+`;
+
+const forum_css = `
+.ui-menu-item .forum-topic-category-0 {
+    color: blue;
+}
+.ui-menu-item .forum-topic-category-1 {
+    color: green;
+}
+.ui-menu-item .forum-topic-category-2 {
+    color: red;
+}
+`;
+
+const menu_css = `
+#iac-console {
+    width: 100%;
+    min-width: 100em;
+}
+#iac-console .expandable {
+    width: 90%;
+}
 #iac-cache-viewer textarea {
     width: 100%;
     min-width: 40em;
@@ -200,22 +226,13 @@ const program_css = `
     margin: 0.5em;
     padding: 0.5em;
 }
-.jsplib-console {
-    width: 100%;
-    min-width: 100em;
+#iac-settings .iac-linkclick .iac-control {
+    display: inline;
+}
+#indexed-autocomplete a {
+    color:#0073ff;
 }
 `;
-
-const forum_css = `
-.ui-menu-item .forum-topic-category-0 {
-    color: blue;
-}
-.ui-menu-item .forum-topic-category-1 {
-    color: green;
-}
-.ui-menu-item .forum-topic-category-2 {
-    color: red;
-}`;
 
 //HTML Constants
 
@@ -230,117 +247,156 @@ const forum_topic_search = `
 const iac_menu = `
 <div id="iac-script-message" class="prose">
     <h2>IndexedAutocomplete</h2>
-    <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/14701" style="color:#0073ff">topic #14701</a>).</p>
+    <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/14701">topic #14701</a>).</p>
 </div>
 <div id="iac-console" class="jsplib-console">
     <div id="iac-settings" class="jsplib-outer-menu">
         <div id="iac-usage-settings" class="jsplib-settings-grouping">
             <div id="iac-usage-message" class="prose">
                 <h4>Usage settings</h4>
-                <p>These settings control how items get sorted in the autocomplete popup.</p>
-                <h5>Equations</h5>
-                <ul>
-                    <li><span style="width:5em;display:inline-block"><b>Hit:</b></span><span style="font-family:monospace;font-size:125%">usage_count = Min( usage_count + 1 , usage_maximum )</span></li>
-                    <li><span style="width:5em;display:inline-block"><b>Miss:</b></span><span style="font-family:monospace;font-size:125%">usage_count = usage_count * usage_multiplier</span></li>
-                </ul>
+                <p>How items get sorted that are selected by the user.</p>
+                <div class="expandable">
+                    <div class="expandable-header">
+                        <span>Additional setting details</span>
+                        <input type="button" value="Show" class="expandable-button">
+                    </div>
+                    <div class="expandable-content">
+                        <h5>Equations</h5>
+                        <ul>
+                            <li><span style="width:5em;display:inline-block"><b>Hit:</b></span><span style="font-family:monospace;font-size:125%">usage_count = Min( usage_count + 1 , usage_maximum )</span></li>
+                            <li><span style="width:5em;display:inline-block"><b>Miss:</b></span><span style="font-family:monospace;font-size:125%">usage_count = usage_count * usage_multiplier</span></li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
         <div id="iac-display-settings" class="jsplib-settings-grouping">
             <div id="iac-display-message" class="prose">
                 <h4>Display settings</h4>
-                <p>These settings affect the presentation of autocomplete data to the user.</p>
-                <ul>
-                    <li><b>Source highlight enabled:</b> Adds highlights and stylings to the HTML classes set by the program.
+                <p>Affects the presentation of autocomplete data to the user.</p>
+                <div class="expandable">
+                    <div class="expandable-header">
+                        <span>Additional setting details</span>
+                        <input type="button" value="Show" class="expandable-button">
+                    </div>
+                    <div class="expandable-content">
                         <ul>
-                            <li><code>.iac-user-choice</code> - bold text</li>
-                            <li><code>.iac-tag-exact</code> - grey dot</li>
-                            <li><code>.iac-tag-prefix</code> - pink dot</li>
-                            <li><code>.iac-tag-alias</code> - gold dot, italic text</li>
-                            <li><code>.iac-tag-correct</code> - cyan dot</li>
+                            <li><b>Source highlight enabled:</b> The following are the CSS classes and default styling.
+                                <ul>
+                                    <li><code>.iac-user-choice</code> - bold text</li>
+                                    <li><code>.iac-tag-exact</code> - grey dot</li>
+                                    <li><code>.iac-tag-prefix</code> - pink dot</li>
+                                    <li><code>.iac-tag-alias</code> - gold dot, italic text</li>
+                                    <li><code>.iac-tag-correct</code> - cyan dot</li>
+                                </ul>
+                            </li>
+                            <li><b>Source grouping enabled:</b>
+                                <ul>
+                                    <li>When not enabled, the default is to order using the post count and a weighting scheme.</li>
+                                    <li><code>sort_value = post_count x weight_value</code></li>
+                                    <li>The different weights are: (Exact: 1.0), (Prefix: 0.8), (Alias: 0.2), (Correct: 0.1).</li>
+                                </ul>
+                            </li>
+                            <li><b>Source order:</b>
+                                <ul>
+                                    <li><b>Exact:</b> Matches exactly letter for letter.</li>
+                                    <li><b>Prefix:</b> Matches the first letter of each word.</li>
+                                    <li><b>Alias:</b> Same as exact, but it checks aliases.</li>
+                                    <li><b>Correct:</b> Tags off by 1-3 letters, i.e. mispellings.</li>
+                                </ul>
+                            </li>
                         </ul>
-                    </li>
-                    <li><b>Source grouping enabled:</b> Groups the results by tag autocomplete sources.
-                        <ul>
-                            <li>When not enabled, the default is to order using the post count and a weighting scheme.</li>
-                            <li><code>sort_value = post_count x weight_value</code></li>
-                            <li>The different weights are: (Exact: 1.0), (Prefix: 0.8), (Alias: 0.2), (Correct: 0.1).</li>
-                        </ul>
-                    </li>
-                    <li><b>Source order:</b> The different autocomplete sources use alternate methods for querying results based upon what has been typed in so far.
-                        <ul>
-                            <li><b>Exact:</b> Matches exactly letter for letter.</li>
-                            <li><b>Prefix:</b> Matches the first letter of each word.</li>
-                            <li><b>Alias:</b> Same as exact, but it checks aliases.</li>
-                            <li><b>Correct:</b> Tags off by 1-3 letters, i.e. mispellings.</li>
-                        </ul>
-                    </li>
-                </ul>
+                    </div>
+                </div>
             </div>
         </div>
         <div id="iac-sort-settings" class="jsplib-settings-grouping">
             <div id="iac-sort-message" class="prose">
                 <h4>Sort settings</h4>
-                <p>These settings affect the order of tag autocomplete data.</p>
-                <p><span style="font-size:80%;color:#888"><b>Note:</b> These settings won't affect anything if source grouping is enabled under "Display settings" above.</span></p>
-                <h5>Equations</h5>
-                <ul>
-                    <li><span style="width:8em;display:inline-block"><b>Linear:</b></span><span style="font-family:monospace;font-size:125%">tag_weight = source_weight x post_count</span></li>
-                    <li><span style="width:8em;display:inline-block"><b>Square root:</b></span><span style="font-family:monospace;font-size:125%">tag_weight = source_weight x Sqrt( post_count )</span></li>
-                    <li><span style="width:8em;display:inline-block"><b>Logarithmic:</b></span><span style="font-family:monospace;font-size:125%">tag_weight = source_weight x Log( post_count )</span></li>
-                </ul>
+                <p>Affects the order of tag autocomplete data.</p>
+                <div class="expandable">
+                    <div class="expandable-header">
+                        <span>Additional setting details</span>
+                        <input type="button" value="Show" class="expandable-button">
+                    </div>
+                    <div class="expandable-content">
+                        <ul>
+                            <li>Alternate sorting must be enabled to use the alternate scales/weights.</li>
+                            <li>These settings won't affect anything if source grouping is enabled.</li>
+                        </ul>
+                        <h5>Equations</h5>
+                        <ul>
+                            <li><span style="width:8em;display:inline-block"><b>Linear:</b></span><span style="font-family:monospace;font-size:125%">tag_weight = source_weight x post_count</span></li>
+                            <li><span style="width:8em;display:inline-block"><b>Square root:</b></span><span style="font-family:monospace;font-size:125%">tag_weight = source_weight x Sqrt( post_count )</span></li>
+                            <li><span style="width:8em;display:inline-block"><b>Logarithmic:</b></span><span style="font-family:monospace;font-size:125%">tag_weight = source_weight x Log( post_count )</span></li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
         <div id="iac-network-settings" class="jsplib-settings-grouping">
             <div id="iac-network-message" class="prose">
                 <h4>Network settings</h4>
-                <ul>
-                    <li><b>Alternate tag source:</b> Uses the <code>/tags</code> controller instead of the normal autocomplete source.
+                <div class="expandable">
+                    <div class="expandable-header">
+                        <span>Additional setting details</span>
+                        <input type="button" value="Show" class="expandable-button">
+                    </div>
+                    <div class="expandable-content">
                         <ul>
-                            <li>No aliases.</li>
-                            <li>No fuzzy or intelligent autocomplete.</li>
-                            <li>All results will be exact matches.</li>
+                            <li><b>Alternate tag source:</b>
+                                <ul>
+                                    <li>No aliases.</li>
+                                    <li>No fuzzy or intelligent autocomplete.</li>
+                                    <li>All results will be exact matches.</li>
+                                </ul>
+                            </li>
+                            <li><b>Network only mode:</b>
+                                <ul>
+                                    <li>Can be used to correct cache data that has been changed on the server.</li>
+                                    <li><span style="color:red;font-weight:bold">Warning!</span> <span style="font-style:italic">As this negates the benefits of using local cached data, it should only be used sparingly.</span></li>
+                                </ul>
+                            </li>
                         </ul>
-                    </li>
-                    <li><b>Network only mode:</b> Always goes to network.
-                        <ul>
-                            <li>Can be used to correct cache data that has been changed on the server.</li>
-                            <li><span style="color:red;font-weight:bold">Warning!</span> <span style="font-style:italic">As this negates the benefits of using local cached data, it should only be used sparingly.</span></li>
-                        </ul>
-                    </li>
-                </ul>
+                    </div>
+                </div>
             </div>
         </div>
         <div id="iac-cache-settings" class="jsplib-settings-grouping">
             <div id="iac-cache-message" class="prose">
                 <h4>Cache settings</h4>
                 <h5>Cache data</h5>
-                <ul>
-                    <li><b>Autocomplete data:</b> Data from every combination of keys in the text input.
-                        <ul style="font-size:80%">
-                            <li>tags</li>
-                            <li>pools</li>
-                            <li>users</li>
-                            <li>favorite groups</li>
-                            <li>saved searches</li>
-                            <li>wiki pages</li>
-                            <li>artists</li>
-                            <li>forum topics</li>
+                <div class="expandable">
+                    <div class="expandable-header">
+                        <span>Cache Data details</span>
+                        <input type="button" value="Show" class="expandable-button">
+                    </div>
+                    <div class="expandable-content">
+                        <ul>
+                            <li><b>Autocomplete data:</b> Data from every combination of keys in the text input.
+                                <ul style="font-size:80%">
+                                    <li>tags (ac)</li>
+                                    <li>pools (pl)</li>
+                                    <li>users (us)</li>
+                                    <li>favorite groups (fg)</li>
+                                    <li>saved searches (ss)</li>
+                                    <li>wiki pages (wp)</li>
+                                    <li>artists (ar)</li>
+                                    <li>forum topics (ft)</li>
+                                </ul>
+                            </li>
+                            <li><b>Related tag data:</b> Data from every use of the related tag functions (<span style="font-size:80%"><i>right beneath the tag edit box</i></span>).
+                                <ul style="font-size:80%">
+                                    <li>related tags (rt)</li>
+                                    <li>general (rtgen)</li>
+                                    <li>artists (rtart)</li>
+                                    <li>characters (rtchar)</li>
+                                    <li>copyrights (rtcopy)</li>
+                                </ul>
+                            </li>
                         </ul>
-                    </li>
-                    <li><b>Related tag data:</b> Data from every use of the related tag functions (<span style="font-size:80%"><i>right beneath the tag edit box</i></span>).
-                        <ul style="font-size:80%">
-                            <li>related tags</li>
-                            <li>general</li>
-                            <li>artists</li>
-                            <li>characters</li>
-                            <li>copyrights</li>
-                        </ul>
-                    </li>
-                </ul>
-                <h5>Cache controls</h5>
-                <ul>
-                    <li><b>Purge cache:</b> Dumps all of the cached data related to IndexedAutocomplete.</li>
-                </ul>
+                    </div>
+                </div>
             </div>
         </div>
         <hr>
@@ -352,12 +408,44 @@ const iac_menu = `
     <div id="iac-cache-editor" class="jsplib-outer-menu">
         <div id="iac-editor-message" class="prose">
             <h4>Cache editor</h4>
-            <p>See the <b><a href="#iac-cache-message" style="color:#0073ff">Cache Data</a></b> settings for the list of all cache data and what they do.</p>
+            <p>See the <b><a href="#iac-cache-message">Cache Data</a></b> settings for the list of all cache data and what they do.</p>
+            <div class="expandable">
+                <div class="expandable-header">
+                    <span>Program Data details</span>
+                    <input type="button" value="Show" class="expandable-button">
+                </div>
+                <div class="expandable-content">
+                    <p class="tn">All timestamps are in milliseconds since the epoch (<a href="https://www.epochconverter.com">Epoch converter</a>).</p>
+                    <ul>
+                        <li>General data
+                            <ul>
+                                <li><b>prune-expires:</b> When the program will next check for cache data that has expired.</li>
+                                <li><b>user-settings:</b> All configurable settings.</li>
+                            </ul>
+                        </li>
+                        <li>Usage data
+                            <ul>
+                                <li><b>choice-order:</b> The search terms per source ordered by last use.
+                                    <ul>
+                                        <li>The order in this list only affects things when the usage counts of two terms are equal.</li>
+                                    </ul>
+                                </li>
+                                <li><b>choice-data:</b> The search terms per source with the autocomplete data.
+                                    <ul>
+                                        <li>The <b>use_count</b> affects how terms get sorted against each other.</li>
+                                        <li>The <b>expiration</b> affects when data gets pruned, and gets renewed each time a term is selected.</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </div>
         </div>
         <div id="iac-cache-editor-controls"></div>
-        <div id="iac-cache-editor-errors"></div>
-        <div id="iac-cache-viewer">
-            <textarea readonly></textarea>
+        <div id="iac-cache-editor-errors" class="jsplib-cache-editor-errors"></div>
+        <div id="iac-cache-viewer" class="jsplib-cache-viewer">
+            <textarea></textarea>
         </div>
     </div>
 </div>
@@ -367,7 +455,7 @@ const iac_menu = `
 
 const all_source_types = ['indexed_db','local_storage'];
 const all_data_types = ['tag','pool','user','artist','wiki','forum','saved_search','favorite_group','related_tag','custom'];
-const reverse_source_key = {
+const reverse_data_key = {
     tag: 'ac',
     pool: 'pl',
     user: 'us',
@@ -375,7 +463,7 @@ const reverse_source_key = {
     wiki: 'wp',
     forum: 'ft',
     saved_search: 'ss',
-    favorite_group: 'fg',
+    favorite_group: 'fg'
 };
 
 //BUR constants
@@ -730,17 +818,7 @@ const source_config = {
 //Validate constants
 
 const autocomplete_constraints = {
-    entry: {
-        expires : JSPLib.validate.expires_constraints,
-        value: {
-            presence: true,
-            array: true,
-            length: {
-                maximum : 10,
-                tooLong : "array is too long (maximum is %{count} items)"
-            }
-        }
-    },
+    entry: JSPLib.validate.arrayentry_constraints({maximum: 10}),
     tag: {
         antecedent: JSPLib.validate.stringnull_constraints,
         category: JSPLib.validate.inclusion_constraints(all_categories),
@@ -751,8 +829,8 @@ const autocomplete_constraints = {
         source: JSPLib.validate.inclusion_constraints(tag_sources)
     },
     pool: {
-        category: JSPLib.validate.inclusion_constraints(),
-        post_count: JSPLib.validate.postcount_constraints,
+        category: JSPLib.validate.inclusion_constraints(all_pools),
+        post_count: JSPLib.validate.counting_constraints,
         type: JSPLib.validate.inclusion_constraints(["pool"]),
         name: JSPLib.validate.stringonly_constraints
     },
@@ -784,17 +862,16 @@ const autocomplete_constraints = {
 };
 
 const relatedtag_constraints = {
-    entry: {
-        expires : JSPLib.validate.expires_constraints,
-        value : JSPLib.validate.hash_constraints
-    },
+    entry: JSPLib.validate.hashentry_constraints,
     value: {
         category: JSPLib.validate.inclusion_constraints(all_related),
         query: JSPLib.validate.stringonly_constraints,
         tags: JSPLib.validate.tagentryarray_constraints,
         wiki_page_tags: JSPLib.validate.tagentryarray_constraints,
         other_wikis: JSPLib.validate.hash_constraints
-    }
+    },
+    other_wiki_title: JSPLib.validate.stringonly_constraints,
+    other_wiki_value: JSPLib.validate.tagentryarray_constraints
 };
 
 const usage_constraints = {
@@ -806,13 +883,12 @@ const usage_constraints = {
     }
 };
 
-/***Functions***/
+/****Functions****/
 
 //Validate functions
 
 function ValidateEntry(key,entry) {
     if (!JSPLib.validate.validateIsHash(key,entry)) {
-        RenderValidateError(key,"\r\n\r\nData is not a hash.");
         return false
     }
     if (key.match(/^(?:ac|pl|us|fg|ss|ar|wp|ft)-/)) {
@@ -820,22 +896,17 @@ function ValidateEntry(key,entry) {
     } else if (key.match(/^rt(?:gen|char|copy|art)?-/)) {
         return ValidateRelatedtagEntry(key,entry);
     }
-    JSPLib.debug.debuglog("Shouldn't get here");
+    ValidateEntry.debuglog("Bad key!");
     return false;
 }
 
 function ValidateAutocompleteEntry(key,entry) {
-    let check = validate(entry,autocomplete_constraints.entry);
-    if (check !== undefined) {
-        OutputValidateError(key,check);
+    if (!JSPLib.validate.validateHashEntries(key, entry, autocomplete_constraints.entry)) {
         return false;
     }
     let type = source_key[key.slice(0,2)];
     for (let i=0;i < entry.value.length; i++) {
-        check = validate(entry.value[i],autocomplete_constraints[type]);
-        if (check !== undefined) {
-            let output_key = `${key}.value[${i}]`;
-            OutputValidateError(output_key,check);
+        if (!JSPLib.validate.validateHashEntries(`${key}.value[${i}]`, entry.value[i], autocomplete_constraints[type])) {
             return false;
         }
     }
@@ -843,56 +914,79 @@ function ValidateAutocompleteEntry(key,entry) {
 }
 
 function ValidateRelatedtagEntry(key,entry) {
-    let check = validate(entry,relatedtag_constraints.entry);
-    if (check !== undefined) {
-        OutputValidateError(key,check);
+    if (!JSPLib.validate.validateHashEntries(key, entry, relatedtag_constraints.entry)) {
         return false;
     }
-    check = validate(entry.value,relatedtag_constraints.value);
-    if (check !== undefined) {
-        OutputValidateError(key,check);
+    if (!JSPLib.validate.validateHashEntries(key + '.value', entry.value, relatedtag_constraints.value)) {
         return false;
     }
     for (let title in entry.value.other_wikis) {
         let value = entry.value.other_wikis[title];
         let wiki_key = key + '.value.other_wikis.' + title;
-        check = validate({title: title},{title: JSPLib.validate.stringonly_constraints});
+        let check = validate({title: title},{title: relatedtag_constraints.other_wiki_title});
         if (check !== undefined) {
-            OutputValidateError(wiki_key,check);
+            JSPLib.validate.outputValidateError(wiki_key,check);
             return false;
         }
-        check = validate({value: value},{value: JSPLib.validate.tagentryarray_constraints});
+        check = validate({value: value},{value: relatedtag_constraints.other_wiki_value});
         if (check !== undefined) {
-            OutputValidateError(wiki_key,check);
+            JSPLib.validate.outputValidateError(wiki_key,check);
             return false;
         }
     }
     return true;
 }
 
+function ValidateProgramData(key,entry) {
+    var checkerror=[],choice_data,choice_order;
+    switch (key) {
+        case 'iac-user-settings':
+            checkerror = JSPLib.menu.validateUserSettings(entry,settings_config);
+            break;
+        case 'iac-prune-expires':
+            if (!Number.isInteger(entry)) {
+                checkerror = ["Value is not an integer."];
+            }
+            break;
+        case 'iac-choice-order':
+            choice_data = JSPLib.utility.dataCopy(IAC.choice_data);
+            checkerror = Timer.ValidateUsageData({choice_order: entry, choice_data: choice_data});
+            break;
+        case 'iac-choice-data':
+            choice_order = JSPLib.utility.dataCopy(IAC.choice_order);
+            checkerror = Timer.ValidateUsageData({choice_order: choice_order, choice_data: choice_data});
+            break;
+        default:
+            checkerror = ["Not a valid program data key."];
+    }
+    if (checkerror.length) {
+        JSPLib.validate.outputValidateError(key,checkerror);
+        return false;
+    }
+    return true;
+}
+
 //Scalpel validation... removes only data that is bad instead of tossing everything
-function CorrectUsageData() {
-    let choice_order = IAC.choice_order;
-    let choice_data = IAC.choice_data;
-    let old_choice_order = IAC.old_choice_order = JSPLib.utility.dataCopy(choice_order);
-    let old_choice_data = IAC.old_choice_data = JSPLib.utility.dataCopy(choice_data);
-    if (!validate.isHash(choice_order) || !validate.isHash(choice_data)) {
-        JSPLib.debug.debuglog("Usage data is corrupted beyond repair!",choice_order,!validate.isHash(choice_data));
-        IAC.choice_order = {};
-        IAC.choice_data = {};
-        StoreUsageData('reset');
-        return;
+function ValidateUsageData(choice_info) {
+    let error_messages = [];
+    let choice_order = choice_info.choice_order;
+    let choice_data = choice_info.choice_data;
+    if (!JSPLib.validate.isHash(choice_order) || !JSPLib.validate.isHash(choice_data)) {
+        error_messages.push("Choice data is not a hash.");
+        choice_info.choice_order = {};
+        choice_info.choice_data = {};
+        return error_messages;
     }
     //Validate choice order
     for (let type in choice_order) {
-        if (!validate.isArray(choice_order[type])) {
-            JSPLib.debug.debuglog(`choice_order[${type}] is not an array`)
+        if (!Array.isArray(choice_order[type])) {
+            error_messages.push(`choice_order[${type}] is not an array.`)
             delete choice_order[type];
             continue;
         }
         for (let i = 0; i < choice_order[type].length; i++) {
-            if (!validate.isString(choice_order[type][i])) {
-                JSPLib.debug.debuglog(`choice_order[${type}][${i}] is not a string`)
+            if (!JSPLib.validate.isString(choice_order[type][i])) {
+                error_messages.push(`choice_order[${type}][${i}] is not a string`)
                 choice_order[type].splice(i,1);
                 i--;
             }
@@ -900,8 +994,8 @@ function CorrectUsageData() {
     }
     //Validate choice data
     for (let type in choice_data) {
-        if (!validate.isHash(choice_data[type])) {
-            JSPLib.debug.debuglog(`choice_data[${type}] is not a hash`)
+        if (!JSPLib.validate.isHash(choice_data[type])) {
+            error_messages.push(`choice_data[${type}] is not a hash`)
             delete choice_data[type];
             continue;
         }
@@ -909,8 +1003,7 @@ function CorrectUsageData() {
             let validator = Object.assign({},autocomplete_constraints[type],usage_constraints);
             let check = validate(choice_data[type][key],validator);
             if (check !== undefined) {
-                JSPLib.debug.debuglog(`choice_data[${type}][${key}]`);
-                JSPLib.validate.printValidateError(key,check);
+                error_messages.push(`choice_data[${type}][${key}]`,check);
                 delete choice_data[type][key];
             }
         }
@@ -918,7 +1011,7 @@ function CorrectUsageData() {
     //Validate same types between both
     let type_diff = JSPLib.utility.setSymmetricDifference(Object.keys(choice_order),Object.keys(choice_data));
     if (type_diff.length) {
-        JSPLib.debug.debuglog("Type difference!",type_diff);
+        error_messages.push("Type difference between choice order and choice data:",type_diff);
         $.each(type_diff,(i,type)=>{
             delete choice_order[type];
             delete choice_data[type];
@@ -928,139 +1021,19 @@ function CorrectUsageData() {
     for (let type in choice_order) {
         let key_diff = JSPLib.utility.setSymmetricDifference(choice_order[type],Object.keys(choice_data[type]));
         if (key_diff.length) {
-            JSPLib.debug.debuglog("Key difference!",type,key_diff);
+            error_messages.push("Key difference between choice order and choice data:",type,key_diff);
             $.each(key_diff,(i,key)=>{
                 choice_order[type] = JSPLib.utility.setDifference(choice_order[type],[key]);
                 delete choice_data[type][key];
             });
         }
     }
-
-    if ((JSON.stringify(choice_order) !== JSON.stringify(old_choice_order)) || (JSON.stringify(choice_data) !== JSON.stringify(old_choice_data))) {
-        JSPLib.debug.debuglog("Corrections to usage data detected!");
-        StoreUsageData('correction');
-    } else {
-        JSPLib.debug.debuglog("Usage data is valid.");
-    }
+    return error_messages;
 }
 
 //Library functions
 
-function FixGetBoundEventNames(root,eventtype,selector) {
-    let $obj = (root === document ? document : document.querySelector(root));
-    if ($obj === null) {
-        return [];
-    }
-    let private_data = JSPLib.utility.getPrivateData($obj);
-    let boundevents = 'events' in private_data && private_data.events;
-    if (!boundevents || !(eventtype in boundevents)) {
-        return [];
-    }
-    return boundevents[eventtype].filter((entry)=>{return entry.selector === selector;}).map((entry)=>{return entry.namespace;});
-}
-
-function FixIsNamespaceBound(root,eventtype,namespace,selector) {
-    let namespaces = FixGetBoundEventNames(root,eventtype,selector);
-    return namespaces.includes(namespace);
-}
-
-function IsGlobalFunctionBound(name) {
-    let private_data = JSPLib.utility.getPrivateData(document);
-    return private_data && 'events' in private_data && Object.keys(private_data.events).includes(name);
-}
-
-function SetupMutationObserver(selector,func) {
-    return new MutationObserver(function(mutations,observer) {
-        mutations.forEach(function(mutation) {
-            if (mutation.type == "childList" && mutation.removedNodes.length === 1) {
-                let type = selector.slice(0,1);
-                let name = selector.slice(1);
-                let node = mutation.removedNodes[0];
-                if ((type === "." && name === node.className) || (type === "#" && name === node.id)) {
-                    JSPLib.debug.debuglog(`Server: ${selector} has been modified!`);
-                    func();
-                    observer.disconnect();
-                }
-            }
-        });
-    });
-}
-
-function OutputValidateError(key,checkerror) {
-    JSPLib.validate.printValidateError(key,checkerror);
-    JSPLib.validate.dom_output && RenderValidateError(key,JSON.stringify(checkerror,null,2));
-}
-
-function RenderValidateError(key,error_message) {
-    if (JSPLib.validate.dom_output) {
-        let output_text = `<b>${key}:</b>\r\n<pre>${error_message}</pre>`;
-        $(JSPLib.validate.dom_output).html(output_text).show();
-    }
-}
-
-function RenderKeyselect(program_shortcut,setting_name,control=false,value='',all_options=[],hint='') {
-    let config, setting_key, display_name, item;
-    [config,setting_key,display_name,item] = JSPLib.menu.getProgramValues(program_shortcut,setting_name);
-    let menu_type = (control ? "control" : "setting");
-    let keyselect_key = `${program_shortcut}-${menu_type}-${setting_key}`;
-    if (!control) {
-        all_options = config[setting_name].allitems;
-        hint = config[setting_name].hint;
-        value = item;
-    }
-    let hint_html = JSPLib.menu.renderSettingHint(program_shortcut,"inline",hint);
-    let html = "";
-    all_options.forEach((option)=>{
-        let selected = (option === value ? 'selected="selected"' : '');
-        let display_option = JSPLib.utility.displayCase(option);
-        html += `<option ${selected} value="${option}">${display_option}</option>`;
-    });
-    return `
-<div class="${program_shortcut}-options jsplib-options jsplib-menu-item" data-setting="${setting_name}">
-    <h4>${display_name}</h4>
-    <div>
-        <select name="${keyselect_key}" id="${keyselect_key}" data-parent="2">;
-            ${html}
-        </select>
-        ${hint_html}
-    </div>
-</div>
-`;
-}
-
-function FixRenderTextinput(program_shortcut,setting_name,length=20,control=false,hint='',buttons=[]) {
-    let config, setting_key, display_name, item;
-    [config,setting_key,display_name,item] = JSPLib.menu.getProgramValues(program_shortcut,setting_name);
-    let textinput_key = `${program_shortcut}-setting-${setting_key}`;
-    let menu_type = (control ? "control" : "setting");
-    let submit_control = '';
-    if (control && buttons.length) {
-        buttons.forEach((button)=>{
-            submit_control += FixRenderControlButton(program_shortcut,setting_key,button,2);
-        });
-    }
-    let value = '';
-    if (!control) {
-        hint = config[setting_name].hint;
-        value = item;
-    }
-    let hint_html = JSPLib.menu.renderSettingHint(program_shortcut,"block",hint);
-    return `
-<div class="${program_shortcut}-textinput jsplib-textinput jsplib-menu-item" data-setting="${setting_name}">
-    <h4>${display_name}</h4>
-    <div>
-        <input type="text" class="${program_shortcut}-${menu_type} jsplib-${menu_type}" name="${textinput_key}" id="${textinput_key}" value="${value}" size="${length}" autocomplete="off" data-parent="2">
-        ${submit_control}
-        ${hint_html}
-    </div>
-</div>`;
-}
-
-function FixRenderControlButton(program_shortcut,setting_key,button_name,parent_level) {
-    let button_key = `${program_shortcut}-${setting_key}-${button_name}`;
-    let display_name = JSPLib.utility.displayCase(button_name);
-    return `<input type="button" class="jsplib-control ${program_shortcut}-control" name="${button_key}" id="${button_key}" value="${display_name}" data-parent="${parent_level}">`;
-}
+////NONE
 
 //Time functions
 
@@ -1083,10 +1056,6 @@ function ExpirationTime(type,count) {
 
 //Render functions
 
-function RenderWikiLink(tag) {
-    return `<a href="/wiki_pages/show_or_new?title=${tag}">wiki:${tag.replace(/_/g,' ')}</a>`;
-}
-
 function RenderTaglist(taglist,columnname) {
     let html = "";
     taglist.forEach((tagdata)=>{
@@ -1105,20 +1074,22 @@ ${html.slice(0,-1)}
 
 function RenderTagColumns(data) {
     let is_empty = data.tags.length === 0;
-    let column = (is_empty ? "" : RenderTaglist(data.tags,data.query.replace(/_/g,' ')));
+    let display_name = data.query.replace(/_/g,' ');
+    let column = (is_empty ? "" : RenderTaglist(data.tags,display_name));
     let html = `
 <div class="tag-column general-related-tags-column is-empty-${is_empty}">
 ${column}
 </div>`;
     is_empty = data.wiki_page_tags.length === 0;
-    column = (is_empty ? "" : RenderTaglist(data.wiki_page_tags,RenderWikiLink(data.query)));
+    column = (is_empty ? "" : RenderTaglist(data.wiki_page_tags,JSPLib.danbooru.wikiLink(data.query,`wiki:${display_name}`)));
     html += `
 <div class="tag-column wiki-related-tags-column is-empty-${false}">
 ${column}
 </div>`;
     if (Object.keys(data.other_wikis).length) {
         for (let title in data.other_wikis) {
-            column = RenderTaglist(data.other_wikis[title],RenderWikiLink(title));
+            let title_name = title.replace(/_/g,' ');
+            column = RenderTaglist(data.other_wikis[title],JSPLib.danbooru.wikiLink(title,`wiki:${title_name}`));
             html += `
 <div class="tag-column wiki-related-tags-column is-empty-false">
 ${column}
@@ -1189,7 +1160,7 @@ function GroupSources(data) {
 }
 
 function FixExpirationCallback(key,value,tagname,type) {
-    JSPLib.debug.debuglog("Fixing expiration:",tagname);
+    FixExpirationCallback.debuglog("Fixing expiration:",tagname);
     JSPLib.danbooru.submitRequest('tags',{search: {name: tagname}}).then((data)=>{
         if (!data.length) {
             return;
@@ -1208,7 +1179,7 @@ function GetArtistData(url) {
         }
         let redirect = JSPLib.storage.getStorageData(refkey, sessionStorage);
         if (redirect) {
-            JSPLib.debug.debuglog("Redirect found!",redirect);
+            GetArtistData.debuglog("Redirect found!",redirect);
             return JSPLib.storage.getStorageData(redirect, sessionStorage);
         }
 }
@@ -1223,10 +1194,10 @@ function SaveArtistData() {
     let refkey = 'ref-' + ref;
     let source_info = LZString.compressToUTF16($("#source-info").html());
     let source_column = LZString.compressToUTF16($(".source-related-tags-columns").html());
-    JSPLib.debug.debuglog("Saving",urlkey);
+    SaveArtistData.debuglog("Saving",urlkey);
     JSPLib.storage.setStorageData(urlkey, {source_info: source_info, source_column: source_column}, sessionStorage);
     if (ref) {
-        JSPLib.debug.debuglog("Saving",refkey);
+        SaveArtistData.debuglog("Saving",refkey);
         JSPLib.storage.setStorageData(refkey, urlkey, sessionStorage);
     }
 }
@@ -1302,7 +1273,7 @@ function InsertUserSelected(data,input,selected) {
         }
         item = $links.data("item.autocomplete");
         if (!item) {
-            JSPLib.debug.debuglog("Error: No autocomplete data found!",$links,item);
+            InsertUserSelected.debuglog("Error: No autocomplete data found!",$links,item);
             return;
         }
         type = item.type;
@@ -1332,7 +1303,7 @@ function InsertUserSelected(data,input,selected) {
     //Final failsafe
     if (!IAC.source_data[type] || !IAC.source_data[type][term]) {
         if (!IAC.choice_data[type] || !IAC.choice_data[type][term]) {
-            JSPLib.debug.debuglog("Error: Bad data selector!",type,term,selected,data,item);
+            InsertUserSelected.debuglog("Error: Bad data selector!",type,term,selected,data,item);
             return;
         }
         source_data = IAC.choice_data[type][term];
@@ -1384,12 +1355,23 @@ function HighlightSelected($link,list,item) {
     return $link;
 }
 
+function CorrectUsageData() {
+    let error_messages = Timer.ValidateUsageData(IAC);
+    if (error_messages.length) {
+        CorrectUsageData.debuglog("Corrections to usage data detected!");
+        error_messages.forEach((error)=>{CorrectUsageData.debuglog(error)});
+        StoreUsageData('correction');
+    } else {
+        CorrectUsageData.debuglog("Usage data is valid.");
+    }
+}
+
 function PruneUsageData() {
     let is_dirty = false;
     $.each(IAC.choice_data,(type_key,type_entry)=>{
         $.each(type_entry,(key,entry)=>{
             if (!JSPLib.validate.validateExpires(entry.expires, IAC.user_settings.usage_expires * JSPLib.utility.one_day)) {
-                JSPLib.debug.debuglog("Pruning choice data!",type_key,key);
+                PruneUsageData.debuglog("Pruning choice data!",type_key,key);
                 IAC.choice_order[type_key] = JSPLib.utility.setDifference(IAC.choice_order[type_key],[key])
                 delete type_entry[key];
                 is_dirty = true;
@@ -1397,60 +1379,65 @@ function PruneUsageData() {
         });
     });
     if (is_dirty) {
-        StoreUsageData("prune");
+        StoreUsageData('prune');
     }
 }
 
-function StoreUsageData(name,key='') {
-    JSPLib.storage.setStorageData('iac-choice-order',IAC.choice_order,localStorage);
-    JSPLib.storage.setStorageData('iac-choice-data',IAC.choice_data,localStorage);
+function StoreUsageData(name,key='',save=true) {
+    if (save) {
+        JSPLib.storage.setStorageData('iac-choice-order',IAC.choice_order,localStorage);
+        JSPLib.storage.setStorageData('iac-choice-data',IAC.choice_data,localStorage);
+    }
     IAC.channel.postMessage({type: "reload", name: name, key: key, choice_order: IAC.choice_order, choice_data: IAC.choice_data});
 }
 
 //Non-autocomplete storage
 
-async function RelatedTagsButton(e) {
-    let category = $(e.target).data("category") || "";
+async function RelatedTagsButton(event) {
+    let category = $(event.target).data("category") || "";
     let currenttag = $.trim(Danbooru.RelatedTag.current_tag());
     let keymodifier = GetRelatedKeyModifer(category);
     let key = (keymodifier + "-" + currenttag).toLowerCase();
     let max_expiration = MaximumExpirationTime('relatedtag');
+    RelatedTagsButton.debuglog("Checking relatedtag:", currenttag, category);
     let cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry,max_expiration);
     if (cached) {
-        $("#related-tags-container .current-related-tags-columns").html(RenderTagColumns(cached.value));
+        RelatedTagsButton.debuglog("Found relatedtag:", currenttag, category);
+        $("#related-tags-container .current-related-tags-columns").html(Timer.RenderTagColumns(cached.value));
     } else {
-        JSPLib.debug.debuglog("Querying relatedtag:",currenttag,category);
+        RelatedTagsButton.debuglog("Querying relatedtag:", currenttag, category);
         var data = await JSPLib.danbooru.submitRequest("related_tag", {query: currenttag, category: category});
         //inclusion_constraints doesn't allow for null...yet
         data.category = category;
         JSPLib.storage.saveData(key, {value: data, expires: JSPLib.utility.getExpiration(MinimumExpirationTime('relatedtag'))});
-        $("#related-tags-container .current-related-tags-columns").html(RenderTagColumns(data));
+        $("#related-tags-container .current-related-tags-columns").html(Timer.RenderTagColumns(data));
     }
     Danbooru.RelatedTag.update_selected();
     Danbooru.RelatedTag.show();
 }
 
-function FindArtistSession(e) {
+async function FindArtistSession(event) {
     var url = $("#post_source").val();
     if (!url.match(/^https?:\/\//)) {
         return;
     }
     let urlkey = 'af-' + url;
-    //let refkey = ref && 'ref-' + ref;
-    JSPLib.debug.debuglog("Checking artist", urlkey);
+    FindArtistSession.debuglog("Checking artist", urlkey);
     let data = GetArtistData(url);
     if (data) {
-        JSPLib.debug.debuglog("Found artist data", urlkey);
+        FindArtistSession.debuglog("Found artist data", urlkey);
         $("#source-info").html(LZString.decompressFromUTF16(data.source_info));
         $(".source-related-tags-columns").html(LZString.decompressFromUTF16(data.source_column))
     } else {
-        JSPLib.debug.debuglog("Missing artist data", urlkey);
+        FindArtistSession.debuglog("Missing artist data", urlkey);
         $("#source-info").addClass("loading");
-        $.get("/source.js", {url: url}).then(()=>{
-            SaveArtistData();
-        }).always(()=>{
-            $("#source-info").removeClass("loading");
-        });
+        try {
+            await $.get("/source.js", {url: url});
+            Timer.SaveArtistData();
+        } catch (e) {
+            //swallow
+        }
+        $("#source-info").removeClass("loading");
     }
 }
 
@@ -1460,38 +1447,37 @@ function FindArtistSession(e) {
 
 function RebindRelatedTags() {
     //Only need to check one of them, since they're all bound at the same time
-    if (FixIsNamespaceBound(document,'click','danbooru',".related-tags-button")) {
-        clearInterval(RebindRelatedTags.timer);
-        $(document).off("click.danbooru",".related-tags-button");
-        $(document).on("click.danbooru",".related-tags-button",RelatedTagsButton);
-        RebindRelatedTags.timer = true;
-    }
+    JSPLib.utility.rebindTimer({
+        check: ()=>{return JSPLib.utility.isNamespaceBound(document,'click','danbooru',".related-tags-button");},
+        exec: ()=>{
+            $(document).off("click.danbooru",".related-tags-button");
+            $(document).on("click.danbooru",".related-tags-button",Timer.RelatedTagsButton);
+        }
+    },timer_poll_interval);
 }
 
 function RebindFindArtist() {
-    if(IsGlobalFunctionBound("danbooru:show-related-tags")) {
-        clearInterval(RebindFindArtist.timer);
-        IAC.cached_data = true;
-        $(document).off("danbooru:show-related-tags");
-        if (!Danbooru.RTC || !Danbooru.RTC.cached_data) {
-            $(document).one("danbooru:show-related-tags", Danbooru.RelatedTag.initialize_recent_and_favorite_tags);
+    JSPLib.utility.rebindTimer({
+        check: ()=>{return JSPLib.utility.isGlobalFunctionBound("danbooru:show-related-tags");},
+        exec: ()=>{
+            IAC.cached_data = true;
+            $(document).off("danbooru:show-related-tags");
+            if (!Danbooru.RTC || !Danbooru.RTC.cached_data) {
+                $(document).one("danbooru:show-related-tags", Danbooru.RelatedTag.initialize_recent_and_favorite_tags);
+            }
+            $(document).one("danbooru:show-related-tags", Timer.FindArtistSession);
         }
-        $(document).one("danbooru:show-related-tags", IAC.FindArtistSession);
-        RebindFindArtist.timer = true;
-    }
+    },timer_poll_interval);
 }
 
 function RebindAnyAutocomplete(selector, keycode, multiple) {
-    if (JSPLib.utility.hasDOMDataKey(selector,'uiAutocomplete')) {
-        clearInterval(RebindAnyAutocomplete.timer[keycode]);
-        $(selector).autocomplete("destroy").off('keydown.Autocomplete.tab');
-        InitializeAutocompleteIndexed(selector, keycode, multiple);
-    }
-}
-RebindAnyAutocomplete.timer = {};
-
-function SetRebindInterval(selector, keycode, multiple) {
-    RebindAnyAutocomplete.timer[keycode] = setInterval(()=>{RebindAnyAutocomplete(selector,keycode,multiple)},timer_poll_interval);
+    JSPLib.utility.rebindTimer({
+        check: ()=>{return JSPLib.utility.hasDOMDataKey(selector,'uiAutocomplete');},
+        exec: ()=>{
+            $(selector).autocomplete("destroy").off('keydown.Autocomplete.tab');
+            InitializeAutocompleteIndexed(selector, keycode, multiple);
+        }
+    },timer_poll_interval);
 }
 
 //Initialization functions
@@ -1512,7 +1498,7 @@ function InitializeAutocompleteIndexed(selector, keycode, multiple=false) {
                 if (event.key === "Enter") {
                     event.stopImmediatePropagation();
                 }
-                Danbooru.Autocomplete.insert_completion(this, ui.item.value);
+                Danbooru.Autocomplete.insert_completion_old(this, ui.item.value);
                 return false;
             }
             return ui.item.value;
@@ -1536,7 +1522,7 @@ function InitializeAutocompleteIndexed(selector, keycode, multiple=false) {
 //Main execution functions
 
 function NetworkSource(type,key,term,resp,metatag) {
-    JSPLib.debug.debuglog("Querying",type,':',term);
+    NetworkSource.debuglog("Querying",type,':',term);
     JSPLib.danbooru.submitRequest(source_config[type].url,source_config[type].data(term)).then((data)=>{
         if (!data || !Array.isArray(data)) {
             resp([]);
@@ -1608,134 +1594,57 @@ function ProcessSourceData(type,metatag,term,data,resp) {
     resp(data);
 }
 
-////Cache editor
+//Cache functions
 
-//Cache helper functions
-
-async function LoadStorageKeys() {
-    let storage_keys = await JSPLib.storage.danboorustorage.keys();
-    IAC.storage_keys.indexed_db = storage_keys.filter((key)=>{return key.match(program_cache_regex);});
-    storage_keys = Object.keys(localStorage);
-    IAC.storage_keys.local_storage = storage_keys.filter((key)=>{return key.startsWith("iac-");});
-}
-
-function GetCacheDatakey() {
-    IAC.data_source = $("#iac-control-data-source").val();
-    IAC.data_type = $("#iac-control-data-type").val();
-    IAC.category = $("#iac-control-related-tag-type").val();
-    IAC.data_value = data_key = $("#iac-setting-data-name").val().trim().replace(/\s+/g,'_');
-    if (IAC.data_source === "local_storage") {
-        data_key = 'iac-' + IAC.data_value;
-    } else if (IAC.data_type !== "custom") {
-        let key_modifier = (IAC.data_type === "related_tag" ? GetRelatedKeyModifer(IAC.category) : reverse_source_key[IAC.data_type]);
-        data_key = key_modifier + '-' + IAC.data_value;
+function OptionCacheDataKey(data_type,data_value) {
+    if (data_type === "related_tag") {
+        IAC.related_category = $("#iac-control-related-tag-type").val();
+        return `${GetRelatedKeyModifer(IAC.related_category)}-${data_value}`;
+    } else {
+        return `${reverse_data_key[data_type]}-${data_value}`;
     }
-    return data_key;
 }
 
-function CacheSource(req,resp) {
-    let check_key = GetCacheDatakey();
-    if (IAC.data_source === "indexed_db" && IAC.data_value.length === 0) {
-        resp([]);
-        return;
+function UpdateLocalData(key,data) {
+    switch (key) {
+        case 'iac-choice-order':
+            IAC.choice_order = data;
+            StoreUsageData('save','',false);
+            break;
+        case 'iac-choice-data':
+            IAC.choice_data = data;
+            StoreUsageData('save','',false);
+            break;
+        case 'iac-prune-expires':
+        default:
+            //Do nothing
     }
-    let source_keys = IAC.storage_keys[IAC.data_source];
-    let available_keys = source_keys.filter((key)=>{return key.startsWith(check_key);});
-    let transformed_keys = available_keys.slice(0,10);
-    if (IAC.data_source === 'local_storage' || IAC.data_type !== "custom") {
-        transformed_keys = transformed_keys.map((key)=>{return key.slice(key.indexOf('-')+1);});
-    }
-    resp(transformed_keys);
 }
-
-//Cache event functions
-
-function GetCacheClick() {
-    $("#iac-data-name-get").on("click.iac",(e)=>{
-        let storage_key = GetCacheDatakey();
-        if (IAC.data_source === "local_storage") {
-            let data = JSPLib.storage.getStorageData(storage_key,localStorage);
-            $("#iac-cache-viewer textarea").val(JSON.stringify(data,null,2)).prop('readonly',true);
-        } else {
-            JSPLib.storage.retrieveData(storage_key).then((data)=>{
-                $("#iac-cache-viewer textarea").val(JSON.stringify(data,null,2)).prop('readonly',false);;
-            });
-        }
-    });
-}
-
-function SaveCacheClick() {
-    $("#iac-data-name-save").on("click.iac",(e)=>{
-        let storage_key = GetCacheDatakey();
-        if (IAC.data_source === "local_storage") {
-            Danbooru.Utility.error("Unable to edit program data!");
-        } else {
-            try {
-                var data = JSON.parse($("#iac-cache-viewer textarea").val());
-            } catch (e) {
-                Danbooru.Utility.error("Invalid JSON data! Unable to save.");
-                return;
-            }
-            if (ValidateEntry(storage_key,data)) {
-                JSPLib.storage.saveData(storage_key,data).then(()=>{
-                    Danbooru.Utility.notice("Data was saved.");
-                });
-            } else {
-                Danbooru.Utility.error("Data is invalid! Unable to save.");
-            }
-        }
-    });
-}
-
-function DeleteCacheClick() {
-    $("#iac-data-name-delete").on("click.iac",(e)=>{
-        let storage_key = GetCacheDatakey();
-        if (IAC.data_source === "local_storage") {
-            if (confirm("This will delete program data that may cause problems until the page can be refreshed.\n\nAre you sure?")) {
-                localStorage.removeItem(storage_key);
-                Danbooru.Utility.notice("Data has been deleted.");
-            }
-        } else {
-            JSPLib.storage.removeData(storage_key).then((data)=>{
-                Danbooru.Utility.notice("Data has been deleted.");
-            });
-        }
-    });
-}
-
-function CacheAutocomplete() {
-    $("#iac-setting-data-name").autocomplete({
-        minLength: 0,
-        delay: 0,
-        source: CacheSource,
-        search: function() {
-            $(this).data("uiAutocomplete").menu.bindings = $();
-        }
-    }).off('keydown.Autocomplete.tab');
-}
-
-/****MAKE SURE TO ADD GLOBAL VARIABLE LIKE I DID WITH RTC!!!!****/
 
 //Settings functions
 
 function BroadcastIAC(ev) {
-    JSPLib.debug.debuglog(`BroadcastChannel (${ev.data.type}):`,(ev.data.type === "reload" ? `${ev.data.name} ${ev.data.key}` : ev.data));
-    if (ev.data.type === "reload") {
-        IAC.choice_order = ev.data.choice_order;
-        IAC.choice_data = ev.data.choice_data;
-    } else if (ev.data.type === "settings") {
-        IAC.user_settings = ev.data.user_settings;
-        SetTagAutocompleteSource();
-    } else if (ev.data.type === "reset") {
-        IAC.user_settings = ev.data.user_settings;
-        SetTagAutocompleteSource();
-        Object.assign(IAC,program_reset_keys);
-    } else if (ev.data.type === "purge") {
-        $.each(sessionStorage,(key)=>{
-            if (key.match(program_cache_regex)) {
-                sessionStorage.removeItem(key);
-            }
-        });
+    BroadcastIAC.debuglog(`(${ev.data.type}):`,(ev.data.type === "reload" ? `${ev.data.name} ${ev.data.key}` : ev.data));
+    switch (ev.data.type) {
+        case "reload":
+            IAC.choice_order = ev.data.choice_order;
+            IAC.choice_data = ev.data.choice_data;
+            break;
+        case "reset":
+            Object.assign(IAC,program_reset_keys);
+        case "settings":
+            IAC.user_settings = ev.data.user_settings;
+            IAC.is_setting_menu && JSPLib.menu.updateUserSettings('iac');
+            SetTagAutocompleteSource();
+            break;
+        case "purge":
+            Object.keys(sessionStorage).forEach((key)=>{
+                if (key.match(program_cache_regex)) {
+                    sessionStorage.removeItem(key);
+                }
+            });
+        default:
+            //do nothing
     }
 }
 
@@ -1764,30 +1673,33 @@ function RenderSettingsMenu() {
     $("#iac-sort-settings").append(JSPLib.menu.renderTextinput("iac",'correct_source_weight',5));
     $("#iac-network-settings").append(JSPLib.menu.renderCheckbox("iac",'alternate_tag_source'));
     $("#iac-network-settings").append(JSPLib.menu.renderCheckbox("iac",'network_only_mode'));
-    $("#iac-cache-settings").append(JSPLib.menu.renderLinkclick("iac",'purge_cache',`Purge cache (<span id="iac-purge-counter">...</span>)`,"Click to purge"));
-    $("#iac-cache-editor-controls").append(RenderKeyselect('iac','data_source',true,'indexed_db',all_source_types,"Indexed DB is <b>Cache Data</b> and is editable, whereas Local Storage is <b>Program Data</b> and is not."));
-    $("#iac-cache-editor-controls").append(RenderKeyselect('iac','data_type',true,'tag',all_data_types,"Only applies to Indexed DB.  Use <b>Custom</b> for querying by keyname."));
-    $("#iac-cache-editor-controls").append(RenderKeyselect('iac','related_tag_type',true,'',all_related,"Only applies to related tag data."));
-    $("#iac-cache-editor-controls").append(FixRenderTextinput('iac','data_name',20,true,"Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.",['get','save','delete']));
+    $("#iac-cache-settings").append(JSPLib.menu.renderLinkclick("iac",'cache_info',"Cache info","Click to populate","Calculates the cache usage of the program and compares it to the total usage."));
+    $("#iac-cache-settings").append(`<div id="iac-cache-info-table" style="display:none"></div>`);
+    $("#iac-cache-settings").append(JSPLib.menu.renderLinkclick("iac",'purge_cache',`Purge cache (<span id="iac-purge-counter">...</span>)`,"Click to purge","Dumps all of the cached data related to IndexedAutocomplete."));
+    $("#iac-cache-editor-controls").append(JSPLib.menu.renderKeyselect('iac','data_source',true,'indexed_db',all_source_types,"Indexed DB is <b>Cache Data</b> and Local Storage is <b>Program Data</b>."));
+    $("#iac-cache-editor-controls").append(JSPLib.menu.renderKeyselect('iac','data_type',true,'tag',all_data_types,"Only applies to Indexed DB. Use <b>Custom</b> for querying by keyname."));
+    $("#iac-cache-editor-controls").append(JSPLib.menu.renderKeyselect('iac','related_tag_type',true,'',all_related,"Only applies to related tag data."));
+    $("#iac-cache-editor-controls").append(JSPLib.menu.renderTextinput('iac','data_name',20,true,"Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.",['get','save','delete']));
     JSPLib.menu.engageUI('iac',true,true);
     JSPLib.menu.saveUserSettingsClick('iac','IndexedAutocomplete');
     JSPLib.menu.resetUserSettingsClick('iac','IndexedAutocomplete',localstorage_keys,program_reset_keys);
+    JSPLib.menu.cacheInfoClick('iac',program_cache_regex,"#iac-cache-info-table");
     JSPLib.menu.purgeCacheClick('iac','IndexedAutocomplete',program_cache_regex,"#iac-purge-counter");
-    GetCacheClick();
-    SaveCacheClick();
-    DeleteCacheClick();
-    CacheAutocomplete();
+    JSPLib.menu.getCacheClick('iac',OptionCacheDataKey);
+    JSPLib.menu.saveCacheClick('iac',ValidateProgramData,ValidateEntry,OptionCacheDataKey,UpdateLocalData);
+    JSPLib.menu.deleteCacheClick('iac',OptionCacheDataKey);
+    JSPLib.menu.cacheAutocomplete('iac',program_cache_regex,OptionCacheDataKey);
 }
 
 //Main program
 
-function main() {
+function Main() {
     if (!JSPLib.storage.use_indexed_db) {
-        JSPLib.debug.debuglog("No Indexed DB! Exiting...");
+        Main.debuglog("No Indexed DB! Exiting...");
         return;
     }
     if ($(autocomplete_domlist.join(',')).length === 0) {
-        JSPLib.debug.debuglog("No autocomplete inputs! Exiting...");
+        Main.debuglog("No autocomplete inputs! Exiting...");
         return;
     }
     JSPLib.utility.setCSSStyle(program_css,'program');
@@ -1799,6 +1711,7 @@ function main() {
         FindArtistSession: FindArtistSession,
         InitializeAutocompleteIndexed: InitializeAutocompleteIndexed,
         storage_keys: {indexed_db: [], local_storage: []},
+        is_setting_menu: Boolean($("#c-users #a-edit").length),
         settings_config: settings_config,
         channel: new BroadcastChannel('IndexedAutocomplete')
     };
@@ -1813,19 +1726,20 @@ function main() {
     Danbooru.Autocomplete.user_source = AnySourceIndexed('us');
     Danbooru.Autocomplete.favorite_group_source = AnySourceIndexed('fg');
     Danbooru.Autocomplete.saved_search_source = AnySourceIndexed('ss','search');
+    Danbooru.Autocomplete.insert_completion_old = Danbooru.Autocomplete.insert_completion;
     Danbooru.Autocomplete.insert_completion = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.insert_completion,InsertUserSelected);
     Danbooru.Autocomplete.render_item = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.render_item,HighlightSelected);
     if ($("#c-wiki-pages,#c-wiki-page-versions").length) {
-        SetRebindInterval('[data-autocomplete="wiki-page"]', 'wp');
+        RebindAnyAutocomplete('[data-autocomplete="wiki-page"]', 'wp');
     }
     if ($("#c-artists,#c-artist-versions,#c-artist-urls").length) {
-        SetRebindInterval('[data-autocomplete="artist"]', 'ar');
+        RebindAnyAutocomplete('[data-autocomplete="artist"]', 'ar');
     }
     if ($("#c-pools,#c-pool-versions").length) {
-        SetRebindInterval('[data-autocomplete="pool"]', 'pl');
+        RebindAnyAutocomplete('[data-autocomplete="pool"]', 'pl');
     }
     if ($("#c-posts #a-index").length) {
-        SetRebindInterval("#saved_search_label_string", 'ss', true);
+        RebindAnyAutocomplete("#saved_search_label_string", 'ss', true);
     }
     if ($("#c-saved-searches #a-edit").length) {
         setTimeout(()=>{InitializeAutocompleteIndexed("#saved_search_label_string", 'ss', true);}, timer_poll_interval);
@@ -1850,30 +1764,29 @@ function main() {
     }
     /**Non-autocomplete bindings**/
     if ($("#c-posts #a-show,#c-uploads #a-new").length) {
-        RebindRelatedTags.timer = setInterval(RebindRelatedTags,timer_poll_interval);
+        RebindRelatedTags();
         if ($("#c-posts #a-show").length) {
-            RebindFindArtist.timer = setInterval(RebindFindArtist,timer_poll_interval);
+            RebindFindArtist();
         } else if ($("#c-uploads #a-new").length) {
             //Is source column empty?
             if (/^\s+$/.test($(".source-related-tags-columns").html())) {
-                JSPLib.debug.debuglog("Setting up mutation observer for source data.");
-                SetupMutationObserver(".source-related-tags-columns",()=>{SaveArtistData();})
-                .observe($(".related-tags")[0], {
-                    childList: true
-                });
+                Main.debuglog("Setting up mutation observer for source data.");
+                JSPLib.utility.setupMutationObserver(".related-tags",".source-related-tags-columns",()=>{Timer.SaveArtistData();});
             } else {
-                SaveArtistData();
+                Timer.SaveArtistData();
             }
         }
     }
     /**Menu setup**/
-    if ($("#c-users #a-edit").length) {
+    if (IAC.is_setting_menu) {
         JSPLib.validate.dom_output = "#iac-cache-editor-errors";
-        LoadStorageKeys();
+        JSPLib.menu.loadStorageKeys('iac',program_cache_regex);
         JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
             JSPLib.menu.installSettingsMenu("IndexedAutocomplete");
-            RenderSettingsMenu();
+            Timer.RenderSettingsMenu();
         });
+        //Including this only during a transitory period for all scripts to be updated to the new library version
+        JSPLib.utility.setCSSStyle(menu_css,'menu');
     }
     /**Other setup**/
     JSPLib.debug.debugExecute(()=>{
@@ -1887,6 +1800,17 @@ function main() {
     },JSPLib.utility.one_minute);
 }
 
-/***Execution start***/
+/****Function decoration****/
 
-JSPLib.load.programInitialize(main,'IAC',program_load_required_variables,program_load_required_selectors);
+JSPLib.debug.addFunctionTimers(Timer,false,[ValidateUsageData,SaveArtistData,RenderTagColumns,RenderSettingsMenu]);
+
+JSPLib.debug.addFunctionTimers(Timer,true,[RelatedTagsButton,FindArtistSession]);
+
+JSPLib.debug.addFunctionLogs([
+    Main,BroadcastIAC,NetworkSource,FindArtistSession,RelatedTagsButton,PruneUsageData,CorrectUsageData,InsertUserSelected,
+    SaveArtistData,GetArtistData,FixExpirationCallback,ValidateEntry
+]);
+
+/****Execution start****/
+
+JSPLib.load.programInitialize(Main,'IAC',program_load_required_variables,program_load_required_selectors);
