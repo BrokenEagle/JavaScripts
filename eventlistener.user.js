@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      13.1
+// @version      14.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries)
 // @author       BrokenEagle
@@ -9,13 +9,14 @@
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/eventlistener.user.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/menu.js
 // ==/UserScript==
 
 /****Global variables****/
@@ -32,6 +33,9 @@ const program_load_required_selectors = ["#nav","#page"];
 
 //Main program variable
 var EL;
+
+//Timer function hash
+const Timer = {};
 
 //For factory reset
 const user_events = ['flag','appeal','dmail','spam'];
@@ -191,16 +195,34 @@ const forum_css = `
 }`;
 
 const menu_css = `
+#el-console {
+    width: 100%;
+    min-width: 100em;
+}
+#el-console hr,
+#el-console .expandable {
+    width: 90%;
+    margin-left: 0;
+}
 #el-cache-viewer textarea {
     width: 100%;
     min-width: 40em;
     height: 50em;
     padding: 5px;
 }
-#el-console {
-    width: 100%;
-    min-width: 100em;
-}`;
+#el-cache-editor-errors {
+    display: none;
+    border: solid lightgrey 1px;
+    margin: 0.5em;
+    padding: 0.5em;
+}
+#el-settings .el-linkclick .el-control {
+    display: inline;
+}
+#event-listener a {
+    color:#0073ff;
+}
+`;
 
 //HTML constants
 
@@ -279,20 +301,28 @@ const el_menu = `
         <div id="el-event-settings" class="jsplib-settings-grouping">
             <div id="el-event-message" class="prose">
                 <h4>Event settings</h4>
-                <ul>
-                    <li><b>Events enabled:</b> Select which events to check for.
+                <div class="expandable">
+                    <div class="expandable-header">
+                        <span>Additional setting details</span>
+                        <input type="button" value="Show" class="expandable-button">
+                    </div>
+                    <div class="expandable-content">
                         <ul>
-                            <li>Subscription-type events will not be checked unless there is more than one subscribed item.</li>
-                            <li>These include comments, notes, commentaries, and forums.</li>
+                            <li><b>Events enabled:</b>
+                                <ul>
+                                    <li>Subscription-type events will not be checked unless there is more than one subscribed item.</li>
+                                    <li>These include comments, notes, commentaries, and forums.</li>
+                                </ul>
+                            </li>
+                            <li><b>Autosubscribe enabled:</b>
+                                <ul>
+                                    <li>Which events on a user's uploads will be automatically subscribed.</li>
+                                    <li>Events will only be subscribed on the post page for that upload.</li>
+                                </ul>
+                            </li>
                         </ul>
-                    </li>
-                    <li><b>Autosubscribe enabled:</b> Select which events on items created by the user will be automatically subscribed.
-                        <ul>
-                            <li>This will be the uploader for comments, notes and commentaries.</li>
-                            <li>Events will only be subscribed on the post page for that upload.</li>
-                        </ul>
-                    </li>
-                </ul>
+                    </div>
+                </div>
             </div>
         </div>
         <div id="el-network-settings" class="jsplib-settings-grouping">
@@ -313,6 +343,11 @@ const el_menu = `
                 </ul>
             </div>
         </div>
+        <div id="el-cache-settings" class="jsplib-settings-grouping">
+            <div id="el-cache-message" class="prose">
+                <h4>Cache settings</h4>
+            </div>
+        </div>
         <hr>
         <div id="el-settings-buttons" class="jsplib-settings-buttons">
             <input type="button" id="el-commit" value="Save">
@@ -322,7 +357,6 @@ const el_menu = `
     <div id="el-cache-editor" class="jsplib-outer-menu">
         <div id="el-editor-message" class="prose">
             <h4>Cache editor</h4>
-            <p><b>Program Data</b> currently cannot be edited; just viewed or deleted.</p>
             <div class="expandable">
                 <div class="expandable-header">
                     <span>Program Data details</span>
@@ -355,8 +389,9 @@ const el_menu = `
             </div>
         </div>
         <div id="el-cache-editor-controls"></div>
-        <div id="el-cache-viewer">
-            <textarea readonly></textarea>
+        <div id="el-cache-editor-errors" class="jsplib-cache-editor-errors"></div>
+        <div id="el-cache-viewer" class="jsplib-cache-viewer">
+            <textarea></textarea>
         </div>
     </div>
 </div>`;
@@ -376,7 +411,7 @@ const post_display_names = {
     comment: "Comments",
     note: "Notes",
     commentary: "Artist commentary"
-}
+};
 const all_post_events = ['post','comment','note','commentary'];
 const all_translate_events = ['note','commentary'];
 
@@ -449,67 +484,81 @@ const typedict = {
     }
 };
 
-/***Functions***/
+//Validate constants
+
+const type_grouping = '(?:' + all_events.join('|') + ')';
+const subscribe_grouping = '(?:' + subscribe_events.join('|') + ')';
+const setting_grouping = "(el-user-settings)";
+const bool_grouping = `(el-${subscribe_grouping}overflow|el-events|el-overflow)`;
+const time_grouping = `(el-last-seen|el-process-semaphore|el-timeout)`;
+const id_grouping = `(el-${type_grouping}lastid)`;
+const idlist_grouping = `(el-${type_grouping}list|el-saved${subscribe_grouping}lastid|el-saved${subscribe_grouping}list)`;
+const validate_regex = RegExp(`^(${setting_grouping}|${bool_grouping}|${time_grouping}|${id_grouping}|${idlist_grouping})$`);
+
+/****Functions****/
+
+//Validate functions
+
+function ValidateProgramData(key,entry) {
+    var checkerror=[];
+    var check = validate_regex.exec(key);
+    switch (check && check[1]) {
+        case check[2]:
+            checkerror = JSPLib.menu.validateUserSettings(entry,settings_config);
+            break;
+        case check[3]:
+            if (!JSPLib.validate.isBoolean(entry)) {
+                checkerror = ["Value is not a boolean."];
+            }
+            break;
+        case check[4]:
+            if (!Number.isInteger(entry)) {
+                checkerror = ["Value is not an integer."];
+            } else if (entry < 0) {
+                checkerror = ["Value is not greater than or equal to zero."];
+            }
+            break;
+        case check[5]:
+            if (!JSPLib.validate.validateID(entry)) {
+                checkerror = ["Value is not a valid ID."];
+            }
+            break;
+        case check[6]:
+            if (!JSPLib.validate.validateIDList(entry)) {
+                checkerror = ["Value is not a valid ID list."];
+            }
+            break;
+        default:
+            checkerror = ["Not a valid program data key."];
+    }
+    if (checkerror.length) {
+        JSPLib.validate.outputValidateError(key,checkerror);
+        return false;
+    }
+    return true;
+}
+
+function CorrectList(type,typelist) {
+    let error_messages = [];
+    if (!JSPLib.validate.validateIDList(typelist[type])) {
+        error_messages.push(`Corrupted data on ${type} list!`);
+        let oldlist = typelist[type];
+        typelist[type] = (Array.isArray(typelist) ? typelist.filter((id)=>{return JSPLib.validate.validateID(id);}) : []);
+        JSPLib.debug.debugExecute(()=>{
+            let validation_error = (Array.isArray(oldlist) ? JSPLib.utility.setDifference(oldlist,typelist[type]) : typelist[type]);
+            error_messages.push("Validation error:", validation_error);
+        });
+    }
+    if (error_messages.length) {
+        error_messages.forEach((error)=>{CorrectList.debuglog(error);});
+        return true;
+    }
+    return false;
+}
 
 //Library functions
 
-function CheckSemaphore() {
-    let semaphore = JSPLib.storage.getStorageData('el-process-semaphore',localStorage,0);
-    return !JSPLib.validate.validateExpires(semaphore, process_semaphore_expires);
-}
-
-function FreeSemaphore() {
-    $(window).off('beforeunload.el.semaphore');
-    JSPLib.storage.setStorageData('el-process-semaphore',0,localStorage);
-}
-
-function ReserveSemaphore() {
-    if (CheckSemaphore()) {
-        //Guarantee that leaving/closing tab reverts the semaphore
-        $(window).on('beforeunload.el.semaphore',function () {
-            JSPLib.storage.setStorageData('el-process-semaphore',0,localStorage);
-        });
-        //Set semaphore with an expires in case the program crashes
-        let semaphore = JSPLib.utility.getExpiration(process_semaphore_expires);
-        JSPLib.storage.setStorageData('el-process-semaphore', semaphore, localStorage);
-        return semaphore;
-    }
-    return null;
-}
-
-function FixRenderTextinput(program_shortcut,setting_name,length=20,control=false,hint='',buttons=[]) {
-    let config, setting_key, display_name, item;
-    [config,setting_key,display_name,item] = JSPLib.menu.getProgramValues(program_shortcut,setting_name);
-    let textinput_key = `${program_shortcut}-setting-${setting_key}`;
-    let menu_type = (control ? "control" : "setting");
-    let submit_control = '';
-    if (control && buttons.length) {
-        buttons.forEach((button)=>{
-            submit_control += FixRenderControlButton(program_shortcut,setting_key,button,2);
-        });
-    }
-    let value = '';
-    if (!control) {
-        hint = config[setting_name].hint;
-        value = item;
-    }
-    let hint_html = JSPLib.menu.renderSettingHint(program_shortcut,"block",hint);
-    return `
-<div class="${program_shortcut}-textinput jsplib-textinput jsplib-menu-item" data-setting="${setting_name}">
-    <h4>${display_name}</h4>
-    <div>
-        <input type="text" class="${program_shortcut}-${menu_type} jsplib-${menu_type}" name="${textinput_key}" id="${textinput_key}" value="${value}" size="${length}" autocomplete="off" data-parent="2">
-        ${submit_control}
-        ${hint_html}
-    </div>
-</div>`;
-}
-
-function FixRenderControlButton(program_shortcut,setting_key,button_name,parent_level) {
-    let button_key = `${program_shortcut}-${setting_key}-${button_name}`;
-    let display_name = JSPLib.utility.displayCase(button_name);
-    return `<input type="button" class="jsplib-control ${program_shortcut}-control" name="${button_key}" id="${button_key}" value="${display_name}" data-parent="${parent_level}">`;
-}
+////NONE
 
 //Helper functions
 
@@ -546,16 +595,8 @@ function GetList(type) {
     if (EL.subscribelist[type]) {
         return EL.subscribelist[type];
     }
-    let typelist = EL.subscribelist[type] = JSPLib.storage.getStorageData(`el-${type}list`,localStorage,[]);
-    if (!Array.isArray(typelist) || (typelist.length && !JSPLib.validate.validateIDList(typelist))) {
-        JSPLib.debug.debuglog(`Corrupted data on ${type} list!`);
-        EL.old_subscribelist = EL.old_subscribelist || {};
-        EL.old_subscribelist[type] = typelist;
-        EL.subscribelist[type] = (Array.isArray(typelist) ? typelist.filter((id)=>{return JSPLib.validate.validateID(id);}) : []);
-        JSPLib.debug.debugExecute(()=>{
-            let validation_error = (Array.isArray(typelist) ? JSPLib.utility.setDifference(typelist,EL.subscribelist[type]) : typelist);
-            JSPLib.debug.debuglog("Validation error:",validation_error);
-        });
+    EL.subscribelist[type] = JSPLib.storage.getStorageData(`el-${type}list`,localStorage,[]);
+    if (CorrectList(type, EL.subscribelist)) {
         setTimeout(()=>{JSPLib.storage.setStorageData(`el-${type}list`,EL.subscribelist[type],localStorage);}, 1);
     }
     return EL.subscribelist[type];
@@ -588,28 +629,18 @@ function CheckList(type) {
 
 function SaveLastID(type,lastid) {
     let key = `el-${type}lastid`;
-    let previousid = JSPLib.storage.getStorageData(key,localStorage,0);
+    let previousid = JSPLib.storage.checkStorageData(key,ValidateProgramData,localStorage,0);
     lastid = Math.max(previousid,lastid);
     JSPLib.storage.setStorageData(key,lastid,localStorage);
-    JSPLib.debug.debuglog(`Set last ${type} ID:`,lastid);
+    SaveLastID.debuglog(`Set last ${type} ID:`,lastid);
 }
 
 function HasEvents() {
-    return JSPLib.storage.getStorageData('el-events',localStorage,false);
+    return JSPLib.storage.checkStorageData('el-events',ValidateProgramData,localStorage,false);
 }
 
 function WasOverflow() {
-    return JSPLib.storage.getStorageData('el-overflow',localStorage,false);
-}
-
-function CheckTimeout() {
-    let expires = JSPLib.storage.getStorageData('el-timeout',localStorage,0);
-    return !JSPLib.validate.validateExpires(expires,GetRecheckExpires());
-}
-
-function SetRecheckTimeout() {
-    SetLastSeenTime();
-    JSPLib.storage.setStorageData('el-timeout',JSPLib.utility.getExpiration(GetRecheckExpires()),localStorage);
+    return JSPLib.storage.checkStorageData('el-overflow',ValidateProgramData,localStorage,false);
 }
 
 function SetLastSeenTime() {
@@ -619,23 +650,30 @@ function SetLastSeenTime() {
 //Return true if there are no saved events at all, or saved events for the input type
 function CheckWaiting(inputtype) {
     if (Object.keys(CheckWaiting.all_waits).length == 0) {
-        $.each(typedict,(type)=>{
-            CheckWaiting.all_waits[type] = JSPLib.storage.getStorageData(`el-saved${type}lastid`,localStorage,[]).length > 0;
+        let enabled_events = JSPLib.utility.setIntersection(subscribe_events,EL.user_settings.events_enabled);
+        enabled_events.forEach((type)=>{
+            CheckWaiting.all_waits[type] = JSPLib.storage.checkStorageData(`el-saved${type}lastid`,ValidateProgramData,localStorage,[]).length > 0;
             CheckWaiting.any_waits = CheckWaiting.any_waits || CheckWaiting.all_waits[type];
         });
     }
-    return !(Object.values(CheckWaiting.all_waits).reduce((total,entry)=>{return total || entry;},false)) || CheckWaiting.all_waits[inputtype];
+    if (!subscribe_events.includes(inputtype)) {
+        return false;
+    }
+    return !(Object.values(CheckWaiting.all_waits).reduce((total,entry)=>{return total || entry;},false)) /*No waits*/ || CheckWaiting.all_waits[inputtype];
 }
 CheckWaiting.all_waits = {};
-CheckWaiting.any_waits = false;
 
 //Return true if there was no overflow at all, or overflow for the input type
 function CheckOverflow(inputtype) {
     if (Object.keys(CheckOverflow.all_overflows).length == 0) {
-        $.each(typedict,(type)=>{
-            CheckOverflow.all_overflows[type] = JSPLib.storage.getStorageData(`el-${type}overflow`,localStorage,false);
+        let enabled_events = JSPLib.utility.setIntersection(subscribe_events,EL.user_settings.events_enabled);
+        enabled_events.forEach((type)=>{
+            CheckOverflow.all_overflows[type] = JSPLib.storage.checkStorageData(`el-${type}overflow`,ValidateProgramData,localStorage,false);
             CheckOverflow.any_overflow = CheckOverflow.any_overflow || CheckOverflow.all_overflows[type];
         });
+    }
+    if (!subscribe_events.includes(inputtype)) {
+        return false;
     }
     return !(Object.values(CheckOverflow.all_overflows).reduce((total,entry)=>{return total || entry;},false)) || CheckOverflow.all_overflows[inputtype];
 }
@@ -649,18 +687,20 @@ function ProcessEvent(inputtype) {
         return [];
     }
     //Waits always have priority over overflows
-    JSPLib.debug.debuglog("ProcessEvent:",inputtype,
-                          (CheckWaiting(inputtype) && CheckWaiting.any_waits),
-                          (CheckOverflow(inputtype) && !CheckWaiting.any_waits && CheckOverflow.any_overflow),
-                          (!CheckWaiting.any_waits && !CheckOverflow.any_overflow));
+    JSPLib.debug.debugExecute(()=>{
+        ProcessEvent.debuglog(inputtype,
+                              (CheckWaiting(inputtype) && CheckWaiting.any_waits),
+                              (CheckOverflow(inputtype) && !CheckWaiting.any_waits && CheckOverflow.any_overflow),
+                              (!CheckWaiting.any_waits && !CheckOverflow.any_overflow));
+    });
     if ((CheckWaiting(inputtype) && CheckWaiting.any_waits) || /*Check for any wait event*/
         (CheckOverflow(inputtype) && !CheckWaiting.any_waits && CheckOverflow.any_overflow) || /*Check for any overflow event but not a wait event*/
         (!CheckWaiting.any_waits && !CheckOverflow.any_overflow) /*Check for neither waits nor overflows*/) {
         typedict[inputtype].process && typedict[inputtype].process();
         if (user_events.includes(inputtype)) {
-            return CheckUserType(inputtype);
+            return Timer.CheckUserType(inputtype);
         } else if (subscribe_events.includes(inputtype)) {
-            return CheckSubscribeType(inputtype);
+            return Timer.CheckSubscribeType(inputtype);
         }
     }
     return [];
@@ -717,7 +757,7 @@ async function AddDmail(dmailid,$rowelement) {
 function UpdateMultiLink(typelist,subscribed,itemid) {
     let current_subscribed = JSPLib.utility.setUnique($("#el-subscribe-events .el-subscribed").map((i,entry)=>{return entry.dataset.type.split(',');}).toArray());
     let new_subscribed = (subscribed ? JSPLib.utility.setDifference(current_subscribed,typelist) : JSPLib.utility.setUnion(current_subscribed,typelist));
-    $.each($(`#el-subscribe-events[data-id="${itemid}"] .el-subscribed,#el-subscribe-events[data-id="${itemid}"] .el-unsubscribed`),(i,entry)=>{
+    $(`#el-subscribe-events[data-id="${itemid}"] .el-subscribed,#el-subscribe-events[data-id="${itemid}"] .el-unsubscribed`).each((i,entry)=>{
         let entry_typelist = entry.dataset.type.split(',');
         if (JSPLib.utility.setIntersection(entry_typelist,new_subscribed).length === entry_typelist.length) {
             $(entry).removeClass().addClass('el-subscribed');
@@ -860,20 +900,16 @@ function AddThumbnails($dompage) {
     EL.post_ids = JSPLib.utility.setUnion(EL.post_ids, post_ids);
 }
 
-function GetThumbnails() {
-    if (EL.post_ids.length === 0) {
-        return;
-    }
+async function GetThumbnails() {
     var url_addon = {tags: `id:${EL.post_ids.join(',')} limit:${EL.post_ids.length}`};
-    $.get("/posts",url_addon).then((resp)=>{
-        var $posts = $.parseHTML(resp);
-        var $thumbs = $(".post-preview",$posts);
-        $thumbs.each((i,thumb)=>{
-            let $thumb = $(thumb);
-            $thumb.addClass("blacklisted");
-            let postid = $thumb.data('id');
-            $(`.striped .el-post-thumbnail[data-postid=${postid}]`).prepend(thumb);
-        });
+    var html = $.get("/posts",url_addon);
+    var $posts = $.parseHTML(html);
+    var $thumbs = $(".post-preview",$posts);
+    $thumbs.each((i,thumb)=>{
+        let $thumb = $(thumb);
+        $thumb.addClass("blacklisted");
+        let postid = $thumb.data('id');
+        $(`.striped .el-post-thumbnail[data-postid=${postid}]`).prepend(thumb);
     });
 }
 
@@ -897,7 +933,7 @@ async function GetPostsCountdown(limit,searchstring,domname) {
     }
     while (true) {
         if (domname) {
-            JSPLib.debug.debuglog("Pages left #",page_num);
+            GetPostsCountdown.debuglog("Pages left #",page_num);
             domname && jQuery(domname).html(page_num);
         }
         let request_addons = JSPLib.danbooru.joinArgs(tag_addon,limit_addon,page_addon);
@@ -938,7 +974,7 @@ function RenderSubscribeDualLinks(type,itemid,tag,separator,ender,right=false) {
 
 function RenderSubscribeMultiLinks(name,typelist,itemid) {
     let itemdict = {};
-    $.each(typelist,(i,type)=>{
+    typelist.forEach((type)=>{
         itemdict[type] = GetList(type);
     });
     let classname = (typelist.reduce((total,type)=>{return total && itemdict[type].includes(itemid);},true) ? 'el-subscribed' : 'el-unsubscribed');
@@ -958,12 +994,12 @@ function InitializeNoticeBox() {
     if (EL.locked_notice) {
         $("#lock-event-notice").addClass("el-locked");
     }
-    HideEventNoticeClick();
-    LockEventNoticeClick();
+    $("#hide-event-notice").on('click.el',HideEventNotice);
+    $("#lock-event-notice").on('click.el',LockEventNotice);
 }
 
 function InitializeOpenForumLinks($obj) {
-    $.each($(".striped tbody tr",$obj),(i,$row)=>{
+    $(".striped tbody tr",$obj).each((i,$row)=>{
         let forumid = $row.id.match(/(\d+)$/)[1];
         $(".forum-post-excerpt",$row).prepend(RenderOpenItemLinks('forum',forumid) + '&nbsp;|&nbsp;');
     });
@@ -971,7 +1007,7 @@ function InitializeOpenForumLinks($obj) {
 }
 
 function InitializeOpenNoteLinks($obj) {
-    $.each($(".striped tr[id]",$obj),(i,$row)=>{
+    $(".striped tr[id]",$obj).each((i,$row)=>{
         let noteid = $(".el-note-id a",$row)[0].innerHTML.replace('.','-');
         $(".el-note-body",$row).append('<p style="text-align:center">' + RenderOpenItemLinks('note',noteid,"Render note","Hide note") + '</p>');
     });
@@ -979,7 +1015,7 @@ function InitializeOpenNoteLinks($obj) {
 }
 
 function InitializeOpenDmailLinks($obj) {
-    $.each($(".striped tbody tr",$obj),(i,$row)=>{
+    $(".striped tbody tr",$obj).each((i,$row)=>{
         let dmailid = $row.innerHTML.match(/\/dmails\/(\d+)/)[1];
         $("td:nth-of-type(4)",$row).prepend(RenderOpenItemLinks('dmail',dmailid) + '&nbsp;|&nbsp;');
     });
@@ -1003,7 +1039,7 @@ function InitializePostShowMenu() {
     linkhtml = RenderSubscribeMultiLinks("All",enabled_post_events,postid);
     $("#el-add-links",menu_obj).append(`<span class="el-subscribe-all-container">${linkhtml}</span>`);
     $("nav#nav").append(menu_obj);
-    SubscribeMultiLinkClick();
+    $("#el-subscribe-events a").on('click.el',SubscribeMultiLink);
 }
 
 //#C-FORUM-TOPICS #A-SHOW
@@ -1024,18 +1060,18 @@ function InitializeTopicShowMenu() {
     let $email = $('#subnav-subscribe').detach().find("a").text("Email");
     $("#el-add-links",menu_obj).append($email);
     $("nav#nav").append(menu_obj);
-    SubscribeMultiLinkClick();
+    $("#el-subscribe-events a").on('click.el',SubscribeMultiLink);
 }
 
 //#C-FORUM-TOPICS #A-INDEX
 function InitializeTopicIndexLinks($obj) {
-    $.each($(".striped tr td:first-of-type",$obj), (i,entry)=>{
+    $(".striped tr td:first-of-type",$obj).each((i,entry)=>{
         let topicid = parseInt(entry.innerHTML.match(/\/forum_topics\/(\d+)/)[1]);
         let linkhtml = RenderSubscribeDualLinks('forum',topicid,"span","","",true);
         let shownhtml = (IsEventEnabled('forum') ? '' : 'style="display:none"');
         $(entry).prepend(`<span class="el-subscribe-forum-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
+        $(".subscribe-forum a,.unsubscribe-forum a",entry).on('click.el',SubscribeDualLink);
     });
-    SubscribeDualLinkClick('forum');
 }
 
 //EVENT NOTICE
@@ -1048,131 +1084,168 @@ function InitializePostNoteIndexLinks(type,$obj) {
         let postid = $(".el-post-thumbnail",row).data('postid');
         let linkhtml = RenderSubscribeDualLinks(type,postid,"span","","",true);
         $("td:first-of-type",row).prepend(`<div style="text-align:center">${linkhtml}</div>`);
+        $(`.subscribe-${type} a,.unsubscribe-${type} a`,row).on('click.el',SubscribeDualLink);
     });
-    SubscribeDualLinkClick(type);
 }
 
 //#C-COMMENTS #P-INDEX-BY-POST
 function InitializeCommentPartialPostLinks() {
-    $.each($("#p-index-by-post .comments-for-post"), (i,$entry)=>{
-        let postid = parseInt($($entry).data('post-id'));
+    $("#p-index-by-post .comments-for-post").each((i,entry)=>{
+        let postid = parseInt($(entry).data('post-id'));
         let linkhtml = RenderSubscribeDualLinks('comment',postid,"div"," ","comments");
         let shownhtml = (IsEventEnabled('comment') ? '' : 'style="display:none"');
-        $(".header",$entry).after(`<div class="el-subscribe-comment-container "${shownhtml}>${linkhtml}</div>`);
+        $(".header",entry).after(`<div class="el-subscribe-comment-container "${shownhtml}>${linkhtml}</div>`);
+        $(".subscribe-comment a,.unsubscribe-comment a",entry).on('click.el',SubscribeDualLink);
     });
-    SubscribeDualLinkClick('comment');
 }
 
 //#C-COMMENTS #P-INDEX-BY-COMMENT
 function InitializeCommentPartialCommentLinks(selector) {
-    $.each($(selector), (i,$entry)=>{
-        var postid = parseInt($($entry).data('id'));
+    $(selector).each((i,entry)=>{
+        var postid = parseInt($(entry).data('id'));
         var linkhtml = RenderSubscribeDualLinks('comment',postid,"div","<br>","comments");
         let shownhtml = (IsEventEnabled('comment') ? '' : 'style="display:none"');
-        /****NEED TO SEE IF I CAN DO THIS WITHOUT A TABLE****/
+        /****NEED TO SEE IF THIS CAN BE DONE THIS WITHOUT A TABLE****/
         var $table = $.parseHTML(`<table><tbody><tr><td></td></tr><tr><td class="el-subscribe-comment-container "${shownhtml}>${linkhtml}</td></tr></tbody></table>`);
-        var $preview = $(".preview",$entry).detach();
+        var $preview = $(".preview",entry).detach();
         $("tr:nth-of-type(1) td",$table).append($preview);
-        $entry.prepend($table[0]);
+        $(entry).prepend($table[0]);
+        $(".subscribe-comment a,.unsubscribe-comment a",entry).off('click.el').on('click.el',SubscribeDualLink);
     });
-    SubscribeDualLinkClick('comment');
 }
 
-/****Click functions****/
+//Event handlers
 
-function HideEventNoticeClick() {
-    $("#hide-event-notice").click((e)=>{
-        $("#event-notice").hide();
-        $.each(EL.lastids.user,(type,value)=>{
-            SaveLastID(type,value);
+function HideEventNotice(event) {
+    $("#event-notice").hide();
+    for (let type in EL.lastids.user) {
+        SaveLastID(type,EL.lastids.user[type]);
+    }
+    for (let type in EL.lastids.subscribe) {
+        SaveLastID(type,EL.lastids.subscribe[type]);
+        JSPLib.storage.setStorageData(`el-saved${type}list`,[],localStorage);
+        JSPLib.storage.setStorageData(`el-saved${type}lastid`,[],localStorage);
+        HideEventNotice.debuglog(`Removed saved values [${type}]!`);
+    }
+    HideDmailNotice();
+    JSPLib.storage.setStorageData('el-events',false,localStorage);
+    SetLastSeenTime();
+    EL.channel.postMessage({type: "hide"});
+    event.preventDefault();
+}
+
+function LockEventNotice(event) {
+    $(event.target).addClass("el-locked");
+    EL.locked_notice = true;
+    event.preventDefault();
+}
+
+function UpdateAll(event) {
+    if (!UpdateAll.run_once && !ResetAll.run_once) {
+        JSPLib.danbooru.counter_domname = "#el-activity-indicator";
+        EL.no_limit = true;
+        ProcessAllEvents(()=>{
+            JSPLib.concurrency.setRecheckTimeout('el-timout',EL.timeout_expires);
+            Danbooru.Utility.notice("All events checked!");
         });
-        $.each(EL.lastids.subscribe,(type,value)=>{
-            SaveLastID(type,value);
-            delete localStorage[`el-saved${type}list`];
-            delete localStorage[`el-saved${type}lastid`];
-            JSPLib.debug.debuglog(`Deleted saved values! (${type})`);
+    }
+    UpdateAll.run_once = true;
+    event.preventDefault();
+}
+UpdateAll.run_once = false;
+
+function ResetAll(event) {
+    if (!UpdateAll.run_once && !ResetAll.run_once) {
+        lastid_keys.forEach((key)=>{
+            localStorage.removeItem(key);
         });
-        HideDmailNotice();
-        JSPLib.storage.setStorageData('el-events',false,localStorage);
-        SetLastSeenTime();
-        EL.channel.postMessage({type: "hide"});
-        e.preventDefault();
-    });
-}
-
-function LockEventNoticeClick() {
-    $("#lock-event-notice").click((e)=>{
-        $(e.target).addClass("el-locked");
-        EL.locked_notice = true;
-        e.preventDefault();
-    });
-}
-
-function UpdateAllClick() {
-    $("#el-update-all").click((e)=>{
-        if (!UpdateAllClick.run_once && !ResetAllClick.run_once) {
-            JSPLib.danbooru.counter_domname = "#el-activity-indicator";
-            EL.no_limit = true;
-            ProcessAllEvents(()=>{
-                SetRecheckTimeout();
-                Danbooru.Utility.notice("All events checked!");
-            });
-        }
-        UpdateAllClick.run_once = true;
-        e.preventDefault();
-    });
-}
-UpdateAllClick.run_once = false;
-
-function ResetAllClick() {
-    $("#el-reset-all").click((e)=>{
-        if (!UpdateAllClick.run_once && !ResetAllClick.run_once) {
-            lastid_keys.forEach((key)=>{
-                localStorage.removeItem(key);
-            });
-            ProcessAllEvents(()=>{
-                SetRecheckTimeout();
-                Danbooru.Utility.notice("All event positions reset!");
-            });
-        }
-        ResetAllClick.run_once = true;
-        e.preventDefault();
-    });
-}
-ResetAllClick.run_once = false;
-
-function SubscribeMultiLinkClick() {
-    $("#el-subscribe-events a").off().click((e)=>{
-        let $menu = $(JSPLib.utility.getNthParent(e.target,4));
-        let $container = $(e.target.parentElement);
-        let itemid = $menu.data('id');
-        let typelist = $container.data('type').split(',');
-        let subscribed = ($container.hasClass('el-subscribed') ? true : false);
-        let prefix = (subscribed ? '-' : '');
-        $.each(typelist,(i,type)=>{
-            setTimeout(()=>{SetList(type,prefix + itemid);},1);
-            UpdateDualLink(type,subscribed,itemid);
+        ProcessAllEvents(()=>{
+            JSPLib.concurrency.setRecheckTimeout('el-timeout',EL.timeout_expires);
+            Danbooru.Utility.notice("All event positions reset!");
         });
-        UpdateMultiLink(typelist,subscribed,itemid);
-        e.preventDefault();
-    });
+    }
+    ResetAll.run_once = true;
+    event.preventDefault();
 }
+ResetAll.run_once = false;
 
-function SubscribeDualLinkClick(type) {
-    $(`.subscribe-${type} a,.unsubscribe-${type} a`).off().click((e)=>{
-        let $container = $(e.target.parentElement);
-        let itemid = $container.data('id');
-        let subscribed = GetList(type).includes(itemid);
-        let prefix = (subscribed ? '-' : '');
-        setTimeout(()=>{SetList(type,prefix + itemid);},1);
+function SubscribeMultiLink(event) {
+    let $menu = $(JSPLib.utility.getNthParent(event.target,4));
+    let $container = $(event.target.parentElement);
+    let itemid = $menu.data('id');
+    let typelist = $container.data('type').split(',');
+    let subscribed = ($container.hasClass('el-subscribed') ? true : false);
+    let prefix = (subscribed ? '-' : '');
+    typelist.forEach((type)=>{
+        setTimeout(()=>{Timer.SetList(type,prefix + itemid);},1);
         UpdateDualLink(type,subscribed,itemid);
-        UpdateMultiLink([type],subscribed,itemid);
-        e.preventDefault();
     });
+    UpdateMultiLink(typelist,subscribed,itemid);
+    event.preventDefault();
 }
+
+function SubscribeDualLink(event) {
+    let classname = event.target.parentElement.className
+    let type = classname.match(RegExp(`(?:un)?subscribe-(${all_events.join('|')})`))[1];
+    let itemid = $(event.target.parentElement).data('id');
+    let subscribed = GetList(type).includes(itemid);
+    let prefix = (subscribed ? '-' : '');
+    setTimeout(()=>{Timer.SetList(type,prefix + itemid);},1);
+    UpdateDualLink(type,subscribed,itemid);
+    UpdateMultiLink([type],subscribed,itemid);
+    event.preventDefault();
+}
+
+async function PostEventPopulateControl(event) {
+    let post_events = JSPLib.menu.getCheckboxRadioSelected(`[data-setting="post_events"] [data-selector]`);
+    let operation = JSPLib.menu.getCheckboxRadioSelected(`[data-setting="operation"] [data-selector]`);
+    let search_query = $("#el-setting-search-query").val();
+    if (post_events.length === 0 || operation.length === 0) {
+        Danbooru.Utility.notice("Must select at least one post event type!");
+    } else if (search_query === "") {
+        Danbooru.Utility.notice("Must have at least one search term!");
+    } else {
+        $("#el-search-query-display").show();
+        let posts = await GetPostsCountdown(100,search_query,"#el-search-query-counter");
+        let postids = JSPLib.utility.getObjectAttributes(posts,'id');
+        let post_changes = [];
+        let was_subscribed = [];
+        let new_subscribed = [];
+        post_events.forEach((eventtype)=>{
+            let typelist = GetList(eventtype);
+            switch (operation[0]) {
+                case "add":
+                    new_subscribed = JSPLib.utility.setDifference(postids,typelist);
+                    was_subscribed = [];
+                    post_changes = post_changes.concat(new_subscribed);
+                    typelist = JSPLib.utility.setUnion(typelist,postids);
+                    break;
+                case "subtract":
+                    new_subscribed = [];
+                    was_subscribed = JSPLib.utility.setIntersection(postids,typelist);
+                    post_changes = post_changes.concat(was_subscribed)
+                    typelist = JSPLib.utility.setDifference(typelist,postids);
+                    break;
+                case "overwrite":
+                    was_subscribed = JSPLib.utility.setDifference(typelist,postids);
+                    new_subscribed = JSPLib.utility.setDifference(postids,typelist);
+                    post_changes = post_changes.concat(postids);
+                    typelist = postids;
+            }
+            EL.subscribelist[eventtype] = typelist;
+            setTimeout(()=>{JSPLib.storage.setStorageData(`el-${eventtype}list`,EL.subscribelist[eventtype],localStorage);}, 1);
+            EL.channel.postMessage({type: "reload", eventtype: eventtype, was_subscribed: was_subscribed, new_subscribed: new_subscribed, eventlist: EL.subscribelist[eventtype]});
+        });
+        $("#el-search-query-counter").html(0);
+        post_changes = JSPLib.utility.setUnique(post_changes);
+        Danbooru.Utility.notice(`Subscriptions were changed by ${post_changes.length} posts!`);
+    }
+}
+
+//Event setup functions
 
 function OpenItemClick(type,$obj,parentlevel,htmlfunc,otherfunc=(()=>{})) {
-    $(`.show-full-${type} a,.hide-full-${type} a`).off().click(function(e){
+    $(`.show-full-${type} a,.hide-full-${type} a`).on('click.el',(e)=>{
         EL.openlist[type] = EL.openlist[type] || [];
         let $container = $(e.target.parentElement);
         let itemid = $container.data('id');
@@ -1195,84 +1268,40 @@ function OpenItemClick(type,$obj,parentlevel,htmlfunc,otherfunc=(()=>{})) {
         e.preventDefault();
     });
 }
+//Callback functions
 
 function SubscribeMultiLinkCallback() {
-    $.each(EL.user_settings.autosubscribe_enabled,(i,type)=>{
+    EL.user_settings.autosubscribe_enabled.forEach((type)=>{
         $(`#el-subscribe-events .el-unsubscribed[data-type="${type}"] a`).click();
     });
 }
 
-function PostEventPopulateControl() {
-    $("#el-search-query-get").click(async (e)=>{
-        let post_events = JSPLib.menu.getCheckboxRadioSelected(`[data-setting="post_events"] [data-selector]`);
-        let operation = JSPLib.menu.getCheckboxRadioSelected(`[data-setting="operation"] [data-selector]`);
-        let search_query = $("#el-setting-search-query").val();
-        if (post_events.length === 0 || operation.length === 0) {
-            Danbooru.Utility.notice("Must select at least one post event type!");
-        } else if (search_query === "") {
-            Danbooru.Utility.notice("Must have at least one search term!");
-        } else {
-            $("#el-search-query-display").show();
-            let posts = await GetPostsCountdown(100,search_query,"#el-search-query-counter");
-            let postids = JSPLib.utility.getObjectAttributes(posts,'id');
-            let post_changes = [];
-            let was_subscribed = [];
-            let new_subscribed = [];
-            $.each(post_events,(i,eventtype)=>{
-                let typelist = GetList(eventtype);
-                switch (operation[0]) {
-                    case "add":
-                        new_subscribed = JSPLib.utility.setDifference(postids,typelist);
-                        was_subscribed = [];
-                        post_changes = post_changes.concat(new_subscribed);
-                        typelist = JSPLib.utility.setUnion(typelist,postids);
-                        break;
-                    case "subtract":
-                        new_subscribed = [];
-                        was_subscribed = JSPLib.utility.setIntersection(postids,typelist);
-                        post_changes = post_changes.concat(was_subscribed)
-                        typelist = JSPLib.utility.setDifference(typelist,postids);
-                        break;
-                    case "overwrite":
-                        was_subscribed = JSPLib.utility.setDifference(typelist,postids);
-                        new_subscribed = JSPLib.utility.setDifference(postids,typelist);
-                        post_changes = post_changes.concat(postids);
-                        typelist = postids;
-                }
-                EL.subscribelist[eventtype] = typelist;
-                setTimeout(()=>{JSPLib.storage.setStorageData(`el-${eventtype}list`,EL.subscribelist[eventtype],localStorage);}, 1);
-                EL.channel.postMessage({type: "reload", eventtype: eventtype, was_subscribed: was_subscribed, new_subscribed: new_subscribed, eventlist: EL.subscribelist[eventtype]});
-            });
-            $("#el-search-query-counter").html(0);
-            post_changes = JSPLib.utility.setUnique(post_changes);
-            Danbooru.Utility.notice(`Subscriptions were changed by ${post_changes.length} posts!`);
-        }
-    });
-}
+//Rebind functions
 
 function RebindMenuAutocomplete() {
-    if (JSPLib.utility.hasDOMDataKey("#user_blacklisted_tags,#user_favorite_tags",'uiAutocomplete')) {
-        clearInterval(RebindMenuAutocomplete.timer);
-        $("#user_blacklisted_tags,#user_favorite_tags").autocomplete("destroy").off('keydown.Autocomplete.tab');
-        $("#el-setting-search-query").attr('data-autocomplete','tag-query');
-        setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, timer_poll_interval);
-    }
+    JSPLib.utility.rebindTimer({
+        check: ()=>{return JSPLib.utility.hasDOMDataKey("#user_blacklisted_tags,#user_favorite_tags",'uiAutocomplete');},
+        exec: ()=>{
+            $("#user_blacklisted_tags,#user_favorite_tags").autocomplete("destroy").off('keydown.Autocomplete.tab');
+            $("#el-setting-search-query").attr('data-autocomplete','tag-query');
+            setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, timer_poll_interval);
+        }
+    },timer_poll_interval);
 }
-RebindMenuAutocomplete.timer = {};
 
 //Main execution functions
 
 async function CheckUserType(type) {
     let lastidkey = `el-${type}lastid`;
-    let typelastid = JSPLib.storage.getStorageData(lastidkey,localStorage,0);
-    if (JSPLib.validate.validateID(typelastid)) {
+    let typelastid = JSPLib.storage.checkStorageData(lastidkey,ValidateProgramData,localStorage,0);
+    if (typelastid) {
         let url_addons = JSPLib.danbooru.joinArgs(typedict[type].addons,typedict[type].useraddons(EL.username));
         let jsontype = await JSPLib.danbooru.getAllItems(typedict[type].controller,query_limit,{addons:url_addons,page:typelastid,reverse:true});
         let filtertype = typedict[type].filter(jsontype);
         let lastusertype = (jsontype.length ? [JSPLib.danbooru.getNextPageID(jsontype,true)] : []);
         if (filtertype.length) {
             EL.lastids.user[type] = lastusertype[0];
-            JSPLib.debug.debuglog(`Found ${type}(s)!`,EL.lastids.user[type]);
+            CheckUserType.debuglog(`Found ${type}(s)!`,EL.lastids.user[type]);
             let idlist = JSPLib.utility.getObjectAttributes(filtertype,'id');
             url_addons = JSPLib.danbooru.joinArgs(typedict[type].addons,{search: {id: idlist.join(',')}, limit: idlist.length});
             let typehtml = await $.get(`/${typedict[type].controller}`, url_addons);
@@ -1282,40 +1311,40 @@ async function CheckUserType(type) {
             $(`#${type}-section`).show();
             return true;
         } else {
-            JSPLib.debug.debuglog(`No ${type}(s)!`);
+            CheckUserType.debuglog(`No ${type}(s)!`);
             if (lastusertype.length && (typelastid !== lastusertype[0])) {
                 SaveLastID(type,lastusertype[0]);
             }
         }
     } else {
-        SetRecentDanbooruID(type,true);
+        Timer.SetRecentDanbooruID(type,true);
     }
     return false;
 }
 
 async function CheckSubscribeType(type) {
     let lastidkey = `el-${type}lastid`;
-    let typelastid = JSPLib.storage.getStorageData(lastidkey,localStorage,0);
-    if (JSPLib.validate.validateID(typelastid)) {
+    let typelastid = JSPLib.storage.checkStorageData(lastidkey,ValidateProgramData,localStorage,0);
+    if (typelastid) {
         let typelist = GetList(type);
         let savedlistkey = `el-saved${type}list`;
         let savedlastidkey = `el-saved${type}lastid`;
         let overflowkey = `el-${type}overflow`;
         var subscribetypelist = [], jsontypelist = [];
-        let savedlastid = JSPLib.storage.getStorageData(savedlastidkey,localStorage);
-        let savedlist = JSPLib.storage.getStorageData(savedlistkey,localStorage);
-        if (!JSPLib.validate.validateIDList(savedlastid) || !JSPLib.validate.validateIDList(savedlist)) {
+        let savedlastid = JSPLib.storage.checkStorageData(savedlastidkey,ValidateProgramData,localStorage,[]);
+        let savedlist = JSPLib.storage.checkStorageData(savedlistkey,ValidateProgramData,localStorage,[]);
+        if (!savedlastid.length || !savedlist.length) {
             let urladdons = typedict[type].addons;
             if (!EL.no_limit) {
                 urladdons = JSPLib.danbooru.joinArgs(urladdons,{search:{id:`${typelastid}..${typelastid+typedict[type].limit}`}});
             }
             let jsontype = await JSPLib.danbooru.getAllItems(typedict[type].controller,query_limit,{page:typelastid,addons:urladdons,reverse:true});
             if (jsontype.length === typedict[type].limit) {
-                JSPLib.debug.debuglog(`${typedict[type].limit} ${type} items; overflow detected!`);
+                CheckSubscribeType.debuglog(`${typedict[type].limit} ${type} items; overflow detected!`);
                 JSPLib.storage.setStorageData(overflowkey,true,localStorage);
                 EL.item_overflow = true;
             } else {
-                localStorage.removeItem(overflowkey);
+                JSPLib.storage.setStorageData(overflowkey,false,localStorage);
             }
             let subscribetype = typedict[type].filter(jsontype,typelist);
             if (jsontype.length) {
@@ -1325,6 +1354,9 @@ async function CheckSubscribeType(type) {
                 subscribetypelist = JSPLib.utility.getObjectAttributes(subscribetype,'id');
                 JSPLib.storage.setStorageData(savedlistkey,subscribetypelist,localStorage);
                 JSPLib.storage.setStorageData(savedlastidkey,jsontypelist,localStorage);
+            } else {
+                JSPLib.storage.setStorageData(savedlistkey,[],localStorage);
+                JSPLib.storage.setStorageData(savedlastidkey,[],localStorage);
             }
         } else {
             jsontypelist = savedlastid;
@@ -1332,7 +1364,7 @@ async function CheckSubscribeType(type) {
         }
         if (subscribetypelist.length) {
             EL.lastids.subscribe[type] = jsontypelist[0];
-            JSPLib.debug.debuglog(`Found ${type}(s)!`,EL.lastids.subscribe[type]);
+            CheckSubscribeType.debuglog(`Found ${type}(s)!`,EL.lastids.subscribe[type]);
             let url_addons = JSPLib.danbooru.joinArgs(typedict[type].addons,{search: {id: subscribetypelist.join(',')}, limit: subscribetypelist.length});
             let typehtml = await $.get(`/${typedict[type].controller}`, url_addons);
             let $typepage = $(typehtml);
@@ -1341,13 +1373,13 @@ async function CheckSubscribeType(type) {
             $(`#${type}-section`).show();
             return true;
         } else {
-            JSPLib.debug.debuglog(`No ${type}(s)!`);
+            CheckSubscribeType.debuglog(`No ${type}(s)!`);
             if (jsontypelist.length && (typelastid !== jsontypelist[0])) {
                 SaveLastID(type,jsontypelist[0]);
             }
         }
     } else {
-        SetRecentDanbooruID(type);
+        Timer.SetRecentDanbooruID(type);
     }
     return false;
 }
@@ -1356,7 +1388,9 @@ async function CheckAllEvents(promise_array) {
     let hasevents_all = await Promise.all(promise_array);
     let hasevents = hasevents_all.reduce((a,b)=>{return a || b;});
     JSPLib.storage.setStorageData('el-events',hasevents,localStorage);
-    GetThumbnails();
+    if (EL.post_ids.length) {
+        Timer.GetThumbnails();
+    }
     //Only save overflow if it wasn't just a display reload
     if (!EL.had_events) {
         JSPLib.storage.setStorageData('el-overflow',EL.item_overflow,localStorage);
@@ -1368,7 +1402,7 @@ function ProcessAllEvents(func) {
     all_events.forEach((inputtype)=>{
         promise_array = promise_array.concat(ProcessEvent(inputtype));
     });
-    CheckAllEvents(promise_array).then(()=>{
+    Timer.CheckAllEvents(promise_array).then(()=>{
         func();
     });
 }
@@ -1380,96 +1414,50 @@ function EventStatusCheck() {
         localStorage.removeItem(`el-${type}lastid`);
         localStorage.removeItem(`el-saved${type}lastid`);
         localStorage.removeItem(`el-saved${type}list`);
+        localStorage.removeItem(`el-${type}overflow`);
     });
 }
-
-////Cache editor
-
-//Cache helper functions
-
-async function LoadStorageKeys() {
-    storage_keys = Object.keys(localStorage);
-    EL.storage_keys.local_storage = storage_keys.filter((key)=>{return key.startsWith("el-");});
-}
-
-function GetCacheDatakey() {
-    EL.data_value = $("#el-setting-data-name").val().trim().replace(/\s+/g,'_');
-    return 'el-' + EL.data_value;
-}
-
-function CacheSource(req,resp) {
-    let check_key = GetCacheDatakey();
-    let source_keys = EL.storage_keys.local_storage;
-    let available_keys = source_keys.filter((key)=>{return key.startsWith(check_key);});
-    let transformed_keys = available_keys.slice(0,20);
-    transformed_keys = transformed_keys.map((key)=>{return key.slice(key.indexOf('-')+1);});
-    resp(transformed_keys);
-}
-
-//Cache event functions
-
-function GetCacheClick() {
-    $("#el-data-name-get").on("click.el",(e)=>{
-        let storage_key = GetCacheDatakey();
-        let data = JSPLib.storage.getStorageData(storage_key,localStorage);
-        $("#el-cache-viewer textarea").val(JSON.stringify(data,null,2));
-    });
-}
-
-function DeleteCacheClick() {
-    $("#el-data-name-delete").on("click.el",(e)=>{
-        let storage_key = GetCacheDatakey();
-        if (confirm("This will delete program data that may cause problems until the page can be refreshed.\n\nAre you sure?")) {
-            localStorage.removeItem(storage_key);
-            Danbooru.Utility.notice("Data has been deleted.");
-        }
-    });
-}
-
-function CacheAutocomplete() {
-    $("#el-setting-data-name").autocomplete({
-        minLength: 0,
-        delay: 0,
-        source: CacheSource,
-        search: function() {
-            $(this).data("uiAutocomplete").menu.bindings = $();
-        }
-    }).off('keydown.Autocomplete.tab');
-}
-
 
 //Settings functions
 
 function BroadcastEL(ev) {
-    JSPLib.debug.debuglog("Broadcast",ev.data);
-    if (ev.data.type === "hide" && !EL.locked_notice) {
-        $("#event-notice").hide();
-    } else if (ev.data.type === "settings") {
-        EL.user_settings = ev.data.user_settings;
-        ToggleSubscribeLinks();
-    } else if (ev.data.type === "reset") {
-        //Not handling this yet, so just hide everything until the next page refresh
-        JSPLib.utility.fullHide("#event-notice,#el-subscribe-events,.el-subscribe-dual-links");
-    } else if (ev.data.type === "subscribe") {
-        EL.subscribelist[ev.data.eventtype] = ev.data.eventlist;
-        UpdateMultiLink([ev.data.eventtype],ev.data.was_subscribed,ev.data.itemid);
-        UpdateDualLink(ev.data.eventtype,ev.data.was_subscribed,ev.data.itemid);
-    } else if (ev.data.type === "reload") {
-        EL.subscribelist[ev.data.eventtype] = ev.data.eventlist;
-        let menuid = $("#el-subscribe-events").data('id');
-        if (ev.data.was_subscribed.includes(menuid)) {
-            UpdateMultiLink([ev.data.eventtype],true,menuid);
-        } else if (ev.data.new_subscribed.includes(menuid)) {
-            UpdateMultiLink([ev.data.eventtype],false,menuid);
-        }
-        $(`.subscribe-${ev.data.eventtype}[data-id]`).each((i,entry)=>{
-            let linkid = $(entry).data('id');
-            if (ev.data.was_subscribed.includes(linkid)) {
-                UpdateDualLink(ev.data.eventtype,true,linkid);
-            } else if (ev.data.new_subscribed.includes(linkid)) {
-                UpdateDualLink(ev.data.eventtype,false,linkid);
+    var menuid,linkid;
+    BroadcastEL.debuglog(`(${ev.data.type}):`,ev.data);
+    switch (ev.data.type) {
+        case "hide":
+            $("#event-notice").hide();
+            break;
+        case "subscribe":
+            EL.subscribelist[ev.data.eventtype] = ev.data.eventlist;
+            UpdateMultiLink([ev.data.eventtype],ev.data.was_subscribed,ev.data.itemid);
+            UpdateDualLink(ev.data.eventtype,ev.data.was_subscribed,ev.data.itemid);
+            break;
+        case "reload":
+            EL.subscribelist[ev.data.eventtype] = ev.data.eventlist;
+            menuid = $("#el-subscribe-events").data('id');
+            if (ev.data.was_subscribed.includes(menuid)) {
+                UpdateMultiLink([ev.data.eventtype],true,menuid);
+            } else if (ev.data.new_subscribed.includes(menuid)) {
+                UpdateMultiLink([ev.data.eventtype],false,menuid);
             }
-        });
+            $(`.subscribe-${ev.data.eventtype}[data-id]`).each((i,entry)=>{
+                linkid = $(entry).data('id');
+                if (ev.data.was_subscribed.includes(linkid)) {
+                    UpdateDualLink(ev.data.eventtype,true,linkid);
+                } else if (ev.data.new_subscribed.includes(linkid)) {
+                    UpdateDualLink(ev.data.eventtype,false,linkid);
+                }
+            });
+            break;
+        case "reset":
+            Object.assign(IAC,program_reset_keys);
+            JSPLib.utility.fullHide("#event-notice,#el-subscribe-events,.el-subscribe-dual-links");
+        case "settings":
+            EL.user_settings = ev.data.user_settings;
+            EL.is_setting_menu && JSPLib.menu.updateUserSettings('el');
+            ToggleSubscribeLinks();
+        default:
+            //do nothing
     }
 }
 
@@ -1511,28 +1499,30 @@ function RenderSettingsMenu() {
     $("#el-subscribe-controls").append(JSPLib.menu.renderInputSelectors('el','operation','radio',true,['add','subtract','overwrite'],['add'],'Select how the query will affect existing subscriptions.'));
     $("#el-subscribe-controls").append(JSPLib.menu.renderTextinput('el','search_query',50,true,'Enter a tag search query to populate. See <a href="/wiki_pages/43049" style="color:#0073ff">Help:Cheatsheet</a> for more info.',true));
     $("#el-subscribe-controls").append(display_counter);
-    $("#el-cache-editor-controls").append(FixRenderTextinput('el','data_name',20,true,"Click <b>Get</b> to see the data and <b>Delete</b> to remove it.",['get','delete']));
+    $("#el-cache-settings").append(JSPLib.menu.renderLinkclick("el",'cache_info',"Cache info","Click to populate","Calculates the cache usage of the program and compares it to the total usage."));
+    $("#el-cache-settings").append(`<div id="el-cache-info-table" style="display:none"></div>`);
+    $("#el-cache-editor-controls").append(`<input id="el-control-data-source" type="hidden" value="local_storage">`);
+    $("#el-cache-editor-controls").append(JSPLib.menu.renderTextinput('el','data_name',20,true,"Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.",['get','save','delete']));
     JSPLib.menu.engageUI('el',true);
     JSPLib.menu.saveUserSettingsClick('el','EventListener');
     JSPLib.menu.resetUserSettingsClick('el','EventListener',localstorage_keys,program_reset_keys);
-    PostEventPopulateControl();
-    GetCacheClick();
-    DeleteCacheClick();
-    CacheAutocomplete();
-    RebindMenuAutocomplete.timer = setInterval(()=>{RebindMenuAutocomplete();},timer_poll_interval);
+    $("#el-search-query-get").on('click.el',PostEventPopulateControl);
+    JSPLib.menu.cacheInfoClick('el',/^$/,"#el-cache-info-table");
+    JSPLib.menu.getCacheClick('el');
+    JSPLib.menu.saveCacheClick('el',ValidateProgramData);
+    JSPLib.menu.deleteCacheClick('el');
+    JSPLib.menu.cacheAutocomplete('el');
+    RebindMenuAutocomplete();
 }
 
-/****Main****/
+//Main program
 
-function main() {
+function Main() {
     $("#dmail-notice").hide();
     Danbooru.EL = EL = {
         username: JSPLib.utility.getMeta('current-user-name'),
         userid: parseInt(JSPLib.utility.getMeta('current-user-id')),
-        lastids: {
-            user: {},
-            subscribe: {}
-        },
+        lastids: {user: {}, subscribe: {}},
         subscribelist: {},
         openlist: {},
         marked_topic: [],
@@ -1541,41 +1531,43 @@ function main() {
         no_limit: false,
         post_ids: [],
         storage_keys: {local_storage: []},
+        is_setting_menu: Boolean($("#c-users #a-edit").length),
         settings_config: settings_config
     };
     if (EL.username === "Anonymous") {
-        JSPLib.debug.debuglog("User must log in!");
+        Main.debuglog("User must log in!");
         return;
     } else if ((typeof EL.username !== "string") || !JSPLib.validate.validateID(EL.userid)) {
-        JSPLib.debug.debuglog("Invalid meta variables!");
+        Main.debuglog("Invalid meta variables!");
         return;
     }
     EL.user_settings = JSPLib.menu.loadUserSettings('el');
+    EL.timeout_expires = EL.user_settings.recheck_interval * JSPLib.utility.one_minute;
     EventStatusCheck();
     EL.locked_notice = EL.user_settings.autolock_notices;
     EL.channel = new BroadcastChannel('EventListener');
     EL.channel.onmessage = BroadcastEL;
     InitializeNoticeBox();
     var promise_array = [];
-    if ((CheckTimeout() || HasEvents() || WasOverflow()) && ReserveSemaphore()) {
+    if ((JSPLib.concurrency.checkTimeout('el-timeout',EL.timeout_expires) || HasEvents() || WasOverflow()) && JSPLib.concurrency.reserveSemaphore('el')) {
         if (CheckAbsence()) {
-            SetRecheckTimeout();
+            JSPLib.concurrency.setRecheckTimeout('el-timeout',EL.timeout_expires);
             ProcessAllEvents(()=>{
-                FreeSemaphore();
+                JSPLib.concurrency.freeSemaphore('el');
             });
         } else {
-            UpdateAllClick();
+            $("#el-update-all").on('click.el',UpdateAll);
             if (EL.days_absent > 30.0) {
-                ResetAllClick();
+                $("#el-reset-all").on('click.el',ResetAll);
                 $("#el-excessive-absent").show();
             }
             $("#el-days-absent").html(EL.days_absent);
             $("#el-absent-section").show();
             $("#event-notice").show();
-            FreeSemaphore();
+            JSPLib.concurrency.freeSemaphore('el');
         }
     } else {
-        JSPLib.debug.debuglog("Waiting...");
+        Main.debuglog("Waiting...");
     }
     if ($("#c-posts #a-show").length) {
         InitializePostShowMenu();
@@ -1588,12 +1580,14 @@ function main() {
     } else if ($("#c-forum-topics #a-index,#c-forum-posts #a-index").length) {
         InitializeTopicIndexLinks(document);
     }
-    if ($("#c-users #a-edit").length) {
-        LoadStorageKeys();
+    if (EL.is_setting_menu) {
+        JSPLib.validate.dom_output = "#el-cache-editor-errors";
+        JSPLib.menu.loadStorageKeys('el');
         JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
             JSPLib.menu.installSettingsMenu("EventListener");
             RenderSettingsMenu();
         });
+        //Including this only during a transitory period for all scripts to be updated to the new library version
         JSPLib.utility.setCSSStyle(menu_css,'menu');
     }
     if (EL.user_settings.autoclose_dmail_notice) {
@@ -1605,6 +1599,22 @@ function main() {
     JSPLib.utility.setCSSStyle(program_css,'program');
 }
 
+/****Function decoration****/
+
+JSPLib.debug.addFunctionTimers(Timer,false,[RenderSettingsMenu]);
+
+JSPLib.debug.addFunctionTimers(Timer,true,[
+    GetThumbnails,SetRecentDanbooruID,CheckAllEvents,PostEventPopulateControl
+]);
+
+Timer.SetList = JSPLib.debug.debugSyncTimer(SetList,0);
+Timer.CheckUserType = JSPLib.debug.debugAsyncTimer(CheckUserType,0);
+Timer.CheckSubscribeType = JSPLib.debug.debugAsyncTimer(CheckSubscribeType,0);
+
+JSPLib.debug.addFunctionLogs([
+    Main,BroadcastEL,CheckSubscribeType,CheckUserType,HideEventNotice,GetPostsCountdown,ProcessEvent,SaveLastID,CorrectList
+]);
+
 /****Execution start****/
 
-JSPLib.load.programInitialize(main,'EL',program_load_required_variables,program_load_required_selectors);
+JSPLib.load.programInitialize(Main,'EL',program_load_required_variables,program_load_required_selectors);
