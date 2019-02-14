@@ -245,7 +245,7 @@ const vti_menu = `
     <div id="vti-cache-editor" class="jsplib-outer-menu">
         <div id="vti-editor-message" class="prose">
             <h4>Cache editor</h4>
-            <p>See the <b><a href="#vti-cache-message">Cache settings</a></b> settings for the list of all cache data and what they do.</p>
+            <p>See the <b><a href="#vti-cache-message">Cache Data</a></b> details for the list of all cache data and what they do.</p>
             <div class="expandable">
                 <div class="expandable-header">
                     <span>Program Data details</span>
