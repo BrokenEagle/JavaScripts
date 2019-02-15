@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RecentTagsCalc
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.1
+// @version      6.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Use different mechanism to calculate RecentTags
 // @author       BrokenEagle
@@ -13,13 +13,14 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/recenttagscalc.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/menu.js
 // ==/UserScript==
 
 /***Global variables***/
@@ -37,8 +38,11 @@ const program_load_required_selectors = ['#page'];
 //Main program variable
 var RTC;
 
+//Timer function hash
+const Timer = {};
+
 //Regex that matches the prefix of all program cache data
-const program_cache_regex = /^(?:ta|tag)-/;
+const program_cache_regex = /^(ta|tag)-/;
 
 //Main program expires
 const prune_expires = JSPLib.utility.one_day;
@@ -195,8 +199,18 @@ let program_css = `
 }
 `;
 
+
 const menu_css = `
-#rtc-settings hr,
+/*Program specific*/
+#rtc-order-settings .rtc-sortlist li {
+    width: 6.5em;
+}
+/*Transitory*/
+#rtc-console {
+    width: 100%;
+    min-width: 100em;
+}
+#rtc-console hr,
 #rtc-console .expandable {
     width: 90%;
     margin-left: 0;
@@ -213,28 +227,11 @@ const menu_css = `
     margin: 0.5em;
     padding: 0.5em;
 }
-.jsplib-console {
-    width: 100%;
-    min-width: 100em;
-}
-.rtc-linkclick.jsplib-linkclick .rtc-control.jsplib-control {
+#rtc-settings .rtc-linkclick .rtc-control {
     display: inline;
 }
-#userscript-settings-menu .ui-widget-content a,
-#notice .ui-widget-content a {
-    color:#0073ff
-}
-#notice.ui-state-highlight {
-    color: #363636;
-}
-#rtc-settings .rtc-sortlist li {
-    width: 6.5em;
-}
-#rtc-settings #rtc-order-type {
-    padding-left: 0.5em;
-    margin: 0.5em;
-    width: 30em;
-    border: lightgrey solid 1px;
+#recent-tags-calc a {
+    color:#0073ff;
 }
 `;
 
@@ -358,8 +355,8 @@ const rtc_menu = `
                     </div>
                     <div class="expandable-content">
                         <ul>
-                            <li><b>Tag data:</b> Used to determine a tag's post count and category.</li>
-                            <li><b>Tag aliases:</b> Used to determine which tags are aliases or deleted.</li>
+                            <li><b>Tag data (tag):</b> Used to determine a tag's post count and category.</li>
+                            <li><b>Tag aliases (ta):</b> Used to determine which tags are aliases or deleted.</li>
                         </ul>
                     </div>
                 </div>
@@ -374,7 +371,7 @@ const rtc_menu = `
     <div id="rtc-cache-editor" class="jsplib-outer-menu">
         <div id="rtc-editor-message" class="prose">
             <h4>Cache editor</h4>
-            <p>See the <b><a href="#rtc-cache-message">Cache settings</a></b> settings for the list of all cache data and what they do.</p>
+            <p>See the <b><a href="#rtc-cache-message">Cache Data</a></b> details for the list of all cache data and what they do.</p>
             <div class="expandable">
                 <div class="expandable-header">
                     <span>Program Data details</span>
@@ -414,8 +411,8 @@ const rtc_menu = `
             </div>
         </div>
         <div id="rtc-cache-editor-controls"></div>
-        <div id="rtc-cache-editor-errors"></div>
-        <div id="rtc-cache-viewer">
+        <div id="rtc-cache-editor-errors" class="jsplib-cache-editor-errors"></div>
+        <div id="rtc-cache-viewer" class="jsplib-cache-viewer">
             <textarea></textarea>
         </div>
     </div>
@@ -475,12 +472,12 @@ const other_recent_constraints = {
     was_upload: JSPLib.validate.boolean_constraints,
 };
 
-/***functions***/
+/****Functions****/
 
 //Validation functions
 
 function ValidateEntry(key,entry) {
-    if (!FixValidateIsHash(key,entry)) {
+    if (!JSPLib.validate.validateIsHash(key,entry)) {
         return false;
     }
     if (key.match(/^tag-/)) {
@@ -488,38 +485,32 @@ function ValidateEntry(key,entry) {
     } else if (key.match(/^ta-/)) {
         return ValidateRelationEntry(key,entry);
     }
-    JSPLib.debug.debuglog("Shouldn't get here");
+    ValidateEntry.debuglog("Bad key!");
     return false;
 }
 
 function ValidateTagEntry(key,entry) {
-    let check = validate(entry,tag_constraints.entry);
-    if (check !== undefined) {
-        OutputValidateError(key,check);
+    if (!JSPLib.validate.validateHashEntries(key, entry, tag_constraints.entry)) {
         return false;
     }
-    check = validate(entry.value,tag_constraints.value);
-    if (check !== undefined) {
-        OutputValidateError(key,check);
+    if (!JSPLib.validate.validateHashEntries(key + '.value', entry.value, tag_constraints.value)) {
         return false;
     }
     return true;
 }
 
 function ValidateRelationEntry(key,entry) {
-    let check = validate(entry,relation_constraints.entry);
-    if (check !== undefined) {
-        OutputValidateError(key,check);
-        return false
+    if (!JSPLib.validate.validateHashEntries(key, entry, relation_constraints.entry)) {
+        return false;
     }
-    return FixValidateArrayValues(key + '.value', entry.value, relation_constraints.value);
+    return JSPLib.validate.validateArrayValues(key + '.value', entry.value, relation_constraints.value);
 }
 
 function ValidateProgramData(key,entry) {
-    var checkerror = [];
+    var checkerror = [],maximum_validator;
     switch (key) {
         case 'rtc-user-settings':
-            var checkerror = ValidateUserSettings(entry,settings_config);
+            checkerror = JSPLib.menu.validateUserSettings(entry,settings_config);
             break;
         case 'rtc-prune-expires':
         case 'rtc-frequent-tags-expires':
@@ -530,42 +521,40 @@ function ValidateProgramData(key,entry) {
             }
             break;
         case 'rtc-was-upload':
-            if (!validate.isBoolean(entry)) {
+            if (!JSPLib.validate.isBoolean(entry)) {
                 checkerror = ['Value is not a boolean.'];
             }
             break;
         case 'rtc-recent-tags':
         case 'rtc-pinned-tags':
         case 'rtc-frequent-tags':
-            let maximum_validator = (key === 'rtc-recent-tags' ? {maximum: RTC.user_settings.maximum_tags} : undefined);
-            if (!FixValidateIsArray(key,entry,maximum_validator)) {
+            maximum_validator = (key === 'rtc-recent-tags' ? {maximum: RTC.user_settings.maximum_tags} : undefined);
+            if (!JSPLib.validate.validateIsArray(key,entry,maximum_validator)) {
                 return false;
             }
-            return FixValidateArrayValues(key,entry,JSPLib.validate.stringonly_constraints);
+            return JSPLib.validate.validateArrayValues(key,entry,JSPLib.validate.stringonly_constraints);
         case 'rtc-other-recent':
-            if (!FixValidateIsArray(key,entry,{maximum: RTC.user_settings.maximum_tag_groups})) {
+            if (!JSPLib.validate.validateIsArray(key,entry,{maximum: RTC.user_settings.maximum_tag_groups})) {
                 return false;
             }
             for (let i = 0;i < entry.length; i++) {
                 let entry_key = `${key}[${i}]`
-                if (!FixValidateIsHash(entry_key,entry[i])) {
+                if (!JSPLib.validate.validateIsHash(entry_key,entry[i])) {
                     return false;
                 }
-                let check = validate(entry[i],other_recent_constraints);
-                if (check !== undefined) {
-                    OutputValidateError(entry_key,check);
-                    return false
+                if (!JSPLib.validate.validateHashEntries(entry_key, entry[i], other_recent_constraints)) {
+                    return false;
                 }
-                if (!FixValidateArrayValues(entry_key+'.tags',entry[i].tags,JSPLib.validate.stringonly_constraints)) {
+                if (!JSPLib.validate.validateArrayValues(entry_key+'.tags',entry[i].tags,JSPLib.validate.stringonly_constraints)) {
                     return false;
                 }
             }
-            break;
+            return true;
         default:
             checkerror = ["Not a valid program data key."];
     }
     if (checkerror.length) {
-        OutputValidateError(key,checkerror);
+        JSPLib.validate.outputValidateError(key,checkerror);
         return false;
     }
     return true;
@@ -573,270 +562,7 @@ function ValidateProgramData(key,entry) {
 
 //Library functions
 
-function CheckTimeout(storage_key,expires_time) {
-    let expires = JSPLib.storage.getStorageData(storage_key,localStorage,0);
-    return !JSPLib.validate.validateExpires(expires,frequent_tags_expires);
-}
-
-function SetRecheckTimeout(storage_key,expires_time) {
-    JSPLib.storage.setStorageData(storage_key,JSPLib.utility.getExpiration(expires_time),localStorage);
-}
-
-function CheckSemaphore(name) {
-    let semaphore = JSPLib.storage.getStorageData(`rtc-process-semaphore-${name}`,localStorage,0);
-    return !JSPLib.validate.validateExpires(semaphore, process_semaphore_expires);
-}
-
-function FreeSemaphore(name) {
-    $(window).off(`beforeunload.rtc.semaphore.${name}`);
-    JSPLib.storage.setStorageData(`rtc-process-semaphore-${name}`,0,localStorage);
-}
-
-function ReserveSemaphore(name) {
-    if (CheckSemaphore(name)) {
-        JSPLib.debug.debuglog(name + " - Tab got the semaphore !");
-        //Guarantee that leaving/closing tab reverts the semaphore
-        $(window).on(`beforeunload.rtc.semaphore.${name}`,()=>{
-            JSPLib.storage.setStorageData(`rtc-process-semaphore-${name}`,0,localStorage);
-        });
-        //Set semaphore with an expires in case the program crashes
-        let semaphore = JSPLib.utility.getExpiration(process_semaphore_expires);
-        JSPLib.storage.setStorageData(`rtc-process-semaphore-${name}`, semaphore, localStorage);
-        return semaphore;
-    }
-    JSPLib.debug.debuglog(name + " - Tab missed the semaphore !");
-    return null;
-}
-
-async function BatchStorageCheck(keyarray,validator,expires) {
-    let promise_array = [];
-    keyarray.forEach((key)=>{
-        promise_array.push(JSPLib.storage.checkLocalDB(key,validator,expires));
-    });
-    let result_array = await Promise.all(promise_array);
-    let missing_array = [];
-    result_array.forEach((result,i)=>{
-        if (!result) {
-            missing_array.push(keyarray[i]);
-        }
-    });
-    return missing_array;
-}
-
-validate.validators.array = function(value, options, key, attributes) {
-    if (options !== false) {
-        if (!validate.isArray(value)) {
-            return "is not an array";
-        }
-        if (JSPLib.validate.checkOptions(options,'length')) {
-            const usage_messages = {
-                wrongLength: "array is wrong length (should be %{count} items)",
-                tooShort: "array is too short (minimum is %{count} items)",
-                tooLong : "array is too long (maximum is %{count} items)"
-            };
-            let validator = Object.assign({},options.length,usage_messages);
-            let checkerror = validate({[key]:value},{[key]:{length: validator}});
-            if (checkerror !== undefined) {
-                return checkerror[key][0].slice(key.length+1);
-            }
-        }
-    }
-};
-
-function OutputValidateError(key,checkerror) {
-    JSPLib.validate.printValidateError(key,checkerror);
-    JSPLib.validate.dom_output && RenderValidateError(key,JSON.stringify(checkerror,null,2));
-}
-
-function RenderValidateError(key,error_message) {
-    if (JSPLib.validate.dom_output) {
-        let output_text = `<b>${key}:</b>\r\n<pre>${error_message}</pre>`;
-        $(JSPLib.validate.dom_output).html(output_text).show();
-    }
-}
-
-function HideValidateError() {
-    JSPLib.validate.dom_output && $(JSPLib.validate.dom_output).hide();
-}
-
-function FixValidateIsHash(key,entry) {
-    let check = validate({[key]: entry}, {[key]: JSPLib.validate.hash_constraints});
-    if (check !== undefined) {
-        OutputValidateError(key,check);
-        return false;
-    }
-    return true;
-}
-
-function FixValidateIsArray(key,entry,length) {
-    let array_validator = {
-        presence: true,
-        array: (length ? {length: length} : true)
-     };
-    let check = validate({[key]: entry}, {[key]: array_validator});
-    if (check !== undefined) {
-        OutputValidateError(key,check);
-        return false;
-    }
-    return true;
-}
-
-function FixValidateArrayValues(key,array,validator) {
-    for (let i = 0;i < array.length; i++) {
-        let check = validate({value: array[i]},{value: validator});
-        if (check !== undefined) {
-            OutputValidateError(key + `[${i}]`,check);
-            return false;
-        }
-    }
-    return true;
-}
-
-function RenderKeyselect(program_shortcut,setting_name,control=false,value='',all_options=[],hint='') {
-    let config, setting_key, display_name, item;
-    [config,setting_key,display_name,item] = JSPLib.menu.getProgramValues(program_shortcut,setting_name);
-    let menu_type = (control ? "control" : "setting");
-    let keyselect_key = `${program_shortcut}-${menu_type}-${setting_key}`;
-    if (!control) {
-        all_options = config[setting_name].allitems;
-        hint = config[setting_name].hint;
-        value = item;
-    }
-    let hint_html = JSPLib.menu.renderSettingHint(program_shortcut,"inline",hint);
-    let html = "";
-    all_options.forEach((option)=>{
-        let selected = (option === value ? 'selected="selected"' : '');
-        let display_option = JSPLib.utility.displayCase(option);
-        html += `<option ${selected} value="${option}">${display_option}</option>`;
-    });
-    return `
-<div class="${program_shortcut}-options jsplib-options jsplib-menu-item" data-setting="${setting_name}">
-    <h4>${display_name}</h4>
-    <div>
-        <select name="${keyselect_key}" id="${keyselect_key}" data-parent="2">;
-            ${html}
-        </select>
-        ${hint_html}
-    </div>
-</div>
-`;
-}
-
-function FixRenderTextinput(program_shortcut,setting_name,length=20,control=false,hint='',buttons=[]) {
-    let config, setting_key, display_name, item;
-    [config,setting_key,display_name,item] = JSPLib.menu.getProgramValues(program_shortcut,setting_name);
-    let textinput_key = `${program_shortcut}-setting-${setting_key}`;
-    let menu_type = (control ? "control" : "setting");
-    let submit_control = '';
-    if (control && buttons.length) {
-        buttons.forEach((button)=>{
-            submit_control += FixRenderControlButton(program_shortcut,setting_key,button,2);
-        });
-    }
-    let value = '';
-    if (!control) {
-        hint = config[setting_name].hint;
-        value = item;
-    }
-    let hint_html = JSPLib.menu.renderSettingHint(program_shortcut,"block",hint);
-    return `
-<div class="${program_shortcut}-textinput jsplib-textinput jsplib-menu-item" data-setting="${setting_name}">
-    <h4>${display_name}</h4>
-    <div>
-        <input type="text" class="${program_shortcut}-${menu_type} jsplib-${menu_type}" name="${textinput_key}" id="${textinput_key}" value="${value}" size="${length}" autocomplete="off" data-parent="2">
-        ${submit_control}
-        ${hint_html}
-    </div>
-</div>`;
-}
-
-function FixRenderControlButton(program_shortcut,setting_key,button_name,parent_level) {
-    let button_key = `${program_shortcut}-${setting_key}-${button_name}`;
-    let display_name = JSPLib.utility.displayCase(button_name);
-    return `<input type="button" class="jsplib-control ${program_shortcut}-control" name="${button_key}" id="${button_key}" value="${display_name}" data-parent="${parent_level}">`;
-}
-
-function FixRenderLinkclick(program_shortcut,setting_name,display_name,link_text,hint) {
-    let setting_key = JSPLib.utility.kebabCase(setting_name);
-    return `
-<div class="${program_shortcut}-linkclick jsplib-linkclick jsplib-menu-item">
-    <h4>${display_name}</h4>
-    <div>
-        <b>[
-            <span class="${program_shortcut}-control jsplib-control">
-                <a href="#" id="${program_shortcut}-setting-${setting_key}">${link_text}</a>
-            </span>
-        ]</b>
-        &emsp;
-        <span class="${program_shortcut}-setting-tooltip jsplib-inline-tooltip">${hint}</span>
-    </div>
-</div>`;
-}
-
-function ValidateUserSettings(settings,config) {
-    let error_messages = [];
-    if (!validate.isHash(settings)) {
-        return ["User settings are not a hash."];
-    }
-    for (let setting in config) {
-        if (!(setting in settings) || !config[setting].validate(settings[setting])) {
-            if (!(setting in settings)) {
-                error_messages.push(`'${setting}' setting not found.`);
-            } else {
-                error_messages.push(`'${setting}' contains invalid data.`);
-            }
-            JSPLib.debug.debuglogLevel("Loading default:",setting,settings[setting],JSPLib.debug.WARNING);
-            settings[setting] = config[setting].default;
-        }
-    }
-    let valid_settings = Object.keys(config);
-    for (let setting in settings) {
-        if (!valid_settings.includes(setting)) {
-            JSPLib.debug.debuglogLevel("Deleting invalid setting:",setting,settings[setting],JSPLib.debug.WARNING);
-            delete settings[setting];
-            error_messages.push(`'${setting}' is an invalid setting.`);
-        }
-    }
-    return error_messages;
-}
-
-function UpdateUserSettings(program_shortcut) {
-    let program_key = program_shortcut.toUpperCase();
-    let settings = Danbooru[program_key].user_settings;
-    jQuery(`#${program_shortcut}-settings .${program_shortcut}-setting[id]`).each((i,entry)=>{
-        let $input = jQuery(entry);
-        let parent_level = $input.data('parent');
-        let container = JSPLib.utility.getNthParent(entry,parent_level);
-        let setting_name = jQuery(container).data('setting');
-        if (entry.type === "checkbox" || entry.type === "radio") {
-            let selector = $input.data('selector');
-            if (selector) {
-                $input.prop('checked', JSPLib.menu.isSettingEnabled(program_key,setting_name,selector));
-                $input.checkboxradio("refresh");
-            } else {
-                $input.prop('checked', settings[setting_name]);
-            }
-        } else if (entry.type === "text") {
-             $input.val(settings[setting_name]);
-        } else if (entry.type === "hidden") {
-            if (!$(container).hasClass("sorted")) {
-                $("ul",container).sortable("destroy");
-                let sortlist = $("li",container).detach();
-                sortlist.sort((a, b)=>{
-                    let sort_a = $("input",a).data('sort');
-                    let sort_b = $("input",b).data('sort');
-                    return settings[setting_name].indexOf(sort_a) - settings[setting_name].indexOf(sort_b);
-                });
-                sortlist.each((i,entry)=>{
-                    $("ul",container).append(entry);
-                });
-                $("ul",container).sortable();
-                $(container).addClass("sorted");
-            }
-        }
-    });
-    $(".jsplib-sortlist").removeClass("sorted");
-}
+////NONE
 
 //Auxiliary functions
 
@@ -862,14 +588,6 @@ function NormalizeTags(array) {
 
 function TransformTypetags(array) {
     return array.map((value)=>{return value.match(striptype_regex).splice(1).join('');});
-}
-
-function TagToKeyTransform(taglist) {
-    return taglist.map((value)=>{return 'tag-' + value;});
-}
-
-function KeyToTagTransform(keylist) {
-    return keylist.map((key)=>{return key.replace(/^tag-/,'');});
 }
 
 function GetCurrentTags() {
@@ -920,17 +638,16 @@ function GetTagColumnList(name) {
     return [];
 }
 
-//Display functions
-
-function PinnedTagsClick() {
-    $(".recent-related-tags-column .ui-icon").click((e)=>{
-        $(e.target).toggleClass("ui-icon-radio-off ui-icon-pin-s");
-        let tag_name = $(".search-tag",e.target.parentElement).text().replace(/\s/g,'_');
-        RTC.pinned_tags = JSPLib.utility.setSymmetricDifference(RTC.pinned_tags,[tag_name]);
-        JSPLib.storage.setStorageData('rtc-pinned-tags',RTC.pinned_tags,localStorage);
-        RTC.channel.postMessage({type: "reload_recent", recent_tags: RTC.recent_tags, pinned_tags: RTC.pinned_tags, updated_pin_tag: tag_name});
-    });
+function ListTypeCheck() {
+    if (RTC.user_settings.list_type[0] === "multiple") {
+        RTC.other_recent = JSPLib.storage.checkStorageData('rtc-other-recent',ValidateProgramData,localStorage,[]);
+    } else {
+        localStorage.removeItem('rtc-other-recent');
+        localStorage.removeItem('rtc-was-upload');
+    }
 }
+
+//Display functions
 
 async function DisplayRecentTags() {
     await RTC.pageload_recentcheck;
@@ -951,7 +668,7 @@ async function DisplayRecentTags() {
     $tag_column.html(html);
     $tag_column.removeClass("is-empty-true").addClass("is-empty-false");
     Danbooru.RelatedTag.update_selected();
-    PinnedTagsClick();
+    $(".recent-related-tags-column .ui-icon").on('click.rtc',PinnedTagsToggle);
 }
 
 async function DisplayFrequentTags() {
@@ -964,7 +681,7 @@ async function DisplayFrequentTags() {
 }
 
 function RecheckAndDisplay(name) {
-    BatchStorageCheck(TagToKeyTransform(FilterMetatags(GetTagColumnList(name))),ValidateEntry,tag_expires)
+    JSPLib.storage.batchStorageCheck(FilterMetatags(GetTagColumnList(name)),ValidateEntry,tag_expires,'tag')
     .then(()=>{
         switch(name) {
             case "recent":
@@ -979,17 +696,14 @@ function RecheckAndDisplay(name) {
     });
 }
 
-function RecheckDisplaySemaphoreCallback(name) {
-    if (CheckSemaphore(name)) {
-        clearInterval(RecheckDisplaySemaphoreCallback.timers[name]);
-        JSPLib.debug.debuglog("RecheckDisplaySemaphoreCallback:",name);
-        RecheckAndDisplay(name);
-    }
-}
-RecheckDisplaySemaphoreCallback.timers = {};
-
-function SetRecheckDisplayInterval(name) {
-    RecheckDisplaySemaphoreCallback.timers[name] = setInterval(()=>{RecheckDisplaySemaphoreCallback(name);},timer_poll_interval);
+function RecheckDisplaySemaphore(name) {
+    JSPLib.utility.rebindTimer({
+        check: ()=>{return JSPLib.concurrency.checkSemaphore('rtc',name);},
+        exec: ()=>{
+            RecheckDisplaySemaphore.debuglog("Callback:",name);
+            RecheckAndDisplay(name);
+        }
+    },timer_poll_interval);
 }
 
 function RenderTaglines(taglist,addon) {
@@ -1006,7 +720,7 @@ function RenderTaglist(taglist,columnname,pinned_tags) {
         html += RenderTaglines(pinned_tags,`<a class="ui-icon ui-icon-pin-s" style="min-width:unset"></a>&thinsp;`);
         taglist = JSPLib.utility.setDifference(taglist,pinned_tags);
     }
-    let pin_html = (pinned_tags ? `<a class="ui-icon ui-icon-radio-off" style="min-width:unset"></a>&thinsp;` :  '');
+    let pin_html = (pinned_tags ? `<a class="ui-icon ui-icon-radio-off" style="min-width:unset"></a>&thinsp;` : '');
     html += RenderTaglines(taglist,pin_html);
     return `
 <h6>${columnname}</h6>
@@ -1016,148 +730,24 @@ ${html.slice(0,-1)}
 `;
 }
 
-//Setup functions
+//Event handlers
 
-function SetFormSubmit() {
-    $("#form").submit((e)=>{
-        CaptureTagSubmission();
-    });
-}
-
-function SetupMutationObserver() {
-    return new MutationObserver(function(mutations) {
-        mutations.forEach(function(mutation) {
-            if (mutation.type == "childList" && mutation.removedNodes.length === 1 && mutation.removedNodes[0].className === "user-related-tags-columns") {
-                JSPLib.debug.debuglog("Server: User related tags have been added!");
-                DisplayRecentTags();
-                RTC.mutation_observer.disconnect();
-            }
-        });
-    });
-}
-
-function SetReloadFrequentTagsClick() {
-    $("#rtc-setting-refresh-frequent-tags").click((e)=>{
-        QueryFrequentTags();
+function ReloadFrequentTags(event) {
+    Timer.QueryFrequentTags().then(()=>{
         Danbooru.Utility.notice("RecentTagsCalc: Frequent tags reloaded!");
-        e.preventDefault();
     });
+    event.preventDefault();
 }
 
-//Main helper functions
-
-async function CheckMissingTags(tag_list,list_name="") {
-    let missing_keys = await BatchStorageCheck(TagToKeyTransform(tag_list),ValidateEntry,tag_expires);
-    if (missing_keys.length) {
-        JSPLib.debug.debuglog("CheckMissingTags: missing_keys",missing_keys);
-        await QueryMissingTags(KeyToTagTransform(missing_keys));
-    } else {
-        JSPLib.debug.debuglog(`${list_name} - No missing tags in DB!`);
-    }
-    return missing_keys;
+function PinnedTagsToggle(event) {
+    $(event.target).toggleClass("ui-icon-radio-off ui-icon-pin-s");
+    let tag_name = $(".search-tag",event.target.parentElement).text().replace(/\s/g,'_');
+    RTC.pinned_tags = JSPLib.utility.setSymmetricDifference(RTC.pinned_tags,[tag_name]);
+    JSPLib.storage.setStorageData('rtc-pinned-tags',RTC.pinned_tags,localStorage);
+    RTC.channel.postMessage({type: "reload_recent", recent_tags: RTC.recent_tags, pinned_tags: RTC.pinned_tags, other_recent: RTC.other_recent, updated_pin_tag: tag_name});
 }
 
-async function QueryMissingTags(missing_taglist) {
-    let promise_array = [];
-    let tag_query = missing_taglist.join(',');
-    let queried_tags = await JSPLib.danbooru.getAllItems('tags',max_item_limit,{addons:{search:{name:tag_query,hide_empty:'no'}}});
-    queried_tags.forEach((tagentry)=>{
-        let entryname = 'tag-' + tagentry.name;
-        let value = {
-            category: tagentry.category,
-            postcount: tagentry.post_count,
-            is_alias: tagentry.post_count === 0,
-            is_deleted: false
-        };
-        RTC.tag_data[tagentry.name] = value;
-        promise_array.push(JSPLib.storage.saveData(entryname, {value: value, expires: Date.now() + tag_expires}));
-    });
-    let unfound_tags = JSPLib.utility.setDifference(missing_taglist,JSPLib.utility.getObjectAttributes(queried_tags,'name'));
-    JSPLib.debug.debuglog("QueryMissingTags: unfound_tags",unfound_tags);
-    unfound_tags.forEach((tag)=>{
-        let entryname = 'tag-' + tag;
-        RTC.tag_data[tag] = deleted_tag_data;
-        promise_array.push(JSPLib.storage.saveData(entryname, {value: deleted_tag_data, expires: Date.now() + tag_expires}));
-    });
-    return Promise.all(promise_array);
-}
-
-async function CheckTagDeletion() {
-    let promise_array = [];
-    for (let tag in RTC.tag_data) {
-        if (RTC.tag_data[tag].is_alias) {
-            let alias_entryname = 'ta-' + tag;
-            let promise_entry = JSPLib.storage.checkLocalDB(alias_entryname,ValidateEntry,tagalias_expires)
-            .then((data)=>{
-                JSPLib.debug.debuglog("Step 1: Check local DB for alias",data);
-                if (data) {
-                    return data;
-                }
-                return JSPLib.danbooru.submitRequest('tag_aliases',{search:{antecedent_name:tag,status:'active'}},[],alias_entryname)
-                .then((data)=>{
-                    JSPLib.debug.debuglog("Step 2 (optional): Check server for alias",data);
-                    let savedata = {value: [], expires: Date.now() + tagalias_expires};
-                    if (data.length) {
-                        //Alias antecedents are unique, so no need to check the size
-                        JSPLib.debug.debuglog("Alias:",tag,data[0].consequent_name);
-                        savedata.value = [data[0].consequent_name];
-                    }
-                    JSPLib.debug.debuglog("Saving",alias_entryname,savedata);
-                    return JSPLib.storage.saveData(alias_entryname,savedata);
-                });
-            })
-            .then((data)=>{
-                let tag_entryname = 'tag-' + tag;
-                JSPLib.debug.debuglog("Step 3: Save tag data (if deleted)",data);
-                if (data.value.length == 0) {
-                    RTC.tag_data[tag].is_alias = false;
-                    RTC.tag_data[tag].is_deleted = true;
-                    let savedata = {value: RTC.tag_data[tag], expires: Date.now() + tag_expires};
-                    JSPLib.debug.debuglog("Saving",tag_entryname,savedata);
-                    return JSPLib.storage.saveData(tag_entryname,savedata);
-                }
-            });
-            promise_array.push(promise_entry);
-        }
-    }
-}
-
-function FilterDeletedTags() {
-    JSPLib.debug.debugExecute(()=>{
-        RTC.deleted_saved_recent_tags = RTC.saved_recent_tags.filter((tag)=>{return GetTagCategory(tag) === deleted_tag_category;});
-        RTC.deleted_recent_tags = RTC.recent_tags.filter((tag)=>{return GetTagCategory(tag) === deleted_tag_category;});
-        if (RTC.deleted_saved_recent_tags.length || RTC.deleted_recent_tags.length) {
-            JSPLib.debug.debuglog("Deleting tags:",RTC.deleted_saved_recent_tags,RTC.deleted_recent_tags);
-        }
-    });
-    RTC.saved_recent_tags = RTC.saved_recent_tags.filter((tag)=>{return GetTagCategory(tag) !== deleted_tag_category;});
-    RTC.recent_tags = RTC.recent_tags.filter((tag)=>{return GetTagCategory(tag) !== deleted_tag_category;});
-}
-
-function SortTagData(tag_list,type) {
-    JSPLib.debug.debuglog("SortTagData (pre):",tag_list);
-    if (type === "post_count") {
-        tag_list.sort((a,b)=>{
-            let a_data = GetTagData(a);
-            let b_data = GetTagData(b);
-            return b_data.postcount - a_data.postcount;
-        });
-    } else if (type === "category") {
-        let category_order = RTC.user_settings.category_order.concat(['deleted']);
-        tag_list.sort((a,b)=>{
-            let a_data = GetTagCategory(a);
-            let b_data = GetTagCategory(b);
-            return category_order.indexOf(category_name[a_data]) - category_order.indexOf(category_name[b_data]);
-        });
-    }
-    JSPLib.debug.debuglog("SortTagData (post):",tag_list);
-}
-
-//Main execution functions
-
-////Recent tags
-
-function CaptureTagSubmission(submit=true) {
+function CaptureTagSubmission(event) {
     RTC.postedittags = GetCurrentTags();
     RTC.new_recent_tags = NormalizeTags(RTC.postedittags);
     RTC.positivetags = JSPLib.utility.filterRegex(RTC.postedittags,negative_regex,true);
@@ -1186,23 +776,133 @@ function CaptureTagSubmission(submit=true) {
         default:
             //Do nothing
     }
-    JSPLib.debug.debuglog("New recent tags:",RTC.new_recent_tags);
-    if(submit) {
-        AddRecentTags(RTC.new_recent_tags);
+    CaptureTagSubmission.debuglog("New recent tags:",RTC.new_recent_tags);
+    AddRecentTags(RTC.new_recent_tags);
+}
+
+//Main helper functions
+
+async function CheckMissingTags(tag_list,list_name="") {
+    let missing_tags = await JSPLib.storage.batchStorageCheck(tag_list,ValidateEntry,tag_expires,'tag');
+    if (missing_tags.length) {
+        CheckMissingTags.debuglog("Missing tags:",missing_tags);
+        await QueryMissingTags(missing_tags);
+    } else {
+        CheckMissingTags.debuglog(`No missing tags in DB [${list_name}]!`);
+    }
+    return missing_tags;
+}
+
+async function QueryMissingTags(missing_taglist) {
+    let promise_array = [];
+    let tag_query = missing_taglist.join(',');
+    let queried_tags = await JSPLib.danbooru.getAllItems('tags',max_item_limit,{addons:{search:{name:tag_query,hide_empty:'no'}}});
+    queried_tags.forEach((tagentry)=>{
+        let entryname = 'tag-' + tagentry.name;
+        let value = {
+            category: tagentry.category,
+            postcount: tagentry.post_count,
+            is_alias: tagentry.post_count === 0,
+            is_deleted: false
+        };
+        RTC.tag_data[tagentry.name] = value;
+        promise_array.push(JSPLib.storage.saveData(entryname, {value: value, expires: Date.now() + tag_expires}));
+    });
+    let unfound_tags = JSPLib.utility.setDifference(missing_taglist,JSPLib.utility.getObjectAttributes(queried_tags,'name'));
+    QueryMissingTags.debuglog("Unfound tags:",unfound_tags);
+    unfound_tags.forEach((tag)=>{
+        let entryname = 'tag-' + tag;
+        RTC.tag_data[tag] = deleted_tag_data;
+        promise_array.push(JSPLib.storage.saveData(entryname, {value: deleted_tag_data, expires: Date.now() + tag_expires}));
+    });
+    return Promise.all(promise_array);
+}
+
+async function CheckTagDeletion() {
+    let promise_array = [];
+    for (let tag in RTC.tag_data) {
+        if (RTC.tag_data[tag].is_alias) {
+            let alias_entryname = 'ta-' + tag;
+            let promise_entry = JSPLib.storage.checkLocalDB(alias_entryname,ValidateEntry,tagalias_expires)
+            .then((data)=>{
+                CheckTagDeletion.debuglog("Step 1: Check local DB for alias",data);
+                if (data) {
+                    return data;
+                }
+                return JSPLib.danbooru.submitRequest('tag_aliases',{search:{antecedent_name:tag,status:'active'}},[],alias_entryname)
+                .then((data)=>{
+                    CheckTagDeletion.debuglog("Step 2 (optional): Check server for alias",data);
+                    let savedata = {value: [], expires: Date.now() + tagalias_expires};
+                    if (data.length) {
+                        //Alias antecedents are unique, so no need to check the size
+                        CheckTagDeletion.debuglog("Alias:",tag,data[0].consequent_name);
+                        savedata.value = [data[0].consequent_name];
+                    }
+                    CheckTagDeletion.debuglog("Saving",alias_entryname,savedata);
+                    return JSPLib.storage.saveData(alias_entryname,savedata);
+                });
+            })
+            .then((data)=>{
+                let tag_entryname = 'tag-' + tag;
+                CheckTagDeletion.debuglog("Step 3: Save tag data (if deleted)",data);
+                if (data.value.length == 0) {
+                    RTC.tag_data[tag].is_alias = false;
+                    RTC.tag_data[tag].is_deleted = true;
+                    let savedata = {value: RTC.tag_data[tag], expires: Date.now() + tag_expires};
+                    CheckTagDeletion.debuglog("Saving",tag_entryname,savedata);
+                    return JSPLib.storage.saveData(tag_entryname,savedata);
+                }
+            });
+            promise_array.push(promise_entry);
+        }
     }
 }
 
+function FilterDeletedTags() {
+    JSPLib.debug.debugExecute(()=>{
+        RTC.deleted_saved_recent_tags = RTC.saved_recent_tags.filter((tag)=>{return GetTagCategory(tag) === deleted_tag_category;});
+        RTC.deleted_recent_tags = RTC.recent_tags.filter((tag)=>{return GetTagCategory(tag) === deleted_tag_category;});
+        if (RTC.deleted_saved_recent_tags.length || RTC.deleted_recent_tags.length) {
+            FilterDeletedTags.debuglog("Deleting tags:",RTC.deleted_saved_recent_tags,RTC.deleted_recent_tags);
+        }
+    });
+    RTC.saved_recent_tags = RTC.saved_recent_tags.filter((tag)=>{return GetTagCategory(tag) !== deleted_tag_category;});
+    RTC.recent_tags = RTC.recent_tags.filter((tag)=>{return GetTagCategory(tag) !== deleted_tag_category;});
+}
+
+function SortTagData(tag_list,type) {
+    SortTagData.debuglog("Pre-sort:",tag_list);
+    if (type === "post_count") {
+        tag_list.sort((a,b)=>{
+            let a_data = GetTagData(a);
+            let b_data = GetTagData(b);
+            return b_data.postcount - a_data.postcount;
+        });
+    } else if (type === "category") {
+        let category_order = RTC.user_settings.category_order.concat(['deleted']);
+        tag_list.sort((a,b)=>{
+            let a_data = GetTagCategory(a);
+            let b_data = GetTagCategory(b);
+            return category_order.indexOf(category_name[a_data]) - category_order.indexOf(category_name[b_data]);
+        });
+    }
+    SortTagData.debuglog("Post-sort:",tag_list);
+}
+
+//Main execution functions
+
+////Recent tags
+
 async function CheckAllRecentTags() {
-    if (!ReserveSemaphore("recent")) {
-        SetRecheckDisplayInterval("recent");
+    if (!JSPLib.concurrency.reserveSemaphore('rtc','recent')) {
+        RecheckDisplaySemaphore("recent");
         return;
     }
-    JSPLib.debug.debugTime("CheckAllRecentTags");
     let original_recent_tags = JSPLib.utility.dataCopy(RTC.recent_tags);
     RTC.saved_recent_tags = [];
     let tag_list = RTC.recent_tags.concat(RTC.pinned_tags);
     if (RTC.tag_order === "post_count" || RTC.tag_order === "category") {
-        RTC.saved_recent_tags = JSPLib.storage.getStorageData('rtc-new-recent-tags',localStorage,[]);
+        RTC.saved_recent_tags = JSPLib.storage.checkStorageData('rtc-new-recent-tags',ValidateProgramData,localStorage,[]);
         tag_list = JSPLib.utility.setUnion(tag_list,RTC.saved_recent_tags);
     }
     if (RTC.user_settings.list_type[0] === "multiple") {
@@ -1210,8 +910,8 @@ async function CheckAllRecentTags() {
             tag_list = JSPLib.utility.setUnion(tag_list,recent_entry.tags);
         });
     }
-    RTC.missing_recent_tags = await CheckMissingTags(FilterMetatags(tag_list),"Recent");
-    await CheckTagDeletion();
+    RTC.missing_recent_tags = await Timer.CheckMissingTags(FilterMetatags(tag_list),"Recent");
+    await Timer.CheckTagDeletion();
     if (!RTC.user_settings.include_deleted_tags) {
         FilterDeletedTags();
     }
@@ -1222,14 +922,13 @@ async function CheckAllRecentTags() {
     if (JSPLib.utility.setSymmetricDifference(original_recent_tags,RTC.recent_tags).length || RTC.saved_recent_tags.length) {
         AddRecentTags(RTC.saved_recent_tags);
     }
-    JSPLib.debug.debugTimeEnd("CheckAllRecentTags");
-    FreeSemaphore("recent");
+    JSPLib.concurrency.freeSemaphore('rtc','recent');
 }
 
 function AddRecentTags(newtags) {
     switch (RTC.user_settings.list_type[0]) {
         case "multiple":
-            RTC.was_upload = JSPLib.storage.getStorageData('rtc-was-upload',localStorage,false);
+            RTC.was_upload = JSPLib.storage.checkStorageData('rtc-was-upload',ValidateProgramData,localStorage,false);
             if (newtags.length && RTC.recent_tags.length) {
                 RTC.other_recent.unshift({
                     was_upload: RTC.was_upload,
@@ -1250,7 +949,7 @@ function AddRecentTags(newtags) {
     }
     RTC.recent_tags = RTC.recent_tags.slice(0,RTC.user_settings.maximum_tags);
     JSPLib.storage.setStorageData('rtc-recent-tags',RTC.recent_tags,localStorage);
-    RTC.channel.postMessage({type: "reload_recent", recent_tags: RTC.recent_tags, pinned_tags: RTC.pinned_tags, new_recent_tags: newtags});
+    RTC.channel.postMessage({type: "reload_recent", recent_tags: RTC.recent_tags, pinned_tags: RTC.pinned_tags, other_recent: RTC.other_recent, new_recent_tags: newtags});
 }
 
 ////Frequent tags
@@ -1260,199 +959,53 @@ async function LoadFrequentTags() {
         //User must have an account to have frequent tags
         return;
     }
-    RTC.frequent_tags = JSPLib.storage.getStorageData('rtc-frequent-tags',localStorage);
-    if (RTC.frequent_tags === null || CheckTimeout('rtc-frequent-tags-expires',frequent_tags_expires)) {
-        QueryFrequentTags();
+    RTC.frequent_tags = JSPLib.storage.checkStorageData('rtc-frequent-tags',ValidateProgramData,localStorage,[]);
+    if (JSPLib.concurrency.checkTimeout('rtc-frequent-tags-expires',frequent_tags_expires)) {
+        if (JSPLib.concurrency.reserveSemaphore('rtc','frequent')) {
+            await Timer.QueryFrequentTags();
+            JSPLib.concurrency.freeSemaphore('rtc','frequent')
+        } else {
+            return false;
+        }
     }
+    return true;
 }
 
 async function QueryFrequentTags() {
-    let user_account = await JSPLib.danbooru.submitRequest('users/'+RTC.userid);
-    if (!user_account) {
+    let user_account = await JSPLib.danbooru.submitRequest('users',{search: {id: RTC.userid}});
+    if (!user_account || user_account.length === 0) {
         //Should never get here, but just in case
         return;
     }
-    RTC.frequent_tags = user_account.favorite_tags.split('\r\n').map((tag)=>{return tag.trim();});
-    JSPLib.debug.debuglog("QueryFrequentTags:",RTC.frequent_tags);
+    RTC.frequent_tags = user_account[0].favorite_tags.split('\r\n').map((tag)=>{return tag.trim();});
+    QueryFrequentTags.debuglog("Found tags:",RTC.frequent_tags);
     JSPLib.storage.setStorageData('rtc-frequent-tags',RTC.frequent_tags,localStorage);
-    SetRecheckTimeout('rtc-frequent-tags-expires',frequent_tags_expires);
+    JSPLib.concurrency.setRecheckTimeout('rtc-frequent-tags-expires',frequent_tags_expires);
     RTC.channel.postMessage({type: "reload_frequent", frequent_tags: RTC.frequent_tags});
 }
 
 async function CheckAllFrequentTags() {
-    await LoadFrequentTags();
-    if (ReserveSemaphore("frequent")) {
-        RTC.missing_frequent_keys = await CheckMissingTags(RTC.frequent_tags,"Frequent");
-        FreeSemaphore("frequent");
+    let status = await LoadFrequentTags();
+    if (!status) {
+        return;
+    }
+    if (JSPLib.concurrency.reserveSemaphore('rtc','frequent')) {
+        RTC.missing_frequent_tags = await Timer.CheckMissingTags(RTC.frequent_tags,"Frequent");
+        JSPLib.concurrency.freeSemaphore('rtc','frequent');
     } else {
-        SetRecheckDisplayInterval("frequent");
+        RecheckDisplaySemaphore("frequent");
     }
 }
-
-////Cache editor
-
-//Program cache function
-
-function OptionCacheDataKey(data_type,data_value) {
-    CU.data_period = $("#cu-control-data-period").val();
-    if (data_type === "reverse_implication") {
-        return 'rti-' + data_value;
-    }
-    if (data_type === "count") {
-        if (CU.data_period == "previous") {
-            CU.data_value = "";
-            return "";
-        }
-        let shortkey = (CU.data_period !== "" ? longname_key[CU.data_period] : "");
-        return `ct${shortkey}-${data_value}`;
-    } else {
-        return `${CU.data_period}-${data_type}-${data_value}`;
-    }
-}
-
-//Cache helper functions
-
-async function LoadStorageKeys(program_shortcut) {
-    let program_key = program_shortcut.toUpperCase();
-    let storage_keys = await JSPLib.storage.danboorustorage.keys();
-    Danbooru[program_key].storage_keys.indexed_db = storage_keys.filter((key)=>{return key.match(program_cache_regex);});
-    storage_keys = Object.keys(localStorage);
-    Danbooru[program_key].storage_keys.local_storage = storage_keys.filter((key)=>{return key.startsWith(program_shortcut + "-");});
-}
-
-function GetCacheDatakey(program_shortcut,option) {
-    let program_key = program_shortcut.toUpperCase();
-    let program_data = Danbooru[program_key];
-    program_data.data_source = $(`#${program_shortcut}-control-data-source`).val();
-    program_data.data_type = $(`#${program_shortcut}-control-data-type`).val();
-    program_data.data_value = data_key = $(`#${program_shortcut}-setting-data-name`).val().trim().replace(/\s+/g,'_');
-    if (program_data.data_source === "local_storage") {
-        data_key = program_shortcut + '-' + program_data.data_value;
-    } else if (program_data.data_type !== "custom") {
-        if (typeof option === "function") {
-            data_key = option(program_data.data_type,program_data.data_value);
-        } else if (typeof option === "object") {
-            data_key = option[program_data.data_type] + '-' + program_data.data_value;
-        }
-    }
-    return data_key;
-}
-
-function CacheSource(program_shortcut,data_regex,option) {
-    let program_key = program_shortcut.toUpperCase();
-    let program_data = Danbooru[program_key];
-    return function (req,resp) {
-        let check_key = GetCacheDatakey(program_shortcut,option);
-        if (program_data.data_source === "indexed_db" && program_data.data_value.length === 0) {
-            resp([]);
-            return;
-        }
-        let source_keys = program_data.storage_keys[program_data.data_source];
-        let available_keys = source_keys.filter((key)=>{return key.toLowerCase().startsWith(check_key.toLowerCase());});
-        let transformed_keys = available_keys.slice(0,10);
-        if (program_data.data_source === 'local_storage') {
-            transformed_keys = transformed_keys.map((key)=>{return key.replace(RegExp(`^${program_shortcut}-`),'');});
-        } else if (program_data.data_type !== "custom") {
-            transformed_keys = transformed_keys.map((key)=>{return key.replace(data_regex,'');});
-        }
-        resp(transformed_keys);
-    }
-}
-
-//Cache event functions
-
-function GetCacheClick(program_shortcut,option) {
-    let program_key = program_shortcut.toUpperCase();
-    $(`#${program_shortcut}-data-name-get`).on(`click.${program_shortcut}`,(e)=>{
-        let storage_key = GetCacheDatakey(program_shortcut,option);
-        if (Danbooru[program_key].data_source === "local_storage") {
-            let data = JSPLib.storage.getStorageData(storage_key,localStorage);
-            $(`#${program_shortcut}-cache-viewer textarea`).val(JSON.stringify(data,null,2));
-        } else {
-            JSPLib.storage.retrieveData(storage_key).then((data)=>{
-                $(`#${program_shortcut}-cache-viewer textarea`).val(JSON.stringify(data,null,2));
-            });
-        }
-        HideValidateError();
-        $("#close-notice-link").click();
-    });
-}
-
-function SaveCacheClick(program_shortcut,localvalidator,indexvalidator,option) {
-    let program_key = program_shortcut.toUpperCase();
-    $(`#${program_shortcut}-data-name-save`).on(`click.${program_shortcut}`,(e)=>{
-        try {
-            var data = JSON.parse($(`#${program_shortcut}-cache-viewer textarea`).val());
-        } catch (e) {
-            Danbooru.Utility.error("Invalid JSON data! Unable to save.");
-            return;
-        }
-        let storage_key = GetCacheDatakey(program_shortcut,option);
-        if (Danbooru[program_key].data_source === "local_storage") {
-            if (localvalidator(storage_key,data)) {
-                JSPLib.storage.setStorageData(storage_key,data,localStorage);
-                Danbooru.Utility.notice("Data was saved.");
-                HideValidateError();
-                if (storage_key === `${program_shortcut}-user-settings`) {
-                    CU.user_settings = data;
-                    UpdateUserSettings(program_shortcut);
-                }
-            } else {
-                Danbooru.Utility.error("Data is invalid! Unable to save.");
-            }
-        } else {
-            if (indexvalidator(storage_key,data)) {
-                JSPLib.storage.saveData(storage_key,data).then(()=>{
-                    Danbooru.Utility.notice("Data was saved.");
-                    HideValidateError();
-                });
-            } else {
-                Danbooru.Utility.error("Data is invalid! Unable to save.");
-            }
-        }
-    });
-}
-
-function DeleteCacheClick(program_shortcut,option) {
-    let program_key = program_shortcut.toUpperCase();
-    $(`#${program_shortcut}-data-name-delete`).on(`click.${program_shortcut}`,(e)=>{
-        let storage_key = GetCacheDatakey(program_shortcut,option);
-        if (Danbooru[program_key].data_source === "local_storage") {
-            if (confirm("This will delete program data that may cause problems until the page can be refreshed.\n\nAre you sure?")) {
-                localStorage.removeItem(storage_key);
-                Danbooru.Utility.notice("Data has been deleted.");
-                HideValidateError();
-            }
-        } else {
-            JSPLib.storage.removeData(storage_key).then((data)=>{
-                Danbooru.Utility.notice("Data has been deleted.");
-                HideValidateError();
-            });
-        }
-    });
-}
-
-function CacheAutocomplete(program_shortcut,data_regex,option) {
-    let program_key = program_shortcut.toUpperCase();
-    $(`#${program_shortcut}-setting-data-name`).autocomplete({
-        minLength: 0,
-        delay: 0,
-        source: CacheSource(program_shortcut,data_regex,option),
-        search: function() {
-            $(this).data("uiAutocomplete").menu.bindings = $();
-        }
-    }).off('keydown.Autocomplete.tab');
-}
-
 
 //Settings functions
 
 function BroadcastRTC(ev) {
-    JSPLib.debug.debuglog(`BroadcastChannel (${ev.data.type}):`, ev.data);
+    BroadcastRTC.debuglog(`(${ev.data.type}):`, ev.data);
     switch (ev.data.type) {
         case "reload_recent":
             RTC.pinned_tags = ev.data.pinned_tags;
             RTC.recent_tags = ev.data.recent_tags;
+            RTC.other_recent = ev.data.other_recent;
             !RTC.is_setting_menu && RecheckAndDisplay("recent");
             break;
         case "reload_frequent":
@@ -1464,10 +1017,10 @@ function BroadcastRTC(ev) {
         case "settings":
             RTC.user_settings = ev.data.user_settings;
             RTC.tag_order = GetTagOrderType();
-            RTC.is_setting_menu && UpdateUserSettings('rtc');
+            RTC.is_setting_menu && JSPLib.menu.updateUserSettings('rtc');
             break;
         case "purge":
-            $.each(sessionStorage,(key)=>{
+            Object.keys(sessionStorage).forEach((key)=>{
                 if (key.match(program_cache_regex)) {
                     sessionStorage.removeItem(key);
                 }
@@ -1500,29 +1053,32 @@ function RenderSettingsMenu() {
     $("#rtc-inclusion-settings").append(JSPLib.menu.renderCheckbox("rtc",'include_removed_tags'));
     $("#rtc-inclusion-settings").append(JSPLib.menu.renderCheckbox("rtc",'include_deleted_tags'));
     $("#rtc-frequent-settings").append(JSPLib.menu.renderCheckbox("rtc",'cache_frequent_tags'));
-    $("#rtc-frequent-settings").append(FixRenderLinkclick("rtc",'refresh_frequent_tags',"Refresh frequent tags","Click to refresh","Gets the latest favorite tags from the user's profile."));
-    $("#rtc-cache-settings").append(FixRenderLinkclick("rtc",'purge_cache',`Purge cache (<span id="rtc-purge-counter">...</span>)`,"Click to purge","Dumps all of the cached data related to RecentTagsCalc."));
-    $("#rtc-cache-editor-controls").append(RenderKeyselect('rtc','data_source',true,'indexed_db',all_source_types,"Indexed DB is <b>Cache Data</b> and Local Storage is <b>Program Data</b>."));
-    $("#rtc-cache-editor-controls").append(RenderKeyselect('rtc','data_type',true,'tag_data',all_data_types,"Only applies to Indexed DB.  Use <b>Custom</b> for querying by keyname."));
-    $("#rtc-cache-editor-controls").append(FixRenderTextinput('rtc','data_name',20,true,"Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.",['get','save','delete']));
+    $("#rtc-frequent-settings").append(JSPLib.menu.renderLinkclick("rtc",'refresh_frequent_tags',"Refresh frequent tags","Click to refresh","Gets the latest favorite tags from the user's profile."));
+    $("#rtc-cache-settings").append(JSPLib.menu.renderLinkclick("rtc",'cache_info',"Cache info","Click to populate","Calculates the cache usage of the program and compares it to the total usage."));
+    $("#rtc-cache-settings").append(`<div id="rtc-cache-info-table" style="display:none"></div>`);
+    $("#rtc-cache-settings").append(JSPLib.menu.renderLinkclick("rtc",'purge_cache',`Purge cache (<span id="rtc-purge-counter">...</span>)`,"Click to purge","Dumps all of the cached data related to RecentTagsCalc."));
+    $("#rtc-cache-editor-controls").append(JSPLib.menu.renderKeyselect('rtc','data_source',true,'indexed_db',all_source_types,"Indexed DB is <b>Cache Data</b> and Local Storage is <b>Program Data</b>."));
+    $("#rtc-cache-editor-controls").append(JSPLib.menu.renderKeyselect('rtc','data_type',true,'tag_data',all_data_types,"Only applies to Indexed DB.  Use <b>Custom</b> for querying by keyname."));
+    $("#rtc-cache-editor-controls").append(JSPLib.menu.renderTextinput('rtc','data_name',20,true,"Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.",['get','save','delete']));
     JSPLib.menu.engageUI('rtc',true,true);
     disabled_order_types.forEach((type)=>{
         $(`#rtc-select-uploads-order-${type}`).checkboxradio("disable");
         $(`#rtc-select-post-edits-order-${type}`).checkboxradio("disable");
     });
-    SetReloadFrequentTagsClick();
+    $("#rtc-setting-refresh-frequent-tags").on('click.rtc',ReloadFrequentTags);
     JSPLib.menu.saveUserSettingsClick('rtc','RecentTagsCalc');
     JSPLib.menu.resetUserSettingsClick('rtc','RecentTagsCalc',localstorage_keys,program_reset_keys);
+    JSPLib.menu.cacheInfoClick('rtc',program_cache_regex,"#rtc-cache-info-table");
     JSPLib.menu.purgeCacheClick('rtc','RecentTagsCalc',program_cache_regex,"#rtc-purge-counter");
-    GetCacheClick('rtc',reverse_data_key);
-    SaveCacheClick('rtc',ValidateProgramData,ValidateEntry,reverse_data_key);
-    DeleteCacheClick('rtc',reverse_data_key);
-    CacheAutocomplete('rtc',program_cache_regex,reverse_data_key);
+    JSPLib.menu.getCacheClick('rtc',reverse_data_key);
+    JSPLib.menu.saveCacheClick('rtc',ValidateProgramData,ValidateEntry,reverse_data_key);
+    JSPLib.menu.deleteCacheClick('rtc',reverse_data_key);
+    JSPLib.menu.cacheAutocomplete('rtc',program_cache_regex,reverse_data_key);
 }
 
-//Main function
+//Main program
 
-function main() {
+function Main() {
     Danbooru.RTC = RTC = {
         userid: JSPLib.utility.getMeta("current-user-id"),
         tag_data: {},
@@ -1537,27 +1093,22 @@ function main() {
     RTC.channel.onmessage = BroadcastRTC;
     if (RTC.is_setting_menu) {
         JSPLib.validate.dom_output = "#rtc-cache-editor-errors";
-        LoadStorageKeys('rtc');
+        JSPLib.menu.loadStorageKeys('rtc',program_cache_regex);
         JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
             JSPLib.menu.installSettingsMenu("RecentTagsCalc");
-            RenderSettingsMenu();
+            Timer.RenderSettingsMenu();
         });
         JSPLib.utility.setCSSStyle(menu_css,'menu');
         return;
     }
     RTC.tag_order = GetTagOrderType();
     RTC.preedittags = GetTagList();
-    RTC.recent_tags = JSPLib.storage.getStorageData('rtc-recent-tags',localStorage,[]);
-    RTC.pinned_tags = JSPLib.storage.getStorageData('rtc-pinned-tags',localStorage,[]);
-    if (RTC.user_settings.list_type[0] === "multiple") {
-        RTC.other_recent = JSPLib.storage.getStorageData('rtc-other-recent',localStorage,[]);
-    } else {
-        localStorage.removeItem('rtc-other-recent');
-        localStorage.removeItem('rtc-was-upload');
-    }
-    RTC.pageload_recentcheck = CheckAllRecentTags();
-    RTC.pageload_frequentcheck = CheckAllFrequentTags();
-    SetFormSubmit();
+    RTC.recent_tags = JSPLib.storage.checkStorageData('rtc-recent-tags',ValidateProgramData,localStorage,[]);
+    RTC.pinned_tags = JSPLib.storage.checkStorageData('rtc-pinned-tags',ValidateProgramData,localStorage,[]);
+    ListTypeCheck();
+    RTC.pageload_recentcheck = Timer.CheckAllRecentTags();
+    RTC.pageload_frequentcheck = Timer.CheckAllFrequentTags();
+    $("#form").on('submit.rtc',Timer.CaptureTagSubmission);
     if (RTC.user_settings.cache_frequent_tags) {
         if ($("#c-posts #a-show").length) {
             Danbooru.RTC.cached_data = true;
@@ -1577,9 +1128,9 @@ function main() {
     } else if ($(".recent-related-tags-column").length) {
         DisplayRecentTags();
     } else {
-        RTC.mutation_observer = SetupMutationObserver();
-        RTC.mutation_observer.observe($(".related-tags")[0], {
-            childList: true
+        JSPLib.utility.setupMutationObserver(".related-tags",".user-related-tags-columns",()=>{
+            Main.debuglog("Server: User related tags have been added!");
+            DisplayRecentTags();
         });
     }
     JSPLib.utility.setCSSStyle(program_css,'program');
@@ -1588,4 +1139,23 @@ function main() {
     },JSPLib.utility.one_minute);
 }
 
-JSPLib.load.programInitialize(main,'RTC',program_load_required_variables,program_load_required_selectors);
+/****Function decoration****/
+
+JSPLib.debug.addFunctionTimers(Timer,false,[
+    RenderSettingsMenu,CaptureTagSubmission
+]);
+
+JSPLib.debug.addFunctionTimers(Timer,true,[
+    CheckAllRecentTags,CheckAllFrequentTags,QueryFrequentTags,CheckTagDeletion
+]);
+
+Timer.CheckMissingTags = JSPLib.debug.debugAsyncTimer(CheckMissingTags,1);
+
+JSPLib.debug.addFunctionLogs([
+    Main,BroadcastRTC,QueryFrequentTags,CaptureTagSubmission,SortTagData,FilterDeletedTags,CheckTagDeletion,
+    QueryMissingTags,CheckMissingTags,RecheckDisplaySemaphore,ValidateEntry
+]);
+
+/****Execution start****/
+
+JSPLib.load.programInitialize(Main,'RTC',program_load_required_variables,program_load_required_selectors);
