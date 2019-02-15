@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      23.1
+// @version      23.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -146,6 +146,11 @@ const settings_config = {
         default: false,
         validate: (data)=>{return JSPLib.validate.isBoolean(data);},
         hint: `Always goes to network. <b><span style="color:red">Warning:</span> This negates the benefit of cached data!</b>`
+    },
+    recheck_data_interval: {
+        default: 1,
+        validate: (data)=>{return Number.isInteger(data) && data >= 0 && data <= 3;},
+        hint: "Number of days (0 - 3). Data expiring within this period gets automatically requeried. Setting to 0 disables this."
     }
 }
 
@@ -1524,11 +1529,14 @@ function InitializeAutocompleteIndexed(selector, keycode, multiple=false) {
 
 //Main execution functions
 
-function NetworkSource(type,key,term,resp,metatag) {
+function NetworkSource(type,key,term,resp,metatag,process=true) {
     NetworkSource.debuglog("Querying",type,':',term);
     JSPLib.danbooru.submitRequest(source_config[type].url,source_config[type].data(term)).then((data)=>{
         if (!data || !Array.isArray(data)) {
-            resp([]);
+            if (process) {
+                resp([]);
+            }
+            return;
         }
         var d = $.map(data, source_config[type].map);
         var expiration_time = source_config[type].expiration(d);
@@ -1537,7 +1545,9 @@ function NetworkSource(type,key,term,resp,metatag) {
         if (source_config[type].fixupexpiration && d.length) {
             setTimeout(()=>{FixExpirationCallback(key, save_data, save_data[0].value, type);}, callback_interval);
         }
-        ProcessSourceData(type,metatag,term,d,resp);
+        if (process) {
+            ProcessSourceData(type,metatag,term,d,resp);
+        }
     });
 }
 
@@ -1566,11 +1576,22 @@ function AnySourceIndexed(keycode,default_metatag='',multiple=false) {
             var max_expiration = MaximumExpirationTime(type);
             var cached = await JSPLib.storage.checkLocalDB(key,ValidateEntry,max_expiration);
             if (cached) {
+                RecheckSourceData(type, key, term, cached);
                 ProcessSourceData(type, use_metatag, term, cached.value, resp);
                 return;
             }
         }
         NetworkSource(type, key, term, resp, use_metatag);
+    }
+}
+
+function RecheckSourceData(type,key,term,data) {
+    if (IAC.user_settings.recheck_data_interval > 0) {
+        let recheck_time = data.expires - (IAC.user_settings.recheck_data_interval * JSPLib.utility.one_day);
+        if (!JSPLib.validate.validateExpires(recheck_time)) {
+            JSPLib.debug.debuglog("Rechecking",type,":",term);
+            NetworkSource(type, key, term, null, null, false);
+        }
     }
 }
 
@@ -1674,6 +1695,7 @@ function RenderSettingsMenu() {
     $("#iac-sort-settings").append(JSPLib.menu.renderTextinput("iac",'prefix_source_weight',5));
     $("#iac-sort-settings").append(JSPLib.menu.renderTextinput("iac",'alias_source_weight',5));
     $("#iac-sort-settings").append(JSPLib.menu.renderTextinput("iac",'correct_source_weight',5));
+    $("#iac-network-settings").append(JSPLib.menu.renderTextinput("iac",'recheck_data_interval',5));
     $("#iac-network-settings").append(JSPLib.menu.renderCheckbox("iac",'alternate_tag_source'));
     $("#iac-network-settings").append(JSPLib.menu.renderCheckbox("iac",'network_only_mode'));
     $("#iac-cache-settings").append(JSPLib.menu.renderLinkclick("iac",'cache_info',"Cache info","Click to populate","Calculates the cache usage of the program and compares it to the total usage."));
