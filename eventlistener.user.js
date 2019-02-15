@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      14.0
+// @version      14.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries)
 // @author       BrokenEagle
@@ -902,7 +902,7 @@ function AddThumbnails($dompage) {
 
 async function GetThumbnails() {
     var url_addon = {tags: `id:${EL.post_ids.join(',')} limit:${EL.post_ids.length}`};
-    var html = $.get("/posts",url_addon);
+    var html = await $.get("/posts",url_addon);
     var $posts = $.parseHTML(html);
     var $thumbs = $(".post-preview",$posts);
     $thumbs.each((i,thumb)=>{
@@ -1425,7 +1425,7 @@ function BroadcastEL(ev) {
     BroadcastEL.debuglog(`(${ev.data.type}):`,ev.data);
     switch (ev.data.type) {
         case "hide":
-            $("#event-notice").hide();
+            !EL.locked_notice && $("#event-notice").hide();
             break;
         case "subscribe":
             EL.subscribelist[ev.data.eventtype] = ev.data.eventlist;
