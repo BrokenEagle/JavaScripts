@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DisplayPostInfo
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.0
+// @version      7.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Display views, uploader, and other info to the user.
 // @author       BrokenEagle
@@ -13,13 +13,13 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.2/rollups/md5.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20181230/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/menu.js
 // ==/UserScript==
 
 /****GLOBAL VARIABLES****/
@@ -32,13 +32,16 @@ JSPLib.debug.level = JSPLib.debug.INFO;
 
 //Variables for load.js
 const program_load_required_variables = ['window.jQuery','Danbooru.PostTooltip'];
-const program_load_required_selectors = ["#post-information,#c-posts #a-index,#c-users #a-edit"];
+const program_load_required_selectors = ["#page"];
 
 //Main program variable
 var DPI;
 
+//Timer function hash
+const Timer = {};
+
 //Regex that matches the prefix of all program cache data
-const program_cache_regex = /^(?:tt|user)-/
+const program_cache_regex = /^(tt|user)-/
 
 //Main program expires
 const prune_expires = JSPLib.utility.one_day;
@@ -47,31 +50,38 @@ const prune_expires = JSPLib.utility.one_day;
 const localstorage_keys = [];
 const program_reset_keys = {};
 
+const all_source_types = ['indexed_db','local_storage'];
+const all_data_types = ['user_data','top_tagger','custom'];
+const reverse_data_key = {
+    user_data: 'user',
+    top_tagger: 'tt'
+};
+
 //Main settings
 const settings_config = {
     post_views_enabled: {
         default: true,
-        validate: (data)=>{return validate.isBoolean(data);},
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
         hint: "Shows post views on the post page."
     },
     post_uploader_enabled: {
         default: true,
-        validate: (data)=>{return validate.isBoolean(data);},
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
         hint: "Shows the post uploader on the post page."
     },
     top_tagger_enabled: {
         default: false,
-        validate: (data)=>{return validate.isBoolean(data);},
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
         hint: "Shows top tagger on the post page."
     },
     basic_post_tooltip: {
         default: true,
-        validate: (data)=>{return typeof data === "boolean";},
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
         hint: "Adds the post uploader to the basic post tooltips."
     },
     advanced_post_tooltip: {
         default: true,
-        validate: (data)=>{return validate.isBoolean(data);},
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
         hint: "Adds the post uploader to the advanced post tooltips."
     }
 }
@@ -79,15 +89,32 @@ const settings_config = {
 //CSS constants
 
 const menu_css = `
-#dpi-console .expandable {
-    width: 90%;
-}
 #dpi-console {
     width: 100%;
     min-width: 100em;
 }
-.dpi-linkclick.jsplib-linkclick .dpi-control.jsplib-control {
+#dpi-console hr,
+#dpi-console .expandable {
+    width: 90%;
+    margin-left: 0;
+}
+#dpi-cache-viewer textarea {
+    width: 100%;
+    min-width: 40em;
+    height: 50em;
+    padding: 5px;
+}
+#dpi-cache-editor-errors {
+    display: none;
+    border: solid lightgrey 1px;
+    margin: 0.5em;
+    padding: 0.5em;
+}
+#dpi-settings .dpi-linkclick .dpi-control {
     display: inline;
+}
+#display-post-info a {
+    color:#0073ff;
 }
 `;
 
@@ -135,6 +162,34 @@ const dpi_menu = `
             <input type="button" id="dpi-resetall" value="Factory Reset">
         </div>
     </div>
+    <div id="dpi-cache-editor" class="jsplib-outer-menu">
+        <div id="dpi-editor-message" class="prose">
+            <h4>Cache editor</h4>
+            <p>See the <b><a href="#dpi-cache-message">Cache Data</a></b> details for the list of all cache data and what they do.</p>
+            <div class="expandable">
+                <div class="expandable-header">
+                    <span>Program Data details</span>
+                    <input type="button" value="Show" class="expandable-button">
+                </div>
+                <div class="expandable-content">
+                    <p class="tn">All timestamps are in milliseconds since the epoch (<a href="https://www.epochconverter.com">Epoch converter</a>).</p>
+                    <ul>
+                        <li>General data
+                            <ul>
+                                <li><b>prune-expires:</b> When the program will next check for cache data that has expired.</li>
+                                <li><b>user-settings:</b> All configurable settings.</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div id="dpi-cache-editor-controls"></div>
+        <div id="dpi-cache-editor-errors" class="jsplib-cache-editor-errors"></div>
+        <div id="dpi-cache-viewer" class="jsplib-cache-viewer">
+            <textarea></textarea>
+        </div>
+    </div>
 </div>
 `;
 
@@ -144,6 +199,7 @@ const thumbnail_hover_delay = 250;
 const top_tagger_expiration = JSPLib.utility.one_month;
 const user_expiration = JSPLib.utility.one_month;
 const bad_user_expiration = JSPLib.utility.one_day;
+const views_expiration = 5 * JSPLib.utility.one_minute;
 
 //Data inclusion lists
 const all_levels = ["Member","Gold","Platinum","Builder","Moderator","Admin"];
@@ -165,9 +221,14 @@ const user_constraints = {
     }
 };
 
+const view_constraints = {
+    expires: JSPLib.validate.expires_constraints,
+    value: JSPLib.validate.expires_constraints
+};
+
 /****FUNCTIONS****/
 
-////Validate functions
+//Validate functions
 
 function ValidateEntry(key,entry) {
     if (!JSPLib.validate.validateIsHash(key,entry)) {
@@ -176,86 +237,47 @@ function ValidateEntry(key,entry) {
     if (key.match(/^user-/)) {
         return ValidateUserEntry(key,entry);
     } else if (key.match(/^tt-/)) {
-        return ValidateTopTaggerEntry(key,entry);
+        return JSPLib.validate.validateHashEntries(key, entry, top_tagger_constraints);
+    } else if (key.match(/^pv-/)) {
+        return JSPLib.validate.validateHashEntries(key, entry, view_constraints);
     }
-    JSPLib.debug.debuglog("Shouldn't get here");
+    ValidateEntry.debuglog("Bad key!");
     return false;
 }
 
 function ValidateUserEntry(key,entry) {
-    let check = validate(entry, user_constraints.entry);
-    if (check !== undefined) {
-        JSPLib.validate.printValidateError(key, check);
+    if (!JSPLib.validate.validateHashEntries(key, entry, user_constraints.entry)) {
         return false;
     }
-    check = validate(entry.value, user_constraints.value);
-    if (check !== undefined) {
-        JSPLib.validate.printValidateError(key + '.value', check);
+    return JSPLib.validate.validateHashEntries(key + '.value', entry.value, user_constraints.value);
+}
+
+function ValidateProgramData(key,entry) {
+    var checkerror=[];
+    switch (key) {
+        case 'dpi-user-settings':
+            checkerror = JSPLib.menu.validateUserSettings(entry,settings_config);
+            break;
+        case 'dpi-prune-expires':
+            if (!Number.isInteger(entry)) {
+                checkerror = ["Value is not an integer."];
+            }
+            break;
+        default:
+            checkerror = ["Not a valid program data key."];
+    }
+    if (checkerror.length) {
+        JSPLib.validate.outputValidateError(key,checkerror);
         return false;
     }
     return true;
 }
 
-function ValidateTopTaggerEntry(key,entry) {
-    let check = validate(entry,top_tagger_constraints);
-    if (check !== undefined) {
-        JSPLib.validate.printValidateError(key,check);
-        return false;
-    }
-    return true;
-}
+//Library functions
 
-////Library functions
+////NONE
 
-function NameToKeyTransform(namelist,prefix) {
-    return namelist.map((value)=>{return prefix + '-' + value;});
-}
-
-function KeyToNameTransform(keylist,prefix) {
-    return keylist.map((key)=>{return key.replace(RegExp('^' + prefix + '-'),'');});
-}
-
-async function BatchStorageCheck(keyarray,validator,expires) {
-    let promise_array = [];
-    keyarray.forEach((key)=>{
-        promise_array.push(JSPLib.storage.checkLocalDB(key,validator,expires));
-    });
-    let result_array = await Promise.all(promise_array);
-    let missing_array = [];
-    result_array.forEach((result,i)=>{
-        if (!result) {
-            missing_array.push(keyarray[i]);
-        }
-    });
-    return missing_array;
-}
-
-function FixRenderLinkclick(program_shortcut,setting_name,display_name,link_text,hint) {
-    let setting_key = JSPLib.utility.kebabCase(setting_name);
-    return `
-<div class="${program_shortcut}-linkclick jsplib-linkclick jsplib-menu-item">
-    <h4>${display_name}</h4>
-    <div>
-        <b>[
-            <span class="${program_shortcut}-control jsplib-control">
-                <a href="#" id="${program_shortcut}-setting-${setting_key}">${link_text}</a>
-            </span>
-        ]</b>
-        &emsp;
-        <span class="${program_shortcut}-setting-tooltip jsplib-inline-tooltip">${hint}</span>
-    </div>
-</div>`;
-}
-
-function AddFunctionLogs(funclist) {
-    funclist.forEach((func)=>{
-        func.debuglog = function () {
-            JSPLib.debug.debuglog(`${func.name} - `,...arguments);
-        };
-    });
-}
-
-////Auxiliary functions
+//Auxiliary functions
 
 function BlankUser(user_id) {
     return {
@@ -290,6 +312,15 @@ function PopulateUserTags(current_tags,added_tags,user_tags,version_order,update
     current_tags.tags = JSPLib.utility.setDifference(current_tags.tags,added_tags);
 }
 
+function SaveMappedListData(mapped_data,expiration) {
+    mapped_data.forEach((user)=>{
+        let user_id = Object.keys(user)[0];
+        JSPLib.storage.saveData(`user-${user_id}`, {value: user[user_id], expires: JSPLib.utility.getExpiration(expiration)});
+    });
+}
+
+//Network functions
+
 async function GetUserData(user_id) {
     let user_key = `user-${user_id}`;
     let data = await JSPLib.storage.checkLocalDB(user_key, ValidateEntry, user_expiration);
@@ -297,7 +328,7 @@ async function GetUserData(user_id) {
         JSPLib.debug.debuglog("DisplayPostUploader - Getting post uploader info:", user_id);
         let user_data = await JSPLib.danbooru.submitRequest("users", {search: {id: user_id, expiry: 30}});
         if (user_data && user_data.length) {
-            mapped_data = MapUserData(user_data[0]);
+            var mapped_data = MapUserData(user_data[0]);
             JSPLib.storage.saveData(user_key,{value: mapped_data, expires: JSPLib.utility.getExpiration(user_expiration)});
         } else {
             JSPLib.debug.debuglog("DisplayPostUploader - Missing user:", user_id);
@@ -311,19 +342,10 @@ async function GetUserData(user_id) {
 }
 GetUserData.promises = {};
 
-function SaveMappedListData(mapped_data,expiration) {
-    mapped_data.forEach((user)=>{
-        let user_id = Object.keys(user)[0];
-        JSPLib.storage.saveData(`user-${user_id}`, {value: user[user_id], expires: JSPLib.utility.getExpiration(expiration)});
-    });
-}
-
-async function GetUserListData(user_id_list) {
+async function GetUserListData(userid_list) {
     var mapped_list_data = [];
-    let key_list = NameToKeyTransform(user_id_list,'user');
-    let missing_keys = await BatchStorageCheck(key_list, ValidateEntry, user_expiration);
-    if (missing_keys.length) {
-        let missing_users = KeyToNameTransform(missing_keys,'user').map(Number);
+    let missing_users = await JSPLib.storage.batchStorageCheck(userid_list, ValidateEntry, user_expiration, 'user');
+    if (missing_users.length) {
         GetUserListData.debuglog("Missing users:", missing_users);
         let user_list = await JSPLib.danbooru.submitRequest("users", {search: {id: missing_users.join(',')}, limit: missing_users.length});
         mapped_list_data = user_list.map((user)=>{return {[user.id]: MapUserData(user)};});
@@ -332,39 +354,44 @@ async function GetUserListData(user_id_list) {
             let found_users = JSPLib.utility.getObjectAttributes(user_list,'id');
             let bad_users = JSPLib.utility.setDifference(missing_users,found_users);
             GetUserListData.debuglog("Bad users:", bad_users);
-            let bad_data = bad_users.map((user_id)=>{return {[user_id]: BlankUser(user_id)};});
+            let bad_data = bad_users.map((userid)=>{return {[userid]: BlankUser(userid)};});
             SaveMappedListData(bad_data, bad_user_expiration);
             mapped_list_data = mapped_list_data.concat(bad_data);
         }
     }
-    let found_keys = JSPLib.utility.setDifference(key_list,missing_keys);
-    if (found_keys.length) {
-        let found_users = KeyToNameTransform(found_keys,'user').map(Number);
+    let found_users = JSPLib.utility.setDifference(userid_list,missing_users);
+    if (found_users.length) {
         GetUserListData.debuglog("Found users:", found_users);
-        let found_data = found_keys.map((key,i)=>{
-            let user_id = found_users[i];
+        let found_data = found_users.map((userid)=>{
             //Just in case...
-            let default_val = {value: BlankUser(user_id)};
-            return {[user_id]: JSPLib.storage.getStorageData(key,sessionStorage, default_val).value};
+            let default_val = {value: BlankUser(userid)};
+            return {[userid]: JSPLib.storage.getStorageData('user-' + userid, sessionStorage, default_val).value};
         });
         mapped_list_data = mapped_list_data.concat(found_data);
     }
     return Object.assign({},...mapped_list_data);
 }
 
-////Main execution functions
+//Main execution functions
 
-//#A-SHOW
+////#A-SHOW
 
 async function DisplayPostViews() {
     var post_views;
     let post_id = JSPLib.utility.getMeta('post-id');
-    DisplayPostViews.debuglog("Checking post views:", post_id);
-    try {
-        post_views = await $.get(`https://isshiki.donmai.us/post_views/${post_id}`);
-    } catch(e) {
-        post_views = `${e.status} ${e.responseText || e.statusText}`;
-        DisplayPostViews.debuglog("Error:", e.status, e.responseText || e.statusText);
+    let views_key = `pv-${post_id}`;
+    DisplayPostViews.debuglog("Checking:", post_id);
+    let view_data = JSPLib.storage.checkStorageData(views_key,ValidateEntry,sessionStorage);
+    if (!view_data) {
+        try {
+            post_views = await $.get(`https://isshiki.donmai.us/post_views/${post_id}`);
+            JSPLib.storage.setStorageData(views_key,{value: post_views, expires: JSPLib.utility.getExpiration(views_expiration)},sessionStorage);
+        } catch(e) {
+            post_views = `${e.status} ${e.responseText || e.statusText}`;
+            DisplayPostViews.debuglog("Error:", e.status, e.responseText || e.statusText);
+        }
+    } else {
+        post_views = view_data.value;
     }
     $("#dpi-post-views").html(`Views: ${post_views}`).show();
 }
@@ -376,7 +403,7 @@ async function DisplayPostUploader() {
     }
     let user_data = await GetUserData.promises[uploader_id];
     let name_html = RenderUsername(uploader_id,user_data);
-    let search_html =  JSPLib.danbooru.postSearchLink("user:" + user_data.name, "&raquo;");
+    let search_html = JSPLib.danbooru.postSearchLink("user:" + user_data.name, "&raquo;");
     $("#dpi-post-uploader").html(`Uploader: ${name_html}&ensp;${search_html}`).show();
 }
 
@@ -436,7 +463,7 @@ async function DisplayTopTagger() {
     $("#dpi-top-tagger").after(`<li>Top tagger: ${name_html}</li>`).show();
 }
 
-//#A-INDEX
+////#A-INDEX
 
 function RenderTooltip (event, qtip) {
     var post_id = $(this).parents("[data-id]").data("id");
@@ -470,6 +497,20 @@ function UpdateThumbnailTitles() {
 
 //Settings functions
 
+function BroadcastDPI(ev) {
+    BroadcastDPI.debuglog(`(${ev.data.type}):`, ev.data);
+    switch (ev.data.type) {
+        case "purge":
+            Object.keys(sessionStorage).forEach((key)=>{
+                if (key.match(program_cache_regex)) {
+                    sessionStorage.removeItem(key);
+                }
+            });
+        default:
+            //do nothing
+    }
+}
+
 function RenderSettingsMenu() {
     $("#display-post-info").append(dpi_menu);
     $("#dpi-general-settings").append(JSPLib.menu.renderCheckbox("dpi",'post_views_enabled'));
@@ -477,46 +518,63 @@ function RenderSettingsMenu() {
     $("#dpi-general-settings").append(JSPLib.menu.renderCheckbox("dpi",'top_tagger_enabled'));
     $("#dpi-general-settings").append(JSPLib.menu.renderCheckbox("dpi",'basic_post_tooltip'));
     $("#dpi-general-settings").append(JSPLib.menu.renderCheckbox("dpi",'advanced_post_tooltip'));
-    $("#dpi-cache-settings").append(FixRenderLinkclick("dpi",'purge_cache',`Purge cache (<span id="dpi-purge-counter">...</span>)`,"Click to purge","Dumps all of the cached data related to DisplayPostInfo."));
+    $("#dpi-cache-settings").append(JSPLib.menu.renderLinkclick("dpi",'cache_info',"Cache info","Click to populate","Calculates the cache usage of the program and compares it to the total usage."));
+    $("#dpi-cache-settings").append(`<div id="dpi-cache-info-table" style="display:none"></div>`);
+    $("#dpi-cache-settings").append(JSPLib.menu.renderLinkclick("dpi",'purge_cache',`Purge cache (<span id="dpi-purge-counter">...</span>)`,"Click to purge","Dumps all of the cached data related to DisplayPostInfo."));
+    $("#dpi-cache-editor-controls").append(JSPLib.menu.renderKeyselect('dpi','data_source',true,'indexed_db',all_source_types,"Indexed DB is <b>Cache Data</b> and Local Storage is <b>Program Data</b>."));
+    $("#dpi-cache-editor-controls").append(JSPLib.menu.renderKeyselect('dpi','data_type',true,'tag_data',all_data_types,"Only applies to Indexed DB.  Use <b>Custom</b> for querying by keyname."));
+    $("#dpi-cache-editor-controls").append(JSPLib.menu.renderTextinput('dpi','data_name',20,true,"Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.",['get','save','delete']));
     JSPLib.menu.saveUserSettingsClick('dpi','DisplayPostInfo');
     JSPLib.menu.resetUserSettingsClick('dpi','DisplayPostInfo',localstorage_keys,program_reset_keys);
     JSPLib.menu.purgeCacheClick('dpi','DisplayPostInfo',program_cache_regex,"#dpi-purge-counter");
+    JSPLib.menu.cacheInfoClick('dpi',program_cache_regex,"#dpi-cache-info-table");
+    JSPLib.menu.getCacheClick('dpi',reverse_data_key);
+    JSPLib.menu.saveCacheClick('dpi',ValidateProgramData,ValidateEntry,reverse_data_key);
+    JSPLib.menu.deleteCacheClick('dpi',reverse_data_key);
+    JSPLib.menu.cacheAutocomplete('dpi',program_cache_regex,reverse_data_key);
 }
 
 //Main program
 
-function main() {
+function Main() {
     Danbooru.DPI = DPI = {
-        basic_tooltips: JSON.parse(Danbooru.Utility.meta('disable-post-tooltips')),
-        settings_config: settings_config
+        basic_tooltips: JSON.parse(JSPLib.utility.getMeta('disable-post-tooltips')),
+        storage_keys: {indexed_db: [], local_storage: []},
+        settings_config: settings_config,
+        channel: new BroadcastChannel('DisplayPostInfo')
     };
     DPI.user_settings = JSPLib.menu.loadUserSettings('dpi');
+    DPI.channel.onmessage = BroadcastDPI;
     if ($("#c-posts #a-show").length) {
         //Render containers now so that completion time doesn't determine order
         $("#post-information > ul > li:nth-of-type(6)").after(`<li id="dpi-post-views" style="display:none"></li>`);
         $("#post-information > ul > li:nth-of-type(2)").after(`<li id="dpi-post-uploader" style="display:none"></li><li id="dpi-top-tagger" style="display:none"></li>`);
         if (DPI.user_settings.post_views_enabled) {
-            DisplayPostViews();
+            Timer.DisplayPostViews();
         }
         if (DPI.user_settings.post_uploader_enabled) {
-            DisplayPostUploader();
+            Timer.DisplayPostUploader();
         }
         if (DPI.user_settings.top_tagger_enabled) {
-            DisplayTopTagger();
+            Timer.DisplayTopTagger();
         }
     } else if ($("#c-posts #a-index").length) {
+        //Maybe put the following map function into the library
         let all_uploaders = JSPLib.utility.setUnique($(".post-preview").map((i,entry)=>{return $(entry).data('uploader-id')}).toArray());
-        DPI.all_uploaders = GetUserListData(all_uploaders);
+        DPI.all_uploaders = Timer.GetUserListData(all_uploaders);
         if (!Danbooru.DPI.basic_tooltips && DPI.user_settings.advanced_post_tooltip) {
             Danbooru.PostTooltip.QTIP_OPTIONS.content = RenderTooltip;
         } else if (Danbooru.DPI.basic_tooltips && DPI.user_settings.basic_post_tooltip) {
             UpdateThumbnailTitles();
         }
     } else if ($("#c-users #a-edit").length) {
+        JSPLib.validate.dom_output = "#dpi-cache-editor-errors";
+        JSPLib.menu.loadStorageKeys('dpi',program_cache_regex);
         JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
             JSPLib.menu.installSettingsMenu("DisplayPostInfo");
             RenderSettingsMenu();
         });
+        //Including this only during a transitory period for all scripts to be updated to the new library version
         JSPLib.utility.setCSSStyle(menu_css,'menu');
     }
     setTimeout(()=>{
@@ -524,8 +582,20 @@ function main() {
     },JSPLib.utility.one_minute);
 }
 
-//Execution start
+/****Function decoration****/
 
-AddFunctionLogs([DisplayPostViews,DisplayPostUploader,DisplayTopTagger,RenderTooltip,GetUserListData]);
+JSPLib.debug.addFunctionTimers(Timer,false,[
+    RenderSettingsMenu
+]);
 
-JSPLib.load.programInitialize(main,'DPI',program_load_required_variables,program_load_required_selectors);
+JSPLib.debug.addFunctionTimers(Timer,true,[
+    DisplayPostViews,DisplayPostUploader,DisplayTopTagger,GetUserListData
+]);
+
+JSPLib.debug.addFunctionLogs([
+    DisplayPostViews,DisplayPostUploader,DisplayTopTagger,RenderTooltip,GetUserListData,ValidateEntry
+]);
+
+/****Execution start****/
+
+JSPLib.load.programInitialize(Main,'DPI',program_load_required_variables,program_load_required_selectors);
