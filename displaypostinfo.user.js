@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DisplayPostInfo
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.0
+// @version      7.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Display views, uploader, and other info to the user.
 // @author       BrokenEagle
@@ -381,7 +381,7 @@ async function DisplayPostViews() {
     let post_id = JSPLib.utility.getMeta('post-id');
     let views_key = `pv-${post_id}`;
     DisplayPostViews.debuglog("Checking:", post_id);
-    let view_data = JSPLib.storage.checkStorageData(views_key,ValidateEntry,sessionStorage);
+    let view_data = await JSPLib.storage.checkLocalDB(views_key,ValidateEntry,views_expiration);
     if (!view_data) {
         try {
             post_views = await $.get(`https://isshiki.donmai.us/post_views/${post_id}`);
