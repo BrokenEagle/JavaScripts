@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DisplayPostInfo
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.1
+// @version      7.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Display views, uploader, and other info to the user.
 // @author       BrokenEagle
@@ -41,7 +41,7 @@ var DPI;
 const Timer = {};
 
 //Regex that matches the prefix of all program cache data
-const program_cache_regex = /^(tt|user)-/
+const program_cache_regex = /^(tt|user|pv)-/
 
 //Main program expires
 const prune_expires = JSPLib.utility.one_day;
@@ -51,10 +51,11 @@ const localstorage_keys = [];
 const program_reset_keys = {};
 
 const all_source_types = ['indexed_db','local_storage'];
-const all_data_types = ['user_data','top_tagger','custom'];
+const all_data_types = ['user_data','top_tagger','post_views','custom'];
 const reverse_data_key = {
     user_data: 'user',
-    top_tagger: 'tt'
+    top_tagger: 'tt',
+    post_views: 'pv'
 };
 
 //Main settings
@@ -151,6 +152,7 @@ const dpi_menu = `
                                 </ul>
                             </li>
                             <li><b>User data (user):</b> Information about the user.</li>
+                            <li><b>Post views (pv):</b> Unique view count of a post./li>
                         </ul>
                     </div>
                 </div>
@@ -199,7 +201,9 @@ const thumbnail_hover_delay = 250;
 const top_tagger_expiration = JSPLib.utility.one_month;
 const user_expiration = JSPLib.utility.one_month;
 const bad_user_expiration = JSPLib.utility.one_day;
-const views_expiration = 5 * JSPLib.utility.one_minute;
+const min_views_expiration = JSPLib.utility.one_minute;
+const mid_views_expiration = JSPLib.utility.one_hour;
+const max_views_expiration = JSPLib.utility.one_day;
 
 //Data inclusion lists
 const all_levels = ["Member","Gold","Platinum","Builder","Moderator","Admin"];
@@ -319,19 +323,43 @@ function SaveMappedListData(mapped_data,expiration) {
     });
 }
 
+function LogarithmicExpiration(count, max_count, time_divisor, multiplier) {
+    let time_exponent =  Math.pow(10,(1/time_divisor));
+    return Math.round(Math.log10(time_exponent + (10 - time_exponent) * (count / max_count)) * multiplier);
+}
+
+function PostViewsExpiration(created_timestamp) {
+    let created_interval = Date.now() - created_timestamp;
+    if (created_interval < JSPLib.utility.one_hour) {
+        return min_views_expiration
+    } else if (created_interval < JSPLib.utility.one_day) {
+        let hour_interval = (created_interval / JSPLib.utility.one_hour) - 1; //Start at 0 hours and go to 23 hours
+        let hour_slots = 23; //There are 23 hour slots between 1 hour and 24 hours
+        let minutes_hour = 60;
+        return LogarithmicExpiration(hour_interval, hour_slots, minutes_hour, mid_views_expiration);
+    } else if (created_interval < JSPLib.utility.one_month) {
+        let day_interval = (created_interval / JSPLib.utility.one_day) - 1; //Start at 0 days and go to 29 days
+        let day_slots = 29; //There are 29 days slots between 1 day and 30 days
+        let hours_day = 24;
+        return LogarithmicExpiration(day_interval, day_slots, hours_day, max_views_expiration);
+    } else {
+        return max_views_expiration;
+    }
+}
+
 //Network functions
 
 async function GetUserData(user_id) {
     let user_key = `user-${user_id}`;
     let data = await JSPLib.storage.checkLocalDB(user_key, ValidateEntry, user_expiration);
     if (!data) {
-        JSPLib.debug.debuglog("DisplayPostUploader - Getting post uploader info:", user_id);
+        GetUserData.debuglog("Querying:", user_id);
         let user_data = await JSPLib.danbooru.submitRequest("users", {search: {id: user_id, expiry: 30}});
         if (user_data && user_data.length) {
             var mapped_data = MapUserData(user_data[0]);
             JSPLib.storage.saveData(user_key,{value: mapped_data, expires: JSPLib.utility.getExpiration(user_expiration)});
         } else {
-            JSPLib.debug.debuglog("DisplayPostUploader - Missing user:", user_id);
+            GetUserData.debuglog("Missing user:", user_id);
             mapped_data = BlankUser(user_id);
             JSPLib.storage.saveData(user_key,{value: mapped_data, expires: JSPLib.utility.getExpiration(bad_user_expiration)});
         }
@@ -381,14 +409,23 @@ async function DisplayPostViews() {
     let post_id = JSPLib.utility.getMeta('post-id');
     let views_key = `pv-${post_id}`;
     DisplayPostViews.debuglog("Checking:", post_id);
-    let view_data = await JSPLib.storage.checkLocalDB(views_key,ValidateEntry,views_expiration);
+    let view_data = await JSPLib.storage.checkLocalDB(views_key, ValidateEntry, max_views_expiration);
     if (!view_data) {
+        let post_timestamp = new Date($("#post-information time").attr("datetime")).getTime();
+        let expiration_time = PostViewsExpiration(post_timestamp);
         try {
             post_views = await $.get(`https://isshiki.donmai.us/post_views/${post_id}`);
-            JSPLib.storage.setStorageData(views_key,{value: post_views, expires: JSPLib.utility.getExpiration(views_expiration)},sessionStorage);
         } catch(e) {
-            post_views = `${e.status} ${e.responseText || e.statusText}`;
+            let error_text = `${e.status} ${e.responseText || e.statusText}`;
             DisplayPostViews.debuglog("Error:", e.status, e.responseText || e.statusText);
+            $("#dpi-post-views").html(`Views: ${error_text}`).show();
+            return;
+        }
+        //If the post was created within the hour, then only cache in session storage, else cache normally
+        if (expiration_time === min_views_expiration) {
+            JSPLib.storage.setStorageData(views_key, {value: post_views, expires: JSPLib.utility.getExpiration(expiration_time)}, sessionStorage);
+        } else {
+            JSPLib.storage.saveData(views_key, {value: post_views, expires: JSPLib.utility.getExpiration(expiration_time)});
         }
     } else {
         post_views = view_data.value;
@@ -593,7 +630,7 @@ JSPLib.debug.addFunctionTimers(Timer,true,[
 ]);
 
 JSPLib.debug.addFunctionLogs([
-    DisplayPostViews,DisplayPostUploader,DisplayTopTagger,RenderTooltip,GetUserListData,ValidateEntry
+    GetUserData,DisplayPostViews,DisplayPostUploader,DisplayTopTagger,RenderTooltip,GetUserListData,ValidateEntry
 ]);
 
 /****Execution start****/
