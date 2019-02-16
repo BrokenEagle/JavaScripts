@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      27.0
+// @version      27.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -297,6 +297,8 @@ const metatags_regex = /^(?:rating|-?parent|source|-?locked|-?pool|newpool|-?fav
 const typetags_regex = /^-?(?:general|gen|artist|art|copyright|copy|co|character|char|ch|meta):/i;
 const negative_regex = /^-/;
 const striptype_regex = /^(-?)(?:general:|gen:|artist:|art:|copyright:|copy:|co:|character:|char:|ch:|meta:)?(.*)/i
+const cosplay_regex = /^(.+)_\(cosplay\)$/;
+const school_regex = /^(.+)_school_uniform$/;
 
 //Validate constants
 
@@ -379,6 +381,28 @@ function TransformTypetags(array) {
 
 function GetCurrentTags() {
     return JSPLib.utility.filterRegex(JSPLib.utility.filterRegex(GetTagList(),metatags_regex,true),typetags_regex,true);
+}
+
+function GetAutoImplications() {
+    VTI.preedittags.forEach((tag)=>{
+        let match = tag.match(cosplay_regex);
+        if (match) {
+            let base_tag = match[1];
+            GetAutoImplications.debuglog("Found:",tag,'->','cosplay');
+            GetAutoImplications.debuglog("Found:",tag,'->',base_tag);
+            VTI.implicationdict.cosplay = VTI.implicationdict.cosplay || [];
+            VTI.implicationdict.cosplay.push(tag);
+            VTI.implicationdict[base_tag] = VTI.implicationdict[base_tag] || [];
+            VTI.implicationdict[base_tag].push(tag);
+        }
+        match = tag.match(school_regex);
+        if (match) {
+            let base_tag = match[1];
+            GetAutoImplications.debuglog("Found:",tag,'->','school_uniform');
+            VTI.implicationdict.school_uniform = VTI.implicationdict.school_uniform || [];
+            VTI.implicationdict.school_uniform.push(tag);
+        }
+    });
 }
 
 function GetAllRelations(tag,implicationdict) {
@@ -853,7 +877,10 @@ function Main() {
         VTI.preedittags = GetTagList();
         Main.debuglog("Preedit tags:",VTI.preedittags);
         if (VTI.user_settings.implication_check_enabled) {
-            Timer.QueryTagImplications(VTI.preedittags);
+            Timer.QueryTagImplications(VTI.preedittags).then(()=>{
+                Main.debuglog("Adding auto implications");
+                GetAutoImplications();
+            });
         }
         let post_id = parseInt(JSPLib.utility.getMeta('post-id'));
         let seen_post_list = JSPLib.storage.getStorageData('vti-seen-postlist',sessionStorage,[]);
@@ -910,7 +937,7 @@ JSPLib.debug.addFunctionTimers(Timer,true,[
 
 JSPLib.debug.addFunctionLogs([
     Main, ValidateEntry, BroadcastVTI, PostModeMenu,ValidateTags,ReenableSubmitCallback,
-    QueryTagAlias, QueryTagAliases, QueryTagImplication, QueryTagImplications,
+    GetAutoImplications, QueryTagAlias, QueryTagAliases, QueryTagImplication, QueryTagImplications,
     ValidateTagAdds,ValidateTagRemoves,ValidateUpload,ValidateArtist,ValidateCopyright,ValidateGeneral
 ]);
 
