@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      23.0
+// @version      23.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -1771,7 +1771,7 @@ function Main() {
             //Is source column empty?
             if (/^\s+$/.test($(".source-related-tags-columns").html())) {
                 Main.debuglog("Setting up mutation observer for source data.");
-                JSPLib.utility.setupMutationObserver(".related-tags",".source-related-tags-columns",()=>{Timer.SaveArtistData();});
+                JSPLib.utility.setupMutationRemoveObserver(".related-tags",".source-related-tags-columns",()=>{Timer.SaveArtistData();});
             } else {
                 Timer.SaveArtistData();
             }

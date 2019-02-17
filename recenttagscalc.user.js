@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RecentTagsCalc
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.0
+// @version      6.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Use different mechanism to calculate RecentTags
 // @author       BrokenEagle
@@ -1128,7 +1128,7 @@ function Main() {
     } else if ($(".recent-related-tags-column").length) {
         DisplayRecentTags();
     } else {
-        JSPLib.utility.setupMutationObserver(".related-tags",".user-related-tags-columns",()=>{
+        JSPLib.utility.setupMutationRemoveObserver(".related-tags",".user-related-tags-columns",()=>{
             Main.debuglog("Server: User related tags have been added!");
             DisplayRecentTags();
         });
