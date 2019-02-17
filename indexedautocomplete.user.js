@@ -492,7 +492,7 @@ const all_pools = ["collection","series"]
 const all_related = ['','general','copyright','character','artist'];
 const all_users = ["Member","Gold","Platinum","Builder","Moderator","Admin"];
 
-//Both of the following are used to determine when to run the script
+//All of the following are used to determine when to run the script
 const autocomplete_userlist = [
     "#search_to_name",
     "#search_from_name",
@@ -508,12 +508,15 @@ const autocomplete_userlist = [
     ".c-user-upgrades #quick_search_name_matches",
     "#user_feedback_user_name"
 ];
-//DOM elements with autocomplete
-const autocomplete_domlist = [
+//DOM elements with race condition
+const autocomplete_rebindlist = [
     "[data-autocomplete=tag-query]",
     "[data-autocomplete=tag-edit]",
     "[data-autocomplete=tag]",
-    ".autocomplete-mentions textarea",
+    ".autocomplete-mentions textarea"
+];
+//DOM elements with autocomplete
+const autocomplete_domlist = [
     "#search_title,#quick_search_title",
     "#search_name,#quick_search_name",
     "#search_name_matches,#quick_search_name_matches",
@@ -523,7 +526,7 @@ const autocomplete_domlist = [
     "#saved_search_label_string",
     "#search_post_tags_match",
     "#bulk_update_request_script"
-    ].concat(autocomplete_userlist);
+    ].concat(autocomplete_rebindlist).concat(autocomplete_userlist);
 
 //Expiration variables
 
@@ -1209,7 +1212,7 @@ function GetRelatedKeyModifer(category) {
 //Usage functions
 
 function KeepSourceData(type,metatag,data) {
-    let slicepos = (metatag === '' ? 0 : metatag.length + 1);
+    let slicepos = metatag.length + (metatag.includes(':') ? 1 : 0);
     IAC.source_data[type] = IAC.source_data[type] || {};
     $.each(data, (i,val)=>{
         let key = (val.antecedent ? val.antecedent : val.value.slice(slicepos));
@@ -1240,7 +1243,7 @@ function AddUserSelected(type,metatag,term,data) {
     IAC.shown_data = [];
     let user_order = GetChoiceOrder(type,term);
     for (let i = user_order.length - 1; i >= 0; i--) {
-        let checkterm = (metatag === '' ? user_order[i] : metatag + ':' + user_order[i]);
+        let checkterm = (['','@'].includes(metatag) ? metatag + user_order[i] : metatag + ':' + user_order[i]);
         //Splice out Danbooru data if it exists
         for (let j = 0; j < data.length; j++) {
             let compareterm = (data[j].antecedent ? data[j].antecedent : data[j].value);
@@ -1729,6 +1732,12 @@ function Main() {
     Danbooru.Autocomplete.insert_completion_old = Danbooru.Autocomplete.insert_completion;
     Danbooru.Autocomplete.insert_completion = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.insert_completion,InsertUserSelected);
     Danbooru.Autocomplete.render_item = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.render_item,HighlightSelected);
+    //Has autocomplete script already been run?
+    if(JSPLib.utility.hasDOMDataKey(autocomplete_rebindlist.join(','),'uiAutocomplete')) {
+        $(autocomplete_rebindlist.join(',')).each((i,entry)=>{
+            $(entry).data("uiAutocomplete")._renderItem = Danbooru.Autocomplete.render_item;
+        });
+    }
     if ($("#c-wiki-pages,#c-wiki-page-versions").length) {
         RebindAnyAutocomplete('[data-autocomplete="wiki-page"]', 'wp');
     }
