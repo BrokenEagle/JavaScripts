@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      14.1
+// @version      14.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries)
 // @author       BrokenEagle
@@ -1497,7 +1497,7 @@ function RenderSettingsMenu() {
     $("#el-network-settings").append(JSPLib.menu.renderTextinput("el",'recheck_interval',10));
     $("#el-subscribe-controls").append(JSPLib.menu.renderInputSelectors('el','post_events','checkbox',true,['post','comment','note','commentary'],[],'Select which events to populate.'));
     $("#el-subscribe-controls").append(JSPLib.menu.renderInputSelectors('el','operation','radio',true,['add','subtract','overwrite'],['add'],'Select how the query will affect existing subscriptions.'));
-    $("#el-subscribe-controls").append(JSPLib.menu.renderTextinput('el','search_query',50,true,'Enter a tag search query to populate. See <a href="/wiki_pages/43049" style="color:#0073ff">Help:Cheatsheet</a> for more info.',true));
+    $("#el-subscribe-controls").append(JSPLib.menu.renderTextinput('el','search_query',50,true,'Enter a tag search query to populate. See <a href="/wiki_pages/43049" style="color:#0073ff">Help:Cheatsheet</a> for more info.',['get']));
     $("#el-subscribe-controls").append(display_counter);
     $("#el-cache-settings").append(JSPLib.menu.renderLinkclick("el",'cache_info',"Cache info","Click to populate","Calculates the cache usage of the program and compares it to the total usage."));
     $("#el-cache-settings").append(`<div id="el-cache-info-table" style="display:none"></div>`);
