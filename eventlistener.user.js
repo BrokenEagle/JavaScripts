@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      14.2
+// @version      14.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries)
 // @author       BrokenEagle
@@ -1145,7 +1145,7 @@ function UpdateAll(event) {
         JSPLib.danbooru.counter_domname = "#el-activity-indicator";
         EL.no_limit = true;
         ProcessAllEvents(()=>{
-            JSPLib.concurrency.setRecheckTimeout('el-timout',EL.timeout_expires);
+            JSPLib.concurrency.setRecheckTimeout('el-timeout',EL.timeout_expires);
             Danbooru.Utility.notice("All events checked!");
         });
     }
