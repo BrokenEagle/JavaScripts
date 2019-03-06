@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      2.0
+// @version      2.1
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -1219,15 +1219,16 @@ function UpdateLinkTitles() {
             let post_id = tweet_entry.post_ids[0];
             if (post_id in ProcessTweets.post_index) {
                 $link.attr('title',GetLinkTitle(ProcessTweets.post_index[post_id],false));
+                tweet_entry.processed = true;
             }
         } else {
             let post_ids = tweet_entry.post_ids;
             if (JSPLib.utility.setIntersection(Object.keys(ProcessTweets.post_index).map(Number),post_ids).length === post_ids.length) {
                 let posts = post_ids.map((post_id)=>{return ProcessTweets.post_index[post_id];});
                 $link.attr('title',GetMultiLinkTitle(post_ids,posts,false));
+                tweet_entry.processed = true;
             }
         }
-        tweet_entry.processed = true;
     }
 }
 
