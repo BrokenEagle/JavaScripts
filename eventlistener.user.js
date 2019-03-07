@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      14.3
+// @version      14.4
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries)
 // @author       BrokenEagle
@@ -1553,6 +1553,7 @@ function Main() {
         if (CheckAbsence()) {
             JSPLib.concurrency.setRecheckTimeout('el-timeout',EL.timeout_expires);
             ProcessAllEvents(()=>{
+                SetLastSeenTime();
                 JSPLib.concurrency.freeSemaphore('el');
             });
         } else {
