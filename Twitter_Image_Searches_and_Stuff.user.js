@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      2.1
+// @version      2.2
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -1371,10 +1371,9 @@ function UpdateArtistHighlights() {
         let no_highlight_list = GetArtistList();
         let fade_selectors = JSPLib.utility.joinList(TISAS.user_settings.score_levels_faded,'.tisas-',',');
         let hide_selectors = JSPLib.utility.joinList(TISAS.user_settings.score_levels_hidden,'.tisas-',',');
-        if (no_highlight_list.includes(TISAS.account)) {
-            $(fade_selectors).removeClass("tisas-fade");
-            $(hide_selectors).removeClass("tisas-hide");
-        } else {
+        $(".tisas-fade").removeClass("tisas-fade");
+        $(".tisas-hide").removeClass("tisas-hide");
+        if (!no_highlight_list.includes(TISAS.account)) {
             $(fade_selectors).addClass("tisas-fade");
             $(hide_selectors).addClass("tisas-hide");
         }
@@ -2428,8 +2427,8 @@ function HighlightTweets() {
         }
         var $container = $(tweet.entry).parent();
         $container.removeClass(JSPLib.utility.joinList(score_levels,'tisas-',' ')).addClass(`tisas-${level}`);
-        UpdateArtistHighlights();
     });
+    UpdateArtistHighlights();
     HighlightTweets.debuglog("Excellent:",current_count.excellent,"Good:",current_count.good,"Above average:",current_count.aboveavg,"Fair:",current_count.fair,"Belowavg:",current_count.belowavg,"Poor:",current_count.poor);
 }
 HighlightTweets.tweetarray = [];
