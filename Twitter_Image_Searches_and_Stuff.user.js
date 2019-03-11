@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      2.2
+// @version      2.3
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -2345,14 +2345,16 @@ function RegularCheck() {
         ProcessTweets($tweets,null,".ProfileTweet-actionList",`<div class="ProfileTweet-action tisas-timeline-menu ${timeline_class}"></div>`);
         HighlightTweets();
     } else if (TISAS.page === "tweet") {
-        ProcessTweets($tweets,`[data-tweet-id=${TISAS.addon}][data-has-cards]:not([data-card2-type])`,".client-and-actions",'<span class="tisas-tweet-menu"></span>');
-        if (TISAS.user_settings.original_download_enabled) {
-            let $tweet = $tweets.filter(`[data-tweet-id=${TISAS.addon}][data-has-cards]:not([data-card2-type])`);
-            let download_html = RenderDownloadLinks($tweet,TISAS.user_settings.download_position[0]);
-            if (TISAS.user_settings.download_position[0] === "above") {
-                $(".tweet-text",$tweet).append(download_html);
-            } else if (TISAS.user_settings.download_position[0] === "below") {
-                $(".AdaptiveMediaOuterContainer",$tweet).after(download_html);
+        let $tweet = $tweets.filter(`[data-tweet-id=${TISAS.addon}][data-has-cards]:not([data-card2-type])`).filter((i,entry)=>{return $(entry).find(".AdaptiveMedia:not(.is-video)").length;});
+        if ($tweet.length) {
+            ProcessTweets($tweet,null,".client-and-actions",'<span class="tisas-tweet-menu"></span>');
+            if (TISAS.user_settings.original_download_enabled) {
+                let download_html = RenderDownloadLinks($tweet,TISAS.user_settings.download_position[0]);
+                if (TISAS.user_settings.download_position[0] === "above") {
+                    $(".tweet-text",$tweet).append(download_html);
+                } else if (TISAS.user_settings.download_position[0] === "below") {
+                    $(".AdaptiveMediaOuterContainer",$tweet).after(download_html);
+                }
             }
         }
     }
