@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      2.4
+// @version      3.0
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -45,6 +45,13 @@ JSPLib.debug.level = JSPLib.debug.INFO;
 const program_load_required_variables = ['window.jQuery','window.Danbooru'];
 const program_load_required_selectors = [".ProfileSidebar--withLeftAlignment,.SidebarFilterModule,.dashboard-left,.DashboardProfileCard"];
 
+//Variables for storage.js
+JSPLib.storage.prune_limit = 2000;
+
+//Variables for danbooru.js
+JSPLib.danbooru.max_network_requests = 10;
+JSPLib.danbooru.rate_limit_wait = JSPLib.utility.one_second;
+
 //JSPLib variable
 window.Danbooru = {};
 //Need to fix this for JSPLib.menu
@@ -57,10 +64,7 @@ var TISAS;
 const Timer = {};
 
 //Regex that matches the prefix of all program cache data
-const program_cache_regex = /^(post)-/;
-
-//Cleanup task intervals
-const program_expires = JSPLib.utility.one_day;
+const program_cache_regex = /^(post|iqdb)-/;
 
 //For factory reset !!!These need to be set!!!
 const localstorage_keys = [];
@@ -107,12 +111,17 @@ const settings_config = {
     autosave_IQDB_enabled: {
         default: false,
         validate: (data)=>{return JSPLib.validate.isBoolean(data);},
-        hint: "Add any IQDB results to the database automatically."
+        hint: "IQDB results are saved to the database automatically."
     },
     autocheck_IQDB_enabled: {
         default: false,
         validate: (data)=>{return JSPLib.validate.isBoolean(data);},
         hint: "Will trigger the <b>Check IQDB</b> link if no results are found with the <b>Check URL</b> link."
+    },
+    autoclick_IQDB_enabled: {
+        default: false,
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
+        hint: 'Will automatically trigger the <b>Check IQDB</b> links (limited availability, see <a class="tisas-forum-topic-link" target="_blank">topic #15976</a> for details). <b>Note:</b> Any results are saved automatically.'
     },
     auto_unhide_tweets_enabled: {
         default: false,
@@ -124,6 +133,11 @@ const settings_config = {
         validate: (data)=>{return JSPLib.validate.isBoolean(data);},
         hint: "Displays the retweet ID next to the retweeter's name."
     },
+    display_media_link: {
+        default: true,
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
+        hint: "Displays a link to the media timeline in the tweet view."
+    },
     tweet_indicators_enabled: {
         default: false,
         validate: (data)=>{return JSPLib.validate.isBoolean(data);},
@@ -132,12 +146,12 @@ const settings_config = {
     score_highlights_enabled: {
         default: true,
         validate: (data)=>{return JSPLib.validate.isBoolean(data);},
-        hint: "Adds colored borders and other stylings based upon the Tweet score."
+        hint: 'Adds colored borders and other stylings based upon the Tweet score (limited availability, see <a class="tisas-forum-topic-link" target="_blank">topic #15976</a> for details).'
     },
     advanced_tooltips_enabled: {
         default: true,
         validate: (data)=>{return JSPLib.validate.isBoolean(data);},
-        hint: "Displays extra information and thumbnails on IQDB results. <b>Note:</b> Only if autosave IQDB is disabled."
+        hint: "Displays extra information and thumbnails on IQDB results. <b>Note:</b> Only when the data is not auto-saved."
     },
     score_levels_faded: {
         allitems: score_levels,
@@ -174,7 +188,7 @@ const settings_config = {
         validate: (data)=>{return JSPLib.validate.isString(data);},
         hint: `Prefix to add to original image downloads. Available format keywords include:<br><span class="tisas-code">%TWEETID%, %USERID%, %USERACCOUNT%, %IMG%, %DATE%, %TIME%, %ORDER%</span>.`
     }
-}
+};
 
 //CSS constants
 
@@ -287,36 +301,43 @@ const program_css = `
     font-weight: bold;
 }
 #tisas-artist-toggle a,
-tisas-indicator-toggle a {
+#tisas-iqdb-toggle a,
+#tisas-indicator-toggle a {
     display: none;
 }
 #tisas-enable-highlights,
+#tisas-enable-autoiqdb,
 #tisas-enable-indicators {
     color: green;
 }
 #tisas-enable-highlights:hover,
+#tisas-enable-autoiqdb:hover,
 #tisas-enable-indicators:hover {
     color: green;
 }
+
 #tisas-disable-highlights,
+#tisas-disable-autoiqdb,
 #tisas-disable-indicators {
     color: red;
 }
 #tisas-disable-highlights:hover,
+#tisas-disable-autoiqdb:hover,
 #tisas-disable-indicators:hover {
     color: red;
 }
 #tisas-side-menu {
     border: solid lightgrey 1px;
-    height: 12em;
+    height: 13em;
 }
 #tisas-side-menu ul {
     margin-left: 10px;
 }
 #tisas-side-menu li {
     font-weight: bold;
+    line-height: 18px;
 }
-#tisas-side-menu li span:first-of-type {
+#tisas-side-menu li:first-of-type span:first-of-type {
     letter-spacing: -0.5px;
 }
 #tisas-header {
@@ -390,6 +411,17 @@ tisas-indicator-toggle a {
 .tisas-help-info,
 .tisas-help-info:hover {
     color: hotpink;
+}
+.tisas-media-link {
+    font-size: 14px;
+    margin-right: 0.5em;
+    font-weight: bold;
+    border: 1px solid;
+    border-radius: 20px;
+    padding: 8px 16px;
+}
+.tisas-media-link:hover {
+    text-decoration: none;
 }
 .tisas-indicators {
     font-size: 20px;
@@ -575,7 +607,7 @@ const menu_css = `
 const tisas_menu = `
 <div id="tisas-script-message" class="prose">
     <h2>Twitter Image Searches and Stuff</h2>
-    <p>Check the forum for the latest on information and updates (to be added).</p>
+    <p>Check the forum for the latest on information and updates (<a class="tisas-forum-topic-link" target="_blank">topic #15976</a>).</p>
 </div>
 <div id="tisas-console" class="jsplib-console">
     <div id="tisas-settings" class="jsplib-outer-menu">
@@ -630,7 +662,8 @@ const indicator_links = `
 </div>
 `;
 
-const no_match_help = "no matches: L-click, manual add posts";
+const no_match_help = "no sources: L-click, manual add posts";
+const no_results_help = "no results: L-click, reset IQDB results";
 const confirm_delete_help = "postlink: L-click, delete info; R-click, open postlink";
 const confirm_iqdb_help = "postlink: L-click, confirm results; R-click open postlink";
 
@@ -638,7 +671,6 @@ const main_counter = '<span id="tisas-indicator-counter">( <span class="tisas-co
 const tweet_indicators = '<span class="tisas-indicators"><span class="tisas-mark-artist">Ⓐ</span><span class="tisas-mark-tweet">Ⓣ</span><span class="tisas-count-artist">ⓐ</span><span class="tisas-count-tweet">ⓣ</span></span>';
 const notice_banner = '<div id="tisas-notice"><span>.</span><a href="#" id="tisas-close-notice-link">close</a></div>';
 const load_counter = '<span id="tisas-load-message">Loading ( <span id="tisas-counter">...</span> )</span>';
-const no_match_links = `( <a class="tisas-manual-add tisas-database-no-match">no sources</a> | <a class="tisas-check-url">Check URL</a> | <a class="tisas-check-iqdb">Check IQDB</a> | <a class="tisas-help-info" title="${no_match_help}">&nbsp;?&nbsp;</a> )`;
 
 //Database constants
 
@@ -649,8 +681,16 @@ const database_info_url = "https://drive.google.com/uc?export=download&id=1evAJM
 //Time constants
 
 const timer_poll_interval = 100;
-const program_recheck_interval = 1000;
-const post_versions_callback = 5000;
+const program_recheck_interval = JSPLib.utility.one_second;
+const post_versions_callback = JSPLib.utility.one_second * 5;
+const page_refresh_timeout = JSPLib.utility.one_second * 5;
+const min_post_expires = JSPLib.utility.one_day;
+const max_post_expires = JSPLib.utility.one_month;
+const post_expires = JSPLib.utility.one_day;
+const iqdb_expires = JSPLib.utility.one_day;
+const length_recheck_expires = JSPLib.utility.one_hour;
+const database_recheck_expires = JSPLib.utility.one_day;
+const prune_recheck_expires = JSPLib.utility.one_hour * 6;
 
 //Other constants
 
@@ -776,9 +816,15 @@ const post_constraints = {
         score: JSPLib.validate.integer_constraints,
         favcount: JSPLib.validate.counting_constraints,
         rating: JSPLib.validate.inclusion_constraints(['s','q','e']),
-        tags: JSPLib.validate.stringonly_constraints
+        tags: JSPLib.validate.stringonly_constraints,
+        created: JSPLib.validate.integer_constraints
     }
 };
+
+const iqdb_constriants = {
+    expires: JSPLib.validate.expires_constraints,
+    value: JSPLib.validate.boolean_constraints
+}
 
 function ValidateEntry(key,entry) {
     if (!JSPLib.validate.validateIsHash(key, entry)) {
@@ -786,6 +832,9 @@ function ValidateEntry(key,entry) {
     }
     if (key.match(/^post-/)) {
         return ValidatePostEntry(key, entry);
+    }
+    if (key.match(/^iqdb-/)) {
+        return JSPLib.validate.validateHashEntries(key, entry, iqdb_constriants)
     }
     ValidateEntry.debuglog("Bad key!");
     return false;
@@ -826,10 +875,10 @@ function ValidateProgramData(key,entry) {
     return true;
 }
 
-function CorrectArtistList(artistlist) {
+function CorrectStringArray(artistlist) {
     let error_messages = [];
     if (!Array.isArray(artistlist)) {
-        CorrectArtistList.debuglog("Value is not an array.");
+        CorrectStringArray.debuglog("Value is not an array.");
         return [];
     }
     let correctlist = artistlist.filter((name)=>{return JSPLib.validate.isString(name);});
@@ -837,7 +886,7 @@ function CorrectArtistList(artistlist) {
         JSPLib.storage.setStorageData('tisas-no-highlight-list',correctlist,localStorage);
         JSPLib.debug.debugExecute(()=>{
             let bad_values = JSPLib.utility.setDifference(artistlist,correctlist);
-            CorrectArtistList.debuglog("Bad values found:",bad_values);
+            CorrectStringArray.debuglog("Bad values found:",bad_values);
         });
     }
     return correctlist;
@@ -1013,7 +1062,8 @@ function MapPost(post) {
         score: post.score,
         favcount: post.fav_count,
         rating: post.rating,
-        tags: post.tag_string
+        tags: post.tag_string,
+        created: new Date(post.created_at).getTime()
     }
 }
 
@@ -1053,10 +1103,10 @@ function GetPostVersionsLastID() {
 }
 
 async function GetTotalRecords() {
-    if (JSPLib.concurrency.checkTimeout('tisas-length-recheck',JSPLib.utility.one_hour)) {
+    if (JSPLib.concurrency.checkTimeout('tisas-length-recheck',length_recheck_expires)) {
         let database_length = await JSPLib.storage.twitterstorage.length();
         JSPLib.storage.setStorageData('tisas-database-length',database_length,localStorage);
-        JSPLib.concurrency.setRecheckTimeout('tisas-length-recheck',JSPLib.utility.one_hour);
+        JSPLib.concurrency.setRecheckTimeout('tisas-length-recheck',length_recheck_expires);
     }
     return JSPLib.storage.getStorageData('tisas-database-length',localStorage,0);
 }
@@ -1104,18 +1154,48 @@ function RemoveDuplicates(obj_array, attribute){
     });
 }
 
+function LogarithmicExpiration(count, max_count, time_divisor, multiplier) {
+    let time_exponent = Math.pow(10,(1/time_divisor));
+    return Math.round(Math.log10(time_exponent + (10 - time_exponent) * (count / max_count)) * multiplier);
+}
+
 //Auxiliary functions
 
 function GetArtistList() {
     let artist_list = JSPLib.storage.getStorageData('tisas-no-highlight-list',localStorage,[]);
-    return CorrectArtistList(artist_list);
+    return CorrectStringArray(artist_list);
+}
+
+function GetIQDBList() {
+    let iqdb_list = JSPLib.storage.getStorageData('tisas-auto-iqdb-list',localStorage,[]);
+    return CorrectStringArray(iqdb_list);
+}
+
+function SavePost(post_id,mapped_post) {
+    let expires_duration = PostExpiration(mapped_post.created);
+    let data_expires = JSPLib.utility.getExpiration(expires_duration)
+    JSPLib.storage.saveData('post-' + post_id, {value: mapped_post, expires: data_expires});
+}
+
+function PostExpiration(created_timestamp) {
+    let created_interval = Date.now() - created_timestamp;
+    if (created_interval < JSPLib.utility.one_day) {
+        return min_post_expires;
+    } else if (created_interval < JSPLib.utility.one_month) {
+        let day_interval = (created_interval / JSPLib.utility.one_day) - 1; //Start at 0 days and go to 29 days
+        let day_slots = 29; //There are 29 day slots between 1 day and 30 days
+        let days_month = 30;
+        return LogarithmicExpiration(day_interval, day_slots, days_month, max_post_expires);
+    } else {
+        return max_post_expires;
+    }
 }
 
 function SetCheckPostvers() {
     if (JSPLib.concurrency.checkTimeout('tisas-timeout',GetPostVersionsExpiration()) || WasOverflow()) {
         clearTimeout(CheckPostvers.timeout);
         CheckPostvers.timeout = setTimeout(()=>{
-            if (TISAS.database_info && JSPLib.concurrency.reserveSemaphore('tisas')) {
+            if (TISAS.database_info && JSPLib.concurrency.reserveSemaphore('tisas','postvers')) {
                 Timer.CheckPostvers();
             }
         },post_versions_callback);
@@ -1169,16 +1249,16 @@ function ProcessTweets($tweets,primaryfilter,append_selector,outerHTML) {
     if ($filter_tweets.length === 0) {
         return;
     }
-    let tweet_ids = $filter_tweets.map((i,entry)=>{return $(entry).data('tweet-id');}).toArray();
+    let tweet_ids = $filter_tweets.map((i,entry)=>{return String($(entry).data('tweet-id'));}).toArray();
     ProcessTweets.debuglog("Check Tweets:",tweet_ids);
     let promise_array = tweet_ids.map((tweet_id)=>{return TwitterStorage(JSPLib.storage.retrieveData,'tweet-' + tweet_id);});
     Promise.all(promise_array).then((data_items)=>{
         ProcessTweets.debuglog("Tweet data:",data_items);
         data_items.forEach((data,i)=>{
-            let postlink = no_match_links;
             let tweet_id = tweet_ids[i];
             let $tweet = $filter_tweets.filter(`[data-tweet-id=${tweet_id}]`);
             if (data !== null) {
+                let postlink = "";
                 let helplink = RenderHelp(confirm_delete_help);
                 if (data.length === 1) {
                     postlink = `( <a class="tisas-confirm-delete tisas-database-match" target="_blank" href="${TISAS.domain}/posts/${data[0]}">post #${data[0]}</a> | ${helplink} )`
@@ -1187,12 +1267,23 @@ function ProcessTweets($tweets,primaryfilter,append_selector,outerHTML) {
                 }
                 ProcessTweets.tweet_index[tweet_id] = {entry: $tweet, post_ids: data, processed: false};
                 all_post_ids = all_post_ids.concat(data);
+                let $link_container = $(outerHTML).append(postlink);
+                $tweet.find(append_selector).append($link_container);
+            } else {
+                JSPLib.storage.checkLocalDB('iqdb-' + tweet_id, ValidateEntry, iqdb_expires).then((iqdb_data)=>{
+                    let has_no_results = false;
+                    if (iqdb_data === null) {
+                        JSPLib.storage.saveData('iqdb-' + tweet_id, {value: false, expires: JSPLib.utility.getExpiration(iqdb_expires)});
+                    } else {
+                        has_no_results = iqdb_data.value;
+                    }
+                    let $link_container = $(outerHTML).append(RenderNomatchLinks(has_no_results));
+                    $tweet.find(append_selector).append($link_container);
+                });
             }
-            let $link_container = $(outerHTML).append(postlink);
-            $tweet.find(append_selector).append($link_container);
         });
         if (all_post_ids.length) {
-            JSPLib.storage.batchStorageCheck(all_post_ids,ValidateEntry,JSPLib.utility.one_day,'post').then((missing_ids)=>{
+            JSPLib.storage.batchStorageCheck(all_post_ids,ValidateEntry,max_post_expires,'post').then((missing_ids)=>{
                 ProcessTweets.debuglog("Missing posts:",missing_ids);
                 if (missing_ids.length) {
                     JSPLib.danbooru.submitRequest('posts',{tags: 'id:' + missing_ids.join(','), limit: missing_ids.length},[],null,TISAS.domain).then((data)=>{
@@ -1200,7 +1291,7 @@ function ProcessTweets($tweets,primaryfilter,append_selector,outerHTML) {
                         mapped_data.forEach((post,i)=>{
                             let post_id = data[i].id;
                             ProcessTweets.post_index[post_id] = post;
-                            JSPLib.storage.saveData('post-' + post_id, {value: post, expires: JSPLib.utility.getExpiration(JSPLib.utility.one_day)});
+                            SavePost(post_id, post);
                         });
                         UpdateLinkTitles();
                     });
@@ -1390,14 +1481,31 @@ function UpdateArtistHighlights() {
     }
 }
 
+function UpdateIQDBControls() {
+    if (TISAS.account) {
+        let auto_iqdb_list = GetIQDBList();
+        if (auto_iqdb_list.includes(TISAS.account)) {
+            TISAS.artist_iqdb_enabled = true;
+            $("#tisas-enable-autoiqdb").hide();
+            $("#tisas-disable-autoiqdb").show();
+        } else {
+            TISAS.artist_iqdb_enabled = false;
+            $("#tisas-enable-autoiqdb").show();
+            $("#tisas-disable-autoiqdb").hide();
+        }
+    }
+}
+
 function UpdateIndicatorControls() {
     let indicator_controls = JSPLib.storage.getStorageData('tisas-indicator-controls',localStorage,true);
     if (indicator_controls) {
         $(".tisas-footer-entries").show();
+        $("#tisas-indicator-counter").show();
         $("#tisas-enable-indicators").hide();
         $("#tisas-disable-indicators").show();
     } else {
         $(".tisas-footer-entries").hide();
+        $("#tisas-indicator-counter").hide();
         $("#tisas-enable-indicators").show();
         $("#tisas-disable-indicators").hide();
     }
@@ -1408,8 +1516,8 @@ function UpdateTweetIndicators() {
     let tweet_list = JSPLib.storage.getStorageData('tisas-tweet-list',localStorage,[]);
     $(".tweet").each((i,entry)=>{
         let $tweet = $(entry);
-        let screen_name = $tweet.data('screen-name');
-        let tweet_id = $tweet.data('tweet-id');
+        let screen_name = String($tweet.data('screen-name'));
+        let tweet_id = String($tweet.data('tweet-id'));
         if ($tweet.find('.tisas-indicators').length === 0) {
             return;
         }
@@ -1442,6 +1550,42 @@ function UpdateTweetIndicators() {
             $(".tisas-footer-entries .tisas-count-tweet",entry).removeClass("tisas-activated");
         }
     });
+}
+
+async function GetAllCurrentRecords() {
+    GetAllCurrentRecords.is_running = true;
+    let i = 0;
+    while (true) {
+        if (!WasOverflow() || !TISAS.database_info) {
+            //Main exit condition
+            break;
+        }
+        clearTimeout(CheckPostvers.timeout);
+        if (JSPLib.concurrency.reserveSemaphore('tisas','postvers')) {
+            Danbooru.Utility.notice(`Querying Danbooru...[${i}]`);
+            await Timer.CheckPostvers();
+        } else {
+            Danbooru.Utility.notice(`Waiting on other tasks to finish...[${i}]`);
+            await JSPLib.utility.sleep(post_versions_callback);
+        }
+        i++;
+    }
+    JSPLib.concurrency.freeSemaphore('tisas','records')
+    GetAllCurrentRecords.is_running = false;
+}
+GetAllCurrentRecords.is_running = false;
+
+function GetEventPreload(event,classname) {
+    let $link = $(event.target);
+    let $tweet = $link.closest(".tweet");
+    let tweet_id = String($tweet.data("tweet-id"));
+    let screen_name = String($tweet.data("screen-name"));
+    let $replace = $(`[data-tweet-id=${tweet_id}] .${classname}`).parent();
+    return [$link,$tweet,tweet_id,screen_name,$replace];
+}
+
+function IsIQDBAutoclick() {
+    return TISAS.user_settings.autoclick_IQDB_enabled && ((TISAS.artist_iqdb_enabled && ((TISAS.page === "media") || (TISAS.page === "search" && TISAS.queries.filter === "images"))) || (TISAS.page === "tweet"));
 }
 
 //File functions
@@ -1501,6 +1645,12 @@ function RenderMenu() {
     <a id="tisas-disable-highlights" title="Click to disable Tweet hiding/fading. (Shortcut: Alt+H)">Disable</a>
 </span>
 `;
+    let iqdb_html = `
+<span id="tisas-iqdb-toggle">
+    <a id="tisas-enable-autoiqdb" title="Click to enable auto Check IQDB click. (Shortcut: Alt+Q)">Enable</a>
+    <a id="tisas-disable-autoiqdb" title="Click to disable auto Check IQDB click. (Shortcut: Alt+Q)">Disable</a>
+</span>
+`;
     let indicator_html = `
 <span id="tisas-indicator-toggle">
     <a id="tisas-enable-indicators" title="Click to display Tweet mark/count controls. (Shortcut: Alt+I)">Enable</a>
@@ -1515,6 +1665,7 @@ function RenderMenu() {
         <li><span>Current records:</span> ${RenderCurrentRecords()}</li>
         <li><span>Total records:</span> <span id="tisas-records-stub"></span></li>
         <li><span>Artist highlights:</span> ${artist_html}</li>
+        <li><span>Autoclick IQDB:</span> ${iqdb_html}</li>
         <li><span>Tweet indicators:</span> ${indicator_html}</li>
     </ul>
     <div id="tisas-open-settings">
@@ -1528,20 +1679,20 @@ function RenderCurrentRecords() {
     var record_html = "";
     let timestamp = JSPLib.storage.checkStorageData('tisas-recent-timestamp',ValidateProgramData,localStorage);
     if (timestamp) {
-        record_html = `<a id="tisas-current-records" title="${new Date(timestamp).toLocaleString()}">${TimeAgo(timestamp)}</a>`
+        record_html = `<a id="tisas-current-records" title="${new Date(timestamp).toLocaleString()}\n\nClick to update records to current.">${TimeAgo(timestamp)}</a>`
     }
     return record_html;
 }
 
 function RenderDatabaseVersion() {
     let timestring = new Date(TISAS.server_info.timestamp).toLocaleString();
-    return `<a id="tisas-database-version" target="_blank" href="${TISAS.domain}/post_versions?page=b${TISAS.server_info.post_version+1}" title="${timestring}">${TISAS.server_info.post_version}</a>`;
+    return `<a id="tisas-database-version" target="_blank" href="${TISAS.domain}/post_versions?page=b${TISAS.server_info.post_version+1}" title="${timestring}\n\nClick to open page to Danbooru records.">${TISAS.server_info.post_version}</a>`;
 }
 
 function RenderDownloadLinks($tweet,position) {
-    let tweet_id = $tweet.data('tweet-id');
-    let user_id = $tweet.data('user-id');
-    let user_name = $tweet.data('screen-name');
+    let tweet_id = String($tweet.data('tweet-id'));
+    let user_id = String($tweet.data('user-id'));
+    let user_name = String($tweet.data('screen-name'));
     let date_string = GetDateString(Date.now());
     let time_string = GetTimeString(Date.now());
     let filename_prefix = TISAS.user_settings.filename_prefix_format.replace(/%TWEETID%/g,tweet_id).replace(/%USERID%/g,user_id).replace(/%USERACCOUNT%/g,user_name).replace(/%DATE%/g,date_string).replace(/%TIME%/g,time_string);
@@ -1568,7 +1719,7 @@ function RenderDownloadLinks($tweet,position) {
 }
 
 function RenderAllSimilar(all_iqdb_results,image_urls) {
-    var image_results =  [];
+    var image_results = [];
     all_iqdb_results.forEach((iqdb_results,i)=>{
         if (iqdb_results.length === 0) {
             return;
@@ -1624,6 +1775,22 @@ function RenderSimilarAddons(source,score,file_ext,file_size,width,height) {
 `;
 }
 
+function RenderNomatchLinks(no_iqdb_results,no_url_results=false) {
+    let iqdb_link = (no_iqdb_results ? '<a class="tisas-reset-iqdb tisas-database-no-match">no results</a>' : '<a class="tisas-check-iqdb">Check IQDB</a>');
+    let url_link = (no_url_results ? '<a class="tisas-manual-add tisas-database-no-match">no sources</a>' : '<a class="tisas-check-url">Check URL</a>');
+    let help_info = (no_iqdb_results ? no_match_help + '\n' + no_results_help : no_match_help);
+    return `
+(
+    <a class="tisas-manual-add tisas-database-no-match">no sources</a>
+    |
+    ${url_link}
+    |
+    ${iqdb_link}
+    |
+    ${RenderHelp(help_info)}
+)`;
+}
+
 function RenderHelp(help_text) {
     return `<a class="tisas-help-info" title="${help_text}">&nbsp;?&nbsp;</a>`;
 }
@@ -1640,13 +1807,13 @@ function InitializeDatabaseLink() {
     //Add some validation to the following, and move it out of the RenderMenu function
     TwitterStorage(JSPLib.storage.retrieveData,'tisas-database-info').then((database_info)=>{
         if (!JSPLib.validate.isHash(database_info)) {
-            database_html = `<a id="tisas-install" title="${database_timestring}">Install Database</a>`;
+            database_html = `<a id="tisas-install" title="${database_timestring}\n\nClick to install database.">Install Database</a>`;
         } else if (database_info.post_version === TISAS.server_info.post_version && database_info.timestamp === TISAS.server_info.timestamp) {
             TISAS.database_info = database_info;
             database_html = RenderDatabaseVersion();
         } else {
             TISAS.database_info = database_info;
-            database_html = `<a id="tisas-upgrade" title="${database_timestring}">Upgrade Database</a>`;
+            database_html = `<a id="tisas-upgrade" title="${database_timestring}\n\nClick to upgrade database.">Upgrade Database</a>`;
         }
         $("#tisas-database-stub").replaceWith(database_html);
         $("#tisas-install").on('click.tisas',InstallDatabase);
@@ -1697,7 +1864,7 @@ function InitializeQtip($obj,tweet_id) {
 function InitializeSimilarContainer(image_urls,all_iqdb_results,tweet_id) {
     let $attachment = $(RenderAllSimilar(all_iqdb_results,image_urls));
     $("article:first-of-type",$attachment).each((i,article)=>{
-        let index = $(article).data('id');
+        let index = Number($(article).data('id'));
         let image_url = image_urls[index] + ':orig';
         let image = $("img",article)[0];
         let fake_image = $('<img>')[0];
@@ -1711,7 +1878,7 @@ function InitializeSimilarContainer(image_urls,all_iqdb_results,tweet_id) {
                 $("p:nth-child(4)",article).html(`${ReadableBytes(size)} (${fake_image.naturalWidth}x${fake_image.naturalHeight})`);
                 let $matching_images = $(article).closest(".tisas-iqdb-result").find(`[data-size=${size}]`);
                 if ($matching_images.length) {
-                    InitializeSimilarContainer.debuglog("Matching image found!",$($matching_images).data('id'));
+                    InitializeSimilarContainer.debuglog("Matching image found!",$matching_images.data('id'));
                     $("img",$matching_images).css('border','solid green 5px');
                 }
             });
@@ -1799,9 +1966,10 @@ async function CheckPostvers() {
         let most_recent_timestamp = Math.max(...normal_timestamps);
         JSPLib.storage.setStorageData('tisas-recent-timestamp', most_recent_timestamp, localStorage);
         $("#tisas-current-records").replaceWith(RenderCurrentRecords());
+        $("#tisas-current-records").on('click.tisas',CurrentRecords);
     }
     JSPLib.concurrency.setRecheckTimeout('tisas-timeout',GetPostVersionsExpiration());
-    JSPLib.concurrency.freeSemaphore('tisas');
+    JSPLib.concurrency.freeSemaphore('tisas','postvers');
 }
 
 function GetImage(image_url) {
@@ -1907,11 +2075,22 @@ async function GetSavePackage() {
 }
 
 async function CheckDatabaseInfo(initial) {
-    if (initial || JSPLib.concurrency.checkTimeout('tisas-database-recheck',JSPLib.utility.one_day)) {
+    if (initial || JSPLib.concurrency.checkTimeout('tisas-database-recheck',database_recheck_expires)) {
         let database_info = await $.getJSON(database_info_url);
         JSPLib.storage.setStorageData('tisas-remote-database', database_info, localStorage);
-        JSPLib.concurrency.setRecheckTimeout('tisas-database-recheck',JSPLib.utility.one_day);
+        JSPLib.concurrency.setRecheckTimeout('tisas-database-recheck',database_recheck_expires);
     }
+}
+
+async function PurgeBadTweets() {
+    let server_purgelist = await $.getJSON(server_purgelist_url);
+    let purge_keylist = server_purgelist.map((tweet_id)=>{return 'tweet-' + tweet_id;});
+    let database_keylist = await JSPLib.storage.twitterstorage.keys();
+    let purge_set = new Set(purge_keylist)
+    let database_set = new Set(database_keylist)
+    let delete_keys = [...purge_set].filter((x)=>{return database_set.has(x);});
+    PurgeBadTweets.debuglog(delete_keys);
+    await Promise.all(delete_keys.map((key)=>{return TwitterStorage(JSPLib.storage.removeData,key);}));
 }
 
 //Event handlers
@@ -1927,6 +2106,20 @@ function ToggleArtistHilights(event) {
         JSPLib.storage.setStorageData('tisas-no-highlight-list',no_highlight_list,localStorage);
         UpdateHighlightControls();
         UpdateArtistHighlights();
+    }
+    event.preventDefault();
+}
+
+function ToggleAutoclickIQDB(event) {
+    if (TISAS.account) {
+        let auto_iqdb_list = GetIQDBList();
+        if (auto_iqdb_list.includes(TISAS.account)) {
+            auto_iqdb_list = JSPLib.utility.setDifference(auto_iqdb_list,[TISAS.account]);
+        } else {
+            auto_iqdb_list = JSPLib.utility.setUnion(auto_iqdb_list,[TISAS.account]);
+        }
+        JSPLib.storage.setStorageData('tisas-auto-iqdb-list',auto_iqdb_list,localStorage);
+        UpdateIQDBControls();
     }
     event.preventDefault();
 }
@@ -1987,73 +2180,74 @@ Click OK when ready.
     event.preventDefault();
 }
 
-async function PurgeBadTweets() {
-    let server_purgelist = await $.getJSON(server_purgelist_url);
-    let purge_keylist = server_purgelist.map((tweet_id)=>{return 'tweet-' + tweet_id;});
-    let database_keylist = await JSPLib.storage.twitterstorage.keys();
-    let purge_set = new Set(purge_keylist)
-    let database_set = new Set(database_keylist)
-    let delete_keys = [...purge_set].filter((x)=>{return database_set.has(x);});
-    PurgeBadTweets.debuglog(delete_keys);
-    await Promise.all(delete_keys.map((key)=>{return TwitterStorage(JSPLib.storage.removeData,key);}));
+function CurrentRecords(event) {
+    if (!GetAllCurrentRecords.is_running && WasOverflow()) {
+        let message = `
+This will keep querying Danbooru until the records are current.
+Depending on the current position, this could take several minutes.
+Moving focus away from the page will halt the process.
+
+Continue?
+`;
+        if (JSPLib.concurrency.reserveSemaphore('tisas','records')) {
+            if (confirm(message.trim())) {
+                GetAllCurrentRecords();
+            } else {
+                JSPLib.concurrency.freeSemaphore('tisas','records')
+            }
+        } else {
+            Danbooru.Utility.error("Getting current records in another tab!");
+        }
+    }
+    event.preventDefault();
 }
 
 function CheckUrl(event) {
-    let $link = $(event.target);
+    let [$link,$tweet,tweet_id,screen_name,$replace] = GetEventPreload(event,'tisas-check-url');
     $link.removeClass('tisas-check-url').html("loading…");
-    let $tweet = $link.closest(".tweet");
-    let tweet_id = $tweet.data("tweet-id");
-    let screen_name = $tweet.data("screen-name");
+    let no_iqdb_results = $tweet.find(".tisas-check-iqdb").length === 0;
     let normal_url = `https://twitter.com/${screen_name}/status/${tweet_id}`;
     let wildcard_url = `https://twitter.com/*/status/${tweet_id}`;
     let check_url = (TISAS.user_settings.URL_wildcards_enabled ? wildcard_url : normal_url);
     CheckUrl.debuglog(check_url);
     JSPLib.danbooru.submitRequest('posts',{tags: "source:" + check_url},[],null,TISAS.domain,true).then((data)=>{
-        var postlink = '<a class="tisas-manual-add tisas-database-no-match">no sources</a>';
         if (data.length === 0) {
             if (TISAS.user_settings.autocheck_IQDB_enabled) {
                 $tweet.find(".tisas-check-iqdb").click();
             }
-            $(event.target).replaceWith(postlink);
+            $replace.html(RenderNomatchLinks(no_iqdb_results,true));
         } else {
             let mapped_data = MapPostData(data);
-            mapped_data.forEach((post,i)=>{
-                let post_id = data[i].id;
-                JSPLib.storage.saveData('post-' + post_id, {value: post, expires: JSPLib.utility.getExpiration(JSPLib.utility.one_day)});
-            });
+            mapped_data.forEach((post,i)=>{SavePost(data[i].id, post);});
             let post_ids = JSPLib.utility.getObjectAttributes(data,'id');
             let helplink = RenderHelp(confirm_delete_help);
+            let postlink = "";
             if (data.length === 1) {
                 postlink = `( <a class="tisas-confirm-delete tisas-database-match" target="_blank" href="${TISAS.domain}/posts/${post_ids[0]}" title="${GetLinkTitle(mapped_data[0])}">post #${post_ids[0]}</a> | ${helplink} )`
             } else {
                 postlink = `( <a class="tisas-confirm-delete tisas-database-match" target="_blank" href="${TISAS.domain}/posts?tags=status%3Aany+id%3A${post_ids.join(',')}${GetCustomQuery()}" title="${GetMultiLinkTitle(post_ids,mapped_data)}">${post_ids.length} sources</a> | ${helplink} )`;
             }
             TwitterStorage(JSPLib.storage.saveData,'tweet-' + tweet_id, post_ids);
-            $(event.target).parent().html(postlink);
+            $replace.html(postlink);
         }
     });
     event.preventDefault();
 }
 
 function CheckIQDB(event) {
-    let $link = $(event.target);
-    $link.removeClass('tisas-check-url').html("loading…");
-    let $tweet = $link.closest(".tweet");
-    let tweet_id = $tweet.data("tweet-id");
+    let [$link,$tweet,tweet_id,screen_name,$replace] = GetEventPreload(event,'tisas-check-iqdb');
+    $link.removeClass('tisas-check-iqdb').html("loading…");
+    let no_url_results = $tweet.find(".tisas-check-url").length === 0;
     let image_urls = $tweet.find("[data-image-url]").map((i,entry)=>{return $(entry).data('image-url');}).toArray();
     CheckIQDB.debuglog(image_urls);
     let promise_array = image_urls.map((image_url)=>{return JSPLib.danbooru.submitRequest('iqdb_queries',{url: image_url},[],null,TISAS.domain,true);});
     Promise.all(promise_array).then((data)=>{
-        var postlink = '<a class="tisas-manual-add tisas-database-no-match">no sources</a>';
         let flat_data = data.flat();
         let unique_posts = RemoveDuplicates(JSPLib.utility.getObjectAttributes(flat_data,'post'),'id');
         if (flat_data.length > 0) {
             let post_data = JSPLib.utility.getObjectAttributes(flat_data,'post');
             let mapped_data = MapPostData(unique_posts);
-            mapped_data.forEach((post,i)=>{
-                let post_id = unique_posts[i].id;
-                JSPLib.storage.saveData('post-' + post_id, {value: post, expires: JSPLib.utility.getExpiration(JSPLib.utility.one_day)});
-            });
+            mapped_data.forEach((post,i)=>{SavePost(unique_posts[i].id, post);});
             let max_score = Math.max(...JSPLib.utility.getObjectAttributes(flat_data,'score'));
             let classnames = "tisas-iqdb-match-poor";
             if (max_score > 95.0) {
@@ -2065,7 +2259,7 @@ function CheckIQDB(event) {
             }
             let post_ids = JSPLib.utility.getObjectAttributes(flat_data,'post_id');
             let helplink = "";
-            if (TISAS.user_settings.autosave_IQDB_enabled) {
+            if (TISAS.user_settings.autosave_IQDB_enabled || IsIQDBAutoclick()) {
                 TwitterStorage(JSPLib.storage.saveData,'tweet-' + tweet_id, post_ids);
                 classnames += " tisas-confirm-delete";
                 helplink = RenderHelp(confirm_delete_help);
@@ -2075,13 +2269,14 @@ function CheckIQDB(event) {
             }
             TISAS.IQDB_results = TISAS.IQDB_results || {};
             TISAS.IQDB_results[tweet_id] = post_ids;
+            let postlink = "";
             if (post_ids.length === 1) {
                 postlink = `( <a class="${classnames}" target="_blank" href="${TISAS.domain}/posts/${post_ids[0]}" title="${GetLinkTitle(mapped_data[0])}">post #${post_ids[0]}</a> | ${helplink} )`
             } else {
                 postlink = `( <a class="${classnames}" target="_blank" href="${TISAS.domain}/posts?tags=status%3Aany+id%3A${post_ids.join(',')}${GetCustomQuery()}"  title="${GetMultiLinkTitle(post_ids,mapped_data)}">${post_ids.length} sources</a> | ${helplink} )`;
             }
-            $(event.target).parent().html(postlink);
-            if (!TISAS.user_settings.autosave_IQDB_enabled && TISAS.user_settings.advanced_tooltips_enabled) {
+            $replace.html(postlink);
+            if (!TISAS.user_settings.autosave_IQDB_enabled && !IsIQDBAutoclick() && TISAS.user_settings.advanced_tooltips_enabled) {
                 InitializeQtip($tweet.find('.tisas-confirm-iqdb'),tweet_id);
                 //Some elements are delayed in rendering, so render ahead of time
                 CheckIQDB.thumb_wait[tweet_id] = unique_posts.map(async (post)=>{
@@ -2096,7 +2291,8 @@ function CheckIQDB(event) {
                 CheckIQDB.tweet_qtip[tweet_id] = InitializeSimilarContainer(image_urls,data,tweet_id);
             }
         } else {
-            $(event.target).replaceWith(postlink);
+            JSPLib.storage.saveData('iqdb-' + tweet_id, {value: true, expires: JSPLib.utility.getExpiration(iqdb_expires)});
+            $replace.html(RenderNomatchLinks(true,no_url_results));
         }
     });
     event.preventDefault();
@@ -2106,8 +2302,7 @@ CheckIQDB.IQDB_results = {};
 CheckIQDB.thumb_wait = {};
 
 function ManualAdd(event) {
-    let $tweet = $(event.target).closest(".tweet");
-    let tweet_id = $tweet.data("tweet-id");
+    let [$link,$tweet,tweet_id,screen_name,$replace] = GetEventPreload(event,'tisas-manual-add');
     let confirmed_ids = prompt("Enter the post IDs of matches separated by commas.");
     if (confirmed_ids === null) {
         return;
@@ -2123,17 +2318,16 @@ function ManualAdd(event) {
         } else {
             postlink = `( <a class="tisas-confirm-delete tisas-database-match" target="_blank" href="${TISAS.domain}/posts?tags=status%3Aany+id%3A${confirmed_ids.join(',')}${GetCustomQuery()}">${confirmed_ids.length} sources</a> | ${helplink} )`;
         }
-        $(event.target).parent().html(postlink);
+        $replace.html(postlink);
     }
     event.preventDefault();
 }
 
 function ConfirmIQDB(event) {
-    if (!TISAS.user_settings.confirm_IQDB_enabled || TISAS.user_settings.autosave_IQDB_enabled) {
+    if (!TISAS.user_settings.confirm_IQDB_enabled) {
         return;
     }
-    let $tweet = $(event.target).closest(".tweet");
-    let tweet_id = $tweet.data("tweet-id");
+    let [$link,$tweet,tweet_id,screen_name,$replace] = GetEventPreload(event,'tisas-confirm-iqdb');
     let post_ids = TISAS.IQDB_results[tweet_id];
     let confirmed_ids = prompt("Which of the following post IDs are valid IQDB hits?",post_ids.join(','));
     if (confirmed_ids !== null) {
@@ -2141,8 +2335,8 @@ function ConfirmIQDB(event) {
         ConfirmIQDB.debuglog("Confirmed IDs:",confirmed_ids);
         if (confirmed_ids.length) {
             TwitterStorage(JSPLib.storage.saveData,'tweet-' + tweet_id, confirmed_ids);
-            $(event.target).parent().find('.tisas-help-info').attr('title',confirm_delete_help);
-            $(event.target).removeClass("tisas-confirm-iqdb").addClass('tisas-confirm-delete');
+            $replace.find('.tisas-help-info').attr('title',confirm_delete_help);
+            $replace.find('.tisas-confirm-iqdb').removeClass("tisas-confirm-iqdb").addClass('tisas-confirm-delete');
         }
     }
     event.preventDefault();
@@ -2152,12 +2346,26 @@ function ConfirmDelete(event) {
     if (!TISAS.user_settings.confirm_delete_enabled) {
         return;
     }
-    let $tweet = $(event.target).closest(".tweet");
-    let tweet_id = $tweet.data("tweet-id");
+    let [$link,$tweet,tweet_id,screen_name,$replace] = GetEventPreload(event,'tisas-confirm-delete');
     if (confirm("Delete this tweet info?")) {
         TwitterStorage(JSPLib.storage.removeData,'tweet-' + tweet_id);
-        $(event.target).parent().html(no_match_links);
+        JSPLib.storage.checkLocalDB('iqdb-' + tweet_id, ValidateEntry, iqdb_expires).then((data)=>{
+            let has_no_results = false;
+            if (data === null) {
+                JSPLib.storage.saveData('iqdb-' + tweet_id, {value: false, expires: JSPLib.utility.getExpiration(iqdb_expires)});
+            } else {
+                has_no_results = data.value;
+            }
+            $replace.html(RenderNomatchLinks(has_no_results));
+        });
     }
+    event.preventDefault();
+}
+
+function ResetIQDB(event) {
+    let [$link,$tweet,tweet_id,screen_name,$replace] = GetEventPreload(event,'tisas-reset-iqdb');
+    JSPLib.storage.saveData('iqdb-' + tweet_id, {value: false, expires: JSPLib.utility.getExpiration(iqdb_expires)});
+    $replace.html(RenderNomatchLinks(false));
     event.preventDefault();
 }
 
@@ -2168,7 +2376,7 @@ function HelpInfo(event) {
 }
 
 function MarkArtist(event) {
-    var screen_name = $(event.target).closest('.tweet').data('screen-name');
+    let [$link,$tweet,tweet_id,screen_name,$replace] = GetEventPreload(event,'tisas-mark-artist');
     let artist_list = JSPLib.storage.getStorageData('tisas-artist-list',localStorage,[]);
     if (artist_list.includes(screen_name)) {
         artist_list = JSPLib.utility.setDifference(artist_list,[screen_name]);
@@ -2181,8 +2389,7 @@ function MarkArtist(event) {
 }
 
 function MarkTweet(event) {
-    var $tweet = $(event.target).closest('.tweet');
-    var tweet_id = $tweet.data('tweet-id');
+    let [$link,$tweet,tweet_id,screen_name,$replace] = GetEventPreload(event,'tisas-mark-tweet');
     let tweet_list = JSPLib.storage.getStorageData('tisas-tweet-list',localStorage,[]);
     if (tweet_list.includes(tweet_id)) {
         tweet_list = JSPLib.utility.setDifference(tweet_list,[tweet_id]);
@@ -2195,7 +2402,7 @@ function MarkTweet(event) {
 }
 
 function CountArtist(event) {
-    var screen_name = $(event.target).closest('.tweet').data('screen-name');
+    let [$link,$tweet,tweet_id,screen_name,$replace] = GetEventPreload(event,'tisas-count-artist');
     if (TISAS.counted_artists.includes(screen_name)) {
         TISAS.counted_artists = JSPLib.utility.setDifference(TISAS.counted_artists,[screen_name]);
     } else {
@@ -2207,8 +2414,7 @@ function CountArtist(event) {
 }
 
 function CountTweet(event) {
-    var $tweet = $(event.target).closest('.tweet');
-    var tweet_id = $tweet.data('tweet-id');
+    let [$link,$tweet,tweet_id,screen_name,$replace] = GetEventPreload(event,'tisas-count-tweet');
     if (TISAS.counted_tweets.includes(tweet_id)) {
         TISAS.counted_tweets = JSPLib.utility.setDifference(TISAS.counted_tweets,[tweet_id]);
     } else {
@@ -2220,7 +2426,7 @@ function CountTweet(event) {
 }
 
 function DownloadOriginal(event) {
-    let $link = $(event.target);
+    let [$link,$tweet,tweet_id,screen_name,$replace] = GetEventPreload(event,'tisas-download-original');
     let image_link = $link.attr('href');
     let download_name = $link.attr('download');
     DownloadOriginal.debuglog("Saving",image_link,"as",download_name);
@@ -2229,7 +2435,8 @@ function DownloadOriginal(event) {
 }
 
 function DownloadAll(event) {
-    let $image_links = $(event.target).closest('.tweet').find('.tisas-download-original');
+    let [$link,$tweet,tweet_id,screen_name,$replace] = GetEventPreload(event,'tisas-download-all');
+    let $image_links = $tweet.find('.tisas-download-original');
     $image_links.click();
     event.preventDefault();
 }
@@ -2265,7 +2472,7 @@ function ImportData(event) {
             Promise.all(promise_array).then(()=>{
                 Danbooru.Utility.notice("Database imported! Refreshing page...");
                 //It's easier to just reload the page instead of re-rendering everything
-                setTimeout(()=>{window.location = window.location;},JSPLib.utility.one_second * 5);
+                setTimeout(()=>{window.location = window.location;},page_refresh_timeout);
                 ImportData.is_running = false;
             });
         }).catch((error)=>{
@@ -2284,8 +2491,7 @@ function RegularCheck() {
     if (pagetype === null) {
         return;
     }
-    let $tweets = $(".tweet:not(.Tweet--invertedColors,.RetweetDialog-tweet):not([tisas])");
-    //Detect if the URL has changed at all
+    //Process events on a page change
     if (TISAS.page !== pagetype || TISAS.addon !== pageid) {
         let params;
         TISAS.page = pagetype;
@@ -2345,7 +2551,9 @@ function RegularCheck() {
             }
             //Bind events for creation/rebind
             if (!JSPLib.utility.isNamespaceBound("#tisas-open-settings",'click','tisas')) {
+                $("#tisas-current-records").on('click.tisas',CurrentRecords);
                 $("#tisas-enable-highlights,#tisas-disable-highlights").on('click.tisas',ToggleArtistHilights);
+                $("#tisas-enable-autoiqdb,#tisas-disable-autoiqdb").on('click.tisas',ToggleAutoclickIQDB);
                 $("#tisas-enable-indicators,#tisas-disable-indicators").on('click.tisas',ToggleTweetIndicators);
                 $("#tisas-open-settings").on('click.tisas',OpenSettingsMenu);
                 //These will only get bound here on a rebind
@@ -2356,11 +2564,22 @@ function RegularCheck() {
         }
         UpdateHighlightControls();
         UpdateArtistHighlights();
-        UpdateTweetIndicators();
+        UpdateIQDBControls();
         UpdateIndicatorControls();
+        UpdateTweetIndicators();
         SetCheckPostvers();
     }
-    //Finish processing if no new tweets
+    //Process events at each interval
+    if (TISAS.user_settings.autoclick_IQDB_enabled) {
+        if (TISAS.artist_iqdb_enabled && ((TISAS.page === "media") || (TISAS.page === "search" && TISAS.queries.filter === "images"))) {
+            $(".tisas-check-iqdb").click();
+        } else if (TISAS.page === "tweet") {
+            $(`.permalink-tweet[data-tweet-id=${TISAS.addon}] .tisas-check-iqdb`).click();
+        }
+    }
+    //Process events on new tweets
+    let $tweets = $(".tweet:not(.Tweet--invertedColors,.RetweetDialog-tweet):not([tisas])");
+    let $image_tweets = $tweets.filter((i,entry)=>{return $(entry).find(".AdaptiveMedia:not(.is-video)").length;});
     if ($tweets.length === 0) {
         return;
     }
@@ -2370,17 +2589,17 @@ function RegularCheck() {
         timeline_class = "tisas-logged-in";
     }
     if (["home","main","likes","replies","list","hashtag"].includes(TISAS.page)) {
-        ProcessTweets($tweets,(i,entry)=>{return $(entry).find(".AdaptiveMedia:not(.is-video)").length;},".ProfileTweet-actionList",`<div class="ProfileTweet-action tisas-timeline-menu ${timeline_class}"></div>`);
+        ProcessTweets($image_tweets,null,".ProfileTweet-actionList",`<div class="ProfileTweet-action tisas-timeline-menu ${timeline_class}"></div>`);
     } else if (TISAS.page === "search") {
-        ProcessTweets($tweets,"[data-has-cards]:not([data-card2-type])",".ProfileTweet-actionList",`<div class="ProfileTweet-action tisas-timeline-menu {timeline_class}"></div>`);
+        ProcessTweets($image_tweets,"[data-has-cards]:not([data-card2-type])",".ProfileTweet-actionList",`<div class="ProfileTweet-action tisas-timeline-menu {timeline_class}"></div>`);
         if (TISAS.account && TISAS.queries.filter === "images") {
             HighlightTweets();
         }
     } else if (TISAS.page === "media") {
-        ProcessTweets($tweets,null,".ProfileTweet-actionList",`<div class="ProfileTweet-action tisas-timeline-menu ${timeline_class}"></div>`);
+        ProcessTweets($image_tweets,null,".ProfileTweet-actionList",`<div class="ProfileTweet-action tisas-timeline-menu ${timeline_class}"></div>`);
         HighlightTweets();
     } else if (TISAS.page === "tweet") {
-        let $tweet = $tweets.filter(`[data-tweet-id=${TISAS.addon}][data-has-cards]:not([data-card2-type])`).filter((i,entry)=>{return $(entry).find(".AdaptiveMedia:not(.is-video)").length;});
+        let $tweet = $image_tweets.filter(`[data-tweet-id=${TISAS.addon}][data-has-cards]:not(.dismissible-content,[data-card2-type])`);
         if ($tweet.length) {
             ProcessTweets($tweet,null,".client-and-actions",'<span class="tisas-tweet-menu"></span>');
             if (TISAS.user_settings.original_download_enabled) {
@@ -2391,6 +2610,11 @@ function RegularCheck() {
                     $(".AdaptiveMediaOuterContainer",$tweet).after(download_html);
                 }
             }
+            if (TISAS.user_settings.display_media_link) {
+                let screen_name = String($tweet.data('screen-name'));
+                $tweet.find('.permalink-header .time').before(`<a class="tisas-media-link EdgeButton--secondary js-nav" href="/${screen_name}/media">Media</a>`);
+                $tweet.find(".ProfileTweet-action--more").css('grid-column', '4 / auto');
+            }
         }
     }
     if (TISAS.user_settings.auto_unhide_tweets_enabled) {
@@ -2398,15 +2622,13 @@ function RegularCheck() {
     }
     if (TISAS.user_settings.display_retweet_id) {
         let $retweets = $tweets.filter("[data-retweet-id]");
-        $retweets.each((i,$tweet)=>{
-            let retweet_id = $($tweet).data('retweet-id');
-            $(".tweet-context",$tweet).append(`<span>${retweet_id}</span>`);
+        $retweets.each((i,entry)=>{
+            let retweet_id = String($(entry).data('retweet-id'));
+            $(".tweet-context",entry).append(`<span>${retweet_id}</span>`);
         });
     }
     if (TISAS.user_settings.tweet_indicators_enabled) {
         $tweets.each((i,entry)=>{
-            let screen_name = $(entry).data('screen-name');
-            let tweet_id = $(entry).data('tweet-id');
             if ($(entry).closest(".permalink-tweet-container").length) {
                 $(".FullNameGroup",entry).append(tweet_indicators);
             } else if ($(entry).closest(".permalink-replies").length) {
@@ -2432,15 +2654,15 @@ function HighlightTweets() {
         return;
     }
     var $tweets = $(".stream-item:not(.tisas-highlight) > .tweet");
-    var screen_name = $tweets.data("screen-name");
+    var screen_name = String($tweets.data("screen-name"));
     let no_highlight_list = GetArtistList();
     $tweets.each((i,entry)=>{
         var $entry = $(entry);
         $entry.parent().addClass('tisas-highlight');
-        var tweetid = $entry.data("tweet-id");
-        var replies = $(".ProfileTweet-action--reply .ProfileTweet-actionCount",entry).data("tweet-stat-count");
-        var retweets = $(".ProfileTweet-action--retweet .ProfileTweet-actionCount",entry).data("tweet-stat-count");
-        var favorites = $(".ProfileTweet-action--favorite .ProfileTweet-actionCount",entry).data("tweet-stat-count");
+        var tweetid = String($entry.data("tweet-id"));
+        var replies = Number($(".ProfileTweet-action--reply .ProfileTweet-actionCount",entry).data("tweet-stat-count"));
+        var retweets = Number($(".ProfileTweet-action--retweet .ProfileTweet-actionCount",entry).data("tweet-stat-count"));
+        var favorites = Number($(".ProfileTweet-action--favorite .ProfileTweet-actionCount",entry).data("tweet-stat-count"));
         HighlightTweets.tweetarray.push({
             id: tweetid,
             replies: replies,
@@ -2532,6 +2754,7 @@ function RenderSettingsMenu() {
     $("#tisas-display-settings").append(JSPLib.menu.renderCheckbox('tisas','advanced_tooltips_enabled'));
     $("#tisas-display-settings").append(JSPLib.menu.renderCheckbox('tisas','auto_unhide_tweets_enabled'));
     $("#tisas-display-settings").append(JSPLib.menu.renderCheckbox('tisas','display_retweet_id'));
+    $("#tisas-display-settings").append(JSPLib.menu.renderCheckbox('tisas','display_media_link'));
     $("#tisas-display-settings").append(JSPLib.menu.renderCheckbox('tisas','tweet_indicators_enabled'));
     $("#tisas-highlight-settings").append(JSPLib.menu.renderCheckbox('tisas','score_highlights_enabled'));
     $("#tisas-highlight-settings").append(JSPLib.menu.renderTextinput('tisas','score_window_size',5));
@@ -2541,6 +2764,7 @@ function RenderSettingsMenu() {
     $("#tisas-database-settings").append(JSPLib.menu.renderCheckbox('tisas','confirm_IQDB_enabled'));
     $("#tisas-database-settings").append(JSPLib.menu.renderCheckbox('tisas','autosave_IQDB_enabled'));
     $("#tisas-database-settings").append(JSPLib.menu.renderCheckbox('tisas','autocheck_IQDB_enabled'));
+    $("#tisas-database-settings").append(JSPLib.menu.renderCheckbox('tisas','autoclick_IQDB_enabled'));
     $("#tisas-network-settings").append(JSPLib.menu.renderCheckbox('tisas','URL_wildcards_enabled'));
     $("#tisas-network-settings").append(JSPLib.menu.renderCheckbox('tisas','custom_order_enabled'));
     $("#tisas-network-settings").append(JSPLib.menu.renderTextinput('tisas','recheck_interval',5));
@@ -2561,6 +2785,8 @@ function RenderSettingsMenu() {
     $("#tisas-control-export-data").on('click.tisas',ExportData);
     JSPLib.menu.cacheInfoClick('tisas',program_cache_regex,"#tisas-cache-info-table");
     JSPLib.menu.purgeCacheClick('tisas','TISAS',program_cache_regex,"#tisas-purge-counter");
+    //Fixup forum links
+    $(".tisas-forum-topic-link").attr('href',TISAS.domain + "/forum_topics/15976");
     //Add CSS stylings
     JSPLib.utility.setCSSStyle(menu_css,'menu');
     const jquery_ui_css = GM_getResourceText("jquery_ui_css");
@@ -2578,6 +2804,7 @@ function Main() {
         tweet_finish: {},
         counted_artists: [],
         counted_tweets: [],
+        artist_iqdb_enabled: false,
         settings_config: settings_config
     };
     TISAS.user_settings = JSPLib.menu.loadUserSettings('tisas');
@@ -2588,6 +2815,7 @@ function Main() {
     $(document).on("click.tisas",".tisas-manual-add",ManualAdd);
     $(document).on("click.tisas",".tisas-confirm-iqdb",ConfirmIQDB);
     $(document).on("click.tisas",".tisas-confirm-delete",ConfirmDelete);
+    $(document).on("click.tisas",".tisas-reset-iqdb",ResetIQDB);
     $(document).on("click.tisas",".tisas-help-info",HelpInfo);
     $(document).on("click.tisas",".tisas-download-original",DownloadOriginal);
     $(document).on("click.tisas",".tisas-download-all",DownloadAll);
@@ -2596,6 +2824,7 @@ function Main() {
     $(document).on("click.tisas",".tisas-footer-entries .tisas-count-artist",CountArtist);
     $(document).on("click.tisas",".tisas-footer-entries .tisas-count-tweet",CountTweet);
     $(document).on("keydown.tisas", null, 'alt+h', ToggleArtistHilights);
+    $(document).on("keydown.tisas", null, 'alt+q', ToggleAutoclickIQDB);
     $(document).on("keydown.tisas", null, 'alt+i', ToggleTweetIndicators);
     $(document).on("keydown.tisas", null, 'alt+m', OpenSettingsMenu);
     $(document).on("keydown.tisas", null, 'alt+c', CloseSettingsMenu);
@@ -2606,13 +2835,13 @@ function Main() {
     if (JSPLib.storage.getStorageData('tisas-remote-database', localStorage) === null) {
         CheckDatabaseInfo(true).then(()=>{
             Danbooru.Utility.notice("TISAS will momentarily refresh the page to finish initializing.");
-            setTimeout(()=>{window.location = window.location;},JSPLib.utility.one_second * 5);
-            JSPLib.concurrency.setRecheckTimeout('tisas-database-recheck',JSPLib.utility.one_day);
+            setTimeout(()=>{window.location = window.location;},page_refresh_timeout);
+            JSPLib.concurrency.setRecheckTimeout('tisas-database-recheck',database_recheck_expires);
         });
     } else {
         setTimeout(()=>{
             CheckDatabaseInfo();
-            JSPLib.storage.pruneEntries('tisas',program_cache_regex,program_expires);
+            JSPLib.storage.pruneEntries('tisas',program_cache_regex,prune_recheck_expires);
         },JSPLib.utility.one_minute);
     }
     JSPLib.debug.debugExecute(()=>{
@@ -2636,7 +2865,7 @@ JSPLib.debug.addFunctionTimers(Timer,true,[
 JSPLib.debug.addFunctionLogs([
     Main,UnhideTweets,HighlightTweets,RegularCheck,ImportData,DownloadOriginal,ConfirmIQDB,ManualAdd,
     CheckIQDB,CheckUrl,PurgeBadTweets,UpgradeDatabase,SaveDatabase,LoadDatabase,CheckPostvers,
-    InitializeSimilarContainer,ReadFileAsync,ProcessPostvers,ProcessTweets,CorrectArtistList,ValidateEntry
+    InitializeSimilarContainer,ReadFileAsync,ProcessPostvers,ProcessTweets,CorrectStringArray,ValidateEntry
 ]);
 
 /****Execution start****/
