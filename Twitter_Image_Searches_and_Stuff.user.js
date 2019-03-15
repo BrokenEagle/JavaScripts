@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      3.0
+// @version      3.1
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -1039,8 +1039,10 @@ function TimeAgo(timestamp) {
         return JSPLib.utility.setPrecision(time_interval / JSPLib.utility.one_hour, 2) + " hours ago";
     } else if (time_interval < JSPLib.utility.one_month) {
         return JSPLib.utility.setPrecision(time_interval / JSPLib.utility.one_day, 2) + " days ago";
+    } else if (time_interval < JSPLib.utility.one_year) {
+        return JSPLib.utility.setPrecision(time_interval / JSPLib.utility.one_month, 2) + " months ago";
     } else {
-        return "> 1 month ago";
+        return JSPLib.utility.setPrecision(time_interval / JSPLib.utility.one_year, 2) + " years ago";
     }
 }
 
@@ -1069,16 +1071,23 @@ function MapPost(post) {
 
 function GetLinkTitle(post,is_render=true) {
     let tags = post.tags;
+    let age = `age:"${TimeAgo(post.created)}"`
     if (is_render) {
-        tags = jQueryEscape(post.tags);
+        tags = jQueryEscape(tags);
+        age = jQueryEscape(age);
     }
-    return `user:${post.uploader} score:${post.score} favcount:${post.favcount} rating:${post.rating} ${post.tags}`;
+    return `user:${post.uploader} score:${post.score} favcount:${post.favcount} rating:${post.rating} ${age} ${tags}`;
 }
+
 
 function GetMultiLinkTitle(post_ids,posts,is_render=true) {
     let title = [];
     posts.forEach((post,i)=>{
-        title.push(`post #${post_ids[i]} - user:${post.uploader} score:${post.score} favcount:${post.favcount} rating:${post.rating}`);
+        let age = `age:"${TimeAgo(post.created)}"`
+        if (is_render) {
+            age = jQueryEscape(age);
+        }
+        title.push(`post #${post_ids[i]} - user:${post.uploader} score:${post.score} favcount:${post.favcount} rating:${post.rating} ${age}`);
     });
     return title.join('\n');
 }
