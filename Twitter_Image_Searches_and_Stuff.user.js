@@ -375,7 +375,16 @@ const program_css = `
     margin: 0 0.5em;
     font-size: 75%;
 }
-.tisas-iqdb-result h4 {
+.qtiptisas.tisas-iqdb-tooltip {
+    max-width: none;
+}
+.tisas-iqdb-tooltip .qtiptisas-content {
+    max-width: 850px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+.tisas-iqdb-result h4,
+.tisas-post-result h4 {
     margin-top: 0;
     margin-bottom: 5px;
     font-size: 16px;
@@ -383,9 +392,25 @@ const program_css = `
 }
 .tisas-post-preview {
     display: inline-block;
-    width: 150px;
+    width: 165px;
     text-align: center;
     font-family: Verdana, Helvetica, sans-serif;
+}
+.tisas-post-preview img {
+    max-width: 150px;
+    max-height: 150px;
+    overflow: hidden;
+}
+.tisas-image-container {
+    height: 150px;
+    width: 150px;
+    border: solid transparent 5px;
+}
+.tisas-post-match .tisas-image-container {
+    border: solid green 5px;
+}
+.tisas-post-select .tisas-image-container {
+    border: solid black 5px;
 }
 .tisas-desc {
     font-size:12px;
@@ -828,12 +853,19 @@ $.ajaxSetup({xhr: function () {return new GM_XHR();}});
 const post_constraints = {
     entry: JSPLib.validate.hashentry_constraints,
     value: {
+        id: JSPLib.validate.postcount_constraints,
         uploader: JSPLib.validate.stringonly_constraints,
         score: JSPLib.validate.integer_constraints,
         favcount: JSPLib.validate.counting_constraints,
         rating: JSPLib.validate.inclusion_constraints(['s','q','e']),
         tags: JSPLib.validate.stringonly_constraints,
-        created: JSPLib.validate.integer_constraints
+        created: JSPLib.validate.counting_constraints,
+        thumbnail: JSPLib.validate.stringonly_constraints,
+        source: JSPLib.validate.stringonly_constraints,
+        ext: JSPLib.validate.inclusion_constraints(['jpg','png','gif']),
+        size: JSPLib.validate.counting_constraints,
+        width: JSPLib.validate.counting_constraints,
+        height: JSPLib.validate.counting_constraints
     }
 };
 
@@ -1076,12 +1108,19 @@ function MapPostData(posts) {
 
 function MapPost(post) {
     return {
+        id: post.id,
         uploader: post.uploader_name,
         score: post.score,
         favcount: post.fav_count,
         rating: post.rating,
         tags: post.tag_string,
-        created: new Date(post.created_at).getTime()
+        created: new Date(post.created_at).getTime(),
+        thumbnail: post.preview_file_url,
+        source: post.source,
+        ext: post.file_ext,
+        size: post.file_size,
+        width: post.image_width,
+        height: post.image_height
     }
 }
 
@@ -1095,15 +1134,14 @@ function GetLinkTitle(post,is_render=true) {
     return `user:${post.uploader} score:${post.score} favcount:${post.favcount} rating:${post.rating} ${age} ${tags}`;
 }
 
-
-function GetMultiLinkTitle(post_ids,posts,is_render=true) {
+function GetMultiLinkTitle(posts,is_render=true) {
     let title = [];
     posts.forEach((post,i)=>{
         let age = `age:"${TimeAgo(post.created)}"`
         if (is_render) {
             age = jQueryEscape(age);
         }
-        title.push(`post #${post_ids[i]} - user:${post.uploader} score:${post.score} favcount:${post.favcount} rating:${post.rating} ${age}`);
+        title.push(`post #${post.id} - user:${post.uploader} score:${post.score} favcount:${post.favcount} rating:${post.rating} ${age}`);
     });
     return title.join('\n');
 }
@@ -1204,10 +1242,10 @@ function SaveList(name,list,delay=true) {
     }
 }
 
-function SavePost(post_id,mapped_post) {
+function SavePost(mapped_post) {
     let expires_duration = PostExpiration(mapped_post.created);
     let data_expires = JSPLib.utility.getExpiration(expires_duration)
-    JSPLib.storage.saveData('post-' + post_id, {value: mapped_post, expires: data_expires});
+    JSPLib.storage.saveData('post-' + mapped_post.id, {value: mapped_post, expires: data_expires});
 }
 
 function PostExpiration(created_timestamp) {
@@ -1290,81 +1328,112 @@ function ProcessTweets($tweets,primaryfilter,append_selector,outerHTML) {
         data_items.forEach((data,i)=>{
             let tweet_id = tweet_ids[i];
             let $tweet = $filter_tweets.filter(`[data-tweet-id=${tweet_id}]`);
+            let $link_container = $(outerHTML);
+            $tweet.find(append_selector).append($link_container);
             if (data !== null) {
-                let postlink = "";
-                let helplink = RenderHelp(confirm_delete_help);
-                if (data.length === 1) {
-                    postlink = `( <a class="tisas-confirm-delete tisas-database-match" target="_blank" href="${TISAS.domain}/posts/${data[0]}">post #${data[0]}</a> | ${helplink} )`
-                } else {
-                    postlink = `( <a class="tisas-confirm-delete tisas-database-match" target="_blank" href="${TISAS.domain}/posts?tags=status%3Aany+id%3A${data.join(',')}${GetCustomQuery()}">${data.length} sources</a> | ${helplink} ) `;
-                }
-                ProcessTweets.tweet_index[tweet_id] = {entry: $tweet, post_ids: data, processed: false};
+                TISAS.tweet_index[tweet_id] = {entry: $tweet, post_ids: data, processed: false};
                 all_post_ids = all_post_ids.concat(data);
-                let $link_container = $(outerHTML).append(postlink);
-                $tweet.find(append_selector).append($link_container);
+                $link_container.html(RenderPostIDsLink(data,'tisas-database-match'));
             } else {
-                JSPLib.storage.checkLocalDB('iqdb-' + tweet_id, ValidateEntry, iqdb_expires).then((iqdb_data)=>{
-                    let has_no_results = false;
-                    if (iqdb_data === null) {
-                        JSPLib.storage.saveData('iqdb-' + tweet_id, {value: false, expires: JSPLib.utility.getExpiration(iqdb_expires)});
-                    } else {
-                        has_no_results = iqdb_data.value;
-                    }
-                    let $link_container = $(outerHTML).append(RenderNomatchLinks(has_no_results));
-                    $tweet.find(append_selector).append($link_container);
-                });
+                InitializeNoMatchesLinks(tweet_id,$link_container);
             }
         });
-        if (all_post_ids.length) {
-            JSPLib.storage.batchStorageCheck(all_post_ids,ValidateEntry,max_post_expires,'post').then((missing_ids)=>{
-                ProcessTweets.debuglog("Missing posts:",missing_ids);
-                if (missing_ids.length) {
-                    JSPLib.danbooru.submitRequest('posts',{tags: 'id:' + missing_ids.join(','), limit: missing_ids.length},[],null,TISAS.domain).then((data)=>{
-                        let mapped_data = MapPostData(data);
-                        mapped_data.forEach((post,i)=>{
-                            let post_id = data[i].id;
-                            ProcessTweets.post_index[post_id] = post;
-                            SavePost(post_id, post);
-                        });
-                        UpdateLinkTitles();
-                    });
-                }
-                let found_ids = JSPLib.utility.setDifference(all_post_ids,missing_ids.map(Number));
-                ProcessTweets.debuglog("Found posts:",found_ids);
-                found_ids.forEach((post_id)=>{
-                    ProcessTweets.post_index[post_id] = JSPLib.storage.getStorageData('post-' + post_id, sessionStorage).value;
-                });
-                UpdateLinkTitles();
-            });
-        }
+        CheckPostIDs(all_post_ids);
     });
 }
-ProcessTweets.tweet_index = {};
-ProcessTweets.post_index = {};
+
 
 function UpdateLinkTitles() {
-    for (let tweet_id in ProcessTweets.tweet_index) {
-        let tweet_entry = ProcessTweets.tweet_index[tweet_id];
+    for (let tweet_id in TISAS.tweet_index) {
+        let tweet_entry = TISAS.tweet_index[tweet_id];
         if (tweet_entry.post_ids.length < 1 || tweet_entry.processed) {
             continue;
         }
-        let $link = tweet_entry.entry.find('.tisas-database-match');
-        if (tweet_entry.post_ids.length === 1) {
-            let post_id = tweet_entry.post_ids[0];
-            if (post_id in ProcessTweets.post_index) {
-                $link.attr('title',GetLinkTitle(ProcessTweets.post_index[post_id],false));
-                tweet_entry.processed = true;
+        let $link = tweet_entry.entry.find('.tisas-confirm-delete');
+        let post_ids = tweet_entry.post_ids;
+        let all_posts_loaded = (JSPLib.utility.setIntersection(Object.keys(TISAS.post_index).map(Number),post_ids).length === post_ids.length);
+        if (all_posts_loaded) {
+            let posts = post_ids.map((post_id)=>{return TISAS.post_index[post_id];});
+            if (post_ids.length === 1) {
+                $link.attr('title',GetLinkTitle(posts[0],false));
+            } else {
+                $link.attr('title',GetMultiLinkTitle(posts,false));
             }
-        } else {
-            let post_ids = tweet_entry.post_ids;
-            if (JSPLib.utility.setIntersection(Object.keys(ProcessTweets.post_index).map(Number),post_ids).length === post_ids.length) {
-                let posts = post_ids.map((post_id)=>{return ProcessTweets.post_index[post_id];});
-                $link.attr('title',GetMultiLinkTitle(post_ids,posts,false));
-                tweet_entry.processed = true;
+            if (TISAS.user_settings.advanced_tooltips_enabled) {
+                let image_urls = tweet_entry.entry.find("[data-image-url]").map((i,entry)=>{return $(entry).data('image-url');}).toArray();
+                InitializeQtip($link,tweet_id,()=>{return InitializePostsContainer(posts,image_urls);});
             }
+            tweet_entry.processed = true;
         }
     }
 }
+
+function CheckPostIDs(post_ids) {
+    let temp_post_ids = JSPLib.utility.setUnion(TISAS.all_post_ids,post_ids);
+    if (TISAS.all_post_ids.length !== temp_post_ids.length) {
+        TISAS.all_post_ids = temp_post_ids;
+        JSPLib.storage.batchStorageCheck(TISAS.all_post_ids,ValidateEntry,max_post_expires,'post').then((missing_ids)=>{
+            CheckPostIDs.debuglog("Missing posts:",missing_ids);
+            if (missing_ids.length) {
+                JSPLib.danbooru.submitRequest('posts',{tags: 'id:' + missing_ids.join(','), limit: missing_ids.length},[],null,TISAS.domain).then((data)=>{
+                    MapPostData(data).forEach((post)=>{
+                        TISAS.post_index[post.id] = post;
+                        SavePost(post);
+                    });
+                    UpdateLinkTitles();
+                });
+            }
+            let found_ids = JSPLib.utility.setDifference(TISAS.all_post_ids,missing_ids.map(Number));
+            CheckPostIDs.debuglog("Found posts:",found_ids);
+            found_ids.forEach((post_id)=>{
+                TISAS.post_index[post_id] = JSPLib.storage.getStorageData('post-' + post_id, sessionStorage).value;
+            });
+            UpdateLinkTitles();
+        });
+    } else {
+        UpdateLinkTitles();
+    }
+}
+
+function PromptSavePostIDs($link,$tweet,tweet_id,$replace,message,initial_post_ids) {
+    let prompt_post_ids = prompt(message,initial_post_ids.join(', '));
+    if (prompt_post_ids !== null) {
+        let confirm_post_ids = prompt_post_ids.split(',').map(Number).filter((num)=>{return JSPLib.validate.validateID(num);});
+        PromptSavePostIDs.debuglog("Confirmed IDs:",confirm_post_ids);
+        if (TISAS.user_settings.advanced_tooltips_enabled) {
+            $link.qtiptisas("destroy");
+        }
+        if (confirm_post_ids.length === 0) {
+            TwitterStorage(JSPLib.storage.removeData,'tweet-' + tweet_id);
+            InitializeNoMatchesLinks(tweet_id,$replace);
+        } else {
+            TwitterStorage(JSPLib.storage.saveData, 'tweet-' + tweet_id, confirm_post_ids);
+            $replace.html(RenderPostIDsLink(confirm_post_ids,'tisas-database-match'));
+            TISAS.tweet_index[tweet_id] = {entry: $tweet, post_ids: confirm_post_ids, processed: false};
+            CheckPostIDs(confirm_post_ids);
+        }
+    }
+}
+
+function GetSelectPostIDs(tweet_id) {
+    if (!TISAS.tweet_qtip[tweet_id]) {
+        return [];
+    }
+    let $all_previews = $(".tisas-post-preview",TISAS.tweet_qtip[tweet_id]);
+    let $select_previews = $all_previews.filter(".tisas-post-select")
+    let post_ids = $select_previews.map((i,entry)=>{return Number($(entry).data('id'));}).toArray();
+    return post_ids;
+}
+
+function SetThumbnailWait($obj,all_posts) {
+    all_posts.map(async (post)=>{
+        let blob = await GetImage(post.thumbnail);
+        let image_blob = blob.slice(0, blob.size, "image/jpeg");
+        let blob_url = window.URL.createObjectURL(image_blob);
+        $(`[data-id=${post.id}] img`,$obj).attr('src',blob_url);
+    });
+}
+
 
 function ReversalCheck(hash,key,id) {
     if ((key in hash) && hash[key].includes(id)) {
@@ -1768,6 +1837,24 @@ function RenderDownloadLinks($tweet,position) {
 </div>`
 }
 
+function RenderPostIDsLink(post_ids,classname) {
+    let helplink = RenderHelp(confirm_delete_help);
+    if (post_ids.length === 1) {
+        return `( <a class="tisas-confirm-delete ${classname}" target="_blank" href="${TISAS.domain}/posts/${post_ids[0]}">post #${post_ids[0]}</a> | ${helplink} )`
+    } else {
+        return `( <a class="tisas-confirm-delete ${classname}" target="_blank" href="${TISAS.domain}/posts?tags=status%3Aany+id%3A${post_ids.join(',')}${GetCustomQuery()}">${post_ids.length} sources</a> | ${helplink} ) `;
+    }
+}
+
+function RenderSimilarIDsLink(post_ids,mapped_posts,classname) {
+    let helplink = RenderHelp(confirm_iqdb_help);
+    if (post_ids.length === 1) {
+        return `( <a class="tisas-confirm-iqdb ${classname}" target="_blank" href="${TISAS.domain}/posts/${post_ids[0]}" title="${GetLinkTitle(mapped_posts[0])}">post #${post_ids[0]}</a> | ${helplink} )`
+    } else {
+        return `( <a class="tisas-confirm-iqdb ${classname}" target="_blank" href="${TISAS.domain}/posts?tags=status%3Aany+id%3A${post_ids.join(',')}${GetCustomQuery()}"  title="${GetMultiLinkTitle(mapped_posts)}">${post_ids.length} sources</a> | ${helplink} )`;
+    }
+}
+
 function RenderAllSimilar(all_iqdb_results,image_urls) {
     var image_results = [];
     all_iqdb_results.forEach((iqdb_results,i)=>{
@@ -1783,18 +1870,24 @@ function RenderAllSimilar(all_iqdb_results,image_urls) {
 function RenderSimilarContainer(header,iqdb_results,image_url,index) {
     var html = "";
     iqdb_results.forEach((iqdb_result,i)=>{
-        let addons = RenderSimilarAddons(iqdb_result.post.source, iqdb_result.score, iqdb_result.post.file_ext, iqdb_result.post.file_size, iqdb_result.post.image_width, iqdb_result.post.image_height);
-        html += RenderPostPreview(iqdb_result.post,addons)
+        let addons = RenderPreviewAddons(iqdb_result.post.source, null, iqdb_result.score, iqdb_result.post.file_ext, iqdb_result.post.file_size, iqdb_result.post.image_width, iqdb_result.post.image_height);
+        html += RenderPostPreview(MapPost(iqdb_result.post),addons)
     });
     let domain = 'twitter.com';
     let file_type = GetFileExtension(image_url,':');
     let thumb_url = GetThumbUrl(image_url,':','jpg') + ':small';
-    let append_html = RenderSimilarAddons('https://twitter.com', null, file_type);
+    let append_html = RenderPreviewAddons('https://twitter.com', null, null, file_type);
+    let iqdb_select_help = `
+Select posts that aren't valid IQDB matches.
+Click the colored postlink when finished to confirm.
+`;
     return `
 <div class="tisas-iqdb-result">
-    <h4>${header}</h4>
-     <article class="tisas-post-preview" data-id="${index}">
-        <img width="150" height="150" src="${thumb_url}">
+    <h4>${header} (${RenderHelp(iqdb_select_help.trim())})</h4>
+     <article class="tisas-post-preview" data-index="${index}">
+        <div class="tisas-image-container">
+            <img width="150" height="150" src="${thumb_url}">
+        </div>
         ${append_html}
     </article>
     ${html}
@@ -1802,21 +1895,49 @@ function RenderSimilarContainer(header,iqdb_results,image_url,index) {
 `
 }
 
-function RenderPostPreview(post,append_html="") {
-    let [width,height] = GetPreviewDimensions(post.image_width, post.image_height);
+function RenderPostsContainer(all_posts) {
+    let html = "";
+    all_posts.forEach((post,i)=>{
+        let addons = RenderPreviewAddons(post.source, post.id, null, post.ext, post.size, post.width, post.height);
+        html += RenderPostPreview(post,addons)
+    });
+    let post_select_help = `
+Select posts for deletion by clicking the thumbnail.
+Selecting no posts is the same as selecting all posts.
+Click the colored postlink when finished to delete.
+`;
     return `
-<article class="tisas-post-preview" data-id="${post.id}" data-size="${post.file_size}">
-    <a target="_blank" href="https://danbooru.donmai.us/posts/${post.id}">
-        <img width="${width}" height="${height}" title="${GetLinkTitle(MapPost(post),true)}">
-    </a>
+<div class="tisas-post-result">
+    <h4>Danbooru matches (${RenderHelp(post_select_help.trim())})</h4>
+    ${html}
+</div>
+`;
+}
+
+//Expects a mapped post as input
+function RenderPostPreview(post,append_html="") {
+    let [width,height] = GetPreviewDimensions(post.width, post.height);
+    let padding_height = 150 - height;
+    return `
+<article class="tisas-post-preview" data-id="${post.id}" data-size="${post.size}">
+    <div class="tisas-image-container">
+        <a target="_blank" href="https://danbooru.donmai.us/posts/${post.id}">
+            <img width="${width}" height="${height}" style="padding-top:${padding_height}px" title="${GetLinkTitle(post,true)}">
+        </a>
+    </div>
     ${append_html}
 </article>
 `;
 }
 
-function RenderSimilarAddons(source,score,file_ext,file_size,width,height) {
-    var title_text = (JSPLib.validate.isNumber(score) ? `Similarity: ${JSPLib.utility.setPrecision(score,2)}` : "Original image");
-    var domain = (source.match(/^https?:\/\//) ? GetBaseDomainName(source) : "NON-WEB");
+function RenderPreviewAddons(source,id,score,file_ext,file_size,width,height) {
+    let title_text = "Original image";
+    if (JSPLib.validate.validateID(id)) {
+        title_text = "post #" + id;
+    } else if (JSPLib.validate.isNumber(score)) {
+        title_text = `Similarity: ${JSPLib.utility.setPrecision(score,2)}`
+    }
+    let domain = (source.match(/^https?:\/\//) ? GetBaseDomainName(source) : "NON-WEB");
     let size_text = (Number.isInteger(file_size) && Number.isInteger(width) && Number.isInteger(height) ? `${ReadableBytes(file_size)} (${width}x${height})` : "");
     return `
 <p class="tisas-desc tisas-desc-title">${title_text}</p>
@@ -1897,51 +2018,68 @@ function InitializeCounter(prev_pagetype) {
     }
 }
 
-function InitializeQtip($obj,tweet_id) {
+function InitializeQtip($obj,tweet_id,delayfunc) {
     const qtip_settings = Object.assign(ARTIST_QTIP_SETTINGS, {
         content: {
             text: (event, qtip) => {
-                if (qtip.tooltip.css('max-width') !== "none") {
-                    qtip.tooltip.css('max-width','none');
+                if (!qtip.tooltip[0].hasAttribute('tisas')) {
+                    if (delayfunc) {
+                        TISAS.tweet_qtip[tweet_id] = delayfunc();
+                    }
+                    qtip.tooltip.attr('tisas','done');
                 }
-                return CheckIQDB.tweet_qtip[tweet_id] || "Loading...";
+                return TISAS.tweet_qtip[tweet_id] || "Loading...";
             }
         }
     });
     $obj.qtiptisas(qtip_settings);
 }
 
-function InitializeSimilarContainer(image_urls,all_iqdb_results,tweet_id) {
+function InitializeSimilarContainer(image_urls,all_iqdb_results,all_posts,tweet_id) {
     let $attachment = $(RenderAllSimilar(all_iqdb_results,image_urls));
+    SetThumbnailWait($attachment,all_posts);
     $("article:first-of-type",$attachment).each((i,article)=>{
-        let index = Number($(article).data('id'));
+        let index = Number($(article).data('index'));
         let image_url = image_urls[index] + ':orig';
         let image = $("img",article)[0];
         let fake_image = $('<img>')[0];
         fake_image.onload = function () {
-            InitializeSimilarContainer.debuglog("Image onload called!",image_url);
             let [width,height] = GetPreviewDimensions(fake_image.naturalWidth,fake_image.naturalHeight);
             image.width = width;
             image.height = height;
+            image.style.paddingTop = `${150 - height}px`;
             let starttime = Date.now();
             GetImageSize(image_url).then((size)=>{
                 $("p:nth-child(4)",article).html(`${ReadableBytes(size)} (${fake_image.naturalWidth}x${fake_image.naturalHeight})`);
-                let $matching_images = $(article).closest(".tisas-iqdb-result").find(`[data-size=${size}]`);
-                if ($matching_images.length) {
-                    InitializeSimilarContainer.debuglog("Matching image found!",$matching_images.data('id'));
-                    $("img",$matching_images).css('border','solid green 5px');
-                }
+                $(article).closest(".tisas-iqdb-result").find(`[data-size=${size}]`).addClass('tisas-post-match');
             });
         };
         fake_image.src = image_url;
     });
-    Promise.all(CheckIQDB.thumb_wait[tweet_id]).then((data)=>{
-        data.forEach((item)=>{
-            let $image = $(`[data-id=${item.post_id}] img`,$attachment);
-            $(`[data-id=${item.post_id}] img`,$attachment).attr('src',item.blob_url);
+    return $attachment;
+}
+
+function InitializePostsContainer(all_posts,image_urls) {
+    let $attachment = $(RenderPostsContainer(all_posts));
+    SetThumbnailWait($attachment,all_posts);
+    image_urls.forEach((image_url)=>{
+        GetImageSize(image_url + ':orig').then((size)=>{
+            $attachment.find(`[data-size=${size}]`).addClass('tisas-post-match');
         });
     });
     return $attachment;
+}
+
+function InitializeNoMatchesLinks(tweet_id,$obj) {
+    JSPLib.storage.checkLocalDB('iqdb-' + tweet_id, ValidateEntry, iqdb_expires).then((iqdb_data)=>{
+        let has_no_results = false;
+        if (iqdb_data === null) {
+            JSPLib.storage.saveData('iqdb-' + tweet_id, {value: false, expires: JSPLib.utility.getExpiration(iqdb_expires)});
+        } else {
+            has_no_results = iqdb_data.value;
+        }
+        $obj.html(RenderNomatchLinks(has_no_results));
+    });
 }
 
 //Network functions
@@ -2252,14 +2390,14 @@ Continue?
     event.preventDefault();
 }
 
-function CheckUrl(event) {
+function CheckURL(event) {
     let [$link,$tweet,tweet_id,user_id,screen_name,$replace] = GetEventPreload(event,'tisas-check-url');
     $link.removeClass('tisas-check-url').html("loading…");
     let no_iqdb_results = $tweet.find(".tisas-check-iqdb").length === 0;
     let normal_url = `https://twitter.com/${screen_name}/status/${tweet_id}`;
     let wildcard_url = `https://twitter.com/*/status/${tweet_id}`;
     let check_url = (TISAS.user_settings.URL_wildcards_enabled ? wildcard_url : normal_url);
-    CheckUrl.debuglog(check_url);
+    CheckURL.debuglog(check_url);
     JSPLib.danbooru.submitRequest('posts',{tags: "source:" + check_url},[],null,TISAS.domain,true).then((data)=>{
         if (data.length === 0) {
             if (TISAS.user_settings.autocheck_IQDB_enabled) {
@@ -2268,17 +2406,12 @@ function CheckUrl(event) {
             $replace.html(RenderNomatchLinks(no_iqdb_results,true));
         } else {
             let mapped_data = MapPostData(data);
-            mapped_data.forEach((post,i)=>{SavePost(data[i].id, post);});
+            mapped_data.forEach((post)=>{SavePost(post);});
             let post_ids = JSPLib.utility.getObjectAttributes(data,'id');
-            let helplink = RenderHelp(confirm_delete_help);
-            let postlink = "";
-            if (data.length === 1) {
-                postlink = `( <a class="tisas-confirm-delete tisas-database-match" target="_blank" href="${TISAS.domain}/posts/${post_ids[0]}" title="${GetLinkTitle(mapped_data[0])}">post #${post_ids[0]}</a> | ${helplink} )`
-            } else {
-                postlink = `( <a class="tisas-confirm-delete tisas-database-match" target="_blank" href="${TISAS.domain}/posts?tags=status%3Aany+id%3A${post_ids.join(',')}${GetCustomQuery()}" title="${GetMultiLinkTitle(post_ids,mapped_data)}">${post_ids.length} sources</a> | ${helplink} )`;
-            }
             TwitterStorage(JSPLib.storage.saveData,'tweet-' + tweet_id, post_ids);
-            $replace.html(postlink);
+            $replace.html(RenderPostIDsLink(post_ids,'tisas-database-match'));
+            TISAS.tweet_index[tweet_id] = {entry: $tweet, post_ids: post_ids, processed: false};
+            CheckPostIDs(post_ids);
         }
     });
     event.preventDefault();
@@ -2293,52 +2426,34 @@ function CheckIQDB(event) {
     let promise_array = image_urls.map((image_url)=>{return JSPLib.danbooru.submitRequest('iqdb_queries',{url: image_url},[],null,TISAS.domain,true);});
     Promise.all(promise_array).then((data)=>{
         let flat_data = data.flat();
-        let unique_posts = RemoveDuplicates(JSPLib.utility.getObjectAttributes(flat_data,'post'),'id');
         if (flat_data.length > 0) {
             let post_data = JSPLib.utility.getObjectAttributes(flat_data,'post');
-            let mapped_data = MapPostData(unique_posts);
-            mapped_data.forEach((post,i)=>{SavePost(unique_posts[i].id, post);});
+            let unique_posts = RemoveDuplicates(post_data,'id');
+            let mapped_posts = MapPostData(unique_posts);
+            mapped_posts.forEach((post)=>{SavePost(post);});
             let max_score = Math.max(...JSPLib.utility.getObjectAttributes(flat_data,'score'));
-            let classnames = "tisas-iqdb-match-poor";
+            let classname = "tisas-iqdb-match-poor";
             if (max_score > 95.0) {
-                classnames = "tisas-iqdb-match-great";
+                classname = "tisas-iqdb-match-great";
             } else if (max_score > 90.0) {
-                classnames = "tisas-iqdb-match-good";
+                classname = "tisas-iqdb-match-good";
             } else if (max_score > 85.0) {
-                classnames = "tisas-iqdb-match-fair";
+                classname = "tisas-iqdb-match-fair";
             }
-            let post_ids = JSPLib.utility.getObjectAttributes(flat_data,'post_id');
-            let helplink = "";
+            let iqdb_post_ids = JSPLib.utility.getObjectAttributes(flat_data,'post_id');
             if (TISAS.user_settings.autosave_IQDB_enabled || IsIQDBAutoclick()) {
-                TwitterStorage(JSPLib.storage.saveData,'tweet-' + tweet_id, post_ids);
-                classnames += " tisas-confirm-delete";
-                helplink = RenderHelp(confirm_delete_help);
+                TwitterStorage(JSPLib.storage.saveData,'tweet-' + tweet_id, iqdb_post_ids);
+                $replace.html(RenderPostIDsLink(iqdb_post_ids,classname));
+                TISAS.tweet_index[tweet_id] = {entry: $tweet, post_ids: iqdb_post_ids, processed: false, similar: false};
+                CheckPostIDs(iqdb_post_ids);
             } else {
-                classnames += " tisas-confirm-iqdb";
-                helplink = RenderHelp(confirm_iqdb_help);
-            }
-            TISAS.IQDB_results = TISAS.IQDB_results || {};
-            TISAS.IQDB_results[tweet_id] = post_ids;
-            let postlink = "";
-            if (post_ids.length === 1) {
-                postlink = `( <a class="${classnames}" target="_blank" href="${TISAS.domain}/posts/${post_ids[0]}" title="${GetLinkTitle(mapped_data[0])}">post #${post_ids[0]}</a> | ${helplink} )`
-            } else {
-                postlink = `( <a class="${classnames}" target="_blank" href="${TISAS.domain}/posts?tags=status%3Aany+id%3A${post_ids.join(',')}${GetCustomQuery()}"  title="${GetMultiLinkTitle(post_ids,mapped_data)}">${post_ids.length} sources</a> | ${helplink} )`;
-            }
-            $replace.html(postlink);
-            if (!TISAS.user_settings.autosave_IQDB_enabled && !IsIQDBAutoclick() && TISAS.user_settings.advanced_tooltips_enabled) {
-                InitializeQtip($tweet.find('.tisas-confirm-iqdb'),tweet_id);
-                //Some elements are delayed in rendering, so render ahead of time
-                CheckIQDB.thumb_wait[tweet_id] = unique_posts.map(async (post)=>{
-                    let blob = await GetImage(post.preview_file_url);
-                    let image_blob = blob.slice(0, blob.size, "image/jpeg");
-                    let blob_url = window.URL.createObjectURL(image_blob);
-                    return {
-                        post_id: post.id,
-                        blob_url: blob_url
-                    };
-                });
-                CheckIQDB.tweet_qtip[tweet_id] = InitializeSimilarContainer(image_urls,data,tweet_id);
+                $replace.html(RenderSimilarIDsLink(iqdb_post_ids,mapped_posts,classname));
+                TISAS.IQDB_results[tweet_id] = iqdb_post_ids;
+                if (TISAS.user_settings.advanced_tooltips_enabled) {
+                    InitializeQtip($tweet.find('.tisas-confirm-iqdb'),tweet_id);
+                    //Some elements are delayed in rendering, so render ahead of time
+                    TISAS.tweet_qtip[tweet_id] = InitializeSimilarContainer(image_urls,data,mapped_posts,tweet_id);
+                }
             }
         } else {
             JSPLib.storage.saveData('iqdb-' + tweet_id, {value: true, expires: JSPLib.utility.getExpiration(iqdb_expires)});
@@ -2347,30 +2462,10 @@ function CheckIQDB(event) {
     });
     event.preventDefault();
 }
-CheckIQDB.tweet_qtip = {};
-CheckIQDB.IQDB_results = {};
-CheckIQDB.thumb_wait = {};
 
 function ManualAdd(event) {
     let [$link,$tweet,tweet_id,user_id,screen_name,$replace] = GetEventPreload(event,'tisas-manual-add');
-    let confirmed_ids = prompt("Enter the post IDs of matches separated by commas.");
-    if (confirmed_ids === null) {
-        return;
-    }
-    confirmed_ids = confirmed_ids.split(',').map(Number).filter((num)=>{return JSPLib.validate.validateID(num);});
-    ManualAdd.debuglog("Confirmed IDs:",confirmed_ids);
-    if (confirmed_ids.length) {
-        TwitterStorage(JSPLib.storage.saveData,'tweet-' + tweet_id, confirmed_ids);
-        let postlink = "";
-        let helplink = RenderHelp(confirm_delete_help);
-        if (confirmed_ids.length === 1) {
-            postlink = `( <a class="tisas-confirm-delete tisas-database-match" target="_blank" href="${TISAS.domain}/posts/${confirmed_ids[0]}">post #${confirmed_ids[0]}</a> | ${helplink} )`
-        } else {
-            postlink = `( <a class="tisas-confirm-delete tisas-database-match" target="_blank" href="${TISAS.domain}/posts?tags=status%3Aany+id%3A${confirmed_ids.join(',')}${GetCustomQuery()}">${confirmed_ids.length} sources</a> | ${helplink} )`;
-        }
-        $replace.html(postlink);
-    }
-    event.preventDefault();
+    PromptSavePostIDs($link,$tweet,tweet_id,$replace,"Enter the post IDs of matches. (separated by commas)",[]);
 }
 
 function ConfirmIQDB(event) {
@@ -2378,17 +2473,13 @@ function ConfirmIQDB(event) {
         return;
     }
     let [$link,$tweet,tweet_id,user_id,screen_name,$replace] = GetEventPreload(event,'tisas-confirm-iqdb');
-    let post_ids = TISAS.IQDB_results[tweet_id];
-    let confirmed_ids = prompt("Which of the following post IDs are valid IQDB hits?",post_ids.join(','));
-    if (confirmed_ids !== null) {
-        confirmed_ids = confirmed_ids.split(',').map(Number).filter((num)=>{return JSPLib.validate.validateID(num);});
-        ConfirmIQDB.debuglog("Confirmed IDs:",confirmed_ids);
-        if (confirmed_ids.length) {
-            TwitterStorage(JSPLib.storage.saveData,'tweet-' + tweet_id, confirmed_ids);
-            $replace.find('.tisas-help-info').attr('title',confirm_delete_help);
-            $replace.find('.tisas-confirm-iqdb').removeClass("tisas-confirm-iqdb").addClass('tisas-confirm-delete');
-        }
-    }
+    let select_post_ids = GetSelectPostIDs(tweet_id);
+    let all_post_ids = TISAS.IQDB_results[tweet_id];
+    let save_post_ids = JSPLib.utility.setDifference(all_post_ids,select_post_ids);
+    let message = `
+Save the following post IDs? (separate by comma, empty to reset link)
+`;
+    PromptSavePostIDs($link,$tweet,tweet_id,$replace,message,save_post_ids)
     event.preventDefault();
 }
 
@@ -2397,18 +2488,18 @@ function ConfirmDelete(event) {
         return;
     }
     let [$link,$tweet,tweet_id,user_id,screen_name,$replace] = GetEventPreload(event,'tisas-confirm-delete');
-    if (confirm("Delete this tweet info?")) {
-        TwitterStorage(JSPLib.storage.removeData,'tweet-' + tweet_id);
-        JSPLib.storage.checkLocalDB('iqdb-' + tweet_id, ValidateEntry, iqdb_expires).then((data)=>{
-            let has_no_results = false;
-            if (data === null) {
-                JSPLib.storage.saveData('iqdb-' + tweet_id, {value: false, expires: JSPLib.utility.getExpiration(iqdb_expires)});
-            } else {
-                has_no_results = data.value;
-            }
-            $replace.html(RenderNomatchLinks(has_no_results));
-        });
+    let select_post_ids = GetSelectPostIDs(tweet_id);
+    let all_post_ids = JSPLib.storage.getStorageData('tweet-' + tweet_id,sessionStorage);
+    if (select_post_ids.length === 0) {
+        select_post_ids = all_post_ids;
     }
+    let save_post_ids = JSPLib.utility.setDifference(all_post_ids,select_post_ids);
+    let message = `
+The following posts will be deleted: ${select_post_ids}
+
+Save the following post IDs? (separate by comma, empty to delete)
+`;
+    PromptSavePostIDs($link,$tweet,tweet_id,$replace,message.trim(),save_post_ids)
     event.preventDefault();
 }
 
@@ -2416,6 +2507,14 @@ function ResetIQDB(event) {
     let [$link,$tweet,tweet_id,user_id,screen_name,$replace] = GetEventPreload(event,'tisas-reset-iqdb');
     JSPLib.storage.saveData('iqdb-' + tweet_id, {value: false, expires: JSPLib.utility.getExpiration(iqdb_expires)});
     $replace.html(RenderNomatchLinks(false));
+    event.preventDefault();
+}
+
+function SelectPreview(event) {
+    if (!TISAS.user_settings.confirm_delete_enabled) {
+        return;
+    }
+    $(event.currentTarget).closest(".tisas-post-preview").toggleClass('tisas-post-select');
     event.preventDefault();
 }
 
@@ -2881,19 +2980,25 @@ function Main() {
         tweet_finish: {},
         counted_artists: [],
         counted_tweets: [],
+        all_post_ids: [],
+        post_index: {},
+        tweet_index: {},
+        tweet_qtip: {},
+        IQDB_results: {},
         artist_iqdb_enabled: false,
         settings_config: settings_config
     };
     TISAS.user_settings = JSPLib.menu.loadUserSettings('tisas');
     SetQueryDomain();
     RegularCheck.timer = setInterval(RegularCheck,program_recheck_interval);
-    $(document).on("click.tisas",".tisas-check-url",CheckUrl);
+    $(document).on("click.tisas",".tisas-check-url",CheckURL);
     $(document).on("click.tisas",".tisas-check-iqdb",CheckIQDB);
     $(document).on("click.tisas",".tisas-manual-add",ManualAdd);
     $(document).on("click.tisas",".tisas-confirm-iqdb",ConfirmIQDB);
     $(document).on("click.tisas",".tisas-confirm-delete",ConfirmDelete);
     $(document).on("click.tisas",".tisas-reset-iqdb",ResetIQDB);
     $(document).on("click.tisas",".tisas-help-info",HelpInfo);
+    $(document).on("click.tisas",".tisas-post-preview a",SelectPreview);
     $(document).on("click.tisas",".tisas-download-original",DownloadOriginal);
     $(document).on("click.tisas",".tisas-download-all",DownloadAll);
     $(document).on("click.tisas",".tisas-footer-entries .tisas-mark-artist",MarkArtist);
@@ -2940,9 +3045,9 @@ JSPLib.debug.addFunctionTimers(Timer,true,[
 ]);
 
 JSPLib.debug.addFunctionLogs([
-    Main,UnhideTweets,HighlightTweets,RegularCheck,ImportData,DownloadOriginal,ConfirmIQDB,ManualAdd,
-    CheckIQDB,CheckUrl,PurgeBadTweets,UpgradeDatabase,SaveDatabase,LoadDatabase,CheckPostvers,
-    InitializeSimilarContainer,ReadFileAsync,ProcessPostvers,ProcessTweets,CorrectStringArray,ValidateEntry
+    Main,UnhideTweets,HighlightTweets,RegularCheck,ImportData,DownloadOriginal,PromptSavePostIDs,
+    CheckIQDB,CheckURL,PurgeBadTweets,UpgradeDatabase,SaveDatabase,LoadDatabase,CheckPostvers,
+    CheckPostIDs,ReadFileAsync,ProcessPostvers,ProcessTweets,CorrectStringArray,ValidateEntry
 ]);
 
 /****Execution start****/
