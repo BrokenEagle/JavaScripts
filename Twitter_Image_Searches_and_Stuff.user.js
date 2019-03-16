@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      3.1
+// @version      3.2
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -137,6 +137,11 @@ const settings_config = {
         default: true,
         validate: (data)=>{return JSPLib.validate.isBoolean(data);},
         hint: "Displays a link to the media timeline in the tweet view."
+    },
+    display_upload_link: {
+        default: true,
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
+        hint: "Displays an <b>Upload</b> link to Danbooru in the enlarged image view."
     },
     tweet_indicators_enabled: {
         default: false,
@@ -407,6 +412,16 @@ const program_css = `
 }
 .js-stream-tweet .ProfileTweet-action {
     min-width: 60px;
+}
+.tisas-upload {
+    font-size: 20px;
+    font-weight: bold;
+}
+.Tweet--invertedColors .ProfileTweet-action:not(.ProfileTweet-action--dm) {
+    max-width: 100px;
+}
+.Tweet--invertedColors .ProfileTweet-action--dm {
+    max-width: 80px;
 }
 .tisas-help-info,
 .tisas-help-info:hover {
@@ -2586,6 +2601,19 @@ function RegularCheck() {
             $(`.permalink-tweet[data-tweet-id=${TISAS.addon}] .tisas-check-iqdb`).click();
         }
     }
+    if (TISAS.user_settings.display_upload_link) {
+        let $popup_tweets = $(".Tweet--invertedColors:not([tisas])");
+        $popup_tweets.each((i,entry)=>{
+            let $media_image = $(".media-image");
+            if ($media_image.length) {
+                let image_url = $media_image[0].src.replace(/:(small|medium|large|orig)/,'') + ':orig';
+                let tweet_url = "https://twitter.com" + $(entry).data('permalink-path');
+                let url_addons = $.param({url: image_url, ref: tweet_url});
+                $(".ProfileTweet-action--more",entry).before(`<div class="ProfileTweet-action tisas-upload" ><a target="_blank" href="${TISAS.domain}/uploads/new?${url_addons}">Upload</a></div>`);
+            }
+            $(entry).attr('tisas','done');
+        });
+    }
     //Process events on new tweets
     let $tweets = $(".tweet:not(.Tweet--invertedColors,.RetweetDialog-tweet):not([tisas])");
     let $image_tweets = $tweets.filter((i,entry)=>{return $(entry).find(".AdaptiveMedia:not(.is-video)").length;});
@@ -2764,6 +2792,7 @@ function RenderSettingsMenu() {
     $("#tisas-display-settings").append(JSPLib.menu.renderCheckbox('tisas','auto_unhide_tweets_enabled'));
     $("#tisas-display-settings").append(JSPLib.menu.renderCheckbox('tisas','display_retweet_id'));
     $("#tisas-display-settings").append(JSPLib.menu.renderCheckbox('tisas','display_media_link'));
+    $("#tisas-display-settings").append(JSPLib.menu.renderCheckbox('tisas','display_upload_link'));
     $("#tisas-display-settings").append(JSPLib.menu.renderCheckbox('tisas','tweet_indicators_enabled'));
     $("#tisas-highlight-settings").append(JSPLib.menu.renderCheckbox('tisas','score_highlights_enabled'));
     $("#tisas-highlight-settings").append(JSPLib.menu.renderTextinput('tisas','score_window_size',5));
