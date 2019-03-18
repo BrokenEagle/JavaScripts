@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      3.3
+// @version      3.4
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -1195,9 +1195,13 @@ function GetList(name) {
     return GetList[name].list;
 }
 
-function SaveList(name,list) {
+function SaveList(name,list,delay=true) {
     GetList[name].list = list;
-    setTimeout(()=>{JSPLib.storage.setStorageData('tisas-' + name,list,localStorage);},1);
+    if (delay) {
+        setTimeout(()=>{JSPLib.storage.setStorageData('tisas-' + name,list,localStorage);},1);
+    } else {
+        JSPLib.storage.setStorageData('tisas-' + name,list,localStorage);
+    }
 }
 
 function SavePost(post_id,mapped_post) {
@@ -1486,6 +1490,11 @@ function GetPageType() {
 function UpdateHighlightControls() {
     if (TISAS.user_id) {
         let no_highlight_list = GetList('no-highlight-list');
+        if (no_highlight_list.includes(TISAS.account)) {
+            no_highlight_list = JSPLib.utility.setDifference(no_highlight_list,[TISAS.account]);
+            no_highlight_list = JSPLib.utility.setUnion(no_highlight_list,[TISAS.user_id]);
+            SaveList('no-highlight-list',no_highlight_list,false);
+        }
         if (no_highlight_list.includes(TISAS.account) || no_highlight_list.includes(TISAS.user_id)) {
             $("#tisas-enable-highlights").show();
             $("#tisas-disable-highlights").hide();
@@ -1513,6 +1522,11 @@ function UpdateArtistHighlights() {
 function UpdateIQDBControls() {
     if (TISAS.user_id) {
         let auto_iqdb_list = GetList('auto-iqdb-list');
+        if (auto_iqdb_list.includes(TISAS.account)) {
+            auto_iqdb_list = JSPLib.utility.setDifference(auto_iqdb_list,[TISAS.account]);
+            auto_iqdb_list = JSPLib.utility.setUnion(auto_iqdb_list,[TISAS.user_id]);
+            SaveList('auto-iqdb-list',auto_iqdb_list,false);
+        }
         if (auto_iqdb_list.includes(TISAS.account) || auto_iqdb_list.includes(TISAS.user_id)) {
             TISAS.artist_iqdb_enabled = true;
             $("#tisas-enable-autoiqdb").hide();
@@ -1548,6 +1562,11 @@ function UpdateTweetIndicators() {
         let tweet_id = String($tweet.data('tweet-id'));
         let user_id = String($tweet.data('user-id'));
         let screen_name = String($tweet.data('screen-name'));
+        if (artist_list.includes(screen_name)) {
+            artist_list = JSPLib.utility.setDifference(artist_list,[screen_name]);
+            artist_list = JSPLib.utility.setUnion(artist_list,[user_id]);
+            SaveList('artist-list',artist_list,false);
+        }
         if ($tweet.find('.tisas-indicators').length === 0) {
             return;
         }
@@ -2671,7 +2690,8 @@ function RegularCheck() {
             }
             if (TISAS.user_settings.display_media_link) {
                 let screen_name = String($tweet.data('screen-name'));
-                $tweet.find('.permalink-header .time').before(`<a class="tisas-media-link EdgeButton--secondary js-nav" href="/${screen_name}/media">Media</a>`);
+                let js_nav = (prev_pagetype !== undefined ? "js-nav" : "js-navigateBack");
+                $tweet.find('.permalink-header .time').before(`<a class="tisas-media-link EdgeButton--secondary ${js_nav}" href="/${screen_name}/media">Media</a>`);
                 $tweet.find(".ProfileTweet-action--more").css('grid-column', '4 / auto');
             }
         }
