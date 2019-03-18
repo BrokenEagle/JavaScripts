@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      23.2
+// @version      23.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -1217,10 +1217,10 @@ function GetRelatedKeyModifer(category) {
 //Usage functions
 
 function KeepSourceData(type,metatag,data) {
-    let slicepos = metatag.length + (metatag.includes(':') ? 1 : 0);
     IAC.source_data[type] = IAC.source_data[type] || {};
     $.each(data, (i,val)=>{
-        let key = (val.antecedent ? val.antecedent : val.value.slice(slicepos));
+        let orig_key = val.value.replace(RegExp(`^${metatag}:?`),'');
+        let key = (val.antecedent ? val.antecedent : orig_key);
         IAC.source_data[type][key] = val;
     });
 }
