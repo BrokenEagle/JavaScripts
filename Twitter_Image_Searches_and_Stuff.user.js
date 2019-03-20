@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      3.4
+// @version      4.0
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -70,7 +70,8 @@ const program_cache_regex = /^(post|iqdb)-/;
 const localstorage_keys = [];
 const program_reset_keys = {};
 
-const score_levels = ['excellent','good','aboveavg','fair','belowavg','poor'];
+const all_score_levels = ['excellent','good','aboveavg','fair','belowavg','poor'];
+const score_levels = ['good','aboveavg','fair','belowavg','poor'];
 const subdomains = ['danbooru','kagamihara','saitou','shima'];
 const all_positions = ['above','below'];
 
@@ -160,15 +161,15 @@ const settings_config = {
     },
     score_levels_faded: {
         allitems: score_levels,
-        default: ['belowavg','poor'],
+        default: ['belowavg'],
         validate: (data)=>{return Array.isArray(data) && data.reduce((is_string,val)=>{return is_string && (typeof val === 'string') && score_levels.includes(val);},true);},
-        hint: "Select which score levels get faded automatically."
+        hint: "Select the default score level cutoff (inclusive) where Tweets get faded automatically."
     },
     score_levels_hidden: {
         allitems: score_levels,
         default: ['poor'],
         validate: (data)=>{return Array.isArray(data) && data.reduce((is_string,val)=>{return is_string && (typeof val === 'string') && score_levels.includes(val);},true);},
-        hint: "Select which score levels get hidden automatically."
+        hint: "Select the default score level cutoff (inclusive) where Tweets get hidden automatically."
     },
     score_window_size: {
         default: 40,
@@ -248,14 +249,12 @@ const program_css = `
 }
 #tisas-database-version,
 #tisas-close-notice-link,
-#tisas-current-records,
 #tisas-install,
 #tisas-upgrade {
     color: #0073ff;
 }
 #tisas-database-version:hover,
 #tisas-close-notice-link:hover,
-#tisas-current-records:hover,
 #tisas-install:hover,
 #tisas-upgrade:hover {
     color: #0073ff;
@@ -293,7 +292,9 @@ const program_css = `
 .tweet .tisas-check-url,
 .tweet .tisas-check-iqdb,
 #tisas-current-records,
-#tisas-total-records {
+#tisas-total-records,
+#tisas-current-fade-level,
+#tisas-current-hide-level {
     color: grey;
 }
 .tweet .tisas-check-url:hover,
@@ -310,22 +311,36 @@ const program_css = `
 #tisas-indicator-toggle a {
     display: none;
 }
+#tisas-current-fade-level,
+#tisas-current-hide-level {
+    min-width: 5em;
+    display: inline-block;
+    text-align: center;
+}
+#tisas-increase-fade-level,
+#tisas-increase-hide-level,
 #tisas-enable-highlights,
 #tisas-enable-autoiqdb,
 #tisas-enable-indicators {
     color: green;
 }
+#tisas-increase-fade-level:hover,
+#tisas-increase-hide-level:hover,
 #tisas-enable-highlights:hover,
 #tisas-enable-autoiqdb:hover,
 #tisas-enable-indicators:hover {
     color: green;
 }
 
+#tisas-decrease-fade-level,
+#tisas-decrease-hide-level,
 #tisas-disable-highlights,
 #tisas-disable-autoiqdb,
 #tisas-disable-indicators {
     color: red;
 }
+#tisas-decrease-fade-level:hover,
+#tisas-decrease-hide-level:hover,
 #tisas-disable-highlights:hover,
 #tisas-disable-autoiqdb:hover,
 #tisas-disable-indicators:hover {
@@ -333,7 +348,7 @@ const program_css = `
 }
 #tisas-side-menu {
     border: solid lightgrey 1px;
-    height: 13em;
+    height: 15em;
 }
 #tisas-side-menu ul {
     margin-left: 10px;
@@ -342,8 +357,12 @@ const program_css = `
     font-weight: bold;
     line-height: 18px;
 }
-#tisas-side-menu li:first-of-type span:first-of-type {
+#tisas-version-header {
     letter-spacing: -0.5px;
+}
+#tisas-fade-level-header,
+#tisas-hide-level-header {
+    margin-right: 0.5em;
 }
 #tisas-header {
     margin: 8px;
@@ -467,7 +486,7 @@ const program_css = `
     font-family: 'MS Gothic','Meiryo UI';
     font-size: 20px;
     font-weight: bold;
-    margin-left: 5px;
+    margin: 0 5px;
 }
 .tisas-indicators span {
     display: none;
@@ -1577,8 +1596,10 @@ function UpdateHighlightControls() {
 function UpdateArtistHighlights() {
     if (TISAS.user_id) {
         let no_highlight_list = GetList('no-highlight-list');
-        let fade_selectors = JSPLib.utility.joinList(TISAS.user_settings.score_levels_faded,'.tisas-',',');
-        let hide_selectors = JSPLib.utility.joinList(TISAS.user_settings.score_levels_hidden,'.tisas-',',');
+        let fade_levels = score_levels.slice(TISAS.fade_level);
+        let fade_selectors = JSPLib.utility.joinList(fade_levels,'.tisas-',',');
+        let hide_levels = score_levels.slice(TISAS.hide_level);
+        let hide_selectors = JSPLib.utility.joinList(hide_levels,'.tisas-',',');
         $(".tisas-fade").removeClass("tisas-fade");
         $(".tisas-hide").removeClass("tisas-hide");
         if (!(no_highlight_list.includes(TISAS.account) || no_highlight_list.includes(TISAS.user_id))) {
@@ -1776,14 +1797,26 @@ function RenderMenu() {
     <a id="tisas-disable-indicators" title="Click to hide Tweet mark/count controls. (Shortcut: Alt+I)">Disable</a>
 </span>
 `;
+    let fade_html = `
+<a id="tisas-decrease-fade-level" title="Click to decrease fade level. (Shortcut: Alt+-)">➖</a>
+<span id="tisas-current-fade-level">${JSPLib.utility.displayCase(TISAS.user_settings.score_levels_faded[0])}</span>
+<a id="tisas-increase-fade-level" title="Click to increase fade level. (Shortcut: Alt+=)">➕</a>
+`;
+    let hide_html = `
+<a id="tisas-decrease-hide-level" title="Click to decrease hide level. (Shortcut: Alt+[)">➖</a>
+<span id="tisas-current-hide-level">${JSPLib.utility.displayCase(TISAS.user_settings.score_levels_hidden[0])}</span>
+<a id="tisas-increase-hide-level" title="Click to increase hide level. (Shortcut: Alt+])">➕</a>
+`;
     return `
 <div id="tisas-side-menu">
     <div id="tisas-header">Twitter Image Searches and Stuff</div>
     <ul>
-        <li><span>Database version:</span> <span id="tisas-database-stub"></span></li>
+        <li><span id="tisas-version-header">Database version:</span> <span id="tisas-database-stub"></span></li>
         <li><span>Current records:</span> ${RenderCurrentRecords()}</li>
         <li><span>Total records:</span> <span id="tisas-records-stub"></span></li>
         <li><span>Artist highlights:</span> ${artist_html}</li>
+        <li><span id="tisas-fade-level-header">Current fade level:</span> ${fade_html}</li>
+        <li><span id="tisas-hide-level-header">Current hide level:</span> ${hide_html}</li>
         <li><span>Autoclick IQDB:</span> ${iqdb_html}</li>
         <li><span>Tweet indicators:</span> ${indicator_html}</li>
     </ul>
@@ -2298,6 +2331,30 @@ function ToggleArtistHilights(event) {
     event.preventDefault();
 }
 
+function IncreaseFadeLevel(event) {
+    TISAS.fade_level = Math.max(--TISAS.fade_level, 0);
+    $("#tisas-current-fade-level").html(JSPLib.utility.displayCase(score_levels[TISAS.fade_level]));
+    setTimeout(()=>{UpdateArtistHighlights();},1);
+}
+
+function DecreaseFadeLevel(event) {
+    TISAS.fade_level = Math.min(++TISAS.fade_level, score_levels.length - 1);
+    $("#tisas-current-fade-level").html(JSPLib.utility.displayCase(score_levels[TISAS.fade_level]));
+    setTimeout(()=>{UpdateArtistHighlights();},1);
+}
+
+function IncreaseHideLevel(event) {
+    TISAS.hide_level = Math.max(--TISAS.hide_level, 0);
+    $("#tisas-current-hide-level").html(JSPLib.utility.displayCase(score_levels[TISAS.hide_level]));
+    setTimeout(()=>{UpdateArtistHighlights();},1);
+}
+
+function DecreaseHideLevel(event) {
+    TISAS.hide_level = Math.min(++TISAS.hide_level, score_levels.length - 1);
+    $("#tisas-current-hide-level").html(JSPLib.utility.displayCase(score_levels[TISAS.hide_level]));
+    setTimeout(()=>{UpdateArtistHighlights();},1);
+}
+
 function ToggleAutoclickIQDB(event) {
     if (TISAS.user_id) {
         let auto_iqdb_list = GetList('auto-iqdb-list');
@@ -2715,6 +2772,10 @@ function RegularCheck() {
             if (!JSPLib.utility.isNamespaceBound("#tisas-open-settings",'click','tisas')) {
                 $("#tisas-current-records").on('click.tisas',CurrentRecords);
                 $("#tisas-enable-highlights,#tisas-disable-highlights").on('click.tisas',ToggleArtistHilights);
+                $("#tisas-increase-fade-level").on('click.tisas',IncreaseFadeLevel);
+                $("#tisas-decrease-fade-level").on('click.tisas',DecreaseFadeLevel);
+                $("#tisas-increase-hide-level").on('click.tisas',IncreaseHideLevel);
+                $("#tisas-decrease-hide-level").on('click.tisas',DecreaseHideLevel);
                 $("#tisas-enable-autoiqdb,#tisas-disable-autoiqdb").on('click.tisas',ToggleAutoclickIQDB);
                 $("#tisas-enable-indicators,#tisas-disable-indicators").on('click.tisas',ToggleTweetIndicators);
                 $("#tisas-open-settings").on('click.tisas',OpenSettingsMenu);
@@ -2851,16 +2912,16 @@ function HighlightTweets() {
     HighlightTweets.debuglog("Tweets:",TISAS.tweet_pos);
     HighlightTweets.debuglog("Faves:",TISAS.tweet_faves);
     HighlightTweets.debuglog("Finish:",TISAS.tweet_finish);
-    var current_count = $.extend({},...score_levels.map((level)=>{return {[level]: 0}}));
+    var current_count = $.extend({},...all_score_levels.map((level)=>{return {[level]: 0}}));
     HighlightTweets.tweetarray.forEach((tweet)=>{
         let quartile = GetTweetQuartile(tweet.id);
-        let level = score_levels[quartile];
+        let level = all_score_levels[quartile];
         current_count[level]++;
         if (tweet.id in TISAS.tweet_finish) {
             return;
         }
         var $container = $(tweet.entry).parent();
-        $container.removeClass(JSPLib.utility.joinList(score_levels,'tisas-',' ')).addClass(`tisas-${level}`);
+        $container.removeClass(JSPLib.utility.joinList(all_score_levels,'tisas-',' ')).addClass(`tisas-${level}`);
     });
     UpdateArtistHighlights();
     HighlightTweets.debuglog("Excellent:",current_count.excellent,"Good:",current_count.good,"Above average:",current_count.aboveavg,"Fair:",current_count.fair,"Belowavg:",current_count.belowavg,"Poor:",current_count.poor);
@@ -2919,6 +2980,28 @@ function SetQueryDomain() {
     TISAS.domain = 'https://' + TISAS.user_settings.query_subdomain + '.donmai.us';
 }
 
+function SetHighlightLevels() {
+    TISAS.fade_level = score_levels.indexOf(TISAS.user_settings.score_levels_faded[0]);
+    TISAS.hide_level = score_levels.indexOf(TISAS.user_settings.score_levels_hidden[0]);
+}
+
+function TransitionHighlightSettings() {
+    let dirty = false;
+    if (TISAS.user_settings.score_levels_faded.length !== 1) {
+        let max_fade_level = (TISAS.user_settings.score_levels_faded.length ? TISAS.user_settings.score_levels_faded[0] : 'poor');
+        TISAS.user_settings.score_levels_faded = [max_fade_level];
+        dirty = true;
+    }
+    if (TISAS.user_settings.score_levels_hidden.length !== 1) {
+        let max_hide_level = (TISAS.user_settings.score_levels_hidden.length ? TISAS.user_settings.score_levels_hidden[0] : 'poor');
+        TISAS.user_settings.score_levels_hidden = [max_hide_level];
+        dirty = true;
+    }
+    if (dirty) {
+        JSPLib.storage.setStorageData('tisas-user-settings',TISAS.user_settings,localStorage);
+    }
+}
+
 //Only render the settings menu on demand
 function RenderSettingsMenu() {
     //Create the dialog
@@ -2934,8 +3017,8 @@ function RenderSettingsMenu() {
     $("#tisas-display-settings").append(JSPLib.menu.renderCheckbox('tisas','tweet_indicators_enabled'));
     $("#tisas-highlight-settings").append(JSPLib.menu.renderCheckbox('tisas','score_highlights_enabled'));
     $("#tisas-highlight-settings").append(JSPLib.menu.renderTextinput('tisas','score_window_size',5));
-    $("#tisas-highlight-settings").append(JSPLib.menu.renderInputSelectors('tisas','score_levels_faded','checkbox'));
-    $("#tisas-highlight-settings").append(JSPLib.menu.renderInputSelectors('tisas','score_levels_hidden','checkbox'));
+    $("#tisas-highlight-settings").append(JSPLib.menu.renderInputSelectors('tisas','score_levels_faded','radio'));
+    $("#tisas-highlight-settings").append(JSPLib.menu.renderInputSelectors('tisas','score_levels_hidden','radio'));
     $("#tisas-database-settings").append(JSPLib.menu.renderCheckbox('tisas','confirm_delete_enabled'));
     $("#tisas-database-settings").append(JSPLib.menu.renderCheckbox('tisas','confirm_IQDB_enabled'));
     $("#tisas-database-settings").append(JSPLib.menu.renderCheckbox('tisas','autosave_IQDB_enabled'));
@@ -2989,6 +3072,8 @@ function Main() {
         settings_config: settings_config
     };
     TISAS.user_settings = JSPLib.menu.loadUserSettings('tisas');
+    TransitionHighlightSettings();
+    SetHighlightLevels();
     SetQueryDomain();
     RegularCheck.timer = setInterval(RegularCheck,program_recheck_interval);
     $(document).on("click.tisas",".tisas-check-url",CheckURL);
@@ -3006,6 +3091,10 @@ function Main() {
     $(document).on("click.tisas",".tisas-footer-entries .tisas-count-artist",CountArtist);
     $(document).on("click.tisas",".tisas-footer-entries .tisas-count-tweet",CountTweet);
     $(document).on("keydown.tisas", null, 'alt+h', ToggleArtistHilights);
+    $(document).on("keydown.tisas", null, 'alt+=', IncreaseFadeLevel);
+    $(document).on("keydown.tisas", null, 'alt+-', DecreaseFadeLevel);
+    $(document).on("keydown.tisas", null, 'alt+]', IncreaseHideLevel);
+    $(document).on("keydown.tisas", null, 'alt+[', DecreaseHideLevel);
     $(document).on("keydown.tisas", null, 'alt+q', ToggleAutoclickIQDB);
     $(document).on("keydown.tisas", null, 'alt+i', ToggleTweetIndicators);
     $(document).on("keydown.tisas", null, 'alt+m', OpenSettingsMenu);
