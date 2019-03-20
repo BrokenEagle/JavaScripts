@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      4.0
+// @version      4.1
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -2882,6 +2882,7 @@ function RegularCheck() {
             }
             $(".stream-item-footer",entry).append(indicator_links);
         });
+        UpdateIndicatorControls();
         UpdateTweetIndicators();
     }
     $tweets.attr("tisas", "done");
