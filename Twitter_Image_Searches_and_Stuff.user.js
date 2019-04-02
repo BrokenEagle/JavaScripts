@@ -2719,7 +2719,7 @@ function RegularCheck() {
             case "replies":
                 RegularCheck.debuglog("Main timeline:",TISAS.addon);
                 TISAS.account = TISAS.addon;
-                TISAS.user_id = $(".ProfileNav").data('user-id');
+                TISAS.user_id = $(".ProfileNav").data('user-id').toString();
                 if (TISAS.account === "following" || TISAS.account === "lists") {
                     return;
                 }
@@ -2727,7 +2727,7 @@ function RegularCheck() {
             case "media":
                 RegularCheck.debuglog("Media timeline:",TISAS.addon);
                 TISAS.account = TISAS.addon;
-                TISAS.user_id = $(".ProfileNav").data('user-id');
+                TISAS.user_id = $(".ProfileNav").data('user-id').toString();
                 break;
             case "list":
                 RegularCheck.debuglog("List timeline:",TISAS.addon);
@@ -2744,7 +2744,7 @@ function RegularCheck() {
                 params = JSPLib.utility.parseParams(TISAS.addon);
                 TISAS.queries = ParseQueries(params.q);
                 TISAS.account = ('from' in TISAS.queries ? TISAS.queries.from : undefined);
-                TISAS.user_id = (TISAS.account ? $(".original-tweet").data('user-id') : undefined);
+                TISAS.user_id = (TISAS.account ? $(".original-tweet").data('user-id').toString() : undefined);
                 break;
             case "tweet":
                 RegularCheck.debuglog("Tweet ID:",TISAS.addon);
