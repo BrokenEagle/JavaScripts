@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      23.3
+// @version      23.4
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -1287,7 +1287,7 @@ function InsertUserSelected(data,input,selected) {
         type = item.type;
         if (!type) {
             let autocomplete_type = $(input).data('autocomplete');
-            if (autocomplete_type == 'tag-query') {
+            if (autocomplete_type === 'tag-query' || autocomplete_type === 'tag-edit') {
                 let match = selected.match(Danbooru.Autocomplete.METATAGS_REGEX);
                 type = (match ? match[1] : 'tag');
             } else {
