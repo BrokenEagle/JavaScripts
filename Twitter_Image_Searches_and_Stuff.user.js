@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      4.1
+// @version      4.2
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -1417,7 +1417,7 @@ function CheckPostIDs(post_ids) {
 function PromptSavePostIDs($link,$tweet,tweet_id,$replace,message,initial_post_ids) {
     let prompt_post_ids = prompt(message,initial_post_ids.join(', '));
     if (prompt_post_ids !== null) {
-        let confirm_post_ids = prompt_post_ids.split(',').map(Number).filter((num)=>{return JSPLib.validate.validateID(num);});
+        let confirm_post_ids = JSPLib.utility.setUnique(prompt_post_ids.split(',').map(Number).filter((num)=>{return JSPLib.validate.validateID(num);}));
         PromptSavePostIDs.debuglog("Confirmed IDs:",confirm_post_ids);
         if (TISAS.user_settings.advanced_tooltips_enabled) {
             $link.qtiptisas("destroy");
@@ -2137,7 +2137,7 @@ async function CheckPostvers() {
         TwitterStorage(JSPLib.storage.retrieveData,tweet_key).then((data)=>{
             if (JSPLib.validate.validateIDList(data)) {
                 CheckPostvers.debuglog("Tweet adds/rems - existing IDs:",tweet_key,data);
-                post_ids = JSPLib.utility.setDifference(JSPLib.utility.setUnion(data,add_entries[tweet_id]),rem_entries[tweet_id]);
+                post_ids = JSPLib.utility.setUnique(JSPLib.utility.setDifference(JSPLib.utility.setUnion(data,add_entries[tweet_id]),rem_entries[tweet_id]));
             }
             if (data === null || JSPLib.utility.setSymmetricDifference(post_ids,data)) {
                 CheckPostvers.debuglog("Tweet adds/rems - saving:",tweet_key,post_ids);
@@ -2167,7 +2167,7 @@ async function CheckPostvers() {
         TwitterStorage(JSPLib.storage.retrieveData,tweet_key).then((data)=>{
             if (data !== null && JSPLib.validate.validateIDList(data)) {
                 CheckPostvers.debuglog("Tweet removes - existing IDs:",tweet_key,data);
-                post_ids = JSPLib.utility.setDifference(data,rem_entries[tweet_id]);
+                post_ids = JSPLib.utility.setUnique(JSPLib.utility.setDifference(data,rem_entries[tweet_id]));
             }
             if (post_ids.length) {
                 CheckPostvers.debuglog("Tweet removes - saving:",tweet_key,post_ids);
@@ -2464,7 +2464,7 @@ function CheckURL(event) {
         } else {
             let mapped_data = MapPostData(data);
             mapped_data.forEach((post)=>{SavePost(post);});
-            let post_ids = JSPLib.utility.getObjectAttributes(data,'id');
+            let post_ids = JSPLib.utility.setUnique(JSPLib.utility.getObjectAttributes(data,'id'));
             TwitterStorage(JSPLib.storage.saveData,'tweet-' + tweet_id, post_ids);
             $replace.html(RenderPostIDsLink(post_ids,'tisas-database-match'));
             TISAS.tweet_index[tweet_id] = {entry: $tweet, post_ids: post_ids, processed: false};
@@ -2497,7 +2497,7 @@ function CheckIQDB(event) {
             } else if (max_score > 85.0) {
                 classname = "tisas-iqdb-match-fair";
             }
-            let iqdb_post_ids = JSPLib.utility.getObjectAttributes(flat_data,'post_id');
+            let iqdb_post_ids = JSPLib.utility.setUnique(JSPLib.utility.getObjectAttributes(flat_data,'post_id'));
             if (TISAS.user_settings.autosave_IQDB_enabled || IsIQDBAutoclick()) {
                 TwitterStorage(JSPLib.storage.saveData,'tweet-' + tweet_id, iqdb_post_ids);
                 $replace.html(RenderPostIDsLink(iqdb_post_ids,classname));
