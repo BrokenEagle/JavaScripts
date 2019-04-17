@@ -350,10 +350,8 @@ const program_css = `
     border: solid lightgrey 1px;
     height: 15em;
 }
-#tisas-side-menu ul {
+#tisas-side-menu table {
     margin-left: 10px;
-}
-#tisas-side-menu li {
     font-weight: bold;
     line-height: 18px;
 }
@@ -1952,16 +1950,42 @@ function RenderMenu() {
     return `
 <div id="tisas-side-menu">
     <div id="tisas-header">Twitter Image Searches and Stuff</div>
-    <ul>
-        <li><span id="tisas-version-header">Database version:</span> <span id="tisas-database-stub"></span></li>
-        <li><span>Current records:</span> ${RenderCurrentRecords()}</li>
-        <li><span>Total records:</span> <span id="tisas-records-stub"></span></li>
-        <li><span>Artist highlights:</span> ${artist_html}</li>
-        <li><span id="tisas-fade-level-header">Current fade level:</span> ${fade_html}</li>
-        <li><span id="tisas-hide-level-header">Current hide level:</span> ${hide_html}</li>
-        <li><span>Autoclick IQDB:</span> ${iqdb_html}</li>
-        <li><span>Tweet indicators:</span> ${indicator_html}</li>
-    </ul>
+    <table>
+        <tbody>
+            <tr>
+                <td><span id="tisas-version-header">Database version:</span></td>
+                <td><span id="tisas-database-stub"></span></td>
+            </tr>
+            <tr>
+                <td><span>Current records:</span></td>
+                <td>${RenderCurrentRecords()}</td>
+            </tr>
+            <tr>
+                <td><span>Total records:</span></td>
+                <td><span id="tisas-records-stub"></span></td>
+            </tr>
+            <tr>
+                <td><span>Artist highlights:</span></td>
+                <td>${artist_html}</td>
+            </tr>
+            <tr>
+                <td><span id="tisas-fade-level-header">Current fade level:</span></td>
+                <td>${fade_html}</td>
+            </tr>
+            <tr>
+                <td><span id="tisas-hide-level-header">Current hide level:</span></td>
+                <td>${hide_html}</td>
+            </tr>
+            <tr>
+                <td><span>Autoclick IQDB:</span></td>
+                <td>${iqdb_html}</td>
+            </tr>
+            <tr>
+                <td><span>Tweet indicators:</span></td>
+                <td>${indicator_html}</td>
+            </tr>
+        </tbody>
+    </table>
     <div id="tisas-open-settings">
         <input type="button" title="Click to open settings menu. (Shortcut: Alt+M)" value="Settings">
     </div>
