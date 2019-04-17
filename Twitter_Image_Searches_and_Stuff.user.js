@@ -1301,8 +1301,8 @@ function GetPostVersionsLastID() {
     return max_postver_lastid;
 }
 
-async function GetTotalRecords() {
-    if (JSPLib.concurrency.checkTimeout('tisas-length-recheck',length_recheck_expires)) {
+async function GetTotalRecords(manual=false) {
+    if (manual || JSPLib.concurrency.checkTimeout('tisas-length-recheck',length_recheck_expires)) {
         let database_length = await JSPLib.storage.twitterstorage.length();
         JSPLib.storage.setStorageData('tisas-database-length',database_length,localStorage);
         JSPLib.concurrency.setRecheckTimeout('tisas-length-recheck',length_recheck_expires);
@@ -2192,7 +2192,8 @@ function InitializeDatabaseLink() {
         $("#tisas-upgrade").on('click.tisas',UpgradeDatabase);
     });
     GetTotalRecords().then((data)=>{
-        $("#tisas-records-stub").replaceWith(`<span id="tisas-total-records">${data}</span>`);
+        $("#tisas-records-stub").replaceWith(`<a id="tisas-total-records" title="Click to refresh record count.">${data}</a>`);
+        $("#tisas-total-records").on('click.tisas',QueryTotalRecords);
     });
 }
 
@@ -2694,6 +2695,14 @@ Continue?
     event.preventDefault();
 }
 
+function QueryTotalRecords(event) {
+    GetTotalRecords(true).then((length)=>{
+        $("#tisas-total-records").html(length);
+        Danbooru.Utility.notice("Finished updating record count!");
+    });
+    event.preventDefault();
+}
+
 function CheckURL(event) {
     let [$link,$tweet,tweet_id,user_id,screen_name,$replace] = GetEventPreload(event,'tisas-check-url');
     $link.removeClass('tisas-check-url').html("loading…");
@@ -3031,6 +3040,7 @@ function RegularCheck() {
                 $("#tisas-database-version").on('click.tisas',CurrentPostver);
                 $("#tisas-install").on('click.tisas',InstallDatabase);
                 $("#tisas-upgrade").on('click.tisas',UpgradeDatabase);
+                $("#tisas-total-records").on('click.tisas',QueryTotalRecords);
             }
             TISAS.user_settings.tweet_indicators_enabled && InitializeCounter();
         }
