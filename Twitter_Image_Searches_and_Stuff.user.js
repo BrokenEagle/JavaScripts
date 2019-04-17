@@ -1980,7 +1980,7 @@ function RenderCurrentRecords() {
 
 function RenderDatabaseVersion() {
     let timestring = new Date(TISAS.server_info.timestamp).toLocaleString();
-    return `<a id="tisas-database-version" target="_blank" href="${TISAS.domain}/post_versions?page=b${TISAS.server_info.post_version+1}" title="${timestring}\n\nClick to open page to Danbooru records.">${TISAS.server_info.post_version}</a>`;
+    return `<a id="tisas-database-version" target="_blank" href="${TISAS.domain}/post_versions?page=b${TISAS.server_info.post_version+1}" title="${timestring}\n\nL-Click to set record position to latest on Danbooru.\nR-Click to open page to Danbooru records.">${TISAS.server_info.post_version}</a>`;
 }
 
 function RenderDownloadLinks($tweet,position) {
@@ -2163,6 +2163,7 @@ function InitializeDatabaseLink() {
             database_html = `<a id="tisas-upgrade" title="${database_timestring}\n\nClick to upgrade database.">Upgrade Database</a>`;
         }
         $("#tisas-database-stub").replaceWith(database_html);
+        $("#tisas-database-version").on('click.tisas',CurrentPostver);
         $("#tisas-install").on('click.tisas',InstallDatabase);
         $("#tisas-upgrade").on('click.tisas',UpgradeDatabase);
     });
@@ -2644,6 +2645,27 @@ Continue?
     event.preventDefault();
 }
 
+function CurrentPostver(event) {
+    let message = `
+This will query Danbooru for the latest record position to use.
+This may potentially cause change records to be missed.
+
+Continue?
+`;
+    if (confirm(message.trim())) {
+        JSPLib.danbooru.submitRequest('post_versions',{limit: 1},null,null,TISAS.domain,true).then((data)=>{
+            if (Array.isArray(data) && data.length > 0) {
+                JSPLib.storage.setStorageData('tisas-postver-lastid', data[0].id, localStorage);
+                JSPLib.storage.setStorageData('tisas-recent-timestamp', new Date(data[0].updated_at).getTime(), localStorage);
+                Danbooru.Utility.notice("Finished updating record position!");
+                $("#tisas-current-records").replaceWith(RenderCurrentRecords());
+                $("#tisas-current-records").on('click.tisas',CurrentRecords);
+            }
+        });
+    }
+    event.preventDefault();
+}
+
 function CheckURL(event) {
     let [$link,$tweet,tweet_id,user_id,screen_name,$replace] = GetEventPreload(event,'tisas-check-url');
     $link.removeClass('tisas-check-url').html("loading…");
@@ -2978,6 +3000,7 @@ function RegularCheck() {
                 $("#tisas-enable-indicators,#tisas-disable-indicators").on('click.tisas',ToggleTweetIndicators);
                 $("#tisas-open-settings").on('click.tisas',OpenSettingsMenu);
                 //These will only get bound here on a rebind
+                $("#tisas-database-version").on('click.tisas',CurrentPostver);
                 $("#tisas-install").on('click.tisas',InstallDatabase);
                 $("#tisas-upgrade").on('click.tisas',UpgradeDatabase);
             }
