@@ -2648,22 +2648,26 @@ Click OK when ready.
 }
 
 function CurrentRecords(event) {
-    if (!GetAllCurrentRecords.is_running && WasOverflow()) {
-        let message = `
-This will keep querying Danbooru until the records are current.
-Depending on the current position, this could take several minutes.
-Moving focus away from the page will halt the process.
+    if (!GetAllCurrentRecords.is_running) {
+        if (WasOverflow()) {
+            let message = `
+    This will keep querying Danbooru until the records are current.
+    Depending on the current position, this could take several minutes.
+    Moving focus away from the page will halt the process.
 
-Continue?
-`;
-        if (JSPLib.concurrency.reserveSemaphore('tisas','records')) {
-            if (confirm(message.trim())) {
-                GetAllCurrentRecords();
+    Continue?
+    `;
+            if (JSPLib.concurrency.reserveSemaphore('tisas','records')) {
+                if (confirm(message.trim())) {
+                    GetAllCurrentRecords();
+                } else {
+                    JSPLib.concurrency.freeSemaphore('tisas','records')
+                }
             } else {
-                JSPLib.concurrency.freeSemaphore('tisas','records')
+                Danbooru.Utility.error("Getting current records in another tab!");
             }
         } else {
-            Danbooru.Utility.error("Getting current records in another tab!");
+            Danbooru.Utility.notice("Already up to date!");
         }
     }
     event.preventDefault();
