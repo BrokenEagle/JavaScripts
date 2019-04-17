@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      4.2
+// @version      4.3
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -2915,12 +2915,12 @@ function HighlightTweets() {
     HighlightTweets.debuglog("Finish:",TISAS.tweet_finish);
     var current_count = $.extend({},...all_score_levels.map((level)=>{return {[level]: 0}}));
     HighlightTweets.tweetarray.forEach((tweet)=>{
-        let quartile = GetTweetQuartile(tweet.id);
-        let level = all_score_levels[quartile];
-        current_count[level]++;
         if (tweet.id in TISAS.tweet_finish) {
             return;
         }
+        let quartile = GetTweetQuartile(tweet.id);
+        let level = all_score_levels[quartile];
+        current_count[level]++;
         var $container = $(tweet.entry).parent();
         $container.removeClass(JSPLib.utility.joinList(all_score_levels,'tisas-',' ')).addClass(`tisas-${level}`);
     });
