@@ -654,6 +654,13 @@ const menu_css = `
 #twitter-image-searches-and-stuff b {
     font-weight: bold;
 }
+#twitter-image-searches-and-stuff ul {
+    margin-left: 1em;
+}
+#twitter-image-searches-and-stuff li {
+    list-style-type: disc;
+    margin-left: 0.5em;
+}
 .tisas-textinput input {
     width: unset;
 }
@@ -722,6 +729,19 @@ const tisas_menu = `
         <div id="tisas-download-settings" class="jsplib-settings-grouping">
             <div id="tisas-download-message" class="prose">
                 <h4>Download settings</h4>
+            </div>
+        </div>
+        <div id="tisas-list-controls" class="jsplib-settings-grouping">
+            <div id="tisas-list-message" class="prose">
+                <h4>List controls</h4>
+                <p>Alter lists used to control various aspects of TISAS.</p>
+                <p><b>Note:</b> Factory Reset does not affect the lists.</p>
+                <ul>
+                    <li><b>Highlight:</b> No highlight list</li>
+                    <li><b>IQDB:</b> Auto-IQDB list</li>
+                    <li><b>Artist:</b> Tweet Indicators / Artist</li>
+                    <li><b>Tweet:</b> Tweet Indicators / Tweet</li>
+                </ul>
             </div>
         </div>
         <div id="tisas-cache-settings" class="jsplib-settings-grouping">
@@ -3106,6 +3126,29 @@ function DownloadAll(event) {
     event.preventDefault();
 }
 
+function ResetLists(event) {
+    const list_key = {
+        highlight: "no-highlight-list",
+        iqdb: "auto-iqdb-list",
+        artist: "artist-list",
+        tweet: "tweet-list"
+    }
+    let selected_lists = JSPLib.menu.getCheckboxRadioSelected(`[data-setting="select_list"] [data-selector]`);
+    if (selected_lists.length === 0) {
+        Danbooru.Utility.notice("Must select at least one list!");
+    } else {
+        selected_lists.forEach((list)=>{
+            SaveList(list_key[list],[],false);
+        });
+        UpdateHighlightControls();
+        UpdateArtistHighlights();
+        UpdateIQDBControls();
+        UpdateTweetIndicators();
+        Danbooru.Utility.notice("Lists have been reset!");
+    }
+    event.preventDefault();
+}
+
 function ExportData(event) {
     if (!ExportData.is_running) {
         ExportData.is_running = true;
@@ -3629,6 +3672,8 @@ function RenderSettingsMenu() {
     $("#tisas-download-settings").append(JSPLib.menu.renderCheckbox('tisas','original_download_enabled'));
     $("#tisas-download-settings").append(JSPLib.menu.renderInputSelectors('tisas','download_position','radio'));
     $("#tisas-download-settings").append(JSPLib.menu.renderTextinput('tisas','filename_prefix_format',80));
+    $("#tisas-list-controls").append(JSPLib.menu.renderInputSelectors('tisas','select_list','checkbox',true,['highlight','iqdb','artist','tweet'],[],'Select which lists to affect.'));
+    $("#tisas-list-controls").append(JSPLib.menu.renderLinkclick("tisas",'reset_list',"Reset list","Click to reset","Resets the selected lists to a blank state."));
     $("#tisas-cache-settings").append(`<div class="jsplib-menu-item"><h4>Import file</h4><input size="50" type="file" name="tisas-import-file" id="tisas-import-file"></div>`);
     $("#tisas-cache-settings").append(JSPLib.menu.renderLinkclick("tisas",'import_data',`Import data (<span id="tisas-import-counter">...</span>)`,"Click to import","Imports a JSON file containing cache and program data."));
     $("#tisas-cache-settings").append(JSPLib.menu.renderLinkclick("tisas",'export_data',`Export data (<span id="tisas-export-counter">...</span>)`,"Click to export","Exports cache and program data to a JSON file."));
@@ -3638,6 +3683,7 @@ function RenderSettingsMenu() {
     JSPLib.menu.engageUI('tisas',true);
     JSPLib.menu.saveUserSettingsClick('tisas','TISAS',InitializeChangedSettings);
     JSPLib.menu.resetUserSettingsClick('tisas','TISAS',localstorage_keys,program_reset_keys,InitializeChangedSettings);
+    $("#tisas-control-reset-list").on('click.tisas',ResetLists);
     $("#tisas-control-import-data").on('click.tisas',ImportData);
     $("#tisas-control-export-data").on('click.tisas',ExportData);
     JSPLib.menu.cacheInfoClick('tisas',program_cache_regex,"#tisas-cache-info-table");
