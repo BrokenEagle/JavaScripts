@@ -348,7 +348,7 @@ const program_css = `
 }
 #tisas-side-menu {
     border: solid lightgrey 1px;
-    height: 15em;
+    height: 27em;
 }
 #tisas-side-menu table {
     margin-left: 10px;
@@ -362,12 +362,21 @@ const program_css = `
 #tisas-hide-level-header {
     margin-right: 0.5em;
 }
-#tisas-header {
+#tisas-menu-header {
     margin: 8px;
     font-size: 18px;
     font-weight: bold;
     line-height: 1;
     letter-spacing: -1px;
+    text-decoration: underline;
+}
+#tisas-stats-header {
+    margin: 8px;
+    font-size: 18px;
+    font-weight: bold;
+    line-height: 1;
+}
+#tisas-stats-header span {
     text-decoration: underline;
 }
 #tisas-open-settings {
@@ -538,6 +547,17 @@ const program_css = `
     font-size: 24px;
     font-weight: bold;
     letter-spacing: -3px;
+}
+#tisas-tweet-stats table {
+    width: 95%;
+    text-align: center;
+}
+#tisas-tweet-stats th a {
+    color: blue;
+}
+#tisas-tweet-stats td {
+    color: grey;
+    border: 1px solid;
 }
 `;
 
@@ -1177,6 +1197,25 @@ JSPLib.menu.resetUserSettingsClick = function (program_shortcut,program_name,del
 function HasSettingChanged(setting_name) {
     return JSON.stringify(TISAS.user_settings[setting_name]) !== JSON.stringify(TISAS.old_settings[setting_name]);
 }
+
+////Fix for statistics
+
+JSPLib.statistics.removeOutliers = function (values,iterations=Infinity) {
+    var i = 1;
+    do {
+        var length = values.length;
+        let avg = JSPLib.statistics.average(values);
+        let stddev = JSPLib.statistics.standardDeviation(values);
+        let adjvalues = values.filter(val=>{return (Math.abs(val-avg) < (2 * stddev));});
+        var newlength = adjvalues.length;
+        if (newlength === 0) {
+            return values;
+        }
+        values = adjvalues;
+        i++;
+    } while ((length != newlength) && (i <= iterations));
+    return values;
+};
 
 //Helper functions
 
@@ -1947,9 +1986,10 @@ function RenderMenu() {
 <span id="tisas-current-hide-level">${JSPLib.utility.displayCase(TISAS.user_settings.score_levels_hidden[0])}</span>
 <a id="tisas-increase-hide-level" title="Click to increase hide level. (Shortcut: Alt+])">➕</a>
 `;
+    let stat_help = RenderHelp(jQueryEscape('Click any category heading to narrow down results.\nClick "Total" category to reset results.'));
     return `
 <div id="tisas-side-menu">
-    <div id="tisas-header">Twitter Image Searches and Stuff</div>
+    <div id="tisas-menu-header">Twitter Image Searches and Stuff</div>
     <table>
         <tbody>
             <tr>
@@ -1988,6 +2028,11 @@ function RenderMenu() {
     </table>
     <div id="tisas-open-settings">
         <input type="button" title="Click to open settings menu. (Shortcut: Alt+M)" value="Settings">
+    </div>
+    <div style="border-top:1px solid grey;margin:10px"></div>
+    <div id="tisas-stats-header"><span>Tweet Statistics</span> (${stat_help})</div>
+    <div id="tisas-tweet-stats">
+
     </div>
 </div>
 `;
@@ -2332,6 +2377,89 @@ function InitializeRetweetDisplay(tweet) {
     $(".tweet-context",tweet).append(`<span class="tisas-retweet">${retweet_id}</span>`);
 }
 
+function InitializeTweetStats(filter1,filter2) {
+    let filter_tweets = TISAS.tweet_stats.filter((entry)=>{
+        let condition_1 = true, condition_2 = true;
+        switch (filter1) {
+            case "retweet":
+                condition_1 = entry.retweet;
+                break;
+            case "tweet":
+                condition_1 = !entry.retweet;
+            case "total":
+            default:
+                //do nothing
+        }
+        switch (filter2) {
+            case "image":
+                condition_2 = entry.image;
+                break;
+            case "video":
+                condition_2 = entry.video;
+                break;
+            case "text":
+                condition_2 = !entry.image && !entry.video;
+            case "total":
+            default:
+                //do nothing
+        }
+        return condition_1 && condition_2;
+    });
+    if (filter_tweets.length === 0) {
+        return false;
+    }
+    let total_tweets = filter_tweets.length;
+    let total_retweets = filter_tweets.filter((entry)=>{return entry.retweet}).length;
+    let total_image_tweets = filter_tweets.filter((entry)=>{return entry.image}).length;
+    let total_video_tweets = filter_tweets.filter((entry)=>{return entry.video}).length;
+    let total_text_tweets = filter_tweets.filter((entry)=>{return !entry.image && !entry.video}).length;
+    let average_replies = JSPLib.utility.setPrecision(JSPLib.statistics.average(JSPLib.statistics.removeOutliers(JSPLib.utility.getObjectAttributes(filter_tweets,'replies'),1)),2)
+    let average_retweets = JSPLib.utility.setPrecision(JSPLib.statistics.average(JSPLib.statistics.removeOutliers(JSPLib.utility.getObjectAttributes(filter_tweets,'retweets'),1)),2)
+    let average_favorites = JSPLib.utility.setPrecision(JSPLib.statistics.average(JSPLib.statistics.removeOutliers(JSPLib.utility.getObjectAttributes(filter_tweets,'favorites'),1)),2)
+    $("#tisas-tweet-stats").html(`
+<table>
+    <tr>
+        <th data-key="total"><a class="tisas-metric">Total</a></th>
+        <th data-key="retweet"><a class="tisas-metric">Retweet</a></th>
+        <th data-key="tweet"><a class="tisas-metric">Tweet</a></th>
+    </tr>
+    <tr>
+        <td data-key="total">${total_tweets}</td>
+        <td data-key="retweet">${total_retweets}</td>
+        <td data-key="tweet">${total_tweets - total_retweets}</td>
+    </tr>
+    <tr>
+        <th data-key="image"><a class="tisas-metric">Image</a></th>
+        <th data-key="video"><a class="tisas-metric">Video</a></th>
+        <th data-key="text"><a class="tisas-metric">Text</a></th>
+    </tr>
+    <tr>
+        <td data-key="image">${total_image_tweets}</td>
+        <td data-key="video">${total_video_tweets}</td>
+        <td data-key="text">${total_text_tweets}</td>
+    </tr>
+    <tr>
+        <th>Replies</th>
+        <th>Retweets</th>
+        <th>Favorites</th>
+    </tr>
+    <tr>
+        <td>${average_replies}</td>
+        <td>${average_retweets}</td>
+        <td>${average_favorites}</td>
+    </tr>
+</table>
+    `);
+    let selected_metrics = JSPLib.utility.setUnique([filter1,filter2]);
+    if (selected_metrics.length == 2 && selected_metrics.includes('total')) {
+        selected_metrics.splice(selected_metrics.indexOf('total'), 1);
+    }
+    $("#tisas-tweet-stats td").css('background','white');
+    selected_metrics.forEach((metric)=>{
+        $(`#tisas-tweet-stats td[data-key=${metric}]`).css('background','yellow');
+    });
+    return true;
+}
 
 //Network functions
 
@@ -2835,6 +2963,42 @@ function HelpInfo(event) {
     event.preventDefault();
 }
 
+function SelectMetric(event) {
+    let type = $(event.target).parent().data('key');
+    let filter1 = TISAS.tweet_type1_filter;
+    let filter2 = TISAS.tweet_type2_filter;
+    switch (type) {
+        case "total":
+            filter1 = "total";
+            filter2 = "total";
+            break;
+        case "retweet":
+            filter1 = "retweet";
+            break;
+        case "tweet":
+            filter1 = "tweet";
+            break;
+        case "image":
+            filter2 = "image";
+            break;
+        case "video":
+            filter2 = "video";
+            break;
+        case "text":
+            filter2 = "text";
+            break;
+        default:
+            //do nothing
+    }
+    if (InitializeTweetStats(filter1,filter2)) {
+        TISAS.tweet_type1_filter = filter1;
+        TISAS.tweet_type2_filter = filter2;
+    } else {
+        Danbooru.Utility.notice("Must select category combinations with at least one tweet!");
+    }
+    event.preventDefault();
+}
+
 function MarkArtist(event) {
     let [$link,$tweet,tweet_id,user_id,screen_name,$replace] = GetEventPreload(event,'tisas-mark-artist');
     let artist_list = GetList('artist-list');
@@ -3043,6 +3207,14 @@ function RegularCheck() {
                 $("#tisas-total-records").on('click.tisas',QueryTotalRecords);
             }
             TISAS.user_settings.tweet_indicators_enabled && InitializeCounter();
+            if (TISAS.prev_pagetype !== "tweet") {
+                let stat_key = TISAS.page + TISAS.addon
+                TISAS.page_stats[stat_key] = TISAS.page_stats[stat_key] || [];
+                TISAS.tweet_stats = TISAS.page_stats[stat_key];
+                TISAS.tweet_type1_filter = "total";
+                TISAS.tweet_type2_filter = "total";
+                TISAS.tweet_stats.length && InitializeTweetStats(TISAS.tweet_type1_filter,TISAS.tweet_type2_filter);
+            }
         }
         UpdateHighlightControls();
         UpdateIQDBControls();
@@ -3112,7 +3284,12 @@ function RegularCheck() {
         UpdateIndicatorControls();
         UpdateTweetIndicators();
     }
-    $tweets.attr("tisas", "done");
+    if (TISAS.page === "tweet") {
+        $tweets.attr("tisas", "done");
+    } else {
+        $tweets.attr("tisas", "working");
+        CollectTweetStats();
+    }
 }
 
 function HighlightTweets() {
@@ -3150,6 +3327,22 @@ function HighlightTweets() {
     });
     UpdateArtistHighlights();
     HighlightTweets.debuglog("Excellent:",current_count.excellent,"Good:",current_count.good,"Above average:",current_count.aboveavg,"Fair:",current_count.fair,"Belowavg:",current_count.belowavg,"Poor:",current_count.poor);
+}
+
+function CollectTweetStats() {
+    var $tweets = $(".stream-item .tweet[tisas=working]");
+    $tweets.each((i,entry)=>{
+        TISAS.tweet_stats.push({
+            retweet: ($(entry).data('retweet-id') ? true : false),
+            video: Boolean($(".AdaptiveMedia.is-video",entry).length),
+            image: Boolean($(".AdaptiveMedia:not(.is-video)",entry).length),
+            replies: Number($(".ProfileTweet-action--reply .ProfileTweet-actionCount",entry).data("tweet-stat-count")),
+            retweets: Number($(".ProfileTweet-action--retweet .ProfileTweet-actionCount",entry).data("tweet-stat-count")),
+            favorites: Number($(".ProfileTweet-action--favorite .ProfileTweet-actionCount",entry).data("tweet-stat-count"))
+        });
+        $(entry).attr('tisas','done');
+    });
+    InitializeTweetStats(TISAS.tweet_type1_filter,TISAS.tweet_type2_filter);
 }
 
 function UnhideTweets() {
@@ -3434,6 +3627,7 @@ function Main() {
         tweet_faves: [],
         tweet_finish: {},
         highlight_tweets: [],
+        page_stats: {},
         counted_artists: [],
         counted_tweets: [],
         all_post_ids: [],
@@ -3466,6 +3660,7 @@ function Main() {
     $(document).on("click.tisas",".tisas-footer-entries .tisas-mark-tweet",MarkTweet);
     $(document).on("click.tisas",".tisas-footer-entries .tisas-count-artist",CountArtist);
     $(document).on("click.tisas",".tisas-footer-entries .tisas-count-tweet",CountTweet);
+    $(document).on("click.tisas",".tisas-metric",SelectMetric);
     $(document).on("keydown.tisas", null, 'alt+h', ToggleArtistHilights);
     $(document).on("keydown.tisas", null, 'alt+=', IncreaseFadeLevel);
     $(document).on("keydown.tisas", null, 'alt+-', DecreaseFadeLevel);
@@ -3495,7 +3690,7 @@ function Main() {
     }
     JSPLib.debug.debugExecute(()=>{
         window.addEventListener('beforeunload',function () {
-            JSPLib.statistics.outputAdjustedMean("CurrentUploads");
+            JSPLib.statistics.outputAdjustedMean("TISAS");
         });
     });
     Main.debuglog("Hi!",window.location.href);
