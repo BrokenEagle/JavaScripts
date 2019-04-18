@@ -350,17 +350,24 @@ const program_css = `
     border: solid lightgrey 1px;
     height: 27em;
 }
-#tisas-side-menu table {
+#tisas-menu-settings {
     margin-left: 10px;
     font-weight: bold;
     line-height: 18px;
 }
-#tisas-version-header {
+#tisas-menu-settings td {
+    padding: 0 2px;
+}
+#tisas-version-header,
+#tisas-database-version {
     letter-spacing: -0.5px;
 }
-#tisas-fade-level-header,
-#tisas-hide-level-header {
-    margin-right: 0.5em;
+#tisas-install,
+#tisas-upgrade,
+#tisas-current-records,
+#tisas-hide-level-header,
+#tisas-fade-level-header {
+    letter-spacing: -1px;
 }
 #tisas-menu-header {
     margin: 8px;
@@ -374,7 +381,7 @@ const program_css = `
     margin: 8px;
     font-size: 18px;
     font-weight: bold;
-    line-height: 1;
+    line-height: 0.9;
 }
 #tisas-stats-header span {
     text-decoration: underline;
@@ -547,6 +554,9 @@ const program_css = `
     font-size: 24px;
     font-weight: bold;
     letter-spacing: -3px;
+}
+#tisas-tweet-stats {
+    margin-left: 0.5em;
 }
 #tisas-tweet-stats table {
     width: 95%;
@@ -1957,83 +1967,98 @@ function DownloadObject(export_obj, export_name, is_json) {
 
 //Render functions
 
-function RenderMenu() {
+function RenderSideMenu() {
     let artist_html = `
 <span id="tisas-artist-toggle">
-    <a id="tisas-enable-highlights" title="Click to enable Tweet hiding/fading. (Shortcut: Alt+H)">Enable</a>
-    <a id="tisas-disable-highlights" title="Click to disable Tweet hiding/fading. (Shortcut: Alt+H)">Disable</a>
+    <a id="tisas-enable-highlights">Enable</a>
+    <a id="tisas-disable-highlights">Disable</a>
 </span>
 `;
     let iqdb_html = `
 <span id="tisas-iqdb-toggle">
-    <a id="tisas-enable-autoiqdb" title="Click to enable auto Check IQDB click. (Shortcut: Alt+Q)">Enable</a>
-    <a id="tisas-disable-autoiqdb" title="Click to disable auto Check IQDB click. (Shortcut: Alt+Q)">Disable</a>
+    <a id="tisas-enable-autoiqdb">Enable</a>
+    <a id="tisas-disable-autoiqdb">Disable</a>
 </span>
 `;
     let indicator_html = `
 <span id="tisas-indicator-toggle">
-    <a id="tisas-enable-indicators" title="Click to display Tweet mark/count controls. (Shortcut: Alt+I)">Enable</a>
-    <a id="tisas-disable-indicators" title="Click to hide Tweet mark/count controls. (Shortcut: Alt+I)">Disable</a>
+    <a id="tisas-enable-indicators">Show</a>
+    <a id="tisas-disable-indicators">Hide</a>
 </span>
 `;
     let fade_html = `
-<a id="tisas-decrease-fade-level" title="Click to decrease fade level. (Shortcut: Alt+-)">➖</a>
+<a id="tisas-decrease-fade-level">➖</a>
 <span id="tisas-current-fade-level">${JSPLib.utility.displayCase(TISAS.user_settings.score_levels_faded[0])}</span>
-<a id="tisas-increase-fade-level" title="Click to increase fade level. (Shortcut: Alt+=)">➕</a>
+<a id="tisas-increase-fade-level">➕</a>
 `;
     let hide_html = `
-<a id="tisas-decrease-hide-level" title="Click to decrease hide level. (Shortcut: Alt+[)">➖</a>
+<a id="tisas-decrease-hide-level">➖</a>
 <span id="tisas-current-hide-level">${JSPLib.utility.displayCase(TISAS.user_settings.score_levels_hidden[0])}</span>
-<a id="tisas-increase-hide-level" title="Click to increase hide level. (Shortcut: Alt+])">➕</a>
+<a id="tisas-increase-hide-level">➕</a>
 `;
-    let stat_help = RenderHelp(jQueryEscape('Click any category heading to narrow down results.\nClick "Total" category to reset results.'));
+    let stat_help = RenderHelp(jQueryEscape('L-Click any category heading to narrow down results.\nL-Click "Total" category to reset results.'));
+    let current_help = RenderHelp("L-Click to update records to current.");
+    let records_help = RenderHelp("L-Click to refresh record count.");
+    let highlights_help = RenderHelp("L-Click to toggle Tweet hiding/fading. (Shortcut: Alt+H)");
+    let iqdb_help = RenderHelp("L-Click to toggle auto-IQDB click. (Shortcut: Alt+Q)");
+    let indicator_help = RenderHelp("L-Click to toggle display of Tweet mark/count controls. (Shortcut: Alt+I)");
+    let fade_help = RenderHelp("L-Click '-' to decrease fade level. (Shortcut: Alt+-)\nL-Click '+' to increase fade level. (Shortcut: Alt+=)");
+    let hide_help = RenderHelp("L-Click '-' to decrease hide level. (Shortcut: Alt+[)\nL-Click '+' to increase hide level. (Shortcut: Alt+])");
     return `
 <div id="tisas-side-menu">
     <div id="tisas-menu-header">Twitter Image Searches and Stuff</div>
-    <table>
-        <tbody>
+    <div id="tisas-menu-settings">
+        <table>
+            <tbody>
             <tr>
                 <td><span id="tisas-version-header">Database version:</span></td>
                 <td><span id="tisas-database-stub"></span></td>
+                <td>(<span id="tisas-database-help"></span>)</td>
             </tr>
             <tr>
                 <td><span>Current records:</span></td>
                 <td>${RenderCurrentRecords()}</td>
+                <td>(${current_help})</td>
             </tr>
             <tr>
                 <td><span>Total records:</span></td>
                 <td><span id="tisas-records-stub"></span></td>
+                <td>(${records_help})</td>
             </tr>
             <tr>
                 <td><span>Artist highlights:</span></td>
                 <td>${artist_html}</td>
+                <td>(${highlights_help})</td>
             </tr>
             <tr>
                 <td><span id="tisas-fade-level-header">Current fade level:</span></td>
                 <td>${fade_html}</td>
+                <td>(${fade_help})</td>
             </tr>
             <tr>
                 <td><span id="tisas-hide-level-header">Current hide level:</span></td>
                 <td>${hide_html}</td>
+                <td>(${hide_help})</td>
             </tr>
             <tr>
                 <td><span>Autoclick IQDB:</span></td>
                 <td>${iqdb_html}</td>
+                <td>(${iqdb_help})</td>
             </tr>
             <tr>
                 <td><span>Tweet indicators:</span></td>
                 <td>${indicator_html}</td>
+                <td>(${indicator_help})</td>
             </tr>
-        </tbody>
-    </table>
+            </tbody>
+        </table>
+    </div>
     <div id="tisas-open-settings">
-        <input type="button" title="Click to open settings menu. (Shortcut: Alt+M)" value="Settings">
+        <input type="button" title="L-Click to open settings menu. (Shortcut: Alt+M)" value="Settings">
     </div>
     <div style="border-top:1px solid grey;margin:10px"></div>
     <div id="tisas-stats-header"><span>Tweet Statistics</span> (${stat_help})</div>
-    <div id="tisas-tweet-stats">
-
-    </div>
+    <div id="tisas-tweet-stats"></div>
 </div>
 `;
 }
@@ -2042,14 +2067,15 @@ function RenderCurrentRecords() {
     var record_html = "";
     let timestamp = JSPLib.storage.checkStorageData('tisas-recent-timestamp',ValidateProgramData,localStorage);
     if (timestamp) {
-        record_html = `<a id="tisas-current-records" title="${new Date(timestamp).toLocaleString()}\n\nClick to update records to current.">${TimeAgo(timestamp)}</a>`
+        let timestring = new Date(timestamp).toLocaleString();
+        record_html = `<a id="tisas-current-records" title="${timestring}">${TimeAgo(timestamp)}</a>`
     }
     return record_html;
 }
 
 function RenderDatabaseVersion() {
     let timestring = new Date(TISAS.server_info.timestamp).toLocaleString();
-    return `<a id="tisas-database-version" target="_blank" href="${TISAS.domain}/post_versions?page=b${TISAS.server_info.post_version+1}" title="${timestring}\n\nL-Click to set record position to latest on Danbooru.\nR-Click to open page to Danbooru records.">${TISAS.server_info.post_version}</a>`;
+    return `<a id="tisas-database-version" href="${TISAS.domain}/post_versions?page=b${TISAS.server_info.post_version+1}" title="${timestring}">${TISAS.server_info.post_version}</a>`;
 }
 
 function RenderDownloadLinks($tweet,position) {
@@ -2215,29 +2241,34 @@ function RenderHelp(help_text) {
 
 function InitializeDatabaseLink() {
     var database_html = "";
+    var database_help = "";
     TISAS.server_info = JSPLib.storage.getStorageData('tisas-remote-database', localStorage);
     if (TISAS.server_info === null) {
         return;
     }
     let database_timestring = new Date(TISAS.server_info.timestamp).toLocaleString();
-    //Add some validation to the following, and move it out of the RenderMenu function
+    //Add some validation to the following, and move it out of the RenderSideMenu function
     TwitterStorage(JSPLib.storage.retrieveData,'tisas-database-info').then((database_info)=>{
         if (!JSPLib.validate.isHash(database_info)) {
-            database_html = `<a id="tisas-install" title="${database_timestring}\n\nClick to install database.">Install Database</a>`;
+            database_html = `<a id="tisas-install" title="${database_timestring}">Install Database</a>`;
+            database_help = RenderHelp("L-Click to install database.");
         } else if (database_info.post_version === TISAS.server_info.post_version && database_info.timestamp === TISAS.server_info.timestamp) {
             TISAS.database_info = database_info;
             database_html = RenderDatabaseVersion();
+            database_help = RenderHelp("L-Click to set record position to latest on Danbooru.\nR-Click to open page to Danbooru records.");
         } else {
             TISAS.database_info = database_info;
-            database_html = `<a id="tisas-upgrade" title="${database_timestring}\n\nClick to upgrade database.">Upgrade Database</a>`;
+            database_html = `<a id="tisas-upgrade" title="${database_timestring}">Upgrade Database</a>`;
+            database_help = RenderHelp("L-Click to upgrade database.");
         }
         $("#tisas-database-stub").replaceWith(database_html);
+        $("#tisas-database-help").html(database_help);
         $("#tisas-database-version").on('click.tisas',CurrentPostver);
         $("#tisas-install").on('click.tisas',InstallDatabase);
         $("#tisas-upgrade").on('click.tisas',UpgradeDatabase);
     });
     GetTotalRecords().then((data)=>{
-        $("#tisas-records-stub").replaceWith(`<a id="tisas-total-records" title="Click to refresh record count.">${data}</a>`);
+        $("#tisas-records-stub").replaceWith(`<a id="tisas-total-records">${data}</a>`);
         $("#tisas-total-records").on('click.tisas',QueryTotalRecords);
     });
 }
@@ -2418,6 +2449,7 @@ function InitializeTweetStats(filter1,filter2) {
     let average_favorites = JSPLib.utility.setPrecision(JSPLib.statistics.average(JSPLib.statistics.removeOutliers(JSPLib.utility.getObjectAttributes(filter_tweets,'favorites'),1)),2)
     $("#tisas-tweet-stats").html(`
 <table>
+    <tbody>
     <tr>
         <th data-key="total"><a class="tisas-metric">Total</a></th>
         <th data-key="retweet"><a class="tisas-metric">Retweet</a></th>
@@ -2448,6 +2480,7 @@ function InitializeTweetStats(filter1,filter2) {
         <td>${average_retweets}</td>
         <td>${average_favorites}</td>
     </tr>
+    </tbody>
 </table>
     `);
     let selected_metrics = JSPLib.utility.setUnique([filter1,filter2]);
@@ -3179,13 +3212,13 @@ function RegularCheck() {
         if (["home","main","likes","replies","media","list","search","hashtag"].includes(TISAS.page)) {
             if ($("#tisas-side-menu").length === 0) {
                 if (TISAS.page === "search" || TISAS.page === "hashtag") {
-                    $(".SidebarFilterModule").after(RenderMenu());
+                    $(".SidebarFilterModule").after(RenderSideMenu());
                 } else if (TISAS.page === "list") {
-                    $(".dashboard-left").append(RenderMenu());
+                    $(".dashboard-left").append(RenderSideMenu());
                 } else if (TISAS.page === "home") {
-                    $(".DashboardProfileCard").after(RenderMenu());
+                    $(".DashboardProfileCard").after(RenderSideMenu());
                 } else {
-                    $(".ProfileSidebar--withLeftAlignment").append(RenderMenu());
+                    $(".ProfileSidebar--withLeftAlignment").append(RenderSideMenu());
                 }
                 InitializeDatabaseLink();
             }
