@@ -2410,7 +2410,15 @@ function InitializeUploadlinks() {
             let image_url = $media_image[0].src.replace(/:(small|medium|large|orig)/,'') + ':orig';
             let tweet_url = "https://twitter.com" + $(entry).data('permalink-path');
             let url_addons = $.param({url: image_url, ref: tweet_url});
-            $(".ProfileTweet-action--more",entry).before(`<div class="ProfileTweet-action tisas-upload" ><a target="_blank" href="${TISAS.domain}/uploads/new?${url_addons}">Upload</a></div>`);
+            let $link = $(`<div class="ProfileTweet-action tisas-upload" ><a target="_blank" href="${TISAS.domain}/uploads/new?${url_addons}">Upload</a></div>`);
+            $(".ProfileTweet-action--more",entry).before($link);
+            let fake_image = $('<img>')[0];
+            fake_image.onload = function () {
+                GetImageSize(image_url).then((size)=>{
+                    $link.attr('title',`${ReadableBytes(size)} (${fake_image.naturalWidth}x${fake_image.naturalHeight})`);
+                });
+            };
+            fake_image.src = image_url;
         }
         $(entry).attr('tisas','done');
     });
