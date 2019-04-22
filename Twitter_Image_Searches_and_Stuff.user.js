@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      5.0
+// @version      5.1
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -292,6 +292,7 @@ const program_css = `
 .tweet .tisas-check-url,
 .tweet .tisas-check-iqdb,
 #tisas-current-records,
+#tisas-error-messages,
 #tisas-total-records,
 #tisas-current-fade-level,
 #tisas-current-hide-level {
@@ -299,7 +300,8 @@ const program_css = `
 }
 .tweet .tisas-check-url:hover,
 .tweet .tisas-check-iqdb:hover,
-#tisas-current-records:hover {
+#tisas-current-records:hover,
+#tisas-error-messages:hover {
     color: grey;
 }
 #tisas-artist-toggle,
@@ -348,7 +350,7 @@ const program_css = `
 }
 #tisas-side-menu {
     border: solid lightgrey 1px;
-    height: 27em;
+    height: 28.5em;
 }
 #tisas-menu-settings {
     margin-left: 10px;
@@ -1042,6 +1044,12 @@ JSPLib.validate.isHash = function (value) {
 
 ////Fixes for danbooru.js
 
+JSPLib.danbooru.error_messages = [];
+JSPLib.danbooru.error_domname = "#tisas-error-messages";
+JSPLib.danbooru.http_error_messages = {
+    502: "Bad gateway"
+};
+
 JSPLib.danbooru.submitRequest = async function (type,url_addons,default_val=null,key,domain='',notify_user=false) {
     key = key || JSPLib.danbooru.randomDummyTag();
     if (JSPLib.danbooru.num_network_requests >= JSPLib.danbooru.max_network_requests) {
@@ -1059,13 +1067,26 @@ JSPLib.danbooru.submitRequest = async function (type,url_addons,default_val=null
         //Swallow exception... will return default value
         e = (typeof e === "object" && 'status' in e && 'responseText' in e ? e : {status: 999, responseText: "Bad error code!"});
         JSPLib.debug.debuglogLevel("SubmitRequest error:",e.status,e.responseText,JSPLib.debug.ERROR);
+        let error_key = `${domain}/${type}.json?${jQuery.param(url_addons)}`;
+        JSPLib.danbooru.error_messages.push([error_key,e.status,e.responseText]);
+        JSPLib.danbooru.error_domname && jQuery(JSPLib.danbooru.error_domname).html(JSPLib.danbooru.error_messages.length);
         if (notify_user) {
             let message = e.responseText;
-            try {
-                let parse_message = JSON.parse(message);
-                message = (JSPLib.validate.isHash(parse_message) && 'message' in parse_message ? parse_message.message : message);
-            } catch (e) {
-                //Swallow
+            if (message.match(/<!doctype html>/i)) {
+                message = (JSPLib.danbooru.http_error_messages[e.status] ? JSPLib.danbooru.http_error_messages[e.status] + " - " : "") + "&lt;HTML response&gt;";
+            } else {
+                try {
+                    let parse_message = JSON.parse(message);
+                    if (JSPLib.validate.isHash(parse_message)) {
+                        if ('reason' in parse_message) {
+                            message = parse_message.reason;
+                        } else if ('message' in parse_message) {
+                            message = parse_message.message;
+                        }
+                    }
+                } catch (e) {
+                    //Swallow
+                }
             }
             Danbooru.Utility.error(`HTTP ${e.status}: ${message}`);
         }
@@ -2017,13 +2038,20 @@ function RenderSideMenu() {
 <a id="tisas-increase-hide-level">➕</a>
 `;
     let stat_help = RenderHelp(jQueryEscape('L-Click any category heading to narrow down results.\nL-Click "Total" category to reset results.'));
-    let current_help = RenderHelp("L-Click to update records to current.");
+    let current_message = "L-Click to update records to current.";
+    if (!JSPLib.storage.getStorageData('tisas-logged-in',localStorage,true)) {
+        current_message = "L-Click to recheck logged in status.";
+    } else if (!JSPLib.storage.checkStorageData('tisas-recent-timestamp',ValidateProgramData,localStorage)) {
+        current_message = "The database must be installed before the script is fully functional.";
+    }
+    let current_help = RenderHelp(current_message);
     let records_help = RenderHelp("L-Click to refresh record count.");
     let highlights_help = RenderHelp("L-Click to toggle Tweet hiding/fading. (Shortcut: Alt+H)");
     let iqdb_help = RenderHelp("L-Click to toggle auto-IQDB click. (Shortcut: Alt+Q)");
     let indicator_help = RenderHelp("L-Click to toggle display of Tweet mark/count controls. (Shortcut: Alt+I)");
     let fade_help = RenderHelp("L-Click '-' to decrease fade level. (Shortcut: Alt+-)\nL-Click '+' to increase fade level. (Shortcut: Alt+=)");
     let hide_help = RenderHelp("L-Click '-' to decrease hide level. (Shortcut: Alt+[)\nL-Click '+' to increase hide level. (Shortcut: Alt+])");
+    let error_help = RenderHelp("L-Click to see full error messages.");
     return `
 <div id="tisas-side-menu">
     <div id="tisas-menu-header">Twitter Image Searches and Stuff</div>
@@ -2038,7 +2066,7 @@ function RenderSideMenu() {
             <tr>
                 <td><span>Current records:</span></td>
                 <td>${RenderCurrentRecords()}</td>
-                <td>(${current_help})</td>
+                <td><span id="tisas-current-records-help">(${current_help})</span></td>
             </tr>
             <tr>
                 <td><span>Total records:</span></td>
@@ -2070,6 +2098,11 @@ function RenderSideMenu() {
                 <td>${indicator_html}</td>
                 <td>(${indicator_help})</td>
             </tr>
+            <tr>
+                <td><span>Network errors:</span></td>
+                <td><a id="tisas-error-messages">0</a></td>
+                <td>(${error_help})</td>
+            </tr>
             </tbody>
         </table>
     </div>
@@ -2089,6 +2122,14 @@ function RenderCurrentRecords() {
     if (timestamp) {
         let timestring = new Date(timestamp).toLocaleString();
         record_html = `<a id="tisas-current-records" title="${timestring}">${TimeAgo(timestamp)}</a>`
+    } else {
+        let message = "";
+        let addons = "";
+        if (!JSPLib.storage.getStorageData('tisas-logged-in',localStorage,true)) {
+            message = "Log into Danbooru!";
+            addons = 'style="font-size:12px"'
+        }
+        record_html = `<span id="tisas-current-records" ${addons}>${message}</span>`;
     }
     return record_html;
 }
@@ -2272,6 +2313,7 @@ function InitializeDatabaseLink() {
         if (!JSPLib.validate.isHash(database_info)) {
             database_html = `<a id="tisas-install" title="${database_timestring}">Install Database</a>`;
             database_help = RenderHelp("L-Click to install database.");
+            $("#tisas-current-records").html("Must install DB!");
         } else if (database_info.post_version === TISAS.server_info.post_version && database_info.timestamp === TISAS.server_info.timestamp) {
             TISAS.database_info = database_info;
             database_html = RenderDatabaseVersion();
@@ -2525,13 +2567,25 @@ function InitializeTweetStats(filter1,filter2) {
 //Network functions
 
 async function CheckPostvers() {
+    let num_error_messages = JSPLib.danbooru.error_messages.length;
     let postver_lastid = GetPostVersionsLastID();
     let url_addons = {search:{id:`${postver_lastid}..${postver_lastid + query_batch_size}`}};
     let post_versions = await JSPLib.danbooru.getAllItems('post_versions', query_limit, {page:postver_lastid, addons: url_addons, reverse: true, domain: TISAS.domain, notify: true});
+    if (num_error_messages !== JSPLib.danbooru.error_messages.length) {
+        let last_error = JSPLib.danbooru.error_messages.slice(-1)[0];
+        if (last_error[1] === 403) {
+            alert("User must be logged into Danbooru for the script to work.\nAlso, check the user settings for the subdomain being used.\n\nNote: Banned users cannot use this functionality!\nInstead, use Check URL or Check IQDB to get this info.\nSet the recheck interval to a long duration in user settings to avoid repeatedly getting this message.");
+            $("#tisas-current-records").css('font-size','12px').html("Log into Danbooru!");
+            $("#tisas-current-records-help a").attr('title',"L-Click to recheck logged in status.");
+            JSPLib.storage.setStorageData('tisas-logged-in',false,localStorage);
+        }
+    } else {
+        JSPLib.storage.setStorageData('tisas-logged-in',true,localStorage);
+    }
     if (post_versions.length === query_batch_size) {
         CheckPostvers.debuglog("Overflow detected!");
         JSPLib.storage.setStorageData('tisas-overflow',true,localStorage);
-    } else {
+    } else if (num_error_messages === JSPLib.danbooru.error_messages.length) {
         CheckPostvers.debuglog("No overflow:",post_versions.length,query_batch_size);
         JSPLib.storage.setStorageData('tisas-overflow',false,localStorage);
     }
@@ -2595,6 +2649,7 @@ async function CheckPostvers() {
         JSPLib.storage.setStorageData('tisas-recent-timestamp', most_recent_timestamp, localStorage);
         $("#tisas-current-records").replaceWith(RenderCurrentRecords());
         $("#tisas-current-records").on('click.tisas',CurrentRecords);
+        $("#tisas-current-records-help a").attr('title',"L-Click to update records to current.");
     }
     JSPLib.concurrency.setRecheckTimeout('tisas-timeout',GetPostVersionsExpiration());
     JSPLib.concurrency.freeSemaphore('tisas','postvers');
@@ -2797,7 +2852,8 @@ Click OK when ready.
     if (confirm(message.trim())) {
         $("#tisas-install").replaceWith(load_counter)
         LoadDatabase().then(()=>{
-            TwitterStorage(JSPLib.storage.saveData,'tisas-database-info',{post_version: TISAS.server_info.post_version, timestamp: TISAS.server_info.timestamp});
+            TISAS.database_info = TISAS.server_info;
+            TwitterStorage(JSPLib.storage.saveData,'tisas-database-info',TISAS.database_info);
             $("#tisas-load-message").replaceWith(RenderDatabaseVersion());
             localStorage.removeItem('tisas-length-recheck');
             GetTotalRecords().then((length)=>{
@@ -2805,6 +2861,7 @@ Click OK when ready.
             });
             Danbooru.Utility.notice("Database installed!");
             TISAS.channel.postMessage({type: "database"});
+            Timer.CheckPostvers();
         });
     }
     event.preventDefault();
@@ -2821,7 +2878,8 @@ Click OK when ready.
     if (confirm(message.trim())) {
         $("#tisas-upgrade").replaceWith(load_counter);
         LoadDatabase().then(()=>{
-            TwitterStorage(JSPLib.storage.saveData,'tisas-database-info',{post_version: TISAS.server_info.post_version, timestamp: TISAS.server_info.timestamp});
+            TISAS.database_info = TISAS.server_info;
+            TwitterStorage(JSPLib.storage.saveData,'tisas-database-info',TISAS.database_info);
             $("#tisas-load-message").replaceWith(RenderDatabaseVersion());
             localStorage.removeItem('tisas-length-recheck');
             GetTotalRecords().then((length)=>{
@@ -2838,14 +2896,14 @@ Click OK when ready.
 }
 
 function CurrentRecords(event) {
-    if (!GetAllCurrentRecords.is_running) {
+    if (event.target.tagName === "A" && !GetAllCurrentRecords.is_running) {
         if (WasOverflow()) {
             let message = `
-    This will keep querying Danbooru until the records are current.
-    Depending on the current position, this could take several minutes.
-    Moving focus away from the page will halt the process.
+This will keep querying Danbooru until the records are current.
+Depending on the current position, this could take several minutes.
+Moving focus away from the page will halt the process.
 
-    Continue?
+Continue?
     `;
             if (JSPLib.concurrency.reserveSemaphore('tisas','records')) {
                 if (confirm(message.trim())) {
@@ -2859,6 +2917,9 @@ function CurrentRecords(event) {
         } else {
             Danbooru.Utility.notice("Already up to date!");
         }
+    } else if (event.target.tagName === "SPAN" && TISAS.database_info && !JSPLib.storage.getStorageData('tisas-logged-in',localStorage,true)) {
+        $("#tisas-current-records").html("Loading...");
+        Timer.CheckPostvers();
     }
     event.preventDefault();
 }
@@ -3021,6 +3082,16 @@ function SelectPreview(event) {
 function HelpInfo(event) {
     let help_text = $(event.target).attr('title');
     alert(help_text);
+    event.preventDefault();
+}
+
+function ErrorMessages(event) {
+    if (JSPLib.danbooru.error_messages.length) {
+        let help_text = JSPLib.danbooru.error_messages.map((entry)=>{return `HTTP Error ${entry[1]}: ${entry[2]}<br>&emsp;&emsp;=> ${entry[0]}`;}).join('<br><br>');
+        Danbooru.Utility.error(help_text);
+    } else {
+        Danbooru.Utility.notice("No error messages!");
+    }
     event.preventDefault();
 }
 
@@ -3289,6 +3360,7 @@ function RegularCheck() {
                 $("#tisas-install").on('click.tisas',InstallDatabase);
                 $("#tisas-upgrade").on('click.tisas',UpgradeDatabase);
                 $("#tisas-total-records").on('click.tisas',QueryTotalRecords);
+                $("#tisas-error-messages").on('click.tisas',ErrorMessages);
             }
             TISAS.user_settings.tweet_indicators_enabled && InitializeCounter();
             if (TISAS.prev_pagetype !== "tweet") {
