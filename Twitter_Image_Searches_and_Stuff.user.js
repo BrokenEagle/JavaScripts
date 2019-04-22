@@ -1391,7 +1391,7 @@ function GetCustomQuery() {
 }
 
 function jQueryEscape(string) {
-    return jQuery('<div />').attr('parse',string)[0].outerHTML.match(/parse="([^"]+)"/)[1];
+    return jQuery('<div />').text(string)[0].innerHTML;
 }
 
 function GetPostVersionsLastID() {
@@ -2051,7 +2051,7 @@ function RenderSideMenu() {
 <span id="tisas-current-hide-level">${JSPLib.utility.displayCase(TISAS.user_settings.score_levels_hidden[0])}</span>
 <a id="tisas-increase-hide-level">${plus_sign}</a>
 `;
-    let stat_help = RenderHelp(jQueryEscape('L-Click any category heading to narrow down results.\nL-Click "Total" category to reset results.'));
+    let stat_help = RenderHelp('L-Click any category heading to narrow down results.\nL-Click &quot;Total&quot; category to reset results.');
     let current_message = "L-Click to update records to current.";
     if (!JSPLib.storage.getStorageData('tisas-logged-in',localStorage,true)) {
         current_message = "L-Click to recheck logged in status.";
