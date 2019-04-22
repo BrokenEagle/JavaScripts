@@ -2137,7 +2137,7 @@ function RenderCurrentRecords() {
         let timestring = new Date(timestamp).toLocaleString();
         record_html = `<a id="tisas-current-records" title="${timestring}">${TimeAgo(timestamp)}</a>`
     } else {
-        let message = "";
+        let message = "Loading...";
         let addons = "";
         if (!JSPLib.storage.getStorageData('tisas-logged-in',localStorage,true)) {
             message = "Log into Danbooru!";
@@ -2347,6 +2347,12 @@ function InitializeDatabaseLink() {
         $("#tisas-records-stub").replaceWith(`<a id="tisas-total-records">${data}</a>`);
         $("#tisas-total-records").on('click.tisas',QueryTotalRecords);
     });
+}
+
+function InitializeCurrentRecords() {
+    $("#tisas-current-records").replaceWith(RenderCurrentRecords());
+    $("#tisas-current-records").on('click.tisas',CurrentRecords);
+    $("#tisas-current-records-help a").attr('title',"L-Click to update records to current.");
 }
 
 function InitializeCounter() {
@@ -2661,9 +2667,8 @@ async function CheckPostvers() {
         let normal_timestamps = all_timestamps.map((timestamp)=>{return new Date(timestamp).getTime();})
         let most_recent_timestamp = Math.max(...normal_timestamps);
         JSPLib.storage.setStorageData('tisas-recent-timestamp', most_recent_timestamp, localStorage);
-        $("#tisas-current-records").replaceWith(RenderCurrentRecords());
-        $("#tisas-current-records").on('click.tisas',CurrentRecords);
-        $("#tisas-current-records-help a").attr('title',"L-Click to update records to current.");
+        InitializeCurrentRecords();
+        TISAS.channel.postMessage({type: "currentrecords"});
     }
     JSPLib.concurrency.setRecheckTimeout('tisas-timeout',GetPostVersionsExpiration());
     JSPLib.concurrency.freeSemaphore('tisas','postvers');
@@ -2779,6 +2784,16 @@ async function CheckDatabaseInfo(initial) {
     }
 }
 
+function CheckPurgeBadTweets() {
+    if (JSPLib.storage.getStorageData('tisas-purge-bad',localStorage,false) && JSPLib.concurrency.reserveSemaphore('tisas','purgebad')) {
+        Timer.PurgeBadTweets().then(()=>{
+            CheckPurgeBadTweets.debuglog("All bad Tweets purged!");
+            JSPLib.storage.setStorageData('tisas-purge-bad',false,localStorage);
+            JSPLib.concurrency.freeSemaphore('tisas','purgebad')
+        });
+    }
+}
+
 async function PurgeBadTweets() {
     let server_purgelist = await $.getJSON(server_purgelist_url);
     let purge_keylist = server_purgelist.map((tweet_id)=>{return 'tweet-' + tweet_id;});
@@ -2866,16 +2881,11 @@ Click OK when ready.
     if (confirm(message.trim())) {
         $("#tisas-install").replaceWith(load_counter)
         LoadDatabase().then(()=>{
-            TISAS.database_info = TISAS.server_info;
-            TwitterStorage(JSPLib.storage.saveData,'tisas-database-info',TISAS.database_info);
-            $("#tisas-load-message").replaceWith(RenderDatabaseVersion());
+            TwitterStorage(JSPLib.storage.saveData,'tisas-database-info',TISAS.server_info);
             localStorage.removeItem('tisas-length-recheck');
-            GetTotalRecords().then((length)=>{
-                $("#tisas-total-records").html(length);
-            });
-            Danbooru.Utility.notice("Database installed!");
+            Danbooru.Utility.notice("TISAS will momentarily refresh the page to finish installing.");
+            setTimeout(()=>{window.location = window.location;},page_refresh_timeout);
             TISAS.channel.postMessage({type: "database"});
-            Timer.CheckPostvers();
         });
     }
     event.preventDefault();
@@ -2892,18 +2902,12 @@ Click OK when ready.
     if (confirm(message.trim())) {
         $("#tisas-upgrade").replaceWith(load_counter);
         LoadDatabase().then(()=>{
-            TISAS.database_info = TISAS.server_info;
-            TwitterStorage(JSPLib.storage.saveData,'tisas-database-info',TISAS.database_info);
-            $("#tisas-load-message").replaceWith(RenderDatabaseVersion());
+            TwitterStorage(JSPLib.storage.saveData,'tisas-database-info',TISAS.server_info);
             localStorage.removeItem('tisas-length-recheck');
-            GetTotalRecords().then((length)=>{
-                $("#tisas-total-records").html(length);
-            });
-            Danbooru.Utility.notice("Database upgraded!");
+            Danbooru.Utility.notice("TISAS will momentarily refresh the page to finish upgrading.");
+            setTimeout(()=>{window.location = window.location;},page_refresh_timeout);
             TISAS.channel.postMessage({type: "database"});
-            Timer.PurgeBadTweets().then(()=>{
-                UpgradeDatabase.debuglog("All bad Tweets purged");
-            });
+            JSPLib.storage.setStorageData('tisas-purge-bad',true,localStorage);
         });
     }
     event.preventDefault();
@@ -2951,8 +2955,8 @@ Continue?
                 JSPLib.storage.setStorageData('tisas-postver-lastid', data[0].id, localStorage);
                 JSPLib.storage.setStorageData('tisas-recent-timestamp', new Date(data[0].updated_at).getTime(), localStorage);
                 Danbooru.Utility.notice("Finished updating record position!");
-                $("#tisas-current-records").replaceWith(RenderCurrentRecords());
-                $("#tisas-current-records").on('click.tisas',CurrentRecords);
+                InitializeCurrentRecords();
+                TISAS.channel.postMessage({type: "currentrecords"});
             }
         });
     }
@@ -3538,10 +3542,13 @@ function BroadcastTISAS(ev) {
             UpdatePostIDsLink(ev.data.tweet_id);
             break;
         case "database":
-            $("#tisas-database-version,#tisas-install,#tisas-upgrade").replaceWith(RenderDatabaseVersion());
-            GetTotalRecords().then((length)=>{
-                $("#tisas-total-records").html(length);
-            });
+            sessionStorage.removeItem('tisas-database-info');
+            window.onfocus = function () {
+                window.location = window.location;
+            };
+            break;
+        case "currentrecords":
+            InitializeCurrentRecords();
             break;
         case "indicators":
             GetList['artist-list'] = ('artist_list' in ev.data ? ev.data.artist_list : GetList['artist-list']);
@@ -3858,6 +3865,7 @@ function Main() {
     } else {
         setTimeout(()=>{
             CheckDatabaseInfo();
+            CheckPurgeBadTweets();
             JSPLib.storage.pruneEntries('tisas',program_cache_regex,prune_recheck_expires);
         },JSPLib.utility.one_minute);
     }
@@ -3881,7 +3889,7 @@ JSPLib.debug.addFunctionTimers(Timer,true,[
 
 JSPLib.debug.addFunctionLogs([
     Main,UnhideTweets,HighlightTweets,RegularCheck,ImportData,DownloadOriginal,PromptSavePostIDs,
-    CheckIQDB,CheckURL,PurgeBadTweets,UpgradeDatabase,SaveDatabase,LoadDatabase,CheckPostvers,
+    CheckIQDB,CheckURL,PurgeBadTweets,CheckPurgeBadTweets,SaveDatabase,LoadDatabase,CheckPostvers,
     CheckPostIDs,ReadFileAsync,ProcessPostvers,ProcessTweets,CorrectStringArray,ValidateEntry,
     BroadcastTISAS
 ]);
