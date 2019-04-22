@@ -319,34 +319,32 @@ const program_css = `
     display: inline-block;
     text-align: center;
 }
-#tisas-increase-fade-level,
-#tisas-increase-hide-level,
 #tisas-enable-highlights,
 #tisas-enable-autoiqdb,
 #tisas-enable-indicators {
     color: green;
 }
-#tisas-increase-fade-level:hover,
-#tisas-increase-hide-level:hover,
 #tisas-enable-highlights:hover,
 #tisas-enable-autoiqdb:hover,
 #tisas-enable-indicators:hover {
     color: green;
 }
 
-#tisas-decrease-fade-level,
-#tisas-decrease-hide-level,
 #tisas-disable-highlights,
 #tisas-disable-autoiqdb,
 #tisas-disable-indicators {
     color: red;
 }
-#tisas-decrease-fade-level:hover,
-#tisas-decrease-hide-level:hover,
 #tisas-disable-highlights:hover,
 #tisas-disable-autoiqdb:hover,
 #tisas-disable-indicators:hover {
     color: red;
+}
+#tisas-increase-fade-level:hover,
+#tisas-increase-hide-level:hover,
+#tisas-decrease-fade-level:hover,
+#tisas-decrease-hide-level:hover {
+    text-decoration: none;
 }
 #tisas-side-menu {
     border: solid lightgrey 1px;
@@ -781,6 +779,22 @@ const main_counter = '<span id="tisas-indicator-counter">( <span class="tisas-co
 const tweet_indicators = '<span class="tisas-indicators"><span class="tisas-mark-artist">Ⓐ</span><span class="tisas-mark-tweet">Ⓣ</span><span class="tisas-count-artist">ⓐ</span><span class="tisas-count-tweet">ⓣ</span></span>';
 const notice_banner = '<div id="tisas-notice"><span>.</span><a href="#" id="tisas-close-notice-link">close</a></div>';
 const load_counter = '<span id="tisas-load-message">Loading ( <span id="tisas-counter">...</span> )</span>';
+
+//SVG constants
+
+const minus_sign = `
+<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="-20 -40 240 240">
+    <path d="M 0,75 L 0,125 L 200,125 L 200,75 L 0,75 z" fill="#F00" />
+</svg>
+`;
+
+const plus_sign = `
+<svg xmlns="http://www.w3.org/2000/svg"  width="15" height="15" viewBox="-20 -40 240 240">
+    <path d="M75,0 V75 H0 V125 H75 V200 H125 V125 H200 V75 H125 V0 H75 z" fill="#080" />
+</svg>
+`;
+
+
 
 //Database constants
 
@@ -2028,14 +2042,14 @@ function RenderSideMenu() {
 </span>
 `;
     let fade_html = `
-<a id="tisas-decrease-fade-level">➖</a>
+<a id="tisas-decrease-fade-level">${minus_sign}</a>
 <span id="tisas-current-fade-level">${JSPLib.utility.displayCase(TISAS.user_settings.score_levels_faded[0])}</span>
-<a id="tisas-increase-fade-level">➕</a>
+<a id="tisas-increase-fade-level">${plus_sign}</a>
 `;
     let hide_html = `
-<a id="tisas-decrease-hide-level">➖</a>
+<a id="tisas-decrease-hide-level">${minus_sign}</a>
 <span id="tisas-current-hide-level">${JSPLib.utility.displayCase(TISAS.user_settings.score_levels_hidden[0])}</span>
-<a id="tisas-increase-hide-level">➕</a>
+<a id="tisas-increase-hide-level">${plus_sign}</a>
 `;
     let stat_help = RenderHelp(jQueryEscape('L-Click any category heading to narrow down results.\nL-Click "Total" category to reset results.'));
     let current_message = "L-Click to update records to current.";
