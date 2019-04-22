@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      5.2
+// @version      5.3
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -752,17 +752,6 @@ const indicator_links = `
 </div>
 `;
 
-const no_match_help = "no sources: L-click, manual add posts";
-const no_results_help = "no results: L-click, reset IQDB results";
-const confirm_delete_help = "postlink: L-click, delete info; R-click, open postlink";
-const confirm_iqdb_help = "postlink: L-click, confirm results; R-click open postlink";
-
-const main_counter = '<span id="tisas-indicator-counter">( <span class="tisas-count-artist">0</span> , <span class="tisas-count-tweet">0</span> )</span>';
-const tweet_indicators = '<span class="tisas-indicators"><span class="tisas-mark-artist">Ⓐ</span><span class="tisas-mark-tweet">Ⓣ</span><span class="tisas-count-artist">ⓐ</span><span class="tisas-count-tweet">ⓣ</span></span>';
-const load_counter = '<span id="tisas-load-message">Loading ( <span id="tisas-counter">...</span> )</span>';
-
-//SVG constants
-
 const minus_sign = `
 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="-20 -40 240 240">
     <path d="M 0,75 L 0,125 L 200,125 L 200,75 L 0,75 z" fill="#F00" />
@@ -774,6 +763,111 @@ const plus_sign = `
     <path d="M75,0 V75 H0 V125 H75 V200 H125 V125 H200 V75 H125 V0 H75 z" fill="#080" />
 </svg>
 `;
+
+const highlight_html = `
+<span id="tisas-artist-toggle">
+    <a id="tisas-enable-highlights">Enable</a>
+    <a id="tisas-disable-highlights">Disable</a>
+</span>
+`;
+const fade_highlight_html = `
+<a id="tisas-decrease-fade-level">${minus_sign}</a>
+<span id="tisas-current-fade-level">%s</span>
+<a id="tisas-increase-fade-level">${plus_sign}</a>
+`;
+const hide_highlight_html = `
+<a id="tisas-decrease-hide-level">${minus_sign}</a>
+<span id="tisas-current-hide-level">%s</span>
+<a id="tisas-increase-hide-level">${plus_sign}</a>
+`;
+const auto_iqdb_html = `
+<span id="tisas-iqdb-toggle">
+    <a id="tisas-enable-autoiqdb">Enable</a>
+    <a id="tisas-disable-autoiqdb">Disable</a>
+</span>
+`;
+const indicator_html = `
+<span id="tisas-indicator-toggle">
+    <a id="tisas-enable-indicators">Show</a>
+    <a id="tisas-disable-indicators">Hide</a>
+</span>
+`;
+
+const main_counter = '<span id="tisas-indicator-counter">( <span class="tisas-count-artist">0</span> , <span class="tisas-count-tweet">0</span> )</span>';
+const tweet_indicators = '<span class="tisas-indicators"><span class="tisas-mark-artist">Ⓐ</span><span class="tisas-mark-tweet">Ⓣ</span><span class="tisas-count-artist">ⓐ</span><span class="tisas-count-tweet">ⓣ</span></span>';
+const notice_banner = '<div id="tisas-notice"><span>.</span><a href="#" id="tisas-close-notice-link">close</a></div>';
+const load_counter = '<span id="tisas-load-message">Loading ( <span id="tisas-counter">...</span> )</span>';
+
+//Message constants
+
+const no_match_help = "no sources: L-click, manual add posts";
+const no_results_help = "no results: L-click, reset IQDB results";
+const confirm_delete_help = "postlink: L-click, delete info; R-click, open postlink";
+const confirm_iqdb_help = "postlink: L-click, confirm results; R-click open postlink";
+const iqdb_select_help = "Select posts that aren't valid IQDB matches.\nClick the colored postlink when finished to confirm.";
+const post_select_help = "Select posts for deletion by clicking the thumbnail.\nSelecting no posts is the same as selecting all posts.\nClick the colored postlink when finished to delete.";
+
+const install_database_help = "L-Click to install database.";
+const upgrade_database_help = "L-Click to upgrade database.";
+const database_version_help = "L-Click to set record position to latest on Danbooru.\nR-Click to open page to Danbooru records.";
+const update_records_help = "L-Click to update records to current.";
+const logged_recheck_help = "L-Click to recheck logged in status.";
+const must_install_help = "The database must be installed before the script is fully functional.";
+const refresh_records_help = "L-Click to refresh record count.";
+const highlights_help = "L-Click to toggle Tweet hiding/fading. (Shortcut: Alt+H)";
+const fade_highlight_help = "L-Click '-' to decrease fade level. (Shortcut: Alt+-)\nL-Click '+' to increase fade level. (Shortcut: Alt+=)";
+const hide_highlight_help = "L-Click '-' to decrease hide level. (Shortcut: Alt+[)\nL-Click '+' to increase hide level. (Shortcut: Alt+])";
+const auto_iqdb_help = "L-Click to toggle auto-IQDB click. (Shortcut: Alt+Q)";
+const indicator_help = "L-Click to toggle display of Tweet mark/count controls. (Shortcut: Alt+I)";
+const error_messages_help = "L-Click to see full error messages.";
+const statistics_help = 'L-Click any category heading to narrow down results.\nL-Click &quot;Total&quot; category to reset results.';
+const settings_help = "L-Click to open settings menu. (Shortcut: Alt+M)";
+
+const install_menu_text = "Must install DB!";
+const login_menu_text = "Log into Danbooru!";
+
+const login_alert = `
+User must be logged into Danbooru for the script to work.
+Also, check the user settings for the subdomain being used.
+
+Note: Banned users cannot use this functionality!
+Instead, use Check URL or Check IQDB to get this info.
+Set the recheck interval to a long duration in user settings
+to avoid repeatedly getting this message.
+`.trim();
+const install_confirm = `
+This will install the database (%s, %s).
+This can take a couple of minutes.
+
+Click OK when ready.
+`.trim();
+const upgrade_confirm = `
+This will upgrade the database to (%s, %s).
+Old database is at (%s, %s).
+This can take a couple of minutes.
+
+Click OK when ready.
+`.trim();
+const current_records_confirm = `
+This will keep querying Danbooru until the records are current.
+Depending on the current position, this could take several minutes.
+Moving focus away from the page will halt the process.
+
+Continue?
+`.trim();
+const current_postver_confirm = `
+This will query Danbooru for the latest record position to use.
+This may potentially cause change records to be missed.
+
+Continue?
+`.trim();
+const manual_add_prompt = "Enter the post IDs of matches. (separated by commas)";
+const confirm_iqdb_prompt = "Save the following post IDs? (separate by comma, empty to reset link)";
+const confirm_delete_prompt = `
+The following posts will be deleted: %s
+
+Save the following post IDs? (separate by comma, empty to delete)
+`.trim();
 
 //Database constants
 
@@ -1664,49 +1758,14 @@ function DownloadObject(export_obj, export_name, is_json) {
 //Render functions
 
 function RenderSideMenu() {
-    let artist_html = `
-<span id="tisas-artist-toggle">
-    <a id="tisas-enable-highlights">Enable</a>
-    <a id="tisas-disable-highlights">Disable</a>
-</span>
-`;
-    let iqdb_html = `
-<span id="tisas-iqdb-toggle">
-    <a id="tisas-enable-autoiqdb">Enable</a>
-    <a id="tisas-disable-autoiqdb">Disable</a>
-</span>
-`;
-    let indicator_html = `
-<span id="tisas-indicator-toggle">
-    <a id="tisas-enable-indicators">Show</a>
-    <a id="tisas-disable-indicators">Hide</a>
-</span>
-`;
-    let fade_html = `
-<a id="tisas-decrease-fade-level">${minus_sign}</a>
-<span id="tisas-current-fade-level">${JSPLib.utility.displayCase(TISAS.user_settings.score_levels_faded[0])}</span>
-<a id="tisas-increase-fade-level">${plus_sign}</a>
-`;
-    let hide_html = `
-<a id="tisas-decrease-hide-level">${minus_sign}</a>
-<span id="tisas-current-hide-level">${JSPLib.utility.displayCase(TISAS.user_settings.score_levels_hidden[0])}</span>
-<a id="tisas-increase-hide-level">${plus_sign}</a>
-`;
-    let stat_help = RenderHelp('L-Click any category heading to narrow down results.\nL-Click &quot;Total&quot; category to reset results.');
-    let current_message = "L-Click to update records to current.";
+    let current_message = update_records_help;
     if (!JSPLib.storage.getStorageData('tisas-logged-in',localStorage,true)) {
-        current_message = "L-Click to recheck logged in status.";
+        current_message = logged_recheck_help;
     } else if (!JSPLib.storage.checkStorageData('tisas-recent-timestamp',ValidateProgramData,localStorage)) {
-        current_message = "The database must be installed before the script is fully functional.";
+        current_message = must_install_help;
     }
-    let current_help = RenderHelp(current_message);
-    let records_help = RenderHelp("L-Click to refresh record count.");
-    let highlights_help = RenderHelp("L-Click to toggle Tweet hiding/fading. (Shortcut: Alt+H)");
-    let iqdb_help = RenderHelp("L-Click to toggle auto-IQDB click. (Shortcut: Alt+Q)");
-    let indicator_help = RenderHelp("L-Click to toggle display of Tweet mark/count controls. (Shortcut: Alt+I)");
-    let fade_help = RenderHelp("L-Click '-' to decrease fade level. (Shortcut: Alt+-)\nL-Click '+' to increase fade level. (Shortcut: Alt+=)");
-    let hide_help = RenderHelp("L-Click '-' to decrease hide level. (Shortcut: Alt+[)\nL-Click '+' to increase hide level. (Shortcut: Alt+])");
-    let error_help = RenderHelp("L-Click to see full error messages.");
+    let current_fade_html = JSPLib.utility.sprintf(fade_highlight_html,JSPLib.utility.displayCase(TISAS.user_settings.score_levels_faded[0]));
+    let current_hide_html = JSPLib.utility.sprintf(hide_highlight_html,JSPLib.utility.displayCase(TISAS.user_settings.score_levels_hidden[0]));
     return `
 <div id="tisas-side-menu">
     <div id="tisas-menu-header">Twitter Image Searches and Stuff</div>
@@ -1721,51 +1780,51 @@ function RenderSideMenu() {
             <tr>
                 <td><span>Current records:</span></td>
                 <td>${RenderCurrentRecords()}</td>
-                <td><span id="tisas-current-records-help">(${current_help})</span></td>
+                <td><span id="tisas-current-records-help">(${RenderHelp(current_message)})</span></td>
             </tr>
             <tr>
                 <td><span>Total records:</span></td>
                 <td><span id="tisas-records-stub"></span></td>
-                <td>(${records_help})</td>
+                <td>(${RenderHelp(refresh_records_help)})</td>
             </tr>
             <tr>
                 <td><span>Artist highlights:</span></td>
-                <td>${artist_html}</td>
-                <td>(${highlights_help})</td>
+                <td>${highlight_html}</td>
+                <td>(${RenderHelp(highlights_help)})</td>
             </tr>
             <tr>
                 <td><span id="tisas-fade-level-header">Current fade level:</span></td>
-                <td>${fade_html}</td>
-                <td>(${fade_help})</td>
+                <td>${current_fade_html}</td>
+                <td>(${RenderHelp(fade_highlight_help)})</td>
             </tr>
             <tr>
                 <td><span id="tisas-hide-level-header">Current hide level:</span></td>
-                <td>${hide_html}</td>
-                <td>(${hide_help})</td>
+                <td>${current_hide_html}</td>
+                <td>(${RenderHelp(hide_highlight_help)})</td>
             </tr>
             <tr>
                 <td><span>Autoclick IQDB:</span></td>
-                <td>${iqdb_html}</td>
-                <td>(${iqdb_help})</td>
+                <td>${auto_iqdb_html}</td>
+                <td>(${RenderHelp(auto_iqdb_help)})</td>
             </tr>
             <tr>
                 <td><span>Tweet indicators:</span></td>
                 <td>${indicator_html}</td>
-                <td>(${indicator_help})</td>
+                <td>(${RenderHelp(indicator_help)})</td>
             </tr>
             <tr>
                 <td><span>Network errors:</span></td>
                 <td><a id="tisas-error-messages">0</a></td>
-                <td>(${error_help})</td>
+                <td>(${RenderHelp(error_messages_help)})</td>
             </tr>
             </tbody>
         </table>
     </div>
     <div id="tisas-open-settings">
-        <input type="button" title="L-Click to open settings menu. (Shortcut: Alt+M)" value="Settings">
+        <input type="button" title="" value="Settings">
     </div>
     <div style="border-top:1px solid grey;margin:10px"></div>
-    <div id="tisas-stats-header"><span>Tweet Statistics</span> (${stat_help})</div>
+    <div id="tisas-stats-header"><span>Tweet Statistics</span> (${RenderHelp(statistics_help)})</div>
     <div id="tisas-tweet-stats"></div>
 </div>
 `;
@@ -1781,7 +1840,7 @@ function RenderCurrentRecords() {
         let message = "Loading...";
         let addons = "";
         if (!JSPLib.storage.getStorageData('tisas-logged-in',localStorage,true)) {
-            message = "Log into Danbooru!";
+            message = login_menu_text;
             addons = 'style="font-size:12px"'
         }
         record_html = `<span id="tisas-current-records" ${addons}>${message}</span>`;
@@ -1863,13 +1922,9 @@ function RenderSimilarContainer(header,iqdb_results,image_url,index) {
     let file_type = GetFileExtension(image_url,':');
     let thumb_url = GetThumbUrl(image_url,':','jpg') + ':small';
     let append_html = RenderPreviewAddons('https://twitter.com', null, null, file_type);
-    let iqdb_select_help = `
-Select posts that aren't valid IQDB matches.
-Click the colored postlink when finished to confirm.
-`;
     return `
 <div class="tisas-iqdb-result">
-    <h4>${header} (${RenderHelp(iqdb_select_help.trim())})</h4>
+    <h4>${header} (${RenderHelp(iqdb_select_help)})</h4>
      <article class="tisas-post-preview" data-index="${index}">
         <div class="tisas-image-container">
             <img width="150" height="150" src="${thumb_url}">
@@ -1887,14 +1942,9 @@ function RenderPostsContainer(all_posts) {
         let addons = RenderPreviewAddons(post.source, post.id, null, post.ext, post.size, post.width, post.height);
         html += RenderPostPreview(post,addons)
     });
-    let post_select_help = `
-Select posts for deletion by clicking the thumbnail.
-Selecting no posts is the same as selecting all posts.
-Click the colored postlink when finished to delete.
-`;
     return `
 <div class="tisas-post-result">
-    <h4>Danbooru matches (${RenderHelp(post_select_help.trim())})</h4>
+    <h4>Danbooru matches (${RenderHelp(post_select_help)})</h4>
     ${html}
 </div>
 `;
@@ -1967,16 +2017,16 @@ function InitializeDatabaseLink() {
     JSPLib.storage.retrieveData('tisas-database-info',JSPLib.storage.twitterstorage).then((database_info)=>{
         if (!JSPLib.validate.isHash(database_info)) {
             database_html = `<a id="tisas-install" title="${database_timestring}">Install Database</a>`;
-            database_help = RenderHelp("L-Click to install database.");
-            $("#tisas-current-records").html("Must install DB!");
+            database_help = RenderHelp(install_database_help);
+            $("#tisas-current-records").html(install_menu_text);
         } else if (database_info.post_version === TISAS.server_info.post_version && database_info.timestamp === TISAS.server_info.timestamp) {
             TISAS.database_info = database_info;
             database_html = RenderDatabaseVersion();
-            database_help = RenderHelp("L-Click to set record position to latest on Danbooru.\nR-Click to open page to Danbooru records.");
+            database_help = RenderHelp(database_version_help);
         } else {
             TISAS.database_info = database_info;
             database_html = `<a id="tisas-upgrade" title="${database_timestring}">Upgrade Database</a>`;
-            database_help = RenderHelp("L-Click to upgrade database.");
+            database_help = RenderHelp(upgrade_database_help);
         }
         $("#tisas-database-stub").replaceWith(database_html);
         $("#tisas-database-help").html(database_help);
@@ -1993,7 +2043,7 @@ function InitializeDatabaseLink() {
 function InitializeCurrentRecords() {
     $("#tisas-current-records").replaceWith(RenderCurrentRecords());
     $("#tisas-current-records").on('click.tisas',CurrentRecords);
-    $("#tisas-current-records-help a").attr('title',"L-Click to update records to current.");
+    $("#tisas-current-records-help a").attr('title',update_records_help);
 }
 
 function InitializeCounter() {
@@ -2235,9 +2285,9 @@ async function CheckPostvers() {
     if (num_error_messages !== JSPLib.danbooru.error_messages.length) {
         let last_error = JSPLib.danbooru.error_messages.slice(-1)[0];
         if (last_error[1] === 403) {
-            alert("User must be logged into Danbooru for the script to work.\nAlso, check the user settings for the subdomain being used.\n\nNote: Banned users cannot use this functionality!\nInstead, use Check URL or Check IQDB to get this info.\nSet the recheck interval to a long duration in user settings to avoid repeatedly getting this message.");
-            $("#tisas-current-records").css('font-size','12px').html("Log into Danbooru!");
-            $("#tisas-current-records-help a").attr('title',"L-Click to recheck logged in status.");
+            alert(login_alert);
+            $("#tisas-current-records").css('font-size','12px').html(login_menu_text);
+            $("#tisas-current-records-help a").attr('title',logged_recheck_help);
             JSPLib.storage.setStorageData('tisas-logged-in',false,localStorage);
         }
     } else {
@@ -2471,13 +2521,8 @@ function ToggleTweetIndicators(event) {
 }
 
 function InstallDatabase(event) {
-    let message = `
-This will install the database (${TISAS.server_info.post_version}, ${new Date(TISAS.server_info.timestamp).toLocaleString()}).
-This can take a couple of minutes.
-
-Click OK when ready.
-`;
-    if (confirm(message.trim())) {
+    let message = JSPLib.utility.sprintf(install_confirm,TISAS.server_info.post_version,new Date(TISAS.server_info.timestamp).toLocaleString());
+    if (confirm(message)) {
         $("#tisas-install").replaceWith(load_counter)
         LoadDatabase().then(()=>{
             JSPLib.storage.saveData('tisas-database-info',TISAS.server_info,JSPLib.storage.twitterstorage);
@@ -2491,14 +2536,9 @@ Click OK when ready.
 }
 
 function UpgradeDatabase(event) {
-    let message = `
-This will upgrade the database to (${TISAS.server_info.post_version}, ${new Date(TISAS.server_info.timestamp).toLocaleString()}).
-Old database is at (${TISAS.database_info.post_version}, ${new Date(TISAS.database_info.timestamp).toLocaleString()}).
-This can take a couple of minutes.
-
-Click OK when ready.
-`;
-    if (confirm(message.trim())) {
+    let message = JSPLib.utility.sprintf(upgrade_confirm,TISAS.server_info.post_version,new Date(TISAS.server_info.timestamp).toLocaleString(),
+                                                         TISAS.database_info.post_version,new Date(TISAS.database_info.timestamp).toLocaleString());
+    if (confirm(upgrade_confirm)) {
         $("#tisas-upgrade").replaceWith(load_counter);
         LoadDatabase().then(()=>{
             JSPLib.storage.saveData('tisas-database-info',TISAS.server_info,JSPLib.storage.twitterstorage);
@@ -2515,15 +2555,8 @@ Click OK when ready.
 function CurrentRecords(event) {
     if (event.target.tagName === "A" && !GetAllCurrentRecords.is_running) {
         if (WasOverflow()) {
-            let message = `
-This will keep querying Danbooru until the records are current.
-Depending on the current position, this could take several minutes.
-Moving focus away from the page will halt the process.
-
-Continue?
-    `;
             if (JSPLib.concurrency.reserveSemaphore('tisas','records')) {
-                if (confirm(message.trim())) {
+                if (confirm(current_records_confirm)) {
                     GetAllCurrentRecords();
                 } else {
                     JSPLib.concurrency.freeSemaphore('tisas','records')
@@ -2542,13 +2575,7 @@ Continue?
 }
 
 function CurrentPostver(event) {
-    let message = `
-This will query Danbooru for the latest record position to use.
-This may potentially cause change records to be missed.
-
-Continue?
-`;
-    if (confirm(message.trim())) {
+    if (confirm(current_postver_confirm)) {
         JSPLib.danbooru.submitRequest('post_versions',{limit: 1},null,null,TISAS.domain,true).then((data)=>{
             if (Array.isArray(data) && data.length > 0) {
                 JSPLib.storage.setStorageData('tisas-postver-lastid', data[0].id, localStorage);
@@ -2643,7 +2670,7 @@ function CheckIQDB(event) {
 
 function ManualAdd(event) {
     let [$link,$tweet,tweet_id,user_id,screen_name,$replace] = GetEventPreload(event,'tisas-manual-add');
-    PromptSavePostIDs($link,$tweet,tweet_id,$replace,"Enter the post IDs of matches. (separated by commas)",[]);
+    PromptSavePostIDs($link,$tweet,tweet_id,$replace,manual_add_prompt,[]);
 }
 
 function ConfirmIQDB(event) {
@@ -2654,10 +2681,7 @@ function ConfirmIQDB(event) {
     let select_post_ids = GetSelectPostIDs(tweet_id);
     let all_post_ids = TISAS.IQDB_results[tweet_id];
     let save_post_ids = JSPLib.utility.setDifference(all_post_ids,select_post_ids);
-    let message = `
-Save the following post IDs? (separate by comma, empty to reset link)
-`;
-    PromptSavePostIDs($link,$tweet,tweet_id,$replace,message,save_post_ids)
+    PromptSavePostIDs($link,$tweet,tweet_id,$replace,confirm_iqdb_prompt,save_post_ids)
     event.preventDefault();
 }
 
@@ -2672,12 +2696,8 @@ function ConfirmDelete(event) {
         select_post_ids = all_post_ids;
     }
     let save_post_ids = JSPLib.utility.setDifference(all_post_ids,select_post_ids);
-    let message = `
-The following posts will be deleted: ${select_post_ids}
-
-Save the following post IDs? (separate by comma, empty to delete)
-`;
-    PromptSavePostIDs($link,$tweet,tweet_id,$replace,message.trim(),save_post_ids)
+    let message = JSPLib.utility.sprintf(confirm_delete_prompt,select_post_ids);
+    PromptSavePostIDs($link,$tweet,tweet_id,$replace,message,save_post_ids)
     event.preventDefault();
 }
 
