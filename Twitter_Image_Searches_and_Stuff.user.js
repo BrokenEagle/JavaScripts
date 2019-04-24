@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      5.1
+// @version      5.2
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -12,15 +12,17 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://raw.githubusercontent.com/localForage/localForage-setItems/v1.3.0/dist/localforage-setitems.js
 // @require      https://raw.githubusercontent.com/eligrey/FileSaver.js/2.0.0/dist/FileSaver.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/danbooru/utility.js
 // @resource     jquery_ui_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/jquery_ui_custom.css
 // @resource     jquery_qtip_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.css
 // @grant        GM_getResourceText
@@ -51,11 +53,6 @@ JSPLib.storage.prune_limit = 2000;
 //Variables for danbooru.js
 JSPLib.danbooru.max_network_requests = 10;
 JSPLib.danbooru.rate_limit_wait = JSPLib.utility.one_second;
-
-//JSPLib variable
-window.Danbooru = {};
-//Need to fix this for JSPLib.menu
-Danbooru.Utility = {};
 
 //Main program variable
 var TISAS;
@@ -230,31 +227,16 @@ const program_css = `
 .tisas-highlight.tisas-hide .tweet:hover {
     max-height: unset;
 }
-#tisas-notice {
-    padding: .25em;
-    position: fixed;
-    top: 4em;
-    left: 25%;
-    width: 50%;
-    z-index: 1002;
-    display: none;
-}
-#tisas-close-notice-link {
-    right: 1em;
-    position: absolute;
-}
 .tisas-code {
     font-family: monospace;
     background: #eee
 }
 #tisas-database-version,
-#tisas-close-notice-link,
 #tisas-install,
 #tisas-upgrade {
     color: #0073ff;
 }
 #tisas-database-version:hover,
-#tisas-close-notice-link:hover,
 #tisas-install:hover,
 #tisas-upgrade:hover {
     color: #0073ff;
@@ -777,7 +759,6 @@ const confirm_iqdb_help = "postlink: L-click, confirm results; R-click open post
 
 const main_counter = '<span id="tisas-indicator-counter">( <span class="tisas-count-artist">0</span> , <span class="tisas-count-tweet">0</span> )</span>';
 const tweet_indicators = '<span class="tisas-indicators"><span class="tisas-mark-artist">Ⓐ</span><span class="tisas-mark-tweet">Ⓣ</span><span class="tisas-count-artist">ⓐ</span><span class="tisas-count-tweet">ⓣ</span></span>';
-const notice_banner = '<div id="tisas-notice"><span>.</span><a href="#" id="tisas-close-notice-link">close</a></div>';
 const load_counter = '<span id="tisas-load-message">Loading ( <span id="tisas-counter">...</span> )</span>';
 
 //SVG constants
@@ -793,8 +774,6 @@ const plus_sign = `
     <path d="M75,0 V75 H0 V125 H75 V200 H125 V125 H200 V75 H125 V0 H75 z" fill="#080" />
 </svg>
 `;
-
-
 
 //Database constants
 
@@ -851,87 +830,7 @@ JSPLib.storage.twitterstorage = localforage.createInstance({
     driver: [localforage.INDEXEDDB]
 });
 
-function TwitterStorage() {
-    let func = arguments[0];
-    let pass_args = Object.values(arguments).slice(1);
-    JSPLib.storage.danboorustorage = JSPLib.storage.twitterstorage;
-    let ret = func(...pass_args);
-    JSPLib.storage.danboorustorage = TwitterStorage.danboorustorage;
-    return ret;
-}
-TwitterStorage.danboorustorage = JSPLib.storage.danboorustorage;
-
-/****jQuery Setup****/
-
-// https://gist.github.com/monperrus/999065
-// This is a shim that adapts jQuery's ajax methods to use GM_xmlhttpRequest.
-// This allows the use $.getJSON instead of using GM_xmlhttpRequest directly.
-//
-// This is necessary because some sites have a Content Security Policy (CSP) which
-// blocks cross-origin requests to Danbooru that require authentication.
-// Tampermonkey can bypass the CSP, but only if GM_xmlhttpRequest is used.
-function GM_XHR() {
-    const open_params = ['type','url','async','username','password'];
-    Object.assign(this,{headers: {}},...open_params.concat(['status','readyState']).map(function (key) {return {[key]: null};}));
-
-    this.abort = function() {
-        this.readyState = 0;
-    };
-
-    this.getAllResponseHeaders = function(name) {
-        return (this.readyState != 4 ? "" : this.responseHeaders);
-    };
-
-    this.getResponseHeader = function(name) {
-        var regexp = new RegExp('^'+name+': (.*)$','im');
-        var match = regexp.exec(this.responseHeaders);
-        return (match ? match[1] : '');
-    };
-
-    this.open = function(type, url, async, username, password) {
-        let outerargs = arguments;
-        let xhr = this;
-        open_params.forEach(function (arg,i) {
-            xhr[arg] = outerargs[i] || null;
-        });
-        this.readyState = 1;
-    };
-
-    this.setRequestHeader = function(name, value) {
-        this.headers[name] = value;
-    };
-
-    this.onresponse = function (handler) {
-        let xhr = this;
-        return function (resp) {
-            ['readyState','responseHeaders','responseText','status','statusText'].forEach(function (key) {
-                xhr[key] = resp[key];
-            });
-            if (xhr[handler]) {
-                xhr[handler].call(xhr);
-            } else {
-                xhr.onreadystatechange();
-            }
-        };
-    };
-
-    this.send = function(data) {
-        this.data = data;
-        GM.xmlHttpRequest({
-            method: this.type,
-            url: this.url,
-            headers: this.headers,
-            data: this.data,
-            responseType: this.responseType,
-            onload: this.onresponse("onload"),
-            onerror: this.onresponse("onerror"),
-        });
-    };
-}
-
-$.ajaxSetup({xhr: function () {return new GM_XHR();}});
-
-/****Functions****/
+//Validation constants
 
 const post_constraints = {
     entry: JSPLib.validate.hashentry_constraints,
@@ -956,6 +855,8 @@ const iqdb_constriants = {
     expires: JSPLib.validate.expires_constraints,
     value: JSPLib.validate.boolean_constraints
 }
+
+/****Functions****/
 
 function ValidateEntry(key,entry) {
     if (!JSPLib.validate.validateIsHash(key, entry)) {
@@ -1025,262 +926,7 @@ function CorrectStringArray(name,artistlist) {
 
 //Library functions
 
-Danbooru.Utility.notice = function(msg, permanent) {
-    $('#tisas-notice').addClass("ui-state-highlight").removeClass("ui-state-error").fadeIn("fast").children("span").html(msg);
-    if (Danbooru.Utility.notice_timeout_id !== undefined) {
-        clearTimeout(Danbooru.Utility.notice_timeout_id);
-    }
-    if (!permanent) {
-        Danbooru.Utility.notice_timeout_id = setTimeout(function() {
-            $("#tisas-close-notice-link").click();
-            Danbooru.Utility.notice_timeout_id = undefined;
-        }, 6000);
-    }
-};
-
-Danbooru.Utility.error = function(msg) {
-    $('#tisas-notice').removeClass("ui-state-highlight").addClass("ui-state-error").fadeIn("fast").children("span").html(msg);
-    if (Danbooru.Utility.notice_timeout_id !== undefined) {
-        clearTimeout(Danbooru.Utility.notice_timeout_id);
-    }
-};
-
-Danbooru.Utility.closeNotice = function (event) {
-    $('#tisas-notice').fadeOut("fast");
-    event.preventDefault();
-};
-
-////Fixes for validate.js
-
-JSPLib.validate.isHash = function (value) {
-    return typeof value === "object" && value !== null && !Array.isArray(value);
-};
-
-////Fixes for danbooru.js
-
-JSPLib.danbooru.error_messages = [];
-JSPLib.danbooru.error_domname = "#tisas-error-messages";
-JSPLib.danbooru.http_error_messages = {
-    502: "Bad gateway"
-};
-
-JSPLib.danbooru.submitRequest = async function (type,url_addons,default_val=null,key,domain='',notify_user=false) {
-    key = key || JSPLib.danbooru.randomDummyTag();
-    if (JSPLib.danbooru.num_network_requests >= JSPLib.danbooru.max_network_requests) {
-        await JSPLib.danbooru.rateLimit();
-    }
-    JSPLib.danbooru.incrementCounter();
-    JSPLib.debug.recordTime(key,'Network');
-    try {
-        return await jQuery.getJSON(`${domain}/${type}.json`,url_addons
-        ).always(()=>{
-            JSPLib.debug.recordTimeEnd(key,'Network');
-            JSPLib.danbooru.decrementCounter();
-        });
-    } catch(e) {
-        //Swallow exception... will return default value
-        e = (typeof e === "object" && 'status' in e && 'responseText' in e ? e : {status: 999, responseText: "Bad error code!"});
-        JSPLib.debug.debuglogLevel("SubmitRequest error:",e.status,e.responseText,JSPLib.debug.ERROR);
-        let error_key = `${domain}/${type}.json?${jQuery.param(url_addons)}`;
-        JSPLib.danbooru.error_messages.push([error_key,e.status,e.responseText]);
-        JSPLib.danbooru.error_domname && jQuery(JSPLib.danbooru.error_domname).html(JSPLib.danbooru.error_messages.length);
-        if (notify_user) {
-            let message = e.responseText;
-            if (message.match(/<!doctype html>/i)) {
-                message = (JSPLib.danbooru.http_error_messages[e.status] ? JSPLib.danbooru.http_error_messages[e.status] + " - " : "") + "&lt;HTML response&gt;";
-            } else {
-                try {
-                    let parse_message = JSON.parse(message);
-                    if (JSPLib.validate.isHash(parse_message)) {
-                        if ('reason' in parse_message) {
-                            message = parse_message.reason;
-                        } else if ('message' in parse_message) {
-                            message = parse_message.message;
-                        }
-                    }
-                } catch (e) {
-                    //Swallow
-                }
-            }
-            Danbooru.Utility.error(`HTTP ${e.status}: ${message}`);
-        }
-        return default_val;
-    }
-};
-
-JSPLib.danbooru.getAllItems = async function (type,limit,options) {
-    let url_addons = options.addons || {};
-    let reverse = options.reverse || false;
-    let page_modifier = (reverse ? 'a' : 'b');
-    let domain = options.domain;
-    let page_addon = (options.page ? {page:`${page_modifier}${options.page}`} : {});
-    let notify_user = (options.notify ? options.notify : false);
-    let limit_addon = {limit: limit};
-    var return_items = [];
-    while (true) {
-        let request_addons = JSPLib.danbooru.joinArgs(url_addons,page_addon,limit_addon);
-        let request_key = jQuery.param(request_addons);
-        let temp_items = await JSPLib.danbooru.submitRequest(type,request_addons,[],request_key,domain,notify_user);
-        return_items = return_items.concat(temp_items);
-        if (temp_items.length < limit) {
-            return return_items;
-        }
-        let lastid = JSPLib.danbooru.getNextPageID(temp_items,reverse);
-        page_addon = {page:`${page_modifier}${lastid}`};
-        JSPLib.debug.debuglogLevel("Rechecking",type,"@",lastid,JSPLib.debug.INFO);
-    }
-};
-
-////New for utility
-
-JSPLib.utility.joinList = function (array,prefix,joiner) {
-    return array.map((level)=>{return prefix + level;}).join(joiner);
-}
-
-JSPLib.utility.parseParams = function (str) {
-    return str.split('&').reduce(function (params, param) {
-        var paramSplit = param.split('=').map(function (value) {
-            return decodeURIComponent(value.replace(/\+/g, ' '));
-        });
-        params[paramSplit[0]] = paramSplit[1];
-        return params;
-    }, {});
-};
-
-////Fix for menu
-
-JSPLib.menu.saveUserSettingsClick = function (program_shortcut,program_name,callback) {
-    let program_key = program_shortcut.toUpperCase();
-    jQuery(`#${program_shortcut}-commit`).click((e)=>{
-        let invalid_setting = false;
-        let config = Danbooru[program_key].settings_config;
-        let settings = Danbooru[program_key].user_settings;
-        Danbooru[program_key].old_settings = JSPLib.utility.dataCopy(settings);
-        let temp_selectors = {};
-        jQuery(`#${program_shortcut}-settings .${program_shortcut}-setting[id]`).each((i,entry)=>{
-            let parent_level = jQuery(entry).data('parent');
-            let container = JSPLib.utility.getNthParent(entry,parent_level);
-            let setting_name = jQuery(container).data('setting');
-            if (entry.type === "checkbox" || entry.type === "radio") {
-                let selector = jQuery(entry).data('selector');
-                if (selector) {
-                    //Multiple checkboxes/radio
-                    temp_selectors[setting_name] = temp_selectors[setting_name] || [];
-                    if (entry.checked) {
-                        temp_selectors[setting_name].push(selector);
-                    }
-                } else {
-                    //Single checkbox
-                    settings[setting_name] = entry.checked;
-                }
-            } else if (entry.type === "text") {
-                 let user_setting = config[setting_name].parse(jQuery(entry).val());
-                 if (config[setting_name].validate(user_setting)) {
-                    settings[setting_name] = user_setting;
-                 } else {
-                    invalid_setting = true;
-                 }
-                 jQuery(entry).val(settings[setting_name]);
-            } else if (entry.type === "hidden") {
-                let sortitem = jQuery(entry).data('sort');
-                if (sortitem) {
-                    temp_selectors[setting_name] = temp_selectors[setting_name] || [];
-                    temp_selectors[setting_name].push(sortitem);
-                }
-            }
-        });
-        for (let setting_name in temp_selectors) {
-            settings[setting_name] = temp_selectors[setting_name];
-        }
-        JSPLib.storage.setStorageData(`${program_shortcut}-user-settings`,settings,localStorage);
-        Danbooru[program_key].channel && Danbooru[program_key].channel.postMessage({type: "settings", user_settings: settings});
-        if (!invalid_setting) {
-            Danbooru.Utility.notice(`${program_name}: Settings updated!`);
-        } else {
-            Danbooru.Utility.error("Error: Some settings were invalid!")
-        }
-        callback && callback();
-    });
-};
-
-JSPLib.menu.resetUserSettingsClick = function (program_shortcut,program_name,delete_keys,reset_settings,callback) {
-    let program_key = program_shortcut.toUpperCase();
-    jQuery(`#${program_shortcut}-resetall`).click((e)=>{
-        let config = Danbooru[program_key].settings_config;
-        let settings = Danbooru[program_key].user_settings;
-        Danbooru[program_key].old_settings = JSPLib.utility.dataCopy(settings);
-        if (confirm(`This will reset all of ${program_name}'s settings.\n\nAre you sure?`)) {
-            for (let setting in config) {
-                settings[setting] = config[setting].default;
-            }
-            jQuery(`#${program_shortcut}-settings .${program_shortcut}-setting[id]`).each((i,entry)=>{
-                let $input = jQuery(entry);
-                let parent_level = $input.data('parent');
-                let container = JSPLib.utility.getNthParent(entry,parent_level);
-                let setting_name = jQuery(container).data('setting');
-                if (entry.type === "checkbox" || entry.type === "radio") {
-                    let selector = $input.data('selector');
-                    if (selector) {
-                        $input.prop('checked', JSPLib.menu.isSettingEnabled(program_key,setting_name,selector));
-                        $input.checkboxradio("refresh");
-                    } else {
-                        $input.prop('checked', settings[setting_name]);
-                    }
-                } else if (entry.type === "text") {
-                     $input.val(settings[setting_name]);
-                } else if (entry.type === "hidden") {
-                    if (!jQuery(container).hasClass("sorted")) {
-                        jQuery("ul",container).sortable("destroy");
-                        let sortlist = jQuery("li",container).detach();
-                        sortlist.sort((a, b)=>{
-                            let sort_a = jQuery("input",a).data('sort');
-                            let sort_b = jQuery("input",b).data('sort');
-                            return settings[setting_name].indexOf(sort_a) - settings[setting_name].indexOf(sort_b);
-                        }).each((i,entry)=>{
-                            jQuery("ul",container).append(entry);
-                        });
-                        jQuery("ul",container).sortable();
-                        jQuery(container).addClass("sorted");
-                    }
-                }
-            });
-            jQuery(".jsplib-sortlist").removeClass("sorted");
-            delete_keys.forEach((key)=>{
-                localStorage.removeItem(key);
-            });
-            Object.assign(Danbooru[program_key],reset_settings);
-            JSPLib.storage.setStorageData(`${program_shortcut}-user-settings`,settings,localStorage);
-            Danbooru[program_key].channel && Danbooru[program_key].channel.postMessage({type: "reset", user_settings: settings});
-            Danbooru.Utility.notice(`${program_name}: Settings reset to defaults!`);
-        }
-        callback && callback();
-    });
-};
-
-////New for menu
-
-function HasSettingChanged(setting_name) {
-    return JSON.stringify(TISAS.user_settings[setting_name]) !== JSON.stringify(TISAS.old_settings[setting_name]);
-}
-
-////Fix for statistics
-
-JSPLib.statistics.removeOutliers = function (values,iterations=Infinity) {
-    var i = 1;
-    do {
-        var length = values.length;
-        let avg = JSPLib.statistics.average(values);
-        let stddev = JSPLib.statistics.standardDeviation(values);
-        let adjvalues = values.filter(val=>{return (Math.abs(val-avg) < (2 * stddev));});
-        var newlength = adjvalues.length;
-        if (newlength === 0) {
-            return values;
-        }
-        values = adjvalues;
-        i++;
-    } while ((length != newlength) && (i <= iterations));
-    return values;
-};
+////None
 
 //Helper functions
 
@@ -1368,8 +1014,8 @@ function GetLinkTitle(post,is_render=true) {
     let tags = post.tags;
     let age = `age:"${TimeAgo(post.created)}"`
     if (is_render) {
-        tags = jQueryEscape(tags);
-        age = jQueryEscape(age);
+        tags = JSPLib.utility.HTMLEscape(tags);
+        age = JSPLib.utility.HTMLEscape(age);
     }
     return `user:${post.uploader} score:${post.score} favcount:${post.favcount} rating:${post.rating} ${age} ${tags}`;
 }
@@ -1379,7 +1025,7 @@ function GetMultiLinkTitle(posts,is_render=true) {
     posts.forEach((post,i)=>{
         let age = `age:"${TimeAgo(post.created)}"`
         if (is_render) {
-            age = jQueryEscape(age);
+            age = JSPLib.utility.HTMLEscape(age);
         }
         title.push(`post #${post.id} - user:${post.uploader} score:${post.score} favcount:${post.favcount} rating:${post.rating} ${age}`);
     });
@@ -1388,10 +1034,6 @@ function GetMultiLinkTitle(posts,is_render=true) {
 
 function GetCustomQuery() {
     return (TISAS.user_settings.custom_order_enabled ? '+order%3Acustom' : '');
-}
-
-function jQueryEscape(string) {
-    return jQuery('<div />').text(string)[0].innerHTML;
 }
 
 function GetPostVersionsLastID() {
@@ -1425,7 +1067,6 @@ function GetPreviewDimensions(image_width,image_height) {
 function ReadableBytes(bytes) {
     var i = Math.floor(Math.log(bytes) / Math.log(1024)),
     sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-
     return JSPLib.utility.setPrecision((bytes / Math.pow(1024, i)),2) + ' ' + sizes[i];
 }
 
@@ -1562,7 +1203,7 @@ function ProcessTweets($tweets,primaryfilter,append_selector,outerHTML) {
     }
     let tweet_ids = $filter_tweets.map((i,entry)=>{return String($(entry).data('tweet-id'));}).toArray();
     ProcessTweets.debuglog("Check Tweets:",tweet_ids);
-    let promise_array = tweet_ids.map((tweet_id)=>{return TwitterStorage(JSPLib.storage.retrieveData,'tweet-' + tweet_id);});
+    let promise_array = tweet_ids.map((tweet_id)=>{return JSPLib.storage.retrieveData('tweet-' + tweet_id,JSPLib.storage.twitterstorage);});
     Promise.all(promise_array).then((data_items)=>{
         ProcessTweets.debuglog("Tweet data:",data_items);
         data_items.forEach((data,i)=>{
@@ -1670,9 +1311,9 @@ function PromptSavePostIDs($link,$tweet,tweet_id,$replace,message,initial_post_i
         let confirm_post_ids = JSPLib.utility.setUnique(prompt_post_ids.split(',').map(Number).filter((num)=>{return JSPLib.validate.validateID(num);}));
         PromptSavePostIDs.debuglog("Confirmed IDs:",confirm_post_ids);
         if (confirm_post_ids.length === 0) {
-            TwitterStorage(JSPLib.storage.removeData,'tweet-' + tweet_id);
+            JSPLib.storage.removeData('tweet-' + tweet_id, JSPLib.storage.twitterstorage);
         } else {
-            TwitterStorage(JSPLib.storage.saveData, 'tweet-' + tweet_id, confirm_post_ids);
+            JSPLib.storage.saveData('tweet-' + tweet_id, confirm_post_ids, JSPLib.storage.twitterstorage);
         }
         UpdatePostIDsLink(tweet_id);
         TISAS.channel.postMessage({type: "postlink", tweet_id: tweet_id, post_ids: confirm_post_ids});
@@ -1691,7 +1332,7 @@ function GetSelectPostIDs(tweet_id) {
 
 function SetThumbnailWait($obj,all_posts) {
     all_posts.map(async (post)=>{
-        let blob = await GetImage(post.thumbnail);
+        let blob = await JSPLib.network.getImage(post.thumbnail);
         let image_blob = blob.slice(0, blob.size, "image/jpeg");
         let blob_url = window.URL.createObjectURL(image_blob);
         $(`[data-id=${post.id}] img`,$obj).attr('src',blob_url);
@@ -2323,7 +1964,7 @@ function InitializeDatabaseLink() {
     }
     let database_timestring = new Date(TISAS.server_info.timestamp).toLocaleString();
     //Add some validation to the following, and move it out of the RenderSideMenu function
-    TwitterStorage(JSPLib.storage.retrieveData,'tisas-database-info').then((database_info)=>{
+    JSPLib.storage.retrieveData('tisas-database-info',JSPLib.storage.twitterstorage).then((database_info)=>{
         if (!JSPLib.validate.isHash(database_info)) {
             database_html = `<a id="tisas-install" title="${database_timestring}">Install Database</a>`;
             database_help = RenderHelp("L-Click to install database.");
@@ -2406,7 +2047,7 @@ function InitializeSimilarContainer(image_urls,all_iqdb_results,all_posts,tweet_
             image.height = height;
             image.style.paddingTop = `${150 - height}px`;
             let starttime = Date.now();
-            GetImageSize(image_url).then((size)=>{
+            JSPLib.network.getImageSize(image_url).then((size)=>{
                 $("p:nth-child(4)",article).html(`${ReadableBytes(size)} (${fake_image.naturalWidth}x${fake_image.naturalHeight})`);
                 $(article).closest(".tisas-iqdb-result").find(`[data-size=${size}]`).addClass('tisas-post-match');
             });
@@ -2420,7 +2061,7 @@ function InitializePostsContainer(all_posts,image_urls) {
     let $attachment = $(RenderPostsContainer(all_posts));
     SetThumbnailWait($attachment,all_posts);
     image_urls.forEach((image_url)=>{
-        GetImageSize(image_url + ':orig').then((size)=>{
+        JSPLib.network.getImageSize(image_url + ':orig').then((size)=>{
             $attachment.find(`[data-size=${size}]`).addClass('tisas-post-match');
         });
     });
@@ -2476,7 +2117,7 @@ function InitializeUploadlinks() {
             $(".ProfileTweet-action--more",entry).before($link);
             let fake_image = $('<img>')[0];
             fake_image.onload = function () {
-                GetImageSize(image_url).then((size)=>{
+                JSPLib.network.getImageSize(image_url).then((size)=>{
                     $link.attr('title',`${ReadableBytes(size)} (${fake_image.naturalWidth}x${fake_image.naturalHeight})`);
                 });
             };
@@ -2615,14 +2256,14 @@ async function CheckPostvers() {
     combined_keys.forEach((tweet_id)=>{
         let tweet_key = 'tweet-' + tweet_id;
         let post_ids = add_entries[tweet_id];
-        TwitterStorage(JSPLib.storage.retrieveData,tweet_key).then((data)=>{
+        JSPLib.storage.retrieveData(tweet_key,JSPLib.storage.twitterstorage).then((data)=>{
             if (JSPLib.validate.validateIDList(data)) {
                 CheckPostvers.debuglog("Tweet adds/rems - existing IDs:",tweet_key,data);
                 post_ids = JSPLib.utility.setUnique(JSPLib.utility.setDifference(JSPLib.utility.setUnion(data,add_entries[tweet_id]),rem_entries[tweet_id]));
             }
             if (data === null || JSPLib.utility.setSymmetricDifference(post_ids,data)) {
                 CheckPostvers.debuglog("Tweet adds/rems - saving:",tweet_key,post_ids);
-                TwitterStorage(JSPLib.storage.saveData,tweet_key,post_ids);
+                JSPLib.storage.saveData(tweet_key,post_ids,JSPLib.storage.twitterstorage);
             }
         });
     });
@@ -2630,14 +2271,14 @@ async function CheckPostvers() {
     single_adds.forEach((tweet_id)=>{
         let tweet_key = 'tweet-' + tweet_id;
         let post_ids = add_entries[tweet_id];
-        TwitterStorage(JSPLib.storage.retrieveData,tweet_key).then((data)=>{
+        JSPLib.storage.retrieveData(tweet_key,JSPLib.storage.twitterstorage).then((data)=>{
             if (JSPLib.validate.validateIDList(data)) {
                 CheckPostvers.debuglog("Tweet adds - existing IDs:",tweet_key,data);
                 post_ids = JSPLib.utility.setUnion(data,post_ids);
             }
             if (data === null || post_ids.length > data.length) {
                 CheckPostvers.debuglog("Tweet adds - saving:",tweet_key,post_ids);
-                TwitterStorage(JSPLib.storage.saveData,tweet_key,post_ids);
+                JSPLib.storage.saveData(tweet_key,post_ids,JSPLib.storage.twitterstorage);
             }
         });
     });
@@ -2645,17 +2286,17 @@ async function CheckPostvers() {
     single_rems.forEach((tweet_id)=>{
         let tweet_key = 'tweet-' + tweet_id;
         let post_ids = [];
-        TwitterStorage(JSPLib.storage.retrieveData,tweet_key).then((data)=>{
+        JSPLib.storage.retrieveData(tweet_key,JSPLib.storage.twitterstorage).then((data)=>{
             if (data !== null && JSPLib.validate.validateIDList(data)) {
                 CheckPostvers.debuglog("Tweet removes - existing IDs:",tweet_key,data);
                 post_ids = JSPLib.utility.setUnique(JSPLib.utility.setDifference(data,rem_entries[tweet_id]));
             }
             if (post_ids.length) {
                 CheckPostvers.debuglog("Tweet removes - saving:",tweet_key,post_ids);
-                TwitterStorage(JSPLib.storage.saveData,tweet_key,post_ids);
+                JSPLib.storage.saveData(tweet_key,post_ids,JSPLib.storage.twitterstorage);
             } else {
                 CheckPostvers.debuglog("Tweet removes - deleting:",tweet_key);
-                TwitterStorage(JSPLib.storage.removeData,tweet_key);
+                JSPLib.storage.removeData(tweet_key,JSPLib.storage.twitterstorage);
             }
         });
     });
@@ -2672,48 +2313,6 @@ async function CheckPostvers() {
     }
     JSPLib.concurrency.setRecheckTimeout('tisas-timeout',GetPostVersionsExpiration());
     JSPLib.concurrency.freeSemaphore('tisas','postvers');
-}
-
-function GetImage(image_url) {
-    JSPLib.debug.recordTime(image_url,'Network');
-    return new Promise((resolve,reject)=>{
-        GM.xmlHttpRequest({
-            method: "GET",
-            url: image_url,
-            responseType: 'blob',
-            onload: function(resp) {
-                JSPLib.debug.recordTimeEnd(image_url,'Network');
-                resolve(resp.response);
-            },
-            onerror: function(resp) {
-                JSPLib.debug.recordTimeEnd(image_url,'Network');
-                reject(resp);
-            }
-        });
-    });
-}
-
-function GetImageSize(image_url) {
-    JSPLib.debug.recordTime(image_url,'Network');
-    return new Promise((resolve,reject)=>{
-        GM.xmlHttpRequest({
-            method: "HEAD",
-            url: image_url,
-            onload: function(resp) {
-                JSPLib.debug.recordTimeEnd(image_url,'Network');
-                let size = -1;
-                let match = resp.responseHeaders.match(/content-length: (\d+)/);
-                if (match) {
-                    size = parseInt(match[1]);
-                }
-                resolve(size);
-            },
-            onerror: function(resp) {
-                JSPLib.debug.recordTimeEnd(image_url,'Network');
-                reject(resp);
-            }
-        });
-    });
 }
 
 //Database functions
@@ -2802,7 +2401,7 @@ async function PurgeBadTweets() {
     let database_set = new Set(database_keylist)
     let delete_keys = [...purge_set].filter((x)=>{return database_set.has(x);});
     PurgeBadTweets.debuglog(delete_keys);
-    await Promise.all(delete_keys.map((key)=>{return TwitterStorage(JSPLib.storage.removeData,key);}));
+    await Promise.all(delete_keys.map((key)=>{return JSPLib.storage.removeData(key,JSPLib.storage.twitterstorage);}));
 }
 
 //Event handlers
@@ -2881,7 +2480,7 @@ Click OK when ready.
     if (confirm(message.trim())) {
         $("#tisas-install").replaceWith(load_counter)
         LoadDatabase().then(()=>{
-            TwitterStorage(JSPLib.storage.saveData,'tisas-database-info',TISAS.server_info);
+            JSPLib.storage.saveData('tisas-database-info',TISAS.server_info,JSPLib.storage.twitterstorage);
             localStorage.removeItem('tisas-length-recheck');
             Danbooru.Utility.notice("TISAS will momentarily refresh the page to finish installing.");
             setTimeout(()=>{window.location = window.location;},page_refresh_timeout);
@@ -2902,7 +2501,7 @@ Click OK when ready.
     if (confirm(message.trim())) {
         $("#tisas-upgrade").replaceWith(load_counter);
         LoadDatabase().then(()=>{
-            TwitterStorage(JSPLib.storage.saveData,'tisas-database-info',TISAS.server_info);
+            JSPLib.storage.saveData('tisas-database-info',TISAS.server_info,JSPLib.storage.twitterstorage);
             localStorage.removeItem('tisas-length-recheck');
             Danbooru.Utility.notice("TISAS will momentarily refresh the page to finish upgrading.");
             setTimeout(()=>{window.location = window.location;},page_refresh_timeout);
@@ -2986,7 +2585,7 @@ function CheckURL(event) {
             let mapped_data = MapPostData(data);
             mapped_data.forEach((post)=>{SavePost(post);});
             post_ids = JSPLib.utility.setUnique(JSPLib.utility.getObjectAttributes(data,'id'));
-            TwitterStorage(JSPLib.storage.saveData,'tweet-' + tweet_id, post_ids);
+            JSPLib.storage.saveData('tweet-' + tweet_id, post_ids, JSPLib.storage.twitterstorage);
         }
         UpdatePostIDsLink(tweet_id);
         TISAS.channel.postMessage({type: "postlink", tweet_id: tweet_id, post_ids: post_ids});
@@ -3021,7 +2620,7 @@ function CheckIQDB(event) {
             }
             let iqdb_post_ids = JSPLib.utility.setUnique(JSPLib.utility.getObjectAttributes(flat_data,'post_id'));
             if (TISAS.user_settings.autosave_IQDB_enabled || IsIQDBAutoclick()) {
-                TwitterStorage(JSPLib.storage.saveData,'tweet-' + tweet_id, iqdb_post_ids);
+                JSPLib.storage.saveData('tweet-' + tweet_id, iqdb_post_ids, JSPLib.storage.twitterstorage);
                 $replace.html(RenderPostIDsLink(iqdb_post_ids,classname));
                 TISAS.tweet_index[tweet_id] = {entry: $tweet, post_ids: iqdb_post_ids, processed: false, similar: false};
                 CheckPostIDs(iqdb_post_ids);
@@ -3271,7 +2870,7 @@ function ImportData(event) {
                 JSPLib.storage.setStorageData(key,import_package.program_data[key],localStorage);
             });
             ImportData.debuglog("Database info:",import_package.database_info);
-            promise_array.push(TwitterStorage(JSPLib.storage.saveData,'tisas-database-info',import_package.database_info));
+            promise_array.push(JSPLib.storage.saveData('tisas-database-info',import_package.database_info,JSPLib.storage.twitterstorage));
             ImportData.debuglog("Database length:",Object.keys(import_package.tweet_database).length);
             promise_array.push(Timer.SaveDatabase(import_package.tweet_database,"#tisas-import-counter"));
             Promise.all(promise_array).then(()=>{
@@ -3591,7 +3190,7 @@ function InitializeChangedSettings() {
         let $tweet = $(tweet);
         let tweet_id = $tweet.data('tweet-id');
         let $post_link = $tweet.find('.tisas-database-match');
-        if ($post_link.length && HasSettingChanged('advanced_tooltips_enabled')) {
+        if ($post_link.length && JSPLib.menu.hasSettingChanged('advanced_tooltips_enabled')) {
             if (TISAS.user_settings.advanced_tooltips_enabled) {
                 TISAS.tweet_index[tweet_id].processed = false;
                 update_link_titles = true;
@@ -3599,27 +3198,27 @@ function InitializeChangedSettings() {
                 $post_link.qtiptisas("destroy",true);
             }
         }
-        if ($tweet.filter('[data-retweet-id]').length && HasSettingChanged('display_retweet_id')) {
+        if ($tweet.filter('[data-retweet-id]').length && JSPLib.menu.hasSettingChanged('display_retweet_id')) {
             if (TISAS.user_settings.display_retweet_id) {
                 InitializeRetweetDisplay(tweet);
             } else {
                 $tweet.find('.tisas-retweet').remove();
             }
         }
-        if (TISAS.page === "tweet" && HasSettingChanged('display_media_link')) {
+        if (TISAS.page === "tweet" && JSPLib.menu.hasSettingChanged('display_media_link')) {
             if (TISAS.user_settings.display_media_link) {
                 InitializeMediaLink($tweet);
             } else {
                 $tweet.find(".tisas-media-link").remove();
             }
         }
-        if (TISAS.page === "tweet" && (HasSettingChanged('original_download_enabled') || HasSettingChanged('download_position') || HasSettingChanged('filename_prefix_format'))) {
+        if (TISAS.page === "tweet" && (JSPLib.menu.hasSettingChanged('original_download_enabled') || JSPLib.menu.hasSettingChanged('download_position') || JSPLib.menu.hasSettingChanged('filename_prefix_format'))) {
             $(".tisas-download-section",tweet).remove();
             if (TISAS.user_settings.original_download_enabled) {
                 InitializeDownloadLinks($tweet);
             }
         }
-        if (HasSettingChanged('tweet_indicators_enabled')) {
+        if (JSPLib.menu.hasSettingChanged('tweet_indicators_enabled')) {
             if (TISAS.user_settings.tweet_indicators_enabled) {
                 InitializeTweetIndicators(tweet);
             } else {
@@ -3627,16 +3226,16 @@ function InitializeChangedSettings() {
                 $tweet.find('.stream-item-footer').remove();
             }
         }
-        if ($post_link.length && HasSettingChanged('custom_order_enabled')) {
+        if ($post_link.length && JSPLib.menu.hasSettingChanged('custom_order_enabled')) {
             let postlink_URL = $post_link.attr('href');
             postlink_URL = postlink_URL.replace(/\+order%3Acustom/,'') + GetCustomQuery();
             $post_link.attr('href',postlink_URL);
         }
     });
-    if (HasSettingChanged('auto_unhide_tweets_enabled') && TISAS.user_settings.auto_unhide_tweets_enabled) {
+    if (JSPLib.menu.hasSettingChanged('auto_unhide_tweets_enabled') && TISAS.user_settings.auto_unhide_tweets_enabled) {
         UnhideTweets();
     }
-    if (HasSettingChanged('display_upload_link')) {
+    if (JSPLib.menu.hasSettingChanged('display_upload_link')) {
         if (TISAS.user_settings.display_upload_link) {
             $(".tisas-upload").show();
             InitializeUploadlinks();
@@ -3644,14 +3243,14 @@ function InitializeChangedSettings() {
             $(".tisas-upload").hide();
         }
     }
-    if (HasSettingChanged('tweet_indicators_enabled')) {
+    if (JSPLib.menu.hasSettingChanged('tweet_indicators_enabled')) {
         if (TISAS.user_settings.tweet_indicators_enabled) {
             InitializeCounter();
         } else {
             $("#tisas-indicator-counter").remove();
         }
     }
-    if (HasSettingChanged('score_highlights_enabled') || HasSettingChanged('score_window_size')) {
+    if (JSPLib.menu.hasSettingChanged('score_highlights_enabled') || JSPLib.menu.hasSettingChanged('score_window_size')) {
         $(".tisas-highlight").removeClass('tisas-highlight');
         if (DisplayHighlights()) {
             TISAS.highlight_tweet = [];
@@ -3661,7 +3260,7 @@ function InitializeChangedSettings() {
             HighlightTweets();
         }
     }
-    if (HasSettingChanged('query_subdomain')) {
+    if (JSPLib.menu.hasSettingChanged('query_subdomain')) {
         let old_domain = TISAS.domain;
         SetQueryDomain();
         $(`[href^="${old_domain}"]`).each((i,entry)=>{
@@ -3825,6 +3424,7 @@ function Main() {
     TransitionHighlightSettings();
     SetHighlightLevels();
     SetQueryDomain();
+    JSPLib.network.jQuerySetup();
     RegularCheck.timer = setInterval(RegularCheck,program_recheck_interval);
     $(document).on("click.tisas",".tisas-check-url",CheckURL);
     $(document).on("click.tisas",".tisas-check-iqdb",CheckIQDB);
@@ -3852,8 +3452,7 @@ function Main() {
     $(document).on("keydown.tisas", null, 'alt+c', CloseSettingsMenu);
     $(document).on("keydown.tisas", null, 'alt+s', SaveSettingsMenu);
     $(document).on("keydown.tisas", null, 'alt+r', ResetSettingsMenu);
-    $("body").append(notice_banner);
-    $("#tisas-close-notice-link").on("click.tisas",Danbooru.Utility.closeNotice);
+    Danbooru.Utility.installBanner('tisas');
     JSPLib.utility.setCSSStyle(program_css,'program');
     JSPLib.utility.setCSSStyle(GM_getResourceText('jquery_qtip_css'),'qtip');
     if (JSPLib.storage.getStorageData('tisas-remote-database', localStorage) === null) {
