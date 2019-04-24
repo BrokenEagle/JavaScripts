@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      8.0
+// @version      8.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -1153,7 +1153,7 @@ async function CheckDanbooruLibrary() {
         let string4 = "qualifier animated 1girl";
         let string5 = "qualifier";
         regex1 = JSPLib.danbooru.tagRegExp(string2);
-        regex2 = RegExp('(?<=(?:^|\s))aliased\:_the_tag(?=(?:$|\s))','gi');
+        regex2 = RegExp('(?<=(?:^|\\s))aliased\\:_the_tag(?=(?:$|\\s))','gi');
         let regex3 = JSPLib.danbooru.tagRegExp(string5);
         result1 = string1.match(regex1);
         result2 = string1.replace(regex1,string3);
@@ -1182,13 +1182,16 @@ async function CheckDanbooruLibrary() {
     console.log(`the tag ${repr(string1)} with text ${repr(string2)} should produce the link  ${repr(string3)} ${bracket(result1)}`,RecordResult(result1 === string3));
 
     console.log("Checking submitRequest");
+    JSPLib.danbooru.error_domname = "#checklibrary-error";
     let type1 = 'posts';
     let type2 = 'doesntexist';
     let addons1 = {limit:1};
+    let num_errors = JSPLib.danbooru.error_messages.length;
     result1 = await JSPLib.danbooru.submitRequest(type1,addons1);
     result2 = await JSPLib.danbooru.submitRequest(type2);
     console.log(`with type ${type1} and addons ${repr(addons1)}, a single post should have been returned ${bracket(result1)}`,RecordResult(Array.isArray(result1) && result1.length === 1));
     console.log(`with nonexistent type ${type2}, null should be returned [${repr(result2)}]`,RecordResult(result2 === null));
+    console.log(`should have one error logged [${repr(JSPLib.danbooru.error_messages.length)}]`,RecordResult((JSPLib.danbooru.error_messages.length - num_errors) === 1))
 
     console.log("Checking getAllItems");
     type1 = 'users';
@@ -1286,7 +1289,7 @@ async function CheckLoadLibrary() {
 }
 
 async function checklibrary() {
-    $("footer").prepend('<span id="checklibrary-count" style="font-size:400%">0</span>');
+    $("footer").prepend('<span id="checklibrary-error" style="font-size:400%">0</span>&emsp;<span id="checklibrary-count" style="font-size:400%">0</span>');
     await CheckDebugLibrary();
     await CheckUtilityLibrary();
     CheckStatisticsLibrary();
