@@ -268,6 +268,12 @@ async function CheckUtilityLibrary() {
     teststring1 = JSPLib.utility.displayCase(string1);
     console.log(`Value ${repr(string1)} should should be changed to ${repr(string2)} ${bracket(repr(teststring1))}`,RecordResult(teststring1 === string2));
 
+    console.log("Checking sprintf");
+    string1 = "%s test %s";
+    string2 = "this test 3";
+    teststring1 = JSPLib.utility.sprintf(string1,"this",3);
+    console.log(`Value ${repr(string1)} should should be changed to ${repr(string2)} ${bracket(repr(teststring1))}`,RecordResult(teststring1 === string2));
+
     console.log("Checking filterEmpty");
     let testarray1 = ["test","first","nonempty"];
     let testarray2 = ["test","first","empty",""];
@@ -316,6 +322,11 @@ async function CheckUtilityLibrary() {
     let resultobjectarray2 = JSPLib.utility.listFilter(testobjectarray1,testarray2,'type',true);
     console.log(`Object array ${repr(testobjectarray1)} with id filters on ${repr(testarray1)} should be equal to ${repr(expectedobjectarray1)} ${bracket(repr(resultobjectarray1))}`,RecordResult(JSON.stringify(resultobjectarray1) === JSON.stringify(expectedobjectarray1)));
     console.log(`Object array ${repr(testobjectarray1)} with reverse type filters on ${repr(testarray2)} should be equal to ${repr(expectedobjectarray2)} ${bracket(repr(resultobjectarray2))}`,RecordResult(JSON.stringify(resultobjectarray2) === JSON.stringify(expectedobjectarray2)));
+
+    console.log("Checking joinList");
+    string1 = "test-1,test-3";
+    teststring1 = JSPLib.utility.joinList(testarray1,"test-",',');
+    console.log(`Value ${repr(testarray1)} should should be changed to ${repr(string1)} ${bracket(repr(teststring1))}`,RecordResult(teststring1 === string1));
 
     console.log("Checking getObjectAttributes");
     let expectedarray1 = [1,2,3];
@@ -506,6 +517,18 @@ async function CheckUtilityLibrary() {
     JSPLib.utility.eraseCookie(cookiename1)
     result1 = JSPLib.utility.readCookie(cookiename1);
     console.log(`Cookie ${cookiename1} should now not exist after being erased ${bracket(result1)}`,RecordResult(result1 === null));
+
+    console.log("Checking parseParams");
+    string1 = "test1=2&test2=3";
+    let object1 = {test1: "2", test2: "3"};
+    result1 = JSPLib.utility.parseParams(string1);
+    console.log(`Value ${repr(string1)} should should be changed to ${repr(object1)} ${bracket(repr(result1))}`,RecordResult(JSON.stringify(object1) === JSON.stringify(result1)));
+
+    console.log("Checking HTMLEscape");
+    string1 = '& < > "';
+    string2 = "&amp; &lt; &gt; &quot;";
+    result1 = JSPLib.utility.HTMLEscape(string1);
+    console.log(`Value ${repr(string1)} should should be changed to ${repr(string2)} ${bracket(repr(result1))}`,RecordResult(string2 === result1));
 
     console.log("Checking setupMutationObserver");
     $("#checklibrary-count").after('<span id="checklibrary-observe"></span>');
