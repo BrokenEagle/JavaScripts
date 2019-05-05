@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      5.3
+// @version      6.0
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -29,6 +29,7 @@
 // @grant        GM.xmlHttpRequest
 // @connect      donmai.us
 // @connect      twimg.com
+// @connect      api.twitter.com
 // @connect      google.com
 // @connect      githubusercontent.com
 // @connect      googleusercontent.com
@@ -61,7 +62,7 @@ var TISAS;
 const Timer = {};
 
 //Regex that matches the prefix of all program cache data
-const program_cache_regex = /^(post|iqdb)-/;
+const program_cache_regex = /^(post|iqdb|video)-/;
 
 //For factory reset !!!These need to be set!!!
 const localstorage_keys = [];
@@ -883,8 +884,8 @@ const post_versions_callback = JSPLib.utility.one_second * 5;
 const page_refresh_timeout = JSPLib.utility.one_second * 5;
 const min_post_expires = JSPLib.utility.one_day;
 const max_post_expires = JSPLib.utility.one_month;
-const post_expires = JSPLib.utility.one_day;
 const iqdb_expires = JSPLib.utility.one_day;
+const video_expires = JSPLib.utility.one_week;
 const length_recheck_expires = JSPLib.utility.one_hour;
 const database_recheck_expires = JSPLib.utility.one_day;
 const prune_recheck_expires = JSPLib.utility.one_hour * 6;
@@ -938,7 +939,7 @@ const post_constraints = {
         created: JSPLib.validate.counting_constraints,
         thumbnail: JSPLib.validate.stringonly_constraints,
         source: JSPLib.validate.stringonly_constraints,
-        ext: JSPLib.validate.inclusion_constraints(['jpg','png','gif']),
+        ext: JSPLib.validate.inclusion_constraints(['jpg','png','gif','mp4','webm']),
         size: JSPLib.validate.counting_constraints,
         width: JSPLib.validate.counting_constraints,
         height: JSPLib.validate.counting_constraints
@@ -948,6 +949,11 @@ const post_constraints = {
 const iqdb_constriants = {
     expires: JSPLib.validate.expires_constraints,
     value: JSPLib.validate.boolean_constraints
+}
+
+const video_constriants = {
+    expires: JSPLib.validate.expires_constraints,
+    value: JSPLib.validate.stringnull_constraints
 }
 
 /****Functions****/
@@ -961,6 +967,9 @@ function ValidateEntry(key,entry) {
     }
     if (key.match(/^iqdb-/)) {
         return JSPLib.validate.validateHashEntries(key, entry, iqdb_constriants)
+    }
+    if (key.match(/^video-/)) {
+        return JSPLib.validate.validateHashEntries(key, entry, video_constriants)
     }
     ValidateEntry.debuglog("Bad key!");
     return false;
@@ -1315,6 +1324,27 @@ function ProcessTweets($tweets,primaryfilter,append_selector,outerHTML) {
         });
         CheckPostIDs(all_post_ids);
     });
+}
+
+function GetImageLinks($tweet,is_video) {
+    if (is_video) {
+        let css_text = $(".PlayableMedia-player",$tweet).css('background-image');
+        if (css_text) {
+            let match = css_text.match(/url\("([^"]+)"\)/);
+            if (match) {
+                return [match[1]];
+            }
+        }
+        return [];
+    } else {
+        return $("[data-image-url]",$tweet).map((i,image)=>{return image.dataset.imageUrl;}).toArray();
+    }
+}
+
+function SetVideoDownload($download_section,video_url) {
+    let [video_name,extension] = video_url.slice(video_url.lastIndexOf('/')+1).split('.');
+    let download_filename = TISAS.filename_prefix.replace(/%ORDER%/g,'video1').replace(/%IMG%/g,video_name) + '.' + extension;
+    $download_section.find('.tisas-download-video').attr('href',video_url).attr('download',download_filename).show();
 }
 
 function UpdateLinkTitles() {
@@ -1853,20 +1883,23 @@ function RenderDatabaseVersion() {
     return `<a id="tisas-database-version" href="${TISAS.domain}/post_versions?page=b${TISAS.server_info.post_version+1}" title="${timestring}">${TISAS.server_info.post_version}</a>`;
 }
 
-function RenderDownloadLinks($tweet,position) {
+function RenderDownloadLinks($tweet,position,is_video) {
     let tweet_id = String($tweet.data('tweet-id'));
     let user_id = String($tweet.data('user-id'));
     let user_name = String($tweet.data('screen-name'));
     let date_string = GetDateString(Date.now());
     let time_string = GetTimeString(Date.now());
-    let filename_prefix = TISAS.user_settings.filename_prefix_format.replace(/%TWEETID%/g,tweet_id).replace(/%USERID%/g,user_id).replace(/%USERACCOUNT%/g,user_name).replace(/%DATE%/g,date_string).replace(/%TIME%/g,time_string);
-    var image_links = $("[data-image-url]",$tweet).map((i,image)=>{return image.dataset.imageUrl;}).toArray();
+    TISAS.filename_prefix = TISAS.user_settings.filename_prefix_format.replace(/%TWEETID%/g,tweet_id).replace(/%USERID%/g,user_id).replace(/%USERACCOUNT%/g,user_name).replace(/%DATE%/g,date_string).replace(/%TIME%/g,time_string);
+    var image_links = GetImageLinks($tweet,is_video);
     var hrefs = image_links.map((image)=>{return image + ':orig'});
     let html = `<span class="tisas-download-header">Download Originals</span><br>`;
     for (let i = 0; i < image_links.length; i++) {
         let [image_name,extension] = image_links[i].slice(image_links[i].lastIndexOf('/')+1).split('.');
-        let download_filename = filename_prefix.replace(/%ORDER%/g,'img' + (i + 1)).replace(/%IMG%/g,image_name) + '.' + extension;
-       html += `<a class="tisas-download-original" href="${hrefs[i]}" download="${download_filename}">Image #${i + 1}</a>`;
+        let download_filename = TISAS.filename_prefix.replace(/%ORDER%/g,'img' + (i + 1)).replace(/%IMG%/g,image_name) + '.' + extension;
+        html += `<a class="tisas-download-original tisas-download-image" href="${hrefs[i]}" download="${download_filename}">Image #${i + 1}</a>`;
+    }
+    if (is_video) {
+        html += `<a class="tisas-download-original tisas-download-video" style="display:none">Video #1</a>`;
     }
     if (image_links.length > 1) {
         html += `<a class="tisas-download-all" href="#">All images</a>`;
@@ -2147,11 +2180,30 @@ function InitializeTweetIndicators(tweet) {
 }
 
 function InitializeDownloadLinks($tweet) {
-    let download_html = RenderDownloadLinks($tweet,TISAS.user_settings.download_position[0]);
+    let is_video = Boolean($tweet.find(".AdaptiveMedia.is-video").length);
+    let $download_section = $(RenderDownloadLinks($tweet,TISAS.user_settings.download_position[0],is_video));
     if (TISAS.user_settings.download_position[0] === "above") {
-        $(".tweet-text",$tweet).append(download_html);
+        $(".tweet-text",$tweet).append($download_section);
     } else if (TISAS.user_settings.download_position[0] === "below") {
-        $(".AdaptiveMediaOuterContainer",$tweet).after(download_html);
+        $(".AdaptiveMediaOuterContainer",$tweet).after($download_section);
+    }
+    if (is_video) {
+        JSPLib.utility.rebindTimer({
+            check: ()=>{return $tweet.find("video").length > 0;},
+            exec: ()=>{
+                let video_url = $tweet.find("video").attr('src');
+                if (video_url.match(/^https:/)) {
+                    SetVideoDownload($download_section,video_url)
+                } else {
+                    let tweet_id = String($tweet.data('tweet-id'));
+                    GetMaxVideoDownloadLink(tweet_id).then((video_url)=>{
+                        if (video_url !== null) {
+                            SetVideoDownload($download_section,video_url);
+                        }
+                    });
+                }
+            }
+        },program_recheck_interval);
     }
 }
 
@@ -2363,6 +2415,38 @@ async function CheckPostvers() {
     }
     JSPLib.concurrency.setRecheckTimeout('tisas-timeout',GetPostVersionsExpiration());
     JSPLib.concurrency.freeSemaphore('tisas','postvers');
+}
+
+async function GetMaxVideoDownloadLink(tweet_id) {
+    let key = 'video-' + tweet_id;
+    let cached = await JSPLib.storage.checkLocalDB(key, ValidateEntry, video_expires);
+    if (!cached) {
+        let data = await $.ajax({
+            type: "GET",
+            beforeSend: function(request) {
+                request.setRequestHeader("authorization", "Bearer AAAAAAAAAAAAAAAAAAAAALVzYQAAAAAAIItU1SgTX8I%2B7Q3Cl3mqvuZiAAc%3D0AtbuGPnZgRlOHbTIk3JudxSGqXxgfkwpMG367Rtyw6GGLwO6N");
+            },
+            url: `https://api.twitter.com/1.1/statuses/show.json?id=${tweet_id}`,
+            processData: false
+        });
+        try {
+            var variants = data.extended_entities.media[0].video_info.variants;
+        } catch (e) {
+            //Bad data was returned!
+            variants = null;
+        }
+        if (variants) {
+            let max_bitrate = Math.max(...JSPLib.utility.getObjectAttributes(variants,'bitrate').filter((num)=>{return Number.isInteger(num);}));
+            let max_video = variants.filter((variant)=>{return variant.bitrate === max_bitrate;});
+            var video_url = (max_video.length ? max_video[0].url.split('?')[0] : null);
+        } else {
+            video_url = null;
+        }
+        JSPLib.storage.saveData(key, {value: video_url, expires: JSPLib.utility.getExpiration(video_expires)});
+        return video_url;
+    } else {
+        return cached.value;
+    }
 }
 
 //Database functions
@@ -2626,7 +2710,8 @@ function CheckURL(event) {
 function CheckIQDB(event) {
     let [$link,$tweet,tweet_id,user_id,screen_name,$replace] = GetEventPreload(event,'tisas-check-iqdb');
     $link.removeClass('tisas-check-iqdb').html("loading…");
-    let image_urls = $tweet.find("[data-image-url]").map((i,entry)=>{return $(entry).data('image-url');}).toArray();
+    let is_video = Boolean($tweet.find(".AdaptiveMedia.is-video").length);
+    let image_urls = GetImageLinks($tweet,is_video);
     CheckIQDB.debuglog(image_urls);
     let promise_array = image_urls.map((image_url)=>{return JSPLib.danbooru.submitRequest('iqdb_queries',{url: image_url},[],null,TISAS.domain,true);});
     Promise.all(promise_array).then((data)=>{
@@ -3031,7 +3116,7 @@ function RegularCheck() {
     }
     //Process events on new tweets
     let $tweets = $(".tweet:not(.Tweet--invertedColors,.RetweetDialog-tweet):not([tisas])");
-    let $image_tweets = $tweets.filter((i,entry)=>{return $(entry).find(".AdaptiveMedia:not(.is-video)").length;});
+    let $image_tweets = $tweets.filter((i,entry)=>{return $(entry).find(".AdaptiveMedia").length;});
     if ($tweets.length === 0) {
         return;
     }
@@ -3208,7 +3293,7 @@ function InitializeChangedSettings() {
     let update_link_titles = false;
     $processed_tweets.each((i,tweet)=>{
         let $tweet = $(tweet);
-        let tweet_id = $tweet.data('tweet-id');
+        let tweet_id = String($tweet.data('tweet-id'));
         let $post_link = $tweet.find('.tisas-database-match');
         if ($post_link.length && JSPLib.menu.hasSettingChanged('advanced_tooltips_enabled')) {
             if (TISAS.user_settings.advanced_tooltips_enabled) {
@@ -3445,7 +3530,7 @@ function Main() {
     SetHighlightLevels();
     SetQueryDomain();
     JSPLib.network.jQuerySetup();
-    RegularCheck.timer = setInterval(RegularCheck,program_recheck_interval);
+    RegularCheck.timer = setInterval(()=>{RegularCheck();},program_recheck_interval);
     $(document).on("click.tisas",".tisas-check-url",CheckURL);
     $(document).on("click.tisas",".tisas-check-iqdb",CheckIQDB);
     $(document).on("click.tisas",".tisas-manual-add",ManualAdd);
