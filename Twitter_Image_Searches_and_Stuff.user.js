@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      6.0
+// @version      6.1
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -897,6 +897,9 @@ const query_batch_size = 499;
 
 const twitter_regex = /^https:\/\/twitter\.com\/[\w-]+\/status\/(\d+)$/;
 
+const post_fields = "id,uploader_name,score,fav_count,rating,tag_string,created_at,preview_file_url,source,file_ext,file_size,image_width,image_height";
+const postver_fields = "id,updated_at,post_id,version,source,source_changed,added_tags,removed_tags";
+
 //Qtip constants
 
 const ARTIST_QTIP_SETTINGS = {
@@ -1064,9 +1067,7 @@ function ParseQueries(str) {
 
 function TimeAgo(timestamp) {
     let time_interval = Date.now() - timestamp;
-    if (time_interval < GetPostVersionsExpiration() * 2) {
-        return "Up to date";
-    } else if (time_interval < JSPLib.utility.one_hour) {
+    if (time_interval < JSPLib.utility.one_hour) {
         return JSPLib.utility.setPrecision(time_interval / JSPLib.utility.one_minute, 2) + " minutes ago";
     } else if (time_interval < JSPLib.utility.one_day) {
         return JSPLib.utility.setPrecision(time_interval / JSPLib.utility.one_hour, 2) + " hours ago";
@@ -1404,7 +1405,7 @@ async function CheckPostIDs(post_ids) {
             JSPLib.storage.batchStorageCheck(TISAS.all_post_ids,ValidateEntry,max_post_expires,'post').then((missing_ids)=>{
                 CheckPostIDs.debuglog("Missing posts:",missing_ids);
                 if (missing_ids.length) {
-                    JSPLib.danbooru.submitRequest('posts',{tags: 'id:' + missing_ids.join(','), limit: missing_ids.length},[],null,TISAS.domain).then((data)=>{
+                    JSPLib.danbooru.submitRequest('posts',{tags: 'id:' + missing_ids.join(','), limit: missing_ids.length, only: post_fields},[],null,TISAS.domain).then((data)=>{
                         MapPostData(data).forEach((post)=>{
                             TISAS.post_index[post.id] = post;
                             SavePost(post);
@@ -1865,7 +1866,8 @@ function RenderCurrentRecords() {
     let timestamp = JSPLib.storage.checkStorageData('tisas-recent-timestamp',ValidateProgramData,localStorage);
     if (timestamp) {
         let timestring = new Date(timestamp).toLocaleString();
-        record_html = `<a id="tisas-current-records" title="${timestring}">${TimeAgo(timestamp)}</a>`
+        let timeagostring = ((Date.now() - timestamp) < GetPostVersionsExpiration() * 2 ? "Up to date" : TimeAgo(timestamp));
+        record_html = `<a id="tisas-current-records" title="${timestring}">${timeagostring}</a>`
     } else {
         let message = "Loading...";
         let addons = "";
@@ -2332,7 +2334,7 @@ function InitializeTweetStats(filter1,filter2) {
 async function CheckPostvers() {
     let num_error_messages = JSPLib.danbooru.error_messages.length;
     let postver_lastid = GetPostVersionsLastID();
-    let url_addons = {search:{id:`${postver_lastid}..${postver_lastid + query_batch_size}`}};
+    let url_addons = {search:{id:`${postver_lastid}..${postver_lastid + query_batch_size}`}, only: postver_fields};
     let post_versions = await JSPLib.danbooru.getAllItems('post_versions', query_limit, {page:postver_lastid, addons: url_addons, reverse: true, domain: TISAS.domain, notify: true});
     if (num_error_messages !== JSPLib.danbooru.error_messages.length) {
         let last_error = JSPLib.danbooru.error_messages.slice(-1)[0];
@@ -2688,7 +2690,7 @@ function CheckURL(event) {
     let wildcard_url = `https://twitter.com/*/status/${tweet_id}`;
     let check_url = (TISAS.user_settings.URL_wildcards_enabled ? wildcard_url : normal_url);
     CheckURL.debuglog(check_url);
-    JSPLib.danbooru.submitRequest('posts',{tags: "source:" + check_url},[],null,TISAS.domain,true).then((data)=>{
+    JSPLib.danbooru.submitRequest('posts',{tags: "source:" + check_url, only: post_fields},[],null,TISAS.domain,true).then((data)=>{
         let post_ids = [];
         if (data.length === 0) {
             TISAS.no_url_results.push(tweet_id);
