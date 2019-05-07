@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      6.1
+// @version      6.2
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -3297,7 +3297,7 @@ function InitializeChangedSettings() {
         let $tweet = $(tweet);
         let tweet_id = String($tweet.data('tweet-id'));
         let $post_link = $tweet.find('.tisas-database-match');
-        if ($post_link.length && JSPLib.menu.hasSettingChanged('advanced_tooltips_enabled')) {
+        if ($post_link.length && JSPLib.menu.hasSettingChanged('tisas','advanced_tooltips_enabled')) {
             if (TISAS.user_settings.advanced_tooltips_enabled) {
                 TISAS.tweet_index[tweet_id].processed = false;
                 update_link_titles = true;
@@ -3305,27 +3305,27 @@ function InitializeChangedSettings() {
                 $post_link.qtiptisas("destroy",true);
             }
         }
-        if ($tweet.filter('[data-retweet-id]').length && JSPLib.menu.hasSettingChanged('display_retweet_id')) {
+        if ($tweet.filter('[data-retweet-id]').length && JSPLib.menu.hasSettingChanged('tisas','display_retweet_id')) {
             if (TISAS.user_settings.display_retweet_id) {
                 InitializeRetweetDisplay(tweet);
             } else {
                 $tweet.find('.tisas-retweet').remove();
             }
         }
-        if (TISAS.page === "tweet" && JSPLib.menu.hasSettingChanged('display_media_link')) {
+        if (TISAS.page === "tweet" && JSPLib.menu.hasSettingChanged('tisas','display_media_link')) {
             if (TISAS.user_settings.display_media_link) {
                 InitializeMediaLink($tweet);
             } else {
                 $tweet.find(".tisas-media-link").remove();
             }
         }
-        if (TISAS.page === "tweet" && (JSPLib.menu.hasSettingChanged('original_download_enabled') || JSPLib.menu.hasSettingChanged('download_position') || JSPLib.menu.hasSettingChanged('filename_prefix_format'))) {
+        if (TISAS.page === "tweet" && (JSPLib.menu.hasSettingChanged('tisas','original_download_enabled') || JSPLib.menu.hasSettingChanged('tisas','download_position') || JSPLib.menu.hasSettingChanged('tisas','filename_prefix_format'))) {
             $(".tisas-download-section",tweet).remove();
             if (TISAS.user_settings.original_download_enabled) {
                 InitializeDownloadLinks($tweet);
             }
         }
-        if (JSPLib.menu.hasSettingChanged('tweet_indicators_enabled')) {
+        if (JSPLib.menu.hasSettingChanged('tisas','tweet_indicators_enabled')) {
             if (TISAS.user_settings.tweet_indicators_enabled) {
                 InitializeTweetIndicators(tweet);
             } else {
@@ -3333,16 +3333,16 @@ function InitializeChangedSettings() {
                 $tweet.find('.stream-item-footer').remove();
             }
         }
-        if ($post_link.length && JSPLib.menu.hasSettingChanged('custom_order_enabled')) {
+        if ($post_link.length && JSPLib.menu.hasSettingChanged('tisas','custom_order_enabled')) {
             let postlink_URL = $post_link.attr('href');
             postlink_URL = postlink_URL.replace(/\+order%3Acustom/,'') + GetCustomQuery();
             $post_link.attr('href',postlink_URL);
         }
     });
-    if (JSPLib.menu.hasSettingChanged('auto_unhide_tweets_enabled') && TISAS.user_settings.auto_unhide_tweets_enabled) {
+    if (JSPLib.menu.hasSettingChanged('tisas','auto_unhide_tweets_enabled') && TISAS.user_settings.auto_unhide_tweets_enabled) {
         UnhideTweets();
     }
-    if (JSPLib.menu.hasSettingChanged('display_upload_link')) {
+    if (JSPLib.menu.hasSettingChanged('tisas','display_upload_link')) {
         if (TISAS.user_settings.display_upload_link) {
             $(".tisas-upload").show();
             InitializeUploadlinks();
@@ -3350,14 +3350,14 @@ function InitializeChangedSettings() {
             $(".tisas-upload").hide();
         }
     }
-    if (JSPLib.menu.hasSettingChanged('tweet_indicators_enabled')) {
+    if (JSPLib.menu.hasSettingChanged('tisas','tweet_indicators_enabled')) {
         if (TISAS.user_settings.tweet_indicators_enabled) {
             InitializeCounter();
         } else {
             $("#tisas-indicator-counter").remove();
         }
     }
-    if (JSPLib.menu.hasSettingChanged('score_highlights_enabled') || JSPLib.menu.hasSettingChanged('score_window_size')) {
+    if (JSPLib.menu.hasSettingChanged('tisas','score_highlights_enabled') || JSPLib.menu.hasSettingChanged('tisas','score_window_size')) {
         $(".tisas-highlight").removeClass('tisas-highlight');
         if (DisplayHighlights()) {
             TISAS.highlight_tweet = [];
@@ -3367,7 +3367,7 @@ function InitializeChangedSettings() {
             HighlightTweets();
         }
     }
-    if (JSPLib.menu.hasSettingChanged('query_subdomain')) {
+    if (JSPLib.menu.hasSettingChanged('tisas','query_subdomain')) {
         let old_domain = TISAS.domain;
         SetQueryDomain();
         $(`[href^="${old_domain}"]`).each((i,entry)=>{
