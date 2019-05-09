@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      14.4
+// @version      14.5
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries)
 // @author       BrokenEagle
@@ -420,6 +420,7 @@ const typedict = {
     flag: {
         controller: 'post_flags',
         addons: {},
+        only: "id,creator_id",
         useraddons: function (username) {return {search: {category: 'normal',post_tags_match: "user:" + username}};},
         filter: (array)=>{return array.filter((val)=>{return IsShownData(val,[],'creator_id',null);})},
         insert: InsertEvents
@@ -427,6 +428,7 @@ const typedict = {
     appeal: {
         controller: 'post_appeals',
         addons: {},
+        only: "id,creator_id",
         useraddons: function (username) {return {search: {post_tags_match: "user:" + username}};},
         filter: (array)=>{return array.filter((val)=>{return IsShownData(val,[],'creator_id',null);})},
         insert: InsertEvents
@@ -434,6 +436,7 @@ const typedict = {
     dmail: {
         controller: 'dmails',
         addons: {search: {is_spam: false}},
+        only: "id,from_id",
         useraddons: function (username) {return {};},
         filter: (array)=>{return array.filter((val)=>{return IsShownData(val,[],'from_id',null,(val)=>{return !val.is_read});})},
         insert: InsertDmails
@@ -441,6 +444,7 @@ const typedict = {
     spam: {
         controller: 'dmails',
         addons: {search: {is_spam: true}},
+        only: "id,from_id",
         useraddons: function (username) {return {};},
         filter: (array)=>{return array.filter((val)=>{return IsShownData(val,[],'from_id',null,(val)=>{return !val.is_read});})},
         insert: InsertDmails
@@ -448,6 +452,7 @@ const typedict = {
     comment: {
         controller: 'comments',
         addons: {group_by: 'comment'},
+        only: "id,creator_id,post_id",
         limit: 999,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'creator_id','post_id');})},
         insert: InsertComments,
@@ -456,6 +461,7 @@ const typedict = {
     forum: {
         controller: 'forum_posts',
         addons: {},
+        only: "id,creator_id,topic_id",
         limit: 999,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'creator_id','topic_id');})},
         insert: InsertForums,
@@ -464,6 +470,7 @@ const typedict = {
     note: {
         controller: 'note_versions',
         addons: {},
+        only: "id,updater_id,post_id",
         limit: 999,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'updater_id','post_id');})},
         insert: InsertNotes
@@ -471,6 +478,7 @@ const typedict = {
     commentary: {
         controller: 'artist_commentary_versions',
         addons: {},
+        only: "id,updater_id,post_id",
         limit: 999,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'updater_id','post_id',IsShownCommentary);})},
         insert: InsertEvents
@@ -478,6 +486,7 @@ const typedict = {
     post: {
         controller: 'post_versions',
         addons: {},
+        only: "id,updater_id,post_id",
         limit: 199,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'updater_id','post_id');})},
         insert: InsertPosts
@@ -1295,7 +1304,7 @@ async function CheckUserType(type) {
     let lastidkey = `el-${type}lastid`;
     let typelastid = JSPLib.storage.checkStorageData(lastidkey,ValidateProgramData,localStorage,0);
     if (typelastid) {
-        let url_addons = JSPLib.danbooru.joinArgs(typedict[type].addons,typedict[type].useraddons(EL.username));
+        let url_addons = JSPLib.danbooru.joinArgs(typedict[type].addons,typedict[type].useraddons(EL.username),{only: typedict[type].only});
         let jsontype = await JSPLib.danbooru.getAllItems(typedict[type].controller,query_limit,{addons:url_addons,page:typelastid,reverse:true});
         let filtertype = typedict[type].filter(jsontype);
         let lastusertype = (jsontype.length ? [JSPLib.danbooru.getNextPageID(jsontype,true)] : []);
@@ -1334,7 +1343,7 @@ async function CheckSubscribeType(type) {
         let savedlastid = JSPLib.storage.checkStorageData(savedlastidkey,ValidateProgramData,localStorage,[]);
         let savedlist = JSPLib.storage.checkStorageData(savedlistkey,ValidateProgramData,localStorage,[]);
         if (!savedlastid.length || !savedlist.length) {
-            let urladdons = typedict[type].addons;
+            let urladdons = JSPLib.danbooru.joinArgs(typedict[type].addons,{only: typedict[type].only});
             if (!EL.no_limit) {
                 urladdons = JSPLib.danbooru.joinArgs(urladdons,{search:{id:`${typelastid}..${typelastid+typedict[type].limit}`}});
             }
