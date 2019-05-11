@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      14.5
+// @version      14.6
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries)
 // @author       BrokenEagle
@@ -9,14 +9,14 @@
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/eventlistener.user.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/menu.js
 // ==/UserScript==
 
 /****Global variables****/
