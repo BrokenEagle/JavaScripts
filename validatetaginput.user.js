@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      27.1
+// @version      27.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -13,14 +13,14 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/validatetaginput.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/menu.js
 // ==/UserScript==
 
 /****Global variables****/
@@ -300,6 +300,12 @@ const striptype_regex = /^(-?)(?:general:|gen:|artist:|art:|copyright:|copy:|co:
 const cosplay_regex = /^(.+)_\(cosplay\)$/;
 const school_regex = /^(.+)_school_uniform$/;
 
+//Other constants
+
+const tag_fields = "name";
+const alias_fields = "consequent_name";
+const implication_fields = "antecedent_name";
+
 //Validate constants
 
 const relation_constraints = {
@@ -451,7 +457,7 @@ async function QueryTagAlias(tag) {
     let storeditem = await JSPLib.storage.checkLocalDB(entryname,ValidateEntry,relation_expiration);
     if (!storeditem) {
         QueryTagAlias.debuglog("Querying alias:",tag);
-        let data = await JSPLib.danbooru.submitRequest('tag_aliases',{search:{antecedent_name:tag,status:'active'}},[],entryname);
+        let data = await JSPLib.danbooru.submitRequest('tag_aliases', {search: {antecedent_name: tag, status: 'active'}, only: alias_fields}, [], entryname);
         if (data.length) {
             //Alias antecedents are unique, so no need to check the size
             QueryTagAlias.debuglog("Alias:",tag,data[0].consequent_name);
@@ -488,7 +494,7 @@ async function QueryTagImplication(tag) {
     let storeditem = await JSPLib.storage.checkLocalDB(entryname,ValidateEntry,relation_expiration);
     if (!storeditem) {
         QueryTagImplication.debuglog("Querying implication:",tag);
-        let data = await JSPLib.danbooru.submitRequest('tag_implications',{limit:100,search:{consequent_name:tag,status:'active'}},[],entryname);
+        let data = await JSPLib.danbooru.submitRequest('tag_implications', {limit:200, search:{ consequent_name:tag, status:'active'}, only: implication_fields}, [], entryname);
         let implications = data.map(entry=>{return entry.antecedent_name;});
         VTI.implicationdict[tag] = implications;
         JSPLib.storage.saveData(entryname, {value: implications, expires: Date.now() + relation_expiration});
@@ -617,7 +623,8 @@ async function ValidateTagAdds() {
         $("#warning-new-tags").hide();
         return true;
     }
-    let alltags = await JSPLib.danbooru.getAllItems('tags',100,{addons:{search:{name:VTI.addedtags.join(','),hide_empty:'yes'}}});
+    let url_addons = {search: {name: VTI.addedtags.join(','), hide_empty: 'yes'}, only: tag_fields};
+    let alltags = await JSPLib.danbooru.getAllItems('tags', 100, {addons: url_addons});
     VTI.checktags = alltags.map(entry=>{return entry.name;});
     let nonexisttags = JSPLib.utility.setDifference(VTI.addedtags,VTI.checktags);
     if (VTI.user_settings.alias_check_enabled) {
@@ -736,7 +743,7 @@ async function ValidateArtist() {
             ValidateArtist.debuglog("No missing artists. [cache hit]");
             return;
         }
-        let tag_resp = await JSPLib.danbooru.submitRequest('tags',{search: {name: uncached_artists.join(','), has_artist: true}});
+        let tag_resp = await JSPLib.danbooru.submitRequest('tags',{search: {name: uncached_artists.join(','), has_artist: true}, only: tag_fields});
         tag_resp.forEach((entry)=>{
             JSPLib.storage.saveData('are-' + entry.name,{value: true, expires: JSPLib.utility.getExpiration(artist_expiration)});
         });
