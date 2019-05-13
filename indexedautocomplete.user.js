@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      23.4
+// @version      23.5
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -12,14 +12,14 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/menu.js
 // ==/UserScript==
 
 /****Global variables****/
@@ -623,6 +623,7 @@ const source_config = {
                     hide_empty: true,
                     order: "count"
                 },
+                only: "name,category,post_count",
                 limit: 10
             };
         },
@@ -652,6 +653,7 @@ const source_config = {
                     order: "post_count",
                     name_matches: term
                 },
+                only: "name,category,post_count",
                 limit: 10
             };
         },
@@ -680,6 +682,7 @@ const source_config = {
                     current_user_first: true,
                     name_matches: term + "*"
                 },
+                only: "name,level_string",
                 limit: 10
             };
         },
@@ -705,6 +708,7 @@ const source_config = {
                 search: {
                     name_matches: term
                 },
+                only: "name,post_count",
                 limit: 10
             };
         },
@@ -752,6 +756,7 @@ const source_config = {
                     hide_deleted: true,
                     title: term + "*"
                 },
+                only: "title,category_name",
                 limit: 10
             };
         },
@@ -779,6 +784,7 @@ const source_config = {
                     is_active: true,
                     name_like: term.trim().replace(/\s+/g, "_") + "*"
                 },
+                only: "name",
                 limit: 10
             };
         },
@@ -804,6 +810,7 @@ const source_config = {
                     order: "sticky",
                     title_matches: "*" + term + "*"
                 },
+                only: "title,category_id",
                 limit: 10
             };
         },
