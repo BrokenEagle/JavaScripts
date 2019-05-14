@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RecentTagsCalc
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.1
+// @version      6.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Use different mechanism to calculate RecentTags
 // @author       BrokenEagle
@@ -450,6 +450,10 @@ const max_item_limit = 100;
 const aliases_first_post_count = 1000000000;
 const metatags_first_post_count = 2000000000;
 
+const tag_fields = "name,category,post_count";
+const user_fields = "favorite_tags";
+const alias_fields = "consequent_name";
+
 //Validation values
 
 const relation_constraints = {
@@ -796,7 +800,8 @@ async function CheckMissingTags(tag_list,list_name="") {
 async function QueryMissingTags(missing_taglist) {
     let promise_array = [];
     let tag_query = missing_taglist.join(',');
-    let queried_tags = await JSPLib.danbooru.getAllItems('tags',max_item_limit,{addons:{search:{name:tag_query,hide_empty:'no'}}});
+    let url_addons = {search:{name:tag_query,hide_empty:'no'}, only: tag_fields};
+    let queried_tags = await JSPLib.danbooru.getAllItems('tags', max_item_limit, {addons: url_addons});
     queried_tags.forEach((tagentry)=>{
         let entryname = 'tag-' + tagentry.name;
         let value = {
@@ -829,7 +834,7 @@ async function CheckTagDeletion() {
                 if (data) {
                     return data;
                 }
-                return JSPLib.danbooru.submitRequest('tag_aliases',{search:{antecedent_name:tag,status:'active'}},[],alias_entryname)
+                return JSPLib.danbooru.submitRequest('tag_aliases', {search: {antecedent_name: tag, status: 'active'}, only: alias_fields}, [], alias_entryname)
                 .then((data)=>{
                     CheckTagDeletion.debuglog("Step 2 (optional): Check server for alias",data);
                     let savedata = {value: [], expires: Date.now() + tagalias_expires};
@@ -972,7 +977,7 @@ async function LoadFrequentTags() {
 }
 
 async function QueryFrequentTags() {
-    let user_account = await JSPLib.danbooru.submitRequest('users',{search: {id: RTC.userid}});
+    let user_account = await JSPLib.danbooru.submitRequest('users',{search: {id: RTC.userid}, only: user_fields});
     if (!user_account || user_account.length === 0) {
         //Should never get here, but just in case
         return;
@@ -1065,7 +1070,7 @@ function RenderSettingsMenu() {
         $(`#rtc-select-uploads-order-${type}`).checkboxradio("disable");
         $(`#rtc-select-post-edits-order-${type}`).checkboxradio("disable");
     });
-    $("#rtc-setting-refresh-frequent-tags").on('click.rtc',ReloadFrequentTags);
+    $("#rtc-control-refresh-frequent-tags").on('click.rtc',ReloadFrequentTags);
     JSPLib.menu.saveUserSettingsClick('rtc','RecentTagsCalc');
     JSPLib.menu.resetUserSettingsClick('rtc','RecentTagsCalc',localstorage_keys,program_reset_keys);
     JSPLib.menu.cacheInfoClick('rtc',program_cache_regex,"#rtc-cache-info-table");
