@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      6.2
+// @version      6.3
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -2624,7 +2624,7 @@ function InstallDatabase(event) {
 function UpgradeDatabase(event) {
     let message = JSPLib.utility.sprintf(upgrade_confirm,TISAS.server_info.post_version,new Date(TISAS.server_info.timestamp).toLocaleString(),
                                                          TISAS.database_info.post_version,new Date(TISAS.database_info.timestamp).toLocaleString());
-    if (confirm(upgrade_confirm)) {
+    if (confirm(message)) {
         $("#tisas-upgrade").replaceWith(load_counter);
         LoadDatabase().then(()=>{
             JSPLib.storage.saveData('tisas-database-info',TISAS.server_info,JSPLib.storage.twitterstorage);
