@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      27.2
+// @version      27.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
@@ -302,7 +302,7 @@ const school_regex = /^(.+)_school_uniform$/;
 
 //Other constants
 
-const tag_fields = "name";
+const tag_fields = "id,name";
 const alias_fields = "consequent_name";
 const implication_fields = "antecedent_name";
 

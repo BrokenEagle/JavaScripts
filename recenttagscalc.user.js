@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RecentTagsCalc
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.2
+// @version      6.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Use different mechanism to calculate RecentTags
 // @author       BrokenEagle
@@ -450,7 +450,7 @@ const max_item_limit = 100;
 const aliases_first_post_count = 1000000000;
 const metatags_first_post_count = 2000000000;
 
-const tag_fields = "name,category,post_count";
+const tag_fields = "id,name,category,post_count";
 const user_fields = "favorite_tags";
 const alias_fields = "consequent_name";
 
