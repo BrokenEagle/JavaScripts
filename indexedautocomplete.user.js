@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      23.5
+// @version      23.6
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -149,6 +149,7 @@ const settings_config = {
     },
     recheck_data_interval: {
         default: 1,
+        parse: parseInt,
         validate: (data)=>{return Number.isInteger(data) && data >= 0 && data <= 3;},
         hint: "Number of days (0 - 3). Data expiring within this period gets automatically requeried. Setting to 0 disables this."
     }
