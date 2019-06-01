@@ -67,6 +67,11 @@ const reverse_data_key = {
 
 //Main settings
 const settings_config = {
+    main_script_enabled: {
+        default: true,
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
+        hint: "Allows the script to be turned on/off for different subdomains."
+    },
     recheck_interval: {
         default: 5,
         parse: parseInt,
@@ -197,6 +202,11 @@ const bss_menu = `
 </div>
 <div id="bss-console" class="jsplib-console">
     <div id="bss-settings" class="jsplib-outer-menu">
+        <div id="bss-general-settings" class="jsplib-settings-grouping">
+            <div id="bss-general-message" class="prose">
+                <h4>General settings</h4>
+            </div>
+        </div>
         <div id="bss-post-settings" class="jsplib-settings-grouping">
             <div id="bss-post-message" class="prose">
                 <h4>Post settings</h4>
@@ -1665,6 +1675,7 @@ function MaximumTagQueryLimit() {
 
 function RenderSettingsMenu() {
     $("#better-saved-searches").append(bss_menu);
+    $("#bss-general-settings").append(JSPLib.menu.renderCheckbox("bss",'main_script_enabled'));
     $("#bss-post-settings").append(JSPLib.menu.renderTextinput("bss",'seed_size',10));
     $("#bss-post-settings").append(JSPLib.menu.renderTextinput("bss",'query_size',10));
     $("#bss-post-settings").append(JSPLib.menu.renderTextinput("bss",'saved_search_size',10));
@@ -1709,6 +1720,18 @@ async function Main() {
         channel: new BroadcastChannel('BetterSavedSearches')
     };
     BSS.user_settings = JSPLib.menu.loadUserSettings('bss');
+    if (BSS.is_settings_menu) {
+        JSPLib.validate.dom_output = "#bss-cache-editor-errors";
+        JSPLib.menu.loadStorageKeys('bss',program_cache_regex);
+        JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
+            JSPLib.menu.installSettingsMenu("BetterSavedSearches");
+            RenderSettingsMenu();
+        });
+    }
+    if (!BSS.user_settings.main_script_enabled) {
+        Main.debuglog("Script is disabled!");
+        return;
+    }
     BSS.timeout_expires = BSS.user_settings.recheck_interval * JSPLib.utility.one_minute;
     BSS.channel.onmessage = BSSBroadcast;
     //Render the barebones HTML early on
@@ -1751,13 +1774,6 @@ async function Main() {
         SubmitNewQueryClick();
         SubmitDeleteClick();
         JSPLib.utility.setCSSStyle(search_css,'program');
-    } else if (BSS.is_settings_menu) {
-        JSPLib.validate.dom_output = "#bss-cache-editor-errors";
-        JSPLib.menu.loadStorageKeys('bss',program_cache_regex);
-        JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
-            JSPLib.menu.installSettingsMenu("BetterSavedSearches");
-            RenderSettingsMenu();
-        });
     }
     //Load and/or process the data
     if ((JSPLib.concurrency.checkTimeout('bss-timeout',BSS.timeout_expires) || WasOverflow()) && JSPLib.concurrency.reserveSemaphore('bss')) {
