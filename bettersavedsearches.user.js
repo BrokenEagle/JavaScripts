@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         BetterSavedSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.0
+// @version      3.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Provides an alternative mechanism and UI for saved searches
 // @author       BrokenEagle
@@ -1004,6 +1004,7 @@ function SearchClick(selector,level,posttype,choosepost) {
                 ClearPosts('unseen',choosepost,id);
                 StoreBSSEntries();
                 JSPLib.storage.setStorageData('bss-search-posts',posts,sessionStorage);
+                BSS.active_query = id;
                 window.location = window.location.origin + PostIDQuery(posts,1,false);
             }
             SearchClick.reserved = false;
