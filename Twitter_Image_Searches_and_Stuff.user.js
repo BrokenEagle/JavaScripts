@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      6.4
+// @version      6.5
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -898,7 +898,7 @@ const query_batch_size = 499;
 const twitter_regex = /^https:\/\/twitter\.com\/[\w-]+\/status\/(\d+)$/;
 
 const post_fields = "id,uploader_name,score,fav_count,rating,tag_string,created_at,preview_file_url,source,file_ext,file_size,image_width,image_height";
-const postver_fields = "id,updated_at,post_id,version,source,source_changed,added_tags,removed_tags";
+const postver_fields = "id,updated_at,post_id,version,source,source_changed,added_tags,removed_tags,tags";
 
 //Qtip constants
 
@@ -1483,7 +1483,7 @@ function ProcessPostvers(postvers) {
     var add_entries = {};
     var rem_entries = {};
     postvers.forEach((postver)=>{
-        if (postver.source_changed) {
+        if (postver.source_changed && !postver.tags.split(' ').includes('bad_twitter_id')) {
             if (postver.version === 1) {
                 let match = postver.source.match(twitter_regex);
                 if (match) {

@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         BetterSavedSearches
+// @name         BetterSavedSearches (check jobs)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.1
+// @version      3.1.a
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Provides an alternative mechanism and UI for saved searches
 // @author       BrokenEagle
@@ -532,6 +532,11 @@ function ValidateProgramData(key,entry) {
 
 //Library functions
 
+JSPLib.danbooru.getShowID = function() {
+    let is_show = JSPLib.utility.getPublicData(document.body).action === "show";
+    return (is_show ? parseInt(window.location.pathname.match(/\d+$/)[0]) : 0);
+};
+
 ////NONE
 
 //Helper functions
@@ -663,6 +668,24 @@ function TimeAgo(timestamp) {
 
 function WasOverflow() {
     return JSPLib.storage.checkStorageData('bss-overflow',ValidateProgramData,localStorage,false);
+}
+
+function IsSavedSearchCheck() {
+    if (IsSavedSearchCheck.result === undefined) {
+        IsSavedSearchCheck.result = false;
+        if (BSS.is_profile_page && BSS.user_id === JSPLib.danbooru.getShowID()) {
+            IsSavedSearchCheck.result = true;
+        } else if (BSS.is_post_index) {
+            let params = JSPLib.utility.parseParams(location.search.slice(1));
+            if (params.tags && params.tags.length > 0) {
+                let tags = params.tags.split(' ');
+                if (tags.filter((tag)=>{return tag.match(/^search:/);}).length > 0) {
+                    IsSavedSearchCheck.result = true;
+                }
+            }
+        }
+    }
+    return IsSavedSearchCheck.result;
 }
 
 //Storage functions
@@ -1617,6 +1640,34 @@ async function CheckUserSavedSearches(overide=false) {
     }
 }
 
+function FilterUserJobs(jobs) {
+    let user_jobs = [];
+    let populate_jobs = jobs.filter((job)=>{let handler = job.handler.split('\n');return handler[1].match(/SavedSearch/) && handler[2].search('/:populate$/');});
+    if (populate_jobs.length) {
+        let all_queries = Danbooru.BSS.entries.map((entry)=>{return entry.tags});
+        user_jobs = populate_jobs.filter((job)=>{return all_queries.includes(job.handler.split('\n')[4].slice(2));});
+    }
+    console.log("FilterUserJobs:",jobs,populate_jobs,user_jobs);
+    return user_jobs;
+}
+
+async function CheckDelayedJobs() {
+    let waiting = false;
+    let jobs = await JSPLib.danbooru.submitRequest('delayed_jobs',{limit:1000});
+    let user_jobs = FilterUserJobs(jobs);
+    while (user_jobs.length) {
+        waiting = true;
+        Danbooru.Utility.notice("Saved searches pending...");
+        let pageid = JSPLib.danbooru.getNextPageID(populate_jobs,false);
+        await JSPLib.utility.sleep(JSPLib.utility.one_second * 5);
+        jobs = await JSPLib.danbooru.submitRequest('delayed_jobs',{limit:1000,page:'a'+pageid});
+        user_jobs = FilterUserJobs(jobs);
+    }
+    if (waiting) {
+        Danbooru.Utility.notice("Saved searches complete.");
+    }
+}
+
 //Cache functions
 
 function OptionCacheDataKey(data_type,data_value) {
@@ -1711,12 +1762,15 @@ async function Main() {
     }
     Danbooru.BSS = BSS = {
         dirty: false,
+        user_id: parseInt(JSPLib.utility.getMeta('current-user-id')),
         user_limit: MaximumTagQueryLimit(),
         is_post_index: Boolean($("#c-posts #a-index").length),
         is_post_show: Boolean($("#c-posts #a-show").length),
         is_searches_index: Boolean($("#c-saved-searches #a-index").length),
         storage_keys: {indexed_db: [], local_storage: []},
         is_settings_menu: Boolean($("#c-users #a-edit").length),
+        is_profile_page: Boolean($("#c-users #a-edit").length),
+        remaining_queries: JSPLib.storage.getStorageData('bss-remaining-queries',localStorage,[]),
         settings_config: settings_config,
         channel: new BroadcastChannel('BetterSavedSearches')
     };
@@ -1797,6 +1851,12 @@ async function Main() {
     } else if (BSS.is_post_index || BSS.is_searches_index) {
         await Timer.LoadBSSEntries();
         BSS.initialized = Boolean(BSS.entries.length);
+    }
+    if (document.visibilityState === "visible" && IsSavedSearchCheck()) {
+        //Wait a bit before checking
+        setTimeout(()=>{
+            CheckDelayedJobs();
+        },JSPLib.utility.one_second * 5);
     }
     //Initialize UI after getting data
     if (BSS.is_post_index) {
