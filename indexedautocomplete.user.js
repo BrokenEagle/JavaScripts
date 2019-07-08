@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      23.7
+// @version      23.8
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -1049,7 +1049,9 @@ function ValidateUsageData(choice_info) {
 
 //Library functions
 
-////NONE
+JSPLib.danbooru.wikiLink = function (tag,text) {
+    return `<a href="/wiki_pages/show_or_new?title=${encodeURIComponent(tag)}">${text}</a>`;
+};
 
 //Time functions
 
