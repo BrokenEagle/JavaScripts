@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      6.4
+// @version      6.5
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -54,6 +54,7 @@ JSPLib.storage.prune_limit = 2000;
 //Variables for danbooru.js
 JSPLib.danbooru.max_network_requests = 10;
 JSPLib.danbooru.rate_limit_wait = JSPLib.utility.one_second;
+JSPLib.danbooru.error_domname = "#tisas-error-messages";
 
 //Main program variable
 var TISAS;
