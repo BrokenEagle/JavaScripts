@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         BetterSavedSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.1
+// @version      4.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Provides an alternative mechanism and UI for saved searches
 // @author       BrokenEagle
@@ -65,12 +65,21 @@ const reverse_data_key = {
     program_data: 'bss'
 };
 
+//Available setting values
+const profile_thumb_types = ['danbooru','script','both'];
+
 //Main settings
 const settings_config = {
     main_script_enabled: {
         default: true,
         validate: (data)=>{return JSPLib.validate.isBoolean(data);},
         hint: "Allows the script to be turned on/off for different subdomains."
+    },
+    profile_thumb_source: {
+        allitems: profile_thumb_types,
+        default: ['danbooru'],
+        validate: (data)=>{return Array.isArray(data) && data.length === 1 && profile_thumb_types.includes(data[0])},
+        hint: "Select which source to get thumbnails from on the profile page."
     },
     recheck_interval: {
         default: 5,
@@ -155,6 +164,22 @@ const search_css = `
 }
 `;
 
+const profile_css = `
+.bss-search-header {
+    margin-left: 1em;
+}
+.bss-search-header .bss-link {
+    color: #0073ff;
+}
+.bss-search-header .bss-link:hover {
+    color: #80b9ff;
+}
+.bss-profile-load {
+    color: grey;
+    margin-left: 0.5em
+}
+`;
+
 //HTML constants
 
 const saved_search_box = `
@@ -215,6 +240,55 @@ const bss_menu = `
         <div id="bss-network-settings" class="jsplib-settings-grouping">
             <div id="bss-network-message" class="prose">
                 <h4>Network settings</h4>
+                <p>Metatag searches include the use of unhandled search terms, most often because that information is not contained in the post itself.
+                   Therefore, instead of being collected at the regular check, the script executes individual post queries to Danbooru.
+                </p>
+                <div class="expandable">
+                    <div class="expandable-header">
+                        <span>Unhandled metatags</span>
+                        <input type="button" value="Show" class="expandable-button">
+                    </div>
+                    <div class="expandable-content">
+                        <li>age</li>
+                        <li>appealer</li>
+                        <li>approver</li>
+                        <li>artcomm</li>
+                        <li>arttags</li>
+                        <li>chartags</li>
+                        <li>comm</li>
+                        <li>commenter</li>
+                        <li>copytags</li>
+                        <li>date</li>
+                        <li>downvote</li>
+                        <li>fav</li>
+                        <li>favcount</li>
+                        <li>favgroup</li>
+                        <li>filesize</li>
+                        <li>flagger</li>
+                        <li>gentags</li>
+                        <li>height</li>
+                        <li>id</li>
+                        <li>limit</li>
+                        <li>locked</li>
+                        <li>md5</li>
+                        <li>metatags</li>
+                        <li>mpixels</li>
+                        <li>noter</li>
+                        <li>noteupdater</li>
+                        <li>order</li>
+                        <li>ordfav</li>
+                        <li>ordpool</li>
+                        <li>pixiv</li>
+                        <li>pixiv_id</li>
+                        <li>ratio</li>
+                        <li>score</li>
+                        <li>search</li>
+                        <li>source</li>
+                        <li>tagcount</li>
+                        <li>upvote</li>
+                        <li>width</li>
+                    </div>
+                </div>
                 <div class="expandable">
                     <div class="expandable-header">
                         <span>Additional setting details</span>
@@ -532,7 +606,21 @@ function ValidateProgramData(key,entry) {
 
 //Library functions
 
-////NONE
+JSPLib.danbooru.getShowID = function() {
+    return (document.body.dataset.action === "show" ? parseInt(window.location.pathname.match(/\d+$/)[0]) : 0);
+};
+
+JSPLib.utility.getUniqueID = function() {
+    return Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+};
+
+JSPLib.utility.isScrolledIntoView = function(elem) {
+    let docViewTop = $(window).scrollTop();
+    let docViewBottom = docViewTop + $(window).height();
+    let elemTop = $(elem).offset().top;
+    let elemBottom = elemTop + $(elem).height();
+    return ((elemBottom <= docViewBottom) && (elemTop >= docViewTop));
+};
 
 //Helper functions
 
@@ -639,7 +727,14 @@ function ResetDirty() {
 function PostIDQuery(posts,page,escape=true) {
     let activestring = (BSS.user_settings.show_deleted_enabled ? "status:any " : "");
     let idstring = "id:" + PostIDString(posts,page);
-    let urlsearch = $.param({tags: activestring + idstring, limit: BSS.user_settings.query_size, bss: (BSS.active_query ? BSS.active_query : "all"), p: page});
+    let urlsearch = $.param({
+        tags: activestring + idstring,
+        limit: BSS.user_settings.query_size,
+        bss: (BSS.active_query ? BSS.active_query : "all"),
+        bss_type: (BSS.query_type ? BSS.query_type : "click"),
+        tab: BSS.tab_id,
+        p: page
+    });
     if (escape) {
         urlsearch = JSPLib.utility.HTMLEscape(urlsearch);
     }
@@ -769,9 +864,10 @@ function RenderTableRow(saved_search) {
 
 ////#C-POSTS #A-INDEX
 
-function PaginatePostIndex() {
+async function PaginatePostIndex() {
+    await BSS.deferred_search;
     $(".current-page > span").text(BSS.page);
-    let posts = JSPLib.storage.checkStorageData('bss-search-posts',ValidateProgramData,sessionStorage,[]);
+    let posts = BSS.search_posts;
     let total_pages = Math.ceil(posts.length/BSS.user_settings.query_size);
     let first_page = Math.max(BSS.page - 4, 1);
     let last_page = Math.min(BSS.page + 4, total_pages);
@@ -814,6 +910,19 @@ function PaginatePostIndex() {
 </a>`;
         $(".arrow:last-of-type").html(html);
     }
+}
+
+function InitializeIndexThumbnails () {
+    $(".post-preview").each((i,entry)=>{
+        if (!BSS.user_settings.show_favorites_enabled) {
+            if ($(entry).data('is-favorited')) {
+                entry.style.setProperty('display','none','important');
+                return;
+            }
+        }
+        let postid = $(entry).data("id");
+        $(">a",entry).attr('href',`/posts/${postid}?bss=${BSS.active_query}&bss_type=${BSS.query_type}&tab=${BSS.tab_id}`);
+    });
 }
 
 function InitializeUI() {
@@ -889,17 +998,31 @@ function RecalculateMain() {
     $("h1 > .bss-count").attr('title',GetPosts('posts',ChooseAll).length);
 }
 
-////#C-POSTS #A-INDEX
+////#C-POSTS #A-SHOW
 
-function SequentializePostShow() {
+async function SequentializePostShow() {
+    await BSS.deferred_search;
     let postid = parseInt(JSPLib.utility.getMeta('post-id'));
-    let posts = JSPLib.storage.checkStorageData('bss-search-posts',ValidateProgramData,sessionStorage,[]);
+    let posts = (BSS.query_type === "posts" ? GetPosts("posts",ChooseLabel,BSS.active_query) : BSS.search_posts);
+    if (posts.length === 0) {
+        return;
+    }
     let index = posts.indexOf(postid);
-    let prev_postid = (index > 1 ? posts[index-1] : posts[index]);
+    let first_postid = posts[0];
+    let prev_postid = (index >= 1 ? posts[index-1] : posts[index]);
     let next_postid = (index < (posts.length - 1) ? posts[index+1] : posts[index]);
+    let last_postid = posts.slice(-1);
+    let urlsearch = $.param($.extend({
+        bss: (BSS.active_query ? BSS.active_query : "all"),
+        bss_type: (BSS.query_type ? BSS.query_type : "click"),
+    },{
+       tab: (BSS.opening_tab ? BSS.tab_id : undefined)
+    }));
     $("#search-seq-nav .search-name").text("BetterSavedSearches");
-    $("#search-seq-nav .prev").attr('href',`/posts/${prev_postid}?bss=${BSS.active_query}`);
-    $("#search-seq-nav .next").attr('href',`/posts/${next_postid}?bss=${BSS.active_query}`);
+    $("#search-seq-nav .prev").before(`<a style="position:absolute;left:1em" href="/posts/${first_postid}?${urlsearch}">&laquo; first</a>`);
+    $("#search-seq-nav .prev").attr('href',`/posts/${prev_postid}?${urlsearch}`).css('left','5em');
+    $("#search-seq-nav .next").attr('href',`/posts/${next_postid}?${urlsearch}`).css('right','5em');
+    $("#search-seq-nav .next").after(`<a style="position:absolute;right:1em" href="/posts/${last_postid}?${urlsearch}">last &raquo;</a>`);
 }
 
 ////#C-SAVED-SEARCHES #A-INDEX
@@ -910,6 +1033,23 @@ function RefreshLinkCount() {
     let query_difference = JSPLib.utility.setSymmetricDifference(program_queries,actual_queries);
     RefreshLinkCount.debuglog(query_difference);
     $("#bss-refresh-count").html(query_difference.length);
+}
+
+////#C-USERS #A-SHOW
+
+function InitializeProfilePage() {
+    switch (BSS.user_settings.profile_thumb_source[0]) {
+        case "script":
+            $(".user-saved-search .box:first-of-type").hide();
+        case "both":
+            $(".user-saved-search .box").prepend(`<h4 class="bss-search-header">Danbooru</h4>`).css('margin-bottom',"0");
+            CheckSearchVisibility();
+            LoadProfilePostsInterval.timer = JSPLib.utility.initializeInterval(LoadProfilePostsInterval, JSPLib.utility.one_second);
+            $(window).on('scroll.bss',(event)=>{CheckSearchVisibility();});
+        case "danbooru":
+        default:
+            //Do nothing
+    }
 }
 
 //Alias functions
@@ -999,12 +1139,13 @@ function SearchClick(selector,level,posttype,choosepost) {
         if (!SearchClick.reserved) {
             let id = $(JSPLib.utility.getNthParent(event.target,level)).data('id');
             let posts = GetPosts(posttype,choosepost,id);
-            SearchClick.debuglog("SearchClick",id,posts.length);
+            SearchClick.debuglog(id,posts.length);
             if (posts.length > 0) {
                 ClearPosts('unseen',choosepost,id);
                 StoreBSSEntries();
                 JSPLib.storage.setStorageData('bss-search-posts',posts,sessionStorage);
                 BSS.active_query = id;
+                BSS.query_type = "click";
                 window.location = window.location.origin + PostIDQuery(posts,1,false);
             }
             SearchClick.reserved = false;
@@ -1155,6 +1296,57 @@ function SubmitDeleteClick() {
             exec: ()=>{RefreshLinkCount();}
         },timer_poll_interval);
     });
+}
+
+//Profile functions
+
+async function CheckSearchVisibility() {
+    $(".user-saved-search:not(.bss-processed)").each((i,elem)=>{
+        let $elem = $(elem);
+        let label = $elem.data('label');
+        if (JSPLib.utility.isScrolledIntoView(elem)) {
+            let post_ids = GetPosts('posts',ChooseLabel,label).slice(0,10);
+            if (post_ids.length > 0) {
+                CheckSearchVisibility.total_post_ids = JSPLib.utility.setUnion(CheckSearchVisibility.total_post_ids,post_ids);
+                CheckSearchVisibility.label_post_ids[label] = post_ids;
+                $(elem).append(`<div class="box" data-id="${label}"><h1 class="bss-profile-load">Loading...</h2></div>`);
+            } else {
+                $(elem).append(`<div class="box"><h4>BetterSavedSearches</h4><br><h1>Empty!</h1></div>`);
+            }
+            $(elem).addClass("bss-processed");
+        }
+    });
+}
+CheckSearchVisibility.total_post_ids = [];
+CheckSearchVisibility.label_post_ids = [];
+
+async function LoadProfilePostsInterval() {
+    if (CheckSearchVisibility.total_post_ids.length === 0) {
+        return;
+    }
+    let total_post_ids = JSPLib.utility.dataCopy(CheckSearchVisibility.total_post_ids);
+    let label_post_ids = JSPLib.utility.dataCopy(CheckSearchVisibility.label_post_ids);
+    CheckSearchVisibility.total_post_ids = [];
+    CheckSearchVisibility.label_post_ids = {};
+    let html = await $.get("/posts",{tags:"id:"+total_post_ids.join(','),limit:total_post_ids.length});
+    var $posts = $.parseHTML(html);
+    for (let label in label_post_ids) {
+        let $label_box = $(`.user-saved-search[data-label=${label}] .box:last-of-type`);
+        $label_box.html(`<h4 class="bss-search-header">BetterSavedSearches: <a class="bss-link">${label}</a></h4>`);
+        label_post_ids[label].forEach((post_id)=>{
+            let $thumb = $(`.post-preview[data-id=${post_id}]`,$posts);
+            $label_box.append($thumb);
+            $(">a",$thumb).attr('href',`/posts/${post_id}?bss=${label}&bss_type=posts`);
+            //The profile thumbs have carriage returns between each element which adds a few pixels of margin
+            $label_box.append('\n');
+        });
+        SearchClick(`.user-saved-search[data-label=${label}] .bss-link`,2,'posts',ChooseLabel);
+    }
+    Danbooru.Blacklist.apply();
+    if ($(".user-saved-search:not(.bss-processed)").length === 0 && CheckSearchVisibility.total_post_ids.length === 0) {
+        clearInterval(LoadProfilePostsInterval.timer);
+        LoadProfilePostsInterval.timer = true;
+    }
 }
 
 //Query functions
@@ -1642,6 +1834,18 @@ function BSSBroadcast(ev) {
         }
     }
     switch (ev.data.type) {
+        case "search_query":
+            if (ev.data.rx_tab === BSS.tab_id && BSS.search_posts.length) {
+                BSS.channel.postMessage({type:"search_response",posts:BSS.search_posts,rx_tab:ev.data.tx_tab});
+            }
+            break;
+        case "search_response":
+            if (ev.data.rx_tab === BSS.tab_id) {
+                BSS.search_posts = ev.data.posts;
+                JSPLib.storage.setStorageData('bss-search-posts',BSS.search_posts,sessionStorage);
+                BSS.deferred_search.resolve(true);
+            }
+            break;
         case "reload":
         case "reinstall":
             ResetDirty();
@@ -1677,6 +1881,7 @@ function MaximumTagQueryLimit() {
 function RenderSettingsMenu() {
     $("#better-saved-searches").append(bss_menu);
     $("#bss-general-settings").append(JSPLib.menu.renderCheckbox("bss",'main_script_enabled'));
+    $("#bss-general-settings").append(JSPLib.menu.renderInputSelectors("bss",'profile_thumb_source','radio'));
     $("#bss-post-settings").append(JSPLib.menu.renderTextinput("bss",'seed_size',10));
     $("#bss-post-settings").append(JSPLib.menu.renderTextinput("bss",'query_size',10));
     $("#bss-post-settings").append(JSPLib.menu.renderTextinput("bss",'saved_search_size',10));
@@ -1692,6 +1897,7 @@ function RenderSettingsMenu() {
     $("#bss-cache-editor-controls").append(JSPLib.menu.renderKeyselect('bss','data_source',true,'indexed_db',all_source_types,"Indexed DB is <b>Cache Data</b> and Local Storage is <b>Program Data</b>."));
     $("#bss-cache-editor-controls").append(JSPLib.menu.renderKeyselect('bss','data_type',true,'tag_data',all_data_types,"Only applies to Indexed DB.  Use <b>Custom</b> for querying by keyname."));
     $("#bss-cache-editor-controls").append(JSPLib.menu.renderTextinput('bss','data_name',20,true,"Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.",['get','save','delete']));
+    JSPLib.menu.engageUI('bss',true);
     JSPLib.menu.saveUserSettingsClick('bss','BetterSavedSearches');
     JSPLib.menu.resetUserSettingsClick('bss','BetterSavedSearches',localstorage_keys,program_reset_keys);
     JSPLib.menu.purgeCacheClick('bss','BetterSavedSearches',purge_cache_regex,"#bss-purge-counter");
@@ -1717,6 +1923,9 @@ async function Main() {
         is_searches_index: Boolean($("#c-saved-searches #a-index").length),
         storage_keys: {indexed_db: [], local_storage: []},
         is_settings_menu: Boolean($("#c-users #a-edit").length),
+        is_profile_page: Boolean($("#c-users #a-show").length) && parseInt(JSPLib.utility.getMeta('current-user-id')) === JSPLib.danbooru.getShowID(),
+        search_posts: JSPLib.storage.checkStorageData('bss-search-posts',ValidateProgramData,sessionStorage,[]),
+        tab_id: JSPLib.storage.getStorageData('bss-tab-id',sessionStorage),
         settings_config: settings_config,
         channel: new BroadcastChannel('BetterSavedSearches')
     };
@@ -1735,29 +1944,28 @@ async function Main() {
     }
     BSS.timeout_expires = BSS.user_settings.recheck_interval * JSPLib.utility.one_minute;
     BSS.channel.onmessage = BSSBroadcast;
-    //Render the barebones HTML early on
+    if (!BSS.tab_id) {
+        BSS.tab_id = JSPLib.utility.getUniqueID();
+        JSPLib.storage.setStorageData('bss-tab-id',BSS.tab_id,sessionStorage);
+    }
     if (BSS.is_post_index || BSS.is_post_show) {
         if (location.search) {
             let parse = JSPLib.utility.parseParams(location.href.split('?')[1]);
             BSS.active_query = parse.bss;
+            BSS.query_type = parse.bss_type;
             BSS.page = parseInt(parse.p);
+            BSS.opening_tab = parseInt(parse.tab);
         }
-        if (BSS.is_post_index && BSS.active_query && BSS.page) {
-            PaginatePostIndex();
-            $(".post-preview").each((i,entry)=>{
-                if (!BSS.user_settings.show_favorites_enabled) {
-                    if ($(entry).data('is-favorited')) {
-                        entry.style.setProperty('display','none','important');
-                        return;
-                    }
-                }
-                let postid = $(entry).data("id");
-                $(">a",entry).attr('href',`/posts/${postid}?bss=${BSS.active_query}`);
-            });
-        } else if (BSS.is_post_show && BSS.active_query) {
-            SequentializePostShow();
+        if (BSS.active_query) {
+            BSS.deferred_search = $.Deferred();
+            if (BSS.query_type === "click" && !('bss-search-posts' in sessionStorage)) {
+                BSS.channel.postMessage({type:"search_query",tx_tab:BSS.tab_id,rx_tab:BSS.opening_tab});
+            } else {
+                BSS.deferred_search.resolve(true);
+            }
         }
     }
+    //Render the barebones HTML early on
     if (BSS.is_post_index) {
         Main.debuglog("Adding user interface!");
         $("#tag-box").before(saved_search_box);
@@ -1794,15 +2002,24 @@ async function Main() {
         await StoreBSSEntries();
         JSPLib.concurrency.setRecheckTimeout('bss-timeout',BSS.timeout_expires);
         JSPLib.concurrency.freeSemaphore('bss');
-    } else if (BSS.is_post_index || BSS.is_searches_index) {
+    } else if (BSS.is_post_index || BSS.is_post_show || BSS.is_searches_index || BSS.is_profile_page) {
         await Timer.LoadBSSEntries();
         BSS.initialized = Boolean(BSS.entries.length);
     }
     //Initialize UI after getting data
     if (BSS.is_post_index) {
         Timer.InitializeUI();
+        if (BSS.active_query) {
+            PaginatePostIndex();
+            InitializeIndexThumbnails();
+        }
     } else if (BSS.is_searches_index) {
         RefreshLinkCount();
+    } else if (BSS.is_post_show && BSS.active_query) {
+        SequentializePostShow();
+    } else if (BSS.is_profile_page) {
+        InitializeProfilePage();
+        JSPLib.utility.setCSSStyle(profile_css,'program');
     }
     //Take care of other non-critical tasks at a later time
     setTimeout(()=>{
