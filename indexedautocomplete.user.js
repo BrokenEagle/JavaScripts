@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      23.8
+// @version      23.9
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -534,6 +534,9 @@ const autocomplete_domlist = [
     "#bulk_update_request_script"
     ].concat(autocomplete_rebindlist).concat(autocomplete_userlist);
 
+const autocomplete_user_selectors = autocomplete_userlist.join(',');
+const autocomplete_rebind_selectors = autocomplete_rebindlist.join(',');
+
 //Expiration variables
 
 const expiration_config = {
@@ -613,7 +616,8 @@ const source_config = {
         },
         fixupmetatag: false,
         fixupexpiration: false,
-        searchstart: true
+        searchstart: true,
+        spacesallowed: false
     },
     tag2: {
         url: "tags",
@@ -644,7 +648,8 @@ const source_config = {
         },
         fixupmetatag: false,
         fixupexpiration: false,
-        searchstart: true
+        searchstart: true,
+        spacesallowed: false
     },
     pool: {
         url: "pools",
@@ -672,6 +677,7 @@ const source_config = {
         fixupmetatag: true,
         fixupexpiration: false,
         searchstart: false,
+        spacesallowed: true,
         render: RenderListItem(($domobj,item)=>{return $domobj.addClass("pool-category-" + item.category).text(item.label);})
     },
     user: {
@@ -700,6 +706,7 @@ const source_config = {
         fixupmetatag: true,
         fixupexpiration: false,
         searchstart: true,
+        spacesallowed: false,
         render: RenderListItem(($domobj,item)=>{return $domobj.addClass("user-" + item.level.toLowerCase()).addClass("with-style").text(item.label);})
     },
     favgroup: {
@@ -724,7 +731,8 @@ const source_config = {
         },
         fixupmetatag: true,
         fixupexpiration: false,
-        searchstart: false
+        searchstart: false,
+        spacesallowed: true
     },
     search: {
         url: "saved_searches/labels",
@@ -746,7 +754,8 @@ const source_config = {
         },
         fixupmetatag: true,
         fixupexpiration: false,
-        searchstart: true
+        searchstart: true,
+        spacesallowed: false
     },
     wikipage: {
         url: "wiki_pages",
@@ -774,6 +783,7 @@ const source_config = {
         fixupmetatag: false,
         fixupexpiration: true,
         searchstart: true,
+        spacesallowed: true,
         render: RenderListItem(($domobj,item)=>{return $domobj.addClass("tag-type-" + item.category).text(item.label);})
     },
     artist: {
@@ -801,6 +811,7 @@ const source_config = {
         fixupmetatag: false,
         fixupexpiration: true,
         searchstart: true,
+        spacesallowed: false,
         render: RenderListItem(($domobj,item)=>{return $domobj.addClass("tag-type-1").text(item.label);})
     },
     forumtopic: {
@@ -827,6 +838,7 @@ const source_config = {
         fixupmetatag: false,
         fixupexpiration: false,
         searchstart: false,
+        spacesallowed: true,
         render: RenderListItem(($domobj,item)=>{return $domobj.addClass("forum-topic-category-" + item.category).text(item.value);})
     }
 };
@@ -1574,7 +1586,7 @@ function AnySourceIndexed(keycode,default_metatag='',multiple=false) {
             }
         } else {
             term = (req.term ? req.term : req);
-            if (term.match(/\S\s/)) {
+            if ((!source_config[type].spacesallowed || input_metatag) && term.match(/\S\s/)) {
                 resp([]);
                 return;
             }
@@ -1765,8 +1777,8 @@ function Main() {
     Danbooru.Autocomplete.insert_completion = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.insert_completion,InsertUserSelected);
     Danbooru.Autocomplete.render_item = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.render_item,HighlightSelected);
     //Has autocomplete script already been run?
-    if(JSPLib.utility.hasDOMDataKey(autocomplete_rebindlist.join(','),'uiAutocomplete')) {
-        $(autocomplete_rebindlist.join(',')).each((i,entry)=>{
+    if(JSPLib.utility.hasDOMDataKey(autocomplete_rebind_selectors,'uiAutocomplete')) {
+        $(autocomplete_rebind_selectors).each((i,entry)=>{
             $(entry).data("uiAutocomplete")._renderItem = Danbooru.Autocomplete.render_item;
         });
     }
@@ -1800,8 +1812,8 @@ function Main() {
         //The initialize code doesn't work properly unless some time has elapsed after setting the attribute
         setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, timer_poll_interval);
     }
-    if ($(autocomplete_userlist.join(',')).length) {
-        setTimeout(()=>{InitializeAutocompleteIndexed(autocomplete_userlist.join(','), 'us');}, timer_poll_interval);
+    if ($(autocomplete_user_selectors).length) {
+        setTimeout(()=>{InitializeAutocompleteIndexed(autocomplete_user_selectors, 'us');}, timer_poll_interval);
     }
     /**Non-autocomplete bindings**/
     if ($("#c-posts #a-show,#c-uploads #a-new").length) {
