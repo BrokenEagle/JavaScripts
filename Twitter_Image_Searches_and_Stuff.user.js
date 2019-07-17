@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      6.5
+// @version      6.6
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -3258,8 +3258,12 @@ function BroadcastTISAS(ev) {
             InitializeCurrentRecords();
             break;
         case "indicators":
-            GetList['artist-list'] = ('artist_list' in ev.data ? ev.data.artist_list : GetList['artist-list']);
-            GetList['tweet-list'] = ('tweet_list' in ev.data ? ev.data.tweet_list : GetList['tweet-list']);
+            if ('artist_list' in ev.data && 'artist-list' in GetList && 'list' in GetList['artist-list']) {
+                GetList['artist-list'].list = ev.data.artist_list;
+            }
+            if ('tweet_list' in ev.data &&'tweet-list' in GetList && 'list' in GetList['tweet-list']) {
+                GetList['tweet-list'].list = ev.data.tweet_list;
+            }
             UpdateIndicatorControls();
             UpdateTweetIndicators();
             break;
