@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      6.6
+// @version      6.7
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -39,7 +39,7 @@
 /****Global variables****/
 
 //Variables for debug.js
-JSPLib.debug.debug_console = true;
+JSPLib.debug.debug_console = false;
 JSPLib.debug.pretext = "TISAS:";
 JSPLib.debug.pretimer = "TISAS-";
 JSPLib.debug.level = JSPLib.debug.INFO;
@@ -1556,7 +1556,7 @@ function GetPageType() {
     const list_regex = "(^https:\/\/twitter\\.com\/[\\w-]+\/lists\/([\\w-]+)(?:\\?|$))";
     const hashtag_regex = "(^https:\/\/twitter\\.com\/hashtag\/(.+?)(?:\\?|$))";
     const search_regex = "(^https:\/\/twitter\\.com\/search\\?(.*?\\bq=.+))";
-    const tweet_regex = "(^https:\/\/twitter\\.com\/[\\w-]+\/status\/(\\d+)(?:\\?|$))";
+    const tweet_regex = "(^https:\/\/twitter\\.com\/[\\w-]+\/status\/(\\d+)(?:\/(?:photo|video)\/\\d)?(?:\\?|$))";
     const page_regex = RegExp(`(${main_regex}|${media_regex}|${search_regex}|${tweet_regex}|${hashtag_regex}|${list_regex}|${home_regex}|${likes_regex}|${replies_regex})`);
     let match = page_regex.exec(window.location.href);
     if (!match) {
@@ -2369,6 +2369,8 @@ async function CheckPostvers() {
             if (data === null || JSPLib.utility.setSymmetricDifference(post_ids,data)) {
                 CheckPostvers.debuglog("Tweet adds/rems - saving:",tweet_key,post_ids);
                 JSPLib.storage.saveData(tweet_key,post_ids,JSPLib.storage.twitterstorage);
+                UpdatePostIDsLink(tweet_id);
+                TISAS.channel.postMessage({type: "postlink", tweet_id: tweet_id, post_ids: post_ids});
             }
         });
     });
@@ -2384,6 +2386,8 @@ async function CheckPostvers() {
             if (data === null || post_ids.length > data.length) {
                 CheckPostvers.debuglog("Tweet adds - saving:",tweet_key,post_ids);
                 JSPLib.storage.saveData(tweet_key,post_ids,JSPLib.storage.twitterstorage);
+                UpdatePostIDsLink(tweet_id);
+                TISAS.channel.postMessage({type: "postlink", tweet_id: tweet_id, post_ids: post_ids});
             }
         });
     });
@@ -2402,6 +2406,10 @@ async function CheckPostvers() {
             } else {
                 CheckPostvers.debuglog("Tweet removes - deleting:",tweet_key);
                 JSPLib.storage.removeData(tweet_key,JSPLib.storage.twitterstorage);
+            }
+            if (data !== null) {
+                UpdatePostIDsLink(tweet_id);
+                TISAS.channel.postMessage({type: "postlink", tweet_id: tweet_id, post_ids: post_ids});
             }
         });
     });
@@ -3004,7 +3012,7 @@ function RegularCheck() {
         return;
     }
     //Process events on a page change
-    if (TISAS.page !== pagetype || TISAS.addon !== pageid) {
+    if (TISAS.page !== pagetype || TISAS.addon !== pageid || (pagetype === "hashtag" && TISAS.hashtag_search !== window.location.search)) {
         let params;
         TISAS.page = pagetype;
         TISAS.addon = pageid;
@@ -3038,6 +3046,7 @@ function RegularCheck() {
                 RegularCheck.debuglog("Hashtag timeline:",TISAS.addon);
                 TISAS.account = undefined;
                 TISAS.user_id = undefined;
+                TISAS.hashtag_search = window.location.search;
                 break;
             case "search":
                 RegularCheck.debuglog("Search timeline:",TISAS.addon);
@@ -3137,7 +3146,8 @@ function RegularCheck() {
     } else if (TISAS.page === "tweet") {
         let $tweet = $image_tweets.filter(`[data-tweet-id=${TISAS.addon}][data-has-cards]:not(.dismissible-content,[data-card2-type])`);
         if ($tweet.length) {
-            ProcessTweets($tweet,null,".client-and-actions",'<span class="tisas-tweet-menu"></span>');
+            let menu_style = ($(".permalink-tweet-geo-text",$tweet).length ? `style="float:left"` : "");
+            ProcessTweets($tweet,null,".client-and-actions",`<span class="tisas-tweet-menu" ${menu_style}></span>`);
             if (TISAS.user_settings.original_download_enabled) {
                 InitializeDownloadLinks($tweet);
             }
