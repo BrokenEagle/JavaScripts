@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      14.7
+// @version      15.0
 // @source       https://danbooru.donmai.us/users/23799
-// @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries)
+// @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits)
 // @author       BrokenEagle
 // @match        *://*.donmai.us/*
 // @grant        none
@@ -116,25 +116,20 @@ const program_css = `
     margin: 1em 0;
 }
 #c-comments #a-index #p-index-by-comment table,
-#event-notice #comments-section #comment-table table {
+#event-notice #comment-section #comment-table table {
     float: left;
     text-align: center;
 }
 #c-comments #a-index #p-index-by-comment .preview,
-#event-notice #comments-section #comments-table .preview {
+#event-notice #comment-section #comment-table .preview {
     margin-right: 0;
 }
-.striped .subscribe-forum,
-.striped .unsubscribe-forum,
-.striped .subscribe-note,
-.striped .unsubscribe-note,
-#event-notice .show-full-forum,
-#event-notice .hide-full-forum,
-#event-notice .show-full-dmail,
-#event-notice .hide-full-dmail,
-#event-notice .show-full-note,
-#event-notice .hide-full-note {
+.striped .el-monospace-link:link {
     font-family: monospace;
+    color: #0073ff;
+}
+.striped .el-monospace-link:hover {
+    color: #80b9ff;
 }
 #nav #el-subscribe-events {
     padding-left: 2em;
@@ -144,12 +139,20 @@ const program_css = `
     margin: 0 -6px;
 }
 #el-subscribe-events .el-subscribed a,
-#el-subscribe-events a[href$="/unsubscribe"] {
+#subnav-unsubscribe-link {
     color: green;
 }
+#el-subscribe-events .el-subscribed a:hover,
+#subnav-unsubscribe-link:hover {
+    color: #6b6;
+}
 #el-subscribe-events .el-unsubscribed a,
-#el-subscribe-events a[href$="/subscribe"] {
+#subnav-subscribe-link {
     color: darkorange;
+}
+#el-subscribe-events .el-unsubscribed a:hover,
+#subnav-subscribe-link:hover {
+    color: #fb6;
 }
 #lock-event-notice {
     font-weight: bold;
@@ -170,9 +173,8 @@ const comment_css = `
     float: left;
     width: 154px;
     height: 154px;
-    margin-right: 30px;
     overflow: hidden;
-    text-align; center;
+    text-align: center;
 }
 #event-notice #comment-section #comment-table .comment {
     margin-left: 184px;
@@ -402,8 +404,9 @@ const timer_poll_interval = 100;
 //The max number of items to grab with each network call
 const query_limit = 100;
 
-//Various program expirations
-const process_semaphore_expires = 5 * JSPLib.utility.one_minute;
+//Regexes
+const dmails_regex = /\/dmails\/(\d+)/;
+const forum_topics_regex = /\/forum_topics\/(\d+)/;
 
 //Subscribe menu constants
 const post_display_names = {
@@ -567,7 +570,30 @@ function CorrectList(type,typelist) {
 
 //Library functions
 
-////NONE
+JSPLib.danbooru.getShowID = function() {
+    try {
+        return (document.body.dataset.action === "show" ? parseInt(window.location.pathname.match(/\d+$/)[0]) : 0);
+    } catch (e) {
+        //There is a problem with the pathname
+        return -1;
+    }
+};
+
+JSPLib.utility.throw = function(e) {
+    throw e;
+}
+
+JSPLib.danbooru.getNotify = async function (url,url_addons={}) {
+    try {
+        return await jQuery.get(url,url_addons);
+    } catch(e) {
+        //Swallow exception... will return default value
+        e = (typeof e === "object" && 'status' in e && 'responseText' in e ? e : {status: 999, responseText: "Bad error code!"});
+        JSPLib.debug.debuglogLevel("GetNotify error:",e.status,e.responseText,JSPLib.debug.ERROR);
+        Danbooru.Utility.error(`HTTP ${e.status}: ${e.responseText}`);
+        return false;
+    }
+};
 
 //Helper functions
 
@@ -595,6 +621,29 @@ function AreAllEventsEnabled(event_list) {
 function HideDmailNotice() {
     if ($("#hide-dmail-notice").length) {
         $("#hide-dmail-notice").click();
+    }
+}
+
+function GetInstanceID(type,func) {
+    try {
+        if (EL.controller === type) {
+            return (EL.showid > 0 ? EL.showid : JSPLib.utility.throw(EL.showid));
+        } else {
+            return (func ? func() : JSPLib.utility.throw(0));
+        }
+    } catch (e) {
+        //Bail if page is not as expected
+        if (Number.isInteger(e)) {
+            if (e === 0) {
+                Danbooru.Utility.error("Warning: Wrong action for URL!");
+            } else {
+                Danbooru.Utility.error("Warning: URL is malformed!");
+            }
+        } else {
+            Danbooru.Utility.error("Warning: Page missing required elements!");
+            GetInstanceID.debuglog("Exception:",e);
+        }
+        return false;
     }
 }
 
@@ -730,7 +779,10 @@ function CheckAbsence() {
 //Get single instance of various types and insert into table row
 
 async function AddForumPost(forumid,$rowelement) {
-    let forum_post = await $.get(`/forum_posts/${forumid}`);
+    let forum_post = await JSPLib.danbooru.getNotify(`/forum_posts/${forumid}`);
+    if (!forum_post) {
+        return;
+    }
     let $forum_post = $.parseHTML(forum_post);
     let $outerblock = $.parseHTML(`<tr id="full-forum-id-${forumid}"><td colspan="4"></td></tr>`);
     $("td",$outerblock).append($(".forum-post",$forum_post));
@@ -738,7 +790,7 @@ async function AddForumPost(forumid,$rowelement) {
     if (EL.user_settings.mark_read_topics) {
         let topic_link = $("td:first-of-type > a",$rowelement);
         let topic_path = topic_link.length && topic_link[0].pathname;
-        let topic_match = topic_path && topic_path.match(/^\/forum_topics\/(\d+)/);
+        let topic_match = topic_path && topic_path.match(forum_topics_regex);
         if (topic_match && !EL.marked_topic.includes(topic_match[1])) {
             ReadForumTopic(topic_match[1]);
             EL.marked_topic.push(topic_match[1]);
@@ -753,7 +805,10 @@ function AddRenderedNote(noteid,$rowelement) {
 }
 
 async function AddDmail(dmailid,$rowelement) {
-    let dmail = await $.get(`/dmails/${dmailid}`);
+    let dmail = await JSPLib.danbooru.getNotify(`/dmails/${dmailid}`);
+    if (!dmail) {
+        return;
+    }
     let $dmail = $.parseHTML(dmail);
     $(".dmail h1:first-of-type",$dmail).hide();
     let $outerblock = $.parseHTML(`<tr id="full-dmail-id-${dmailid}"><td colspan="4"></td></tr>`);
@@ -827,7 +882,7 @@ function InsertComments($commentpage) {
     $(".post-preview",$commentpage).addClass("blacklisted");
     $(".edit_comment",$commentpage).hide();
     $("#comment-table").append($(".list-of-comments",$commentpage));
-    InitializeCommentPartialCommentLinks("#event-notice #comments-section .post-preview");
+    InitializeCommentPartialCommentLinks("#event-notice #comment-section .post-preview");
 }
 
 function InsertForums($forumpage) {
@@ -975,8 +1030,8 @@ function RenderSubscribeDualLinks(type,itemid,tag,separator,ender,right=false) {
     let spacer = (right ? "&nbsp;&nbsp;" : "");
     return `
 <${tag} class="el-subscribe-dual-links">
-    <${tag} data-id="${itemid}" class="subscribe-${type}" ${subscribe}><a href="#">${spacer}Subscribe${separator}${ender}</a></${tag}>
-    <${tag} data-id="${itemid}" class="unsubscribe-${type}" ${unsubscribe}"><a href="#">Unsubscribe${separator}${ender}</a></${tag}>
+    <${tag} data-id="${itemid}" class="subscribe-${type}" ${subscribe}><a class="el-monospace-link" href="#">${spacer}Subscribe${separator}${ender}</a></${tag}>
+    <${tag} data-id="${itemid}" class="unsubscribe-${type}" ${unsubscribe}"><a class="el-monospace-link" href="#">Unsubscribe${separator}${ender}</a></${tag}>
 </${tag}>
 `;
 }
@@ -992,8 +1047,8 @@ function RenderSubscribeMultiLinks(name,typelist,itemid) {
 }
 
 function RenderOpenItemLinks(type,itemid,showtext="Show",hidetext="Hide") {
-    return `<span data-id="${itemid}" class="show-full-${type}" style><a href="#">${showtext}</a></span>` +
-           `<span data-id="${itemid}" class="hide-full-${type}" style="display:none !important"><a href="#">${hidetext}</a></span>`;
+    return `<span data-id="${itemid}" class="show-full-${type}" style><a class="el-monospace-link" href="#">${showtext}</a></span>` +
+           `<span data-id="${itemid}" class="hide-full-${type}" style="display:none !important"><a class="el-monospace-link" href="#">${hidetext}</a></span>`;
 }
 
 //Initialize functions
@@ -1025,7 +1080,7 @@ function InitializeOpenNoteLinks($obj) {
 
 function InitializeOpenDmailLinks($obj) {
     $(".striped tbody tr",$obj).each((i,$row)=>{
-        let dmailid = $row.innerHTML.match(/\/dmails\/(\d+)/)[1];
+        let dmailid = $row.innerHTML.match(dmails_regex)[1];
         $("td:nth-of-type(4)",$row).prepend(RenderOpenItemLinks('dmail',dmailid) + '&nbsp;|&nbsp;');
     });
     OpenItemClick('dmail',$obj,3,AddDmail);
@@ -1053,20 +1108,17 @@ function InitializePostShowMenu() {
 
 //#C-FORUM-TOPICS #A-SHOW
 function InitializeTopicShowMenu() {
-    var topicid = parseInt($("#forum_post_topic_id").attr("value"));
+    let topicid = GetInstanceID('forum-topics',()=>{
+        return parseInt($('#subnav-subscribe-link,#subnav-unsubscribe-link').attr('href').match(forum_topics_regex)[1]);
+    });
     if (!topicid) {
-        let $obj = $('a[href$="/subscribe"],a[href$="/unsubscribe"]');
-        let match = $obj.attr("href").match(/\/forum_topics\/(\d+)\/(?:un)?subscribe/);
-        if (!match) {
-            return;
-        }
-        topicid = parseInt(match[1]);
+        return;
     }
     let menu_obj = $.parseHTML(RenderMultilinkMenu(topicid,['forum']));
     let linkhtml = RenderSubscribeMultiLinks("Topic",['forum'],topicid,'');
     let shownhtml = (IsEventEnabled('forum') ? '' : 'style="display:none"');
     $("#el-add-links",menu_obj).append(`<span class="el-subscribe-forum-container "${shownhtml}>${linkhtml} | </span>`);
-    let $email = $('#subnav-subscribe').detach().find("a").text("Email");
+    let $email = $('#subnav-subscribe,#subnav-unsubscribe').detach().find("a").text("Email");
     $("#el-add-links",menu_obj).append($email);
     $("nav#nav").append(menu_obj);
     $("#el-subscribe-events a").on('click.el',SubscribeMultiLink);
@@ -1075,7 +1127,7 @@ function InitializeTopicShowMenu() {
 //#C-FORUM-TOPICS #A-INDEX
 function InitializeTopicIndexLinks($obj) {
     $(".striped tr td:first-of-type",$obj).each((i,entry)=>{
-        let topicid = parseInt(entry.innerHTML.match(/\/forum_topics\/(\d+)/)[1]);
+        let topicid = parseInt(entry.innerHTML.match(forum_topics_regex)[1]);
         let linkhtml = RenderSubscribeDualLinks('forum',topicid,"span","","",true);
         let shownhtml = (IsEventEnabled('forum') ? '' : 'style="display:none"');
         $(entry).prepend(`<span class="el-subscribe-forum-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
@@ -1112,7 +1164,7 @@ function InitializeCommentPartialPostLinks() {
 function InitializeCommentPartialCommentLinks(selector) {
     $(selector).each((i,entry)=>{
         var postid = parseInt($(entry).data('id'));
-        var linkhtml = RenderSubscribeDualLinks('comment',postid,"div","<br>","comments");
+        var linkhtml = RenderSubscribeDualLinks('comment',postid,"div"," ","comments");
         let shownhtml = (IsEventEnabled('comment') ? '' : 'style="display:none"');
         /****NEED TO SEE IF THIS CAN BE DONE THIS WITHOUT A TABLE****/
         var $table = $.parseHTML(`<table><tbody><tr><td></td></tr><tr><td class="el-subscribe-comment-container "${shownhtml}>${linkhtml}</td></tr></tbody></table>`);
@@ -1529,6 +1581,10 @@ function RenderSettingsMenu() {
 function Main() {
     $("#dmail-notice").hide();
     Danbooru.EL = EL = {
+        controller: document.body.dataset.controller,
+        action: document.body.dataset.action,
+        showid: JSPLib.danbooru.getShowID(),
+        params: JSPLib.utility.parseParams(window.location.search.slice(1)),
         username: JSPLib.utility.getMeta('current-user-name'),
         userid: parseInt(JSPLib.utility.getMeta('current-user-id')),
         lastids: {user: {}, subscribe: {}},
@@ -1551,7 +1607,7 @@ function Main() {
         return;
     }
     EL.user_settings = JSPLib.menu.loadUserSettings('el');
-    EL.timeout_expires = EL.user_settings.recheck_interval * JSPLib.utility.one_minute;
+    EL.timeout_expires = GetRecheckExpires();
     EventStatusCheck();
     EL.locked_notice = EL.user_settings.autolock_notices;
     EL.channel = new BroadcastChannel('EventListener');
@@ -1579,16 +1635,24 @@ function Main() {
     } else {
         Main.debuglog("Waiting...");
     }
-    if ($("#c-posts #a-show").length) {
+    if (EL.controller === "posts" && EL.action === "show") {
         InitializePostShowMenu();
-    } else if ($("#c-comments #a-index #p-index-by-post").length) {
-        InitializeCommentPartialPostLinks();
-    } else if ($("#c-comments #a-index #p-index-by-comment").length) {
-        InitializeCommentPartialCommentLinks("#p-index-by-comment .post-preview");
-    } else if ($("#c-forum-topics #a-show,#c-forum-posts #a-show").length) {
-        InitializeTopicShowMenu();
-    } else if ($("#c-forum-topics #a-index,#c-forum-posts #a-index").length) {
-        InitializeTopicIndexLinks(document);
+        if ($(`#image-container[data-uploader-id="${EL.userid}"]`).length) {
+            SubscribeMultiLinkCallback();
+        }
+    } else if (EL.controller === "comments" && EL.action === "index") {
+        if ('group_by' in EL.params && EL.params.group_by === "comment") {
+            InitializeCommentPartialCommentLinks("#p-index-by-comment .post-preview");
+        } else {
+            //Default partial is to group by post
+            InitializeCommentPartialPostLinks();
+        }
+    } else if (["forum-topics","forum-posts"].includes(EL.controller)) {
+        if (EL.action === "show") {
+            InitializeTopicShowMenu();
+        } else if (EL.action === "index") {
+            InitializeTopicIndexLinks(document);
+        }
     }
     if (EL.is_setting_menu) {
         JSPLib.validate.dom_output = "#el-cache-editor-errors";
@@ -1602,9 +1666,6 @@ function Main() {
     }
     if (EL.user_settings.autoclose_dmail_notice) {
         HideDmailNotice();
-    }
-    if ($(`#image-container[data-uploader-id="${EL.userid}"]`).length) {
-        SubscribeMultiLinkCallback();
     }
     JSPLib.utility.setCSSStyle(program_css,'program');
 }
@@ -1622,7 +1683,7 @@ Timer.CheckUserType = JSPLib.debug.debugAsyncTimer(CheckUserType,0);
 Timer.CheckSubscribeType = JSPLib.debug.debugAsyncTimer(CheckSubscribeType,0);
 
 JSPLib.debug.addFunctionLogs([
-    Main,BroadcastEL,CheckSubscribeType,CheckUserType,HideEventNotice,GetPostsCountdown,ProcessEvent,SaveLastID,CorrectList
+    Main,BroadcastEL,CheckSubscribeType,CheckUserType,HideEventNotice,GetPostsCountdown,ProcessEvent,SaveLastID,CorrectList,GetInstanceID
 ]);
 
 /****Execution start****/
