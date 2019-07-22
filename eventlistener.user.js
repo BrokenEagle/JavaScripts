@@ -3,7 +3,7 @@
 // @namespace    https://github.com/BrokenEagle/JavaScripts
 // @version      15.0
 // @source       https://danbooru.donmai.us/users/23799
-// @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits)
+// @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis)
 // @author       BrokenEagle
 // @match        *://*.donmai.us/*
 // @grant        none
@@ -39,7 +39,7 @@ const Timer = {};
 
 //For factory reset
 const user_events = ['flag','appeal','dmail','spam'];
-const subscribe_events = ['comment','forum','note','commentary','post'];
+const subscribe_events = ['comment','forum','note','commentary','post','wiki'];
 const all_events = user_events.concat(subscribe_events);
 const lastid_keys = all_events.map((type)=>{return `el-${type}lastid`;});
 const other_keys = subscribe_events.map((type)=>{return [`el-${type}list`,`el-saved${type}list`,`el-saved${type}lastid`,`el-${type}overflow`];}).flat();
@@ -196,6 +196,20 @@ const forum_css = `
     margin-left: 14em;
 }`;
 
+const wiki_css = `
+#event-notice #wiki-section ins {
+    background: #cfc;
+    text-decoration: none;
+}
+#event-notice #wiki-section del {
+    background: #fcc;
+    text-decoration: none;
+}
+.el-paragraph-mark {
+    opacity: 0.25;
+}
+`;
+
 const menu_css = `
 #el-console {
     width: 100%;
@@ -270,6 +284,10 @@ const notice_box = `
         <h1>You've got commentaries!</h1>
         <div id="commentary-table"></div>
     </div>
+    <div id="wiki-section"  style="display:none">
+        <h1>You've got wikis!</h1>
+        <div id="wiki-table"></div>
+    </div>
     <div id="post-section"  style="display:none">
         <h1>You've got edits!</h1>
         <div id="post-table"></div>
@@ -287,6 +305,8 @@ const display_counter = `
 <div id="el-search-query-display" style="margin:0.5em;font-size:150%;border:lightgrey solid 1px;padding:0.5em;width:7.5em;display:none">
     Pages left: <span id="el-search-query-counter">...</span>
 </div>`;
+
+const paragraph_mark = `<span class="el-paragraph-mark">¶</span><br>`;
 
 const el_menu = `
 <div id="el-script-message" class="prose">
@@ -406,6 +426,8 @@ const query_limit = 100;
 
 //Regexes
 const dmails_regex = /\/dmails\/(\d+)/;
+const wiki_pages_regex = /\/wiki_pages\/(\d+)/;
+const wiki_page_versions_regex = /\/wiki_page_versions\/(\d+)/;
 const forum_topics_regex = /\/forum_topics\/(\d+)/;
 
 //Subscribe menu constants
@@ -493,6 +515,15 @@ const typedict = {
         limit: 199,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'updater_id','post_id');})},
         insert: InsertPosts
+    },
+    wiki: {
+        controller: 'wiki_page_versions',
+        addons: {},
+        only: "id,updater_id,wiki_page_id",
+        limit: 999,
+        filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'updater_id','wiki_page_id');})},
+        insert: InsertWikis,
+        process: function () {JSPLib.utility.setCSSStyle(wiki_css,'wiki');}
     }
 };
 
@@ -816,6 +847,25 @@ async function AddDmail(dmailid,$rowelement) {
     $($rowelement).after($outerblock);
 }
 
+async function AddWiki(wikiverid,$rowelement) {
+    let wikiid = $rowelement.innerHTML.match(wiki_pages_regex)[1];
+    let url_addons = {search:{wiki_page_id: wikiid}, page: `b${wikiverid}`, only: 'id', limit: 1};
+    let prev_wiki = await JSPLib.danbooru.submitRequest('wiki_page_versions',url_addons);
+    if (prev_wiki.length) {
+        let wiki_diff = await JSPLib.danbooru.getNotify('/wiki_page_versions/diff',{otherpage: wikiverid, thispage: prev_wiki[0].id});
+        if (!wiki_diff) {
+            return;
+        }
+        let $wiki_diff = $.parseHTML(wiki_diff);
+        let $outerblock = $.parseHTML(`<tr id=full-wiki-id-${wikiverid}><td colspan="4"></td></tr>`);
+        $("td",$outerblock).append($("#a-diff p",$wiki_diff));
+        $("td",$outerblock).append($("#a-diff div",$wiki_diff).html().replace(/<br>/g,paragraph_mark));
+        $($rowelement).after($outerblock);
+    } else {
+        Danbooru.Utility.notice("Wiki creations have no diff!");
+    }
+}
+
 //Update links
 
 function UpdateMultiLink(typelist,subscribed,itemid) {
@@ -911,6 +961,14 @@ function InsertPosts($postpage) {
     $posts_table.append($(".striped",$postpage));
     AddThumbnails($posts_table);
     InitializePostNoteIndexLinks('post',$posts_table);
+}
+
+function InsertWikis($wikipage) {
+    DecodeProtectedEmail($wikipage);
+    let $wikis_table = $("#wiki-table");
+    $wikis_table.append($(".striped",$wikipage));
+    InitializeWikiIndexLinks($wikis_table);
+    InitializeOpenWikiLinks($wikis_table);
 }
 
 //Misc functions
@@ -1086,6 +1144,14 @@ function InitializeOpenDmailLinks($obj) {
     OpenItemClick('dmail',$obj,3,AddDmail);
 }
 
+function InitializeOpenWikiLinks($obj) {
+    $(".striped tbody tr",$obj).each((i,$row)=>{
+        let wikiverid = parseInt($row.innerHTML.match(wiki_page_versions_regex)[1]);
+        $(".category-0,.category-1,.category-3,.category-4,.category-5",$row).append('<span style="float:right">(' + RenderOpenItemLinks('wiki',wikiverid,'Show diff','Hide diff') + ')</span>');
+    });
+    OpenItemClick('wiki',$obj,4,AddWiki);
+}
+
 //#C-POSTS #A-SHOW
 function InitializePostShowMenu() {
     var postid = parseInt(JSPLib.utility.getMeta('post-id'));
@@ -1132,6 +1198,33 @@ function InitializeTopicIndexLinks($obj) {
         let shownhtml = (IsEventEnabled('forum') ? '' : 'style="display:none"');
         $(entry).prepend(`<span class="el-subscribe-forum-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
         $(".subscribe-forum a,.unsubscribe-forum a",entry).on('click.el',SubscribeDualLink);
+    });
+}
+
+//#C-WIKI-PAGES #A-SHOW
+function InitializeWikiShowMenu() {
+    let wikiid = GetInstanceID('wiki-pages',()=>{
+        return parseInt($("#subnav-newest-link").attr('href').match(wiki_pages_regex)[1]);
+    });
+    if (!wikiid) {
+        return;
+    }
+    let menu_obj = $.parseHTML(RenderMultilinkMenu(wikiid,['wiki']));
+    let linkhtml = RenderSubscribeMultiLinks("Wiki",['wiki'],wikiid,'');
+    let shownhtml = (IsEventEnabled('wiki') ? '' : 'style="display:none"');
+    $("#el-add-links",menu_obj).append(`<span class="el-subscribe-wiki-container "${shownhtml}>${linkhtml}</span>`);
+    $("nav#nav").append(menu_obj);
+    $("#el-subscribe-events a").on('click.el',SubscribeMultiLink);
+}
+
+//#C-WIKI-PAGES #A-INDEX
+function InitializeWikiIndexLinks($obj) {
+    $(`.striped tbody tr`,$obj).each((i,row)=>{
+        let wikiid = parseInt(row.innerHTML.match(wiki_pages_regex)[1]);
+        let linkhtml = RenderSubscribeDualLinks('wiki',wikiid,"span","","",true);
+        let shownhtml = (IsEventEnabled('wiki') ? '' : 'style="display:none"');
+        $("td.category-0,td.category-1,td.category-3,td.category-4,td.category-5",row).prepend(`<span class="el-subscribe-wiki-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
+        $(".subscribe-wiki a,.unsubscribe-wiki a",row).on('click.el',SubscribeDualLink);
     });
 }
 
@@ -1652,6 +1745,12 @@ function Main() {
             InitializeTopicShowMenu();
         } else if (EL.action === "index") {
             InitializeTopicIndexLinks(document);
+        }
+    } else if (["wiki-pages","wiki-page-versions"].includes(EL.controller)) {
+        if (EL.action === "show") {
+            InitializeWikiShowMenu();
+        } else if (EL.action === "index") {
+            InitializeWikiIndexLinks(document);
         }
     }
     if (EL.is_setting_menu) {
