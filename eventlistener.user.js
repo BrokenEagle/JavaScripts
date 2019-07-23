@@ -3,12 +3,13 @@
 // @namespace    https://github.com/BrokenEagle/JavaScripts
 // @version      15.0
 // @source       https://danbooru.donmai.us/users/23799
-// @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis)
+// @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools)
 // @author       BrokenEagle
 // @match        *://*.donmai.us/*
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/eventlistener.user.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/jsdiff/4.0.1/diff.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/debug.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/load.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/utility.js
@@ -39,7 +40,7 @@ const Timer = {};
 
 //For factory reset
 const user_events = ['flag','appeal','dmail','spam'];
-const subscribe_events = ['comment','forum','note','commentary','post','wiki'];
+const subscribe_events = ['comment','forum','note','commentary','post','wiki','pool'];
 const all_events = user_events.concat(subscribe_events);
 const lastid_keys = all_events.map((type)=>{return `el-${type}lastid`;});
 const other_keys = subscribe_events.map((type)=>{return [`el-${type}list`,`el-saved${type}list`,`el-saved${type}lastid`,`el-${type}overflow`];}).flat();
@@ -124,12 +125,20 @@ const program_css = `
 #event-notice #comment-section #comment-table .preview {
     margin-right: 0;
 }
-.striped .el-monospace-link:link {
+.striped .el-monospace-link:link,
+.post-preview .el-monospace-link:link {
     font-family: monospace;
     color: #0073ff;
 }
-.striped .el-monospace-link:hover {
+.striped .el-monospace-link:hover,
+.post-preview .el-monospace-link:link {
     color: #80b9ff;
+}
+.el-subscribe-pool-container .el-subscribe-dual-links .el-monospace-link {
+    color: grey;
+}
+.el-subscribe-pool-container .el-subscribe-dual-links .el-monospace-link:hover {
+    color: lightgrey;
 }
 #nav #el-subscribe-events {
     padding-left: 2em;
@@ -210,6 +219,17 @@ const wiki_css = `
 }
 `;
 
+const pool_css = `
+#event-notice #pool-section .el-pool-diff ins {
+    background: #cfc;
+    text-decoration: none;
+}
+#event-notice #pool-section .el-pool-diff del {
+    background: #fcc;
+    text-decoration: none;
+}
+`;
+
 const menu_css = `
 #el-console {
     width: 100%;
@@ -287,6 +307,10 @@ const notice_box = `
     <div id="wiki-section"  style="display:none">
         <h1>You've got wikis!</h1>
         <div id="wiki-table"></div>
+    </div>
+    <div id="pool-section"  style="display:none">
+        <h1>You've got pools!</h1>
+        <div id="pool-table"></div>
     </div>
     <div id="post-section"  style="display:none">
         <h1>You've got edits!</h1>
@@ -428,6 +452,8 @@ const query_limit = 100;
 const dmails_regex = /\/dmails\/(\d+)/;
 const wiki_pages_regex = /\/wiki_pages\/(\d+)/;
 const wiki_page_versions_regex = /\/wiki_page_versions\/(\d+)/;
+const pools_regex = /\/pools\/(\d+)/;
+const pool_desc_regex = /(Old|New) Desc: /;
 const forum_topics_regex = /\/forum_topics\/(\d+)/;
 
 //Subscribe menu constants
@@ -524,6 +550,15 @@ const typedict = {
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'updater_id','wiki_page_id');})},
         insert: InsertWikis,
         process: function () {JSPLib.utility.setCSSStyle(wiki_css,'wiki');}
+    },
+    pool: {
+        controller: 'pool_versions',
+        addons: {},
+        only: "id,updater_id,pool_id",
+        limit: 199,
+        filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'updater_id','pool_id');})},
+        insert: InsertPools,
+        process: function () {JSPLib.utility.setCSSStyle(pool_css,'pool');}
     }
 };
 
@@ -624,6 +659,14 @@ JSPLib.danbooru.getNotify = async function (url,url_addons={}) {
         Danbooru.Utility.error(`HTTP ${e.status}: ${e.responseText}`);
         return false;
     }
+};
+
+JSPLib.utility.maxLengthString = function (string,length) {
+    let check_length = (length ? length : JSPLib.utility.max_column_characters);
+    if (string.length > check_length) {
+        string = string.slice(0,check_length-1) + '…';
+    }
+    return string;
 };
 
 //Helper functions
@@ -866,6 +909,30 @@ async function AddWiki(wikiverid,$rowelement) {
     }
 }
 
+async function AddPool(poolverid,$rowelement) {
+    let pool_diff = await JSPLib.danbooru.getNotify(`/pool_versions/${poolverid}/diff`);
+    let $pool_diff = $.parseHTML(pool_diff);
+    let old_desc = $("#a-diff li:nth-of-type(2)",$pool_diff).text().replace(pool_desc_regex,'');
+    let new_desc = $("#a-diff li:nth-of-type(3)",$pool_diff).text().replace(pool_desc_regex,'');
+    //Description creations will have no new descriptions
+    if (new_desc === "") {
+        new_desc = old_desc;
+        old_desc = "";
+    }
+    let desc_diffs = Diff.diffWords(old_desc,new_desc);
+    let diff_desc = desc_diffs.map((entry)=>{
+        if (entry.added) {
+            return `<ins>${entry.value}</ins>`;
+        } else if (entry.removed) {
+            return `<del>${entry.value}</del>`;
+        } else {
+            return entry.value;
+        }
+    }).join('').replace(/\n/g,paragraph_mark);
+    let $outerblock = $.parseHTML(`<tr id=full-pool-id-${poolverid}><td class="el-pool-diff" colspan="6">${diff_desc}</td></tr>`);
+    $($rowelement).after($outerblock);
+}
+
 //Update links
 
 function UpdateMultiLink(typelist,subscribed,itemid) {
@@ -969,6 +1036,19 @@ function InsertWikis($wikipage) {
     $wikis_table.append($(".striped",$wikipage));
     InitializeWikiIndexLinks($wikis_table);
     InitializeOpenWikiLinks($wikis_table);
+}
+
+function InsertPools($poolpage) {
+    DecodeProtectedEmail($poolpage);
+    let $pools_table = $("#pool-table");
+    $pools_table.append($(".striped",$poolpage));
+    $(".pool-category-collection,.pool-category-series",$pools_table).each((i,entry)=>{
+        let short_pool_title = JSPLib.utility.maxLengthString(entry.innerText,50);
+        $(entry).attr('title',entry.innerText);
+        entry.innerText = short_pool_title;
+    });
+    InitializePoolIndexLinks($pools_table);
+    InitializeOpenPoolLinks($pools_table);
 }
 
 //Misc functions
@@ -1152,6 +1232,18 @@ function InitializeOpenWikiLinks($obj) {
     OpenItemClick('wiki',$obj,4,AddWiki);
 }
 
+function InitializeOpenPoolLinks($obj) {
+    $(".striped tbody tr",$obj).each((i,$row)=>{
+        let $desc_changed = $("td:nth-of-type(4)",$row);
+        if ($desc_changed.html() === "false") {
+            return;
+        }
+        let poolverid = parseInt($row.id.match(/\d+$/)[0]);
+        $desc_changed.append(' (' + RenderOpenItemLinks('pool',poolverid,'Show diff','Hide diff') + ')');
+    });
+    OpenItemClick('pool',$obj,3,AddPool);
+}
+
 //#C-POSTS #A-SHOW
 function InitializePostShowMenu() {
     var postid = parseInt(JSPLib.utility.getMeta('post-id'));
@@ -1228,6 +1320,41 @@ function InitializeWikiIndexLinks($obj) {
     });
 }
 
+//#C-POOLS #A-SHOW
+function InitializePoolShowMenu() {
+    let poolid = GetInstanceID('pools');
+    if (!poolid) {
+        return;
+    }
+    let menu_obj = $.parseHTML(RenderMultilinkMenu(poolid,['pool']));
+    let linkhtml = RenderSubscribeMultiLinks("Pool",['pool'],poolid,'');
+    let shownhtml = (IsEventEnabled('pool') ? '' : 'style="display:none"');
+    $("#el-add-links",menu_obj).append(`<span class="el-subscribe-pool-container "${shownhtml}>${linkhtml}</span>`);
+    $("nav#nav").append(menu_obj);
+    $("#el-subscribe-events a").on('click.el',SubscribeMultiLink);
+}
+
+//#C-POOLS #A-INDEX
+function InitializePoolIndexLinks($obj) {
+    $(`.striped tbody tr`,$obj).each((i,row)=>{
+        let poolid = parseInt(row.innerHTML.match(pools_regex)[1]);
+        let linkhtml = RenderSubscribeDualLinks('pool',poolid,"span","","",true);
+        let shownhtml = (IsEventEnabled('pool') ? '' : 'style="display:none"');
+        $("td:first-of-type",row).prepend(`<span class="el-subscribe-pool-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
+        $(".subscribe-pool a,.unsubscribe-pool a",row).on('click.el',SubscribeDualLink);
+    });
+}
+
+//#C-POOLS #A-GALLERY
+function InitializePoolGalleryLinks() {
+    $(`.post-preview > a`).each((i,entry)=>{
+        let poolid = entry.href.match(/\/pools\/(\d+)/)[1];
+        let linkhtml = RenderSubscribeDualLinks('pool',poolid,"div"," ","pool");
+        let shownhtml = (IsEventEnabled('pool') ? '' : 'style="display:none"');
+        $(entry).before(`<div class="el-subscribe-pool-container "${shownhtml}>${linkhtml}</div>`);
+        $(".subscribe-pool a,.unsubscribe-pool a",entry.parentElement).on('click.el',SubscribeDualLink);
+    });
+}
 //EVENT NOTICE
 
 function InitializePostNoteIndexLinks(type,$obj) {
@@ -1751,6 +1878,14 @@ function Main() {
             InitializeWikiShowMenu();
         } else if (EL.action === "index") {
             InitializeWikiIndexLinks(document);
+        }
+    } else if (["pools","pool-versions"].includes(EL.controller)) {
+        if (EL.action === "show") {
+            InitializePoolShowMenu();
+        } else if (EL.action === "index") {
+            InitializePoolIndexLinks(document);
+        } else if (EL.action === "gallery") {
+            InitializePoolGalleryLinks();
         }
     }
     if (EL.is_setting_menu) {
