@@ -163,11 +163,17 @@ const program_css = `
 #subnav-subscribe-link:hover {
     color: #fb6;
 }
-#lock-event-notice {
+#lock-event-notice,
+#read-event-notice {
     font-weight: bold;
     color: green;
 }
-#lock-event-notice.el-locked {
+#lock-event-notice:not(.el-locked):hover ,
+#read-event-notice:not(.el-read):hover {
+    color: #6b6;
+}
+#lock-event-notice.el-locked,
+#read-event-notice.el-read {
     color: red;
 }
 #el-absent-section {
@@ -320,7 +326,7 @@ const notice_box = `
         <h1>You've got spam!</h1>
         <div id="spam-table"></div>
     </div>
-    <p><a href="#" id="hide-event-notice">Close this</a> [<a href="#" id="lock-event-notice">LOCK</a>]</p>
+    <p><a href="#" id="hide-event-notice">Close this</a> [<a href="javascript:void(0)" id="lock-event-notice" title="Keep notice from being closed by other tabs.">LOCK</a> | <a href="javascript:void(0)" id="read-event-notice" title="Mark all items as read.">READ</a>]</p>
 </div>
 `;
 
@@ -1195,9 +1201,11 @@ function InitializeNoticeBox() {
     $("#page").prepend(notice_box);
     if (EL.locked_notice) {
         $("#lock-event-notice").addClass("el-locked");
+    } else {
+        $("#lock-event-notice").one('click.el',LockEventNotice);
     }
-    $("#hide-event-notice").on('click.el',HideEventNotice);
-    $("#lock-event-notice").on('click.el',LockEventNotice);
+    $("#hide-event-notice").one('click.el',HideEventNotice);
+    $("#read-event-notice").one('click.el',ReadEventNotice);
 }
 
 function InitializeOpenForumLinks($obj) {
@@ -1399,18 +1407,7 @@ function InitializeCommentPartialCommentLinks(selector) {
 
 function HideEventNotice(event) {
     $("#event-notice").hide();
-    for (let type in EL.lastids.user) {
-        SaveLastID(type,EL.lastids.user[type]);
-    }
-    for (let type in EL.lastids.subscribe) {
-        SaveLastID(type,EL.lastids.subscribe[type]);
-        JSPLib.storage.setStorageData(`el-saved${type}list`,[],localStorage);
-        JSPLib.storage.setStorageData(`el-saved${type}lastid`,[],localStorage);
-        HideEventNotice.debuglog(`Removed saved values [${type}]!`);
-    }
-    HideDmailNotice();
-    JSPLib.storage.setStorageData('el-events',false,localStorage);
-    SetLastSeenTime();
+    MarkAllAsRead();
     EL.channel.postMessage({type: "hide"});
     event.preventDefault();
 }
@@ -1418,7 +1415,11 @@ function HideEventNotice(event) {
 function LockEventNotice(event) {
     $(event.target).addClass("el-locked");
     EL.locked_notice = true;
-    event.preventDefault();
+}
+
+function ReadEventNotice(event) {
+    $(event.target).addClass("el-read");
+    MarkAllAsRead();
 }
 
 function UpdateAll(event) {
@@ -1686,6 +1687,21 @@ function ProcessAllEvents(func) {
     Timer.CheckAllEvents(promise_array).then(()=>{
         func();
     });
+}
+
+function MarkAllAsRead() {
+    for (let type in EL.lastids.user) {
+        SaveLastID(type,EL.lastids.user[type]);
+    }
+    for (let type in EL.lastids.subscribe) {
+        SaveLastID(type,EL.lastids.subscribe[type]);
+        JSPLib.storage.setStorageData(`el-saved${type}list`,[],localStorage);
+        JSPLib.storage.setStorageData(`el-saved${type}lastid`,[],localStorage);
+        HideEventNotice.debuglog(`Removed saved values [${type}]!`);
+    }
+    HideDmailNotice();
+    JSPLib.storage.setStorageData('el-events',false,localStorage);
+    SetLastSeenTime();
 }
 
 function EventStatusCheck() {
