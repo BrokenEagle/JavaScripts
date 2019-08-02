@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SafelistPlus
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.0
+// @version      3.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Alternate Danbooru blacklist handler
 // @author       BrokenEagle
@@ -302,7 +302,6 @@ const sl_menu = `
                                 <li><b>level-data:</b> All configurable settings for each Safelist level.</li>
                                 <li><b>active-list:</b> Current Safelist level (only with session level disabled).</li>
                                 <li><b>script-enabled:</b> The current state of Safelist (only with session use disabled).</li>
-                                <li><b>list-index:</b> Tracks the index for the next available Safelist level.</li>
                             </ul>
                         </li>
                         <li>General data
@@ -374,6 +373,7 @@ class Safelist {
         safelist_keys.forEach((key)=>{this[key] = safelist_defaults[key];});
         _private_data.set(this, {});
         this.setupPrivateData('menu');
+        this.setupPrivateData('side');
     //Populate instantiated functions with function logs
         this.addLogs();
     }
@@ -466,10 +466,6 @@ class Safelist {
     /////////////////////////
     //Render HTML functions
 
-    renderID(selector=true) {
-        return (selector ? "#" : "" ) + `safe-level-${this.level}`;
-    }
-
     //Links in the side menu
     get renderedSide() {
         if (!this.enabled) {
@@ -477,7 +473,7 @@ class Safelist {
         }
         const constantaddon = (this.isVariable ? "" : 'class="safelist-allnone"');
         return `
-        <li ${constantaddon}><a href="#" id="${this.renderID(false)}">${this.escaped_name}</a></li>`;
+        <li ${constantaddon} data-level="${this.level}"><a href="#">${this.escaped_name}</a></li>`;
     }
     //Sections in the setting menu
     get renderedLevelSetting() {
@@ -604,7 +600,7 @@ class Safelist {
     setKeypress() {
         let namespace = "keydown.safelist.level_" + this.level;
         $(document).off(namespace);
-        if (!this.hasActiveHotkey) {
+        if (!this.enabled || !this.hasActiveHotkey) {
             return;
         }
         let context = this;
@@ -613,7 +609,7 @@ class Safelist {
         $(document).on(namespace, null, combokey,(event)=>{
             if (SL.enable_safelist) {
                 if (HasBlacklist()) {
-                    $(context.renderID()).click();
+                    $("a", context.side).click();
                 } else {
                     JSPLib.utility.setCSSStyle(context.renderedCSS, 'safelist_user_css');
                     SaveLevel(context.level);
@@ -626,7 +622,7 @@ class Safelist {
 
     setSideClick() {
         let context = this;
-        $(this.renderID()).off('click.sl').on('click.sl',(event)=>{
+        $("a", this.side).off('click.sl').on('click.sl',(event)=>{
             Timer.SetSideLevel(context);
             event.preventDefault();
         });
@@ -774,7 +770,8 @@ class Safelist {
     setDeleteButtonClick() {
         let context = this;
         $('.safelist-delete', context.menu).off('click.sl').on('click.sl',(event)=>{
-            this.menu.hide();
+            $(context.side).hide();
+            $(context.menu).hide();
             context.enabled = false;
         });
     }
@@ -782,6 +779,14 @@ class Safelist {
     /////////////////////
     //Helper functions
 
+    disableLevel() {
+        this.enabled = false;
+        //This will remove all HTML objects and events
+        $(this.side).remove();
+        $(this.menu).remove();
+        //This will remove the keypress when disabled
+        this.setKeypress();
+    }
     //Callback for the validate button
     addonCallback() {
         let context = this;
@@ -856,11 +861,6 @@ function ValidateProgramData(key,entry) {
         case 'sl-level-data':
             checkerror = ValidateLevelData();
             break
-        case 'sl-list-index':
-            if (!Number.isInteger(entry)) {
-                checkerror = ["Value is not an integer."];
-            }
-            break;
         case 'sl-script-enabled':
             if (!JSPLib.validate.isBoolean(entry)) {
                 checkerror = ["Value is not a boolean."];
@@ -898,7 +898,8 @@ function CorrectLevelData() {
     if (error_messages.length) {
         CorrectLevelData.debuglog("Corrections to level data detected!");
         error_messages.forEach((error)=>{CorrectLevelData.debuglog(...error)});
-        //StoreUsageData('correction');
+        SaveLevelData();
+        SL.channel.postMessage({type: "correction", level_data: SL.level_data});
     } else {
         CorrectLevelData.debuglog("Level data is valid.");
     }
@@ -955,29 +956,15 @@ function IsLevelMenu() {
     return SL.controller === "posts" && SL.action === "index";
 }
 
+function GetNextLevel() {
+    if (!GetNextLevel.level) {
+        GetNextLevel.level = Math.max(...SL.menu_items.variable_menus);
+    }
+    return ++GetNextLevel.level;
+}
+
 ///////////////////////////
 //Auxiliary functions
-
-//Removing lists only at page load helps with the detection of new list adds
-//Plus it removes errors for something that could still using a deleted level's data
-function ProcessCustomLists() {
-    let is_dirty = false;
-    let max_level = 0;
-    for (let level in SL.level_data) {
-        if(SL.level_data[level].isPrunable) {
-            is_dirty = true;
-            delete SL.level_data[level];
-        } else if (SL.level_data[level].isVariable) {
-            max_level = Math.max(max_level, parseInt(level));
-        }
-    };
-    if (is_dirty) {
-        SaveLevelData();
-    }
-    if (max_level <= SL.next_index) {
-        SaveIndex(max_level + 1);
-    }
-}
 
 //Create the same structure that Danbooru uses for each custom list
 function CreateEntryArray(){
@@ -1015,8 +1002,8 @@ function CalculateRenderedMenus() {
         }
     }
     //Sort from lowest to highest, and then set to string
-    menu.variable_menus = menu.variable_menus.sort().map(String);
-    menu.process_menus = menu.process_menus.sort().map(String);
+    menu.variable_menus = menu.variable_menus.sort((a,b)=>{return a-b;}).map(String);
+    menu.process_menus = menu.process_menus.sort((a,b)=>{return a-b;}).map(String);
     return menu;
 }
 
@@ -1056,7 +1043,7 @@ function RenderSettingMenuLink() {
 <li><a href="#" id="display-safelist-settings">Safelist</a></li>`;
 }
 
-function RenderSettingMenu() {
+function RenderLevelMenu() {
     let all_menu = SL.level_data.a.renderedLevelSetting;
     let none_menu = SL.level_data.n.renderedLevelSetting;
     let variable_menus = SL.menu_items.variable_menus.map((level)=>{return SL.level_data[level].renderedLevelSetting;}).join("");
@@ -1101,12 +1088,20 @@ function InitializeSide() {
     SetListCount('a');
     SetListCount('n');
     SL.custom_entries = CreateEntryArray();
+    InitializeSideDOMs();
     InitializeSideEvents();
     if (SL.enable_safelist) {
         $("#enable-safelist").click();
     } else {
         $("#disable-safelist").click();
     }
+}
+
+function InitializeSideDOMs() {
+    $("#safelist > li").each((i,entry)=>{
+        let level = $(entry).data('level');
+        SL.level_data[level].side = entry;
+    });
 }
 
 function InitializeSideEvents() {
@@ -1122,14 +1117,18 @@ function InitializeSettingsMenu() {
     if ($(".active #display-safelist-settings").length === 0) {
         $("#safelist-settings").hide();
     }
-    $(".safelist-input").each((i,entry)=>{
-        let level = $(entry).data('level');
-        SL.level_data[level].menu = entry;
-    });
+    InitializeSettingsDOMs();
     InitializeSettingEvents();
     !SL.user_settings.write_mode_enabled && $(".safelist-push").attr('disabled', true);
     !SL.user_settings.validate_mode_enabled && $(".safelist-validate").attr('disabled', true);
     !SL.user_settings.order_mode_enabled && $(".safelist-order").attr('disabled', true);
+}
+
+function InitializeSettingsDOMs() {
+    $(".safelist-input").each((i,entry)=>{
+        let level = $(entry).data('level');
+        SL.level_data[level].menu = entry;
+    });
 }
 
 function InitializeSettingEvents() {
@@ -1163,7 +1162,7 @@ function ResetAllSettings() {
     $("#safelist-box").replaceWith(RenderSidemenu());
     Timer.InitializeSide();
     //Settings menu
-    $("#safelist-settings").replaceWith(Timer.RenderSettingMenu());
+    $("#safelist-settings").replaceWith(Timer.RenderLevelMenu());
     Timer.InitializeSettingsMenu();
 }
 
@@ -1199,11 +1198,6 @@ function SaveSessionData() {
     JSPLib.storage.setStorageData('sl-active-list', SL.active_list, GetActiveStorage());
 }
 
-function SaveIndex(index) {
-    SL.next_index = index;
-    JSPLib.storage.setStorageData('sl-list-index', SL.next_index, localStorage);
-}
-
 function SaveStatus(status) {
     if (SL.enable_safelist !== status) {
         SL.enable_safelist = status;
@@ -1225,17 +1219,18 @@ function SaveLevel(level) {
 
 //Set the style for the active list in the side menu
 function SetActiveList(level,type) {
-    if (!level) {
+    if (!level || !(level in SL.level_data)) {
         return;
     }
     $("#safelist li").removeClass("safelist-active safelist-pending");
-    $(`#safe-level-${level}`).parent().addClass(`safelist-${type}`);
+    $(SL.level_data[level].side).addClass(`safelist-${type}`);
 }
 
 function SetListCount(level) {
-    let value = SL.post_lists[level];
-    if (value) {
-        $("#safe-level-" + level).attr('title', `${value.length} posts`);
+    let value = SL.level_data[level];
+    let count = SL.post_lists[level];
+    if (value && count) {
+        $("a", value.side).attr('title', `${count.length} posts`);
     }
 }
 
@@ -1423,7 +1418,8 @@ function HelpInfo(event) {
 function EnableSafelist(event) {
     JSPLib.utility.setCSSStyle(css_enabled, "blacklist_css");
     if (SL.menu_items.rendered_menus.includes(SL.active_list)){
-        $("#safe-level-" + SL.active_list).click();
+        let value = SL.level_data[SL.active_list];
+        value && $("a", value.side).click();
     }
     SaveStatus(true);
     event.preventDefault();
@@ -1461,15 +1457,13 @@ function SetOtherSectionsClick() {
 }
 
 function MenuAddButton(event) {
-    let index = SL.next_index.toString();
+    let index = GetNextLevel().toString();
     let addlist = SL.level_data[index] = new Safelist(index);
     addlist.menu = $(addlist.renderedLevelSetting).insertBefore("#safelist-settings > hr");
     !SL.user_settings.write_mode_enabled && $(".safelist-push", addlist.menu).attr('disabled', true);
     !SL.user_settings.validate_mode_enabled && $(".safelist-validate", addlist.menu).attr('disabled', true);
     !SL.user_settings.order_mode_enabled && $(".safelist-order", addlist.menu).attr('disabled', true);
     addlist.initializeLevelMenuEvents();
-    SaveIndex(SL.next_index + 1);
-    SL.channel.postMessage({type: "add_level", next_index: SL.next_index});
 }
 
 function MenuResetAllButton(event) {
@@ -1477,7 +1471,7 @@ function MenuResetAllButton(event) {
         JSPLib.debug.debugTime("MenuResetAllButton");
         InitializeProgramData();
         ResetAllSettings();
-        SL.channel.postMessage({type: "reset_levels", level_data: SL.level_data, next_index: SL.next_index, enable_safelist: SL.enable_safelist, active_list: SL.active_list});
+        SL.channel.postMessage({type: "reset_levels", level_data: SL.level_data, enable_safelist: SL.enable_safelist, active_list: SL.active_list});
         JSPLib.debug.debugTimeEnd("MenuResetAllButton");
     }
 }
@@ -1498,17 +1492,23 @@ function MenuSaveButton(event) {
         value.name = $(".safelist-name", value.menu).val();
         value.hotkey[0] = $(".safelist-modifier", value.menu).val();
         value.hotkey[1] = $(".safelist-keyselect", value.menu).val();
+        if (value.isPrunable) {
+            value.disableLevel();
+            delete SL.level_data[level];
+            delete preconfig[level];
+            SL.post_lists[level];
+        }
     }
     $(".safelist-namerow .safelist-name").hide();
     $(".safelist-namerow h2").show();
     $(".safelist-namerow .btn").show();
     SaveLevelData();
     Danbooru.Utility.notice("Settings saved.");
-    SL.menu_items = CalculateRenderedMenus();
-    let changed_menus = JSPLib.utility.setSymmetricDifference(premenu.rendered_menus, SL.menu_items.rendered_menus);
     let changed_settings = RecurseCompareSettings(preconfig, SL.level_data);
+    SL.menu_items = CalculateRenderedMenus();
+    let changed_menus = Boolean(JSPLib.utility.setSymmetricDifference(premenu.rendered_menus, SL.menu_items.rendered_menus).length);
     MenuSaveButton.debuglog(changed_settings, changed_menus);
-    if (!$.isEmptyObject(changed_settings) || changed_menus.length) {
+    if (!$.isEmptyObject(changed_settings) || changed_menus) {
         Timer.ReloadSafelist(changed_settings, changed_menus);
         SL.channel.postMessage({type: "reload", level_data: SL.level_data, changed_settings: changed_settings, changed_menus: changed_menus});
     }
@@ -1537,44 +1537,64 @@ function SetSideLevel(context) {
 }
 
 function ReloadSafelist(changed_settings,changed_menus) {
-    if (changed_menus.length) {
+    if (changed_menus) {
         //The side menu has changed, so rerender it
         $("#safelist-box").replaceWith(RenderSidemenu());
+        InitializeSideDOMs();
         InitializeSideEvents();
         SetActiveList(SL.active_list, 'active');
-    }
-    if (!$.isEmptyObject(changed_settings)) {
+        SL.custom_entries = CreateEntryArray();
+        if (IsLevelMenu()) {
+            $("#safelist-settings").replaceWith(RenderLevelMenu());
+            InitializeSettingsMenu();
+        }
+    } else if (!$.isEmptyObject(changed_settings)) {
         //A list has changed, so recreate the entry array
         if (Object.keys(changed_settings).some((level)=>{return 'list' in changed_settings[level];})) {
             ReloadSafelist.debuglog("Updating custom entries...");
             SL.custom_entries = CreateEntryArray();
         }
         for (let level in changed_settings) {
-            let val = changed_settings[level];
+            let changed_value = changed_settings[level];
             let value = SL.level_data[level];
-            if ('list' in val) {
-                delete SL.post_lists[level];
-                if (SL.enable_safelist && (SL.active_list === level)) {
-                    //The list was active, so set it to pending
-                    SetActiveList(SL.active_list, 'pending');
-                    SignalActiveList(true);
+            for (let key in changed_value) {
+                if (SL.enabled_safelist && (SL.active_list === level)) {
+                    if (key === 'list') {
+                        SetActiveList(level, 'pending');
+                        SignalActiveList(true);
+                    } else if (key === 'css') {
+                        JSPLib.utility.setCSSStyle(value.renderedCSS, 'safelist_user_css');
+                    }
+                }
+                if (IsLevelMenu()) {
+                    switch (key) {
+                        case 'list':
+                            $(".safelist-tags", value.menu).val(value.tagstring);
+                            break;
+                        case 'css':
+                            $(".safelist-css", value.menu).val(value.css);
+                            break;
+                        case 'name':
+                            $("h2", value.menu).text(value.name);
+                            $(".safelist-name", value.menu).val(value.name);
+                            $("a", value.side).text(value.name);
+                            break;
+                        case 'background':
+                            $(".safelist-background", value.menu).prop('checked',value.background);
+                            break;
+                        case 'enabled':
+                            $(".safelist-enable", value.menu).prop('checked',value.enabled)
+                        default:
+                            //Do nothing
+                    }
+                }
+                if (key === 'hotkey') {
+                    value.setKeypress();
                 }
             }
-            if (('css' in val) && SL.enable_safelist && (SL.active_list === level)) {
-                JSPLib.utility.setCSSStyle(value.renderedCSS, 'safelist_user_css');
-            }
-            if ('name' in val) {
-                $(`h2`, value.menu).text(value.name);
-                if (changed_menus.length === 0) {
-                    $("#safe-level-" + level).text(value.name);
-                }
-            }
-            if ('hotkey' in val) {
-                value.setKeypress();
-            }
-        };
-        RestartLists();
+        }
     }
+    RestartLists();
 }
 
 ////////////////////
@@ -1587,10 +1607,18 @@ function BroadcastSL(ev) {
         return;
     }
     if ('level_data' in ev.data) {
+        SL.old_level_data = SL.level_data;
         SL.level_data = ev.data.level_data;
+        let removed_menus = JSPLib.utility.setDifference(Object.keys(SL.old_level_data), Object.keys(SL.level_data));
+        removed_menus.forEach((level)=>{
+            SL.old_level_data[level].disableLevel();
+            delete SL.post_lists[level];
+        });
         InitializeSafelistData();
+        InitializeSideDOMs();
+        InitializeSettingsDOMs();
+        SL.menu_items = CalculateRenderedMenus();
     }
-    SL.next_index = ('next_index' in ev.data ? ev.data.next_index : SL.next_index);
     SL.active_list = ('active_list' in ev.data ? ev.data.active_list : SL.active_list);
     SL.enable_safelist = ('enable_safelist' in ev.data ? ev.data.enable_safelist : SL.enable_safelist);
     if (HasBlacklist()) {
@@ -1607,8 +1635,10 @@ function BroadcastSL(ev) {
                     $("#disable-safelist").click();
                 }
                 break;
+            case "correction":
+                Timer.ReloadSafelist({}, true);
+                break;
             case "reload":
-                SL.menu_items = CalculateRenderedMenus();
                 Timer.ReloadSafelist(ev.data.changed_settings, ev.data.changed_menus);
                 break;
             case "reset_levels":
@@ -1694,7 +1724,6 @@ function Main() {
         userid: parseInt(JSPLib.utility.getMeta("current-user-id")),
         blacklist_box: $("#blacklist-box"),
         has_video: Boolean($("#image-container video").length),
-        next_index: JSPLib.storage.checkStorageData('sl-list-index', ValidateProgramData, localStorage, 0),
         storage_keys: {local_storage: []},
         settings_config: settings_config,
         channel: new BroadcastChannel('SafelistPlus')
@@ -1702,7 +1731,6 @@ function Main() {
     SL.user_settings = JSPLib.menu.loadUserSettings('sl');
     SL.channel.onmessage = BroadcastSL;
     LoadLevelData();
-    ProcessCustomLists();
     CorrectLevelData();
     LoadSessionData();
     JSPLib.debug.debugTimeEnd("Main-Load");
@@ -1717,12 +1745,12 @@ function Main() {
     } else if (SL.enable_safelist) {
         InitializeNonpost();
     }
-    //Render settings menu only from post index page
+    //Render level menu only from post index page
     //Since it starts out hidden, we are doing it last
     if(IsLevelMenu()) {
         JSPLib.debug.debugTime("Main-Menu");
         $("#post-sections li:last-child").after(RenderSettingMenuLink());
-        $("#excerpt").before(RenderSettingMenu());
+        $("#excerpt").before(RenderLevelMenu());
         Timer.InitializeSettingsMenu();
         //Accounts for other userscripts binding the same links
         JSPLib.utility.initializeInterval(()=>{
@@ -1744,7 +1772,7 @@ function Main() {
 
 JSPLib.debug.addFunctionTimers(Timer,false,[
     SetSideLevel,EnableSafelist,DisableSafelist,ShowHidePosts,InitializeSide,InitializeSettingsMenu,ReloadSafelist,
-    RenderSettingMenu,MenuSaveButton,MenuAddButton,
+    RenderLevelMenu,MenuSaveButton,MenuAddButton,
 ]);
 
 JSPLib.debug.addFunctionLogs([
