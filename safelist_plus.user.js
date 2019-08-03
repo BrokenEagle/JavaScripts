@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SafelistPlus
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.1
+// @version      3.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Alternate Danbooru blacklist handler
 // @author       BrokenEagle
@@ -1085,11 +1085,11 @@ function InitializeSide() {
     SL.post_lists = {};
     SL.post_lists.a = [];
     SL.post_lists.n = SafelistPosts().toArray();
-    SetListCount('a');
-    SetListCount('n');
     SL.custom_entries = CreateEntryArray();
     InitializeSideDOMs();
     InitializeSideEvents();
+    SetListCount('a');
+    SetListCount('n');
     if (SL.enable_safelist) {
         $("#enable-safelist").click();
     } else {
