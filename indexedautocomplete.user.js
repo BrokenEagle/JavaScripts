@@ -703,7 +703,7 @@ const source_config = {
         fixupexpiration: false,
         searchstart: false,
         spacesallowed: true,
-        render: RenderListItem(($domobj,item)=>{return $domobj.addClass("pool-category-" + item.category).text(item.label);})
+        render: ($domobj,item)=>{return $domobj.addClass("pool-category-" + item.category).text(item.label);}
     },
     user: {
         url: 'users',
@@ -731,7 +731,7 @@ const source_config = {
         fixupexpiration: false,
         searchstart: true,
         spacesallowed: false,
-        render: RenderListItem(($domobj,item)=>{return $domobj.addClass("user-" + item.level.toLowerCase()).addClass("with-style").text(item.label);})
+        render: ($domobj,item)=>{return $domobj.addClass("user-" + item.level.toLowerCase()).addClass("with-style").text(item.label);}
     },
     favgroup: {
         url: 'favorite_groups',
@@ -805,7 +805,7 @@ const source_config = {
         fixupexpiration: true,
         searchstart: true,
         spacesallowed: true,
-        render: RenderListItem(($domobj,item)=>{return $domobj.addClass("tag-type-" + item.category).text(item.label);})
+        render: ($domobj,item)=>{return $domobj.addClass("tag-type-" + item.category).text(item.label);}
     },
     artist: {
         url: 'artists',
@@ -832,7 +832,7 @@ const source_config = {
         fixupexpiration: true,
         searchstart: true,
         spacesallowed: false,
-        render: RenderListItem(($domobj,item)=>{return $domobj.addClass("tag-type-1").text(item.label);})
+        render: ($domobj,item)=>{return $domobj.addClass("tag-type-1").text(item.label);}
     },
     forumtopic: {
         url: 'forum_topics',
@@ -858,7 +858,7 @@ const source_config = {
         fixupexpiration: false,
         searchstart: false,
         spacesallowed: true,
-        render: RenderListItem(($domobj,item)=>{return $domobj.addClass("forum-topic-category-" + item.category).text(item.value);})
+        render: ($domobj,item)=>{return $domobj.addClass("forum-topic-category-" + item.category).text(item.value);}
     }
 };
 
@@ -1172,7 +1172,7 @@ ${column}
 }
 
 function RenderListItem(alink_func) {
-    return (list,item)=>{
+    return function (list,item) {
         var $link = alink_func($("<a/>"), item);
         var $container = $("<div/>").append($link);
         HighlightSelected($container, list, item);
@@ -1576,10 +1576,10 @@ function InitializeAutocompleteIndexed(selector,keycode,multiple=false) {
         minLength: 1,
         delay: 100,
         source: AnySourceIndexed(keycode, '', multiple),
-        search: ()=>{
+        search: function () {
             $(this).data("uiAutocomplete").menu.bindings = $();
         },
-        select: (event,ui)=>{
+        select: function (event,ui) {
             InsertUserSelected(keycode, this, ui.item);
             if (multiple) {
                 if (event.key === "Enter") {
@@ -1591,15 +1591,10 @@ function InitializeAutocompleteIndexed(selector,keycode,multiple=false) {
             return ui.item.value;
         }
     });
-    if (source_config[type].render) {
-        $fields.each((i,field)=>{
-            $(field).data('uiAutocomplete')._renderItem = source_config[type].render;
-        });
-    } else {
-        $fields.each((i,field)=>{
-            $(field).data('uiAutocomplete')._renderItem = RenderListItem(($domobj,item)=>{return $domobj.text(item.value);});
-        });
-    }
+    let alink_func = (source_config[type].render ? source_config[type].render : ($domobj,item)=>{return $domobj.text(item.value);});
+    $fields.each((i,field)=>{
+        $(field).data('uiAutocomplete')._renderItem = RenderListItem(alink_func);
+    });
     if (!JSPLib.utility.isNamespaceBound(selector, 'keydown', 'Autocomplete.tab')) {
         $fields.on('keydown.Autocomplete.tab', null, "tab", Danbooru.Autocomplete.on_tab);
     }
