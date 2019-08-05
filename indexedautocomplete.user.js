@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      23.9
+// @version      24.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -45,12 +45,12 @@ const program_cache_regex = /^(af|ref|ac|pl|us|fg|ss|ar|wp|ft|rt(gen|char|copy|a
 
 //Main program expires
 const prune_expires = JSPLib.utility.one_day;
+const noncritical_recheck = JSPLib.utility.one_minute;
 
 //For factory reset
 const localstorage_keys = [
     'iac-prune-expires',
-    'iac-choice-order',
-    'iac-choice-data'
+    'iac-choice-info'
 ];
 const program_reset_keys = {
     choice_order:{},
@@ -63,6 +63,11 @@ const scale_types = ['linear','square_root','logarithmic'];
 
 //Main settings
 const settings_config = {
+    prefix_check_enabled: {
+        default: true,
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
+        hint: "Check the prefix/acronym of a tag for a match. Limited to prefixes of length 2-4."
+    },
     usage_multiplier: {
         default: 0.9,
         parse: parseFloat,
@@ -121,6 +126,12 @@ const settings_config = {
         validate: (data)=>{return JSPLib.validate.isNumber(data) && data >= 0.0 && data <= 1.0;},
         hint: "Valid values: 0.0 - 1.0."
     },
+    source_results_returned: {
+        default: 10,
+        parse: parseInt,
+        validate: (data)=>{return Number.isInteger(data) && data >= 5 && data <= 20;},
+        hint: "Number of results to return (5 - 20)."
+    },
     source_highlight_enabled: {
         default: true,
         validate: (data)=>{return JSPLib.validate.isBoolean(data);},
@@ -165,6 +176,9 @@ const program_css = `
 .iac-user-choice a {
     font-weight: bold;
 }
+.iac-already-used {
+    background-color: #FFFFAA;
+}
 .iac-tag-alias a {
     font-style: italic;
 }
@@ -181,7 +195,7 @@ const program_css = `
     color: #000;
 }
 .iac-tag-exact > div::before {
-    color: #EEE;
+    color: #DDD;
 }
 .iac-tag-prefix > div::before {
     color: hotpink;
@@ -247,6 +261,15 @@ const forum_topic_search = `
     <form action="/forum_topics" accept-charset="UTF-8" method="get">
         <input name="utf8" type="hidden" value="✓">
         <input id="quick_search_title_matches" placeholder="Search topic" type="text" name="search[title_matches]" class="ui-autocomplete-input" data-autocomplete="forum-topic" autocomplete="off">
+    </form>
+</li>`;
+
+const post_comment_search = `
+<li>
+    <form action="/comments" accept-charset="UTF-8" method="get">
+        <input name="utf8" type="hidden" value="✓">
+        <input type="hidden" name="group_by" id="group_by" value="post">
+        <input id="quick_search_post_matches" placeholder="Search posts" type="text" name="tags" class="ui-autocomplete-input" data-autocomplete="tag-query" autocomplete="off">
     </form>
 </li>`;
 
@@ -431,15 +454,19 @@ const iac_menu = `
                         </li>
                         <li>Usage data
                             <ul>
-                                <li><b>choice-order:</b> The search terms per source ordered by last use.
+                                <li><b>choice-info:</b> Comprised of choice order and choice data
                                     <ul>
-                                        <li>The order in this list only affects things when the usage counts of two terms are equal.</li>
-                                    </ul>
-                                </li>
-                                <li><b>choice-data:</b> The search terms per source with the autocomplete data.
-                                    <ul>
-                                        <li>The <b>use_count</b> affects how terms get sorted against each other.</li>
-                                        <li>The <b>expiration</b> affects when data gets pruned, and gets renewed each time a term is selected.</li>
+                                        <li><b>choice_order:</b> The search terms per source ordered by last use.
+                                            <ul>
+                                                <li>The order in this list only affects things when the usage counts of two terms are equal.</li>
+                                            </ul>
+                                        </li>
+                                        <li><b>choice_data:</b> The search terms per source with the autocomplete data.
+                                            <ul>
+                                                <li>The <b>use_count</b> affects how terms get sorted against each other.</li>
+                                                <li>The <b>expiration</b> affects when data gets pruned, and gets renewed each time a term is selected.</li>
+                                            </ul>
+                                        </li>
                                     </ul>
                                 </li>
                             </ul>
@@ -628,8 +655,7 @@ const source_config = {
                     hide_empty: true,
                     order: "count"
                 },
-                only: "name,category,post_count",
-                limit: 10
+                only: "name,category,post_count"
             };
         },
         map: (tag)=>{
@@ -659,8 +685,7 @@ const source_config = {
                     order: "post_count",
                     name_matches: term
                 },
-                only: "name,category,post_count",
-                limit: 10
+                only: "name,category,post_count"
             };
         },
         map: (pool)=>{
@@ -689,8 +714,7 @@ const source_config = {
                     current_user_first: true,
                     name_matches: term + "*"
                 },
-                only: "name,level_string",
-                limit: 10
+                only: "name,level_string"
             };
         },
         map: (user)=>{
@@ -716,8 +740,7 @@ const source_config = {
                 search: {
                     name_matches: term
                 },
-                only: "name,post_count",
-                limit: 10
+                only: "name,post_count"
             };
         },
         map: (favgroup)=>{
@@ -740,8 +763,7 @@ const source_config = {
             return {
                 search: {
                     label: term + "*"
-                },
-                limit: 10
+                }
             };
         },
         map: (label)=>{
@@ -766,8 +788,7 @@ const source_config = {
                     hide_deleted: true,
                     title: term + "*"
                 },
-                only: "title,category_name",
-                limit: 10
+                only: "title,category_name"
             };
         },
         map: (wikipage)=>{
@@ -795,8 +816,7 @@ const source_config = {
                     is_active: true,
                     name_like: term.trim().replace(/\s+/g, "_") + "*"
                 },
-                only: "name",
-                limit: 10
+                only: "name"
             };
         },
         map: (artist)=>{
@@ -822,8 +842,7 @@ const source_config = {
                     order: "sticky",
                     title_matches: "*" + term + "*"
                 },
-                only: "title,category_id",
-                limit: 10
+                only: "title,category_id"
             };
         },
         map: (forumtopic)=>{
@@ -846,7 +865,7 @@ const source_config = {
 //Validate constants
 
 const autocomplete_constraints = {
-    entry: JSPLib.validate.arrayentry_constraints({maximum: 10}),
+    entry: JSPLib.validate.arrayentry_constraints({maximum: 20}),
     tag: {
         antecedent: JSPLib.validate.stringnull_constraints,
         category: JSPLib.validate.inclusion_constraints(all_categories),
@@ -966,7 +985,7 @@ function ValidateRelatedtagEntry(key,entry) {
 }
 
 function ValidateProgramData(key,entry) {
-    var checkerror=[],choice_data,choice_order;
+    var checkerror=[];
     switch (key) {
         case 'iac-user-settings':
             checkerror = JSPLib.menu.validateUserSettings(entry,settings_config);
@@ -976,13 +995,12 @@ function ValidateProgramData(key,entry) {
                 checkerror = ["Value is not an integer."];
             }
             break;
-        case 'iac-choice-order':
-            choice_data = JSPLib.utility.dataCopy(IAC.choice_data);
-            checkerror = Timer.ValidateUsageData({choice_order: entry, choice_data: choice_data});
-            break;
-        case 'iac-choice-data':
-            choice_order = JSPLib.utility.dataCopy(IAC.choice_order);
-            checkerror = Timer.ValidateUsageData({choice_order: choice_order, choice_data: choice_data});
+        case 'iac-choice-info':
+            if (JSPLib.validate.isHash(entry)) {
+                checkerror = Timer.ValidateUsageData(entry);
+            } else {
+                checkerror = ['Value is not a hash'];
+            }
             break;
         default:
             checkerror = ["Not a valid program data key."];
@@ -1000,7 +1018,7 @@ function ValidateUsageData(choice_info) {
     let choice_order = choice_info.choice_order;
     let choice_data = choice_info.choice_data;
     if (!JSPLib.validate.isHash(choice_order) || !JSPLib.validate.isHash(choice_data)) {
-        error_messages.push("Choice data is not a hash.");
+        error_messages.push("Choice data/order is not a hash.");
         choice_info.choice_order = {};
         choice_info.choice_data = {};
         return error_messages;
@@ -1040,7 +1058,7 @@ function ValidateUsageData(choice_info) {
     let type_diff = JSPLib.utility.setSymmetricDifference(Object.keys(choice_order),Object.keys(choice_data));
     if (type_diff.length) {
         error_messages.push("Type difference between choice order and choice data:",type_diff);
-        $.each(type_diff,(i,type)=>{
+        type_diff.forEach((type)=>{
             delete choice_order[type];
             delete choice_data[type];
         });
@@ -1050,7 +1068,7 @@ function ValidateUsageData(choice_info) {
         let key_diff = JSPLib.utility.setSymmetricDifference(choice_order[type],Object.keys(choice_data[type]));
         if (key_diff.length) {
             error_messages.push("Key difference between choice order and choice data:",type,key_diff);
-            $.each(key_diff,(i,key)=>{
+            key_diff.forEach((key)=>{
                 choice_order[type] = JSPLib.utility.setDifference(choice_order[type],[key]);
                 delete choice_data[type][key];
             });
@@ -1064,6 +1082,32 @@ function ValidateUsageData(choice_info) {
 JSPLib.danbooru.wikiLink = function (tag,text) {
     return `<a href="/wiki_pages/show_or_new?title=${encodeURIComponent(tag)}">${text}</a>`;
 };
+
+JSPLib.danbooru.isSettingMenu = function () {
+    return document.body.dataset.controller === "users" && document.body.dataset.action === "edit";
+};
+
+//Helper functions
+
+function RemoveTerm(str,index) {
+    let first_slice = str.slice(0,index);
+    let second_slice = str.slice(index);
+    let first_space = first_slice.lastIndexOf(' ');
+    let second_space = second_slice.indexOf(' ');
+    return first_slice.slice(0,first_space) + second_slice.slice(second_space);
+}
+
+function GetPrefix(str) {
+    if (!(str in GetPrefix.prefixhash)) {
+        GetPrefix.prefixhash[str] = str.split('_').map((part)=>{return part.replace(/[()]/g,'')[0];}).join('');
+    }
+    return GetPrefix.prefixhash[str];
+}
+GetPrefix.prefixhash = {};
+
+function GetIsBur() {
+    return document.body.dataset.controller === "bulk-update-requests" && ['edit','new'].includes(document.body.dataset.action);
+}
 
 //Time functions
 
@@ -1240,7 +1284,7 @@ function GetRelatedKeyModifer(category) {
 
 function KeepSourceData(type,metatag,data) {
     IAC.source_data[type] = IAC.source_data[type] || {};
-    $.each(data, (i,val)=>{
+    data.forEach((val)=>{
         let orig_key = val.value.replace(RegExp(`^${metatag}:?`),'');
         let key = (val.antecedent ? val.antecedent : orig_key);
         IAC.source_data[type][key] = val;
@@ -1248,11 +1292,14 @@ function KeepSourceData(type,metatag,data) {
 }
 
 function GetChoiceOrder(type,query) {
+    let checkprefix = IAC.user_settings.prefix_check_enabled && (type === 'tag') && (query.length >= 2 && query.length <= 4);
     let queryterm = query.toLowerCase();
     let available_choices = IAC.choice_order[type].filter((tag)=>{
         let tagterm = tag.toLowerCase();
+        let tagprefix = (checkprefix ? GetPrefix(tagterm) : '');
         let queryindex = tagterm.indexOf(queryterm);
-        return queryindex === 0 || (!source_config[type].searchstart && queryindex > 0);
+        let prefixindex = (checkprefix ? tagprefix.indexOf(queryterm) : -1);
+        return (queryindex === 0) || (prefixindex === 0) || (!source_config[type].searchstart && queryindex > 0);
     });
     let sortable_choices = available_choices.filter((tag)=>{return IAC.choice_data[type][tag].use_count > 0});
     sortable_choices.sort((a,b)=>{
@@ -1287,7 +1334,7 @@ function AddUserSelected(type,metatag,term,data) {
         data.unshift(add_data);
         IAC.shown_data.push(user_order[i]);
     }
-    data.splice(10);
+    data.splice(IAC.user_settings.source_results_returned);
 }
 
 //For autocomplete select
@@ -1347,12 +1394,12 @@ function InsertUserSelected(data,input,selected) {
     //So the use count doesn't get squashed by the new variable assignment
     let use_count = (IAC.choice_data[type][term] && IAC.choice_data[type][term].use_count) || 0;
     IAC.choice_data[type][term] = source_data;
-    IAC.choice_data[type][term].expires = JSPLib.utility.getExpiration(IAC.user_settings.usage_expires * JSPLib.utility.one_day);
+    IAC.choice_data[type][term].expires = JSPLib.utility.getExpiration(GetUsageExpires());
     IAC.choice_data[type][term].use_count = use_count + 1;
     if (IAC.user_settings.usage_maximum > 0) {
         IAC.choice_data[type][term].use_count = Math.min(IAC.choice_data[type][term].use_count, IAC.user_settings.usage_maximum);
     }
-    $.each(IAC.shown_data,(i,key)=>{
+    IAC.shown_data.forEach((key)=>{
         if (key !== term) {
             IAC.choice_data[type][key].use_count = IAC.choice_data[type][key].use_count || 0;
             IAC.choice_data[type][key].use_count *= IAC.user_settings.usage_multiplier;
@@ -1369,17 +1416,28 @@ function HighlightSelected($link,list,item) {
         }
         if (item.type === 'tag') {
             $($link).addClass('iac-tag-highlight');
-            if (item.source === 'exact') {
-                $($link).addClass('iac-tag-exact');
-            } else if (item.source === 'prefix') {
-                $($link).addClass('iac-tag-prefix');
-            } else if (item.source === 'alias') {
-                $($link).addClass('iac-tag-alias');
-            } else if (item.source === 'correct') {
-                $($link).addClass('iac-tag-correct');
-            } else if (item.source === "bur") {
-                $($link).addClass('iac-tag-bur');
+            switch (item.source) {
+                case 'exact':
+                    $($link).addClass('iac-tag-exact');
+                    break;
+                case 'prefix':
+                    $($link).addClass('iac-tag-prefix');
+                    break;
+                case 'alias':
+                    $($link).addClass('iac-tag-alias');
+                    break;
+                case 'correct':
+                    $($link).addClass('iac-tag-correct');
+                    break;
+                case 'bur':
+                    $($link).addClass('iac-tag-bur');
+                    break;
+                default:
+                    //Do nothing
             }
+        }
+        if (IAC.highlight_used && IAC.current_tags.includes(item.value)) {
+            $($link).addClass('iac-already-used');
         }
     }
     return $link;
@@ -1398,16 +1456,18 @@ function CorrectUsageData() {
 
 function PruneUsageData() {
     let is_dirty = false;
-    $.each(IAC.choice_data,(type_key,type_entry)=>{
-        $.each(type_entry,(key,entry)=>{
-            if (!JSPLib.validate.validateExpires(entry.expires, IAC.user_settings.usage_expires * JSPLib.utility.one_day)) {
+    for (let type_key in IAC.choice_data) {
+        let type_entry = IAC.choice_data[type_key];
+        for (let key in type_entry) {
+            let entry = type_entry[key];
+            if (!JSPLib.validate.validateExpires(entry.expires, GetUsageExpires())) {
                 PruneUsageData.debuglog("Pruning choice data!",type_key,key);
                 IAC.choice_order[type_key] = JSPLib.utility.setDifference(IAC.choice_order[type_key],[key])
                 delete type_entry[key];
                 is_dirty = true;
             }
-        });
-    });
+        }
+    }
     if (is_dirty) {
         StoreUsageData('prune');
     }
@@ -1415,8 +1475,7 @@ function PruneUsageData() {
 
 function StoreUsageData(name,key='',save=true) {
     if (save) {
-        JSPLib.storage.setStorageData('iac-choice-order',IAC.choice_order,localStorage);
-        JSPLib.storage.setStorageData('iac-choice-data',IAC.choice_data,localStorage);
+        JSPLib.storage.setStorageData('iac-choice-info', {choice_order: IAC.choice_order, choice_data: IAC.choice_data}, localStorage);
     }
     IAC.channel.postMessage({type: "reload", name: name, key: key, choice_order: IAC.choice_order, choice_data: IAC.choice_data});
 }
@@ -1425,7 +1484,7 @@ function StoreUsageData(name,key='',save=true) {
 
 async function RelatedTagsButton(event) {
     let category = $(event.target).data("category") || "";
-    let currenttag = $.trim(Danbooru.RelatedTag.current_tag());
+    let currenttag = Danbooru.RelatedTag.current_tag().trim();
     let keymodifier = GetRelatedKeyModifer(category);
     let key = (keymodifier + "-" + currenttag).toLowerCase();
     let max_expiration = MaximumExpirationTime('relatedtag');
@@ -1553,14 +1612,15 @@ function InitializeAutocompleteIndexed(selector, keycode, multiple=false) {
 
 function NetworkSource(type,key,term,resp,metatag,process=true) {
     NetworkSource.debuglog("Querying",type,':',term);
-    JSPLib.danbooru.submitRequest(source_config[type].url,source_config[type].data(term)).then((data)=>{
+    let url_addons = $.extend({limit: IAC.user_settings.source_results_returned}, source_config[type].data(term));
+    JSPLib.danbooru.submitRequest(source_config[type].url, url_addons).then((data)=>{
         if (!data || !Array.isArray(data)) {
             if (process) {
                 resp([]);
             }
             return;
         }
-        var d = $.map(data, source_config[type].map);
+        var d = data.map(source_config[type].map);
         var expiration_time = source_config[type].expiration(d);
         var save_data = JSPLib.utility.dataCopy(d);
         JSPLib.storage.saveData(key, {value: save_data, expires: JSPLib.utility.getExpiration(expiration_time)});
@@ -1609,7 +1669,7 @@ function AnySourceIndexed(keycode,default_metatag='',multiple=false) {
 
 function RecheckSourceData(type,key,term,data) {
     if (IAC.user_settings.recheck_data_interval > 0) {
-        let recheck_time = data.expires - (IAC.user_settings.recheck_data_interval * JSPLib.utility.one_day);
+        let recheck_time = data.expires - GetRecheckExpires();
         if (!JSPLib.validate.validateExpires(recheck_time)) {
             JSPLib.debug.debuglog("Rechecking",type,":",term);
             NetworkSource(type, key, term, null, null, false);
@@ -1619,7 +1679,7 @@ function RecheckSourceData(type,key,term,data) {
 
 function ProcessSourceData(type,metatag,term,data,resp) {
     if (source_config[type].fixupmetatag) {
-        $.each(data, (i,val)=> {FixupMetatag(val,metatag);});
+        data.forEach((val)=> {FixupMetatag(val,metatag);});
     }
     KeepSourceData(type, metatag, data);
     if (type === 'tag') {
@@ -1637,6 +1697,12 @@ function ProcessSourceData(type,metatag,term,data,resp) {
         let add_data = bur_data.filter((data)=>{return term.length === 1 || data.value.startsWith(term);});
         data.unshift(...add_data);
     }
+    //Doing this here to avoid processing it on each list item
+    IAC.highlight_used = (document.activeElement.tagName === "TEXTAREA" && ['post_tag_string','upload_tag_string'].includes(document.activeElement.id));
+    if (IAC.highlight_used) {
+        let adjusted_tag_string = RemoveTerm(document.activeElement.value, document.activeElement.selectionStart);
+        IAC.current_tags = adjusted_tag_string.split(/\s+/);
+    }
     resp(data);
 }
 
@@ -1653,12 +1719,9 @@ function OptionCacheDataKey(data_type,data_value) {
 
 function UpdateLocalData(key,data) {
     switch (key) {
-        case 'iac-choice-order':
-            IAC.choice_order = data;
-            StoreUsageData('save','',false);
-            break;
-        case 'iac-choice-data':
-            IAC.choice_data = data;
+        case 'iac-choice-info':
+            IAC.choice_order = data.choice_order;
+            IAC.choice_data = data.choice_data;
             StoreUsageData('save','',false);
             break;
         case 'iac-prune-expires':
@@ -1702,12 +1765,22 @@ function SetTagAutocompleteSource() {
     }
 }
 
+function GetUsageExpires() {
+    return IAC.user_settings.usage_expires * JSPLib.utility.one_day;
+}
+
+function GetRecheckExpires() {
+    return IAC.user_settings.recheck_data_interval * JSPLib.utility.one_day;
+}
+
 function RenderSettingsMenu() {
     $("#indexed-autocomplete").append(iac_menu);
     $("#iac-usage-settings").append(JSPLib.menu.renderCheckbox("iac",'usage_enabled'));
     $("#iac-usage-settings").append(JSPLib.menu.renderTextinput("iac",'usage_multiplier'));
     $("#iac-usage-settings").append(JSPLib.menu.renderTextinput("iac",'usage_maximum'));
     $("#iac-usage-settings").append(JSPLib.menu.renderTextinput("iac",'usage_expires'));
+    $("#iac-usage-settings").append(JSPLib.menu.renderCheckbox("iac",'prefix_check_enabled'));
+    $("#iac-display-settings").append(JSPLib.menu.renderTextinput("iac",'source_results_returned',5));
     $("#iac-display-settings").append(JSPLib.menu.renderCheckbox("iac",'source_highlight_enabled'));
     $("#iac-display-settings").append(JSPLib.menu.renderCheckbox("iac",'source_grouping_enabled'));
     $("#iac-display-settings").append(JSPLib.menu.renderSortlist("iac",'source_order'));
@@ -1751,22 +1824,31 @@ function Main() {
     }
     JSPLib.utility.setCSSStyle(program_css,'program');
     Danbooru.IAC = IAC = {
+        controller: document.body.dataset.controller,
+        action: document.body.dataset.action,
         source_data: {},
-        choice_order: JSPLib.storage.getStorageData('iac-choice-order',localStorage,{}),
-        choice_data: JSPLib.storage.getStorageData('iac-choice-data',localStorage,{}),
-        is_bur: Boolean($("#c-bulk-update-requests #a-new,#c-bulk-update-requests #a-edit").length),
+        choice_info: JSPLib.storage.getStorageData('iac-choice-info',localStorage,{}),
+        is_bur: GetIsBur(),
         FindArtistSession: FindArtistSession,
         InitializeAutocompleteIndexed: InitializeAutocompleteIndexed,
         storage_keys: {indexed_db: [], local_storage: []},
-        is_setting_menu: Boolean($("#c-users #a-edit").length),
+        is_setting_menu: JSPLib.danbooru.isSettingMenu(),
         settings_config: settings_config,
         channel: new BroadcastChannel('IndexedAutocomplete')
     };
     IAC.user_settings = JSPLib.menu.loadUserSettings('iac');
     SetTagAutocompleteSource();
     IAC.channel.onmessage = BroadcastIAC;
+    if (!JSPLib.validate.isHash(IAC.choice_info) || $.isEmptyObject(IAC.choice_info)) {
+        //Temporary transitory code
+        IAC.choice_order = JSPLib.storage.getStorageData('iac-choice-order', localStorage, {});
+        IAC.choice_data = JSPLib.storage.getStorageData('iac-choice-data', localStorage, {});
+        JSPLib.storage.setStorageData('iac-choice-info', {choice_order: IAC.choice_order, choice_data: IAC.choice_data}, localStorage);
+    } else {
+        IAC.choice_order = IAC.choice_info.choice_order;
+        IAC.choice_data = IAC.choice_info.choice_data;
+    }
     CorrectUsageData();
-    PruneUsageData();
     /**Autocomplete bindings**/
     Danbooru.Autocomplete.normal_source = AnySourceIndexed('ac');
     Danbooru.Autocomplete.pool_source = AnySourceIndexed('pl');
@@ -1782,31 +1864,34 @@ function Main() {
             $(entry).data("uiAutocomplete")._renderItem = Danbooru.Autocomplete.render_item;
         });
     }
-    if ($("#c-wiki-pages,#c-wiki-page-versions").length) {
+    if (['wiki-pages','wiki-page_versions'].includes(IAC.controller)) {
         RebindAnyAutocomplete('[data-autocomplete="wiki-page"]', 'wp');
     }
-    if ($("#c-artists,#c-artist-versions,#c-artist-urls").length) {
+    if (['artists','artist-versions','artist-urls'].includes(IAC.controller)) {
         RebindAnyAutocomplete('[data-autocomplete="artist"]', 'ar');
     }
-    if ($("#c-pools,#c-pool-versions").length) {
+    if (['pools','pool-versions'].includes(IAC.controller)) {
         RebindAnyAutocomplete('[data-autocomplete="pool"]', 'pl');
     }
-    if ($("#c-posts #a-index").length) {
+    if (IAC.controller === "posts" && IAC.action === "index") {
         RebindAnyAutocomplete("#saved_search_label_string", 'ss', true);
     }
-    if ($("#c-saved-searches #a-edit").length) {
+    if (IAC.controller === "saved-searches" && IAC.action === "edit") {
         setTimeout(()=>{InitializeAutocompleteIndexed("#saved_search_label_string", 'ss', true);}, timer_poll_interval);
     }
-    if ($("#c-forum-topics").length) {
+    if (IAC.controller === "forum-topics" || IAC.controller === "forum-posts") {
         JSPLib.utility.setCSSStyle(forum_css,'forum');
-        $("#quick_search_body_matches").parent().parent().after(forum_topic_search);
+        $("#quick_search_body_matches").closest("li").after(forum_topic_search);
         setTimeout(()=>{InitializeAutocompleteIndexed("#quick_search_title_matches", 'ft');}, timer_poll_interval);
+        if (IAC.action === "search") {
+            setTimeout(()=>{InitializeAutocompleteIndexed("#search_topic_title_matches", 'ft');}, timer_poll_interval);
+        }
     }
-    if ($("#c-forum-posts #a-search").length) {
-        JSPLib.utility.setCSSStyle(forum_css,'forum');
-        setTimeout(()=>{InitializeAutocompleteIndexed("#search_topic_title_matches", 'ft');}, timer_poll_interval);
+    if (IAC.controller === "comments") {
+        $("#quick_search_body_matches").closest("li").after(post_comment_search);
+        setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, timer_poll_interval);
     }
-    if ($("#c-uploads #a-index").length || IAC.is_bur) {
+    if ((IAC.controller === "uploads" && IAC.action === "index") || IAC.is_bur) {
         $("#search_post_tags_match").attr('data-autocomplete','tag-query');
         $("#bulk_update_request_script").attr('data-autocomplete','tag-edit');
         //The initialize code doesn't work properly unless some time has elapsed after setting the attribute
@@ -1816,11 +1901,11 @@ function Main() {
         setTimeout(()=>{InitializeAutocompleteIndexed(autocomplete_user_selectors, 'us');}, timer_poll_interval);
     }
     /**Non-autocomplete bindings**/
-    if ($("#c-posts #a-show,#c-uploads #a-new").length) {
+    if ((IAC.controller === "posts" && IAC.action === "show") || (IAC.controller === "uploads" && IAC.action === "new")) {
         RebindRelatedTags();
-        if ($("#c-posts #a-show").length) {
+        if (IAC.controller === "posts") {
             RebindFindArtist();
-        } else if ($("#c-uploads #a-new").length) {
+        } else if (IAC.controller === "uploads") {
             //Is source column empty?
             if (/^\s+$/.test($(".source-related-tags-columns").html())) {
                 Main.debuglog("Setting up mutation observer for source data.");
@@ -1838,8 +1923,6 @@ function Main() {
             JSPLib.menu.installSettingsMenu("IndexedAutocomplete");
             Timer.RenderSettingsMenu();
         });
-        //Including this only during a transitory period for all scripts to be updated to the new library version
-        JSPLib.utility.setCSSStyle(menu_css,'menu');
     }
     /**Other setup**/
     JSPLib.debug.debugExecute(()=>{
@@ -1849,8 +1932,9 @@ function Main() {
     });
     //Take care of other non-critical tasks at a later time
     setTimeout(()=>{
+        PruneUsageData();
         JSPLib.storage.pruneEntries('iac',program_cache_regex,prune_expires);
-    },JSPLib.utility.one_minute);
+    },noncritical_recheck);
 }
 
 /****Function decoration****/
