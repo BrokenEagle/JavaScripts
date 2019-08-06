@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      24.0
+// @version      24.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -1337,6 +1337,9 @@ function AddUserSelected(type,metatag,term,data) {
 
 //For autocomplete select
 function InsertUserSelected(data,input,selected) {
+    if (!IAC.user_settings.usage_enabled) {
+        return;
+    }
     var type,item,term,source_data;
     //Being hamstrung by Danbooru's select function of the multi-source tag complete
     if (typeof selected === "string") {
