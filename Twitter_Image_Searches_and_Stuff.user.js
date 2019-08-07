@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      6.7
+// @version      6.8
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -238,54 +238,44 @@ const program_css = `
 #tisas-upgrade {
     color: #0073ff;
 }
-#tisas-database-version:hover,
-#tisas-install:hover,
-#tisas-upgrade:hover {
-    color: #0073ff;
-}
 .tweet .tisas-database-match,
-.tweet .tisas-iqdb-match-great {
-    color: green;
-}
 .tweet .tisas-database-match:hover,
-.tweet .tisas-iqdb-match-great:hover {
+.tweet .tisas-database-match:focus,
+.tweet .tisas-iqdb-match-great,
+.tweet .tisas-iqdb-match-great:hover,
+.tweet .tisas-iqdb-match-great:focus {
     color: green;
 }
-.tweet .tisas-iqdb-match-good {
+.tweet .tisas-iqdb-match-good,
+.tweet .tisas-iqdb-match-good:hover,
+.tweet .tisas-iqdb-match-good:focus {
     color: blue;
 }
-.tweet .tisas-iqdb-match-good:hover {
-    color: blue;
-}
-.tweet .tisas-iqdb-match-fair {
+.tweet .tisas-iqdb-match-fair,
+.tweet .tisas-iqdb-match-fair:hover,
+.tweet .tisas-iqdb-match-fair:focus {
     color: orange;
 }
-.tweet .tisas-iqdb-match-fair:hover {
-    color: orange;
-}
-.tweet .tisas-manual-add,
-.tweet .tisas-database-no-match,
-.tweet .tisas-iqdb-match-poor {
+.tweet .tisas-iqdb-match-poor,
+.tweet .tisas-iqdb-match-poor:hover,
+.tweet .tisas-iqdb-match-poor:focus {
     color: red;
 }
-.tweet .tisas-manual-add:hover,
-.tweet .tisas-database-no-match:hover,
-.tweet .tisas-iqdb-match-poor:hover {
+.tweet .tisas-manual-add,
+.tweet .tisas-manual-add:hover
+.tweet .tisas-database-no-match,
+.tweet .tisas-database-no-match:hover {
     color: red;
 }
 .tweet .tisas-check-url,
+.tweet .tisas-check-url:hover,
 .tweet .tisas-check-iqdb,
+.tweet .tisas-check-iqdb:hover,
 #tisas-current-records,
 #tisas-error-messages,
 #tisas-total-records,
 #tisas-current-fade-level,
 #tisas-current-hide-level {
-    color: grey;
-}
-.tweet .tisas-check-url:hover,
-.tweet .tisas-check-iqdb:hover,
-#tisas-current-records:hover,
-#tisas-error-messages:hover {
     color: grey;
 }
 #tisas-artist-toggle,
@@ -308,20 +298,9 @@ const program_css = `
 #tisas-enable-indicators {
     color: green;
 }
-#tisas-enable-highlights:hover,
-#tisas-enable-autoiqdb:hover,
-#tisas-enable-indicators:hover {
-    color: green;
-}
-
 #tisas-disable-highlights,
 #tisas-disable-autoiqdb,
 #tisas-disable-indicators {
-    color: red;
-}
-#tisas-disable-highlights:hover,
-#tisas-disable-autoiqdb:hover,
-#tisas-disable-indicators:hover {
     color: red;
 }
 #tisas-increase-fade-level:hover,
@@ -804,10 +783,10 @@ const load_counter = '<span id="tisas-load-message">Loading ( <span id="tisas-co
 
 const no_match_help = "no sources: L-click, manual add posts";
 const no_results_help = "no results: L-click, reset IQDB results";
-const confirm_delete_help = "postlink: L-click, delete info; R-click, open postlink";
+const confirm_delete_help = "postlink: L-click, add/delete info; R-click, open postlink";
 const confirm_iqdb_help = "postlink: L-click, confirm results; R-click open postlink";
 const iqdb_select_help = "Select posts that aren't valid IQDB matches.\nClick the colored postlink when finished to confirm.";
-const post_select_help = "Select posts for deletion by clicking the thumbnail.\nSelecting no posts is the same as selecting all posts.\nClick the colored postlink when finished to delete.";
+const post_select_help = "Select posts for deletion by clicking the thumbnail.\nLeaving the Delete all checkbox on will select all posts.\nUnsetting that checkbox allows adding posts to the current set.\nClick the colored postlink when finished to delete/add posts.";
 
 const install_database_help = "L-Click to install database.";
 const upgrade_database_help = "L-Click to upgrade database.";
@@ -1033,7 +1012,9 @@ function CorrectStringArray(name,artistlist) {
 
 //Library functions
 
-////None
+JSPLib.utility.getDOMAttributes = function ($obj,attribute,parser=(()=>{})) {
+    return $obj.map((i,entry)=>{return parser($(entry).data(attribute));}).toArray();
+};
 
 //Helper functions
 
@@ -1306,7 +1287,7 @@ function ProcessTweets($tweets,primaryfilter,append_selector,outerHTML) {
     if ($filter_tweets.length === 0) {
         return;
     }
-    let tweet_ids = $filter_tweets.map((i,entry)=>{return String($(entry).data('tweet-id'));}).toArray();
+    let tweet_ids = JSPLib.utility.getDOMAttributes($filter_tweets,'tweet-id',String);
     ProcessTweets.debuglog("Check Tweets:",tweet_ids);
     let promise_array = tweet_ids.map((tweet_id)=>{return JSPLib.storage.retrieveData('tweet-' + tweet_id,JSPLib.storage.twitterstorage);});
     Promise.all(promise_array).then((data_items)=>{
@@ -1339,7 +1320,7 @@ function GetImageLinks($tweet,is_video) {
         }
         return [];
     } else {
-        return $("[data-image-url]",$tweet).map((i,image)=>{return image.dataset.imageUrl;}).toArray();
+        return JSPLib.utility.getDOMAttributes($("[data-image-url]",$tweet),'image-url');
     }
 }
 
@@ -1366,7 +1347,7 @@ function UpdateLinkTitles() {
                 $link.attr('title',GetMultiLinkTitle(posts,false));
             }
             if (TISAS.user_settings.advanced_tooltips_enabled) {
-                let image_urls = tweet_entry.entry.find("[data-image-url]").map((i,entry)=>{return $(entry).data('image-url');}).toArray();
+                let image_urls = JSPLib.utility.getDOMAttributes(tweet_entry.entry.find("[data-image-url]"),'image-url');
                 InitializeQtip($link,tweet_id,()=>{return InitializePostsContainer(posts,image_urls);});
             }
             tweet_entry.processed = true;
@@ -1450,10 +1431,8 @@ function GetSelectPostIDs(tweet_id) {
     if (!TISAS.tweet_qtip[tweet_id]) {
         return [];
     }
-    let $all_previews = $(".tisas-post-preview",TISAS.tweet_qtip[tweet_id]);
-    let $select_previews = $all_previews.filter(".tisas-post-select")
-    let post_ids = $select_previews.map((i,entry)=>{return Number($(entry).data('id'));}).toArray();
-    return post_ids;
+    let $select_previews = $(".tisas-post-select",TISAS.tweet_qtip[tweet_id]);
+    return JSPLib.utility.getDOMAttributes($select_previews,'id',Number);
 }
 
 function SetThumbnailWait($obj,all_posts) {
@@ -1981,6 +1960,9 @@ function RenderPostsContainer(all_posts) {
     return `
 <div class="tisas-post-result">
     <h4>Danbooru matches (${RenderHelp(post_select_help)})</h4>
+    <div style="font-size:1em;margin-top:0.25em;margin-right:0.5em;float:left">Delete all</div>
+    <input checked type="checkbox" style="display:block;float:left" class="tisas-delete-all">
+    <div style="clear: left"></div>
     ${html}
 </div>
 `;
@@ -2786,10 +2768,12 @@ function ConfirmDelete(event) {
         return;
     }
     let [$link,$tweet,tweet_id,user_id,screen_name,$replace] = GetEventPreload(event,'tisas-confirm-delete');
-    let select_post_ids = GetSelectPostIDs(tweet_id);
+    let delete_all = $(".tisas-delete-all",TISAS.tweet_qtip[tweet_id]).prop('checked');
     let all_post_ids = JSPLib.storage.getStorageData('tweet-' + tweet_id,sessionStorage);
-    if (select_post_ids.length === 0) {
-        select_post_ids = all_post_ids;
+    if (delete_all) {
+        var select_post_ids = all_post_ids;
+    } else {
+        select_post_ids = GetSelectPostIDs(tweet_id);
     }
     let save_post_ids = JSPLib.utility.setDifference(all_post_ids,select_post_ids);
     let message = JSPLib.utility.sprintf(confirm_delete_prompt,select_post_ids);
