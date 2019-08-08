@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      6.8
+// @version      6.9
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -262,7 +262,7 @@ const program_css = `
     color: red;
 }
 .tweet .tisas-manual-add,
-.tweet .tisas-manual-add:hover
+.tweet .tisas-manual-add:hover,
 .tweet .tisas-database-no-match,
 .tweet .tisas-database-no-match:hover {
     color: red;
@@ -1012,7 +1012,7 @@ function CorrectStringArray(name,artistlist) {
 
 //Library functions
 
-JSPLib.utility.getDOMAttributes = function ($obj,attribute,parser=(()=>{})) {
+JSPLib.utility.getDOMAttributes = function ($obj,attribute,parser=((a)=>{return a;})) {
     return $obj.map((i,entry)=>{return parser($(entry).data(attribute));}).toArray();
 };
 
