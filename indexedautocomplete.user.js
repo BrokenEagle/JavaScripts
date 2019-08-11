@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      24.1
+// @version      24.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -1090,11 +1090,12 @@ JSPLib.danbooru.isSettingMenu = function () {
 //Helper functions
 
 function RemoveTerm(str,index) {
+    str = " " + str + " ";
     let first_slice = str.slice(0, index);
     let second_slice = str.slice(index);
     let first_space = first_slice.lastIndexOf(' ');
     let second_space = second_slice.indexOf(' ');
-    return first_slice.slice(0, first_space) + second_slice.slice(second_space);
+    return (first_slice.slice(0, first_space) + second_slice.slice(second_space)).slice(1,-1);
 }
 
 function GetPrefix(str) {
