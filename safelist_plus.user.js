@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SafelistPlus
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.2
+// @version      3.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Alternate Danbooru blacklist handler
 // @author       BrokenEagle
@@ -1451,7 +1451,6 @@ function SetOtherSectionsClick() {
         $("#show-posts-link,#show-excerpt-link").on('click.sl',(event)=>{
             $("#display-safelist-settings").parent().removeClass('active');
             $('#safelist-settings').hide();
-            event.preventDefault();
         });
     }
 }
@@ -1558,7 +1557,10 @@ function ReloadSafelist(changed_settings,changed_menus) {
             let changed_value = changed_settings[level];
             let value = SL.level_data[level];
             for (let key in changed_value) {
-                if (SL.enabled_safelist && (SL.active_list === level)) {
+                if (key === 'list') {
+                    delete SL.post_lists[level];
+                }
+                if (SL.enable_safelist && (SL.active_list === level)) {
                     if (key === 'list') {
                         SetActiveList(level, 'pending');
                         SignalActiveList(true);
