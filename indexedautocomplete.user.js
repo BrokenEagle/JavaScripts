@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      24.2
+// @version      24.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -1194,6 +1194,7 @@ function FixupMetatag(value,metatag) {
             value.label = value.name.replace(/_/g, " ");
             break;
         default:
+            metatag = metatag.replace(/:$/,'');
             value.value = metatag + ":" + value.name;
             value.label = value.name.replace(/_/g, " ");
     }
