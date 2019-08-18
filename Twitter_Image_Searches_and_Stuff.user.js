@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      6.9
+// @version      6.10
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -2195,7 +2195,7 @@ function InitializeDownloadLinks($tweet) {
 function InitializeUploadlinks() {
     let $popup_tweets = $(".Tweet--invertedColors:not([tisas])");
     $popup_tweets.each((i,entry)=>{
-        let $media_image = $(".media-image");
+        let $media_image = $(".media-image").map((i,entry)=>{return (entry.tagName === "IMG" ? entry : $(entry).find('img')[0]);});
         if ($media_image.length) {
             let image_url = $media_image[0].src.replace(/:(small|medium|large|orig)/,'') + ':orig';
             let tweet_url = "https://twitter.com" + $(entry).data('permalink-path');
