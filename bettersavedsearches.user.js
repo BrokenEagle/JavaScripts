@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         BetterSavedSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.0
+// @version      5.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Provides an alternative mechanism and UI for saved searches
 // @author       BrokenEagle
@@ -15,6 +15,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/load.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/validate.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/statistics.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/concurrency.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/storage.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/danbooru.js
@@ -198,6 +199,10 @@ const saved_search_box = `
         (
             <a id="bss-reset-position" style="color:red;font-weight:bold"  title="Click to reset position to latest post.">X</a>
         )
+    </div>
+    <div id="bss-seed-velocity" style="font-size:75%">
+        <span style="font-weight:bold">Reseeds/day:</span>
+        <span id="bss-seeds-day">...</span>
     </div>
     <a id="toggle-bss-saved-searches" href="#">Toggle List</a>
 </section>`;
@@ -400,6 +405,8 @@ const bss_menu = `
 
 //Other constants
 
+const random_ratio = 1000;
+
 //At around 1000 the URI becomes too long and errors out on Danbooru
 //At around 500 Hijiribe/Sonohara refuses the connection
 const html_query_size = 500;
@@ -441,34 +448,48 @@ const FREE_TAGS = /$(-?status:deleted|rating:s.*|limit:.+)$/i
 
 //Validation constants
 
+const basic_integer_validator = {
+    func: Number.isInteger,
+    type: "integer"
+};
+const basic_stringonly_validator = {
+    func: JSPLib.validate.isString,
+    type: "string"
+};
+
 const query_constraints = {
     queries: JSPLib.validate.array_constraints,
     queryentry: {
         id: JSPLib.validate.integer_constraints,
+        tags: JSPLib.validate.stringonly_constraints,
+        original: JSPLib.validate.stringnull_constraints,
         checked: JSPLib.validate.integer_constraints,
         expires: JSPLib.validate.integer_constraints,
         seeded: JSPLib.validate.integer_constraints,
         updated: JSPLib.validate.integer_constraints,
         posts: JSPLib.validate.array_constraints,
         unseen: JSPLib.validate.array_constraints,
-        exclude: JSPLib.validate.array_constraints,
-        optional: JSPLib.validate.array_constraints,
         require: JSPLib.validate.array_constraints,
+        optional: JSPLib.validate.array_constraints,
+        exclude: JSPLib.validate.array_constraints,
         labels: JSPLib.validate.array_constraints,
-        tags: JSPLib.validate.stringonly_constraints,
-        original: JSPLib.validate.stringnull_constraints,
-        disabled: JSPLib.validate.boolean_constraints,
+        metatags: JSPLib.validate.boolean_constraints,
         dirty: JSPLib.validate.boolean_constraints,
+        disabled: JSPLib.validate.boolean_constraints,
         duplicate: JSPLib.validate.boolean_constraints,
-        metatags: JSPLib.validate.boolean_constraints
+        successrate: JSPLib.validate.number_constraints
     },
-    postdata: JSPLib.validate.integer_constraints,
-    tagdata: JSPLib.validate.stringonly_constraints
+    inclusiondata: ['exclude', 'optional', 'require'],
+    typedata: {
+        posts: basic_integer_validator,
+        unseen: basic_integer_validator,
+        labels: basic_stringonly_validator,
+    }
 };
 
 const relation_constraints = {
     entry: JSPLib.validate.arrayentry_constraints(),
-    value: JSPLib.validate.stringonly_constraints
+    value: basic_stringonly_validator
 };
 
 const pool_constraints = {
@@ -518,28 +539,68 @@ function ValidatePoolEntry(key,entry) {
     return true;
 }
 
-function ValidateQueries(key,queries) {
-    if (!JSPLib.validate.validateIsArray(key, queries)) {
-        return false;
+function ValidateQueries(query_container) {
+    let error_messages = [];
+    let queries = query_container.entries;
+    if (!Array.isArray(queries)) {
+        error_messages.push("Queries data is not an array.");
+        query_container.entries = [];
+        return error_messages;
     }
-    for (let i = 0;i < queries.length;i++){
-        let itemkey = key + `[${i}]`;
-        if (!JSPLib.validate.validateIsHash(itemkey, queries[i])) {
-            return false
+    for (let i = queries.length - 1; i >= 0; i--){
+        let itemkey = `queries[${i}]`;
+        let query = queries[i];
+        if (!JSPLib.validate.isHash(query)) {
+            error_messages.push({[itemkey]: "Query is not a hash."});
+            queries.splice(i,1);
+            continue;
         }
-        if (!JSPLib.validate.validateHashEntries(itemkey, queries[i], query_constraints.queryentry)) {
-            return false;
+        let check_tags = query.tags || query.original;
+        if (!check_tags || !JSPLib.validate.isString(check_tags)) {
+            error_messages.push({[itemkey]: "No tags in query."});
+            queries.splice(i,1);
+            continue;
         }
-        if (!JSPLib.validate.validateArrayValues(itemkey + '.posts', queries[i].posts, query_constraints.postdata) ||
-            !JSPLib.validate.validateArrayValues(itemkey + '.unseen', queries[i].unseen, query_constraints.postdata) ||
-            !JSPLib.validate.validateArrayValues(itemkey + '.exclude', queries[i].exclude, query_constraints.tagdata) ||
-            !JSPLib.validate.validateArrayValues(itemkey + '.optional', queries[i].optional, query_constraints.tagdata) ||
-            !JSPLib.validate.validateArrayValues(itemkey + '.require', queries[i].require, query_constraints.tagdata) ||
-            !JSPLib.validate.validateArrayValues(itemkey + '.labels', queries[i].labels, JSPLib.validate.stringonly_constraints)) {
-            return false;
+        let parse_query = ParseQuery(check_tags);
+        let check = validate(query, query_constraints.queryentry);
+        if (check !== undefined) {
+            error_messages.push({[itemkey]: check});
+            for (let key in check) {
+                query[key] = parse_query[key];
+            }
+        }
+        let bad_keys = JSPLib.utility.setDifference(Object.keys(query),Object.keys(query_constraints.queryentry));
+        if (bad_keys.length) {
+            error_messages.push({[itemkey]: ["Bad keys found.", bad_keys]});
+            bad_keys.forEach((key)=>{delete query[key];});
+        }
+        for (let key in query_constraints.typedata) {
+            let check_messages = JSPLib.validate.correctArrayValues(`${itemkey}.${key}`,query[key],query_constraints.typedata[key]);
+            error_messages.push(...check_messages);
+        }
+        query_constraints.inclusiondata.forEach((key)=>{
+            let differences = JSPLib.utility.setSymmetricDifference(query[key],parse_query[key]);
+            if (differences.length) {
+                error_messages.push({[`${itemkey}.${key}`]: ["Missing/extra tags found.",differences]});
+                query[key] = parse_query[key];
+            }
+        });
+        if (error_messages.length) {
+            query.dirty = true;
         }
     }
-    return true;
+    return error_messages;
+}
+
+function CorrectQueries(entry) {
+    let error_messages = ValidateQueries(entry);
+    if (error_messages.length) {
+        CorrectQueries.debuglog("Corrections to queries detected!");
+        error_messages.forEach((error)=>{CorrectQueries.debuglog(JSON.stringify(error,null,2))});
+        BSS.dirty = true;
+    } else {
+        CorrectQueries.debuglog("Query data is valid.");
+    }
 }
 
 function ValidatePostTimeEntry(key,entry) {
@@ -594,6 +655,8 @@ function ValidateProgramData(key,entry) {
                 checkerror = ["Value is not an integer."];
             }
             break;
+        case 'bss-seed-rate':
+            return JSPLib.validate.validateArrayValues(key,entry,basic_integer_validator);
         default:
             checkerror = ["Not a valid program data key."];
     }
@@ -620,6 +683,63 @@ JSPLib.utility.isScrolledIntoView = function(elem) {
     let elemTop = $(elem).offset().top;
     let elemBottom = elemTop + $(elem).height();
     return ((elemBottom <= docViewBottom) && (elemTop >= docViewTop));
+};
+
+JSPLib.validate.validateArrayValues = function(key,array,validator) {
+    let invalid_items = array.map((item,i)=>{return (validator.func(item) ? undefined : [i,item]);}).filter(Array.isArray);
+    if (invalid_items.length) {
+        invalid_items.forEach((entry)=>{
+            let display_key = `${key}[${entry[0]}]:`;
+            let display_item = JSON.stringify(entry[1]);
+            JSPLib.debug.debuglog(display_key,`${display_item} is not a valid ${validator.type}!`);
+        });
+        return false;
+    }
+    return true;
+};
+
+JSPLib.validate.correctArrayValues = function(key,array,validator) {
+    let error_messages = [];
+    for (let i = array.length - 1; i >= 0; i--) {
+        if (!validator.func(array[i])) {
+            error_messages.push({[`${key}[${i}]`]: `${array[i]} is not a valid ${validator.type}.`});
+            array.splice(i,1);
+        }
+    }
+    return error_messages;
+};
+
+JSPLib.concurrency.checkTimeout = function (storage_key,expires_time,storage=localStorage) {
+    let expires = JSPLib.storage.getStorageData(storage_key,storage,0);
+    return !JSPLib.concurrency._validateExpires(expires,expires_time);
+};
+
+JSPLib.concurrency.setRecheckTimeout = function (storage_key,expires_time,storage=localStorage) {
+    JSPLib.storage.setStorageData(storage_key,JSPLib.concurrency._getExpiration(expires_time),storage);
+};
+
+JSPLib.utility.setDifference = function (array1,array2) {
+    let set2 = new Set(array2);
+    return JSPLib.utility.setUnique(array1.filter(x => !set2.has(x)));
+};
+
+JSPLib.utility.setIntersection = function (array1,array2) {
+    let set2 = new Set(array2);
+    return JSPLib.utility.setUnique(array1.filter(x => set2.has(x)));
+};
+
+JSPLib.utility.isSubset = function (array1,array2) {
+    let set1 = new Set(array1);
+    return array2.every(x => set1.has(x));
+};
+
+JSPLib.utility.hasIntersection = function (array1,array2) {
+    let set1 = new Set(array1);
+    return array2.some(x => set1.has(x));
+};
+
+JSPLib.danbooru.isSettingMenu = function () {
+    return document.body.dataset.controller === "users" && document.body.dataset.action === "edit";
 };
 
 //Helper functions
@@ -756,6 +876,31 @@ function TimeAgo(timestamp) {
     }
 }
 
+function GetTabID() {
+    let tab_id = JSPLib.storage.getStorageData('bss-tab-id',sessionStorage);
+    if (!tab_id) {
+        tab_id = JSPLib.utility.getUniqueID();
+        JSPLib.storage.setStorageData('bss-tab-id',tab_id,sessionStorage);
+    }
+    return tab_id;
+}
+
+function GetSeedRate() {
+    let stored_rate = JSPLib.storage.checkStorageData('bss-seed-rate',ValidateProgramData,localStorage,[]);
+    let filtered_rate = stored_rate.filter((timestamp)=>{return (Date.now() - timestamp) < JSPLib.utility.one_day;});
+    if (stored_rate.length !== filtered_rate.length) {
+        JSPLib.storage.setStorageData('bss-seed-rate',filtered_rate,localStorage);
+    }
+    return filtered_rate;
+}
+
+function GetSearchPosts() {
+    if ('bss-search-posts' in sessionStorage) {
+        return JSPLib.storage.checkStorageData('bss-search-posts',ValidateProgramData,sessionStorage,[]);
+    }
+    return [];
+}
+
 function WasOverflow() {
     return JSPLib.storage.checkStorageData('bss-overflow',ValidateProgramData,localStorage,false);
 }
@@ -763,11 +908,12 @@ function WasOverflow() {
 //Storage functions
 
 async function LoadBSSEntries() {
-    BSS.entries = await JSPLib.storage.retrieveData('bss-queries');
-    if (!ValidateQueries('bss-queries',BSS.entries)) {
-        BSS.entries = [];
-        BSS.dirty = true;
+    if (('bss-heartbeat' in sessionStorage) && JSPLib.concurrency.checkTimeout('bss-heartbeat', JSPLib.utility.one_minute * 5, sessionStorage)) {
+        LoadBSSEntries.debuglog("Window timeout detected! Removing stale data...");
+        sessionStorage.removeItem('bss-queries');
     }
+    BSS.entries = await JSPLib.storage.retrieveData('bss-queries');
+    CorrectQueries(BSS);
 }
 
 async function StoreBSSEntries() {
@@ -802,18 +948,22 @@ function RenderSavedSearchLabel(label) {
     let label_queries = QueryFilter((entry)=>{return ChooseLabel(entry,label);}).sort((a,b)=>{return a.tags.localeCompare(b.tags);});
     label_queries.forEach((query)=>{
         let options = SetLineOptions(query);
-        let timestring = new Date(query.checked).toLocaleString()
-        let preicon_html = `<span class="ui-icon ui-icon-calendar" title="${timestring}"></span>`;
+        let checked_timestring = new Date(query.checked).toLocaleString();
+        let seeded_timestring = new Date(query.seeded).toLocaleString();
+        let title_string = `
+ Last found: ${checked_timestring}
+Last seeded: ${seeded_timestring}`.trim('\n');
+        let preicon_html = `<span class="ui-icon ui-icon-calendar" title="${title_string}"></span>`;
         let query_string = (query.original ? query.original : query.tags);
         let pool_ids = GetPoolIDs(query_string);
-        posthtml += RenderQueryLine("bss-detailed-query",query,options,pool_ids,preicon_html,query_string,query_string,true) + '\n        </li>';
+        posthtml += RenderQueryLine("bss-detailed-query",query,options,pool_ids,preicon_html,query_string,query_string,true) + '\n</li>';
     });
     let label_entry = GetLabelEntry(label);
     let label_options = SetLineOptions(label_entry);
     let preicon_html = `<a class="ui-icon collapsible-saved-search-links ui-icon-triangle-1-e"></a>`;
     let prehtml = RenderQueryLine("bss-label-query",label_entry,label_options,[],preicon_html,label,`search:${label}`,false);
     let display = (GetLabelActive(label) ? "" : "display:none");
-    return prehtml + `\n    <ul style="${display}">` + posthtml + `\n    </ul>\n</li>`;
+    return prehtml + `\n<ul style="${display}">` + posthtml + `\n</ul>\n</li>`;
 }
 
 function SetLineOptions(entry) {
@@ -828,7 +978,6 @@ function SetLineOptions(entry) {
 }
 
 function RenderQueryLine(classname,entry,options,pool_ids,preicon_html,linetext,linksearch,detailed) {
-    let spacing = (detailed ? '        ' : '');
     let data_pools = (pool_ids.length ? ` data-pools="${pool_ids.join(',')}"` : '');
     return `
 <li class="${classname}${options.active_class}${options.disabled_class}${options.metatag_class}" data-id="${entry.id}"${data_pools}>
@@ -839,7 +988,7 @@ function RenderQueryLine(classname,entry,options,pool_ids,preicon_html,linetext,
         <span class="bss-count" style="${options.count_enabled}">(<a title="${entry.posts.length}">${entry.unseen.length}</a>)</span>
         <span class="bss-clear" style="${options.clear_enabled}"><a title="${entry.posts.length}">X</a></span>
         <span class="bss-reset" style="${options.reset_enabled}"><a class="ui-icon ui-icon-arrowrefresh-1-w"></a></span>
-    </span>`.replace(/\n/g,'\n'+spacing);
+    </span>`;
 }
 
 ////#C-SAVED-SEARCHES #A-INDEX
@@ -952,6 +1101,7 @@ function InitializeUI() {
     let timeagostring = (timestamp ? ((Date.now() - timestamp) < JSPLib.utility.one_minute * 10 ? "Up to date" : TimeAgo(timestamp)) : "ERROR");
     $("#bss-time-ago").text(timeagostring);
     ResetPosition();
+    $("#bss-seeds-day").text(BSS.seed_rate.length);
 }
 
 function RecalculateTree() {
@@ -1353,18 +1503,24 @@ async function LoadProfilePostsInterval() {
 
 function ParseQuery(string) {
     let entry = {
-        "tags": string,
-        "require": [],
-        "optional": [],
-        "exclude": [],
-        "posts": [],
-        "unseen": [],
-        "metatags": false,
-        "dirty": false,
-        "disabled": false,
-        "expires": 0,
-        "duplicate": false,
-        "original": null
+        id: JSPLib.utility.getUniqueID(), //Only used for validate errors
+        tags: string,
+        original: null,
+        checked: 0,
+        expires: 0,
+        seeded: 0,
+        updated: 0,
+        posts: [],
+        unseen: [],
+        require: [],
+        optional: [],
+        exclude: [],
+        labels: [],
+        metatags: false,
+        dirty: false,
+        disabled: false,
+        duplicate: false,
+        successrate: 0.0
     };
     let matches = string.match(/\S+/g) || [];
     let total_tags = 0;
@@ -1407,11 +1563,26 @@ async function SeedQuery(query,merge=false) {
     let post_ids = JSPLib.utility.getObjectAttributes(posts,'id');
     if (post_ids.length) {
         if (merge) {
-            let unseen_posts = JSPLib.utility.setDifference(post_ids,query.posts);
-            SeedQuery.debuglog("Merge:",query.tags,unseen_posts);
-            if (unseen_posts.length) {
-                query.unseen = NormalizePostsSlice(query.unseen.concat(unseen_posts));
-                query.posts = NormalizePostsSlice(query.posts.concat(post_ids));
+            let post_range = query.posts.filter((postid)=>{return ((postid <= post_ids[0]) && (postid >= post_ids[post_ids.length - 1]));});
+            let false_positives = JSPLib.utility.setDifference(post_range,post_ids);
+            let false_negatives = JSPLib.utility.setDifference(post_ids,post_range);
+            SeedQuery.debuglog("Merge:",query.tags);
+            SeedQuery.debuglog("False positives:",false_positives);
+            SeedQuery.debuglog("False negatives:",false_negatives);
+            if (false_positives.length) {
+                query.unseen = NormalizePosts(JSPLib.utility.setDifference(query.unseen,false_positives));
+                query.posts = NormalizePosts(JSPLib.utility.setDifference(query.posts,false_positives));
+            }
+            if (false_negatives.length) {
+                query.unseen = NormalizePostsSlice(query.unseen.concat(false_negatives));
+                query.posts = NormalizePostsSlice(query.posts.concat(false_negatives));
+            }
+            if (false_positives.length || false_negatives.length) {
+                let hour_distance = (Date.now() - query.seeded) / JSPLib.utility.one_hour;
+                let successes_hour = (false_positives.length + false_negatives.length) / hour_distance;
+                query.successrate = Math.abs(successes_hour) + Math.abs(query.successrate);
+            } else {
+                query.successrate /= 2;
             }
         } else {
             query.posts = post_ids;
@@ -1443,26 +1614,47 @@ function MergeQuery(oldquery,newquery) {
     oldquery.dirty = true;
 }
 
-//Select a query with a higher weight towards those with an older seed time
+//Select a query with a higher weight towards:
+//- those with an older seed times
+//- those with a higher post velocity
+//- those with a higher success rate
 function ChooseRandomQuery() {
-    let random_distance = {};
-    let total_distance = 0;
+    let random_choice = {};
+    let total_post_distance = 0;
+    let total_seed_distance = 0;
+    let total_success_distance = 0;
+    let last_post = JSPLib.storage.checkStorageData('bss-first-pass-resume',ValidateProgramData,localStorage);
+    if (!last_post) {
+        return false;
+    }
     QueryIterator((entry)=>{
         if (entry.disabled || entry.metatags) {
             return;
         }
-        let distance = Date.now() - entry.seeded;
-        total_distance += distance;
-        random_distance[entry.id] = {delta: distance};
+        //Get the distance for the last 10 posts
+        let post_distances = entry.posts.map((postid)=>{return last_post - postid;}).slice(0,10);
+        //Inverting the metric so that smaller distnces are favored
+        let post_distance_metric = 1 / JSPLib.statistics.average(post_distances);
+        total_post_distance += post_distance_metric;
+        //Not inverting the metric to favor larger time distances
+        let seed_distance_metric = Date.now() - entry.seeded;
+        total_seed_distance += seed_distance_metric;
+        let success_distance_metric = Math.abs(entry.successrate);
+        total_success_distance += success_distance_metric;
+        random_choice[entry.id] = {entry: entry, post_distance: post_distance_metric, seed_distance: seed_distance_metric, success_distance: success_distance_metric};
     });
     let total_spread = 0;
-    for (let key in random_distance) {
-        let entry = random_distance[key];
+    for (let key in random_choice) {
+        let entry = random_choice[key];
+        entry.seed_distance = (total_seed_distance ? entry.seed_distance * random_ratio / total_seed_distance : 0);
+        entry.post_distance = (total_post_distance ? entry.post_distance * random_ratio / total_post_distance : 0);
+        entry.success_distance = (total_success_distance ? entry.success_distance * random_ratio / total_success_distance : 0);
+        entry.combined = Math.round(entry.seed_distance + entry.post_distance + entry.success_distance);
         entry.begin = total_spread;
-        entry.end = total_spread + Math.floor(1000 * (entry.delta / total_distance));
+        entry.end = total_spread + entry.combined;
         total_spread = entry.end;
-    };
-    BSS.random_distance = random_distance;
+    }
+    BSS.random_choice = random_choice;
     BSS.total_spread = total_spread;
     let random_pick = BSS.random_pick = Math.floor(total_spread * Math.random());
     let random_entry = null;
@@ -1471,7 +1663,8 @@ function ChooseRandomQuery() {
             return;
         }
         let id = entry.id;
-        if ((random_pick >= random_distance[id].begin) && (random_pick < random_distance[id].end)) {
+        if ((random_pick >= random_choice[id].begin) && (random_pick < random_choice[id].end)) {
+            BSS.random_chosen = random_choice[id];
             random_entry = entry;
             return false;
         }
@@ -1480,13 +1673,13 @@ function ChooseRandomQuery() {
 }
 
 function CheckPost(tags,query) {
-    if (query.require.length && JSPLib.utility.setIntersection(tags,query.require).length != query.require.length) {
+    if (query.require.length && !JSPLib.utility.isSubset(tags,query.require)) {
         return false;
     }
-    if (query.optional.length && JSPLib.utility.setIntersection(tags,query.optional).length === 0) {
+    if (query.optional.length && !JSPLib.utility.hasIntersection(tags,query.optional)) {
         return false;
     }
-    if (query.exclude.length && JSPLib.utility.setIntersection(tags,query.exclude).length > 0) {
+    if (query.exclude.length && JSPLib.utility.hasIntersection(tags,query.exclude)) {
         return false;
     }
     return true;
@@ -1541,12 +1734,12 @@ async function UnaliasBSSEntries() {
     let alias_entries = found_tags.map((tag)=>{return {[tag]: []};});
     let missing_tags = JSPLib.utility.setDifference(all_tags,found_tags);
     if (missing_tags.length) {
-        let network_aliases = await Promise.all(all_tags.map((tag)=>{return QueryTagAlias(tag);}))
+        let network_aliases = await Promise.all(missing_tags.map((tag)=>{return QueryTagAlias(tag);}))
         alias_entries = alias_entries.concat(network_aliases);
     }
     //Convert array of hashes into one hash
     let tag_aliases = alias_entries.reduce((a,b)=>{return Object.assign(a,b);});
-    let change_tags = all_tags.reduce((changes,tag)=>{return (tag != GetLastConsequent(tag,tag_aliases) ? changes.concat(tag) : changes);},[]);
+    let change_tags = missing_tags.reduce((changes,tag)=>{return (tag != GetLastConsequent(tag,tag_aliases) ? changes.concat(tag) : changes);},[]);
     if (!change_tags.length) {
         UnaliasBSSEntries.debuglog("No tags to unalias!")
         return;
@@ -1620,7 +1813,7 @@ function ProcessPosts(posts) {
     let all_tags = GetAllTags();
     posts.forEach((post)=>{
         let post_tags = GeneratePostTags(post);
-        if (JSPLib.utility.setIntersection(all_tags,post_tags).length > 0) {
+        if (JSPLib.utility.hasIntersection(all_tags,post_tags)) {
             QueryIterator((query)=>{
                 if (query.metatags || query.posts.includes(post.id)) {
                     return;
@@ -1742,6 +1935,8 @@ async function RandomQueryRecheck() {
             let query = ChooseRandomQuery();
             if (query) {
                 await SeedQuery(query,true);
+                BSS.seed_rate.push(Date.now());
+                JSPLib.storage.setStorageData('bss-seed-rate',BSS.seed_rate,localStorage);
             }
         }
         JSPLib.concurrency.setRecheckTimeout('bss-query-recheck-expires',expires_interval);
@@ -1916,21 +2111,26 @@ async function Main() {
         return;
     }
     Danbooru.BSS = BSS = {
+        controller: document.body.dataset.controller,
+        action: document.body.dataset.action,
         dirty: false,
         user_limit: MaximumTagQueryLimit(),
-        is_post_index: Boolean($("#c-posts #a-index").length),
-        is_post_show: Boolean($("#c-posts #a-show").length),
-        is_searches_index: Boolean($("#c-saved-searches #a-index").length),
+        search_posts: GetSearchPosts(),
+        tab_id: GetTabID(),
+        seed_rate: GetSeedRate(),
+        is_setting_menu: JSPLib.danbooru.isSettingMenu(),
         storage_keys: {indexed_db: [], local_storage: []},
-        is_settings_menu: Boolean($("#c-users #a-edit").length),
-        is_profile_page: Boolean($("#c-users #a-show").length) && parseInt(JSPLib.utility.getMeta('current-user-id')) === JSPLib.danbooru.getShowID(),
-        search_posts: JSPLib.storage.checkStorageData('bss-search-posts',ValidateProgramData,sessionStorage,[]),
-        tab_id: JSPLib.storage.getStorageData('bss-tab-id',sessionStorage),
         settings_config: settings_config,
         channel: new BroadcastChannel('BetterSavedSearches')
     };
-    BSS.user_settings = JSPLib.menu.loadUserSettings('bss');
-    if (BSS.is_settings_menu) {
+    Object.assign(BSS, {
+        is_post_index: BSS.controller === "posts" && BSS.action === "index",
+        is_post_show: BSS.controller === "posts" && BSS.action === "show",
+        is_searches: BSS.controller === "saved-searches" && BSS.action === "index",
+        is_profile_page: BSS.controller === "users" && BSS.action === "show" && parseInt(JSPLib.utility.getMeta('current-user-id')) === JSPLib.danbooru.getShowID(),
+        user_settings: JSPLib.menu.loadUserSettings('bss')
+    });
+    if (BSS.is_setting_menu) {
         JSPLib.validate.dom_output = "#bss-cache-editor-errors";
         JSPLib.menu.loadStorageKeys('bss',program_cache_regex);
         JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
@@ -1944,11 +2144,7 @@ async function Main() {
     }
     BSS.timeout_expires = BSS.user_settings.recheck_interval * JSPLib.utility.one_minute;
     BSS.channel.onmessage = BSSBroadcast;
-    if (!BSS.tab_id) {
-        BSS.tab_id = JSPLib.utility.getUniqueID();
-        JSPLib.storage.setStorageData('bss-tab-id',BSS.tab_id,sessionStorage);
-    }
-    if (BSS.is_post_index || BSS.is_post_show) {
+    if (BSS.controller === "posts") {
         if (location.search) {
             let parse = JSPLib.utility.parseParams(location.href.split('?')[1]);
             BSS.active_query = parse.bss;
@@ -2002,7 +2198,7 @@ async function Main() {
         await StoreBSSEntries();
         JSPLib.concurrency.setRecheckTimeout('bss-timeout',BSS.timeout_expires);
         JSPLib.concurrency.freeSemaphore('bss');
-    } else if (BSS.is_post_index || BSS.is_post_show || BSS.is_searches_index || BSS.is_profile_page) {
+    } else if (BSS.controller === "posts" || BSS.is_searches_index || BSS.is_profile_page) {
         await Timer.LoadBSSEntries();
         BSS.initialized = Boolean(BSS.entries.length);
     }
@@ -2023,6 +2219,9 @@ async function Main() {
     }
     //Take care of other non-critical tasks at a later time
     setTimeout(()=>{
+        JSPLib.utility.initializeInterval(()=>{
+            JSPLib.concurrency.setRecheckTimeout('bss-heartbeat', JSPLib.utility.one_minute * 5, sessionStorage);
+        },JSPLib.utility.one_minute);
         CheckUserSavedSearches().then(()=>{
             Timer.NormalizeBSSEntries();
         });
@@ -2043,7 +2242,8 @@ JSPLib.debug.addFunctionTimers(Timer,true,[
 JSPLib.debug.addFunctionLogs([
     Main,BSSBroadcast,InitializeUI,CheckUserSavedSearches,DailyMetatagRecheck,RandomQueryRecheck,SecondaryPass,InitialPass,
     NormalizeBSSEntries,SeedQuery,StoreBSSEntries,ValidateEntry,RemoveDuplicateBSSEntries,ReplacePoolNamesWithIDs,UnaliasBSSEntries,
-    UpdateQuery,BSSLinkHover,ResetClick,ClearClick,SearchClick,QueryTagAlias,RefreshLinkCount,RecalculateLine,RecalculateTree
+    UpdateQuery,BSSLinkHover,ResetClick,ClearClick,SearchClick,QueryTagAlias,RefreshLinkCount,RecalculateLine,RecalculateTree,
+    LoadBSSEntries,CorrectQueries
 ]);
 
 /****Execution start****/
