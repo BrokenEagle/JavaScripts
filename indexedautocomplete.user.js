@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      24.3
+// @version      24.4
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -1309,12 +1309,12 @@ function GetChoiceOrder(type,query) {
 }
 
 function AddUserSelected(type,metatag,term,data) {
+    IAC.shown_data = [];
     let order = IAC.choice_order[type];
     let choice = IAC.choice_data[type];
     if (!order || !choice) {
         return;
     }
-    IAC.shown_data = [];
     let user_order = GetChoiceOrder(type, term);
     for (let i = user_order.length - 1; i >= 0; i--) {
         let checkterm = (['','@'].includes(metatag) ? metatag + user_order[i] : metatag + ':' + user_order[i]);
