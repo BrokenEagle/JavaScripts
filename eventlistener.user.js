@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      15.0
+// @version      15.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools)
 // @author       BrokenEagle
@@ -1356,7 +1356,7 @@ function InitializePoolIndexLinks($obj) {
 //#C-POOLS #A-GALLERY
 function InitializePoolGalleryLinks() {
     $(`.post-preview > a`).each((i,entry)=>{
-        let poolid = entry.href.match(/\/pools\/(\d+)/)[1];
+        let poolid = parseInt(entry.href.match(/\/pools\/(\d+)/)[1]);
         let linkhtml = RenderSubscribeDualLinks('pool',poolid,"div"," ","pool");
         let shownhtml = (IsEventEnabled('pool') ? '' : 'style="display:none"');
         $(entry).before(`<div class="el-subscribe-pool-container "${shownhtml}>${linkhtml}</div>`);
