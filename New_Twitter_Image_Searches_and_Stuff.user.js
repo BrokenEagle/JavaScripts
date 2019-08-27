@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
-// @version      1.0
+// @version      1.1
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/New_Twitter_Image_Searches_and_Stuff.user.js
@@ -383,6 +383,7 @@ const program_css = `
     font-family: ${font_family};
 }
 .tisas-links a {
+    cursor: pointer;
     text-decoration: none;
 }
 .tisas-links a:hover {
@@ -689,6 +690,7 @@ const menu_css = `
 }
 #twitter-image-searches-and-stuff {
     z-index: 1001;
+    font-size: 14px;
 }
 #twitter-image-searches-and-stuff p {
     margin-bottom: 1em;
@@ -696,16 +698,19 @@ const menu_css = `
 #twitter-image-searches-and-stuff h4 {
     font-size: 1.16667em;
     line-height: 1.5em;
+    margin: 0;
 }
 #twitter-image-searches-and-stuff .prose h2 {
     font-size: 1.8em;
     padding: .8em 0 .25em;
     line-height: 1em;
     color: black;
+    margin: 0;
 }
 #twitter-image-searches-and-stuff .prose h4 {
     font-size: 1.4em;
     padding: .8em 0 .25em;
+    margin: 0;
 }
 #twitter-image-searches-and-stuff a {
     color:#0073ff
@@ -1336,6 +1341,10 @@ function GetNormalImageURL(image_url) {
         match = image_url.match(/^https:\/\/pbs\.twimg\.com\/ext_tw_video_thumb\/(\d+)\/(\w+)\/img\/([^.?]+)/);
         if (match && format.length !== 0) {
             return `https://pbs.twimg.com/ext_tw_video_thumb/${match[1]}/${match[2]}/img/${match[3]}.jpg`;
+        }
+        match = image_url.match(/^https:\/\/pbs\.twimg\.com\/amplify_video_thumb\/(\d+)\/img\/([^.?]+)/);
+        if (match && format.length !== 0) {
+            return `https://pbs.twimg.com/amplify_video_thumb/${match[1]}/img/${match[2]}.jpg`;
         }
         return null;
 }
@@ -3599,7 +3608,7 @@ function ProcessNewTweets() {
 
 function AdjustColorScheme() {
     let $tweet_button = $("[data-testid=SideNav_NewTweet_Button]");
-    let $home_button = $('[data-testid=AppTabBar_Home_Link] > div > div').filter((i,entry) => entry.children[0].tagName === "SPAN");
+    let $home_button = $('[data-testid=AppTabBar_More_Menu] > div > div').filter((i,entry) => entry.children[0].tagName === "SPAN");
     if ($tweet_button.length && $home_button.length) {
         TISAS.base_color = getComputedStyle($tweet_button[0]).backgroundColor.match(/\d+/g);
         TISAS.text_color = getComputedStyle($home_button[0]).color.match(/\d+/g);
