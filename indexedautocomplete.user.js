@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      24.4
+// @version      24.5
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -1499,6 +1499,9 @@ async function RelatedTagsButton(event) {
     } else {
         RelatedTagsButton.debuglog("Querying relatedtag:", currenttag, category);
         var data = await JSPLib.danbooru.submitRequest('related_tag', {query: currenttag, category: category});
+        if (!data) {
+            return;
+        }
         //inclusion_constraints doesn't allow for null...yet
         data.category = category;
         JSPLib.storage.saveData(key, {value: data, expires: JSPLib.utility.getExpiration(MinimumExpirationTime('relatedtag'))});
