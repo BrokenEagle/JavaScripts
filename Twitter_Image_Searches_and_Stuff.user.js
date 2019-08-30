@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      7.0
+// @version      7.1
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -1133,7 +1133,7 @@ function WasOverflow() {
 }
 
 function DisplayHighlights() {
-    return TISAS.user_settings.score_highlights_enabled && (TISAS.page === "media" || (TISAS.page === "search" && TISAS.account && TISAS.queries.filter === "images"));
+    return TISAS.user_settings.score_highlights_enabled && IsMediaTimeline();
 }
 
 function MapPostData(posts) {
@@ -1651,28 +1651,36 @@ function GetPageType() {
 }
 
 function UpdateHighlightControls() {
-    if (TISAS.user_id) {
+    if (TISAS.user_id && IsMediaTimeline()) {
         let no_highlight_list = GetList('no-highlight-list');
-        if (no_highlight_list.includes(TISAS.account)) {
-            no_highlight_list = JSPLib.utility.setDifference(no_highlight_list,[TISAS.account]);
-            no_highlight_list = JSPLib.utility.setUnion(no_highlight_list,[TISAS.user_id]);
-            SaveList('no-highlight-list',no_highlight_list,false);
-        }
-        if (no_highlight_list.includes(TISAS.account) || no_highlight_list.includes(TISAS.user_id)) {
+        if (no_highlight_list.includes(TISAS.user_id)) {
+            TISAS.artist_highlights_enabled = false;
             $("#tisas-enable-highlights").show();
             $("#tisas-fade-level-display").hide();
             $("#tisas-hide-level-display").hide();
             $("#tisas-disable-highlights").hide();
         } else {
+            TISAS.artist_highlights_enabled = true;
             $("#tisas-enable-highlights").hide();
             $("#tisas-fade-level-display").show();
             $("#tisas-hide-level-display").show();
             $("#tisas-disable-highlights").show();
         }
+    } else {
+        TISAS.artist_highlights_enabled = false;
+        $("#tisas-fade-level-display").hide();
+        $("#tisas-hide-level-display").hide();
+        $("#tisas-enable-highlights").hide();
+        $("#tisas-disable-highlights").hide();
     }
 }
 
 function UpdateArtistHighlights() {
+    if (!TISAS.artist_highlights_enabled) {
+        $(".tisas-fade").removeClass("tisas-fade");
+        $(".tisas-hide").removeClass("tisas-hide");
+        return;
+    }
     if (TISAS.user_id) {
         let no_highlight_list = GetList('no-highlight-list');
         let fade_levels = score_levels.slice(TISAS.fade_level);
@@ -1681,7 +1689,7 @@ function UpdateArtistHighlights() {
         let hide_selectors = JSPLib.utility.joinList(hide_levels,'.tisas-',',');
         $(".tisas-fade").removeClass("tisas-fade");
         $(".tisas-hide").removeClass("tisas-hide");
-        if (!(no_highlight_list.includes(TISAS.account) || no_highlight_list.includes(TISAS.user_id))) {
+        if (!no_highlight_list.includes(TISAS.user_id)) {
             $(fade_selectors).addClass("tisas-fade");
             $(hide_selectors).addClass("tisas-hide");
         }
@@ -1689,14 +1697,9 @@ function UpdateArtistHighlights() {
 }
 
 function UpdateIQDBControls() {
-    if (TISAS.user_id) {
+    if (TISAS.user_id && IsMediaTimeline()) {
         let auto_iqdb_list = GetList('auto-iqdb-list');
-        if (auto_iqdb_list.includes(TISAS.account)) {
-            auto_iqdb_list = JSPLib.utility.setDifference(auto_iqdb_list,[TISAS.account]);
-            auto_iqdb_list = JSPLib.utility.setUnion(auto_iqdb_list,[TISAS.user_id]);
-            SaveList('auto-iqdb-list',auto_iqdb_list,false);
-        }
-        if (auto_iqdb_list.includes(TISAS.account) || auto_iqdb_list.includes(TISAS.user_id)) {
+        if (auto_iqdb_list.includes(TISAS.user_id)) {
             TISAS.artist_iqdb_enabled = true;
             $("#tisas-enable-autoiqdb").hide();
             $("#tisas-disable-autoiqdb").show();
@@ -1705,6 +1708,10 @@ function UpdateIQDBControls() {
             $("#tisas-enable-autoiqdb").show();
             $("#tisas-disable-autoiqdb").hide();
         }
+    } else {
+        TISAS.artist_iqdb_enabled = false;
+        $("#tisas-enable-autoiqdb").hide();
+        $("#tisas-disable-autoiqdb").hide();
     }
 }
 
@@ -1730,16 +1737,10 @@ function UpdateTweetIndicators() {
         let $tweet = $(entry);
         let tweet_id = String($tweet.data('tweet-id'));
         let user_id = String($tweet.data('user-id'));
-        let screen_name = String($tweet.data('screen-name'));
-        if (artist_list.includes(screen_name)) {
-            artist_list = JSPLib.utility.setDifference(artist_list,[screen_name]);
-            artist_list = JSPLib.utility.setUnion(artist_list,[user_id]);
-            SaveList('artist-list',artist_list,false);
-        }
         if ($tweet.find('.tisas-indicators').length === 0) {
             return;
         }
-        if (artist_list.includes(screen_name) || artist_list.includes(user_id)) {
+        if (artist_list.includes(user_id)) {
             $(".tisas-indicators .tisas-mark-artist",entry).show();
             $(".tisas-footer-entries .tisas-mark-artist",entry).addClass("tisas-activated");
         } else {
@@ -1804,7 +1805,11 @@ function GetEventPreload(event,classname) {
 }
 
 function IsIQDBAutoclick() {
-    return TISAS.user_settings.autoclick_IQDB_enabled && ((TISAS.artist_iqdb_enabled && ((TISAS.page === "media") || (TISAS.page === "search" && TISAS.queries.filter === "images"))) || (TISAS.page === "tweet"));
+    return TISAS.user_settings.autoclick_IQDB_enabled && ((TISAS.artist_iqdb_enabled && IsMediaTimeline()) || (TISAS.page === "tweet"));
+}
+
+function IsMediaTimeline() {
+    return (TISAS.page === "media") || (TISAS.page === "search" && TISAS.account && TISAS.queries.filter === "images");
 }
 
 //File functions
@@ -3261,7 +3266,7 @@ function RegularCheck() {
     }
     //Process events at each interval
     if (TISAS.user_settings.autoclick_IQDB_enabled) {
-        if (TISAS.artist_iqdb_enabled && ((TISAS.page === "media") || (TISAS.page === "search" && TISAS.queries.filter === "images"))) {
+        if (TISAS.artist_iqdb_enabled && IsMediaTimeline()) {
             $(".tisas-check-iqdb").click();
         } else if (TISAS.page === "tweet") {
             $(`.permalink-tweet[data-tweet-id=${TISAS.addon}] .tisas-check-iqdb`).click();
@@ -3602,23 +3607,6 @@ function SetHighlightLevels() {
     TISAS.hide_level = score_levels.indexOf(TISAS.user_settings.score_levels_hidden[0]);
 }
 
-function TransitionHighlightSettings() {
-    let dirty = false;
-    if (TISAS.user_settings.score_levels_faded.length !== 1) {
-        let max_fade_level = (TISAS.user_settings.score_levels_faded.length ? TISAS.user_settings.score_levels_faded[0] : 'poor');
-        TISAS.user_settings.score_levels_faded = [max_fade_level];
-        dirty = true;
-    }
-    if (TISAS.user_settings.score_levels_hidden.length !== 1) {
-        let max_hide_level = (TISAS.user_settings.score_levels_hidden.length ? TISAS.user_settings.score_levels_hidden[0] : 'poor');
-        TISAS.user_settings.score_levels_hidden = [max_hide_level];
-        dirty = true;
-    }
-    if (dirty) {
-        JSPLib.storage.setStorageData('tisas-user-settings',TISAS.user_settings,localStorage);
-    }
-}
-
 //Only render the settings menu on demand
 function RenderSettingsMenu() {
     //Create the dialog
@@ -3699,7 +3687,6 @@ function Main() {
     };
     TISAS.channel.onmessage = BroadcastTISAS;
     TISAS.user_settings = JSPLib.menu.loadUserSettings('tisas');
-    TransitionHighlightSettings();
     SetHighlightLevels();
     SetQueryDomain();
     JSPLib.network.jQuerySetup();
