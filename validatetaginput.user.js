@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      27.5
+// @version      27.6
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
 // @match        *://*.donmai.us/posts*
 // @match        *://*.donmai.us/uploads/new*
-// @match        *://*.donmai.us/users/*/edit
+// @match        *://*.donmai.us/settings
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/validatetaginput.user.js

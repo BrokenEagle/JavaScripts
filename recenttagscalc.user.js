@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         RecentTagsCalc
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.3
+// @version      6.4
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Use different mechanism to calculate RecentTags
 // @author       BrokenEagle
 // @match        *://*.donmai.us/uploads/new*
 // @match        *://*.donmai.us/posts/*
-// @match        *://*.donmai.us/users/*/edit
+// @match        *://*.donmai.us/settings
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/recenttagscalc.user.js

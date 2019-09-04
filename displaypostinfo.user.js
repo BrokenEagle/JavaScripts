@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         DisplayPostInfo
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      8.2
+// @version      8.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Display views, uploader, and other info to the user.
 // @author       BrokenEagle
 // @match        *://*.donmai.us/
 // @match        *://*.donmai.us/posts*
-// @match        *://*.donmai.us/users/*/edit
+// @match        *://*.donmai.us/settings
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/displaypostinfo.user.js

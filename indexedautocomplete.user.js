@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      24.5
+// @version      24.6
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -1084,7 +1084,7 @@ JSPLib.danbooru.wikiLink = function (tag,text) {
 };
 
 JSPLib.danbooru.isSettingMenu = function () {
-    return document.body.dataset.controller === "users" && document.body.dataset.action === "edit";
+    return document.body.dataset.controller === "users" && document.body.dataset.action === "settings";
 };
 
 //Helper functions
