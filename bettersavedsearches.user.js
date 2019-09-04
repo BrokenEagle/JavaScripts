@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         BetterSavedSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.1
+// @version      5.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Provides an alternative mechanism and UI for saved searches
 // @author       BrokenEagle
@@ -1563,26 +1563,35 @@ async function SeedQuery(query,merge=false) {
     let post_ids = JSPLib.utility.getObjectAttributes(posts,'id');
     if (post_ids.length) {
         if (merge) {
-            let post_range = query.posts.filter((postid)=>{return ((postid <= post_ids[0]) && (postid >= post_ids[post_ids.length - 1]));});
-            let false_positives = JSPLib.utility.setDifference(post_range,post_ids);
-            let false_negatives = JSPLib.utility.setDifference(post_ids,post_range);
-            SeedQuery.debuglog("Merge:",query.tags);
-            SeedQuery.debuglog("False positives:",false_positives);
-            SeedQuery.debuglog("False negatives:",false_negatives);
-            if (false_positives.length) {
-                query.unseen = NormalizePosts(JSPLib.utility.setDifference(query.unseen,false_positives));
-                query.posts = NormalizePosts(JSPLib.utility.setDifference(query.posts,false_positives));
-            }
-            if (false_negatives.length) {
-                query.unseen = NormalizePostsSlice(query.unseen.concat(false_negatives));
-                query.posts = NormalizePostsSlice(query.posts.concat(false_negatives));
-            }
-            if (false_positives.length || false_negatives.length) {
-                let hour_distance = (Date.now() - query.seeded) / JSPLib.utility.one_hour;
-                let successes_hour = (false_positives.length + false_negatives.length) / hour_distance;
-                query.successrate = Math.abs(successes_hour) + Math.abs(query.successrate);
+            if (query.metatags) {
+                SeedQuery.debuglog("Metatag merge:", query.tags);
+                let diff_index = post_ids.indexOf(query.posts[0]);
+                //Assumes that own order is consistent with metatags search
+                query.unseen = (diff_index >=0 ? post_ids.slice(0, diff_index) : post_ids);
+                SeedQuery.debuglog("Unseen posts:", query.unseen);
+                query.posts = JSPLib.utility.setUnion(query.unseen, query.posts).slice(0, BSS.user_settings.saved_search_size);
             } else {
-                query.successrate /= 2;
+                let post_range = query.posts.filter((postid)=>{return ((postid <= post_ids[0]) && (postid >= post_ids[post_ids.length - 1]));});
+                let false_positives = JSPLib.utility.setDifference(post_range,post_ids);
+                let false_negatives = JSPLib.utility.setDifference(post_ids,post_range);
+                SeedQuery.debuglog("Merge:",query.tags);
+                SeedQuery.debuglog("False positives:",false_positives);
+                SeedQuery.debuglog("False negatives:",false_negatives);
+                if (false_positives.length) {
+                    query.unseen = NormalizePosts(JSPLib.utility.setDifference(query.unseen,false_positives));
+                    query.posts = NormalizePosts(JSPLib.utility.setDifference(query.posts,false_positives));
+                }
+                if (false_negatives.length) {
+                    query.unseen = NormalizePostsSlice(query.unseen.concat(false_negatives));
+                    query.posts = NormalizePostsSlice(query.posts.concat(false_negatives));
+                }
+                if (false_positives.length || false_negatives.length) {
+                    let hour_distance = (Date.now() - query.seeded) / JSPLib.utility.one_hour;
+                    let successes_hour = (false_positives.length + false_negatives.length) / hour_distance;
+                    query.successrate = Math.abs(successes_hour) + Math.abs(query.successrate);
+                } else {
+                    query.successrate /= 2;
+                }
             }
         } else {
             query.posts = post_ids;
