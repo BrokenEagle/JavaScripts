@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Twitter Image Searches and Stuff
-// @version      7.1
+// @version      7.2
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/Twitter_Image_Searches_and_Stuff.user.js
@@ -2569,13 +2569,14 @@ async function GetMaxVideoDownloadLink(tweet_id) {
             beforeSend: function(request) {
                 request.setRequestHeader("authorization", "Bearer AAAAAAAAAAAAAAAAAAAAALVzYQAAAAAAIItU1SgTX8I%2B7Q3Cl3mqvuZiAAc%3D0AtbuGPnZgRlOHbTIk3JudxSGqXxgfkwpMG367Rtyw6GGLwO6N");
             },
-            url: `https://api.twitter.com/1.1/statuses/show.json?id=${tweet_id}`,
+            url: `https://api.twitter.com/1.1/statuses/show.json?id=${tweet_id}&tweet_mode=extended&trim_user=true`,
             processData: false
         });
         try {
             var variants = data.extended_entities.media[0].video_info.variants;
         } catch (e) {
             //Bad data was returned!
+            GetMaxVideoDownloadLink.log("Bad data returned:",data);
             variants = null;
         }
         if (variants) {
@@ -3755,7 +3756,7 @@ JSPLib.debug.addFunctionLogs([
     Main,UnhideTweets,HighlightTweets,RegularCheck,ImportData,DownloadOriginal,PromptSavePostIDs,
     CheckIQDB,CheckURL,PurgeBadTweets,CheckPurgeBadTweets,SaveDatabase,LoadDatabase,CheckPostvers,
     CheckPostIDs,ReadFileAsync,ProcessPostvers,ProcessTweets,CorrectStringArray,ValidateEntry,
-    BroadcastTISAS
+    BroadcastTISAS,GetMaxVideoDownloadLink
 ]);
 
 /****Execution start****/
