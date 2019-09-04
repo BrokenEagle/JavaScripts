@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
-// @version      1.3
+// @version      1.4
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/New_Twitter_Image_Searches_and_Stuff.user.js
@@ -57,6 +57,9 @@ JSPLib.storage.prune_limit = 2000;
 JSPLib.danbooru.max_network_requests = 10;
 JSPLib.danbooru.rate_limit_wait = JSPLib.utility.one_second;
 JSPLib.danbooru.error_domname = "#tisas-error-messages";
+
+//Variables for network.js
+const API_data = {tweets: {}, users_id: {}, users_name: {}, retweets: {}, has_data: false};
 
 //Main program variable
 var TISAS;
@@ -557,6 +560,9 @@ const program_css = `
     position: absolute;
     font-family: ${font_family};
     text-decoration: none;
+}
+.tisas-main-tweet .tisas-tweet-status {
+    height: 34px;
 }
 .tisas-tweet-status > .tisas-indicators {
     margin-left: 2.75em;
@@ -1337,7 +1343,74 @@ Danbooru.Utility.closeNotice = function (event) {
     event.preventDefault();
 };
 
+JSPLib.network.getImage = function (image_url) {
+    JSPLib.debug.recordTime(image_url,'Network');
+    return GM.xmlHttpRequest({
+            method: "GET",
+            url: image_url,
+            responseType: 'blob',
+    }).then((resp)=>{
+        return resp.response;
+    }).finally(()=>{
+        JSPLib.debug.recordTimeEnd(image_url,'Network');
+    });
+};
+
+JSPLib.network.getImageSize = function (image_url) {
+    JSPLib.debug.recordTime(image_url,'Network');
+    return GM.xmlHttpRequest({
+        method: "HEAD",
+        url: image_url
+    }).then((resp)=>{
+        let size = -1;
+        let match = resp.responseHeaders.match(/content-length: (\d+)/);
+        if (match) {
+            size = parseInt(match[1]);
+        }
+        return size;
+    }).finally(()=>{
+        JSPLib.debug.recordTimeEnd(image_url,'Network');
+    });
+};
+
+JSPLib.network.installXHRHook = function (funcs) {
+    const hookWindow = (typeof(unsafeWindow) === "undefined" ? window : unsafeWindow);
+    const builtinXhrFn = hookWindow.XMLHttpRequest;
+    hookWindow.XMLHttpRequest = function(...xs) {
+        //Was this called with the new operator?
+        let xhr = new.target === undefined
+        ? Reflect.apply(builtinXhrFn, this, xs)
+        : Reflect.construct(builtinXhrFn, xs, builtinXhrFn);
+        //Add data hook to XHR load event
+        xhr.addEventListener('load',(ev)=>{JSPLib.network.dataCallback(xhr,funcs);});
+        return xhr;
+    };
+}
+
+JSPLib.network.dataCallback = function (xhr,funcs) {
+    let data = xhr.responseText;
+    //It varies whether data comes in as a string or JSON
+    if (typeof data === "string" && data.length > 0) {
+        //Some requests like POST requests have an empty string for the response
+        try {
+            data = JSON.parse(data);
+        } catch(e) {
+            //Swallow
+        }
+    }
+    funcs.forEach((func)=>{
+        func(data);
+    });
+}
+
 //Helper functions
+
+function GetAPIData(key,id,value) {
+    if (API_data === undefined || !(key in API_data) || !(id in API_data[key])) {
+        return null;
+    }
+    return (value ? API_data[key][id][value] : API_data[key][id]);;
+}
 
 function PadNumber(num,size) {
     var s = String(num);
@@ -1392,7 +1465,7 @@ function WasOverflow() {
 }
 
 function GetUserIdent() {
-    if (TISAS.api_access) {
+    if (API_data.has_data) {
         return [TISAS.user_id, [TISAS.user_id, TISAS.account]];
     } else {
         return [TISAS.account, [TISAS.account]];
@@ -1556,20 +1629,37 @@ function GetThumbUrl(url,splitter,ext) {
 }
 
 function GetNormalImageURL(image_url) {
-        let match = image_url.match(/^https:\/\/pbs\.twimg\.com\/(?:media|tweet_video_thumb)\/([^.?]+)/);
-        let format = JSPLib.utility.setIntersection(image_url.split(/\W+/),['jpg','png','gif']);
-        if (match && format.length !== 0) {
-            return `https://pbs.twimg.com/media/${match[1]}.${format[0]}`;
+    const handled_images = [{
+        regex: /^https:\/\/pbs\.twimg\.com\/(?:media|tweet_video_thumb)\/([^.?]+)/,
+        format: "https://pbs.twimg.com/media/%s.%s",
+        arguments: (match,extension)=>{return [match[1],extension[0]];}
+    },{
+        regex: /^https:\/\/pbs\.twimg\.com\/ext_tw_video_thumb\/(\d+)\/(\w+)\/img\/([^.?]+)/,
+        format: "https://pbs.twimg.com/ext_tw_video_thumb/%s/%s/img/%s.jpg",
+        arguments: (match,extension)=>{return [match[1],match[2],match[3]];}
+    },{
+        regex: /^https:\/\/pbs\.twimg\.com\/amplify_video_thumb\/(\d+)\/img\/([^.?]+)/,
+        format: "https://pbs.twimg.com/amplify_video_thumb/%s/img/%s.jpg",
+        arguments: (match,extension)=>{return [match[1],match[2]];}
+    }];
+    let extension = JSPLib.utility.setIntersection(image_url.split(/\W+/),['jpg','png','gif']);
+    for (let i = 0; i < handled_images.length; i++) {
+        let match = image_url.match(handled_images[i].regex);
+        if (match && extension.length !== 0) {
+            return JSPLib.utility.sprintf(handled_images[i].format, ...handled_images[i].arguments(match, extension));
         }
-        match = image_url.match(/^https:\/\/pbs\.twimg\.com\/ext_tw_video_thumb\/(\d+)\/(\w+)\/img\/([^.?]+)/);
-        if (match && format.length !== 0) {
-            return `https://pbs.twimg.com/ext_tw_video_thumb/${match[1]}/${match[2]}/img/${match[3]}.jpg`;
+    }
+
+    const unhandled_images = [
+        /^https:\/\/[^.]+\.twimg\.com\/emoji\//
+    ];
+    for (let i = 0; i < unhandled_images.length; i++) {
+        match = image_url.match(unhandled_images[i]);
+        if (match) {
+            return null;
         }
-        match = image_url.match(/^https:\/\/pbs\.twimg\.com\/amplify_video_thumb\/(\d+)\/img\/([^.?]+)/);
-        if (match && format.length !== 0) {
-            return `https://pbs.twimg.com/amplify_video_thumb/${match[1]}/img/${match[2]}.jpg`;
-        }
-        return null;
+    }
+    return false;
 }
 
 function GetNomatchHelp(no_url_results,no_iqdb_results,no_sauce_results) {
@@ -1854,7 +1944,7 @@ function GetSelectPostIDs(tweet_id,type) {
 }
 
 function SetThumbnailWait($obj,all_posts) {
-    all_posts.map(async (post)=>{
+    all_posts.forEach(async (post)=>{
         let blob = await JSPLib.network.getImage(post.thumbnail);
         let image_blob = blob.slice(0, blob.size, "image/jpeg");
         let blob_url = window.URL.createObjectURL(image_blob);
@@ -2505,6 +2595,11 @@ function InitializeUIStyle() {
     }
 }
 
+function InitializeStatusBar(tweet_status) {
+    let [$append_element,spacer] = (tweet_status.childElementCount === 0 ? [$(tweet_status),''] : [$("*:not(span) > span",tweet_status),' ']);
+    $append_element.append(`<span class="tisas-status-marker">${spacer}</span>`);
+}
+
 function InitializeSideMenu() {
     $("#tisas-side-menu [data-setting]").each((i,entry)=>{
         let setting = $(entry).data('setting');
@@ -2648,12 +2743,7 @@ async function InitializeNoMatchesLinks(tweet_id,$obj) {
 }
 
 function InitializeTweetIndicators(tweet) {
-    let $tweet_status = $(".tisas-tweet-status",tweet);
-    if ($tweet_status.children().length === 0) {
-        $tweet_status.append(tweet_indicators);
-    } else {
-        $("*:not(span) > span",$tweet_status[0]).append(" " + tweet_indicators);
-    }
+    $(".tisas-status-marker",tweet).parent().append(tweet_indicators);
     $(".tisas-tweet-actions",tweet).after(indicator_links);
 }
 
@@ -2720,7 +2810,7 @@ function InitializeMediaLink($tweet) {
 
 function InitializeRetweetDisplay(tweet) {
     let retweet_id = String($(tweet).data('retweet-id'));
-    $(".tweet-context",tweet).append(`<span class="tisas-retweet">${retweet_id}</span>`);
+    $(".tisas-status-marker",tweet).parent().append(`<span class="tisas-retweet">[${retweet_id}]</span>`);
 }
 
 function InitializeImageTweets($image_tweets) {
@@ -2932,18 +3022,23 @@ async function GetMaxVideoDownloadLink(tweet_id) {
     let key = 'video-' + tweet_id;
     let cached = await JSPLib.storage.checkLocalDB(key, ValidateEntry, video_expires);
     if (!cached) {
-        let data = await $.ajax({
-            type: "GET",
-            beforeSend: function(request) {
-                request.setRequestHeader("authorization", "Bearer AAAAAAAAAAAAAAAAAAAAALVzYQAAAAAAIItU1SgTX8I%2B7Q3Cl3mqvuZiAAc%3D0AtbuGPnZgRlOHbTIk3JudxSGqXxgfkwpMG367Rtyw6GGLwO6N");
-            },
-            url: `https://api.twitter.com/1.1/statuses/show.json?id=${tweet_id}`,
-            processData: false
-        });
+        if (API_data.has_data && tweet_id in API_data.tweets) {
+            var data = GetAPIData('tweets',tweet_id);
+        } else {
+            data = await $.ajax({
+                method: "GET",
+                beforeSend: function (request) {
+                    request.setRequestHeader("authorization", "Bearer AAAAAAAAAAAAAAAAAAAAALVzYQAAAAAAIItU1SgTX8I%2B7Q3Cl3mqvuZiAAc%3D0AtbuGPnZgRlOHbTIk3JudxSGqXxgfkwpMG367Rtyw6GGLwO6N");
+                },
+                url: `https://api.twitter.com/1.1/statuses/show.json?id=${tweet_id}&tweet_mode=extended&trim_user=true`,
+                processData: false
+            });
+        }
         try {
             var variants = data.extended_entities.media[0].video_info.variants;
         } catch (e) {
             //Bad data was returned!
+            GetMaxVideoDownloadLink.log("Bad data returned:",data);
             variants = null;
         }
         if (variants) {
@@ -2957,6 +3052,30 @@ async function GetMaxVideoDownloadLink(tweet_id) {
         return video_url;
     } else {
         return cached.value;
+    }
+}
+
+function TweetUserData(data) {
+    if (typeof data === "object" && 'globalObjects' in data) {
+        if ('tweets' in data.globalObjects) {
+            Object.assign(API_data.tweets,data.globalObjects.tweets);
+            for (let twitter_id in data.globalObjects.tweets) {
+                let entry = data.globalObjects.tweets[twitter_id];
+                if ('retweeted_status_id_str' in entry) {
+                    let tweet_id = entry.retweeted_status_id_str;
+                    API_data.retweets[tweet_id] = entry;
+                }
+            }
+            API_data.has_data = true;
+        }
+        if ('users' in data.globalObjects) {
+            Object.assign(API_data.users_id,data.globalObjects.users);
+            for (let twitter_id in data.globalObjects.users) {
+                let entry = data.globalObjects.users[twitter_id];
+                API_data.users_name[entry.screen_name] = entry;
+            }
+            API_data.has_data = true;
+        }
     }
 }
 
@@ -3071,7 +3190,7 @@ function ToggleArtistHilights(event) {
         if (JSPLib.utility.hasIntersection(no_highlight_list,all_idents)) {
             no_highlight_list = JSPLib.utility.setDifference(no_highlight_list,all_idents);
         } else {
-            no_highlight_list = JSPLib.utility.setUnion(no_highlight_list,[user_ident]);
+            no_highlight_list = JSPLib.utility.setUnion(no_highlight_list,all_idents);
         }
         SaveList('no-highlight-list',no_highlight_list);
         UpdateHighlightControls();
@@ -3112,7 +3231,7 @@ function ToggleAutoclickIQDB(event) {
         if (JSPLib.utility.hasIntersection(auto_iqdb_list,all_idents)) {
             auto_iqdb_list = JSPLib.utility.setDifference(auto_iqdb_list,all_idents);
         } else {
-            auto_iqdb_list = JSPLib.utility.setUnion(auto_iqdb_list,[user_ident]);
+            auto_iqdb_list = JSPLib.utility.setUnion(auto_iqdb_list,all_idents);
         }
         SaveList('auto-iqdb-list',auto_iqdb_list);
         UpdateIQDBControls();
@@ -3508,7 +3627,7 @@ function MarkArtist(event) {
     if (JSPLib.utility.hasIntersection(artist_list,all_idents)) {
         artist_list = JSPLib.utility.setDifference(artist_list,all_idents);
     } else {
-        artist_list = JSPLib.utility.setUnion(artist_list,[user_ident]);
+        artist_list = JSPLib.utility.setUnion(artist_list,all_idents);
     }
     SaveList('artist-list',artist_list);
     $link.toggleClass('tisas-activated');
@@ -3685,12 +3804,22 @@ function MarkupStreamTweet(tweet) {
     $(tweet).addClass('tisas-stream-tweet');
     $(tweet).attr('data-tweet-id',tweet_id);
     $(tweet).attr('data-screen-name',screen_name);
+    //Get API data if available
+    let data_tweet = GetAPIData('tweets',tweet_id);
+    if (data_tweet) {
+        $(tweet).attr('data-user-id',data_tweet.user_id_str);
+    }
+    let data_retweet = GetAPIData('retweets',tweet_id);
+    if (data_retweet) {
+        $(tweet).attr('data-retweet-id',data_retweet.id_str);
+    }
     //Not marking this with a a class since Twitter alters it
     let article = tweet.children[0].children[0];
     let main_body = article.children[0];
     $(main_body).addClass("tisas-main-body");
     let tweet_status = main_body.children[0];
     $(tweet_status).addClass("tisas-tweet-status");
+    InitializeStatusBar(tweet_status);
     let is_retweet = Boolean($(tweet_status).text().match(/ Retweeted$/));
     $(tweet).attr('data-is-retweet',is_retweet);
     let tweet_body = main_body.children[1];
@@ -3738,14 +3867,20 @@ function MarkupMainTweet(tweet) {
     let tweet_info = window.location.pathname.match(/\/(\w+)\/status\/(\d+)/);
     let tweet_id = tweet_info[2];
     let screen_name = tweet_info[1];
+    $(tweet).addClass('tisas-main-tweet');
     $(tweet).attr('data-tweet-id',tweet_id);
     $(tweet).attr('data-screen-name',screen_name);
-    $(tweet).addClass('tisas-main-tweet');
+    //Get API data if available
+    let data_tweet = GetAPIData('tweets',tweet_id);
+    if (data_tweet) {
+        $(tweet).attr('data-user-id',data_tweet.user_id_str);
+    }
     let main_body = tweet.children[0].children[0].children[0];
     $(main_body).addClass("tisas-main-body");
     let child_count = main_body.childElementCount;
     let tweet_status = main_body.children[0];
     $(tweet_status).addClass("tisas-tweet-status");
+    InitializeStatusBar(tweet_status);
     let profile_line = main_body.children[1];
     $(profile_line).addClass("tisas-profile-line");
     let reply_line_count = 0;
@@ -3801,6 +3936,12 @@ function CheckHiddenMedia(tweet) {
 //Main execution functions
 
 function RegularCheck() {
+    if (!TISAS.user_id && API_data.has_data && TISAS.account && (TISAS.account in API_data.users_name)) {
+        TISAS.user_id = GetAPIData('users_name',TISAS.account,'id_str');
+        UpdateHighlightControls();
+        UpdateIQDBControls();
+    }
+
     //Get current page and previous page info
     TISAS.prev_pagetype = TISAS.page;
     let [pagetype,pageid] = GetPageType();
@@ -3853,16 +3994,14 @@ function PageNavigation(pagetype,pageid) {
     switch(TISAS.page) {
         case "home":
             PageNavigation.debuglog("Home timeline");
-            TISAS.account = undefined;
-            TISAS.user_id = undefined;
+            TISAS.account = TISAS.user_id = undefined;
             break;
         case "main":
         case "likes":
         case "replies":
             PageNavigation.debuglog("Main timeline:",TISAS.addon);
             TISAS.account = TISAS.addon;
-            //Ignore for now
-            TISAS.user_id = undefined
+            TISAS.user_id = GetAPIData('users_name',TISAS.account,'id_str');
             if (TISAS.account === "following" || TISAS.account === "lists") {
                 return;
             }
@@ -3870,23 +4009,19 @@ function PageNavigation(pagetype,pageid) {
         case "media":
             PageNavigation.debuglog("Media timeline:",TISAS.addon);
             TISAS.account = TISAS.addon;
-            //Ignore for now
-            TISAS.user_id = undefined;
+            TISAS.user_id = GetAPIData('users_name',TISAS.account,'id_str');
             break;
         case "list":
             PageNavigation.debuglog("List timeline:",TISAS.addon);
-            TISAS.account = undefined;
-            TISAS.user_id = undefined;
+            TISAS.account = TISAS.user_id = undefined;
             break;
         case "moment":
             PageNavigation.debuglog("Moment timeline:",TISAS.addon);
-            TISAS.account = undefined;
-            TISAS.user_id = undefined;
+            TISAS.account = TISAS.user_id = undefined;
             break;
         case "hashtag":
             PageNavigation.debuglog("Hashtag timeline:",TISAS.addon);
-            TISAS.account = undefined;
-            TISAS.user_id = undefined;
+            TISAS.account = TISAS.user_id = undefined;
             TISAS.hashtag_search = window.location.search;
             break;
         case "search":
@@ -3894,13 +4029,11 @@ function PageNavigation(pagetype,pageid) {
             params = JSPLib.utility.parseParams(TISAS.addon);
             TISAS.queries = ParseQueries(params.q);
             TISAS.account = ('from' in TISAS.queries ? TISAS.queries.from : undefined);
-            //Ignore for now
-            TISAS.user_id = undefined;
+            TISAS.user_id = TISAS.account && GetAPIData('users_name',TISAS.account,'id_str');
             break;
         case "tweet":
             PageNavigation.debuglog("Tweet ID:",TISAS.addon);
-            TISAS.account = undefined;
-            TISAS.user_id = undefined;
+            TISAS.account = TISAS.user_id = undefined;
             CloseSettingsMenu();
             break;
         default:
@@ -3986,8 +4119,10 @@ function ProcessTweetImages() {
             process_tweetids.add($tweet.data('tweet-id'));
         } else {
             $(image).addClass('tisas-unhandled-image');
-            Danbooru.Utility.notice("Unhandled image (see debug console)");
-            ProcessTweetImages.debuglog("Unhandled image",$(image).closest('.tisas-tweet').data('tweet-id'));
+            if (JSPLib.validate.isBoolean(image_url)) {
+                Danbooru.Utility.notice("New unhandled image found (see debug console)");
+                ProcessTweetImages.debuglog("Unhandled image",$(image).closest('.tisas-tweet').data('tweet-id'));
+            }
         }
     });
     process_tweetids.size && ProcessTweetImages.debuglog("Tweets updated:",process_tweetids.size);
@@ -4017,7 +4152,7 @@ function ProcessNewTweets() {
     ProcessNewTweets.debuglog("Unprocessed:",$tweets.length,$image_tweets.length);
     //Initialize tweets with images
     InitializeImageTweets($image_tweets);
-    if (TISAS.user_settings.display_retweet_id && TISAS.api_access) {
+    if (TISAS.user_settings.display_retweet_id && API_data.has_data) {
         let $retweets = $tweets.filter("[data-retweet-id]");
         $retweets.each((i,entry)=>{
             InitializeRetweetDisplay(entry);
@@ -4366,7 +4501,7 @@ function Main() {
         no_url_results: [],
         photo_navigation: false,
         artist_iqdb_enabled: false,
-        api_access: false,
+        API_data: API_data,
         settings_config: settings_config,
         channel: new BroadcastChannel('TISAS'),
     };
@@ -4446,11 +4581,13 @@ JSPLib.debug.addFunctionLogs([
     Main,UnhideTweets,HighlightTweets,RegularCheck,ImportData,DownloadOriginal,PromptSavePostIDs,
     CheckIQDB,CheckURL,PurgeBadTweets,CheckPurgeBadTweets,SaveDatabase,LoadDatabase,CheckPostvers,
     CheckPostIDs,ReadFileAsync,ProcessPostvers,InitializeImageMenu,CorrectStringArray,ValidateEntry,
-    BroadcastTISAS,PageNavigation,ProcessNewTweets,ProcessTweetImages,InitializeUploadlinks,CheckSauce
+    BroadcastTISAS,PageNavigation,ProcessNewTweets,ProcessTweetImages,InitializeUploadlinks,CheckSauce,
+    GetMaxVideoDownloadLink
 ]);
 
 /****Execution start****/
 
+JSPLib.network.installXHRHook([TweetUserData]);
 JSPLib.load.programInitialize(Main,'TISAS',program_load_required_variables,program_load_required_selectors);
 
 unsafeWindow._$ = jQuery;
