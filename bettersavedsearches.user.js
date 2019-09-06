@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         BetterSavedSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.3
+// @version      5.4
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Provides an alternative mechanism and UI for saved searches
 // @author       BrokenEagle
@@ -46,7 +46,7 @@ var BSS;
 var Timer = {};
 
 //Regexes that match all program data
-const purge_cache_regex = /(ta|plid|plname)-/;
+const prune_cache_regex = /(ta|plid|plname)-/;
 const program_cache_regex = /(ta|plid|plname|bss)-/;
 
 //Main program expires
@@ -463,7 +463,7 @@ const query_constraints = {
         id: JSPLib.validate.integer_constraints,
         tags: JSPLib.validate.stringonly_constraints,
         original: JSPLib.validate.stringnull_constraints,
-        checked: JSPLib.validate.integer_constraints,
+        found: JSPLib.validate.integer_constraints,
         expires: JSPLib.validate.integer_constraints,
         seeded: JSPLib.validate.integer_constraints,
         updated: JSPLib.validate.integer_constraints,
@@ -598,8 +598,10 @@ function CorrectQueries(entry) {
         CorrectQueries.debuglog("Corrections to queries detected!");
         error_messages.forEach((error)=>{CorrectQueries.debuglog(JSON.stringify(error,null,2))});
         BSS.dirty = true;
+        return false
     } else {
         CorrectQueries.debuglog("Query data is valid.");
+        return true;
     }
 }
 
@@ -823,7 +825,10 @@ function GetAllEntryTags(entry) {
 }
 
 function GetPosts(type,choose,id) {
-    return NormalizePosts(QueryReduce((total_posts,entry)=>{return (choose(entry,id) ? total_posts.concat(entry[type]) : total_posts);},[]));
+    let postids = QueryReduce((total_posts,entry)=>{
+        return (choose(entry,id) ? total_posts.concat(entry[type]) : total_posts);
+    },[]);
+    return NormalizePosts(postids);
 }
 
 function ClearPosts(type,choose,id) {
@@ -846,7 +851,7 @@ function ResetDirty() {
 
 function PostIDQuery(posts,page,escape=true) {
     let activestring = (BSS.user_settings.show_deleted_enabled ? "status:any " : "");
-    let idstring = "id:" + PostIDString(posts,page);
+    let idstring = "id:" + PaginatePostIDString(posts,page);
     let urlsearch = $.param({
         tags: activestring + idstring,
         limit: BSS.user_settings.query_size,
@@ -913,7 +918,11 @@ async function LoadBSSEntries() {
         sessionStorage.removeItem('bss-queries');
     }
     BSS.entries = await JSPLib.storage.retrieveData('bss-queries');
-    CorrectQueries(BSS);
+    //Transition checked to found as it's more accurate to how it's used
+    BSS.entries.forEach((query)=>{query.found = (query.checked ? query.checked : query.found)});
+    if (!CorrectQueries(BSS)) {
+        await StoreBSSEntries();
+    }
 }
 
 async function StoreBSSEntries() {
@@ -948,11 +957,7 @@ function RenderSavedSearchLabel(label) {
     let label_queries = QueryFilter((entry)=>{return ChooseLabel(entry,label);}).sort((a,b)=>{return a.tags.localeCompare(b.tags);});
     label_queries.forEach((query)=>{
         let options = SetLineOptions(query);
-        let checked_timestring = new Date(query.checked).toLocaleString();
-        let seeded_timestring = new Date(query.seeded).toLocaleString();
-        let title_string = `
- Last found: ${checked_timestring}
-Last seeded: ${seeded_timestring}`.trim('\n');
+        let title_string = RenderCalendarTitle(query);
         let preicon_html = `<span class="ui-icon ui-icon-calendar" title="${title_string}"></span>`;
         let query_string = (query.original ? query.original : query.tags);
         let pool_ids = GetPoolIDs(query_string);
@@ -964,6 +969,14 @@ Last seeded: ${seeded_timestring}`.trim('\n');
     let prehtml = RenderQueryLine("bss-label-query",label_entry,label_options,[],preicon_html,label,`search:${label}`,false);
     let display = (GetLabelActive(label) ? "" : "display:none");
     return prehtml + `\n<ul style="${display}">` + posthtml + `\n</ul>\n</li>`;
+}
+
+function RenderCalendarTitle(query) {
+    let found_timestring = new Date(query.found).toLocaleString();
+    let seeded_timestring = new Date(query.seeded).toLocaleString();
+    return `
+Last found: ${found_timestring}
+Last seeded: ${seeded_timestring}`.trim('\n');
 }
 
 function SetLineOptions(entry) {
@@ -1122,9 +1135,7 @@ function RecalculateLine(entry,classname) {
         return;
     }
     RecalculateLine.debuglog("Dirty item:",entry.id);
-    if (entry.checked) {
-        $(`.${classname}[data-id=${entry.id}] > .ui-icon-calendar`).attr('title',new Date(entry.checked).toLocaleString());
-    }
+    $(`.${classname}[data-id=${entry.id}] > .ui-icon-calendar`).attr('title',RenderCalendarTitle(entry));
     $(`.${classname}[data-id=${entry.id}] > span > .bss-count a`).html(entry.unseen.length);
     $(`.${classname}[data-id=${entry.id}] > span > .bss-count a`).attr('title',entry.posts.length);
     $(`.${classname}[data-id=${entry.id}] > span > .bss-clear a`).attr('title',entry.posts.length);
@@ -1506,7 +1517,7 @@ function ParseQuery(string) {
         id: JSPLib.utility.getUniqueID(), //Only used for validate errors
         tags: string,
         original: null,
-        checked: 0,
+        found: 0,
         expires: 0,
         seeded: 0,
         updated: 0,
@@ -1547,9 +1558,9 @@ function ParseQuery(string) {
 
 function UpdateQuery(post,query) {
     UpdateQuery.debuglog(post.id,query);
-    query.posts = NormalizePostsSlice(query.posts.concat(post.id));
-    query.unseen = NormalizePostsSlice(query.unseen.concat(post.id));
-    query.checked = Date.now();
+    query.unseen = NormalizePosts(query.unseen, [post.id], true, true, "add");
+    query.posts = NormalizePosts(query.posts, [post.id], true, true, "add");
+    query.found = Date.now();
     query.dirty = true;
 }
 
@@ -1563,27 +1574,32 @@ async function SeedQuery(query,merge=false) {
     let post_ids = JSPLib.utility.getObjectAttributes(posts,'id');
     if (post_ids.length) {
         if (merge) {
+            SeedQuery.debuglog("Merge:", query.metatags, query.tags);
             if (query.metatags) {
-                SeedQuery.debuglog("Metatag merge:", query.tags);
                 let diff_index = post_ids.indexOf(query.posts[0]);
                 //Assumes that own order is consistent with metatags search
-                query.unseen = (diff_index >=0 ? post_ids.slice(0, diff_index) : post_ids);
-                SeedQuery.debuglog("Unseen posts:", query.unseen);
-                query.posts = JSPLib.utility.setUnion(query.unseen, query.posts).slice(0, BSS.user_settings.saved_search_size);
+                let unseen_posts = (diff_index >=0 ? post_ids.slice(0, diff_index) : post_ids);
+                SeedQuery.debuglog("Unseen posts:", unseen_posts);
+                if (unseen_posts.length) {
+                    //Having the unseen posts as the first input will add them to the front since insertion order is being maintained
+                    query.unseen = NormalizePosts(unseen_posts, query.unseen, true, false, "add");
+                    query.posts = NormalizePosts(unseen_posts, query.posts, true, false, "add");
+                    query.found = Date.now();
+                }
             } else {
                 let post_range = query.posts.filter((postid)=>{return ((postid <= post_ids[0]) && (postid >= post_ids[post_ids.length - 1]));});
                 let false_positives = JSPLib.utility.setDifference(post_range,post_ids);
                 let false_negatives = JSPLib.utility.setDifference(post_ids,post_range);
-                SeedQuery.debuglog("Merge:",query.tags);
                 SeedQuery.debuglog("False positives:",false_positives);
                 SeedQuery.debuglog("False negatives:",false_negatives);
                 if (false_positives.length) {
-                    query.unseen = NormalizePosts(JSPLib.utility.setDifference(query.unseen,false_positives));
-                    query.posts = NormalizePosts(JSPLib.utility.setDifference(query.posts,false_positives));
+                    query.unseen = NormalizePosts(query.unseen, false_positives, false, true, "subtract");
+                    query.posts = NormalizePosts(query.posts, false_positives, false, true, "subtract");
                 }
                 if (false_negatives.length) {
-                    query.unseen = NormalizePostsSlice(query.unseen.concat(false_negatives));
-                    query.posts = NormalizePostsSlice(query.posts.concat(false_negatives));
+                    query.unseen = NormalizePosts(query.unseen, false_negatives, true, true, "add");
+                    query.posts = NormalizePosts(query.posts, false_negatives, true, true, "add");
+                    query.found = Date.now();
                 }
                 if (false_positives.length || false_negatives.length) {
                     let hour_distance = (Date.now() - query.seeded) / JSPLib.utility.one_hour;
@@ -1609,7 +1625,6 @@ async function SeedQuery(query,merge=false) {
         query.posts = [];
         query.disabled = true;
     }
-    query.checked = Date.now();
     query.seeded = Date.now();
     query.dirty = true;
 }
@@ -1808,8 +1823,6 @@ function RemoveDuplicateBSSEntries() {
             let optional_match = !metatag_queries && !JSPLib.utility.setSymmetricDifference(entry_a.optional,entry_b.optional).length;
             if (require_match && exclude_match && optional_match || (entry_a.tags == entry_b.tags)) {
                 RemoveDuplicateBSSEntries.debuglog("Duplicate entries found:", entry_a);
-                entry_a.unseen = NormalizePosts(entry_a.unseen.concat(entry_b.unseen));
-                entry_a.posts = NormalizePosts(entry_a.posts.concat(entry_b.posts));
                 entry_b.duplicate = true;
             }
         }
@@ -1850,18 +1863,31 @@ function GeneratePostTags(post) {
     return tags;
 }
 
-function NormalizePosts(postids) {
-    return JSPLib.utility.setUnique(postids).sort(function(a, b){return b - a});
+function NormalizePosts(postids1,postids2,slice=false,sort=true,operation) {
+    let returnids = JSPLib.utility.setUnique(postids1);
+    if (postids2 && operation) {
+        if (operation === "add") {
+            postids1 = JSPLib.utility.setUnion(postids1, postids2);
+        } else if (operation === "subtract") {
+            postids1 = JSPLib.utility.setDifference(postids1, postids2);
+        }
+    }
+    postids1 = JSPLib.utility.setUnique(postids1);
+    if (typeof slice === "boolean") {
+        postids1 = postids1.slice(0, BSS.user_settings.saved_search_size);
+    } else if (Number.isInteger(slice)) {
+        postids1 = postids1.slice(0, slice);
+    }
+    if (sort) {
+        postids1 = postids1.sort((a, b)=>{return b - a});
+    }
+    return postids1;
 }
 
-function NormalizePostsSlice(postids) {
-    return NormalizePosts(postids).slice(0,BSS.user_settings.saved_search_size);
-}
-
-function PostIDString(postids,page) {
-    let page_start = (page ? (page - 1) * BSS.user_settings.query_size : 0);
-    let page_end = (page ? page * BSS.user_settings.query_size: html_query_size);
-    return postids.slice(page_start,page_end).join(',');
+function PaginatePostIDString(postids,page) {
+    let page_start = (page - 1) * BSS.user_settings.query_size;
+    let page_end = page * BSS.user_settings.query_size;
+    return postids.slice(page_start, page_end).join(',');
 }
 
 function TimePostsFilter(posts,key,time,compare) {
@@ -1919,8 +1945,9 @@ async function SecondaryPass() {
     }
     let process_posts = TimePostsFilter(BSS.secondary_pass, 'created', JSPLib.utility.one_hour, "gt");
     if (process_posts.length) {
-        let process_ids = NormalizePostsSlice(JSPLib.utility.getObjectAttributes(process_posts,'id'));
-        let options = {addons: {tags: "id:" + PostIDString(process_ids), only: post_fields}};
+        let process_ids = JSPLib.utility.getObjectAttributes(process_posts, 'id');
+        process_ids = NormalizePosts(process_ids, null, html_query_size);
+        let options = {addons: {tags: "id:" + process_ids.join(','), only: post_fields}};
         SecondaryPass.debuglog("Network:",process_ids);
         let posts = await JSPLib.danbooru.getAllItems('posts', api_query_size, options);
         Timer.ProcessPosts(posts);
@@ -2067,6 +2094,8 @@ function BSSBroadcast(ev) {
                     sessionStorage.removeItem(key);
                 }
             });
+            //Queries have been purged, so just hide until the next page refresh
+            $("#bss-saved-search-box").hide();
         default:
             //do nothing
     }
@@ -2104,8 +2133,7 @@ function RenderSettingsMenu() {
     JSPLib.menu.engageUI('bss',true);
     JSPLib.menu.saveUserSettingsClick('bss','BetterSavedSearches');
     JSPLib.menu.resetUserSettingsClick('bss','BetterSavedSearches',localstorage_keys,program_reset_keys);
-    JSPLib.menu.purgeCacheClick('bss','BetterSavedSearches',purge_cache_regex,"#bss-purge-counter");
-    JSPLib.menu.purgeCacheClick('bss','BetterSavedSearches',/bss-queries/);
+    JSPLib.menu.purgeCacheClick('bss','BetterSavedSearches',program_cache_regex,"#bss-purge-counter");
     JSPLib.menu.cacheInfoClick('bss',program_cache_regex,"#bss-cache-info-table");
     JSPLib.menu.getCacheClick('bss',OptionCacheDataKey);
     JSPLib.menu.saveCacheClick('bss',()=>{return false;},ValidateEntry,OptionCacheDataKey);
@@ -2234,7 +2262,7 @@ async function Main() {
         CheckUserSavedSearches().then(()=>{
             Timer.NormalizeBSSEntries();
         });
-        JSPLib.storage.pruneEntries('bss',purge_cache_regex,prune_expires);
+        JSPLib.storage.pruneEntries('bss',prune_cache_regex,prune_expires);
     },JSPLib.utility.one_minute);
 }
 
