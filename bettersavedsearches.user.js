@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         BetterSavedSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.2
+// @version      5.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Provides an alternative mechanism and UI for saved searches
 // @author       BrokenEagle
@@ -422,7 +422,7 @@ const pool_data_expires = JSPLib.utility.one_month;
 const alias_data_expires =JSPLib.utility.one_month;
 
 //Only field parameters
-const post_fields = "id,created_at,tag_string,pool_stringrating,uploader_name,has_children,parent_id,file_ext,is_deleted,is_pending,is_flagged,is_banned";
+const post_fields = "id,created_at,tag_string,pool_string,rating,uploader_name,has_children,parent_id,file_ext,is_deleted,is_pending,is_flagged,is_banned";
 const pool_fields = "id,name";
 const tag_fields = "id,name";
 const alias_field = "consequent_name";
