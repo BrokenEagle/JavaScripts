@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SafelistPlus
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.4
+// @version      3.5
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Alternate Danbooru blacklist handler
 // @author       BrokenEagle
@@ -930,7 +930,7 @@ function GetProgramTime(str) {
 GetProgramTime.starttime = performance.now();
 
 function IsSettingMenu() {
-    return SL.controller === "users" && SL.action === "settings";
+    return SL.controller === "users" && SL.action === "edit";
 }
 
 /////////////////////

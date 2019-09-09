@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         BetterSavedSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.4
+// @version      5.5
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Provides an alternative mechanism and UI for saved searches
 // @author       BrokenEagle
@@ -741,7 +741,7 @@ JSPLib.utility.hasIntersection = function (array1,array2) {
 };
 
 JSPLib.danbooru.isSettingMenu = function () {
-    return document.body.dataset.controller === "users" && document.body.dataset.action === "settings";
+    return document.body.dataset.controller === "users" && document.body.dataset.action === "edit";
 };
 
 //Helper functions
