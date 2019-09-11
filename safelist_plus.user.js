@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SafelistPlus
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.5
+// @version      3.6
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Alternate Danbooru blacklist handler
 // @author       BrokenEagle
@@ -1075,7 +1075,6 @@ function InitializeSafelistData() {
 function InitializeProgramData() {
     SL.level_data = $.extend({},...['a','n','1'].map((level,i)=>{return {[level]: new Safelist(level)};}));
     SaveLevelData()
-    SaveIndex(2);
     SL.enable_safelist = true;
     SL.active_list = null;
     SaveSessionData();
