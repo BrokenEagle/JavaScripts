@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         BetterSavedSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.5
+// @version      5.6
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Provides an alternative mechanism and UI for saved searches
 // @author       BrokenEagle
@@ -658,7 +658,11 @@ function ValidateProgramData(key,entry) {
             }
             break;
         case 'bss-seed-rate':
-            return JSPLib.validate.validateArrayValues(key,entry,basic_integer_validator);
+            if (!Array.isArray(entry)) {
+                checkerror = ["Value is not an array."];
+            } else {
+                return JSPLib.validate.validateArrayValues(key,entry,basic_integer_validator);
+            }
         default:
             checkerror = ["Not a valid program data key."];
     }
@@ -919,7 +923,7 @@ async function LoadBSSEntries() {
     }
     BSS.entries = await JSPLib.storage.retrieveData('bss-queries');
     //Transition checked to found as it's more accurate to how it's used
-    BSS.entries.forEach((query)=>{query.found = (query.checked ? query.checked : query.found)});
+    BSS.entries && BSS.entries.forEach((query)=>{query.found = (query.checked ? query.checked : query.found)});
     if (!CorrectQueries(BSS)) {
         await StoreBSSEntries();
     }
