@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      15.1
+// @version      15.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools)
 // @author       BrokenEagle
@@ -471,6 +471,7 @@ const post_display_names = {
 };
 const all_post_events = ['post','comment','note','commentary'];
 const all_translate_events = ['note','commentary'];
+const all_mail_events = ['dmail','spam'];
 
 //Type configurations
 const typedict = {
@@ -699,8 +700,9 @@ function AreAllEventsEnabled(event_list) {
 }
 
 function HideDmailNotice() {
-    if ($("#hide-dmail-notice").length) {
-        $("#hide-dmail-notice").click();
+    let $hide_link = $("#hide-dmail-notice");
+    if ($hide_link.length) {
+        $hide_link.click();
     }
 }
 
@@ -1673,9 +1675,12 @@ async function CheckAllEvents(promise_array) {
     if (EL.post_ids.length) {
         Timer.GetThumbnails();
     }
-    //Only save overflow if it wasn't just a display reload
     if (!EL.had_events) {
+        //Only save overflow if it wasn't just a display reload
         JSPLib.storage.setStorageData('el-overflow',EL.item_overflow,localStorage);
+        if (!EL.user_settings.autoclose_dmail_notice) {
+            $("#dmail-notice").show();
+        }
     }
 }
 
@@ -1699,7 +1704,11 @@ function MarkAllAsRead() {
         JSPLib.storage.setStorageData(`el-saved${type}lastid`,[],localStorage);
         HideEventNotice.debuglog(`Removed saved values [${type}]!`);
     }
-    HideDmailNotice();
+    if (IsAnyEventEnabled(all_mail_events)) {
+        HideDmailNotice();
+    } else if (!EL.user_settings.autoclose_dmail_notice) {
+        $("#dmail-notice").show();
+    }
     JSPLib.storage.setStorageData('el-events',false,localStorage);
     SetLastSeenTime();
 }
@@ -1869,6 +1878,9 @@ function Main() {
             JSPLib.concurrency.freeSemaphore('el');
         }
     } else {
+        if (!EL.user_settings.autoclose_dmail_notice) {
+            $("#dmail-notice").show();
+        }
         Main.debuglog("Waiting...");
     }
     if (EL.controller === "posts" && EL.action === "show") {
@@ -1925,12 +1937,13 @@ function Main() {
 JSPLib.debug.addFunctionTimers(Timer,false,[RenderSettingsMenu]);
 
 JSPLib.debug.addFunctionTimers(Timer,true,[
-    GetThumbnails,SetRecentDanbooruID,CheckAllEvents,PostEventPopulateControl
+    GetThumbnails,CheckAllEvents,PostEventPopulateControl
 ]);
 
 Timer.SetList = JSPLib.debug.debugSyncTimer(SetList,0);
 Timer.CheckUserType = JSPLib.debug.debugAsyncTimer(CheckUserType,0);
 Timer.CheckSubscribeType = JSPLib.debug.debugAsyncTimer(CheckSubscribeType,0);
+Timer.SetRecentDanbooruID = JSPLib.debug.debugAsyncTimer(SetRecentDanbooruID,0);
 
 JSPLib.debug.addFunctionLogs([
     Main,BroadcastEL,CheckSubscribeType,CheckUserType,HideEventNotice,GetPostsCountdown,ProcessEvent,SaveLastID,CorrectList,GetInstanceID
