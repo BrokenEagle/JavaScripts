@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
-// @version      1.5
+// @version      1.6
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/New_Twitter_Image_Searches_and_Stuff.user.js
@@ -46,8 +46,8 @@ const danbooru_topic_id = "15976";
 
 //Variables for debug.js
 JSPLib.debug.debug_console = true;
-JSPLib.debug.pretext = "TISAS:";
-JSPLib.debug.pretimer = "TISAS-";
+JSPLib.debug.pretext = "NTISAS:";
+JSPLib.debug.pretimer = "NTISAS-";
 JSPLib.debug.level = JSPLib.debug.INFO;
 
 //Variables for load.js
@@ -60,13 +60,13 @@ JSPLib.storage.prune_limit = 2000;
 //Variables for danbooru.js
 JSPLib.danbooru.max_network_requests = 10;
 JSPLib.danbooru.rate_limit_wait = JSPLib.utility.one_second;
-JSPLib.danbooru.error_domname = "#tisas-error-messages";
+JSPLib.danbooru.error_domname = "#ntisas-error-messages";
 
 //Variables for network.js
 const API_data = {tweets: {}, users_id: {}, users_name: {}, retweets: {}, has_data: false};
 
 //Main program variable
-var TISAS;
+var NTISAS;
 
 //Timer function hash
 const Timer = {};
@@ -120,7 +120,7 @@ const settings_config = {
     custom_order_enabled: {
         default: false,
         validate: (data)=>{return JSPLib.validate.isBoolean(data);},
-        hint: `Multi-post results will use <span class="tisas-code">order:custom</span>, showing results with Twitter's order. <b>Note:</b> This will break the tag limit for non-Gold+.`
+        hint: `Multi-post results will use <span class="ntisas-code">order:custom</span>, showing results with Twitter's order. <b>Note:</b> This will break the tag limit for non-Gold+.`
     },
     query_subdomain: {
         allitems: subdomains,
@@ -141,7 +141,7 @@ const settings_config = {
     autoclick_IQDB_enabled: {
         default: false,
         validate: (data)=>{return JSPLib.validate.isBoolean(data);},
-        hint: `Will automatically trigger the <b>IQDB</b> links (limited availability, see <a class="tisas-forum-topic-link" target="_blank">topic #${danbooru_topic_id}</a> for details). <b>Note:</b> Any results are saved automatically.`
+        hint: `Will automatically trigger the <b>IQDB</b> links (limited availability, see <a class="ntisas-forum-topic-link" target="_blank">topic #${danbooru_topic_id}</a> for details). <b>Note:</b> Any results are saved automatically.`
     },
     auto_unhide_tweets_enabled: {
         default: false,
@@ -176,7 +176,7 @@ const settings_config = {
     score_highlights_enabled: {
         default: true,
         validate: (data)=>{return JSPLib.validate.isBoolean(data);},
-        hint: `Adds colored borders and other stylings based upon the Tweet score (limited availability, see <a class="tisas-forum-topic-link" target="_blank">topic #${danbooru_topic_id}</a> for details).`
+        hint: `Adds colored borders and other stylings based upon the Tweet score (limited availability, see <a class="ntisas-forum-topic-link" target="_blank">topic #${danbooru_topic_id}</a> for details).`
     },
     advanced_tooltips_enabled: {
         default: true,
@@ -216,7 +216,7 @@ const settings_config = {
         default: "%TWEETID%--%IMG%",
         parse: String,
         validate: (data)=>{return JSPLib.validate.isString(data);},
-        hint: `Prefix to add to original image downloads. Available format keywords include:<br><span class="tisas-code">%TWEETID%, %USERID%, %USERACCOUNT%, %IMG%, %DATE%, %TIME%, %ORDER%</span>.`
+        hint: `Prefix to add to original image downloads. Available format keywords include:<br><span class="ntisas-code">%TWEETID%, %USERID%, %USERACCOUNT%, %IMG%, %DATE%, %TIME%, %ORDER%</span>.`
     }
 };
 
@@ -225,168 +225,168 @@ const settings_config = {
 const font_family = "'Segoe UI', Arial, sans-serif";
 
 const program_css = `
-.tisas-horizontal-rule {
+.ntisas-horizontal-rule {
     border-top: 1px solid grey;
     margin: 10px;
 }
-.tisas-highlight.tisas-excellent {
+.ntisas-highlight.ntisas-excellent {
     border: red solid 10px;
 }
-.tisas-highlight.tisas-good {
+.ntisas-highlight.ntisas-good {
     border: orange solid 10px;
 }
-.tisas-highlight.tisas-aboveavg {
+.ntisas-highlight.ntisas-aboveavg {
     border: green solid 10px;
 }
-.tisas-highlight.tisas-fair {
+.ntisas-highlight.ntisas-fair {
     border: blue solid 10px;
 }
-.tisas-highlight.tisas-belowavg {
+.ntisas-highlight.ntisas-belowavg {
     border: purple solid 10px;
 }
-.tisas-highlight.tisas-poor {
+.ntisas-highlight.ntisas-poor {
     border: black solid 10px;
 }
-.tisas-highlight.tisas-fade article {
+.ntisas-highlight.ntisas-fade article {
     opacity: 0.2;
 }
-.tisas-highlight.tisas-fade article:hover {
+.ntisas-highlight.ntisas-fade article:hover {
     opacity: 1.0;
 }
-.tisas-highlight.tisas-hide article {
+.ntisas-highlight.ntisas-hide article {
     opacity: 0.0;
 }
-.tisas-highlight.tisas-hide article:hover {
+.ntisas-highlight.ntisas-hide article:hover {
     opacity: 1.0;
 }
-.tisas-code {
+.ntisas-code {
     font-family: monospace;
     background: #eee
 }
-#tisas-database-version,
-#tisas-install,
-#tisas-upgrade {
+#ntisas-database-version,
+#ntisas-install,
+#ntisas-upgrade {
     color: #0073ff;
 }
-.tisas-tweet .tisas-database-match,
-.tisas-tweet .tisas-database-match:hover,
-.tisas-tweet .tisas-database-match:focus,
-.tisas-tweet .tisas-similar-match-great,
-.tisas-tweet .tisas-similar-match-great:hover,
-.tisas-tweet .tisas-similar-match-great:focus {
+.ntisas-tweet .ntisas-database-match,
+.ntisas-tweet .ntisas-database-match:hover,
+.ntisas-tweet .ntisas-database-match:focus,
+.ntisas-tweet .ntisas-similar-match-great,
+.ntisas-tweet .ntisas-similar-match-great:hover,
+.ntisas-tweet .ntisas-similar-match-great:focus {
     color: green;
 }
-.tisas-tweet .tisas-similar-match-good,
-.tisas-tweet .tisas-similar-match-good:hover,
-.tisas-tweet .tisas-similar-match-good:focus {
+.ntisas-tweet .ntisas-similar-match-good,
+.ntisas-tweet .ntisas-similar-match-good:hover,
+.ntisas-tweet .ntisas-similar-match-good:focus {
     color: blue;
 }
-.tisas-tweet .tisas-similar-match-fair,
-.tisas-tweet .tisas-similar-match-fair:hover,
-.tisas-tweet .tisas-similar-match-fair:focus {
+.ntisas-tweet .ntisas-similar-match-fair,
+.ntisas-tweet .ntisas-similar-match-fair:hover,
+.ntisas-tweet .ntisas-similar-match-fair:focus {
     color: orange;
 }
-.tisas-tweet .tisas-similar-match-poor,
-.tisas-tweet .tisas-similar-match-poor:hover,
-.tisas-tweet .tisas-similar-match-poor:focus {
+.ntisas-tweet .ntisas-similar-match-poor,
+.ntisas-tweet .ntisas-similar-match-poor:hover,
+.ntisas-tweet .ntisas-similar-match-poor:focus {
     color: red;
 }
-.tisas-tweet .tisas-manual-add,
-.tisas-tweet .tisas-manual-add:hover,
-.tisas-tweet .tisas-database-no-match,
-.tisas-tweet .tisas-database-no-match:hover {
+.ntisas-tweet .ntisas-manual-add,
+.ntisas-tweet .ntisas-manual-add:hover,
+.ntisas-tweet .ntisas-database-no-match,
+.ntisas-tweet .ntisas-database-no-match:hover {
     color: red;
 }
-.tisas-tweet .tisas-check-url,
-.tisas-tweet .tisas-check-url:hover,
-.tisas-tweet .tisas-check-iqdb,
-.tisas-tweet .tisas-check-iqdb:hover,
-.tisas-tweet .tisas-check-sauce,
-.tisas-tweet .tisas-check-sauce:hover,
-#tisas-current-records,
-#tisas-error-messages,
-#tisas-total-records,
-#tisas-current-fade-level,
-#tisas-current-hide-level {
+.ntisas-tweet .ntisas-check-url,
+.ntisas-tweet .ntisas-check-url:hover,
+.ntisas-tweet .ntisas-check-iqdb,
+.ntisas-tweet .ntisas-check-iqdb:hover,
+.ntisas-tweet .ntisas-check-sauce,
+.ntisas-tweet .ntisas-check-sauce:hover,
+#ntisas-current-records,
+#ntisas-error-messages,
+#ntisas-total-records,
+#ntisas-current-fade-level,
+#ntisas-current-hide-level {
     color: grey;
 }
-#tisas-active-autoiqdb,
-#tisas-unavailable-highlights,
-#tisas-unavailable-autoiqdb {
+#ntisas-active-autoiqdb,
+#ntisas-unavailable-highlights,
+#ntisas-unavailable-autoiqdb {
     font-style: italic;
     letter-spacing: 1px;
     color: #bbb;
 }
-.tisas-tweet .tisas-check-url,
-.tisas-tweet .tisas-check-iqdb,
-.tisas-tweet .tisas-check-sauce,
-#tisas-artist-toggle,
-#tisas-indicator-toggle {
+.ntisas-tweet .ntisas-check-url,
+.ntisas-tweet .ntisas-check-iqdb,
+.ntisas-tweet .ntisas-check-sauce,
+#ntisas-artist-toggle,
+#ntisas-indicator-toggle {
     display: inline-block;
     min-width: 40px;
     text-align: center;
 }
-#tisas-artist-toggle a,
-#tisas-iqdb-toggle a,
-#tisas-indicator-toggle a {
+#ntisas-artist-toggle a,
+#ntisas-iqdb-toggle a,
+#ntisas-indicator-toggle a {
     display: none;
 }
-#tisas-current-fade-level,
-#tisas-current-hide-level {
+#ntisas-current-fade-level,
+#ntisas-current-hide-level {
     min-width: 5em;
     display: inline-block;
     text-align: center;
 }
-#tisas-enable-highlights,
-#tisas-enable-autoiqdb,
-#tisas-enable-indicators {
+#ntisas-enable-highlights,
+#ntisas-enable-autoiqdb,
+#ntisas-enable-indicators {
     color: green;
 }
-#tisas-disable-highlights,
-#tisas-disable-autoiqdb,
-#tisas-disable-indicators {
+#ntisas-disable-highlights,
+#ntisas-disable-autoiqdb,
+#ntisas-disable-indicators {
     color: red;
 }
-#tisas-increase-fade-level:hover,
-#tisas-increase-hide-level:hover,
-#tisas-decrease-fade-level:hover,
-#tisas-decrease-hide-level:hover {
+#ntisas-increase-fade-level:hover,
+#ntisas-increase-hide-level:hover,
+#ntisas-decrease-fade-level:hover,
+#ntisas-decrease-hide-level:hover {
     text-decoration: none;
 }
-#tisas-side-menu {
+#ntisas-side-menu {
     font-size: 14px;
     margin-left: -10px;
     width: 280px;
     height: 450px;
     font-family: ${font_family};
 }
-#tisas-side-border {
+#ntisas-side-border {
     border: solid lightgrey 1px;
 }
-#tisas-menu-settings {
+#ntisas-menu-settings {
     margin-left: 5px;
     font-weight: bold;
     line-height: 18px;
 }
-#tisas-menu-settings td {
+#ntisas-menu-settings td {
     padding: 0 2px;
 }
-#tisas-menu-settings td:nth-of-type(1),
-#tisas-menu-settings td:nth-of-type(2) {
+#ntisas-menu-settings td:nth-of-type(1),
+#ntisas-menu-settings td:nth-of-type(2) {
     width: 115px;
 }
-#tisas-version-header,
-#tisas-database-version {
+#ntisas-version-header,
+#ntisas-database-version {
     letter-spacing: -0.5px;
 }
-#tisas-install,
-#tisas-upgrade,
-#tisas-current-records,
-#tisas-hide-level-header,
-#tisas-fade-level-header {
+#ntisas-install,
+#ntisas-upgrade,
+#ntisas-current-records,
+#ntisas-hide-level-header,
+#ntisas-fade-level-header {
     letter-spacing: -1px;
 }
-#tisas-menu-header {
+#ntisas-menu-header {
     margin: 8px;
     font-size: 18px;
     font-weight: bold;
@@ -394,145 +394,145 @@ const program_css = `
     letter-spacing: -1px;
     text-decoration: underline;
 }
-#tisas-stats-header {
+#ntisas-stats-header {
     margin: 8px;
     font-size: 18px;
     font-weight: bold;
     line-height: 0.9;
 }
-#tisas-stats-header span {
+#ntisas-stats-header span {
     text-decoration: underline;
 }
-#tisas-open-settings {
+#ntisas-open-settings {
     margin: 0.5em;
 }
-#tisas-open-settings input {
+#ntisas-open-settings input {
     font-weight: bold;
     width: 19.5em;
 }
-.tisas-download-section {
+.ntisas-download-section {
     font-size: 24px;
     line-height: 30px;
     letter-spacing: .01em;
     white-space: normal;
     font-family: ${font_family};
 }
-.tisas-links a {
+.ntisas-links a {
     cursor: pointer;
     text-decoration: none;
 }
-.tisas-links a:hover {
+.ntisas-links a:hover {
     text-decoration: underline;
 }
-.tisas-download-header {
+.ntisas-download-header {
     font-size: 90%;
     text-decoration: underline;
 }
-.tisas-download-original,
-.tisas-download-all {
+.ntisas-download-original,
+.ntisas-download-all {
     margin: 0 0.5em;
     font-size: 75%;
 }
-.qtiptisas.tisas-preview-tooltip {
+.qtiptisas.ntisas-preview-tooltip {
     max-width: none;
 }
-.tisas-preview-tooltip .qtiptisas-content {
+.ntisas-preview-tooltip .qtiptisas-content {
     max-width: 850px;
     max-height: 500px;
     overflow-y: auto;
 }
-.tisas-similar-result,
-.tisas-post-result {
+.ntisas-similar-result,
+.ntisas-post-result {
     font-family: ${font_family};
 }
-.tisas-similar-result h4,
-.tisas-post-result h4 {
+.ntisas-similar-result h4,
+.ntisas-post-result h4 {
     margin-top: 0;
     margin-bottom: 5px;
     font-size: 16px;
     font-weight: bold;
 }
-.tisas-confirm-image > p {
+.ntisas-confirm-image > p {
     font-weight: 12px;
     padding: 6px;
 }
-.tisas-confirm-image b {
+.ntisas-confirm-image b {
     font-weight: bold;
 }
-.tisas-delete-label {
+.ntisas-delete-label {
     font-size: 1em;
     margin-top: 0.25em;
     margin-right: 0.5em;
     float: left;
 }
-.tisas-delete-all {
+.ntisas-delete-all {
     display: block;
     float: left;
 }
-.tisas-post-preview {
+.ntisas-post-preview {
     display: inline-block;
     width: 165px;
     text-align: center;
     font-family: ${font_family};
 }
-.tisas-post-preview img {
+.ntisas-post-preview img {
     max-width: 150px;
     max-height: 150px;
     overflow: hidden;
 }
-.tisas-image-container {
+.ntisas-image-container {
     height: 150px;
     width: 150px;
     border: solid transparent 5px;
 }
-.tisas-post-match .tisas-image-container {
+.ntisas-post-match .ntisas-image-container {
     border: solid green 5px;
 }
-.tisas-post-select .tisas-image-container {
+.ntisas-post-select .ntisas-image-container {
     border: solid black 5px;
 }
-.tisas-confirm-image .tisas-post-select .tisas-image-container {
+.ntisas-confirm-image .ntisas-post-select .ntisas-image-container {
     border: solid blue 5px;
 }
-.tisas-desc {
+.ntisas-desc {
     font-size:12px;
     margin-bottom: 2px;
     margin-top: 0;
 }
-.tisas-desc-size {
+.ntisas-desc-size {
     letter-spacing: -1px;
 }
-.tisas-timeline-menu {
+.ntisas-timeline-menu {
     font-size: 13px;
     letter-spacing: -1px;
     font-weight: bold;
     min-width: 250px;
     font-family: ${font_family};
 }
-.tisas-tweet-menu {
+.ntisas-tweet-menu {
     margin-left: 1em;
     font-weight: bold;
     font-family: ${font_family};
 }
-.tisas-image-menu.tisas-tweet-actions {
+.ntisas-image-menu.ntisas-tweet-actions {
     max-width: 550px;
 }
-.tisas-image-menu.tisas-tweet-actions div:nth-child(1) {
+.ntisas-image-menu.ntisas-tweet-actions div:nth-child(1) {
     justify-content: left;
 }
-.tisas-image-menu.tisas-tweet-actions div:nth-child(2) {
+.ntisas-image-menu.ntisas-tweet-actions div:nth-child(2) {
     justify-content: center;
 }
-.tisas-image-menu.tisas-tweet-actions div:nth-child(3) {
+.ntisas-image-menu.ntisas-tweet-actions div:nth-child(3) {
     justify-content: right;
 }
-.tisas-image-menu.tisas-tweet-actions div:nth-child(4) {
+.ntisas-image-menu.ntisas-tweet-actions div:nth-child(4) {
     justify-content: center;
 }
-.tisas-image-menu.tisas-tweet-actions div:nth-child(5) {
+.ntisas-image-menu.ntisas-tweet-actions div:nth-child(5) {
     display: none;
 }
-.tisas-upload {
+.ntisas-upload {
     font-size: 20px;
     font-weight: bold;
     width: 50px;
@@ -540,14 +540,14 @@ const program_css = `
     padding-top: 10px;
     font-family: ${font_family};
 }
-.tisas-upload a {
+.ntisas-upload a {
     color: rgba(255,255,255,0.8);
 }
-.tisas-help-info,
-.tisas-help-info:hover {
+.ntisas-help-info,
+.ntisas-help-info:hover {
     color: hotpink;
 }
-.tisas-media-link {
+.ntisas-media-link {
     font-size: 14px;
     margin-right: 0.5em;
     font-weight: bold;
@@ -558,136 +558,136 @@ const program_css = `
     font-family: ${font_family};
     text-decoration: none;
 }
-.tisas-main-tweet .tisas-tweet-status {
+.ntisas-main-tweet .ntisas-tweet-status {
     height: 34px;
 }
-.tisas-tweet-status > .tisas-indicators {
+.ntisas-tweet-status > .ntisas-indicators {
     margin-left: 2.75em;
 }
-.tisas-indicators {
+.ntisas-indicators {
     font-family: 'MS Gothic','Meiryo UI';
     font-size: 20px;
     font-weight: bold;
     margin: 0 5px;
 }
-.tisas-indicators span {
+.ntisas-indicators span {
     display: none;
 }
-.tisas-footer-entries {
+.ntisas-footer-entries {
     font-size: 16px;
     font-weight: bold;
     margin-top: 10px;
     font-family: ${font_family};
 }
-.tisas-mark-artist,
-.tisas-mark-artist:hover {
+.ntisas-mark-artist,
+.ntisas-mark-artist:hover {
     color: red;
 }
-.tisas-mark-tweet,
-.tisas-mark-tweet:hover {
+.ntisas-mark-tweet,
+.ntisas-mark-tweet:hover {
     color: orange;
 }
-.tisas-count-artist,
-.tisas-count-artist:hover {
+.ntisas-count-artist,
+.ntisas-count-artist:hover {
     color: blue;
 }
-.tisas-count-tweet,
-.tisas-count-tweet:hover {
+.ntisas-count-tweet,
+.ntisas-count-tweet:hover {
     color: green;
 }
-.tisas-activated,
-.tisas-activated:hover {
+.ntisas-activated,
+.ntisas-activated:hover {
     color: unset;
 }
-#tisas-indicator-counter {
+#ntisas-indicator-counter {
     position: absolute;
     right: -3.75em;
     font-size: 20px;
     font-weight: bold;
     font-family: ${font_family};
 }
-#tisas-tweet-stats {
+#ntisas-tweet-stats-table {
     margin: 0.5em;
 }
-#tisas-tweet-stats table {
+#ntisas-tweet-stats-table table {
     width: 95%;
     text-align: center;
 }
-#tisas-tweet-stats th a {
+#ntisas-tweet-stats-table th a {
     padding: 1px 5px;
     border-radius: 10px;
     border: solid 1px;
 }
-#tisas-tweet-stats th a:hover {
+#ntisas-tweet-stats-table th a:hover {
     background-color: #ddd;
 }
-#tisas-tweet-stats td {
+#ntisas-tweet-stats-table td {
     color: grey;
     border: 1px solid;
 }
 @media screen and (min-width: 1282px) {
-    #tisas-account-options {
+    #ntisas-account-options {
         width: 300px;
         margin-left: -25px;
     }
 }
-.ui-dialog.tisas-dialog {
+.ui-dialog.ntisas-dialog {
     z-index: 1010;
 }
-.ui-dialog .tisas-dialog-close.ui-dialog-titlebar-close {
+.ui-dialog .ntisas-dialog-close.ui-dialog-titlebar-close {
     font-size: 0;
     margin-right: 5px;
 }
-.ui-dialog .tisas-dialog-close.ui-dialog-titlebar-close .ui-icon-closethick {
+.ui-dialog .ntisas-dialog-close.ui-dialog-titlebar-close .ui-icon-closethick {
     margin: -8px;
 }`;
 
 const color_css = `
-#tisas-side-menu,
-#tisas-indicator-counter,
-.tisas-tweet-menu,
-.tisas-timeline-menu,
-.tisas-download-section,
-.tisas-footer-entries {
+#ntisas-side-menu,
+#ntisas-indicator-counter,
+.ntisas-tweet-menu,
+.ntisas-timeline-menu,
+.ntisas-download-section,
+.ntisas-footer-entries {
     color: %s;
 }
-.tisas-download-original,
-.tisas-download-all,
-.tisas-media-link,
-#tisas-tweet-stats th a {
+.ntisas-download-original,
+.ntisas-download-all,
+.ntisas-media-link,
+#ntisas-tweet-stats-table th a {
     color: %s;
 }
-.tisas-media-link,
-#tisas-tweet-stats th a {
+.ntisas-media-link,
+#ntisas-tweet-stats-table th a {
     border-color: %s;
 }
-.tisas-media-link:hover,
-#tisas-tweet-stats th a:hover {
+.ntisas-media-link:hover,
+#ntisas-tweet-stats-table th a:hover {
     background-color: %s;
 }
-.tisas-media-link:active,
-.tisas-media-link:focus {
+.ntisas-media-link:active,
+.ntisas-media-link:focus {
     box-shadow: 0 0 0 2px #FFFFFF, 0 0 0 4px %s;
 }
-#tisas-increase-fade-level:hover,
-#tisas-increase-hide-level:hover,
-#tisas-decrease-fade-level:hover,
-#tisas-decrease-hide-level:hover {
+#ntisas-increase-fade-level:hover,
+#ntisas-increase-hide-level:hover,
+#ntisas-decrease-fade-level:hover,
+#ntisas-decrease-hide-level:hover {
     background-color: %s;
 }`;
 
 const notice_css = `
-div#tisas-notice.ui-state-highlight {
+div#ntisas-notice.ui-state-highlight {
     color: #5f3f3f;
     background-color: #fffbbf;
     border: 1px solid #ccc999;
 }
-div#tisas-notice.ui-state-error {
+div#ntisas-notice.ui-state-error {
     color: #5f3f3f;
     background-color: #fddfde;
     border: 1px solid #fbc7c6;
 }
-div#tisas-notice {
+div#ntisas-notice {
     border: 1px solid #dad55e;
     background: #fffa90;
     color: #777620;
@@ -751,84 +751,84 @@ const menu_css = `
     width: 90%;
     margin-left: 0;
 }
-#twitter-image-searches-and-stuff {
+#new-twitter-image-searches-and-stuff {
     z-index: 1001;
     font-size: 14px;
 }
-#twitter-image-searches-and-stuff p {
+#new-twitter-image-searches-and-stuff p {
     margin-bottom: 1em;
 }
-#twitter-image-searches-and-stuff h4 {
+#new-twitter-image-searches-and-stuff h4 {
     font-size: 1.16667em;
     line-height: 1.5em;
     margin: 0;
 }
-#twitter-image-searches-and-stuff .prose h2 {
+#new-twitter-image-searches-and-stuff .prose h2 {
     font-size: 1.8em;
     padding: 0.25em;
     line-height: 1em;
     color: black;
     margin: 0;
 }
-#twitter-image-searches-and-stuff .prose h4 {
+#new-twitter-image-searches-and-stuff .prose h4 {
     font-size: 1.4em;
     padding: .8em 0 .25em;
     margin: 0;
 }
-#twitter-image-searches-and-stuff a {
+#new-twitter-image-searches-and-stuff a {
     color:#0073ff
 }
-#twitter-image-searches-and-stuff b {
+#new-twitter-image-searches-and-stuff b {
     font-weight: bold;
 }
-#twitter-image-searches-and-stuff #tisas-tabs a {
+#new-twitter-image-searches-and-stuff #ntisas-tabs a {
     color: unset;
 }
-#twitter-image-searches-and-stuff ul:not(#tisas-tabs) {
+#new-twitter-image-searches-and-stuff ul:not(#ntisas-tabs) {
     margin-left: 1em;
     padding-left: 0;
 }
-#twitter-image-searches-and-stuff ul:not(#tisas-tabs) li {
+#new-twitter-image-searches-and-stuff ul:not(#ntisas-tabs) li {
     list-style-type: disc;
     margin-left: 0.5em;
 }
-.tisas-textinput input {
+.ntisas-textinput input {
     width: unset;
 }
-#tisas-import-file,
-#tisas-settings-buttons input,
-.tisas-textinput input{
+#ntisas-import-file,
+#ntisas-settings-buttons input,
+.ntisas-textinput input{
     background-color: white;
 }
-#twitter-image-searches-and-stuff .tisas-striped {
+#new-twitter-image-searches-and-stuff .ntisas-striped {
     border-collapse: collapse;
     border-spacing: 0;
 }
-#twitter-image-searches-and-stuff .tisas-striped thead tr {
+#new-twitter-image-searches-and-stuff .ntisas-striped thead tr {
     border-bottom: 2px solid #666;
 }
-#twitter-image-searches-and-stuff .tisas-striped tbody tr {
+#new-twitter-image-searches-and-stuff .ntisas-striped tbody tr {
     border-bottom: 1px solid #BBB;
 }
-#twitter-image-searches-and-stuff .tisas-striped td,
-#twitter-image-searches-and-stuff .tisas-striped th {
+#new-twitter-image-searches-and-stuff .ntisas-striped td,
+#new-twitter-image-searches-and-stuff .ntisas-striped th {
     padding: 4px 6px;
 }
-#twitter-image-searches-and-stuff .tisas-striped thead th {
+#new-twitter-image-searches-and-stuff .ntisas-striped thead th {
     font-weight: 700;
     text-align: left;
     color: #333;
 }
-#tisas-script-message > div {
+#ntisas-script-message > div {
     display: inline-block;
 }
-#tisas-forum-message {
+#ntisas-forum-message {
     padding: 1em;
 }
-#tisas-available-hotkeys {
+#ntisas-available-hotkeys {
     float: right;
 }
-#tisas-available-hotkeys-title {
+#ntisas-available-hotkeys-title {
     font-size: 125%;
     padding-left: 0.5em;
     color: #888;
@@ -836,18 +836,18 @@ const menu_css = `
 
 //HTML constants
 
-const horizontal_rule = '<div class="tisas-horizontal-rule"></div>';
+const horizontal_rule = '<div class="ntisas-horizontal-rule"></div>';
 const settings_help = "L-Click to open settings menu. (Shortcut: Alt+M)";
 
-const settings_menu = '<div id="twitter-image-searches-and-stuff" title="TISAS Settings"></div>';
+const settings_menu = '<div id="new-twitter-image-searches-and-stuff" title="NTISAS Settings"></div>';
 
-const tisas_menu = `
-<div id="tisas-script-message" class="prose">
+const ntisas_menu = `
+<div id="ntisas-script-message" class="prose">
     <h2>Twitter Image Searches and Stuff</h2>
-    <div id="tisas-forum-message">Check the forum for the latest on information and updates (<a class="tisas-forum-topic-link" target="_blank">topic #${danbooru_topic_id}</a>).</div>
-    <div id="tisas-available-hotkeys">
-        <div id="tisas-available-hotkeys-title"><b>Available hotkeys</b>:</div>
-        <table class="tisas-striped">
+    <div id="ntisas-forum-message">Check the forum for the latest on information and updates (<a class="ntisas-forum-topic-link" target="_blank">topic #${danbooru_topic_id}</a>).</div>
+    <div id="ntisas-available-hotkeys">
+        <div id="ntisas-available-hotkeys-title"><b>Available hotkeys</b>:</div>
+        <table class="ntisas-striped">
             <thead><tr>
                 <th>Open</th>
                 <th>Close</th>
@@ -863,30 +863,30 @@ const tisas_menu = `
         </table>
     </div>
 </div>
-<div id="tisas-console" class="jsplib-console">
-    <div id="tisas-settings" class="jsplib-outer-menu">
-        <ul id="tisas-tabs">
-            <li><a href="#tisas-display-settings">Display</a></li>
-            <li><a href="#tisas-highlight-settings">Highlight</a></li>
-            <li><a href="#tisas-query-settings">Query</a></li>
-            <li><a href="#tisas-database-settings">Database</a></li>
-            <li><a href="#tisas-network-settings">Network</a></li>
-            <li><a href="#tisas-download-settings">Download</a></li>
-            <li><a href="#tisas-list-controls">List</a></li>
-            <li><a href="#tisas-cache-controls">Cache</a></li>
+<div id="ntisas-console" class="jsplib-console">
+    <div id="ntisas-settings" class="jsplib-outer-menu">
+        <ul id="ntisas-tabs">
+            <li><a href="#ntisas-display-settings">Display</a></li>
+            <li><a href="#ntisas-highlight-settings">Highlight</a></li>
+            <li><a href="#ntisas-query-settings">Query</a></li>
+            <li><a href="#ntisas-database-settings">Database</a></li>
+            <li><a href="#ntisas-network-settings">Network</a></li>
+            <li><a href="#ntisas-download-settings">Download</a></li>
+            <li><a href="#ntisas-list-controls">List</a></li>
+            <li><a href="#ntisas-cache-controls">Cache</a></li>
         </ul>
-        <div id="tisas-display-settings" class="jsplib-settings-grouping">
-            <div id="tisas-display-message" class="prose">
+        <div id="ntisas-display-settings" class="jsplib-settings-grouping">
+            <div id="ntisas-display-message" class="prose">
                 <h4>Display settings</h4>
             </div>
         </div>
-        <div id="tisas-highlight-settings" class="jsplib-settings-grouping">
-            <div id="tisas-highlight-message" class="prose">
+        <div id="ntisas-highlight-settings" class="jsplib-settings-grouping">
+            <div id="ntisas-highlight-message" class="prose">
                 <h4>Highlight settings</h4>
             </div>
         </div>
-        <div id="tisas-query-settings" class="jsplib-settings-grouping">
-            <div id="tisas-query-message" class="prose">
+        <div id="ntisas-query-settings" class="jsplib-settings-grouping">
+            <div id="ntisas-query-message" class="prose">
                 <h4>Query settings</h4>
                 <ul>
                     <li><b>Confirm query:</b> Prompt the user on which images to query when there is more than one image.</li>
@@ -901,25 +901,25 @@ const tisas_menu = `
                 <p><b>Note:</b> Sauce may be limited. Check <a href="http://saucenao.com" target="_blank">SauceNAO</a> for details.
             </div>
         </div>
-        <div id="tisas-database-settings" class="jsplib-settings-grouping">
-            <div id="tisas-database-message" class="prose">
+        <div id="ntisas-database-settings" class="jsplib-settings-grouping">
+            <div id="ntisas-database-message" class="prose">
                 <h4>Database settings</h4>
             </div>
         </div>
-        <div id="tisas-network-settings" class="jsplib-settings-grouping">
-            <div id="tisas-network-message" class="prose">
+        <div id="ntisas-network-settings" class="jsplib-settings-grouping">
+            <div id="ntisas-network-message" class="prose">
                 <h4>Network settings</h4>
             </div>
         </div>
-        <div id="tisas-download-settings" class="jsplib-settings-grouping">
-            <div id="tisas-download-message" class="prose">
+        <div id="ntisas-download-settings" class="jsplib-settings-grouping">
+            <div id="ntisas-download-message" class="prose">
                 <h4>Download settings</h4>
             </div>
         </div>
-        <div id="tisas-list-controls" class="jsplib-settings-grouping">
-            <div id="tisas-list-message" class="prose">
+        <div id="ntisas-list-controls" class="jsplib-settings-grouping">
+            <div id="ntisas-list-message" class="prose">
                 <h4>List controls</h4>
-                <p>Alter lists used to control various aspects of TISAS.</p>
+                <p>Alter lists used to control various aspects of NTISAS.</p>
                 <p><b>Note:</b> Factory Reset does not affect the lists.</p>
                 <ul>
                     <li><b>Highlight:</b> No highlight list</li>
@@ -929,8 +929,8 @@ const tisas_menu = `
                 </ul>
             </div>
         </div>
-        <div id="tisas-cache-controls" class="jsplib-settings-grouping">
-            <div id="tisas-cache-message" class="prose">
+        <div id="ntisas-cache-controls" class="jsplib-settings-grouping">
+            <div id="ntisas-cache-message" class="prose">
                 <h4>Cache controls</h4>
             </div>
         </div>
@@ -938,14 +938,14 @@ const tisas_menu = `
 </div>`;
 
 const indicator_links = `
-<div class="tisas-footer-entries tisas-links">
+<div class="ntisas-footer-entries ntisas-links">
     Mark(
-        <a class="tisas-mark-artist">Artist</a> |
-        <a class="tisas-mark-tweet">Tweet</a>
+        <a class="ntisas-mark-artist">Artist</a> |
+        <a class="ntisas-mark-tweet">Tweet</a>
     )&emsp;
     Count(
-        <a class="tisas-count-artist">Artist</a> |
-        <a class="tisas-count-tweet">Tweet</a>
+        <a class="ntisas-count-artist">Artist</a> |
+        <a class="ntisas-count-tweet">Tweet</a>
     )
 </div>
 `;
@@ -963,41 +963,41 @@ const plus_sign = `
 `;
 
 const highlight_html = `
-<span id="tisas-artist-toggle">
-    <a id="tisas-enable-highlights">Enable</a>
-    <a id="tisas-disable-highlights">Disable</a>
-    <span id="tisas-unavailable-highlights">Unavailable</span>
+<span id="ntisas-artist-toggle">
+    <a id="ntisas-enable-highlights">Enable</a>
+    <a id="ntisas-disable-highlights">Disable</a>
+    <span id="ntisas-unavailable-highlights">Unavailable</span>
 </span>
 `;
 const fade_highlight_html = `
-<a id="tisas-decrease-fade-level">${minus_sign}</a>
-<span id="tisas-current-fade-level">%s</span>
-<a id="tisas-increase-fade-level">${plus_sign}</a>
+<a id="ntisas-decrease-fade-level">${minus_sign}</a>
+<span id="ntisas-current-fade-level">%s</span>
+<a id="ntisas-increase-fade-level">${plus_sign}</a>
 `;
 const hide_highlight_html = `
-<a id="tisas-decrease-hide-level">${minus_sign}</a>
-<span id="tisas-current-hide-level">%s</span>
-<a id="tisas-increase-hide-level">${plus_sign}</a>
+<a id="ntisas-decrease-hide-level">${minus_sign}</a>
+<span id="ntisas-current-hide-level">%s</span>
+<a id="ntisas-increase-hide-level">${plus_sign}</a>
 `;
 const auto_iqdb_html = `
-<span id="tisas-iqdb-toggle">
-    <a id="tisas-enable-autoiqdb">Enable</a>
-    <a id="tisas-disable-autoiqdb">Disable</a>
-    <span id="tisas-active-autoiqdb">Active</span>
-    <span id="tisas-unavailable-autoiqdb">Unavailable</span>
+<span id="ntisas-iqdb-toggle">
+    <a id="ntisas-enable-autoiqdb">Enable</a>
+    <a id="ntisas-disable-autoiqdb">Disable</a>
+    <span id="ntisas-active-autoiqdb">Active</span>
+    <span id="ntisas-unavailable-autoiqdb">Unavailable</span>
 </span>
 `;
 const indicator_html = `
-<span id="tisas-indicator-toggle">
-    <a id="tisas-enable-indicators">Show</a>
-    <a id="tisas-disable-indicators">Hide</a>
+<span id="ntisas-indicator-toggle">
+    <a id="ntisas-enable-indicators">Show</a>
+    <a id="ntisas-disable-indicators">Hide</a>
 </span>
 `;
 
-const main_counter = '<span id="tisas-indicator-counter">( <span class="tisas-count-artist">0</span> , <span class="tisas-count-tweet">0</span> )</span>';
-const tweet_indicators = '<span class="tisas-indicators"><span class="tisas-mark-artist">Ⓐ</span><span class="tisas-mark-tweet">Ⓣ</span><span class="tisas-count-artist">ⓐ</span><span class="tisas-count-tweet">ⓣ</span></span>';
-const notice_banner = '<div id="tisas-notice"><span>.</span><a href="#" id="tisas-close-notice-link">close</a></div>';
-const load_counter = '<span id="tisas-load-message">Loading ( <span id="tisas-counter">...</span> )</span>';
+const main_counter = '<span id="ntisas-indicator-counter">( <span class="ntisas-count-artist">0</span> , <span class="ntisas-count-tweet">0</span> )</span>';
+const tweet_indicators = '<span class="ntisas-indicators"><span class="ntisas-mark-artist">Ⓐ</span><span class="ntisas-mark-tweet">Ⓣ</span><span class="ntisas-count-artist">ⓐ</span><span class="ntisas-count-tweet">ⓣ</span></span>';
+const notice_banner = '<div id="ntisas-notice"><span>.</span><a href="#" id="ntisas-close-notice-link">close</a></div>';
+const load_counter = '<span id="ntisas-load-message">Loading ( <span id="ntisas-counter">...</span> )</span>';
 
 //Message constants
 
@@ -1140,7 +1140,7 @@ const post_preview_dimension = 150;
 
 const PREVIEW_QTIP_SETTINGS = {
     style: {
-        classes: "qtiptisas-light tisas-preview-tooltip",
+        classes: "qtiptisas-light ntisas-preview-tooltip",
     },
     position: {
         my: "top center",
@@ -1163,8 +1163,8 @@ const CONFIRM_DIALOG_SETTINGS = {
     resizable:false,
     autoOpen: false,
     classes: {
-        "ui-dialog": "tisas-dialog",
-        "ui-dialog-titlebar-close": "tisas-dialog-close"
+        "ui-dialog": "ntisas-dialog",
+        "ui-dialog-titlebar-close": "ntisas-dialog-close"
     },
     open: function (event,ui ) {
         this.promiseConfirm = new Promise((resolve)=>{this.resolveConfirm = resolve;});
@@ -1190,20 +1190,20 @@ const MENU_DIALOG_SETTINGS = {
     width: 1000,
     height: 800,
     classes: {
-        "ui-dialog": "tisas-dialog",
-        "ui-dialog-titlebar-close": "tisas-dialog-close"
+        "ui-dialog": "ntisas-dialog",
+        "ui-dialog-titlebar-close": "ntisas-dialog-close"
     },
     open: (event,ui)=>{
-        TISAS.opened_menu = true;
+        NTISAS.opened_menu = true;
     },
     close: (event,ui)=>{
-        TISAS.opened_menu = false;
+        NTISAS.opened_menu = false;
     },
     buttons: {
         "Save": (()=>{}),
         "Factory reset": (()=>{}),
         "Cancel": function () {
-            TISAS.opened_menu = false;
+            NTISAS.opened_menu = false;
             $(this).dialog("close");
         }
     }
@@ -1211,11 +1211,11 @@ const MENU_DIALOG_SETTINGS = {
 
 const MENU_DIALOG_BUTTONS = {
     "Save": {
-        id: "tisas-commit",
+        id: "ntisas-commit",
         title: save_help
     },
     "Factory reset": {
-        id: "tisas-resetall",
+        id: "ntisas-resetall",
         title: reset_help
     },
     "Cancel": {
@@ -1296,22 +1296,22 @@ function ValidatePostEntry(key,entry) {
 function ValidateProgramData(key,entry) {
     var checkerror=[],check;
     switch (key) {
-        case 'tisas-recent-timestamp':
+        case 'ntisas-recent-timestamp':
             if (!Number.isInteger(entry)) {
                 checkerror = ["Value is not an integer."];
             }
             break;
-        case 'tisas-postver-lastid':
+        case 'ntisas-postver-lastid':
             if (!JSPLib.validate.validateID(entry)) {
                 checkerror = ["Value is not a valid ID."];
             }
             break;
-        case 'tisas-overflow':
+        case 'ntisas-overflow':
             if (!JSPLib.validate.isBoolean(entry)) {
                 checkerror = ["Value is not a boolean."];
             }
             break;
-        case 'tisas-color-style':
+        case 'ntisas-color-style':
             check = validate(entry,color_constraints);
             if (check) {
                 checkerror = [check];
@@ -1341,7 +1341,7 @@ function CorrectStringArray(name,artistlist) {
     }
     let correctlist = artistlist.filter((name)=>{return JSPLib.validate.isString(name);});
     if (artistlist.length !== correctlist.length) {
-        JSPLib.storage.setStorageData('tisas-' + name,correctlist,localStorage);
+        JSPLib.storage.setStorageData('ntisas-' + name,correctlist,localStorage);
         JSPLib.debug.debugExecute(()=>{
             let bad_values = JSPLib.utility.setDifference(artistlist,correctlist);
             CorrectStringArray.debuglog("Bad values found:",name,bad_values);
@@ -1619,22 +1619,22 @@ function TimeAgo(timestamp) {
 }
 
 function GetPostVersionsExpiration() {
-    return TISAS.user_settings.recheck_interval * JSPLib.utility.one_minute;
+    return NTISAS.user_settings.recheck_interval * JSPLib.utility.one_minute;
 }
 
 function WasOverflow() {
-    return JSPLib.storage.checkStorageData('tisas-overflow',ValidateProgramData,localStorage,false);
+    return JSPLib.storage.checkStorageData('ntisas-overflow',ValidateProgramData,localStorage,false);
 }
 
 function IsTISASInstalled() {
-    return JSPLib.storage.getStorageData('tisas-remote-database', localStorage) !== null;
+    return JSPLib.storage.getStorageData('ntisas-remote-database', localStorage) !== null;
 }
 
 function GetUserIdent() {
     if (API_data.has_data) {
-        return [TISAS.user_id, [TISAS.user_id, TISAS.account]];
+        return [NTISAS.user_id, [NTISAS.user_id, NTISAS.account]];
     } else {
-        return [TISAS.account, [TISAS.account]];
+        return [NTISAS.account, [NTISAS.account]];
     }
 }
 
@@ -1643,12 +1643,12 @@ function GetPhotoIndex() {
 }
 
 function DisplayHighlights() {
-    return TISAS.user_settings.score_highlights_enabled && IsMediaTimeline();
+    return NTISAS.user_settings.score_highlights_enabled && IsMediaTimeline();
 }
 
 function IsQuerySettingEnabled(setting,type) {
     let type_key = (type === 'iqdb' ? 'IQDB' : type) + '_settings';
-    return TISAS.user_settings[type_key].includes(setting);
+    return NTISAS.user_settings[type_key].includes(setting);
 }
 
 function MapPostData(posts) {
@@ -1713,27 +1713,27 @@ function CheckSimilarResults(results,tweet_id,type) {
 }
 
 function GetCustomQuery() {
-    return (TISAS.user_settings.custom_order_enabled ? '+order%3Acustom' : '');
+    return (NTISAS.user_settings.custom_order_enabled ? '+order%3Acustom' : '');
 }
 
 function GetPostVersionsLastID() {
     //Get the program last ID if it exists
-    let postver_lastid = JSPLib.storage.checkStorageData('tisas-postver-lastid',ValidateProgramData,localStorage,TISAS.database_info.post_version);
+    let postver_lastid = JSPLib.storage.checkStorageData('ntisas-postver-lastid',ValidateProgramData,localStorage,NTISAS.database_info.post_version);
     //Select the largest of the program lastid and the database lastid
-    let max_postver_lastid = Math.max(postver_lastid,TISAS.database_info.post_version);
+    let max_postver_lastid = Math.max(postver_lastid,NTISAS.database_info.post_version);
     if (postver_lastid !== max_postver_lastid) {
-        JSPLib.storage.setStorageData('tisas-postver-lastid',max_postver_lastid,localStorage);
+        JSPLib.storage.setStorageData('ntisas-postver-lastid',max_postver_lastid,localStorage);
     }
     return max_postver_lastid;
 }
 
 async function GetTotalRecords(manual=false) {
-    if (manual || JSPLib.concurrency.checkTimeout('tisas-length-recheck',length_recheck_expires)) {
+    if (manual || JSPLib.concurrency.checkTimeout('ntisas-length-recheck',length_recheck_expires)) {
         let database_length = await JSPLib.storage.twitterstorage.length();
-        JSPLib.storage.setStorageData('tisas-database-length',database_length,localStorage);
-        JSPLib.concurrency.setRecheckTimeout('tisas-length-recheck',length_recheck_expires);
+        JSPLib.storage.setStorageData('ntisas-database-length',database_length,localStorage);
+        JSPLib.concurrency.setRecheckTimeout('ntisas-length-recheck',length_recheck_expires);
     }
-    return JSPLib.storage.getStorageData('tisas-database-length',localStorage,0);
+    return JSPLib.storage.getStorageData('ntisas-database-length',localStorage,0);
 }
 
 function GetImageDimensions(image_url) {
@@ -1870,7 +1870,7 @@ function LogarithmicExpiration(count, max_count, time_divisor, multiplier) {
 function GetList(name) {
     GetList[name] = GetList[name] || {};
     if (!GetList[name].list) {
-        GetList[name].list = JSPLib.storage.getStorageData('tisas-' + name,localStorage,[]);
+        GetList[name].list = JSPLib.storage.getStorageData('ntisas-' + name,localStorage,[]);
         GetList[name].list = CorrectStringArray(name,GetList[name].list);
     }
     return GetList[name].list;
@@ -1880,10 +1880,10 @@ function SaveList(name,list,delay=true) {
     GetList[name].list = list;
     if (delay) {
         setTimeout(()=>{
-            JSPLib.storage.setStorageData('tisas-' + name, list, localStorage);
+            JSPLib.storage.setStorageData('ntisas-' + name, list, localStorage);
         }, storage_delay);
     } else {
-        JSPLib.storage.setStorageData('tisas-' + name,list,localStorage);
+        JSPLib.storage.setStorageData('ntisas-' + name,list,localStorage);
     }
 }
 
@@ -1908,10 +1908,10 @@ function PostExpiration(created_timestamp) {
 }
 
 function SetCheckPostvers() {
-    if (JSPLib.concurrency.checkTimeout('tisas-timeout',GetPostVersionsExpiration()) || WasOverflow()) {
+    if (JSPLib.concurrency.checkTimeout('ntisas-timeout',GetPostVersionsExpiration()) || WasOverflow()) {
         clearTimeout(CheckPostvers.timeout);
         CheckPostvers.timeout = setTimeout(()=>{
-            if (TISAS.database_info && JSPLib.concurrency.reserveSemaphore('tisas','postvers')) {
+            if (NTISAS.database_info && JSPLib.concurrency.reserveSemaphore('ntisas','postvers')) {
                 Timer.CheckPostvers();
             }
         },post_versions_callback);
@@ -1919,15 +1919,15 @@ function SetCheckPostvers() {
 }
 
 function GetTweetQuartile(tweetid) {
-    if (tweetid in TISAS.tweet_finish) {
-        return TISAS.tweet_finish[tweetid];
+    if (tweetid in NTISAS.tweet_finish) {
+        return NTISAS.tweet_finish[tweetid];
     }
-    let windowsize = TISAS.user_settings.score_window_size;
-    let pos = TISAS.tweet_pos.indexOf(tweetid);
-    let fave = TISAS.tweet_faves[pos];
+    let windowsize = NTISAS.user_settings.score_window_size;
+    let pos = NTISAS.tweet_pos.indexOf(tweetid);
+    let fave = NTISAS.tweet_faves[pos];
     let posmin = Math.max(0, pos - windowsize);
-    let posmax = Math.min(TISAS.tweet_pos.length, pos + windowsize);
-    let subarray = TISAS.tweet_faves.slice(posmin,posmax);
+    let posmax = Math.min(NTISAS.tweet_pos.length, pos + windowsize);
+    let subarray = NTISAS.tweet_faves.slice(posmin,posmax);
     var quartilepos = Math.floor(subarray.length / 4);
     var sortedfaves = subarray.sort((a,b)=>{return a - b;});
     var q1 = sortedfaves[quartilepos];
@@ -1950,17 +1950,17 @@ function GetTweetQuartile(tweetid) {
         quartile = 4;
     }
     if ((posmax - posmin) >= (windowsize * 2)) {
-        TISAS.tweet_finish[tweetid] = quartile;
+        NTISAS.tweet_finish[tweetid] = quartile;
     }
     return quartile;
 }
 
 function InitializeImageMenu($tweets,append_selector,menu_class) {
-    let uniqueid = TISAS.uniqueid;
+    let uniqueid = NTISAS.uniqueid;
     var all_post_ids = [];
     let timername = `InitializeImageMenu-${uniqueid}`;
     JSPLib.debug.debugTime(timername);
-    $tweets.each((i,entry)=>{$(append_selector,entry).addClass('tisas-image-menu');});
+    $tweets.each((i,entry)=>{$(append_selector,entry).addClass('ntisas-image-menu');});
     let tweet_ids = JSPLib.utility.getDOMAttributes($tweets, 'tweet-id', String);
     InitializeImageMenu.debuglog(`[${uniqueid}]`, "Check Tweets:", tweet_ids);
     let promise_array = tweet_ids.map((tweet_id)=>{
@@ -1971,12 +1971,12 @@ function InitializeImageMenu($tweets,append_selector,menu_class) {
         data_items.forEach((data,i)=>{
             let tweet_id = tweet_ids[i];
             let $tweet = $tweets.filter(`[data-tweet-id=${tweet_id}]`);
-            let $link_container = $(`<div class="${menu_class} tisas-links"></div>`);
+            let $link_container = $(`<div class="${menu_class} ntisas-links"></div>`);
             $tweet.find(append_selector).append($link_container);
             if (data !== null) {
-                TISAS.tweet_index[tweet_id] = {entry: $tweet, post_ids: data, processed: false};
+                NTISAS.tweet_index[tweet_id] = {entry: $tweet, post_ids: data, processed: false};
                 all_post_ids = all_post_ids.concat(data);
-                $link_container.html(RenderPostIDsLink(data,'tisas-database-match'));
+                $link_container.html(RenderPostIDsLink(data,'ntisas-database-match'));
             } else {
                 InitializeNoMatchesLinks(tweet_id,$link_container);
             }
@@ -1999,34 +1999,34 @@ function GetTweetStat(tweet,type) {
 
 function SetVideoDownload($download_section,video_url) {
     let [video_name,extension] = GetFileURLNameExt(video_url);
-    let download_filename = TISAS.filename_prefix
+    let download_filename = NTISAS.filename_prefix
         .replace(/%ORDER%/g, 'video1')
         .replace(/%IMG%/g, video_name) +
         '.' + extension;
-    $download_section.find('.tisas-download-video')
+    $download_section.find('.ntisas-download-video')
         .attr('href', video_url)
         .attr('download', download_filename)
         .show();
 }
 
 function UpdateLinkTitles() {
-    for (let tweet_id in TISAS.tweet_index) {
-        let tweet_entry = TISAS.tweet_index[tweet_id];
+    for (let tweet_id in NTISAS.tweet_index) {
+        let tweet_entry = NTISAS.tweet_index[tweet_id];
         if (tweet_entry.post_ids.length < 1 || tweet_entry.processed) {
             continue;
         }
-        let $link = tweet_entry.entry.find('.tisas-confirm-delete');
+        let $link = tweet_entry.entry.find('.ntisas-confirm-delete');
         let post_ids = tweet_entry.post_ids;
-        let loaded_post_ids = Object.keys(TISAS.post_index).map(Number);
+        let loaded_post_ids = Object.keys(NTISAS.post_index).map(Number);
         let all_posts_loaded = JSPLib.utility.isSubset(loaded_post_ids, post_ids);
         if (all_posts_loaded) {
-            let posts = post_ids.map((post_id)=>{return TISAS.post_index[post_id];});
+            let posts = post_ids.map((post_id)=>{return NTISAS.post_index[post_id];});
             if (post_ids.length === 1) {
                 $link.attr('title', GetLinkTitle(posts[0], false));
             } else {
                 $link.attr('title', GetMultiLinkTitle(posts, false));
             }
-            if (TISAS.user_settings.advanced_tooltips_enabled) {
+            if (NTISAS.user_settings.advanced_tooltips_enabled) {
                 let $images = tweet_entry.entry.find("[data-image-url]");
                 let image_urls = JSPLib.utility.getDOMAttributes($images, 'image-url');
                 //Only initialize the popup if the user hovers over the post link
@@ -2042,40 +2042,40 @@ function UpdatePostIDsLink(tweet_id) {
     if ($tweet.length === 0) {
         return;
     }
-    let $replace = (TISAS.page === "tweet" ? $tweet.find('.tisas-tweet-menu') : $tweet.find('.tisas-timeline-menu'));
-    let $link = $tweet.find('.tisas-database-match,.tisas-confirm-save');
-    if ($link.length && TISAS.user_settings.advanced_tooltips_enabled) {
+    let $replace = (NTISAS.page === "tweet" ? $tweet.find('.ntisas-tweet-menu') : $tweet.find('.ntisas-timeline-menu'));
+    let $link = $tweet.find('.ntisas-database-match,.ntisas-confirm-save');
+    if ($link.length && NTISAS.user_settings.advanced_tooltips_enabled) {
         $link.qtiptisas("destroy");
     }
     let post_ids = JSPLib.storage.getStorageData('tweet-' + tweet_id, sessionStorage, []);
     if (post_ids.length === 0) {
         InitializeNoMatchesLinks(tweet_id,$replace);
     } else {
-        $replace.html(RenderPostIDsLink(post_ids,'tisas-database-match'));
-        TISAS.tweet_index[tweet_id] = {entry: $tweet, post_ids: post_ids, processed: false};
+        $replace.html(RenderPostIDsLink(post_ids,'ntisas-database-match'));
+        NTISAS.tweet_index[tweet_id] = {entry: $tweet, post_ids: post_ids, processed: false};
         CheckPostIDs(post_ids);
     }
 }
 
 async function CheckPostIDs(post_ids) {
-    let uniqueid = TISAS.uniqueid;
-    let timername = `CheckPostIDs-${TISAS.uniqueid}`;
+    let uniqueid = NTISAS.uniqueid;
+    let timername = `CheckPostIDs-${NTISAS.uniqueid}`;
     JSPLib.debug.debugTime(timername);
-    while (!JSPLib.concurrency.reserveSemaphore('tisas','checkpost')) {
+    while (!JSPLib.concurrency.reserveSemaphore('ntisas','checkpost')) {
         CheckPostIDs.debuglog(`[${uniqueid}]`, "Sleeping one second...");
         await JSPLib.utility.sleep(1000);
     }
-    let temp_post_ids = JSPLib.utility.setUnion(TISAS.all_post_ids,post_ids);
-    if (TISAS.all_post_ids.length !== temp_post_ids.length) {
+    let temp_post_ids = JSPLib.utility.setUnion(NTISAS.all_post_ids,post_ids);
+    if (NTISAS.all_post_ids.length !== temp_post_ids.length) {
         //Using a promise
         await new Promise((resolve,reject)=>{
-            TISAS.all_post_ids = temp_post_ids;
-            JSPLib.storage.batchStorageCheck(TISAS.all_post_ids,ValidateEntry,max_post_expires,'post').then(([found_ids,missing_ids])=>{
+            NTISAS.all_post_ids = temp_post_ids;
+            JSPLib.storage.batchStorageCheck(NTISAS.all_post_ids,ValidateEntry,max_post_expires,'post').then(([found_ids,missing_ids])=>{
                 CheckPostIDs.debuglog(`[${uniqueid}]`, "Missing posts:", missing_ids);
                 if (missing_ids.length) {
-                    JSPLib.danbooru.submitRequest('posts',{tags: 'id:' + missing_ids.join(','), limit: missing_ids.length, only: post_fields},[],null,TISAS.domain).then((data)=>{
+                    JSPLib.danbooru.submitRequest('posts',{tags: 'id:' + missing_ids.join(','), limit: missing_ids.length, only: post_fields},[],null,NTISAS.domain).then((data)=>{
                         MapPostData(data).forEach((post)=>{
-                            TISAS.post_index[post.id] = post;
+                            NTISAS.post_index[post.id] = post;
                             SavePost(post);
                         });
                         UpdateLinkTitles();
@@ -2086,7 +2086,7 @@ async function CheckPostIDs(post_ids) {
                 }
                 CheckPostIDs.debuglog(`[${uniqueid}]`, "Found posts:", found_ids);
                 found_ids.forEach((post_id)=>{
-                    TISAS.post_index[post_id] = JSPLib.storage.getStorageData('post-' + post_id, sessionStorage).value;
+                    NTISAS.post_index[post_id] = JSPLib.storage.getStorageData('post-' + post_id, sessionStorage).value;
                 });
                 UpdateLinkTitles();
             });
@@ -2094,7 +2094,7 @@ async function CheckPostIDs(post_ids) {
     } else {
         UpdateLinkTitles();
     }
-    JSPLib.concurrency.freeSemaphore('tisas','checkpost');
+    JSPLib.concurrency.freeSemaphore('ntisas','checkpost');
     JSPLib.debug.debugTimeEnd(timername);
 }
 
@@ -2115,15 +2115,15 @@ function PromptSavePostIDs($link,$tweet,tweet_id,$replace,message,initial_post_i
             JSPLib.storage.saveData('tweet-' + tweet_id, confirm_post_ids, JSPLib.storage.twitterstorage);
         }
         UpdatePostIDsLink(tweet_id);
-        TISAS.channel.postMessage({type: "postlink", tweet_id: tweet_id, post_ids: confirm_post_ids});
+        NTISAS.channel.postMessage({type: "postlink", tweet_id: tweet_id, post_ids: confirm_post_ids});
     }
 }
 
 function GetSelectPostIDs(tweet_id,type) {
-    if (!TISAS[type][tweet_id]) {
+    if (!NTISAS[type][tweet_id]) {
         return [];
     }
-    let $select_previews = $(".tisas-post-select",TISAS[type][tweet_id]);
+    let $select_previews = $(".ntisas-post-select",NTISAS[type][tweet_id]);
     return JSPLib.utility.getDOMAttributes($select_previews,'id',Number);
 }
 
@@ -2262,42 +2262,42 @@ function UpdateHighlightControls() {
     if (user_ident && IsMediaTimeline()) {
         let no_highlight_list = GetList('no-highlight-list');
         if (JSPLib.utility.hasIntersection(no_highlight_list,all_idents)) {
-            TISAS.artist_highlights_enabled = false;
+            NTISAS.artist_highlights_enabled = false;
             DisplayControl('enable', highlight_controls, 'highlights');
-            $("#tisas-fade-level-display").hide();
-            $("#tisas-hide-level-display").hide();
+            $("#ntisas-fade-level-display").hide();
+            $("#ntisas-hide-level-display").hide();
         } else {
-            TISAS.artist_highlights_enabled = true;
+            NTISAS.artist_highlights_enabled = true;
             DisplayControl('disable', highlight_controls, 'highlights');
-            $("#tisas-fade-level-display").show();
-            $("#tisas-hide-level-display").show();
+            $("#ntisas-fade-level-display").show();
+            $("#ntisas-hide-level-display").show();
         }
     } else {
-        TISAS.artist_highlights_enabled = false;
+        NTISAS.artist_highlights_enabled = false;
         DisplayControl('unavailable', highlight_controls, 'highlights');
-        $("#tisas-fade-level-display").hide();
-        $("#tisas-hide-level-display").hide();
+        $("#ntisas-fade-level-display").hide();
+        $("#ntisas-hide-level-display").hide();
     }
 }
 
 function UpdateArtistHighlights() {
-    if (!TISAS.artist_highlights_enabled) {
-        $(".tisas-fade").removeClass("tisas-fade");
-        $(".tisas-hide").removeClass("tisas-hide");
+    if (!NTISAS.artist_highlights_enabled) {
+        $(".ntisas-fade").removeClass("ntisas-fade");
+        $(".ntisas-hide").removeClass("ntisas-hide");
         return;
     }
     let [user_ident,all_idents] = GetUserIdent();
     if (user_ident) {
         let no_highlight_list = GetList('no-highlight-list');
-        let fade_levels = score_levels.slice(TISAS.fade_level);
-        let fade_selectors = JSPLib.utility.joinList(fade_levels,'.tisas-',null,',');
-        let hide_levels = score_levels.slice(TISAS.hide_level);
-        let hide_selectors = JSPLib.utility.joinList(hide_levels,'.tisas-',null,',');
-        $(".tisas-fade").removeClass("tisas-fade");
-        $(".tisas-hide").removeClass("tisas-hide");
+        let fade_levels = score_levels.slice(NTISAS.fade_level);
+        let fade_selectors = JSPLib.utility.joinList(fade_levels,'.ntisas-',null,',');
+        let hide_levels = score_levels.slice(NTISAS.hide_level);
+        let hide_selectors = JSPLib.utility.joinList(hide_levels,'.ntisas-',null,',');
+        $(".ntisas-fade").removeClass("ntisas-fade");
+        $(".ntisas-hide").removeClass("ntisas-hide");
         if (!JSPLib.utility.hasIntersection(no_highlight_list,all_idents)) {
-            $(fade_selectors).addClass("tisas-fade");
-            $(hide_selectors).addClass("tisas-hide");
+            $(fade_selectors).addClass("ntisas-fade");
+            $(hide_selectors).addClass("ntisas-hide");
         }
     }
 }
@@ -2307,45 +2307,45 @@ function UpdateIQDBControls() {
     if (user_ident && IsMediaTimeline()) {
         let auto_iqdb_list = GetList('auto-iqdb-list');
         if (JSPLib.utility.hasIntersection(auto_iqdb_list,all_idents)) {
-            TISAS.artist_iqdb_enabled = true;
+            NTISAS.artist_iqdb_enabled = true;
             DisplayControl('disable', iqdb_controls, 'autoiqdb');
         } else {
-            TISAS.artist_iqdb_enabled = false;
+            NTISAS.artist_iqdb_enabled = false;
             DisplayControl('enable', iqdb_controls, 'autoiqdb');
         }
-    } else if (TISAS.page === "tweet") {
-        TISAS.artist_iqdb_enabled = false;
+    } else if (NTISAS.page === "tweet") {
+        NTISAS.artist_iqdb_enabled = false;
         DisplayControl('active', iqdb_controls, 'autoiqdb');
     } else {
-        TISAS.artist_iqdb_enabled = false;
-        $("#tisas-unavailable-autoiqdb").show();
+        NTISAS.artist_iqdb_enabled = false;
+        $("#ntisas-unavailable-autoiqdb").show();
         DisplayControl('unavailable', iqdb_controls, 'autoiqdb');
     }
 }
 
 function DisplayControl(control,all_controls,type) {
-    let all_selectors = JSPLib.utility.joinList(all_controls, "#tisas-", '-' + type, ',');
+    let all_selectors = JSPLib.utility.joinList(all_controls, "#ntisas-", '-' + type, ',');
     $(all_selectors).hide();
-    $(`#tisas-${control}-${type}`).show();
+    $(`#ntisas-${control}-${type}`).show();
 }
 
 function UpdateIndicatorControls() {
-    let indicators_enabled = JSPLib.storage.getStorageData('tisas-indicator-controls',localStorage,true);
+    let indicators_enabled = JSPLib.storage.getStorageData('ntisas-indicator-controls',localStorage,true);
     if (indicators_enabled) {
         DisplayControl('disable', indicator_controls, 'indicators');
-        $(".tisas-footer-entries").show();
-        $("#tisas-indicator-counter").show();
+        $(".ntisas-footer-entries").show();
+        $("#ntisas-indicator-counter").show();
     } else {
         DisplayControl('enable', indicator_controls, 'indicators');
-        $(".tisas-footer-entries").hide();
-        $("#tisas-indicator-counter").hide();
+        $(".ntisas-footer-entries").hide();
+        $("#ntisas-indicator-counter").hide();
     }
 }
 
 function UpdateTweetIndicators() {
     let artist_list = GetList('artist-list');
     let tweet_list = GetList('tweet-list');
-    $(".tisas-tweet").each((i,entry)=>{
+    $(".ntisas-tweet").each((i,entry)=>{
         let $tweet = $(entry);
         let [tweet_id,,,user_ident,all_idents] = GetTweetInfo($tweet);
         let active_indicators = [];
@@ -2355,19 +2355,19 @@ function UpdateTweetIndicators() {
         if (tweet_list.includes(tweet_id)) {
             active_indicators.push('mark-tweet');
         }
-        if (TISAS.counted_artists.includes(user_ident)) {
+        if (NTISAS.counted_artists.includes(user_ident)) {
             active_indicators.push('count-artist');
         }
-        if (TISAS.counted_tweets.includes(tweet_id)) {
+        if (NTISAS.counted_tweets.includes(tweet_id)) {
             active_indicators.push('count-tweet');
         }
         all_indicator_types.forEach((type)=>{
             if (active_indicators.includes(type)) {
-                $(`.tisas-indicators .tisas-${type}`, entry).show();
-                $(`.tisas-footer-entries .tisas-${type}`, entry).addClass("tisas-activated");
+                $(`.ntisas-indicators .ntisas-${type}`, entry).show();
+                $(`.ntisas-footer-entries .ntisas-${type}`, entry).addClass("ntisas-activated");
             } else {
-                $(`.tisas-indicators .tisas-${type}`, entry).hide();
-                $(`.tisas-footer-entries .tisas-${type}`, entry).removeClass("tisas-activated");
+                $(`.ntisas-indicators .ntisas-${type}`, entry).hide();
+                $(`.ntisas-footer-entries .ntisas-${type}`, entry).removeClass("ntisas-activated");
             }
         });
     });
@@ -2377,12 +2377,12 @@ async function GetAllCurrentRecords() {
     GetAllCurrentRecords.is_running = true;
     let i = 0;
     while (true) {
-        if (!WasOverflow() || !TISAS.database_info) {
+        if (!WasOverflow() || !NTISAS.database_info) {
             //Main exit condition
             break;
         }
         clearTimeout(CheckPostvers.timeout);
-        if (JSPLib.concurrency.reserveSemaphore('tisas','postvers')) {
+        if (JSPLib.concurrency.reserveSemaphore('ntisas','postvers')) {
             Danbooru.Utility.notice(`Querying Danbooru...[${i}]`);
             await Timer.CheckPostvers();
         } else {
@@ -2391,7 +2391,7 @@ async function GetAllCurrentRecords() {
         }
         i++;
     }
-    JSPLib.concurrency.freeSemaphore('tisas','records')
+    JSPLib.concurrency.freeSemaphore('ntisas','records')
     GetAllCurrentRecords.is_running = false;
 }
 GetAllCurrentRecords.is_running = false;
@@ -2407,18 +2407,18 @@ function GetTweetInfo($tweet) {
 
 function GetEventPreload(event,classname) {
     let $link = $(event.target);
-    let $tweet = $link.closest(".tisas-tweet");
+    let $tweet = $link.closest(".ntisas-tweet");
     let [tweet_id,user_id,screen_name,user_ident,all_idents] = GetTweetInfo($tweet);
     let $replace = $(`[data-tweet-id=${tweet_id}] .${classname}`).parent();
     return [$link,$tweet,tweet_id,user_id,screen_name,user_ident,all_idents,$replace];
 }
 
 function IsMediaTimeline() {
-    return (TISAS.page === "media") || (TISAS.page === "search" && TISAS.account && TISAS.queries.filter === "images");
+    return (NTISAS.page === "media") || (NTISAS.page === "search" && NTISAS.account && NTISAS.queries.filter === "images");
 }
 
 function IsIQDBAutoclick() {
-    return TISAS.user_settings.autoclick_IQDB_enabled && ((TISAS.artist_iqdb_enabled && IsMediaTimeline()) || (TISAS.page === "tweet"));
+    return NTISAS.user_settings.autoclick_IQDB_enabled && ((NTISAS.artist_iqdb_enabled && IsMediaTimeline()) || (NTISAS.page === "tweet"));
 }
 
 //File functions
@@ -2468,35 +2468,35 @@ function DownloadObject(export_obj, export_name, is_json) {
 
 function RenderSideMenu() {
     let current_message = update_records_help;
-    if (!JSPLib.storage.getStorageData('tisas-logged-in',localStorage,true)) {
+    if (!JSPLib.storage.getStorageData('ntisas-logged-in',localStorage,true)) {
         current_message = logged_recheck_help;
-    } else if (!JSPLib.storage.checkStorageData('tisas-recent-timestamp',ValidateProgramData,localStorage)) {
+    } else if (!JSPLib.storage.checkStorageData('ntisas-recent-timestamp',ValidateProgramData,localStorage)) {
         current_message = must_install_help;
     }
-    let fade_level = JSPLib.utility.displayCase(TISAS.user_settings.score_levels_faded[0]);
-    let hide_level = JSPLib.utility.displayCase(TISAS.user_settings.score_levels_hidden[0]);
+    let fade_level = JSPLib.utility.displayCase(NTISAS.user_settings.score_levels_faded[0]);
+    let hide_level = JSPLib.utility.displayCase(NTISAS.user_settings.score_levels_hidden[0]);
     let current_fade_html = JSPLib.utility.sprintf(fade_highlight_html, fade_level);
     let current_hide_html = JSPLib.utility.sprintf(hide_highlight_html, hide_level);
     return `
-<div id="tisas-side-menu" class="tisas-links">
-<div id="tisas-side-border">
-    <div id="tisas-menu-header">Twitter Image Searches and Stuff</div>
-    <div id="tisas-menu-settings">
+<div id="ntisas-side-menu" class="ntisas-links">
+<div id="ntisas-side-border">
+    <div id="ntisas-menu-header">Twitter Image Searches and Stuff</div>
+    <div id="ntisas-menu-settings">
         <table>
             <tbody>
             <tr>
-                <td><span id="tisas-version-header">Database version:</span></td>
-                <td><span id="tisas-database-stub"></span></td>
-                <td>(<span id="tisas-database-help"></span>)</td>
+                <td><span id="ntisas-version-header">Database version:</span></td>
+                <td><span id="ntisas-database-stub"></span></td>
+                <td>(<span id="ntisas-database-help"></span>)</td>
             </tr>
             <tr>
                 <td><span>Current records:</span></td>
                 <td>${RenderCurrentRecords()}</td>
-                <td><span id="tisas-current-records-help">(${RenderHelp(current_message)})</span></td>
+                <td><span id="ntisas-current-records-help">(${RenderHelp(current_message)})</span></td>
             </tr>
             <tr>
                 <td><span>Total records:</span></td>
-                <td><span id="tisas-records-stub"></span></td>
+                <td><span id="ntisas-records-stub"></span></td>
                 <td>(${RenderHelp(refresh_records_help)})</td>
             </tr>
             <tr data-setting="score_highlights_enabled">
@@ -2504,13 +2504,13 @@ function RenderSideMenu() {
                 <td>${highlight_html}</td>
                 <td>(${RenderHelp(highlights_help)})</td>
             </tr>
-            <tr id="tisas-fade-level-display">
-                <td><span id="tisas-fade-level-header">Current fade level:</span></td>
+            <tr id="ntisas-fade-level-display">
+                <td><span id="ntisas-fade-level-header">Current fade level:</span></td>
                 <td>${current_fade_html}</td>
                 <td>(${RenderHelp(fade_highlight_help)})</td>
             </tr>
-            <tr id="tisas-hide-level-display">
-                <td><span id="tisas-hide-level-header">Current hide level:</span></td>
+            <tr id="ntisas-hide-level-display">
+                <td><span id="ntisas-hide-level-header">Current hide level:</span></td>
                 <td>${current_hide_html}</td>
                 <td>(${RenderHelp(hide_highlight_help)})</td>
             </tr>
@@ -2526,19 +2526,19 @@ function RenderSideMenu() {
             </tr>
             <tr>
                 <td><span>Network errors:</span></td>
-                <td><a id="tisas-error-messages">0</a></td>
+                <td><a id="ntisas-error-messages">0</a></td>
                 <td>(${RenderHelp(error_messages_help)})</td>
             </tr>
             </tbody>
         </table>
     </div>
-    <div id="tisas-open-settings">
+    <div id="ntisas-open-settings">
         <input type="button" title="${settings_help}" value="Settings">
     </div>
     <div data-setting="display_tweet_statistics">
         ${horizontal_rule}
-        <div id="tisas-stats-header"><span>Tweet Statistics</span> (${RenderHelp(statistics_help)})</div>
-        <div id="tisas-tweet-stats"></div>
+        <div id="ntisas-stats-header"><span>Tweet Statistics</span> (${RenderHelp(statistics_help)})</div>
+        <div id="ntisas-tweet-stats-table"></div>
     </div>
 </div>
 </div>`;
@@ -2546,33 +2546,33 @@ function RenderSideMenu() {
 
 function RenderCurrentRecords() {
     var record_html = "";
-    let timestamp = JSPLib.storage.checkStorageData('tisas-recent-timestamp',ValidateProgramData,localStorage);
+    let timestamp = JSPLib.storage.checkStorageData('ntisas-recent-timestamp',ValidateProgramData,localStorage);
     if (timestamp) {
         let timestring = new Date(timestamp).toLocaleString();
         let timeagostring = ((Date.now() - timestamp) < GetPostVersionsExpiration() * 2 ? "Up to date" : TimeAgo(timestamp));
-        record_html = `<a id="tisas-current-records" title="${timestring}">${timeagostring}</a>`
+        record_html = `<a id="ntisas-current-records" title="${timestring}">${timeagostring}</a>`
     } else {
         let message = "Loading...";
         let addons = "";
-        if (!JSPLib.storage.getStorageData('tisas-logged-in',localStorage,true)) {
+        if (!JSPLib.storage.getStorageData('ntisas-logged-in',localStorage,true)) {
             message = login_menu_text;
             addons = 'style="font-size:12px"'
         }
-        record_html = `<span id="tisas-current-records" ${addons}>${message}</span>`;
+        record_html = `<span id="ntisas-current-records" ${addons}>${message}</span>`;
     }
     return record_html;
 }
 
 function RenderDatabaseVersion() {
-    let timestring = new Date(TISAS.server_info.timestamp).toLocaleString();
-    return `<a id="tisas-database-version" href="${TISAS.domain}/post_versions?page=b${TISAS.server_info.post_version+1}" title="${timestring}">${TISAS.server_info.post_version}</a>`;
+    let timestring = new Date(NTISAS.server_info.timestamp).toLocaleString();
+    return `<a id="ntisas-database-version" href="${NTISAS.domain}/post_versions?page=b${NTISAS.server_info.post_version+1}" title="${timestring}">${NTISAS.server_info.post_version}</a>`;
 }
 
 function RenderDownloadLinks($tweet,position,is_video) {
     let [tweet_id,user_id,screen_name,,] = GetTweetInfo($tweet);
     let date_string = GetDateString(Date.now());
     let time_string = GetTimeString(Date.now());
-    TISAS.filename_prefix = TISAS.user_settings.filename_prefix_format
+    NTISAS.filename_prefix = NTISAS.user_settings.filename_prefix_format
         .replace(/%TWEETID%/g, tweet_id)
         .replace(/%USERID%/g, user_id)
         .replace(/%USERACCOUNT%/g, screen_name)
@@ -2580,20 +2580,20 @@ function RenderDownloadLinks($tweet,position,is_video) {
         .replace(/%TIME%/g, time_string);
     var image_links = GetImageLinks($tweet);
     var hrefs = image_links.map((image)=>{return image + ':orig'});
-    let html = `<span class="tisas-download-header">Download Originals</span><br>`;
+    let html = `<span class="ntisas-download-header">Download Originals</span><br>`;
     for (let i = 0; i < image_links.length; i++) {
         let [image_name,extension] = GetFileURLNameExt(image_links[i]);
-        let download_filename = TISAS.filename_prefix
+        let download_filename = NTISAS.filename_prefix
             .replace(/%ORDER%/g, 'img' + (i + 1))
             .replace(/%IMG%/g, image_name) +
             '.' + extension;
-        html += `<a class="tisas-download-original tisas-download-image" href="${hrefs[i]}" download="${download_filename}">Image #${i + 1}</a>`;
+        html += `<a class="ntisas-download-original ntisas-download-image" href="${hrefs[i]}" download="${download_filename}">Image #${i + 1}</a>`;
     }
     if (is_video) {
-        html += `<a class="tisas-download-original tisas-download-video" style="display:none">Video #1</a>`;
+        html += `<a class="ntisas-download-original ntisas-download-video" style="display:none">Video #1</a>`;
     }
     if (image_links.length > 1) {
-        html += `<a class="tisas-download-all" href="#">All images</a>`;
+        html += `<a class="ntisas-download-all" href="#">All images</a>`;
     }
     if (position === "above") {
         html = horizontal_rule + html;
@@ -2601,7 +2601,7 @@ function RenderDownloadLinks($tweet,position,is_video) {
         html += horizontal_rule;
     }
     return `
-<div class="tisas-download-section tisas-links">
+<div class="ntisas-download-section ntisas-links">
     ${html}
 </div>`;
 }
@@ -2609,18 +2609,18 @@ function RenderDownloadLinks($tweet,position,is_video) {
 function RenderPostIDsLink(post_ids,classname) {
     let helplink = RenderHelp(confirm_delete_help);
     if (post_ids.length === 1) {
-        return `( <a class="tisas-confirm-delete ${classname}" target="_blank" href="${TISAS.domain}/posts/${post_ids[0]}">post #${post_ids[0]}</a> | ${helplink} )`
+        return `( <a class="ntisas-confirm-delete ${classname}" target="_blank" href="${NTISAS.domain}/posts/${post_ids[0]}">post #${post_ids[0]}</a> | ${helplink} )`
     } else {
-        return `( <a class="tisas-confirm-delete ${classname}" target="_blank" href="${TISAS.domain}/posts?tags=status%3Aany+id%3A${post_ids.join(',')}${GetCustomQuery()}">${post_ids.length} sources</a> | ${helplink} ) `;
+        return `( <a class="ntisas-confirm-delete ${classname}" target="_blank" href="${NTISAS.domain}/posts?tags=status%3Aany+id%3A${post_ids.join(',')}${GetCustomQuery()}">${post_ids.length} sources</a> | ${helplink} ) `;
     }
 }
 
 function RenderSimilarIDsLink(post_ids,mapped_posts,classname,type) {
     let helplink = RenderHelp(confirm_iqdb_help);
     if (post_ids.length === 1) {
-        return `( <a class="tisas-confirm-save ${classname}" data-type=${type} target="_blank" href="${TISAS.domain}/posts/${post_ids[0]}" title="${GetLinkTitle(mapped_posts[0])}">post #${post_ids[0]}</a> | ${helplink} )`
+        return `( <a class="ntisas-confirm-save ${classname}" data-type=${type} target="_blank" href="${NTISAS.domain}/posts/${post_ids[0]}" title="${GetLinkTitle(mapped_posts[0])}">post #${post_ids[0]}</a> | ${helplink} )`
     } else {
-        return `( <a class="tisas-confirm-save ${classname}" data-type=${type} target="_blank" href="${TISAS.domain}/posts?tags=status%3Aany+id%3A${post_ids.join(',')}${GetCustomQuery()}"  title="${GetMultiLinkTitle(mapped_posts)}">${post_ids.length} sources</a> | ${helplink} )`;
+        return `( <a class="ntisas-confirm-save ${classname}" data-type=${type} target="_blank" href="${NTISAS.domain}/posts?tags=status%3Aany+id%3A${post_ids.join(',')}${GetCustomQuery()}"  title="${GetMultiLinkTitle(mapped_posts)}">${post_ids.length} sources</a> | ${helplink} )`;
     }
 }
 
@@ -2637,7 +2637,7 @@ function RenderAllSimilar(all_iqdb_results,image_urls,type) {
     });
     let render_width = Math.min(((max_results + 1) * base_preview_width) + base_dialog_width, 850);
     return `
-<div class="tisas-similar-results tisas-qtip-container" data-type="${type}" style="width:${render_width}px">
+<div class="ntisas-similar-results ntisas-qtip-container" data-type="${type}" style="width:${render_width}px">
     ${image_results.join(horizontal_rule)}
 </div>`;
 }
@@ -2649,7 +2649,7 @@ function RenderSimilarContainer(header,iqdb_results,image_url,index) {
         html += RenderPostPreview(iqdb_result.post,addons)
     });
     return `
-<div class="tisas-similar-result">
+<div class="ntisas-similar-result">
     <h4>${header} (${RenderHelp(iqdb_select_help)})</h4>
     ${html}
 </div>`;
@@ -2661,7 +2661,7 @@ function RenderConfirmContainer(image_urls) {
         html += RenderTwimgPreview(image,i,true);
     });
     return `
-<div class="tisas-confirm-image">
+<div class="ntisas-confirm-image">
     <p style="font-size:12px">Selected images will be used for the query. Press <b>Submit</b> to execute query, or <b>Cancel</b> to go back.</p>
     ${html}
 </div>`;
@@ -2674,10 +2674,10 @@ function RenderPostsContainer(all_posts) {
         html += RenderPostPreview(post,addons)
     });
     return `
-<div class="tisas-post-result tisas-qtip-container">
+<div class="ntisas-post-result ntisas-qtip-container">
     <h4>Danbooru matches (${RenderHelp(post_select_help)})</h4>
-    <div class="tisas-delete-label">Delete all</div>
-    <input checked type="checkbox" class="tisas-delete-all">
+    <div class="ntisas-delete-label">Delete all</div>
+    <input checked type="checkbox" class="ntisas-delete-all">
     <div style="clear:left"></div>
     ${html}
 </div>`;
@@ -2688,8 +2688,8 @@ function RenderPostPreview(post,append_html="") {
     let [width,height] = GetPreviewDimensions(post.width, post.height);
     let padding_height = post_preview_dimension - height;
     return `
-<article class="tisas-post-preview" data-id="${post.id}" data-size="${post.size}">
-    <div class="tisas-image-container">
+<article class="ntisas-post-preview" data-id="${post.id}" data-size="${post.size}">
+    <div class="ntisas-image-container">
         <a target="_blank" href="https://danbooru.donmai.us/posts/${post.id}">
             <img width="${width}" height="${height}" style="padding-top:${padding_height}px" title="${GetLinkTitle(post,true)}">
         </a>
@@ -2706,12 +2706,12 @@ function RenderTwimgPreview(image_url,index,selectable) {
     let selected_class = "";
     if (selectable) {
         image_html = `<a>${image_html}</a>`;
-        selected_class = "tisas-post-select";
+        selected_class = "ntisas-post-select";
     }
     let append_html = RenderPreviewAddons('https://twitter.com', null, null, file_type);
     return `
-<article class="tisas-post-preview ${selected_class}" data-id="${index}">
-    <div class="tisas-image-container">
+<article class="ntisas-post-preview ${selected_class}" data-id="${index}">
+    <div class="ntisas-image-container">
         ${image_html}
     </div>
     ${append_html}
@@ -2728,20 +2728,20 @@ function RenderPreviewAddons(source,id,score,file_ext,file_size,width,height) {
     let domain = (source.match(/^https?:\/\//) ? GetBaseDomainName(source) : "NON-WEB");
     let size_text = (Number.isInteger(file_size) && Number.isInteger(width) && Number.isInteger(height) ? `${ReadableBytes(file_size)} (${width}x${height})` : "");
     return `
-<p class="tisas-desc tisas-desc-title">${title_text}</p>
-<p class="tisas-desc tisas-desc-info">${file_ext.toUpperCase()} @ ${domain}</p>
-<p class="tisas-desc tisas-desc-size">${size_text}</p>`;
+<p class="ntisas-desc ntisas-desc-title">${title_text}</p>
+<p class="ntisas-desc ntisas-desc-info">${file_ext.toUpperCase()} @ ${domain}</p>
+<p class="ntisas-desc ntisas-desc-size">${size_text}</p>`;
 }
 
 function RenderNomatchLinks(tweet_id,no_iqdb_results,no_sauce_results) {
-    let no_url_results = TISAS.no_url_results.includes(tweet_id);
-    let iqdb_link = (no_iqdb_results ? '<a class="tisas-reset-results tisas-database-no-match" data-type="iqdb">no results</a>' : '<a class="tisas-check-iqdb">IQDB</a>');
-    let url_link = (no_url_results ? '<a class="tisas-manual-add tisas-database-no-match">no sources</a>' : '<a class="tisas-check-url">URL</a>');
-    let sauce_link = (no_sauce_results ? '<a class="tisas-reset-results tisas-database-no-match" data-type="sauce">no results</a>' : '<a class="tisas-check-sauce">Sauce</a>');
+    let no_url_results = NTISAS.no_url_results.includes(tweet_id);
+    let iqdb_link = (no_iqdb_results ? '<a class="ntisas-reset-results ntisas-database-no-match" data-type="iqdb">no results</a>' : '<a class="ntisas-check-iqdb">IQDB</a>');
+    let url_link = (no_url_results ? '<a class="ntisas-manual-add ntisas-database-no-match">no sources</a>' : '<a class="ntisas-check-url">URL</a>');
+    let sauce_link = (no_sauce_results ? '<a class="ntisas-reset-results ntisas-database-no-match" data-type="sauce">no results</a>' : '<a class="ntisas-check-sauce">Sauce</a>');
     let help_info = GetNomatchHelp(no_url_results,no_iqdb_results,no_sauce_results);
     return `
 (
-    <a class="tisas-manual-add tisas-database-no-match">no sources</a>
+    <a class="ntisas-manual-add ntisas-database-no-match">no sources</a>
     |
     ${url_link}
     |
@@ -2754,7 +2754,7 @@ function RenderNomatchLinks(tweet_id,no_iqdb_results,no_sauce_results) {
 }
 
 function RenderHelp(help_text) {
-    return `<a class="tisas-help-info" title="${help_text}">&nbsp;?&nbsp;</a>`;
+    return `<a class="ntisas-help-info" title="${help_text}">&nbsp;?&nbsp;</a>`;
 }
 
 function RenderColorStyle(base_color,text_color) {
@@ -2772,13 +2772,13 @@ function InitializeCleanupTasks() {
     setTimeout(()=>{
         CheckDatabaseInfo();
         CheckPurgeBadTweets();
-        JSPLib.storage.pruneEntries('tisas',program_cache_regex,prune_recheck_expires);
+        JSPLib.storage.pruneEntries('ntisas',program_cache_regex,prune_recheck_expires);
     }, cleanup_task_delay);
 }
 
 function InitializeColorScheme() {
     if (!JSPLib.utility.hasStyle('color')) {
-        let color_data = JSPLib.storage.checkStorageData('tisas-color-style',ValidateProgramData,localStorage);
+        let color_data = JSPLib.storage.checkStorageData('ntisas-color-style',ValidateProgramData,localStorage);
         if (color_data) {
             let color_style = RenderColorStyle(color_data.base_color, color_data.text_color)
             JSPLib.utility.setCSSStyle(color_style,'color');
@@ -2795,13 +2795,13 @@ function InitializeUIStyle() {
 
 function InitializeStatusBar(tweet_status) {
     let [$append_element,spacer] = (tweet_status.childElementCount === 0 ? [$(tweet_status),''] : [$("*:not(span) > span",tweet_status),' ']);
-    $append_element.append(`<span class="tisas-status-marker">${spacer}</span>`);
+    $append_element.append(`<span class="ntisas-status-marker">${spacer}</span>`);
 }
 
 function InitializeSideMenu() {
-    $("#tisas-side-menu [data-setting]").each((i,entry)=>{
+    $("#ntisas-side-menu [data-setting]").each((i,entry)=>{
         let setting = $(entry).data('setting');
-        if (TISAS.user_settings[setting]) {
+        if (NTISAS.user_settings[setting]) {
             $(entry).show();
         } else {
             $(entry).hide();
@@ -2812,68 +2812,68 @@ function InitializeSideMenu() {
 function InitializeDatabaseLink() {
     var database_html = "";
     var database_help = "";
-    TISAS.server_info = JSPLib.storage.getStorageData('tisas-remote-database', localStorage);
-    if (TISAS.server_info === null) {
+    NTISAS.server_info = JSPLib.storage.getStorageData('ntisas-remote-database', localStorage);
+    if (NTISAS.server_info === null) {
         return;
     }
-    let database_timestring = new Date(TISAS.server_info.timestamp).toLocaleString();
+    let database_timestring = new Date(NTISAS.server_info.timestamp).toLocaleString();
     //Add some validation to the following, and move it out of the RenderSideMenu function
-    JSPLib.storage.retrieveData('tisas-database-info',JSPLib.storage.twitterstorage).then((database_info)=>{
+    JSPLib.storage.retrieveData('ntisas-database-info',JSPLib.storage.twitterstorage).then((database_info)=>{
         if (!JSPLib.validate.isHash(database_info)) {
-            database_html = `<a id="tisas-install" title="${database_timestring}">Install Database</a>`;
+            database_html = `<a id="ntisas-install" title="${database_timestring}">Install Database</a>`;
             database_help = RenderHelp(install_database_help);
-            $("#tisas-current-records").html(install_menu_text);
-        } else if (database_info.post_version === TISAS.server_info.post_version && database_info.timestamp === TISAS.server_info.timestamp) {
-            TISAS.database_info = database_info;
+            $("#ntisas-current-records").html(install_menu_text);
+        } else if (database_info.post_version === NTISAS.server_info.post_version && database_info.timestamp === NTISAS.server_info.timestamp) {
+            NTISAS.database_info = database_info;
             database_html = RenderDatabaseVersion();
             database_help = RenderHelp(database_version_help);
         } else {
-            TISAS.database_info = database_info;
-            database_html = `<a id="tisas-upgrade" title="${database_timestring}">Upgrade Database</a>`;
+            NTISAS.database_info = database_info;
+            database_html = `<a id="ntisas-upgrade" title="${database_timestring}">Upgrade Database</a>`;
             database_help = RenderHelp(upgrade_database_help);
         }
-        $("#tisas-database-stub").replaceWith(database_html);
-        $("#tisas-database-help").html(database_help);
-        $("#tisas-database-version").on('click.tisas',CurrentPostver);
-        $("#tisas-install").on('click.tisas',InstallDatabase);
-        $("#tisas-upgrade").on('click.tisas',UpgradeDatabase);
+        $("#ntisas-database-stub").replaceWith(database_html);
+        $("#ntisas-database-help").html(database_help);
+        $("#ntisas-database-version").on('click.ntisas',CurrentPostver);
+        $("#ntisas-install").on('click.ntisas',InstallDatabase);
+        $("#ntisas-upgrade").on('click.ntisas',UpgradeDatabase);
     });
     GetTotalRecords().then((data)=>{
-        $("#tisas-records-stub").replaceWith(`<a id="tisas-total-records">${data}</a>`);
-        $("#tisas-total-records").on('click.tisas',QueryTotalRecords);
+        $("#ntisas-records-stub").replaceWith(`<a id="ntisas-total-records">${data}</a>`);
+        $("#ntisas-total-records").on('click.ntisas',QueryTotalRecords);
     });
 }
 
 function InitializeCurrentRecords() {
-    $("#tisas-current-records").replaceWith(RenderCurrentRecords());
-    $("#tisas-current-records").on('click.tisas',CurrentRecords);
-    $("#tisas-current-records-help a").attr('title',update_records_help);
+    $("#ntisas-current-records").replaceWith(RenderCurrentRecords());
+    $("#ntisas-current-records").on('click.ntisas',CurrentRecords);
+    $("#ntisas-current-records-help a").attr('title',update_records_help);
 }
 
 function InitializeCounter() {
-    if ($("#tisas-indicator-counter").length) {
-        if (TISAS.prev_pagetype !== "tweet") {
-            $("#tisas-indicator-counter").remove();
-            TISAS.counted_artists = [];
-            TISAS.counted_tweets = [];
+    if ($("#ntisas-indicator-counter").length) {
+        if (NTISAS.prev_pagetype !== "tweet") {
+            $("#ntisas-indicator-counter").remove();
+            NTISAS.counted_artists = [];
+            NTISAS.counted_tweets = [];
         } else {
             return
         }
     }
-    $("#tisas-account-options h1").append(main_counter);
+    $("#ntisas-account-options h1").append(main_counter);
 }
 
 function InitializeQtip($obj,tweet_id,delayfunc) {
     const qtip_settings = Object.assign({}, PREVIEW_QTIP_SETTINGS, {
         content: {
             text: (event, qtip) => {
-                if (!qtip.tooltip[0].hasAttribute('tisas')) {
+                if (!qtip.tooltip[0].hasAttribute('ntisas')) {
                     if (delayfunc) {
-                        TISAS.tweet_qtip[tweet_id] = delayfunc();
+                        NTISAS.tweet_qtip[tweet_id] = delayfunc();
                     }
-                    qtip.tooltip.attr('tisas','done');
+                    qtip.tooltip.attr('ntisas','done');
                 }
-                return TISAS.tweet_qtip[tweet_id] || "Loading...";
+                return NTISAS.tweet_qtip[tweet_id] || "Loading...";
             }
         }
     });
@@ -2885,7 +2885,7 @@ function InitializeSimilarContainer(image_urls,all_iqdb_results,all_posts,tweet_
     SetThumbnailWait($attachment,all_posts);
     $("article:first-of-type",$attachment).each((i,article)=>{
         InitializeTwitterImage(article,image_urls).then((data)=>{
-            $(article).closest(".tisas-similar-result").find(`[data-size=${data.size}]`).addClass('tisas-post-match');
+            $(article).closest(".ntisas-similar-result").find(`[data-size=${data.size}]`).addClass('ntisas-post-match');
         });
     });
     return $attachment;
@@ -2924,7 +2924,7 @@ function InitializePostsContainer(all_posts,image_urls) {
     SetThumbnailWait($attachment,all_posts);
     image_urls.forEach((image_url)=>{
         JSPLib.network.getImageSize(image_url + ':orig').then((size)=>{
-            $attachment.find(`[data-size=${size}]`).addClass('tisas-post-match');
+            $attachment.find(`[data-size=${size}]`).addClass('ntisas-post-match');
         });
     });
     return $attachment;
@@ -2941,17 +2941,17 @@ async function InitializeNoMatchesLinks(tweet_id,$obj) {
 }
 
 function InitializeTweetIndicators(tweet) {
-    $(".tisas-status-marker",tweet).parent().append(tweet_indicators);
-    $(".tisas-tweet-actions",tweet).after(indicator_links);
+    $(".ntisas-status-marker",tweet).parent().append(tweet_indicators);
+    $(".ntisas-tweet-actions",tweet).after(indicator_links);
 }
 
 function InitializeDownloadLinks($tweet) {
-    let is_video = Boolean($(".tisas-tweet-video",$tweet).length);
-    let $download_section = $(RenderDownloadLinks($tweet,TISAS.user_settings.download_position[0],is_video));
-    if (TISAS.user_settings.download_position[0] === "above") {
-        $(".tisas-tweet-media",$tweet).prepend($download_section);
-    } else if (TISAS.user_settings.download_position[0] === "below") {
-        $(".tisas-tweet-media",$tweet).append($download_section);
+    let is_video = Boolean($(".ntisas-tweet-video",$tweet).length);
+    let $download_section = $(RenderDownloadLinks($tweet,NTISAS.user_settings.download_position[0],is_video));
+    if (NTISAS.user_settings.download_position[0] === "above") {
+        $(".ntisas-tweet-media",$tweet).prepend($download_section);
+    } else if (NTISAS.user_settings.download_position[0] === "below") {
+        $(".ntisas-tweet-media",$tweet).append($download_section);
     }
     if (is_video) {
         let tweet_id = String($tweet.data('tweet-id'));
@@ -2965,7 +2965,7 @@ function InitializeDownloadLinks($tweet) {
 
 function InitializeUploadlinks(photo_index,install) {
     InitializeUploadlinks.photo_index = photo_index;
-    let $photo_container = $(".tisas-photo-container");
+    let $photo_container = $(".ntisas-photo-container");
     let selected_photo = $(`li:nth-of-type(${photo_index}) img`,$photo_container[0]);
     if (selected_photo.length === 0) {
         selected_photo = $(`img`,$photo_container[0]);
@@ -2981,12 +2981,12 @@ function InitializeUploadlinks(photo_index,install) {
     }
     let orig_image_url = image_url + ':orig';
     let url_addons = $.param({url: orig_image_url, ref: tweet_url});
-    let upload_link = `${TISAS.domain}/uploads/new?${url_addons}`
+    let upload_link = `${NTISAS.domain}/uploads/new?${url_addons}`
     if (install) {
-        var $link = $(`<div class="tisas-upload"><a target="_blank" href="${upload_link}">Upload</a></div>`);
-        $(".tisas-photo-menu").append($link);
+        var $link = $(`<div class="ntisas-upload"><a target="_blank" href="${upload_link}">Upload</a></div>`);
+        $(".ntisas-photo-menu").append($link);
     } else {
-        $link = $('.tisas-upload a');
+        $link = $('.ntisas-upload a');
         $link.attr('href',upload_link);
     }
     let fake_image = $('<img>')[0];
@@ -3000,24 +3000,24 @@ function InitializeUploadlinks(photo_index,install) {
 
 function InitializeMediaLink($tweet) {
     let screen_name = String($tweet.data('screen-name'));
-    $tweet.find('[data-testid=caret]').parent().before(`<a class="tisas-media-link" href="/${screen_name}/media" style="right:7.25em">Media</a>`);
-    $tweet.find('[data-testid=caret]').parent().before(`<a class="tisas-media-link" href="/${screen_name}/likes" style="right:2em">Likes</a>`);
+    $tweet.find('[data-testid=caret]').parent().before(`<a class="ntisas-media-link" href="/${screen_name}/media" style="right:7.25em">Media</a>`);
+    $tweet.find('[data-testid=caret]').parent().before(`<a class="ntisas-media-link" href="/${screen_name}/likes" style="right:2em">Likes</a>`);
 }
 
 function InitializeRetweetDisplay(tweet) {
     let retweet_id = String($(tweet).data('retweet-id'));
-    $(".tisas-status-marker",tweet).parent().append(`<span class="tisas-retweet">[${retweet_id}]</span>`);
+    $(".ntisas-status-marker",tweet).parent().append(`<span class="ntisas-retweet">[${retweet_id}]</span>`);
 }
 
 function InitializeImageTweets($image_tweets) {
-    if (["home","main","media","likes","replies","list","hashtag","search","moment"].includes(TISAS.page)) {
-        InitializeImageMenu($image_tweets, ".tisas-tweet-actions", 'tisas-timeline-menu');
-    } else if (TISAS.page === "tweet") {
-        let $tweet = $image_tweets.filter(`[data-tweet-id=${TISAS.addon}]`);
-        if ((".tisas-tweet-media",$tweet).length) {
-            InitializeImageMenu($tweet, ".tisas-retweets-likes", 'tisas-tweet-menu');
-            if (TISAS.user_settings.original_download_enabled) {
-                let tweet_promise = $tweet[0].tisasPromise;
+    if (["home","main","media","likes","replies","list","hashtag","search","moment"].includes(NTISAS.page)) {
+        InitializeImageMenu($image_tweets, ".ntisas-tweet-actions", 'ntisas-timeline-menu');
+    } else if (NTISAS.page === "tweet") {
+        let $tweet = $image_tweets.filter(`[data-tweet-id=${NTISAS.addon}]`);
+        if ((".ntisas-tweet-media",$tweet).length) {
+            InitializeImageMenu($tweet, ".ntisas-retweets-likes", 'ntisas-tweet-menu');
+            if (NTISAS.user_settings.original_download_enabled) {
+                let tweet_promise = $tweet[0].ntisasPromise;
                 if (tweet_promise) {
                     //Only add download links once images have been loaded
                     tweet_promise.then(()=>{
@@ -3025,7 +3025,7 @@ function InitializeImageTweets($image_tweets) {
                     });
                 }
             }
-            if (TISAS.user_settings.display_media_link) {
+            if (NTISAS.user_settings.display_media_link) {
                 InitializeMediaLink($tweet);
             }
         }
@@ -3033,7 +3033,7 @@ function InitializeImageTweets($image_tweets) {
 }
 
 function InitializeTweetStats(filter1,filter2) {
-    let filter_tweets = TISAS.tweet_stats.filter((entry)=>{
+    let filter_tweets = NTISAS.tweet_stats.filter((entry)=>{
         let condition_1 = true, condition_2 = true;
         switch (filter1) {
             case "retweet":
@@ -3071,13 +3071,13 @@ function InitializeTweetStats(filter1,filter2) {
     let average_replies = JSPLib.utility.setPrecision(JSPLib.statistics.average(JSPLib.statistics.removeOutliers(JSPLib.utility.getObjectAttributes(filter_tweets,'replies'),1)),2)
     let average_retweets = JSPLib.utility.setPrecision(JSPLib.statistics.average(JSPLib.statistics.removeOutliers(JSPLib.utility.getObjectAttributes(filter_tweets,'retweets'),1)),2)
     let average_favorites = JSPLib.utility.setPrecision(JSPLib.statistics.average(JSPLib.statistics.removeOutliers(JSPLib.utility.getObjectAttributes(filter_tweets,'favorites'),1)),2)
-    $("#tisas-tweet-stats").html(`
+    $("#ntisas-tweet-stats-table").html(`
 <table>
     <tbody>
     <tr>
-        <th data-key="total"><a class="tisas-metric">Total</a></th>
-        <th data-key="retweet"><a class="tisas-metric">Retweet</a></th>
-        <th data-key="tweet"><a class="tisas-metric">Tweet</a></th>
+        <th data-key="total"><a class="ntisas-metric">Total</a></th>
+        <th data-key="retweet"><a class="ntisas-metric">Retweet</a></th>
+        <th data-key="tweet"><a class="ntisas-metric">Tweet</a></th>
     </tr>
     <tr>
         <td data-key="total">${total_tweets}</td>
@@ -3085,9 +3085,9 @@ function InitializeTweetStats(filter1,filter2) {
         <td data-key="tweet">${total_tweets - total_retweets}</td>
     </tr>
     <tr>
-        <th data-key="image"><a class="tisas-metric">Image</a></th>
-        <th data-key="video"><a class="tisas-metric">Video</a></th>
-        <th data-key="text"><a class="tisas-metric">Text</a></th>
+        <th data-key="image"><a class="ntisas-metric">Image</a></th>
+        <th data-key="video"><a class="ntisas-metric">Video</a></th>
+        <th data-key="text"><a class="ntisas-metric">Text</a></th>
     </tr>
     <tr>
         <td data-key="image">${total_image_tweets}</td>
@@ -3111,9 +3111,9 @@ function InitializeTweetStats(filter1,filter2) {
     if (selected_metrics.length == 2 && selected_metrics.includes('total')) {
         selected_metrics.splice(selected_metrics.indexOf('total'), 1);
     }
-    $("#tisas-tweet-stats td").css('background-color','white');
+    $("#ntisas-tweet-stats-table td").css('background-color','white');
     selected_metrics.forEach((metric)=>{
-        $(`#tisas-tweet-stats td[data-key=${metric}]`).css('background-color','yellow');
+        $(`#ntisas-tweet-stats-table td[data-key=${metric}]`).css('background-color','yellow');
     });
     return true;
 }
@@ -3124,24 +3124,24 @@ async function CheckPostvers() {
     let num_error_messages = JSPLib.danbooru.error_messages.length;
     let postver_lastid = GetPostVersionsLastID();
     let url_addons = {search:{id:`${postver_lastid}..${postver_lastid + query_batch_size}`}, only: postver_fields};
-    let post_versions = await JSPLib.danbooru.getAllItems('post_versions', query_limit, {page:postver_lastid, addons: url_addons, reverse: true, domain: TISAS.domain, notify: true});
+    let post_versions = await JSPLib.danbooru.getAllItems('post_versions', query_limit, {page:postver_lastid, addons: url_addons, reverse: true, domain: NTISAS.domain, notify: true});
     if (num_error_messages !== JSPLib.danbooru.error_messages.length) {
         let last_error = JSPLib.danbooru.error_messages.slice(-1)[0];
         if (last_error[1] === 403) {
             alert(login_alert);
-            $("#tisas-current-records").css('font-size','12px').html(login_menu_text);
-            $("#tisas-current-records-help a").attr('title',logged_recheck_help);
-            JSPLib.storage.setStorageData('tisas-logged-in',false,localStorage);
+            $("#ntisas-current-records").css('font-size','12px').html(login_menu_text);
+            $("#ntisas-current-records-help a").attr('title',logged_recheck_help);
+            JSPLib.storage.setStorageData('ntisas-logged-in',false,localStorage);
         }
     } else {
-        JSPLib.storage.setStorageData('tisas-logged-in',true,localStorage);
+        JSPLib.storage.setStorageData('ntisas-logged-in',true,localStorage);
     }
     if (post_versions.length === query_batch_size) {
         CheckPostvers.debuglog("Overflow detected!");
-        JSPLib.storage.setStorageData('tisas-overflow',true,localStorage);
+        JSPLib.storage.setStorageData('ntisas-overflow',true,localStorage);
     } else if (num_error_messages === JSPLib.danbooru.error_messages.length) {
         CheckPostvers.debuglog("No overflow:",post_versions.length,query_batch_size);
-        JSPLib.storage.setStorageData('tisas-overflow',false,localStorage);
+        JSPLib.storage.setStorageData('ntisas-overflow',false,localStorage);
     }
     let [add_entries,rem_entries] = ProcessPostvers(post_versions);
     CheckPostvers.debuglog("Process:",add_entries,rem_entries);
@@ -3158,7 +3158,7 @@ async function CheckPostvers() {
                 CheckPostvers.debuglog("Tweet adds/rems - saving:",tweet_key,post_ids);
                 JSPLib.storage.saveData(tweet_key,post_ids,JSPLib.storage.twitterstorage);
                 UpdatePostIDsLink(tweet_id);
-                TISAS.channel.postMessage({type: "postlink", tweet_id: tweet_id, post_ids: post_ids});
+                NTISAS.channel.postMessage({type: "postlink", tweet_id: tweet_id, post_ids: post_ids});
             }
         });
     });
@@ -3175,7 +3175,7 @@ async function CheckPostvers() {
                 CheckPostvers.debuglog("Tweet adds - saving:",tweet_key,post_ids);
                 JSPLib.storage.saveData(tweet_key,post_ids,JSPLib.storage.twitterstorage);
                 UpdatePostIDsLink(tweet_id);
-                TISAS.channel.postMessage({type: "postlink", tweet_id: tweet_id, post_ids: post_ids});
+                NTISAS.channel.postMessage({type: "postlink", tweet_id: tweet_id, post_ids: post_ids});
             }
         });
     });
@@ -3197,23 +3197,23 @@ async function CheckPostvers() {
             }
             if (data !== null) {
                 UpdatePostIDsLink(tweet_id);
-                TISAS.channel.postMessage({type: "postlink", tweet_id: tweet_id, post_ids: post_ids});
+                NTISAS.channel.postMessage({type: "postlink", tweet_id: tweet_id, post_ids: post_ids});
             }
         });
     });
     let lastid = JSPLib.danbooru.getNextPageID(post_versions,true);
     //Since the post version last ID is critical, an extra sanity check has been added
     if (JSPLib.validate.validateID(lastid)) {
-        JSPLib.storage.setStorageData('tisas-postver-lastid', lastid, localStorage);
+        JSPLib.storage.setStorageData('ntisas-postver-lastid', lastid, localStorage);
         let all_timestamps = JSPLib.utility.getObjectAttributes(post_versions,'updated_at');
         let normal_timestamps = all_timestamps.map((timestamp)=>{return new Date(timestamp).getTime();})
         let most_recent_timestamp = Math.max(...normal_timestamps);
-        JSPLib.storage.setStorageData('tisas-recent-timestamp', most_recent_timestamp, localStorage);
+        JSPLib.storage.setStorageData('ntisas-recent-timestamp', most_recent_timestamp, localStorage);
         InitializeCurrentRecords();
-        TISAS.channel.postMessage({type: "currentrecords"});
+        NTISAS.channel.postMessage({type: "currentrecords"});
     }
-    JSPLib.concurrency.setRecheckTimeout('tisas-timeout',GetPostVersionsExpiration());
-    JSPLib.concurrency.freeSemaphore('tisas','postvers');
+    JSPLib.concurrency.setRecheckTimeout('ntisas-timeout',GetPostVersionsExpiration());
+    JSPLib.concurrency.freeSemaphore('ntisas','postvers');
 }
 
 async function GetMaxVideoDownloadLink(tweet_id) {
@@ -3284,7 +3284,7 @@ async function LoadDatabase() {
     JSPLib.debug.debugTime("database-network");
     var tweet_data = await $.getJSON(server_database_url);
     JSPLib.debug.debugTimeEnd("database-network");
-    return Timer.SaveDatabase(tweet_data,"#tisas-counter");
+    return Timer.SaveDatabase(tweet_data,"#ntisas-counter");
 }
 
 async function SaveDatabase(database,counter_selector) {
@@ -3317,7 +3317,7 @@ async function SaveDatabase(database,counter_selector) {
 async function GetSavePackage() {
     let save_package = {program_data: {}, tweet_database: {}};
     Object.keys(localStorage).forEach((key)=>{
-        if (key.match(/^tisas-/)) {
+        if (key.match(/^ntisas-/)) {
             save_package.program_data[key] = JSPLib.storage.getStorageData(key,localStorage);
         }
     });
@@ -3327,38 +3327,38 @@ async function GetSavePackage() {
         let match = key.match(/^tweet-(\d+)$/);
         if (match) {
             save_package.tweet_database[match[1]] = value;
-        } else if (key === 'tisas-database-info') {
+        } else if (key === 'ntisas-database-info') {
             save_package.database_info = value;
         }
         if ((i % 10000) === 0) {
-            $("#tisas-export-counter").html(--batch_counter);
+            $("#ntisas-export-counter").html(--batch_counter);
         }
     });
     return save_package;
 }
 
 function InitializeDatabase() {
-    localStorage.removeItem('tisas-length-recheck');
-    TISAS.channel.postMessage({type: "database"});
-    Danbooru.Utility.notice("New TISAS will momentarily refresh the page to finish initializing the database.");
+    localStorage.removeItem('ntisas-length-recheck');
+    NTISAS.channel.postMessage({type: "database"});
+    Danbooru.Utility.notice("New NTISAS will momentarily refresh the page to finish initializing the database.");
     //It's just easier to reload the page on database updates
     JSPLib.utility.refreshPage(page_refresh_timeout);
 }
 
 async function CheckDatabaseInfo(initial) {
-    if (initial || JSPLib.concurrency.checkTimeout('tisas-database-recheck',database_recheck_expires)) {
+    if (initial || JSPLib.concurrency.checkTimeout('ntisas-database-recheck',database_recheck_expires)) {
         let database_info = await $.getJSON(database_info_url);
-        JSPLib.storage.setStorageData('tisas-remote-database', database_info, localStorage);
-        JSPLib.concurrency.setRecheckTimeout('tisas-database-recheck',database_recheck_expires);
+        JSPLib.storage.setStorageData('ntisas-remote-database', database_info, localStorage);
+        JSPLib.concurrency.setRecheckTimeout('ntisas-database-recheck',database_recheck_expires);
     }
 }
 
 function CheckPurgeBadTweets() {
-    if (JSPLib.storage.getStorageData('tisas-purge-bad',localStorage,false) && JSPLib.concurrency.reserveSemaphore('tisas','purgebad')) {
+    if (JSPLib.storage.getStorageData('ntisas-purge-bad',localStorage,false) && JSPLib.concurrency.reserveSemaphore('ntisas','purgebad')) {
         Timer.PurgeBadTweets().then(()=>{
             CheckPurgeBadTweets.debuglog("All bad Tweets purged!");
-            JSPLib.storage.setStorageData('tisas-purge-bad',false,localStorage);
-            JSPLib.concurrency.freeSemaphore('tisas','purgebad')
+            JSPLib.storage.setStorageData('ntisas-purge-bad',false,localStorage);
+            JSPLib.concurrency.freeSemaphore('ntisas','purgebad')
         });
     }
 }
@@ -3377,7 +3377,7 @@ async function PurgeBadTweets() {
 //Event handlers
 
 function PhotoNavigation(event) {
-    if (!TISAS.photo_navigation) {
+    if (!NTISAS.photo_navigation) {
         return;
     }
     setTimeout(()=>{
@@ -3400,32 +3400,32 @@ function ToggleArtistHilights(event) {
         SaveList('no-highlight-list',no_highlight_list);
         UpdateHighlightControls();
         setTimeout(UpdateArtistHighlights, jquery_delay);
-        TISAS.channel.postMessage({type: "highlights", list: no_highlight_list});
+        NTISAS.channel.postMessage({type: "highlights", list: no_highlight_list});
     }
     event.preventDefault();
 }
 
 function IncreaseFadeLevel(event) {
-    TISAS.fade_level = Math.max(--TISAS.fade_level, 0);
-    $("#tisas-current-fade-level").html(JSPLib.utility.displayCase(score_levels[TISAS.fade_level]));
+    NTISAS.fade_level = Math.max(--NTISAS.fade_level, 0);
+    $("#ntisas-current-fade-level").html(JSPLib.utility.displayCase(score_levels[NTISAS.fade_level]));
     setTimeout(UpdateArtistHighlights, jquery_delay);
 }
 
 function DecreaseFadeLevel(event) {
-    TISAS.fade_level = Math.min(++TISAS.fade_level, score_levels.length - 1);
-    $("#tisas-current-fade-level").html(JSPLib.utility.displayCase(score_levels[TISAS.fade_level]));
+    NTISAS.fade_level = Math.min(++NTISAS.fade_level, score_levels.length - 1);
+    $("#ntisas-current-fade-level").html(JSPLib.utility.displayCase(score_levels[NTISAS.fade_level]));
     setTimeout(UpdateArtistHighlights, jquery_delay);
 }
 
 function IncreaseHideLevel(event) {
-    TISAS.hide_level = Math.max(--TISAS.hide_level, 0);
-    $("#tisas-current-hide-level").html(JSPLib.utility.displayCase(score_levels[TISAS.hide_level]));
+    NTISAS.hide_level = Math.max(--NTISAS.hide_level, 0);
+    $("#ntisas-current-hide-level").html(JSPLib.utility.displayCase(score_levels[NTISAS.hide_level]));
     setTimeout(UpdateArtistHighlights, jquery_delay);
 }
 
 function DecreaseHideLevel(event) {
-    TISAS.hide_level = Math.min(++TISAS.hide_level, score_levels.length - 1);
-    $("#tisas-current-hide-level").html(JSPLib.utility.displayCase(score_levels[TISAS.hide_level]));
+    NTISAS.hide_level = Math.min(++NTISAS.hide_level, score_levels.length - 1);
+    $("#ntisas-current-hide-level").html(JSPLib.utility.displayCase(score_levels[NTISAS.hide_level]));
     setTimeout(UpdateArtistHighlights, jquery_delay);
 }
 
@@ -3440,26 +3440,26 @@ function ToggleAutoclickIQDB(event) {
         }
         SaveList('auto-iqdb-list',auto_iqdb_list);
         UpdateIQDBControls();
-        TISAS.channel.postMessage({type: "autoiqdb", list: auto_iqdb_list});
+        NTISAS.channel.postMessage({type: "autoiqdb", list: auto_iqdb_list});
     }
     event.preventDefault();
 }
 
 function ToggleTweetIndicators(event) {
-    let indicator_controls = JSPLib.storage.getStorageData('tisas-indicator-controls',localStorage,true);
-    JSPLib.storage.setStorageData('tisas-indicator-controls',!indicator_controls,localStorage);
+    let indicator_controls = JSPLib.storage.getStorageData('ntisas-indicator-controls',localStorage,true);
+    JSPLib.storage.setStorageData('ntisas-indicator-controls',!indicator_controls,localStorage);
     UpdateIndicatorControls();
     setTimeout(UpdateTweetIndicators, jquery_delay);
-    TISAS.channel.postMessage({type: "indicators"});
+    NTISAS.channel.postMessage({type: "indicators"});
     event.preventDefault();
 }
 
 function InstallDatabase(event) {
-    let message = JSPLib.utility.sprintf(install_confirm,TISAS.server_info.post_version,new Date(TISAS.server_info.timestamp).toLocaleString());
+    let message = JSPLib.utility.sprintf(install_confirm,NTISAS.server_info.post_version,new Date(NTISAS.server_info.timestamp).toLocaleString());
     if (confirm(message)) {
-        $("#tisas-install").replaceWith(load_counter)
+        $("#ntisas-install").replaceWith(load_counter)
         LoadDatabase().then(()=>{
-            JSPLib.storage.saveData('tisas-database-info',TISAS.server_info,JSPLib.storage.twitterstorage);
+            JSPLib.storage.saveData('ntisas-database-info',NTISAS.server_info,JSPLib.storage.twitterstorage);
             InitializeDatabase();
         });
     }
@@ -3467,13 +3467,13 @@ function InstallDatabase(event) {
 }
 
 function UpgradeDatabase(event) {
-    let message = JSPLib.utility.sprintf(upgrade_confirm,TISAS.server_info.post_version,new Date(TISAS.server_info.timestamp).toLocaleString(),
-                                                         TISAS.database_info.post_version,new Date(TISAS.database_info.timestamp).toLocaleString());
+    let message = JSPLib.utility.sprintf(upgrade_confirm,NTISAS.server_info.post_version,new Date(NTISAS.server_info.timestamp).toLocaleString(),
+                                                         NTISAS.database_info.post_version,new Date(NTISAS.database_info.timestamp).toLocaleString());
     if (confirm(message)) {
-        $("#tisas-upgrade").replaceWith(load_counter);
+        $("#ntisas-upgrade").replaceWith(load_counter);
         LoadDatabase().then(()=>{
-            JSPLib.storage.saveData('tisas-database-info',TISAS.server_info,JSPLib.storage.twitterstorage);
-            JSPLib.storage.setStorageData('tisas-purge-bad',true,localStorage);
+            JSPLib.storage.saveData('ntisas-database-info',NTISAS.server_info,JSPLib.storage.twitterstorage);
+            JSPLib.storage.setStorageData('ntisas-purge-bad',true,localStorage);
             InitializeDatabase();
         });
     }
@@ -3483,11 +3483,11 @@ function UpgradeDatabase(event) {
 function CurrentRecords(event) {
     if (event.target.tagName === "A" && !GetAllCurrentRecords.is_running) {
         if (WasOverflow()) {
-            if (JSPLib.concurrency.reserveSemaphore('tisas','records')) {
+            if (JSPLib.concurrency.reserveSemaphore('ntisas','records')) {
                 if (confirm(current_records_confirm)) {
                     GetAllCurrentRecords();
                 } else {
-                    JSPLib.concurrency.freeSemaphore('tisas','records')
+                    JSPLib.concurrency.freeSemaphore('ntisas','records')
                 }
             } else {
                 Danbooru.Utility.error("Getting current records in another tab!");
@@ -3495,8 +3495,8 @@ function CurrentRecords(event) {
         } else {
             Danbooru.Utility.notice("Already up to date!");
         }
-    } else if (event.target.tagName === "SPAN" && TISAS.database_info && !JSPLib.storage.getStorageData('tisas-logged-in',localStorage,true)) {
-        $("#tisas-current-records").html("Loading...");
+    } else if (event.target.tagName === "SPAN" && NTISAS.database_info && !JSPLib.storage.getStorageData('ntisas-logged-in',localStorage,true)) {
+        $("#ntisas-current-records").html("Loading...");
         Timer.CheckPostvers();
     }
     event.preventDefault();
@@ -3504,13 +3504,13 @@ function CurrentRecords(event) {
 
 function CurrentPostver(event) {
     if (confirm(current_postver_confirm)) {
-        JSPLib.danbooru.submitRequest('post_versions',{limit: 1},null,null,TISAS.domain,true).then((data)=>{
+        JSPLib.danbooru.submitRequest('post_versions',{limit: 1},null,null,NTISAS.domain,true).then((data)=>{
             if (Array.isArray(data) && data.length > 0) {
-                JSPLib.storage.setStorageData('tisas-postver-lastid', data[0].id, localStorage);
-                JSPLib.storage.setStorageData('tisas-recent-timestamp', new Date(data[0].updated_at).getTime(), localStorage);
+                JSPLib.storage.setStorageData('ntisas-postver-lastid', data[0].id, localStorage);
+                JSPLib.storage.setStorageData('ntisas-recent-timestamp', new Date(data[0].updated_at).getTime(), localStorage);
                 Danbooru.Utility.notice("Finished updating record position!");
                 InitializeCurrentRecords();
-                TISAS.channel.postMessage({type: "currentrecords"});
+                NTISAS.channel.postMessage({type: "currentrecords"});
             }
         });
     }
@@ -3519,23 +3519,23 @@ function CurrentPostver(event) {
 
 function QueryTotalRecords(event) {
     GetTotalRecords(true).then((length)=>{
-        $("#tisas-total-records").html(length);
+        $("#ntisas-total-records").html(length);
         Danbooru.Utility.notice("Finished updating record count!");
     });
     event.preventDefault();
 }
 
 function CheckURL(event) {
-    let [$link,$tweet,tweet_id,,screen_name,,,] = GetEventPreload(event,'tisas-check-url');
-    $link.removeClass('tisas-check-url').html("loading…");
+    let [$link,$tweet,tweet_id,,screen_name,,,] = GetEventPreload(event,'ntisas-check-url');
+    $link.removeClass('ntisas-check-url').html("loading…");
     let normal_url = `https://twitter.com/${screen_name}/status/${tweet_id}`;
     let wildcard_url = `https://twitter.com/*/status/${tweet_id}`;
-    let check_url = (TISAS.user_settings.URL_wildcards_enabled ? wildcard_url : normal_url);
+    let check_url = (NTISAS.user_settings.URL_wildcards_enabled ? wildcard_url : normal_url);
     CheckURL.debuglog(check_url);
-    JSPLib.danbooru.submitRequest('posts',{tags: "source:" + check_url, only: post_fields},[],null,TISAS.domain,true).then((data)=>{
+    JSPLib.danbooru.submitRequest('posts',{tags: "source:" + check_url, only: post_fields},[],null,NTISAS.domain,true).then((data)=>{
         let post_ids = [];
         if (data.length === 0) {
-            TISAS.no_url_results.push(tweet_id);
+            NTISAS.no_url_results.push(tweet_id);
         } else {
             let mapped_data = MapPostData(data);
             mapped_data.forEach((post)=>{SavePost(post);});
@@ -3543,9 +3543,9 @@ function CheckURL(event) {
             JSPLib.storage.saveData('tweet-' + tweet_id, post_ids, JSPLib.storage.twitterstorage);
         }
         UpdatePostIDsLink(tweet_id);
-        TISAS.channel.postMessage({type: "postlink", tweet_id: tweet_id, post_ids: post_ids});
-        if (data.length === 0 && TISAS.user_settings.autocheck_IQDB_enabled) {
-            $tweet.find(".tisas-check-iqdb").click();
+        NTISAS.channel.postMessage({type: "postlink", tweet_id: tweet_id, post_ids: post_ids});
+        if (data.length === 0 && NTISAS.user_settings.autocheck_IQDB_enabled) {
+            $tweet.find(".ntisas-check-iqdb").click();
         }
     });
     event.preventDefault();
@@ -3553,15 +3553,15 @@ function CheckURL(event) {
 
 async function CheckIQDB(event) {
     event.preventDefault();
-    let [$link,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event,'tisas-check-iqdb');
+    let [$link,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event,'ntisas-check-iqdb');
     let all_image_urls = GetImageLinks($tweet);
     CheckIQDB.debuglog("All:", all_image_urls);
     if ((all_image_urls.length > 1) && IsQuerySettingEnabled('confirm_query', 'iqdb') && !IsIQDBAutoclick()) {
-        if (!TISAS.tweet_dialog[tweet_id]) {
-            TISAS.tweet_dialog[tweet_id] = InitializeConfirmContainer(all_image_urls);
+        if (!NTISAS.tweet_dialog[tweet_id]) {
+            NTISAS.tweet_dialog[tweet_id] = InitializeConfirmContainer(all_image_urls);
         }
-        TISAS.tweet_dialog[tweet_id].dialog("open");
-        let status = await TISAS.tweet_dialog[tweet_id][0].promiseConfirm;
+        NTISAS.tweet_dialog[tweet_id].dialog("open");
+        let status = await NTISAS.tweet_dialog[tweet_id][0].promiseConfirm;
         if (!status) {
             CheckIQDB.debuglog("Exiting...");
             return;
@@ -3572,8 +3572,8 @@ async function CheckIQDB(event) {
         selected_image_urls = all_image_urls;
     }
     CheckIQDB.debuglog("Selected:", selected_image_urls);
-    $link.removeClass('tisas-check-iqdb').html("loading…");
-    let promise_array = selected_image_urls.map((image_url)=>{return JSPLib.danbooru.submitRequest('iqdb_queries',{url: image_url},[],null,TISAS.domain,true);});
+    $link.removeClass('ntisas-check-iqdb').html("loading…");
+    let promise_array = selected_image_urls.map((image_url)=>{return JSPLib.danbooru.submitRequest('iqdb_queries',{url: image_url},[],null,NTISAS.domain,true);});
     let all_iqdb_results = await Promise.all(promise_array);
     let flat_data = all_iqdb_results.flat();
     if (flat_data.length > 0) {
@@ -3581,39 +3581,39 @@ async function CheckIQDB(event) {
         let unique_posts = RemoveDuplicates(post_data,'id');
         let mapped_posts = MapPostData(unique_posts);
         mapped_posts.forEach((post)=>{
-            TISAS.post_index[post.id] = post;
+            NTISAS.post_index[post.id] = post;
             SavePost(post);
         });
         let max_score = Math.max(...JSPLib.utility.getObjectAttributes(flat_data,'score'));
-        let classname = "tisas-similar-match-poor";
+        let classname = "ntisas-similar-match-poor";
         if (max_score > 95.0) {
-            classname = "tisas-similar-match-great";
+            classname = "ntisas-similar-match-great";
         } else if (max_score > 90.0) {
-            classname = "tisas-similar-match-good";
+            classname = "ntisas-similar-match-good";
         } else if (max_score > 85.0) {
-            classname = "tisas-similar-match-fair";
+            classname = "ntisas-similar-match-fair";
         }
         let iqdb_post_ids = JSPLib.utility.setUnique(JSPLib.utility.getObjectAttributes(flat_data,'post_id'));
         let similar_data = all_iqdb_results.map((image_result)=>{
             return image_result.map((result)=>{
                 let score = result.score;
                 let post_id = result.post.id;
-                let post = TISAS.post_index[post_id];
+                let post = NTISAS.post_index[post_id];
                 return MapSimilar(post,score);
             });
         });
         if (IsQuerySettingEnabled('auto_save', 'iqdb') || IsIQDBAutoclick()) {
             JSPLib.storage.saveData('tweet-' + tweet_id, iqdb_post_ids, JSPLib.storage.twitterstorage);
             $replace.html(RenderPostIDsLink(iqdb_post_ids,classname));
-            TISAS.tweet_index[tweet_id] = {entry: $tweet, post_ids: iqdb_post_ids, processed: false, similar: false};
+            NTISAS.tweet_index[tweet_id] = {entry: $tweet, post_ids: iqdb_post_ids, processed: false, similar: false};
             CheckPostIDs(iqdb_post_ids);
         } else {
             $replace.html(RenderSimilarIDsLink(iqdb_post_ids,mapped_posts,classname,'iqdb'));
-            TISAS.similar_results[tweet_id] = iqdb_post_ids;
-            if (TISAS.user_settings.advanced_tooltips_enabled) {
-                InitializeQtip($tweet.find('.tisas-confirm-save'),tweet_id);
+            NTISAS.similar_results[tweet_id] = iqdb_post_ids;
+            if (NTISAS.user_settings.advanced_tooltips_enabled) {
+                InitializeQtip($tweet.find('.ntisas-confirm-save'),tweet_id);
                 //Some elements are delayed in rendering, so render ahead of time
-                TISAS.tweet_qtip[tweet_id] = InitializeSimilarContainer(selected_image_urls,similar_data,mapped_posts,tweet_id,'iqdb');
+                NTISAS.tweet_qtip[tweet_id] = InitializeSimilarContainer(selected_image_urls,similar_data,mapped_posts,tweet_id,'iqdb');
             }
         }
     } else {
@@ -3625,19 +3625,19 @@ async function CheckIQDB(event) {
 
 async function CheckSauce(event) {
     event.preventDefault();
-    if (!TISAS.user_settings.SauceNAO_API_key) {
+    if (!NTISAS.user_settings.SauceNAO_API_key) {
         Danbooru.Utility.error("<b>Error!</b> Must set SauceNAO API key in user settings.");
         return;
     }
-    let [$link,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event,'tisas-check-sauce');
+    let [$link,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event,'ntisas-check-sauce');
     let all_image_urls = GetImageLinks($tweet);
     CheckSauce.debuglog("All:", all_image_urls);
     if ((all_image_urls.length > 1) && IsQuerySettingEnabled('confirm_query', 'sauce')) {
-        if (!TISAS.tweet_dialog[tweet_id]) {
-            TISAS.tweet_dialog[tweet_id] = InitializeConfirmContainer(all_image_urls);
+        if (!NTISAS.tweet_dialog[tweet_id]) {
+            NTISAS.tweet_dialog[tweet_id] = InitializeConfirmContainer(all_image_urls);
         }
-        TISAS.tweet_dialog[tweet_id].dialog("open");
-        let status = await TISAS.tweet_dialog[tweet_id][0].promiseConfirm;
+        NTISAS.tweet_dialog[tweet_id].dialog("open");
+        let status = await NTISAS.tweet_dialog[tweet_id][0].promiseConfirm;
         if (!status) {
             CheckSauce.debuglog("Exiting...");
             return;
@@ -3648,7 +3648,7 @@ async function CheckSauce(event) {
         selected_image_urls = all_image_urls;
     }
     CheckSauce.debuglog("Selected:", selected_image_urls);
-    $link.removeClass('tisas-check-sauce').html("loading…");
+    $link.removeClass('ntisas-check-sauce').html("loading…");
     let promise_array = selected_image_urls.map((image_url)=>{return JSPLib.saucenao.getSauce(image_url,JSPLib.saucenao.getDBIndex('danbooru'));});
     let all_data = await Promise.all(promise_array);
     let good_data = all_data.filter((data)=>{return JSPLib.saucenao.checkSauce(data);});
@@ -3659,46 +3659,46 @@ async function CheckSauce(event) {
         let danbooru_ids = JSPLib.utility.setUnique(JSPLib.utility.getNestedObjectAttributes(filtered_data,['data','danbooru_id']));
         let [found_ids,missing_ids] = await JSPLib.storage.batchStorageCheck(danbooru_ids,ValidateEntry,max_post_expires,'post');
         if (missing_ids.length) {
-            let posts = await JSPLib.danbooru.submitRequest('posts',{tags: 'id:' + missing_ids.join(','), limit: missing_ids.length, only: post_fields},[],null,TISAS.domain);
+            let posts = await JSPLib.danbooru.submitRequest('posts',{tags: 'id:' + missing_ids.join(','), limit: missing_ids.length, only: post_fields},[],null,NTISAS.domain);
             MapPostData(posts).forEach((post)=>{
-                TISAS.post_index[post.id] = post;
+                NTISAS.post_index[post.id] = post;
                 JSPLib.storage.saveData('post-' + post.id, {value: post, expires: JSPLib.utility.getExpiration(JSPLib.utility.one_month)});
             });
         }
         found_ids.forEach((post_id)=>{
-            TISAS.post_index[post_id] = JSPLib.storage.getStorageData('post-' + post_id, sessionStorage).value;
+            NTISAS.post_index[post_id] = JSPLib.storage.getStorageData('post-' + post_id, sessionStorage).value;
         });
         let scores = JSPLib.utility.getNestedObjectAttributes(filtered_data,['header','similarity']).map(parseFloat);
         let max_score = Math.max(...scores);
-        let classname = "tisas-similar-match-poor";
+        let classname = "ntisas-similar-match-poor";
         if (max_score > 95.0) {
-            classname = "tisas-similar-match-great";
+            classname = "ntisas-similar-match-great";
         } else if (max_score > 90.0) {
-            classname = "tisas-similar-match-good";
+            classname = "ntisas-similar-match-good";
         } else if (max_score > 85.0) {
-            classname = "tisas-similar-match-fair";
+            classname = "ntisas-similar-match-fair";
         }
         if (IsQuerySettingEnabled('auto_save', 'sauce')) {
             JSPLib.storage.saveData('tweet-' + tweet_id, danbooru_ids, JSPLib.storage.twitterstorage);
             $replace.html(RenderPostIDsLink(danbooru_ids,classname));
-            TISAS.tweet_index[tweet_id] = {entry: $tweet, post_ids: danbooru_ids, processed: false, similar: false};
+            NTISAS.tweet_index[tweet_id] = {entry: $tweet, post_ids: danbooru_ids, processed: false, similar: false};
             CheckPostIDs(danbooru_ids);
         } else {
-            let mapped_posts = danbooru_ids.map((post_id)=>{return TISAS.post_index[post_id];});
+            let mapped_posts = danbooru_ids.map((post_id)=>{return NTISAS.post_index[post_id];});
             let similar_data = combined_data.map((image_result)=>{
                 let filter_results = image_result.filter((result)=>{return parseFloat(result.header.similarity) > 80.0;});
                 return filter_results.map((result)=>{
                     let score = parseFloat(result.header.similarity);
                     let post_id = result.data.danbooru_id;
-                    let post = TISAS.post_index[post_id];
+                    let post = NTISAS.post_index[post_id];
                     return MapSimilar(post,score);
                 });
             });
             $replace.html(RenderSimilarIDsLink(danbooru_ids,mapped_posts,classname,'sauce'));
-            TISAS.similar_results[tweet_id] = danbooru_ids;
-            if (TISAS.user_settings.advanced_tooltips_enabled) {
-                InitializeQtip($tweet.find('.tisas-confirm-save'),tweet_id);
-                TISAS.tweet_qtip[tweet_id] = InitializeSimilarContainer(selected_image_urls,similar_data,mapped_posts,tweet_id,'sauce');
+            NTISAS.similar_results[tweet_id] = danbooru_ids;
+            if (NTISAS.user_settings.advanced_tooltips_enabled) {
+                InitializeQtip($tweet.find('.ntisas-confirm-save'),tweet_id);
+                NTISAS.tweet_qtip[tweet_id] = InitializeSimilarContainer(selected_image_urls,similar_data,mapped_posts,tweet_id,'sauce');
             }
         }
     } else {
@@ -3709,7 +3709,7 @@ async function CheckSauce(event) {
 }
 
 function ManualAdd(event) {
-    let [$link,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event,'tisas-manual-add');
+    let [$link,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event,'ntisas-manual-add');
     PromptSavePostIDs($link,$tweet,tweet_id,$replace,manual_add_prompt,[]);
 }
 
@@ -3718,20 +3718,20 @@ function ConfirmSave(event) {
     if (!IsQuerySettingEnabled('confirm_save', type)) {
         return;
     }
-    let [$link,$tweet,tweet_id,,,,,] = GetEventPreload(event,'tisas-confirm-save');
+    let [$link,$tweet,tweet_id,,,,,] = GetEventPreload(event,'ntisas-confirm-save');
     let select_post_ids = GetSelectPostIDs(tweet_id,'tweet_qtip');
-    let all_post_ids = TISAS.similar_results[tweet_id];
+    let all_post_ids = NTISAS.similar_results[tweet_id];
     let save_post_ids = JSPLib.utility.setDifference(all_post_ids,select_post_ids);
     PromptSavePostIDs($link,$tweet,tweet_id,$replace,confirm_save_prompt,save_post_ids)
     event.preventDefault();
 }
 
 function ConfirmDelete(event) {
-    if (!TISAS.user_settings.confirm_delete_enabled) {
+    if (!NTISAS.user_settings.confirm_delete_enabled) {
         return;
     }
-    let [$link,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event,'tisas-confirm-delete');
-    let delete_all = $(".tisas-delete-all",TISAS.tweet_qtip[tweet_id]).prop('checked');
+    let [$link,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event,'ntisas-confirm-delete');
+    let delete_all = $(".ntisas-delete-all",NTISAS.tweet_qtip[tweet_id]).prop('checked');
     let all_post_ids = JSPLib.storage.getStorageData('tweet-' + tweet_id,sessionStorage);
     if (delete_all) {
         var select_post_ids = all_post_ids;
@@ -3745,7 +3745,7 @@ function ConfirmDelete(event) {
 }
 
 function ResetResults(event) {
-    let [$link,,tweet_id,,,,,$replace] = GetEventPreload(event,'tisas-reset-results');
+    let [$link,,tweet_id,,,,,$replace] = GetEventPreload(event,'ntisas-reset-results');
     let type = $link.data('type');
     JSPLib.storage.saveData(type + '-' + tweet_id, {value: false, expires: JSPLib.utility.getExpiration(similar_expires)});
     let no_iqdb_results = (type === "iqdb" ? false : JSPLib.storage.getStorageData('iqdb-' + tweet_id, sessionStorage).value);
@@ -3755,16 +3755,16 @@ function ResetResults(event) {
 }
 
 function SelectPreview(event) {
-    let $container = $(event.target).closest('.tisas-qtip-container');
-    if ($container.hasClass('tisas-similar-results')) {
+    let $container = $(event.target).closest('.ntisas-qtip-container');
+    if ($container.hasClass('ntisas-similar-results')) {
         let type = $container.data('type');
         if (!IsQuerySettingEnabled('confirm_save', type)) {
             return;
         }
-    } else if ($container.hasClass('tisas-post-result') && !TISAS.user_settings.confirm_delete_enabled) {
+    } else if ($container.hasClass('ntisas-post-result') && !NTISAS.user_settings.confirm_delete_enabled) {
         return
     }
-    $(event.currentTarget).closest(".tisas-post-preview").toggleClass('tisas-post-select');
+    $(event.currentTarget).closest(".ntisas-post-preview").toggleClass('ntisas-post-select');
     event.preventDefault();
 }
 
@@ -3786,8 +3786,8 @@ function ErrorMessages(event) {
 
 function SelectMetric(event) {
     let type = $(event.target).parent().data('key');
-    let filter1 = TISAS.tweet_type1_filter;
-    let filter2 = TISAS.tweet_type2_filter;
+    let filter1 = NTISAS.tweet_type1_filter;
+    let filter2 = NTISAS.tweet_type2_filter;
     switch (type) {
         case "total":
             filter1 = "total";
@@ -3812,8 +3812,8 @@ function SelectMetric(event) {
             //do nothing
     }
     if (InitializeTweetStats(filter1,filter2)) {
-        TISAS.tweet_type1_filter = filter1;
-        TISAS.tweet_type2_filter = filter2;
+        NTISAS.tweet_type1_filter = filter1;
+        NTISAS.tweet_type2_filter = filter2;
     } else {
         Danbooru.Utility.notice("Must select category combinations with at least one tweet!");
     }
@@ -3821,7 +3821,7 @@ function SelectMetric(event) {
 }
 
 function MarkArtist(event) {
-    let [$link,$tweet,,,,,all_idents,] = GetEventPreload(event,'tisas-mark-artist');
+    let [$link,$tweet,,,,,all_idents,] = GetEventPreload(event,'ntisas-mark-artist');
     let artist_list = GetList('artist-list');
     if (JSPLib.utility.hasIntersection(artist_list,all_idents)) {
         artist_list = JSPLib.utility.setDifference(artist_list,all_idents);
@@ -3829,15 +3829,15 @@ function MarkArtist(event) {
         artist_list = JSPLib.utility.setUnion(artist_list,all_idents);
     }
     SaveList('artist-list',artist_list);
-    $link.toggleClass('tisas-activated');
-    $tweet.find('.tisas-indicators .tisas-mark-artist').toggle();
+    $link.toggleClass('ntisas-activated');
+    $tweet.find('.ntisas-indicators .ntisas-mark-artist').toggle();
     setTimeout(UpdateTweetIndicators, jquery_delay);
-    TISAS.channel.postMessage({type: "indicators", artist_list: artist_list});
+    NTISAS.channel.postMessage({type: "indicators", artist_list: artist_list});
     event.preventDefault();
 }
 
 function MarkTweet(event) {
-    let [$link,$tweet,tweet_id,,,,,] = GetEventPreload(event,'tisas-mark-tweet');
+    let [$link,$tweet,tweet_id,,,,,] = GetEventPreload(event,'ntisas-mark-tweet');
     let tweet_list = GetList('tweet-list');
     if (tweet_list.includes(tweet_id)) {
         tweet_list = JSPLib.utility.setDifference(tweet_list,[tweet_id]);
@@ -3845,41 +3845,41 @@ function MarkTweet(event) {
         tweet_list = JSPLib.utility.setUnion(tweet_list,[tweet_id]);
     }
     SaveList('tweet-list',tweet_list);
-    $link.toggleClass('tisas-activated');
-    $tweet.find('.tisas-indicators .tisas-mark-tweet').toggle();
-    TISAS.channel.postMessage({type: "indicators", tweet_list: tweet_list});
+    $link.toggleClass('ntisas-activated');
+    $tweet.find('.ntisas-indicators .ntisas-mark-tweet').toggle();
+    NTISAS.channel.postMessage({type: "indicators", tweet_list: tweet_list});
     event.preventDefault();
 }
 
 function CountArtist(event) {
-    let [$link,$tweet,,,,user_ident,,] = GetEventPreload(event,'tisas-count-artist');
-    if (TISAS.counted_artists.includes(user_ident)) {
-        TISAS.counted_artists = JSPLib.utility.setDifference(TISAS.counted_artists,[user_ident]);
+    let [$link,$tweet,,,,user_ident,,] = GetEventPreload(event,'ntisas-count-artist');
+    if (NTISAS.counted_artists.includes(user_ident)) {
+        NTISAS.counted_artists = JSPLib.utility.setDifference(NTISAS.counted_artists,[user_ident]);
     } else {
-        TISAS.counted_artists = JSPLib.utility.setUnion(TISAS.counted_artists,[user_ident]);
+        NTISAS.counted_artists = JSPLib.utility.setUnion(NTISAS.counted_artists,[user_ident]);
     }
-    $link.toggleClass('tisas-activated');
-    $tweet.find('.tisas-indicators .tisas-count-artist').toggle();
+    $link.toggleClass('ntisas-activated');
+    $tweet.find('.ntisas-indicators .ntisas-count-artist').toggle();
     setTimeout(UpdateTweetIndicators, jquery_delay);
-    $("#tisas-indicator-counter .tisas-count-artist").html(TISAS.counted_artists.length);
+    $("#ntisas-indicator-counter .ntisas-count-artist").html(NTISAS.counted_artists.length);
     event.preventDefault();
 }
 
 function CountTweet(event) {
-    let [$link,$tweet,tweet_id,,,,,] = GetEventPreload(event,'tisas-count-tweet');
-    if (TISAS.counted_tweets.includes(tweet_id)) {
-        TISAS.counted_tweets = JSPLib.utility.setDifference(TISAS.counted_tweets,[tweet_id]);
+    let [$link,$tweet,tweet_id,,,,,] = GetEventPreload(event,'ntisas-count-tweet');
+    if (NTISAS.counted_tweets.includes(tweet_id)) {
+        NTISAS.counted_tweets = JSPLib.utility.setDifference(NTISAS.counted_tweets,[tweet_id]);
     } else {
-        TISAS.counted_tweets = JSPLib.utility.setUnion(TISAS.counted_tweets,[tweet_id]);
+        NTISAS.counted_tweets = JSPLib.utility.setUnion(NTISAS.counted_tweets,[tweet_id]);
     }
-    $link.toggleClass('tisas-activated');
-    $tweet.find('.tisas-indicators .tisas-count-tweet').toggle();
-    $("#tisas-indicator-counter .tisas-count-tweet").html(TISAS.counted_tweets.length);
+    $link.toggleClass('ntisas-activated');
+    $tweet.find('.ntisas-indicators .ntisas-count-tweet').toggle();
+    $("#ntisas-indicator-counter .ntisas-count-tweet").html(NTISAS.counted_tweets.length);
     event.preventDefault();
 }
 
 function DownloadOriginal(event) {
-    let [$link,,,,,,,] = GetEventPreload(event,'tisas-download-original');
+    let [$link,,,,,,,] = GetEventPreload(event,'ntisas-download-original');
     let image_link = $link.attr('href');
     let download_name = $link.attr('download');
     DownloadOriginal.debuglog("Saving",image_link,"as",download_name);
@@ -3888,8 +3888,8 @@ function DownloadOriginal(event) {
 }
 
 function DownloadAll(event) {
-    let [,$tweet,,,,,,] = GetEventPreload(event,'tisas-download-all');
-    let $image_links = $tweet.find('.tisas-download-original');
+    let [,$tweet,,,,,,] = GetEventPreload(event,'ntisas-download-all');
+    let $image_links = $tweet.find('.ntisas-download-original');
     $image_links.click();
     event.preventDefault();
 }
@@ -3922,7 +3922,7 @@ function ExportData(event) {
         ExportData.is_running = true;
         Danbooru.Utility.notice("Exporting data!");
         Timer.GetSavePackage().then((save_package)=>{
-            let filename = "TISAS-data-" + GetNumericTimestamp(Date.now()) + ".json";
+            let filename = "NTISAS-data-" + GetNumericTimestamp(Date.now()) + ".json";
             DownloadObject(save_package, filename, true);
             ExportData.is_running = false;
         });
@@ -3934,17 +3934,19 @@ ExportData.is_running = false;
 function ImportData(event) {
     if (!ImportData.is_running) {
         ImportData.is_running = true;
-        ReadFileAsync("#tisas-import-file",true).then((import_package)=>{
+        ReadFileAsync("#ntisas-import-file",true).then((import_package)=>{
             Danbooru.Utility.notice("Importing data!");
             let promise_array = [];
             ImportData.debuglog("Program data:",import_package.program_data);
             Object.keys(import_package.program_data).forEach((key)=>{
-                JSPLib.storage.setStorageData(key,import_package.program_data[key],localStorage);
+                //For backwards compatibility
+                let store_key = key.replace(/^tisas-/, 'ntisas-');
+                JSPLib.storage.setStorageData(store_key, import_package.program_data[key], localStorage);
             });
             ImportData.debuglog("Database info:",import_package.database_info);
-            promise_array.push(JSPLib.storage.saveData('tisas-database-info',import_package.database_info,JSPLib.storage.twitterstorage));
+            promise_array.push(JSPLib.storage.saveData('ntisas-database-info',import_package.database_info,JSPLib.storage.twitterstorage));
             ImportData.debuglog("Database length:",Object.keys(import_package.tweet_database).length);
-            promise_array.push(Timer.SaveDatabase(import_package.tweet_database,"#tisas-import-counter"));
+            promise_array.push(Timer.SaveDatabase(import_package.tweet_database,"#ntisas-import-counter"));
             Promise.all(promise_array).then(()=>{
                 InitializeDatabase();
                 ImportData.is_running = false;
@@ -3960,15 +3962,15 @@ ImportData.is_running = false;
 //Event execute functions
 
 function AutoclickIQDB() {
-    if (TISAS.artist_iqdb_enabled && IsMediaTimeline()) {
-        $(".tisas-check-iqdb").click();
-    } else if (TISAS.page === "tweet") {
-        $(`.tisas-main-tweet[data-tweet-id=${TISAS.addon}] .tisas-check-iqdb`).click();
+    if (NTISAS.artist_iqdb_enabled && IsMediaTimeline()) {
+        $(".ntisas-check-iqdb").click();
+    } else if (NTISAS.page === "tweet") {
+        $(`.ntisas-main-tweet[data-tweet-id=${NTISAS.addon}] .ntisas-check-iqdb`).click();
     }
 }
 
 function UnhideTweets() {
-    let $hidden_tweets = $(".tisas-hidden-media [role=button]");
+    let $hidden_tweets = $(".ntisas-hidden-media [role=button]");
     if ($hidden_tweets.length) {
         UnhideTweets.debuglog("Found hidden tweets:", $hidden_tweets.length);
         $hidden_tweets.click();
@@ -3980,18 +3982,18 @@ function UnhideTweets() {
 function MarkupMediaType(tweet) {
     var has_media = false;
     if ($("[role=blockquote]",tweet).length) {
-        $(".tisas-tweet-media",tweet).addClass("tisas-tweet-quote").removeClass("tisas-tweet-media");
+        $(".ntisas-tweet-media",tweet).addClass("ntisas-tweet-quote").removeClass("ntisas-tweet-media");
     } else if ($("[data-testid=playButton]",tweet).length) {
-        $(".tisas-tweet-media",tweet).addClass("tisas-tweet-video");
+        $(".ntisas-tweet-media",tweet).addClass("ntisas-tweet-video");
         has_media = true;
     } else if ($('[role=progressbar],[src*="/card_img/"],span > svg',tweet).length) {
-        $(".tisas-tweet-media",tweet).addClass("tisas-tweet-card").removeClass("tisas-tweet-media");
+        $(".ntisas-tweet-media",tweet).addClass("ntisas-tweet-card").removeClass("ntisas-tweet-media");
     } else {
-        $(".tisas-tweet-media",tweet).addClass("tisas-tweet-image");
+        $(".ntisas-tweet-media",tweet).addClass("ntisas-tweet-image");
         has_media = true;
     }
     if (has_media) {
-        tweet.tisasPromise = tweet.tisasPromise || new Promise((resolve)=>{tweet.tisasResolve = resolve;});
+        tweet.ntisasPromise = tweet.ntisasPromise || new Promise((resolve)=>{tweet.ntisasResolve = resolve;});
     }
 }
 
@@ -3999,7 +4001,7 @@ function MarkupStreamTweet(tweet) {
     var is_retweet = false;
     let status_link = $("time",tweet).parent();
     let [,screen_name,,tweet_id] = status_link[0].pathname.split('/');
-    $(tweet).addClass('tisas-stream-tweet');
+    $(tweet).addClass('ntisas-stream-tweet');
     $(tweet).attr('data-tweet-id',tweet_id);
     $(tweet).attr('data-screen-name',screen_name);
     //Get API data if available
@@ -4015,48 +4017,48 @@ function MarkupStreamTweet(tweet) {
     //Not marking this with a a class since Twitter alters it
     let article = tweet.children[0].children[0];
     let main_body = article.children[0];
-    $(main_body).addClass("tisas-main-body");
+    $(main_body).addClass("ntisas-main-body");
     let tweet_status = main_body.children[0];
-    $(tweet_status).addClass("tisas-tweet-status");
+    $(tweet_status).addClass("ntisas-tweet-status");
     InitializeStatusBar(tweet_status);
     if (!is_retweet) {
         let is_retweet = Boolean($(tweet_status).text().match(/ Retweeted$/));
         $(tweet).attr('data-is-retweet',is_retweet);
     }
     let tweet_body = main_body.children[1];
-    $(tweet_body).addClass("tisas-tweet-body");
+    $(tweet_body).addClass("ntisas-tweet-body");
     let tweet_left = tweet_body.children[0];
-    $(tweet_left).addClass("tisas-tweet-left");
+    $(tweet_left).addClass("ntisas-tweet-left");
     let tweet_right = tweet_body.children[1];
-    $(tweet_right).addClass("tisas-tweet-right");
+    $(tweet_right).addClass("ntisas-tweet-right");
     let child_count = tweet_right.childElementCount;
     let profile_line = tweet_right.children[0];
-    $(profile_line).addClass("tisas-profile-line");
+    $(profile_line).addClass("ntisas-profile-line");
     let tweet_menu_index = child_count - 1;
     if (tweet_right.children[tweet_menu_index].children[0].tagName.toUpperCase() === "SVG") {
         let promoted_line = tweet_right.children[child_count - 1];
-        $(promoted_line).addClass("tisas-promoted-line");
+        $(promoted_line).addClass("ntisas-promoted-line");
         tweet_menu_index = child_count - 2;
     }
     let tweet_menu = tweet_right.children[tweet_menu_index];
-    $(tweet_menu).addClass("tisas-tweet-actions");
+    $(tweet_menu).addClass("ntisas-tweet-actions");
     let reply_line_count = 0;
     let child1 = tweet_right.children[1];
     if (child1.children[0].tagName.toUpperCase() === "DIV" && child1.innerText.match(/^Replying to/)) {
-        $(child1).addClass("tisas-reply-line");
+        $(child1).addClass("ntisas-reply-line");
         reply_line_count = 1;
     }
     var has_media = false;
     if (tweet_menu_index === (3 + reply_line_count)) {
         let tweet_text = tweet_right.children[1 + reply_line_count];
-        $(tweet_text).addClass("tisas-tweet-text");
+        $(tweet_text).addClass("ntisas-tweet-text");
         let tweet_image = tweet_right.children[2 + reply_line_count];
-        $(tweet_image).addClass("tisas-tweet-media");
+        $(tweet_image).addClass("ntisas-tweet-media");
         has_media = true;
     } else if (tweet_menu_index === (2 + reply_line_count)) {
         let element = tweet_right.children[1 + reply_line_count];
         has_media = element.children[0].tagName.toUpperCase() !== "SPAN";
-        let element_class = (has_media ? "tisas-tweet-media" : "tisas-tweet-text");
+        let element_class = (has_media ? "ntisas-tweet-media" : "ntisas-tweet-text");
         $(element).addClass(element_class);
     }
     if (has_media) {
@@ -4068,7 +4070,7 @@ function MarkupMainTweet(tweet) {
     let tweet_info = window.location.pathname.match(/\/(\w+)\/status\/(\d+)/);
     let tweet_id = tweet_info[2];
     let screen_name = tweet_info[1];
-    $(tweet).addClass('tisas-main-tweet');
+    $(tweet).addClass('ntisas-main-tweet');
     $(tweet).attr('data-tweet-id',tweet_id);
     $(tweet).attr('data-screen-name',screen_name);
     //Get API data if available
@@ -4077,42 +4079,42 @@ function MarkupMainTweet(tweet) {
         $(tweet).attr('data-user-id',data_tweet.user_id_str);
     }
     let main_body = tweet.children[0].children[0].children[0];
-    $(main_body).addClass("tisas-main-body");
+    $(main_body).addClass("ntisas-main-body");
     let child_count = main_body.childElementCount;
     let tweet_status = main_body.children[0];
-    $(tweet_status).addClass("tisas-tweet-status");
+    $(tweet_status).addClass("ntisas-tweet-status");
     InitializeStatusBar(tweet_status);
     let profile_line = main_body.children[1];
-    $(profile_line).addClass("tisas-profile-line");
+    $(profile_line).addClass("ntisas-profile-line");
     let reply_line_count = 0;
     let child2 = main_body.children[2];
     if (child2.children[0].tagName.toUpperCase() !== "SPAN" && child2.children[0].children[0].tagName.toUpperCase() !== "SPAN" && child2.innerText.match(/^Replying to/)) {
-        $(child2).addClass("tisas-reply-line");
+        $(child2).addClass("ntisas-reply-line");
         reply_line_count = 1;
     }
     let tweet_menu_index = child_count - 1;
     let tweet_menu = main_body.children[tweet_menu_index];
-    $(tweet_menu).addClass("tisas-tweet-actions");
+    $(tweet_menu).addClass("ntisas-tweet-actions");
     let retweet_like_count = 0;
     let childn1 = main_body.children[tweet_menu_index - 1];
     if ($('[href$="/retweets"]',childn1).length || $('[href$="/likes"]',childn1).length) {
         retweet_like_count = 1;
-        $(childn1).addClass("tisas-retweets-likes");
+        $(childn1).addClass("ntisas-retweets-likes");
     }
     let time_line = main_body.children[tweet_menu_index - 1 - retweet_like_count]
-    $(time_line).addClass("tisas-time-line");
+    $(time_line).addClass("ntisas-time-line");
     let remaining_lines = tweet_menu_index  - 1 - retweet_like_count - 2 - reply_line_count;
     var has_media = false;
     if (remaining_lines === 2) {
         let tweet_text = main_body.children[2+ reply_line_count];
-        $(tweet_text).addClass("tisas-tweet-text");
+        $(tweet_text).addClass("ntisas-tweet-text");
         let tweet_image = main_body.children[3 + reply_line_count];
-        $(tweet_image).addClass("tisas-tweet-media");
+        $(tweet_image).addClass("ntisas-tweet-media");
         has_media = true;
     } else if (remaining_lines === 1) {
         let element = main_body.children[2 + reply_line_count];
         has_media = element.children[0].children[0].tagName.toUpperCase() !== "SPAN";
-        let element_class = (has_media ? "tisas-tweet-media" : "tisas-tweet-text");
+        let element_class = (has_media ? "ntisas-tweet-media" : "ntisas-tweet-text");
         $(element).addClass(element_class);
     }
     if (has_media) {
@@ -4121,15 +4123,15 @@ function MarkupMainTweet(tweet) {
 }
 
 function CheckHiddenMedia(tweet) {
-    if ($(".tisas-tweet-media",tweet).text().match(/The following media includes potentially sensitive content/)) {
-        $(".tisas-tweet-media",tweet).addClass("tisas-hidden-media");
-        $(".tisas-tweet-media [role=button]",tweet).click((event)=>{
-            $(".tisas-tweet-media",tweet).removeClass("tisas-hidden-media");
+    if ($(".ntisas-tweet-media",tweet).text().match(/The following media includes potentially sensitive content/)) {
+        $(".ntisas-tweet-media",tweet).addClass("ntisas-hidden-media");
+        $(".ntisas-tweet-media [role=button]",tweet).click((event)=>{
+            $(".ntisas-tweet-media",tweet).removeClass("ntisas-hidden-media");
             setTimeout(()=>{
                 MarkupMediaType(tweet);
             }, twitter_delay);
         });
-        tweet.tisasPromise = new Promise((resolve)=>{tweet.tisasResolve = resolve;});
+        tweet.ntisasPromise = new Promise((resolve)=>{tweet.ntisasResolve = resolve;});
     } else {
         MarkupMediaType(tweet);
     }
@@ -4138,33 +4140,33 @@ function CheckHiddenMedia(tweet) {
 //Main execution functions
 
 function RegularCheck() {
-    if (!TISAS.user_id && API_data.has_data && TISAS.account && (TISAS.account in API_data.users_name)) {
-        TISAS.user_id = GetAPIData('users_name',TISAS.account,'id_str');
+    if (!NTISAS.user_id && API_data.has_data && NTISAS.account && (NTISAS.account in API_data.users_name)) {
+        NTISAS.user_id = GetAPIData('users_name',NTISAS.account,'id_str');
         UpdateHighlightControls();
         UpdateIQDBControls();
     }
 
     //Get current page and previous page info
-    TISAS.prev_pagetype = TISAS.page;
+    NTISAS.prev_pagetype = NTISAS.page;
     let [pagetype,pageid] = GetPageType();
     if (pagetype === null) {
         return;
     }
     //Process only photo popups when in that mode
     if (pagetype === "photo") {
-        TISAS.photo_navigation = true;
+        NTISAS.photo_navigation = true;
         ProcessPhotoPopup();
         return;
     } else {
-        TISAS.photo_navigation = false;
+        NTISAS.photo_navigation = false;
     }
     //Process events on a page change
     PageNavigation(pagetype,pageid);
     //Process events at each interval
-    if (TISAS.base_color === undefined || window.location.pathname === "/i/display") {
+    if (NTISAS.base_color === undefined || window.location.pathname === "/i/display") {
         AdjustColorScheme();
     }
-    if (TISAS.user_settings.autoclick_IQDB_enabled) {
+    if (NTISAS.user_settings.autoclick_IQDB_enabled) {
         AutoclickIQDB();
     }
     //Process any new images that have been loaded
@@ -4178,131 +4180,131 @@ function RegularCheck() {
     if (DisplayHighlights()) {
         HighlightTweets();
     }
-    if (!["tweet","other"].includes(TISAS.page)) {
+    if (!["tweet","other"].includes(NTISAS.page)) {
         CollectTweetStats();
     }
-    if (TISAS.user_settings.auto_unhide_tweets_enabled) {
+    if (NTISAS.user_settings.auto_unhide_tweets_enabled) {
         UnhideTweets();
     }
 }
 
 function PageNavigation(pagetype,pageid) {
-    if (TISAS.page === pagetype && TISAS.addon === pageid && (pagetype !== "hashtag" || TISAS.hashtag_search === window.location.search)) {
+    if (NTISAS.page === pagetype && NTISAS.addon === pageid && (pagetype !== "hashtag" || NTISAS.hashtag_search === window.location.search)) {
         return;
     }
     var params;
-    TISAS.page = pagetype;
-    TISAS.addon = pageid;
-    switch(TISAS.page) {
+    NTISAS.page = pagetype;
+    NTISAS.addon = pageid;
+    switch(NTISAS.page) {
         case "home":
             PageNavigation.debuglog("Home timeline");
-            TISAS.account = TISAS.user_id = undefined;
+            NTISAS.account = NTISAS.user_id = undefined;
             break;
         case "main":
         case "likes":
         case "replies":
-            PageNavigation.debuglog("Main timeline:",TISAS.addon);
-            TISAS.account = TISAS.addon;
-            TISAS.user_id = GetAPIData('users_name',TISAS.account,'id_str');
-            if (TISAS.account === "following" || TISAS.account === "lists") {
+            PageNavigation.debuglog("Main timeline:",NTISAS.addon);
+            NTISAS.account = NTISAS.addon;
+            NTISAS.user_id = GetAPIData('users_name',NTISAS.account,'id_str');
+            if (NTISAS.account === "following" || NTISAS.account === "lists") {
                 return;
             }
             break;
         case "media":
-            PageNavigation.debuglog("Media timeline:",TISAS.addon);
-            TISAS.account = TISAS.addon;
-            TISAS.user_id = GetAPIData('users_name',TISAS.account,'id_str');
+            PageNavigation.debuglog("Media timeline:",NTISAS.addon);
+            NTISAS.account = NTISAS.addon;
+            NTISAS.user_id = GetAPIData('users_name',NTISAS.account,'id_str');
             break;
         case "list":
-            PageNavigation.debuglog("List timeline:",TISAS.addon);
-            TISAS.account = TISAS.user_id = undefined;
+            PageNavigation.debuglog("List timeline:",NTISAS.addon);
+            NTISAS.account = NTISAS.user_id = undefined;
             break;
         case "moment":
-            PageNavigation.debuglog("Moment timeline:",TISAS.addon);
-            TISAS.account = TISAS.user_id = undefined;
+            PageNavigation.debuglog("Moment timeline:",NTISAS.addon);
+            NTISAS.account = NTISAS.user_id = undefined;
             break;
         case "hashtag":
-            PageNavigation.debuglog("Hashtag timeline:",TISAS.addon);
-            TISAS.account = TISAS.user_id = undefined;
-            TISAS.hashtag_search = window.location.search;
+            PageNavigation.debuglog("Hashtag timeline:",NTISAS.addon);
+            NTISAS.account = NTISAS.user_id = undefined;
+            NTISAS.hashtag_search = window.location.search;
             break;
         case "search":
-            PageNavigation.debuglog("Search timeline:",TISAS.addon);
-            params = JSPLib.utility.parseParams(TISAS.addon);
-            TISAS.queries = ParseQueries(params.q);
-            TISAS.account = ('from' in TISAS.queries ? TISAS.queries.from : undefined);
-            TISAS.user_id = TISAS.account && GetAPIData('users_name',TISAS.account,'id_str');
+            PageNavigation.debuglog("Search timeline:",NTISAS.addon);
+            params = JSPLib.utility.parseParams(NTISAS.addon);
+            NTISAS.queries = ParseQueries(params.q);
+            NTISAS.account = ('from' in NTISAS.queries ? NTISAS.queries.from : undefined);
+            NTISAS.user_id = NTISAS.account && GetAPIData('users_name',NTISAS.account,'id_str');
             break;
         case "tweet":
-            PageNavigation.debuglog("Tweet ID:",TISAS.addon);
-            TISAS.account = TISAS.user_id = undefined;
+            PageNavigation.debuglog("Tweet ID:",NTISAS.addon);
+            NTISAS.account = NTISAS.user_id = undefined;
             CloseSettingsMenu();
             break;
         default:
             //Do nothing
     }
     //Only render pages with attachment points
-    if (["home","main","likes","replies","media","list","search","hashtag","moment","tweet"].includes(TISAS.page)) {
-        if ($("#tisas-side-menu").length === 0) {
+    if (["home","main","likes","replies","media","list","search","hashtag","moment","tweet"].includes(NTISAS.page)) {
+        if ($("#ntisas-side-menu").length === 0) {
             $("header[role=banner] > div > div > div").append(RenderSideMenu());
-            $("header[role=banner] > div > div > div").attr('id','tisas-account-options'); //Marking this for the CSS
+            $("header[role=banner] > div > div > div").attr('id','ntisas-account-options'); //Marking this for the CSS
             $(".r-1ag2gil").removeClass('r-1ag2gil'); //Remove padding for side menu items
             $(".r-vpgt9t").removeClass('r-vpgt9t'); //Remove padding for tweet button
             InitializeSideMenu();
             InitializeDatabaseLink();
         }
         //Bind events for creation/rebind
-        if (!JSPLib.utility.isNamespaceBound("#tisas-open-settings",'click','tisas')) {
-            $("#tisas-current-records").on('click.tisas',CurrentRecords);
-            $("#tisas-enable-highlights,#tisas-disable-highlights").on('click.tisas',ToggleArtistHilights);
-            $("#tisas-increase-fade-level").on('click.tisas',IncreaseFadeLevel);
-            $("#tisas-decrease-fade-level").on('click.tisas',DecreaseFadeLevel);
-            $("#tisas-increase-hide-level").on('click.tisas',IncreaseHideLevel);
-            $("#tisas-decrease-hide-level").on('click.tisas',DecreaseHideLevel);
-            $("#tisas-enable-autoiqdb,#tisas-disable-autoiqdb").on('click.tisas',ToggleAutoclickIQDB);
-            $("#tisas-enable-indicators,#tisas-disable-indicators").on('click.tisas',ToggleTweetIndicators);
-            $("#tisas-open-settings").on('click.tisas',OpenSettingsMenu);
+        if (!JSPLib.utility.isNamespaceBound("#ntisas-open-settings",'click','ntisas')) {
+            $("#ntisas-current-records").on('click.ntisas',CurrentRecords);
+            $("#ntisas-enable-highlights,#ntisas-disable-highlights").on('click.ntisas',ToggleArtistHilights);
+            $("#ntisas-increase-fade-level").on('click.ntisas',IncreaseFadeLevel);
+            $("#ntisas-decrease-fade-level").on('click.ntisas',DecreaseFadeLevel);
+            $("#ntisas-increase-hide-level").on('click.ntisas',IncreaseHideLevel);
+            $("#ntisas-decrease-hide-level").on('click.ntisas',DecreaseHideLevel);
+            $("#ntisas-enable-autoiqdb,#ntisas-disable-autoiqdb").on('click.ntisas',ToggleAutoclickIQDB);
+            $("#ntisas-enable-indicators,#ntisas-disable-indicators").on('click.ntisas',ToggleTweetIndicators);
+            $("#ntisas-open-settings").on('click.ntisas',OpenSettingsMenu);
             //These will only get bound here on a rebind
-            $("#tisas-database-version").on('click.tisas',CurrentPostver);
-            $("#tisas-install").on('click.tisas',InstallDatabase);
-            $("#tisas-upgrade").on('click.tisas',UpgradeDatabase);
-            $("#tisas-total-records").on('click.tisas',QueryTotalRecords);
-            $("#tisas-error-messages").on('click.tisas',ErrorMessages);
+            $("#ntisas-database-version").on('click.ntisas',CurrentPostver);
+            $("#ntisas-install").on('click.ntisas',InstallDatabase);
+            $("#ntisas-upgrade").on('click.ntisas',UpgradeDatabase);
+            $("#ntisas-total-records").on('click.ntisas',QueryTotalRecords);
+            $("#ntisas-error-messages").on('click.ntisas',ErrorMessages);
         }
-        TISAS.user_settings.tweet_indicators_enabled && InitializeCounter();
-        if (TISAS.prev_pagetype !== "tweet" || TISAS.page_stats === undefined) {
-            let stat_key = TISAS.page + TISAS.addon
-            TISAS.page_stats[stat_key] = TISAS.page_stats[stat_key] || [];
-            TISAS.tweet_stats = TISAS.page_stats[stat_key];
-            TISAS.tweet_type1_filter = "total";
-            TISAS.tweet_type2_filter = "total";
-            TISAS.tweet_stats.length && InitializeTweetStats(TISAS.tweet_type1_filter,TISAS.tweet_type2_filter);
+        NTISAS.user_settings.tweet_indicators_enabled && InitializeCounter();
+        if (NTISAS.prev_pagetype !== "tweet" || NTISAS.page_stats === undefined) {
+            let stat_key = NTISAS.page + NTISAS.addon
+            NTISAS.page_stats[stat_key] = NTISAS.page_stats[stat_key] || [];
+            NTISAS.tweet_stats = NTISAS.page_stats[stat_key];
+            NTISAS.tweet_type1_filter = "total";
+            NTISAS.tweet_type2_filter = "total";
+            NTISAS.tweet_stats.length && InitializeTweetStats(NTISAS.tweet_type1_filter,NTISAS.tweet_type2_filter);
         }
-        if (TISAS.page === "tweet") {
-            $("#tisas-tweet-stats").hide();
+        if (NTISAS.page === "tweet") {
+            $("#ntisas-tweet-stats-table").hide();
         } else {
-            $("#tisas-tweet-stats").show();
+            $("#ntisas-tweet-stats-table").show();
         }
     }
     UpdateHighlightControls();
     UpdateIQDBControls();
     UpdateIndicatorControls();
     SetCheckPostvers();
-    if (TISAS.prev_pagetype !== undefined) {
+    if (NTISAS.prev_pagetype !== undefined) {
         UpdateArtistHighlights();
         UpdateTweetIndicators();
     }
 }
 
 function ProcessPhotoPopup() {
-    let $photo_container = $("#react-root > div > div > div:nth-last-of-type(2):not(.tisas-photo-container)");
+    let $photo_container = $("#react-root > div > div > div:nth-last-of-type(2):not(.ntisas-photo-container)");
     if ($photo_container.length) {
-        let $photo_menu = $("[role=group]:not(.tisas-photo-menu)",$photo_container[0]);
+        let $photo_menu = $("[role=group]:not(.ntisas-photo-menu)",$photo_container[0]);
         if ($photo_menu.length) {
-            $photo_container.addClass('tisas-photo-container');
-            $photo_menu.addClass('tisas-photo-menu');
-            $(".tisas-photo-container [aria-label=Next], .tisas-photo-container [aria-label=Previous]").on('click.tisas',PhotoNavigation);
-            if (TISAS.user_settings.display_upload_link) {
+            $photo_container.addClass('ntisas-photo-container');
+            $photo_menu.addClass('ntisas-photo-menu');
+            $(".ntisas-photo-container [aria-label=Next], .ntisas-photo-container [aria-label=Previous]").on('click.ntisas',PhotoNavigation);
+            if (NTISAS.user_settings.display_upload_link) {
                 let photo_index = GetPhotoIndex();
                 photo_index && InitializeUploadlinks(photo_index, true);
             }
@@ -4312,58 +4314,58 @@ function ProcessPhotoPopup() {
 
 function ProcessTweetImages() {
     let process_tweetids = new Set();
-    let $unprocessed_images = $('.tisas-tweet-media div:not([data-image-url]) > img:not(.tisas-unhandled-image)');
+    let $unprocessed_images = $('.ntisas-tweet-media div:not([data-image-url]) > img:not(.ntisas-unhandled-image)');
     $unprocessed_images.length && ProcessTweetImages.debuglog("Images found:",$unprocessed_images.length);
     $unprocessed_images.each((i,image)=>{
         let image_url = GetNormalImageURL(image.src);
         if (image_url) {
             $(image.parentElement).attr('data-image-url',image_url);
-            let $tweet = $(image).closest('.tisas-tweet');
+            let $tweet = $(image).closest('.ntisas-tweet');
             process_tweetids.add($tweet.data('tweet-id'));
         } else {
-            $(image).addClass('tisas-unhandled-image');
+            $(image).addClass('ntisas-unhandled-image');
             if (JSPLib.validate.isBoolean(image_url)) {
                 Danbooru.Utility.notice("New unhandled image found (see debug console)");
-                ProcessTweetImages.debuglog("Unhandled image",$(image).closest('.tisas-tweet').data('tweet-id'));
+                ProcessTweetImages.debuglog("Unhandled image",$(image).closest('.ntisas-tweet').data('tweet-id'));
             }
         }
     });
     process_tweetids.size && ProcessTweetImages.debuglog("Tweets updated:",process_tweetids.size);
     process_tweetids.forEach((tweetid)=>{
-        let $tweet = $(`.tisas-tweet[data-tweet-id=${tweetid}]`);
-        $tweet.length && $tweet[0].tisasResolve && $tweet[0].tisasResolve('true');
+        let $tweet = $(`.ntisas-tweet[data-tweet-id=${tweetid}]`);
+        $tweet.length && $tweet[0].ntisasResolve && $tweet[0].ntisasResolve('true');
     });
 }
 
 function ProcessNewTweets() {
     //Use the article HTML element as a landmark for locating tweets
-    let $tweet_articles = $("div[data-testid=primaryColumn] div:not(.tisas-tweet) > div > article");
+    let $tweet_articles = $("div[data-testid=primaryColumn] div:not(.ntisas-tweet) > div > article");
     //Get the highest delineation point between tweets that Twitter doesn't alter through events
     let $tweets = $tweet_articles.map((i,entry)=>{return entry.parentElement.parentElement;});
     if ($tweets.length === 0) {
         return false;
     }
-    TISAS.uniqueid = JSPLib.utility.getUniqueID();
-    ProcessNewTweets.debuglog(TISAS.uniqueid);
+    NTISAS.uniqueid = JSPLib.utility.getUniqueID();
+    ProcessNewTweets.debuglog(NTISAS.uniqueid);
     $tweets.each((i,entry)=>{
-        $(entry).addClass("tisas-tweet");
+        $(entry).addClass("ntisas-tweet");
         if ($("time",entry).length) {
             MarkupStreamTweet(entry);
-        } else if (TISAS.page === "tweet" && $("article > div",entry)[0].childElementCount > 2) {
+        } else if (NTISAS.page === "tweet" && $("article > div",entry)[0].childElementCount > 2) {
             MarkupMainTweet(entry);
         }
     });
-    let $image_tweets = $tweets.filter((i,entry)=>{return $(".tisas-tweet-media",entry).length;});
-    ProcessNewTweets.debuglog(`[${TISAS.uniqueid}]`, "Unprocessed:", $tweets.length, $image_tweets.length);
+    let $image_tweets = $tweets.filter((i,entry)=>{return $(".ntisas-tweet-media",entry).length;});
+    ProcessNewTweets.debuglog(`[${NTISAS.uniqueid}]`, "Unprocessed:", $tweets.length, $image_tweets.length);
     //Initialize tweets with images
     InitializeImageTweets($image_tweets);
-    if (TISAS.user_settings.display_retweet_id && API_data.has_data) {
+    if (NTISAS.user_settings.display_retweet_id && API_data.has_data) {
         let $retweets = $tweets.filter("[data-retweet-id]");
         $retweets.each((i,entry)=>{
             InitializeRetweetDisplay(entry);
         });
     }
-    if (TISAS.user_settings.tweet_indicators_enabled) {
+    if (NTISAS.user_settings.tweet_indicators_enabled) {
         $tweets.each((i,entry)=>{
             InitializeTweetIndicators(entry);
         });
@@ -4377,39 +4379,39 @@ function AdjustColorScheme() {
     let $tweet_button = $("[data-testid=SideNav_NewTweet_Button]");
     let $home_button = $('[data-testid=AppTabBar_More_Menu] > div > div').filter((i,entry) => entry.children[0].tagName === "SPAN");
     if ($tweet_button.length && $home_button.length) {
-        TISAS.base_color = getComputedStyle($tweet_button[0]).backgroundColor.match(/\d+/g);
-        TISAS.text_color = getComputedStyle($home_button[0]).color.match(/\d+/g);
-        let color_style = RenderColorStyle(TISAS.base_color, TISAS.text_color);
+        NTISAS.base_color = getComputedStyle($tweet_button[0]).backgroundColor.match(/\d+/g);
+        NTISAS.text_color = getComputedStyle($home_button[0]).color.match(/\d+/g);
+        let color_style = RenderColorStyle(NTISAS.base_color, NTISAS.text_color);
         JSPLib.utility.setCSSStyle(color_style,'color');
-        JSPLib.storage.setStorageData('tisas-color-style', {base_color: TISAS.base_color, text_color: TISAS.text_color}, localStorage);
+        JSPLib.storage.setStorageData('ntisas-color-style', {base_color: NTISAS.base_color, text_color: NTISAS.text_color}, localStorage);
     }
 }
 
 function HighlightTweets() {
-    var $tweets = $(".tisas-tweet:not(.tisas-highlight)");
+    var $tweets = $(".ntisas-tweet:not(.ntisas-highlight)");
     $tweets.each((i,entry)=>{
         var $entry = $(entry);
-        $entry.addClass('tisas-highlight');
+        $entry.addClass('ntisas-highlight');
         var tweetid = String($entry.data("tweet-id"));
-        if (TISAS.tweet_pos.includes(tweetid)) {
+        if (NTISAS.tweet_pos.includes(tweetid)) {
             return;
         }
-        TISAS.tweet_pos.push(tweetid);
+        NTISAS.tweet_pos.push(tweetid);
         var favorites = GetTweetStat(entry,'like');
-        TISAS.tweet_faves.push(favorites);
+        NTISAS.tweet_faves.push(favorites);
     });
-    HighlightTweets.debuglog("Tweets:",TISAS.tweet_pos);
-    HighlightTweets.debuglog("Faves:",TISAS.tweet_faves);
-    HighlightTweets.debuglog("Finish:",TISAS.tweet_finish);
+    HighlightTweets.debuglog("Tweets:",NTISAS.tweet_pos);
+    HighlightTweets.debuglog("Faves:",NTISAS.tweet_faves);
+    HighlightTweets.debuglog("Finish:",NTISAS.tweet_finish);
     var current_count = $.extend({},...all_score_levels.map((level)=>{return {[level]: 0}}));
-    var visible_tweetids = JSPLib.utility.getDOMAttributes($(".tisas-tweet"),'tweet-id',String);
-    TISAS.tweet_pos.forEach((tweetid)=>{
+    var visible_tweetids = JSPLib.utility.getDOMAttributes($(".ntisas-tweet"),'tweet-id',String);
+    NTISAS.tweet_pos.forEach((tweetid)=>{
         let quartile = GetTweetQuartile(tweetid);
         let level = all_score_levels[quartile];
         current_count[level]++;
         if (visible_tweetids.includes(tweetid)) {
-            let $tweet = $(`.tisas-tweet[data-tweet-id=${tweetid}]`);
-            $tweet.removeClass(JSPLib.utility.joinList(all_score_levels,'tisas-',null,' ')).addClass(`tisas-${level}`);
+            let $tweet = $(`.ntisas-tweet[data-tweet-id=${tweetid}]`);
+            $tweet.removeClass(JSPLib.utility.joinList(all_score_levels,'ntisas-',null,' ')).addClass(`ntisas-${level}`);
         }
     });
     UpdateArtistHighlights();
@@ -4418,17 +4420,17 @@ function HighlightTweets() {
 
 function CollectTweetStats() {
     let are_new = false;
-    let tweets_collected = JSPLib.utility.getObjectAttributes(TISAS.tweet_stats,'tweetid');
-    $('.tisas-tweet').each((i,entry)=>{
+    let tweets_collected = JSPLib.utility.getObjectAttributes(NTISAS.tweet_stats,'tweetid');
+    $('.ntisas-tweet').each((i,entry)=>{
         let tweet_id = String($(entry).data('tweet-id'));
         if (tweets_collected.includes(tweet_id)) {
             return;
         }
-        TISAS.tweet_stats.push({
+        NTISAS.tweet_stats.push({
             tweetid: tweet_id,
             retweet: $(entry).data('is-retweet'),
-            video: Boolean($(".tisas-tweet-video",entry).length),
-            image: Boolean($(".tisas-tweet-image",entry).length),
+            video: Boolean($(".ntisas-tweet-video",entry).length),
+            image: Boolean($(".ntisas-tweet-image",entry).length),
             replies: GetTweetStat(entry,'reply'),
             retweets: GetTweetStat(entry,'retweet'),
             favorites: GetTweetStat(entry,'like')
@@ -4436,7 +4438,7 @@ function CollectTweetStats() {
         are_new = true;
     });
     if (are_new) {
-        InitializeTweetStats(TISAS.tweet_type1_filter,TISAS.tweet_type2_filter);
+        InitializeTweetStats(NTISAS.tweet_type1_filter,NTISAS.tweet_type2_filter);
     }
 }
 
@@ -4454,7 +4456,7 @@ function BroadcastTISAS(ev) {
             UpdatePostIDsLink(ev.data.tweet_id);
             break;
         case "database":
-            sessionStorage.removeItem('tisas-database-info');
+            sessionStorage.removeItem('ntisas-database-info');
             window.onfocus = function () {
                 window.location.reload();
             };
@@ -4482,11 +4484,11 @@ function BroadcastTISAS(ev) {
             UpdateIQDBControls();
             break;
         case "reset":
-            Object.assign(TISAS,program_reset_keys);
+            Object.assign(NTISAS,program_reset_keys);
         case "settings":
-            TISAS.old_settings = JSPLib.utility.dataCopy(TISAS.user_settings);
-            TISAS.user_settings = ev.data.user_settings;
-            TISAS.is_setting_menu && JSPLib.menu.updateUserSettings('tisas');
+            NTISAS.old_settings = JSPLib.utility.dataCopy(NTISAS.user_settings);
+            NTISAS.user_settings = ev.data.user_settings;
+            NTISAS.is_setting_menu && JSPLib.menu.updateUserSettings('ntisas');
             InitializeChangedSettings();
             break;
         case "purge":
@@ -4501,99 +4503,99 @@ function BroadcastTISAS(ev) {
 }
 
 function InitializeChangedSettings() {
-    let $processed_tweets = $(".tisas-tweet");
+    let $processed_tweets = $(".ntisas-tweet");
     let update_link_titles = false;
     $processed_tweets.each((i,tweet)=>{
         let $tweet = $(tweet);
         let tweet_id = String($tweet.data('tweet-id'));
-        let $post_link = $tweet.find('.tisas-database-match');
-        if ($post_link.length && JSPLib.menu.hasSettingChanged('tisas','advanced_tooltips_enabled')) {
-            if (TISAS.user_settings.advanced_tooltips_enabled) {
-                TISAS.tweet_index[tweet_id].processed = false;
+        let $post_link = $tweet.find('.ntisas-database-match');
+        if ($post_link.length && JSPLib.menu.hasSettingChanged('ntisas','advanced_tooltips_enabled')) {
+            if (NTISAS.user_settings.advanced_tooltips_enabled) {
+                NTISAS.tweet_index[tweet_id].processed = false;
                 update_link_titles = true;
             } else {
                 $post_link.qtiptisas("destroy",true);
             }
         }
-        if ($tweet.filter('[data-retweet-id]').length && JSPLib.menu.hasSettingChanged('tisas','display_retweet_id')) {
-            if (TISAS.user_settings.display_retweet_id) {
+        if ($tweet.filter('[data-retweet-id]').length && JSPLib.menu.hasSettingChanged('ntisas','display_retweet_id')) {
+            if (NTISAS.user_settings.display_retweet_id) {
                 InitializeRetweetDisplay(tweet);
             } else {
-                $tweet.find('.tisas-retweet').remove();
+                $tweet.find('.ntisas-retweet').remove();
             }
         }
-        if (TISAS.page === "tweet" && JSPLib.menu.hasSettingChanged('tisas','display_media_link')) {
-            if (TISAS.user_settings.display_media_link) {
+        if (NTISAS.page === "tweet" && JSPLib.menu.hasSettingChanged('ntisas','display_media_link')) {
+            if (NTISAS.user_settings.display_media_link) {
                 InitializeMediaLink($tweet);
             } else {
-                $tweet.find(".tisas-media-link").remove();
+                $tweet.find(".ntisas-media-link").remove();
             }
         }
-        if (TISAS.page === "tweet" && (JSPLib.menu.hasSettingChanged('tisas','original_download_enabled') || JSPLib.menu.hasSettingChanged('tisas','download_position') || JSPLib.menu.hasSettingChanged('tisas','filename_prefix_format'))) {
-            $(".tisas-download-section",tweet).remove();
-            if (TISAS.user_settings.original_download_enabled) {
+        if (NTISAS.page === "tweet" && (JSPLib.menu.hasSettingChanged('ntisas','original_download_enabled') || JSPLib.menu.hasSettingChanged('ntisas','download_position') || JSPLib.menu.hasSettingChanged('ntisas','filename_prefix_format'))) {
+            $(".ntisas-download-section",tweet).remove();
+            if (NTISAS.user_settings.original_download_enabled) {
                 InitializeDownloadLinks($tweet);
             }
         }
-        if (JSPLib.menu.hasSettingChanged('tisas','tweet_indicators_enabled')) {
-            if (TISAS.user_settings.tweet_indicators_enabled) {
+        if (JSPLib.menu.hasSettingChanged('ntisas','tweet_indicators_enabled')) {
+            if (NTISAS.user_settings.tweet_indicators_enabled) {
                 InitializeTweetIndicators(tweet);
             } else {
-                $tweet.find('.tisas-indicators').remove();
-                $tweet.find('.tisas-footer-entries').remove();
+                $tweet.find('.ntisas-indicators').remove();
+                $tweet.find('.ntisas-footer-entries').remove();
             }
         }
-        if ($post_link.length && JSPLib.menu.hasSettingChanged('tisas','custom_order_enabled')) {
+        if ($post_link.length && JSPLib.menu.hasSettingChanged('ntisas','custom_order_enabled')) {
             let postlink_URL = $post_link.attr('href');
             postlink_URL = postlink_URL.replace(/\+order%3Acustom/,'') + GetCustomQuery();
             $post_link.attr('href',postlink_URL);
         }
     });
-    if (JSPLib.menu.hasSettingChanged('tisas','auto_unhide_tweets_enabled') && TISAS.user_settings.auto_unhide_tweets_enabled) {
+    if (JSPLib.menu.hasSettingChanged('ntisas','auto_unhide_tweets_enabled') && NTISAS.user_settings.auto_unhide_tweets_enabled) {
         UnhideTweets();
     }
-    if (JSPLib.menu.hasSettingChanged('tisas','display_tweet_statistics') && TISAS.user_settings.display_tweet_statistics) {
+    if (JSPLib.menu.hasSettingChanged('ntisas','display_tweet_statistics') && NTISAS.user_settings.display_tweet_statistics) {
         CollectTweetStats();
     }
-    if (JSPLib.menu.hasSettingChanged('tisas','display_upload_link')) {
-        if (TISAS.user_settings.display_upload_link) {
-            let $upload_link = $(".tisas-upload");
+    if (JSPLib.menu.hasSettingChanged('ntisas','display_upload_link')) {
+        if (NTISAS.user_settings.display_upload_link) {
+            let $upload_link = $(".ntisas-upload");
             let install = true;
             if ($upload_link.length) {
-                $(".tisas-upload").show();
+                $(".ntisas-upload").show();
                 install = false;
             }
             let photo_index = GetPhotoIndex();
             photo_index && InitializeUploadlinks(photo_index, install);
         } else {
-            $(".tisas-upload").hide();
+            $(".ntisas-upload").hide();
         }
     }
-    if (JSPLib.menu.hasSettingChanged('tisas','tweet_indicators_enabled')) {
-        if (TISAS.user_settings.tweet_indicators_enabled) {
+    if (JSPLib.menu.hasSettingChanged('ntisas','tweet_indicators_enabled')) {
+        if (NTISAS.user_settings.tweet_indicators_enabled) {
             InitializeCounter();
         } else {
-            $("#tisas-indicator-counter").remove();
+            $("#ntisas-indicator-counter").remove();
         }
     }
-    if (JSPLib.menu.hasSettingChanged('tisas','score_highlights_enabled') || JSPLib.menu.hasSettingChanged('tisas','score_window_size')) {
-        $(".tisas-highlight").removeClass('tisas-highlight');
+    if (JSPLib.menu.hasSettingChanged('ntisas','score_highlights_enabled') || JSPLib.menu.hasSettingChanged('ntisas','score_window_size')) {
+        $(".ntisas-highlight").removeClass('ntisas-highlight');
         if (DisplayHighlights()) {
-            TISAS.highlight_tweet = [];
-            TISAS.tweet_pos = [];
-            TISAS.tweet_faves = [];
-            TISAS.tweet_finish = {};
+            NTISAS.highlight_tweet = [];
+            NTISAS.tweet_pos = [];
+            NTISAS.tweet_faves = [];
+            NTISAS.tweet_finish = {};
             HighlightTweets();
         }
     }
-    if (JSPLib.menu.hasSettingChanged('tisas','query_subdomain')) {
-        let old_domain = TISAS.domain;
+    if (JSPLib.menu.hasSettingChanged('ntisas','query_subdomain')) {
+        let old_domain = NTISAS.domain;
         SetQueryDomain();
         $(`[href^="${old_domain}"]`).each((i,entry)=>{
-            entry.href = TISAS.domain + entry.pathname + entry.search
+            entry.href = NTISAS.domain + entry.pathname + entry.search
         });
     }
-    if (JSPLib.menu.hasSettingChanged('tisas','SauceNAO_API_key')) {
+    if (JSPLib.menu.hasSettingChanged('ntisas','SauceNAO_API_key')) {
         SetSauceAPIKey();
     }
     if (update_link_titles) {
@@ -4603,57 +4605,57 @@ function InitializeChangedSettings() {
 }
 
 function OpenSettingsMenu(event) {
-    if (!TISAS.opened_menu) {
-        if ($("#twitter-image-searches-and-stuff").length === 0) {
+    if (!NTISAS.opened_menu) {
+        if ($("#new-twitter-image-searches-and-stuff").length === 0) {
             Timer.RenderSettingsMenu();
         }
-        $( "#twitter-image-searches-and-stuff" ).dialog("open");
+        $( "#new-twitter-image-searches-and-stuff" ).dialog("open");
         event.preventDefault();
     }
 }
 
 function CloseSettingsMenu(event) {
-    if (TISAS.opened_menu) {
-        $("#twitter-image-searches-and-stuff").closest('.tisas-dialog').find(".tisas-dialog-close").click();
+    if (NTISAS.opened_menu) {
+        $("#new-twitter-image-searches-and-stuff").closest('.ntisas-dialog').find(".ntisas-dialog-close").click();
         event.preventDefault();
     }
 }
 
 function SaveSettingsMenu(event) {
-    if (TISAS.opened_menu) {
-        $("#tisas-commit").click();
+    if (NTISAS.opened_menu) {
+        $("#ntisas-commit").click();
         event.preventDefault();
     }
 }
 
 function ResetSettingsMenu(event) {
-    if (TISAS.opened_menu) {
-        $("#tisas-resetall").click();
+    if (NTISAS.opened_menu) {
+        $("#ntisas-resetall").click();
         event.preventDefault();
     }
 }
 
 function SetQueryDomain() {
-    TISAS.domain = 'https://' + TISAS.user_settings.query_subdomain + '.donmai.us';
+    NTISAS.domain = 'https://' + NTISAS.user_settings.query_subdomain + '.donmai.us';
 }
 
 function SetSauceAPIKey() {
-    JSPLib.saucenao.api_key = TISAS.user_settings.SauceNAO_API_key;
+    JSPLib.saucenao.api_key = NTISAS.user_settings.SauceNAO_API_key;
 }
 
 function SetHighlightLevels() {
-    TISAS.fade_level = score_levels.indexOf(TISAS.user_settings.score_levels_faded[0]);
-    TISAS.hide_level = score_levels.indexOf(TISAS.user_settings.score_levels_hidden[0]);
+    NTISAS.fade_level = score_levels.indexOf(NTISAS.user_settings.score_levels_faded[0]);
+    NTISAS.hide_level = score_levels.indexOf(NTISAS.user_settings.score_levels_hidden[0]);
 }
 
 function InitializeDialogButtons() {
-    $(".tisas-dialog .ui-dialog-buttonset .ui-button").each((i,entry)=>{
+    $(".ntisas-dialog .ui-dialog-buttonset .ui-button").each((i,entry)=>{
         let key = entry.innerText;
         for (let attribute in MENU_DIALOG_BUTTONS[key]) {
             $(entry).attr(attribute, MENU_DIALOG_BUTTONS[key][attribute]);
         }
      });
-    let $close = $( "#twitter-image-searches-and-stuff" ).closest(".tisas-dialog").find(".tisas-dialog-close");
+    let $close = $( "#new-twitter-image-searches-and-stuff" ).closest(".ntisas-dialog").find(".ntisas-dialog-close");
     $close.attr('title', close_help);
 }
 
@@ -4661,55 +4663,55 @@ function InitializeDialogButtons() {
 function RenderSettingsMenu() {
     //Create the dialog
     $("body").append(settings_menu);
-    $( "#twitter-image-searches-and-stuff" ).dialog(MENU_DIALOG_SETTINGS);
+    $( "#new-twitter-image-searches-and-stuff" ).dialog(MENU_DIALOG_SETTINGS);
     InitializeDialogButtons();
     //Standard menu creation
-    $("#twitter-image-searches-and-stuff").append(tisas_menu);
-    $("#tisas-display-settings").append(JSPLib.menu.renderCheckbox('tisas','advanced_tooltips_enabled'));
-    $("#tisas-display-settings").append(JSPLib.menu.renderCheckbox('tisas','auto_unhide_tweets_enabled'));
-    $("#tisas-display-settings").append(JSPLib.menu.renderCheckbox('tisas','display_retweet_id'));
-    $("#tisas-display-settings").append(JSPLib.menu.renderCheckbox('tisas','display_media_link'));
-    $("#tisas-display-settings").append(JSPLib.menu.renderCheckbox('tisas','display_upload_link'));
-    $("#tisas-display-settings").append(JSPLib.menu.renderCheckbox('tisas','tweet_indicators_enabled'));
-    $("#tisas-display-settings").append(JSPLib.menu.renderCheckbox('tisas','display_tweet_statistics'));
-    $("#tisas-highlight-settings").append(JSPLib.menu.renderCheckbox('tisas','score_highlights_enabled'));
-    $("#tisas-highlight-settings").append(JSPLib.menu.renderTextinput('tisas','score_window_size',5));
-    $("#tisas-highlight-settings").append(JSPLib.menu.renderInputSelectors('tisas','score_levels_faded','radio'));
-    $("#tisas-highlight-settings").append(JSPLib.menu.renderInputSelectors('tisas','score_levels_hidden','radio'));
-    $("#tisas-query-settings").append(JSPLib.menu.renderInputSelectors("tisas",'IQDB_settings','checkbox'));
-    $("#tisas-query-settings").append(JSPLib.menu.renderInputSelectors("tisas",'sauce_settings','checkbox'));
-    $("#tisas-query-settings").append(JSPLib.menu.renderCheckbox('tisas','autocheck_IQDB_enabled'));
-    $("#tisas-query-settings").append(JSPLib.menu.renderCheckbox('tisas','autoclick_IQDB_enabled'));
-    $("#tisas-query-settings").append(JSPLib.menu.renderTextinput('tisas','SauceNAO_API_key',80));
-    $("#tisas-database-settings").append(JSPLib.menu.renderCheckbox('tisas','confirm_delete_enabled'));
-    $("#tisas-network-settings").append(JSPLib.menu.renderCheckbox('tisas','URL_wildcards_enabled'));
-    $("#tisas-network-settings").append(JSPLib.menu.renderCheckbox('tisas','custom_order_enabled'));
-    $("#tisas-network-settings").append(JSPLib.menu.renderTextinput('tisas','recheck_interval',5));
-    $("#tisas-network-settings").append(JSPLib.menu.renderInputSelectors('tisas','query_subdomain','radio'));
-    $("#tisas-download-settings").append(JSPLib.menu.renderCheckbox('tisas','original_download_enabled'));
-    $("#tisas-download-settings").append(JSPLib.menu.renderInputSelectors('tisas','download_position','radio'));
-    $("#tisas-download-settings").append(JSPLib.menu.renderTextinput('tisas','filename_prefix_format',80));
-    $("#tisas-list-controls").append(JSPLib.menu.renderInputSelectors('tisas','select_list','checkbox',true,['highlight','iqdb','artist','tweet'],[],'Select which lists to affect.'));
-    $("#tisas-list-controls").append(JSPLib.menu.renderLinkclick("tisas",'reset_list',"Reset list","Click to reset","Resets the selected lists to a blank state."));
-    $("#tisas-cache-controls").append(`<div class="jsplib-menu-item"><h4>Import file</h4><input size="50" type="file" name="tisas-import-file" id="tisas-import-file"></div>`);
-    $("#tisas-cache-controls").append(JSPLib.menu.renderLinkclick("tisas",'import_data',`Import data (<span id="tisas-import-counter">...</span>)`,"Click to import","Imports a JSON file containing cache and program data."));
-    $("#tisas-cache-controls").append(JSPLib.menu.renderLinkclick("tisas",'export_data',`Export data (<span id="tisas-export-counter">...</span>)`,"Click to export","Exports cache and program data to a JSON file."));
-    $("#tisas-cache-controls").append(JSPLib.menu.renderLinkclick("tisas",'cache_info',"Cache info","Click to populate","Calculates the cache usage of the program and compares it to the total usage. Does not include tweet data."));
-    $("#tisas-cache-controls").append(`<div id="tisas-cache-info-table" style="display:none"></div>`);
-    $("#tisas-cache-controls").append(JSPLib.menu.renderLinkclick("tisas",'purge_cache',`Purge cache (<span id="tisas-purge-counter">...</span>)`,"Click to purge","Dumps all TISAS data with expirations. Does not include tweet data."));
+    $("#new-twitter-image-searches-and-stuff").append(ntisas_menu);
+    $("#ntisas-display-settings").append(JSPLib.menu.renderCheckbox('ntisas','advanced_tooltips_enabled'));
+    $("#ntisas-display-settings").append(JSPLib.menu.renderCheckbox('ntisas','auto_unhide_tweets_enabled'));
+    $("#ntisas-display-settings").append(JSPLib.menu.renderCheckbox('ntisas','display_retweet_id'));
+    $("#ntisas-display-settings").append(JSPLib.menu.renderCheckbox('ntisas','display_media_link'));
+    $("#ntisas-display-settings").append(JSPLib.menu.renderCheckbox('ntisas','display_upload_link'));
+    $("#ntisas-display-settings").append(JSPLib.menu.renderCheckbox('ntisas','tweet_indicators_enabled'));
+    $("#ntisas-display-settings").append(JSPLib.menu.renderCheckbox('ntisas','display_tweet_statistics'));
+    $("#ntisas-highlight-settings").append(JSPLib.menu.renderCheckbox('ntisas','score_highlights_enabled'));
+    $("#ntisas-highlight-settings").append(JSPLib.menu.renderTextinput('ntisas','score_window_size',5));
+    $("#ntisas-highlight-settings").append(JSPLib.menu.renderInputSelectors('ntisas','score_levels_faded','radio'));
+    $("#ntisas-highlight-settings").append(JSPLib.menu.renderInputSelectors('ntisas','score_levels_hidden','radio'));
+    $("#ntisas-query-settings").append(JSPLib.menu.renderInputSelectors('ntisas','IQDB_settings','checkbox'));
+    $("#ntisas-query-settings").append(JSPLib.menu.renderInputSelectors('ntisas','sauce_settings','checkbox'));
+    $("#ntisas-query-settings").append(JSPLib.menu.renderCheckbox('ntisas','autocheck_IQDB_enabled'));
+    $("#ntisas-query-settings").append(JSPLib.menu.renderCheckbox('ntisas','autoclick_IQDB_enabled'));
+    $("#ntisas-query-settings").append(JSPLib.menu.renderTextinput('ntisas','SauceNAO_API_key',80));
+    $("#ntisas-database-settings").append(JSPLib.menu.renderCheckbox('ntisas','confirm_delete_enabled'));
+    $("#ntisas-network-settings").append(JSPLib.menu.renderCheckbox('ntisas','URL_wildcards_enabled'));
+    $("#ntisas-network-settings").append(JSPLib.menu.renderCheckbox('ntisas','custom_order_enabled'));
+    $("#ntisas-network-settings").append(JSPLib.menu.renderTextinput('ntisas','recheck_interval',5));
+    $("#ntisas-network-settings").append(JSPLib.menu.renderInputSelectors('ntisas','query_subdomain','radio'));
+    $("#ntisas-download-settings").append(JSPLib.menu.renderCheckbox('ntisas','original_download_enabled'));
+    $("#ntisas-download-settings").append(JSPLib.menu.renderInputSelectors('ntisas','download_position','radio'));
+    $("#ntisas-download-settings").append(JSPLib.menu.renderTextinput('ntisas','filename_prefix_format',80));
+    $("#ntisas-list-controls").append(JSPLib.menu.renderInputSelectors('ntisas','select_list','checkbox',true,['highlight','iqdb','artist','tweet'],[],'Select which lists to affect.'));
+    $("#ntisas-list-controls").append(JSPLib.menu.renderLinkclick('ntisas','reset_list',"Reset list","Click to reset","Resets the selected lists to a blank state."));
+    $("#ntisas-cache-controls").append(`<div class="jsplib-menu-item"><h4>Import file</h4><input size="50" type="file" name="ntisas-import-file" id="ntisas-import-file"></div>`);
+    $("#ntisas-cache-controls").append(JSPLib.menu.renderLinkclick('ntisas','import_data',`Import data (<span id="ntisas-import-counter">...</span>)`,"Click to import","Imports a JSON file containing cache and program data."));
+    $("#ntisas-cache-controls").append(JSPLib.menu.renderLinkclick('ntisas','export_data',`Export data (<span id="ntisas-export-counter">...</span>)`,"Click to export","Exports cache and program data to a JSON file."));
+    $("#ntisas-cache-controls").append(JSPLib.menu.renderLinkclick('ntisas','cache_info',"Cache info","Click to populate","Calculates the cache usage of the program and compares it to the total usage. Does not include tweet data."));
+    $("#ntisas-cache-controls").append(`<div id="ntisas-cache-info-table" style="display:none"></div>`);
+    $("#ntisas-cache-controls").append(JSPLib.menu.renderLinkclick('ntisas','purge_cache',`Purge cache (<span id="ntisas-purge-counter">...</span>)`,"Click to purge","Dumps all NTISAS data with expirations. Does not include tweet data."));
     //Engage jQuery UI
-    JSPLib.menu.engageUI('tisas',true);
-    $("#tisas-settings").tabs();
+    JSPLib.menu.engageUI('ntisas',true);
+    $("#ntisas-settings").tabs();
     //Set event handlers
-    JSPLib.menu.saveUserSettingsClick('tisas','TISAS',InitializeChangedSettings);
-    JSPLib.menu.resetUserSettingsClick('tisas','TISAS',localstorage_keys,program_reset_keys,InitializeChangedSettings);
-    $("#tisas-control-reset-list").on('click.tisas',ResetLists);
-    $("#tisas-control-import-data").on('click.tisas',ImportData);
-    $("#tisas-control-export-data").on('click.tisas',ExportData);
-    JSPLib.menu.cacheInfoClick('tisas',program_cache_regex,"#tisas-cache-info-table");
-    JSPLib.menu.purgeCacheClick('tisas','TISAS',program_cache_regex,"#tisas-purge-counter");
+    JSPLib.menu.saveUserSettingsClick('ntisas','NTISAS',InitializeChangedSettings);
+    JSPLib.menu.resetUserSettingsClick('ntisas','NTISAS',localstorage_keys,program_reset_keys,InitializeChangedSettings);
+    $("#ntisas-control-reset-list").on('click.ntisas',ResetLists);
+    $("#ntisas-control-import-data").on('click.ntisas',ImportData);
+    $("#ntisas-control-export-data").on('click.ntisas',ExportData);
+    JSPLib.menu.cacheInfoClick('ntisas',program_cache_regex,"#ntisas-cache-info-table");
+    JSPLib.menu.purgeCacheClick('ntisas','NTISAS',program_cache_regex,"#ntisas-purge-counter");
     //Fixup forum links
-    $(".tisas-forum-topic-link").attr('href',`${TISAS.domain}/forum_topics/${danbooru_topic_id}`);
+    $(".ntisas-forum-topic-link").attr('href',`${NTISAS.domain}/forum_topics/${danbooru_topic_id}`);
     //Add CSS stylings
     JSPLib.utility.setCSSStyle(menu_css,'menu');
     InitializeUIStyle();
@@ -4722,7 +4724,7 @@ async function Main() {
     if (!IsTISASInstalled()) {
         await CheckDatabaseInfo(true);
     }
-    unsafeWindow.TISAS = Danbooru.TISAS = TISAS = {
+    unsafeWindow.NTISAS = Danbooru.NTISAS = NTISAS = {
         tweet_pos: [],
         tweet_faves: [],
         tweet_finish: {},
@@ -4741,51 +4743,51 @@ async function Main() {
         API_data: API_data,
         opened_menu: false,
         settings_config: settings_config,
-        channel: new BroadcastChannel('TISAS'),
+        channel: new BroadcastChannel('NTISAS'),
         ReadFileAsync: ReadFileAsync
     };
-    TISAS.channel.onmessage = BroadcastTISAS;
-    TISAS.user_settings = JSPLib.menu.loadUserSettings('tisas');
+    NTISAS.channel.onmessage = BroadcastTISAS;
+    NTISAS.user_settings = JSPLib.menu.loadUserSettings('ntisas');
     SetHighlightLevels();
     SetQueryDomain();
     SetSauceAPIKey();
     JSPLib.utility.initializeInterval(RegularCheck,program_recheck_interval);
-    $(document).on("click.tisas",".tisas-check-url",CheckURL);
-    $(document).on("click.tisas",".tisas-check-iqdb",CheckIQDB);
-    $(document).on("click.tisas",".tisas-check-sauce",CheckSauce);
-    $(document).on("click.tisas",".tisas-manual-add",ManualAdd);
-    $(document).on("click.tisas",".tisas-confirm-save",ConfirmSave);
-    $(document).on("click.tisas",".tisas-confirm-delete",ConfirmDelete);
-    $(document).on("click.tisas",".tisas-reset-results",ResetResults);
-    $(document).on("click.tisas",".tisas-help-info",HelpInfo);
-    $(document).on("click.tisas",".tisas-post-preview a",SelectPreview);
-    $(document).on("click.tisas",".tisas-download-original",DownloadOriginal);
-    $(document).on("click.tisas",".tisas-download-all",DownloadAll);
-    $(document).on("click.tisas",".tisas-footer-entries .tisas-mark-artist",MarkArtist);
-    $(document).on("click.tisas",".tisas-footer-entries .tisas-mark-tweet",MarkTweet);
-    $(document).on("click.tisas",".tisas-footer-entries .tisas-count-artist",CountArtist);
-    $(document).on("click.tisas",".tisas-footer-entries .tisas-count-tweet",CountTweet);
-    $(document).on("click.tisas",".tisas-metric",SelectMetric);
-    $(document).on("keydown.tisas", null, 'left', PhotoNavigation);
-    $(document).on("keydown.tisas", null, 'right', PhotoNavigation);
-    $(document).on("keydown.tisas", null, 'alt+h', ToggleArtistHilights);
-    $(document).on("keydown.tisas", null, 'alt+=', IncreaseFadeLevel);
-    $(document).on("keydown.tisas", null, 'alt+-', DecreaseFadeLevel);
-    $(document).on("keydown.tisas", null, 'alt+]', IncreaseHideLevel);
-    $(document).on("keydown.tisas", null, 'alt+[', DecreaseHideLevel);
-    $(document).on("keydown.tisas", null, 'alt+q', ToggleAutoclickIQDB);
-    $(document).on("keydown.tisas", null, 'alt+i', ToggleTweetIndicators);
-    $(document).on("keydown.tisas", null, 'alt+m', OpenSettingsMenu);
-    $(document).on("keydown.tisas", null, 'alt+c', CloseSettingsMenu);
-    $(document).on("keydown.tisas", null, 'alt+s', SaveSettingsMenu);
-    $(document).on("keydown.tisas", null, 'alt+r', ResetSettingsMenu);
+    $(document).on("click.ntisas",".ntisas-check-url",CheckURL);
+    $(document).on("click.ntisas",".ntisas-check-iqdb",CheckIQDB);
+    $(document).on("click.ntisas",".ntisas-check-sauce",CheckSauce);
+    $(document).on("click.ntisas",".ntisas-manual-add",ManualAdd);
+    $(document).on("click.ntisas",".ntisas-confirm-save",ConfirmSave);
+    $(document).on("click.ntisas",".ntisas-confirm-delete",ConfirmDelete);
+    $(document).on("click.ntisas",".ntisas-reset-results",ResetResults);
+    $(document).on("click.ntisas",".ntisas-help-info",HelpInfo);
+    $(document).on("click.ntisas",".ntisas-post-preview a",SelectPreview);
+    $(document).on("click.ntisas",".ntisas-download-original",DownloadOriginal);
+    $(document).on("click.ntisas",".ntisas-download-all",DownloadAll);
+    $(document).on("click.ntisas",".ntisas-footer-entries .ntisas-mark-artist",MarkArtist);
+    $(document).on("click.ntisas",".ntisas-footer-entries .ntisas-mark-tweet",MarkTweet);
+    $(document).on("click.ntisas",".ntisas-footer-entries .ntisas-count-artist",CountArtist);
+    $(document).on("click.ntisas",".ntisas-footer-entries .ntisas-count-tweet",CountTweet);
+    $(document).on("click.ntisas",".ntisas-metric",SelectMetric);
+    $(document).on("keydown.ntisas", null, 'left', PhotoNavigation);
+    $(document).on("keydown.ntisas", null, 'right', PhotoNavigation);
+    $(document).on("keydown.ntisas", null, 'alt+h', ToggleArtistHilights);
+    $(document).on("keydown.ntisas", null, 'alt+=', IncreaseFadeLevel);
+    $(document).on("keydown.ntisas", null, 'alt+-', DecreaseFadeLevel);
+    $(document).on("keydown.ntisas", null, 'alt+]', IncreaseHideLevel);
+    $(document).on("keydown.ntisas", null, 'alt+[', DecreaseHideLevel);
+    $(document).on("keydown.ntisas", null, 'alt+q', ToggleAutoclickIQDB);
+    $(document).on("keydown.ntisas", null, 'alt+i', ToggleTweetIndicators);
+    $(document).on("keydown.ntisas", null, 'alt+m', OpenSettingsMenu);
+    $(document).on("keydown.ntisas", null, 'alt+c', CloseSettingsMenu);
+    $(document).on("keydown.ntisas", null, 'alt+s', SaveSettingsMenu);
+    $(document).on("keydown.ntisas", null, 'alt+r', ResetSettingsMenu);
     JSPLib.utility.setCSSStyle(program_css,'program');
     JSPLib.utility.setCSSStyle(GM_getResourceText('jquery_qtip_css'),'qtip');
     JSPLib.utility.setCSSStyle(notice_css,'notice');
-    Danbooru.Utility.installBanner('tisas');
+    Danbooru.Utility.installBanner('ntisas');
     InitializeColorScheme();
     InitializeCleanupTasks();
-    JSPLib.statistics.addPageStatistics("TISAS");
+    JSPLib.statistics.addPageStatistics("NTISAS");
     Main.debuglog("Hi!",window.location.href);
 }
 
@@ -4810,6 +4812,6 @@ JSPLib.debug.addFunctionLogs([
 /****Execution start****/
 
 JSPLib.network.installXHRHook([TweetUserData]);
-JSPLib.load.programInitialize(Main,'TISAS',program_load_required_variables,program_load_required_selectors);
+JSPLib.load.programInitialize(Main,'NTISAS',program_load_required_variables,program_load_required_selectors);
 
 unsafeWindow._$ = jQuery;
