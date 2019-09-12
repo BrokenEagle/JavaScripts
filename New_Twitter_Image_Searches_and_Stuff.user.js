@@ -261,7 +261,6 @@ const program_css = `
 }
 .ntisas-code {
     font-family: monospace;
-    background: #eee
 }
 #ntisas-database-version,
 #ntisas-install,
@@ -480,6 +479,16 @@ const program_css = `
     max-height: 150px;
     overflow: hidden;
 }
+.ntisas-post-upload::before {
+    content: "";
+    display: inline-block;
+    background-image: url(data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22iso-8859-1%22%3F%3E%0D%0A%3Csvg%20version%3D%221.1%22%20id%3D%22Capa_1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%20x%3D%220px%22%20y%3D%220px%22%0D%0A%09%20width%3D%2215%22%20height%3D%2215%22%20viewBox%3D%220%200%2053.867%2053.867%22%20style%3D%22enable-background%3Anew%200%200%2053.867%2053.867%3B%22%20xml%3Aspace%3D%22preserve%22%3E%0D%0A%3Cpolygon%20style%3D%22fill%3A%23EFCE4A%3B%22%20points%3D%2226.934%2C1.318%2035.256%2C18.182%2053.867%2C20.887%2040.4%2C34.013%2043.579%2C52.549%2026.934%2C43.798%20%0D%0A%0910.288%2C52.549%2013.467%2C34.013%200%2C20.887%2018.611%2C18.182%20%22%2F%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3C%2Fsvg%3E);
+    background-repeat: no-repeat;
+    background-size: 1em;
+    width: 1em;
+    height: 1em;
+    padding-right: 0.5em;
+}
 .ntisas-image-container {
     height: 150px;
     width: 150px;
@@ -542,6 +551,10 @@ const program_css = `
 }
 .ntisas-upload a {
     color: rgba(255,255,255,0.8);
+    text-decoration: none;
+}
+.ntisas-upload a:hover {
+    text-decoration: underline;
 }
 .ntisas-help-info,
 .ntisas-help-info:hover {
@@ -643,37 +656,112 @@ const program_css = `
 }`;
 
 const color_css = `
+/*Program colors*/
 #ntisas-side-menu,
 #ntisas-indicator-counter,
 .ntisas-tweet-menu,
 .ntisas-timeline-menu,
 .ntisas-download-section,
 .ntisas-footer-entries {
-    color: %s;
+    color: %TEXTCOLOR%;
 }
 .ntisas-download-original,
 .ntisas-download-all,
 .ntisas-media-link,
 #ntisas-tweet-stats-table th a {
-    color: %s;
+    color: %BASECOLOR%;
 }
 .ntisas-media-link,
 #ntisas-tweet-stats-table th a {
-    border-color: %s;
+    border-color: %BASECOLOR%;
 }
 .ntisas-media-link:hover,
 #ntisas-tweet-stats-table th a:hover {
-    background-color: %s;
+    background-color: %BASEMUTED%;
 }
 .ntisas-media-link:active,
 .ntisas-media-link:focus {
-    box-shadow: 0 0 0 2px #FFFFFF, 0 0 0 4px %s;
+    box-shadow: 0 0 0 2px %BACKGROUNDCOLOR%, 0 0 0 4px %BASECOLOR%;
 }
 #ntisas-increase-fade-level:hover,
 #ntisas-increase-hide-level:hover,
 #ntisas-decrease-fade-level:hover,
 #ntisas-decrease-hide-level:hover {
-    background-color: %s;
+    background-color: %TEXTMUTED%;
+}
+.ntisas-code {
+    background-color: %TEXTMUTED%;
+}
+/*Dialogs*/
+.ui-dialog.ntisas-dialog,
+.ui-dialog.ntisas-dialog .ui-widget-content,
+.ui-dialog.ntisas-dialog .ui-state-default {
+    color: %TEXTCOLOR%;
+    background: %BACKGROUNDCOLOR%;
+}
+.ui-dialog.ntisas-dialog,
+.ui-dialog.ntisas-dialog .ui-tabs,
+.ui-dialog.ntisas-dialog .ui-state-default {
+    border: 1px solid %TEXTSHADED%;
+}
+.ui-dialog.ntisas-dialog .ui-tabs-nav,
+.ui-dialog.ntisas-dialog .ui-dialog-titlebar,
+.ui-dialog.ntisas-dialog .ui-dialog-buttonpane {
+    border: 1px solid %TEXTMUTED%;
+}
+.jsplib-inline-tooltip,
+.jsplib-block-tooltip {
+    color: %TEXTSHADED%;
+}
+#new-twitter-image-searches-and-stuff a {
+    color: %BASECOLOR%;
+}
+.ui-dialog.ntisas-dialog .ui-state-active .ui-icon-background {
+    border: 4px solid %BASEDARKER%;
+}
+.ui-dialog.ntisas-dialog .ui-widget-header {
+    color: %TEXTCOLOR%;
+     background: %BASESHADED%;
+}
+.ui-dialog.ntisas-dialog .ui-button {
+    color: %TEXTCOLOR%;
+    background: %BASEMUTED%;
+    border: 1px solid %BASESHADED%;
+}
+.ui-dialog.ntisas-dialog .ui-button:hover,
+.ui-dialog.ntisas-dialog .ui-tab:hover {
+    background: %BASESHADED%;
+    border: 1px solid %BASECOLOR%;
+}
+
+.ui-dialog.ntisas-dialog .ui-widget-content .ui-state-active,
+.ui-dialog.ntisas-dialog .ui-widget-content .ui-state-active:focus {
+    color: %BACKGROUNDCOLOR%;
+    background: %BASECOLOR%;
+    border: 1px solid %BASEDARKER%;
+}
+.ui-dialog.ntisas-dialog .ui-button:hover,
+.ui-dialog.ntisas-dialog .ui-widget-content .ui-state-active:active,
+.ui-dialog.ntisas-dialog .ui-widget-content .ui-state-active:focus {
+    box-shadow: 0 0 0 2px %BACKGROUNDCOLOR%, 0 0 0 4px %BASECOLOR%;
+}
+#new-twitter-image-searches-and-stuff .ntisas-striped thead th {
+    color: %TEXTSHADED%;
+}
+#ntisas-available-hotkeys-title {
+    color: %BASESHADED%;
+}
+#new-twitter-image-searches-and-stuff .ntisas-striped thead tr {
+    border-bottom: 2px solid %TEXTSHADED%;
+}
+#new-twitter-image-searches-and-stuff .ntisas-striped tbody tr {
+    border-bottom: 1px solid %TEXTMUTED%;
+}
+/*qTips*/
+.qtiptisas.qtiptisas-twitter {
+    color: %TEXTCOLOR%;
+    background: %BACKGROUNDCOLOR%;
+    border: 1px solid %TEXTSHADED%;
 }`;
 
 const notice_css = `
@@ -716,12 +804,10 @@ const menu_css = `
 .jsplib-inline-tooltip {
     display: inline;
     font-style: italic;
-    color: #666;
 }
 .jsplib-block-tooltip {
     display: block;
     font-style: italic;
-    color: #666;
 }
 .jsplib-textinput jsplib-setting {
     padding: 1px 0.5em;
@@ -736,8 +822,10 @@ const menu_css = `
 .jsplib-textinput-control .jsplib-control {
     padding: 1px 0.5em;
 }
-.jsplib-selectors label {
-    width: 120px;
+.jsplib-selectors.ntisas-selectors label,
+.jsplib-selectors.ntisas-selectors label:hover {
+    width: 140px;
+    font-weight: bold;
 }
 .jsplib-linkclick .jsplib-control {
     display: inline;
@@ -767,7 +855,6 @@ const menu_css = `
     font-size: 1.8em;
     padding: 0.25em;
     line-height: 1em;
-    color: black;
     margin: 0;
 }
 #new-twitter-image-searches-and-stuff .prose h4 {
@@ -776,7 +863,13 @@ const menu_css = `
     margin: 0;
 }
 #new-twitter-image-searches-and-stuff a {
-    color:#0073ff
+    font-weight:bold;
+    text-decoration: none;
+}
+#new-twitter-image-searches-and-stuff .prose a:hover,
+#new-twitter-image-searches-and-stuff .ntisas-menu-tooltip a:hover,
+#new-twitter-image-searches-and-stuff .ntisas-linkclick a:hover {
+    text-decoration: underline;
 }
 #new-twitter-image-searches-and-stuff b {
     font-weight: bold;
@@ -795,20 +888,19 @@ const menu_css = `
 .ntisas-textinput input {
     width: unset;
 }
+#ntisas-settings > div {
+    overflow-y: auto;
+    height: 465px;
+}
 #ntisas-import-file,
 #ntisas-settings-buttons input,
 .ntisas-textinput input{
+    color: black;
     background-color: white;
 }
 #new-twitter-image-searches-and-stuff .ntisas-striped {
     border-collapse: collapse;
     border-spacing: 0;
-}
-#new-twitter-image-searches-and-stuff .ntisas-striped thead tr {
-    border-bottom: 2px solid #666;
-}
-#new-twitter-image-searches-and-stuff .ntisas-striped tbody tr {
-    border-bottom: 1px solid #BBB;
 }
 #new-twitter-image-searches-and-stuff .ntisas-striped td,
 #new-twitter-image-searches-and-stuff .ntisas-striped th {
@@ -817,21 +909,20 @@ const menu_css = `
 #new-twitter-image-searches-and-stuff .ntisas-striped thead th {
     font-weight: 700;
     text-align: left;
-    color: #333;
 }
 #ntisas-script-message > div {
     display: inline-block;
 }
 #ntisas-forum-message {
-    padding: 1em;
+    padding: 0 1em;
 }
 #ntisas-available-hotkeys {
     float: right;
+    margin-bottom: -1px;
 }
 #ntisas-available-hotkeys-title {
     font-size: 125%;
     padding-left: 0.5em;
-    color: #888;
 }`;
 
 //HTML constants
@@ -843,8 +934,10 @@ const settings_menu = '<div id="new-twitter-image-searches-and-stuff" title="NTI
 
 const ntisas_menu = `
 <div id="ntisas-script-message" class="prose">
-    <h2>Twitter Image Searches and Stuff</h2>
-    <div id="ntisas-forum-message">Check the forum for the latest on information and updates (<a class="ntisas-forum-topic-link" target="_blank">topic #${danbooru_topic_id}</a>).</div>
+    <h2>New Twitter Image Searches and Stuff</h2>
+    <div id="ntisas-forum-message">
+        <p>For the TISAS version on old Twitter, check the forum at <a class="ntisas-forum-topic-link" target="_blank">topic #${danbooru_topic_id}</a>.</p>
+    </div>
     <div id="ntisas-available-hotkeys">
         <div id="ntisas-available-hotkeys-title"><b>Available hotkeys</b>:</div>
         <table class="ntisas-striped">
@@ -892,7 +985,7 @@ const ntisas_menu = `
                     <li><b>Confirm query:</b> Prompt the user on which images to query when there is more than one image.</li>
                     <li><b>Confirm save:</b> Prompt the user on which images to save from the results.
                         <ul>
-                            <li>When enabled, the thumbnail and post ID links behave as regular links.</li>
+                            <li>When disabled, the thumbnail and post ID links behave as regular links.</li>
                             <li>Additionally, the results of the query are not saveable.</li>
                         </ul>
                     </li>
@@ -1096,6 +1189,7 @@ const max_post_expires = JSPLib.utility.one_month;
 const similar_expires = JSPLib.utility.one_day;
 const video_expires = JSPLib.utility.one_week;
 const length_recheck_expires = JSPLib.utility.one_hour;
+const user_profile_recheck_expires = JSPLib.utility.one_month;
 const database_recheck_expires = JSPLib.utility.one_day;
 const prune_recheck_expires = JSPLib.utility.one_hour * 6;
 const cleanup_task_delay = JSPLib.utility.one_minute;
@@ -1109,19 +1203,20 @@ const twitter_regex = RegExp(String.raw`^https://twitter\.com\/[\w-]+/status/(\d
 const twitter_source_regex = RegExp(String.raw`^source:https://twitter\.com\/[\w-]+/status/(\d+)$`)
 
 const page_regexes = {
-    home: String.raw`(^https://twitter\.com/?(?:\?|$))`,
-    main: String.raw`(^https://twitter\.com/(?!search)([\w-]+)(?:\?|$))`,
-    likes: String.raw`(^https://twitter\.com/([\w-]+)/likes(?:\?|$))`,
-    replies: String.raw`(^https://twitter\.com/([\w-]+)/with_replies(?:\?|$))`,
-    media: String.raw`(^https://twitter\.com/([\w-]+)/media(?:\?|$))`,
-    list: String.raw`(^https://twitter\.com/[\w-]+/lists/([\w-]+)(?:\?|$))`,
-    hashtag: String.raw`(^https://twitter\.com/hashtag/(.+?)(?:\?|$))`,
-    search: String.raw`(^https://twitter\.com/search\?(.*?\bq=.+))`,
-    tweet: String.raw`(^https://twitter\.com/[\w-]+/status/(\d+)(?:\?|$))`,
-    photo: String.raw`(^https://twitter.com/\w+/status/\d+/(?:photo|video)/\d(?:\?|$))`,
-    moment: String.raw`(^https://twitter\.com/i/moments/(\d+)(?:\?|$))`
+    home: String.raw`^https://twitter\.com/?(?:\?|$)`,
+    main: String.raw`^https://twitter\.com/(?!search)([\w-]+)(?:\?|$)`,
+    likes: String.raw`^https://twitter\.com/([\w-]+)/likes(?:\?|$)`,
+    replies: String.raw`^https://twitter\.com/([\w-]+)/with_replies(?:\?|$)`,
+    media: String.raw`^https://twitter\.com/([\w-]+)/media(?:\?|$)`,
+    list: String.raw`^https://twitter\.com/[\w-]+/lists/([\w-]+)(?:\?|$)`,
+    hashtag: String.raw`^https://twitter\.com/hashtag/(.+?)(?:\?|$)`,
+    search: String.raw`^https://twitter\.com/search\?(.*?\bq=.+)`,
+    tweet: String.raw`^https://twitter\.com/[\w-]+/status/(\d+)(?:\?|$)`,
+    photo: String.raw`^https://twitter.com/\w+/status/\d+/(?:photo|video)/\d(?:\?|$)`,
+    moment: String.raw`^https://twitter\.com/i/moments/(\d+)(?:\?|$)`,
+    display: String.raw`^https://twitter.com/i/display$`
 };
-const page_order = ['main','media','search','tweet','hashtag','list','home','likes','replies','photo','moment'];
+const page_order = ['main','media','search','tweet','hashtag','list','home','likes','replies','photo','moment','display'];
 
 const highlight_controls = ['enable','disable','unavailable'];
 const iqdb_controls = ['enable','disable','active','unavailable'];
@@ -1129,8 +1224,9 @@ const indicator_controls = ['enable','disable'];
 
 const all_indicator_types = ['mark-artist','mark-tweet','count-artist','count-tweet'];
 
-const post_fields = "id,uploader_name,score,fav_count,rating,tag_string,created_at,preview_file_url,source,file_ext,file_size,image_width,image_height";
+const post_fields = "id,uploader_id,uploader_name,score,fav_count,rating,tag_string,created_at,preview_file_url,source,file_ext,file_size,image_width,image_height";
 const postver_fields = "id,updated_at,post_id,version,source,source_changed,added_tags,removed_tags";
+const profile_fields = "id";
 
 const base_dialog_width = 45;
 const base_preview_width = 165;
@@ -1140,7 +1236,7 @@ const post_preview_dimension = 150;
 
 const PREVIEW_QTIP_SETTINGS = {
     style: {
-        classes: "qtiptisas-light ntisas-preview-tooltip",
+        classes: "qtiptisas-twitter ntisas-preview-tooltip",
     },
     position: {
         my: "top center",
@@ -1186,6 +1282,7 @@ const CONFIRM_DIALOG_SETTINGS = {
 
 const MENU_DIALOG_SETTINGS = {
     modal: true,
+    resizable:false,
     autoOpen: false,
     width: 1000,
     height: 800,
@@ -1237,7 +1334,8 @@ const post_constraints = {
     entry: JSPLib.validate.hashentry_constraints,
     value: {
         id: JSPLib.validate.postcount_constraints,
-        uploader: JSPLib.validate.stringonly_constraints,
+        uploaderid: JSPLib.validate.postcount_constraints,
+        uploadername: JSPLib.validate.stringonly_constraints,
         score: JSPLib.validate.integer_constraints,
         favcount: JSPLib.validate.counting_constraints,
         rating: JSPLib.validate.inclusion_constraints(['s','q','e']),
@@ -1264,7 +1362,8 @@ const video_constriants = {
 
 const color_constraints = {
     base_color: JSPLib.validate.array_constraints({is: 3}),
-    text_color: JSPLib.validate.array_constraints({is: 3})
+    text_color: JSPLib.validate.array_constraints({is: 3}),
+    background_color: JSPLib.validate.array_constraints({is: 3})
 };
 
 /****Functions****/
@@ -1301,6 +1400,7 @@ function ValidateProgramData(key,entry) {
                 checkerror = ["Value is not an integer."];
             }
             break;
+        case 'ntisas-user-data':
         case 'ntisas-postver-lastid':
             if (!JSPLib.validate.validateID(entry)) {
                 checkerror = ["Value is not a valid ID."];
@@ -1565,6 +1665,19 @@ JSPLib.utility.joinList = function (array,prefix,suffix,joiner) {
     }).join(joiner);
 };
 
+JSPLib.utility.objectReduce = function (object,reducer,accumulator) {
+  for (let key in object) {
+    if (object.hasOwnProperty(key)) {
+      accumulator = reducer(accumulator, object[key], key, object);
+    }
+  }
+  return accumulator;
+};
+
+JSPLib.utility.regexReplace = function (string,values) {
+    return JSPLib.utility.objectReduce(values, (str,val,key)=>{return str.replace(RegExp(`%${key}%`,'g'), val);}, string);
+};
+
 //Helper functions
 
 function GetAPIData(key,id,value) {
@@ -1639,7 +1752,7 @@ function GetUserIdent() {
 }
 
 function GetPhotoIndex() {
-    return JSPLib.utility.findAll(window.location.href.match, /\d+$/)[0];
+    return JSPLib.utility.findAll(window.location.href, /\d+$/)[0];
 }
 
 function DisplayHighlights() {
@@ -1658,7 +1771,8 @@ function MapPostData(posts) {
 function MapPost(post) {
     return {
         id: post.id,
-        uploader: post.uploader_name,
+        uploaderid: post.uploader_id,
+        uploadername: post.uploader_name,
         score: post.score,
         favcount: post.fav_count,
         rating: post.rating,
@@ -1687,7 +1801,7 @@ function GetLinkTitle(post,is_render=true) {
         tags = JSPLib.utility.HTMLEscape(tags);
         age = JSPLib.utility.HTMLEscape(age);
     }
-    return `user:${post.uploader} score:${post.score} favcount:${post.favcount} rating:${post.rating} ${age} ${tags}`;
+    return `user:${post.uploadername} score:${post.score} favcount:${post.favcount} rating:${post.rating} ${age} ${tags}`;
 }
 
 function GetMultiLinkTitle(posts,is_render=true) {
@@ -1697,7 +1811,7 @@ function GetMultiLinkTitle(posts,is_render=true) {
         if (is_render) {
             age = JSPLib.utility.HTMLEscape(age);
         }
-        title.push(`post #${post.id} - user:${post.uploader} score:${post.score} favcount:${post.favcount} rating:${post.rating} ${age}`);
+        title.push(`post #${post.id} - user:${post.uploadername} score:${post.score} favcount:${post.favcount} rating:${post.rating} ${age}`);
     });
     return title.join('\n');
 }
@@ -1828,7 +1942,7 @@ function GetNormalImageURL(image_url) {
         /^https:\/\/[^.]+\.twimg\.com\/emoji\//
     ];
     for (let i = 0; i < unhandled_images.length; i++) {
-        match = image_url.match(unhandled_images[i]);
+        let match = image_url.match(unhandled_images[i]);
         if (match) {
             return null;
         }
@@ -1999,10 +2113,10 @@ function GetTweetStat(tweet,type) {
 
 function SetVideoDownload($download_section,video_url) {
     let [video_name,extension] = GetFileURLNameExt(video_url);
-    let download_filename = NTISAS.filename_prefix
-        .replace(/%ORDER%/g, 'video1')
-        .replace(/%IMG%/g, video_name) +
-        '.' + extension;
+    let download_filename = JSPLib.utility.regexReplace(NTISAS.filename_prefix, {
+        ORDER: 'video1',
+        IMG: video_name
+    }) + '.' + extension;
     $download_section.find('.ntisas-download-video')
         .attr('href', video_url)
         .attr('download', download_filename)
@@ -2010,6 +2124,7 @@ function SetVideoDownload($download_section,video_url) {
 }
 
 function UpdateLinkTitles() {
+    const getPosts = (post_id)=>{return NTISAS.post_index[post_id];};
     for (let tweet_id in NTISAS.tweet_index) {
         let tweet_entry = NTISAS.tweet_index[tweet_id];
         if (tweet_entry.post_ids.length < 1 || tweet_entry.processed) {
@@ -2020,7 +2135,7 @@ function UpdateLinkTitles() {
         let loaded_post_ids = Object.keys(NTISAS.post_index).map(Number);
         let all_posts_loaded = JSPLib.utility.isSubset(loaded_post_ids, post_ids);
         if (all_posts_loaded) {
-            let posts = post_ids.map((post_id)=>{return NTISAS.post_index[post_id];});
+            let posts = post_ids.map(getPosts);
             if (post_ids.length === 1) {
                 $link.attr('title', GetLinkTitle(posts[0], false));
             } else {
@@ -2042,7 +2157,7 @@ function UpdatePostIDsLink(tweet_id) {
     if ($tweet.length === 0) {
         return;
     }
-    let $replace = (NTISAS.page === "tweet" ? $tweet.find('.ntisas-tweet-menu') : $tweet.find('.ntisas-timeline-menu'));
+    let $replace = (IsTweetPage() ? $tweet.find('.ntisas-tweet-menu') : $tweet.find('.ntisas-timeline-menu'));
     let $link = $tweet.find('.ntisas-database-match,.ntisas-confirm-save');
     if ($link.length && NTISAS.user_settings.advanced_tooltips_enabled) {
         $link.qtiptisas("destroy");
@@ -2223,7 +2338,7 @@ function ProcessPostvers(postvers) {
 }
 
 function GetPageType() {
-    let page_string = page_order.map((key)=>{return page_regexes[key];}).join('|');
+    let page_string = page_order.map((key)=>{return `(${page_regexes[key]})`;}).join('|');
     let page_regex = RegExp(`(${page_string})`);
     let match = page_regex.exec(window.location.href);
     if (!match) {
@@ -2252,7 +2367,10 @@ function GetPageType() {
             return ["photo",null];
         case match[20]:
             return ["moment",match[21]];
+        case match[22]:
+            return ["display",null];
         default:
+            GetPageType.debuglog("Regex error:", match, page_regex);
             return ["default",null];
     }
 }
@@ -2313,7 +2431,7 @@ function UpdateIQDBControls() {
             NTISAS.artist_iqdb_enabled = false;
             DisplayControl('enable', iqdb_controls, 'autoiqdb');
         }
-    } else if (NTISAS.page === "tweet") {
+    } else if (IsTweetPage()) {
         NTISAS.artist_iqdb_enabled = false;
         DisplayControl('active', iqdb_controls, 'autoiqdb');
     } else {
@@ -2413,12 +2531,20 @@ function GetEventPreload(event,classname) {
     return [$link,$tweet,tweet_id,user_id,screen_name,user_ident,all_idents,$replace];
 }
 
+function IsPageType(types) {
+    return types.includes(NTISAS.page) || (NTISAS.page === "display" && types.includes(NTISAS.prev_page));
+}
+
+function IsTweetPage() {
+    return IsPageType(["tweet"]);
+}
+
 function IsMediaTimeline() {
     return (NTISAS.page === "media") || (NTISAS.page === "search" && NTISAS.account && NTISAS.queries.filter === "images");
 }
 
 function IsIQDBAutoclick() {
-    return NTISAS.user_settings.autoclick_IQDB_enabled && ((NTISAS.artist_iqdb_enabled && IsMediaTimeline()) || (NTISAS.page === "tweet"));
+    return NTISAS.user_settings.autoclick_IQDB_enabled && ((NTISAS.artist_iqdb_enabled && IsMediaTimeline()) || IsTweetPage());
 }
 
 //File functions
@@ -2467,12 +2593,7 @@ function DownloadObject(export_obj, export_name, is_json) {
 //Render functions
 
 function RenderSideMenu() {
-    let current_message = update_records_help;
-    if (!JSPLib.storage.getStorageData('ntisas-logged-in',localStorage,true)) {
-        current_message = logged_recheck_help;
-    } else if (!JSPLib.storage.checkStorageData('ntisas-recent-timestamp',ValidateProgramData,localStorage)) {
-        current_message = must_install_help;
-    }
+    let current_message = (!JSPLib.storage.checkStorageData('ntisas-recent-timestamp', ValidateProgramData, localStorage) ? must_install_help : update_records_help);
     let fade_level = JSPLib.utility.displayCase(NTISAS.user_settings.score_levels_faded[0]);
     let hide_level = JSPLib.utility.displayCase(NTISAS.user_settings.score_levels_hidden[0]);
     let current_fade_html = JSPLib.utility.sprintf(fade_highlight_html, fade_level);
@@ -2552,13 +2673,7 @@ function RenderCurrentRecords() {
         let timeagostring = ((Date.now() - timestamp) < GetPostVersionsExpiration() * 2 ? "Up to date" : TimeAgo(timestamp));
         record_html = `<a id="ntisas-current-records" title="${timestring}">${timeagostring}</a>`
     } else {
-        let message = "Loading...";
-        let addons = "";
-        if (!JSPLib.storage.getStorageData('ntisas-logged-in',localStorage,true)) {
-            message = login_menu_text;
-            addons = 'style="font-size:12px"'
-        }
-        record_html = `<span id="ntisas-current-records" ${addons}>${message}</span>`;
+        record_html = `<span id="ntisas-current-records">Loading...</span>`;
     }
     return record_html;
 }
@@ -2572,21 +2687,22 @@ function RenderDownloadLinks($tweet,position,is_video) {
     let [tweet_id,user_id,screen_name,,] = GetTweetInfo($tweet);
     let date_string = GetDateString(Date.now());
     let time_string = GetTimeString(Date.now());
-    NTISAS.filename_prefix = NTISAS.user_settings.filename_prefix_format
-        .replace(/%TWEETID%/g, tweet_id)
-        .replace(/%USERID%/g, user_id)
-        .replace(/%USERACCOUNT%/g, screen_name)
-        .replace(/%DATE%/g, date_string)
-        .replace(/%TIME%/g, time_string);
+    NTISAS.filename_prefix = JSPLib.utility.regexReplace(NTISAS.user_settings.filename_prefix_format, {
+        TWEETID: tweet_id,
+        USERID: user_id,
+        USERACCOUNT: screen_name,
+        DATE: date_string,
+        TIME: time_string
+    });
     var image_links = GetImageLinks($tweet);
     var hrefs = image_links.map((image)=>{return image + ':orig'});
     let html = `<span class="ntisas-download-header">Download Originals</span><br>`;
     for (let i = 0; i < image_links.length; i++) {
         let [image_name,extension] = GetFileURLNameExt(image_links[i]);
-        let download_filename = NTISAS.filename_prefix
-            .replace(/%ORDER%/g, 'img' + (i + 1))
-            .replace(/%IMG%/g, image_name) +
-            '.' + extension;
+        let download_filename = JSPLib.utility.regexReplace(NTISAS.filename_prefix, {
+            ORDER: 'img' + (i + 1),
+            IMG: image_name
+        }) + '.' + extension;
         html += `<a class="ntisas-download-original ntisas-download-image" href="${hrefs[i]}" download="${download_filename}">Image #${i + 1}</a>`;
     }
     if (is_video) {
@@ -2645,7 +2761,8 @@ function RenderAllSimilar(all_iqdb_results,image_urls,type) {
 function RenderSimilarContainer(header,iqdb_results,image_url,index) {
     var html = RenderTwimgPreview(image_url,index);
     iqdb_results.forEach((iqdb_result,i)=>{
-        let addons = RenderPreviewAddons(iqdb_result.post.source, null, iqdb_result.score, iqdb_result.post.ext, iqdb_result.post.size, iqdb_result.post.width, iqdb_result.post.height);
+        let is_user_upload = iqdb_result.post.uploaderid === NTISAS.user_data;
+        let addons = RenderPreviewAddons(iqdb_result.post.source, null, iqdb_result.score, iqdb_result.post.ext, iqdb_result.post.size, iqdb_result.post.width, iqdb_result.post.height, is_user_upload);
         html += RenderPostPreview(iqdb_result.post,addons)
     });
     return `
@@ -2670,7 +2787,8 @@ function RenderConfirmContainer(image_urls) {
 function RenderPostsContainer(all_posts) {
     let html = "";
     all_posts.forEach((post,i)=>{
-        let addons = RenderPreviewAddons(post.source, post.id, null, post.ext, post.size, post.width, post.height);
+        let is_user_upload = post.uploaderid === NTISAS.user_data;
+        let addons = RenderPreviewAddons(post.source, post.id, null, post.ext, post.size, post.width, post.height, is_user_upload);
         html += RenderPostPreview(post,addons)
     });
     return `
@@ -2718,17 +2836,18 @@ function RenderTwimgPreview(image_url,index,selectable) {
 </article>`;
 }
 
-function RenderPreviewAddons(source,id,score,file_ext,file_size,width,height) {
+function RenderPreviewAddons(source,id,score,file_ext,file_size,width,height,is_user_upload=false) {
     let title_text = "Original image";
     if (JSPLib.validate.validateID(id)) {
         title_text = "post #" + id;
     } else if (JSPLib.validate.isNumber(score)) {
         title_text = `Similarity: ${JSPLib.utility.setPrecision(score,2)}`
     }
+    let uploader_addon = (is_user_upload ? 'class="ntisas-post-upload"' : "");
     let domain = (source.match(/^https?:\/\//) ? GetBaseDomainName(source) : "NON-WEB");
     let size_text = (Number.isInteger(file_size) && Number.isInteger(width) && Number.isInteger(height) ? `${ReadableBytes(file_size)} (${width}x${height})` : "");
     return `
-<p class="ntisas-desc ntisas-desc-title">${title_text}</p>
+<p class="ntisas-desc ntisas-desc-title"><span ${uploader_addon}>${title_text}</span></p>
 <p class="ntisas-desc ntisas-desc-info">${file_ext.toUpperCase()} @ ${domain}</p>
 <p class="ntisas-desc ntisas-desc-size">${size_text}</p>`;
 }
@@ -2757,12 +2876,21 @@ function RenderHelp(help_text) {
     return `<a class="ntisas-help-info" title="${help_text}">&nbsp;?&nbsp;</a>`;
 }
 
-function RenderColorStyle(base_color,text_color) {
-    let color = JSPLib.utility.sprintf("rgb(%s, %s, %s)",...base_color);
-    let background = JSPLib.utility.sprintf("rgb(%s, %s, %s, 0.1)",...base_color);
-    let text = JSPLib.utility.sprintf("rgb(%s, %s, %s)",...text_color);
-    let alt_background = JSPLib.utility.sprintf("rgb(%s, %s, %s, 0.1)",...text_color);
-    return JSPLib.utility.sprintf(color_css, text, color, color, background, color, alt_background);
+function RenderColorStyle(color_data) {
+    return JSPLib.utility.regexReplace(color_css, {
+        BASECOLOR: JSPLib.utility.sprintf("rgb(%s, %s, %s)", ...color_data.base_color),
+        BASEMUTED: JSPLib.utility.sprintf("rgb(%s, %s, %s, 0.1)", ...color_data.base_color),
+        BASESHADED: JSPLib.utility.sprintf("rgb(%s, %s, %s, 0.5)", ...color_data.base_color),
+        BASEDARKER: JSPLib.utility.sprintf("rgb(%s, %s, %s)", ...DarkenColorArray(color_data.base_color)),
+        TEXTCOLOR: JSPLib.utility.sprintf("rgb(%s, %s, %s)", ...color_data.text_color),
+        TEXTMUTED: JSPLib.utility.sprintf("rgb(%s, %s, %s, 0.1)", ...color_data.text_color),
+        TEXTSHADED: JSPLib.utility.sprintf("rgb(%s, %s, %s, 0.5)", ...color_data.text_color),
+        BACKGROUNDCOLOR: JSPLib.utility.sprintf("rgb(%s, %s, %s)", ...color_data.background_color)
+    });
+}
+
+function DarkenColorArray(array) {
+    return array.map((val)=>{return Math.max(Number(val) - 50, 0).toString();})
 }
 
 //Initialize functions
@@ -2780,8 +2908,9 @@ function InitializeColorScheme() {
     if (!JSPLib.utility.hasStyle('color')) {
         let color_data = JSPLib.storage.checkStorageData('ntisas-color-style',ValidateProgramData,localStorage);
         if (color_data) {
-            let color_style = RenderColorStyle(color_data.base_color, color_data.text_color)
+            let color_style = RenderColorStyle(color_data)
             JSPLib.utility.setCSSStyle(color_style,'color');
+            NTISAS.colors = color_style;
         }
     }
 }
@@ -3010,11 +3139,11 @@ function InitializeRetweetDisplay(tweet) {
 }
 
 function InitializeImageTweets($image_tweets) {
-    if (["home","main","media","likes","replies","list","hashtag","search","moment"].includes(NTISAS.page)) {
+    if (IsPageType(["home","main","media","likes","replies","list","hashtag","search","moment"])) {
         InitializeImageMenu($image_tweets, ".ntisas-tweet-actions", 'ntisas-timeline-menu');
-    } else if (NTISAS.page === "tweet") {
-        let $tweet = $image_tweets.filter(`[data-tweet-id=${NTISAS.addon}]`);
-        if ((".ntisas-tweet-media",$tweet).length) {
+    } else if (IsTweetPage()) {
+        let $tweet = $image_tweets.filter(`[data-tweet-id=${NTISAS.tweet_id}]`);
+        if ($(".ntisas-tweet-media",$tweet).length) {
             InitializeImageMenu($tweet, ".ntisas-retweets-likes", 'ntisas-tweet-menu');
             if (NTISAS.user_settings.original_download_enabled) {
                 let tweet_promise = $tweet[0].ntisasPromise;
@@ -3125,17 +3254,6 @@ async function CheckPostvers() {
     let postver_lastid = GetPostVersionsLastID();
     let url_addons = {search:{id:`${postver_lastid}..${postver_lastid + query_batch_size}`}, only: postver_fields};
     let post_versions = await JSPLib.danbooru.getAllItems('post_versions', query_limit, {page:postver_lastid, addons: url_addons, reverse: true, domain: NTISAS.domain, notify: true});
-    if (num_error_messages !== JSPLib.danbooru.error_messages.length) {
-        let last_error = JSPLib.danbooru.error_messages.slice(-1)[0];
-        if (last_error[1] === 403) {
-            alert(login_alert);
-            $("#ntisas-current-records").css('font-size','12px').html(login_menu_text);
-            $("#ntisas-current-records-help a").attr('title',logged_recheck_help);
-            JSPLib.storage.setStorageData('ntisas-logged-in',false,localStorage);
-        }
-    } else {
-        JSPLib.storage.setStorageData('ntisas-logged-in',true,localStorage);
-    }
     if (post_versions.length === query_batch_size) {
         CheckPostvers.debuglog("Overflow detected!");
         JSPLib.storage.setStorageData('ntisas-overflow',true,localStorage);
@@ -3236,7 +3354,7 @@ async function GetMaxVideoDownloadLink(tweet_id) {
             var variants = data.extended_entities.media[0].video_info.variants;
         } catch (e) {
             //Bad data was returned!
-            GetMaxVideoDownloadLink.log("Bad data returned:",data);
+            GetMaxVideoDownloadLink.debuglog("Bad data returned:",data);
             variants = null;
         }
         if (variants) {
@@ -3250,6 +3368,16 @@ async function GetMaxVideoDownloadLink(tweet_id) {
         return video_url;
     } else {
         return cached.value;
+    }
+}
+
+async function InstallUserProfileData() {
+    if (JSPLib.concurrency.checkTimeout('ntisas-user-profile-recheck', user_profile_recheck_expires)) {
+        let user_profile = await JSPLib.danbooru.submitRequest('profile', {only: profile_fields}, {}, null, NTISAS.domain);
+        if (user_profile.id) {
+            JSPLib.storage.setStorageData('ntisas-user-data', user_profile.id, localStorage);
+        }
+        JSPLib.concurrency.setRecheckTimeout('ntisas-user-profile-recheck', user_profile_recheck_expires);
     }
 }
 
@@ -3314,26 +3442,30 @@ async function SaveDatabase(database,counter_selector) {
     }
 }
 
-async function GetSavePackage() {
-    let save_package = {program_data: {}, tweet_database: {}};
-    Object.keys(localStorage).forEach((key)=>{
-        if (key.match(/^ntisas-/)) {
-            save_package.program_data[key] = JSPLib.storage.getStorageData(key,localStorage);
-        }
-    });
-    let database_length = await GetTotalRecords();
-    let batch_counter = Math.floor(database_length / 10000);
-    await JSPLib.storage.twitterstorage.iterate((value,key,i)=>{
-        let match = key.match(/^tweet-(\d+)$/);
-        if (match) {
-            save_package.tweet_database[match[1]] = value;
-        } else if (key === 'ntisas-database-info') {
-            save_package.database_info = value;
-        }
-        if ((i % 10000) === 0) {
-            $("#ntisas-export-counter").html(--batch_counter);
-        }
-    });
+async function GetSavePackage(export_types) {
+    let save_package = Object.assign(...export_types.map((type)=>{return {[type]: {}};}));
+    if (export_types.includes('program_data')) {
+        Object.keys(localStorage).forEach((key)=>{
+            if (key.match(/^ntisas-/)) {
+                save_package.program_data[key] = JSPLib.storage.getStorageData(key,localStorage);
+            }
+        });
+    }
+    if (export_types.includes('tweet_database')) {
+        let database_length = await GetTotalRecords();
+        let batch_counter = Math.floor(database_length / 10000);
+        await JSPLib.storage.twitterstorage.iterate((value,key,i)=>{
+            let match = key.match(/^tweet-(\d+)$/);
+            if (match) {
+                save_package.tweet_database[match[1]] = value;
+            } else if (key === 'ntisas-database-info') {
+                save_package.database_info = value;
+            }
+            if ((i % 10000) === 0) {
+                $("#ntisas-export-counter").html(--batch_counter);
+            }
+        });
+    }
     return save_package;
 }
 
@@ -3495,7 +3627,7 @@ function CurrentRecords(event) {
         } else {
             Danbooru.Utility.notice("Already up to date!");
         }
-    } else if (event.target.tagName === "SPAN" && NTISAS.database_info && !JSPLib.storage.getStorageData('ntisas-logged-in',localStorage,true)) {
+    } else if (event.target.tagName === "SPAN" && NTISAS.database_info) {
         $("#ntisas-current-records").html("Loading...");
         Timer.CheckPostvers();
     }
@@ -3718,7 +3850,7 @@ function ConfirmSave(event) {
     if (!IsQuerySettingEnabled('confirm_save', type)) {
         return;
     }
-    let [$link,$tweet,tweet_id,,,,,] = GetEventPreload(event,'ntisas-confirm-save');
+    let [$link,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event,'ntisas-confirm-save');
     let select_post_ids = GetSelectPostIDs(tweet_id,'tweet_qtip');
     let all_post_ids = NTISAS.similar_results[tweet_id];
     let save_post_ids = JSPLib.utility.setDifference(all_post_ids,select_post_ids);
@@ -3918,10 +4050,13 @@ function ResetLists(event) {
 }
 
 function ExportData(event) {
-    if (!ExportData.is_running) {
+    let export_types = JSPLib.menu.getCheckboxRadioSelected(`[data-setting="export_types"] [data-selector]`);
+    if (export_types.length === 0) {
+        Danbooru.Utility.notice("Must select at least one export type!");
+    } else if (!ExportData.is_running) {
         ExportData.is_running = true;
         Danbooru.Utility.notice("Exporting data!");
-        Timer.GetSavePackage().then((save_package)=>{
+        Timer.GetSavePackage(export_types).then((save_package)=>{
             let filename = "NTISAS-data-" + GetNumericTimestamp(Date.now()) + ".json";
             DownloadObject(save_package, filename, true);
             ExportData.is_running = false;
@@ -3937,20 +4072,24 @@ function ImportData(event) {
         ReadFileAsync("#ntisas-import-file",true).then((import_package)=>{
             Danbooru.Utility.notice("Importing data!");
             let promise_array = [];
-            ImportData.debuglog("Program data:",import_package.program_data);
-            Object.keys(import_package.program_data).forEach((key)=>{
-                //For backwards compatibility
-                let store_key = key.replace(/^tisas-/, 'ntisas-');
-                JSPLib.storage.setStorageData(store_key, import_package.program_data[key], localStorage);
-            });
-            ImportData.debuglog("Database info:",import_package.database_info);
-            promise_array.push(JSPLib.storage.saveData('ntisas-database-info',import_package.database_info,JSPLib.storage.twitterstorage));
-            ImportData.debuglog("Database length:",Object.keys(import_package.tweet_database).length);
-            promise_array.push(Timer.SaveDatabase(import_package.tweet_database,"#ntisas-import-counter"));
-            Promise.all(promise_array).then(()=>{
-                InitializeDatabase();
-                ImportData.is_running = false;
-            });
+            if ('program_data' in import_package) {
+                ImportData.debuglog("Program data:",import_package.program_data);
+                Object.keys(import_package.program_data).forEach((key)=>{
+                    //For backwards compatibility
+                    let store_key = key.replace(/^tisas-/, 'ntisas-');
+                    JSPLib.storage.setStorageData(store_key, import_package.program_data[key], localStorage);
+                });
+            }
+            if ('database_info' in import_package) {
+                ImportData.debuglog("Database info:",import_package.database_info);
+                promise_array.push(JSPLib.storage.saveData('ntisas-database-info',import_package.database_info,JSPLib.storage.twitterstorage));
+                ImportData.debuglog("Database length:",Object.keys(import_package.tweet_database).length);
+                promise_array.push(Timer.SaveDatabase(import_package.tweet_database,"#ntisas-import-counter"));
+                Promise.all(promise_array).then(()=>{
+                    InitializeDatabase();
+                    ImportData.is_running = false;
+                });
+            }
         }).catch((error)=>{
             ImportData.is_running = false;
         });
@@ -3964,8 +4103,8 @@ ImportData.is_running = false;
 function AutoclickIQDB() {
     if (NTISAS.artist_iqdb_enabled && IsMediaTimeline()) {
         $(".ntisas-check-iqdb").click();
-    } else if (NTISAS.page === "tweet") {
-        $(`.ntisas-main-tweet[data-tweet-id=${NTISAS.addon}] .ntisas-check-iqdb`).click();
+    } else if (IsTweetPage()) {
+        $(`.ntisas-main-tweet[data-tweet-id=${NTISAS.tweet_id}] .ntisas-check-iqdb`).click();
     }
 }
 
@@ -4013,6 +4152,7 @@ function MarkupStreamTweet(tweet) {
     if (data_retweet) {
         $(tweet).attr('data-retweet-id',data_retweet.id_str);
         $(tweet).attr('data-is-retweet',true);
+        is_retweet = true;
     }
     //Not marking this with a a class since Twitter alters it
     let article = tweet.children[0].children[0];
@@ -4067,14 +4207,11 @@ function MarkupStreamTweet(tweet) {
 }
 
 function MarkupMainTweet(tweet) {
-    let tweet_info = window.location.pathname.match(/\/(\w+)\/status\/(\d+)/);
-    let tweet_id = tweet_info[2];
-    let screen_name = tweet_info[1];
     $(tweet).addClass('ntisas-main-tweet');
-    $(tweet).attr('data-tweet-id',tweet_id);
-    $(tweet).attr('data-screen-name',screen_name);
+    $(tweet).attr('data-tweet-id', NTISAS.tweet_id);
+    $(tweet).attr('data-screen-name', NTISAS.screen_name);
     //Get API data if available
-    let data_tweet = GetAPIData('tweets',tweet_id);
+    let data_tweet = GetAPIData('tweets', NTISAS.tweet_id);
     if (data_tweet) {
         $(tweet).attr('data-user-id',data_tweet.user_id_str);
     }
@@ -4103,7 +4240,7 @@ function MarkupMainTweet(tweet) {
     }
     let time_line = main_body.children[tweet_menu_index - 1 - retweet_like_count]
     $(time_line).addClass("ntisas-time-line");
-    let remaining_lines = tweet_menu_index  - 1 - retweet_like_count - 2 - reply_line_count;
+    let remaining_lines = tweet_menu_index - 1 - retweet_like_count - 2 - reply_line_count;
     var has_media = false;
     if (remaining_lines === 2) {
         let tweet_text = main_body.children[2+ reply_line_count];
@@ -4163,7 +4300,7 @@ function RegularCheck() {
     //Process events on a page change
     PageNavigation(pagetype,pageid);
     //Process events at each interval
-    if (NTISAS.base_color === undefined || window.location.pathname === "/i/display") {
+    if (!NTISAS.colors_checked || window.location.pathname === "/i/display") {
         AdjustColorScheme();
     }
     if (NTISAS.user_settings.autoclick_IQDB_enabled) {
@@ -4180,7 +4317,7 @@ function RegularCheck() {
     if (DisplayHighlights()) {
         HighlightTweets();
     }
-    if (!["tweet","other"].includes(NTISAS.page)) {
+    if (!IsPageType(["tweet","other"])) {
         CollectTweetStats();
     }
     if (NTISAS.user_settings.auto_unhide_tweets_enabled) {
@@ -4193,6 +4330,7 @@ function PageNavigation(pagetype,pageid) {
         return;
     }
     var params;
+    NTISAS.prev_page = NTISAS.page;
     NTISAS.page = pagetype;
     NTISAS.addon = pageid;
     switch(NTISAS.page) {
@@ -4237,14 +4375,17 @@ function PageNavigation(pagetype,pageid) {
             break;
         case "tweet":
             PageNavigation.debuglog("Tweet ID:",NTISAS.addon);
+            [,NTISAS.screen_name,NTISAS.tweet_id] = JSPLib.utility.findAll(window.location.pathname, /\/(\w+)\/status\/(\d+)/);
             NTISAS.account = NTISAS.user_id = undefined;
-            CloseSettingsMenu();
             break;
+        case "display":
+            PageNavigation.debuglog("Twitter display settings");
+            return;
         default:
             //Do nothing
     }
     //Only render pages with attachment points
-    if (["home","main","likes","replies","media","list","search","hashtag","moment","tweet"].includes(NTISAS.page)) {
+    if (IsPageType(["home","main","likes","replies","media","list","search","hashtag","moment","tweet"])) {
         if ($("#ntisas-side-menu").length === 0) {
             $("header[role=banner] > div > div > div").append(RenderSideMenu());
             $("header[role=banner] > div > div > div").attr('id','ntisas-account-options'); //Marking this for the CSS
@@ -4280,7 +4421,7 @@ function PageNavigation(pagetype,pageid) {
             NTISAS.tweet_type2_filter = "total";
             NTISAS.tweet_stats.length && InitializeTweetStats(NTISAS.tweet_type1_filter,NTISAS.tweet_type2_filter);
         }
-        if (NTISAS.page === "tweet") {
+        if (IsTweetPage()) {
             $("#ntisas-tweet-stats-table").hide();
         } else {
             $("#ntisas-tweet-stats-table").show();
@@ -4349,9 +4490,9 @@ function ProcessNewTweets() {
     ProcessNewTweets.debuglog(NTISAS.uniqueid);
     $tweets.each((i,entry)=>{
         $(entry).addClass("ntisas-tweet");
-        if ($("time",entry).length) {
+        if ($("a > time",entry).length) {
             MarkupStreamTweet(entry);
-        } else if (NTISAS.page === "tweet" && $("article > div",entry)[0].childElementCount > 2) {
+        } else if (IsTweetPage() && $("article > div",entry).children().length > 2) {
             MarkupMainTweet(entry);
         }
     });
@@ -4376,14 +4517,23 @@ function ProcessNewTweets() {
 }
 
 function AdjustColorScheme() {
+    const compareColors = (result,val,key)=>{return String(NTISAS.colors[key]) !== String(val);};
     let $tweet_button = $("[data-testid=SideNav_NewTweet_Button]");
     let $home_button = $('[data-testid=AppTabBar_More_Menu] > div > div').filter((i,entry) => entry.children[0].tagName === "SPAN");
-    if ($tweet_button.length && $home_button.length) {
-        NTISAS.base_color = getComputedStyle($tweet_button[0]).backgroundColor.match(/\d+/g);
-        NTISAS.text_color = getComputedStyle($home_button[0]).color.match(/\d+/g);
-        let color_style = RenderColorStyle(NTISAS.base_color, NTISAS.text_color);
-        JSPLib.utility.setCSSStyle(color_style,'color');
-        JSPLib.storage.setStorageData('ntisas-color-style', {base_color: NTISAS.base_color, text_color: NTISAS.text_color}, localStorage);
+    if ($tweet_button.length && $home_button.length && document.body.style['background-color']) {
+        NTISAS.colors_checked = true;
+        let new_colors = {
+            base_color: getComputedStyle($tweet_button[0]).backgroundColor.match(/\d+/g),
+            text_color: getComputedStyle($home_button[0]).color.match(/\d+/g),
+            background_color: document.body.style['background-color'].match(/\d+/g)
+        };
+        if (!NTISAS.colors || JSPLib.utility.objectReduce(new_colors, compareColors, false)) {
+            NTISAS.old_colors = NTISAS.colors;
+            NTISAS.colors = new_colors;
+            let color_style = RenderColorStyle(NTISAS.colors);
+            JSPLib.utility.setCSSStyle(color_style,'color');
+            JSPLib.storage.setStorageData('ntisas-color-style', NTISAS.colors, localStorage);
+        }
     }
 }
 
@@ -4403,7 +4553,7 @@ function HighlightTweets() {
     HighlightTweets.debuglog("Tweets:",NTISAS.tweet_pos);
     HighlightTweets.debuglog("Faves:",NTISAS.tweet_faves);
     HighlightTweets.debuglog("Finish:",NTISAS.tweet_finish);
-    var current_count = $.extend({},...all_score_levels.map((level)=>{return {[level]: 0}}));
+    var current_count = Object.assign(...all_score_levels.map((level)=>{return {[level]: 0}}));
     var visible_tweetids = JSPLib.utility.getDOMAttributes($(".ntisas-tweet"),'tweet-id',String);
     NTISAS.tweet_pos.forEach((tweetid)=>{
         let quartile = GetTweetQuartile(tweetid);
@@ -4524,14 +4674,14 @@ function InitializeChangedSettings() {
                 $tweet.find('.ntisas-retweet').remove();
             }
         }
-        if (NTISAS.page === "tweet" && JSPLib.menu.hasSettingChanged('ntisas','display_media_link')) {
+        if (IsTweetPage() && JSPLib.menu.hasSettingChanged('ntisas','display_media_link')) {
             if (NTISAS.user_settings.display_media_link) {
                 InitializeMediaLink($tweet);
             } else {
                 $tweet.find(".ntisas-media-link").remove();
             }
         }
-        if (NTISAS.page === "tweet" && (JSPLib.menu.hasSettingChanged('ntisas','original_download_enabled') || JSPLib.menu.hasSettingChanged('ntisas','download_position') || JSPLib.menu.hasSettingChanged('ntisas','filename_prefix_format'))) {
+        if (IsTweetPage() && (JSPLib.menu.hasSettingChanged('ntisas','original_download_enabled') || JSPLib.menu.hasSettingChanged('ntisas','download_position') || JSPLib.menu.hasSettingChanged('ntisas','filename_prefix_format'))) {
             $(".ntisas-download-section",tweet).remove();
             if (NTISAS.user_settings.original_download_enabled) {
                 InitializeDownloadLinks($tweet);
@@ -4695,7 +4845,8 @@ function RenderSettingsMenu() {
     $("#ntisas-list-controls").append(JSPLib.menu.renderLinkclick('ntisas','reset_list',"Reset list","Click to reset","Resets the selected lists to a blank state."));
     $("#ntisas-cache-controls").append(`<div class="jsplib-menu-item"><h4>Import file</h4><input size="50" type="file" name="ntisas-import-file" id="ntisas-import-file"></div>`);
     $("#ntisas-cache-controls").append(JSPLib.menu.renderLinkclick('ntisas','import_data',`Import data (<span id="ntisas-import-counter">...</span>)`,"Click to import","Imports a JSON file containing cache and program data."));
-    $("#ntisas-cache-controls").append(JSPLib.menu.renderLinkclick('ntisas','export_data',`Export data (<span id="ntisas-export-counter">...</span>)`,"Click to export","Exports cache and program data to a JSON file."));
+    $("#ntisas-cache-controls").append(JSPLib.menu.renderInputSelectors('ntisas','export_types','checkbox',true,['program_data','tweet_database'],['program_data','tweet_database'],'Select which types to export.'));
+    $("#ntisas-cache-controls").append(JSPLib.menu.renderLinkclick('ntisas','export_data',`Export data (<span id="ntisas-export-counter">...</span>)`,"Click to export","Exports cache and/or program data to a JSON file."));
     $("#ntisas-cache-controls").append(JSPLib.menu.renderLinkclick('ntisas','cache_info',"Cache info","Click to populate","Calculates the cache usage of the program and compares it to the total usage. Does not include tweet data."));
     $("#ntisas-cache-controls").append(`<div id="ntisas-cache-info-table" style="display:none"></div>`);
     $("#ntisas-cache-controls").append(JSPLib.menu.renderLinkclick('ntisas','purge_cache',`Purge cache (<span id="ntisas-purge-counter">...</span>)`,"Click to purge","Dumps all NTISAS data with expirations. Does not include tweet data."));
@@ -4725,6 +4876,7 @@ async function Main() {
         await CheckDatabaseInfo(true);
     }
     unsafeWindow.NTISAS = Danbooru.NTISAS = NTISAS = {
+        user_data: JSPLib.storage.checkStorageData('ntisas-user-data', ValidateProgramData, localStorage),
         tweet_pos: [],
         tweet_faves: [],
         tweet_finish: {},
@@ -4742,6 +4894,7 @@ async function Main() {
         artist_iqdb_enabled: false,
         API_data: API_data,
         opened_menu: false,
+        colors_checked: false,
         settings_config: settings_config,
         channel: new BroadcastChannel('NTISAS'),
         ReadFileAsync: ReadFileAsync
@@ -4787,6 +4940,7 @@ async function Main() {
     Danbooru.Utility.installBanner('ntisas');
     InitializeColorScheme();
     InitializeCleanupTasks();
+    InstallUserProfileData();
     JSPLib.statistics.addPageStatistics("NTISAS");
     Main.debuglog("Hi!",window.location.href);
 }
@@ -4806,7 +4960,7 @@ JSPLib.debug.addFunctionLogs([
     CheckIQDB,CheckURL,PurgeBadTweets,CheckPurgeBadTweets,SaveDatabase,LoadDatabase,CheckPostvers,
     CheckPostIDs,ReadFileAsync,ProcessPostvers,InitializeImageMenu,CorrectStringArray,ValidateEntry,
     BroadcastTISAS,PageNavigation,ProcessNewTweets,ProcessTweetImages,InitializeUploadlinks,CheckSauce,
-    GetMaxVideoDownloadLink
+    GetMaxVideoDownloadLink,GetPageType
 ]);
 
 /****Execution start****/
@@ -4815,3 +4969,4 @@ JSPLib.network.installXHRHook([TweetUserData]);
 JSPLib.load.programInitialize(Main,'NTISAS',program_load_required_variables,program_load_required_selectors);
 
 unsafeWindow._$ = jQuery;
+unsafeWindow.JSPLib = JSPLib;
