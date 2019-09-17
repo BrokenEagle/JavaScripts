@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
-// @version      2.0
+// @version      2.1
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/New_Twitter_Image_Searches_and_Stuff.user.js
@@ -44,7 +44,7 @@
 
 //Exterior script variables
 
-const DANBOORU_TOPIC_ID = '15976';
+const DANBOORU_TOPIC_ID = '16342';
 
 //Variables for debug.js
 JSPLib.debug.debug_console = true;
@@ -325,7 +325,6 @@ const PROGRAM_CSS = `
 #ntisas-unavailable-autoiqdb {
     font-style: italic;
     letter-spacing: 1px;
-    color: #bbb;
 }
 .ntisas-tweet .ntisas-check-url,
 .ntisas-tweet .ntisas-check-iqdb,
@@ -365,6 +364,7 @@ const PROGRAM_CSS = `
 }
 #ntisas-side-menu {
     font-size: 14px;
+    margin-top: 10px;
     margin-left: -10px;
     width: 280px;
     height: 450px;
@@ -412,6 +412,11 @@ const PROGRAM_CSS = `
 }
 #ntisas-stats-header span {
     text-decoration: underline;
+}
+#ntisas-tweet-stats-message {
+    font-size: 14px;
+    font-weight: bold;
+    padding: 0 0.5em 0.5em;
 }
 #ntisas-open-settings {
     margin: 0.5em;
@@ -519,6 +524,11 @@ const PROGRAM_CSS = `
     margin-bottom: 2px;
     margin-top: 0;
 }
+.ntisas-desc-info {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 .ntisas-desc-size {
     letter-spacing: -1px;
 }
@@ -538,13 +548,13 @@ const PROGRAM_CSS = `
     max-width: 550px;
 }
 .ntisas-image-menu.ntisas-tweet-actions div:nth-child(1) {
-    justify-content: left;
+    justify-content: flex-start;
 }
 .ntisas-image-menu.ntisas-tweet-actions div:nth-child(2) {
     justify-content: center;
 }
 .ntisas-image-menu.ntisas-tweet-actions div:nth-child(3) {
-    justify-content: right;
+    justify-content: flex-end;
 }
 .ntisas-image-menu.ntisas-tweet-actions div:nth-child(4) {
     justify-content: center;
@@ -571,14 +581,15 @@ const PROGRAM_CSS = `
 .ntisas-help-info:hover {
     color: hotpink;
 }
+.ntisas-main-links {
+    margin: 0 0.5em;
+}
 .ntisas-media-link {
     font-size: 14px;
-    margin-right: 0.5em;
     font-weight: bold;
     border: 1px solid;
     border-radius: 20px;
     padding: 8px 16px;
-    position: absolute;
     font-family: ${FONT_FAMILY};
     text-decoration: none;
 }
@@ -597,11 +608,28 @@ const PROGRAM_CSS = `
 .ntisas-indicators span {
     display: none;
 }
+.ntisas-main-tweet .ntisas-tweet-media,
+.ntisas-main-tweet .ntisas-time-line {
+    margin-bottom: 10px;
+}
+.ntisas-main-tweet .ntisas-tweet-actions {
+    height: 35px;
+}
+.ntisas-main-tweet .ntisas-retweets-likes {
+    padding: 10px 0;
+}
 .ntisas-footer-entries {
     font-size: 16px;
     font-weight: bold;
-    margin-top: 10px;
     font-family: ${FONT_FAMILY};
+}
+.ntisas-main-tweet .ntisas-footer-entries {
+    border-top-width: 1px;
+    border-top-style: solid;
+    padding: 5px 0 20px;
+}
+.ntisas-stream-tweet .ntisas-footer-entries {
+    margin-top: 10px;
 }
 .ntisas-mark-artist,
 .ntisas-mark-artist:hover {
@@ -828,11 +856,21 @@ const COLOR_CSS = `
 /*Program colors*/
 #ntisas-side-menu,
 #ntisas-indicator-counter,
+.ntisas-retweet,
 .ntisas-tweet-menu,
 .ntisas-timeline-menu,
 .ntisas-download-section,
 .ntisas-footer-entries {
     color: %TEXTCOLOR%;
+}
+#ntisas-active-autoiqdb,
+#ntisas-unavailable-highlights,
+#ntisas-unavailable-autoiqdb,
+#ntisas-tweet-stats-message {
+    color: %TEXTMUTED%;
+}
+.ntisas-main-tweet .ntisas-footer-entries {
+    border-color: %TEXTFADED%;
 }
 .ntisas-download-original,
 .ntisas-download-all,
@@ -846,7 +884,7 @@ const COLOR_CSS = `
 }
 .ntisas-media-link:hover,
 #ntisas-tweet-stats-table th a:hover {
-    background-color: %BASEMUTED%;
+    background-color: %BASEFAINT%;
 }
 .ntisas-media-link:active,
 .ntisas-media-link:focus {
@@ -856,10 +894,10 @@ const COLOR_CSS = `
 #ntisas-increase-hide-level:hover,
 #ntisas-decrease-fade-level:hover,
 #ntisas-decrease-hide-level:hover {
-    background-color: %TEXTMUTED%;
+    background-color: %TEXTFADED%;
 }
 .ntisas-code {
-    background-color: %TEXTMUTED%;
+    background-color: %TEXTFADED%;
 }
 /*Dialogs*/
 .ui-dialog.ntisas-dialog,
@@ -876,7 +914,7 @@ const COLOR_CSS = `
 .ui-dialog.ntisas-dialog .ui-tabs-nav,
 .ui-dialog.ntisas-dialog .ui-dialog-titlebar,
 .ui-dialog.ntisas-dialog .ui-dialog-buttonpane {
-    border: 1px solid %TEXTMUTED%;
+    border: 1px solid %TEXTFADED%;
 }
 .jsplib-inline-tooltip,
 .jsplib-block-tooltip {
@@ -894,7 +932,7 @@ const COLOR_CSS = `
 }
 .ui-dialog.ntisas-dialog .ui-button {
     color: %TEXTCOLOR%;
-    background: %BASEMUTED%;
+    background: %BASEFAINT%;
     border: 1px solid %BASESHADED%;
 }
 .ui-dialog.ntisas-dialog .ui-button:hover,
@@ -924,7 +962,7 @@ const COLOR_CSS = `
     border-bottom: 2px solid %TEXTSHADED%;
 }
 #new-twitter-image-searches-and-stuff .ntisas-striped tbody tr {
-    border-bottom: 1px solid %TEXTMUTED%;
+    border-bottom: 1px solid %TEXTFADED%;
 }
 /*qTips*/
 .qtiptisas.qtiptisas-twitter {
@@ -943,7 +981,8 @@ const NTISAS_MENU = `
 <div id="ntisas-script-message" class="prose">
     <h2>New Twitter Image Searches and Stuff</h2>
     <div id="ntisas-forum-message">
-        <p>For the TISAS version on old Twitter, check the forum at <a class="ntisas-forum-topic-link" target="_blank">topic #${DANBOORU_TOPIC_ID}</a>.</p>
+        <p>Check the forum for the latest on information and updates (<a class="ntisas-forum-topic-link" target="_blank">topic #${DANBOORU_TOPIC_ID}</a>).</p>
+        <p>For the TISAS version on old Twitter, check the forum at <a class="tisas-forum-topic-link" target="_blank">topic #15976</a>.</p>
     </div>
     <div id="ntisas-available-hotkeys">
         <div id="ntisas-available-hotkeys-title"><b>Available hotkeys</b>:</div>
@@ -1099,6 +1138,7 @@ const SIDE_MENU = `
         ${HORIZONTAL_RULE}
         <div id="ntisas-stats-header"><span>Tweet Statistics</span> (%STATISTICSHELP%)</div>
         <div id="ntisas-tweet-stats-table"></div>
+        <div id="ntisas-tweet-stats-message">Unavailable on Tweet view.</div>
     </div>
 </div>
 </div>`;
@@ -1191,6 +1231,12 @@ const INDICATOR_HTML = `
     <a id="ntisas-enable-indicators">Show</a>
     <a id="ntisas-disable-indicators">Hide</a>
 </span>`;
+
+const MEDIA_LINKS_HTML = `
+<div class="ntisas-main-links">
+    <a class="ntisas-media-link" href="/%SCREENNAME%/media">Media</a>
+    <a class="ntisas-media-link" href="/%SCREENNAME%/likes">Likes</a>
+</div>`;
 
 const MAIN_COUNTER = '<span id="ntisas-indicator-counter">( <span class="ntisas-count-artist">0</span> , <span class="ntisas-count-tweet">0</span> )</span>';
 const TWEET_INDICATORS = '<span class="ntisas-indicators"><span class="ntisas-mark-artist">Ⓐ</span><span class="ntisas-mark-tweet">Ⓣ</span><span class="ntisas-count-artist">ⓐ</span><span class="ntisas-count-tweet">ⓣ</span></span>';
@@ -1364,6 +1410,7 @@ const INDICATOR_CONTROLS = ['enable', 'disable'];
 const ALL_INDICATOR_TYPES = ['mark-artist', 'mark-tweet', 'count-artist', 'count-tweet'];
 
 const BASE_DIALOG_WIDTH = 45;
+const BASE_QTIP_WIDTH = 10;
 
 //Other constants
 
@@ -2632,10 +2679,10 @@ async function GetAllCurrentRecords() {
         }
         clearTimeout(CheckPostvers.timeout);
         if (JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'postvers')) {
-            Danbooru.Utility.notice(`Querying Danbooru...[${i}]`);
+            Danbooru.Utility.notice(`Querying Danbooru...[${i}]`, false);
             await TIMER.CheckPostvers();
         } else {
-            Danbooru.Utility.notice(`Waiting on other tasks to finish...[${i}]`);
+            Danbooru.Utility.notice(`Waiting on other tasks to finish...[${i}]`, false);
             await JSPLib.utility.sleep(POST_VERSIONS_CALLBACK);
         }
         i++;
@@ -2735,7 +2782,7 @@ function RenderSideMenu() {
         RECORDSHELP: RenderHelp(REFRESH_RECORDS_HELP),
         HIGHLIGHTS: HIGHLIGHT_HTML,
         HIGHLIGHTSHELP: RenderHelp(HIGHLIGHTS_HELP),
-        CURRENTFADE: current_hide_html,
+        CURRENTFADE: current_fade_html,
         CURRENTFADEHELP: RenderHelp(FADE_HIGHLIGHT_HELP),
         CURRENTHIDE: current_hide_html,
         CURRENTHIDEHELP: RenderHelp(HIDE_HIGHLIGHT_HELP),
@@ -2835,7 +2882,7 @@ function RenderAllSimilar(all_iqdb_results,image_urls,type) {
         let html = RenderSimilarContainer("Image " + (i + 1), iqdb_results, image_urls[i], i);
         image_results.push(html);
     });
-    let render_width = Math.min(((max_results + 1) * BASE_PREVIEW_WIDTH) + BASE_DIALOG_WIDTH, 850);
+    let render_width = Math.min(((max_results + 1) * BASE_PREVIEW_WIDTH) + BASE_QTIP_WIDTH, 850);
     return `
 <div class="ntisas-similar-results ntisas-qtip-container" data-type="${type}" style="width:${render_width}px">
     ${image_results.join(HORIZONTAL_RULE)}
@@ -2932,7 +2979,7 @@ function RenderPreviewAddons(source,id,score,file_ext,file_size,width,height,is_
     let size_text = (Number.isInteger(file_size) && Number.isInteger(width) && Number.isInteger(height) ? `${ReadableBytes(file_size)} (${width}x${height})` : "");
     return `
 <p class="ntisas-desc ntisas-desc-title"><span ${uploader_addon}>${title_text}</span></p>
-<p class="ntisas-desc ntisas-desc-info">${file_ext.toUpperCase()} @ ${domain}</p>
+<p class="ntisas-desc ntisas-desc-info">${file_ext.toUpperCase()} @ <span title="${domain}">${domain}</span></p>
 <p class="ntisas-desc ntisas-desc-size">${size_text}</p>`;
 }
 
@@ -2963,11 +3010,12 @@ function RenderHelp(help_text) {
 function RenderColorStyle(color_data) {
     return JSPLib.utility.regexReplace(COLOR_CSS, {
         BASECOLOR: JSPLib.utility.sprintf('rgb(%s, %s, %s)', ...color_data.base_color),
-        BASEMUTED: JSPLib.utility.sprintf('rgb(%s, %s, %s, 0.1)', ...color_data.base_color),
+        BASEFAINT: JSPLib.utility.sprintf('rgb(%s, %s, %s, 0.1)', ...color_data.base_color),
         BASESHADED: JSPLib.utility.sprintf('rgb(%s, %s, %s, 0.5)', ...color_data.base_color),
         BASEDARKER: JSPLib.utility.sprintf('rgb(%s, %s, %s)', ...DarkenColorArray(color_data.base_color)),
         TEXTCOLOR: JSPLib.utility.sprintf('rgb(%s, %s, %s)', ...color_data.text_color),
-        TEXTMUTED: JSPLib.utility.sprintf('rgb(%s, %s, %s, 0.1)', ...color_data.text_color),
+        TEXTFADED: JSPLib.utility.sprintf('rgb(%s, %s, %s, 0.1)', ...color_data.text_color),
+        TEXTMUTED: JSPLib.utility.sprintf('rgb(%s, %s, %s, 0.2)', ...color_data.text_color),
         TEXTSHADED: JSPLib.utility.sprintf('rgb(%s, %s, %s, 0.5)', ...color_data.text_color),
         BACKGROUNDCOLOR: JSPLib.utility.sprintf('rgb(%s, %s, %s)', ...color_data.background_color)
     });
@@ -3007,8 +3055,14 @@ function InitializeUIStyle() {
 }
 
 function InitializeStatusBar(tweet_status) {
-    let [$append_element,spacer] = (tweet_status.childElementCount === 0 ? [$(tweet_status), ''] : [$('*:not(span) > span', tweet_status), ' ']);
-    $append_element.append(`<span class="ntisas-status-marker">${spacer}</span>`);
+    var $container;
+    if (tweet_status.childElementCount > 0) {
+        $container = $('> div > div', tweet_status);
+        $("> div:last-of-type", $container).css('flex-grow', 'unset').css('flex-basis', 'unset');
+    } else {
+        $container = $(tweet_status);
+    }
+    $container.append('<span class="ntisas-status-marker"></span>');
 }
 
 function InitializeSideMenu() {
@@ -3154,7 +3208,7 @@ async function InitializeNoMatchesLinks(tweet_id,$obj) {
 }
 
 function InitializeTweetIndicators(tweet) {
-    $('.ntisas-status-marker', tweet).parent().append(TWEET_INDICATORS);
+    $('.ntisas-status-marker', tweet).after(TWEET_INDICATORS);
     $('.ntisas-tweet-actions', tweet).after(INDICATOR_LINKS);
 }
 
@@ -3220,13 +3274,13 @@ function InitializeUploadlinks(photo_index,install) {
 
 function InitializeMediaLink($tweet) {
     let screen_name = String($tweet.data('screen-name'));
-    $('[data-testid=caret]', $tweet).parent().before(`<a class="ntisas-media-link" href="/${screen_name}/media" style="right:7.25em">Media</a>`);
-    $('[data-testid=caret]', $tweet).parent().before(`<a class="ntisas-media-link" href="/${screen_name}/likes" style="right:2em">Likes</a>`);
+    let links_html = JSPLib.utility.regexReplace(MEDIA_LINKS_HTML, {SCREENNAME: screen_name});
+    $('[data-testid=caret]', $tweet).before(links_html);
 }
 
 function InitializeRetweetDisplay(tweet) {
     let retweet_id = String($(tweet).data('retweet-id'));
-    $('.ntisas-status-marker', tweet).parent().append(`<span class="ntisas-retweet">[${retweet_id}]</span>`);
+    $('.ntisas-status-marker', tweet).after(`<span class="ntisas-retweet">[${retweet_id}]</span>`);
 }
 
 function InitializeImageTweets($image_tweets) {
@@ -4485,8 +4539,10 @@ function PageNavigation(pagetype,pageid) {
         }
         if (IsTweetPage()) {
             $('#ntisas-tweet-stats-table').hide();
+            $('#ntisas-tweet-stats-message').show();
         } else {
             $('#ntisas-tweet-stats-table').show();
+            $('#ntisas-tweet-stats-message').hide();
         }
     }
     UpdateHighlightControls();
@@ -4952,7 +5008,7 @@ async function Main() {
     if (!IsTISASInstalled()) {
         await CheckDatabaseInfo(true);
     }
-    unsafeWindow.NTISAS = Danbooru.NTISAS = NTISAS = {
+    Danbooru.NTISAS = NTISAS = {
         user_data: JSPLib.storage.checkStorageData('ntisas-user-data', ValidateProgramData, localStorage),
         tweet_pos: [],
         tweet_faves: [],
@@ -4969,7 +5025,6 @@ async function Main() {
         no_url_results: [],
         photo_navigation: false,
         artist_iqdb_enabled: false,
-        API_data: API_DATA,
         opened_menu: false,
         colors_checked: false,
         settings_config: SETTINGS_CONFIG,
@@ -5044,6 +5099,3 @@ JSPLib.debug.addFunctionLogs([
 
 JSPLib.network.installXHRHook([TweetUserData]);
 JSPLib.load.programInitialize(Main, "NTISAS", PROGRAM_LOAD_REQUIRED_VARIABLES, PROGRAM_LOAD_REQUIRED_SELECTORS);
-
-unsafeWindow._$ = jQuery;
-unsafeWindow.JSPLib = JSPLib;
