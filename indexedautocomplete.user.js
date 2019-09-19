@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      24.7
+// @version      25.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -21,6 +21,8 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/danbooru.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/menu.js
 // ==/UserScript==
+
+/* global $ Danbooru JSPLib validate LZString */
 
 /****Global variables****/
 
@@ -58,7 +60,7 @@ const program_reset_keys = {
 };
 
 //Available setting values
-const tag_sources = ['exact','prefix','alias','correct'];
+const tag_sources = ['metatag','exact','prefix','alias','correct'];
 const scale_types = ['linear','square_root','logarithmic'];
 
 //Main settings
@@ -126,6 +128,16 @@ const settings_config = {
         validate: (data)=>{return JSPLib.validate.isNumber(data) && data >= 0.0 && data <= 1.0;},
         hint: "Valid values: 0.0 - 1.0."
     },
+    metatag_source_enabled: {
+        default: true,
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
+        hint: "Adds metatags to autocomplete results on all post tag search inputs."
+    },
+    BUR_source_enabled: {
+        default: true,
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
+        hint: "Adds BUR script elements to autocomplete results on bulk update requests, tag aliases, and tag implications."
+    },
     source_results_returned: {
         default: 10,
         parse: parseInt,
@@ -169,6 +181,7 @@ const settings_config = {
 //Pre-CSS/HTML constants
 
 const bur_tag_category = 400;
+const metatag_tag_category = 500;
 
 //CSS Constants
 
@@ -206,11 +219,21 @@ const program_css = `
 .iac-tag-correct > div::before {
     color: cyan;
 }
+.iac-tag-bur > div::before,
+.iac-tag-metatag > div::before{
+    color: #000;
+}
 .iac-tag-highlight .tag-type-${bur_tag_category}:link {
     color: #888;
 }
 .iac-tag-highlight .tag-type-${bur_tag_category}:hover {
     color: #CCC;
+}
+.iac-tag-highlight .tag-type-${metatag_tag_category}:link {
+    color: #000;
+}
+.iac-tag-highlight .tag-type-${metatag_tag_category}:hover {
+    color: #444;
 }
 `;
 
@@ -280,6 +303,11 @@ const iac_menu = `
 </div>
 <div id="iac-console" class="jsplib-console">
     <div id="iac-settings" class="jsplib-outer-menu">
+        <div id="iac-source-settings" class="jsplib-settings-grouping">
+            <div id="iac-source-message" class="prose">
+                <h4>Source settings</h4>
+            </div>
+        </div>
         <div id="iac-usage-settings" class="jsplib-settings-grouping">
             <div id="iac-usage-message" class="prose">
                 <h4>Usage settings</h4>
@@ -506,7 +534,7 @@ const bur_data = bur_keywords.map((tag)=>{
         type: 'tag',
         label: tag,
         value: tag,
-        post_count: 0,
+        post_count: 'BUR',
         source: 'bur',
         category: bur_tag_category
     };
@@ -517,6 +545,9 @@ const timer_poll_interval = 100;
 
 //Interval for fixup callback functions
 const callback_interval = 1000;
+
+//Delay for calling functions after initialization
+const jquery_delay = 500;
 
 //Data inclusion lists
 const all_categories = [0,1,3,4,5];
@@ -536,10 +567,9 @@ const autocomplete_userlist = [
     "#search_approver_name",
     "#search_updater_name",
     "#search_uploader_name",
-    ".c-users #search_name_matches",
-    ".c-users #quick_search_name_matches",
-    ".c-user-upgrades #quick_search_name_matches",
-    "#user_feedback_user_name"
+    "#user_feedback_user_name",
+    ".c-users .search_name_matches input",
+    ".c-user-upgrades .search_name_matches input",
 ];
 //DOM elements with race condition
 const autocomplete_rebindlist = [
@@ -550,15 +580,12 @@ const autocomplete_rebindlist = [
 ];
 //DOM elements with autocomplete
 const autocomplete_domlist = [
-    "#search_title,#quick_search_title",
-    "#search_name,#quick_search_name",
-    "#search_name_matches,#quick_search_name_matches",
-    "#add-to-pool-dialog input[type=text]",
-    "#quick_search_body_matches",
-    "#search_topic_title_matches",
-    "#saved_search_label_string",
-    "#search_post_tags_match",
-    "#bulk_update_request_script"
+    '#bulk_update_request_script',
+    '.c-forum-topics #subnav-menu .search_body_matches',
+    '.c-forum-posts #subnav-menu .search_body_matches',
+    '[data-autocomplete="wiki-page"]',
+    '[data-autocomplete="artist"]',
+    '[data-autocomplete="pool"]',
     ].concat(autocomplete_rebindlist).concat(autocomplete_userlist);
 
 const autocomplete_user_selectors = autocomplete_userlist.join(',');
@@ -676,6 +703,9 @@ const source_config = {
         fixupexpiration: false,
         searchstart: true,
         spacesallowed: false
+    },
+    metatag: {
+        fixupmetatag: false
     },
     pool: {
         url: 'pools',
@@ -868,12 +898,15 @@ const autocomplete_constraints = {
     entry: JSPLib.validate.arrayentry_constraints({maximum: 20}),
     tag: {
         antecedent: JSPLib.validate.stringnull_constraints,
-        category: JSPLib.validate.inclusion_constraints(all_categories),
+        category: JSPLib.validate.inclusion_constraints(all_categories.concat(metatag_tag_category)),
         label: JSPLib.validate.stringonly_constraints,
         post_count: JSPLib.validate.postcount_constraints,
-        type: JSPLib.validate.inclusion_constraints(["tag"]),
+        type: JSPLib.validate.inclusion_constraints(['tag', 'metatag']),
         value: JSPLib.validate.stringonly_constraints,
         source: JSPLib.validate.inclusion_constraints(tag_sources)
+    },
+    get metatag() {
+        return this.tag;
     },
     pool: {
         category: JSPLib.validate.inclusion_constraints(all_pools),
@@ -1087,6 +1120,10 @@ JSPLib.danbooru.isSettingMenu = function () {
     return document.body.dataset.controller === "users" && document.body.dataset.action === "edit";
 };
 
+JSPLib.utility.displayCase = function (string) {
+    return JSPLib.utility.titleizeString(string.replace(/[_]/g,' '));
+};
+
 //Helper functions
 
 function RemoveTerm(str,index) {
@@ -1108,6 +1145,39 @@ GetPrefix.prefixhash = {};
 
 function GetIsBur() {
     return document.body.dataset.controller === "bulk-update-requests" && ['edit','new'].includes(document.body.dataset.action);
+}
+function MapMetatag(type,metatag,value) {
+    return {
+        type: type,
+        antecedent: null,
+        label: metatag + ':' + value,
+        value: metatag + ':' + value,
+        post_count: metatag_tag_category,
+        source: 'metatag',
+        category: metatag_tag_category
+    }
+}
+
+function MetatagData() {
+    if (!MetatagData.data) {
+        MetatagData.data = Danbooru.Autocomplete.METATAGS.filter((tag)=>{return tag[0] !== "-";}).map((tag)=>{
+            return MapMetatag('tag', tag, '');
+        });
+    }
+    return MetatagData.data;
+}
+
+function SubmetatagData() {
+    if (!SubmetatagData.data) {
+        SubmetatagData.data = [];
+        for (let metatag in Danbooru.Autocomplete.static_metatags) {
+            for (let i = 0; i < Danbooru.Autocomplete.static_metatags[metatag].length; i++) {
+                let submetatag = Danbooru.Autocomplete.static_metatags[metatag][i];
+                SubmetatagData.data.push(MapMetatag('metatag', metatag, submetatag));
+            }
+        }
+    }
+    return SubmetatagData.data;
 }
 
 //Time functions
@@ -1308,7 +1378,7 @@ function GetChoiceOrder(type,query) {
     return JSPLib.utility.setUnique(sortable_choices.concat(available_choices));
 }
 
-function AddUserSelected(type,metatag,term,data) {
+function AddUserSelected(type,metatag,term,data,query_type) {
     IAC.shown_data = [];
     let order = IAC.choice_order[type];
     let choice = IAC.choice_data[type];
@@ -1318,6 +1388,9 @@ function AddUserSelected(type,metatag,term,data) {
     let user_order = GetChoiceOrder(type, term);
     for (let i = user_order.length - 1; i >= 0; i--) {
         let checkterm = (['','@'].includes(metatag) ? metatag + user_order[i] : metatag + ':' + user_order[i]);
+        if (query_type === "tag" && choice[checkterm].category === metatag_tag_category) {
+            continue;
+        }
         //Splice out Danbooru data if it exists
         for (let j = 0; j < data.length; j++) {
             let compareterm = (data[j].antecedent ? data[j].antecedent : data[j].value);
@@ -1373,6 +1446,9 @@ function InsertUserSelected(data,input,selected) {
     if (item.category === bur_tag_category) {
         return;
     }
+    if ($(input).data('multiple') === false) {
+        input.value = input.value.trim();
+    }
     if (item.antecedent) {
         term = item.antecedent;
     } else if (item.name) {
@@ -1380,6 +1456,13 @@ function InsertUserSelected(data,input,selected) {
     } else {
         term = item.value;
     }
+    if (item.category === metatag_tag_category) {
+        if (item.type === 'tag') {
+            input.selectionStart = input.selectionEnd = input.selectionStart - 1;
+            setTimeout(()=>{$(input).autocomplete("search");},100);
+        }
+        source_data = item;
+    } else
     //Final failsafe
     if (!IAC.source_data[type] || !IAC.source_data[type][term]) {
         if (!IAC.choice_data[type] || !IAC.choice_data[type][term]) {
@@ -1411,13 +1494,23 @@ function InsertUserSelected(data,input,selected) {
     StoreUsageData('insert', term);
 }
 
+function StaticMetatagSource(term, resp, metatag) {
+    let full_term = `${metatag}:${term}`;
+    let data = SubmetatagData()
+        .filter((data)=>{return data.value.startsWith(full_term);})
+        .sort((a,b)=>{return a.value.localeCompare(b.value);})
+        .slice(0,IAC.user_settings.source_results_returned);
+    AddUserSelected('metatag','',full_term,data)
+    resp(data);
+}
+
 //For autocomplete render
 function HighlightSelected($link,list,item) {
     if (IAC.user_settings.source_highlight_enabled) {
         if (item.expires) {
             $($link).addClass('iac-user-choice');
         }
-        if (item.type === 'tag') {
+        if (item.type === 'tag' || item.type === "metatag") {
             $($link).addClass('iac-tag-highlight');
             switch (item.source) {
                 case 'exact':
@@ -1435,6 +1528,11 @@ function HighlightSelected($link,list,item) {
                 case 'bur':
                     $($link).addClass('iac-tag-bur');
                     break;
+                case 'metatag':
+                    $($link).addClass('iac-tag-metatag');
+                    $(".post-count", $link).text('metatag');
+                    $("a", $link).addClass("tag-type-" + item.category);
+                    //falls through
                 default:
                     //Do nothing
             }
@@ -1540,6 +1638,26 @@ async function FindArtistSession(event) {
 
 //Rebind callback functions
 
+function RebindRenderCheck() {
+    let render_expires = Date.now() + JSPLib.utility.one_second * 5;
+    let render_timer = JSPLib.utility.initializeInterval(()=>{
+        if(!JSPLib.utility.hasDOMDataKey(autocomplete_rebind_selectors, 'iac-render')) {
+            $(autocomplete_rebind_selectors).each((i,entry)=>{
+                let render_set = $(entry).data("iac-render");
+                let autocomplete_item = $(entry).data("uiAutocomplete");
+                if (!render_set && autocomplete_item) {
+                    autocomplete_item._renderItem = Danbooru.Autocomplete.render_item;
+                    $(entry).data("iac-render", true);
+                }
+            });
+        }
+        if (!JSPLib.validate.validateExpires(render_expires)) {
+            clearInterval(render_timer);
+            return;
+        }
+    }, timer_poll_interval);
+}
+
 function RebindRelatedTags() {
     //Only need to check one of them, since they're all bound at the same time
     JSPLib.utility.rebindTimer({
@@ -1575,6 +1693,20 @@ function RebindAnyAutocomplete(selector,keycode,multiple) {
     },timer_poll_interval);
 }
 
+function RebindSingleTag() {
+    JSPLib.utility.rebindTimer({
+        check: ()=>{return JSPLib.utility.hasDOMDataKey('[data-autocomplete=tag]', 'uiAutocomplete');},
+        exec: ()=>{
+            $('[data-autocomplete=tag]').autocomplete("destroy").off('keydown.Autocomplete.tab');
+            $('[data-autocomplete=tag]').autocomplete({
+                minLength: 1,
+                autoFocus: true,
+                source: AnySourceIndexed('ac', '', false, true)
+            });
+        }
+    },timer_poll_interval);
+}
+
 //Initialization functions
 
 function InitializeAutocompleteIndexed(selector,keycode,multiple=false) {
@@ -1595,23 +1727,28 @@ function InitializeAutocompleteIndexed(selector,keycode,multiple=false) {
                 }
                 Danbooru.Autocomplete.insert_completion_old(this, ui.item.value);
                 return false;
+            } else {
+                ui.item.value = ui.item.value.trim();
             }
             return ui.item.value;
         }
     });
     let alink_func = (source_config[type].render ? source_config[type].render : ($domobj,item)=>{return $domobj.text(item.value);});
-    $fields.each((i,field)=>{
-        $(field).data('uiAutocomplete')._renderItem = RenderListItem(alink_func);
-    });
+    setTimeout(()=>{
+        $fields.each((i,field)=>{
+            $(field).data('uiAutocomplete')._renderItem = RenderListItem(alink_func);
+        });
+    }, jquery_delay);
     if (!JSPLib.utility.isNamespaceBound(selector, 'keydown', 'Autocomplete.tab')) {
         $fields.on('keydown.Autocomplete.tab', null, "tab", Danbooru.Autocomplete.on_tab);
     }
     $fields.data('autocomplete', type);
+    $fields.data('multiple', multiple);
 }
 
 //Main execution functions
 
-function NetworkSource(type,key,term,resp,metatag,process=true) {
+function NetworkSource(type,key,term,resp,metatag,context,process=true) {
     NetworkSource.debuglog("Querying", type, ':', term);
     let url_addons = $.extend({limit: IAC.user_settings.source_results_returned}, source_config[type].data(term));
     JSPLib.danbooru.submitRequest(source_config[type].url, url_addons).then((data)=>{
@@ -1629,12 +1766,12 @@ function NetworkSource(type,key,term,resp,metatag,process=true) {
             setTimeout(()=>{FixExpirationCallback(key, save_data, save_data[0].value, type);}, callback_interval);
         }
         if (process) {
-            ProcessSourceData(type, metatag, term, d, resp);
+            ProcessSourceData(type, metatag, term, d, resp, context);
         }
     });
 }
 
-function AnySourceIndexed(keycode,default_metatag='',multiple=false) {
+function AnySourceIndexed(keycode,default_metatag='',multiple=false,single=false) {
     var type = source_key[keycode];
     return async function (req, resp, input_metatag) {
         var term;
@@ -1655,16 +1792,17 @@ function AnySourceIndexed(keycode,default_metatag='',multiple=false) {
         }
         var key = (keycode + "-" + term).toLowerCase();
         var use_metatag = (input_metatag ? input_metatag : default_metatag);
+        var context = (single ? this : null);
         if (!IAC.user_settings.network_only_mode) {
             var max_expiration = MaximumExpirationTime(type);
             var cached = await JSPLib.storage.checkLocalDB(key, ValidateEntry, max_expiration);
             if (cached) {
                 RecheckSourceData(type, key, term, cached);
-                ProcessSourceData(type, use_metatag, term, cached.value, resp);
+                ProcessSourceData(type, use_metatag, term, cached.value, resp, context);
                 return;
             }
         }
-        NetworkSource(type, key, term, resp, use_metatag);
+        NetworkSource(type, key, term, resp, use_metatag, context);
     }
 }
 
@@ -1673,12 +1811,13 @@ function RecheckSourceData(type,key,term,data) {
         let recheck_time = data.expires - GetRecheckExpires();
         if (!JSPLib.validate.validateExpires(recheck_time)) {
             JSPLib.debug.debuglog("Rechecking", type, ":", term);
-            NetworkSource(type, key, term, null, null, false);
+            NetworkSource(type, key, term, null, null, null, false);
         }
     }
 }
 
-function ProcessSourceData(type,metatag,term,data,resp) {
+function ProcessSourceData(type,metatag,term,data,resp,context) {
+    var query_type = (context ? $(context.element).data('autocomplete') : null);
     if (source_config[type].fixupmetatag) {
         data.forEach((val)=> {FixupMetatag(val, metatag);});
     }
@@ -1687,16 +1826,23 @@ function ProcessSourceData(type,metatag,term,data,resp) {
         if (IAC.user_settings.alternate_sorting_enabled) {
             SortSources(data);
         }
+        if (IAC.user_settings.metatag_source_enabled) {
+            if (query_type !== 'tag') {
+                let add_data = MetatagData().filter((data)=>{return data.value.startsWith(term);});
+                data.unshift(...add_data);
+            }
+        }
         if (IAC.user_settings.source_grouping_enabled) {
             GroupSources(data);
         }
     }
     if (IAC.user_settings.usage_enabled) {
-        AddUserSelected(type, metatag, term, data);
+        AddUserSelected(type, metatag, term, data, query_type);
     }
-    if (IAC.is_bur) {
+    if (IAC.is_bur && IAC.user_settings.BUR_source_enabled) {
         let add_data = bur_data.filter((data)=>{return term.length === 1 || data.value.startsWith(term);});
         data.unshift(...add_data);
+        data.splice(IAC.user_settings.source_results_returned);
     }
     //Doing this here to avoid processing it on each list item
     IAC.highlight_used = (document.activeElement.tagName === 'TEXTAREA' && ['post_tag_string','upload_tag_string'].includes(document.activeElement.id));
@@ -1724,7 +1870,7 @@ function UpdateLocalData(key,data) {
             IAC.choice_order = data.choice_order;
             IAC.choice_data = data.choice_data;
             StoreUsageData('save', '', false);
-            break;
+            //falls through
         default:
             //Do nothing
     }
@@ -1741,6 +1887,7 @@ function BroadcastIAC(ev) {
             break;
         case "reset":
             Object.assign(IAC, program_reset_keys);
+            //falls through
         case "settings":
             IAC.user_settings = ev.data.user_settings;
             IAC.is_setting_menu && JSPLib.menu.updateUserSettings('iac');
@@ -1752,6 +1899,7 @@ function BroadcastIAC(ev) {
                     sessionStorage.removeItem(key);
                 }
             });
+            //falls through
         default:
             //do nothing
     }
@@ -1775,6 +1923,8 @@ function GetRecheckExpires() {
 
 function RenderSettingsMenu() {
     $("#indexed-autocomplete").append(iac_menu);
+    $("#iac-source-settings").append(JSPLib.menu.renderCheckbox('iac', 'BUR_source_enabled'));
+    $("#iac-source-settings").append(JSPLib.menu.renderCheckbox('iac', 'metatag_source_enabled'));
     $("#iac-usage-settings").append(JSPLib.menu.renderCheckbox('iac', 'usage_enabled'));
     $("#iac-usage-settings").append(JSPLib.menu.renderTextinput('iac', 'usage_multiplier'));
     $("#iac-usage-settings").append(JSPLib.menu.renderTextinput('iac', 'usage_maximum'));
@@ -1864,16 +2014,16 @@ function Main() {
     Danbooru.Autocomplete.user_source = AnySourceIndexed('us');
     Danbooru.Autocomplete.favorite_group_source = AnySourceIndexed('fg');
     Danbooru.Autocomplete.saved_search_source = AnySourceIndexed('ss', 'search');
+    Danbooru.Autocomplete.static_metatag_source = StaticMetatagSource;
     Danbooru.Autocomplete.insert_completion_old = Danbooru.Autocomplete.insert_completion;
     Danbooru.Autocomplete.insert_completion = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.insert_completion, InsertUserSelected);
     Danbooru.Autocomplete.render_item = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.render_item, HighlightSelected);
-    //Has autocomplete script already been run?
-    if(JSPLib.utility.hasDOMDataKey(autocomplete_rebind_selectors, 'uiAutocomplete')) {
-        $(autocomplete_rebind_selectors).each((i,entry)=>{
-            $(entry).data("uiAutocomplete")._renderItem = Danbooru.Autocomplete.render_item;
-        });
+    RebindRenderCheck();
+    //Tag-only queries need to be rebound to account for no metatag complete
+    if ($('[data-autocomplete=tag]').length) {
+        RebindSingleTag();
     }
-    if (['wiki-pages','wiki-page_versions'].includes(IAC.controller)) {
+    if (['wiki-pages','wiki-page-versions'].includes(IAC.controller)) {
         RebindAnyAutocomplete('[data-autocomplete="wiki-page"]', 'wp');
     }
     if (['artists','artist-versions','artist-urls'].includes(IAC.controller)) {
@@ -1886,28 +2036,35 @@ function Main() {
         RebindAnyAutocomplete("#saved_search_label_string", 'ss', true);
     }
     if (IAC.controller === "saved-searches" && IAC.action === "edit") {
-        setTimeout(()=>{InitializeAutocompleteIndexed("#saved_search_label_string", 'ss', true);}, timer_poll_interval);
+        $("#saved_search_query").attr('data-autocomplete', 'tag-query');
+        setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, jquery_delay);
+        setTimeout(()=>{InitializeAutocompleteIndexed("#saved_search_label_string", 'ss', true);}, jquery_delay);
+    }
+    if (IAC.controller === "saved-searches" && IAC.action === "index") {
+        $("#search_query_ilike").attr('data-autocomplete', 'tag-query');
+        setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, jquery_delay);
+        setTimeout(()=>{InitializeAutocompleteIndexed("#search_label", 'ss');}, jquery_delay);
     }
     if (IAC.controller === "forum-topics" || IAC.controller === "forum-posts") {
         JSPLib.utility.setCSSStyle(forum_css, 'forum');
-        $("#quick_search_body_matches").closest("li").after(forum_topic_search);
-        setTimeout(()=>{InitializeAutocompleteIndexed("#quick_search_title_matches", 'ft');}, timer_poll_interval);
+        $('#subnav-menu .search_body_matches').closest("li").after(forum_topic_search);
+        setTimeout(()=>{InitializeAutocompleteIndexed("#quick_search_title_matches", 'ft');}, jquery_delay);
         if (IAC.action === "search") {
-            setTimeout(()=>{InitializeAutocompleteIndexed("#search_topic_title_matches", 'ft');}, timer_poll_interval);
+            setTimeout(()=>{InitializeAutocompleteIndexed("#search_topic_title_matches", 'ft');}, jquery_delay);
         }
     }
     if (IAC.controller === "comments") {
-        $("#quick_search_body_matches").closest("li").after(post_comment_search);
-        setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, timer_poll_interval);
+        $('#subnav-menu .search_body_matches').closest("li").after(post_comment_search);
+        setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, jquery_delay);
     }
     if ((IAC.controller === "uploads" && IAC.action === "index") || IAC.is_bur) {
         $("#search_post_tags_match").attr('data-autocomplete', 'tag-query');
         $("#bulk_update_request_script").attr('data-autocomplete', 'tag-edit');
         //The initialize code doesn't work properly unless some time has elapsed after setting the attribute
-        setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, timer_poll_interval);
+        setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, jquery_delay);
     }
     if ($(autocomplete_user_selectors).length) {
-        setTimeout(()=>{InitializeAutocompleteIndexed(autocomplete_user_selectors, 'us');}, timer_poll_interval);
+        setTimeout(()=>{InitializeAutocompleteIndexed(autocomplete_user_selectors, 'us');}, jquery_delay);
     }
     /**Non-autocomplete bindings**/
     if ((IAC.controller === "posts" && IAC.action === "show") || (IAC.controller === "uploads" && IAC.action === "new")) {
