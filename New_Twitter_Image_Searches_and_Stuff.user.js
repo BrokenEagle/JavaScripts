@@ -4352,7 +4352,6 @@ function MarkupMediaType(tweet) {
 }
 
 function MarkupStreamTweet(tweet) {
-    var is_retweet = false;
     let status_link = $('time', tweet).parent();
     let [,screen_name,,tweet_id] = status_link[0].pathname.split('/');
     $(tweet).addClass('ntisas-stream-tweet');
@@ -4363,12 +4362,6 @@ function MarkupStreamTweet(tweet) {
     if (data_tweet) {
         $(tweet).attr('data-user-id', data_tweet.user_id_str);
     }
-    let data_retweet = GetAPIData('retweets', tweet_id);
-    if (data_retweet) {
-        $(tweet).attr('data-retweet-id', data_retweet.id_str);
-        $(tweet).attr('data-is-retweet', true);
-        is_retweet = true;
-    }
     //Not marking this with a a class since Twitter alters it
     let article = tweet.children[0].children[0];
     let main_body = article.children[0];
@@ -4376,9 +4369,13 @@ function MarkupStreamTweet(tweet) {
     let tweet_status = main_body.children[0];
     $(tweet_status).addClass('ntisas-tweet-status');
     InitializeStatusBar(tweet_status);
-    if (!is_retweet) {
-        let is_retweet = Boolean($(tweet_status).text().match(/ Retweeted$/));
-        $(tweet).attr('data-is-retweet', is_retweet);
+    let is_retweet = Boolean($(tweet_status).text().match(/ Retweeted$/));
+    $(tweet).attr('data-is-retweet', is_retweet);
+    if (is_retweet) {
+        let data_retweet = GetAPIData('retweets', tweet_id);
+        if (data_retweet) {
+            $(tweet).attr('data-retweet-id', data_retweet.id_str);
+        }
     }
     let tweet_body = main_body.children[1];
     $(tweet_body).addClass('ntisas-tweet-body');
