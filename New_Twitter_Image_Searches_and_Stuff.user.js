@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
-// @version      2.1
+// @version      2.2
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/New_Twitter_Image_Searches_and_Stuff.user.js
@@ -10,6 +10,7 @@
 // @require      https://raw.githubusercontent.com/jeresig/jquery.hotkeys/0.2.0/jquery.hotkeys.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
+// @require      https://raw.githubusercontent.com/slevithan/xregexp/v4.2.4/tests/perf/versions/xregexp-all-v4.2.4.js
 // @require      https://raw.githubusercontent.com/localForage/localForage-setItems/v1.3.0/dist/localforage-setitems.js
 // @require      https://raw.githubusercontent.com/eligrey/FileSaver.js/2.0.0/dist/FileSaver.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/debug.js
@@ -38,7 +39,7 @@
 // @noframes
 // ==/UserScript==
 
-/* global $ jQuery Danbooru JSPLib validate localforage saveAs */
+/* global $ jQuery Danbooru JSPLib validate localforage saveAs XRegExp */
 
 /****Global variables****/
 
@@ -1351,6 +1352,10 @@ const CLEANUP_TASK_DELAY = JSPLib.utility.one_minute;
 
 //Regex constants
 
+var TWITTER_ACCOUNT = String.raw`[\w-]+`;
+var TWITTER_ID = String.raw`\d+`;
+var QUERY_END = String.raw`(?:\?|$)`;
+
 const TWEET_REGEX = RegExp(String.raw`^https://twitter\.com/[\w-]+/status/(\d+)$`);
 const TWEET_URL_REGEX = RegExp(String.raw`^https://twitter\.com/[\w-]+/status/\d+`);
 const SOURCE_TWITTER_REGEX = RegExp(String.raw`^source:https://twitter\.com/[\w-]+/status/(\d+)$`);
@@ -1369,23 +1374,111 @@ const HANDLED_IMAGES = [{
     arguments: (match,extension)=>{return [match[1], match[2]];}
 }];
 const UNHANDLED_IMAGES = [
+    RegExp(String.raw`^https://pbs\.twimg\.com/profile_images/`),
     RegExp(String.raw`^https://[^.]+\.twimg\.com/emoji/`)
 ];
 
-const PAGE_REGEXES = [
-    String.raw`^https://twitter\.com/(?!search)([\w-]+)(?:\?|$)`, //main
-    String.raw`^https://twitter\.com/([\w-]+)/media(?:\?|$)`, //media
-    String.raw`^https://twitter\.com/search\?(.*?\bq=.+)`, //search
-    String.raw`^https://twitter\.com/[\w-]+/status/(\d+)(?:\?|$)`, //tweet
-    String.raw`^https://twitter\.com/hashtag/(.+?)(?:\?|$)`, //hashtag
-    String.raw`^https://twitter\.com/[\w-]+/lists/([\w-]+)(?:\?|$)`, //list
-    String.raw`^https://twitter\.com/?(?:\?|$)`, //home
-    String.raw`^https://twitter\.com/([\w-]+)/likes(?:\?|$)`, //likes
-    String.raw`^https://twitter\.com/([\w-]+)/with_replies(?:\?|$)`, //replies
-    String.raw`^https://twitter.com/\w+/status/\d+/(?:photo|video)/\d(?:\?|$)`, //photo
-    String.raw`^https://twitter\.com/i/moments/(\d+)(?:\?|$)`, //moment
-    String.raw`^https://twitter.com/i/display$`, //display
-];
+var ALL_PAGE_REGEXES = {
+    main: {
+        format: ' {{no_match}} ({{main_account}}) {{end}} ',
+        subs: {
+            main_account: TWITTER_ACCOUNT,
+            no_match: '(?!search|home)',
+            end: QUERY_END,
+        }
+    },
+    media: {
+        format: ' ( {{media_account}} ) {{media}} {{end}} ',
+        subs: {
+            media_account: TWITTER_ACCOUNT,
+            media: '/media',
+            end: QUERY_END,
+        }
+    },
+    search: {
+        format: ' {{search}} ( {{search_query}} ) ',
+        subs: {
+            search: String.raw`search\?`,
+            search_query: String.raw`.*?\bq=.+`,
+        }
+    },
+    tweet: {
+        format: ' ( {{tweet_account}} ) {{status}} ( {{tweet_id}} ) {{end}} ',
+        subs: {
+            tweet_account: TWITTER_ACCOUNT,
+            tweet_id: TWITTER_ID,
+            status: '/status/',
+            end: QUERY_END,
+        }
+    },
+    hashtag: {
+        format: ' {{hashtag}} ( {{hashtag_hash}} ) {{end}} ',
+        subs: {
+            hashtag: 'hashtag/',
+            hashtag_hash: '.+?',
+            end: QUERY_END,
+        }
+    },
+    list: {
+        format: ' ( {{list_account}} ) {{list}} ( {{list_id}} ) {{end}} ',
+        subs: {
+            list_account: TWITTER_ACCOUNT,
+            list_id: String.raw`[\w-]+`,
+            list: '/lists/',
+            end: QUERY_END,
+        }
+    },
+    home: {
+        format: ' {{home}} {{end}} ',
+        subs: {
+            home: 'home',
+            end: QUERY_END,
+        }
+    },
+    likes: {
+        format: ' ( {{likes_account}} ) {{likes}} {{end}} ',
+        subs: {
+            likes_account: TWITTER_ACCOUNT,
+            likes: '/likes',
+            end: QUERY_END,
+        }
+    },
+    replies: {
+        format: ' ( {{replies_account}} ) {{replies}} {{end}} ',
+        subs: {
+            replies_account: TWITTER_ACCOUNT,
+            replies: '/with_replies',
+            end: QUERY_END,
+        }
+    },
+    photo: {
+        format: ' ( {{photo_account}} ) {{status}} ( {{photo_id}} ) {{type}} ( {{photo_index}} ) {{end}} ',
+        subs: {
+            photo_account: TWITTER_ACCOUNT,
+            photo_id: TWITTER_ID,
+            photo_index: String.raw`\d`,
+            type: '/(?:photo|video)/',
+            status: '/status/',
+            end: QUERY_END,
+        }
+    },
+    moments: {
+        format: ' {{moments}} ( {{moment_id}} ) {{end}} ',
+        subs: {
+            moment_account: TWITTER_ACCOUNT,
+            moment_id: TWITTER_ID,
+            moments: 'i/moments/',
+            end: QUERY_END,
+        }
+    },
+    display: {
+        format: ' {{display}} {{end}} ',
+        subs: {
+            display: 'i/display',
+            end: QUERY_END,
+        }
+    },
+};
 
 //Network constants
 
@@ -1941,8 +2034,21 @@ function GetUserIdent() {
     }
 }
 
-function GetPhotoIndex() {
-    return JSPLib.utility.findAll(window.location.href, /\d+$/)[0];
+function PageRegex() {
+    if (!('regex' in PageRegex)) {
+        let built_regexes = Object.assign({}, ...Object.keys(ALL_PAGE_REGEXES).map((page)=>{
+            //Match at beginning of string with Twitter URL
+            let regex = XRegExp.build(`^ https://twitter.com/ ` + ALL_PAGE_REGEXES[page].format, ALL_PAGE_REGEXES[page].subs, 'x');
+            //Add page named capturing group
+            return {[page]: XRegExp.build(' ( {{' + page + '}} ) ', {[page]: regex}, 'x')};
+        }));
+        //Combine all regexes
+        let all_format = Object.keys(built_regexes).map((page)=>{return ' {{' + page + '}} ';}).join('|');
+        let all_regex = XRegExp.build(all_format, built_regexes, 'x');
+        //Add overall capturing group...
+        PageRegex.regex = XRegExp.build(' ( {{site}} )', {site: all_regex}, 'x');
+    }
+    return PageRegex.regex;
 }
 
 function DisplayHighlights() {
@@ -2516,40 +2622,38 @@ function ProcessPostvers(postvers) {
 }
 
 function GetPageType() {
-    let page_string = PAGE_REGEXES.map((regex)=>{return `(${regex})`;}).join('|');
-    let page_regex = RegExp(`(${page_string})`);
-    let match = page_regex.exec(window.location.href);
-    if (!match) {
-        return ['other', null];
+    NTISAS.page_match = XRegExp.exec(window.location.href, PageRegex());
+    if (!NTISAS.page_match) {
+        return 'other';
     }
-    switch (match[1]) {
-        case match[2]:
-            return ['main', match[3]];
-        case match[4]:
-            return ['media', match[5]];
-        case match[6]:
-            return ['search', match[7]];
-        case match[8]:
-            return ['tweet', match[9]];
-        case match[10]:
-            return ['hashtag', match[11]];
-        case match[12]:
-            return ['list', match[13]];
-        case match[14]:
-            return ['home', null];
-        case match[15]:
-            return ['likes', match[16]];
-        case match[17]:
-            return ['replies', match[18]];
-        case match[19]:
-            return ['photo', null];
-        case match[20]:
-            return ['moment', match[21]];
-        case match[22]:
-            return ['display', null];
+    switch (NTISAS.page_match.site) {
+        case NTISAS.page_match.main:
+            return 'main';
+        case NTISAS.page_match.media:
+            return 'media';
+        case NTISAS.page_match.search:
+            return 'search';
+        case NTISAS.page_match.tweet:
+            return 'tweet';
+        case NTISAS.page_match.hashtag:
+            return 'hashtag';
+        case NTISAS.page_match.list:
+            return 'list';
+        case NTISAS.page_match.home:
+            return 'home';
+        case NTISAS.page_match.likes:
+            return 'likes';
+        case NTISAS.page_match.replies:
+            return 'replies';
+        case NTISAS.page_match.photo:
+            return 'photo';
+        case NTISAS.page_match.moment:
+            return 'moment';
+        case NTISAS.page_match.display:
+            return 'display';
         default:
-            GetPageType.debuglog("Regex error:", match, page_regex);
-            return ['default', null];
+            GetPageType.debuglog("Regex error:", window.location.href, NTISAS.page_match);
+            return 'default';
     }
 }
 
@@ -3237,10 +3341,10 @@ function InitializeDownloadLinks($tweet) {
     });
 }
 
-function InitializeUploadlinks(photo_index,install) {
-    InitializeUploadlinks.photo_index = photo_index;
+function InitializeUploadlinks(install) {
+    InitializeUploadlinks.photo_index = NTISAS.page_match.photo_index;
     let $photo_container = $('.ntisas-photo-container');
-    let selected_photo = $(`li:nth-of-type(${photo_index}) img`, $photo_container[0]);
+    let selected_photo = $(`li:nth-of-type(${InitializeUploadlinks.photo_index}) img`, $photo_container[0]);
     if (selected_photo.length === 0) {
         selected_photo = $('img', $photo_container[0]);
         if (selected_photo.length === 0) {
@@ -3636,9 +3740,8 @@ function PhotoNavigation(event) {
         return;
     }
     setTimeout(()=>{
-        let photo_index = GetPhotoIndex();
-        if (photo_index && photo_index !== InitializeUploadlinks.photo_index) {
-            InitializeUploadlinks(photo_index, false);
+        if (NTISAS.page_match.photo_index !== InitializeUploadlinks.photo_index) {
+            InitializeUploadlinks(false);
         }
     }, TWITTER_DELAY);
 }
@@ -4399,7 +4502,7 @@ function RegularCheck() {
 
     //Get current page and previous page info
     NTISAS.prev_pagetype = NTISAS.page;
-    let [pagetype,pageid] = GetPageType();
+    let pagetype = GetPageType();
     if (pagetype === null) {
         return;
     }
@@ -4413,7 +4516,7 @@ function RegularCheck() {
     }
 
     //Process events on a page change
-    PageNavigation(pagetype,pageid);
+    PageNavigation(pagetype);
 
     //Process events at each interval
     if (!NTISAS.colors_checked || window.location.pathname === '/i/display') {
@@ -4442,51 +4545,56 @@ function RegularCheck() {
     }
 }
 
-function PageNavigation(pagetype,pageid) {
-    if (NTISAS.page === pagetype && NTISAS.addon === pageid && (pagetype !== 'hashtag' || NTISAS.hashtag_search === window.location.search)) {
+function PageNavigation(pagetype) {
+    //Use all non-URL matching groups as a page key to detect page changes
+    let page_key = JSPLib.utility.setUnique(
+        Object.values(NTISAS.page_match).filter((val)=>{
+            return typeof val === "string" && !val.startsWith('https:');
+        })
+    ).join(',');
+    if (NTISAS.page === pagetype && NTISAS.page_key === page_key && (pagetype !== 'hashtag' || NTISAS.hashtag_search === window.location.search)) {
         return;
     }
     var params;
+    let account = NTISAS.page_match[pagetype + '_account'];
+    let page_id = NTISAS.page_match[pagetype + '_id'];
     NTISAS.prev_page = NTISAS.page;
     NTISAS.page = pagetype;
-    NTISAS.addon = pageid;
+    NTISAS.page_key = page_key;
     switch (NTISAS.page) {
         case 'main':
+        case 'media':
         case 'likes':
         case 'replies':
-            PageNavigation.debuglog("Main timeline:", NTISAS.addon);
-            NTISAS.account = NTISAS.addon;
+            PageNavigation.debuglog(`User timeline [${NTISAS.page}]:`, account);
+            NTISAS.account = account;
             NTISAS.user_id = GetAPIData('users_name', NTISAS.account, 'id_str');
             if (NTISAS.account === 'following' || NTISAS.account === 'lists') {
                 return;
             }
             break;
-        case 'media':
-            PageNavigation.debuglog("Media timeline:", NTISAS.addon);
-            NTISAS.account = NTISAS.addon;
-            NTISAS.user_id = GetAPIData('users_name', NTISAS.account, 'id_str');
-            break;
         case 'home':
         case 'list':
         case 'moment':
-            PageNavigation.debuglog("Stream timeline:", NTISAS.page, NTISAS.addon);
+            PageNavigation.debuglog(`Stream timeline [${NTISAS.page}]:`, page_id || "n/a");
             NTISAS.account = NTISAS.user_id = undefined;
             break;
         case 'hashtag':
-            PageNavigation.debuglog("Hashtag timeline:", NTISAS.addon);
+            PageNavigation.debuglog("Hashtag timeline:", NTISAS.page_match.hashtag_hash);
             NTISAS.account = NTISAS.user_id = undefined;
             NTISAS.hashtag_search = window.location.search;
             break;
         case 'search':
-            PageNavigation.debuglog("Search timeline:", NTISAS.addon);
-            params = JSPLib.utility.parseParams(NTISAS.addon);
+            PageNavigation.debuglog("Search timeline:", NTISAS.page_match.search_query);
+            params = JSPLib.utility.parseParams(NTISAS.page_match.search_query);
             NTISAS.queries = ParseQueries(params.q);
             NTISAS.account = ('from' in NTISAS.queries ? NTISAS.queries.from : undefined);
             NTISAS.user_id = NTISAS.account && GetAPIData('users_name', NTISAS.account, 'id_str');
             break;
         case 'tweet':
-            PageNavigation.debuglog("Tweet ID:", NTISAS.addon);
-            [,NTISAS.screen_name,NTISAS.tweet_id] = JSPLib.utility.findAll(window.location.pathname, /\/(\w+)\/status\/(\d+)/);
+            PageNavigation.debuglog("Tweet ID:", page_id);
+            NTISAS.screen_name = account;
+            NTISAS.tweet_id = page_id;
             NTISAS.account = NTISAS.user_id = undefined;
             break;
         case 'display':
@@ -4565,8 +4673,7 @@ function ProcessPhotoPopup() {
             $photo_menu.addClass('ntisas-photo-menu');
             $('.ntisas-photo-container [aria-label=Next], .ntisas-photo-container [aria-label=Previous]').on(PROGRAM_CLICK, PhotoNavigation);
             if (NTISAS.user_settings.display_upload_link) {
-                let photo_index = GetPhotoIndex();
-                photo_index && InitializeUploadlinks(photo_index, true);
+                InitializeUploadlinks(true);
             }
         }
     }
@@ -4845,8 +4952,9 @@ function InitializeChangedSettings() {
                 $('.ntisas-upload').show();
                 install = false;
             }
-            let photo_index = GetPhotoIndex();
-            photo_index && InitializeUploadlinks(photo_index, install);
+            if (NTISAS.page === "photo") {
+                InitializeUploadlinks(install);
+            }
         } else {
             $('.ntisas-upload').hide();
         }
