@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      25.0
+// @version      25.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
@@ -1789,6 +1789,10 @@ function AnySourceIndexed(keycode,default_metatag='',multiple=false,single=false
                 return;
             }
             term = term.trim();
+        }
+        if (term === "") {
+            resp([]);
+            return;
         }
         var key = (keycode + "-" + term).toLowerCase();
         var use_metatag = (input_metatag ? input_metatag : default_metatag);
