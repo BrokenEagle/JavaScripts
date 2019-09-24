@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      15.2
+// @version      15.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools)
 // @author       BrokenEagle
@@ -109,8 +109,7 @@ const settings_config = {
 
 const program_css = `
 #event-notice {
-    background: #fdf5d9;
-    border: 1px solid #fceec1;
+    padding: 0.5em;
 }
 #c-comments #a-index #p-index-by-post .subscribe-comment,
 #c-comments #a-index #p-index-by-post .unsubscribe-comment {
@@ -269,7 +268,7 @@ const menu_css = `
 //HTML constants
 
 const notice_box = `
-<div id="event-notice" style="display:none">
+<div id="event-notice" style="display:none" class="notice notice-info">
     <div id="el-absent-section" style="display:none">
         <p>You have been gone for <b><span id="el-days-absent"></span></b> days.
         <p>This can cause delays and multiple page refreshes for the script to finish processing all updates.</p>
