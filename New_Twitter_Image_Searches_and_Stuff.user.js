@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
-// @version      2.2
+// @version      2.3
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/New_Twitter_Image_Searches_and_Stuff.user.js
@@ -54,9 +54,8 @@ JSPLib.debug.pretimer = 'NTISAS-';
 JSPLib.debug.level = JSPLib.debug.INFO;
 
 //Variables for load.js
-const SIDE_MENU_ATTACHMENT = 'header[role=banner] > div > div > div';
 const PROGRAM_LOAD_REQUIRED_VARIABLES = [];
-const PROGRAM_LOAD_REQUIRED_SELECTORS = [SIDE_MENU_ATTACHMENT];
+const PROGRAM_LOAD_REQUIRED_SELECTORS = ['[role=region]'];
 
 //Variables for storage.js
 JSPLib.storage.prune_limit = 2000;
@@ -674,6 +673,9 @@ const PROGRAM_CSS = `
 #ntisas-tweet-stats-table td {
     color: grey;
     border: 1px solid;
+}
+#ntisas-account-options [role=link] > div {
+    padding: 8px;
 }
 @media screen and (min-width: 1282px) {
     #ntisas-account-options {
@@ -4603,8 +4605,8 @@ function PageNavigation(pagetype) {
     //Only render pages with attachment points
     if (IsPageType(STREAMING_PAGES) || IsTweetPage()) {
         if ($('#ntisas-side-menu').length === 0) {
-            $(SIDE_MENU_ATTACHMENT).append(RenderSideMenu());
-            $(SIDE_MENU_ATTACHMENT).attr('id', 'ntisas-account-options'); //Marking this for the CSS
+            $('header[role=banner] > div > div > div').append(RenderSideMenu());
+            $('header[role=banner] > div > div > div').attr('id', 'ntisas-account-options'); //Marking this for the CSS
             let remove_selector = JSPLib.utility.joinList(TWITTER_REMOVE_CLASSES, '.', null, ',');
             let remove_classes = TWITTER_REMOVE_CLASSES.join(' ');
             $(remove_selector).removeClass(remove_classes);
