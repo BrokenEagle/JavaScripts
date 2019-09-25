@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      8.1
+// @version      9.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -11,15 +11,17 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/test/checklibraries.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190423/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/debug.js
 // ==/UserScript==
+
+/* global jQuery JSPLib validate */
 
 /****SETUP****/
 
@@ -179,7 +181,8 @@ async function CheckDebugLibrary() {
     JSPLib.debug.debug_console = false;
     JSPLib.debug.recordTime('test2','test');
     JSPLib.debug.recordTimeEnd('test2','test');
-    console.log(`Should have recorded only 1 value`,RecordResult(Object.keys(JSPLib.debug.records).length === 1));
+    let result_length1 = Object.keys(JSPLib.debug._records).length;
+    console.log(`Should have recorded only 1 value ${bracket(result_length1)}`,RecordResult(result_length1 === 1));
 
     console.log("Checking debugExecute");
     let testvalue1 = 4;
@@ -1232,8 +1235,8 @@ async function CheckLoadLibrary() {
     let function1 = function() { console.log("Shouldn't run!");};
     let function2 = function() { console.log("Should run!");};
     window.goodvariable = true;
-    $("body").append(`<div id="id-does-exist">`);
-    $("body").append(`<div class="class-does-exist">`);
+    jQuery("body").append(`<div id="id-does-exist">`);
+    jQuery("body").append(`<div class="class-does-exist">`);
 
     console.log("Starting program load with bad variable");
     JSPLib.load.programInitialize(function1,'timer1',['window.badvariable'],[],5);
@@ -1289,7 +1292,7 @@ async function CheckLoadLibrary() {
 }
 
 async function checklibrary() {
-    $("footer").prepend('<span id="checklibrary-error" style="font-size:400%">0</span>&emsp;<span id="checklibrary-count" style="font-size:400%">0</span>');
+    jQuery("footer").prepend('<span id="checklibrary-error" style="font-size:400%">0</span>&emsp;<span id="checklibrary-count" style="font-size:400%">0</span>');
     await CheckDebugLibrary();
     await CheckUtilityLibrary();
     CheckStatisticsLibrary();
