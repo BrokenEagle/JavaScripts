@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9.0
+// @version      9.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -101,6 +101,24 @@ function ShowEnabled(bool) {
     return (bool ? "enabled" : "disabled");
 }
 
+function ArrayEqual(test_array,result_array) {
+    if (!Array.isArray(result_array)) {
+        console.log("Object is not an array");
+        return false;
+    }
+    if (test_array.length !== result_array.length) {
+        console.log("Array does not contain the right amount of values");
+        return false;
+    }
+    for (let i = 0;i < test_array.length; i++) {
+        if (test_array[i] !== result_array[i]) {
+            console.log("Array does not contain matching values:",test_array[i],result_array[i]);
+            return false;
+        }
+    }
+    return true;
+}
+
 function ObjectContains(obj,includes) {
     if (typeof obj !== "object") {
         console.log("Object is not an object");
@@ -145,6 +163,7 @@ async function RateLimit() {
 
 async function CheckDebugLibrary() {
     console.log("++++++++++++++++++++CheckDebugLibrary++++++++++++++++++++");
+    console.log("Start time:", JSPLib.utility.getProgramTime());
     ResetResult();
 
     console.log("Checking debuglog(): check this out");
@@ -221,6 +240,7 @@ async function CheckDebugLibrary() {
 
 async function CheckUtilityLibrary() {
     console.log("++++++++++++++++++++CheckUtilityLibrary++++++++++++++++++++");
+    console.log("Start time:", JSPLib.utility.getProgramTime());
     ResetResult();
 
     console.log("Checking sleep(): 1000ms");
@@ -228,10 +248,18 @@ async function CheckUtilityLibrary() {
     await JSPLib.utility.sleep(1000);
     JSPLib.debug.debugTimeEnd("sleep()");
 
-    console.log("Checking getExpiration");
+    console.log("Checking getExpires");
     let date1 = Date.now();
-    let testexpire1 = JSPLib.utility.getExpiration(100);
+    let testexpire1 = JSPLib.utility.getExpires(100);
     console.log(`Value ${testexpire1} should be 100 ms greater than ${Date.now()} within 1-2ms`,RecordResult(Math.abs(testexpire1 - (Date.now() + 100)) <= 2));
+
+    console.log("Checking validateExpires");
+    let testdata1 = Date.now() - 100;
+    let testdata2 = Date.now() + 100;
+    let result1 = JSPLib.utility.validateExpires(testdata1,100);
+    let result2 = JSPLib.utility.validateExpires(testdata2,100);
+    console.log(`Expiration of ${testdata1} should be expired`,RecordResult(result1 === false));
+    console.log(`Expiration of ${testdata2} should be unexpired`,RecordResult(result2 === true));
 
     console.log("Checking not");
     let testvalue1 = null;
@@ -245,20 +273,21 @@ async function CheckUtilityLibrary() {
     let testvalue2 = JSPLib.utility.setPrecision(1.2222222,2);
     console.log(`Value ${testvalue1} should be equal to ${testvalue2} with a decimal precision of 2`,RecordResult(testvalue1 === testvalue2));
 
+    console.log("Checking getUniqueID");
+    testvalue1 = JSPLib.utility.getUniqueID();
+    testvalue2 = JSPLib.utility.getUniqueID();
+    console.log(`Value ${testvalue1} should not be equal to ${testvalue2}`,RecordResult(testvalue1 !== testvalue2));
+
     console.log("Checking maxLengthString");
     testvalue1 = JSPLib.utility.maxLengthString("AUserNameThatIsWayTooLong");
+    testvalue2 = JSPLib.utility.maxLengthString("AUserNameThatIsWayTooLong",10);
     console.log(`Value ${repr(testvalue1)} should have a string length of ${JSPLib.utility.max_column_characters}`,RecordResult(testvalue1.length === JSPLib.utility.max_column_characters));
-
-    console.log("Checking regexpEscape");
-    let string1 = "tag_(qualifier)";
-    let regexstring1 = "tag_\\(qualifier\\)";
-    let teststring1 = JSPLib.utility.regexpEscape(string1);
-    console.log(`Value ${repr(string1)} should should be regex escaped to ${repr(regexstring1)} ${bracket(repr(teststring1))}`,RecordResult(teststring1 === regexstring1));
+    console.log(`Value ${repr(testvalue2)} should have a string length of 10`,RecordResult(testvalue2.length === 10));
 
     console.log("Checking kebabCase");
-    string1 = "testKebabCase";
+    let string1 = "testKebabCase";
     let string2 = "test-kebab-case";
-    teststring1 = JSPLib.utility.kebabCase(string1);
+    let teststring1 = JSPLib.utility.kebabCase(string1);
     console.log(`Value ${repr(string1)} should should be changed to ${repr(string2)} ${bracket(repr(teststring1))}`,RecordResult(teststring1 === string2));
 
     console.log("Checking camelCase");
@@ -271,11 +300,41 @@ async function CheckUtilityLibrary() {
     teststring1 = JSPLib.utility.displayCase(string1);
     console.log(`Value ${repr(string1)} should should be changed to ${repr(string2)} ${bracket(repr(teststring1))}`,RecordResult(teststring1 === string2));
 
+    console.log("Checking padNumber");
+    let num1 = 23;
+    string1 = "0023";
+    teststring1 = JSPLib.utility.padNumber(num1,4);
+    console.log(`Value ${repr(num1)} should should be changed to ${repr(string1)} ${bracket(repr(teststring1))}`,RecordResult(teststring1 === string1));
+
     console.log("Checking sprintf");
     string1 = "%s test %s";
     string2 = "this test 3";
     teststring1 = JSPLib.utility.sprintf(string1,"this",3);
     console.log(`Value ${repr(string1)} should should be changed to ${repr(string2)} ${bracket(repr(teststring1))}`,RecordResult(teststring1 === string2));
+
+    console.log("Checking trim");
+    string1 = "something something";
+    teststring1 = JSPLib.utility.trim`  \r\r  something something    \n\n  `;
+    console.log(`Value ${repr(teststring1)} should should be equal to ${repr(string1)}`,RecordResult(teststring1 === string1));
+
+    console.log("Checking findAll");
+    string1 = "100 200 300 400";
+    let array1 = ["100", "200", "300", "400"];
+    result1 = JSPLib.utility.findAll(string1,/\d+/g);
+    console.log(`Value ${repr(string1)} should should find matches ${repr(array1)} ${bracket(repr(result1))}`,RecordResult(ArrayEqual(array1,result1)));
+
+    console.log("Checking regexpEscape");
+    string1 = "tag_(qualifier)";
+    let regexstring1 = "tag_\\(qualifier\\)";
+    teststring1 = JSPLib.utility.regexpEscape(string1);
+    console.log(`Value ${repr(string1)} should should be regex escaped to ${repr(regexstring1)} ${bracket(repr(teststring1))}`,RecordResult(teststring1 === regexstring1));
+
+    console.log("Checking regexReplace");
+    string1 = "10 something false";
+    let format_string1 = "%NUMBER% %STRING% %BOOL%";
+    let format_data1 = {NUMBER: 10, STRING: "something", BOOL: false};
+    teststring1 = JSPLib.utility.regexReplace(format_string1,format_data1);
+    console.log(`Format ${repr(format_string1)} and data ${repr(format_data1)} should should be regex replaced to ${repr(string1)} ${bracket(repr(teststring1))}`,RecordResult(string1 === teststring1));
 
     console.log("Checking filterEmpty");
     let testarray1 = ["test","first","nonempty"];
@@ -292,10 +351,18 @@ async function CheckUtilityLibrary() {
     console.log(`Array ${repr(resultarray1)} should have a length of zero`,RecordResult(resultarray1.length === 0));
     console.log(`Array ${repr(resultarray2)} should have a length of one`,RecordResult(resultarray2.length === 1));
 
+    console.log("Checking concat");
+    array1 = [1,2,3];
+    let array2 = [4,5,6];
+    let checkarray1 = [1,2,3,4,5,6];
+    resultarray1 = JSPLib.utility.concat(array1,array2);
+    console.log(`Array ${repr(array1)} concatenated with ${repr(array2)} should become ${repr(checkarray1)} ${bracket(resultarray1)}`,RecordResult(ArrayEqual(checkarray1,resultarray1)));
+
     console.log("Checking setUnique");
     let testarray3 = ["testing","first","testing"];
+    checkarray1 = ["testing","first"];
     resultarray1 = JSPLib.utility.setUnique(testarray3);
-    console.log(`Array ${repr(resultarray1)} should have a length of two`,RecordResult(resultarray1.length === 2));
+    console.log(`Array ${repr(testarray3)} should become ${repr(checkarray1)} ${bracket(resultarray1)}`,RecordResult(ArrayEqual(checkarray1,resultarray1)));
 
     console.log("Checking setDifference");
     resultarray1 = JSPLib.utility.setDifference(testarray1,testarray2);
@@ -315,6 +382,32 @@ async function CheckUtilityLibrary() {
     resultarray1 = JSPLib.utility.setSymmetricDifference(testarray1,testarray3);
     console.log(`Array ${repr(resultarray1)} should have a length of three`,RecordResult(resultarray1.length === 3));
 
+    console.log("Checking isSubset");
+    array1 = [1,2,3];
+    array2 = [1,3];
+    let array3 = [2,4];
+    resultbool1 = JSPLib.utility.isSubset(array1,array2);
+    resultbool2 = JSPLib.utility.isSubset(array1,array3);
+    console.log(`Array ${repr(array2)} should be a subset of ${repr(array1)}`,RecordResult(resultbool1));
+    console.log(`Array ${repr(array3)} should not be a subset of ${repr(array1)}`,RecordResult(!resultbool2));
+
+    console.log("Checking isSuperset");
+    array1 = [1,2,3];
+    array2 = [1,3];
+    resultbool1 = JSPLib.utility.isSuperset(array1,array2);
+    resultbool2 = JSPLib.utility.isSuperset(array2,array1);
+    console.log(`Array ${repr(array2)} should not be a superset of ${repr(array1)}`,RecordResult(!resultbool1));
+    console.log(`Array ${repr(array1)} should be a superset of ${repr(array2)}`,RecordResult(resultbool2));
+
+    console.log("Checking hasIntersection");
+    array1 = [1,2,3];
+    array2 = [3,5];
+    array3 = [5,6];
+    resultbool1 = JSPLib.utility.hasIntersection(array1,array2);
+    resultbool2 = JSPLib.utility.hasIntersection(array1,array3);
+    console.log(`Array ${repr(array1)} should have an intersection with ${repr(array2)}`,RecordResult(resultbool1));
+    console.log(`Array ${repr(array1)} should not have an intersection with ${repr(array3)}`,RecordResult(!resultbool2));
+
     console.log("Checking listFilter");
     let testobjectarray1 = [{id: 1, type: 'a'},{id: 2, type: 'b'}, {id: 3, type: 'b'}];
     testarray1 = [1,3];
@@ -327,17 +420,60 @@ async function CheckUtilityLibrary() {
     console.log(`Object array ${repr(testobjectarray1)} with reverse type filters on ${repr(testarray2)} should be equal to ${repr(expectedobjectarray2)} ${bracket(repr(resultobjectarray2))}`,RecordResult(JSON.stringify(resultobjectarray2) === JSON.stringify(expectedobjectarray2)));
 
     console.log("Checking joinList");
-    string1 = "test-1,test-3";
-    teststring1 = JSPLib.utility.joinList(testarray1,"test-",',');
+    string1 = "test-1-section,test-3-section";
+    teststring1 = JSPLib.utility.joinList(testarray1,"test-",'-section',',');
     console.log(`Value ${repr(testarray1)} should should be changed to ${repr(string1)} ${bracket(repr(teststring1))}`,RecordResult(teststring1 === string1));
 
+    console.log("Checking freezeObject");
+    let testobject1 = {id: 1, type: {a: 1, b:2}};
+    let testobject2 = {id: 2, type: {a: 3, b:4}};
+    JSPLib.utility.freezeObject(testobject1);
+    JSPLib.utility.freezeObject(testobject2,true);
+    let boolarray1 = [Object.isFrozen(testobject1), !Object.isFrozen(testobject1.type)];
+    let boolarray2 = [Object.isFrozen(testobject2), Object.isFrozen(testobject2.type)];
+    console.log(`Object ${repr(testobject1)} should be frozen but not object attributes ${bracket(repr(boolarray1))}`,RecordResult(boolarray1.every(val => val)));
+    console.log(`Object ${repr(testobject2)} and object attributes should be frozen ${bracket(repr(boolarray2))}`,RecordResult(boolarray2.every(val => val)));
+
+    console.log("Checking freezeObjects");
+    testobjectarray1 = [{id: 1, type: {a: 1, b:2}}, {id: 2, type: {a: 3, b:4}}];
+    JSPLib.utility.freezeObjects(testobjectarray1,true);
+    boolarray1 = [Object.isFrozen(testobjectarray1[0]), Object.isFrozen(testobjectarray1[0].type), Object.isFrozen(testobjectarray1[1]), Object.isFrozen(testobjectarray1[1].type)];
+    console.log(`Objects array ${repr(testobjectarray1)} should have the object and object attributes be frozen ${bracket(repr(boolarray1))}`,RecordResult(boolarray1.every(val => val)));
+
+    console.log("Checking freezeProperty");
+    testobject1 = {id: 1, type: {a: 1, b:2}};
+    JSPLib.utility.freezeProperty(testobject1,'id');
+    let objectdescriptor1 = Object.getOwnPropertyDescriptor(testobject1,'id');
+    boolarray1 = [!objectdescriptor1.writable, !objectdescriptor1.configurable];
+    console.log(`Object ${repr(testobject1)} should have the 'id' attribute be frozen ${bracket(repr(boolarray1))}`,RecordResult(boolarray1.every(val => val)));
+
+    console.log("Checking freezeProperties");
+    testobject1 = {id: 2, type: {a: 3, b:4}};
+    JSPLib.utility.freezeProperties(testobject1,['id','type']);
+    objectdescriptor1 = Object.getOwnPropertyDescriptor(testobject1,'id');
+    let objectdescriptor2 = Object.getOwnPropertyDescriptor(testobject1,'type');
+    boolarray1 = [!objectdescriptor1.writable, !objectdescriptor1.configurable, !objectdescriptor2.writable, !objectdescriptor2.configurable];
+    console.log(`Object ${repr(testobject1)} should have the 'id' and 'type' attributes be frozen ${bracket(repr(boolarray1))}`,RecordResult(boolarray1.every(val => val)));
+
     console.log("Checking getObjectAttributes");
-    let expectedarray1 = [1,2,3];
+    array1 = [1,2,3];
+    testobjectarray1 = [{id: 1, type: 'a'},{id: 2, type: 'b'}, {id: 3, type: 'b'}];
     resultarray1 = JSPLib.utility.getObjectAttributes(testobjectarray1,'id');
-    console.log(`Object array ${repr(testobjectarray1)} with getting the id attributes should be equal to ${repr(expectedarray1)} ${bracket(repr(resultarray1))}`,RecordResult(JSON.stringify(resultarray1) === JSON.stringify(expectedarray1)));
+    console.log(`Object array ${repr(testobjectarray1)} with getting the id attributes should be equal to ${repr(array1)} ${bracket(repr(resultarray1))}`,RecordResult(ArrayEqual(resultarray1,array1)));
+
+    console.log("Checking getNestedObjectAttributes");
+    array1 = [1,3];
+    testobjectarray1 = [{id: 1, type: {a: 1, b:2}}, {id: 2, type: {a: 3, b:4}}];
+    resultarray1 = JSPLib.utility.getNestedObjectAttributes(testobjectarray1,['type','a']);
+    console.log(`Object array ${repr(testobjectarray1)} with getting the id attributes should be equal to ${repr(array1)} ${bracket(repr(resultarray1))}`,RecordResult(ArrayEqual(resultarray1,array1)));
+
+    console.log("Checking objectReduce");
+    testobject1 = {test1: 1, test2: 2, test3: 3};
+    result1 = JSPLib.utility.objectReduce(testobject1,(total,val)=>{return total + val;},0);
+    console.log(`Object ${repr(testobject1)} totaling key values should be equal to 6 ${bracket(repr(result1))}`,RecordResult(result1 === 6));
 
     console.log("Checking dataCopy");
-    let testobject1 = {'test':0,'value':{'deep':1}};
+    testobject1 = {'test':0,'value':{'deep':1}};
     let copyobject1 = testobject1;
     let shallowobject1 = Object.assign({},testobject1);
     let [deepobject1] = JSPLib.utility.dataCopy([testobject1]);
@@ -346,6 +482,21 @@ async function CheckUtilityLibrary() {
     console.log(`Object ${repr(copyobject1)} should have the same values as ${repr(testobject1)}`,RecordResult(copyobject1.test === 10 && copyobject1.value.deep === 11));
     console.log(`Object ${repr(shallowobject1)} should have one value the same as ${repr(testobject1)}`,RecordResult(shallowobject1.test !== 10 && copyobject1.value.deep === 11));
     console.log(`Object ${repr(deepobject1)} should have no values the same as ${repr(testobject1)}`,RecordResult(deepobject1.test !== 10 && deepobject1.value.deep !== 11));
+
+    console.log("Checking joinArgs");
+    let object1 = {search: {id: "20,21,5"}};
+    let object2 = {search: {order: "customorder"}};
+    result1 = JSPLib.utility.joinArgs(object1,object2);
+    boolarray1 = [ObjectContains(result1,['search']), ObjectContains(result1.search,['id','order'])];
+    boolarray1[0] && boolarray1.push(result1.search.id === "20,21,5");
+    boolarray1[1] && boolarray1.push(result1.search.order === "customorder");
+    console.log(`joining arguments ${repr(object1)} and ${repr(object2)} should have the 2 search arguments ${repr(result1)} ${bracket(repr(boolarray1))}`,RecordResult(boolarray1.every(val => val)));
+
+    console.log("Checking recurseCompareObjects");
+    testobject1 = {'test':0,'value':{'deep':1}};
+    copyobject1 = {'test':0,'value':{'deep':2}};
+    let resultobject1 = JSPLib.utility.recurseCompareObjects(testobject1,copyobject1);
+    console.log(`Object ${repr(testobject1)} compared against ${repr(copyobject1)} should find the changed value ${repr(resultobject1)}`,RecordResult(resultobject1.value.deep[0] === 1 && resultobject1.value.deep[1] === 2));
 
     console.log("Checking arrayFill");
     string1 = "[]";
@@ -372,10 +523,10 @@ async function CheckUtilityLibrary() {
     console.log(`Hijacked add function should produce a result of 6`,RecordResult(testvalue2 === 6));
 
     console.log("Checking DOMtoArray");
-    let $domtest = $.parseHTML(domdata_test)[0];
-    let array1 = JSPLib.utility.DOMtoArray($domtest.attributes);
-    let array2 = array1.map((entry)=>{return entry.value;});
-    let array3 = ['test1','2'];
+    let $domtest = jQuery.parseHTML(domdata_test)[0];
+    array1 = JSPLib.utility.DOMtoArray($domtest.attributes);
+    array2 = array1.map((entry)=>{return entry.value;});
+    array3 = ['test1','2'];
     console.log(`Object returned should be an array`,RecordResult(Array.isArray(array1)));
     console.log(`Data values for object should be ${repr(array3)} ${bracket(repr(array2))}`,RecordResult(JSON.stringify(array2) === JSON.stringify(array3)));
 
@@ -385,8 +536,15 @@ async function CheckUtilityLibrary() {
     console.log(`Object returned should be a hash`,RecordResult(hash1.constructor === Object));
     console.log(`Data values for object should be ${repr(array3)} ${bracket(repr(array2))}`,RecordResult(JSON.stringify(array2) === JSON.stringify(array3)));
 
-    console.log("Checking getDataAttributes");
-    hash1 = JSPLib.utility.getDataAttributes($domtest);
+    console.log("Checking getDOMAttributes");
+    let $domarray = jQuery.parseHTML(domdata_test)
+    checkarray1 = ["test1"];
+    resultarray1 = JSPLib.utility.getDOMAttributes($domarray,'test1',String);
+    console.log(`Object returned should be an array`,RecordResult(Array.isArray(resultarray1)));
+    console.log(`Data values for array should be ${repr(checkarray1)} ${bracket(repr(resultarray1))}`,RecordResult(ArrayEqual(checkarray1,resultarray1)));
+
+    console.log("Checking getAllDOMData");
+    hash1 = JSPLib.utility.getAllDOMData($domtest);
     let hash2 = {test1: "test1", test2: 2};
     console.log(`Object returned should be a hash`,RecordResult(hash1.constructor === Object));
     console.log(`Data values for object should be ${repr(hash2)} ${bracket(repr(hash1))}`,RecordResult(ObjectContains(hash1,['test1','test2']) && hash1.test1 === hash2.test1 && hash1.test2 === hash2.test2));
@@ -395,19 +553,21 @@ async function CheckUtilityLibrary() {
     let script1 = "https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js";
     let state1 = typeof jQuery.ui.tabs;
     await JSPLib.utility.installScript(script1);
+    await JSPLib.utility.sleep(100);
     let state2 = typeof jQuery.ui.tabs;
     console.log(`Initial state of jQuery tabs should be undefined ${bracket(repr(state1))}`,RecordResult(state1 === "undefined"));
     console.log(`Subsequent state of jQuery tabs should be a function ${bracket(repr(state2))}`,RecordResult(state2 === "function"));
 
     //Setup for data functions
-    let jqueryobj = $("#checklibrary-count");
+    let jqueryobj = jQuery("#checklibrary-count");
     jqueryobj.on("mouseenter.checklibraries.test_hover",(e)=>{
         console.log("Hovering over count...");
     });
-    let testdata1 = {test_data: 'check'};
+    testdata1 = {test_data: 'check'};
     jqueryobj.data(testdata1);
     let $domobj = jqueryobj[0];
-    $(document).on("checklibraries:log-this",()=>{console.log("Check this out")});
+    jQuery(document).on("checklibraries:log-this",()=>{console.log("Check this out")});
+    await JSPLib.utility.sleep(100);
 
     console.log("Checking getPrivateData");
     let data1 = JSPLib.utility.getPrivateData($domobj);
@@ -448,9 +608,13 @@ async function CheckUtilityLibrary() {
     await JSPLib.utility.sleep(csstyle_waittime);
     JSPLib.utility.addStyleSheet("https://cdn.jsdelivr.net/gh/BrokenEagle/JavaScripts@stable/test/test-css-2.css","test");
     console.log("Color set to orange... validate that there is only 1 style element.");
-    console.log(`Module global cssstyle ${repr(JSPLib.utility.csssheet)} should have a length of 1`,RecordResult(Object.keys(JSPLib.utility.csssheet).length === 1));
+    console.log(`Module global cssstyle ${repr(JSPLib.utility._css_sheet)} should have a length of 1`,RecordResult(Object.keys(JSPLib.utility._css_sheet).length === 1));
     await JSPLib.utility.sleep(csstyle_waittime);
     JSPLib.utility.addStyleSheet("","test");
+
+    console.log("Checking isScrolledIntoView");
+    result1 = JSPLib.utility.isScrolledIntoView(document.querySelector('footer'));
+    console.log(`Page footer should be in view`,RecordResult(result1));
 
     console.log("Checking setCSSStyle");
     JSPLib.utility.setCSSStyle("body {background: black !important;}","test");
@@ -458,9 +622,13 @@ async function CheckUtilityLibrary() {
     await JSPLib.utility.sleep(csstyle_waittime);
     JSPLib.utility.setCSSStyle("body {background: purple !important;}","test");
     console.log("Color set to purple... validate that there is only 1 style element.");
-    console.log(`Module global cssstyle ${repr(JSPLib.utility.cssstyle)} should have a length of 1`,RecordResult(Object.keys(JSPLib.utility.cssstyle).length === 1));
+    console.log(`Module global cssstyle ${repr(JSPLib.utility._css_style)} should have a length of 1`,RecordResult(Object.keys(JSPLib.utility._css_style).length === 1));
     await JSPLib.utility.sleep(csstyle_waittime);
     JSPLib.utility.setCSSStyle("","test");
+
+    console.log("Checking hasStyle");
+    result1 = JSPLib.utility.hasStyle('test');
+    console.log(`Test style should be initialized`,RecordResult(result1));
 
     console.log("Checking fullHide");
     let selector1 = "#page";
@@ -485,15 +653,15 @@ async function CheckUtilityLibrary() {
     console.log(`Meta ${metaselector1} should have the content of ${repr(expectedmeta1)} ${bracket(repr(resultmeta1))}`,RecordResult(expectedmeta1 === resultmeta1));
 
     console.log("Checking getNthParent");
-    $domtest = $.parseHTML(walkdom_test);
-    let child1 = $("#child0a",$domtest)[0];
-    let result1 = JSPLib.utility.getNthParent(child1,1);
+    $domtest = jQuery.parseHTML(walkdom_test);
+    let child1 = jQuery("#child0a",$domtest)[0];
+    result1 = JSPLib.utility.getNthParent(child1,1);
     console.log(`Node ${child1.id} should have parent0 as a parent ${bracket(result1.id)}`,RecordResult(result1 && result1.id === "parent0"));
 
     console.log("Checking getNthChild");
-    let parent1 = $("#parent0",$domtest)[0];
+    let parent1 = jQuery("#parent0",$domtest)[0];
     result1 = JSPLib.utility.getNthChild(parent1,2);
-    let result2 = JSPLib.utility.getNthChild(parent1,-2);
+    result2 = JSPLib.utility.getNthChild(parent1,-2);
     console.log(`Node ${parent1.id} should have child0b as the 2nd child from the start ${bracket(result1.id)}`,RecordResult(result1 && result1.id === "child0b"));
     console.log(`Node ${parent1.id} should have child0a as the 2nd child from the end ${bracket(result2.id)}`,RecordResult(result2 && result2.id === "child0a"));
 
@@ -523,7 +691,7 @@ async function CheckUtilityLibrary() {
 
     console.log("Checking parseParams");
     string1 = "test1=2&test2=3";
-    let object1 = {test1: "2", test2: "3"};
+    object1 = {test1: "2", test2: "3"};
     result1 = JSPLib.utility.parseParams(string1);
     console.log(`Value ${repr(string1)} should should be changed to ${repr(object1)} ${bracket(repr(result1))}`,RecordResult(JSON.stringify(object1) === JSON.stringify(result1)));
 
@@ -534,12 +702,12 @@ async function CheckUtilityLibrary() {
     console.log(`Value ${repr(string1)} should should be changed to ${repr(string2)} ${bracket(repr(result1))}`,RecordResult(string2 === result1));
 
     console.log("Checking setupMutationObserver");
-    $("#checklibrary-count").after('<span id="checklibrary-observe"></span>');
+    jQuery("#checklibrary-count").after('<span id="checklibrary-observe"></span>');
     string1 = 'nothing';
     string2 = 'something';
     value1 = string1;
     JSPLib.utility.setupMutationRemoveObserver("footer","#checklibrary-observe",()=>{console.log("Observation found!");value1 = string2;});
-    $("#checklibrary-observe").replaceWith('<span id="checklibrary-observe">Observed</span>');
+    jQuery("#checklibrary-observe").replaceWith('<span id="checklibrary-observe" style="font-size:200%">(Observed)</span>');
     await JSPLib.utility.sleep(1000);
     console.log(`Value ${repr(value1)} should be equal to ${repr(string2)}`,RecordResult(value1 === string2));
 
@@ -548,6 +716,7 @@ async function CheckUtilityLibrary() {
 
 function CheckStatisticsLibrary() {
     console.log("++++++++++++++++++++CheckStatisticsLibrary++++++++++++++++++++");
+    console.log("Start time:", JSPLib.utility.getProgramTime());
     ResetResult();
 
     console.log("Checking average");
@@ -584,6 +753,7 @@ function CheckStatisticsLibrary() {
 
 function CheckValidateLibrary() {
     console.log("++++++++++++++++++++CheckValidateLibrary++++++++++++++++++++");
+    console.log("Start time:", JSPLib.utility.getProgramTime());
     ResetResult();
 
     //For checking library with/without validate installed
@@ -849,6 +1019,7 @@ function CheckValidateLibrary() {
 
 async function CheckStorageLibrary() {
     console.log("++++++++++++++++++++CheckStorageLibrary++++++++++++++++++++");
+    console.log("Start time:", JSPLib.utility.getProgramTime());
     ResetResult();
 
     console.log("Checking global variables");
@@ -1027,6 +1198,7 @@ async function CheckStorageLibrary() {
 
 async function CheckConcurrencyLibrary() {
     console.log("++++++++++++++++++++CheckConcurrencyLibrary++++++++++++++++++++");
+    console.log("Start time:", JSPLib.utility.getProgramTime());
     ResetResult();
 
     console.log("Checking getSemaphoreName");
@@ -1076,6 +1248,7 @@ async function CheckConcurrencyLibrary() {
 
 async function CheckDanbooruLibrary() {
     console.log("++++++++++++++++++++CheckDanbooruLibrary++++++++++++++++++++");
+    console.log("Start time:", JSPLib.utility.getProgramTime());
     ResetResult();
 
     console.log("Checking joinArgs");
@@ -1222,6 +1395,7 @@ async function CheckDanbooruLibrary() {
 
 async function CheckLoadLibrary() {
     console.log("++++++++++++++++++++CheckLoadLibrary++++++++++++++++++++");
+    console.log("Start time:", JSPLib.utility.getProgramTime());
     ResetResult();
 
     console.log("Checking isVariableDefined");
