@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9.2
+// @version      9.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -1139,11 +1139,11 @@ async function CheckStorageLibrary() {
 
         console.log("Checking batchStorageCheck");
         let keyarray1 = ['expired-value','good-value','persistent-value'];
-        result1 = await JSPLib.storage.batchStorageCheck(keyarray1,validator1,max_expiration1);
-        console.log(`batch check of ${repr(keyarray1)} should return expired-value in an array ${bracket(result1)}`,RecordResult(Array.isArray(result1) && result1.length === 1 && result1.includes('expired-value')));
-        console.log(`good-value with data ${repr(data4)} with false validation should return null ${bracket(repr(result2))}`,RecordResult(result2 === null));
-        console.log(`good-value with data ${repr(data4)} with true validation should return value ${bracket(repr(result3))}`,RecordResult(result3 && result3.value && result3.value[0] === "check this"));
-        console.log(`persistent-value with data ${repr(data5)} should return value ${bracket(repr(result4))}`,RecordResult(result4 && result4.expires === 0 && result4.value && result4.value[0] === "check this"));
+        let expected1 = ['expired-value'];
+        let expected2 = ['good-value','persistent-value'];
+        let [found1,missing1] = await JSPLib.storage.batchStorageCheck(keyarray1,validator1,max_expiration1);
+        console.log(`Batch check of ${repr(keyarray1)} should return ${repr(expected1)} in missing array ${bracket(repr(missing1))}`,RecordResult(ArrayEqual(missing1,expected1)));
+        console.log(`Batch check of ${repr(keyarray1)} should return ${repr(expected2)} in found array ${bracket(repr(expected2))}`,RecordResult(ArrayEqual(found1,expected2)));
 
         console.log("Checking pruneStorage");
         await JSPLib.storage.pruneStorage(/-value$/);
