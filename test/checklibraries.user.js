@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9.1
+// @version      9.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -942,15 +942,6 @@ function CheckValidateLibrary() {
         console.log(`Object ${repr(testdata1)} should return false`,RecordResult(result1 === false));
         console.log(`Object ${repr(testdata2)} should return true`,RecordResult(result2 === true));
 
-        console.log("Checking validateArrayValues");
-        testdata1 = [1,2,3,4];
-        testdata2 = ["one","two","three","four"];
-        result1 = JSPLib.validate.validateArrayValues('test',testdata1,JSPLib.validate.stringonly_constraints);
-        result2 = JSPLib.validate.validateArrayValues('test',testdata2,JSPLib.validate.stringonly_constraints);
-        console.log(result1,result2);
-        console.log(`Object ${repr(testdata1)} should return false`,RecordResult(result1 === false));
-        console.log(`Object ${repr(testdata2)} should return true`,RecordResult(result2 === true));
-
         console.log("Checking validateHashEntries");
         testdata1 = {value: 5, expires: true};
         testdata2 = {value: [1,2,3,4], expires: 0};
@@ -962,13 +953,25 @@ function CheckValidateLibrary() {
         console.log(`Object ${repr(testdata2)} should return true`,RecordResult(result2 === true));
     }
 
-    console.log("Checking validateExpires");
-    testdata1 = Date.now() - 100;
-    testdata2 = Date.now() + 100;
-    result1 = JSPLib.validate.validateExpires(testdata1,100);
-    result2 = JSPLib.validate.validateExpires(testdata2,100);
-    console.log(`Expiration of ${testdata1} should be expired`,RecordResult(result1 === false));
-    console.log(`Expiration of ${testdata2} should be unexpired`,RecordResult(result2 === true));
+    console.log("Checking validateArrayValues");
+    testdata1 = [-1,-2,3,4];
+    testdata2 = [1,2,3,4];
+    let testdata3 = ["one","two","three","four"];
+    result1 = JSPLib.validate.validateArrayValues('test',testdata1,JSPLib.validate.basic_integer_validator);
+    result2 = JSPLib.validate.validateArrayValues('test',testdata2,JSPLib.validate.basic_ID_validator);
+    result2 = JSPLib.validate.validateArrayValues('test',testdata3,JSPLib.validate.basic_stringonly_validator);
+    console.log(`Object ${repr(testdata1)} should be all integers`,RecordResult(result1));
+    console.log(`Object ${repr(testdata2)} should be all IDs`,RecordResult(result2));
+    console.log(`Object ${repr(testdata3)} should be all strings`,RecordResult(result2));
+
+    console.log("Checking correctArrayValues");
+    testdata1 = [-1,-2,3,4];
+    testdata2 = ["one","two","three","four"];
+    result1 = JSPLib.validate.correctArrayValues('test',testdata1,JSPLib.validate.basic_ID_validator);
+    result2 = JSPLib.validate.correctArrayValues('test',testdata2,JSPLib.validate.basic_stringonly_validator);
+    JSPLib.utility.concat(result1,result2).forEach((message)=>{console.log(message);});
+    console.log(`Object ${repr(testdata1)} should have two corrections`,RecordResult(result1.length === 2));
+    console.log(`Object ${repr(testdata2)} should have no corrections`,RecordResult(result2.length === 0));
 
     console.log("Checking isHash");
     testdata1 = [];
