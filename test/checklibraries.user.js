@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9.3
+// @version      9.4
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -1204,18 +1204,12 @@ async function CheckConcurrencyLibrary() {
     console.log("Start time:", JSPLib.utility.getProgramTime());
     ResetResult();
 
-    console.log("Checking getSemaphoreName");
+    console.log("Checking reserveSemaphore");
     let key1 = 'cl-process-semaphore-test';
     let key2 = 'cl.semaphore.test';
-    let result1 = JSPLib.concurrency.getSemaphoreName('cl','test',true);
-    let result2 = JSPLib.concurrency.getSemaphoreName('cl','test',false);
-    console.log(`Key for storage should be equal to ${repr(key1)} ${bracket(result1)}`,RecordResult(key1 === result1));
-    console.log(`Key for storage should be equal to ${repr(key2)} ${bracket(result2)}`,RecordResult(key2 === result2));
-
-    console.log("Checking reserveSemaphore");
     localStorage.removeItem(key1);
-    result1 = JSPLib.concurrency.reserveSemaphore('cl','test');
-    result2 = JSPLib.storage.getStorageData(key1,localStorage);
+    let result1 = JSPLib.concurrency.reserveSemaphore('cl','test');
+    let result2 = JSPLib.storage.getStorageData(key1,localStorage);
     let result3 = JSPLib.utility.isNamespaceBound(window,'beforeunload',key2);
     console.log(`Semaphore ${result1} should be equal to saved data ${bracket(result2)}`,RecordResult(result1 === result2));
     console.log(`Before unload event should have been created ${bracket(result3)}`,RecordResult(result3 === true));
