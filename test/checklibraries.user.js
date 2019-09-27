@@ -1422,8 +1422,9 @@ async function CheckDanbooruLibrary() {
     console.log("Checking wikiLink");
     string1 = "1girl";
     string2 = "Wiki link";
-    string3 = '<a href="/wiki_pages/show_or_new?title=1girl">Wiki link</a>';
-    result1 = JSPLib.danbooru.wikiLink(string1,string2);
+    option1 = 'class="category-0"';
+    string3 = '<a class="category-0" href="/wiki_pages/show_or_new?title=1girl">Wiki link</a>';
+    result1 = JSPLib.danbooru.wikiLink(string1,string2,option1);
     console.log(`the tag ${repr(string1)} with text ${repr(string2)} should produce the link  ${repr(string3)} ${bracket(result1)}`,RecordResult(result1 === string3));
 
     console.log("Checking submitRequest");
@@ -1431,12 +1432,10 @@ async function CheckDanbooruLibrary() {
     let type1 = 'posts';
     let type2 = 'doesntexist';
     let addons1 = {limit:1};
-    let num_errors = JSPLib.danbooru.error_messages.length;
     result1 = await JSPLib.danbooru.submitRequest(type1,addons1);
     result2 = await JSPLib.danbooru.submitRequest(type2);
     console.log(`with type ${type1} and addons ${repr(addons1)}, a single post should have been returned ${bracket(result1)}`,RecordResult(Array.isArray(result1) && result1.length === 1));
     console.log(`with nonexistent type ${type2}, null should be returned [${repr(result2)}]`,RecordResult(result2 === null));
-    console.log(`should have one error logged [${repr(JSPLib.danbooru.error_messages.length)}]`,RecordResult((JSPLib.danbooru.error_messages.length - num_errors) === 1))
 
     console.log("Checking getAllItems");
     type1 = 'users';
