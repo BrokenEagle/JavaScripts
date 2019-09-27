@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9.4
+// @version      9.5
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
 // @match        https://danbooru.donmai.us/static/site_map
-// @grant        none
+// @grant        GM.xmlHttpRequest
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/test/checklibraries.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
@@ -14,6 +14,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/load.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/storage.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/network.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/danbooru.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/validate.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/utility.js
@@ -26,6 +27,8 @@
 /****SETUP****/
 
 JSPLib.debug.debug_console = true;
+
+const [WINDOWVALUE,WINDOWNAME] = (typeof unsafeWindow !== "undefined" ? [unsafeWindow,'unsafeWindow'] : [window,'window']);
 
 /****GLOBAL VARIABLES****/
 
@@ -153,9 +156,9 @@ async function LoadWait(program_name) {
     return true;
 }
 
-async function RateLimit() {
+async function RateLimit(module) {
     console.log("Before rate limit...");
-    await JSPLib.danbooru.rateLimit();
+    await JSPLib.network.rateLimit(module);
     console.log("After rate limit...");
 }
 
@@ -1243,45 +1246,114 @@ async function CheckConcurrencyLibrary() {
     console.log(`CheckConcurrencyLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
 
+async function CheckNetworkLibrary() {
+    console.log("++++++++++++++++++++CheckNetworkLibrary++++++++++++++++++++");
+    console.log("Start time:", JSPLib.utility.getProgramTime());
+    ResetResult();
+
+    if (typeof GM.xmlHttpRequest !== 'undefined') {
+        console.log("Checking getImage");
+        let url1 = 'https://raikou4.donmai.us/preview/d3/4e/d34e4cf0a437a5d65f8e82b7bcd02606.jpg';
+        let size1 = 7130;
+        let type1 = "image/jpeg";
+        let resp1 = await JSPLib.network.getImage(url1);
+        let boolarray1 = [typeof resp1 === "object" && resp1.constructor.name === "Blob"];
+        boolarray1[0] && boolarray1.push(resp1.size === size1);
+        boolarray1[0] && boolarray1.push(resp1.type === type1);
+        console.log(`Image with URL ${url1} should be blob with size ${size1} and type ${type1} ${bracket(repr(boolarray1))}`,resp1,RecordResult(boolarray1.every(val => val)));
+
+        console.log("Checking getImageSize");
+        url1 = 'https://raikou4.donmai.us/preview/d3/4e/d34e4cf0a437a5d65f8e82b7bcd02606.jpg';
+        size1 = 7130;
+        resp1 = await JSPLib.network.getImageSize(url1);
+        console.log(`Image with URL ${url1} should get the image size of ${size1} ${bracket(resp1)}`,resp1,RecordResult(resp1 === size1));
+    } else {
+        console.log("Skipping GM.xmlHttpRequest tests...");
+    }
+
+    console.log("Checking installXHRHook");
+    let builtinXhrFn = WINDOWVALUE.XMLHttpRequest;
+    let url1 = '/users';
+    let addons1 = {search:{id:'1'},limit:1,only:'id,name'};
+    let found1 = false;
+    JSPLib.network.installXHRHook([
+        (data)=>{
+            if (Array.isArray(data) && data.length === 1 && data[0].id === 1) {
+                console.log(`With URL ${url1} and addons ${repr(addons1)}, a single user record of user #1 should have been returned ${bracket(repr(data))}`,RecordResult(data[0].name === "albert"));
+                found1 = true;
+            }
+        }
+    ]);
+    await jQuery.getJSON(url1,addons1);
+    WINDOWVALUE.XMLHttpRequest = builtinXhrFn;
+    await JSPLib.utility.sleep(1000);
+    if (!found1) {
+        console.log("installXHRHook test failed",RecordResult(false));
+    }
+
+    console.log("Checking incrementCounter");
+    JSPLib.network.counter_domname = "#checklibrary-count";
+    await JSPLib.utility.sleep(2000);
+    let result1 = JSPLib.danbooru.num_network_requests;
+    JSPLib.network.incrementCounter('danbooru');
+    let result2 = JSPLib.danbooru.num_network_requests;
+    console.log(`The counter should have incremented by 1 from ${repr(result1)} ${bracket(repr(result2))}`,RecordResult((result2 - result1) === 1));
+
+    console.log("Checking decrementCounter");
+    await JSPLib.utility.sleep(2000);
+    result1 = JSPLib.danbooru.num_network_requests;
+    JSPLib.network.decrementCounter('danbooru');
+    result2 = JSPLib.danbooru.num_network_requests;
+    console.log(`The counter should have decremented by 1 from ${repr(result1)} ${bracket(repr(result2))}`,RecordResult((result1 - result2) === 1));
+
+    console.log("Checking rateLimit"); //Visual confirmation required
+    JSPLib.danbooru.num_network_requests = JSPLib.danbooru.max_network_requests;
+    RateLimit('danbooru');
+    await JSPLib.utility.sleep(5000);
+    JSPLib.danbooru.num_network_requests = 0;
+    await JSPLib.utility.sleep(2000);
+
+    console.log("Checking processError");
+    let error1 = {status: 502};
+    let baderror1 = {status: 999, responseText: "Bad error code!"};
+    result1 = JSPLib.network.processError(error1,"CheckNetworkLibrary");
+    console.log(`The error ${repr(error1)} should be processed to ${repr(error1)} ${bracket(repr(result1))}`,RecordResult(result1.status === baderror1.status && result1.responseText === baderror1.responseText));
+
+    console.log("Checking logError");
+    JSPLib.network.error_domname = "#checklibrary-error";
+    let num_errors = JSPLib.network.error_messages.length;
+    error1 = {status: 403, responseText: 'Bad redirect!'};
+    result1 = JSPLib.network.logError(error1,'processError');
+    console.log(`Should have one error logged ${bracket(JSPLib.network.error_messages.length)}`,RecordResult((JSPLib.network.error_messages.length - num_errors) === 1));
+
+    console.log("Checking notifyError"); //Visual confirmation required
+    error1 = {status: 502, responseText: '<!doctype html>'};
+    JSPLib.network.notifyError(error1);
+    await JSPLib.utility.sleep(4000);
+    jQuery("#close-notice-link").click();
+    await JSPLib.utility.sleep(2000);
+
+    console.log("Checking getNotify"); //Visual confirmation required
+    url1 = "/bad_url";
+    await JSPLib.network.getNotify(url1);
+    await JSPLib.utility.sleep(4000);
+    jQuery("#close-notice-link").click();
+    await JSPLib.utility.sleep(2000);
+
+    console.log(`CheckNetworkLibrary results: ${test_successes} succeses, ${test_failures} failures`);
+}
+
 async function CheckDanbooruLibrary() {
     console.log("++++++++++++++++++++CheckDanbooruLibrary++++++++++++++++++++");
     console.log("Start time:", JSPLib.utility.getProgramTime());
     ResetResult();
 
-    console.log("Checking joinArgs");
-    let object1 = {search: {id: "20,21,5"}};
-    let object2 = {search: {order: "customorder"}};
-    let result1 = JSPLib.danbooru.joinArgs(object1,object2);
-    console.log(`joining arguments ${repr(object1)} and ${repr(object2)} should have the 2 search arguments ${bracket(result1)}`,RecordResult(ObjectContains(result1,['search']) && ObjectContains(result1.search,['id','order']) && result1.search.id === "20,21,5" && result1.search.order === "customorder"));
-
     console.log("Checking getNextPageID");
     let array1 = [{id:25},{id:26},{id:27}];
-    result1 = JSPLib.danbooru.getNextPageID(array1,false);
+    let result1 = JSPLib.danbooru.getNextPageID(array1,false);
     let result2 = JSPLib.danbooru.getNextPageID(array1,true);
     console.log(`for item array ${repr(array1)}, the next page ID going in forward should be 25 ${bracket(result1)}`,RecordResult(result1 === 25));
     console.log(`for item array ${repr(array1)}, the next page ID going in reverse should be 27 ${bracket(result2)}`,RecordResult(result2 === 27));
-
-    console.log("Checking incrementCounter");
-    JSPLib.danbooru.counter_domname = "#checklibrary-count";
-    await JSPLib.utility.sleep(5000);
-    result1 = JSPLib.danbooru.num_network_requests;
-    JSPLib.danbooru.incrementCounter();
-    result2 = JSPLib.danbooru.num_network_requests;
-    console.log(`the counter should have incremented by 1 ${bracket(result1)}`,RecordResult((result2 - result1) === 1));
-
-    console.log("Checking decrementCounter");
-    await JSPLib.utility.sleep(5000);
-    result1 = JSPLib.danbooru.num_network_requests;
-    JSPLib.danbooru.decrementCounter();
-    result2 = JSPLib.danbooru.num_network_requests;
-    console.log(`the counter should have decremented by 1 ${bracket(result1)}`,RecordResult((result1 - result2) === 1));
-
-    console.log("Checking rateLimit");
-    JSPLib.danbooru.num_network_requests = JSPLib.danbooru.max_network_requests;
-    RateLimit();
-    await JSPLib.utility.sleep(5000);
-    JSPLib.danbooru.num_network_requests = 0;
-    await JSPLib.utility.sleep(2000);
 
     console.log("Checking getShortName");
     result1 = JSPLib.danbooru.getShortName('copyright');
@@ -1470,12 +1542,12 @@ async function checklibrary() {
     CheckValidateLibrary();
     await CheckStorageLibrary();
     CheckConcurrencyLibrary();
+    await CheckNetworkLibrary();
     await CheckDanbooruLibrary();
     await CheckLoadLibrary();
-
     console.log(`All library results: ${overall_test_successes} succeses, ${overall_test_failures} failures`);
 }
 
 /****PROGRAM START****/
 
-JSPLib.load.programInitialize(checklibrary,'CL',['window.jQuery','window.Danbooru'],["footer"]);
+JSPLib.load.programInitialize(checklibrary,'CL',[WINDOWNAME + '.jQuery',WINDOWNAME + '.Danbooru'],["footer"]);
