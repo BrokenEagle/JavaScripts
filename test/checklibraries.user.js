@@ -16,10 +16,12 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/concurrency.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/network.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/saucenao.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/validate.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/utility.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/statistics.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/debug.js
+// @connect      saucenao.com
 // ==/UserScript==
 
 /* global jQuery JSPLib validate */
@@ -27,6 +29,9 @@
 /****SETUP****/
 
 JSPLib.debug.debug_console = true;
+
+//Set this key for SauceNAO test
+const saucenao_api_key = null;
 
 const [WINDOWVALUE,WINDOWNAME] = (typeof unsafeWindow !== "undefined" ? [unsafeWindow,'unsafeWindow'] : [window,'window']);
 
@@ -1461,6 +1466,100 @@ async function CheckDanbooruLibrary() {
     console.log(`CheckDanbooruLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
 
+async function CheckSaucenaoLibrary() {
+    console.log("++++++++++++++++++++CheckSaucenaoLibrary++++++++++++++++++++");
+    console.log("Start time:", JSPLib.utility.getProgramTime());
+    ResetResult();
+
+    console.log("Checking getDBIndex");
+    let string1 = 'danbooru';
+    let number1 = 9;
+    let result1 = JSPLib.saucenao.getDBIndex(string1);
+    console.log(`Site ${string1} should have a DB index of ${number1} ${bracket(result1)}`,RecordResult(result1 === number1));
+
+    console.log("Checking checkSauce #1");
+    let object1 = null;
+    let bool1 = false;
+    result1 = JSPLib.saucenao.checkSauce(object1);
+    console.log(`Response of ${repr(object1)} should return a result of ${bool1} ${bracket(result1)}`,RecordResult(result1 === bool1));
+    console.log(`The no sauce flag should have been set ${bracket(JSPLib.saucenao.no_sauce)}`,RecordResult(JSPLib.saucenao.no_sauce === true));
+    await JSPLib.utility.sleep(2000);
+
+    console.log("Checking checkSauce #2");
+    object1 = {header: {long_remaining: 0}, results: {}};
+    bool1 = true;
+    result1 = JSPLib.saucenao.checkSauce(object1);
+    console.log(`Response of ${repr(object1)} should return a result of ${bool1} ${bracket(result1)}`,RecordResult(result1 === bool1));
+    console.log(`The no sauce flag should have been set ${bracket(JSPLib.saucenao.no_sauce)}`,RecordResult(JSPLib.saucenao.no_sauce === true));
+    await JSPLib.utility.sleep(2000);
+
+    console.log("Checking checkSauce #3");
+    object1 = {header: {long_remaining: 1, short_remaining: 0}, results: {}};
+    bool1 = true;
+    result1 = JSPLib.saucenao.checkSauce(object1);
+    console.log(`Response of ${repr(object1)} should return a result of ${bool1} ${bracket(result1)}`,RecordResult(result1 === bool1));
+    console.log(`The no sauce flag should not have been set ${bracket(JSPLib.saucenao.no_sauce)}`,RecordResult(JSPLib.saucenao.no_sauce === false));
+    await JSPLib.utility.sleep(2000);
+
+    console.log("Checking checkSauce #4");
+    object1 = {header: {long_remaining: 1, short_remaining: 1, status: -1, message: 'Some message.'}};
+    bool1 = false;
+    result1 = JSPLib.saucenao.checkSauce(object1);
+    console.log(`Response of ${repr(object1)} should return a result of ${bool1} ${bracket(result1)}`,RecordResult(result1 === bool1));
+    console.log(`The no sauce flag should not have been set ${bracket(JSPLib.saucenao.no_sauce)}`,RecordResult(JSPLib.saucenao.no_sauce === false));
+    await JSPLib.utility.sleep(2000);
+
+    console.log("Checking checkSauce #5");
+    object1 = {header: {long_remaining: 1, short_remaining: 1}, results: {}};
+    bool1 = true;
+    result1 = JSPLib.saucenao.checkSauce(object1);
+    console.log(`Response of ${repr(object1)} should return a result of ${bool1} ${bracket(result1)}`,RecordResult(result1 === bool1));
+    console.log(`The no sauce flag should not have been set ${bracket(JSPLib.saucenao.no_sauce)}`,RecordResult(JSPLib.saucenao.no_sauce === false));
+    await JSPLib.utility.sleep(2000);
+
+    console.log("Checking getSauce #1");
+    object1 = {header: {long_remaining: 1, short_remaining: 1}, results: {}};
+    bool1 = false;
+    result1 = await JSPLib.saucenao.getSauce();
+    console.log(`No API key should return a result of ${bool1} ${bracket(result1)}`,RecordResult(result1 === bool1));
+    await JSPLib.utility.sleep(2000);
+
+    console.log("Checking getSauce #2");
+    JSPLib.saucenao.api_key = saucenao_api_key;
+    JSPLib.saucenao._sauce_wait = Date.now() + JSPLib.utility.one_second;
+    bool1 = false;
+    result1 = await JSPLib.saucenao.getSauce();
+    console.log(`Wait time remaining should should return a result of ${bool1} ${bracket(result1)}`,RecordResult(result1 === bool1));
+    await JSPLib.utility.sleep(2000);
+
+    if (typeof GM.xmlHttpRequest !== 'undefined') {
+        //Save old settings
+        let old_xhr = jQuery.ajaxSettings.xhr;
+        JSPLib.network.jQuerySetup();
+
+        console.log("Checking getSauce #3");
+        let url1 = 'https://raikou4.donmai.us/preview/d3/4e/d34e4cf0a437a5d65f8e82b7bcd02606.jpg';
+        let resp1 = await JSPLib.saucenao.getSauce(url1,JSPLib.saucenao.getDBIndex('danbooru'),true);
+        let boolarray1 = [typeof resp1 === "object" && resp1 !== null];
+        boolarray1[0] && boolarray1.push('header' in resp1);
+        boolarray1[0] && boolarray1.push('results' in resp1);
+        console.log(`Image with URL ${url1} should have a header and results ${bracket(repr(boolarray1))}`,resp1,RecordResult(boolarray1.every(val => val)));
+        if (boolarray1.every(val => val)) {
+            let bool1 = ArrayEqual(Object.keys(resp1.header.index),['9']);
+            console.log(`All results should be from Danbooru ${bracket(bool1)}`,RecordResult(bool1));
+        }
+
+        //Restore old settings
+        jQuery.ajaxSetup({
+            xhr: old_xhr
+        });
+    } else {
+        console.log("Skipping getSauce tests...");
+    }
+
+    console.log(`CheckSaucenaoLibrary results: ${test_successes} succeses, ${test_failures} failures`);
+}
+
 async function CheckLoadLibrary() {
     console.log("++++++++++++++++++++CheckLoadLibrary++++++++++++++++++++");
     console.log("Start time:", JSPLib.utility.getProgramTime());
@@ -1543,6 +1642,7 @@ async function checklibrary() {
     CheckConcurrencyLibrary();
     await CheckNetworkLibrary();
     await CheckDanbooruLibrary();
+    await CheckSaucenaoLibrary();
     await CheckLoadLibrary();
     console.log(`All library results: ${overall_test_successes} succeses, ${overall_test_failures} failures`);
 }
