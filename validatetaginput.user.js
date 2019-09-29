@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      27.6
+// @version      27.7
+// @description  Validates tag add/remove inputs on a post edit or upload, plus several other post validations.
 // @source       https://danbooru.donmai.us/users/23799
-// @description  Validates tag add/remove inputs on a post edit or upload.
 // @author       BrokenEagle
+// @match        *://*.donmai.us/
 // @match        *://*.donmai.us/posts*
 // @match        *://*.donmai.us/uploads/new*
 // @match        *://*.donmai.us/settings
@@ -13,15 +14,18 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/validatetaginput.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/menu.js
 // ==/UserScript==
+
+/* global JSPLib $ Danbooru */
 
 /****Global variables****/
 
@@ -108,36 +112,6 @@ const settings_config = {
     }
 }
 
-//CSS constants
-
-const menu_css = `
-#vti-console {
-    width: 100%;
-    min-width: 100em;
-}
-#vti-console .expandable {
-    width: 90%;
-}
-#vti-cache-viewer textarea {
-    width: 100%;
-    min-width: 40em;
-    height: 50em;
-    padding: 5px;
-}
-#vti-cache-editor-errors {
-    display: none;
-    border: solid lightgrey 1px;
-    margin: 0.5em;
-    padding: 0.5em;
-}
-#vti-settings .vti-linkclick .vti-control {
-    display: inline;
-}
-#validate-tag-input a {
-    color:#0073ff;
-}
-`;
-
 //HTML constants
 
 const submit_button = `
@@ -151,9 +125,9 @@ const input_validator = `
 </div>`;
 
 const warning_messages = `
-<div id="warning-bad-upload" class="error-messages ui-state-error ui-corner-all" style="display:none"></div>
-<div id="warning-new-tags" class="error-messages ui-state-error ui-corner-all" style="display:none"></div>
-<div id="warning-bad-removes" class="error-messages ui-state-highlight ui-corner-all" style="display:none"></div>`;
+<div id="warning-bad-upload" class="notice notice-error" style="padding:0.5em;display:none"></div>
+<div id="warning-new-tags" class="notice notice-error" style="padding:0.5em;display:none"></div>
+<div id="warning-bad-removes" class="notice notice-info" style="padding:0.5em;display:none"></div>`;
 
 const how_to_tag = `Read <a href="/wiki_pages/show_or_new?title=howto%3atag">howto:tag</a> for how to tag.`;
 
@@ -164,6 +138,11 @@ const vti_menu = `
 </div>
 <div id="vti-console" class="jsplib-console">
     <div id="vti-settings" class="jsplib-outer-menu">
+        <div id="vti-general-settings" class="jsplib-settings-grouping">
+            <div id="vti-general-message" class="prose">
+                <h4>General settings</h4>
+            </div>
+        </div>
         <div id="vti-pre-edit-settings" class="jsplib-settings-grouping">
             <div id="vti-pre-edit-message" class="prose">
                 <h4>Pre edit settings</h4>
@@ -310,7 +289,7 @@ const implication_fields = "antecedent_name";
 
 const relation_constraints = {
     entry: JSPLib.validate.arrayentry_constraints(),
-    value: JSPLib.validate.stringonly_constraints
+    value: JSPLib.validate.basic_stringonly_validator
 };
 
 const artist_constraints = {
@@ -738,14 +717,14 @@ async function ValidateArtist() {
         }
     } else {
         //Validate artists have entry
-        let uncached_artists = await JSPLib.storage.batchStorageCheck(artist_names,ValidateEntry,artist_expiration,'are')
+        let [cached_artists,uncached_artists] = await JSPLib.storage.batchStorageCheck(artist_names,ValidateEntry,artist_expiration,'are')
         if (uncached_artists.length === 0) {
             ValidateArtist.debuglog("No missing artists. [cache hit]");
             return;
         }
         let tag_resp = await JSPLib.danbooru.submitRequest('tags',{search: {name: uncached_artists.join(','), has_artist: true}, only: tag_fields});
         tag_resp.forEach((entry)=>{
-            JSPLib.storage.saveData('are-' + entry.name,{value: true, expires: JSPLib.utility.getExpiration(artist_expiration)});
+            JSPLib.storage.saveData('are-' + entry.name,{value: true, expires: JSPLib.utility.getExpires(artist_expiration)});
         });
         let found_artists = JSPLib.utility.getObjectAttributes(tag_resp,'name');
         let missing_artists = JSPLib.utility.setDifference(uncached_artists,found_artists);
@@ -800,6 +779,7 @@ function BroadcastVTI(ev) {
     switch (ev.data.type) {
         case "reset":
             Object.assign(VTI,program_reset_keys);
+            //falls through
         case "settings":
             VTI.user_settings = ev.data.user_settings;
             VTI.is_setting_menu && JSPLib.menu.updateUserSettings('vti');
@@ -810,6 +790,7 @@ function BroadcastVTI(ev) {
                     sessionStorage.removeItem(key);
                 }
             });
+            //falls through
         default:
             //do nothing
     }
@@ -817,6 +798,7 @@ function BroadcastVTI(ev) {
 
 function RenderSettingsMenu() {
     $("#validate-tag-input").append(vti_menu);
+    $("#vti-general-settings").append(JSPLib.menu.renderDomainSelectors('vti', 'ValidateTagInput'));
     $("#vti-pre-edit-settings").append(JSPLib.menu.renderCheckbox("vti",'single_session_warning'));
     $("#vti-pre-edit-settings").append(JSPLib.menu.renderCheckbox("vti",'artist_check_enabled'));
     $("#vti-pre-edit-settings").append(JSPLib.menu.renderCheckbox("vti",'copyright_check_enabled'));
@@ -833,6 +815,7 @@ function RenderSettingsMenu() {
     $("#vti-cache-editor-controls").append(JSPLib.menu.renderKeyselect('vti','data_source',true,'indexed_db',all_source_types,"Indexed DB is <b>Cache Data</b> and Local Storage is <b>Program Data</b>."));
     $("#vti-cache-editor-controls").append(JSPLib.menu.renderKeyselect('vti','data_type',true,'tag',all_data_types,"Only applies to Indexed DB.  Use <b>Custom</b> for querying by keyname."));
     $("#vti-cache-editor-controls").append(JSPLib.menu.renderTextinput('vti','data_name',20,true,"Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.",['get','save','delete']));
+    JSPLib.menu.engageUI('vti',true);
     JSPLib.menu.saveUserSettingsClick('vti','ValidateTagInput');
     JSPLib.menu.resetUserSettingsClick('vti','ValidateTagInput',localstorage_keys,program_reset_keys);
     JSPLib.menu.cacheInfoClick('vti',program_cache_regex,"#vti-cache-info-table");
@@ -857,7 +840,7 @@ function Main() {
         was_upload: JSPLib.storage.getStorageData('vti-was-upload',sessionStorage,false),
         validate_lines: [],
         storage_keys: {indexed_db: [], local_storage: []},
-        is_setting_menu: Boolean($("#c-users #a-edit").length),
+        is_setting_menu: JSPLib.danbooru.isSettingMenu(),
         settings_config: settings_config
     }
     VTI.user_settings = JSPLib.menu.loadUserSettings('vti');
@@ -869,8 +852,10 @@ function Main() {
             JSPLib.menu.installSettingsMenu("ValidateTagInput");
             Timer.RenderSettingsMenu();
         });
-        //Including this only during a transitory period for all scripts to be updated to the new library version
-        JSPLib.utility.setCSSStyle(menu_css,'menu');
+        return;
+    }
+    if (!JSPLib.menu.isScriptEnabled('ValidateTagInput')) {
+        Main.debuglog("Script is disabled on", window.location.hostname);
         return;
     }
     if (VTI.is_upload) {
