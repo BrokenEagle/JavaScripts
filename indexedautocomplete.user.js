@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      25.1
+// @version      25.2
+// @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
-// @description  Uses indexed DB for autocomplete
 // @author       BrokenEagle
 // @match        *://*.donmai.us/*
 // @grant        none
@@ -12,17 +12,18 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/menu.js
 // ==/UserScript==
 
-/* global $ Danbooru JSPLib validate LZString */
+/* global JSPLib $ Danbooru validate LZString */
 
 /****Global variables****/
 
@@ -101,7 +102,7 @@ const settings_config = {
     postcount_scale: {
         allitems: scale_types,
         default: ['linear'],
-        validate: (data)=>{return Array.isArray(data) && data.length === 1 && scale_types.includes(data[0])},
+        validate: (data)=>{return JSPLib.menu.validateCheckboxRadio(data,'radio',scale_types);},
         hint: "Select the type of scaling to be applied to the post count."
     },
     exact_source_weight: {
@@ -249,34 +250,6 @@ const forum_css = `
 }
 `;
 
-const menu_css = `
-#iac-console {
-    width: 100%;
-    min-width: 100em;
-}
-#iac-console .expandable {
-    width: 90%;
-}
-#iac-cache-viewer textarea {
-    width: 100%;
-    min-width: 40em;
-    height: 50em;
-    padding: 5px;
-}
-#iac-cache-editor-errors {
-    display: none;
-    border: solid lightgrey 1px;
-    margin: 0.5em;
-    padding: 0.5em;
-}
-#iac-settings .iac-linkclick .iac-control {
-    display: inline;
-}
-#indexed-autocomplete a {
-    color:#0073ff;
-}
-`;
-
 //HTML Constants
 
 const forum_topic_search = `
@@ -303,6 +276,11 @@ const iac_menu = `
 </div>
 <div id="iac-console" class="jsplib-console">
     <div id="iac-settings" class="jsplib-outer-menu">
+        <div id="iac-general-settings" class="jsplib-settings-grouping">
+            <div id="iac-general-message" class="prose">
+                <h4>General settings</h4>
+            </div>
+        </div>
         <div id="iac-source-settings" class="jsplib-settings-grouping">
             <div id="iac-source-message" class="prose">
                 <h4>Source settings</h4>
@@ -1112,17 +1090,7 @@ function ValidateUsageData(choice_info) {
 
 //Library functions
 
-JSPLib.danbooru.wikiLink = function (tag,text) {
-    return `<a href="/wiki_pages/show_or_new?title=${encodeURIComponent(tag)}">${text}</a>`;
-};
-
-JSPLib.danbooru.isSettingMenu = function () {
-    return document.body.dataset.controller === "users" && document.body.dataset.action === "edit";
-};
-
-JSPLib.utility.displayCase = function (string) {
-    return JSPLib.utility.titleizeString(string.replace(/[_]/g,' '));
-};
+////NONE
 
 //Helper functions
 
@@ -1310,7 +1278,7 @@ function FixExpirationCallback(key,value,tagname,type) {
             return;
         }
         var expiration_time = ExpirationTime(type,data[0].post_count);
-        JSPLib.storage.saveData(key, {value: value, expires: JSPLib.utility.getExpiration(expiration_time)});
+        JSPLib.storage.saveData(key, {value: value, expires: JSPLib.utility.getExpires(expiration_time)});
     });
 }
 
@@ -1480,7 +1448,7 @@ function InsertUserSelected(data,input,selected) {
     //So the use count doesn't get squashed by the new variable assignment
     let use_count = (IAC.choice_data[type][term] && IAC.choice_data[type][term].use_count) || 0;
     IAC.choice_data[type][term] = source_data;
-    IAC.choice_data[type][term].expires = JSPLib.utility.getExpiration(GetUsageExpires());
+    IAC.choice_data[type][term].expires = JSPLib.utility.getExpires(GetUsageExpires());
     IAC.choice_data[type][term].use_count = use_count + 1;
     if (IAC.user_settings.usage_maximum > 0) {
         IAC.choice_data[type][term].use_count = Math.min(IAC.choice_data[type][term].use_count, IAC.user_settings.usage_maximum);
@@ -1561,7 +1529,7 @@ function PruneUsageData() {
         let type_entry = IAC.choice_data[type_key];
         for (let key in type_entry) {
             let entry = type_entry[key];
-            if (!JSPLib.validate.validateExpires(entry.expires, GetUsageExpires())) {
+            if (!JSPLib.utility.validateExpires(entry.expires, GetUsageExpires())) {
                 PruneUsageData.debuglog("Pruning choice data!", type_key, key);
                 IAC.choice_order[type_key] = JSPLib.utility.setDifference(IAC.choice_order[type_key], [key])
                 delete type_entry[key];
@@ -1602,7 +1570,7 @@ async function RelatedTagsButton(event) {
         }
         //inclusion_constraints doesn't allow for null...yet
         data.category = category;
-        JSPLib.storage.saveData(key, {value: data, expires: JSPLib.utility.getExpiration(MinimumExpirationTime('relatedtag'))});
+        JSPLib.storage.saveData(key, {value: data, expires: JSPLib.utility.getExpires(MinimumExpirationTime('relatedtag'))});
         $("#related-tags-container .current-related-tags-columns").html(Timer.RenderTagColumns(data));
     }
     Danbooru.RelatedTag.update_selected();
@@ -1651,7 +1619,7 @@ function RebindRenderCheck() {
                 }
             });
         }
-        if (!JSPLib.validate.validateExpires(render_expires)) {
+        if (!JSPLib.utility.validateExpires(render_expires)) {
             clearInterval(render_timer);
             return;
         }
@@ -1761,7 +1729,7 @@ function NetworkSource(type,key,term,resp,metatag,context,process=true) {
         var d = data.map(source_config[type].map);
         var expiration_time = source_config[type].expiration(d);
         var save_data = JSPLib.utility.dataCopy(d);
-        JSPLib.storage.saveData(key, {value: save_data, expires: JSPLib.utility.getExpiration(expiration_time)});
+        JSPLib.storage.saveData(key, {value: save_data, expires: JSPLib.utility.getExpires(expiration_time)});
         if (source_config[type].fixupexpiration && d.length) {
             setTimeout(()=>{FixExpirationCallback(key, save_data, save_data[0].value, type);}, callback_interval);
         }
@@ -1813,7 +1781,7 @@ function AnySourceIndexed(keycode,default_metatag='',multiple=false,single=false
 function RecheckSourceData(type,key,term,data) {
     if (IAC.user_settings.recheck_data_interval > 0) {
         let recheck_time = data.expires - GetRecheckExpires();
-        if (!JSPLib.validate.validateExpires(recheck_time)) {
+        if (!JSPLib.utility.validateExpires(recheck_time)) {
             JSPLib.debug.debuglog("Rechecking", type, ":", term);
             NetworkSource(type, key, term, null, null, null, false);
         }
@@ -1927,6 +1895,7 @@ function GetRecheckExpires() {
 
 function RenderSettingsMenu() {
     $("#indexed-autocomplete").append(iac_menu);
+    $("#iac-general-settings").append(JSPLib.menu.renderDomainSelectors('iac', 'IndexedAutocomplete'));
     $("#iac-source-settings").append(JSPLib.menu.renderCheckbox('iac', 'BUR_source_enabled'));
     $("#iac-source-settings").append(JSPLib.menu.renderCheckbox('iac', 'metatag_source_enabled'));
     $("#iac-usage-settings").append(JSPLib.menu.renderCheckbox('iac', 'usage_enabled'));
@@ -1987,7 +1956,6 @@ function Main() {
     };
     IAC.user_settings = JSPLib.menu.loadUserSettings('iac');
     IAC.channel.onmessage = BroadcastIAC;
-    //Check this first in case the settings page doesn't have autocomplete inputs in the future
     if (IAC.is_setting_menu) {
         JSPLib.validate.dom_output = "#iac-cache-editor-errors";
         JSPLib.menu.loadStorageKeys('iac', program_cache_regex);
@@ -1995,6 +1963,10 @@ function Main() {
             JSPLib.menu.installSettingsMenu("IndexedAutocomplete");
             Timer.RenderSettingsMenu();
         });
+    }
+    if (!JSPLib.menu.isScriptEnabled('IndexedAutocomplete')) {
+        Main.debuglog("Script is disabled on", window.location.hostname);
+        return;
     }
     if ($(autocomplete_domlist.join(',')).length === 0) {
         Main.debuglog("No autocomplete inputs! Exiting...");
