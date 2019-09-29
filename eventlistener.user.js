@@ -1,24 +1,27 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      15.3
-// @source       https://danbooru.donmai.us/users/23799
+// @version      15.4
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools)
+// @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
 // @match        *://*.donmai.us/*
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/eventlistener.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jsdiff/4.0.1/diff.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/menu.js
 // ==/UserScript==
+
+/* global JSPLib jQuery $ Danbooru Diff */
 
 /****Global variables****/
 
@@ -94,13 +97,13 @@ const settings_config = {
     events_enabled: {
         allitems: all_events,
         default: enable_events,
-        validate: (data)=>{return Array.isArray(data) && data.reduce((is_string,val)=>{return is_string && (typeof val === 'string') && all_events.includes(val);},true)},
+        validate: (data)=>{return JSPLib.menu.validateCheckboxRadio(data,'checkbox',all_events);},
         hint: "Uncheck to turn off event type."
     },
     autosubscribe_enabled: {
         allitems: autosubscribe_events,
         default: [],
-        validate: (data)=>{return Array.isArray(data) && data.reduce((is_string,val)=>{return is_string && (typeof val === 'string') && autosubscribe_events.includes(val);},true)},
+        validate: (data)=>{return JSPLib.menu.validateCheckboxRadio(data,'checkbox',autosubscribe_events);},
         hint: "Check to autosubscribe event type."
     }
 }
@@ -125,13 +128,15 @@ const program_css = `
     margin-right: 0;
 }
 .striped .el-monospace-link:link,
-.post-preview .el-monospace-link:link {
+.striped .el-monospace-link:visited,
+.post-preview .el-monospace-link:link,
+.post-preview .el-monospace-link:visited {
     font-family: monospace;
-    color: #0073ff;
+    color: var(--link-color);
 }
 .striped .el-monospace-link:hover,
-.post-preview .el-monospace-link:link {
-    color: #80b9ff;
+.post-preview .el-monospace-link:hover {
+    color: var(--link-hover-color);
 }
 .el-subscribe-pool-container .el-subscribe-dual-links .el-monospace-link {
     color: grey;
@@ -235,36 +240,6 @@ const pool_css = `
 }
 `;
 
-const menu_css = `
-#el-console {
-    width: 100%;
-    min-width: 100em;
-}
-#el-console hr,
-#el-console .expandable {
-    width: 90%;
-    margin-left: 0;
-}
-#el-cache-viewer textarea {
-    width: 100%;
-    min-width: 40em;
-    height: 50em;
-    padding: 5px;
-}
-#el-cache-editor-errors {
-    display: none;
-    border: solid lightgrey 1px;
-    margin: 0.5em;
-    padding: 0.5em;
-}
-#el-settings .el-linkclick .el-control {
-    display: inline;
-}
-#event-listener a {
-    color:#0073ff;
-}
-`;
-
 //HTML constants
 
 const notice_box = `
@@ -344,6 +319,11 @@ const el_menu = `
 </div>
 <div id="el-console" class="jsplib-console">
     <div id="el-settings" class="jsplib-outer-menu">
+        <div id="el-general-settings" class="jsplib-settings-grouping">
+            <div id="el-general-message" class="prose">
+                <h4>General settings</h4>
+            </div>
+        </div>
         <div id="el-notice-settings" class="jsplib-settings-grouping">
             <div id="el-network-message" class="prose">
                 <h4>Notice settings</h4>
@@ -642,43 +622,12 @@ function CorrectList(type,typelist) {
 
 //Library functions
 
-JSPLib.danbooru.getShowID = function() {
-    try {
-        return (document.body.dataset.action === "show" ? parseInt(window.location.pathname.match(/\d+$/)[0]) : 0);
-    } catch (e) {
-        //There is a problem with the pathname
-        return -1;
-    }
-};
-
-JSPLib.utility.throw = function(e) {
-    throw e;
-}
-
-JSPLib.danbooru.getNotify = async function (url,url_addons={}) {
-    try {
-        return await jQuery.get(url,url_addons);
-    } catch(e) {
-        //Swallow exception... will return default value
-        e = (typeof e === "object" && 'status' in e && 'responseText' in e ? e : {status: 999, responseText: "Bad error code!"});
-        JSPLib.debug.debuglogLevel("GetNotify error:",e.status,e.responseText,JSPLib.debug.ERROR);
-        Danbooru.Utility.error(`HTTP ${e.status}: ${e.responseText}`);
-        return false;
-    }
-};
-
-JSPLib.utility.maxLengthString = function (string,length) {
-    let check_length = (length ? length : JSPLib.utility.max_column_characters);
-    if (string.length > check_length) {
-        string = string.slice(0,check_length-1) + '…';
-    }
-    return string;
-};
+////None
 
 //Helper functions
 
 async function SetRecentDanbooruID(type,useritem=false) {
-    let jsonitem = await JSPLib.danbooru.submitRequest(typedict[type].controller,JSPLib.danbooru.joinArgs(typedict[type].addons,{limit: 1}),[]);
+    let jsonitem = await JSPLib.danbooru.submitRequest(typedict[type].controller,JSPLib.utility.joinArgs(typedict[type].addons,{limit: 1}),[]);
     if (jsonitem.length) {
         SaveLastID(type,JSPLib.danbooru.getNextPageID(jsonitem,true));
     } else if (useritem) {
@@ -768,7 +717,7 @@ function CheckList(type) {
 
 function SaveLastID(type,lastid) {
     let key = `el-${type}lastid`;
-    let previousid = JSPLib.storage.checkStorageData(key,ValidateProgramData,localStorage,0);
+    let previousid = JSPLib.storage.checkStorageData(key,ValidateProgramData,localStorage,1);
     lastid = Math.max(previousid,lastid);
     JSPLib.storage.setStorageData(key,lastid,localStorage);
     SaveLastID.debuglog(`Set last ${type} ID:`,lastid);
@@ -860,7 +809,7 @@ function CheckAbsence() {
 //Get single instance of various types and insert into table row
 
 async function AddForumPost(forumid,$rowelement) {
-    let forum_post = await JSPLib.danbooru.getNotify(`/forum_posts/${forumid}`);
+    let forum_post = await JSPLib.network.getNotify(`/forum_posts/${forumid}`);
     if (!forum_post) {
         return;
     }
@@ -886,7 +835,7 @@ function AddRenderedNote(noteid,$rowelement) {
 }
 
 async function AddDmail(dmailid,$rowelement) {
-    let dmail = await JSPLib.danbooru.getNotify(`/dmails/${dmailid}`);
+    let dmail = await JSPLib.network.getNotify(`/dmails/${dmailid}`);
     if (!dmail) {
         return;
     }
@@ -902,7 +851,7 @@ async function AddWiki(wikiverid,$rowelement) {
     let url_addons = {search:{wiki_page_id: wikiid}, page: `b${wikiverid}`, only: 'id', limit: 1};
     let prev_wiki = await JSPLib.danbooru.submitRequest('wiki_page_versions',url_addons);
     if (prev_wiki.length) {
-        let wiki_diff = await JSPLib.danbooru.getNotify('/wiki_page_versions/diff',{otherpage: wikiverid, thispage: prev_wiki[0].id});
+        let wiki_diff = await JSPLib.network.getNotify('/wiki_page_versions/diff',{otherpage: wikiverid, thispage: prev_wiki[0].id});
         if (!wiki_diff) {
             return;
         }
@@ -917,7 +866,7 @@ async function AddWiki(wikiverid,$rowelement) {
 }
 
 async function AddPool(poolverid,$rowelement) {
-    let pool_diff = await JSPLib.danbooru.getNotify(`/pool_versions/${poolverid}/diff`);
+    let pool_diff = await JSPLib.network.getNotify(`/pool_versions/${poolverid}/diff`);
     let $pool_diff = $.parseHTML(pool_diff);
     let old_desc = $("#a-diff li:nth-of-type(2)",$pool_diff).text().replace(pool_desc_regex,'');
     let new_desc = $("#a-diff li:nth-of-type(3)",$pool_diff).text().replace(pool_desc_regex,'');
@@ -1145,7 +1094,7 @@ async function GetPostsCountdown(limit,searchstring,domname) {
             GetPostsCountdown.debuglog("Pages left #",page_num);
             domname && jQuery(domname).html(page_num);
         }
-        let request_addons = JSPLib.danbooru.joinArgs(tag_addon,limit_addon,page_addon);
+        let request_addons = JSPLib.utility.joinArgs(tag_addon,limit_addon,page_addon);
         let request_key = 'posts-' + jQuery.param(request_addons);
         let temp_items = await JSPLib.danbooru.submitRequest('posts',request_addons,[],request_key);
         return_items = return_items.concat(temp_items);
@@ -1578,7 +1527,7 @@ async function CheckUserType(type) {
     let lastidkey = `el-${type}lastid`;
     let typelastid = JSPLib.storage.checkStorageData(lastidkey,ValidateProgramData,localStorage,0);
     if (typelastid) {
-        let url_addons = JSPLib.danbooru.joinArgs(typedict[type].addons,typedict[type].useraddons(EL.username),{only: typedict[type].only});
+        let url_addons = JSPLib.utility.joinArgs(typedict[type].addons,typedict[type].useraddons(EL.username),{only: typedict[type].only});
         let jsontype = await JSPLib.danbooru.getAllItems(typedict[type].controller,query_limit,{addons:url_addons,page:typelastid,reverse:true});
         let filtertype = typedict[type].filter(jsontype);
         let lastusertype = (jsontype.length ? [JSPLib.danbooru.getNextPageID(jsontype,true)] : []);
@@ -1586,7 +1535,7 @@ async function CheckUserType(type) {
             EL.lastids.user[type] = lastusertype[0];
             CheckUserType.debuglog(`Found ${type}(s)!`,EL.lastids.user[type]);
             let idlist = JSPLib.utility.getObjectAttributes(filtertype,'id');
-            url_addons = JSPLib.danbooru.joinArgs(typedict[type].addons,{search: {id: idlist.join(',')}, limit: idlist.length});
+            url_addons = JSPLib.utility.joinArgs(typedict[type].addons,{search: {id: idlist.join(',')}, limit: idlist.length});
             let typehtml = await $.get(`/${typedict[type].controller}`, url_addons);
             let $typepage = $(typehtml);
             typedict[type].insert($typepage,type);
@@ -1617,9 +1566,9 @@ async function CheckSubscribeType(type) {
         let savedlastid = JSPLib.storage.checkStorageData(savedlastidkey,ValidateProgramData,localStorage,[]);
         let savedlist = JSPLib.storage.checkStorageData(savedlistkey,ValidateProgramData,localStorage,[]);
         if (!savedlastid.length || !savedlist.length) {
-            let urladdons = JSPLib.danbooru.joinArgs(typedict[type].addons,{only: typedict[type].only});
+            let urladdons = JSPLib.utility.joinArgs(typedict[type].addons,{only: typedict[type].only});
             if (!EL.no_limit) {
-                urladdons = JSPLib.danbooru.joinArgs(urladdons,{search:{id:`${typelastid}..${typelastid+typedict[type].limit}`}});
+                urladdons = JSPLib.utility.joinArgs(urladdons,{search:{id:`${typelastid}..${typelastid+typedict[type].limit}`}});
             }
             let jsontype = await JSPLib.danbooru.getAllItems(typedict[type].controller,query_limit,{page:typelastid,addons:urladdons,reverse:true});
             if (jsontype.length === typedict[type].limit) {
@@ -1648,7 +1597,7 @@ async function CheckSubscribeType(type) {
         if (subscribetypelist.length) {
             EL.lastids.subscribe[type] = jsontypelist[0];
             CheckSubscribeType.debuglog(`Found ${type}(s)!`,EL.lastids.subscribe[type]);
-            let url_addons = JSPLib.danbooru.joinArgs(typedict[type].addons,{search: {id: subscribetypelist.join(',')}, limit: subscribetypelist.length});
+            let url_addons = JSPLib.utility.joinArgs(typedict[type].addons,{search: {id: subscribetypelist.join(',')}, limit: subscribetypelist.length});
             let typehtml = await $.get(`/${typedict[type].controller}`, url_addons);
             let $typepage = $(typehtml);
             typedict[type].insert($typepage,type);
@@ -1755,12 +1704,14 @@ function BroadcastEL(ev) {
             });
             break;
         case "reset":
-            Object.assign(IAC,program_reset_keys);
+            Object.assign(EL,program_reset_keys);
             JSPLib.utility.fullHide("#event-notice,#el-subscribe-events,.el-subscribe-dual-links");
+            //falls through
         case "settings":
             EL.user_settings = ev.data.user_settings;
             EL.is_setting_menu && JSPLib.menu.updateUserSettings('el');
             ToggleSubscribeLinks();
+            //falls through
         default:
             //do nothing
     }
@@ -1792,6 +1743,7 @@ function GetRecheckExpires() {
 
 function RenderSettingsMenu() {
     $("#event-listener").append(el_menu);
+    $("#el-general-settings").append(JSPLib.menu.renderDomainSelectors('el', 'EventListener'));
     $("#el-notice-settings").append(JSPLib.menu.renderCheckbox("el",'autolock_notices'));
     $("#el-notice-settings").append(JSPLib.menu.renderCheckbox("el",'mark_read_topics'));
     $("#el-notice-settings").append(JSPLib.menu.renderCheckbox("el",'autoclose_dmail_notice'));
@@ -1841,7 +1793,8 @@ function Main() {
         post_ids: [],
         storage_keys: {local_storage: []},
         is_setting_menu: Boolean($("#c-users #a-edit").length),
-        settings_config: settings_config
+        settings_config: settings_config,
+        channel: new BroadcastChannel('EventListener')
     };
     if (EL.username === "Anonymous") {
         Main.debuglog("User must log in!");
@@ -1851,11 +1804,22 @@ function Main() {
         return;
     }
     EL.user_settings = JSPLib.menu.loadUserSettings('el');
+    EL.channel.onmessage = BroadcastEL;
+    if (EL.is_setting_menu) {
+        JSPLib.validate.dom_output = "#el-cache-editor-errors";
+        JSPLib.menu.loadStorageKeys('el');
+        JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
+            JSPLib.menu.installSettingsMenu("EventListener");
+            RenderSettingsMenu();
+        });
+    }
+    if (!JSPLib.menu.isScriptEnabled('EventListener')) {
+        Main.debuglog("Script is disabled on", window.location.hostname);
+        return;
+    }
     EL.timeout_expires = GetRecheckExpires();
     EventStatusCheck();
     EL.locked_notice = EL.user_settings.autolock_notices;
-    EL.channel = new BroadcastChannel('EventListener');
-    EL.channel.onmessage = BroadcastEL;
     InitializeNoticeBox();
     var promise_array = [];
     if ((JSPLib.concurrency.checkTimeout('el-timeout',EL.timeout_expires) || HasEvents() || WasOverflow()) && JSPLib.concurrency.reserveSemaphore('el')) {
@@ -1914,16 +1878,6 @@ function Main() {
         } else if (EL.action === "gallery") {
             InitializePoolGalleryLinks();
         }
-    }
-    if (EL.is_setting_menu) {
-        JSPLib.validate.dom_output = "#el-cache-editor-errors";
-        JSPLib.menu.loadStorageKeys('el');
-        JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
-            JSPLib.menu.installSettingsMenu("EventListener");
-            RenderSettingsMenu();
-        });
-        //Including this only during a transitory period for all scripts to be updated to the new library version
-        JSPLib.utility.setCSSStyle(menu_css,'menu');
     }
     if (EL.user_settings.autoclose_dmail_notice) {
         HideDmailNotice();
