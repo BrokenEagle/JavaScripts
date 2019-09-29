@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         RecentTagsCalc
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.4
+// @version      6.5
+// @description  Use different mechanism to calculate RecentTags.
 // @source       https://danbooru.donmai.us/users/23799
-// @description  Use different mechanism to calculate RecentTags
 // @author       BrokenEagle
 // @match        *://*.donmai.us/uploads/new*
 // @match        *://*.donmai.us/posts/*
@@ -13,15 +13,18 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/recenttagscalc.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190213/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/menu.js
 // ==/UserScript==
+
+/* global JSPLib $ Danbooru */
 
 /***Global variables***/
 
@@ -199,42 +202,6 @@ let program_css = `
 }
 `;
 
-
-const menu_css = `
-/*Program specific*/
-#rtc-order-settings .rtc-sortlist li {
-    width: 6.5em;
-}
-/*Transitory*/
-#rtc-console {
-    width: 100%;
-    min-width: 100em;
-}
-#rtc-console hr,
-#rtc-console .expandable {
-    width: 90%;
-    margin-left: 0;
-}
-#rtc-cache-viewer textarea {
-    width: 100%;
-    min-width: 40em;
-    height: 50em;
-    padding: 5px;
-}
-#rtc-cache-editor-errors {
-    display: none;
-    border: solid lightgrey 1px;
-    margin: 0.5em;
-    padding: 0.5em;
-}
-#rtc-settings .rtc-linkclick .rtc-control {
-    display: inline;
-}
-#recent-tags-calc a {
-    color:#0073ff;
-}
-`;
-
 //HTML Constants
 
 const usertag_columns_html = `
@@ -248,6 +215,11 @@ const rtc_menu = `
 </div>
 <div id="cu-console" class="jsplib-console">
     <div id="rtc-settings" class="jsplib-outer-menu">
+        <div id="rtc-general-settings" class="jsplib-settings-grouping">
+            <div id="rtc-general-message" class="prose">
+                <h4>General settings</h4>
+            </div>
+        </div>
         <div id="rtc-order-settings" class="jsplib-settings-grouping">
             <div id="rtc-order-message" class="prose">
                 <h4>Order settings</h4>
@@ -458,7 +430,7 @@ const alias_fields = "consequent_name";
 
 const relation_constraints = {
     entry: JSPLib.validate.arrayentry_constraints,
-    value: JSPLib.validate.stringonly_constraints
+    value: JSPLib.validate.basic_stringonly_validator
 };
 
 const tag_constraints = {
@@ -536,7 +508,7 @@ function ValidateProgramData(key,entry) {
             if (!JSPLib.validate.validateIsArray(key,entry,maximum_validator)) {
                 return false;
             }
-            return JSPLib.validate.validateArrayValues(key,entry,JSPLib.validate.stringonly_constraints);
+            return JSPLib.validate.validateArrayValues(key,entry,JSPLib.validate.basic_stringonly_validator);
         case 'rtc-other-recent':
             if (!JSPLib.validate.validateIsArray(key,entry,{maximum: RTC.user_settings.maximum_tag_groups})) {
                 return false;
@@ -549,7 +521,7 @@ function ValidateProgramData(key,entry) {
                 if (!JSPLib.validate.validateHashEntries(entry_key, entry[i], other_recent_constraints)) {
                     return false;
                 }
-                if (!JSPLib.validate.validateArrayValues(entry_key+'.tags',entry[i].tags,JSPLib.validate.stringonly_constraints)) {
+                if (!JSPLib.validate.validateArrayValues(entry_key+'.tags',entry[i].tags,JSPLib.validate.basic_stringonly_validator)) {
                     return false;
                 }
             }
@@ -787,7 +759,7 @@ function CaptureTagSubmission(event) {
 //Main helper functions
 
 async function CheckMissingTags(tag_list,list_name="") {
-    let missing_tags = await JSPLib.storage.batchStorageCheck(tag_list,ValidateEntry,tag_expires,'tag');
+    let [found_tags,missing_tags] = await JSPLib.storage.batchStorageCheck(tag_list,ValidateEntry,tag_expires,'tag');
     if (missing_tags.length) {
         CheckMissingTags.debuglog("Missing tags:",missing_tags);
         await QueryMissingTags(missing_tags);
@@ -823,9 +795,10 @@ async function QueryMissingTags(missing_taglist) {
     return Promise.all(promise_array);
 }
 
+
 async function CheckTagDeletion() {
     let promise_array = [];
-    for (let tag in RTC.tag_data) {
+    Object.keys(RTC.tag_data).forEach((tag)=>{
         if (RTC.tag_data[tag].is_alias) {
             let alias_entryname = 'ta-' + tag;
             let promise_entry = JSPLib.storage.checkLocalDB(alias_entryname,ValidateEntry,tagalias_expires)
@@ -860,7 +833,7 @@ async function CheckTagDeletion() {
             });
             promise_array.push(promise_entry);
         }
-    }
+    });
 }
 
 function FilterDeletedTags() {
@@ -916,7 +889,7 @@ async function CheckAllRecentTags() {
         });
     }
     RTC.missing_recent_tags = await Timer.CheckMissingTags(FilterMetatags(tag_list),"Recent");
-    await Timer.CheckTagDeletion();
+    //await Timer.CheckTagDeletion();
     if (!RTC.user_settings.include_deleted_tags) {
         FilterDeletedTags();
     }
@@ -943,6 +916,7 @@ function AddRecentTags(newtags) {
                 JSPLib.storage.setStorageData('rtc-other-recent',RTC.other_recent,localStorage);
             }
             JSPLib.storage.setStorageData('rtc-was-upload',RTC.is_upload,localStorage);
+            //falls through
         case "single":
             if (newtags.length) {
                 RTC.recent_tags = newtags;
@@ -1019,6 +993,7 @@ function BroadcastRTC(ev) {
             break;
         case "reset":
             Object.assign(RTC,program_reset_keys);
+            //falls through
         case "settings":
             RTC.user_settings = ev.data.user_settings;
             RTC.tag_order = GetTagOrderType();
@@ -1030,6 +1005,7 @@ function BroadcastRTC(ev) {
                     sessionStorage.removeItem(key);
                 }
             });
+            //falls through
         default:
             //do nothing
     }
@@ -1045,6 +1021,7 @@ function GetTagOrderType() {
 
 function RenderSettingsMenu() {
     $("#recent-tags-calc").append(rtc_menu);
+    $("#rtc-general-settings").append(JSPLib.menu.renderDomainSelectors('rtc', 'RecentTagsCalc'));
     $("#rtc-order-settings").append(JSPLib.menu.renderInputSelectors("rtc",'uploads_order','radio'));
     $("#rtc-order-settings").append(JSPLib.menu.renderInputSelectors("rtc",'post_edits_order','radio'));
     $("#rtc-order-settings").append(JSPLib.menu.renderCheckbox("rtc",'metatags_first'));
@@ -1103,7 +1080,10 @@ function Main() {
             JSPLib.menu.installSettingsMenu("RecentTagsCalc");
             Timer.RenderSettingsMenu();
         });
-        JSPLib.utility.setCSSStyle(menu_css,'menu');
+        return;
+    }
+    if (!JSPLib.menu.isScriptEnabled('RecentTagsCalc')) {
+        Main.debuglog("Script is disabled on", window.location.hostname);
         return;
     }
     RTC.tag_order = GetTagOrderType();
@@ -1151,13 +1131,13 @@ JSPLib.debug.addFunctionTimers(Timer,false,[
 ]);
 
 JSPLib.debug.addFunctionTimers(Timer,true,[
-    CheckAllRecentTags,CheckAllFrequentTags,QueryFrequentTags,CheckTagDeletion
+    CheckAllRecentTags,CheckAllFrequentTags,QueryFrequentTags,//CheckTagDeletion
 ]);
 
 Timer.CheckMissingTags = JSPLib.debug.debugAsyncTimer(CheckMissingTags,1);
 
 JSPLib.debug.addFunctionLogs([
-    Main,BroadcastRTC,QueryFrequentTags,CaptureTagSubmission,SortTagData,FilterDeletedTags,CheckTagDeletion,
+    Main,BroadcastRTC,QueryFrequentTags,CaptureTagSubmission,SortTagData,FilterDeletedTags,//CheckTagDeletion,
     QueryMissingTags,CheckMissingTags,RecheckDisplaySemaphore,ValidateEntry
 ]);
 
