@@ -1,7 +1,9 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
-// @version      2.3
+// @version      2.4
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
+// @source       https://danbooru.donmai.us/users/23799
+// @author       BrokenEagle
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/New_Twitter_Image_Searches_and_Stuff.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js
@@ -13,18 +15,18 @@
 // @require      https://raw.githubusercontent.com/slevithan/xregexp/v4.2.4/tests/perf/versions/xregexp-all-v4.2.4.js
 // @require      https://raw.githubusercontent.com/localForage/localForage-setItems/v1.3.0/dist/localforage-setitems.js
 // @require      https://raw.githubusercontent.com/eligrey/FileSaver.js/2.0.0/dist/FileSaver.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f76b949e7a2f4b02860f5893a14aa032965cd3f4/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/menu.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/danbooru/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/saucenao.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/danbooru/utility.js
 // @resource     jquery_ui_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/jquery_ui_custom.css
 // @resource     jquery_qtip_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.css
 // @grant        GM_getResourceText
@@ -36,6 +38,7 @@
 // @connect      google.com
 // @connect      githubusercontent.com
 // @connect      googleusercontent.com
+// @run-at       document-start
 // @noframes
 // ==/UserScript==
 
@@ -48,7 +51,7 @@
 const DANBOORU_TOPIC_ID = '16342';
 
 //Variables for debug.js
-JSPLib.debug.debug_console = true;
+JSPLib.debug.debug_console = false;
 JSPLib.debug.pretext = 'NTISAS:';
 JSPLib.debug.pretimer = 'NTISAS-';
 JSPLib.debug.level = JSPLib.debug.INFO;
@@ -1413,6 +1416,15 @@ var ALL_PAGE_REGEXES = {
             end: QUERY_END,
         }
     },
+    web_tweet: {
+        format: ' {{status}} ( {{web_tweet_id}} ) {{end}} ',
+        subs: {
+            web: TWITTER_ACCOUNT,
+            web_tweet_id: TWITTER_ID,
+            status: 'i/web/status/',
+            end: QUERY_END,
+        }
+    },
     hashtag: {
         format: ' {{hashtag}} ( {{hashtag_hash}} ) {{end}} ',
         subs: {
@@ -1746,222 +1758,7 @@ function VaildateColorArray(array) {
 
 //Library functions
 
-JSPLib.utility.getDOMAttributes = function ($obj,attribute,parser=((a)=>{return a;})) {
-    return $obj.map((i,entry)=>{return parser($(entry).data(attribute));}).toArray();
-};
-
-JSPLib.utility.hasIntersection = function (array1,array2) {
-    let set1 = new Set(array1);
-    return array2.some(x => set1.has(x));
-};
-
-JSPLib.utility.isSubset = function (array1,array2) {
-    let set1 = new Set(array1);
-    return array2.every(x => set1.has(x));
-};
-
-JSPLib.utility.getUniqueID = function () {
-    return Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
-};
-
-JSPLib.utility.getNestedObjectAttributes = function (data,attributes) {
-    for (let i = 0; i < attributes.length; i++) {
-        let attribute = attributes[i];
-        data = JSPLib.utility.getObjectAttributes(data, attribute);
-        if (data.length === 0 || data[0] === undefined) {
-            return null;
-        }
-    }
-    return data;
-};
-
-JSPLib.storage.batchStorageCheck = async function (keyarray,validator,max_expires,prefix,database=JSPLib.storage.danboorustorage) {
-    let promise_array = [];
-    if (prefix) {
-        keyarray = JSPLib.storage.nameToKeyTransform(keyarray, prefix);
-    }
-    keyarray.forEach((key)=>{
-        promise_array.push(JSPLib.storage.checkLocalDB(key, validator, max_expires, database));
-    });
-    let result_array = await Promise.all(promise_array);
-    let found_array = [];
-    let missing_array = [];
-    result_array.forEach((result,i)=>{
-        if (result) {
-            found_array.push(keyarray[i]);
-        } else {
-            missing_array.push(keyarray[i]);
-        }
-    });
-    if (prefix) {
-        found_array = JSPLib.storage.keyToNameTransform(found_array, prefix);
-        missing_array = JSPLib.storage.keyToNameTransform(missing_array, prefix);
-    }
-    return [found_array, missing_array];
-};
-
-//Overwriting this function, though it should probably be fixed in menu.js or make a conditional displayCase
-JSPLib.utility.displayCase = function (string) {
-    return JSPLib.utility.titleizeString(string.replace(/[_]/g, ' '));
-};
-
-Danbooru.Utility.notice = function(msg,permanent,append=true) {
-    Danbooru.Utility._processNotice('ui-state-highlight', 'ui-state-error', msg, append);
-    if (!permanent) {
-        Danbooru.Utility.notice_timeout_id = setTimeout(function() {
-            jQuery(`#${Danbooru.Utility.program_shortcut}-close-notice-link`).click();
-            Danbooru.Utility.notice_timeout_id = undefined;
-        }, 6000);
-    }
-};
-
-Danbooru.Utility.error = function(msg,append=true) {
-    Danbooru.Utility._processNotice('ui-state-error', 'ui-state-highlight', msg, append);
-};
-
-Danbooru.Utility._processNotice = function(add_class,remove_class,msg,append) {
-    let $notice = jQuery(`#${Danbooru.Utility.program_shortcut}-notice`);
-    $notice.addClass(add_class).removeClass(remove_class).fadeIn('fast');
-    if (append) {
-        let current_message = $notice.children('span').html();
-        if (current_message !== ".") {
-            current_message += "<br>--------------------------------------------------<br>";
-        } else {
-            current_message = "";
-        }
-        $notice.children('span').html(current_message + msg);
-    } else {
-        $notice.children('span').html(msg);
-    }
-    if (Danbooru.Utility.notice_timeout_id !== undefined) {
-        clearTimeout(Danbooru.Utility.notice_timeout_id);
-    }
-};
-
-Danbooru.Utility.closeNotice = function (event) {
-    jQuery(`#${Danbooru.Utility.program_shortcut}-notice`).fadeOut('fast').children('span').html(".");
-    event.preventDefault();
-};
-
-Danbooru.Utility.installBanner = function (program_shortcut) {
-    Danbooru.Utility.program_shortcut = program_shortcut;
-    let notice_banner = `<div id="${program_shortcut}-notice"><span>.</span><a href="#" id="${program_shortcut}-close-notice-link">close</a></div>`;
-    let css_shortcuts = Danbooru.Utility.notice_css.match(/%s/g).length;
-    let notice_css = JSPLib.utility.sprintf(Danbooru.Utility.notice_css, ...Array(css_shortcuts).fill(program_shortcut));
-    JSPLib.utility.setCSSStyle(notice_css, 'Danbooru.Utility.notice');
-    jQuery('body').append(notice_banner);
-    jQuery(`#${program_shortcut}-close-notice-link`).on(`click.${program_shortcut}`, Danbooru.Utility.closeNotice);
-};
-
-JSPLib.network.getImage = function (image_url) {
-    JSPLib.debug.recordTime(image_url, 'Network');
-    return GM.xmlHttpRequest({
-            method: 'GET',
-            url: image_url,
-            responseType: 'blob',
-    }).then((resp)=>{
-        return resp.response;
-    }).finally(()=>{
-        JSPLib.debug.recordTimeEnd(image_url, 'Network');
-    });
-};
-
-JSPLib.network.getImageSize = function (image_url) {
-    JSPLib.debug.recordTime(image_url, 'Network');
-    return GM.xmlHttpRequest({
-        method: 'HEAD',
-        url: image_url
-    }).then((resp)=>{
-        let size = -1;
-        let match = resp.responseHeaders.match(/content-length: (\d+)/);
-        if (match) {
-            size = parseInt(match[1]);
-        }
-        return size;
-    }).finally(()=>{
-        JSPLib.debug.recordTimeEnd(image_url, 'Network');
-    });
-};
-
-JSPLib.network.installXHRHook = function (funcs) {
-    const hookWindow = (typeof(unsafeWindow) === 'undefined' ? window : unsafeWindow);
-    const builtinXhrFn = hookWindow.XMLHttpRequest;
-    hookWindow.XMLHttpRequest = function(...xs) {
-        //Was this called with the new operator?
-        let xhr = new.target === undefined
-            ? Reflect.apply(builtinXhrFn, this, xs)
-            : Reflect.construct(builtinXhrFn, xs, builtinXhrFn);
-        //Add data hook to XHR load event
-        xhr.addEventListener('load', (ev)=>{JSPLib.network.dataCallback(xhr, funcs);});
-        return xhr;
-    };
-};
-
-JSPLib.network.dataCallback = function (xhr,funcs) {
-    let data = xhr.responseText;
-    //It varies whether data comes in as a string or JSON
-    if (typeof data === 'string' && data.length > 0) {
-        //Some requests like POST requests have an empty string for the response
-        try {
-            data = JSON.parse(data);
-        } catch(e) {
-            //Swallow
-        }
-    }
-    funcs.forEach((func)=>{
-        func(data);
-    });
-};
-
-JSPLib.statistics.addPageStatistics = function (name) {
-    JSPLib.debug.debugExecute(()=>{
-        window.addEventListener('beforeunload', ()=>{
-            JSPLib.statistics.outputAdjustedMean(name);
-        });
-    });
-};
-
-JSPLib.utility.refreshPage = function (timeout) {
-    setTimeout(()=>{
-        window.location.reload();
-    }, timeout);
-};
-
-JSPLib.menu.validateCheckboxRadio = function (data,type,allitems) {
-    return Array.isArray(data)
-        && data.every(val => JSPLib.validate.isString(val))
-        && JSPLib.utility.isSubset(allitems, data)
-        && (type !== 'radio' || data.length == 1);
-};
-
-JSPLib.utility.hasStyle = function (name) {
-    return name in JSPLib.utility.cssstyle;
-};
-
-JSPLib.utility.findAll = function(str,regex) {
-    return [...str.matchAll(regex)].flat();
-};
-
-JSPLib.utility.joinList = function (array,prefix,suffix,joiner) {
-    prefix = prefix || '';
-    suffix = suffix || '';
-    return array.map((level)=>{
-        return prefix + level + suffix;
-    }).join(joiner);
-};
-
-JSPLib.utility.objectReduce = function (object,reducer,accumulator) {
-  for (let key in object) {
-    if (object.hasOwnProperty(key)) {
-      accumulator = reducer(accumulator, object[key], key, object);
-    }
-  }
-  return accumulator;
-};
-
-JSPLib.utility.regexReplace = function (string,values) {
-    return JSPLib.utility.objectReduce(values, (str,val,key)=>{return str.replace(RegExp(`%${key}%`, 'g'), val);}, string);
-};
+////None
 
 //Helper functions
 
@@ -1969,13 +1766,7 @@ function GetAPIData(key,id,value) {
     if (API_DATA === undefined || !(key in API_DATA) || !(id in API_DATA[key])) {
         return null;
     }
-    return (value ? API_DATA[key][id][value] : API_DATA[key][id]);;
-}
-
-function PadNumber(num,size) {
-    var s = String(num);
-    while (s.length < (size || 2)) {s = '0' + s;}
-    return s;
+    return (value ? API_DATA[key][id][value] : API_DATA[key][id]);
 }
 
 function GetNumericTimestamp(timestamp) {
@@ -1985,12 +1776,12 @@ function GetNumericTimestamp(timestamp) {
 
 function GetDateString(timestamp) {
     let time_obj = new Date(timestamp);
-    return `${time_obj.getFullYear()}${PadNumber(time_obj.getMonth() + 1, 2)}${PadNumber(time_obj.getDate() ,2)}`;
+    return `${time_obj.getFullYear()}${JSPLib.utility.padNumber(time_obj.getMonth() + 1, 2)}${JSPLib.utility.padNumber(time_obj.getDate() ,2)}`;
 }
 
 function GetTimeString(timestamp) {
     let time_obj = new Date(timestamp);
-    return `${PadNumber(time_obj.getHours(), 2)}${PadNumber(time_obj.getMinutes(), 2)}`;
+    return `${JSPLib.utility.padNumber(time_obj.getHours(), 2)}${JSPLib.utility.padNumber(time_obj.getMinutes(), 2)}`;
 }
 
 function ParseQueries(str) {
@@ -2117,7 +1908,7 @@ function GetMultiLinkTitle(posts,is_render=true) {
 function CheckSimilarResults(results,tweet_id,type) {
     let no_results = false;
     if (results === null) {
-        JSPLib.storage.saveData(type + '-' + tweet_id, {value: false, expires: JSPLib.utility.getExpiration(SIMILAR_EXPIRES)});
+        JSPLib.storage.saveData(type + '-' + tweet_id, {value: false, expires: JSPLib.utility.getExpires(SIMILAR_EXPIRES)});
     } else {
         no_results = results.value;
     }
@@ -2284,7 +2075,7 @@ function SaveList(name,list,delay=true) {
 
 function SavePost(mapped_post) {
     let expires_duration = PostExpiration(mapped_post.created);
-    let data_expires = JSPLib.utility.getExpiration(expires_duration)
+    let data_expires = JSPLib.utility.getExpires(expires_duration)
     JSPLib.storage.saveData('post-' + mapped_post.id, {value: mapped_post, expires: data_expires});
 }
 
@@ -2637,6 +2428,8 @@ function GetPageType() {
             return 'search';
         case NTISAS.page_match.tweet:
             return 'tweet';
+        case NTISAS.page_match.web_tweet:
+            return 'web_tweet';
         case NTISAS.page_match.hashtag:
             return 'hashtag';
         case NTISAS.page_match.list:
@@ -2660,6 +2453,9 @@ function GetPageType() {
 }
 
 function UpdateHighlightControls() {
+    if (!NTISAS.user_settings.score_highlights_enabled) {
+        return;
+    }
     let [user_ident,all_idents] = GetUserIdent();
     if (user_ident && IsMediaTimeline()) {
         let no_highlight_list = GetList('no-highlight-list');
@@ -2705,6 +2501,9 @@ function UpdateArtistHighlights() {
 }
 
 function UpdateIQDBControls() {
+    if (!NTISAS.user_settings.autoclick_IQDB_enabled) {
+        return;
+    }
     let [user_ident,all_idents] = GetUserIdent();
     if (user_ident && IsMediaTimeline()) {
         let auto_iqdb_list = GetList('auto-iqdb-list');
@@ -2728,10 +2527,13 @@ function UpdateIQDBControls() {
 function DisplayControl(control,all_controls,type) {
     let all_selectors = JSPLib.utility.joinList(all_controls, '#ntisas-', '-' + type, ',');
     $(all_selectors).hide();
-    $(`#ntisas-${control}-${type}`).show();
+    setTimeout(()=>{$(`#ntisas-${control}-${type}`).show();}, JQUERY_DELAY);
 }
 
 function UpdateIndicatorControls() {
+    if (!NTISAS.user_settings.tweet_indicators_enabled) {
+        return;
+    }
     let indicators_enabled = JSPLib.storage.getStorageData('ntisas-indicator-controls', localStorage, true);
     if (indicators_enabled) {
         DisplayControl('disable', INDICATOR_CONTROLS, 'indicators');
@@ -2745,6 +2547,9 @@ function UpdateIndicatorControls() {
 }
 
 function UpdateTweetIndicators() {
+    if (!NTISAS.user_settings.tweet_indicators_enabled) {
+        return;
+    }
     let artist_list = GetList('artist-list');
     let tweet_list = GetList('tweet-list');
     $('.ntisas-tweet').each((i,entry)=>{
@@ -2820,7 +2625,7 @@ function IsPageType(types) {
 }
 
 function IsTweetPage() {
-    return IsPageType(['tweet']);
+    return IsPageType(['tweet','web_tweet']);
 }
 
 function IsMediaTimeline() {
@@ -3224,6 +3029,9 @@ function InitializeCurrentRecords() {
 }
 
 function InitializeCounter() {
+    if (!NTISAS.user_settings.tweet_indicators_enabled) {
+        return;
+    }
     if ($('#ntisas-indicator-counter').length) {
         if (NTISAS.prev_pagetype !== 'tweet') {
             $('#ntisas-indicator-counter').remove();
@@ -3479,14 +3287,13 @@ function InitializeTweetStats(filter1,filter2) {
 //Network functions
 
 async function CheckPostvers() {
-    let num_error_messages = JSPLib.danbooru.error_messages.length;
     let postver_lastid = GetPostVersionsLastID();
     let url_addons = {search:{id:`${postver_lastid}..${postver_lastid + QUERY_BATCH_SIZE}`}, only: POSTVER_FIELDS};
     let post_versions = await JSPLib.danbooru.getAllItems('post_versions', QUERY_LIMIT, {page:postver_lastid, addons: url_addons, reverse: true, domain: NTISAS.domain, notify: true});
     if (post_versions.length === QUERY_BATCH_SIZE) {
         CheckPostvers.debuglog("Overflow detected!");
         JSPLib.storage.setStorageData('ntisas-overflow', true, localStorage);
-    } else if (num_error_messages === JSPLib.danbooru.error_messages.length) {
+    } else {
         CheckPostvers.debuglog("No overflow:", post_versions.length, QUERY_BATCH_SIZE);
         JSPLib.storage.setStorageData('ntisas-overflow', false, localStorage);
     }
@@ -3593,7 +3400,7 @@ async function GetMaxVideoDownloadLink(tweet_id) {
         } else {
             video_url = null;
         }
-        JSPLib.storage.saveData(key, {value: video_url, expires: JSPLib.utility.getExpiration(VIDEO_EXPIRES)});
+        JSPLib.storage.saveData(key, {value: video_url, expires: JSPLib.utility.getExpires(VIDEO_EXPIRES)});
         return video_url;
     } else {
         return cached.value;
@@ -3978,7 +3785,7 @@ async function CheckIQDB(event) {
             }
         }
     } else {
-        JSPLib.storage.saveData('iqdb-' + tweet_id, {value: true, expires: JSPLib.utility.getExpiration(SIMILAR_EXPIRES)});
+        JSPLib.storage.saveData('iqdb-' + tweet_id, {value: true, expires: JSPLib.utility.getExpires(SIMILAR_EXPIRES)});
         let no_sauce_results = JSPLib.storage.getStorageData('sauce-' + tweet_id, sessionStorage).value;
         $replace.html(RenderNomatchLinks(tweet_id, true, no_sauce_results));
     }
@@ -4023,7 +3830,7 @@ async function CheckSauce(event) {
             let posts = await JSPLib.danbooru.submitRequest('posts', {tags: 'id:' + missing_ids.join(','), limit: missing_ids.length, only: POST_FIELDS}, [], null, NTISAS.domain);
             MapPostData(posts).forEach((post)=>{
                 NTISAS.post_index[post.id] = post;
-                JSPLib.storage.saveData('post-' + post.id, {value: post, expires: JSPLib.utility.getExpiration(JSPLib.utility.one_month)});
+                JSPLib.storage.saveData('post-' + post.id, {value: post, expires: JSPLib.utility.getExpires(JSPLib.utility.one_month)});
             });
         }
         found_ids.forEach((post_id)=>{
@@ -4064,7 +3871,7 @@ async function CheckSauce(event) {
             }
         }
     } else {
-        JSPLib.storage.saveData('sauce-' + tweet_id, {value: true, expires: JSPLib.utility.getExpiration(SIMILAR_EXPIRES)});
+        JSPLib.storage.saveData('sauce-' + tweet_id, {value: true, expires: JSPLib.utility.getExpires(SIMILAR_EXPIRES)});
         let no_iqdb_results = JSPLib.storage.getStorageData('iqdb-' + tweet_id, sessionStorage).value;
         $replace.html(RenderNomatchLinks(tweet_id, no_iqdb_results, true));
     }
@@ -4109,7 +3916,7 @@ function ConfirmDelete(event) {
 function ResetResults(event) {
     let [$link,,tweet_id,,,,,$replace] = GetEventPreload(event, 'ntisas-reset-results');
     let type = $link.data('type');
-    JSPLib.storage.saveData(type + '-' + tweet_id, {value: false, expires: JSPLib.utility.getExpiration(SIMILAR_EXPIRES)});
+    JSPLib.storage.saveData(type + '-' + tweet_id, {value: false, expires: JSPLib.utility.getExpires(SIMILAR_EXPIRES)});
     let no_iqdb_results = (type === 'iqdb' ? false : JSPLib.storage.getStorageData('iqdb-' + tweet_id, sessionStorage).value);
     let no_sauce_results = (type === 'sauce' ? false : JSPLib.storage.getStorageData('sauce-' + tweet_id, sessionStorage).value);
     $replace.html(RenderNomatchLinks(tweet_id, no_iqdb_results, no_sauce_results));
@@ -4137,8 +3944,8 @@ function HelpInfo(event) {
 }
 
 function ErrorMessages(event) {
-    if (JSPLib.danbooru.error_messages.length) {
-        let help_text = JSPLib.danbooru.error_messages.map((entry)=>{return `HTTP Error ${entry[1]}: ${entry[2]}<br>&emsp;&emsp;=> ${entry[0]}`;}).join('<br><br>');
+    if (JSPLib.network.error_messages.length) {
+        let help_text = JSPLib.network.error_messages.map((entry)=>{return `HTTP Error ${entry[1]}: ${entry[2]}<br>&emsp;&emsp;=> ${entry[0]}`;}).join('<br><br>');
         Danbooru.Utility.error(help_text);
     } else {
         Danbooru.Utility.notice("No error messages!");
@@ -4423,7 +4230,6 @@ function MarkupStreamTweet(tweet) {
 function MarkupMainTweet(tweet) {
     $(tweet).addClass('ntisas-main-tweet');
     $(tweet).attr('data-tweet-id', NTISAS.tweet_id);
-    $(tweet).attr('data-screen-name', NTISAS.screen_name);
     //Get API data if available
     let data_tweet = GetAPIData('tweets', NTISAS.tweet_id);
     if (data_tweet) {
@@ -4437,6 +4243,12 @@ function MarkupMainTweet(tweet) {
     InitializeStatusBar(tweet_status);
     let profile_line = main_body.children[1];
     $(profile_line).addClass('ntisas-profile-line');
+    if (NTISAS.page === "tweet") {
+        $(tweet).attr('data-screen-name', NTISAS.screen_name);
+    } else if (NTISAS.page === "web_tweet") {
+        let screen_name = ($('[role=link]',profile_line).attr('href') || "").slice(1);
+        $(tweet).attr('data-screen-name', screen_name);
+    }
     let reply_line_count = 0;
     let child2 = main_body.children[2];
     if ( child2.children[0].tagName.toUpperCase() !== 'SPAN'
@@ -4502,7 +4314,7 @@ function RegularCheck() {
     //Get current page and previous page info
     NTISAS.prev_pagetype = NTISAS.page;
     let pagetype = GetPageType();
-    if (pagetype === null) {
+    if (pagetype === "other") {
         return;
     }
     //Process only photo popups when in that mode
@@ -4591,6 +4403,7 @@ function PageNavigation(pagetype) {
             NTISAS.user_id = NTISAS.account && GetAPIData('users_name', NTISAS.account, 'id_str');
             break;
         case 'tweet':
+        case 'web_tweet':
             PageNavigation.debuglog("Tweet ID:", page_id);
             NTISAS.screen_name = account;
             NTISAS.tweet_id = page_id;
@@ -4631,9 +4444,7 @@ function PageNavigation(pagetype) {
             $('#ntisas-total-records').on(PROGRAM_CLICK, QueryTotalRecords);
             $('#ntisas-error-messages').on(PROGRAM_CLICK, ErrorMessages);
         }
-        if (NTISAS.user_settings.tweet_indicators_enabled) {
-            InitializeCounter();
-        }
+        InitializeCounter();
         if (NTISAS.prev_pagetype !== 'tweet' || NTISAS.page_stats === undefined) {
             let stat_key = NTISAS.page + NTISAS.addon
             NTISAS.page_stats[stat_key] = NTISAS.page_stats[stat_key] || [];
@@ -4744,7 +4555,6 @@ function ProcessNewTweets() {
         $tweets.each((i,entry)=>{
             InitializeTweetIndicators(entry);
         });
-        UpdateIndicatorControls();
         UpdateTweetIndicators();
     }
     return true;
