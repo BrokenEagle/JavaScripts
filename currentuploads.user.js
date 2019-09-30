@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      15.2
+// @version      15.3
+// @description  Gives up-to-date stats on uploads.
 // @source       https://danbooru.donmai.us/users/23799
-// @description  Gives up-to-date stats on uploads
 // @author       BrokenEagle
 // @match        *://*.donmai.us/*
 // @grant        none
@@ -12,15 +12,18 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/menu.js
 // ==/UserScript==
+
+/* global JSPLib jQuery $ Danbooru CanvasJS */
 
 /**GLOBAL VARIABLES**/
 
@@ -80,7 +83,7 @@ const settings_config = {
     periods_shown: {
         allitems: period_selectors,
         default: period_selectors,
-        validate: (data)=>{return Array.isArray(data) && data.reduce((is_string,val)=>{return is_string && (typeof val === 'string') && period_selectors.includes(val);},true) && data.includes('daily');},
+        validate: (data)=>{return JSPLib.menu.validateCheckboxRadio(data,'checkbox',period_selectors) && data.includes('daily')},
         hint: "Select which periods to process and show."
     },
     copyrights_threshold: {
@@ -289,36 +292,6 @@ const program_css = `
 }
 `;
 
-const menu_css = `
-#cu-console {
-    width: 100%;
-    min-width: 100em;
-}
-#cu-console hr,
-#cu-console .expandable {
-    width: 90%;
-    margin-left: 0;
-}
-#cu-cache-viewer textarea {
-    width: 100%;
-    min-width: 40em;
-    height: 50em;
-    padding: 5px;
-}
-#cu-cache-editor-errors {
-    display: none;
-    border: solid lightgrey 1px;
-    margin: 0.5em;
-    padding: 0.5em;
-}
-#cu-settings .cu-linkclick .cu-control {
-    display: inline;
-}
-#current-uploads a {
-    color:#0073ff;
-}
-`;
-
 //HTML constants
 
 const notice_box = `
@@ -366,6 +339,11 @@ const cu_menu = `
 </div>
 <div id="cu-console" class="jsplib-console">
     <div id="cu-settings" class="jsplib-outer-menu">
+        <div id="cu-general-settings" class="jsplib-settings-grouping">
+            <div id="cu-general-message" class="prose">
+                <h4>General settings</h4>
+            </div>
+        </div>
         <div id="cu-display-settings" class="jsplib-settings-grouping">
             <div id="cu-display-message" class="prose">
                 <h4>Display settings</h4>
@@ -550,15 +528,15 @@ const validation_constraints = {
     postentries: JSPLib.validate.array_constraints,
     statentries: JSPLib.validate.hash_constraints,
     postentry: [
-        JSPLib.validate.integer_constraints,    //ID
-        JSPLib.validate.integer_constraints,    //SCORE
-        JSPLib.validate.integer_constraints,    //UPSCORE
-        JSPLib.validate.integer_constraints,    //DOWNSCORE
-        JSPLib.validate.integer_constraints,    //FAVCOUNT
-        JSPLib.validate.integer_constraints,    //TAGCOUNT
-        JSPLib.validate.integer_constraints,    //GENTAGS
+        JSPLib.validate.integer_constraints, //ID
+        JSPLib.validate.integer_constraints, //SCORE
+        JSPLib.validate.integer_constraints, //UPSCORE
+        JSPLib.validate.integer_constraints, //DOWNSCORE
+        JSPLib.validate.integer_constraints, //FAVCOUNT
+        JSPLib.validate.integer_constraints, //TAGCOUNT
+        JSPLib.validate.integer_constraints, //GENTAGS
         JSPLib.validate.stringonly_constraints, //COPYRIGHTS
-        JSPLib.validate.integer_constraints     //CREATED
+        JSPLib.validate.integer_constraints //CREATED
     ],
     postmetric: {
         chart_data: JSPLib.validate.hash_constraints,
@@ -1252,7 +1230,7 @@ async function GetPostsCountdown(limit,searchstring,domname) {
         if (domname) {
             domname && jQuery(domname).html(page_num);
         }
-        let request_addons = JSPLib.danbooru.joinArgs(tag_addon,limit_addon,only_addon,page_addon);
+        let request_addons = JSPLib.utility.joinArgs(tag_addon,limit_addon,only_addon,page_addon);
         let request_key = 'posts-' + jQuery.param(request_addons);
         let temp_items = await JSPLib.danbooru.submitRequest('posts',request_addons,[],request_key);
         return_items = return_items.concat(temp_items);
@@ -1271,7 +1249,7 @@ async function GetReverseTagImplication(tag) {
     if (!(check)) {
         GetReverseTagImplication.debuglog("Network:",key);
         let data = await JSPLib.danbooru.submitRequest('tag_implications',{search: {antecedent_name: tag}, only: id_field},[],key)
-        JSPLib.storage.saveData(key, {value: data.length, expires: JSPLib.utility.getExpiration(rti_expiration)});
+        JSPLib.storage.saveData(key, {value: data.length, expires: JSPLib.utility.getExpires(rti_expiration)});
         return data.length;
     }
     return check.value;
@@ -1285,7 +1263,7 @@ async function GetCount(type,tag) {
         GetCount.debuglog("Network:",key);
         return JSPLib.danbooru.submitRequest('counts/posts',{tags: BuildTagParams(type,tag), skip_cache: true},{counts: {posts: 0}},key)
         .then(data=>{
-            JSPLib.storage.saveData(key, {value: data.counts.posts, expires: JSPLib.utility.getExpiration(max_expires)});
+            JSPLib.storage.saveData(key, {value: data.counts.posts, expires: JSPLib.utility.getExpires(max_expires)});
         });
     }
 }
@@ -1304,9 +1282,9 @@ async function GetPeriodUploads(username,period,limited=false,domname=null) {
             mapped_data = Object.assign(...tooltip_metrics.map((metric)=>{return {[metric]: GetAllStatistics(mapped_data,metric)};}));
             mapped_data.chart_data = Object.assign(...chart_metrics.map((metric)=>{return {[metric]: GetPeriodAverages(indexed_posts,metric)};}));
             mapped_data.chart_data.uploads = GetPeriodPosts(indexed_posts);
-            JSPLib.storage.saveData(key, {value: mapped_data, expires: JSPLib.utility.getExpiration(max_expires)});
+            JSPLib.storage.saveData(key, {value: mapped_data, expires: JSPLib.utility.getExpires(max_expires)});
         } else {
-            JSPLib.storage.saveData(key, {value: PreCompressData(mapped_data), expires: JSPLib.utility.getExpiration(max_expires)});
+            JSPLib.storage.saveData(key, {value: PreCompressData(mapped_data), expires: JSPLib.utility.getExpires(max_expires)});
         }
         return mapped_data;
     } else {
@@ -1435,7 +1413,7 @@ function RenderChart(event) {
         data: [{
             showInLegend: true,
             legendText: `${metric_display}`,
-            type: "line",
+            type: "spline",
             dataPoints: period_averages
         },
         {
@@ -1726,10 +1704,10 @@ function BroadcastCU(ev) {
             break;
         case "reset":
             Object.assign(CU,program_reset_keys);
+            //falls through
         case "settings":
             CU.user_settings = ev.data.user_settings;
             CU.is_setting_menu && JSPLib.menu.updateUserSettings('cu');
-            SetTagAutocompleteSource();
             break;
         case "purge":
             Object.keys(sessionStorage).forEach((key)=>{
@@ -1737,6 +1715,7 @@ function BroadcastCU(ev) {
                     sessionStorage.removeItem(key);
                 }
             });
+            //falls through
         default:
             //do nothing
     }
@@ -1752,6 +1731,7 @@ function GetShownPeriodKeys() {
 
 function RenderSettingsMenu() {
     $("#current-uploads").append(cu_menu);
+    $("#cu-general-settings").append(JSPLib.menu.renderDomainSelectors('cu', 'CurrentUploads'));
     $("#cu-display-settings").append(JSPLib.menu.renderCheckbox('cu','copyrights_merge'));
     $("#cu-display-settings").append(JSPLib.menu.renderCheckbox('cu','copyrights_enabled'));
     $("#cu-display-settings").append(JSPLib.menu.renderTextinput("cu",'copyrights_threshold',10));
@@ -1790,17 +1770,29 @@ function Main() {
         user_copytags: { user:{}, approver:{} },
         period_available: { user:{}, approver:{} },
         reverse_implications: {},
+        controls_initialized: false,
+        copyright_period: 'd',
         current_metric: JSPLib.storage.checkStorageData('cu-current-metric',ValidateProgramData,localStorage,'score'),
         hidden: Boolean(JSPLib.storage.checkStorageData('cu-hide-current-uploads',ValidateProgramData,localStorage,true)),
         stashed: Boolean(JSPLib.storage.checkStorageData('cu-stash-current-uploads',ValidateProgramData,localStorage,false)),
-        controls_initialized: false,
-        copyright_period: 'd',
         storage_keys: {indexed_db: [], local_storage: []},
-        is_setting_menu: Boolean($("#c-users #a-edit").length),
+        is_setting_menu: JSPLib.danbooru.isSettingMenu(),
         settings_config: settings_config
     };
     CU.user_settings = JSPLib.menu.loadUserSettings('cu');
     CU.channel.onmessage = BroadcastCU;
+    if (CU.is_setting_menu) {
+        JSPLib.validate.dom_output = "#cu-cache-editor-errors";
+        JSPLib.menu.loadStorageKeys('cu',program_cache_regex);
+        JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
+            JSPLib.menu.installSettingsMenu("CurrentUploads");
+            Timer.RenderSettingsMenu();
+        });
+    }
+    if (!JSPLib.menu.isScriptEnabled('CurrentUploads')) {
+        Main.debuglog("Script is disabled on", window.location.hostname);
+        return;
+    }
     JSPLib.utility.setCSSStyle(program_css,'program');
     var $notice_box = $(notice_box);
     var $footer_notice = $(unstash_notice);
@@ -1818,16 +1810,6 @@ function Main() {
         //Set to opposite so that click can be used and sets it back
         CU.hidden = true;
         $("#toggle-count-notice").click();
-    }
-    if (CU.is_setting_menu) {
-        JSPLib.validate.dom_output = "#cu-cache-editor-errors";
-        JSPLib.menu.loadStorageKeys('cu',program_cache_regex);
-        JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
-            JSPLib.menu.installSettingsMenu("CurrentUploads");
-            Timer.RenderSettingsMenu();
-        });
-        //Including this only during a transitory period for all scripts to be updated to the new library version
-        JSPLib.utility.setCSSStyle(menu_css,'menu');
     }
     JSPLib.debug.debugExecute(()=>{
         window.addEventListener('beforeunload',function () {
@@ -1852,7 +1834,7 @@ JSPLib.debug.addFunctionTimers(Timer,true,[
 ]);
 
 JSPLib.debug.addFunctionLogs([
-    BroadcastCU,GetPeriodUploads,GetCount,GetReverseTagImplication,GetPostsCountdown,ValidateEntry
+    Main,BroadcastCU,GetPeriodUploads,GetCount,GetReverseTagImplication,GetPostsCountdown,ValidateEntry
 ]);
 
 /****Execution start****/
