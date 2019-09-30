@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      15.4
+// @version      15.5
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -67,11 +67,6 @@ const settings_config = {
         default: false,
         validate: (data)=>{return typeof data === "boolean";},
         hint: "Closing a notice will no longer close all other notices."
-    },
-    mark_read_topics: {
-        default: true,
-        validate: (data)=>{return typeof data === "boolean";},
-        hint: "Reading a forum post from the notice will mark the topic as read."
     },
     autoclose_dmail_notice: {
         default: false,
@@ -300,7 +295,14 @@ const notice_box = `
         <h1>You've got spam!</h1>
         <div id="spam-table"></div>
     </div>
-    <p><a href="#" id="hide-event-notice">Close this</a> [<a href="javascript:void(0)" id="lock-event-notice" title="Keep notice from being closed by other tabs.">LOCK</a> | <a href="javascript:void(0)" id="read-event-notice" title="Mark all items as read.">READ</a>]</p>
+    <div style="margin-top:1em">
+        <a href="#" id="hide-event-notice">Close this</a>
+        [
+        <a href="javascript:void(0)" id="lock-event-notice" title="Keep notice from being closed by other tabs.">LOCK</a>
+        |
+        <a href="javascript:void(0)" id="read-event-notice" title="Mark all items as read.">READ</a>
+        ]
+    </div>
 </div>
 `;
 
@@ -809,23 +811,15 @@ function CheckAbsence() {
 //Get single instance of various types and insert into table row
 
 async function AddForumPost(forumid,$rowelement) {
-    let forum_post = await JSPLib.network.getNotify(`/forum_posts/${forumid}`);
-    if (!forum_post) {
+    let forum_topic = await JSPLib.network.getNotify(`/forum_posts/${forumid}`);
+    if (!forum_topic) {
         return;
     }
-    let $forum_post = $.parseHTML(forum_post);
+    let $forum_topic = $.parseHTML(forum_topic);
     let $outerblock = $.parseHTML(`<tr id="full-forum-id-${forumid}"><td colspan="4"></td></tr>`);
-    $("td",$outerblock).append($(".forum-post",$forum_post));
+    let $forum_post = $(`#forum_post_${forumid}`, $forum_topic)
+    $("td",$outerblock).append($forum_post);
     $($rowelement).after($outerblock);
-    if (EL.user_settings.mark_read_topics) {
-        let topic_link = $("td:first-of-type > a",$rowelement);
-        let topic_path = topic_link.length && topic_link[0].pathname;
-        let topic_match = topic_path && topic_path.match(forum_topics_regex);
-        if (topic_match && !EL.marked_topic.includes(topic_match[1])) {
-            ReadForumTopic(topic_match[1]);
-            EL.marked_topic.push(topic_match[1]);
-        }
-    }
 }
 
 function AddRenderedNote(noteid,$rowelement) {
@@ -982,6 +976,18 @@ function InsertNotes($notepage) {
 function InsertPosts($postpage) {
     let $posts_table = $("#post-table");
     $posts_table.append($(".striped",$postpage));
+    $(".striped th:first-of-type, .striped td:first-of-type",$posts_table).remove();
+    $(".striped tr[id]",$posts_table).each((i,row)=>{
+        let post_link = $("td:first-of-type a",row).attr('href');
+        if (!post_link) {
+            return;
+        }
+        let match = post_link.match(/\/posts\/(\d+)/);
+        if (!match) {
+            return;
+        }
+        $("td:first-of-type",row).html(`<a href="${post_link}">post #${match[1]}</a>`);
+    });
     AddThumbnails($posts_table);
     InitializePostNoteIndexLinks('post',$posts_table);
 }
@@ -1009,15 +1015,6 @@ function InsertPools($poolpage) {
 
 //Misc functions
 
-function ReadForumTopic(topicid) {
-    $.ajax({
-        type: "HEAD",
-        url:'/forum_topics/' + topicid,
-        headers: {
-            Accept: "text/html",
-        }
-    });
-}
 
 function DecodeProtectedEmail(obj) {
     $('[data-cfemail]',obj).each((i,entry)=>{
@@ -1037,7 +1034,7 @@ function AddThumbnails($dompage) {
     var post_ids = [];
     $(".striped tr[id]",$dompage).each((i,row)=>{
         let $postlink = $("td:first-of-type a:first-of-type",row);
-        let match = $postlink && $postlink[0].href.match(/https?:\/\/[^.]+\.donmai\.us\/posts\/(\d+)/);
+        let match = $postlink.length && $postlink.attr('href').match(/\/posts\/(\d+)/);
         if (!match) {
             //Something is wrong... break loop
             return false;
@@ -1745,7 +1742,6 @@ function RenderSettingsMenu() {
     $("#event-listener").append(el_menu);
     $("#el-general-settings").append(JSPLib.menu.renderDomainSelectors('el', 'EventListener'));
     $("#el-notice-settings").append(JSPLib.menu.renderCheckbox("el",'autolock_notices'));
-    $("#el-notice-settings").append(JSPLib.menu.renderCheckbox("el",'mark_read_topics'));
     $("#el-notice-settings").append(JSPLib.menu.renderCheckbox("el",'autoclose_dmail_notice'));
     $("#el-event-settings").append(JSPLib.menu.renderCheckbox("el",'filter_user_events'));
     $("#el-event-settings").append(JSPLib.menu.renderCheckbox("el",'filter_untranslated_commentary'));
@@ -1786,7 +1782,6 @@ function Main() {
         lastids: {user: {}, subscribe: {}},
         subscribelist: {},
         openlist: {},
-        marked_topic: [],
         item_overflow: false,
         had_events: HasEvents(),
         no_limit: false,
