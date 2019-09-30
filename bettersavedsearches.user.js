@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         BetterSavedSearches
-// @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.6
-// @source       https://danbooru.donmai.us/users/23799
+// @namespace    https://github.com/BrokenEagle/JavaScripts (fix normalize slice)
+// @version      5.7
 // @description  Provides an alternative mechanism and UI for saved searches
+// @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
 // @match        *://*.donmai.us/*
 // @grant        none
@@ -11,19 +11,22 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/bettersavedsearches.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190530/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/menu.js
 // ==/UserScript==
 
+/* global JSPLib $ Danbooru validate */
+
 //Variables for debug.js
-JSPLib.debug.debug_console = true;
+JSPLib.debug.debug_console = false;
 JSPLib.debug.pretext = "BSS:";
 JSPLib.debug.pretimer = "BSS-";
 JSPLib.debug.level = JSPLib.debug.INFO;
@@ -155,31 +158,14 @@ const post_css = `
 }
 .bss-metatags > .bss-link {
     color: green;
-}`
+}`;
 const search_css = `
 #bss-new-saved-search #saved_search_query {
     max-width: unset;
 }
 #bss-refresh-saved-searches a {
     color: green;
-}
-`;
-
-const profile_css = `
-.bss-search-header {
-    margin-left: 1em;
-}
-.bss-search-header .bss-link {
-    color: #0073ff;
-}
-.bss-search-header .bss-link:hover {
-    color: #80b9ff;
-}
-.bss-profile-load {
-    color: grey;
-    margin-left: 0.5em
-}
-`;
+}`;
 
 //HTML constants
 
@@ -219,7 +205,7 @@ const add_search_form = `
         </div>
         <div class="input">
             <label for="saved_search_label_string">Labels</label>
-            <input type="text" id="saved_search_label_string" size="40">
+            <input data-autocomplete="saved-search" type="text" id="saved_search_label_string" size="40">
             <span class="hint">A list of tags to help categorize this search. Space delimited.</span>
         </div>
         <button type="button" class="ui-button ui-corner-all ui-widget">Submit</button>
@@ -438,7 +424,7 @@ const ALL_META_TAGS = new RegExp('^(-?user|-?approver|commenter|comm|noter|noteu
                                'gentags|chartags|copytags|arttags|metatags):(.+)$','i');
 
 //Only includes those metatags that aren't being handled
-const META_TAGS = new RegExp('^(commenter|comm|noter|noteupdater|artcomm|ordpool|' +
+const META_TAGS = new RegExp('^(commenter|comm|noter|noteupdater|artcomm|-?pool|ordpool|' +
                     '-?favgroup|-?fav|ordfav|md5|-?locked|width|height|mpixels|' +
                     'ratio|score|favcount|filesize|-?source|-?id|date|age|order|limit|' +
                     '-?approver|tagcount|pixiv_id|pixiv|search|upvote|downvote|' +
@@ -663,6 +649,7 @@ function ValidateProgramData(key,entry) {
             } else {
                 return JSPLib.validate.validateArrayValues(key,entry,basic_integer_validator);
             }
+            break;
         default:
             checkerror = ["Not a valid program data key."];
     }
@@ -675,78 +662,7 @@ function ValidateProgramData(key,entry) {
 
 //Library functions
 
-JSPLib.danbooru.getShowID = function() {
-    return (document.body.dataset.action === "show" ? parseInt(window.location.pathname.match(/\d+$/)[0]) : 0);
-};
-
-JSPLib.utility.getUniqueID = function() {
-    return Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
-};
-
-JSPLib.utility.isScrolledIntoView = function(elem) {
-    let docViewTop = $(window).scrollTop();
-    let docViewBottom = docViewTop + $(window).height();
-    let elemTop = $(elem).offset().top;
-    let elemBottom = elemTop + $(elem).height();
-    return ((elemBottom <= docViewBottom) && (elemTop >= docViewTop));
-};
-
-JSPLib.validate.validateArrayValues = function(key,array,validator) {
-    let invalid_items = array.map((item,i)=>{return (validator.func(item) ? undefined : [i,item]);}).filter(Array.isArray);
-    if (invalid_items.length) {
-        invalid_items.forEach((entry)=>{
-            let display_key = `${key}[${entry[0]}]:`;
-            let display_item = JSON.stringify(entry[1]);
-            JSPLib.debug.debuglog(display_key,`${display_item} is not a valid ${validator.type}!`);
-        });
-        return false;
-    }
-    return true;
-};
-
-JSPLib.validate.correctArrayValues = function(key,array,validator) {
-    let error_messages = [];
-    for (let i = array.length - 1; i >= 0; i--) {
-        if (!validator.func(array[i])) {
-            error_messages.push({[`${key}[${i}]`]: `${array[i]} is not a valid ${validator.type}.`});
-            array.splice(i,1);
-        }
-    }
-    return error_messages;
-};
-
-JSPLib.concurrency.checkTimeout = function (storage_key,expires_time,storage=localStorage) {
-    let expires = JSPLib.storage.getStorageData(storage_key,storage,0);
-    return !JSPLib.concurrency._validateExpires(expires,expires_time);
-};
-
-JSPLib.concurrency.setRecheckTimeout = function (storage_key,expires_time,storage=localStorage) {
-    JSPLib.storage.setStorageData(storage_key,JSPLib.concurrency._getExpiration(expires_time),storage);
-};
-
-JSPLib.utility.setDifference = function (array1,array2) {
-    let set2 = new Set(array2);
-    return JSPLib.utility.setUnique(array1.filter(x => !set2.has(x)));
-};
-
-JSPLib.utility.setIntersection = function (array1,array2) {
-    let set2 = new Set(array2);
-    return JSPLib.utility.setUnique(array1.filter(x => set2.has(x)));
-};
-
-JSPLib.utility.isSubset = function (array1,array2) {
-    let set1 = new Set(array1);
-    return array2.every(x => set1.has(x));
-};
-
-JSPLib.utility.hasIntersection = function (array1,array2) {
-    let set1 = new Set(array1);
-    return array2.some(x => set1.has(x));
-};
-
-JSPLib.danbooru.isSettingMenu = function () {
-    return document.body.dataset.controller === "users" && document.body.dataset.action === "edit";
-};
+////None
 
 //Helper functions
 
@@ -901,13 +817,6 @@ function GetSeedRate() {
         JSPLib.storage.setStorageData('bss-seed-rate',filtered_rate,localStorage);
     }
     return filtered_rate;
-}
-
-function GetSearchPosts() {
-    if ('bss-search-posts' in sessionStorage) {
-        return JSPLib.storage.checkStorageData('bss-search-posts',ValidateProgramData,sessionStorage,[]);
-    }
-    return [];
 }
 
 function WasOverflow() {
@@ -1200,21 +1109,14 @@ function RefreshLinkCount() {
     $("#bss-refresh-count").html(query_difference.length);
 }
 
-////#C-USERS #A-SHOW
-
-function InitializeProfilePage() {
-    switch (BSS.user_settings.profile_thumb_source[0]) {
-        case "script":
-            $(".user-saved-search .box:first-of-type").hide();
-        case "both":
-            $(".user-saved-search .box").prepend(`<h4 class="bss-search-header">Danbooru</h4>`).css('margin-bottom',"0");
-            CheckSearchVisibility();
-            LoadProfilePostsInterval.timer = JSPLib.utility.initializeInterval(LoadProfilePostsInterval, JSPLib.utility.one_second);
-            $(window).on('scroll.bss',(event)=>{CheckSearchVisibility();});
-        case "danbooru":
-        default:
-            //Do nothing
-    }
+//Check for existence of IndexedAutocomplete
+function AutocompleteRecheck() {
+    let autocomplete_timer = JSPLib.utility.initializeInterval(()=>{
+        if(Danbooru.IAC && Danbooru.IAC.InitializeAutocompleteIndexed) {
+            setTimeout(()=>{Danbooru.IAC.InitializeAutocompleteIndexed("[data-autocomplete=saved-search]", 'ss', true);}, 500);
+            clearInterval(autocomplete_timer);
+        }
+    }, timer_poll_interval, JSPLib.utility.one_second * 5);
 }
 
 //Alias functions
@@ -1232,7 +1134,7 @@ async function QueryTagAlias(tag) {
             QueryTagAlias.debuglog("Alias:",tag,data[0].consequent_name);
             consequent = [data[0].consequent_name];
         }
-        JSPLib.storage.saveData(entryname,{value: consequent, expires: JSPLib.utility.getExpiration(alias_data_expires)});
+        JSPLib.storage.saveData(entryname,{value: consequent, expires: JSPLib.utility.getExpires(alias_data_expires)});
     } else {
         consequent = storeditem.value;
         if (consequent.length) {
@@ -1265,11 +1167,11 @@ async function GetPoolNameFromID(poolid) {
         let data = {};
         if (Object.keys(pool).length > 0) {
             data = pool;
-            JSPLib.storage.saveData('plname-' + data.name, {value: data, expires: JSPLib.utility.getExpiration(pool_data_expires)});
+            JSPLib.storage.saveData('plname-' + data.name, {value: data, expires: JSPLib.utility.getExpires(pool_data_expires)});
         } else {
             data = {id: poolid, name: "XXXXXXXX"};
         }
-        JSPLib.storage.saveData(key, {value: data, expires: JSPLib.utility.getExpiration(pool_data_expires)});
+        JSPLib.storage.saveData(key, {value: data, expires: JSPLib.utility.getExpires(pool_data_expires)});
         return data;
     }
 }
@@ -1286,11 +1188,11 @@ async function GetPoolIDFromName(poolname) {
         let data = {};
         if (pools.length) {
             data = pools[0];
-            JSPLib.storage.saveData('plid-' + data.id, {value: data, expires: JSPLib.utility.getExpiration(pool_data_expires)});
+            JSPLib.storage.saveData('plid-' + data.id, {value: data, expires: JSPLib.utility.getExpires(pool_data_expires)});
         } else {
             data = {id: 0, name: poolname};
         }
-        JSPLib.storage.saveData(key, {value: data, expires: JSPLib.utility.getExpiration(pool_data_expires)});
+        JSPLib.storage.saveData(key, {value: data, expires: JSPLib.utility.getExpires(pool_data_expires)});
         return data;
     }
 }
@@ -1621,7 +1523,7 @@ async function SeedQuery(query,merge=false) {
             //Choose a random time between 16 - 24 hours
             let expires_interval = BSS.user_settings.metatags_interval * JSPLib.utility.one_hour;
             let expires_window = (Math.random() * expires_interval * 0.5);
-            query.expires = JSPLib.utility.getExpiration(expires_interval + expires_window);
+            query.expires = JSPLib.utility.getExpires(expires_interval + expires_window);
         }
     } else {
         //Disable invalid queries
@@ -1877,7 +1779,7 @@ function NormalizePosts(postids1,postids2,slice=false,sort=true,operation) {
         }
     }
     postids1 = JSPLib.utility.setUnique(postids1);
-    if (typeof slice === "boolean") {
+    if (typeof slice === "boolean" && slice) {
         postids1 = postids1.slice(0, BSS.user_settings.saved_search_size);
     } else if (Number.isInteger(slice)) {
         postids1 = postids1.slice(0, slice);
@@ -2005,7 +1907,7 @@ async function DailyMetatagRecheck() {
 async function CheckUserSavedSearches(overide=false) {
     if (JSPLib.concurrency.checkTimeout('bss-saved-search-expires',saved_search_expires) || overide) {
         CheckUserSavedSearches.debuglog("Checking...");
-        let saved_searches = await JSPLib.danbooru.submitRequest('saved_searches',[]);
+        let saved_searches = await JSPLib.danbooru.getAllItems('saved_searches',api_query_size,{page:0,reverse:true});
         let query_ids = JSPLib.utility.getObjectAttributes(BSS.entries,'id');
         let promise_array = [];
         BSS.dirty = false;
@@ -2088,6 +1990,7 @@ function BSSBroadcast(ev) {
             break;
         case "reset":
             Object.assign(BSS,program_reset_keys);
+            //falls through
         case "settings":
             BSS.user_settings = ev.data.user_settings;
             BSS.is_setting_menu && JSPLib.menu.updateUserSettings('bss');
@@ -2100,6 +2003,7 @@ function BSSBroadcast(ev) {
             });
             //Queries have been purged, so just hide until the next page refresh
             $("#bss-saved-search-box").hide();
+            //falls through
         default:
             //do nothing
     }
@@ -2117,7 +2021,7 @@ function MaximumTagQueryLimit() {
 
 function RenderSettingsMenu() {
     $("#better-saved-searches").append(bss_menu);
-    $("#bss-general-settings").append(JSPLib.menu.renderCheckbox("bss",'main_script_enabled'));
+    $("#bss-general-settings").append(JSPLib.menu.renderDomainSelectors('bss', 'BetterSavedSearches'));
     $("#bss-general-settings").append(JSPLib.menu.renderInputSelectors("bss",'profile_thumb_source','radio'));
     $("#bss-post-settings").append(JSPLib.menu.renderTextinput("bss",'seed_size',10));
     $("#bss-post-settings").append(JSPLib.menu.renderTextinput("bss",'query_size',10));
@@ -2156,7 +2060,7 @@ async function Main() {
         action: document.body.dataset.action,
         dirty: false,
         user_limit: MaximumTagQueryLimit(),
-        search_posts: GetSearchPosts(),
+        search_posts: JSPLib.storage.checkStorageData('bss-search-posts',ValidateProgramData,sessionStorage,[]),
         tab_id: GetTabID(),
         seed_rate: GetSeedRate(),
         is_setting_menu: JSPLib.danbooru.isSettingMenu(),
@@ -2167,8 +2071,7 @@ async function Main() {
     Object.assign(BSS, {
         is_post_index: BSS.controller === "posts" && BSS.action === "index",
         is_post_show: BSS.controller === "posts" && BSS.action === "show",
-        is_searches: BSS.controller === "saved-searches" && BSS.action === "index",
-        is_profile_page: BSS.controller === "users" && BSS.action === "show" && parseInt(JSPLib.utility.getMeta('current-user-id')) === JSPLib.danbooru.getShowID(),
+        is_searches_index: BSS.controller === "saved-searches" && BSS.action === "index",
         user_settings: JSPLib.menu.loadUserSettings('bss')
     });
     if (BSS.is_setting_menu) {
@@ -2178,6 +2081,10 @@ async function Main() {
             JSPLib.menu.installSettingsMenu("BetterSavedSearches");
             RenderSettingsMenu();
         });
+    }
+    if (!JSPLib.menu.isScriptEnabled('BetterSavedSearches')) {
+        Main.debuglog("Script is disabled on", window.location.hostname);
+        return;
     }
     if (!BSS.user_settings.main_script_enabled) {
         Main.debuglog("Script is disabled!");
@@ -2216,6 +2123,7 @@ async function Main() {
     } else if (BSS.is_searches_index) {
         $("#nav menu:last-of-type").append(refresh_link);
         $(".striped").after(add_search_form);
+        AutocompleteRecheck();
         RefreshLinkClick();
         SubmitNewQueryClick();
         SubmitDeleteClick();
@@ -2239,7 +2147,7 @@ async function Main() {
         await StoreBSSEntries();
         JSPLib.concurrency.setRecheckTimeout('bss-timeout',BSS.timeout_expires);
         JSPLib.concurrency.freeSemaphore('bss');
-    } else if (BSS.controller === "posts" || BSS.is_searches_index || BSS.is_profile_page) {
+    } else if (BSS.controller === "posts" || BSS.is_searches_index) {
         await Timer.LoadBSSEntries();
         BSS.initialized = Boolean(BSS.entries.length);
     }
@@ -2254,9 +2162,6 @@ async function Main() {
         RefreshLinkCount();
     } else if (BSS.is_post_show && BSS.active_query) {
         SequentializePostShow();
-    } else if (BSS.is_profile_page) {
-        InitializeProfilePage();
-        JSPLib.utility.setCSSStyle(profile_css,'program');
     }
     //Take care of other non-critical tasks at a later time
     setTimeout(()=>{
