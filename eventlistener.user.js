@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      15.6
+// @version      15.7
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -138,6 +138,9 @@ const program_css = `
 .post-preview .el-monospace-link:hover {
     color: var(--link-hover-color);
 }
+#comment-table .post-preview {
+    min-height: 14em;
+}
 .el-subscribe-pool-container .el-subscribe-dual-links .el-monospace-link {
     color: grey;
 }
@@ -196,11 +199,10 @@ const comment_css = `
     text-align: center;
 }
 #event-notice #comment-section #comment-table .comment {
-    margin-left: 184px;
-    margin-bottom: 2em;
+    padding: 1em;
+    margin-top: 0;
     word-wrap: break-word;
-    padding: 5px;
-    display: block;
+    display: flex;
 }
 `;
 
@@ -1364,10 +1366,13 @@ function InitializeCommentPartialCommentLinks(selector) {
         var postid = parseInt($(entry).data('id'));
         var linkhtml = RenderSubscribeDualLinks('comment',postid,"div"," ","comments");
         let shownhtml = (IsEventEnabled('comment') ? '' : 'style="display:none"');
+        var $image = $("img",entry);
+        let height = $image[0].height;
         /****NEED TO SEE IF THIS CAN BE DONE THIS WITHOUT A TABLE****/
         var $table = $.parseHTML(`<table><tbody><tr><td></td></tr><tr><td class="el-subscribe-comment-container "${shownhtml}>${linkhtml}</td></tr></tbody></table>`);
         var $preview = $(".preview",entry).detach();
-        $("tr:nth-of-type(1) td",$table).append($preview);
+        $("tr:nth-of-type(1) td",$table).append($preview[0]);
+        $preview.css('height', height + 10 + 'px');
         $(entry).prepend($table[0]);
         $(".subscribe-comment a,.unsubscribe-comment a",entry).off('click.el').on('click.el',SubscribeDualLink);
     });
