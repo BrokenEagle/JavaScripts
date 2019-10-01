@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      15.5
+// @version      15.6
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -67,6 +67,11 @@ const settings_config = {
         default: false,
         validate: (data)=>{return typeof data === "boolean";},
         hint: "Closing a notice will no longer close all other notices."
+    },
+    mark_read_topics: {
+        default: true,
+        validate: (data)=>{return typeof data === "boolean";},
+        hint: "Reading a forum post from the notice will mark the topic as read."
     },
     autoclose_dmail_notice: {
         default: false,
@@ -820,6 +825,15 @@ async function AddForumPost(forumid,$rowelement) {
     let $forum_post = $(`#forum_post_${forumid}`, $forum_topic)
     $("td",$outerblock).append($forum_post);
     $($rowelement).after($outerblock);
+    if (EL.user_settings.mark_read_topics) {
+        let topic_link = $("td:first-of-type > a",$rowelement);
+        let topic_path = topic_link.length && topic_link[0].pathname;
+        let topic_match = topic_path && topic_path.match(forum_topics_regex);
+        if (topic_match && !EL.marked_topic.includes(topic_match[1])) {
+            ReadForumTopic(topic_match[1]);
+            EL.marked_topic.push(topic_match[1]);
+        }
+    }
 }
 
 function AddRenderedNote(noteid,$rowelement) {
@@ -1015,6 +1029,15 @@ function InsertPools($poolpage) {
 
 //Misc functions
 
+function ReadForumTopic(topicid) {
+    $.ajax({
+        type: "HEAD",
+        url:'/forum_topics/' + topicid,
+        headers: {
+            Accept: "text/html",
+        }
+    });
+}
 
 function DecodeProtectedEmail(obj) {
     $('[data-cfemail]',obj).each((i,entry)=>{
@@ -1742,6 +1765,7 @@ function RenderSettingsMenu() {
     $("#event-listener").append(el_menu);
     $("#el-general-settings").append(JSPLib.menu.renderDomainSelectors('el', 'EventListener'));
     $("#el-notice-settings").append(JSPLib.menu.renderCheckbox("el",'autolock_notices'));
+    $("#el-notice-settings").append(JSPLib.menu.renderCheckbox("el",'mark_read_topics'));
     $("#el-notice-settings").append(JSPLib.menu.renderCheckbox("el",'autoclose_dmail_notice'));
     $("#el-event-settings").append(JSPLib.menu.renderCheckbox("el",'filter_user_events'));
     $("#el-event-settings").append(JSPLib.menu.renderCheckbox("el",'filter_untranslated_commentary'));
@@ -1782,6 +1806,7 @@ function Main() {
         lastids: {user: {}, subscribe: {}},
         subscribelist: {},
         openlist: {},
+        marked_topic: [],
         item_overflow: false,
         had_events: HasEvents(),
         no_limit: false,
