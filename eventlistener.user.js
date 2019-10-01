@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      15.7
+// @version      15.8
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1367,12 +1367,14 @@ function InitializeCommentPartialCommentLinks(selector) {
         var linkhtml = RenderSubscribeDualLinks('comment',postid,"div"," ","comments");
         let shownhtml = (IsEventEnabled('comment') ? '' : 'style="display:none"');
         var $image = $("img",entry);
-        let height = $image[0].height;
         /****NEED TO SEE IF THIS CAN BE DONE THIS WITHOUT A TABLE****/
         var $table = $.parseHTML(`<table><tbody><tr><td></td></tr><tr><td class="el-subscribe-comment-container "${shownhtml}>${linkhtml}</td></tr></tbody></table>`);
         var $preview = $(".preview",entry).detach();
+        $image[0].onload = function () {
+            let height = $image[0].height;
+            $preview.css('height', height + 10 + 'px');
+        };
         $("tr:nth-of-type(1) td",$table).append($preview[0]);
-        $preview.css('height', height + 10 + 'px');
         $(entry).prepend($table[0]);
         $(".subscribe-comment a,.unsubscribe-comment a",entry).off('click.el').on('click.el',SubscribeDualLink);
     });
