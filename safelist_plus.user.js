@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SafelistPlus
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.7
+// @version      3.8
 // @description  Alternate Danbooru blacklist handler.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1241,7 +1241,12 @@ function SafelistHide(post) {
 }
 
 function SafelistUnhide(post) {
-    let type = ((SL.controller === "comments" && SL.action === "index") || (post.id === "image-container") ? 'block' : 'inline-block');
+    var type = 'inline-block';
+    if (post.id === "image-container") {
+        type = 'block';
+    } else if (SL.controller === "comments") {
+        type = 'flex';
+    }
     post.style.setProperty('display', type, 'important');
     if (SL.has_video && document.hasFocus()) {
         var $video = $(post).find("video")[0];
