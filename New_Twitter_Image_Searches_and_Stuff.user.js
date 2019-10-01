@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
-// @version      2.4
+// @version      2.5
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1352,6 +1352,7 @@ const VIDEO_EXPIRES = JSPLib.utility.one_week;
 const LENGTH_RECHECK_EXPIRES = JSPLib.utility.one_hour;
 const USER_PROFILE_RECHECK_EXPIRES = JSPLib.utility.one_month;
 const DATABASE_RECHECK_EXPIRES = JSPLib.utility.one_day;
+const BADVER_RECHECK_EXPIRES = JSPLib.utility.one_day;
 const PRUNE_RECHECK_EXPIRES = JSPLib.utility.one_hour * 6;
 const CLEANUP_TASK_DELAY = JSPLib.utility.one_minute;
 
@@ -1497,7 +1498,8 @@ var ALL_PAGE_REGEXES = {
 //Network constants
 
 const QUERY_LIMIT = 100;
-const QUERY_BATCH_SIZE = 499;
+const QUERY_BATCH_NUM = 5;
+const QUERY_BATCH_SIZE = QUERY_LIMIT * QUERY_BATCH_NUM;
 
 const POST_FIELDS = 'id,uploader_id,uploader_name,score,fav_count,rating,tag_string,created_at,preview_file_url,source,file_ext,file_size,image_width,image_height';
 const POSTVER_FIELDS = 'id,updated_at,post_id,version,source,source_changed,added_tags,removed_tags';
@@ -1699,6 +1701,7 @@ function ValidateProgramData(key,entry) {
             break;
         case 'ntisas-user-data':
         case 'ntisas-postver-lastid':
+        case 'ntisas-badver-lastid':
             if (!JSPLib.validate.validateID(entry)) {
                 checkerror = ["Value is not a valid ID."];
             }
@@ -1758,7 +1761,26 @@ function VaildateColorArray(array) {
 
 //Library functions
 
-////None
+JSPLib.danbooru.getAllItems = async function (type,limit,batches,options) {
+    let url_addons = options.addons || {};
+    let reverse = options.reverse || false;
+    let page_modifier = (reverse ? 'a' : 'b');
+    let page_addon = (Number.isInteger(options.page) ? {page:`${page_modifier}${options.page}`} : {});
+    let limit_addon = {limit: limit};
+    let batch_num = 1;
+    var return_items = [];
+    while (true) {
+        let request_addons = JSPLib.utility.joinArgs(url_addons,page_addon,limit_addon);
+        let temp_items = await JSPLib.danbooru.submitRequest(type,request_addons,[],null,options.domain,options.notify);
+        return_items = return_items.concat(temp_items);
+        if (temp_items.length < limit || (batches && batch_num >= batches)) {
+            return return_items;
+        }
+        let lastid = JSPLib.danbooru.getNextPageID(temp_items,reverse);
+        page_addon = {page:`${page_modifier}${lastid}`};
+        JSPLib.debug.debuglogLevel("#",batch_num++,"Rechecking",type,"@",lastid,JSPLib.debug.INFO);
+    }
+};
 
 //Helper functions
 
@@ -1919,13 +1941,13 @@ function GetCustomQuery() {
     return (NTISAS.user_settings.custom_order_enabled ? '+order%3Acustom' : '');
 }
 
-function GetPostVersionsLastID() {
+function GetPostVersionsLastID(type) {
     //Get the program last ID if it exists
-    let postver_lastid = JSPLib.storage.checkStorageData('ntisas-postver-lastid', ValidateProgramData, localStorage, NTISAS.database_info.post_version);
+    let postver_lastid = JSPLib.storage.checkStorageData(`ntisas-${type}-lastid`, ValidateProgramData, localStorage, NTISAS.database_info.post_version);
     //Select the largest of the program lastid and the database lastid
     let max_postver_lastid = Math.max(postver_lastid, NTISAS.database_info.post_version);
     if (postver_lastid !== max_postver_lastid) {
-        JSPLib.storage.setStorageData('ntisas-postver-lastid', max_postver_lastid, localStorage);
+        JSPLib.storage.setStorageData(`ntisas-${type}-lastid`, max_postver_lastid, localStorage);
     }
     return max_postver_lastid;
 }
@@ -2942,6 +2964,7 @@ function InitializeCleanupTasks() {
     //Take care of other non-critical tasks at a later time
     setTimeout(()=>{
         CheckDatabaseInfo();
+        CheckServerBadTweets();
         CheckPurgeBadTweets();
         JSPLib.storage.pruneEntries(PROGRAM_SHORTCUT, PROGRAM_CACHE_REGEX, PRUNE_RECHECK_EXPIRES);
     }, CLEANUP_TASK_DELAY);
@@ -3287,9 +3310,9 @@ function InitializeTweetStats(filter1,filter2) {
 //Network functions
 
 async function CheckPostvers() {
-    let postver_lastid = GetPostVersionsLastID();
-    let url_addons = {search:{id:`${postver_lastid}..${postver_lastid + QUERY_BATCH_SIZE}`}, only: POSTVER_FIELDS};
-    let post_versions = await JSPLib.danbooru.getAllItems('post_versions', QUERY_LIMIT, {page:postver_lastid, addons: url_addons, reverse: true, domain: NTISAS.domain, notify: true});
+    let postver_lastid = GetPostVersionsLastID('postver');
+    let url_addons = {search: {source_changed: true, source_regex: 'twitter\.com'}, only: POSTVER_FIELDS};
+    let post_versions = await JSPLib.danbooru.getAllItems('post_versions', QUERY_LIMIT, QUERY_BATCH_NUM, {page:postver_lastid, addons: url_addons, reverse: true, domain: NTISAS.domain, notify: true});
     if (post_versions.length === QUERY_BATCH_SIZE) {
         CheckPostvers.debuglog("Overflow detected!");
         JSPLib.storage.setStorageData('ntisas-overflow', true, localStorage);
@@ -3297,19 +3320,66 @@ async function CheckPostvers() {
         CheckPostvers.debuglog("No overflow:", post_versions.length, QUERY_BATCH_SIZE);
         JSPLib.storage.setStorageData('ntisas-overflow', false, localStorage);
     }
-    let [add_entries,rem_entries] = ProcessPostvers(post_versions);
-    CheckPostvers.debuglog("Process:", add_entries, rem_entries);
+    if (post_versions.length) {
+        let [add_entries,rem_entries] = ProcessPostvers(post_versions);
+        CheckPostvers.debuglog("Process:", add_entries, rem_entries);
+        SavePostvers(add_entries,rem_entries);
+        let lastid = JSPLib.danbooru.getNextPageID(post_versions, true);
+        //Since the post version last ID is critical, an extra sanity check has been added
+        if (JSPLib.validate.validateID(lastid)) {
+            JSPLib.storage.setStorageData('ntisas-postver-lastid', lastid, localStorage);
+            let all_timestamps = JSPLib.utility.getObjectAttributes(post_versions, 'updated_at');
+            let normal_timestamps = all_timestamps.map((timestamp)=>{return new Date(timestamp).getTime();})
+            let most_recent_timestamp = Math.max(...normal_timestamps);
+            JSPLib.storage.setStorageData('ntisas-recent-timestamp', most_recent_timestamp, localStorage);
+            InitializeCurrentRecords();
+            NTISAS.channel.postMessage({type: 'currentrecords'});
+        }
+    }
+    JSPLib.concurrency.setRecheckTimeout('ntisas-timeout', GetPostVersionsExpiration());
+    JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT, 'postvers');
+}
+
+async function CheckServerBadTweets() {
+    if (JSPLib.concurrency.checkTimeout('ntisas-badver-recheck', BADVER_RECHECK_EXPIRES) && JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'badvers')) {
+        let postver_lastid = GetPostVersionsLastID('badver');
+        let url_addons = {search: {changed_tags: 'bad_twitter_id'}, only: POSTVER_FIELDS};
+        let post_versions = await JSPLib.danbooru.getAllItems('post_versions', QUERY_LIMIT, QUERY_BATCH_NUM, {page:postver_lastid, addons: url_addons, reverse: true, domain: NTISAS.domain, notify: true});
+        if (post_versions.length === QUERY_BATCH_SIZE) {
+            CheckServerBadTweets.debuglog("Overflow detected!");
+        } else {
+            CheckServerBadTweets.debuglog("No overflow:", post_versions.length, QUERY_BATCH_SIZE);
+            JSPLib.concurrency.setRecheckTimeout('ntisas-badver-recheck', BADVER_RECHECK_EXPIRES);
+        }
+        if (post_versions.length) {
+            let [add_entries,rem_entries] = ProcessPostvers(post_versions);
+            CheckServerBadTweets.debuglog("Process:", add_entries, rem_entries);
+            SavePostvers(add_entries,rem_entries);
+            let lastid = JSPLib.danbooru.getNextPageID(post_versions, true);
+            //Since the post version last ID is critical, an extra sanity check has been added
+            if (JSPLib.validate.validateID(lastid)) {
+                JSPLib.storage.setStorageData('ntisas-badver-lastid', lastid, localStorage);
+                let all_timestamps = JSPLib.utility.getObjectAttributes(post_versions, 'updated_at');
+                InitializeCurrentRecords();
+                NTISAS.channel.postMessage({type: 'currentrecords'});
+            }
+        }
+        JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT, 'badvers');
+    }
+}
+
+function SavePostvers(add_entries,rem_entries) {
     let combined_keys = JSPLib.utility.setIntersection(Object.keys(add_entries), Object.keys(rem_entries));
     combined_keys.forEach((tweet_id)=>{
         let tweet_key = 'tweet-' + tweet_id;
         let post_ids = add_entries[tweet_id];
         JSPLib.storage.retrieveData(tweet_key, JSPLib.storage.twitterstorage).then((data)=>{
             if (JSPLib.validate.validateIDList(data)) {
-                CheckPostvers.debuglog("Tweet adds/rems - existing IDs:", tweet_key, data);
+                SavePostvers.debuglog("Tweet adds/rems - existing IDs:", tweet_key, data);
                 post_ids = JSPLib.utility.setUnique(JSPLib.utility.setDifference(JSPLib.utility.setUnion(data, add_entries[tweet_id]), rem_entries[tweet_id]));
             }
             if (data === null || JSPLib.utility.setSymmetricDifference(post_ids, data)) {
-                CheckPostvers.debuglog("Tweet adds/rems - saving:", tweet_key, post_ids);
+                SavePostvers.debuglog("Tweet adds/rems - saving:", tweet_key, post_ids);
                 JSPLib.storage.saveData(tweet_key, post_ids, JSPLib.storage.twitterstorage);
                 UpdatePostIDsLink(tweet_id);
                 NTISAS.channel.postMessage({type: 'postlink', tweet_id: tweet_id, post_ids: post_ids});
@@ -3322,11 +3392,11 @@ async function CheckPostvers() {
         let post_ids = add_entries[tweet_id];
         JSPLib.storage.retrieveData(tweet_key, JSPLib.storage.twitterstorage).then((data)=>{
             if (JSPLib.validate.validateIDList(data)) {
-                CheckPostvers.debuglog("Tweet adds - existing IDs:", tweet_key, data);
+                SavePostvers.debuglog("Tweet adds - existing IDs:", tweet_key, data);
                 post_ids = JSPLib.utility.setUnion(data, post_ids);
             }
             if (data === null || post_ids.length > data.length) {
-                CheckPostvers.debuglog("Tweet adds - saving:", tweet_key, post_ids);
+                SavePostvers.debuglog("Tweet adds - saving:", tweet_key, post_ids);
                 JSPLib.storage.saveData(tweet_key, post_ids, JSPLib.storage.twitterstorage);
                 UpdatePostIDsLink(tweet_id);
                 NTISAS.channel.postMessage({type: 'postlink', tweet_id: tweet_id, post_ids: post_ids});
@@ -3339,14 +3409,14 @@ async function CheckPostvers() {
         let post_ids = [];
         JSPLib.storage.retrieveData(tweet_key, JSPLib.storage.twitterstorage).then((data)=>{
             if (data !== null && JSPLib.validate.validateIDList(data)) {
-                CheckPostvers.debuglog("Tweet removes - existing IDs:", tweet_key, data);
+                SavePostvers.debuglog("Tweet removes - existing IDs:", tweet_key, data);
                 post_ids = JSPLib.utility.setUnique(JSPLib.utility.setDifference(data, rem_entries[tweet_id]));
             }
             if (post_ids.length) {
-                CheckPostvers.debuglog("Tweet removes - saving:", tweet_key, post_ids);
+                SavePostvers.debuglog("Tweet removes - saving:", tweet_key, post_ids);
                 JSPLib.storage.saveData(tweet_key, post_ids, JSPLib.storage.twitterstorage);
             } else {
-                CheckPostvers.debuglog("Tweet removes - deleting:", tweet_key);
+                SavePostvers.debuglog("Tweet removes - deleting:", tweet_key);
                 JSPLib.storage.removeData(tweet_key, JSPLib.storage.twitterstorage);
             }
             if (data !== null) {
@@ -3355,19 +3425,6 @@ async function CheckPostvers() {
             }
         });
     });
-    let lastid = JSPLib.danbooru.getNextPageID(post_versions, true);
-    //Since the post version last ID is critical, an extra sanity check has been added
-    if (JSPLib.validate.validateID(lastid)) {
-        JSPLib.storage.setStorageData('ntisas-postver-lastid', lastid, localStorage);
-        let all_timestamps = JSPLib.utility.getObjectAttributes(post_versions, 'updated_at');
-        let normal_timestamps = all_timestamps.map((timestamp)=>{return new Date(timestamp).getTime();})
-        let most_recent_timestamp = Math.max(...normal_timestamps);
-        JSPLib.storage.setStorageData('ntisas-recent-timestamp', most_recent_timestamp, localStorage);
-        InitializeCurrentRecords();
-        NTISAS.channel.postMessage({type: 'currentrecords'});
-    }
-    JSPLib.concurrency.setRecheckTimeout('ntisas-timeout', GetPostVersionsExpiration());
-    JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT, 'postvers');
 }
 
 async function GetMaxVideoDownloadLink(tweet_id) {
@@ -5009,7 +5066,7 @@ JSPLib.debug.addFunctionLogs([
     CheckIQDB, CheckURL, PurgeBadTweets, CheckPurgeBadTweets, SaveDatabase, LoadDatabase, CheckPostvers,
     CheckPostIDs, ReadFileAsync, ProcessPostvers, InitializeImageMenu, CorrectStringArray, ValidateEntry,
     BroadcastTISAS, PageNavigation, ProcessNewTweets, ProcessTweetImages, InitializeUploadlinks, CheckSauce,
-    GetMaxVideoDownloadLink, GetPageType
+    GetMaxVideoDownloadLink, GetPageType, CheckServerBadTweets, SavePostvers
 ]);
 
 /****Execution start****/
