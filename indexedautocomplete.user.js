@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      25.2
+// @version      25.3
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -254,18 +254,20 @@ const forum_css = `
 
 const forum_topic_search = `
 <li>
-    <form action="/forum_topics" accept-charset="UTF-8" method="get">
-        <input name="utf8" type="hidden" value="✓">
-        <input id="quick_search_title_matches" placeholder="Search topic" type="text" name="search[title_matches]" class="ui-autocomplete-input" data-autocomplete="forum-topic" autocomplete="off">
+    <form autocomplete="off" class="simple_form search-form quick-search-form one-line-form" novalidate="novalidate" action="/forum_topics" accept-charset="UTF-8" method="get">
+        <div class="input string optional">
+            <input id="quick_search_title_matches" placeholder="Search topics" type="text" name="search[title_ilike]" class="string optional" data-autocomplete="forum-topic" autocomplete="off">
+        </div>
     </form>
 </li>`;
 
 const post_comment_search = `
 <li>
-    <form action="/comments" accept-charset="UTF-8" method="get">
-        <input name="utf8" type="hidden" value="✓">
-        <input type="hidden" name="group_by" id="group_by" value="post">
-        <input id="quick_search_post_matches" placeholder="Search posts" type="text" name="tags" class="ui-autocomplete-input" data-autocomplete="tag-query" autocomplete="off">
+    <form autocomplete="off" class="simple_form search-form quick-search-form one-line-form" novalidate="novalidate" action="/comments" accept-charset="UTF-8" method="get">
+        <div class="input string optional">
+            <input type="hidden" name="group_by" id="group_by" value="post">
+            <input id="quick_search_post_matches" placeholder="Search posts" type="text" name="tags" class="string optional" data-autocomplete="tag-query" autocomplete="off">
+        </div>
     </form>
 </li>`;
 
@@ -848,7 +850,7 @@ const source_config = {
             return {
                 search: {
                     order: 'sticky',
-                    title_matches: "*" + term + "*"
+                    title_ilike: "*" + term + "*"
                 },
                 only: "title,category_id"
             };
