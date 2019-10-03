@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
-// @version      2.5
+// @version      2.6
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2199,10 +2199,15 @@ function GetImageLinks($tweet) {
     return JSPLib.utility.getDOMAttributes($obj, 'image-url');
 }
 
-function GetTweetStat(tweet,type) {
-    let label = $(`[data-testid=${type}]`, tweet).attr('aria-label');
-    let match = label.match(/\d+/);
-    return Number(match ? match[0] : 0);
+function GetTweetStat(tweet,types) {
+    for (let i = 0; i < types.length; i++) {
+        let label = $(`[data-testid=${types[i]}]`, tweet).attr('aria-label');
+        let match = label && label.match(/\d+/);
+        if (match) {
+            return match[0];
+        }
+    }
+    return 0;
 }
 
 function SetVideoDownload($download_section,video_url) {
@@ -4648,7 +4653,7 @@ function HighlightTweets() {
             return;
         }
         NTISAS.tweet_pos.push(tweetid);
-        var favorites = GetTweetStat(entry, 'like');
+        var favorites = GetTweetStat(entry, ['like','unlike']);
         NTISAS.tweet_faves.push(favorites);
     });
     HighlightTweets.debuglog("Tweets:", NTISAS.tweet_pos);
@@ -4682,9 +4687,9 @@ function CollectTweetStats() {
             retweet: $(entry).data('is-retweet'),
             video: Boolean($('.ntisas-tweet-video', entry).length),
             image: Boolean($('.ntisas-tweet-image', entry).length),
-            replies: GetTweetStat(entry, 'reply'),
-            retweets: GetTweetStat(entry, 'retweet'),
-            favorites: GetTweetStat(entry, 'like')
+            replies: GetTweetStat(entry, ['reply']),
+            retweets: GetTweetStat(entry, ['retweet', 'unretweet']),
+            favorites: GetTweetStat(entry, ['like', 'unlike'])
         });
         are_new = true;
     });
