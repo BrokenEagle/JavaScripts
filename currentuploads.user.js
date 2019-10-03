@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      15.3
+// @version      15.4
 // @description  Gives up-to-date stats on uploads.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -37,8 +37,8 @@ JSPLib.debug.level = JSPLib.debug.INFO;
 const program_load_required_variables = ['window.jQuery','window.Danbooru'];
 const program_load_required_selectors = ["#top","#page-footer"];
 
-//Variables for danbooru.js
-JSPLib.danbooru.counter_domname = "#loading-counter";
+//Variables for network.js
+JSPLib.network.counter_domname = "#loading-counter";
 
 //Main program variable
 var CU;

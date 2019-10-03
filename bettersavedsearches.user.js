@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         BetterSavedSearches
-// @namespace    https://github.com/BrokenEagle/JavaScripts (fix normalize slice)
-// @version      5.7
+// @namespace    https://github.com/BrokenEagle/JavaScripts
+// @version      5.8
 // @description  Provides an alternative mechanism and UI for saved searches
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -34,8 +34,10 @@ JSPLib.debug.level = JSPLib.debug.INFO;
 //Variables for utility.js
 JSPLib.utility.max_column_characters = 15;
 
+//Variables for network.js
+JSPLib.network.counter_domname = "#bss-initialize-counter";
+
 //Variables for danbooru.js
-JSPLib.danbooru.counter_domname = "#bss-initialize-counter";
 JSPLib.danbooru.max_network_requests = 10;
 
 //Variables for load.js
