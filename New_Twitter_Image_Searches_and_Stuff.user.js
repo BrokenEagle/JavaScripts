@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
-// @version      2.6
+// @version      2.7
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2204,7 +2204,7 @@ function GetTweetStat(tweet,types) {
         let label = $(`[data-testid=${types[i]}]`, tweet).attr('aria-label');
         let match = label && label.match(/\d+/);
         if (match) {
-            return match[0];
+            return parseInt(match[0]);
         }
     }
     return 0;
