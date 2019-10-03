@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
-// @version      2.8
+// @version      2.9
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -8,6 +8,7 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/New_Twitter_Image_Searches_and_Stuff.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js
+// @require      https://cdn.jsdelivr.net/npm/core-js-bundle@3.2.1/minified.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.js
 // @require      https://raw.githubusercontent.com/jeresig/jquery.hotkeys/0.2.0/jquery.hotkeys.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
@@ -91,8 +92,8 @@ const LOCALSTORAGE_KEYS = [];
 const PROGRAM_RESET_KEYS = {};
 
 //Settings constants
-const COMMON_QUERY_SETTINGS = ['confirm_query', 'confirm_save', 'auto_save'];
-const DEFAULT_QUERY_SETTINGS = ['confirm_query', 'confirm_save'];
+const COMMON_QUERY_SETTINGS = ['pick_image', 'confirm_save', 'auto_save'];
+const DEFAULT_QUERY_SETTINGS = ['pick_image', 'confirm_save'];
 const ALL_SCORE_LEVELS = ['excellent', 'good', 'aboveavg', 'fair', 'belowavg', 'poor'];
 const SCORE_LEVELS = ['good', 'aboveavg', 'fair', 'belowavg', 'poor'];
 const SUBDOMAINS = ['danbooru', 'kagamihara', 'saitou', 'shima'];
@@ -1034,7 +1035,7 @@ const NTISAS_MENU = `
             <div id="ntisas-query-message" class="prose">
                 <h4>Query settings</h4>
                 <ul>
-                    <li><b>Confirm query:</b> Prompt the user on which images to query when there is more than one image.</li>
+                    <li><b>Pick image:</b> Prompt the user on which images to query when there is more than one image.</li>
                     <li><b>Confirm save:</b> Prompt the user on which images to save from the results.
                         <ul>
                             <li>When disabled, the thumbnail and post ID links behave as regular links.</li>
@@ -3785,7 +3786,7 @@ async function CheckIQDB(event) {
     let [$link,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event, 'ntisas-check-iqdb');
     let all_image_urls = GetImageLinks($tweet);
     CheckIQDB.debuglog("All:", all_image_urls);
-    if ((all_image_urls.length > 1) && IsQuerySettingEnabled('confirm_query', 'iqdb') && !IsIQDBAutoclick()) {
+    if ((all_image_urls.length > 1) && IsQuerySettingEnabled('pick_image', 'iqdb') && !IsIQDBAutoclick()) {
         if (!NTISAS.tweet_dialog[tweet_id]) {
             NTISAS.tweet_dialog[tweet_id] = InitializeConfirmContainer(all_image_urls);
         }
@@ -3862,7 +3863,7 @@ async function CheckSauce(event) {
     let [$link,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event, 'ntisas-check-sauce');
     let all_image_urls = GetImageLinks($tweet);
     CheckSauce.debuglog("All:", all_image_urls);
-    if ((all_image_urls.length > 1) && IsQuerySettingEnabled('confirm_query', 'sauce')) {
+    if ((all_image_urls.length > 1) && IsQuerySettingEnabled('pick_image')) {
         if (!NTISAS.tweet_dialog[tweet_id]) {
             NTISAS.tweet_dialog[tweet_id] = InitializeConfirmContainer(all_image_urls);
         }
