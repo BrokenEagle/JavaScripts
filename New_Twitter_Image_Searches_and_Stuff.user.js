@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
-// @version      2.9
+// @version      2.10
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1783,6 +1783,33 @@ JSPLib.danbooru.getAllItems = async function (type,limit,batches,options) {
     }
 };
 
+JSPLib.utility.notice = function (...args) {
+    typeof Danbooru === 'object' && Danbooru.Utility && Danbooru.Utility.notice(...args);
+};
+
+JSPLib.utility.error = function (...args) {
+    typeof Danbooru === 'object' && Danbooru.Utility && Danbooru.Utility.error(...args);
+};
+
+Danbooru.Utility.notice_css = `
+#%s-notice {
+    padding: .25em;
+    position: fixed;
+    top: 2em;
+    left: 25%;
+    width: 50%;
+    z-index: 1002;
+    display: none;
+}
+#%s-close-notice-link {
+    right: 1em;
+    position: absolute;
+}
+#%s-close-notice-link,
+#%s-close-notice-link:hover {
+    color: #0073ff;
+}`;
+
 //Helper functions
 
 function GetAPIData(key,id,value) {
@@ -2596,15 +2623,22 @@ function UpdateTweetIndicators() {
         if (NTISAS.counted_tweets.includes(tweet_id)) {
             active_indicators.push('count-tweet');
         }
+        let shown_indicators = false;
         ALL_INDICATOR_TYPES.forEach((type)=>{
             if (active_indicators.includes(type)) {
                 $(`.ntisas-indicators .ntisas-${type}`, entry).show();
                 $(`.ntisas-footer-entries .ntisas-${type}`, entry).addClass('ntisas-activated');
+                shown_indicators = true;
             } else {
                 $(`.ntisas-indicators .ntisas-${type}`, entry).hide();
                 $(`.ntisas-footer-entries .ntisas-${type}`, entry).removeClass('ntisas-activated');
             }
         });
+        if (shown_indicators) {
+            $('.ntisas-tweet-status', entry).css('min-height', '1.5em');
+        } else {
+            $('.ntisas-tweet-status', entry).css('min-height', '');
+        }
     });
 }
 
@@ -2997,7 +3031,7 @@ function InitializeUIStyle() {
 function InitializeStatusBar(tweet_status) {
     var $container;
     if (tweet_status.childElementCount > 0) {
-        $container = $('> div > div', tweet_status);
+        $container = $('> div > div:last-of-type', tweet_status);
         $("> div:last-of-type", $container).css('flex-grow', 'unset').css('flex-basis', 'unset');
     } else {
         $container = $(tweet_status);
@@ -3863,7 +3897,7 @@ async function CheckSauce(event) {
     let [$link,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event, 'ntisas-check-sauce');
     let all_image_urls = GetImageLinks($tweet);
     CheckSauce.debuglog("All:", all_image_urls);
-    if ((all_image_urls.length > 1) && IsQuerySettingEnabled('pick_image')) {
+    if ((all_image_urls.length > 1) && IsQuerySettingEnabled('pick_image', 'sauce')) {
         if (!NTISAS.tweet_dialog[tweet_id]) {
             NTISAS.tweet_dialog[tweet_id] = InitializeConfirmContainer(all_image_urls);
         }
