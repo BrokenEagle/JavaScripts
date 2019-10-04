@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      15.9
+// @version      16.0
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -232,6 +232,10 @@ const wiki_css = `
 `;
 
 const pool_css = `
+#event-notice #pool-section .el-pool-diff {
+    overflow-x: auto;
+    max-width: 90vw;
+}
 #event-notice #pool-section .el-pool-diff ins {
     background: #cfc;
     text-decoration: none;
@@ -239,6 +243,19 @@ const pool_css = `
 #event-notice #pool-section .el-pool-diff del {
     background: #fcc;
     text-decoration: none;
+}
+#event-notice #pool-section .el-add-pool-posts {
+    background-color: rgba(0,255,0,0.2);
+}
+#event-notice #pool-section .el-rem-pool-posts {
+    background-color: rgba(255,0,0,0.2);
+}
+#event-notice #pool-section .el-pool-posts .post-preview {
+    width: 154px;
+    height: 154px;
+    margin: 5px;
+    padding: 5px;
+    border: 1px solid #AAA;
 }
 `;
 
@@ -438,6 +455,8 @@ const el_menu = `
 
 //Polling interval for checking program status
 const timer_poll_interval = 100;
+
+const JQUERY_DELAY = 1; //For jQuery updates that should not be done synchronously
 
 //The max number of items to grab with each network call
 const query_limit = 100;
@@ -659,7 +678,7 @@ function AreAllEventsEnabled(event_list) {
 function HideDmailNotice() {
     let $hide_link = $("#hide-dmail-notice");
     if ($hide_link.length) {
-        $hide_link.click();
+        setTimeout(()=>{$hide_link.click();},JQUERY_DELAY);
     }
 }
 
@@ -875,7 +894,7 @@ async function AddWiki(wikiverid,$rowelement) {
     }
 }
 
-async function AddPool(poolverid,$rowelement) {
+async function AddPoolDiff(poolverid,$rowelement) {
     let pool_diff = await JSPLib.network.getNotify(`/pool_versions/${poolverid}/diff`);
     let $pool_diff = $.parseHTML(pool_diff);
     let old_desc = $("#a-diff li:nth-of-type(2)",$pool_diff).text().replace(pool_desc_regex,'');
@@ -895,7 +914,34 @@ async function AddPool(poolverid,$rowelement) {
             return entry.value;
         }
     }).join('').replace(/\n/g,paragraph_mark);
-    let $outerblock = $.parseHTML(`<tr id=full-pool-id-${poolverid}><td class="el-pool-diff" colspan="6">${diff_desc}</td></tr>`);
+    let $outerblock = $.parseHTML(`<tr id=full-pooldiff-id-${poolverid}><td class="el-pool-diff" colspan="6">${diff_desc}</td></tr>`);
+    $($rowelement).after($outerblock);
+}
+
+async function AddPoolPosts(poolverid,$rowelement) {
+    console.log(poolverid);
+    let $post_changes = $("td:nth-of-type(2)",$rowelement);
+    let add_posts = $post_changes.data('add-posts');
+    let rem_posts = $post_changes.data('rem-posts');
+    let total_posts = JSPLib.utility.setUnion(add_posts,rem_posts);
+    let thumbnails = await JSPLib.network.getNotify(`/posts`,{tags:'id:'+total_posts.join(',') + ' status:any'});
+    let $thumbnails = $.parseHTML(thumbnails);
+    $('.post-preview',$thumbnails).each((i,entry)=>{$(entry).addClass('blacklisted');}); //Mark thumbnails as blacklist processed
+    let $outerblock = $.parseHTML(`<tr id=full-poolposts-id-${poolverid}><td class="el-pool-posts" colspan="6"><div class="el-add-pool-posts" style="display:none"></div><div class="el-rem-pool-posts" style="display:none"></div></td></tr>`);
+    if (add_posts.length) {
+        let $container = $('.el-add-pool-posts',$outerblock).show();
+        add_posts.forEach((post_id)=>{
+            let $thumb = $(`#post_${post_id}`,$thumbnails);
+            $container.append($thumb);
+        });
+    }
+    if (rem_posts.length) {
+        let $container = $('.el-rem-pool-posts',$outerblock).show();
+        rem_posts.forEach((post_id)=>{
+            let $thumb = $(`#post_${post_id}`,$thumbnails);
+            $container.append($thumb);
+        });
+    }
     $($rowelement).after($outerblock);
 }
 
@@ -1214,14 +1260,22 @@ function InitializeOpenWikiLinks($obj) {
 
 function InitializeOpenPoolLinks($obj) {
     $(".striped tbody tr",$obj).each((i,$row)=>{
-        let $desc_changed = $("td:nth-of-type(4)",$row);
-        if ($desc_changed.html() === "false") {
-            return;
-        }
         let poolverid = parseInt($row.id.match(/\d+$/)[0]);
-        $desc_changed.append(' (' + RenderOpenItemLinks('pool',poolverid,'Show diff','Hide diff') + ')');
+        let $post_changes = $("td:nth-of-type(2)",$row);
+        let add_posts = $('.diff-list:first-of-type a[href^="/posts"]',$post_changes[0]).map((i,entry)=>{return entry.innerText;}).toArray();
+        let rem_posts = $('.diff-list:last-of-type a[href^="/posts"]',$post_changes[0]).map((i,entry)=>{return entry.innerText;}).toArray();
+        if (add_posts.length || rem_posts.length) {
+            $post_changes.prepend(RenderOpenItemLinks('poolposts',poolverid,'Show posts','Hide posts') + '&nbsp|&nbsp');
+            $post_changes.data('add-posts',add_posts);
+            $post_changes.data('rem-posts',rem_posts);
+        }
+        let $desc_changed = $("td:nth-of-type(4)",$row);
+        if ($desc_changed.html() !== "false") {
+            $desc_changed.append(' (' + RenderOpenItemLinks('pooldiff',poolverid,'Show diff','Hide diff') + ')');
+        }
     });
-    OpenItemClick('pool',$obj,3,AddPool);
+    OpenItemClick('pooldiff',$obj,3,AddPoolDiff);
+    OpenItemClick('poolposts',$obj,3,AddPoolPosts);
 }
 
 //#C-POSTS #A-SHOW
@@ -1543,7 +1597,7 @@ function RebindMenuAutocomplete() {
         exec: ()=>{
             $("#user_blacklisted_tags,#user_favorite_tags").autocomplete("destroy").off('keydown.Autocomplete.tab');
             $("#el-setting-search-query").attr('data-autocomplete','tag-query');
-            setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, timer_poll_interval);
+            setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, JQUERY_DELAY);
         }
     },timer_poll_interval);
 }
