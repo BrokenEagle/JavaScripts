@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.0
+// @version      16.1
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -114,17 +114,12 @@ const program_css = `
 #event-notice {
     padding: 0.5em;
 }
-#c-comments #a-index #p-index-by-post .subscribe-comment,
-#c-comments #a-index #p-index-by-post .unsubscribe-comment {
-    margin: 1em 0;
+#page #c-comments #a-index .preview {
+    height: 170px;
+    display: flex;
+    flex-direction: column;
 }
-#c-comments #a-index #p-index-by-comment table,
-#event-notice #comment-section #comment-table table {
-    float: left;
-    text-align: center;
-}
-#c-comments #a-index #p-index-by-comment .preview,
-#event-notice #comment-section #comment-table .preview {
+#c-comments #a-index #p-index-by-comment .preview {
     margin-right: 0;
 }
 .striped .el-monospace-link:link,
@@ -137,9 +132,6 @@ const program_css = `
 .striped .el-monospace-link:hover,
 .post-preview .el-monospace-link:hover {
     color: var(--link-hover-color);
-}
-#comment-table .post-preview {
-    min-height: 14em;
 }
 .el-subscribe-pool-container .el-subscribe-dual-links .el-monospace-link {
     color: grey;
@@ -191,12 +183,20 @@ const program_css = `
 `;
 
 const comment_css = `
+#event-notice #comment-section #comment-table .post-preview {
+    display: flex;
+    flex-direction: row;
+    margin-bottom: 1em;
+    border-bottom: 1px solid lightgrey;
+    min-height: 14em;
+}
 #event-notice #comment-section #comment-table .preview {
-    float: left;
+    flex-direction: column;
+    display: flex;
     width: 154px;
-    height: 154px;
-    overflow: hidden;
+    height: 170px;
     text-align: center;
+    margin-right: 0;
 }
 #event-notice #comment-section #comment-table .comment {
     padding: 1em;
@@ -256,6 +256,9 @@ const pool_css = `
     margin: 5px;
     padding: 5px;
     border: 1px solid #AAA;
+}
+.el-paragraph-mark {
+    opacity: 0.25;
 }
 `;
 
@@ -812,7 +815,6 @@ function ProcessEvent(inputtype) {
     if ((CheckWaiting(inputtype) && CheckWaiting.any_waits) || /*Check for any wait event*/
         (CheckOverflow(inputtype) && !CheckWaiting.any_waits && CheckOverflow.any_overflow) || /*Check for any overflow event but not a wait event*/
         (!CheckWaiting.any_waits && !CheckOverflow.any_overflow) /*Check for neither waits nor overflows*/) {
-        typedict[inputtype].process && typedict[inputtype].process();
         if (user_events.includes(inputtype)) {
             return Timer.CheckUserType(inputtype);
         } else if (subscribe_events.includes(inputtype)) {
@@ -1420,16 +1422,8 @@ function InitializeCommentPartialCommentLinks(selector) {
         var postid = parseInt($(entry).data('id'));
         var linkhtml = RenderSubscribeDualLinks('comment',postid,"div"," ","comments");
         let shownhtml = (IsEventEnabled('comment') ? '' : 'style="display:none"');
-        var $image = $("img",entry);
-        /****NEED TO SEE IF THIS CAN BE DONE THIS WITHOUT A TABLE****/
-        var $table = $.parseHTML(`<table><tbody><tr><td></td></tr><tr><td class="el-subscribe-comment-container "${shownhtml}>${linkhtml}</td></tr></tbody></table>`);
-        var $preview = $(".preview",entry).detach();
-        $image[0].onload = function () {
-            let height = $image[0].height;
-            $preview.css('height', height + 10 + 'px');
-        };
-        $("tr:nth-of-type(1) td",$table).append($preview[0]);
-        $(entry).prepend($table[0]);
+        let $subscribe = $.parseHTML(`<div class="el-subscribe-comment-container "${shownhtml}>${linkhtml}</div>`);
+        $(".preview", entry).append($subscribe);
         $(".subscribe-comment a,.unsubscribe-comment a",entry).off('click.el').on('click.el',SubscribeDualLink);
     });
 }
@@ -1620,8 +1614,11 @@ async function CheckUserType(type) {
             let typehtml = await $.get(`/${typedict[type].controller}`, url_addons);
             let $typepage = $(typehtml);
             typedict[type].insert($typepage,type);
-            $("#event-notice").show();
+            if (typedict[type].process) {
+                typedict[type].process();
+            }
             $(`#${type}-section`).show();
+            $("#event-notice").show();
             return true;
         } else {
             CheckUserType.debuglog(`No ${type}(s)!`);
@@ -1682,8 +1679,11 @@ async function CheckSubscribeType(type) {
             let typehtml = await $.get(`/${typedict[type].controller}`, url_addons);
             let $typepage = $(typehtml);
             typedict[type].insert($typepage,type);
-            $("#event-notice").show();
+            if (typedict[type].process) {
+                typedict[type].process();
+            }
             $(`#${type}-section`).show();
+            $("#event-notice").show();
             return true;
         } else {
             CheckSubscribeType.debuglog(`No ${type}(s)!`);
@@ -1861,7 +1861,6 @@ function Main() {
         controller: document.body.dataset.controller,
         action: document.body.dataset.action,
         showid: JSPLib.danbooru.getShowID(),
-        params: JSPLib.utility.parseParams(window.location.search.slice(1)),
         username: JSPLib.utility.getMeta('current-user-name'),
         userid: parseInt(JSPLib.utility.getMeta('current-user-id')),
         lastids: {user: {}, subscribe: {}},
@@ -1933,12 +1932,7 @@ function Main() {
             SubscribeMultiLinkCallback();
         }
     } else if (EL.controller === "comments" && EL.action === "index") {
-        if ('group_by' in EL.params && EL.params.group_by === "comment") {
-            InitializeCommentPartialCommentLinks("#p-index-by-comment .post-preview");
-        } else {
-            //Default partial is to group by post
-            InitializeCommentPartialPostLinks();
-        }
+        InitializeCommentPartialCommentLinks("#c-comments .post-preview");
     } else if (["forum-topics","forum-posts"].includes(EL.controller)) {
         if (EL.action === "show") {
             InitializeTopicShowMenu();
