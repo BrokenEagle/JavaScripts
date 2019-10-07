@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
-// @version      2.10
+// @version      2.11
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -3819,6 +3819,10 @@ async function CheckIQDB(event) {
     event.preventDefault();
     let [$link,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event, 'ntisas-check-iqdb');
     let all_image_urls = GetImageLinks($tweet);
+    if (all_image_urls.length === 0) {
+        CheckIQDB.debuglog("Images not loaded yet...");
+        return;
+    }
     CheckIQDB.debuglog("All:", all_image_urls);
     if ((all_image_urls.length > 1) && IsQuerySettingEnabled('pick_image', 'iqdb') && !IsIQDBAutoclick()) {
         if (!NTISAS.tweet_dialog[tweet_id]) {
@@ -3871,6 +3875,7 @@ async function CheckIQDB(event) {
             $replace.html(RenderPostIDsLink(iqdb_post_ids, classname));
             NTISAS.tweet_index[tweet_id] = {entry: $tweet, post_ids: iqdb_post_ids, processed: false, similar: false};
             CheckPostIDs(iqdb_post_ids);
+            NTISAS.channel.postMessage({type: 'postlink', tweet_id: tweet_id, post_ids: iqdb_post_ids});
         } else {
             $replace.html(RenderSimilarIDsLink(iqdb_post_ids, mapped_posts, classname, 'iqdb'));
             NTISAS.similar_results[tweet_id] = iqdb_post_ids;
