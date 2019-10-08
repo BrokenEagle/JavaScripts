@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DisplayPostInfo
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      8.5
+// @version      8.6
 // @description  Display views, uploader, and other info to the user.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -302,7 +302,13 @@ function ValidateProgramData(key,entry) {
 
 //Library functions
 
-////None
+JSPLib.utility.hijackFunction = function (oldfunc,newfunc) {
+    return function(...args) {
+        let data = oldfunc.call(this,...args);
+        data = newfunc.call(this,data,...args);
+        return data;
+    }
+};
 
 //Auxiliary functions
 
@@ -524,22 +530,11 @@ async function DisplayTopTagger() {
 
 ////#A-INDEX
 
-function RenderTooltip (event, qtip) {
-    var post_id = $(this).parents("[data-id]").data("id");
-    var uploader_id = $(this).parents("[data-uploader-id]").data("uploader-id");
-    RenderTooltip.debuglog("Getting tooltip info:", post_id);
-    $.get("/posts/" + post_id, {variant: "tooltip"}).then((html)=>{
-        qtip.set("content.text", html);
-        qtip.elements.tooltip.removeClass("post-tooltip-loading");
-        DPI.all_uploaders.then((data)=>{
-            let name_html = RenderUsername(uploader_id,data[uploader_id]);
-            $(".post-tooltip-header-left",qtip.elements.content[0]).prepend(name_html);
-        });
-        // Hide the tooltip if the user stopped hovering before the ajax request completed.
-        if (Danbooru.PostTooltip.lostFocus) {
-            qtip.hide();
-        }
-    });
+async function RenderTooltip(render_promise, event, qtip) {
+    let [,data] = await Promise.all([render_promise, DPI.all_uploaders]);
+    var uploader_id = $(event.target).closest('.post-preview').data("uploader-id");
+    let name_html = RenderUsername(uploader_id, data[uploader_id]);
+    $(".post-tooltip-header-left", qtip.elements.content[0]).prepend(name_html);
 }
 
 function UpdateThumbnailTitles() {
@@ -770,11 +765,10 @@ function Main() {
             Timer.DisplayTopTagger();
         }
     } else if ($("#c-posts #a-index").length) {
-        //Maybe put the following map function into the library
-        let all_uploaders = JSPLib.utility.setUnique($(".post-preview").map((i,entry)=>{return $(entry).data('uploader-id')}).toArray());
+        let all_uploaders = JSPLib.utility.setUnique(JSPLib.utility.getDOMAttributes($(".post-preview"), 'uploader-id'));
         DPI.all_uploaders = Timer.GetUserListData(all_uploaders);
         if (!Danbooru.DPI.basic_tooltips && DPI.user_settings.advanced_post_tooltip) {
-            Danbooru.PostTooltip.QTIP_OPTIONS.content = RenderTooltip;
+            Danbooru.PostTooltip.QTIP_OPTIONS.content = JSPLib.utility.hijackFunction(Danbooru.PostTooltip.render_tooltip, RenderTooltip);
         } else if (Danbooru.DPI.basic_tooltips && DPI.user_settings.basic_post_tooltip) {
             UpdateThumbnailTitles();
         }
