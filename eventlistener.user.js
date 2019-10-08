@@ -34,22 +34,22 @@ JSPLib.debug.pretext = "EL:";
 JSPLib.debug.pretimer = "EL-";
 
 //Variables for load.js
-const program_load_required_variables = ['window.jQuery','window.Danbooru'];
-const program_load_required_selectors = ["#nav","#page"];
+const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery','window.Danbooru'];
+const PROGRAM_LOAD_REQUIRED_SELECTORS = ["#nav","#page"];
 
 //Main program variable
 var EL;
 
 //Timer function hash
-const Timer = {};
+const TIMER = {};
 
 //For factory reset
-const user_events = ['flag','appeal','dmail','spam'];
-const subscribe_events = ['comment','forum','note','commentary','post','wiki','pool'];
-const all_events = user_events.concat(subscribe_events);
-const lastid_keys = all_events.map((type)=>{return `el-${type}lastid`;});
-const other_keys = subscribe_events.map((type)=>{return [`el-${type}list`,`el-saved${type}list`,`el-saved${type}lastid`,`el-${type}overflow`];}).flat();
-const localstorage_keys = lastid_keys.concat(other_keys).concat([
+const USER_EVENTS = ['flag','appeal','dmail','spam'];
+const SUBSCRIBE_EVENTS = ['comment','forum','note','commentary','post','wiki','pool'];
+const ALL_EVENTS = USER_EVENTS.concat(SUBSCRIBE_EVENTS);
+const LASTID_KEYS = ALL_EVENTS.map((type)=>{return `el-${type}lastid`;});
+const OTHER_KEYS = SUBSCRIBE_EVENTS.map((type)=>{return [`el-${type}list`,`el-saved${type}list`,`el-saved${type}lastid`,`el-${type}overflow`];}).flat();
+const LOCALSTORAGE_KEYS = LASTID_KEYS.concat(OTHER_KEYS).concat([
     'el-process-semaphore',
     'el-events',
     'el-overflow',
@@ -57,14 +57,14 @@ const localstorage_keys = lastid_keys.concat(other_keys).concat([
     'el-last-seen'
 ]);
 //Not handling reset event yet
-const program_reset_keys = {};
+const PROGRAM_RESET_KEYS = {};
 
 //Available setting values
-const enable_events = ['flag','appeal','dmail','comment','note','commentary','forum'];
-const autosubscribe_events = ['post','comment','note','commentary'];
+const ENABLE_EVENTS = ['flag','appeal','dmail','comment','note','commentary','forum'];
+const AUTOSUBSCRIBE_EVENTS = ['post','comment','note','commentary'];
 
 //Main settings
-const settings_config = {
+const SETTINGS_CONFIG = {
     autolock_notices: {
         default: false,
         validate: (data)=>{return typeof data === "boolean";},
@@ -97,22 +97,22 @@ const settings_config = {
         hint: "How often to check for new events (# of minutes)."
     },
     events_enabled: {
-        allitems: all_events,
-        default: enable_events,
-        validate: (data)=>{return JSPLib.menu.validateCheckboxRadio(data,'checkbox',all_events);},
+        allitems: ALL_EVENTS,
+        default: ENABLE_EVENTS,
+        validate: (data)=>{return JSPLib.menu.validateCheckboxRadio(data,'checkbox',ALL_EVENTS);},
         hint: "Uncheck to turn off event type."
     },
     autosubscribe_enabled: {
-        allitems: autosubscribe_events,
+        allitems: AUTOSUBSCRIBE_EVENTS,
         default: [],
-        validate: (data)=>{return JSPLib.menu.validateCheckboxRadio(data,'checkbox',autosubscribe_events);},
+        validate: (data)=>{return JSPLib.menu.validateCheckboxRadio(data,'checkbox',AUTOSUBSCRIBE_EVENTS);},
         hint: "Check to autosubscribe event type."
     }
 }
 
 //CSS Constants
 
-const program_css = `
+const PROGRAM_CSS = `
 #event-notice {
     padding: 0.5em;
 }
@@ -184,7 +184,7 @@ const program_css = `
 }
 `;
 
-const comment_css = `
+const COMMENT_CSS = `
 #event-notice #comment-section #comment-table .post-preview {
     display: flex;
     flex-direction: row;
@@ -208,7 +208,7 @@ const comment_css = `
 }
 `;
 
-const forum_css = `
+const FORUM_CSS = `
 #event-notice #forum-section #forum-table .author {
     padding: 1em 1em 0 1em;
     width: 12em;
@@ -219,7 +219,7 @@ const forum_css = `
     margin-left: 14em;
 }`;
 
-const wiki_css = `
+const WIKI_CSS = `
 #event-notice #wiki-section ins {
     background: #cfc;
     text-decoration: none;
@@ -233,7 +233,7 @@ const wiki_css = `
 }
 `;
 
-const pool_css = `
+const POOL_CSS = `
 #event-notice #pool-section .el-pool-diff {
     overflow-x: auto;
     max-width: 90vw;
@@ -266,7 +266,7 @@ const pool_css = `
 
 //HTML constants
 
-const notice_box = `
+const NOTICE_BOX = `
 <div id="event-notice" style="display:none" class="notice notice-info">
     <div id="el-absent-section" style="display:none">
         <p>You have been gone for <b><span id="el-days-absent"></span></b> days.
@@ -336,14 +336,14 @@ const notice_box = `
 `;
 
 //Since append is primarily used, these need to be separate ***CSS THE STYLING!!!***
-const display_counter = `
+const DISPLAY_COUNTER = `
 <div id="el-search-query-display" style="margin:0.5em;font-size:150%;border:lightgrey solid 1px;padding:0.5em;width:7.5em;display:none">
     Pages left: <span id="el-search-query-counter">...</span>
 </div>`;
 
-const paragraph_mark = `<span class="el-paragraph-mark">¶</span><br>`;
+const PARAGRAPH_MARK = `<span class="el-paragraph-mark">¶</span><br>`;
 
-const el_menu = `
+const EL_MENU = `
 <div id="el-script-message" class="prose">
     <h2>EventListener</h2>
     <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/14747" style="color:#0073ff">topic #14747</a>).</p>
@@ -459,34 +459,34 @@ const el_menu = `
 </div>`;
 
 //Polling interval for checking program status
-const timer_poll_interval = 100;
+const TIMER_POLL_INTERVAL = 100;
 
 const JQUERY_DELAY = 1; //For jQuery updates that should not be done synchronously
 
 //The max number of items to grab with each network call
-const query_limit = 100;
+const QUERY_LIMIT = 100;
 
 //Regexes
-const dmails_regex = /\/dmails\/(\d+)/;
-const wiki_pages_regex = /\/wiki_pages\/(\d+)/;
-const wiki_page_versions_regex = /\/wiki_page_versions\/(\d+)/;
-const pools_regex = /\/pools\/(\d+)/;
-const pool_desc_regex = /(Old|New) Desc: /;
-const forum_topics_regex = /\/forum_topics\/(\d+)/;
+const DMAILS_REGEX = /\/dmails\/(\d+)/;
+const WIKI_PAGES_REGEX = /\/wiki_pages\/(\d+)/;
+const WIKI_PAGE_VERSIONS_REGEX = /\/wiki_page_versions\/(\d+)/;
+const POOLS_REGEX = /\/pools\/(\d+)/;
+const POOL_DESC_REGEX = /(Old|New) Desc: /;
+const FORUM_TOPICS_REGEX = /\/forum_topics\/(\d+)/;
 
 //Subscribe menu constants
-const post_display_names = {
+const POST_DISPLAY_NAMES = {
     post: "Edits",
     comment: "Comments",
     note: "Notes",
     commentary: "Artist commentary"
 };
-const all_post_events = ['post','comment','note','commentary'];
-const all_translate_events = ['note','commentary'];
-const all_mail_events = ['dmail','spam'];
+const ALL_POST_EVENTS = ['post','comment','note','commentary'];
+const ALL_TRANSLATE_EVENTS = ['note','commentary'];
+const ALL_MAIL_EVENTS = ['dmail','spam'];
 
 //Type configurations
-const typedict = {
+const TYPEDICT = {
     flag: {
         controller: 'post_flags',
         addons: {},
@@ -526,7 +526,7 @@ const typedict = {
         limit: 999,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'creator_id','post_id');})},
         insert: InsertComments,
-        process: function () {JSPLib.utility.setCSSStyle(comment_css,'comment');}
+        process: function () {JSPLib.utility.setCSSStyle(COMMENT_CSS,'comment');}
     },
     forum: {
         controller: 'forum_posts',
@@ -535,7 +535,7 @@ const typedict = {
         limit: 999,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'creator_id','topic_id');})},
         insert: InsertForums,
-        process: function () {JSPLib.utility.setCSSStyle(forum_css,'forum');}
+        process: function () {JSPLib.utility.setCSSStyle(FORUM_CSS,'forum');}
     },
     note: {
         controller: 'note_versions',
@@ -568,7 +568,7 @@ const typedict = {
         limit: 999,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'updater_id','wiki_page_id');})},
         insert: InsertWikis,
-        process: function () {JSPLib.utility.setCSSStyle(wiki_css,'wiki');}
+        process: function () {JSPLib.utility.setCSSStyle(WIKI_CSS,'wiki');}
     },
     pool: {
         controller: 'pool_versions',
@@ -577,20 +577,20 @@ const typedict = {
         limit: 199,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'updater_id','pool_id');})},
         insert: InsertPools,
-        process: function () {JSPLib.utility.setCSSStyle(pool_css,'pool');}
+        process: function () {JSPLib.utility.setCSSStyle(POOL_CSS,'pool');}
     }
 };
 
 //Validate constants
 
-const type_grouping = '(?:' + all_events.join('|') + ')';
-const subscribe_grouping = '(?:' + subscribe_events.join('|') + ')';
-const setting_grouping = "(el-user-settings)";
-const bool_grouping = `(el-${subscribe_grouping}overflow|el-events|el-overflow)`;
-const time_grouping = `(el-last-seen|el-process-semaphore|el-timeout)`;
-const id_grouping = `(el-${type_grouping}lastid)`;
-const idlist_grouping = `(el-${type_grouping}list|el-saved${subscribe_grouping}lastid|el-saved${subscribe_grouping}list)`;
-const validate_regex = RegExp(`^(${setting_grouping}|${bool_grouping}|${time_grouping}|${id_grouping}|${idlist_grouping})$`);
+const TYPE_GROUPING = '(?:' + ALL_EVENTS.join('|') + ')';
+const SUBSCRIBE_GROUPING = '(?:' + SUBSCRIBE_EVENTS.join('|') + ')';
+const SETTING_GROUPING = "(el-user-settings)";
+const BOOL_GROUPING = `(el-${SUBSCRIBE_GROUPING}overflow|el-events|el-overflow)`;
+const TIME_GROUPING = `(el-last-seen|el-process-semaphore|el-timeout)`;
+const ID_GROUPING = `(el-${TYPE_GROUPING}lastid)`;
+const IDLIST_GROUPING = `(el-${TYPE_GROUPING}list|el-saved${SUBSCRIBE_GROUPING}lastid|el-saved${SUBSCRIBE_GROUPING}list)`;
+const VALIDATE_REGEX = RegExp(`^(${SETTING_GROUPING}|${BOOL_GROUPING}|${TIME_GROUPING}|${ID_GROUPING}|${IDLIST_GROUPING})$`);
 
 /****Functions****/
 
@@ -598,10 +598,10 @@ const validate_regex = RegExp(`^(${setting_grouping}|${bool_grouping}|${time_gro
 
 function ValidateProgramData(key,entry) {
     var checkerror=[];
-    var check = validate_regex.exec(key);
+    var check = VALIDATE_REGEX.exec(key);
     switch (check && check[1]) {
         case check[2]:
-            checkerror = JSPLib.menu.validateUserSettings(entry,settings_config);
+            checkerror = JSPLib.menu.validateUserSettings(entry,SETTINGS_CONFIG);
             break;
         case check[3]:
             if (!JSPLib.validate.isBoolean(entry)) {
@@ -660,7 +660,7 @@ function CorrectList(type,typelist) {
 //Helper functions
 
 async function SetRecentDanbooruID(type,useritem=false) {
-    let jsonitem = await JSPLib.danbooru.submitRequest(typedict[type].controller,JSPLib.utility.joinArgs(typedict[type].addons,{limit: 1}),[]);
+    let jsonitem = await JSPLib.danbooru.submitRequest(TYPEDICT[type].controller,JSPLib.utility.joinArgs(TYPEDICT[type].addons,{limit: 1}),[]);
     if (jsonitem.length) {
         SaveLastID(type,JSPLib.danbooru.getNextPageID(jsonitem,true));
     } else if (useritem) {
@@ -771,13 +771,13 @@ function SetLastSeenTime() {
 //Return true if there are no saved events at all, or saved events for the input type
 function CheckWaiting(inputtype) {
     if (Object.keys(CheckWaiting.all_waits).length == 0) {
-        let enabled_events = JSPLib.utility.setIntersection(subscribe_events,EL.user_settings.events_enabled);
+        let enabled_events = JSPLib.utility.setIntersection(SUBSCRIBE_EVENTS,EL.user_settings.events_enabled);
         enabled_events.forEach((type)=>{
             CheckWaiting.all_waits[type] = JSPLib.storage.checkStorageData(`el-saved${type}lastid`,ValidateProgramData,localStorage,[]).length > 0;
             CheckWaiting.any_waits = CheckWaiting.any_waits || CheckWaiting.all_waits[type];
         });
     }
-    if (!subscribe_events.includes(inputtype)) {
+    if (!SUBSCRIBE_EVENTS.includes(inputtype)) {
         return false;
     }
     return !(Object.values(CheckWaiting.all_waits).reduce((total,entry)=>{return total || entry;},false)) /*No waits*/ || CheckWaiting.all_waits[inputtype];
@@ -787,13 +787,13 @@ CheckWaiting.all_waits = {};
 //Return true if there was no overflow at all, or overflow for the input type
 function CheckOverflow(inputtype) {
     if (Object.keys(CheckOverflow.all_overflows).length == 0) {
-        let enabled_events = JSPLib.utility.setIntersection(subscribe_events,EL.user_settings.events_enabled);
+        let enabled_events = JSPLib.utility.setIntersection(SUBSCRIBE_EVENTS,EL.user_settings.events_enabled);
         enabled_events.forEach((type)=>{
             CheckOverflow.all_overflows[type] = JSPLib.storage.checkStorageData(`el-${type}overflow`,ValidateProgramData,localStorage,false);
             CheckOverflow.any_overflow = CheckOverflow.any_overflow || CheckOverflow.all_overflows[type];
         });
     }
-    if (!subscribe_events.includes(inputtype)) {
+    if (!SUBSCRIBE_EVENTS.includes(inputtype)) {
         return false;
     }
     return !(Object.values(CheckOverflow.all_overflows).reduce((total,entry)=>{return total || entry;},false)) || CheckOverflow.all_overflows[inputtype];
@@ -804,7 +804,7 @@ function ProcessEvent(inputtype) {
     if (!JSPLib.menu.isSettingEnabled('EL','events_enabled',inputtype)) {
         return [];
     }
-    if (subscribe_events.includes(inputtype) && !CheckList(inputtype)) {
+    if (SUBSCRIBE_EVENTS.includes(inputtype) && !CheckList(inputtype)) {
         return [];
     }
     //Waits always have priority over overflows
@@ -817,10 +817,10 @@ function ProcessEvent(inputtype) {
     if ((CheckWaiting(inputtype) && CheckWaiting.any_waits) || /*Check for any wait event*/
         (CheckOverflow(inputtype) && !CheckWaiting.any_waits && CheckOverflow.any_overflow) || /*Check for any overflow event but not a wait event*/
         (!CheckWaiting.any_waits && !CheckOverflow.any_overflow) /*Check for neither waits nor overflows*/) {
-        if (user_events.includes(inputtype)) {
-            return Timer.CheckUserType(inputtype);
-        } else if (subscribe_events.includes(inputtype)) {
-            return Timer.CheckSubscribeType(inputtype);
+        if (USER_EVENTS.includes(inputtype)) {
+            return TIMER.CheckUserType(inputtype);
+        } else if (SUBSCRIBE_EVENTS.includes(inputtype)) {
+            return TIMER.CheckSubscribeType(inputtype);
         }
     }
     return [];
@@ -853,7 +853,7 @@ async function AddForumPost(forumid,$rowelement) {
     if (EL.user_settings.mark_read_topics) {
         let topic_link = $("td:first-of-type > a",$rowelement);
         let topic_path = topic_link.length && topic_link[0].pathname;
-        let topic_match = topic_path && topic_path.match(forum_topics_regex);
+        let topic_match = topic_path && topic_path.match(FORUM_TOPICS_REGEX);
         if (topic_match && !EL.marked_topic.includes(topic_match[1])) {
             ReadForumTopic(topic_match[1]);
             EL.marked_topic.push(topic_match[1]);
@@ -880,7 +880,7 @@ async function AddDmail(dmailid,$rowelement) {
 }
 
 async function AddWiki(wikiverid,$rowelement) {
-    let wikiid = $rowelement.innerHTML.match(wiki_pages_regex)[1];
+    let wikiid = $rowelement.innerHTML.match(WIKI_PAGES_REGEX)[1];
     let url_addons = {search:{wiki_page_id: wikiid}, page: `b${wikiverid}`, only: 'id', limit: 1};
     let prev_wiki = await JSPLib.danbooru.submitRequest('wiki_page_versions',url_addons);
     if (prev_wiki.length) {
@@ -891,7 +891,7 @@ async function AddWiki(wikiverid,$rowelement) {
         let $wiki_diff = $.parseHTML(wiki_diff);
         let $outerblock = $.parseHTML(`<tr id=full-wiki-id-${wikiverid}><td colspan="4"></td></tr>`);
         $("td",$outerblock).append($("#a-diff p",$wiki_diff));
-        $("td",$outerblock).append($("#a-diff div",$wiki_diff).html().replace(/<br>/g,paragraph_mark));
+        $("td",$outerblock).append($("#a-diff div",$wiki_diff).html().replace(/<br>/g,PARAGRAPH_MARK));
         $($rowelement).after($outerblock);
     } else {
         Danbooru.Utility.notice("Wiki creations have no diff!");
@@ -901,8 +901,8 @@ async function AddWiki(wikiverid,$rowelement) {
 async function AddPoolDiff(poolverid,$rowelement) {
     let pool_diff = await JSPLib.network.getNotify(`/pool_versions/${poolverid}/diff`);
     let $pool_diff = $.parseHTML(pool_diff);
-    let old_desc = $("#a-diff li:nth-of-type(2)",$pool_diff).text().replace(pool_desc_regex,'');
-    let new_desc = $("#a-diff li:nth-of-type(3)",$pool_diff).text().replace(pool_desc_regex,'');
+    let old_desc = $("#a-diff li:nth-of-type(2)",$pool_diff).text().replace(POOL_DESC_REGEX,'');
+    let new_desc = $("#a-diff li:nth-of-type(3)",$pool_diff).text().replace(POOL_DESC_REGEX,'');
     //Description creations will have no new descriptions
     if (new_desc === "") {
         new_desc = old_desc;
@@ -917,7 +917,7 @@ async function AddPoolDiff(poolverid,$rowelement) {
         } else {
             return entry.value;
         }
-    }).join('').replace(/\n/g,paragraph_mark);
+    }).join('').replace(/\n/g,PARAGRAPH_MARK);
     let $outerblock = $.parseHTML(`<tr id=full-pooldiff-id-${poolverid}><td class="el-pool-diff" colspan="6">${diff_desc}</td></tr>`);
     $($rowelement).after($outerblock);
 }
@@ -972,7 +972,7 @@ function UpdateDualLink(type,subscribed,itemid) {
 }
 
 function ToggleSubscribeLinks() {
-    subscribe_events.forEach((type)=>{
+    SUBSCRIBE_EVENTS.forEach((type)=>{
         if (IsEventEnabled(type)) {
             $(`.el-subscribe-${type}-container`).show();
         } else {
@@ -980,14 +980,14 @@ function ToggleSubscribeLinks() {
         }
     });
     if ($("#c-posts #a-show").length) {
-        if (AreAllEventsEnabled(all_translate_events)) {
+        if (AreAllEventsEnabled(ALL_TRANSLATE_EVENTS)) {
             $(".el-subscribe-translated-container").show();
         } else {
             $(".el-subscribe-translated-container").hide();
         }
-        if (IsAnyEventEnabled(all_post_events)) {
+        if (IsAnyEventEnabled(ALL_POST_EVENTS)) {
             $("#el-subscribe-events").show();
-            let enabled_post_events = JSPLib.utility.setIntersection(all_post_events,EL.user_settings.events_enabled);
+            let enabled_post_events = JSPLib.utility.setIntersection(ALL_POST_EVENTS,EL.user_settings.events_enabled);
             $("#el-all-link").attr('data-type',enabled_post_events);
         } else {
             $("#el-subscribe-events").hide();
@@ -1220,7 +1220,7 @@ function RenderOpenItemLinks(type,itemid,showtext="Show",hidetext="Hide") {
 //Initialize functions
 
 function InitializeNoticeBox() {
-    $("#page").prepend(notice_box);
+    $("#page").prepend(NOTICE_BOX);
     if (EL.locked_notice) {
         $("#lock-event-notice").addClass("el-locked");
     } else {
@@ -1248,7 +1248,7 @@ function InitializeOpenNoteLinks($obj) {
 
 function InitializeOpenDmailLinks($obj) {
     $(".striped tbody tr",$obj).each((i,$row)=>{
-        let dmailid = $row.innerHTML.match(dmails_regex)[1];
+        let dmailid = $row.innerHTML.match(DMAILS_REGEX)[1];
         $("td:nth-of-type(4)",$row).prepend(RenderOpenItemLinks('dmail',dmailid) + '&nbsp;|&nbsp;');
     });
     OpenItemClick('dmail',$obj,3,AddDmail);
@@ -1256,7 +1256,7 @@ function InitializeOpenDmailLinks($obj) {
 
 function InitializeOpenWikiLinks($obj) {
     $(".striped tbody tr",$obj).each((i,$row)=>{
-        let wikiverid = parseInt($row.innerHTML.match(wiki_page_versions_regex)[1]);
+        let wikiverid = parseInt($row.innerHTML.match(WIKI_PAGE_VERSIONS_REGEX)[1]);
         $(".category-0,.category-1,.category-3,.category-4,.category-5",$row).append('<span style="float:right">(' + RenderOpenItemLinks('wiki',wikiverid,'Show diff','Hide diff') + ')</span>');
     });
     OpenItemClick('wiki',$obj,4,AddWiki);
@@ -1285,17 +1285,17 @@ function InitializeOpenPoolLinks($obj) {
 //#C-POSTS #A-SHOW
 function InitializePostShowMenu() {
     var postid = parseInt(JSPLib.utility.getMeta('post-id'));
-    let menu_obj = $.parseHTML(RenderMultilinkMenu(postid,all_post_events));
-    all_post_events.forEach((type)=>{
-        let linkhtml = RenderSubscribeMultiLinks(post_display_names[type],[type],postid);
+    let menu_obj = $.parseHTML(RenderMultilinkMenu(postid,ALL_POST_EVENTS));
+    ALL_POST_EVENTS.forEach((type)=>{
+        let linkhtml = RenderSubscribeMultiLinks(POST_DISPLAY_NAMES[type],[type],postid);
         let shownhtml = (IsEventEnabled(type) ? '' : 'style="display:none"');
         $("#el-add-links",menu_obj).append(`<span class="el-subscribe-${type}-container" ${shownhtml}>${linkhtml} | </span>`);
     });
-    let shownhtml = (AreAllEventsEnabled(all_translate_events) ? '' : 'style="display:none"');
-    let linkhtml = RenderSubscribeMultiLinks("Translations",all_translate_events,postid);
+    let shownhtml = (AreAllEventsEnabled(ALL_TRANSLATE_EVENTS) ? '' : 'style="display:none"');
+    let linkhtml = RenderSubscribeMultiLinks("Translations",ALL_TRANSLATE_EVENTS,postid);
     $("#el-add-links",menu_obj).append(`<span class="el-subscribe-translated-container" ${shownhtml}>${linkhtml} | </span>`);
     //The All link is always shown when the outer menu is shown, so no need to individually hide it
-    let enabled_post_events = JSPLib.utility.setIntersection(all_post_events,EL.user_settings.events_enabled);
+    let enabled_post_events = JSPLib.utility.setIntersection(ALL_POST_EVENTS,EL.user_settings.events_enabled);
     linkhtml = RenderSubscribeMultiLinks("All",enabled_post_events,postid);
     $("#el-add-links",menu_obj).append(`<span class="el-subscribe-all-container">${linkhtml}</span>`);
     $("nav#nav").append(menu_obj);
@@ -1305,7 +1305,7 @@ function InitializePostShowMenu() {
 //#C-FORUM-TOPICS #A-SHOW
 function InitializeTopicShowMenu() {
     let topicid = GetInstanceID('forum-topics',()=>{
-        return parseInt($('#subnav-subscribe-link,#subnav-unsubscribe-link').attr('href').match(forum_topics_regex)[1]);
+        return parseInt($('#subnav-subscribe-link,#subnav-unsubscribe-link').attr('href').match(FORUM_TOPICS_REGEX)[1]);
     });
     if (!topicid) {
         return;
@@ -1323,7 +1323,7 @@ function InitializeTopicShowMenu() {
 //#C-FORUM-TOPICS #A-INDEX
 function InitializeTopicIndexLinks($obj) {
     $(".striped tr td:first-of-type",$obj).each((i,entry)=>{
-        let topicid = parseInt(entry.innerHTML.match(forum_topics_regex)[1]);
+        let topicid = parseInt(entry.innerHTML.match(FORUM_TOPICS_REGEX)[1]);
         let linkhtml = RenderSubscribeDualLinks('forum',topicid,"span","","",true);
         let shownhtml = (IsEventEnabled('forum') ? '' : 'style="display:none"');
         $(entry).prepend(`<span class="el-subscribe-forum-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
@@ -1334,7 +1334,7 @@ function InitializeTopicIndexLinks($obj) {
 //#C-WIKI-PAGES #A-SHOW
 function InitializeWikiShowMenu() {
     let wikiid = GetInstanceID('wiki-pages',()=>{
-        return parseInt($("#subnav-newest-link").attr('href').match(wiki_pages_regex)[1]);
+        return parseInt($("#subnav-newest-link").attr('href').match(WIKI_PAGES_REGEX)[1]);
     });
     if (!wikiid) {
         return;
@@ -1350,7 +1350,7 @@ function InitializeWikiShowMenu() {
 //#C-WIKI-PAGES #A-INDEX
 function InitializeWikiIndexLinks($obj) {
     $(`.striped tbody tr`,$obj).each((i,row)=>{
-        let wikiid = parseInt(row.innerHTML.match(wiki_pages_regex)[1]);
+        let wikiid = parseInt(row.innerHTML.match(WIKI_PAGES_REGEX)[1]);
         let linkhtml = RenderSubscribeDualLinks('wiki',wikiid,"span","","",true);
         let shownhtml = (IsEventEnabled('wiki') ? '' : 'style="display:none"');
         $("td.category-0,td.category-1,td.category-3,td.category-4,td.category-5",row).prepend(`<span class="el-subscribe-wiki-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
@@ -1375,7 +1375,7 @@ function InitializePoolShowMenu() {
 //#C-POOLS #A-INDEX
 function InitializePoolIndexLinks($obj) {
     $(`.striped tbody tr`,$obj).each((i,row)=>{
-        let poolid = parseInt(row.innerHTML.match(pools_regex)[1]);
+        let poolid = parseInt(row.innerHTML.match(POOLS_REGEX)[1]);
         let linkhtml = RenderSubscribeDualLinks('pool',poolid,"span","","",true);
         let shownhtml = (IsEventEnabled('pool') ? '' : 'style="display:none"');
         $("td:first-of-type",row).prepend(`<span class="el-subscribe-pool-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
@@ -1465,7 +1465,7 @@ UpdateAll.run_once = false;
 
 function ResetAll(event) {
     if (!UpdateAll.run_once && !ResetAll.run_once) {
-        lastid_keys.forEach((key)=>{
+        LASTID_KEYS.forEach((key)=>{
             localStorage.removeItem(key);
         });
         ProcessAllEvents(()=>{
@@ -1486,7 +1486,7 @@ function SubscribeMultiLink(event) {
     let subscribed = ($container.hasClass('el-subscribed') ? true : false);
     let prefix = (subscribed ? '-' : '');
     typelist.forEach((type)=>{
-        setTimeout(()=>{Timer.SetList(type,prefix + itemid);},1);
+        setTimeout(()=>{TIMER.SetList(type,prefix + itemid);},1);
         UpdateDualLink(type,subscribed,itemid);
     });
     UpdateMultiLink(typelist,subscribed,itemid);
@@ -1495,11 +1495,11 @@ function SubscribeMultiLink(event) {
 
 function SubscribeDualLink(event) {
     let classname = event.target.parentElement.className
-    let type = classname.match(RegExp(`(?:un)?subscribe-(${all_events.join('|')})`))[1];
+    let type = classname.match(RegExp(`(?:un)?subscribe-(${ALL_EVENTS.join('|')})`))[1];
     let itemid = $(event.target.parentElement).data('id');
     let subscribed = GetList(type).includes(itemid);
     let prefix = (subscribed ? '-' : '');
-    setTimeout(()=>{Timer.SetList(type,prefix + itemid);},1);
+    setTimeout(()=>{TIMER.SetList(type,prefix + itemid);},1);
     UpdateDualLink(type,subscribed,itemid);
     UpdateMultiLink([type],subscribed,itemid);
     event.preventDefault();
@@ -1595,7 +1595,7 @@ function RebindMenuAutocomplete() {
             $("#el-setting-search-query").attr('data-autocomplete','tag-query');
             setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, JQUERY_DELAY);
         }
-    },timer_poll_interval);
+    },TIMER_POLL_INTERVAL);
 }
 
 //Main execution functions
@@ -1604,20 +1604,20 @@ async function CheckUserType(type) {
     let lastidkey = `el-${type}lastid`;
     let typelastid = JSPLib.storage.checkStorageData(lastidkey,ValidateProgramData,localStorage,0);
     if (typelastid) {
-        let url_addons = JSPLib.utility.joinArgs(typedict[type].addons,typedict[type].useraddons(EL.username),{only: typedict[type].only});
-        let jsontype = await JSPLib.danbooru.getAllItems(typedict[type].controller,query_limit,{addons:url_addons,page:typelastid,reverse:true});
-        let filtertype = typedict[type].filter(jsontype);
+        let url_addons = JSPLib.utility.joinArgs(TYPEDICT[type].addons,TYPEDICT[type].useraddons(EL.username),{only: TYPEDICT[type].only});
+        let jsontype = await JSPLib.danbooru.getAllItems(TYPEDICT[type].controller,QUERY_LIMIT,{addons:url_addons,page:typelastid,reverse:true});
+        let filtertype = TYPEDICT[type].filter(jsontype);
         let lastusertype = (jsontype.length ? [JSPLib.danbooru.getNextPageID(jsontype,true)] : []);
         if (filtertype.length) {
             EL.lastids.user[type] = lastusertype[0];
             CheckUserType.debuglog(`Found ${type}(s)!`,EL.lastids.user[type]);
             let idlist = JSPLib.utility.getObjectAttributes(filtertype,'id');
-            url_addons = JSPLib.utility.joinArgs(typedict[type].addons,{search: {id: idlist.join(',')}, limit: idlist.length});
-            let typehtml = await $.get(`/${typedict[type].controller}`, url_addons);
+            url_addons = JSPLib.utility.joinArgs(TYPEDICT[type].addons,{search: {id: idlist.join(',')}, limit: idlist.length});
+            let typehtml = await $.get(`/${TYPEDICT[type].controller}`, url_addons);
             let $typepage = $(typehtml);
-            typedict[type].insert($typepage,type);
-            if (typedict[type].process) {
-                typedict[type].process();
+            TYPEDICT[type].insert($typepage,type);
+            if (TYPEDICT[type].process) {
+                TYPEDICT[type].process();
             }
             $(`#${type}-section`).show();
             $("#event-notice").show();
@@ -1629,7 +1629,7 @@ async function CheckUserType(type) {
             }
         }
     } else {
-        Timer.SetRecentDanbooruID(type,true);
+        TIMER.SetRecentDanbooruID(type,true);
     }
     return false;
 }
@@ -1646,19 +1646,19 @@ async function CheckSubscribeType(type) {
         let savedlastid = JSPLib.storage.checkStorageData(savedlastidkey,ValidateProgramData,localStorage,[]);
         let savedlist = JSPLib.storage.checkStorageData(savedlistkey,ValidateProgramData,localStorage,[]);
         if (!savedlastid.length || !savedlist.length) {
-            let urladdons = JSPLib.utility.joinArgs(typedict[type].addons,{only: typedict[type].only});
+            let urladdons = JSPLib.utility.joinArgs(TYPEDICT[type].addons,{only: TYPEDICT[type].only});
             if (!EL.no_limit) {
-                urladdons = JSPLib.utility.joinArgs(urladdons,{search:{id:`${typelastid}..${typelastid+typedict[type].limit}`}});
+                urladdons = JSPLib.utility.joinArgs(urladdons,{search:{id:`${typelastid}..${typelastid+TYPEDICT[type].limit}`}});
             }
-            let jsontype = await JSPLib.danbooru.getAllItems(typedict[type].controller,query_limit,{page:typelastid,addons:urladdons,reverse:true});
-            if (jsontype.length === typedict[type].limit) {
-                CheckSubscribeType.debuglog(`${typedict[type].limit} ${type} items; overflow detected!`);
+            let jsontype = await JSPLib.danbooru.getAllItems(TYPEDICT[type].controller,QUERY_LIMIT,{page:typelastid,addons:urladdons,reverse:true});
+            if (jsontype.length === TYPEDICT[type].limit) {
+                CheckSubscribeType.debuglog(`${TYPEDICT[type].limit} ${type} items; overflow detected!`);
                 JSPLib.storage.setStorageData(overflowkey,true,localStorage);
                 EL.item_overflow = true;
             } else {
                 JSPLib.storage.setStorageData(overflowkey,false,localStorage);
             }
-            let subscribetype = typedict[type].filter(jsontype,typelist);
+            let subscribetype = TYPEDICT[type].filter(jsontype,typelist);
             if (jsontype.length) {
                 jsontypelist = [JSPLib.danbooru.getNextPageID(jsontype,true)];
             }
@@ -1677,12 +1677,12 @@ async function CheckSubscribeType(type) {
         if (subscribetypelist.length) {
             EL.lastids.subscribe[type] = jsontypelist[0];
             CheckSubscribeType.debuglog(`Found ${type}(s)!`,EL.lastids.subscribe[type]);
-            let url_addons = JSPLib.utility.joinArgs(typedict[type].addons,{search: {id: subscribetypelist.join(',')}, limit: subscribetypelist.length});
-            let typehtml = await $.get(`/${typedict[type].controller}`, url_addons);
+            let url_addons = JSPLib.utility.joinArgs(TYPEDICT[type].addons,{search: {id: subscribetypelist.join(',')}, limit: subscribetypelist.length});
+            let typehtml = await $.get(`/${TYPEDICT[type].controller}`, url_addons);
             let $typepage = $(typehtml);
-            typedict[type].insert($typepage,type);
-            if (typedict[type].process) {
-                typedict[type].process();
+            TYPEDICT[type].insert($typepage,type);
+            if (TYPEDICT[type].process) {
+                TYPEDICT[type].process();
             }
             $(`#${type}-section`).show();
             $("#event-notice").show();
@@ -1694,7 +1694,7 @@ async function CheckSubscribeType(type) {
             }
         }
     } else {
-        Timer.SetRecentDanbooruID(type);
+        TIMER.SetRecentDanbooruID(type);
     }
     return false;
 }
@@ -1704,7 +1704,7 @@ async function CheckAllEvents(promise_array) {
     let hasevents = hasevents_all.reduce((a,b)=>{return a || b;});
     JSPLib.storage.setStorageData('el-events',hasevents,localStorage);
     if (EL.post_ids.length) {
-        Timer.GetThumbnails();
+        TIMER.GetThumbnails();
     }
     if (!EL.had_events) {
         //Only save overflow if it wasn't just a display reload
@@ -1717,10 +1717,10 @@ async function CheckAllEvents(promise_array) {
 
 function ProcessAllEvents(func) {
     let promise_array = [];
-    all_events.forEach((inputtype)=>{
+    ALL_EVENTS.forEach((inputtype)=>{
         promise_array = promise_array.concat(ProcessEvent(inputtype));
     });
-    Timer.CheckAllEvents(promise_array).then(()=>{
+    TIMER.CheckAllEvents(promise_array).then(()=>{
         func();
     });
 }
@@ -1735,7 +1735,7 @@ function MarkAllAsRead() {
         JSPLib.storage.setStorageData(`el-saved${type}lastid`,[],localStorage);
         HideEventNotice.debuglog(`Removed saved values [${type}]!`);
     }
-    if (IsAnyEventEnabled(all_mail_events)) {
+    if (IsAnyEventEnabled(ALL_MAIL_EVENTS)) {
         HideDmailNotice();
     } else if (!EL.user_settings.autoclose_dmail_notice) {
         $("#dmail-notice").show();
@@ -1745,7 +1745,7 @@ function MarkAllAsRead() {
 }
 
 function EventStatusCheck() {
-    let disabled_events = JSPLib.utility.setDifference(all_events,EL.user_settings.events_enabled);
+    let disabled_events = JSPLib.utility.setDifference(ALL_EVENTS,EL.user_settings.events_enabled);
     disabled_events.forEach((type)=>{
         //Delete every associated value but the list
         localStorage.removeItem(`el-${type}lastid`);
@@ -1787,7 +1787,7 @@ function BroadcastEL(ev) {
             });
             break;
         case "reset":
-            Object.assign(EL,program_reset_keys);
+            Object.assign(EL,PROGRAM_RESET_KEYS);
             JSPLib.utility.fullHide("#event-notice,#el-subscribe-events,.el-subscribe-dual-links");
             //falls through
         case "settings":
@@ -1825,7 +1825,7 @@ function GetRecheckExpires() {
 }
 
 function RenderSettingsMenu() {
-    $("#event-listener").append(el_menu);
+    $("#event-listener").append(EL_MENU);
     $("#el-general-settings").append(JSPLib.menu.renderDomainSelectors('el', 'EventListener'));
     $("#el-notice-settings").append(JSPLib.menu.renderCheckbox("el",'autolock_notices'));
     $("#el-notice-settings").append(JSPLib.menu.renderCheckbox("el",'mark_read_topics'));
@@ -1838,14 +1838,14 @@ function RenderSettingsMenu() {
     $("#el-subscribe-controls").append(JSPLib.menu.renderInputSelectors('el','post_events','checkbox',true,['post','comment','note','commentary'],[],'Select which events to populate.'));
     $("#el-subscribe-controls").append(JSPLib.menu.renderInputSelectors('el','operation','radio',true,['add','subtract','overwrite'],['add'],'Select how the query will affect existing subscriptions.'));
     $("#el-subscribe-controls").append(JSPLib.menu.renderTextinput('el','search_query',50,true,'Enter a tag search query to populate. See <a href="/wiki_pages/43049" style="color:#0073ff">Help:Cheatsheet</a> for more info.',['get']));
-    $("#el-subscribe-controls").append(display_counter);
+    $("#el-subscribe-controls").append(DISPLAY_COUNTER);
     $("#el-cache-settings").append(JSPLib.menu.renderLinkclick("el",'cache_info',"Cache info","Click to populate","Calculates the cache usage of the program and compares it to the total usage."));
     $("#el-cache-settings").append(`<div id="el-cache-info-table" style="display:none"></div>`);
     $("#el-cache-editor-controls").append(`<input id="el-control-data-source" type="hidden" value="local_storage">`);
     $("#el-cache-editor-controls").append(JSPLib.menu.renderTextinput('el','data_name',20,true,"Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.",['get','save','delete']));
     JSPLib.menu.engageUI('el',true);
     JSPLib.menu.saveUserSettingsClick('el','EventListener');
-    JSPLib.menu.resetUserSettingsClick('el','EventListener',localstorage_keys,program_reset_keys);
+    JSPLib.menu.resetUserSettingsClick('el','EventListener',LOCALSTORAGE_KEYS,PROGRAM_RESET_KEYS);
     $("#el-search-query-get").on('click.el',PostEventPopulateControl);
     JSPLib.menu.cacheInfoClick('el',/^$/,"#el-cache-info-table");
     JSPLib.menu.getCacheClick('el');
@@ -1875,7 +1875,7 @@ function Main() {
         post_ids: [],
         storage_keys: {local_storage: []},
         is_setting_menu: Boolean($("#c-users #a-edit").length),
-        settings_config: settings_config,
+        settings_config: SETTINGS_CONFIG,
         channel: new BroadcastChannel('EventListener')
     };
     if (EL.username === "Anonymous") {
@@ -1959,21 +1959,21 @@ function Main() {
     if (EL.user_settings.autoclose_dmail_notice) {
         HideDmailNotice();
     }
-    JSPLib.utility.setCSSStyle(program_css,'program');
+    JSPLib.utility.setCSSStyle(PROGRAM_CSS,'program');
 }
 
 /****Function decoration****/
 
-JSPLib.debug.addFunctionTimers(Timer,false,[RenderSettingsMenu]);
+JSPLib.debug.addFunctionTimers(TIMER,false,[RenderSettingsMenu]);
 
-JSPLib.debug.addFunctionTimers(Timer,true,[
+JSPLib.debug.addFunctionTimers(TIMER,true,[
     GetThumbnails,CheckAllEvents,PostEventPopulateControl
 ]);
 
-Timer.SetList = JSPLib.debug.debugSyncTimer(SetList,0);
-Timer.CheckUserType = JSPLib.debug.debugAsyncTimer(CheckUserType,0);
-Timer.CheckSubscribeType = JSPLib.debug.debugAsyncTimer(CheckSubscribeType,0);
-Timer.SetRecentDanbooruID = JSPLib.debug.debugAsyncTimer(SetRecentDanbooruID,0);
+TIMER.SetList = JSPLib.debug.debugSyncTimer(SetList,0);
+TIMER.CheckUserType = JSPLib.debug.debugAsyncTimer(CheckUserType,0);
+TIMER.CheckSubscribeType = JSPLib.debug.debugAsyncTimer(CheckSubscribeType,0);
+TIMER.SetRecentDanbooruID = JSPLib.debug.debugAsyncTimer(SetRecentDanbooruID,0);
 
 JSPLib.debug.addFunctionLogs([
     Main,BroadcastEL,CheckSubscribeType,CheckUserType,HideEventNotice,GetPostsCountdown,ProcessEvent,SaveLastID,CorrectList,GetInstanceID
@@ -1981,4 +1981,4 @@ JSPLib.debug.addFunctionLogs([
 
 /****Execution start****/
 
-JSPLib.load.programInitialize(Main,'EL',program_load_required_variables,program_load_required_selectors);
+JSPLib.load.programInitialize(Main,'EL',PROGRAM_LOAD_REQUIRED_VARIABLES,PROGRAM_LOAD_REQUIRED_SELECTORS);
