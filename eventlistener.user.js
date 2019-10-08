@@ -30,12 +30,12 @@
 //Variables for debug.js
 JSPLib.debug.debug_console = false;
 JSPLib.debug.level = JSPLib.debug.INFO;
-JSPLib.debug.pretext = "EL:";
-JSPLib.debug.pretimer = "EL-";
+JSPLib.debug.pretext = 'EL:';
+JSPLib.debug.pretimer = 'EL-';
 
 //Variables for load.js
 const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery','window.Danbooru'];
-const PROGRAM_LOAD_REQUIRED_SELECTORS = ["#nav","#page"];
+const PROGRAM_LOAD_REQUIRED_SELECTORS = ['#nav','#page'];
 
 //Main program variable
 var EL;
@@ -67,27 +67,27 @@ const AUTOSUBSCRIBE_EVENTS = ['post','comment','note','commentary'];
 const SETTINGS_CONFIG = {
     autolock_notices: {
         default: false,
-        validate: (data)=>{return typeof data === "boolean";},
+        validate: (data)=>{return typeof data === 'boolean';},
         hint: "Closing a notice will no longer close all other notices."
     },
     mark_read_topics: {
         default: true,
-        validate: (data)=>{return typeof data === "boolean";},
+        validate: (data)=>{return typeof data === 'boolean';},
         hint: "Reading a forum post from the notice will mark the topic as read."
     },
     autoclose_dmail_notice: {
         default: false,
-        validate: (data)=>{return typeof data === "boolean";},
+        validate: (data)=>{return typeof data === 'boolean';},
         hint: "Will automatically close the DMail notice provided by Danbooru."
     },
     filter_user_events: {
         default: true,
-        validate: (data)=>{return typeof data === "boolean";},
+        validate: (data)=>{return typeof data === 'boolean';},
         hint: "Only show events not created by the user."
     },
     filter_untranslated_commentary: {
         default: true,
-        validate: (data)=>{return typeof data === "boolean";},
+        validate: (data)=>{return typeof data === 'boolean';},
         hint: "Only show new commentary that has translated sections."
     },
     recheck_interval: {
@@ -476,10 +476,10 @@ const FORUM_TOPICS_REGEX = /\/forum_topics\/(\d+)/;
 
 //Subscribe menu constants
 const POST_DISPLAY_NAMES = {
-    post: "Edits",
-    comment: "Comments",
-    note: "Notes",
-    commentary: "Artist commentary"
+    post: 'Edits',
+    comment: 'Comments',
+    note: 'Notes',
+    commentary: 'Artist commentary'
 };
 const ALL_POST_EVENTS = ['post','comment','note','commentary'];
 const ALL_TRANSLATE_EVENTS = ['note','commentary'];
@@ -490,23 +490,23 @@ const TYPEDICT = {
     flag: {
         controller: 'post_flags',
         addons: {},
-        only: "id,creator_id",
-        useraddons: function (username) {return {search: {category: 'normal',post_tags_match: "user:" + username}};},
+        only: 'id,creator_id',
+        useraddons: function (username) {return {search: {category: 'normal',post_tags_match: 'user:' + username}};},
         filter: (array)=>{return array.filter((val)=>{return IsShownData(val,[],'creator_id',null);})},
         insert: InsertEvents
     },
     appeal: {
         controller: 'post_appeals',
         addons: {},
-        only: "id,creator_id",
-        useraddons: function (username) {return {search: {post_tags_match: "user:" + username}};},
+        only: 'id,creator_id',
+        useraddons: function (username) {return {search: {post_tags_match: 'user:' + username}};},
         filter: (array)=>{return array.filter((val)=>{return IsShownData(val,[],'creator_id',null);})},
         insert: InsertEvents
     },
     dmail: {
         controller: 'dmails',
         addons: {search: {is_spam: false}},
-        only: "id,from_id",
+        only: 'id,from_id',
         useraddons: function (username) {return {};},
         filter: (array)=>{return array.filter((val)=>{return IsShownData(val,[],'from_id',null,(val)=>{return !val.is_read});})},
         insert: InsertDmails
@@ -514,7 +514,7 @@ const TYPEDICT = {
     spam: {
         controller: 'dmails',
         addons: {search: {is_spam: true}},
-        only: "id,from_id",
+        only: 'id,from_id',
         useraddons: function (username) {return {};},
         filter: (array)=>{return array.filter((val)=>{return IsShownData(val,[],'from_id',null,(val)=>{return !val.is_read});})},
         insert: InsertDmails
@@ -522,7 +522,7 @@ const TYPEDICT = {
     comment: {
         controller: 'comments',
         addons: {group_by: 'comment'},
-        only: "id,creator_id,post_id",
+        only: 'id,creator_id,post_id',
         limit: 999,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'creator_id','post_id');})},
         insert: InsertComments,
@@ -531,7 +531,7 @@ const TYPEDICT = {
     forum: {
         controller: 'forum_posts',
         addons: {},
-        only: "id,creator_id,topic_id",
+        only: 'id,creator_id,topic_id',
         limit: 999,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'creator_id','topic_id');})},
         insert: InsertForums,
@@ -540,7 +540,7 @@ const TYPEDICT = {
     note: {
         controller: 'note_versions',
         addons: {},
-        only: "id,updater_id,post_id",
+        only: 'id,updater_id,post_id',
         limit: 999,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'updater_id','post_id');})},
         insert: InsertNotes
@@ -548,7 +548,7 @@ const TYPEDICT = {
     commentary: {
         controller: 'artist_commentary_versions',
         addons: {},
-        only: "id,updater_id,post_id",
+        only: 'id,updater_id,post_id',
         limit: 999,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'updater_id','post_id',IsShownCommentary);})},
         insert: InsertEvents
@@ -556,7 +556,7 @@ const TYPEDICT = {
     post: {
         controller: 'post_versions',
         addons: {},
-        only: "id,updater_id,post_id",
+        only: 'id,updater_id,post_id',
         limit: 199,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'updater_id','post_id');})},
         insert: InsertPosts
@@ -564,7 +564,7 @@ const TYPEDICT = {
     wiki: {
         controller: 'wiki_page_versions',
         addons: {},
-        only: "id,updater_id,wiki_page_id",
+        only: 'id,updater_id,wiki_page_id',
         limit: 999,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'updater_id','wiki_page_id');})},
         insert: InsertWikis,
@@ -573,7 +573,7 @@ const TYPEDICT = {
     pool: {
         controller: 'pool_versions',
         addons: {},
-        only: "id,updater_id,pool_id",
+        only: 'id,updater_id,pool_id',
         limit: 199,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val,typelist,'updater_id','pool_id');})},
         insert: InsertPools,
@@ -585,7 +585,7 @@ const TYPEDICT = {
 
 const TYPE_GROUPING = '(?:' + ALL_EVENTS.join('|') + ')';
 const SUBSCRIBE_GROUPING = '(?:' + SUBSCRIBE_EVENTS.join('|') + ')';
-const SETTING_GROUPING = "(el-user-settings)";
+const SETTING_GROUPING = '(el-user-settings)';
 const BOOL_GROUPING = `(el-${SUBSCRIBE_GROUPING}overflow|el-events|el-overflow)`;
 const TIME_GROUPING = `(el-last-seen|el-process-semaphore|el-timeout)`;
 const ID_GROUPING = `(el-${TYPE_GROUPING}lastid)`;
@@ -681,7 +681,7 @@ function AreAllEventsEnabled(event_list) {
 }
 
 function HideDmailNotice() {
-    let $hide_link = $("#hide-dmail-notice");
+    let $hide_link = $('#hide-dmail-notice');
     if ($hide_link.length) {
         setTimeout(()=>{$hide_link.click();},JQUERY_DELAY);
     }
@@ -737,13 +737,13 @@ function SetList(type,input) {
     }
     EL.subscribelist[type] = JSPLib.utility.setUnique(typelist);
     JSPLib.storage.setStorageData(`el-${type}list`,EL.subscribelist[type],localStorage);
-    EL.channel.postMessage({type: "subscribe", eventtype: type, was_subscribed: was_subscribed, itemid: itemid, eventlist: EL.subscribelist[type]});
+    EL.channel.postMessage({type: 'subscribe', eventtype: type, was_subscribed: was_subscribed, itemid: itemid, eventlist: EL.subscribelist[type]});
 }
 
 //Quicker way to check list existence; avoids unnecessarily parsing very long lists
 function CheckList(type) {
     let typelist = localStorage.getItem(`el-${type}list`);
-    return typelist && typelist !== "[]";
+    return typelist && typelist !== '[]';
 }
 
 //Auxiliary functions
@@ -848,10 +848,10 @@ async function AddForumPost(forumid,$rowelement) {
     let $forum_topic = $.parseHTML(forum_topic);
     let $outerblock = $.parseHTML(`<tr id="full-forum-id-${forumid}"><td colspan="4"></td></tr>`);
     let $forum_post = $(`#forum_post_${forumid}`, $forum_topic)
-    $("td",$outerblock).append($forum_post);
+    $('td',$outerblock).append($forum_post);
     $($rowelement).after($outerblock);
     if (EL.user_settings.mark_read_topics) {
-        let topic_link = $("td:first-of-type > a",$rowelement);
+        let topic_link = $('td:first-of-type > a',$rowelement);
         let topic_path = topic_link.length && topic_link[0].pathname;
         let topic_match = topic_path && topic_path.match(FORUM_TOPICS_REGEX);
         if (topic_match && !EL.marked_topic.includes(topic_match[1])) {
@@ -862,7 +862,7 @@ async function AddForumPost(forumid,$rowelement) {
 }
 
 function AddRenderedNote(noteid,$rowelement) {
-    let notehtml = $.parseHTML($.trim($(".el-note-body",$rowelement)[0].innerHTML))[0].data;
+    let notehtml = $.parseHTML($.trim($('.el-note-body',$rowelement)[0].innerHTML))[0].data;
     let $outerblock = $.parseHTML(`<tr id="full-note-id-${noteid}"><td colspan="7">${notehtml}</td></tr>`);
     $($rowelement).after($outerblock);
 }
@@ -873,9 +873,9 @@ async function AddDmail(dmailid,$rowelement) {
         return;
     }
     let $dmail = $.parseHTML(dmail);
-    $(".dmail h1:first-of-type",$dmail).hide();
+    $('.dmail h1:first-of-type',$dmail).hide();
     let $outerblock = $.parseHTML(`<tr id="full-dmail-id-${dmailid}"><td colspan="4"></td></tr>`);
-    $("td",$outerblock).append($(".dmail",$dmail));
+    $('td',$outerblock).append($('.dmail',$dmail));
     $($rowelement).after($outerblock);
 }
 
@@ -890,8 +890,8 @@ async function AddWiki(wikiverid,$rowelement) {
         }
         let $wiki_diff = $.parseHTML(wiki_diff);
         let $outerblock = $.parseHTML(`<tr id=full-wiki-id-${wikiverid}><td colspan="4"></td></tr>`);
-        $("td",$outerblock).append($("#a-diff p",$wiki_diff));
-        $("td",$outerblock).append($("#a-diff div",$wiki_diff).html().replace(/<br>/g,PARAGRAPH_MARK));
+        $('td',$outerblock).append($('#a-diff p',$wiki_diff));
+        $('td',$outerblock).append($('#a-diff div',$wiki_diff).html().replace(/<br>/g,PARAGRAPH_MARK));
         $($rowelement).after($outerblock);
     } else {
         Danbooru.Utility.notice("Wiki creations have no diff!");
@@ -901,8 +901,8 @@ async function AddWiki(wikiverid,$rowelement) {
 async function AddPoolDiff(poolverid,$rowelement) {
     let pool_diff = await JSPLib.network.getNotify(`/pool_versions/${poolverid}/diff`);
     let $pool_diff = $.parseHTML(pool_diff);
-    let old_desc = $("#a-diff li:nth-of-type(2)",$pool_diff).text().replace(POOL_DESC_REGEX,'');
-    let new_desc = $("#a-diff li:nth-of-type(3)",$pool_diff).text().replace(POOL_DESC_REGEX,'');
+    let old_desc = $('#a-diff li:nth-of-type(2)',$pool_diff).text().replace(POOL_DESC_REGEX,'');
+    let new_desc = $('#a-diff li:nth-of-type(3)',$pool_diff).text().replace(POOL_DESC_REGEX,'');
     //Description creations will have no new descriptions
     if (new_desc === "") {
         new_desc = old_desc;
@@ -924,7 +924,7 @@ async function AddPoolDiff(poolverid,$rowelement) {
 
 async function AddPoolPosts(poolverid,$rowelement) {
     console.log(poolverid);
-    let $post_changes = $("td:nth-of-type(2)",$rowelement);
+    let $post_changes = $('td:nth-of-type(2)',$rowelement);
     let add_posts = $post_changes.data('add-posts');
     let rem_posts = $post_changes.data('rem-posts');
     let total_posts = JSPLib.utility.setUnion(add_posts,rem_posts);
@@ -952,9 +952,9 @@ async function AddPoolPosts(poolverid,$rowelement) {
 //Update links
 
 function UpdateMultiLink(typelist,subscribed,itemid) {
-    let current_subscribed = JSPLib.utility.setUnique($("#el-subscribe-events .el-subscribed").map((i,entry)=>{return entry.dataset.type.split(',');}).toArray());
+    let current_subscribed = JSPLib.utility.setUnique($('#el-subscribe-events .el-subscribed').map((i,entry)=>{return entry.dataset.type.split(',');}).toArray());
     let new_subscribed = (subscribed ? JSPLib.utility.setDifference(current_subscribed,typelist) : JSPLib.utility.setUnion(current_subscribed,typelist));
-    $(`#el-subscribe-events[data-id="${itemid}"] .el-subscribed,#el-subscribe-events[data-id="${itemid}"] .el-unsubscribed`).each((i,entry)=>{
+    $(`#el-subscribe-events[data-id=${itemid}] .el-subscribed,#el-subscribe-events[data-id="${itemid}"] .el-unsubscribed`).each((i,entry)=>{
         let entry_typelist = entry.dataset.type.split(',');
         if (JSPLib.utility.setIntersection(entry_typelist,new_subscribed).length === entry_typelist.length) {
             $(entry).removeClass().addClass('el-subscribed');
@@ -967,8 +967,8 @@ function UpdateMultiLink(typelist,subscribed,itemid) {
 function UpdateDualLink(type,subscribed,itemid) {
     let show = (subscribed ? 'subscribe' : 'unsubscribe');
     let hide = (subscribed ? 'unsubscribe' : 'subscribe');
-    JSPLib.utility.fullHide(`.${hide}-${type}[data-id="${itemid}"]`);
-    JSPLib.utility.clearHide(`.${show}-${type}[data-id="${itemid}"]`);
+    JSPLib.utility.fullHide(`.${hide}-${type}[data-id=${itemid}]`);
+    JSPLib.utility.clearHide(`.${show}-${type}[data-id=${itemid}]`);
 }
 
 function ToggleSubscribeLinks() {
@@ -979,18 +979,18 @@ function ToggleSubscribeLinks() {
             $(`.el-subscribe-${type}-container`).hide();
         }
     });
-    if ($("#c-posts #a-show").length) {
+    if ($('#c-posts #a-show').length) {
         if (AreAllEventsEnabled(ALL_TRANSLATE_EVENTS)) {
-            $(".el-subscribe-translated-container").show();
+            $('.el-subscribe-translated-container').show();
         } else {
-            $(".el-subscribe-translated-container").hide();
+            $('.el-subscribe-translated-container').hide();
         }
         if (IsAnyEventEnabled(ALL_POST_EVENTS)) {
-            $("#el-subscribe-events").show();
+            $('#el-subscribe-events').show();
             let enabled_post_events = JSPLib.utility.setIntersection(ALL_POST_EVENTS,EL.user_settings.events_enabled);
-            $("#el-all-link").attr('data-type',enabled_post_events);
+            $('#el-all-link').attr('data-type',enabled_post_events);
         } else {
-            $("#el-subscribe-events").hide();
+            $('#el-subscribe-events').hide();
         }
     }
 }
@@ -998,53 +998,53 @@ function ToggleSubscribeLinks() {
 //Insert and process HTML onto page for various types
 
 function InsertEvents($eventpage,type) {
-    $(`#${type}-table`).append($(".striped",$eventpage));
-    $(`#${type}-table .post-preview`).addClass("blacklisted");
+    $(`#${type}-table`).append($('.striped',$eventpage));
+    $(`#${type}-table .post-preview`).addClass('blacklisted');
 }
 
 function InsertDmails($dmailpage,type) {
     DecodeProtectedEmail($dmailpage);
-    $("tr.read-false", $dmailpage).css("font-weight","bold");
-    $(`#${type}-table`).append($(".striped",$dmailpage));
+    $('tr.read-false', $dmailpage).css('font-weight','bold');
+    $(`#${type}-table`).append($('.striped',$dmailpage));
     let $dmails_table = $(`#${type}-table`);
     InitializeOpenDmailLinks($dmails_table);
 }
 
 function InsertComments($commentpage) {
     DecodeProtectedEmail($commentpage);
-    $(".post-preview",$commentpage).addClass("blacklisted");
-    $(".edit_comment",$commentpage).hide();
-    $("#comment-table").append($(".list-of-comments",$commentpage));
-    InitializeCommentPartialCommentLinks("#event-notice #comment-section .post-preview");
+    $('.post-preview',$commentpage).addClass('blacklisted');
+    $('.edit_comment',$commentpage).hide();
+    $('#comment-table').append($('.list-of-comments',$commentpage));
+    InitializeCommentPartialCommentLinks('#event-notice #comment-section .post-preview');
 }
 
 function InsertForums($forumpage) {
     DecodeProtectedEmail($forumpage);
-    let $forums_table = $("#forum-table");
-    $forums_table.append($(".striped",$forumpage));
+    let $forums_table = $('#forum-table');
+    $forums_table.append($('.striped',$forumpage));
     InitializeTopicIndexLinks($forums_table);
     InitializeOpenForumLinks($forums_table);
 }
 
 function InsertNotes($notepage) {
     DecodeProtectedEmail($notepage);
-    let $notes_table = $("#note-table");
-    $notes_table.append($(".striped",$notepage));
-    $("th:first-of-type,td:first-of-type",$notes_table).remove();
-    $("td:nth-of-type(1)",$notes_table).addClass("el-post-id");
-    $("td:nth-of-type(2)",$notes_table).addClass("el-note-id");
-    $("td:nth-of-type(3)",$notes_table).addClass("el-note-body");
+    let $notes_table = $('#note-table');
+    $notes_table.append($('.striped',$notepage));
+    $('th:first-of-type,td:first-of-type',$notes_table).remove();
+    $('td:nth-of-type(1)',$notes_table).addClass('el-post-id');
+    $('td:nth-of-type(2)',$notes_table).addClass('el-note-id');
+    $('td:nth-of-type(3)',$notes_table).addClass('el-note-body');
     AddThumbnails($notes_table);
     InitializePostNoteIndexLinks('note',$notes_table);
     InitializeOpenNoteLinks($notes_table);
 }
 
 function InsertPosts($postpage) {
-    let $posts_table = $("#post-table");
-    $posts_table.append($(".striped",$postpage));
-    $(".striped th:first-of-type, .striped td:first-of-type",$posts_table).remove();
-    $(".striped tr[id]",$posts_table).each((i,row)=>{
-        let post_link = $("td:first-of-type a",row).attr('href');
+    let $posts_table = $('#post-table');
+    $posts_table.append($('.striped',$postpage));
+    $('.striped th:first-of-type, .striped td:first-of-type',$posts_table).remove();
+    $('.striped tr[id]',$posts_table).each((i,row)=>{
+        let post_link = $('td:first-of-type a',row).attr('href');
         if (!post_link) {
             return;
         }
@@ -1052,7 +1052,7 @@ function InsertPosts($postpage) {
         if (!match) {
             return;
         }
-        $("td:first-of-type",row).html(`<a href="${post_link}">post #${match[1]}</a>`);
+        $('td:first-of-type',row).html(`<a href="${post_link}">post #${match[1]}</a>`);
     });
     AddThumbnails($posts_table);
     InitializePostNoteIndexLinks('post',$posts_table);
@@ -1060,17 +1060,17 @@ function InsertPosts($postpage) {
 
 function InsertWikis($wikipage) {
     DecodeProtectedEmail($wikipage);
-    let $wikis_table = $("#wiki-table");
-    $wikis_table.append($(".striped",$wikipage));
+    let $wikis_table = $('#wiki-table');
+    $wikis_table.append($('.striped',$wikipage));
     InitializeWikiIndexLinks($wikis_table);
     InitializeOpenWikiLinks($wikis_table);
 }
 
 function InsertPools($poolpage) {
     DecodeProtectedEmail($poolpage);
-    let $pools_table = $("#pool-table");
-    $pools_table.append($(".striped",$poolpage));
-    $(".pool-category-collection,.pool-category-series",$pools_table).each((i,entry)=>{
+    let $pools_table = $('#pool-table');
+    $pools_table.append($('.striped',$poolpage));
+    $('.pool-category-collection,.pool-category-series',$pools_table).each((i,entry)=>{
         let short_pool_title = JSPLib.utility.maxLengthString(entry.innerText,50);
         $(entry).attr('title',entry.innerText);
         entry.innerText = short_pool_title;
@@ -1083,10 +1083,10 @@ function InsertPools($poolpage) {
 
 function ReadForumTopic(topicid) {
     $.ajax({
-        type: "HEAD",
+        type: 'HEAD',
         url:'/forum_topics/' + topicid,
         headers: {
-            Accept: "text/html",
+            Accept: 'text/html',
         }
     });
 }
@@ -1104,11 +1104,11 @@ function DecodeProtectedEmail(obj) {
 }
 
 function AddThumbnails($dompage) {
-    $(".striped thead tr",$dompage).prepend("<th>Thumb</th>");
+    $('.striped thead tr',$dompage).prepend('<th>Thumb</th>');
     var row_save = {};
     var post_ids = [];
-    $(".striped tr[id]",$dompage).each((i,row)=>{
-        let $postlink = $("td:first-of-type a:first-of-type",row);
+    $('.striped tr[id]',$dompage).each((i,row)=>{
+        let $postlink = $('td:first-of-type a:first-of-type',row);
         let match = $postlink.length && $postlink.attr('href').match(/\/posts\/(\d+)/);
         if (!match) {
             //Something is wrong... break loop
@@ -1120,7 +1120,7 @@ function AddThumbnails($dompage) {
         row_save[postid].push($(row).detach());
     });
     post_ids = JSPLib.utility.setUnique(post_ids).sort().reverse();
-    var $body = $(".striped tbody",$dompage);
+    var $body = $('.striped tbody',$dompage);
     post_ids.forEach((postid)=>{
         row_save[postid][0].prepend(`<td rowspan="${row_save[postid].length}" class="el-post-thumbnail" data-postid="${postid}"></td>`);
         row_save[postid].forEach((row)=>{
@@ -1132,23 +1132,23 @@ function AddThumbnails($dompage) {
 
 async function GetThumbnails() {
     var url_addon = {tags: `id:${EL.post_ids.join(',')} limit:${EL.post_ids.length}`};
-    var html = await $.get("/posts",url_addon);
+    var html = await $.get('/posts',url_addon);
     var $posts = $.parseHTML(html);
-    var $thumbs = $(".post-preview",$posts);
+    var $thumbs = $('.post-preview',$posts);
     $thumbs.each((i,thumb)=>{
         let $thumb = $(thumb);
-        $thumb.addClass("blacklisted");
+        $thumb.addClass('blacklisted');
         let postid = $thumb.data('id');
         $(`.striped .el-post-thumbnail[data-postid=${postid}]`).prepend(thumb);
     });
 }
 
 function AdjustRowspan(rowelement,openitem) {
-    let postid = $(".el-post-id a:first-of-type",rowelement).html();
+    let postid = $('.el-post-id a:first-of-type',rowelement).html();
     let $thumb_cont = $(`#note-table .el-post-thumbnail[data-postid=${postid}]`);
-    let current_rowspan = $thumb_cont.attr("rowspan");
+    let current_rowspan = $thumb_cont.attr('rowspan');
     let new_rowspan = parseInt(current_rowspan) + (openitem ? 1 : -1);
-    $thumb_cont.attr("rowspan",new_rowspan);
+    $thumb_cont.attr('rowspan',new_rowspan);
 }
 
 async function GetPostsCountdown(limit,searchstring,domname) {
@@ -1220,52 +1220,52 @@ function RenderOpenItemLinks(type,itemid,showtext="Show",hidetext="Hide") {
 //Initialize functions
 
 function InitializeNoticeBox() {
-    $("#page").prepend(NOTICE_BOX);
+    $('#page').prepend(NOTICE_BOX);
     if (EL.locked_notice) {
-        $("#lock-event-notice").addClass("el-locked");
+        $('#lock-event-notice').addClass('el-locked');
     } else {
-        $("#lock-event-notice").one('click.el',LockEventNotice);
+        $('#lock-event-notice').one('click.el',LockEventNotice);
     }
-    $("#hide-event-notice").one('click.el',HideEventNotice);
-    $("#read-event-notice").one('click.el',ReadEventNotice);
+    $('#hide-event-notice').one('click.el',HideEventNotice);
+    $('#read-event-notice').one('click.el',ReadEventNotice);
 }
 
 function InitializeOpenForumLinks($obj) {
-    $(".striped tbody tr",$obj).each((i,$row)=>{
+    $('.striped tbody tr',$obj).each((i,$row)=>{
         let forumid = $row.id.match(/(\d+)$/)[1];
-        $(".forum-post-excerpt",$row).prepend(RenderOpenItemLinks('forum',forumid) + '&nbsp;|&nbsp;');
+        $('.forum-post-excerpt',$row).prepend(RenderOpenItemLinks('forum',forumid) + '&nbsp;|&nbsp;');
     });
     OpenItemClick('forum',$obj,3,AddForumPost);
 }
 
 function InitializeOpenNoteLinks($obj) {
-    $(".striped tr[id]",$obj).each((i,$row)=>{
-        let noteid = $(".el-note-id a",$row)[0].innerHTML.replace('.','-');
-        $(".el-note-body",$row).append('<p style="text-align:center">' + RenderOpenItemLinks('note',noteid,"Render note","Hide note") + '</p>');
+    $('.striped tr[id]',$obj).each((i,$row)=>{
+        let noteid = $('.el-note-id a',$row)[0].innerHTML.replace('.','-');
+        $('.el-note-body',$row).append('<p style="text-align:center">' + RenderOpenItemLinks('note',noteid,"Render note","Hide note") + '</p>');
     });
     OpenItemClick('note',$obj,4,AddRenderedNote,AdjustRowspan);
 }
 
 function InitializeOpenDmailLinks($obj) {
-    $(".striped tbody tr",$obj).each((i,$row)=>{
+    $('.striped tbody tr',$obj).each((i,$row)=>{
         let dmailid = $row.innerHTML.match(DMAILS_REGEX)[1];
-        $("td:nth-of-type(4)",$row).prepend(RenderOpenItemLinks('dmail',dmailid) + '&nbsp;|&nbsp;');
+        $('td:nth-of-type(4)',$row).prepend(RenderOpenItemLinks('dmail',dmailid) + '&nbsp;|&nbsp;');
     });
     OpenItemClick('dmail',$obj,3,AddDmail);
 }
 
 function InitializeOpenWikiLinks($obj) {
-    $(".striped tbody tr",$obj).each((i,$row)=>{
+    $('.striped tbody tr',$obj).each((i,$row)=>{
         let wikiverid = parseInt($row.innerHTML.match(WIKI_PAGE_VERSIONS_REGEX)[1]);
-        $(".category-0,.category-1,.category-3,.category-4,.category-5",$row).append('<span style="float:right">(' + RenderOpenItemLinks('wiki',wikiverid,'Show diff','Hide diff') + ')</span>');
+        $('.category-0,.category-1,.category-3,.category-4,.category-5',$row).append('<span style="float:right">(' + RenderOpenItemLinks('wiki',wikiverid,'Show diff','Hide diff') + ')</span>');
     });
     OpenItemClick('wiki',$obj,4,AddWiki);
 }
 
 function InitializeOpenPoolLinks($obj) {
-    $(".striped tbody tr",$obj).each((i,$row)=>{
+    $('.striped tbody tr',$obj).each((i,$row)=>{
         let poolverid = parseInt($row.id.match(/\d+$/)[0]);
-        let $post_changes = $("td:nth-of-type(2)",$row);
+        let $post_changes = $('td:nth-of-type(2)',$row);
         let add_posts = $('.diff-list:first-of-type a[href^="/posts"]',$post_changes[0]).map((i,entry)=>{return entry.innerText;}).toArray();
         let rem_posts = $('.diff-list:last-of-type a[href^="/posts"]',$post_changes[0]).map((i,entry)=>{return entry.innerText;}).toArray();
         if (add_posts.length || rem_posts.length) {
@@ -1273,8 +1273,8 @@ function InitializeOpenPoolLinks($obj) {
             $post_changes.data('add-posts',add_posts);
             $post_changes.data('rem-posts',rem_posts);
         }
-        let $desc_changed = $("td:nth-of-type(4)",$row);
-        if ($desc_changed.html() !== "false") {
+        let $desc_changed = $('td:nth-of-type(4)',$row);
+        if ($desc_changed.html() !== 'false') {
             $desc_changed.append(' (' + RenderOpenItemLinks('pooldiff',poolverid,'Show diff','Hide diff') + ')');
         }
     });
@@ -1289,17 +1289,17 @@ function InitializePostShowMenu() {
     ALL_POST_EVENTS.forEach((type)=>{
         let linkhtml = RenderSubscribeMultiLinks(POST_DISPLAY_NAMES[type],[type],postid);
         let shownhtml = (IsEventEnabled(type) ? '' : 'style="display:none"');
-        $("#el-add-links",menu_obj).append(`<span class="el-subscribe-${type}-container" ${shownhtml}>${linkhtml} | </span>`);
+        $('#el-add-links',menu_obj).append(`<span class="el-subscribe-${type}-container" ${shownhtml}>${linkhtml} | </span>`);
     });
     let shownhtml = (AreAllEventsEnabled(ALL_TRANSLATE_EVENTS) ? '' : 'style="display:none"');
     let linkhtml = RenderSubscribeMultiLinks("Translations",ALL_TRANSLATE_EVENTS,postid);
-    $("#el-add-links",menu_obj).append(`<span class="el-subscribe-translated-container" ${shownhtml}>${linkhtml} | </span>`);
+    $('#el-add-links',menu_obj).append(`<span class="el-subscribe-translated-container" ${shownhtml}>${linkhtml} | </span>`);
     //The All link is always shown when the outer menu is shown, so no need to individually hide it
     let enabled_post_events = JSPLib.utility.setIntersection(ALL_POST_EVENTS,EL.user_settings.events_enabled);
     linkhtml = RenderSubscribeMultiLinks("All",enabled_post_events,postid);
-    $("#el-add-links",menu_obj).append(`<span class="el-subscribe-all-container">${linkhtml}</span>`);
-    $("nav#nav").append(menu_obj);
-    $("#el-subscribe-events a").on('click.el',SubscribeMultiLink);
+    $('#el-add-links',menu_obj).append(`<span class="el-subscribe-all-container">${linkhtml}</span>`);
+    $('nav#nav').append(menu_obj);
+    $('#el-subscribe-events a').on('click.el',SubscribeMultiLink);
 }
 
 //#C-FORUM-TOPICS #A-SHOW
@@ -1313,28 +1313,28 @@ function InitializeTopicShowMenu() {
     let menu_obj = $.parseHTML(RenderMultilinkMenu(topicid,['forum']));
     let linkhtml = RenderSubscribeMultiLinks("Topic",['forum'],topicid,'');
     let shownhtml = (IsEventEnabled('forum') ? '' : 'style="display:none"');
-    $("#el-add-links",menu_obj).append(`<span class="el-subscribe-forum-container "${shownhtml}>${linkhtml} | </span>`);
-    let $email = $('#subnav-subscribe,#subnav-unsubscribe').detach().find("a").text("Email");
-    $("#el-add-links",menu_obj).append($email);
-    $("nav#nav").append(menu_obj);
-    $("#el-subscribe-events a").on('click.el',SubscribeMultiLink);
+    $('#el-add-links',menu_obj).append(`<span class="el-subscribe-forum-container "${shownhtml}>${linkhtml} | </span>`);
+    let $email = $('#subnav-subscribe,#subnav-unsubscribe').detach().find('a').text("Email");
+    $('#el-add-links',menu_obj).append($email);
+    $('nav#nav').append(menu_obj);
+    $('#el-subscribe-events a').on('click.el',SubscribeMultiLink);
 }
 
 //#C-FORUM-TOPICS #A-INDEX
 function InitializeTopicIndexLinks($obj) {
-    $(".striped tr td:first-of-type",$obj).each((i,entry)=>{
+    $('.striped tr td:first-of-type',$obj).each((i,entry)=>{
         let topicid = parseInt(entry.innerHTML.match(FORUM_TOPICS_REGEX)[1]);
-        let linkhtml = RenderSubscribeDualLinks('forum',topicid,"span","","",true);
+        let linkhtml = RenderSubscribeDualLinks('forum',topicid,'span',"","",true);
         let shownhtml = (IsEventEnabled('forum') ? '' : 'style="display:none"');
         $(entry).prepend(`<span class="el-subscribe-forum-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
-        $(".subscribe-forum a,.unsubscribe-forum a",entry).on('click.el',SubscribeDualLink);
+        $('.subscribe-forum a,.unsubscribe-forum a',entry).on('click.el',SubscribeDualLink);
     });
 }
 
 //#C-WIKI-PAGES #A-SHOW
 function InitializeWikiShowMenu() {
     let wikiid = GetInstanceID('wiki-pages',()=>{
-        return parseInt($("#subnav-newest-link").attr('href').match(WIKI_PAGES_REGEX)[1]);
+        return parseInt($('#subnav-newest-link').attr('href').match(WIKI_PAGES_REGEX)[1]);
     });
     if (!wikiid) {
         return;
@@ -1342,19 +1342,19 @@ function InitializeWikiShowMenu() {
     let menu_obj = $.parseHTML(RenderMultilinkMenu(wikiid,['wiki']));
     let linkhtml = RenderSubscribeMultiLinks("Wiki",['wiki'],wikiid,'');
     let shownhtml = (IsEventEnabled('wiki') ? '' : 'style="display:none"');
-    $("#el-add-links",menu_obj).append(`<span class="el-subscribe-wiki-container "${shownhtml}>${linkhtml}</span>`);
-    $("nav#nav").append(menu_obj);
-    $("#el-subscribe-events a").on('click.el',SubscribeMultiLink);
+    $('#el-add-links',menu_obj).append(`<span class="el-subscribe-wiki-container "${shownhtml}>${linkhtml}</span>`);
+    $('nav#nav').append(menu_obj);
+    $('#el-subscribe-events a').on('click.el',SubscribeMultiLink);
 }
 
 //#C-WIKI-PAGES #A-INDEX
 function InitializeWikiIndexLinks($obj) {
     $(`.striped tbody tr`,$obj).each((i,row)=>{
         let wikiid = parseInt(row.innerHTML.match(WIKI_PAGES_REGEX)[1]);
-        let linkhtml = RenderSubscribeDualLinks('wiki',wikiid,"span","","",true);
+        let linkhtml = RenderSubscribeDualLinks('wiki',wikiid,'span',"","",true);
         let shownhtml = (IsEventEnabled('wiki') ? '' : 'style="display:none"');
-        $("td.category-0,td.category-1,td.category-3,td.category-4,td.category-5",row).prepend(`<span class="el-subscribe-wiki-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
-        $(".subscribe-wiki a,.unsubscribe-wiki a",row).on('click.el',SubscribeDualLink);
+        $('td.category-0,td.category-1,td.category-3,td.category-4,td.category-5',row).prepend(`<span class="el-subscribe-wiki-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
+        $('.subscribe-wiki a,.unsubscribe-wiki a',row).on('click.el',SubscribeDualLink);
     });
 }
 
@@ -1367,19 +1367,19 @@ function InitializePoolShowMenu() {
     let menu_obj = $.parseHTML(RenderMultilinkMenu(poolid,['pool']));
     let linkhtml = RenderSubscribeMultiLinks("Pool",['pool'],poolid,'');
     let shownhtml = (IsEventEnabled('pool') ? '' : 'style="display:none"');
-    $("#el-add-links",menu_obj).append(`<span class="el-subscribe-pool-container "${shownhtml}>${linkhtml}</span>`);
-    $("nav#nav").append(menu_obj);
-    $("#el-subscribe-events a").on('click.el',SubscribeMultiLink);
+    $('#el-add-links',menu_obj).append(`<span class="el-subscribe-pool-container "${shownhtml}>${linkhtml}</span>`);
+    $('nav#nav').append(menu_obj);
+    $('#el-subscribe-events a').on('click.el',SubscribeMultiLink);
 }
 
 //#C-POOLS #A-INDEX
 function InitializePoolIndexLinks($obj) {
     $(`.striped tbody tr`,$obj).each((i,row)=>{
         let poolid = parseInt(row.innerHTML.match(POOLS_REGEX)[1]);
-        let linkhtml = RenderSubscribeDualLinks('pool',poolid,"span","","",true);
+        let linkhtml = RenderSubscribeDualLinks('pool',poolid,'span',"","",true);
         let shownhtml = (IsEventEnabled('pool') ? '' : 'style="display:none"');
-        $("td:first-of-type",row).prepend(`<span class="el-subscribe-pool-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
-        $(".subscribe-pool a,.unsubscribe-pool a",row).on('click.el',SubscribeDualLink);
+        $('td:first-of-type',row).prepend(`<span class="el-subscribe-pool-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
+        $('.subscribe-pool a,.unsubscribe-pool a',row).on('click.el',SubscribeDualLink);
     });
 }
 
@@ -1387,34 +1387,34 @@ function InitializePoolIndexLinks($obj) {
 function InitializePoolGalleryLinks() {
     $(`.post-preview > a`).each((i,entry)=>{
         let poolid = parseInt(entry.href.match(/\/pools\/(\d+)/)[1]);
-        let linkhtml = RenderSubscribeDualLinks('pool',poolid,"div"," ","pool");
+        let linkhtml = RenderSubscribeDualLinks('pool',poolid,'div'," ",'pool');
         let shownhtml = (IsEventEnabled('pool') ? '' : 'style="display:none"');
         $(entry).before(`<div class="el-subscribe-pool-container "${shownhtml}>${linkhtml}</div>`);
-        $(".subscribe-pool a,.unsubscribe-pool a",entry.parentElement).on('click.el',SubscribeDualLink);
+        $('.subscribe-pool a,.unsubscribe-pool a',entry.parentElement).on('click.el',SubscribeDualLink);
     });
 }
 //EVENT NOTICE
 
 function InitializePostNoteIndexLinks(type,$obj) {
-    $(".striped tr[id]",$obj).each((i,row)=>{
-        if ($(".el-post-thumbnail",row).length === 0) {
+    $('.striped tr[id]',$obj).each((i,row)=>{
+        if ($('.el-post-thumbnail',row).length === 0) {
             return;
         }
-        let postid = $(".el-post-thumbnail",row).data('postid');
-        let linkhtml = RenderSubscribeDualLinks(type,postid,"span","","",true);
-        $("td:first-of-type",row).prepend(`<div style="text-align:center">${linkhtml}</div>`);
+        let postid = $('.el-post-thumbnail',row).data('postid');
+        let linkhtml = RenderSubscribeDualLinks(type,postid,'span',"","",true);
+        $('td:first-of-type',row).prepend(`<div style="text-align:center">${linkhtml}</div>`);
         $(`.subscribe-${type} a,.unsubscribe-${type} a`,row).on('click.el',SubscribeDualLink);
     });
 }
 
 //#C-COMMENTS #P-INDEX-BY-POST
 function InitializeCommentPartialPostLinks() {
-    $("#p-index-by-post .comments-for-post").each((i,entry)=>{
+    $('#p-index-by-post .comments-for-post').each((i,entry)=>{
         let postid = parseInt($(entry).data('post-id'));
-        let linkhtml = RenderSubscribeDualLinks('comment',postid,"div"," ","comments");
+        let linkhtml = RenderSubscribeDualLinks('comment',postid,'div'," ",'comments');
         let shownhtml = (IsEventEnabled('comment') ? '' : 'style="display:none"');
-        $(".header",entry).after(`<div class="el-subscribe-comment-container "${shownhtml}>${linkhtml}</div>`);
-        $(".subscribe-comment a,.unsubscribe-comment a",entry).on('click.el',SubscribeDualLink);
+        $('.header',entry).after(`<div class="el-subscribe-comment-container "${shownhtml}>${linkhtml}</div>`);
+        $('.subscribe-comment a,.unsubscribe-comment a',entry).on('click.el',SubscribeDualLink);
     });
 }
 
@@ -1422,36 +1422,36 @@ function InitializeCommentPartialPostLinks() {
 function InitializeCommentPartialCommentLinks(selector) {
     $(selector).each((i,entry)=>{
         var postid = parseInt($(entry).data('id'));
-        var linkhtml = RenderSubscribeDualLinks('comment',postid,"div"," ","comments");
+        var linkhtml = RenderSubscribeDualLinks('comment',postid,'div'," ",'comments');
         let shownhtml = (IsEventEnabled('comment') ? '' : 'style="display:none"');
         let $subscribe = $.parseHTML(`<div class="el-subscribe-comment-container "${shownhtml}>${linkhtml}</div>`);
-        $(".preview", entry).append($subscribe);
-        $(".subscribe-comment a,.unsubscribe-comment a",entry).off('click.el').on('click.el',SubscribeDualLink);
+        $('.preview', entry).append($subscribe);
+        $('.subscribe-comment a,.unsubscribe-comment a',entry).off('click.el').on('click.el',SubscribeDualLink);
     });
 }
 
 //Event handlers
 
 function HideEventNotice(event) {
-    $("#event-notice").hide();
+    $('#event-notice').hide();
     MarkAllAsRead();
-    EL.channel.postMessage({type: "hide"});
+    EL.channel.postMessage({type: 'hide'});
     event.preventDefault();
 }
 
 function LockEventNotice(event) {
-    $(event.target).addClass("el-locked");
+    $(event.target).addClass('el-locked');
     EL.locked_notice = true;
 }
 
 function ReadEventNotice(event) {
-    $(event.target).addClass("el-read");
+    $(event.target).addClass('el-read');
     MarkAllAsRead();
 }
 
 function UpdateAll(event) {
     if (!UpdateAll.run_once && !ResetAll.run_once) {
-        JSPLib.network.counter_domname = "#el-activity-indicator";
+        JSPLib.network.counter_domname = '#el-activity-indicator';
         EL.no_limit = true;
         ProcessAllEvents(()=>{
             JSPLib.concurrency.setRecheckTimeout('el-timeout',EL.timeout_expires);
@@ -1506,16 +1506,16 @@ function SubscribeDualLink(event) {
 }
 
 async function PostEventPopulateControl(event) {
-    let post_events = JSPLib.menu.getCheckboxRadioSelected(`[data-setting="post_events"] [data-selector]`);
-    let operation = JSPLib.menu.getCheckboxRadioSelected(`[data-setting="operation"] [data-selector]`);
-    let search_query = $("#el-setting-search-query").val();
+    let post_events = JSPLib.menu.getCheckboxRadioSelected(`[data-setting=post_events] [data-selector]`);
+    let operation = JSPLib.menu.getCheckboxRadioSelected(`[data-setting=operation] [data-selector]`);
+    let search_query = $('#el-setting-search-query').val();
     if (post_events.length === 0 || operation.length === 0) {
         Danbooru.Utility.notice("Must select at least one post event type!");
     } else if (search_query === "") {
         Danbooru.Utility.notice("Must have at least one search term!");
     } else {
-        $("#el-search-query-display").show();
-        let posts = await GetPostsCountdown(100,search_query,"#el-search-query-counter");
+        $('#el-search-query-display').show();
+        let posts = await GetPostsCountdown(100,search_query,'#el-search-query-counter');
         let postids = JSPLib.utility.getObjectAttributes(posts,'id');
         let post_changes = [];
         let was_subscribed = [];
@@ -1523,19 +1523,19 @@ async function PostEventPopulateControl(event) {
         post_events.forEach((eventtype)=>{
             let typelist = GetList(eventtype);
             switch (operation[0]) {
-                case "add":
+                case 'add':
                     new_subscribed = JSPLib.utility.setDifference(postids,typelist);
                     was_subscribed = [];
                     post_changes = post_changes.concat(new_subscribed);
                     typelist = JSPLib.utility.setUnion(typelist,postids);
                     break;
-                case "subtract":
+                case 'subtract':
                     new_subscribed = [];
                     was_subscribed = JSPLib.utility.setIntersection(postids,typelist);
                     post_changes = post_changes.concat(was_subscribed)
                     typelist = JSPLib.utility.setDifference(typelist,postids);
                     break;
-                case "overwrite":
+                case 'overwrite':
                     was_subscribed = JSPLib.utility.setDifference(typelist,postids);
                     new_subscribed = JSPLib.utility.setDifference(postids,typelist);
                     post_changes = post_changes.concat(postids);
@@ -1543,9 +1543,9 @@ async function PostEventPopulateControl(event) {
             }
             EL.subscribelist[eventtype] = typelist;
             setTimeout(()=>{JSPLib.storage.setStorageData(`el-${eventtype}list`,EL.subscribelist[eventtype],localStorage);}, 1);
-            EL.channel.postMessage({type: "reload", eventtype: eventtype, was_subscribed: was_subscribed, new_subscribed: new_subscribed, eventlist: EL.subscribelist[eventtype]});
+            EL.channel.postMessage({type: 'reload', eventtype: eventtype, was_subscribed: was_subscribed, new_subscribed: new_subscribed, eventlist: EL.subscribelist[eventtype]});
         });
-        $("#el-search-query-counter").html(0);
+        $('#el-search-query-counter').html(0);
         post_changes = JSPLib.utility.setUnique(post_changes);
         Danbooru.Utility.notice(`Subscriptions were changed by ${post_changes.length} posts!`);
     }
@@ -1566,8 +1566,8 @@ function OpenItemClick(type,$obj,parentlevel,htmlfunc,otherfunc=(()=>{})) {
         }
         let hide = (openitem ? 'show' : 'hide');
         let show = (openitem ? 'hide' : 'show');
-        JSPLib.utility.fullHide(`.${hide}-full-${type}[data-id="${itemid}"]`);
-        JSPLib.utility.clearHide(`.${show}-full-${type}[data-id="${itemid}"]`);
+        JSPLib.utility.fullHide(`.${hide}-full-${type}[data-id=${itemid}]`);
+        JSPLib.utility.clearHide(`.${show}-full-${type}[data-id=${itemid}]`);
         if (openitem) {
             $(`#full-${type}-id-${itemid}`).show();
         } else {
@@ -1581,7 +1581,7 @@ function OpenItemClick(type,$obj,parentlevel,htmlfunc,otherfunc=(()=>{})) {
 
 function SubscribeMultiLinkCallback() {
     EL.user_settings.autosubscribe_enabled.forEach((type)=>{
-        $(`#el-subscribe-events .el-unsubscribed[data-type="${type}"] a`).click();
+        $(`#el-subscribe-events .el-unsubscribed[data-type=${type}] a`).click();
     });
 }
 
@@ -1589,10 +1589,10 @@ function SubscribeMultiLinkCallback() {
 
 function RebindMenuAutocomplete() {
     JSPLib.utility.rebindTimer({
-        check: ()=>{return JSPLib.utility.hasDOMDataKey("#user_blacklisted_tags,#user_favorite_tags",'uiAutocomplete');},
+        check: ()=>{return JSPLib.utility.hasDOMDataKey('#user_blacklisted_tags,#user_favorite_tags','uiAutocomplete');},
         exec: ()=>{
-            $("#user_blacklisted_tags,#user_favorite_tags").autocomplete("destroy").off('keydown.Autocomplete.tab');
-            $("#el-setting-search-query").attr('data-autocomplete','tag-query');
+            $('#user_blacklisted_tags,#user_favorite_tags').autocomplete('destroy').off('keydown.Autocomplete.tab');
+            $('#el-setting-search-query').attr('data-autocomplete','tag-query');
             setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, JQUERY_DELAY);
         }
     },TIMER_POLL_INTERVAL);
@@ -1620,7 +1620,7 @@ async function CheckUserType(type) {
                 TYPEDICT[type].process();
             }
             $(`#${type}-section`).show();
-            $("#event-notice").show();
+            $('#event-notice').show();
             return true;
         } else {
             CheckUserType.debuglog(`No ${type}(s)!`);
@@ -1685,7 +1685,7 @@ async function CheckSubscribeType(type) {
                 TYPEDICT[type].process();
             }
             $(`#${type}-section`).show();
-            $("#event-notice").show();
+            $('#event-notice').show();
             return true;
         } else {
             CheckSubscribeType.debuglog(`No ${type}(s)!`);
@@ -1710,7 +1710,7 @@ async function CheckAllEvents(promise_array) {
         //Only save overflow if it wasn't just a display reload
         JSPLib.storage.setStorageData('el-overflow',EL.item_overflow,localStorage);
         if (!EL.user_settings.autoclose_dmail_notice) {
-            $("#dmail-notice").show();
+            $('#dmail-notice').show();
         }
     }
 }
@@ -1738,7 +1738,7 @@ function MarkAllAsRead() {
     if (IsAnyEventEnabled(ALL_MAIL_EVENTS)) {
         HideDmailNotice();
     } else if (!EL.user_settings.autoclose_dmail_notice) {
-        $("#dmail-notice").show();
+        $('#dmail-notice').show();
     }
     JSPLib.storage.setStorageData('el-events',false,localStorage);
     SetLastSeenTime();
@@ -1761,17 +1761,17 @@ function BroadcastEL(ev) {
     var menuid,linkid;
     BroadcastEL.debuglog(`(${ev.data.type}):`,ev.data);
     switch (ev.data.type) {
-        case "hide":
-            !EL.locked_notice && $("#event-notice").hide();
+        case 'hide':
+            !EL.locked_notice && $('#event-notice').hide();
             break;
-        case "subscribe":
+        case 'subscribe':
             EL.subscribelist[ev.data.eventtype] = ev.data.eventlist;
             UpdateMultiLink([ev.data.eventtype],ev.data.was_subscribed,ev.data.itemid);
             UpdateDualLink(ev.data.eventtype,ev.data.was_subscribed,ev.data.itemid);
             break;
-        case "reload":
+        case 'reload':
             EL.subscribelist[ev.data.eventtype] = ev.data.eventlist;
-            menuid = $("#el-subscribe-events").data('id');
+            menuid = $('#el-subscribe-events').data('id');
             if (ev.data.was_subscribed.includes(menuid)) {
                 UpdateMultiLink([ev.data.eventtype],true,menuid);
             } else if (ev.data.new_subscribed.includes(menuid)) {
@@ -1786,11 +1786,11 @@ function BroadcastEL(ev) {
                 }
             });
             break;
-        case "reset":
+        case 'reset':
             Object.assign(EL,PROGRAM_RESET_KEYS);
-            JSPLib.utility.fullHide("#event-notice,#el-subscribe-events,.el-subscribe-dual-links");
+            JSPLib.utility.fullHide('#event-notice,#el-subscribe-events,.el-subscribe-dual-links');
             //falls through
-        case "settings":
+        case 'settings':
             EL.user_settings = ev.data.user_settings;
             EL.is_setting_menu && JSPLib.menu.updateUserSettings('el');
             ToggleSubscribeLinks();
@@ -1825,29 +1825,29 @@ function GetRecheckExpires() {
 }
 
 function RenderSettingsMenu() {
-    $("#event-listener").append(EL_MENU);
-    $("#el-general-settings").append(JSPLib.menu.renderDomainSelectors('el', 'EventListener'));
-    $("#el-notice-settings").append(JSPLib.menu.renderCheckbox("el",'autolock_notices'));
-    $("#el-notice-settings").append(JSPLib.menu.renderCheckbox("el",'mark_read_topics'));
-    $("#el-notice-settings").append(JSPLib.menu.renderCheckbox("el",'autoclose_dmail_notice'));
-    $("#el-event-settings").append(JSPLib.menu.renderCheckbox("el",'filter_user_events'));
-    $("#el-event-settings").append(JSPLib.menu.renderCheckbox("el",'filter_untranslated_commentary'));
-    $("#el-event-settings").append(JSPLib.menu.renderInputSelectors("el",'events_enabled','checkbox'));
-    $("#el-event-settings").append(JSPLib.menu.renderInputSelectors("el",'autosubscribe_enabled','checkbox'));
-    $("#el-network-settings").append(JSPLib.menu.renderTextinput("el",'recheck_interval',10));
-    $("#el-subscribe-controls").append(JSPLib.menu.renderInputSelectors('el','post_events','checkbox',true,['post','comment','note','commentary'],[],'Select which events to populate.'));
-    $("#el-subscribe-controls").append(JSPLib.menu.renderInputSelectors('el','operation','radio',true,['add','subtract','overwrite'],['add'],'Select how the query will affect existing subscriptions.'));
-    $("#el-subscribe-controls").append(JSPLib.menu.renderTextinput('el','search_query',50,true,'Enter a tag search query to populate. See <a href="/wiki_pages/43049" style="color:#0073ff">Help:Cheatsheet</a> for more info.',['get']));
-    $("#el-subscribe-controls").append(DISPLAY_COUNTER);
-    $("#el-cache-settings").append(JSPLib.menu.renderLinkclick("el",'cache_info',"Cache info","Click to populate","Calculates the cache usage of the program and compares it to the total usage."));
-    $("#el-cache-settings").append(`<div id="el-cache-info-table" style="display:none"></div>`);
-    $("#el-cache-editor-controls").append(`<input id="el-control-data-source" type="hidden" value="local_storage">`);
-    $("#el-cache-editor-controls").append(JSPLib.menu.renderTextinput('el','data_name',20,true,"Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.",['get','save','delete']));
+    $('#event-listener').append(EL_MENU);
+    $('#el-general-settings').append(JSPLib.menu.renderDomainSelectors('el', 'EventListener'));
+    $('#el-notice-settings').append(JSPLib.menu.renderCheckbox('el','autolock_notices'));
+    $('#el-notice-settings').append(JSPLib.menu.renderCheckbox('el','mark_read_topics'));
+    $('#el-notice-settings').append(JSPLib.menu.renderCheckbox('el','autoclose_dmail_notice'));
+    $('#el-event-settings').append(JSPLib.menu.renderCheckbox('el','filter_user_events'));
+    $('#el-event-settings').append(JSPLib.menu.renderCheckbox('el','filter_untranslated_commentary'));
+    $('#el-event-settings').append(JSPLib.menu.renderInputSelectors('el','events_enabled','checkbox'));
+    $('#el-event-settings').append(JSPLib.menu.renderInputSelectors('el','autosubscribe_enabled','checkbox'));
+    $('#el-network-settings').append(JSPLib.menu.renderTextinput('el','recheck_interval',10));
+    $('#el-subscribe-controls').append(JSPLib.menu.renderInputSelectors('el','post_events','checkbox',true,['post','comment','note','commentary'],[],'Select which events to populate.'));
+    $('#el-subscribe-controls').append(JSPLib.menu.renderInputSelectors('el','operation','radio',true,['add','subtract','overwrite'],['add'],'Select how the query will affect existing subscriptions.'));
+    $('#el-subscribe-controls').append(JSPLib.menu.renderTextinput('el','search_query',50,true,'Enter a tag search query to populate. See <a href="/wiki_pages/43049" style="color:#0073ff">Help:Cheatsheet</a> for more info.',['get']));
+    $('#el-subscribe-controls').append(DISPLAY_COUNTER);
+    $('#el-cache-settings').append(JSPLib.menu.renderLinkclick('el','cache_info',"Cache info","Click to populate","Calculates the cache usage of the program and compares it to the total usage."));
+    $('#el-cache-settings').append(`<div id="el-cache-info-table" style="display:none"></div>`);
+    $('#el-cache-editor-controls').append(`<input id="el-control-data-source" type="hidden" value="local_storage">`);
+    $('#el-cache-editor-controls').append(JSPLib.menu.renderTextinput('el','data_name',20,true,'Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.',['get','save','delete']));
     JSPLib.menu.engageUI('el',true);
     JSPLib.menu.saveUserSettingsClick('el','EventListener');
     JSPLib.menu.resetUserSettingsClick('el','EventListener',LOCALSTORAGE_KEYS,PROGRAM_RESET_KEYS);
-    $("#el-search-query-get").on('click.el',PostEventPopulateControl);
-    JSPLib.menu.cacheInfoClick('el',/^$/,"#el-cache-info-table");
+    $('#el-search-query-get').on('click.el',PostEventPopulateControl);
+    JSPLib.menu.cacheInfoClick('el',/^$/,'#el-cache-info-table');
     JSPLib.menu.getCacheClick('el');
     JSPLib.menu.saveCacheClick('el',ValidateProgramData);
     JSPLib.menu.deleteCacheClick('el');
@@ -1858,7 +1858,7 @@ function RenderSettingsMenu() {
 //Main program
 
 function Main() {
-    $("#dmail-notice").hide();
+    $('#dmail-notice').hide();
     Danbooru.EL = EL = {
         controller: document.body.dataset.controller,
         action: document.body.dataset.action,
@@ -1874,24 +1874,24 @@ function Main() {
         no_limit: false,
         post_ids: [],
         storage_keys: {local_storage: []},
-        is_setting_menu: Boolean($("#c-users #a-edit").length),
+        is_setting_menu: Boolean($('#c-users #a-edit').length),
         settings_config: SETTINGS_CONFIG,
         channel: new BroadcastChannel('EventListener')
     };
-    if (EL.username === "Anonymous") {
+    if (EL.username === 'Anonymous') {
         Main.debuglog("User must log in!");
         return;
-    } else if ((typeof EL.username !== "string") || !JSPLib.validate.validateID(EL.userid)) {
+    } else if ((typeof EL.username !== 'string') || !JSPLib.validate.validateID(EL.userid)) {
         Main.debuglog("Invalid meta variables!");
         return;
     }
     EL.user_settings = JSPLib.menu.loadUserSettings('el');
     EL.channel.onmessage = BroadcastEL;
     if (EL.is_setting_menu) {
-        JSPLib.validate.dom_output = "#el-cache-editor-errors";
+        JSPLib.validate.dom_output = '#el-cache-editor-errors';
         JSPLib.menu.loadStorageKeys('el');
-        JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
-            JSPLib.menu.installSettingsMenu("EventListener");
+        JSPLib.utility.installScript('https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js').done(()=>{
+            JSPLib.menu.installSettingsMenu('EventListener');
             RenderSettingsMenu();
         });
     }
@@ -1912,47 +1912,47 @@ function Main() {
                 JSPLib.concurrency.freeSemaphore('el');
             });
         } else {
-            $("#el-update-all").on('click.el',UpdateAll);
+            $('#el-update-all').on('click.el',UpdateAll);
             if (EL.days_absent > 30.0) {
-                $("#el-reset-all").on('click.el',ResetAll);
-                $("#el-excessive-absent").show();
+                $('#el-reset-all').on('click.el',ResetAll);
+                $('#el-excessive-absent').show();
             }
-            $("#el-days-absent").html(EL.days_absent);
-            $("#el-absent-section").show();
-            $("#event-notice").show();
+            $('#el-days-absent').html(EL.days_absent);
+            $('#el-absent-section').show();
+            $('#event-notice').show();
             JSPLib.concurrency.freeSemaphore('el');
         }
     } else {
         if (!EL.user_settings.autoclose_dmail_notice) {
-            $("#dmail-notice").show();
+            $('#dmail-notice').show();
         }
         Main.debuglog("Waiting...");
     }
-    if (EL.controller === "posts" && EL.action === "show") {
+    if (EL.controller === 'posts' && EL.action === 'show') {
         InitializePostShowMenu();
-        if ($(`#image-container[data-uploader-id="${EL.userid}"]`).length) {
+        if ($(`#image-container[data-uploader-id='${EL.userid}']`).length) {
             SubscribeMultiLinkCallback();
         }
-    } else if (EL.controller === "comments" && EL.action === "index") {
-        InitializeCommentPartialCommentLinks("#c-comments .post-preview");
-    } else if (["forum-topics","forum-posts"].includes(EL.controller)) {
-        if (EL.action === "show") {
+    } else if (EL.controller === 'comments' && EL.action === 'index') {
+        InitializeCommentPartialCommentLinks('#c-comments .post-preview');
+    } else if (['forum-topics','forum-posts'].includes(EL.controller)) {
+        if (EL.action === 'show') {
             InitializeTopicShowMenu();
-        } else if (EL.action === "index") {
+        } else if (EL.action === 'index') {
             InitializeTopicIndexLinks(document);
         }
-    } else if (["wiki-pages","wiki-page-versions"].includes(EL.controller)) {
-        if (EL.action === "show") {
+    } else if (['wiki-pages','wiki-page-versions'].includes(EL.controller)) {
+        if (EL.action === 'show') {
             InitializeWikiShowMenu();
-        } else if (EL.action === "index") {
+        } else if (EL.action === 'index') {
             InitializeWikiIndexLinks(document);
         }
-    } else if (["pools","pool-versions"].includes(EL.controller)) {
-        if (EL.action === "show") {
+    } else if (['pools','pool-versions'].includes(EL.controller)) {
+        if (EL.action === 'show') {
             InitializePoolShowMenu();
-        } else if (EL.action === "index") {
+        } else if (EL.action === 'index') {
             InitializePoolIndexLinks(document);
-        } else if (EL.action === "gallery") {
+        } else if (EL.action === 'gallery') {
             InitializePoolGalleryLinks();
         }
     }
