@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
-// @version      2.11
+// @version      2.12
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -551,20 +551,18 @@ const PROGRAM_CSS = `
 .ntisas-image-menu.ntisas-tweet-actions {
     max-width: 550px;
 }
-.ntisas-image-menu.ntisas-tweet-actions div:nth-child(1) {
+.ntisas-image-menu.ntisas-tweet-actions .ntisas-reply {
     justify-content: flex-start;
 }
-.ntisas-image-menu.ntisas-tweet-actions div:nth-child(2) {
+.ntisas-image-menu.ntisas-tweet-actions .ntisas-retweet {
     justify-content: center;
 }
-.ntisas-image-menu.ntisas-tweet-actions div:nth-child(3) {
+.ntisas-image-menu.ntisas-tweet-actions .ntisas-like {
     justify-content: flex-end;
 }
-.ntisas-image-menu.ntisas-tweet-actions div:nth-child(4) {
+.ntisas-image-menu.ntisas-tweet-actions .ntisas-share {
     justify-content: center;
-}
-.ntisas-image-menu.ntisas-tweet-actions div:nth-child(5) {
-    display: none;
+    min-width: 50px;
 }
 .ntisas-upload {
     font-size: 20px;
@@ -4305,6 +4303,10 @@ function MarkupStreamTweet(tweet) {
     }
     let tweet_menu = tweet_right.children[tweet_menu_index];
     $(tweet_menu).addClass('ntisas-tweet-actions');
+    $('[data-testid="reply"]', tweet_menu).parent().addClass('ntisas-reply');
+    $('[data-testid="retweet"]', tweet_menu).parent().addClass('ntisas-retweet');
+    $('[data-testid="like"]', tweet_menu).parent().addClass('ntisas-like');
+    $('[role="button"]:not([data-testid])', tweet_menu).parent().addClass('ntisas-share');
     let reply_line_count = 0;
     let child1 = tweet_right.children[1];
     if (child1.children[0].tagName.toUpperCase() === 'DIV' && child1.innerText.match(/^Replying to/)) {
