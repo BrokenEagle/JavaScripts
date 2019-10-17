@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.4
+// @version      16.5
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1225,14 +1225,14 @@ function ToggleSubscribeLinks() {
 //Insert and process HTML onto page for various types
 
 function InsertEvents($eventpage,type) {
-    $(`#${type}-table`).append($('.striped', $eventpage));
-    $(`#${type}-table .post-preview`).addClass('blacklisted');
+    $(`#el-${type}-table`).append($('.striped', $eventpage));
+    $(`#el-${type}-table .post-preview`).addClass('blacklisted');
 }
 
 function InsertDmails($dmailpage,type) {
     DecodeProtectedEmail($dmailpage);
     $('tr.read-false', $dmailpage).css('font-weight', 'bold');
-    let $dmails_table = $(`#${type}-table`)[0];
+    let $dmails_table = $(`#el-${type}-table`)[0];
     $dmails_table.append($('.striped', $dmailpage));
     InitializeOpenDmailLinks($dmails_table[0]);
 }
@@ -1402,7 +1402,7 @@ function RenderSubscribeMultiLinks(name,typelist,itemid) {
     typelist.forEach((type)=>{
         itemdict[type] = GetList(type);
     });
-    let is_subscribed = typelist.some((type)=>itemdict[type].includes(itemid));
+    let is_subscribed = typelist.every((type)=>itemdict[type].includes(itemid));
     let classname = (is_subscribed ? 'el-subscribed' : 'el-unsubscribed');
     let keyname = JSPLib.utility.kebabCase(name);
     let idname = 'el-' + keyname + '-link';
