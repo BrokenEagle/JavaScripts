@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      27.8
+// @version      27.9
 // @description  Validates tag add/remove inputs on a post edit or upload, plus several other post validations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -113,6 +113,17 @@ const settings_config = {
         hint: "Pre-edit warnings will only appear once per post per tab session."
     }
 }
+
+//CSS constants
+
+const PROGRAM_CSS = `
+#validation-input > label {
+   font-weight: bold;
+}
+#validation-input > * {
+    margin: 5px;
+    display: block;
+}`;
 
 //HTML constants
 
@@ -671,7 +682,7 @@ function ValidateUpload() {
     }
     let errormessages = [];
     let ratingtag = Boolean(JSPLib.utility.filterRegex(GetTagList(),/^rating:[sqe]/i).length);
-    let ratingradio = $(".ratings input").toArray().some((input)=>{return input.checked;});
+    let ratingradio = $(".upload_rating input").toArray().some((input)=>{return input.checked;});
     if (!ratingtag && !ratingradio) {
         errormessages.push("Must specify a rating.");
     }
@@ -910,6 +921,7 @@ function Main() {
     $("#validate-tags").on('click.vti',Timer.ValidateTags);
     $("#check-tags").on('click.vti',Timer.CheckTags);
     RebindHotkey();
+    JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
     JSPLib.debug.debugExecute(()=>{
         window.addEventListener('beforeunload',function () {
             JSPLib.statistics.outputAdjustedMean("ValidateTagInput");
