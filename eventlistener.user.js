@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.3
+// @version      16.4
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1356,7 +1356,7 @@ function AddThumbnails(dompage) {
 
 async function GetThumbnails() {
     var url_addon = {tags: `id:${EL.post_ids.join(',')} limit:${EL.post_ids.length}`};
-    var html = await $.get('/posts', url_addon);
+    var html = await JSPLib.network.getNotify('/posts', url_addon);
     var $posts = $.parseHTML(html);
     var $thumbs = $('.post-preview', $posts);
     $thumbs.each((i,thumb)=>{
@@ -1391,7 +1391,7 @@ function RenderSubscribeDualLinks(type,itemid,tag,separator,ender,right=false) {
     let unsubscribe = (typelist.includes(itemid) ? 'style' : 'style="display:none !important"');
     let spacer = (right ? "&nbsp;&nbsp;" : "");
     return `
-<${tag} class="el-subscribe-dual-links"  data-type="${type}" data-id="{itemid}">
+<${tag} class="el-subscribe-dual-links"  data-type="${type}" data-id="${itemid}">
     <${tag} class="el-subscribe-${type}" ${subscribe}><a class="el-monospace-link" href="javascript:void(0)">${spacer}Subscribe${separator}${ender}</a></${tag}>
     <${tag} class="el-unsubscribe-${type}" ${unsubscribe}"><a class="el-monospace-link" href="javascript:void(0)">Unsubscribe${separator}${ender}</a></${tag}>
 </${tag}>`;
@@ -1861,7 +1861,7 @@ async function CheckUserType(type) {
             EL.lastids.user[type] = lastusertype[0];
             CheckUserType.debuglog(`Found ${TYPEDICT[type].plural}!`, EL.lastids.user[type]);
             let idlist = JSPLib.utility.getObjectAttributes(filtertype, 'id');
-            LoadHTMLType(type, idlist);
+            await LoadHTMLType(type, idlist);
             return true;
         } else {
             CheckUserType.debuglog(`No ${TYPEDICT[type].plural}!`);
@@ -1919,7 +1919,7 @@ async function CheckSubscribeType(type) {
         if (subscribetypelist.length) {
             EL.lastids.subscribe[type] = jsontypelist[0];
             CheckSubscribeType.debuglog(`Found ${TYPEDICT[type].plural}!`, EL.lastids.subscribe[type]);
-            LoadHTMLType(type, subscribetypelist);
+            await LoadHTMLType(type, subscribetypelist);
             return true;
         } else {
             CheckSubscribeType.debuglog(`No ${TYPEDICT[type].plural}!`);
