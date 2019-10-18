@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.5
+// @version      16.6
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1817,9 +1817,9 @@ function OpenItemClick(type,parentlevel,htmlfunc,otherfunc) {
         JSPLib.utility.fullHide(`.el-show-hide-links[data-id="${itemid}"] [data-action="${hide}"]`);
         JSPLib.utility.clearHide(`.el-show-hide-links[data-id="${itemid}"] [data-action="${show}"]`);
         if (openitem) {
-            $(`#el-full-item[data-type="${type}"][data-id="${itemid}]"`).show();
+            $(`.el-full-item[data-type="${type}"][data-id="${itemid}"]`).show();
         } else {
-            $(`#el-full-item[data-type="${type}"][data-id="${itemid}]"`).hide();
+            $(`.el-full-item[data-type="${type}"][data-id="${itemid}"]`).hide();
         }
         if (typeof otherfunc === 'function') {
             otherfunc(rowelement, openitem);
