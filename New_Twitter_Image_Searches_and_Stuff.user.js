@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
-// @version      3.0
+// @version      3.1
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1558,6 +1558,7 @@ const BASE_QTIP_WIDTH = 10;
 //Other constants
 
 const STREAMING_PAGES = ['home', 'main', 'likes', 'replies', 'media', 'list', 'search', 'hashtag', 'moment'];
+const MEDIA_TYPES = ['images', 'media', 'videos'];
 
 const ALL_LISTS = {
     highlight: 'no-highlight-list',
@@ -2365,7 +2366,7 @@ function UpdatePostIDsLink(tweet_id) {
     let $replace = (IsTweetPage() ? $('.ntisas-tweet-menu', $tweet[0]) : $('.ntisas-timeline-menu', $tweet[0]));
     let $link = $('.ntisas-database-match, .ntisas-confirm-save', $tweet[0]);
     if ($link.length && NTISAS.user_settings.advanced_tooltips_enabled) {
-        $link.qtiptisas('destroy');
+        $link.qtiptisas('destroy', true);
     }
     let post_ids = JSPLib.storage.getStorageData('tweet-' + tweet_id, sessionStorage, []);
     if (post_ids.length === 0) {
@@ -2839,7 +2840,7 @@ function IsTweetPage() {
 }
 
 function IsMediaTimeline() {
-    return (NTISAS.page === 'media') || (NTISAS.page === 'search' && NTISAS.account && NTISAS.queries.filter === 'images');
+    return (NTISAS.page === 'media') || (NTISAS.page === 'search' && NTISAS.account && MEDIA_TYPES.includes(NTISAS.queries.filter));
 }
 
 function IsIQDBAutoclick() {
@@ -4108,8 +4109,9 @@ function ResetResults(event) {
 }
 
 function MergeResults(event) {
-    let [,,tweet_id,,,,,$replace] = GetEventPreload(event, 'ntisas-merge-results');
+    let [,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event, 'ntisas-merge-results');
     NTISAS.merge_results = JSPLib.utility.setUnion(NTISAS.merge_results, [tweet_id]);
+    $('.ntisas-database-match', $tweet[0]).qtiptisas('destroy', true);
     InitializeNoMatchesLinks(tweet_id, $replace, true);
 }
 
@@ -4118,6 +4120,8 @@ function CancelMerge(event) {
     NTISAS.merge_results = JSPLib.utility.setDifference(NTISAS.merge_results, [tweet_id]);
     let post_ids = JSPLib.storage.getStorageData('tweet-' + tweet_id, sessionStorage, []);
     $replace.html(RenderPostIDsLink(post_ids, 'ntisas-database-match'));
+    NTISAS.tweet_index[tweet_id].processed = false;
+    UpdateLinkTitles();
 }
 
 function SelectPreview(event) {
