@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.6
+// @version      16.7
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -275,25 +275,25 @@ const WIKI_CSS = `
 }`;
 
 const POOL_CSS = `
-#el-event-notice #el-pool-section .el-pool-diff {
+#el-event-notice #el-pool-section .el-full-item[data-type="pooldiff"] {
     overflow-x: auto;
     max-width: 90vw;
 }
-#el-event-notice #el-pool-section .el-pool-diff ins {
+#el-event-notice #el-pool-section .el-full-item[data-type="pooldiff"] ins {
     background: #cfc;
     text-decoration: none;
 }
-#el-event-notice #el-pool-section .el-pool-diff del {
+#el-event-notice #el-pool-section .el-full-item[data-type="pooldiff"] del {
     background: #fcc;
     text-decoration: none;
 }
-#el-event-notice #el-pool-section .el-add-pool-posts {
+#el-event-notice #el-pool-section .el-full-item[data-type="poolposts"] .el-add-pool-posts {
     background-color: rgba(0, 255, 0, 0.2);
 }
-#el-event-notice #el-pool-section .el-rem-pool-posts {
+#el-event-notice #el-pool-section .el-full-item[data-type="poolposts"] .el-rem-pool-posts {
     background-color: rgba(255, 0, 0, 0.2);
 }
-#el-event-notice #el-pool-section .el-pool-posts .post-preview {
+#el-event-notice #el-pool-section .el-full-item[data-type="poolposts"] .post-preview {
     width: 154px;
     height: 154px;
     margin: 5px;
@@ -643,7 +643,7 @@ const ALL_VALIDATE_REGEXES = {
     id: `el-${TYPE_GROUPING}lastid`,
     idlist: [
         `el-${TYPE_GROUPING}list`,
-        `el-saved${SUBSCRIBE_GROUPING}lastid`,
+        `el-saved${TYPE_GROUPING}lastid`,
         `el-saved${SUBSCRIBE_GROUPING}list`,
     ],
 };
@@ -994,14 +994,10 @@ function SetLastSeenTime() {
 //Return true if there are no saved events at all, or saved events for the input type
 function CheckWaiting(inputtype) {
     if (Object.keys(CheckWaiting.all_waits).length == 0) {
-        let enabled_events = JSPLib.utility.setIntersection(SUBSCRIBE_EVENTS, EL.user_settings.events_enabled);
-        enabled_events.forEach((type)=>{
+        EL.user_settings.events_enabled.forEach((type)=>{
             CheckWaiting.all_waits[type] = JSPLib.storage.checkStorageData(`el-saved${type}lastid`, ValidateProgramData, localStorage, []).length > 0;
             CheckWaiting.any_waits = CheckWaiting.any_waits || CheckWaiting.all_waits[type];
         });
-    }
-    if (!SUBSCRIBE_EVENTS.includes(inputtype)) {
-        return false;
     }
     return !(Object.values(CheckWaiting.all_waits).reduce((total,entry)=>{return total || entry;}, false)) /*No waits*/ || CheckWaiting.all_waits[inputtype];
 }
@@ -1025,10 +1021,10 @@ CheckOverflow.all_overflows = {};
 
 function ProcessEvent(inputtype) {
     if (!JSPLib.menu.isSettingEnabled('EL', 'events_enabled', inputtype)) {
-        return [];
+        return false;
     }
     if (SUBSCRIBE_EVENTS.includes(inputtype) && !CheckList(inputtype)) {
-        return [];
+        return false;
     }
     //Waits always have priority over overflows
     JSPLib.debug.debugExecute(()=>{
@@ -1046,7 +1042,7 @@ function ProcessEvent(inputtype) {
             return TIMER.CheckSubscribeType(inputtype);
         }
     }
-    return [];
+    return false;
 }
 
 function CheckAbsence() {
@@ -1115,8 +1111,8 @@ async function AddWiki(wikiverid,rowelement) {
         }
         let $wiki_diff_page = $.parseHTML(wiki_diff_page);
         let $outerblock = $.parseHTML(RenderOpenItemContainer('wiki', wikiverid, 4));
-        $('td', $outerblock).append($("#a-diff p", $wiki_diff_page));
-        let wiki_diff= ("#a-diff div", $wiki_diff_page).html().replace(/<br>/g, PARAGRAPH_MARK);
+        $('td', $outerblock).append($("#a-diff #content p", $wiki_diff_page));
+        let wiki_diff= $("#a-diff #content div", $wiki_diff_page).html().replace(/<br>/g, PARAGRAPH_MARK);
         $('td', $outerblock).append(wiki_diff);
         $(rowelement).after($outerblock);
     } else {
@@ -1232,7 +1228,7 @@ function InsertEvents($eventpage,type) {
 function InsertDmails($dmailpage,type) {
     DecodeProtectedEmail($dmailpage);
     $('tr.read-false', $dmailpage).css('font-weight', 'bold');
-    let $dmails_table = $(`#el-${type}-table`)[0];
+    let $dmails_table = $(`#el-${type}-table`);
     $dmails_table.append($('.striped', $dmailpage));
     InitializeOpenDmailLinks($dmails_table[0]);
 }
@@ -1853,17 +1849,20 @@ async function CheckUserType(type) {
     let lastidkey = `el-${type}lastid`;
     let typelastid = JSPLib.storage.checkStorageData(lastidkey, ValidateProgramData, localStorage, 0);
     if (typelastid) {
+        let savedlastidkey = `el-saved${type}lastid`;
         let url_addons = JSPLib.utility.joinArgs(TYPEDICT[type].addons, TYPEDICT[type].useraddons(EL.username), {only: TYPEDICT[type].only});
         let jsontype = await JSPLib.danbooru.getAllItems(TYPEDICT[type].controller, QUERY_LIMIT, null, {addons: url_addons, page: typelastid, reverse: true});
         let filtertype = TYPEDICT[type].filter(jsontype);
         let lastusertype = (jsontype.length ? [JSPLib.danbooru.getNextPageID(jsontype, true)] : []);
         if (filtertype.length) {
             EL.lastids.user[type] = lastusertype[0];
+            JSPLib.storage.setStorageData(savedlastidkey, lastusertype, localStorage);
             CheckUserType.debuglog(`Found ${TYPEDICT[type].plural}!`, EL.lastids.user[type]);
             let idlist = JSPLib.utility.getObjectAttributes(filtertype, 'id');
             await LoadHTMLType(type, idlist);
             return true;
         } else {
+            JSPLib.storage.setStorageData(savedlastidkey, [], localStorage);
             CheckUserType.debuglog(`No ${TYPEDICT[type].plural}!`);
             if (lastusertype.length && (typelastid !== lastusertype[0])) {
                 SaveLastID(type, lastusertype[0]);
@@ -1978,6 +1977,7 @@ function ProcessAllEvents(func) {
 function MarkAllAsRead() {
     for (let type in EL.lastids.user) {
         SaveLastID(type, EL.lastids.user[type]);
+        JSPLib.storage.setStorageData(`el-saved${type}lastid`, [], localStorage);
     }
     for (let type in EL.lastids.subscribe) {
         SaveLastID(type, EL.lastids.subscribe[type]);
