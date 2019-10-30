@@ -4709,10 +4709,12 @@ function ProcessTweetImages() {
             process_tweetids.add($tweet.data('tweet-id'));
         } else {
             $(image).addClass('ntisas-unhandled-image');
-            if (JSPLib.validate.isBoolean(image_url)) {
-                Danbooru.Utility.notice("New unhandled image found (see debug console)");
-                ProcessTweetImages.debuglog("Unhandled image", $(image).closest('.ntisas-tweet').data('tweet-id'));
-            }
+            JSPLib.debug.debugExecute(()=>{
+                if (JSPLib.validate.isBoolean(image_url)) {
+                    Danbooru.Utility.notice("New unhandled image found (see debug console)");
+                    ProcessTweetImages.debuglog("Unhandled image", $(image).closest('.ntisas-tweet').data('tweet-id'));
+                }
+            });
         }
     });
     if (process_tweetids.size) {
