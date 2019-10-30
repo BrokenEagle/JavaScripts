@@ -2808,9 +2808,7 @@ function ProcessSimilarData(type,tweet_id,$tweet,$replace,selected_image_urls,si
         }
     } else {
         JSPLib.storage.saveData(type + '-' + tweet_id, {value: true, expires: JSPLib.utility.getExpires(SIMILAR_EXPIRES)});
-        let no_iqdb_results = (type === 'iqdb' ? true : JSPLib.storage.getStorageData('iqdb-' + tweet_id, sessionStorage).value);
-        let no_sauce_results = (type === 'sauce' ? true : JSPLib.storage.getStorageData('sauce-' + tweet_id, sessionStorage).value);
-        $replace.html(RenderNomatchLinks(tweet_id, no_iqdb_results, no_sauce_results));
+        InitializeNoMatchesLinks(tweet_id, $replace);
     }
 }
 
@@ -3338,13 +3336,14 @@ function InitializePostsContainer(all_posts,image_urls) {
     return $attachment;
 }
 
-async function InitializeNoMatchesLinks(tweet_id,$obj,merge_results=false) {
+async function InitializeNoMatchesLinks(tweet_id,$obj) {
     let [iqdb_results,sauce_results] = await Promise.all([
         JSPLib.storage.checkLocalDB('iqdb-' + tweet_id, ValidateEntry, SIMILAR_EXPIRES),
         JSPLib.storage.checkLocalDB('sauce-' + tweet_id, ValidateEntry, SIMILAR_EXPIRES)
     ]);
     let no_iqdb_results = CheckSimilarResults(iqdb_results, tweet_id, 'iqdb');
     let no_sauce_results = CheckSimilarResults(sauce_results, tweet_id, 'sauce');
+    let merge_results = NTISAS.merge_results.includes(tweet_id);
     $obj.html(RenderNomatchLinks(tweet_id, no_iqdb_results, no_sauce_results, merge_results));
 }
 
@@ -4103,9 +4102,7 @@ function ResetResults(event) {
     let [$link,,tweet_id,,,,,$replace] = GetEventPreload(event, 'ntisas-reset-results');
     let type = $link.data('type');
     JSPLib.storage.saveData(type + '-' + tweet_id, {value: false, expires: JSPLib.utility.getExpires(SIMILAR_EXPIRES)});
-    let no_iqdb_results = (type === 'iqdb' ? false : JSPLib.storage.getStorageData('iqdb-' + tweet_id, sessionStorage).value);
-    let no_sauce_results = (type === 'sauce' ? false : JSPLib.storage.getStorageData('sauce-' + tweet_id, sessionStorage).value);
-    $replace.html(RenderNomatchLinks(tweet_id, no_iqdb_results, no_sauce_results));
+    InitializeNoMatchesLinks(tweet_id, $replace);
 }
 
 function MergeResults(event) {
