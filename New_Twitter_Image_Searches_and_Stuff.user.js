@@ -3817,8 +3817,12 @@ function PhotoNavigation(event) {
         return;
     }
     setTimeout(()=>{
-        if (NTISAS.page_match.photo_index !== InitializeUploadlinks.photo_index) {
-            InitializeUploadlinks(false);
+        //Get the latest page regex match stored onto global variable
+        let pagetype = GetPageType();
+        if (pagetype === 'photo') {
+            if (NTISAS.page_match.photo_index !== InitializeUploadlinks.photo_index) {
+                InitializeUploadlinks(false);
+            }
         }
     }, TWITTER_DELAY);
 }
