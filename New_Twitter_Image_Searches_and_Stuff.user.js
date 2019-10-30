@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
-// @version      3.1
+// @version      3.2
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -4556,7 +4556,7 @@ function RegularCheck() {
     if (DisplayHighlights()) {
         HighlightTweets();
     }
-    if (!IsPageType(['tweet', 'other'])) {
+    if (!IsPageType(['tweet', 'web_tweet', 'other'])) {
         CollectTweetStats();
     }
     if (NTISAS.user_settings.auto_unhide_tweets_enabled) {
@@ -4968,7 +4968,7 @@ function InitializeChangedSettings() {
     if (JSPLib.menu.hasSettingChanged(PROGRAM_SHORTCUT, 'auto_unhide_tweets_enabled') && NTISAS.user_settings.auto_unhide_tweets_enabled) {
         UnhideTweets();
     }
-    if (JSPLib.menu.hasSettingChanged(PROGRAM_SHORTCUT, 'display_tweet_statistics') && NTISAS.user_settings.display_tweet_statistics) {
+    if (JSPLib.menu.hasSettingChanged(PROGRAM_SHORTCUT, 'display_tweet_statistics') && NTISAS.user_settings.display_tweet_statistics && !IsPageType(['tweet', 'web_tweet', 'other'])) {
         CollectTweetStats();
     }
     if (JSPLib.menu.hasSettingChanged(PROGRAM_SHORTCUT, 'display_upload_link')) {
