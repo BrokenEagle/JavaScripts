@@ -4696,17 +4696,22 @@ function ProcessPhotoPopup() {
 }
 
 function ProcessTweetImages() {
-    let process_tweetids = new Set();
     let $unprocessed_images = $('.ntisas-tweet-media div:not([data-image-url]) > img:not(.ntisas-unhandled-image)');
     if ($unprocessed_images.length) {
         ProcessTweetImages.debuglog("Images found:", $unprocessed_images.length);
     }
+    let unprocessed_tweets = {};
+    let total_unprocessed = 0;
     $unprocessed_images.each((i,image)=>{
         let image_url = GetNormalImageURL(image.src);
         if (image_url) {
             $(image.parentElement).attr('data-image-url', image_url);
             let $tweet = $(image).closest('.ntisas-tweet');
-            process_tweetids.add($tweet.data('tweet-id'));
+            let tweet_id = $tweet.data('tweet-id');
+            if (!(tweet_id in unprocessed_tweets)) {
+                unprocessed_tweets[tweet_id] = $tweet;
+                total_unprocessed++
+            }
         } else {
             $(image).addClass('ntisas-unhandled-image');
             JSPLib.debug.debugExecute(()=>{
@@ -4717,17 +4722,23 @@ function ProcessTweetImages() {
             });
         }
     });
-    if (process_tweetids.size) {
-        ProcessTweetImages.debuglog("Tweets updated:", process_tweetids.size);
+    let $main_tweet = null;
+    for (let tweet_id in unprocessed_tweets) {
+        let $tweet = unprocessed_tweets[tweet_id];
+        let is_main_tweet = $tweet.hasClass('ntisas-main-tweet');
+        if (is_main_tweet) {
+            $main_tweet = $tweet;
+        }
+    };
+    if (total_unprocessed > 0) {
+        ProcessTweetImages.debuglog("Tweets updated:", total_unprocessed);
     }
-    if (IsTweetPage()) {
+    if (IsTweetPage() && $main_tweet) {
         //Trigger download links to start initializing
-        process_tweetids.forEach((tweetid)=>{
-            let tweet_deferred = $(`.ntisas-tweet[data-tweet-id=${tweetid}]`).prop('ntisasDeferred');
-            if (tweet_deferred) {
-                tweet_deferred.resolve();
-            }
-        });
+        let tweet_deferred = $main_tweet.prop('ntisasDeferred');
+        if (tweet_deferred) {
+            tweet_deferred.resolve();
+        }
     }
 }
 
