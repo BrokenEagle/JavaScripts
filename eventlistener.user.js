@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.8
+// @version      16.9
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1194,8 +1194,8 @@ function UpdateMultiLink(typelist,subscribed,itemid) {
 function UpdateDualLink(type,subscribed,itemid) {
     let show = (subscribed ? 'subscribe' : 'unsubscribe');
     let hide = (subscribed ? 'unsubscribe' : 'subscribe');
-    JSPLib.utility.fullHide(`.${hide}-${type}[data-id="${itemid}"]`);
-    JSPLib.utility.clearHide(`.${show}-${type}[data-id="${itemid}"]`);
+    JSPLib.utility.fullHide(`.el-subscribe-dual-links[data-type="${type}"][data-id="${itemid}"] .el-${hide}`);
+    JSPLib.utility.clearHide(`.el-subscribe-dual-links[data-type="${type}"][data-id="${itemid}"] .el-${show}`);
 }
 
 function ToggleSubscribeLinks() {
@@ -1392,8 +1392,8 @@ function RenderSubscribeDualLinks(type,itemid,tag,separator,ender,right=false) {
     let spacer = (right ? "&nbsp;&nbsp;" : "");
     return `
 <${tag} class="el-subscribe-dual-links"  data-type="${type}" data-id="${itemid}">
-    <${tag} class="el-subscribe-${type}" ${subscribe}><a class="el-monospace-link" href="javascript:void(0)">${spacer}Subscribe${separator}${ender}</a></${tag}>
-    <${tag} class="el-unsubscribe-${type}" ${unsubscribe}"><a class="el-monospace-link" href="javascript:void(0)">Unsubscribe${separator}${ender}</a></${tag}>
+    <${tag} class="el-subscribe" ${subscribe}><a class="el-monospace-link" href="javascript:void(0)">${spacer}Subscribe${separator}${ender}</a></${tag}>
+    <${tag} class="el-unsubscribe" ${unsubscribe}"><a class="el-monospace-link" href="javascript:void(0)">Unsubscribe${separator}${ender}</a></${tag}>
 </${tag}>`;
 }
 
@@ -1567,7 +1567,7 @@ function InitializeTopicIndexLinks(table) {
         let linkhtml = RenderSubscribeDualLinks('forum', topicid, 'span', "", "", true);
         let shownhtml = (IsEventEnabled('forum') ? "" : 'style="display:none"');
         $(entry).prepend(`<span class="el-subscribe-forum-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
-        $('.el-subscribe-forum a, .el-unsubscribe-forum a', entry).on(PROGRAM_CLICK, SubscribeDualLink);
+        $('.el-subscribe-dual-links a', entry).on(PROGRAM_CLICK, SubscribeDualLink);
     });
 }
 
@@ -1600,7 +1600,7 @@ function InitializeWikiIndexLinks(table) {
         let linkhtml = RenderSubscribeDualLinks('wiki', wikiid, 'span', "", "", true);
         let shownhtml = (IsEventEnabled('wiki') ? "" : 'style="display:none"');
         $('td.category-0, td.category-1, td.category-3, td.category-4, td.category-5', row).prepend(`<span class="el-subscribe-wiki-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
-        $('.el-subscribe-wiki a, .el-unsubscribe-wiki a', row).on(PROGRAM_CLICK, SubscribeDualLink);
+        $('.el-subscribe-dual-links a', row).on(PROGRAM_CLICK, SubscribeDualLink);
     });
 }
 
@@ -1629,7 +1629,7 @@ function InitializePoolIndexLinks(table) {
         let linkhtml = RenderSubscribeDualLinks('pool', poolid, 'span', "", "", true);
         let shownhtml = (IsEventEnabled('pool') ? "" : 'style="display:none"');
         $('td:first-of-type', row).prepend(`<span class="el-subscribe-pool-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
-        $('.el-subscribe-pool a, .el-unsubscribe-pool a', row).on(PROGRAM_CLICK, SubscribeDualLink);
+        $('.el-subscribe-dual-links a', row).on(PROGRAM_CLICK, SubscribeDualLink);
     });
 }
 
@@ -1644,7 +1644,7 @@ function InitializePoolGalleryLinks() {
         let linkhtml = RenderSubscribeDualLinks('pool', poolid, 'div', " ", 'pool');
         let shownhtml = (IsEventEnabled('pool') ? "" : 'style="display:none"');
         $(entry).before(`<div class="el-subscribe-pool-container "${shownhtml}>${linkhtml}</div>`);
-        $('.el-subscribe-pool a, .el-unsubscribe-pool a', entry.parentElement).on(PROGRAM_CLICK, SubscribeDualLink);
+        $('.el-subscribe-dual-links a', entry.parentElement).on(PROGRAM_CLICK, SubscribeDualLink);
     });
 }
 //EVENT NOTICE
@@ -1657,7 +1657,7 @@ function InitializePostNoteIndexLinks(type,table) {
         }
         let linkhtml = RenderSubscribeDualLinks(type, postid, 'span', "", "", true);
         $('td:first-of-type', row).prepend(`<div style="text-align:center">${linkhtml}</div>`);
-        $(`.el-subscribe-${type} a, .el-unsubscribe-${type} a`, row).on(PROGRAM_CLICK, SubscribeDualLink);
+        $('.el-subscribe-dual-links a', row).on(PROGRAM_CLICK, SubscribeDualLink);
     });
 }
 
@@ -1671,7 +1671,7 @@ function InitializeCommentPartialPostLinks() {
         let linkhtml = RenderSubscribeDualLinks('comment', postid, 'div', " ", 'comments');
         let shownhtml = (IsEventEnabled('comment') ? "" : 'style="display:none"');
         $('.header', entry).after(`<div class="el-subscribe-comment-container "${shownhtml}>${linkhtml}</div>`);
-        $('.el-subscribe-comment a, .el-unsubscribe-comment a', entry).on(PROGRAM_CLICK, SubscribeDualLink);
+        $('.el-subscribe-dual-links a', entry).on(PROGRAM_CLICK, SubscribeDualLink);
     });
 }
 
@@ -1686,7 +1686,7 @@ function InitializeCommentPartialCommentLinks(selector) {
         let shownhtml = (IsEventEnabled('comment') ? "" : 'style="display:none"');
         let $subscribe = $.parseHTML(`<div class="el-subscribe-comment-container "${shownhtml}>${linkhtml}</div>`);
         $('.preview', entry).append($subscribe);
-        $('.el-subscribe-comment a, .el-unsubscribe-comment a', entry).off(PROGRAM_CLICK).on(PROGRAM_CLICK, SubscribeDualLink);
+        $('.el-subscribe-dual-links a', entry).off(PROGRAM_CLICK).on(PROGRAM_CLICK, SubscribeDualLink);
     });
 }
 
