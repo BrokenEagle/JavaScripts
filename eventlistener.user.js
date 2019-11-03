@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.7
+// @version      16.8
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -708,16 +708,16 @@ function ValidateProgramData(key,entry) {
 function CorrectList(type,typelist) {
     let error_messages = [];
     if (!JSPLib.validate.validateIDList(typelist[type])) {
-        error_messages.push(`Corrupted data on ${type} list!`);
-        let oldlist = typelist[type];
-        typelist[type] = (Array.isArray(typelist) ? typelist.filter((id)=>{return JSPLib.validate.validateID(id);}) : []);
+        error_messages.push([`Corrupted data on ${type} list!`]);
+        let oldlist = JSPLib.utility.dataCopy(typelist[type]);
+        typelist[type] = (Array.isArray(typelist[type]) ? typelist[type].filter(id => JSPLib.validate.validateID(id)) : []);
         JSPLib.debug.debugExecute(()=>{
             let validation_error = (Array.isArray(oldlist) ? JSPLib.utility.setDifference(oldlist, typelist[type]) : typelist[type]);
-            error_messages.push("Validation error:", validation_error);
+            error_messages.push(["Validation error:", validation_error]);
         });
     }
     if (error_messages.length) {
-        error_messages.forEach((error)=>{CorrectList.debuglog(error);});
+        error_messages.forEach((error)=>{CorrectList.debuglog(...error);});
         return true;
     }
     return false;
@@ -878,6 +878,10 @@ JSPLib.danbooru.getAllItems = async function (type,limit,batches,options) {
     }
 };
 
+JSPLib.danbooru.getShowID = function() {
+    return (document.body.dataset.action === "show" && parseInt(JSPLib.utility.findAll(window.location.pathname,/\d+\/?$/)[0])) || 0;
+};
+
 //Helper functions
 
 async function SetRecentDanbooruID(type,useritem=false) {
@@ -913,17 +917,17 @@ function HideDmailNotice() {
 function GetInstanceID(type,func) {
     try {
         if (EL.controller === type) {
-            return (EL.showid > 0 ? EL.showid : JSPLib.utility.throw(EL.showid));
+            return (EL.showid > 0 ? EL.showid : JSPLib.utility.throw(0));
         } else {
-            return (func ? func() : JSPLib.utility.throw(0));
+            return (func ? func() : JSPLib.utility.throw(-1));
         }
     } catch (e) {
         //Bail if page is not as expected
         if (Number.isInteger(e)) {
             if (e === 0) {
-                JSPLib.utility.error("Warning: Wrong action for URL!");
-            } else {
                 JSPLib.utility.error("Warning: URL is malformed!");
+            } else {
+                JSPLib.utility.error("Warning: Wrong action for URL!");
             }
         } else {
             JSPLib.utility.error("Warning: Page missing required elements!");
