@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.9
+// @version      16.10
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -501,6 +501,7 @@ const DMAILS_REGEX = XRegExp.tag()`/dmails/(\d+)`;
 const POSTS_REGEX = XRegExp.tag()`/posts/(\d+)`;
 const WIKI_PAGES_REGEX = XRegExp.tag()`/wiki_pages/(\d+)`;
 const WIKI_PAGE_VERSIONS_REGEX = XRegExp.tag()`/wiki_page_versions/(\d+)`;
+const WIKI_PAGE_HISTORY_REGEX = XRegExp.tag()`/wiki_page_versions\?search%5Bwiki_page_id%5D=(\d+)`
 const POOLS_REGEX = XRegExp.tag()`/pools/(\d+)`;
 const POOL_DESC_REGEX = /(Old|New) Desc: /;
 const FORUM_TOPICS_REGEX = XRegExp.tag()`/forum_topics/(\d+)`;
@@ -1573,14 +1574,13 @@ function InitializeTopicIndexLinks(table) {
 
 //#C-WIKI-PAGES #A-SHOW
 function InitializeWikiShowMenu() {
-    let wikiid = GetInstanceID('wiki-pages', ()=>{
-        let url = $('#subnav-newest-link').attr('href');
-        let match = url && url.match(WIKI_PAGES_REGEX);
-        return (match ? parseInt(match[1]) : null);
-    });
-    if (!wikiid) {
+    let [selector,regex] = (EL.controller === 'wiki-pages' ? ['#subnav-history-link', WIKI_PAGE_HISTORY_REGEX] : ['#subnav-newest-link', WIKI_PAGES_REGEX]);
+    let url = $(selector).attr('href');
+    let wikiid = url && JSPLib.utility.findAll(url, regex);
+    if (wikiid.length === 0) {
         return;
     }
+    wikiid = parseInt(wikiid[1]);
     let $menu_obj = $.parseHTML(RenderMultilinkMenu(wikiid, ['wiki']));
     let linkhtml = RenderSubscribeMultiLinks("Wiki", ['wiki'], wikiid, "");
     let shownhtml = (IsEventEnabled('wiki') ? "" : 'style="display:none"');
