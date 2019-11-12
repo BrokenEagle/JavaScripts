@@ -123,7 +123,13 @@ const SETTINGS_CONFIG = {
         default: 80.0,
         parse: parseFloat,
         validate: (data) => JSPLib.validate.isNumber(data) && data > 0 && data < 100,
-        hint: "Number of minutes. Valid values: 0 - 100. IQDB similarity bottoms out at 80%."
+        hint: "Minimum similiarity score of an image match to return. Valid values: 0 - 100."
+    },
+    results_returned: {
+        default: 5,
+        parse: parseInt,
+        validate: (data) => Number.isInteger(data) && data > 0 && data <= 20,
+        hint: "Maximum number of results to return per image. Valid values: 1 - 20."
     },
     URL_wildcards_enabled: {
         default: false,
@@ -1933,6 +1939,54 @@ JSPLib.utility.createBroadcastChannel = function (name,func) {
     let channel = new BroadcastChannel(name);
     channel.onmessage = func;
     return channel;
+};
+
+JSPLib.saucenao.getSauce = async function (image_url,database=null,numres=null,notify_user=false) {
+    if (!JSPLib.saucenao.api_key) {
+        JSPLib.utility.error("GetSauce error: Must set the API key!");
+        return false;
+    }
+    let key = String(JSPLib.utility.getUniqueID());
+    if (JSPLib.saucenao._sauce_wait > Date.now()) {
+        let time_remaining = Math.ceil(JSPLib.saucenao._sauce_wait > Date.now());
+        JSPLib.utility.notice(`GetSauce warning: Must wait ${time_remaining} seconds to get sauce!`);
+        return false;
+    }
+    if (JSPLib.saucenao.num_network_requests >= JSPLib.saucenao.max_network_requests) {
+        await JSPLib.network.rateLimit('saucenao');
+    }
+    JSPLib.network.incrementCounter('saucenao');
+    let url_addons = {
+        output_type: 2,
+        numres: JSPLib.saucenao.num_requested_items,
+        api_key: JSPLib.saucenao.api_key,
+        url: image_url
+    };
+    if (database) {
+        url_addons.db = database;
+    } else {
+        url_addons.dbmask = JSPLib.saucenao._getBitmask();
+    }
+    if (numres) {
+        url_addons.numres = numres;
+    }
+    JSPLib.debug.recordTime(key,'Network');
+    try {
+        return await jQuery.getJSON(JSPLib.saucenao.query_url,url_addons)
+        .always(()=>{
+            JSPLib.debug.recordTimeEnd(key,'Network');
+            JSPLib.network.decrementCounter('saucenao');
+        });
+    } catch(e) {
+        //Swallow exception... will return null
+        e = e = JSPLib.network.processError(e,"getSauce");
+        let error_key = `${jQuery.param(url_addons)}`;
+        JSPLib.network.logError(error_key,e);
+        if (notify_user) {
+            JSPLib.network.notifyError(e);
+        }
+        return null;
+    }
 };
 
 //Helper functions
@@ -4043,7 +4097,7 @@ async function CheckIQDB(event) {
         return;
     }
     let [$link,$tweet,tweet_id,$replace,selected_image_urls] = pick;
-    let promise_array = selected_image_urls.map(image_url => JSPLib.danbooru.submitRequest('iqdb_queries', {url: image_url, similarity: NTISAS.user_settings.similarity_cutoff}, [], null, NTISAS.domain, true));
+    let promise_array = selected_image_urls.map(image_url => JSPLib.danbooru.submitRequest('iqdb_queries', {url: image_url, similarity: NTISAS.user_settings.similarity_cutoff, limit: NTISAS.user_settings.results_returned}, [], null, NTISAS.domain, true));
     let all_iqdb_results = await Promise.all(promise_array);
     let flat_data = all_iqdb_results.flat();
     CheckIQDB.debuglog(`Found ${flat_data.length} results.`);
@@ -4056,7 +4110,8 @@ async function CheckIQDB(event) {
     });
     let similar_data = all_iqdb_results.map((image_result)=>{
         let filter_results = image_result.filter(result => (parseFloat(result.score) >= NTISAS.user_settings.similarity_cutoff));
-        return filter_results.map((result)=>{
+        let sorted_results = filter_results.sort((resulta,resultb) => (resulta.score - resultb.score)).slice(0, NTISAS.user_settings.results_returned);
+        return sorted_results.map((result)=>{
             let score = result.score;
             let post_id = result.post.id;
             let post = NTISAS.post_index[post_id];
@@ -4076,7 +4131,7 @@ async function CheckSauce(event) {
         return;
     }
     let [$link,$tweet,tweet_id,$replace,selected_image_urls] = pick;
-    let promise_array = selected_image_urls.map(image_url => JSPLib.saucenao.getSauce(image_url, JSPLib.saucenao.getDBIndex('danbooru')));
+    let promise_array = selected_image_urls.map(image_url => JSPLib.saucenao.getSauce(image_url, JSPLib.saucenao.getDBIndex('danbooru'), NTISAS.user_settings.results_returned));
     let all_data = await Promise.all(promise_array);
     let good_data = all_data.filter(data => JSPLib.saucenao.checkSauce(data));
     let combined_data = JSPLib.utility.getObjectAttributes(good_data, 'results');
@@ -4103,7 +4158,8 @@ async function CheckSauce(event) {
     }
     let similar_data = combined_data.map((image_result)=>{
         let filter_results = image_result.filter(result => (parseFloat(result.header.similarity) >= NTISAS.user_settings.similarity_cutoff));
-        return filter_results.map((result)=>{
+        let sorted_results = filter_results.sort((resulta,resultb) => (resulta.score - resultb.score)).slice(0, NTISAS.user_settings.results_returned);
+        return sorted_results.map((result)=>{
             let score = parseFloat(result.header.similarity);
             let post_id = result.data.danbooru_id;
             let post = NTISAS.post_index[post_id];
@@ -5171,6 +5227,7 @@ function RenderSettingsMenu() {
     $('#ntisas-query-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'autocheck_IQDB_enabled'));
     $('#ntisas-query-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'autoclick_IQDB_enabled'));
     $('#ntisas-query-settings').append(JSPLib.menu.renderTextinput(PROGRAM_SHORTCUT, 'similarity_cutoff', 10));
+    $('#ntisas-query-settings').append(JSPLib.menu.renderTextinput(PROGRAM_SHORTCUT, 'results_returned', 10));
     $('#ntisas-query-settings').append(JSPLib.menu.renderTextinput(PROGRAM_SHORTCUT, 'SauceNAO_API_key', 80));
     $('#ntisas-database-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'confirm_delete_enabled'));
     $('#ntisas-database-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'merge_results_enabled'));
