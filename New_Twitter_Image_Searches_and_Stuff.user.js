@@ -3272,10 +3272,10 @@ function InitializeUIStyle() {
     }
 }
 
-function InitializeStatusBar(tweet_status) {
+function InitializeStatusBar(tweet_status,is_main_tweet) {
     var $container;
-    if (tweet_status.childElementCount > 0) {
-        $container = $('> div > div:last-of-type', tweet_status);
+    if (!is_main_tweet && tweet_status.childElementCount > 0) {
+        $container = $('> div > div > div:last-of-type', tweet_status);
         $("> div:last-of-type", $container[0]).css('flex-grow', 'unset').css('flex-basis', 'unset');
     } else {
         $container = $(tweet_status);
@@ -4486,7 +4486,7 @@ function MarkupStreamTweet(tweet) {
     $(main_body).addClass('ntisas-main-body');
     let tweet_status = main_body.children[0];
     $(tweet_status).addClass('ntisas-tweet-status');
-    InitializeStatusBar(tweet_status);
+    InitializeStatusBar(tweet_status, false);
     let is_retweet = Boolean($(tweet_status).text().match(/ Retweeted$/));
     $(tweet).attr('data-is-retweet', is_retweet);
     if (is_retweet) {
@@ -4558,7 +4558,7 @@ function MarkupMainTweet(tweet) {
     let child_count = main_body.childElementCount;
     let tweet_status = main_body.children[0];
     $(tweet_status).addClass('ntisas-tweet-status');
-    InitializeStatusBar(tweet_status);
+    InitializeStatusBar(tweet_status, true);
     let profile_line = main_body.children[1];
     $(profile_line).addClass('ntisas-profile-line');
     if (NTISAS.page === "tweet") {
