@@ -1350,6 +1350,8 @@ const STATISTICS_HELP = 'L-Click any category heading to narrow down results.\nL
 const INSTALL_MENU_TEXT = "Must install DB!";
 const LOGIN_MENU_TEXT = "Log into Danbooru!";
 
+const SERVER_ERROR = "Failed to connect to remote server to get latest %s!";
+
 //Simple template trim for singular strings
 function TRIM(string) {
     return string[0].trim();
@@ -1987,6 +1989,46 @@ JSPLib.saucenao.getSauce = async function (image_url,database=null,numres=null,n
         }
         return null;
     }
+};
+
+JSPLib.network.getNotify = async function (url,url_addons={},custom_error) {
+    try {
+        return await jQuery.get(url,url_addons);
+    } catch(e) {
+        //Swallow exception... will return false value
+        e = JSPLib.network.processError(e,"getNotify");
+        let error_key = `${url}?${jQuery.param(url_addons)}`;
+        JSPLib.network.logError(e,error_key);
+        JSPLib.network.notifyError(e,custom_error);
+        return false;
+    }
+};
+
+JSPLib.network.processError = function (error,funcname) {
+        error = (typeof error === "object" && 'status' in error && 'responseText' in error ? error : {status: 999, responseText: "Bad error code!"});
+        JSPLib.debug.debuglogLevel(funcname,"error:",error.status,'\r\n',error.responseText,JSPLib.debug.ERROR);
+        return error;
+};
+
+JSPLib.network.notifyError = function (error,custom_error="") {
+    let message = error.responseText;
+    if (message.match(/<\/html>/i)) {
+        message = (JSPLib.network._http_error_messages[error.status] ? JSPLib.network._http_error_messages[error.status] + "&nbsp;-&nbsp;" : "") + "&lt;HTML response&gt;";
+    } else {
+        try {
+            let parse_message = JSON.parse(message);
+            if (JSPLib.validate.isHash(parse_message)) {
+                if ('reason' in parse_message) {
+                    message = parse_message.reason;
+                } else if ('message' in parse_message) {
+                    message = parse_message.message;
+                }
+            }
+        } catch (e) {
+            //Swallow
+        }
+    }
+    JSPLib.utility.error(`<span style="font-size:16px;line-height:24px;font-weight:bold;font-family:sans-serif">HTTP ${error.status}:</span>${message}<br>${custom_error}`);
 };
 
 //Helper functions
@@ -3797,9 +3839,13 @@ function TweetUserData(data) {
 async function LoadDatabase() {
     LoadDatabase.debuglog("starting tweet load");
     JSPLib.debug.debugTime('database-network');
-    var tweet_data = await $.getJSON(SERVER_DATABASE_URL);
+    var tweet_data = await JSPLib.network.getNotify(SERVER_DATABASE_URL, {}, JSPLib.utility.sprintf(SERVER_ERROR, "tweet database"));
     JSPLib.debug.debugTimeEnd('database-network');
-    return TIMER.SaveDatabase(tweet_data, '#ntisas-counter');
+    if (tweet_data !== false) {
+        TIMER.SaveDatabase(tweet_data, '#ntisas-counter');
+        return true;
+    }
+    return false;
 }
 
 async function SaveDatabase(database,counter_selector) {
@@ -3866,8 +3912,10 @@ function InitializeDatabase() {
 
 async function CheckDatabaseInfo(initial) {
     if (initial || JSPLib.concurrency.checkTimeout('ntisas-database-recheck', DATABASE_RECHECK_EXPIRES)) {
-        let database_info = await $.getJSON(DATABASE_INFO_URL);
-        JSPLib.storage.setStorageData('ntisas-remote-database', database_info, localStorage);
+        let database_info = await JSPLib.network.getNotify(DATABASE_INFO_URL, {}, JSPLib.utility.sprintf(SERVER_ERROR, "database info"));
+        if (database_info !== false) {
+            JSPLib.storage.setStorageData('ntisas-remote-database', database_info, localStorage);
+        }
         JSPLib.concurrency.setRecheckTimeout('ntisas-database-recheck', DATABASE_RECHECK_EXPIRES);
     }
 }
@@ -3883,14 +3931,16 @@ function CheckPurgeBadTweets() {
 }
 
 async function PurgeBadTweets() {
-    let server_purgelist = await $.getJSON(SERVER_PURGELIST_URL);
-    let purge_keylist = server_purgelist.map((tweet_id)=>{return 'tweet-' + tweet_id;});
-    let database_keylist = await JSPLib.storage.twitterstorage.keys();
-    let purge_set = new Set(purge_keylist)
-    let database_set = new Set(database_keylist)
-    let delete_keys = [...purge_set].filter((x)=>{return database_set.has(x);});
-    PurgeBadTweets.debuglog(delete_keys);
-    await Promise.all(delete_keys.map((key)=>{return JSPLib.storage.removeData(key, JSPLib.storage.twitterstorage);}));
+    let server_purgelist = await JSPLib.network.getNotify(SERVER_PURGELIST_URL, {}, JSPLib.utility.sprintf(SERVER_ERROR, "purge list"));
+    if (server_purgelist !== false) {
+        let purge_keylist = server_purgelist.map((tweet_id)=>{return 'tweet-' + tweet_id;});
+        let database_keylist = await JSPLib.storage.twitterstorage.keys();
+        let purge_set = new Set(purge_keylist)
+        let database_set = new Set(database_keylist)
+        let delete_keys = [...purge_set].filter((x)=>{return database_set.has(x);});
+        PurgeBadTweets.debuglog(delete_keys);
+        await Promise.all(delete_keys.map((key)=>{return JSPLib.storage.removeData(key, JSPLib.storage.twitterstorage);}));
+    }
 }
 
 //Event handlers
@@ -4005,9 +4055,11 @@ function InstallDatabase(event) {
     let message = JSPLib.utility.sprintf(INSTALL_CONFIRM, NTISAS.server_info.post_version, new Date(NTISAS.server_info.timestamp).toLocaleString());
     if (confirm(message)) {
         $('#ntisas-install').replaceWith(LOAD_COUNTER)
-        LoadDatabase().then(()=>{
-            JSPLib.storage.saveData('ntisas-database-info', NTISAS.server_info, JSPLib.storage.twitterstorage);
-            InitializeDatabase();
+        LoadDatabase().then((data)=>{
+            if (data) {
+                JSPLib.storage.saveData('ntisas-database-info', NTISAS.server_info, JSPLib.storage.twitterstorage);
+                InitializeDatabase();
+            }
         });
     }
 }
@@ -4017,10 +4069,12 @@ function UpgradeDatabase(event) {
                                                           NTISAS.database_info.post_version, new Date(NTISAS.database_info.timestamp).toLocaleString());
     if (confirm(message)) {
         $('#ntisas-upgrade').replaceWith(LOAD_COUNTER);
-        LoadDatabase().then(()=>{
-            JSPLib.storage.saveData('ntisas-database-info', NTISAS.server_info, JSPLib.storage.twitterstorage);
-            JSPLib.storage.setStorageData('ntisas-purge-bad', true, localStorage);
-            InitializeDatabase();
+        LoadDatabase().then((data)=>{
+            if (data) {
+                JSPLib.storage.saveData('ntisas-database-info', NTISAS.server_info, JSPLib.storage.twitterstorage);
+                JSPLib.storage.setStorageData('ntisas-purge-bad', true, localStorage);
+                InitializeDatabase();
+            }
         });
     }
 }
