@@ -2353,20 +2353,26 @@ function InitializeImageMenu($tweets,append_selector,menu_class) {
     let timername = `InitializeImageMenu-${uniqueid}`;
     JSPLib.debug.debugTime(timername);
     $tweets.each((i,entry)=>{$(append_selector, entry).addClass('ntisas-image-menu');});
-    let tweet_ids = JSPLib.utility.getDOMAttributes($tweets, 'tweet-id', String);
+    let tweet_ids = JSPLib.utility.setUnique(JSPLib.utility.getDOMAttributes($tweets, 'tweet-id', String));
     InitializeImageMenu.debuglog(`[${uniqueid}]`, "Check Tweets:", tweet_ids);
     let promise_array = tweet_ids.map((tweet_id)=>{
         return JSPLib.storage.retrieveData('tweet-' + tweet_id, JSPLib.storage.twitterstorage);
     });
     Promise.all(promise_array).then((data_items)=>{
         InitializeImageMenu.debuglog(`[${uniqueid}]`, "Tweet data:", data_items);
-        data_items.forEach((data,i)=>{
-            let tweet_id = tweet_ids[i];
-            let $tweet = $tweets.filter(`[data-tweet-id=${tweet_id}]`);
+        $tweets.each((i,entry)=>{
+            let tweet_id = String($(entry).data('tweet-id'));
+            let index = tweet_ids.indexOf(tweet_id);
+            let data = data_items[index];
             let $link_container = $(`<div class="${menu_class} ntisas-links"></div>`);
-            $(append_selector, $tweet[0]).append($link_container);
+            $(append_selector, entry).append($link_container);
             if (data !== null) {
-                NTISAS.tweet_index[tweet_id] = {entry: $tweet, post_ids: data, processed: false};
+                if (tweet_id in NTISAS.tweet_index) {
+                    NTISAS.tweet_index[tweet_id].entry.add(entry);
+                    NTISAS.tweet_index[tweet_id].processed = false;
+                } else {
+                    NTISAS.tweet_index[tweet_id] = {entry: $(entry), post_ids: data, processed: false};
+                }
                 all_post_ids = all_post_ids.concat(data);
                 $link_container.html(RenderPostIDsLink(data, 'ntisas-database-match'));
             } else {
