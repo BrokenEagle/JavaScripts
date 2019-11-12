@@ -1,6 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
-// @version      3.2
+// @namespace    https://github.com/BrokenEagle/JavaScripts
+// @version      4.0
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -185,6 +186,11 @@ const SETTINGS_CONFIG = {
         default: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Displays a link to the media timeline in the tweet view."
+    },
+    display_image_number: {
+        default: true,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Displays the image number used by <b>Download Originals</b>."
     },
     display_upload_link: {
         default: true,
@@ -1012,6 +1018,23 @@ const COLOR_CSS = `
     color: %TEXTCOLOR%;
     background: %BACKGROUNDCOLOR%;
     border: 1px solid %TEXTSHADED%;
+}`;
+
+const IMAGE_NUMBER_CSS = `
+.ntisas-image-num > div:before {
+    content: '%s';
+    margin-top: %spx;
+    margin-left: %spx;
+    position: absolute;
+    background: rgba(0,0,0,0.3);
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    text-align: center;
+    font-size: 500%;
+    line-height: 200%;
+    font-family: arial;
+    color: rgba(255,255,255,0.6);
 }`;
 
 //HTML constants
@@ -2952,7 +2975,7 @@ function RenderDownloadLinks($tweet,position,is_video) {
     for (let i = 0; i < image_links.length; i++) {
         let [image_name,extension] = GetFileURLNameExt(image_links[i]);
         let download_filename = JSPLib.utility.regexReplace(NTISAS.filename_prefix, {
-            ORDER: 'img' + (i + 1),
+            ORDER: 'img' + String(i + 1),
             IMG: image_name
         }) + '.' + extension;
         html += `<a class="ntisas-download-original ntisas-download-image ntisas-expanded-link" href="${hrefs[i]}" download="${download_filename}">Image #${i + 1}</a>`;
@@ -3825,6 +3848,34 @@ function PhotoNavigation(event) {
             }
         }
     }, TWITTER_DELAY);
+}
+
+function ImageEnter(event) {
+    if (!NTISAS.user_settings.display_image_number) {
+        return;
+    }
+    let $overlay = $(event.currentTarget).addClass('ntisas-image-num');
+    let $container = $overlay.children();
+    let image_num = $container.data('image-num');
+    let left = parseFloat($container.css('margin-left').match(/[\d+.]+/)[0]);
+    let right = parseFloat($container.css('margin-right').match(/[\d+.]+/)[0]);
+    let margin_top = parseFloat($container.css('margin-top').match(/[\d+.]+/)[0]);
+    let margin_left = 0;
+    if (left > 0) {
+        margin_left = left / 2;
+    } else if (right > 0) {
+        margin_left = right / -2;
+    }
+    let style = JSPLib.utility.sprintf(IMAGE_NUMBER_CSS, image_num, margin_top, margin_left);
+    JSPLib.utility.setCSSStyle(style, 'image_num');
+}
+
+function ImageLeave(event) {
+    if (!NTISAS.user_settings.display_image_number) {
+        return;
+    }
+    $(event.currentTarget).removeClass('ntisas-image-num');
+    JSPLib.utility.setCSSStyle("", 'image_num');
 }
 
 function ToggleArtistHilights(event) {
@@ -4726,6 +4777,13 @@ function ProcessTweetImages() {
     for (let tweet_id in unprocessed_tweets) {
         let $tweet = unprocessed_tweets[tweet_id];
         let is_main_tweet = $tweet.hasClass('ntisas-main-tweet');
+        $tweet.find('[data-image-url]').each((i,entry)=>{
+            $(entry).attr('data-image-num', i + 1);
+            if (is_main_tweet) {
+                $(entry.parentElement).on('mouseenter.ntisas', ImageEnter);
+                $(entry.parentElement).on('mouseleave.ntisas', ImageLeave);
+            }
+        });
         if (is_main_tweet) {
             $main_tweet = $tweet;
         }
@@ -5100,6 +5158,7 @@ function RenderSettingsMenu() {
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'display_retweet_id'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'display_user_id'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'display_media_link'));
+    $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'display_image_number'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'display_upload_link'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'tweet_indicators_enabled'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'display_tweet_statistics'));
