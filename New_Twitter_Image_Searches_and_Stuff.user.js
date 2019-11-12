@@ -3505,7 +3505,7 @@ function InitializeRetweetDisplay(tweet) {
 function InitializeUserDisplay($tweets) {
     let $tweet = $tweets.filter('.ntisas-main-tweet');
     if ($tweet.length) {
-        let user_id = String($tweet.data('user-id'));
+        let user_id = String($tweet.data('user-id') || "");
         if (user_id) {
             $('.ntisas-status-marker', $tweet[0]).after(`<span class="ntisas-user-id"><b>User</b> [${user_id}]</span>`);
         }
