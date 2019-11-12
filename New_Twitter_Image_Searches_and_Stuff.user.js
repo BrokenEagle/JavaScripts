@@ -3517,7 +3517,7 @@ function InitializeImageTweets($image_tweets) {
         InitializeImageMenu($image_tweets, '.ntisas-tweet-actions', 'ntisas-timeline-menu');
     } else if (IsTweetPage()) {
         let $tweet = $image_tweets.filter(`[data-tweet-id=${NTISAS.tweet_id}]`);
-        if ($tweet.length && $('.ntisas-tweet-media', $tweet[0]).length) {
+        if ($tweet.length && $('.ntisas-tweet-image, .ntisas-tweet-video', $tweet[0]).length) {
             InitializeImageMenu($tweet, '.ntisas-retweets-likes', 'ntisas-tweet-menu');
             if (NTISAS.user_settings.original_download_enabled) {
                 InitializeDownloadLinks($tweet);
@@ -4457,14 +4457,22 @@ function UnhideTweets() {
 //Markup tweet functions
 
 function MarkupMediaType(tweet) {
-    if ($('[role=blockquote]', tweet).length) {
-        $('.ntisas-tweet-media', tweet).addClass('ntisas-tweet-quote').removeClass('ntisas-tweet-media');
-    } else if ($('[data-testid=playButton]', tweet).length) {
-        $('.ntisas-tweet-media', tweet).addClass('ntisas-tweet-video');
-    } else if ($('[role=progressbar], [src*="/card_img/"], span > svg', tweet).length) {
+    if ($('[role=progressbar], [src*="/card_img/"], span > svg', tweet).length) {
         $('.ntisas-tweet-media', tweet).addClass('ntisas-tweet-card').removeClass('ntisas-tweet-media');
     } else {
-        $('.ntisas-tweet-media', tweet).addClass('ntisas-tweet-image');
+        let media_children = $('.ntisas-tweet-media', tweet).children();
+        media_children.each((i,entry)=>{
+            let $entry = $(entry);
+            if ($entry.children().length === 0) {
+                $entry.addClass('ntisas-media-stub');
+            } else if ($('[role=blockquote]', entry).length) {
+                $entry.addClass('ntisas-tweet-quote');
+            } else if ($('[data-testid=playButton]', tweet).length) {
+                $entry.addClass('ntisas-tweet-video');
+            } else {
+                $entry.addClass('ntisas-tweet-image');
+            }
+        });
     }
 }
 
@@ -4809,7 +4817,7 @@ function ProcessPhotoPopup() {
 }
 
 function ProcessTweetImages() {
-    let $unprocessed_images = $('.ntisas-tweet-media div:not([data-image-url]) > img:not(.ntisas-unhandled-image)');
+    let $unprocessed_images = $('.ntisas-tweet-media > div:not(.ntisas-tweet-quote) div:not([data-image-url]) > img:not(.ntisas-unhandled-image)');
     if ($unprocessed_images.length) {
         ProcessTweetImages.debuglog("Images found:", $unprocessed_images.length);
     }
@@ -4880,7 +4888,7 @@ function ProcessNewTweets() {
             MarkupMainTweet(entry);
         }
     });
-    let $image_tweets = $tweets.filter((i,entry) => $('.ntisas-tweet-media', entry).length);
+    let $image_tweets = $tweets.filter((i,entry) => $('.ntisas-tweet-image, .ntisas-tweet-video', entry).length);
     ProcessNewTweets.debuglog(`[${NTISAS.uniqueid}]`, "Unprocessed:", $tweets.length, $image_tweets.length);
     //Initialize tweets with images
     if ($image_tweets.length) {
