@@ -1435,9 +1435,9 @@ const TWEET_URL_REGEX = XRegExp.tag()`^https://twitter\.com/[\w-]+/status/\d+`;
 const SOURCE_TWITTER_REGEX = XRegExp.tag()`^source:https://twitter\.com/[\w-]+/status/(\d+)$`;
 
 const HANDLED_IMAGES = [{
-    regex: XRegExp.tag()`^https://pbs\.twimg\.com/(?:media|tweet_video_thumb)/([^.?]+)`,
-    format: 'https://pbs.twimg.com/media/%s.%s',
-    arguments: (match,extension)=>[match[1], extension[0]],
+    regex: XRegExp.tag()`^https://pbs\.twimg\.com/(media|tweet_video_thumb)/([^.?]+)`,
+    format: 'https://pbs.twimg.com/%s/%s.%s',
+    arguments: (match,extension)=>[match[1], match[2], extension[0]],
 },{
     regex: XRegExp.tag()`^https://pbs\.twimg\.com/ext_tw_video_thumb/(\d+)/(\w+)/img/([^.?]+)`,
     format: 'https://pbs.twimg.com/ext_tw_video_thumb/%s/%s/img/%s.jpg',
