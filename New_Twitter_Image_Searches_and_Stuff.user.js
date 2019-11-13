@@ -5337,6 +5337,7 @@ function RenderSettingsMenu() {
 
 async function Main() {
     JSPLib.network.jQuerySetup();
+    Danbooru.Utility.installBanner(PROGRAM_SHORTCUT);
     if (!IsTISASInstalled()) {
         await CheckDatabaseInfo(true);
     }
@@ -5402,7 +5403,6 @@ async function Main() {
     JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
     JSPLib.utility.setCSSStyle(GM_getResourceText('jquery_qtip_css'), 'qtip');
     JSPLib.utility.setCSSStyle(NOTICE_CSS, 'notice');
-    Danbooru.Utility.installBanner(PROGRAM_SHORTCUT);
     InitializeColorScheme();
     InitializeCleanupTasks();
     JSPLib.statistics.addPageStatistics("NTISAS");
