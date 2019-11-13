@@ -2038,6 +2038,24 @@ JSPLib.network.notifyError = function (error,custom_error="") {
     JSPLib.utility.error(`<span style="font-size:16px;line-height:24px;font-weight:bold;font-family:sans-serif">HTTP ${error.status}:</span>${message}<br>${custom_error}`);
 };
 
+JSPLib.network._dataCallback = function (xhr,funcs) {
+    if (xhr.responseType === '' || xhr.responseType === 'text') {
+        let data = xhr.responseText;
+        //It varies whether data comes in as a string or JSON
+        if (typeof data === 'string' && data.length > 0) {
+            //Some requests like POST requests have an empty string for the response
+            try {
+                data = JSON.parse(data);
+            } catch(e) {
+                //Swallow
+            }
+        }
+        funcs.forEach((func)=>{
+            func(data);
+        });
+    }
+};
+
 //Helper functions
 
 function GetAPIData(key,id,value) {
