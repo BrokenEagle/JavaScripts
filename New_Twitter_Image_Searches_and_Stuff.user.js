@@ -4545,7 +4545,7 @@ function UnhideTweets() {
 //Markup tweet functions
 
 function MarkupMediaType(tweet) {
-    if ($('[role=progressbar], [src*="/card_img/"], span > svg', tweet).length) {
+    if ($('[src*="/card_img/"], span > svg', tweet).length) {
         $('.ntisas-tweet-media', tweet).addClass('ntisas-tweet-card').removeClass('ntisas-tweet-media');
     } else {
         let media_children = $('.ntisas-tweet-media', tweet).children();
@@ -4555,7 +4555,7 @@ function MarkupMediaType(tweet) {
                 $entry.addClass('ntisas-media-stub');
             } else if ($('[role=blockquote]', entry).length) {
                 $entry.addClass('ntisas-tweet-quote');
-            } else if ($('[data-testid=playButton]', tweet).length) {
+            } else if ($('video, [role=progressbar], [data-testid=playButton]', tweet).length) {
                 $entry.addClass('ntisas-tweet-video');
             } else {
                 $entry.addClass('ntisas-tweet-image');
@@ -4908,32 +4908,43 @@ function ProcessPhotoPopup() {
     }
 }
 
+function ProcessTweetImage(obj,image_url,unprocessed_tweets) {
+    if (image_url) {
+        $(obj.parentElement).attr('data-image-url', image_url);
+        let $tweet = $(obj).closest('.ntisas-tweet');
+        let tweet_id = $tweet.data('tweet-id');
+        if (!(tweet_id in unprocessed_tweets)) {
+            unprocessed_tweets[tweet_id] = $tweet;
+        }
+    } else {
+        $(obj).addClass('ntisas-unhandled-image');
+        JSPLib.debug.debugExecute(()=>{
+            if (JSPLib.validate.isBoolean(image_url)) {
+                Danbooru.Utility.notice("New unhandled image found (see debug console)");
+                ProcessTweetImage.debuglog("Unhandled image", $(obj).closest('.ntisas-tweet').data('tweet-id'));
+            }
+        });
+    }
+}
+
 function ProcessTweetImages() {
     let $unprocessed_images = $('.ntisas-tweet-media > div:not(.ntisas-tweet-quote) div:not([data-image-url]) > img:not(.ntisas-unhandled-image)');
     if ($unprocessed_images.length) {
         ProcessTweetImages.debuglog("Images found:", $unprocessed_images.length);
     }
     let unprocessed_tweets = {};
-    let total_unprocessed = 0;
     $unprocessed_images.each((i,image)=>{
         let image_url = GetNormalImageURL(image.src);
-        if (image_url) {
-            $(image.parentElement).attr('data-image-url', image_url);
-            let $tweet = $(image).closest('.ntisas-tweet');
-            let tweet_id = $tweet.data('tweet-id');
-            if (!(tweet_id in unprocessed_tweets)) {
-                unprocessed_tweets[tweet_id] = $tweet;
-                total_unprocessed++
-            }
-        } else {
-            $(image).addClass('ntisas-unhandled-image');
-            JSPLib.debug.debugExecute(()=>{
-                if (JSPLib.validate.isBoolean(image_url)) {
-                    Danbooru.Utility.notice("New unhandled image found (see debug console)");
-                    ProcessTweetImages.debuglog("Unhandled image", $(image).closest('.ntisas-tweet').data('tweet-id'));
-                }
-            });
-        }
+        ProcessTweetImage(image, image_url, unprocessed_tweets);
+    });
+    //Only gets executed when videos are autoplay. Otherwise videos get found as images above.
+    let $unprocessed_videos = $('.ntisas-tweet-media > div:not(.ntisas-tweet-quote) div:not([data-image-url]) > video');
+    if ($unprocessed_videos.length) {
+        ProcessTweetImages.debuglog("Videos found:", $unprocessed_videos.length);
+    }
+    $unprocessed_videos.each((i,video)=>{
+        let image_url = video.poster;
+        ProcessTweetImage(video, image_url, unprocessed_tweets);
     });
     let $main_tweet = null;
     for (let tweet_id in unprocessed_tweets) {
@@ -4950,6 +4961,7 @@ function ProcessTweetImages() {
             $main_tweet = $tweet;
         }
     };
+    let total_unprocessed = Object.keys(unprocessed_tweets).length;
     if (total_unprocessed > 0) {
         ProcessTweetImages.debuglog("Tweets updated:", total_unprocessed);
     }
@@ -5465,7 +5477,7 @@ JSPLib.debug.addFunctionLogs([
     Main, UnhideTweets, HighlightTweets, RegularCheck, ImportData, DownloadOriginal, PromptSavePostIDs,
     CheckIQDB, CheckURL, PurgeBadTweets, CheckPurgeBadTweets, SaveDatabase, LoadDatabase, CheckPostvers,
     CheckPostIDs, ReadFileAsync, ProcessPostvers, InitializeImageMenu, CorrectStringArray, ValidateEntry,
-    BroadcastTISAS, PageNavigation, ProcessNewTweets, ProcessTweetImages, InitializeUploadlinks, CheckSauce,
+    BroadcastTISAS, PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages, InitializeUploadlinks, CheckSauce,
     GetMaxVideoDownloadLink, GetPageType, CheckServerBadTweets, SavePostvers, PickImage,MarkupMainTweet,
     MarkupStreamTweet,
 ]);
