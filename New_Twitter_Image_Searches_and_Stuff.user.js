@@ -3366,10 +3366,6 @@ function InitializeDatabaseLink() {
         $('#ntisas-install').on(PROGRAM_CLICK, InstallDatabase);
         $('#ntisas-upgrade').on(PROGRAM_CLICK, UpgradeDatabase);
     });
-    GetTotalRecords().then((total)=>{
-        $('#ntisas-records-stub').replaceWith(`<a id="ntisas-total-records" class="ntisas-expanded-link">${total}</a>`);
-        $('#ntisas-total-records').on(PROGRAM_CLICK, QueryTotalRecords);
-    });
 }
 
 function InitializeCurrentRecords() {
@@ -4807,6 +4803,10 @@ function PageNavigation(pagetype) {
             $('header[role=banner] > div > div > div').attr('id', 'ntisas-account-options'); //Marking this for the CSS
             InitializeSideMenu();
             InitializeDatabaseLink();
+            GetTotalRecords().then((total)=>{
+                $('#ntisas-records-stub').replaceWith(`<a id="ntisas-total-records" class="ntisas-expanded-link">${total}</a>`);
+                $('#ntisas-total-records').on(PROGRAM_CLICK, QueryTotalRecords);
+            });
         }
         //Bind events for creation/rebind
         if (!JSPLib.utility.isNamespaceBound('#ntisas-open-settings', 'click', PROGRAM_SHORTCUT)) {
