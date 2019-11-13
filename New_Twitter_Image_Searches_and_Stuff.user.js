@@ -163,6 +163,11 @@ const SETTINGS_CONFIG = {
         validate: JSPLib.validate.isBoolean,
         hint: "Displays a merge link that allows a new query merging the old results with the new."
     },
+    bypass_server_mode: {
+        default: false,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Operates without information from the tweet server database. <b>Note:</b> Should only be used when the server is unreachable."
+    },
     autocheck_IQDB_enabled: {
         default: false,
         validate: JSPLib.validate.isBoolean,
@@ -368,6 +373,7 @@ const PROGRAM_CSS = `
 #ntisas-current-hide-level {
     color: grey;
 }
+#ntisas-server-bypass,
 #ntisas-active-autoiqdb,
 #ntisas-unavailable-highlights,
 #ntisas-unavailable-autoiqdb {
@@ -918,6 +924,7 @@ const COLOR_CSS = `
 .ntisas-footer-entries {
     color: %TEXTCOLOR%;
 }
+#ntisas-server-bypass,
 #ntisas-active-autoiqdb,
 #ntisas-unavailable-highlights,
 #ntisas-unavailable-autoiqdb,
@@ -1157,7 +1164,7 @@ const SIDE_MENU = `
             <tbody>
             <tr>
                 <td><span id="ntisas-version-header">Database version:</span></td>
-                <td><span id="ntisas-database-stub"></span></td>
+                <td><span id="ntisas-database-link"></span></td>
                 <td>(<span id="ntisas-database-help"></span>)</td>
             </tr>
             <tr>
@@ -2192,7 +2199,10 @@ function GetCustomQuery() {
 
 function GetPostVersionsLastID(type) {
     //Get the program last ID if it exists
-    let postver_lastid = JSPLib.storage.checkStorageData(`ntisas-${type}-lastid`, ValidateProgramData, localStorage, NTISAS.database_info.post_version);
+    let postver_lastid = JSPLib.storage.checkStorageData(`ntisas-${type}-lastid`, ValidateProgramData, localStorage, NTISAS.database_info && NTISAS.database_info.post_version);
+    if (NTISAS.user_settings.bypass_server_mode && !NTISAS.database_info) {
+        return postver_lastid;
+    }
     //Select the largest of the program lastid and the database lastid
     let max_postver_lastid = Math.max(postver_lastid, NTISAS.database_info.post_version);
     if (postver_lastid !== max_postver_lastid) {
@@ -2345,7 +2355,7 @@ function SetCheckPostvers() {
     if (JSPLib.concurrency.checkTimeout('ntisas-timeout', GetPostVersionsExpiration()) || WasOverflow()) {
         clearTimeout(CheckPostvers.timeout);
         CheckPostvers.timeout = setTimeout(()=>{
-            if (NTISAS.database_info && JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'postvers')) {
+            if ((NTISAS.database_info || NTISAS.user_settings.bypass_server_mode) && JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'postvers')) {
                 TIMER.CheckPostvers();
             }
         }, POST_VERSIONS_CALLBACK);
@@ -3340,6 +3350,11 @@ function InitializeSideMenu() {
 function InitializeDatabaseLink() {
     var database_html = "";
     var database_help = "";
+    if (NTISAS.user_settings.bypass_server_mode) {
+        $('#ntisas-database-link').html('<span id="ntisas-server-bypass">Server Bypass</span>');
+        $('#ntisas-database-help').html('&nbsp;&nbsp;&nbsp;');
+        return;
+    }
     NTISAS.server_info = JSPLib.storage.getStorageData('ntisas-remote-database', localStorage);
     if (NTISAS.server_info === null) {
         return;
@@ -3360,7 +3375,7 @@ function InitializeDatabaseLink() {
             database_html = `<a id="ntisas-upgrade" class="ntisas-expanded-link" title="${database_timestring}">Upgrade Database</a>`;
             database_help = RenderHelp(UPGRADE_DATABASE_HELP);
         }
-        $('#ntisas-database-stub').replaceWith(database_html);
+        $('#ntisas-database-link').html(database_html);
         $('#ntisas-database-help').html(database_help);
         $('#ntisas-database-version').on(PROGRAM_CLICK, CurrentPostver);
         $('#ntisas-install').on(PROGRAM_CLICK, InstallDatabase);
@@ -3643,6 +3658,10 @@ function InitializeTweetStats(filter1,filter2) {
 async function CheckPostvers() {
     let postver_lastid = GetPostVersionsLastID('postver');
     let url_addons = {search: {source_changed: true, source_regex: 'twitter\.com'}, only: POSTVER_FIELDS};
+    let query_params = {addons: url_addons, reverse: true, domain: NTISAS.domain, notify: true};
+    if (postver_lastid) {
+        query_params.page = postver_lastid;
+    }
     let post_versions = await JSPLib.danbooru.getAllItems('post_versions', QUERY_LIMIT, QUERY_BATCH_NUM, {page:postver_lastid, addons: url_addons, reverse: true, domain: NTISAS.domain, notify: true});
     if (post_versions.length === QUERY_BATCH_SIZE) {
         CheckPostvers.debuglog("Overflow detected!");
@@ -3902,13 +3921,13 @@ async function GetSavePackage(export_types) {
 function InitializeDatabase() {
     localStorage.removeItem('ntisas-length-recheck');
     NTISAS.channel.postMessage({type: 'database'});
-    Danbooru.Utility.notice("New NTISAS will momentarily refresh the page to finish initializing the database.");
+    Danbooru.Utility.notice("NTISAS will momentarily refresh the page to finish initializing the database.");
     //It's just easier to reload the page on database updates
     JSPLib.utility.refreshPage(PAGE_REFRESH_TIMEOUT);
 }
 
 async function CheckDatabaseInfo(initial) {
-    if (initial || JSPLib.concurrency.checkTimeout('ntisas-database-recheck', DATABASE_RECHECK_EXPIRES)) {
+    if (!NTISAS.user_settings.bypass_server_mode && (initial || JSPLib.concurrency.checkTimeout('ntisas-database-recheck', DATABASE_RECHECK_EXPIRES))) {
         let database_info = await JSPLib.network.getNotify(DATABASE_INFO_URL, {}, JSPLib.utility.sprintf(SERVER_ERROR, "database info"));
         if (database_info !== false) {
             JSPLib.storage.setStorageData('ntisas-remote-database', database_info, localStorage);
@@ -3918,7 +3937,7 @@ async function CheckDatabaseInfo(initial) {
 }
 
 function CheckPurgeBadTweets() {
-    if (JSPLib.storage.getStorageData('ntisas-purge-bad', localStorage, false) && JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'purgebad')) {
+    if (!NTISAS.user_settings.bypass_server_mode && JSPLib.storage.getStorageData('ntisas-purge-bad', localStorage, false) && JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'purgebad')) {
         TIMER.PurgeBadTweets().then(()=>{
             CheckPurgeBadTweets.debuglog("All bad Tweets purged!");
             JSPLib.storage.setStorageData('ntisas-purge-bad', false, localStorage);
@@ -4051,7 +4070,7 @@ function ToggleTweetIndicators(event) {
 function InstallDatabase(event) {
     let message = JSPLib.utility.sprintf(INSTALL_CONFIRM, NTISAS.server_info.post_version, new Date(NTISAS.server_info.timestamp).toLocaleString());
     if (confirm(message)) {
-        $('#ntisas-install').replaceWith(LOAD_COUNTER)
+        $('#ntisas-database-link').html(LOAD_COUNTER)
         LoadDatabase().then((data)=>{
             if (data) {
                 JSPLib.storage.saveData('ntisas-database-info', NTISAS.server_info, JSPLib.storage.twitterstorage);
@@ -4065,7 +4084,7 @@ function UpgradeDatabase(event) {
     let message = JSPLib.utility.sprintf(UPGRADE_CONFIRM, NTISAS.server_info.post_version, new Date(NTISAS.server_info.timestamp).toLocaleString(),
                                                           NTISAS.database_info.post_version, new Date(NTISAS.database_info.timestamp).toLocaleString());
     if (confirm(message)) {
-        $('#ntisas-upgrade').replaceWith(LOAD_COUNTER);
+        $('#ntisas-database-link').html(LOAD_COUNTER);
         LoadDatabase().then((data)=>{
             if (data) {
                 JSPLib.storage.saveData('ntisas-database-info', NTISAS.server_info, JSPLib.storage.twitterstorage);
@@ -5210,6 +5229,9 @@ function InitializeChangedSettings() {
     if (JSPLib.menu.hasSettingChanged(PROGRAM_SHORTCUT, 'SauceNAO_API_key')) {
         SetSauceAPIKey();
     }
+    if (JSPLib.menu.hasSettingChanged(PROGRAM_SHORTCUT, 'bypass_server_mode')) {
+        InitializeDatabaseLink();
+    }
     if (update_link_titles) {
         UpdateLinkTitles();
     }
@@ -5300,6 +5322,7 @@ function RenderSettingsMenu() {
     $('#ntisas-query-settings').append(JSPLib.menu.renderTextinput(PROGRAM_SHORTCUT, 'SauceNAO_API_key', 80));
     $('#ntisas-database-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'confirm_delete_enabled'));
     $('#ntisas-database-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'merge_results_enabled'));
+    $('#ntisas-database-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'bypass_server_mode'));
     $('#ntisas-network-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'URL_wildcards_enabled'));
     $('#ntisas-network-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'custom_order_enabled'));
     $('#ntisas-network-settings').append(JSPLib.menu.renderTextinput(PROGRAM_SHORTCUT, 'recheck_interval', 5));
