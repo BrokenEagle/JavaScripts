@@ -1197,7 +1197,7 @@ const SIDE_MENU = `
             </tr>
             <tr>
                 <td><span>Network errors:</span></td>
-                <td><a id="ntisas-error-messages">0</a></td>
+                <td><a id="ntisas-error-messages">%ERRORMESSAGES%</a></td>
                 <td>(%ERRORMESSAGESHELP%)</td>
             </tr>
             </tbody>
@@ -3035,6 +3035,7 @@ function RenderSideMenu() {
         AUTOCLICKIQDBHELP: RenderHelp(AUTO_IQDB_HELP),
         INDICATOR: INDICATOR_HTML,
         INDICATORHELP: RenderHelp(INDICATOR_HELP),
+        ERRORMESSAGES: JSPLib.network.error_messages.length,
         ERRORMESSAGESHELP: RenderHelp(ERROR_MESSAGES_HELP),
         SETTINGSHELP:  SETTINGS_HELP,
         STATISTICSHELP: RenderHelp(STATISTICS_HELP),
