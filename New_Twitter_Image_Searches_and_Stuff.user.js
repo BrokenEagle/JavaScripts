@@ -2438,10 +2438,9 @@ function InitializeImageMenu($tweets,append_selector,menu_class) {
             $(append_selector, entry).append($link_container);
             if (data !== null) {
                 if (tweet_id in NTISAS.tweet_index) {
-                    NTISAS.tweet_index[tweet_id].entry.add(entry);
                     NTISAS.tweet_index[tweet_id].processed = false;
                 } else {
-                    NTISAS.tweet_index[tweet_id] = {entry: $(entry), post_ids: data, processed: false};
+                    NTISAS.tweet_index[tweet_id] = {post_ids: data, processed: false};
                 }
                 all_post_ids = all_post_ids.concat(data);
                 $link_container.html(RenderPostIDsLink(data, 'ntisas-database-match'));
@@ -2489,7 +2488,7 @@ function UpdateLinkTitles() {
         if (tweet_entry.post_ids.length < 1 || tweet_entry.processed) {
             continue;
         }
-        let $link = $('.ntisas-confirm-delete', tweet_entry.entry);
+        let $link = $(`.ntisas-tweet[data-tweet-id="${tweet_id}"] .ntisas-confirm-delete`);
         let post_ids = tweet_entry.post_ids;
         let loaded_post_ids = Object.keys(NTISAS.post_index).map(Number);
         let all_posts_loaded = JSPLib.utility.isSubset(loaded_post_ids, post_ids);
@@ -2501,7 +2500,7 @@ function UpdateLinkTitles() {
                 $link.attr('title', GetMultiLinkTitle(posts, false));
             }
             if (NTISAS.user_settings.advanced_tooltips_enabled) {
-                let $images = $('[data-image-url]', tweet_entry.entry);
+                let $images = $(`.ntisas-tweet[data-tweet-id="${tweet_id}"] [data-image-url]`);
                 let image_urls = JSPLib.utility.getDOMAttributes($images, 'image-url');
                 //Only initialize the popup if the user hovers over the post link
                 InitializeQtip($link, tweet_id, ()=>{return InitializePostsContainer(posts, image_urls);});
@@ -2526,7 +2525,7 @@ function UpdatePostIDsLink(tweet_id) {
         InitializeNoMatchesLinks(tweet_id, $replace);
     } else {
         $replace.html(RenderPostIDsLink(post_ids, 'ntisas-database-match'));
-        NTISAS.tweet_index[tweet_id] = {entry: $tweet, post_ids: post_ids, processed: false};
+        NTISAS.tweet_index[tweet_id] = {post_ids: post_ids, processed: false};
         CheckPostIDs(post_ids);
     }
 }
@@ -2946,7 +2945,7 @@ function ProcessSimilarData(type,tweet_id,$tweet,$replace,selected_image_urls,si
             }
             JSPLib.storage.saveData('tweet-' + tweet_id, similar_post_ids, JSPLib.storage.twitterstorage);
             $replace.html(RenderPostIDsLink(similar_post_ids, classname));
-            NTISAS.tweet_index[tweet_id] = {entry: $tweet, post_ids: similar_post_ids, processed: false, similar: false};
+            NTISAS.tweet_index[tweet_id] = {post_ids: similar_post_ids, processed: false, similar: false};
             CheckPostIDs(similar_post_ids);
             NTISAS.channel.postMessage({type: 'postlink', tweet_id: tweet_id, post_ids: similar_post_ids});
         } else {
