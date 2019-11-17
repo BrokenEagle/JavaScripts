@@ -4546,6 +4546,14 @@ function UnhideTweets() {
 function MarkupMediaType(tweet) {
     if ($('[src*="/card_img/"], span > svg', tweet).length) {
         $('.ntisas-tweet-media', tweet).addClass('ntisas-tweet-card').removeClass('ntisas-tweet-media');
+    } else if ($('[role=progressbar]', tweet).length) {
+        MarkupMediaType.debuglog("Delaying media check for", $(tweet).data('tweet-id'));
+        let timer = setInterval(()=>{
+            if ($('[role=progressbar]', tweet).length === 0) {
+                clearInterval(timer);
+                MarkupMediaType(tweet);
+            }
+        }, TIMER_POLL_INTERVAL);
     } else {
         let media_children = $('.ntisas-tweet-media', tweet).children();
         media_children.each((i,entry)=>{
@@ -4554,7 +4562,7 @@ function MarkupMediaType(tweet) {
                 $entry.addClass('ntisas-media-stub');
             } else if ($('[role=blockquote]', entry).length) {
                 $entry.addClass('ntisas-tweet-quote');
-            } else if ($('video, [role=progressbar], [data-testid=playButton]', tweet).length) {
+            } else if ($('video, [data-testid=playButton]', tweet).length) {
                 $entry.addClass('ntisas-tweet-video');
             } else {
                 $entry.addClass('ntisas-tweet-image');
@@ -5477,8 +5485,8 @@ JSPLib.debug.addFunctionLogs([
     CheckIQDB, CheckURL, PurgeBadTweets, CheckPurgeBadTweets, SaveDatabase, LoadDatabase, CheckPostvers,
     CheckPostIDs, ReadFileAsync, ProcessPostvers, InitializeImageMenu, CorrectStringArray, ValidateEntry,
     BroadcastTISAS, PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages, InitializeUploadlinks, CheckSauce,
-    GetMaxVideoDownloadLink, GetPageType, CheckServerBadTweets, SavePostvers, PickImage,MarkupMainTweet,
-    MarkupStreamTweet,
+    GetMaxVideoDownloadLink, GetPageType, CheckServerBadTweets, SavePostvers, PickImage, MarkupMainTweet,
+    MarkupStreamTweet, MarkupMediaType,
 ]);
 
 /****Execution start****/
