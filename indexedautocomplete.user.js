@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      25.4
+// @version      25.5
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1359,7 +1359,7 @@ function AddUserSelected(type,metatag,term,data,query_type) {
     }
     let user_order = GetChoiceOrder(type, term);
     for (let i = user_order.length - 1; i >= 0; i--) {
-        let checkterm = (['','@'].includes(metatag) ? metatag + user_order[i] : metatag + ':' + user_order[i]);
+        let checkterm = metatag + user_order[i];
         if (query_type === "tag" && choice[checkterm].category === metatag_tag_category) {
             continue;
         }
@@ -1406,7 +1406,7 @@ function InsertUserSelected(data,input,selected) {
             let autocomplete_type = $(input).data('autocomplete');
             if (autocomplete_type === 'tag-query' || autocomplete_type === 'tag-edit') {
                 let match = selected.match(Danbooru.Autocomplete.METATAGS_REGEX);
-                type = (match ? match[1] : 'tag');
+                type = (match ? match[0] : 'tag');
             } else {
                 type = autocomplete_type.replace(/-/g, '');
             }
@@ -1466,14 +1466,14 @@ function InsertUserSelected(data,input,selected) {
     StoreUsageData('insert', term);
 }
 
-function StaticMetatagSource(term, resp, metatag) {
+function StaticMetatagSource(term, metatag) {
     let full_term = `${metatag}:${term}`;
     let data = SubmetatagData()
         .filter((data)=>{return data.value.startsWith(full_term);})
         .sort((a,b)=>{return a.value.localeCompare(b.value);})
         .slice(0,IAC.user_settings.source_results_returned);
     AddUserSelected('metatag','',full_term,data)
-    resp(data);
+    return data;
 }
 
 //For autocomplete render
@@ -1669,11 +1669,15 @@ function RebindSingleTag() {
     JSPLib.utility.rebindTimer({
         check: ()=>{return JSPLib.utility.hasDOMDataKey('[data-autocomplete=tag]', 'uiAutocomplete');},
         exec: ()=>{
+            let autocomplete = AnySourceIndexed('ac', true);
             $('[data-autocomplete=tag]').autocomplete("destroy").off('keydown.Autocomplete.tab');
             $('[data-autocomplete=tag]').autocomplete({
                 minLength: 1,
                 autoFocus: true,
-                source: AnySourceIndexed('ac', '', false, true)
+                source: async function(request, respond) {
+                    let results = await autocomplete.call(this, request.term);
+                    respond(results);
+                }
             });
         }
     },timer_poll_interval);
@@ -1684,10 +1688,23 @@ function RebindSingleTag() {
 function InitializeAutocompleteIndexed(selector,keycode,multiple=false) {
     let type = source_key[keycode];
     var $fields = $(selector);
+    let autocomplete = AnySourceIndexed(keycode, true);
     $fields.autocomplete({
         minLength: 1,
         delay: 100,
-        source: AnySourceIndexed(keycode, '', multiple),
+        source: async function(request, respond) {
+            var term;
+            if (multiple) {
+                term = Danbooru.Autocomplete.parse_query(request.term, this.element.get(0).selectionStart).term;
+                if (!term) {
+                    return respond([]);
+                }
+            } else {
+                term = request.term;
+            }
+            let results = await autocomplete.call(this, term);
+            respond(results);
+        }
         search: function () {
             $(this).data("uiAutocomplete").menu.bindings = $();
         },
@@ -1720,65 +1737,47 @@ function InitializeAutocompleteIndexed(selector,keycode,multiple=false) {
 
 //Main execution functions
 
-function NetworkSource(type,key,term,resp,metatag,context,process=true) {
+async function NetworkSource(type,key,term,metatag,query_type,process=true) {
     NetworkSource.debuglog("Querying", type, ':', term);
     let url_addons = $.extend({limit: IAC.user_settings.source_results_returned}, source_config[type].data(term));
-    JSPLib.danbooru.submitRequest(source_config[type].url, url_addons).then((data)=>{
-        if (!data || !Array.isArray(data)) {
-            if (process) {
-                resp([]);
-            }
-            return;
-        }
-        var d = data.map(source_config[type].map);
-        var expiration_time = source_config[type].expiration(d);
-        var save_data = JSPLib.utility.dataCopy(d);
-        JSPLib.storage.saveData(key, {value: save_data, expires: JSPLib.utility.getExpires(expiration_time)});
-        if (source_config[type].fixupexpiration && d.length) {
-            setTimeout(()=>{FixExpirationCallback(key, save_data, save_data[0].value, type);}, callback_interval);
-        }
-        if (process) {
-            ProcessSourceData(type, metatag, term, d, resp, context);
-        }
-    });
+    let data = await JSPLib.danbooru.submitRequest(source_config[type].url, url_addons);
+    if (!data || !Array.isArray(data)) {
+        return [];
+    }
+    var d = data.map(source_config[type].map);
+    var expiration_time = source_config[type].expiration(d);
+    var save_data = JSPLib.utility.dataCopy(d);
+    JSPLib.storage.saveData(key, {value: save_data, expires: JSPLib.utility.getExpires(expiration_time)});
+    if (source_config[type].fixupexpiration && d.length) {
+        setTimeout(()=>{FixExpirationCallback(key, save_data, save_data[0].value, type);}, callback_interval);
+    }
+    if (process) {
+        return ProcessSourceData(type, metatag, term, d, query_type);
+    }
 }
 
-function AnySourceIndexed(keycode,default_metatag='',multiple=false,single=false) {
+function AnySourceIndexed(keycode,has_context=false) {
     var type = source_key[keycode];
-    return async function (req, resp, input_metatag) {
-        var term;
-        //Only for instances set with InitializeAutocompleteIndexed, i.e. not the hooked "tag-query" source functions
-        if (multiple) {
-            term = Danbooru.Autocomplete.parse_query(req.term, this.element.get(0).selectionStart).term;
-            if (!term) {
-                resp([]);
-                return;
-            }
-        } else {
-            term = (req.term ? req.term : req);
-            if ((!source_config[type].spacesallowed || input_metatag) && term.match(/\S\s/)) {
-                resp([]);
-                return;
-            }
-            term = term.trim();
+    return async function (term, prefix) {
+        if ((!source_config[type].spacesallowed || JSPLib.validate.isString(prefix)) && term.match(/\S\s/)) {
+            return [];
         }
+        term = term.trim();
         if (term === "") {
-            resp([]);
-            return;
+            return [];
         }
         var key = (keycode + "-" + term).toLowerCase();
-        var use_metatag = (input_metatag ? input_metatag : default_metatag);
-        var context = (single ? this : null);
+        var use_metatag = (JSPLib.validate.isString(prefix) ? prefix : '');
+        var query_type = (has_context ? $(this.element).data('autocomplete') : null);
         if (!IAC.user_settings.network_only_mode) {
             var max_expiration = MaximumExpirationTime(type);
             var cached = await JSPLib.storage.checkLocalDB(key, ValidateEntry, max_expiration);
             if (cached) {
                 RecheckSourceData(type, key, term, cached);
-                ProcessSourceData(type, use_metatag, term, cached.value, resp, context);
-                return;
+                return ProcessSourceData(type, use_metatag, term, cached.value, query_type);
             }
         }
-        NetworkSource(type, key, term, resp, use_metatag, context);
+        return NetworkSource(type, key, term, use_metatag, query_type);
     }
 }
 
@@ -1787,13 +1786,12 @@ function RecheckSourceData(type,key,term,data) {
         let recheck_time = data.expires - GetRecheckExpires();
         if (!JSPLib.utility.validateExpires(recheck_time)) {
             JSPLib.debug.debuglog("Rechecking", type, ":", term);
-            NetworkSource(type, key, term, null, null, null, false);
+            NetworkSource(type, key, term, null, null, false);
         }
     }
 }
 
-function ProcessSourceData(type,metatag,term,data,resp,context) {
-    var query_type = (context ? $(context.element).data('autocomplete') : null);
+function ProcessSourceData(type,metatag,term,data,query_type) {
     if (source_config[type].fixupmetatag) {
         data.forEach((val)=> {FixupMetatag(val, metatag);});
     }
@@ -1826,7 +1824,7 @@ function ProcessSourceData(type,metatag,term,data,resp,context) {
         let adjusted_tag_string = RemoveTerm(document.activeElement.value, document.activeElement.selectionStart);
         IAC.current_tags = adjusted_tag_string.split(/\s+/);
     }
-    resp(data);
+    return data;
 }
 
 //Cache functions
@@ -1989,11 +1987,11 @@ function Main() {
     }
     CorrectUsageData();
     /**Autocomplete bindings**/
-    Danbooru.Autocomplete.normal_source = AnySourceIndexed('ac');
+    Danbooru.Autocomplete.tag_source = AnySourceIndexed('ac');
     Danbooru.Autocomplete.pool_source = AnySourceIndexed('pl');
     Danbooru.Autocomplete.user_source = AnySourceIndexed('us');
     Danbooru.Autocomplete.favorite_group_source = AnySourceIndexed('fg');
-    Danbooru.Autocomplete.saved_search_source = AnySourceIndexed('ss', 'search');
+    Danbooru.Autocomplete.saved_search_source = AnySourceIndexed('ss');
     Danbooru.Autocomplete.static_metatag_source = StaticMetatagSource;
     Danbooru.Autocomplete.insert_completion_old = Danbooru.Autocomplete.insert_completion;
     Danbooru.Autocomplete.insert_completion = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.insert_completion, InsertUserSelected);
