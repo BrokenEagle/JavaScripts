@@ -1705,9 +1705,6 @@ function InitializeAutocompleteIndexed(selector,keycode,multiple=false) {
             }
             let results = await autocomplete.call(this, term);
             respond(results);
-        }
-        search: function () {
-            $(this).data("uiAutocomplete").menu.bindings = $();
         },
         select: function (event,ui) {
             InsertUserSelected(keycode, this, ui.item);
