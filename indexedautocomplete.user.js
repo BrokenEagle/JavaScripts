@@ -568,6 +568,7 @@ const autocomplete_domlist = [
     '[data-autocomplete="wiki-page"]',
     '[data-autocomplete="artist"]',
     '[data-autocomplete="pool"]',
+    '[data-autocomplete="saved-search-label"]',
     ].concat(autocomplete_rebindlist).concat(autocomplete_userlist);
 
 const autocomplete_user_selectors = autocomplete_userlist.join(',');
@@ -2011,17 +2012,17 @@ function Main() {
         RebindAnyAutocomplete('[data-autocomplete="pool"]', 'pl');
     }
     if (IAC.controller === "posts" && IAC.action === "index") {
-        RebindAnyAutocomplete("#saved_search_label_string", 'ss', true);
+        RebindAnyAutocomplete('[data-autocomplete="saved-search-label"]', 'ss', true);
     }
     if (IAC.controller === "saved-searches" && IAC.action === "edit") {
         $("#saved_search_query").attr('data-autocomplete', 'tag-query');
         setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, jquery_delay);
-        setTimeout(()=>{InitializeAutocompleteIndexed("#saved_search_label_string", 'ss', true);}, jquery_delay);
+        RebindAnyAutocomplete('[data-autocomplete="saved-search-label"]', 'ss', true);
     }
     if (IAC.controller === "saved-searches" && IAC.action === "index") {
         $("#search_query_ilike").attr('data-autocomplete', 'tag-query');
         setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, jquery_delay);
-        setTimeout(()=>{InitializeAutocompleteIndexed("#search_label", 'ss');}, jquery_delay);
+        RebindAnyAutocomplete('[data-autocomplete="saved-search-label"]', 'ss');
     }
     if (IAC.controller === "forum-topics" || IAC.controller === "forum-posts") {
         JSPLib.utility.setCSSStyle(forum_css, 'forum');
