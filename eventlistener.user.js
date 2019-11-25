@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.10
+// @version      16.11
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1713,6 +1713,7 @@ function UpdateAll(event) {
     EL.no_limit = true;
     ProcessAllEvents(()=>{
         JSPLib.concurrency.setRecheckTimeout('el-timeout', EL.timeout_expires);
+        SetLastSeenTime();
         JSPLib.utility.notice("All events checked!");
     });
     $('#el-reset-all').off(PROGRAM_CLICK);
@@ -1724,6 +1725,7 @@ function ResetAll(event) {
     });
     ProcessAllEvents(()=>{
         JSPLib.concurrency.setRecheckTimeout('el-timeout', EL.timeout_expires);
+        SetLastSeenTime();
         JSPLib.utility.notice("All event positions reset!");
     });
     $('#el-update-all').off(PROGRAM_CLICK);
@@ -2044,7 +2046,7 @@ function BroadcastEL(ev) {
             break;
         case 'reset':
             Object.assign(EL, PROGRAM_RESET_KEYS);
-            JSPLib.utility.fullHide('#event-notice, #el-subscribe-events, .el-subscribe-dual-links');
+            JSPLib.utility.fullHide('#el-event-notice, #el-subscribe-events, .el-subscribe-dual-links');
             //falls through
         case 'settings':
             EL.user_settings = ev.data.user_settings;
@@ -2179,7 +2181,7 @@ function Main() {
                 $('#el-reset-all').one(PROGRAM_CLICK, ResetAll);
             }
             $('#el-days-absent').html(EL.days_absent);
-            $('#event-notice').show();
+            $('#el-event-notice').show();
             JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT);
         }
     } else {
