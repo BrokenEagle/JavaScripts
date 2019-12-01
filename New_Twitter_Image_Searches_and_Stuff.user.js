@@ -3344,13 +3344,19 @@ function InitializeUIStyle() {
 
 function InitializeStatusBar(tweet_status,is_main_tweet) {
     var $container;
+    var direction = 'append';
     if (!is_main_tweet && tweet_status.childElementCount > 0) {
-        $container = $('> div > div > div:last-of-type', tweet_status);
-        $("> div:last-of-type", $container[0]).css('flex-grow', 'unset').css('flex-basis', 'unset');
-    } else {
+        if (tweet_status.children[0].childElementCount > 0) {
+            $container = $('> div > div > div:last-of-type', tweet_status);
+            $("> div:last-of-type", $container[0]).css('flex-grow', 'unset').css('flex-basis', 'unset');
+        } else {
+            direction = 'prepend';
+        }
+    }
+    if (!$container) {
         $container = $(tweet_status);
     }
-    $container.append('<span class="ntisas-status-marker"></span>');
+    $container[direction]('<span class="ntisas-status-marker"></span>');
 }
 
 function InitializeSideMenu() {
