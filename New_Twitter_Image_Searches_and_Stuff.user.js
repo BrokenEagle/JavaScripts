@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.0
+// @version      4.1
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -5399,9 +5399,6 @@ function RenderSettingsMenu() {
 async function Main() {
     JSPLib.network.jQuerySetup();
     Danbooru.Utility.installBanner(PROGRAM_SHORTCUT);
-    if (!IsTISASInstalled()) {
-        await CheckDatabaseInfo(true);
-    }
     Danbooru.NTISAS = Object.assign(NTISAS, {
         tweet_pos: [],
         tweet_faves: [],
@@ -5425,6 +5422,9 @@ async function Main() {
         channel: JSPLib.utility.createBroadcastChannel("NTISAS", BroadcastTISAS),
     });
     NTISAS.user_settings = JSPLib.menu.loadUserSettings(PROGRAM_SHORTCUT);
+    if (!IsTISASInstalled()) {
+        await CheckDatabaseInfo(true);
+    }
     SetHighlightLevels();
     SetQueryDomain();
     SetSauceAPIKey();
