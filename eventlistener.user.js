@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.11
+// @version      16.12
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1894,12 +1894,14 @@ async function CheckSubscribeType(type) {
         if (!savedlastid.length || !savedlist.length) {
             let urladdons = JSPLib.utility.joinArgs(TYPEDICT[type].addons, {only: TYPEDICT[type].only});
             let batches = TYPEDICT[type].limit;
-            if (!EL.no_limit) {
+            let batch_limit = TYPEDICT[type].limit * QUERY_LIMIT;
+            if (EL.no_limit) {
                 batches = null;
+                batch_limit = Infinity;
             }
             let jsontype = await JSPLib.danbooru.getAllItems(TYPEDICT[type].controller, QUERY_LIMIT, batches, {page: typelastid, addons: urladdons, reverse: true});
-            if (jsontype.length === TYPEDICT[type].limit) {
-                CheckSubscribeType.debuglog(`${TYPEDICT[type].limit} ${type} items; overflow detected!`);
+            if (jsontype.length === batch_limit) {
+                CheckSubscribeType.debuglog(`${batch_limit} ${type} items; overflow detected!`);
                 JSPLib.storage.setStorageData(overflowkey, true, localStorage);
                 EL.item_overflow = true;
             } else {
