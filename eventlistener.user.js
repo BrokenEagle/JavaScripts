@@ -841,7 +841,7 @@ JSPLib.danbooru.getPostsCountdown = async function (searchstring,limit,domname) 
         page_num = Math.ceil(total_posts/limit);
     }
     while (true) {
-        JSPLib.utility.debugloglevel("JSPLib.danbooru.getPostsCountdown: Pages left #",page_num,JSPLib.debug.INFO);
+        JSPLib.debug.debuglogLevel("JSPLib.danbooru.getPostsCountdown: Pages left #",page_num,JSPLib.debug.INFO);
         if (domname) {
             jQuery(domname).html(page_num);
         }
@@ -2163,6 +2163,7 @@ function Main() {
             JSPLib.menu.installSettingsMenu(PROGRAM_NAME);
             RenderSettingsMenu();
         });
+        JSPLib.utility.setCSSStyle(MENU_CSS, 'menu');
     }
     if (!JSPLib.menu.isScriptEnabled(PROGRAM_NAME)) {
         Main.debuglog("Script is disabled on", window.location.hostname);
