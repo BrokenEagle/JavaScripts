@@ -1356,16 +1356,22 @@ function AddThumbnails(dompage) {
 }
 
 async function GetThumbnails() {
-    var url_addon = {tags: `id:${EL.post_ids.join(',')} limit:${EL.post_ids.length}`};
-    var html = await JSPLib.network.getNotify('/posts', url_addon);
-    var $posts = $.parseHTML(html);
-    var $thumbs = $('.post-preview', $posts);
-    $thumbs.each((i,thumb)=>{
-        let $thumb = $(thumb);
-        $thumb.addClass('blacklisted');
-        let postid = $thumb.data('id');
-        $(`.striped .el-post-thumbnail[data-postid="${postid}"]`).prepend(thumb);
-    });
+    for (let i = 0; i < EL.post_ids.length; i += QUERY_LIMIT) {
+        let post_ids = EL.post_ids.slice(i, i + QUERY_LIMIT);
+        var url_addon = {tags: `id:${post_ids} limit:${post_ids.length}`};
+        var html = await JSPLib.network.getNotify('/posts', url_addon);
+        var $posts = $.parseHTML(html);
+        var $thumbs = $('.post-preview', $posts);
+        $thumbs.each((i,thumb)=>{
+            let $thumb = $(thumb);
+            $thumb.addClass('blacklisted');
+            let postid = $thumb.data('id');
+            let $link = $('a', thumb);
+            let post_url = $link.attr('href').split('?')[0];
+            $link.attr('href', post_url);
+            $(`.striped .el-post-thumbnail[data-postid="${postid}"]`).prepend(thumb);
+        });
+    }
 }
 
 function AdjustRowspan(rowelement,openitem) {
