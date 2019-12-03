@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.12
+// @version      17.0
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -56,9 +56,9 @@ const EL = {};
 const TIMER = {};
 
 //For factory reset
-const USER_EVENTS = ['flag', 'appeal', 'dmail', 'spam'];
+const NONSUBSCRIBE_EVENTS = ['flag', 'appeal', 'dmail', 'spam', 'ban', 'feedback', 'mod_action'];
 const SUBSCRIBE_EVENTS = ['comment', 'forum', 'note', 'commentary', 'post', 'wiki', 'pool'];
-const ALL_EVENTS = JSPLib.utility.concat(USER_EVENTS, SUBSCRIBE_EVENTS);
+const ALL_EVENTS = JSPLib.utility.concat(NONSUBSCRIBE_EVENTS, SUBSCRIBE_EVENTS);
 const LASTID_KEYS = ALL_EVENTS.map((type)=>{return `el-${type}lastid`;});
 const OTHER_KEYS = SUBSCRIBE_EVENTS.map((type)=>{return [`el-${type}list`, `el-saved${type}list`, `el-saved${type}lastid`, `el-${type}overflow`];}).flat();
 const LOCALSTORAGE_KEYS = LASTID_KEYS.concat(OTHER_KEYS).concat([
@@ -74,6 +74,13 @@ const PROGRAM_RESET_KEYS = {};
 //Available setting values
 const ENABLE_EVENTS = ['flag', 'appeal', 'dmail', 'comment', 'note', 'commentary', 'forum'];
 const AUTOSUBSCRIBE_EVENTS = ['post', 'comment', 'note', 'commentary'];
+const MODACTION_EVENTS = [
+    "user_delete", "user_ban", "user_unban", "user_name_change", "user_level_change", "user_approval_privilege", "user_upload_privilege", "user_account_upgrade",
+    "user_feedback_update", "user_feedback_delete", "post_delete", "post_undelete", "post_ban", "post_unban", "post_permanent_delete", "post_move_favorites",
+    "pool_delete", "pool_undelete", "artist_ban", "artist_unban", "comment_update", "comment_delete", "forum_topic_delete", "forum_topic_undelete", "forum_topic_lock",
+    "forum_post_update", "forum_post_delete", "tag_alias_create", "tag_alias_update", "tag_implication_create", "tag_implication_update", "ip_ban_create", "ip_ban_delete",
+    "mass_update", "bulk_revert", "other"
+];
 
 //Main settings
 const SETTINGS_CONFIG = {
@@ -119,7 +126,13 @@ const SETTINGS_CONFIG = {
         default: [],
         validate: (data)=>{return JSPLib.menu.validateCheckboxRadio(data, 'checkbox', AUTOSUBSCRIBE_EVENTS);},
         hint: "Check to autosubscribe event type."
-    }
+    },
+    subscribed_mod_actions: {
+        allitems: MODACTION_EVENTS,
+        default: [],
+        validate: (data)=>{return JSPLib.menu.validateCheckboxRadio(data, 'checkbox', MODACTION_EVENTS);},
+        hint: "Select which mod action categories to subscribe to."
+    },
 };
 
 const CONTROL_CONFIG = {
@@ -304,6 +317,25 @@ const POOL_CSS = `
     opacity: 0.25;
 }`;
 
+const FEEDBACK_CSS = `
+#el-event-notice #el-feedback-section .feedback-category-positive {
+    background: var(--success-background-color);
+}
+#el-event-notice #el-feedback-section .feedback-category-negative {
+    background: var(--error-background-color);
+}
+#el-event-notice #el-feedback-section .feedback-category-neutral {
+    background: unset;
+}`;
+
+const BAN_CSS = `
+#el-event-notice #el-ban-section tr[data-expired=true] {
+    background-color: var(--success-background-color);
+}
+#el-event-notice #el-ban-section tr[data-expired=false] {
+    background-color: var(--error-background-color);
+}`;
+
 const MENU_CSS = `
 #el-search-query-display {
     margin:0.5em;
@@ -328,6 +360,9 @@ const NOTICE_BOX = `
     <div id="el-wiki-section"></div>
     <div id="el-pool-section"></div>
     <div id="el-post-section"></div>
+    <div id="el-feedback-section"></div>
+    <div id="el-ban-section"></div>
+    <div id="el-mod-action-section"></div>
     <div id="el-spam-section"></div>
     <div style="margin-top:1em">
         <a href="javascript:void(0)" id="el-hide-event-notice">Close this</a>
@@ -621,7 +656,39 @@ const TYPEDICT = {
         insert: InsertPools,
         process: function () {JSPLib.utility.setCSSStyle(POOL_CSS, 'pool');},
         plural: 'pools',
-    }
+    },
+    feedback: {
+        controller: 'user_feedbacks',
+        addons: {},
+        only: 'id,creator_id,body',
+        limit: 1,
+        useraddons: function (username) {return {};},
+        filter: (array)=>{return array.filter((val)=>{return IsShownData(val, [], 'creator_id', null, IsShownFeedback);})},
+        insert: InsertEvents,
+        process: function () {JSPLib.utility.setCSSStyle(FEEDBACK_CSS, 'feedback');},
+        plural: 'feedbacks',
+    },
+    ban: {
+        controller: 'bans',
+        addons: {},
+        only: 'id,banner_id',
+        limit: 1,
+        useraddons: function (username) {return {};},
+        filter: (array)=>{return array.filter((val)=>{return IsShownData(val, [], 'banner_id');})},
+        insert: InsertEvents,
+        process: function () {JSPLib.utility.setCSSStyle(BAN_CSS, 'ban');},
+        plural: 'bans',
+    },
+    mod_action: {
+        controller: 'mod_actions',
+        addons: {},
+        only: 'id,category',
+        limit: 1,
+        useraddons: function (username) {return {};},
+        filter: (array)=>{return array.filter((val)=>{return IsCategorySubscribed(val.category);})},
+        insert: InsertEvents,
+        plural: 'mod actions',
+    },
 };
 
 //Validate constants
@@ -906,6 +973,10 @@ function AreAllEventsEnabled(event_list) {
     return !JSPLib.utility.setDifference(event_list, EL.user_settings.events_enabled).length;
 }
 
+function IsCategorySubscribed(type) {
+    return EL.user_settings.subscribed_mod_actions.includes(type);
+}
+
 function HideDmailNotice() {
     let $dmail_notice = $("#dmail-notice");
     if ($dmail_notice.length) {
@@ -1041,7 +1112,7 @@ function ProcessEvent(inputtype) {
     if ((CheckWaiting(inputtype) && CheckWaiting.any_waits) || /*Check for any wait event*/
         (CheckOverflow(inputtype) && !CheckWaiting.any_waits && CheckOverflow.any_overflow) || /*Check for any overflow event but not a wait event*/
         (!CheckWaiting.any_waits && !CheckOverflow.any_overflow) /*Check for neither waits nor overflows*/) {
-        if (USER_EVENTS.includes(inputtype)) {
+        if (NONSUBSCRIBE_EVENTS.includes(inputtype)) {
             return TIMER.CheckUserType(inputtype);
         } else if (SUBSCRIBE_EVENTS.includes(inputtype)) {
             return TIMER.CheckSubscribeType(inputtype);
@@ -1949,12 +2020,13 @@ async function CheckSubscribeType(type) {
 async function LoadHTMLType(type,idlist) {
     let url_addons = JSPLib.utility.joinArgs(TYPEDICT[type].addons, {search: {id: idlist.join(',')}, limit: idlist.length});
     let typehtml = await JSPLib.network.getNotify(`/${TYPEDICT[type].controller}`, url_addons);
+    let section_selector = '#el-' + JSPLib.utility.kebabCase(type) + '-section';
     if (typehtml) {
-        $(`#el-${type}-section`).html(JSPLib.utility.sprintf(REGULAR_NOTICE, TYPEDICT[type].plural, type));
+        $(section_selector).html(JSPLib.utility.sprintf(REGULAR_NOTICE, TYPEDICT[type].plural, type));
         let $typepage = $.parseHTML(typehtml);
         TYPEDICT[type].insert($typepage, type);
     } else {
-        $(`#el-${type}-section`).html(JSPLib.utility.sprintf(ERROR_NOTICE, TYPEDICT[type].plural));
+        $(section_selector).html(JSPLib.utility.sprintf(ERROR_NOTICE, TYPEDICT[type].plural));
     }
     if (TYPEDICT[type].process) {
         TYPEDICT[type].process();
@@ -2088,6 +2160,10 @@ function IsShownCommentary(val) {
     return (Boolean(val.translated_title) || Boolean(val.translated_description));
 }
 
+function IsShownFeedback(val) {
+    return val.body.match(/^Banned for ((almost|over|about) )?\d+ (days?|months?|years?):/) === null;
+}
+
 function GetRecheckExpires() {
     return EL.user_settings.recheck_interval * JSPLib.utility.one_minute;
 }
@@ -2102,6 +2178,7 @@ function RenderSettingsMenu() {
     $('#el-event-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'filter_untranslated_commentary'));
     $('#el-event-settings').append(JSPLib.menu.renderInputSelectors(PROGRAM_SHORTCUT, 'events_enabled', 'checkbox'));
     $('#el-event-settings').append(JSPLib.menu.renderInputSelectors(PROGRAM_SHORTCUT, 'autosubscribe_enabled', 'checkbox'));
+    $('#el-event-settings').append(JSPLib.menu.renderInputSelectors(PROGRAM_SHORTCUT, 'subscribed_mod_actions', 'checkbox'));
     $('#el-network-settings').append(JSPLib.menu.renderTextinput(PROGRAM_SHORTCUT, 'recheck_interval', 10));
     $('#el-subscribe-controls').append(JSPLib.menu.renderInputSelectors(PROGRAM_SHORTCUT, 'post_events', 'checkbox', true));
     $('#el-subscribe-controls').append(JSPLib.menu.renderInputSelectors(PROGRAM_SHORTCUT, 'operation','radio',true));
