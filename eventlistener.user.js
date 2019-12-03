@@ -905,15 +905,56 @@ JSPLib.utility.createBroadcastChannel = function (name,func) {
     return channel;
 };
 
+JSPLib.debug._getFuncTimerName = function (func,args,nameindex) {
+   let timer_name = func.name;
+    if (Number.isInteger(nameindex) && args[nameindex] !== undefined) {
+        timer_name += '.' + args[nameindex];
+    } else if (Array.isArray(nameindex)) {
+        for (let i = 0; i < nameindex.length; i++) {
+            let argindex = nameindex[i];
+            if (args[argindex] !== undefined) {
+                timer_name += '.' + args[argindex];
+            } else {
+                break;
+            }
+        }
+    }
+    return timer_name;
+};
+
+JSPLib.debug.debugSyncTimer = function (func,nameindex) {
+    return function(...args) {
+        let timer_name = JSPLib.debug._getFuncTimerName(func,args,nameindex);
+        JSPLib.debug.debugTime(timer_name);
+        let ret = func(...args);
+        JSPLib.debug.debugTimeEnd(timer_name);
+        return ret;
+    }
+};
+
+JSPLib.debug.debugAsyncTimer = function (func,nameindex) {
+    return async function(...args) {
+        let timer_name = JSPLib.debug._getFuncTimerName(func,args,nameindex);
+        JSPLib.debug.debugTime(timer_name);
+        let ret = await func(...args);
+        JSPLib.debug.debugTimeEnd(timer_name);
+        return ret;
+    }
+};
+
 JSPLib.debug.addFunctionTimers = function (hash,is_async,itemlist) {
     let timerFunc = (is_async ? JSPLib.debug.debugAsyncTimer : JSPLib.debug.debugSyncTimer);
     itemlist.forEach((item)=>{
         let func = item;
         let nameindex = null;
         if (Array.isArray(item)) {
-            if (typeof item[0] === 'function' && Number.isInteger(item[1])) {
+            if (typeof item[0] === 'function' && item.length > 1 && item.slice(1).every(val => Number.isInteger(val))) {
                 func = item[0];
-                nameindex = item[1];
+                if (item.length === 2) {
+                    nameindex = item[1];
+                } else {
+                    nameindex = item.slice(1);
+                }
             } else {
                 throw "JSPLib.debug.addFunctionTimers: Invalid array parameter";
             }
@@ -2520,8 +2561,8 @@ JSPLib.debug.addFunctionTimers(TIMER, true, [
     GetThumbnails, CheckAllEvents, PostEventPopulateControl,
     [CheckPostQueryType, 0],
     [CheckSubscribeType, 0],
-    [SetRecentDanbooruID, 0]
     [CheckOtherType, 0],
+    [SetRecentDanbooruID, 0, 1]
 ]);
 
 JSPLib.debug.addFunctionLogs([
