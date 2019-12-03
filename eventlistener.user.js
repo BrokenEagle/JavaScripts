@@ -343,6 +343,13 @@ const MENU_CSS = `
     border:lightgrey solid 1px;
     padding:0.5em;
     width:7.5em;
+}
+#event-listener .jsplib-selectors label {
+    text-align: left;
+    width: 175px;
+}
+#event-listener .ui-checkboxradio-icon-space {
+    margin-right: 5px;
 }`;
 
 //HTML constants
