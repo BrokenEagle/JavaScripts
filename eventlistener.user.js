@@ -657,7 +657,6 @@ const ALL_MAIL_EVENTS = ['dmail', 'spam'];
 const TYPEDICT = {
     flag: {
         controller: 'post_flags',
-        addons: {},
         only: 'id,creator_id',
         filter: (array)=>{return array.filter((val)=>{return IsShownData(val, [], 'creator_id', null);})},
         insert: InsertEvents,
@@ -666,7 +665,6 @@ const TYPEDICT = {
     },
     appeal: {
         controller: 'post_appeals',
-        addons: {},
         only: 'id,creator_id',
         filter: (array)=>{return array.filter((val)=>{return IsShownData(val, [], 'creator_id', null);})},
         insert: InsertEvents,
@@ -698,24 +696,22 @@ const TYPEDICT = {
         limit: 10,
         filter: (array, typelist)=>{return array.filter((val)=>{return IsShownData(val, typelist, 'creator_id', 'post_id');})},
         insert: InsertComments,
-        process: function () {JSPLib.utility.setCSSStyle(COMMENT_CSS, 'comment');},
+        process: ()=>{JSPLib.utility.setCSSStyle(COMMENT_CSS, 'comment');},
         plural: 'comments',
         display: "Comments",
     },
     forum: {
         controller: 'forum_posts',
-        addons: {},
         only: 'id,creator_id,topic_id',
         limit: 10,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val, typelist, 'creator_id', 'topic_id');})},
         insert: InsertForums,
-        process: function () {JSPLib.utility.setCSSStyle(FORUM_CSS, 'forum');},
+        process: ()=>{JSPLib.utility.setCSSStyle(FORUM_CSS, 'forum');},
         plural: 'forums',
         useritem: false,
     },
     note: {
         controller: 'note_versions',
-        addons: {},
         only: 'id,updater_id,post_id',
         limit: 10,
         filter: (array, typelist)=>{return array.filter((val)=>{return IsShownData(val, typelist, 'updater_id', 'post_id');})},
@@ -726,7 +722,6 @@ const TYPEDICT = {
     },
     commentary: {
         controller: 'artist_commentary_versions',
-        addons: {},
         only: 'id,updater_id,post_id',
         limit: 10,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val, typelist, 'updater_id', 'post_id', IsShownCommentary);})},
@@ -737,7 +732,6 @@ const TYPEDICT = {
     },
     post: {
         controller: 'post_versions',
-        addons: {},
         only: 'id,updater_id,post_id',
         limit: 2,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val, typelist, 'updater_id', 'post_id');})},
@@ -748,53 +742,45 @@ const TYPEDICT = {
     },
     wiki: {
         controller: 'wiki_page_versions',
-        addons: {},
         only: 'id,updater_id,wiki_page_id',
         limit: 10,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val, typelist, 'updater_id', 'wiki_page_id');})},
         insert: InsertWikis,
-        process: function () {JSPLib.utility.setCSSStyle(WIKI_CSS, 'wiki');},
+        process: ()=>{JSPLib.utility.setCSSStyle(WIKI_CSS, 'wiki');},
         plural: 'wikis',
         useritem: false,
     },
     pool: {
         controller: 'pool_versions',
-        addons: {},
         only: 'id,updater_id,pool_id',
         limit: 2,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val, typelist, 'updater_id', 'pool_id');})},
         insert: InsertPools,
-        process: function () {JSPLib.utility.setCSSStyle(POOL_CSS, 'pool');},
+        process: ()=>{JSPLib.utility.setCSSStyle(POOL_CSS, 'pool');},
         plural: 'pools',
         useritem: false,
     },
     feedback: {
         controller: 'user_feedbacks',
-        addons: {},
         only: 'id,creator_id,body',
-        limit: 1,
         filter: (array)=>{return array.filter((val)=>{return IsShownData(val, [], 'creator_id', null, IsShownFeedback);})},
         insert: InsertEvents,
-        process: function () {JSPLib.utility.setCSSStyle(FEEDBACK_CSS, 'feedback');},
+        process: ()=>{JSPLib.utility.setCSSStyle(FEEDBACK_CSS, 'feedback');},
         plural: 'feedbacks',
         useritem: false,
     },
     ban: {
         controller: 'bans',
-        addons: {},
         only: 'id,banner_id',
-        limit: 1,
         filter: (array)=>{return array.filter((val)=>{return IsShownData(val, [], 'banner_id', null, IsShownBan);})},
         insert: InsertEvents,
-        process: function () {JSPLib.utility.setCSSStyle(BAN_CSS, 'ban');},
+        process: ()=>{JSPLib.utility.setCSSStyle(BAN_CSS, 'ban');},
         plural: 'bans',
         useritem: false,
     },
     mod_action: {
         controller: 'mod_actions',
-        addons: {},
         only: 'id,category',
-        limit: 1,
         filter: (array)=>{return array.filter((val)=>{return IsCategorySubscribed(val.category);})},
         insert: InsertEvents,
         plural: 'mod actions',
@@ -1105,7 +1091,9 @@ JSPLib.danbooru.getShowID = function() {
 //Helper functions
 
 async function SetRecentDanbooruID(type,qualifier) {
-    let jsonitem = await JSPLib.danbooru.submitRequest(TYPEDICT[type].controller, JSPLib.utility.joinArgs(TYPEDICT[type].addons, {only: 'id', limit: 1}), []);
+    let type_addon = TYPEDICT[type].addons || {};
+    let url_addons = JSPLib.utility.joinArgs(type_addon, {only: 'id', limit: 1});
+    let jsonitem = await JSPLib.danbooru.submitRequest(TYPEDICT[type].controller, url_addons, []);
     if (jsonitem.length) {
         SaveLastID(type, JSPLib.danbooru.getNextPageID(jsonitem, true), qualifier);
     } else if (TYPEDICT[type].useritem) {
@@ -2093,12 +2081,11 @@ async function CheckPostQueryType(type) {
     let typelastid = JSPLib.storage.checkStorageData(lastidkey, ValidateProgramData, localStorage, 0);
     if (typelastid) {
         let savedlastidkey = `el-pq-saved${type}lastid`;
-        let query_addon = {};
+        let type_addon = TYPEDICT[type].addons || {};
         let post_query = GetTypeQuery(type);
-        if (post_query.replace(/[\S-]+/, '').length) {
-            query_addon = {search: {post_tags_match: GetTypeQuery(type)}};
-        }
-        let url_addons = JSPLib.utility.joinArgs(TYPEDICT[type].addons, query_addon, {only: TYPEDICT[type].only});
+        //Check if the post query has any non-operator text
+        let query_addon = (post_query.replace(/[\S-*~]+/, '').length ? {search: {post_tags_match: GetTypeQuery(type)}} : {});
+        let url_addons = JSPLib.utility.joinArgs(type_addon, query_addon, {only: TYPEDICT[type].only});
         let batches = (EL.no_limit ? null : 1);
         let jsontype = await JSPLib.danbooru.getAllItems(TYPEDICT[type].controller, QUERY_LIMIT, batches, {addons: url_addons, page: typelastid, reverse: true});
         let filtertype = TYPEDICT[type].filter(jsontype);
@@ -2135,7 +2122,8 @@ async function CheckSubscribeType(type) {
         let savedlastid = JSPLib.storage.checkStorageData(savedlastidkey, ValidateProgramData, localStorage, []);
         let savedlist = JSPLib.storage.checkStorageData(savedlistkey, ValidateProgramData, localStorage, []);
         if (!savedlastid.length || !savedlist.length) {
-            let urladdons = JSPLib.utility.joinArgs(TYPEDICT[type].addons, {only: TYPEDICT[type].only});
+            let type_addon = TYPEDICT[type].addons || {};
+            let urladdons = JSPLib.utility.joinArgs(type_addon, {only: TYPEDICT[type].only});
             let batches = TYPEDICT[type].limit;
             let batch_limit = TYPEDICT[type].limit * QUERY_LIMIT;
             if (EL.no_limit) {
@@ -2188,7 +2176,8 @@ async function CheckOtherType(type) {
     let typelastid = JSPLib.storage.checkStorageData(lastidkey, ValidateProgramData, localStorage, 0);
     if (typelastid) {
         let savedlastidkey = `el-ot-saved${type}lastid`;
-        let url_addons = JSPLib.utility.joinArgs(TYPEDICT[type].addons, {only: TYPEDICT[type].only});
+        let type_addon = TYPEDICT[type].addons || {};
+        let url_addons = JSPLib.utility.joinArgs(type_addon, {only: TYPEDICT[type].only});
         let batches = (EL.no_limit ? null : 1);
         let jsontype = await JSPLib.danbooru.getAllItems(TYPEDICT[type].controller, QUERY_LIMIT, batches, {addons: url_addons, page: typelastid, reverse: true});
         let filtertype = TYPEDICT[type].filter(jsontype);
@@ -2215,9 +2204,10 @@ async function CheckOtherType(type) {
 
 async function LoadHTMLType(type,idlist) {
     let section_selector = '#el-' + JSPLib.utility.kebabCase(type) + '-section';
+    let type_addon = TYPEDICT[type].addons || {};
     for (let i = 0; i < idlist.length; i += QUERY_LIMIT) {
         let querylist = idlist.slice(i, i + QUERY_LIMIT);
-        let url_addons = JSPLib.utility.joinArgs(TYPEDICT[type].addons, {search: {id: querylist.join(',')}, limit: querylist.length});
+        let url_addons = JSPLib.utility.joinArgs(type_addon, {search: {id: querylist.join(',')}, limit: querylist.length});
         let typehtml = await JSPLib.network.getNotify(`/${TYPEDICT[type].controller}`, url_addons);
         if (typehtml) {
             if ($(`#el-${type}-regular`).length === 0) {
