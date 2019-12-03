@@ -57,8 +57,10 @@ const TIMER = {};
 
 //For factory reset
 const NONSUBSCRIBE_EVENTS = ['flag', 'appeal', 'dmail', 'spam', 'ban', 'feedback', 'mod_action'];
+const POST_QUERY_EVENTS = ['comment', 'note', 'commentary', 'post', 'flag', 'appeal'];
 const SUBSCRIBE_EVENTS = ['comment', 'forum', 'note', 'commentary', 'post', 'wiki', 'pool'];
-const ALL_EVENTS = JSPLib.utility.concat(NONSUBSCRIBE_EVENTS, SUBSCRIBE_EVENTS);
+const OTHER_EVENTS = ['dmail', 'spam', 'ban', 'feedback', 'mod_action'];
+const ALL_EVENTS = JSPLib.utility.setUnique(POST_QUERY_EVENTS.concat(SUBSCRIBE_EVENTS).concat(OTHER_EVENTS));
 const LASTID_KEYS = ALL_EVENTS.map((type)=>{return `el-${type}lastid`;});
 const OTHER_KEYS = SUBSCRIBE_EVENTS.map((type)=>{return [`el-${type}list`, `el-saved${type}list`, `el-saved${type}lastid`, `el-${type}overflow`];}).flat();
 const LOCALSTORAGE_KEYS = LASTID_KEYS.concat(OTHER_KEYS).concat([
@@ -73,6 +75,9 @@ const PROGRAM_RESET_KEYS = {};
 
 //Available setting values
 const ENABLE_EVENTS = ['flag', 'appeal', 'dmail', 'comment', 'note', 'commentary', 'forum'];
+const POST_QUERY_ENABLE_EVENTS = ['flag', 'appeal'];
+const SUBSCRIBE_ENABLE_EVENTS = ['comment', 'note', 'commentary', 'forum'];
+const OTHER_ENABLE_EVENTS = ['dmail'];
 const AUTOSUBSCRIBE_EVENTS = ['post', 'comment', 'note', 'commentary'];
 const MODACTION_EVENTS = [
     "user_delete", "user_ban", "user_unban", "user_name_change", "user_level_change", "user_approval_privilege", "user_upload_privilege", "user_account_upgrade",
@@ -119,13 +124,31 @@ const SETTINGS_CONFIG = {
         allitems: ALL_EVENTS,
         default: ENABLE_EVENTS,
         validate: (data)=>{return JSPLib.menu.validateCheckboxRadio(data, 'checkbox', ALL_EVENTS);},
-        hint: "Uncheck to turn off event type."
+        hint: "Select to subscribe to event type."
+    },
+    post_query_events_enabled: {
+        allitems: POST_QUERY_EVENTS,
+        default: POST_QUERY_ENABLE_EVENTS,
+        validate: (data)=>{return JSPLib.menu.validateCheckboxRadio(data, 'checkbox', POST_QUERY_EVENTS);},
+        hint: "Select to enable event type."
+    },
+    subscribe_events_enabled: {
+        allitems: SUBSCRIBE_EVENTS,
+        default: SUBSCRIBE_ENABLE_EVENTS,
+        validate: (data)=>{return JSPLib.menu.validateCheckboxRadio(data, 'checkbox', SUBSCRIBE_EVENTS);},
+        hint: "Select to enable event type."
+    },
+    other_events_enabled: {
+        allitems: OTHER_EVENTS,
+        default: OTHER_ENABLE_EVENTS,
+        validate: (data)=>{return JSPLib.menu.validateCheckboxRadio(data, 'checkbox', OTHER_EVENTS);},
+        hint: "Select to enable event type."
     },
     autosubscribe_enabled: {
         allitems: AUTOSUBSCRIBE_EVENTS,
         default: [],
         validate: (data)=>{return JSPLib.menu.validateCheckboxRadio(data, 'checkbox', AUTOSUBSCRIBE_EVENTS);},
-        hint: "Check to autosubscribe event type."
+        hint: "Select to autosubscribe event type."
     },
     subscribed_mod_actions: {
         allitems: MODACTION_EVENTS,
@@ -429,9 +452,21 @@ const EL_MENU = `
                 <h4>Notice settings</h4>
             </div>
         </div>
-        <div id="el-event-settings" class="jsplib-settings-grouping">
-            <div id="el-event-message" class="prose">
-                <h4>Event settings</h4>
+        <div id="el-filter-settings" class="jsplib-settings-grouping">
+            <div id="el-filter-message" class="prose">
+                <h4>Filter settings</h4>
+            </div>
+        </div>
+        <div id="el-post-query-event-settings" class="jsplib-settings-grouping">
+            <div id="el-post-query-event-message" class="prose">
+                <h4>Post query event settings</h4>
+                <p>These events can be searched with a post query. A blank query line will return all events.</p>
+            </div>
+        </div>
+        <div id="el-subscribe-event-settings" class="jsplib-settings-grouping">
+            <div id="el-subscribe-event-message" class="prose">
+                <h4>Subscribe event settings</h4>
+                <p>These events will not be checked unless there are one or more subscribed items.</p>
                 <div class="expandable">
                     <div class="expandable-header">
                         <span>Additional setting details</span>
@@ -439,18 +474,33 @@ const EL_MENU = `
                     </div>
                     <div class="expandable-content">
                         <ul>
-                            <li><b>Events enabled:</b>
-                                <ul>
-                                    <li>Subscription-type events will not be checked unless there is more than one subscribed item.</li>
-                                    <li>These include comments, notes, commentaries, and forums.</li>
-                                </ul>
-                            </li>
                             <li><b>Autosubscribe enabled:</b>
                                 <ul>
                                     <li>Which events on a user's uploads will be automatically subscribed.</li>
                                     <li>Events will only be subscribed on the post page for that upload.</li>
                                 </ul>
                             </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="el-other-event-settings" class="jsplib-settings-grouping">
+            <div id="el-other-event-message" class="prose">
+                <h4>Other event settings</h4>
+                <p>Except for some exceptions noted below, all events of this type are shown.</p>
+                <div class="expandable">
+                    <div class="expandable-header">
+                        <span>Event exceptions</span>
+                        <input type="button" value="Show" class="expandable-button">
+                    </div>
+                    <div class="expandable-content">
+                        <ul>
+                            <li><b>dmail:</b> None.</li>
+                            <li><b>spam:</b> None.</li>
+                            <li><b>ban:</b> None.</li>
+                            <li><b>feedback:</b> No ban feedbacks.</li>
+                            <li><b>mod action:</b> Specific categories must be subscribed.</li>
                         </ul>
                     </div>
                 </div>
@@ -476,7 +526,7 @@ const EL_MENU = `
         </div>
         <div id="el-cache-settings" class="jsplib-settings-grouping">
             <div id="el-cache-message" class="prose">
-                <h4>Cache settings</h4>
+                <h4>Cache controls</h4>
             </div>
         </div>
         <hr>
@@ -2181,11 +2231,13 @@ function RenderSettingsMenu() {
     $('#el-notice-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'autolock_notices'));
     $('#el-notice-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'mark_read_topics'));
     $('#el-notice-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'autoclose_dmail_notice'));
-    $('#el-event-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'filter_user_events'));
-    $('#el-event-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'filter_untranslated_commentary'));
-    $('#el-event-settings').append(JSPLib.menu.renderInputSelectors(PROGRAM_SHORTCUT, 'events_enabled', 'checkbox'));
-    $('#el-event-settings').append(JSPLib.menu.renderInputSelectors(PROGRAM_SHORTCUT, 'autosubscribe_enabled', 'checkbox'));
-    $('#el-event-settings').append(JSPLib.menu.renderInputSelectors(PROGRAM_SHORTCUT, 'subscribed_mod_actions', 'checkbox'));
+    $('#el-filter-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'filter_user_events'));
+    $('#el-filter-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'filter_untranslated_commentary'));
+    $('#el-post-query-event-settings').append(JSPLib.menu.renderInputSelectors(PROGRAM_SHORTCUT, 'post_query_events_enabled', 'checkbox'));
+    $('#el-subscribe-event-settings').append(JSPLib.menu.renderInputSelectors(PROGRAM_SHORTCUT, 'subscribe_events_enabled', 'checkbox'));
+    $('#el-subscribe-event-settings').append(JSPLib.menu.renderInputSelectors(PROGRAM_SHORTCUT, 'autosubscribe_enabled', 'checkbox'));
+    $('#el-other-event-settings').append(JSPLib.menu.renderInputSelectors(PROGRAM_SHORTCUT, 'other_events_enabled', 'checkbox'));
+    $('#el-other-event-settings').append(JSPLib.menu.renderInputSelectors(PROGRAM_SHORTCUT, 'subscribed_mod_actions', 'checkbox'));
     $('#el-network-settings').append(JSPLib.menu.renderTextinput(PROGRAM_SHORTCUT, 'recheck_interval', 10));
     $('#el-subscribe-controls').append(JSPLib.menu.renderInputSelectors(PROGRAM_SHORTCUT, 'post_events', 'checkbox', true));
     $('#el-subscribe-controls').append(JSPLib.menu.renderInputSelectors(PROGRAM_SHORTCUT, 'operation','radio',true));
@@ -2237,9 +2289,24 @@ function Main() {
         Main.debuglog("Invalid meta variables!");
         return;
     }
+    //Temporary transition code
+    if (!localStorage['el-transition-17.0']) {
+        let user_settings = JSPLib.storage.getStorageData('el-user-settings', localStorage);
+        if (JSPLib.validate.isHash(user_settings) && ('events_enabled' in user_settings) && Array.isArray(user_settings.events_enabled)) {
+            user_settings.post_query_events_enabled = JSPLib.utility.setIntersection(['flag', 'appeal'] , user_settings.events_enabled);
+            user_settings.subscribe_events_enabled = JSPLib.utility.setIntersection(SUBSCRIBE_EVENTS , user_settings.events_enabled);
+            user_settings.other_events_enabled = JSPLib.utility.setIntersection(['dmail', 'spam'] , user_settings.events_enabled);
+            JSPLib.storage.setStorageData('el-user-settings', user_settings, localStorage);
+        }
+        localStorage['el-transition-17.0'] = true;
+    }
     Object.assign(EL, {
         user_settings: JSPLib.menu.loadUserSettings(PROGRAM_SHORTCUT),
     });
+    if (EL.user_settings.flag_query === "###INITIALIZE###" || EL.user_settings.appeal_query === "###INITIALIZE###") {
+        EL.user_settings.flag_query = EL.user_settings.appeal_query = 'user:' + EL.username;
+        JSPLib.storage.setStorageData('el-user-settings', EL.user_settings, localStorage);
+    }
     if (JSPLib.danbooru.isSettingMenu()) {
         JSPLib.validate.dom_output = '#el-cache-editor-errors';
         JSPLib.menu.loadStorageKeys(PROGRAM_SHORTCUT);
