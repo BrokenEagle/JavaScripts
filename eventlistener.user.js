@@ -953,7 +953,7 @@ JSPLib.danbooru.getShowID = function() {
 //Helper functions
 
 async function SetRecentDanbooruID(type,useritem=false) {
-    let jsonitem = await JSPLib.danbooru.submitRequest(TYPEDICT[type].controller, JSPLib.utility.joinArgs(TYPEDICT[type].addons, {limit: 1}), []);
+    let jsonitem = await JSPLib.danbooru.submitRequest(TYPEDICT[type].controller, JSPLib.utility.joinArgs(TYPEDICT[type].addons, {only: 'id', limit: 1}), []);
     if (jsonitem.length) {
         SaveLastID(type, JSPLib.danbooru.getNextPageID(jsonitem, true));
     } else if (useritem) {
