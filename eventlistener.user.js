@@ -1467,9 +1467,9 @@ function InsertDmails($dmailpage,type) {
 function InsertComments($commentpage) {
     DecodeProtectedEmail($commentpage);
     $('.post-preview', $commentpage).addClass('blacklisted');
-    $('.edit_comment', $commentpage).hide();
-    $('#el-comment-table').append($('.list-of-comments', $commentpage));
-    InitializeCommentPartialCommentLinks('#el-event-notice #el-comment-section .post-preview');
+    let $commentsection = $('.list-of-comments', $commentpage);
+    $('#el-comment-table').append($commentsection);
+    InitializeCommentPartialCommentLinks($commentsection);
 }
 
 function InsertForums($forumpage) {
@@ -1908,8 +1908,8 @@ function InitializeCommentPartialPostLinks() {
 }
 
 //#C-COMMENTS #P-INDEX-BY-COMMENT
-function InitializeCommentPartialCommentLinks(selector) {
-    $(selector).each((i,entry)=>{
+function InitializeCommentPartialCommentLinks($obj) {
+    $('.post-preview', $obj).each((i,entry)=>{
         var postid = parseInt($(entry).data('id'));
         if (!postid) {
             return;
@@ -2522,7 +2522,7 @@ function Main() {
             SubscribeMultiLinkCallback();
         }
     } else if (EL.controller === 'comments' && EL.action === 'index') {
-        InitializeCommentPartialCommentLinks('#c-comments .post-preview');
+        InitializeCommentPartialCommentLinks(document);
     } else if (['forum-topics', 'forum-posts'].includes(EL.controller)) {
         if (EL.action === 'show') {
             InitializeTopicShowMenu();
