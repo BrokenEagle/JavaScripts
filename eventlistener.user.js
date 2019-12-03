@@ -2214,17 +2214,20 @@ async function CheckOtherType(type) {
 }
 
 async function LoadHTMLType(type,idlist) {
-    let url_addons = JSPLib.utility.joinArgs(TYPEDICT[type].addons, {search: {id: idlist.join(',')}, limit: idlist.length});
-    let typehtml = await JSPLib.network.getNotify(`/${TYPEDICT[type].controller}`, url_addons);
     let section_selector = '#el-' + JSPLib.utility.kebabCase(type) + '-section';
-    if (typehtml) {
-        if ($(`#el-${type}-table`).length === 0) {
-            $(section_selector).prepend(JSPLib.utility.sprintf(REGULAR_NOTICE, type, TYPEDICT[type].plural, type));
+    for (let i = 0; i < idlist.length; i += QUERY_LIMIT) {
+        let querylist = idlist.slice(i, i + QUERY_LIMIT);
+        let url_addons = JSPLib.utility.joinArgs(TYPEDICT[type].addons, {search: {id: querylist.join(',')}, limit: querylist.length});
+        let typehtml = await JSPLib.network.getNotify(`/${TYPEDICT[type].controller}`, url_addons);
+        if (typehtml) {
+            if ($(`#el-${type}-regular`).length === 0) {
+                $(section_selector).prepend(JSPLib.utility.sprintf(REGULAR_NOTICE, type, TYPEDICT[type].plural, type));
+            }
+            let $typepage = $.parseHTML(typehtml);
+            TYPEDICT[type].insert($typepage, type);
+        } else if ($(`#el-${type}-error`).length === 0) {
+            $(section_selector).append(JSPLib.utility.sprintf(ERROR_NOTICE, type, TYPEDICT[type].plural));
         }
-        let $typepage = $.parseHTML(typehtml);
-        TYPEDICT[type].insert($typepage, type);
-    } else {
-        $(section_selector).append(JSPLib.utility.sprintf(ERROR_NOTICE, type, TYPEDICT[type].plural));
     }
     if (TYPEDICT[type].process) {
         TYPEDICT[type].process();
