@@ -2492,7 +2492,7 @@ function Main() {
     });
     EventStatusCheck();
     InitializeNoticeBox();
-    if ((JSPLib.concurrency.checkTimeout('el-timeout', EL.timeout_expires) || HasEvents() || WasOverflow()) && JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT)) {
+    if (!document.hidden && (JSPLib.concurrency.checkTimeout('el-timeout', EL.timeout_expires) || HasEvents() || WasOverflow()) && JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT)) {
         if (CheckAbsence()) {
             JSPLib.concurrency.setRecheckTimeout('el-timeout', EL.timeout_expires);
             ProcessAllEvents(()=>{
