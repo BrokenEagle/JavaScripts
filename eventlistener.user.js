@@ -123,6 +123,11 @@ const SETTINGS_CONFIG = {
         validate: (data)=>{return typeof data === 'boolean';},
         hint: "Only show new commentary that has translated sections."
     },
+    filter_autobans: {
+        default: true,
+        validate: (data)=>{return typeof data === 'boolean';},
+        hint: 'Only show bans not created by <a class="user-moderator with-style" style="color:var(--user-moderator-color)" href="/users/502584">DanbooruBot</a>.'
+    },
     recheck_interval: {
         default: 5,
         parse: parseInt,
@@ -779,7 +784,7 @@ const TYPEDICT = {
         addons: {},
         only: 'id,banner_id',
         limit: 1,
-        filter: (array)=>{return array.filter((val)=>{return IsShownData(val, [], 'banner_id');})},
+        filter: (array)=>{return array.filter((val)=>{return IsShownData(val, [], 'banner_id', null, IsShownBan);})},
         insert: InsertEvents,
         process: function () {JSPLib.utility.setCSSStyle(BAN_CSS, 'ban');},
         plural: 'bans',
@@ -2378,6 +2383,13 @@ function IsShownFeedback(val) {
     return val.body.match(/^Banned for ((almost|over|about) )?\d+ (days?|months?|years?):/) === null;
 }
 
+function IsShownBan(val) {
+    if (!EL.user_settings.filter_autobans) {
+        return true;
+    }
+    return val.banner_id !== 502584;
+}
+
 function GetRecheckExpires() {
     return EL.user_settings.recheck_interval * JSPLib.utility.one_minute;
 }
@@ -2390,6 +2402,7 @@ function RenderSettingsMenu() {
     $('#el-notice-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'autoclose_dmail_notice'));
     $('#el-filter-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'filter_user_events'));
     $('#el-filter-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'filter_untranslated_commentary'));
+    $('#el-filter-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'filter_autobans'));
     $('#el-post-query-event-settings').append(JSPLib.menu.renderInputSelectors(PROGRAM_SHORTCUT, 'post_query_events_enabled', 'checkbox'));
     $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput(PROGRAM_SHORTCUT, 'comment_query', 80));
     $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput(PROGRAM_SHORTCUT, 'note_query', 80));
