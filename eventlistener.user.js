@@ -1781,7 +1781,7 @@ function InitializePostShowMenu() {
     linkhtml = RenderSubscribeMultiLinks("All", enabled_post_events, postid);
     $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-all-container">${linkhtml}</span>`);
     $('#nav').append($menu_obj);
-    $('#el-subscribe-events a').on(PROGRAM_CLICK, SubscribeMultiLink);
+    $('#el-subscribe-events a').off(PROGRAM_CLICK).on(PROGRAM_CLICK, SubscribeMultiLink);
 }
 
 //#C-FORUM-TOPICS #A-SHOW
@@ -1799,7 +1799,7 @@ function InitializeTopicShowMenu() {
     let $email = $('#subnav-subscribe, #subnav-unsubscribe').detach().find('a').text("Email");
     $('#el-add-links', $menu_obj).append($email);
     $('#nav').append($menu_obj);
-    $('#el-subscribe-events a').on(PROGRAM_CLICK, SubscribeMultiLink);
+    $('#el-subscribe-events a').off(PROGRAM_CLICK).on(PROGRAM_CLICK, SubscribeMultiLink);
 }
 
 //#C-FORUM-TOPICS #A-INDEX
@@ -1819,7 +1819,7 @@ function InitializeTopicIndexLinks(table,render=true) {
             let subscribed = !typelist.includes(topicid);
             UpdateDualLink('forum', subscribed, topicid);
         }
-        $('.el-subscribe-dual-links a', entry).on(PROGRAM_CLICK, SubscribeDualLink);
+        $('.el-subscribe-dual-links a', entry).off(PROGRAM_CLICK).on(PROGRAM_CLICK, SubscribeDualLink);
     });
 }
 
@@ -1837,7 +1837,7 @@ function InitializeWikiShowMenu() {
     let shownhtml = (IsEventEnabled('wiki', 'subscribe_events_enabled') ? "" : 'style="display:none"');
     $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-wiki-container "${shownhtml}>${linkhtml}</span>`);
     $('#nav').append($menu_obj);
-    $('#el-subscribe-events a').on(PROGRAM_CLICK, SubscribeMultiLink);
+    $('#el-subscribe-events a').off(PROGRAM_CLICK).on(PROGRAM_CLICK, SubscribeMultiLink);
 }
 
 //#C-WIKI-PAGES #A-INDEX
@@ -1857,7 +1857,7 @@ function InitializeWikiIndexLinks(table,render=true) {
             let subscribed = !typelist.includes(wikiid);
             UpdateDualLink('wiki', subscribed, wikiid);
         }
-        $('.el-subscribe-dual-links a', row).on(PROGRAM_CLICK, SubscribeDualLink);
+        $('.el-subscribe-dual-links a', row).off(PROGRAM_CLICK).on(PROGRAM_CLICK, SubscribeDualLink);
     });
 }
 
@@ -1872,7 +1872,7 @@ function InitializePoolShowMenu() {
     let shownhtml = (IsEventEnabled('pool', 'subscribe_events_enabled') ? "" : 'style="display:none"');
     $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-pool-container "${shownhtml}>${linkhtml}</span>`);
     $('#nav').append($menu_obj);
-    $('#el-subscribe-events a').on(PROGRAM_CLICK, SubscribeMultiLink);
+    $('#el-subscribe-events a').off(PROGRAM_CLICK).on(PROGRAM_CLICK, SubscribeMultiLink);
 }
 
 //#C-POOLS #A-INDEX
@@ -1892,7 +1892,7 @@ function InitializePoolIndexLinks(table,render=true) {
             let subscribed = !typelist.includes(poolid);
             UpdateDualLink('pool', subscribed, poolid);
         }
-        $('.el-subscribe-dual-links a', row).on(PROGRAM_CLICK, SubscribeDualLink);
+        $('.el-subscribe-dual-links a', row).off(PROGRAM_CLICK).on(PROGRAM_CLICK, SubscribeDualLink);
     });
 }
 
@@ -1907,7 +1907,7 @@ function InitializePoolGalleryLinks() {
         let linkhtml = RenderSubscribeDualLinks('pool', poolid, 'div', " ", 'pool');
         let shownhtml = (IsEventEnabled('pool', 'subscribe_events_enabled') ? "" : 'style="display:none"');
         $(entry).before(`<div class="el-subscribe-pool-container "${shownhtml}>${linkhtml}</div>`);
-        $('.el-subscribe-dual-links a', entry.parentElement).on(PROGRAM_CLICK, SubscribeDualLink);
+        $('.el-subscribe-dual-links a', entry.parentElement).off(PROGRAM_CLICK).on(PROGRAM_CLICK, SubscribeDualLink);
     });
 }
 //EVENT NOTICE
@@ -1926,7 +1926,7 @@ function InitializePostNoteIndexLinks(type,table,render=true) {
             let subscribed = !typelist.includes(postid);
             UpdateDualLink(type, subscribed, postid);
         }
-        $('.el-subscribe-dual-links a', row).on(PROGRAM_CLICK, SubscribeDualLink);
+        $('.el-subscribe-dual-links a', row).off(PROGRAM_CLICK).on(PROGRAM_CLICK, SubscribeDualLink);
     });
 }
 
@@ -1940,7 +1940,7 @@ function InitializeCommentPartialPostLinks() {
         let linkhtml = RenderSubscribeDualLinks('comment', postid, 'div', " ", 'comments');
         let shownhtml = (IsEventEnabled('comment', 'subscribe_events_enabled') ? "" : 'style="display:none"');
         $('.header', entry).after(`<div class="el-subscribe-comment-container "${shownhtml}>${linkhtml}</div>`);
-        $('.el-subscribe-dual-links a', entry).on(PROGRAM_CLICK, SubscribeDualLink);
+        $('.el-subscribe-dual-links a', entry).off(PROGRAM_CLICK).on(PROGRAM_CLICK, SubscribeDualLink);
     });
 }
 
@@ -2080,7 +2080,7 @@ async function PostEventPopulateControl(event) {
 //Event setup functions
 
 function OpenItemClick(type,parentlevel,htmlfunc,otherfunc) {
-    $(`.el-show-hide-links[data-type="${type}"] a`).on(PROGRAM_CLICK, (event)=>{
+    $(`.el-show-hide-links[data-type="${type}"] a`).off(PROGRAM_CLICK).on(PROGRAM_CLICK, (event)=>{
         EL.openlist[type] = EL.openlist[type] || [];
         let itemid = $(event.target.parentElement.parentElement).data('id');
         let openitem = $(event.target.parentElement).data('action') === 'show';
@@ -2490,7 +2490,7 @@ function RenderSettingsMenu() {
     JSPLib.menu.engageUI(PROGRAM_SHORTCUT, true);
     JSPLib.menu.saveUserSettingsClick(PROGRAM_SHORTCUT, PROGRAM_NAME);
     JSPLib.menu.resetUserSettingsClick(PROGRAM_SHORTCUT, PROGRAM_NAME, LOCALSTORAGE_KEYS, PROGRAM_RESET_KEYS);
-    $('#el-search-query-get').on(PROGRAM_CLICK, PostEventPopulateControl);
+    $('#el-search-query-get').off(PROGRAM_CLICK).on(PROGRAM_CLICK, PostEventPopulateControl);
     JSPLib.menu.cacheInfoClick(PROGRAM_SHORTCUT, EMPTY_REGEX, '#el-cache-info-table');
     JSPLib.menu.getCacheClick(PROGRAM_SHORTCUT);
     JSPLib.menu.saveCacheClick(PROGRAM_SHORTCUT, ValidateProgramData);
