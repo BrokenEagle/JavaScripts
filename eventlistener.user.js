@@ -91,11 +91,11 @@ const SUBSCRIBE_ENABLE_EVENTS = ['comment', 'note', 'commentary', 'forum'];
 const OTHER_ENABLE_EVENTS = ['dmail'];
 const AUTOSUBSCRIBE_EVENTS = ['post', 'comment', 'note', 'commentary'];
 const MODACTION_EVENTS = [
-    "user_delete", "user_ban", "user_unban", "user_name_change", "user_level_change", "user_approval_privilege", "user_upload_privilege", "user_account_upgrade",
-    "user_feedback_update", "user_feedback_delete", "post_delete", "post_undelete", "post_ban", "post_unban", "post_permanent_delete", "post_move_favorites",
-    "pool_delete", "pool_undelete", "artist_ban", "artist_unban", "comment_update", "comment_delete", "forum_topic_delete", "forum_topic_undelete", "forum_topic_lock",
-    "forum_post_update", "forum_post_delete", "tag_alias_create", "tag_alias_update", "tag_implication_create", "tag_implication_update", "ip_ban_create", "ip_ban_delete",
-    "mass_update", "bulk_revert", "other"
+    'user_delete', 'user_ban', 'user_unban', 'user_name_change', 'user_level_change', 'user_approval_privilege', 'user_upload_privilege', 'user_account_upgrade',
+    'user_feedback_update', 'user_feedback_delete', 'post_delete', 'post_undelete', 'post_ban', 'post_unban', 'post_permanent_delete', 'post_move_favorites',
+    'pool_delete', 'pool_undelete', 'artist_ban', 'artist_unban', 'comment_update', 'comment_delete', 'forum_topic_delete', 'forum_topic_undelete', 'forum_topic_lock',
+    'forum_post_update', 'forum_post_delete', 'tag_alias_create', 'tag_alias_update', 'tag_implication_create', 'tag_implication_update', 'ip_ban_create', 'ip_ban_delete',
+    'mass_update', 'bulk_revert', 'other'
 ];
 
 //Main settings
@@ -831,8 +831,8 @@ const ALL_VALIDATE_REGEXES = {
 };
 
 const VALIDATE_REGEX = XRegExp.build(
-    Object.keys(ALL_VALIDATE_REGEXES).map(type=>` ({{${type}}}) `).join('|'),
-    Object.assign({}, ...Object.keys(ALL_VALIDATE_REGEXES).map(type=>{
+    Object.keys(ALL_VALIDATE_REGEXES).map(type => ` ({{${type}}}) `).join('|'),
+    Object.assign({}, ...Object.keys(ALL_VALIDATE_REGEXES).map((type)=>{
         let format = "";
         if (typeof ALL_VALIDATE_REGEXES[type] === "string") {
             format = ALL_VALIDATE_REGEXES[type];
@@ -1139,11 +1139,11 @@ function GetTypeQuery(type) {
 }
 
 function HideDmailNotice() {
-    let $dmail_notice = $("#dmail-notice");
+    let $dmail_notice = $('#dmail-notice');
     if ($dmail_notice.length) {
         $dmail_notice.hide();
-        let dmail_id = $dmail_notice.data("id");
-        JSPLib.utility.createCookie("hide_dmail_notice", dmail_id);
+        let dmail_id = $dmail_notice.data('id');
+        JSPLib.utility.createCookie('hide_dmail_notice', dmail_id);
     }
 }
 
@@ -1352,8 +1352,8 @@ async function AddWiki(wikiverid,rowelement) {
         }
         let $wiki_diff_page = $.parseHTML(wiki_diff_page);
         let $outerblock = $.parseHTML(RenderOpenItemContainer('wiki', wikiverid, 4));
-        $('td', $outerblock).append($("#a-diff #content p", $wiki_diff_page));
-        let wiki_diff= $("#a-diff #content div", $wiki_diff_page).html().replace(/<br>/g, PARAGRAPH_MARK);
+        $('td', $outerblock).append($('#a-diff #content p', $wiki_diff_page));
+        let wiki_diff= $('#a-diff #content div', $wiki_diff_page).html().replace(/<br>/g, PARAGRAPH_MARK);
         $('td', $outerblock).append(wiki_diff);
         $(rowelement).after($outerblock);
     } else {
@@ -1843,7 +1843,7 @@ function InitializeWikiShowMenu() {
 //#C-WIKI-PAGES #A-INDEX
 function InitializeWikiIndexLinks(table,render=true) {
     let typelist = GetList('wiki');
-    $(`.striped tbody tr`, table).each((i,row)=>{
+    $('.striped tbody tr', table).each((i,row)=>{
         let match = row.innerHTML.match(WIKI_PAGES_REGEX);
         if (!match) {
             return;
@@ -1878,7 +1878,7 @@ function InitializePoolShowMenu() {
 //#C-POOLS #A-INDEX
 function InitializePoolIndexLinks(table,render=true) {
     let typelist = GetList('pool');
-    $(`.striped tbody tr`, table).each((i,row)=>{
+    $('.striped tbody tr', table).each((i,row)=>{
         let match = row.innerHTML.match(POOLS_REGEX);
         if (!match) {
             return;
