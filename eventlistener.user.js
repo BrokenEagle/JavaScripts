@@ -2583,6 +2583,16 @@ function Main() {
             }
         }
         $("#el-event-notice").show();
+        let any_blacklisted = document.querySelector("#el-event-notice .blacklisted");
+        if (any_blacklisted) {
+            new MutationObserver((mutations,observer)=>{
+                $('#el-event-notice .blacklisted-active').removeClass('blacklisted-active');
+                observer.disconnect();
+            }).observe(any_blacklisted, {
+                attributes: true,
+                attributefilter: ['class']
+            });
+        }
     } else if (!document.hidden && (JSPLib.concurrency.checkTimeout('el-timeout', EL.timeout_expires) || HasEvents() || WasOverflow()) && JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT)) {
         InitializeNoticeBox();
         if (CheckAbsence()) {
