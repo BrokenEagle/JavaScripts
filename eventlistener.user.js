@@ -1898,7 +1898,7 @@ function InitializePoolIndexLinks(table,render=true) {
 
 //#C-POOLS #A-GALLERY
 function InitializePoolGalleryLinks() {
-    $(`.post-preview > a`).each((i,entry)=>{
+    $('#c-pools #a-gallery .post-preview > a').each((i,entry)=>{
         let match = entry.href.match(POOLS_REGEX);
         if (!match) {
             return;
@@ -1932,7 +1932,7 @@ function InitializePostNoteIndexLinks(type,table,render=true) {
 
 //#C-COMMENTS #P-INDEX-BY-POST
 function InitializeCommentPartialPostLinks() {
-    $('#p-index-by-post .comments-for-post').each((i,entry)=>{
+    $('#c-comments #a-index #p-index-by-post .comments-for-post').each((i,entry)=>{
         let postid = parseInt($(entry).data('post-id'));
         if (!postid) {
             return;
