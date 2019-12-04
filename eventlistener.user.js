@@ -1114,7 +1114,7 @@ async function SetRecentDanbooruID(type,qualifier) {
     if (jsonitem.length) {
         SaveLastID(type, JSPLib.danbooru.getNextPageID(jsonitem, true), qualifier);
     } else if (TYPEDICT[type].useritem) {
-        SaveLastID(type, 0, qualifier);
+        SaveLastID(type, 1, qualifier);
     }
 }
 
@@ -1209,6 +1209,9 @@ function CheckList(type) {
 //Auxiliary functions
 
 function SaveLastID(type,lastid,qualifier='') {
+    if (!JSPLib.validate.validateID(lastid)) {
+        return;
+    }
     qualifier += (qualifier.length > 0 ? '-' : '');
     let key = `el-${qualifier}${type}lastid`;
     let previousid = JSPLib.storage.checkStorageData(key, ValidateProgramData, localStorage, 1);
