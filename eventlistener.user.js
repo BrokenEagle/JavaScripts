@@ -13,6 +13,7 @@
 // @require      https://cdn.jsdelivr.net/npm/core-js-bundle@3.2.1/minified.js
 // @require      https://cdn.jsdelivr.net/npm/xregexp@4.2.4/xregexp-all.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jsdiff/4.0.1/diff.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/debug.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/load.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/utility.js
@@ -77,7 +78,8 @@ const LOCALSTORAGE_KEYS = LASTID_KEYS.concat(SAVED_KEYS).concat(SUBSCRIBE_KEYS).
     'el-events',
     'el-overflow',
     'el-timeout',
-    'el-last-seen'
+    'el-last-seen',
+    'el-saved-notice',
 ]);
 //Not handling reset event yet
 const PROGRAM_RESET_KEYS = {};
@@ -679,6 +681,7 @@ const TYPEDICT = {
         insert: InsertDmails,
         plural: 'mail',
         useritem: true,
+        open: ()=>{OpenItemClick('dmail', 3, AddDmail);},
     },
     spam: {
         controller: 'dmails',
@@ -688,6 +691,7 @@ const TYPEDICT = {
         insert: InsertDmails,
         plural: 'spam',
         useritem: true,
+        open: ()=>{OpenItemClick('dmail', 3, AddDmail);},
     },
     comment: {
         controller: 'comments',
@@ -699,6 +703,7 @@ const TYPEDICT = {
         process: ()=>{JSPLib.utility.setCSSStyle(COMMENT_CSS, 'comment');},
         plural: 'comments',
         display: "Comments",
+        subscribe: InitializeCommentPartialCommentLinks,
     },
     forum: {
         controller: 'forum_posts',
@@ -709,6 +714,8 @@ const TYPEDICT = {
         process: ()=>{JSPLib.utility.setCSSStyle(FORUM_CSS, 'forum');},
         plural: 'forums',
         useritem: false,
+        open: ()=>{OpenItemClick('forum', 4, AddForumPost);},
+        subscribe: InitializeTopicIndexLinks,
     },
     note: {
         controller: 'note_versions',
@@ -719,6 +726,8 @@ const TYPEDICT = {
         plural: 'notes',
         display: "Notes",
         useritem: false,
+        open: ()=>{OpenItemClick('note', 5, AddRenderedNote, AdjustRowspan);},
+        subscribe: (table)=>{InitializePostNoteIndexLinks('note', table, false);},
     },
     commentary: {
         controller: 'artist_commentary_versions',
@@ -739,6 +748,7 @@ const TYPEDICT = {
         plural: 'edits',
         display: "Edits",
         useritem: false,
+        subscribe: (table)=>{InitializePostNoteIndexLinks('post', table, false);},
     },
     wiki: {
         controller: 'wiki_page_versions',
@@ -749,6 +759,8 @@ const TYPEDICT = {
         process: ()=>{JSPLib.utility.setCSSStyle(WIKI_CSS, 'wiki');},
         plural: 'wikis',
         useritem: false,
+        open: ()=>{OpenItemClick('wiki', 4, AddWiki);},
+        subscribe: InitializeWikiIndexLinks,
     },
     pool: {
         controller: 'pool_versions',
@@ -759,6 +771,11 @@ const TYPEDICT = {
         process: ()=>{JSPLib.utility.setCSSStyle(POOL_CSS, 'pool');},
         plural: 'pools',
         useritem: false,
+        open: ()=>{
+            OpenItemClick('pooldiff', 3, AddPoolDiff);
+            OpenItemClick('poolposts', 3, AddPoolPosts);
+        },
+        subscribe: InitializePoolIndexLinks,
     },
     feedback: {
         controller: 'user_feedbacks',
@@ -1652,8 +1669,11 @@ function RenderOpenItemContainer(type,itemid,columns) {
 
 //Initialize functions
 
-function InitializeNoticeBox() {
+function InitializeNoticeBox(notice_html) {
     $('#page').prepend(NOTICE_BOX);
+    if (notice_html) {
+        $("#el-event-notice").html(notice_html);
+    }
     if (EL.locked_notice) {
         $('#el-lock-event-notice').addClass('el-locked');
     } else {
@@ -1783,16 +1803,22 @@ function InitializeTopicShowMenu() {
 }
 
 //#C-FORUM-TOPICS #A-INDEX
-function InitializeTopicIndexLinks(table) {
+function InitializeTopicIndexLinks(table,render=true) {
+    let typelist = GetList('forum');
     $('.striped tr td:first-of-type', table).each((i,entry)=>{
         let match = entry.innerHTML.match(FORUM_TOPICS_REGEX);
         if (!match) {
             return;
         }
         let topicid = parseInt(match[1]);
-        let linkhtml = RenderSubscribeDualLinks('forum', topicid, 'span', "", "", true);
-        let shownhtml = (IsEventEnabled('forum', 'subscribe_events_enabled') ? "" : 'style="display:none"');
-        $(entry).prepend(`<span class="el-subscribe-forum-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
+        if (render) {
+            let linkhtml = RenderSubscribeDualLinks('forum', topicid, 'span', "", "", true);
+            let shownhtml = (IsEventEnabled('forum', 'subscribe_events_enabled') ? "" : 'style="display:none"');
+            $(entry).prepend(`<span class="el-subscribe-forum-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
+        } else {
+            let subscribed = !typelist.includes(topicid);
+            UpdateDualLink('forum', subscribed, topicid);
+        }
         $('.el-subscribe-dual-links a', entry).on(PROGRAM_CLICK, SubscribeDualLink);
     });
 }
@@ -1815,16 +1841,22 @@ function InitializeWikiShowMenu() {
 }
 
 //#C-WIKI-PAGES #A-INDEX
-function InitializeWikiIndexLinks(table) {
+function InitializeWikiIndexLinks(table,render=true) {
+    let typelist = GetList('wiki');
     $(`.striped tbody tr`, table).each((i,row)=>{
         let match = row.innerHTML.match(WIKI_PAGES_REGEX);
         if (!match) {
             return;
         }
         let wikiid = parseInt(match[1]);
-        let linkhtml = RenderSubscribeDualLinks('wiki', wikiid, 'span', "", "", true);
-        let shownhtml = (IsEventEnabled('wiki', 'subscribe_events_enabled') ? "" : 'style="display:none"');
-        $('td.category-0, td.category-1, td.category-3, td.category-4, td.category-5', row).prepend(`<span class="el-subscribe-wiki-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
+        if (render) {
+            let linkhtml = RenderSubscribeDualLinks('wiki', wikiid, 'span', "", "", true);
+            let shownhtml = (IsEventEnabled('wiki', 'subscribe_events_enabled') ? "" : 'style="display:none"');
+            $('td.category-0, td.category-1, td.category-3, td.category-4, td.category-5', row).prepend(`<span class="el-subscribe-wiki-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
+        } else {
+            let subscribed = !typelist.includes(wikiid);
+            UpdateDualLink('wiki', subscribed, wikiid);
+        }
         $('.el-subscribe-dual-links a', row).on(PROGRAM_CLICK, SubscribeDualLink);
     });
 }
@@ -1844,16 +1876,22 @@ function InitializePoolShowMenu() {
 }
 
 //#C-POOLS #A-INDEX
-function InitializePoolIndexLinks(table) {
+function InitializePoolIndexLinks(table,render=true) {
+    let typelist = GetList('pool');
     $(`.striped tbody tr`, table).each((i,row)=>{
         let match = row.innerHTML.match(POOLS_REGEX);
         if (!match) {
             return;
         }
         let poolid = parseInt(match[1]);
-        let linkhtml = RenderSubscribeDualLinks('pool', poolid, 'span', "", "", true);
-        let shownhtml = (IsEventEnabled('pool', 'subscribe_events_enabled') ? "" : 'style="display:none"');
-        $('td:first-of-type', row).prepend(`<span class="el-subscribe-pool-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
+        if (render) {
+            let linkhtml = RenderSubscribeDualLinks('pool', poolid, 'span', "", "", true);
+            let shownhtml = (IsEventEnabled('pool', 'subscribe_events_enabled') ? "" : 'style="display:none"');
+            $('td:first-of-type', row).prepend(`<span class="el-subscribe-pool-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
+        } else {
+            let subscribed = !typelist.includes(poolid);
+            UpdateDualLink('pool', subscribed, poolid);
+        }
         $('.el-subscribe-dual-links a', row).on(PROGRAM_CLICK, SubscribeDualLink);
     });
 }
@@ -1874,14 +1912,20 @@ function InitializePoolGalleryLinks() {
 }
 //EVENT NOTICE
 
-function InitializePostNoteIndexLinks(type,table) {
+function InitializePostNoteIndexLinks(type,table,render=true) {
+    let typelist = GetList(type);
     $('.striped tr[id]', table).each((i,row)=>{
-        let postid = $('.el-post-thumbnail', row).data('postid');
+        let postid = parseInt($('.el-post-thumbnail', row).data('postid'));
         if (!postid) {
             return;
         }
-        let linkhtml = RenderSubscribeDualLinks(type, postid, 'span', "", "", true);
-        $('td:first-of-type', row).prepend(`<div style="text-align:center">${linkhtml}</div>`);
+        if (render) {
+            let linkhtml = RenderSubscribeDualLinks(type, postid, 'span', "", "", true);
+            $('td:first-of-type', row).prepend(`<div style="text-align:center">${linkhtml}</div>`);
+        } else {
+            let subscribed = !typelist.includes(postid);
+            UpdateDualLink(type, subscribed, postid);
+        }
         $('.el-subscribe-dual-links a', row).on(PROGRAM_CLICK, SubscribeDualLink);
     });
 }
@@ -1901,16 +1945,22 @@ function InitializeCommentPartialPostLinks() {
 }
 
 //#C-COMMENTS #P-INDEX-BY-COMMENT
-function InitializeCommentPartialCommentLinks($obj) {
+function InitializeCommentPartialCommentLinks($obj,render=true) {
+    let typelist = GetList('comment');
     $('.post-preview', $obj).each((i,entry)=>{
         var postid = parseInt($(entry).data('id'));
         if (!postid) {
             return;
         }
-        var linkhtml = RenderSubscribeDualLinks('comment', postid, 'div', " ", 'comments');
-        let shownhtml = (IsEventEnabled('comment', 'subscribe_events_enabled') ? "" : 'style="display:none"');
-        let $subscribe = $.parseHTML(`<div class="el-subscribe-comment-container "${shownhtml}>${linkhtml}</div>`);
-        $('.preview', entry).append($subscribe);
+        if (render) {
+            var linkhtml = RenderSubscribeDualLinks('comment', postid, 'div', " ", 'comments');
+            let shownhtml = (IsEventEnabled('comment', 'subscribe_events_enabled') ? "" : 'style="display:none"');
+            let $subscribe = $.parseHTML(`<div class="el-subscribe-comment-container "${shownhtml}>${linkhtml}</div>`);
+            $('.preview', entry).append($subscribe);
+        } else {
+            let subscribed = !typelist.includes(postid);
+            UpdateDualLink('comment', subscribed, postid);
+        }
         $('.el-subscribe-dual-links a', entry).off(PROGRAM_CLICK).on(PROGRAM_CLICK, SubscribeDualLink);
     });
 }
@@ -2229,8 +2279,14 @@ async function CheckAllEvents(promise_array) {
     let hasevents_all = await Promise.all(promise_array);
     let hasevents = hasevents_all.some(val => val);
     JSPLib.storage.setStorageData('el-events', hasevents, localStorage);
+    let finish_promise = hasevents && $.Deferred().resolve();
     if (EL.post_ids.length) {
-        TIMER.GetThumbnails();
+        finish_promise = TIMER.GetThumbnails();
+    }
+    if (hasevents) {
+        finish_promise.then(()=>{
+            localStorage['el-saved-notice'] = LZString.compressToUTF16($("#el-event-notice").html());
+        });
     }
     if (!EL.had_events) {
         //Only save overflow if it wasn't just a display reload
@@ -2258,20 +2314,36 @@ function ProcessAllEvents(func) {
 }
 
 function MarkAllAsRead() {
-    for (let type in EL.lastids.post_query) {
-        SaveLastID(type, EL.lastids.post_query[type], 'pq');
-        JSPLib.storage.setStorageData(`el-pq-saved${type}lastid`, [], localStorage);
+    if (EL.is_reload) {
+        Object.keys(localStorage).forEach((key)=>{
+            let match = key.match(/el-(ot|pq)?-?saved(\S+)lastid/);
+            if (!match) {
+                return;
+            }
+            let savedlastid = JSPLib.storage.checkStorageData(key, ValidateProgramData, localStorage, []);
+            if (savedlastid.length === 0) {
+                return;
+            }
+            SaveLastID(match[2], savedlastid[0], match[1]);
+            JSPLib.storage.setStorageData(key, [], localStorage);
+        });
+    } else {
+        for (let type in EL.lastids.post_query) {
+            SaveLastID(type, EL.lastids.post_query[type], 'pq');
+            JSPLib.storage.setStorageData(`el-pq-saved${type}lastid`, [], localStorage);
+        }
+        for (let type in EL.lastids.subscribe) {
+            SaveLastID(type, EL.lastids.subscribe[type]);
+            JSPLib.storage.setStorageData(`el-saved${type}list`, [], localStorage);
+            JSPLib.storage.setStorageData(`el-saved${type}lastid`, [], localStorage);
+            MarkAllAsRead.debuglog(`Removed saved values [${type}]!`);
+        }
+        for (let type in EL.lastids.other) {
+            SaveLastID(type, EL.lastids.other[type], 'ot');
+            JSPLib.storage.setStorageData(`el-ot-saved${type}lastid`, [], localStorage);
+        }
     }
-    for (let type in EL.lastids.subscribe) {
-        SaveLastID(type, EL.lastids.subscribe[type]);
-        JSPLib.storage.setStorageData(`el-saved${type}list`, [], localStorage);
-        JSPLib.storage.setStorageData(`el-saved${type}lastid`, [], localStorage);
-        MarkAllAsRead.debuglog(`Removed saved values [${type}]!`);
-    }
-    for (let type in EL.lastids.other) {
-        SaveLastID(type, EL.lastids.other[type], 'ot');
-        JSPLib.storage.setStorageData(`el-ot-saved${type}lastid`, [], localStorage);
-    }
+    localStorage.removeItem('el-saved-notice');
     if (IsAnyEventEnabled(ALL_MAIL_EVENTS, 'other_events_enabled')) {
         HideDmailNotice();
     } else if (!EL.user_settings.autoclose_dmail_notice) {
@@ -2444,6 +2516,7 @@ function Main() {
         item_overflow: false,
         had_events: HasEvents(),
         no_limit: false,
+        is_reload: false,
         post_ids: [],
         storage_keys: {local_storage: []},
         settings_config: SETTINGS_CONFIG,
@@ -2497,8 +2570,21 @@ function Main() {
         locked_notice: EL.user_settings.autolock_notices,
     });
     EventStatusCheck();
-    InitializeNoticeBox();
-    if (!document.hidden && (JSPLib.concurrency.checkTimeout('el-timeout', EL.timeout_expires) || HasEvents() || WasOverflow()) && JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT)) {
+    if (!document.hidden && localStorage['el-saved-notice'] !== undefined) {
+        EL.is_reload = true;
+        let notice_html = LZString.decompressFromUTF16(localStorage['el-saved-notice']);
+        InitializeNoticeBox(notice_html);
+        for (let type in TYPEDICT) {
+            let $section = $(`#el-${type}-section`);
+            if($section.length) {
+                TYPEDICT[type].open && TYPEDICT[type].open($section);
+                TYPEDICT[type].subscribe && TYPEDICT[type].subscribe($section, false);
+                TYPEDICT[type].process && TYPEDICT[type].process();
+            }
+        }
+        $("#el-event-notice").show();
+    } else if (!document.hidden && (JSPLib.concurrency.checkTimeout('el-timeout', EL.timeout_expires) || HasEvents() || WasOverflow()) && JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT)) {
+        InitializeNoticeBox();
         if (CheckAbsence()) {
             JSPLib.concurrency.setRecheckTimeout('el-timeout', EL.timeout_expires);
             ProcessAllEvents(()=>{
@@ -2522,30 +2608,31 @@ function Main() {
         }
         Main.debuglog("Waiting...");
     }
+    let $main_section = $('#c-' + Danbooru.EL.controller);
     if (EL.controller === 'posts' && EL.action === 'show') {
         InitializePostShowMenu();
         if ($(`#image-container[data-uploader-id="${EL.userid}"]`).length) {
             SubscribeMultiLinkCallback();
         }
     } else if (EL.controller === 'comments' && EL.action === 'index') {
-        InitializeCommentPartialCommentLinks(document);
+        InitializeCommentPartialCommentLinks($main_section);
     } else if (['forum-topics', 'forum-posts'].includes(EL.controller)) {
         if (EL.action === 'show') {
             InitializeTopicShowMenu();
         } else if (EL.action === 'index') {
-            InitializeTopicIndexLinks(document);
+            InitializeTopicIndexLinks($main_section);
         }
     } else if (['wiki-pages', 'wiki-page-versions'].includes(EL.controller)) {
         if (EL.action === 'show') {
             InitializeWikiShowMenu();
         } else if (EL.action === 'index') {
-            InitializeWikiIndexLinks(document);
+            InitializeWikiIndexLinks($main_section);
         }
     } else if (['pools', 'pool-versions'].includes(EL.controller)) {
         if (EL.action === 'show') {
             InitializePoolShowMenu();
         } else if (EL.action === 'index') {
-            InitializePoolIndexLinks(document);
+            InitializePoolIndexLinks($main_section);
         } else if (EL.action === 'gallery') {
             InitializePoolGalleryLinks();
         }
