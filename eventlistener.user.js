@@ -257,10 +257,10 @@ const PROGRAM_CSS = `
     color: var(--link-hover-color);
 }
 .el-subscribe-pool-container .el-subscribe-dual-links .el-monospace-link {
-    color: grey;
+    color: var(--muted-text-color);
 }
 .el-subscribe-pool-container .el-subscribe-dual-links .el-monospace-link:hover {
-    color: lightgrey;
+    filter: brightness(1.5);
 }
 #nav #el-subscribe-events {
     padding-left: 2em;
@@ -271,11 +271,11 @@ const PROGRAM_CSS = `
 }
 #el-subscribe-events .el-subscribed a,
 #subnav-unsubscribe-link {
-    color: green;
+    color: mediumseagreen;
 }
 #el-subscribe-events .el-subscribed a:hover,
 #subnav-unsubscribe-link:hover {
-    color: #6b6;
+    filter: brightness(1.5);
 }
 #el-subscribe-events .el-unsubscribed a,
 #subnav-subscribe-link {
@@ -283,16 +283,16 @@ const PROGRAM_CSS = `
 }
 #el-subscribe-events .el-unsubscribed a:hover,
 #subnav-subscribe-link:hover {
-    color: #fb6;
+    filter: brightness(1.5);
 }
 #el-lock-event-notice,
 #el-read-event-notice {
     font-weight: bold;
-    color: green;
+    color: mediumseagreen;
 }
 #el-lock-event-notice:not(.el-locked):hover ,
 #el-read-event-notice:not(.el-read):hover {
-    color: #6b6;
+    filter: brightness(1.5);
 }
 #el-lock-event-notice.el-locked,
 #el-read-event-notice.el-read {
@@ -314,7 +314,7 @@ const COMMENT_CSS = `
     display: flex;
     flex-direction: row;
     margin-bottom: 1em;
-    border-bottom: 1px solid lightgrey;
+    border-bottom: var(--dtext-blockquote-border);
     min-height: 14em;
 }
 #el-event-notice #el-comment-section #el-comment-table .preview {
@@ -380,7 +380,7 @@ const POOL_CSS = `
     height: 154px;
     margin: 5px;
     padding: 5px;
-    border: 1px solid #AAA;
+    border: var(--dtext-blockquote-border);
 }
 .el-paragraph-mark {
     opacity: 0.25;
@@ -407,11 +407,11 @@ const BAN_CSS = `
 
 const MENU_CSS = `
 #el-search-query-display {
-    margin:0.5em;
-    font-size:150%;
-    border:lightgrey solid 1px;
-    padding:0.5em;
-    width:7.5em;
+    margin: 0.5em;
+    font-size: 150%;
+    border: var(--dtext-blockquote-border);
+    padding: 0.5em;
+    width: 7.5em;
 }
 #event-listener .jsplib-selectors label {
     text-align: left;
