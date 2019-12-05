@@ -421,6 +421,64 @@ const MENU_CSS = `
     margin-right: 5px;
 }`;
 
+//Temporary CSS
+const JSPLIB_CSS = `
+#userscript-settings-menu {
+    border: var(--footer-border);
+}
+#userscript-settings-menu,
+#userscript-settings-menu .ui-widget-content {
+    color: var(--text-color);
+    background: var(--body-background-color);
+}
+#userscript-settings-menu .ui-button {
+    color: var(--form-button-text-color);
+    border: var(--form-button-border);
+    background: var(--form-button-background);
+}
+#userscript-settings-menu .ui-button:hover {
+    filter: brightness(1.1);
+}
+#userscript-settings-menu .ui-widget-header {
+    border: var(--post-notice-border);
+    background: var(--form-button-background);
+    color: var(--text-color);
+}
+#userscript-settings-menu .ui-state-default {
+    background: var(--form-button-hover-background);
+}
+#userscript-settings-menu .ui-state-default a,
+#userscript-settings-menu .ui-state-default a:link,
+#userscript-settings-menu .ui-state-default a:visited {
+    color: black;
+}
+#userscript-settings-menu .ui-state-hover,
+#userscript-settings-menu .ui-state-focus  {
+    filter: brightness(1.1);
+}
+#userscript-settings-menu .ui-state-active {
+    border: 1px solid #003eff;
+    background: #007fff;
+    border-bottom-width: 0;
+    color: #ffffff;
+}
+#userscript-settings-menu .ui-state-active a,
+#userscript-settings-menu .ui-state-active a:link,
+#userscript-settings-menu .ui-state-active a:visited {
+    color: #ffffff;
+}
+#userscript-settings-menu .jsplib-console hr {
+    border: var(--footer-border);
+}
+#userscript-settings-menu .jsplib-console .expandable {
+    border: var(--dtext-expand-border);
+}
+#userscript-settings-menu .jsplib-block-tooltip,
+#userscript-settings-menu .jsplib-inline-tooltip {
+    color: var(--muted-text-color);
+}
+`;
+
 //HTML constants
 
 const NOTICE_BOX = `
@@ -2564,6 +2622,8 @@ function Main() {
             RenderSettingsMenu();
         });
         JSPLib.utility.setCSSStyle(MENU_CSS, 'menu');
+        //Temporary style until JSPLib gets updated
+        JSPLib.utility.setCSSStyle(JSPLIB_CSS, 'jsplib_temp');
     }
     if (!JSPLib.menu.isScriptEnabled(PROGRAM_NAME)) {
         Main.debuglog("Script is disabled on", window.location.hostname);
