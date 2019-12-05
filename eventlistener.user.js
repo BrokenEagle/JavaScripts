@@ -2289,6 +2289,7 @@ async function CheckAllEvents(promise_array) {
     if (hasevents) {
         finish_promise.then(()=>{
             localStorage['el-saved-notice'] = LZString.compressToUTF16($("#el-event-notice").html());
+            JSPLib.concurrency.setRecheckTimeout('el-saved-timeout', EL.timeout_expires);
         });
     }
     if (!EL.had_events) {
@@ -2573,7 +2574,7 @@ function Main() {
         locked_notice: EL.user_settings.autolock_notices,
     });
     EventStatusCheck();
-    if (!document.hidden && localStorage['el-saved-notice'] !== undefined) {
+    if (!document.hidden && localStorage['el-saved-notice'] !== undefined && !JSPLib.concurrency.checkTimeout('el-saved-timeout', EL.timeout_expires)) {
         EL.is_reload = true;
         let notice_html = LZString.decompressFromUTF16(localStorage['el-saved-notice']);
         InitializeNoticeBox(notice_html);
