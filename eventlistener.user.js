@@ -58,8 +58,8 @@ const TIMER = {};
 
 //For factory reset
 const NONSUBSCRIBE_EVENTS = ['flag', 'appeal', 'dmail', 'spam', 'ban', 'feedback', 'mod_action'];
-const POST_QUERY_EVENTS = ['comment', 'note', 'commentary', 'flag', 'appeal'];
-const SUBSCRIBE_EVENTS = ['comment', 'note', 'commentary', 'post', 'forum', 'wiki', 'pool'];
+const POST_QUERY_EVENTS = ['comment', 'note', 'commentary', 'approval', 'flag', 'appeal'];
+const SUBSCRIBE_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'forum', 'wiki', 'pool'];
 const OTHER_EVENTS = ['dmail', 'spam', 'ban', 'feedback', 'mod_action'];
 const ALL_EVENTS = JSPLib.utility.setUnique(POST_QUERY_EVENTS.concat(SUBSCRIBE_EVENTS).concat(OTHER_EVENTS));
 const LASTID_KEYS = Array.prototype.concat(
@@ -89,7 +89,7 @@ const ENABLE_EVENTS = ['flag', 'appeal', 'dmail', 'comment', 'note', 'commentary
 const POST_QUERY_ENABLE_EVENTS = ['flag', 'appeal'];
 const SUBSCRIBE_ENABLE_EVENTS = ['comment', 'note', 'commentary', 'forum'];
 const OTHER_ENABLE_EVENTS = ['dmail'];
-const AUTOSUBSCRIBE_EVENTS = ['post', 'comment', 'note', 'commentary'];
+const AUTOSUBSCRIBE_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval'];
 const MODACTION_EVENTS = [
     'user_delete', 'user_ban', 'user_unban', 'user_name_change', 'user_level_change', 'user_approval_privilege', 'user_upload_privilege', 'user_account_upgrade',
     'user_feedback_update', 'user_feedback_delete', 'post_delete', 'post_undelete', 'post_ban', 'post_unban', 'post_permanent_delete', 'post_move_favorites',
@@ -202,11 +202,17 @@ const SETTINGS_CONFIG = {
         validate: JSPLib.validate.isString,
         hint: 'Enter a post search query to check.'
     },
+    approval_query: {
+        default: "",
+        parse: String,
+        validate: JSPLib.validate.isString,
+        hint: 'Enter a post search query to check.'
+    },
 };
 
 const CONTROL_CONFIG = {
     post_events: {
-        allitems: ['post','comment','note','commentary'],
+        allitems: ['post', 'comment', 'note', 'commentary', 'approval'],
         value: [],
         hint: "Select which events to populate.",
     },
@@ -493,6 +499,7 @@ const NOTICE_BOX = `
     <div id="el-commentary-section"></div>
     <div id="el-wiki-section"></div>
     <div id="el-pool-section"></div>
+    <div id="el-approval-section"></div>
     <div id="el-post-section"></div>
     <div id="el-feedback-section"></div>
     <div id="el-ban-section"></div>
@@ -709,7 +716,7 @@ const EMPTY_REGEX = /^$/;
 
 //Other constants
 
-const ALL_POST_EVENTS = ['post', 'comment', 'note', 'commentary'];
+const ALL_POST_EVENTS = ['post', 'approval', 'comment', 'note', 'commentary'];
 const ALL_TRANSLATE_EVENTS = ['note', 'commentary'];
 const ALL_MAIL_EVENTS = ['dmail', 'spam'];
 
@@ -807,6 +814,16 @@ const TYPEDICT = {
         display: "Edits",
         useritem: false,
         subscribe: (table)=>{InitializePostNoteIndexLinks('post', table, false);},
+    },
+    approval: {
+        controller: 'post_approvals',
+        only: 'id,user_id,post_id',
+        limit: 10,
+        filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val, typelist, 'user_id', 'post_id');})},
+        insert: InsertEvents,
+        plural: 'approvals',
+        display: "Approval",
+        useritem: false,
     },
     wiki: {
         controller: 'wiki_page_versions',
@@ -2534,6 +2551,7 @@ function RenderSettingsMenu() {
     $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput(PROGRAM_SHORTCUT, 'comment_query', 80));
     $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput(PROGRAM_SHORTCUT, 'note_query', 80));
     $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput(PROGRAM_SHORTCUT, 'commentary_query', 80));
+    $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput(PROGRAM_SHORTCUT, 'approval_query', 80));
     $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput(PROGRAM_SHORTCUT, 'flag_query', 80));
     $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput(PROGRAM_SHORTCUT, 'appeal_query', 80));
     $('#el-subscribe-event-settings').append(JSPLib.menu.renderInputSelectors(PROGRAM_SHORTCUT, 'subscribe_events_enabled', 'checkbox'));
