@@ -1307,18 +1307,6 @@ function SetLastSeenTime() {
     JSPLib.storage.setStorageData('el-last-seen', Date.now(), localStorage);
 }
 
-//Return true if there are no saved events at all, or saved events for the input type
-function CheckWaiting(inputtype) {
-    if (Object.keys(CheckWaiting.all_waits).length == 0) {
-        EL.user_settings.events_enabled.forEach((type)=>{
-            CheckWaiting.all_waits[type] = JSPLib.storage.checkStorageData(`el-saved${type}lastid`, ValidateProgramData, localStorage, []).length > 0;
-            CheckWaiting.any_waits = CheckWaiting.any_waits || CheckWaiting.all_waits[type];
-        });
-    }
-    return !(Object.values(CheckWaiting.all_waits).reduce((total,entry)=>{return total || entry;}, false)) /*No waits*/ || CheckWaiting.all_waits[inputtype];
-}
-CheckWaiting.all_waits = {};
-
 //Return true if there was no overflow at all, or overflow for the input type
 function CheckOverflow(inputtype) {
     if (Object.keys(CheckOverflow.all_overflows).length == 0) {
@@ -1345,13 +1333,11 @@ function ProcessEvent(inputtype, optype) {
     //Waits always have priority over overflows
     JSPLib.debug.debugExecute(()=>{
         ProcessEvent.debuglog(inputtype,
-                              (CheckWaiting(inputtype) && CheckWaiting.any_waits),
-                              (CheckOverflow(inputtype) && !CheckWaiting.any_waits && CheckOverflow.any_overflow),
-                              (!CheckWaiting.any_waits && !CheckOverflow.any_overflow));
+                              (CheckOverflow(inputtype) && CheckOverflow.any_overflow),
+                              (!CheckOverflow.any_overflow));
     });
-    if ((CheckWaiting(inputtype) && CheckWaiting.any_waits) || /*Check for any wait event*/
-        (CheckOverflow(inputtype) && !CheckWaiting.any_waits && CheckOverflow.any_overflow) || /*Check for any overflow event but not a wait event*/
-        (!CheckWaiting.any_waits && !CheckOverflow.any_overflow) /*Check for neither waits nor overflows*/) {
+    if ((CheckOverflow(inputtype) && CheckOverflow.any_overflow) || /*Check for any overflow event but not a wait event*/
+        (!CheckOverflow.any_overflow) /*Check for no overflows*/) {
         switch(optype) {
             case 'post_query_events_enabled':
                 return TIMER.CheckPostQueryType(inputtype);
