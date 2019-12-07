@@ -2356,7 +2356,7 @@ function MarkAllAsRead() {
         if (!match) {
             return;
         }
-        let savedlastid = JSPLib.storage.checkStorageData(key, ValidateProgramData, localStorage, null);
+        let savedlastid = JSPLib.storage.getStorageData(key, localStorage, null);
         if (!JSPLib.validate.validateID(savedlastid)) {
             return;
         }
