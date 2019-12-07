@@ -80,8 +80,9 @@ const LOCALSTORAGE_KEYS = LASTID_KEYS.concat(SAVED_KEYS).concat(SUBSCRIBE_KEYS).
     'el-last-seen',
     'el-saved-notice',
 ]);
-//Not handling reset event yet
-const PROGRAM_RESET_KEYS = {};
+const PROGRAM_RESET_KEYS = {
+    storage_keys: {local_storage: []},
+};
 
 //Available setting values
 const ENABLE_EVENTS = ['flag', 'appeal', 'dmail', 'comment', 'note', 'commentary', 'forum'];
