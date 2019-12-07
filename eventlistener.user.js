@@ -72,7 +72,7 @@ const SAVED_KEYS = Array.prototype.concat(
     SUBSCRIBE_EVENTS.map((type)=>{return `el-saved${type}lastid`;}),
     OTHER_EVENTS.map((type)=>{return `el-ot-saved${type}lastid`;}),
 );
-const SUBSCRIBE_KEYS = SUBSCRIBE_EVENTS.map((type)=>{return [`el-${type}list`, `el-saved${type}list`, `el-${type}overflow`];}).flat();
+const SUBSCRIBE_KEYS = SUBSCRIBE_EVENTS.map((type)=>{return [`el-${type}list`, `el-${type}overflow`];}).flat();
 const LOCALSTORAGE_KEYS = LASTID_KEYS.concat(SAVED_KEYS).concat(SUBSCRIBE_KEYS).concat([
     'el-process-semaphore',
     'el-events',
@@ -677,7 +677,6 @@ const EL_MENU = `
                             <ul>
                                 <li><b>TYPElist:</b> The list of all posts/topic IDs that are subscribed.</li>
                                 <li><b>OP-TYPElastid:</b> Bookmark for the ID of the last seen event. This is where the script starts searching when it does a recheck.</li>
-                                <li><b>savedTYPElist:</b> Used to temporarily store found values for the event notice when events are found.</li>
                                 <li><b>OP-savedTYPElastid:</b> Used to temporarily store found values for the event notice when events are found.</li>
                                 <li><b>TYPEoverflow:</b> Did this event reach the query limit last page load? Absence of this key indicates false. This controls whether or not and event will process at the next page refresh.</li>
                             </ul>
@@ -900,12 +899,11 @@ const ALL_VALIDATE_REGEXES = {
         'el-event-timeout',
         'el-saved-timeout',
     ],
-    id: `el-(?:pq-|ot-)?${TYPE_GROUPING}lastid`,
-    idlist: [
-        `el-${TYPE_GROUPING}list`,
+    id: [
+        `el-(?:pq-|ot-)?${TYPE_GROUPING}lastid`,
         `el-(?:pq-|ot-)?saved${TYPE_GROUPING}lastid`,
-        `el-saved${SUBSCRIBE_GROUPING}list`,
     ],
+    idlist: `el-${SUBSCRIBE_GROUPING}list`,
 };
 
 const VALIDATE_REGEX = XRegExp.build(
@@ -2206,19 +2204,18 @@ async function CheckPostQueryType(type) {
         let batches = (EL.no_limit ? null : 1);
         let jsontype = await JSPLib.danbooru.getAllItems(TYPEDICT[type].controller, QUERY_LIMIT, batches, {addons: url_addons, page: typelastid, reverse: true});
         let filtertype = TYPEDICT[type].filter(jsontype);
-        let lastusertype = (jsontype.length ? [JSPLib.danbooru.getNextPageID(jsontype, true)] : []);
+        let lastusertype = (jsontype.length ? JSPLib.danbooru.getNextPageID(jsontype, true) : null);
         if (filtertype.length) {
-            EL.lastids.post_query[type] = lastusertype[0];
             JSPLib.storage.setStorageData(savedlastidkey, lastusertype, localStorage);
-            CheckPostQueryType.debuglog(`Found ${TYPEDICT[type].plural}!`, EL.lastids.post_query[type]);
+            CheckPostQueryType.debuglog(`Found ${TYPEDICT[type].plural}!`, lastusertype);
             let idlist = JSPLib.utility.getObjectAttributes(filtertype, 'id');
             await LoadHTMLType(type, idlist);
             return true;
         } else {
             JSPLib.storage.setStorageData(savedlastidkey, [], localStorage);
             CheckPostQueryType.debuglog(`No ${TYPEDICT[type].plural}!`);
-            if (lastusertype.length && (typelastid !== lastusertype[0])) {
-                SaveLastID(type, lastusertype[0], 'pq');
+            if (lastusertype && (typelastid !== lastusertype)) {
+                SaveLastID(type, lastusertype, 'pq');
             }
         }
     } else {
@@ -2232,54 +2229,39 @@ async function CheckSubscribeType(type) {
     let typelastid = JSPLib.storage.checkStorageData(lastidkey, ValidateProgramData, localStorage, 0);
     if (typelastid) {
         let typelist = GetList(type);
-        let savedlistkey = `el-saved${type}list`;
         let savedlastidkey = `el-saved${type}lastid`;
         let overflowkey = `el-${type}overflow`;
-        var subscribetypelist = [], jsontypelist = [];
-        let savedlastid = JSPLib.storage.checkStorageData(savedlastidkey, ValidateProgramData, localStorage, []);
-        let savedlist = JSPLib.storage.checkStorageData(savedlistkey, ValidateProgramData, localStorage, []);
-        if (!savedlastid.length || !savedlist.length) {
-            let type_addon = TYPEDICT[type].addons || {};
-            let urladdons = JSPLib.utility.joinArgs(type_addon, {only: TYPEDICT[type].only});
-            let batches = TYPEDICT[type].limit;
-            let batch_limit = TYPEDICT[type].limit * QUERY_LIMIT;
-            if (EL.no_limit) {
-                batches = null;
-                batch_limit = Infinity;
-            }
-            let jsontype = await JSPLib.danbooru.getAllItems(TYPEDICT[type].controller, QUERY_LIMIT, batches, {page: typelastid, addons: urladdons, reverse: true});
-            if (jsontype.length === batch_limit) {
-                CheckSubscribeType.debuglog(`${batch_limit} ${type} items; overflow detected!`);
-                JSPLib.storage.setStorageData(overflowkey, true, localStorage);
-                EL.item_overflow = true;
-            } else {
-                JSPLib.storage.setStorageData(overflowkey, false, localStorage);
-            }
-            let subscribetype = TYPEDICT[type].filter(jsontype, typelist);
-            if (jsontype.length) {
-                jsontypelist = [JSPLib.danbooru.getNextPageID(jsontype, true)];
-            }
-            if (subscribetype.length) {
-                subscribetypelist = JSPLib.utility.getObjectAttributes(subscribetype, 'id');
-                JSPLib.storage.setStorageData(savedlistkey, subscribetypelist, localStorage);
-                JSPLib.storage.setStorageData(savedlastidkey, jsontypelist, localStorage);
-            } else {
-                JSPLib.storage.setStorageData(savedlistkey, [], localStorage);
-                JSPLib.storage.setStorageData(savedlastidkey, [], localStorage);
-            }
+        var subscribetypelist = [];
+        let type_addon = TYPEDICT[type].addons || {};
+        let urladdons = JSPLib.utility.joinArgs(type_addon, {only: TYPEDICT[type].only});
+        let batches = TYPEDICT[type].limit;
+        let batch_limit = TYPEDICT[type].limit * QUERY_LIMIT;
+        if (EL.no_limit) {
+            batches = null;
+            batch_limit = Infinity;
+        }
+        let jsontype = await JSPLib.danbooru.getAllItems(TYPEDICT[type].controller, QUERY_LIMIT, batches, {page: typelastid, addons: urladdons, reverse: true});
+        if (jsontype.length === batch_limit) {
+            CheckSubscribeType.debuglog(`${batch_limit} ${type} items; overflow detected!`);
+            JSPLib.storage.setStorageData(overflowkey, true, localStorage);
+            EL.item_overflow = true;
         } else {
-            jsontypelist = savedlastid;
-            subscribetypelist = savedlist;
+            JSPLib.storage.setStorageData(overflowkey, false, localStorage);
+        }
+        let subscribetype = TYPEDICT[type].filter(jsontype, typelist);
+        let lastusertype = (jsontype.length ? JSPLib.danbooru.getNextPageID(jsontype, true) : null);
+        if (subscribetype.length) {
+            subscribetypelist = JSPLib.utility.getObjectAttributes(subscribetype, 'id');
+            JSPLib.storage.setStorageData(savedlastidkey, lastusertype, localStorage);
         }
         if (subscribetypelist.length) {
-            EL.lastids.subscribe[type] = jsontypelist[0];
-            CheckSubscribeType.debuglog(`Found ${TYPEDICT[type].plural}!`, EL.lastids.subscribe[type]);
+            CheckSubscribeType.debuglog(`Found ${TYPEDICT[type].plural}!`, lastusertype);
             await LoadHTMLType(type, subscribetypelist);
             return true;
         } else {
             CheckSubscribeType.debuglog(`No ${TYPEDICT[type].plural}!`);
-            if (jsontypelist.length && (typelastid !== jsontypelist[0])) {
-                SaveLastID(type, jsontypelist[0]);
+            if (lastusertype && (typelastid !== lastusertype)) {
+                SaveLastID(type, lastusertype);
             }
         }
     } else {
@@ -2298,19 +2280,18 @@ async function CheckOtherType(type) {
         let batches = (EL.no_limit ? null : 1);
         let jsontype = await JSPLib.danbooru.getAllItems(TYPEDICT[type].controller, QUERY_LIMIT, batches, {addons: url_addons, page: typelastid, reverse: true});
         let filtertype = TYPEDICT[type].filter(jsontype);
-        let lastusertype = (jsontype.length ? [JSPLib.danbooru.getNextPageID(jsontype, true)] : []);
+        let lastusertype = (jsontype.length ? JSPLib.danbooru.getNextPageID(jsontype, true) : null);
         if (filtertype.length) {
-            EL.lastids.other[type] = lastusertype[0];
             JSPLib.storage.setStorageData(savedlastidkey, lastusertype, localStorage);
-            CheckOtherType.debuglog(`Found ${TYPEDICT[type].plural}!`, EL.lastids.other[type]);
+            CheckOtherType.debuglog(`Found ${TYPEDICT[type].plural}!`, lastusertype);
             let idlist = JSPLib.utility.getObjectAttributes(filtertype, 'id');
             await LoadHTMLType(type, idlist);
             return true;
         } else {
             JSPLib.storage.setStorageData(savedlastidkey, [], localStorage);
             CheckOtherType.debuglog(`No ${TYPEDICT[type].plural}!`);
-            if (lastusertype.length && (typelastid !== lastusertype[0])) {
-                SaveLastID(type, lastusertype[0], 'ot');
+            if (lastusertype && (typelastid !== lastusertype)) {
+                SaveLastID(type, lastusertype, 'ot');
             }
         }
     } else {
@@ -2382,35 +2363,18 @@ function ProcessAllEvents(func) {
 }
 
 function MarkAllAsRead() {
-    if (EL.is_reload) {
-        Object.keys(localStorage).forEach((key)=>{
-            let match = key.match(/el-(ot|pq)?-?saved(\S+)lastid/);
-            if (!match) {
-                return;
-            }
-            let savedlastid = JSPLib.storage.checkStorageData(key, ValidateProgramData, localStorage, []);
-            if (savedlastid.length === 0) {
-                return;
-            }
-            SaveLastID(match[2], savedlastid[0], match[1]);
-            JSPLib.storage.setStorageData(key, [], localStorage);
-        });
-    } else {
-        for (let type in EL.lastids.post_query) {
-            SaveLastID(type, EL.lastids.post_query[type], 'pq');
-            JSPLib.storage.setStorageData(`el-pq-saved${type}lastid`, [], localStorage);
+    Object.keys(localStorage).forEach((key)=>{
+        let match = key.match(/el-(ot|pq)?-?saved(\S+)lastid/);
+        if (!match) {
+            return;
         }
-        for (let type in EL.lastids.subscribe) {
-            SaveLastID(type, EL.lastids.subscribe[type]);
-            JSPLib.storage.setStorageData(`el-saved${type}list`, [], localStorage);
-            JSPLib.storage.setStorageData(`el-saved${type}lastid`, [], localStorage);
-            MarkAllAsRead.debuglog(`Removed saved values [${type}]!`);
+        let savedlastid = JSPLib.storage.checkStorageData(key, ValidateProgramData, localStorage, null);
+        if (!JSPLib.validate.validateID(savedlastid)) {
+            return;
         }
-        for (let type in EL.lastids.other) {
-            SaveLastID(type, EL.lastids.other[type], 'ot');
-            JSPLib.storage.setStorageData(`el-ot-saved${type}lastid`, [], localStorage);
-        }
-    }
+        SaveLastID(match[2], savedlastid, match[1]);
+        JSPLib.storage.setStorageData(key, [], localStorage);
+    });
     localStorage.removeItem('el-saved-notice');
     if (IsAnyEventEnabled(ALL_MAIL_EVENTS, 'other_events_enabled')) {
         HideDmailNotice();
@@ -2432,7 +2396,6 @@ function EventStatusCheck() {
         //Delete every associated value but the list
         localStorage.removeItem(`el-${type}lastid`);
         localStorage.removeItem(`el-saved${type}lastid`);
-        localStorage.removeItem(`el-saved${type}list`);
         localStorage.removeItem(`el-${type}overflow`);
     });
     disabled_events = JSPLib.utility.setDifference(OTHER_EVENTS, EL.user_settings.other_events_enabled);
@@ -2578,14 +2541,12 @@ function Main() {
         showid: JSPLib.danbooru.getShowID(),
         username: document.body.dataset.userName,
         userid: parseInt(document.body.dataset.userId),
-        lastids: {post_query: {}, subscribe: {}, other: {}},
         subscribelist: {},
         openlist: {},
         marked_topic: [],
         item_overflow: false,
         had_events: HasEvents(),
         no_limit: false,
-        is_reload: false,
         post_ids: [],
         storage_keys: {local_storage: []},
         settings_config: SETTINGS_CONFIG,
@@ -2642,7 +2603,6 @@ function Main() {
     });
     EventStatusCheck();
     if (!document.hidden && localStorage['el-saved-notice'] !== undefined && !JSPLib.concurrency.checkTimeout('el-saved-timeout', EL.timeout_expires)) {
-        EL.is_reload = true;
         let notice_html = LZString.decompressFromUTF16(localStorage['el-saved-notice']);
         InitializeNoticeBox(notice_html);
         for (let type in TYPEDICT) {
