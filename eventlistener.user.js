@@ -77,7 +77,8 @@ const LOCALSTORAGE_KEYS = LASTID_KEYS.concat(SAVED_KEYS).concat(SUBSCRIBE_KEYS).
     'el-process-semaphore',
     'el-events',
     'el-overflow',
-    'el-timeout',
+    'el-event-timeout',
+    'el-saved-timeout',
     'el-last-seen',
     'el-saved-notice',
 ]);
@@ -667,7 +668,8 @@ const EL_MENU = `
                                 <li><b>last-seen:</b> When was the last recheck? This controls when the absence tracker will launch.</li>
                                 <li><b>overflow:</b> Did any of the events overflow last page refresh? This controls whether or not the script will do a recheck at the next page refresh regardless of the timeout.</li>
                                 <li><b>process-semaphore:</b> Prevents two tabs from processing the same data at the same time.</li>
-                                <li><b>timeout:</b> When the script is scheduled next to do a recheck.</li>
+                                <li><b>event-timeout:</b> When the script is scheduled next to do a recheck.</li>
+                                <li><b>saved-timeout:</b> When the saved notice will be discarded if there is one.</li>
                                 <li><b>user-settings:</b> All configurable settings.</li>
                             </ul>
                         </li>
@@ -895,7 +897,8 @@ const ALL_VALIDATE_REGEXES = {
     time: [
         'el-last-seen',
         'el-process-semaphore',
-        'el-timeout',
+        'el-event-timeout',
+        'el-saved-timeout',
     ],
     id: `el-(?:pq-|ot-)?${TYPE_GROUPING}lastid`,
     idlist: [
@@ -2051,7 +2054,7 @@ function UpdateAll(event) {
     JSPLib.network.counter_domname = '#el-activity-indicator';
     EL.no_limit = true;
     ProcessAllEvents(()=>{
-        JSPLib.concurrency.setRecheckTimeout('el-timeout', EL.timeout_expires);
+        JSPLib.concurrency.setRecheckTimeout('el-event-timeout', EL.timeout_expires);
         SetLastSeenTime();
         JSPLib.utility.notice("All events checked!");
     });
@@ -2063,7 +2066,7 @@ function ResetAll(event) {
         localStorage.removeItem(key);
     });
     ProcessAllEvents(()=>{
-        JSPLib.concurrency.setRecheckTimeout('el-timeout', EL.timeout_expires);
+        JSPLib.concurrency.setRecheckTimeout('el-event-timeout', EL.timeout_expires);
         SetLastSeenTime();
         JSPLib.utility.notice("All event positions reset!");
     });
@@ -2661,10 +2664,10 @@ function Main() {
                 attributefilter: ['class']
             });
         }
-    } else if (!document.hidden && (JSPLib.concurrency.checkTimeout('el-timeout', EL.timeout_expires) || HasEvents() || WasOverflow()) && JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT)) {
+    } else if (!document.hidden && (JSPLib.concurrency.checkTimeout('el-event-timeout', EL.timeout_expires) || HasEvents() || WasOverflow()) && JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT)) {
         InitializeNoticeBox();
         if (CheckAbsence()) {
-            JSPLib.concurrency.setRecheckTimeout('el-timeout', EL.timeout_expires);
+            JSPLib.concurrency.setRecheckTimeout('el-event-timeout', EL.timeout_expires);
             ProcessAllEvents(()=>{
                 SetLastSeenTime();
                 JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT);
