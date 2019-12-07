@@ -57,7 +57,6 @@ const EL = {};
 const TIMER = {};
 
 //For factory reset
-const NONSUBSCRIBE_EVENTS = ['flag', 'appeal', 'dmail', 'spam', 'ban', 'feedback', 'mod_action'];
 const POST_QUERY_EVENTS = ['comment', 'note', 'commentary', 'approval', 'flag', 'appeal'];
 const SUBSCRIBE_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'forum', 'wiki', 'pool'];
 const OTHER_EVENTS = ['dmail', 'spam', 'ban', 'feedback', 'mod_action'];
@@ -75,7 +74,6 @@ const SAVED_KEYS = Array.prototype.concat(
 const SUBSCRIBE_KEYS = SUBSCRIBE_EVENTS.map((type)=>{return [`el-${type}list`, `el-${type}overflow`];}).flat();
 const LOCALSTORAGE_KEYS = LASTID_KEYS.concat(SAVED_KEYS).concat(SUBSCRIBE_KEYS).concat([
     'el-process-semaphore',
-    'el-events',
     'el-overflow',
     'el-event-timeout',
     'el-saved-timeout',
@@ -136,12 +134,6 @@ const SETTINGS_CONFIG = {
         parse: parseInt,
         validate: (data)=>{return Number.isInteger(data) && data > 0;},
         hint: "How often to check for new events (# of minutes)."
-    },
-    events_enabled: {
-        allitems: ALL_EVENTS,
-        default: ENABLE_EVENTS,
-        validate: (data)=>{return JSPLib.menu.validateCheckboxRadio(data, 'checkbox', ALL_EVENTS);},
-        hint: "Select to subscribe to event type."
     },
     post_query_events_enabled: {
         allitems: POST_QUERY_EVENTS,
@@ -664,7 +656,6 @@ const EL_MENU = `
                     <ul>
                         <li>General data
                             <ul>
-                                <li><b>events:</b> Were events found and showing up in the event notice? This controls whether or not the script will do a reload at the next page refresh regardless of the timeout.</li>
                                 <li><b>last-seen:</b> When was the last recheck? This controls when the absence tracker will launch.</li>
                                 <li><b>overflow:</b> Did any of the events overflow last page refresh? This controls whether or not the script will do a recheck at the next page refresh regardless of the timeout.</li>
                                 <li><b>process-semaphore:</b> Prevents two tabs from processing the same data at the same time.</li>
@@ -890,7 +881,6 @@ const ALL_VALIDATE_REGEXES = {
     setting: 'el-user-settings',
     bool: [
         `el-${SUBSCRIBE_GROUPING}overflow`,
-        'el-events',
         'el-overflow',
     ],
     time: [
@@ -1294,10 +1284,6 @@ function SaveLastID(type,lastid,qualifier='') {
     lastid = Math.max(previousid, lastid);
     JSPLib.storage.setStorageData(key, lastid, localStorage);
     SaveLastID.debuglog(`Set last ${qualifier}${type} ID:`, lastid);
-}
-
-function HasEvents() {
-    return JSPLib.storage.checkStorageData('el-events', ValidateProgramData, localStorage, false);
 }
 
 function WasOverflow() {
@@ -2326,7 +2312,6 @@ async function LoadHTMLType(type,idlist) {
 async function CheckAllEvents(promise_array) {
     let hasevents_all = await Promise.all(promise_array);
     let hasevents = hasevents_all.some(val => val);
-    JSPLib.storage.setStorageData('el-events', hasevents, localStorage);
     let finish_promise = hasevents && $.Deferred().resolve();
     if (EL.post_ids.length) {
         finish_promise = TIMER.GetThumbnails();
@@ -2337,12 +2322,9 @@ async function CheckAllEvents(promise_array) {
             JSPLib.concurrency.setRecheckTimeout('el-saved-timeout', EL.timeout_expires);
         });
     }
-    if (!EL.had_events) {
-        //Only save overflow if it wasn't just a display reload
-        JSPLib.storage.setStorageData('el-overflow', EL.item_overflow, localStorage);
-        if (!EL.user_settings.autoclose_dmail_notice) {
-            $('#dmail-notice').show();
-        }
+    JSPLib.storage.setStorageData('el-overflow', EL.item_overflow, localStorage);
+    if (!EL.user_settings.autoclose_dmail_notice) {
+        $('#dmail-notice').show();
     }
 }
 
@@ -2545,7 +2527,6 @@ function Main() {
         openlist: {},
         marked_topic: [],
         item_overflow: false,
-        had_events: HasEvents(),
         no_limit: false,
         post_ids: [],
         storage_keys: {local_storage: []},
@@ -2624,7 +2605,7 @@ function Main() {
                 attributefilter: ['class']
             });
         }
-    } else if (!document.hidden && (JSPLib.concurrency.checkTimeout('el-event-timeout', EL.timeout_expires) || HasEvents() || WasOverflow()) && JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT)) {
+    } else if (!document.hidden && (JSPLib.concurrency.checkTimeout('el-event-timeout', EL.timeout_expires) || WasOverflow()) && JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT)) {
         InitializeNoticeBox();
         if (CheckAbsence()) {
             JSPLib.concurrency.setRecheckTimeout('el-event-timeout', EL.timeout_expires);
