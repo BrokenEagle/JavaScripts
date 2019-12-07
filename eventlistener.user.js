@@ -130,6 +130,11 @@ const SETTINGS_CONFIG = {
         validate: (data)=>{return typeof data === 'boolean';},
         hint: 'Only show bans not created by <a class="user-moderator with-style" style="color:var(--user-moderator-color)" href="/users/502584">DanbooruBot</a>.'
     },
+    filter_autofeedback: {
+        default: true,
+        validate: (data)=>{return typeof data === 'boolean';},
+        hint: 'Only show feedback not created by an administrative action, e.g. bans or promotions.'
+    },
     recheck_interval: {
         default: 5,
         parse: parseInt,
@@ -2459,7 +2464,12 @@ function IsShownCommentary(val) {
 }
 
 function IsShownFeedback(val) {
-    return val.body.match(/^Banned for ((almost|over|about) )?\d+ (days?|months?|years?):/) === null;
+    if (!EL.user_settings.filter_autofeedback) {
+        return true;
+    }
+    return (val.body.match(/^Banned for ((almost|over|about) )?\d+ (days?|months?|years?):/) === null)
+        && (val.body.match(/^You have been (promoted|demoted) to a \S+ level account from \S+\./) === null)
+        && (val.body.match(/\bYou (gained|lost) the ability to (approve posts|upload posts without limit|give user feedback|flag posts)\./) === null);
 }
 
 function IsShownBan(val) {
@@ -2481,6 +2491,7 @@ function RenderSettingsMenu() {
     $('#el-notice-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'autoclose_dmail_notice'));
     $('#el-filter-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'filter_user_events'));
     $('#el-filter-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'filter_untranslated_commentary'));
+    $('#el-filter-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'filter_autofeedback'));
     $('#el-filter-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'filter_autobans'));
     $('#el-post-query-event-settings').append(JSPLib.menu.renderInputSelectors(PROGRAM_SHORTCUT, 'post_query_events_enabled', 'checkbox'));
     $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput(PROGRAM_SHORTCUT, 'comment_query', 80));
