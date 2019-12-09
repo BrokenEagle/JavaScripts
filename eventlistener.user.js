@@ -1800,8 +1800,8 @@ function InitializeOpenPoolLinks(table) {
         }
         let poolverid = parseInt(match[0]);
         let $post_changes = $('td:nth-of-type(2)', row);
-        let add_posts = $('.diff-list:first-of-type a[href^="/posts"]', $post_changes[0]).map((i,entry)=>{return entry.innerText;}).toArray();
-        let rem_posts = $('.diff-list:last-of-type a[href^="/posts"]', $post_changes[0]).map((i,entry)=>{return entry.innerText;}).toArray();
+        let add_posts = $('.diff-list ins a[href^="/posts"]', $post_changes[0]).map((i,entry)=>{return entry.innerText;}).toArray();
+        let rem_posts = $('.diff-list del a[href^="/posts"]', $post_changes[0]).map((i,entry)=>{return entry.innerText;}).toArray();
         if (add_posts.length || rem_posts.length) {
             let link_html = RenderOpenItemLinks('poolposts', poolverid, 'Show posts', 'Hide posts');
             $post_changes.prepend(link_html + '&nbsp;|&nbsp;');
