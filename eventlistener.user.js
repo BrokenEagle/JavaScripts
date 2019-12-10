@@ -732,6 +732,7 @@ const ALL_MAIL_EVENTS = ['dmail', 'spam'];
 const TYPEDICT = {
     flag: {
         controller: 'post_flags',
+        addons: {search: {category: 'normal'}},
         only: 'id,creator_id',
         filter: (array)=>{return array.filter((val)=>{return IsShownData(val, [], 'creator_id', null);})},
         insert: InsertEvents,
