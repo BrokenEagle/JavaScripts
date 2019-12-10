@@ -25,7 +25,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/menu.js
 // ==/UserScript==
 
-/* global JSPLib jQuery $ Danbooru Diff XRegExp */
+/* global JSPLib jQuery $ Danbooru Diff XRegExp LZString */
 
 /****Global variables****/
 
