@@ -2227,7 +2227,7 @@ async function CheckPostQueryType(type) {
         let type_addon = TYPEDICT[type].addons || {};
         let post_query = GetTypeQuery(type);
         //Check if the post query has any non-operator text
-        let query_addon = (post_query.replace(/[\S-*~]+/, '').length ? {search: {post_tags_match: GetTypeQuery(type)}} : {});
+        let query_addon = (post_query.replace(/[\s-*~]+/g, '').length ? {search: {post_tags_match: post_query}} : {});
         let url_addons = JSPLib.utility.joinArgs(type_addon, query_addon, {only: TYPEDICT[type].only});
         let batches = (EL.no_limit ? null : 1);
         let jsontype = await JSPLib.danbooru.getAllItems(TYPEDICT[type].controller, QUERY_LIMIT, batches, {addons: url_addons, page: typelastid, reverse: true});
