@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      17.0
+// @version      17.1
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -67,9 +67,9 @@ const LASTID_KEYS = Array.prototype.concat(
     OTHER_EVENTS.map((type)=>{return `el-ot-${type}lastid`;}),
 );
 const SAVED_KEYS = Array.prototype.concat(
-    POST_QUERY_EVENTS.map((type)=>{return `el-pq-saved${type}lastid`;}),
-    SUBSCRIBE_EVENTS.map((type)=>{return `el-saved${type}lastid`;}),
-    OTHER_EVENTS.map((type)=>{return `el-ot-saved${type}lastid`;}),
+    POST_QUERY_EVENTS.map((type)=>{return [`el-pq-saved${type}lastid`, `el-pq-saved${type}list`];}),
+    SUBSCRIBE_EVENTS.map((type)=>{return [`el-saved${type}lastid`, `el-saved${type}list`];}),
+    OTHER_EVENTS.map((type)=>{return [`el-ot-saved${type}lastid`, `el-ot-saved${type}list`];}),
 );
 const SUBSCRIBE_KEYS = SUBSCRIBE_EVENTS.map((type)=>{return [`el-${type}list`, `el-${type}overflow`];}).flat();
 const LOCALSTORAGE_KEYS = LASTID_KEYS.concat(SAVED_KEYS).concat(SUBSCRIBE_KEYS).concat([
@@ -303,6 +303,13 @@ const PROGRAM_CSS = `
 #el-read-event-notice.el-read {
     color: red;
 }
+#el-reload-event-notice {
+    font-weight: bold;
+    color: orange;
+}
+#el-reload-event-notice:hover {
+    filter: brightness(1.5);
+}
 #el-absent-section {
     margin: 0.5em;
     border: solid 1px grey;
@@ -510,6 +517,8 @@ const NOTICE_BOX = `
         <a href="javascript:void(0)" id="el-lock-event-notice" title="Keep notice from being closed by other tabs.">LOCK</a>
         |
         <a href="javascript:void(0)" id="el-read-event-notice" title="Mark all items as read.">READ</a>
+        |
+        <a href="javascript:void(0)" id="el-reload-event-notice" title="Mark all items as read.">RELOAD</a>
         ]
     </div>
 </div>`;
@@ -674,6 +683,7 @@ const EL_MENU = `
                             <ul>
                                 <li><b>TYPElist:</b> The list of all posts/topic IDs that are subscribed.</li>
                                 <li><b>OP-TYPElastid:</b> Bookmark for the ID of the last seen event. This is where the script starts searching when it does a recheck.</li>
+                                <li><b>OP-savedTYPElist:</b> Used to temporarily store found values for the event notice when events are found.</li>
                                 <li><b>OP-savedTYPElastid:</b> Used to temporarily store found values for the event notice when events are found.</li>
                                 <li><b>TYPEoverflow:</b> Did this event reach the query limit last page load? Absence of this key indicates false. This controls whether or not and event will process at the next page refresh.</li>
                             </ul>
@@ -899,7 +909,10 @@ const ALL_VALIDATE_REGEXES = {
         `el-(?:pq-|ot-)?${TYPE_GROUPING}lastid`,
         `el-(?:pq-|ot-)?saved${TYPE_GROUPING}lastid`,
     ],
-    idlist: `el-${SUBSCRIBE_GROUPING}list`,
+    idlist: [
+        `el-${SUBSCRIBE_GROUPING}list`,
+        `el-(?:pq-|ot-)?saved${TYPE_GROUPING}list`,
+    ],
 };
 
 const VALIDATE_REGEX = XRegExp.build(
@@ -1738,6 +1751,7 @@ function InitializeNoticeBox(notice_html) {
     }
     $('#el-hide-event-notice').one(PROGRAM_CLICK, HideEventNotice);
     $('#el-read-event-notice').one(PROGRAM_CLICK, ReadEventNotice);
+    $('#el-reload-event-notice').one(PROGRAM_CLICK, ReloadEventNotice);
 }
 
 function InitializeOpenForumLinks(table) {
@@ -2040,6 +2054,26 @@ function ReadEventNotice(event) {
     MarkAllAsRead();
 }
 
+function ReloadEventNotice(event) {
+    $("#el-event-notice").remove();
+    InitializeNoticeBox();
+    let promise_array = [];
+    Object.keys(localStorage).forEach((key)=>{
+        let match = key.match(/el-((ot|pq)-)?saved(\S+)list/);
+        if (!match) {
+            return;
+        }
+        let savedlist = JSPLib.storage.getStorageData(key, localStorage, null);
+        if (!JSPLib.validate.validateIDList(savedlist)) {
+            return;
+        }
+        promise_array.push(LoadHTMLType(match[3], savedlist));
+    });
+    Promise.all(promise_array).then(()=>{
+        localStorage['el-saved-notice'] = LZString.compressToUTF16($("#el-event-notice").html());
+    });
+}
+
 function UpdateAll(event) {
     JSPLib.network.counter_domname = '#el-activity-indicator';
     EL.no_limit = true;
@@ -2187,6 +2221,7 @@ async function CheckPostQueryType(type) {
     let lastidkey = `el-pq-${type}lastid`;
     let typelastid = JSPLib.storage.checkStorageData(lastidkey, ValidateProgramData, localStorage, 0);
     if (typelastid) {
+        let savedlistkey = `el-pq-saved${type}list`;
         let savedlastidkey = `el-pq-saved${type}lastid`;
         let type_addon = TYPEDICT[type].addons || {};
         let post_query = GetTypeQuery(type);
@@ -2198,13 +2233,13 @@ async function CheckPostQueryType(type) {
         let filtertype = TYPEDICT[type].filter(jsontype);
         let lastusertype = (jsontype.length ? JSPLib.danbooru.getNextPageID(jsontype, true) : null);
         if (filtertype.length) {
-            JSPLib.storage.setStorageData(savedlastidkey, lastusertype, localStorage);
             CheckPostQueryType.debuglog(`Found ${TYPEDICT[type].plural}!`, lastusertype);
             let idlist = JSPLib.utility.getObjectAttributes(filtertype, 'id');
             await LoadHTMLType(type, idlist);
+            JSPLib.storage.setStorageData(savedlastidkey, lastusertype, localStorage);
+            JSPLib.storage.setStorageData(savedlistkey, idlist, localStorage);
             return true;
         } else {
-            JSPLib.storage.setStorageData(savedlastidkey, [], localStorage);
             CheckPostQueryType.debuglog(`No ${TYPEDICT[type].plural}!`);
             if (lastusertype && (typelastid !== lastusertype)) {
                 SaveLastID(type, lastusertype, 'pq');
@@ -2221,9 +2256,9 @@ async function CheckSubscribeType(type) {
     let typelastid = JSPLib.storage.checkStorageData(lastidkey, ValidateProgramData, localStorage, 0);
     if (typelastid) {
         let typelist = GetList(type);
+        let savedlistkey = `el-saved${type}list`;
         let savedlastidkey = `el-saved${type}lastid`;
         let overflowkey = `el-${type}overflow`;
-        var subscribetypelist = [];
         let type_addon = TYPEDICT[type].addons || {};
         let urladdons = JSPLib.utility.joinArgs(type_addon, {only: TYPEDICT[type].only});
         let batches = TYPEDICT[type].limit;
@@ -2240,15 +2275,14 @@ async function CheckSubscribeType(type) {
         } else {
             JSPLib.storage.setStorageData(overflowkey, false, localStorage);
         }
-        let subscribetype = TYPEDICT[type].filter(jsontype, typelist);
+        let filtertype = TYPEDICT[type].filter(jsontype, typelist);
         let lastusertype = (jsontype.length ? JSPLib.danbooru.getNextPageID(jsontype, true) : null);
-        if (subscribetype.length) {
-            subscribetypelist = JSPLib.utility.getObjectAttributes(subscribetype, 'id');
-            JSPLib.storage.setStorageData(savedlastidkey, lastusertype, localStorage);
-        }
-        if (subscribetypelist.length) {
+        if (filtertype.length) {
             CheckSubscribeType.debuglog(`Found ${TYPEDICT[type].plural}!`, lastusertype);
-            await LoadHTMLType(type, subscribetypelist);
+            let idlist = JSPLib.utility.getObjectAttributes(filtertype, 'id');
+            await LoadHTMLType(type, idlist);
+            JSPLib.storage.setStorageData(savedlastidkey, lastusertype, localStorage);
+            JSPLib.storage.setStorageData(savedlistkey, idlist, localStorage);
             return true;
         } else {
             CheckSubscribeType.debuglog(`No ${TYPEDICT[type].plural}!`);
@@ -2266,6 +2300,7 @@ async function CheckOtherType(type) {
     let lastidkey = `el-ot-${type}lastid`;
     let typelastid = JSPLib.storage.checkStorageData(lastidkey, ValidateProgramData, localStorage, 0);
     if (typelastid) {
+        let savedlistkey = `el-ot-saved${type}list`;
         let savedlastidkey = `el-ot-saved${type}lastid`;
         let type_addon = TYPEDICT[type].addons || {};
         let url_addons = JSPLib.utility.joinArgs(type_addon, {only: TYPEDICT[type].only});
@@ -2274,13 +2309,13 @@ async function CheckOtherType(type) {
         let filtertype = TYPEDICT[type].filter(jsontype);
         let lastusertype = (jsontype.length ? JSPLib.danbooru.getNextPageID(jsontype, true) : null);
         if (filtertype.length) {
-            JSPLib.storage.setStorageData(savedlastidkey, lastusertype, localStorage);
             CheckOtherType.debuglog(`Found ${TYPEDICT[type].plural}!`, lastusertype);
             let idlist = JSPLib.utility.getObjectAttributes(filtertype, 'id');
             await LoadHTMLType(type, idlist);
+            JSPLib.storage.setStorageData(savedlistkey, idlist, localStorage);
+            JSPLib.storage.setStorageData(savedlastidkey, lastusertype, localStorage);
             return true;
         } else {
-            JSPLib.storage.setStorageData(savedlastidkey, [], localStorage);
             CheckOtherType.debuglog(`No ${TYPEDICT[type].plural}!`);
             if (lastusertype && (typelastid !== lastusertype)) {
                 SaveLastID(type, lastusertype, 'ot');
@@ -2352,16 +2387,21 @@ function ProcessAllEvents(func) {
 
 function MarkAllAsRead() {
     Object.keys(localStorage).forEach((key)=>{
-        let match = key.match(/el-(ot|pq)?-?saved(\S+)lastid/);
+        let match = key.match(/el-(ot|pq)?-?saved(\S+)list/);
+        if (match) {
+            localStorage.removeItem(key);
+            return;
+        }
+        match = key.match(/el-(ot|pq)?-?saved(\S+)lastid/);
         if (!match) {
             return;
         }
         let savedlastid = JSPLib.storage.getStorageData(key, localStorage, null);
+        localStorage.removeItem(key);
         if (!JSPLib.validate.validateID(savedlastid)) {
             return;
         }
         SaveLastID(match[2], savedlastid, match[1]);
-        JSPLib.storage.setStorageData(key, [], localStorage);
     });
     localStorage.removeItem('el-saved-notice');
     if (IsAnyEventEnabled(ALL_MAIL_EVENTS, 'other_events_enabled')) {
