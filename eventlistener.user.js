@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      17.1
+// @version      17.2
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1459,9 +1459,9 @@ async function AddPoolDiff(poolverid,rowelement) {
 
 async function AddPoolPosts(poolverid,rowelement) {
     let $post_changes = $('td:nth-of-type(2)', rowelement);
-    let add_posts = $post_changes.data('add-posts');
-    let rem_posts = $post_changes.data('rem-posts');
-    let total_posts = JSPLib.utility.setUnion(add_posts, rem_posts);
+    let add_posts = String($post_changes.data('add-posts') || "").split(',');
+    let rem_posts = String($post_changes.data('rem-posts') || "").split(',');
+    let total_posts = JSPLib.utility.concat(add_posts, rem_posts);
     let thumbnails = await JSPLib.network.getNotify(`/posts`, {tags: 'id:' + total_posts.join(',') + ' status:any'});
     let $thumbnails = $.parseHTML(thumbnails);
     $('.post-preview', $thumbnails).each((i,entry)=>{$(entry).addClass('blacklisted');}); //Mark thumbnails as blacklist processed
@@ -1820,8 +1820,8 @@ function InitializeOpenPoolLinks(table) {
         if (add_posts.length || rem_posts.length) {
             let link_html = RenderOpenItemLinks('poolposts', poolverid, 'Show posts', 'Hide posts');
             $post_changes.prepend(link_html + '&nbsp;|&nbsp;');
-            $post_changes.data('add-posts', add_posts);
-            $post_changes.data('rem-posts', rem_posts);
+            $post_changes.attr('data-add-posts', add_posts);
+            $post_changes.attr('data-rem-posts', rem_posts);
         }
         let $desc_changed = $('td:nth-of-type(4)', row);
         if ($desc_changed.html() !== 'false') {
