@@ -2,7 +2,7 @@
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
 // @version      17.2
-// @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools)
+// @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
 // @match        *://*.donmai.us/*
