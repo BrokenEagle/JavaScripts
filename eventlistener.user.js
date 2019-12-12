@@ -1462,23 +1462,26 @@ async function AddPoolPosts(poolverid,rowelement) {
     let add_posts = String($post_changes.data('add-posts') || "").split(',');
     let rem_posts = String($post_changes.data('rem-posts') || "").split(',');
     let total_posts = JSPLib.utility.concat(add_posts, rem_posts);
-    let thumbnails = await JSPLib.network.getNotify(`/posts`, {tags: 'id:' + total_posts.join(',') + ' status:any'});
-    let $thumbnails = $.parseHTML(thumbnails);
-    $('.post-preview', $thumbnails).each((i,entry)=>{$(entry).addClass('blacklisted');}); //Mark thumbnails as blacklist processed
+    let missing_posts = JSPLib.utility.setDifference(total_posts, Object.keys(EL.thumbs));
+    if (missing_posts.length) {
+        let thumbnails = await JSPLib.network.getNotify(`/posts`, {tags: 'id:' + missing_posts.join(',') + ' status:any'});
+        let $thumbnails = $.parseHTML(thumbnails);
+        $('.post-preview', $thumbnails).each((i,thumb)=>{InitializeThumb(thumb);});
+    }
     let $outerblock = $.parseHTML(RenderOpenItemContainer('poolposts', poolverid, 6));
     $('td', $outerblock).append(`<div class="el-add-pool-posts" style="display:none"></div><div class="el-rem-pool-posts" style="display:none"></div>`);
     if (add_posts.length) {
         let $container = $('.el-add-pool-posts', $outerblock).show();
         add_posts.forEach((post_id)=>{
-            let $thumb = $(`#post_${post_id}`, $thumbnails);
-            $container.append($thumb);
+            let thumb_copy = $(EL.thumbs[post_id]).clone();
+            $container.append(thumb_copy);
         });
     }
     if (rem_posts.length) {
         let $container = $('.el-rem-pool-posts', $outerblock).show();
         rem_posts.forEach((post_id)=>{
-            let $thumb = $(`#post_${post_id}`, $thumbnails);
-            $container.append($thumb);
+            let thumb_copy = $(EL.thumbs[post_id]).clone();
+            $container.append(thumb_copy);
         });
     }
     $(rowelement).after($outerblock);
@@ -1611,6 +1614,23 @@ function InsertPools($poolpage) {
     InitializeOpenPoolLinks($pools_table[0]);
 }
 
+function InitializeThumb(thumb) {
+    let $thumb = $(thumb);
+    $thumb.addClass('blacklisted');
+    let postid = String($thumb.data('id'));
+    let $link = $('a', thumb);
+    let post_url = $link.attr('href').split('?')[0];
+    $link.attr('href', post_url);
+    let $comment = $('.comment', thumb);
+    if ($comment.length) {
+        $comment.hide();
+        $('.el-subscribe-comment-container ', thumb).hide();
+    }
+    thumb.style.setProperty('display', 'block', 'important');
+    thumb.style.setProperty('text-align', 'center', 'important');
+    EL.thumbs[postid] = thumb;
+}
+
 //Misc functions
 
 function ReadForumTopic(topicid) {
@@ -1663,22 +1683,44 @@ function AddThumbnails(dompage) {
 }
 
 async function GetThumbnails() {
+    let found_post_ids = Object.keys(EL.thumbs).map(Number);
     for (let i = 0; i < EL.post_ids.length; i += QUERY_LIMIT) {
         let post_ids = EL.post_ids.slice(i, i + QUERY_LIMIT);
-        var url_addon = {tags: `id:${post_ids} limit:${post_ids.length}`};
+        let missing_post_ids = JSPLib.utility.setDifference(post_ids, found_post_ids);
+        if (missing_post_ids.length === 0) {
+            continue;
+        }
+        var url_addon = {tags: `id:${missing_post_ids} limit:${missing_post_ids.length}`};
         var html = await JSPLib.network.getNotify('/posts', url_addon);
         var $posts = $.parseHTML(html);
         var $thumbs = $('.post-preview', $posts);
         $thumbs.each((i,thumb)=>{
-            let $thumb = $(thumb);
-            $thumb.addClass('blacklisted');
-            let postid = $thumb.data('id');
-            let $link = $('a', thumb);
-            let post_url = $link.attr('href').split('?')[0];
-            $link.attr('href', post_url);
-            $(`.striped .el-post-thumbnail[data-postid="${postid}"]`).prepend(thumb);
+            InitializeThumb(thumb);
         });
     }
+}
+
+function InsertThumbnails() {
+    $('#el-event-notice .el-post-thumbnail').each((i,marker)=>{
+        let $marker = $(marker);
+        let post_id = String($marker.data('postid'));
+        let thumb_copy = $(EL.thumbs[post_id]).clone();
+        $marker.prepend(thumb_copy);
+    });
+}
+
+function ProcessThumbnails() {
+    $('#el-event-notice .post-preview').each((i,thumb)=>{
+        let $thumb = $(thumb);
+        let post_id = String($thumb.data('id'));
+        if (!(post_id in EL.thumbs)) {
+            let thumb_copy = $thumb.clone();
+            //Clone returns a node array and InitializeThumb is expecting a node
+            InitializeThumb(thumb_copy[0]);
+        }
+        let display_style = window.getComputedStyle(thumb).display;
+        thumb.style.setProperty('display', display_style, 'important');
+    });
 }
 
 function AdjustRowspan(rowelement,openitem) {
@@ -2071,7 +2113,16 @@ function ReloadEventNotice(event) {
         promise_array.push(LoadHTMLType(match[3], savedlist));
     });
     Promise.all(promise_array).then(()=>{
-        localStorage['el-saved-notice'] = LZString.compressToUTF16($("#el-event-notice").html());
+        ProcessThumbnails();
+        let finish_promise = $.Deferred().resolve();
+        if (EL.post_ids.length) {
+            finish_promise = TIMER.GetThumbnails();
+        }
+        finish_promise.then(()=>{
+            InsertThumbnails();
+            localStorage['el-saved-notice'] = LZString.compressToUTF16($("#el-event-notice").html());
+            JSPLib.concurrency.setRecheckTimeout('el-saved-timeout', EL.timeout_expires);
+        });
     });
 }
 
@@ -2354,12 +2405,14 @@ async function LoadHTMLType(type,idlist) {
 async function CheckAllEvents(promise_array) {
     let hasevents_all = await Promise.all(promise_array);
     let hasevents = hasevents_all.some(val => val);
+    ProcessThumbnails();
     let finish_promise = hasevents && $.Deferred().resolve();
     if (EL.post_ids.length) {
         finish_promise = TIMER.GetThumbnails();
     }
     if (hasevents) {
         finish_promise.then(()=>{
+            InsertThumbnails();
             localStorage['el-saved-notice'] = LZString.compressToUTF16($("#el-event-notice").html());
             JSPLib.concurrency.setRecheckTimeout('el-saved-timeout', EL.timeout_expires);
         });
@@ -2582,6 +2635,7 @@ function Main() {
         item_overflow: false,
         no_limit: false,
         post_ids: [],
+        thumbs: {},
         storage_keys: {local_storage: []},
         settings_config: SETTINGS_CONFIG,
         control_config: CONTROL_CONFIG,
