@@ -2034,7 +2034,7 @@ function InitializePostNoteIndexLinks(type,table,render=true) {
             return;
         }
         if (render) {
-            let linkhtml = RenderSubscribeDualLinks(type, postid, 'span', "", "", true);
+            let linkhtml = RenderSubscribeDualLinks(type, postid, 'span', " ", type, true);
             $('td:first-of-type', row).prepend(`<div style="text-align:center">${linkhtml}</div>`);
         } else {
             let subscribed = !typelist.includes(postid);
