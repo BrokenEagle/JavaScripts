@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.1
+// @version      10.2
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -19,7 +19,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/saucenao.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/validate.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/statistics.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/debug.js
 // @connect      saucenao.com
 // ==/UserScript==
@@ -794,9 +794,12 @@ function CheckStatisticsLibrary() {
 
     console.log("Checking average");
     let data1 = [0,1,2,3,4,20];
+    let data2 = [];
     let expected_result1 = 5;
     let result1 = JSPLib.statistics.average(data1);
-    console.log(`Values of ${repr(data1)} should have an average of ${expected_result1}`,RecordResult(result1 === expected_result1));
+    let result2 = JSPLib.statistics.average(data2);
+    console.log(`Values of ${repr(data1)} should have an average of ${expected_result1} ${bracket(result1)}`,RecordResult(result1 === expected_result1));
+    console.log(`An empty array should have an average of NaN ${bracket(result2)}`,RecordResult(Number.isNaN(result2)));
 
     console.log("Checking standardDeviation");
     expected_result1 = 6.83;
@@ -808,8 +811,8 @@ function CheckStatisticsLibrary() {
     console.log(`Values of ${repr(data1)} should have had 1 outlier removed`,RecordResult((data1.length - result1.length) === 1));
 
     console.log("Checking outputAdjustedMean()");
-    console.log(JSPLib.debug.records);
-    JSPLib.debug.records = {};
+    console.log(JSPLib.debug._records);
+    JSPLib.debug._records = {};
     console.log("Shouldn't see output #1");
     JSPLib.statistics.outputAdjustedMean("Statistics Test");
     JSPLib.debug.recordTime('statistics','test');
