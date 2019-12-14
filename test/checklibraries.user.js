@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9.5
+// @version      10.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -20,7 +20,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/validate.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/utility.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/debug.js
 // @connect      saucenao.com
 // ==/UserScript==
 
@@ -176,9 +176,10 @@ async function CheckDebugLibrary() {
 
     console.log("Checking debuglog(): check this out");
     JSPLib.debug.pretext = "Check:";
-    JSPLib.debug.debuglog("check this out");
+    JSPLib.debug.debuglog("enabled: check this out");
+    JSPLib.debug.debuglog(() => ["delaylog: check this out"]);
     JSPLib.debug.debug_console = false;
-    JSPLib.debug.debuglog("check this out");
+    JSPLib.debug.debuglog("disabled: check this out");
     JSPLib.debug.pretext = "";
 
     console.log("Checking debuglogLevel(): WARNING+");
@@ -241,6 +242,17 @@ async function CheckDebugLibrary() {
     JSPLib.debug.addFunctionLogs([testfunc]);
     testfunc();
     console.log(`Function should have debuglog as a function attribute`,RecordResult('debuglog' in testfunc && typeof testfunc.debuglog === "function"));
+
+    console.log("Checking addFunctionTimers");
+    const TIMER = {};
+    JSPLib.debug.addFunctionTimers(TIMER, false, [
+        [testfunc, 0, 1],
+    ]);
+    TIMER.FunctionLogs('a', 'b');
+    let hash_keys = Object.keys(TIMER);
+    let key_type = typeof TIMER.FunctionLogs;
+    console.log(`TIMER should have one key of "FunctionLogs" ${bracket(hash_keys)}`, RecordResult('FunctionLogs' in TIMER));
+    console.log(`TIMER value "FunctionLogs" should be a function ${bracket(key_type)}`, RecordResult(key_type === "function"));
 
     JSPLib.debug.level = JSPLib.debug.ALL;
     console.log(`CheckDebugLibrary results: ${test_successes} succeses, ${test_failures} failures`);
@@ -1650,3 +1662,6 @@ async function checklibrary() {
 /****PROGRAM START****/
 
 JSPLib.load.programInitialize(checklibrary,'CL',[WINDOWNAME + '.jQuery',WINDOWNAME + '.Danbooru'],["footer"]);
+
+WINDOWVALUE.JSPLib = WINDOWVALUE.JSPLib || {};
+WINDOWVALUE.JSPLib.lib = JSPLib;
