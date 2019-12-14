@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.0
+// @version      10.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -18,7 +18,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/danbooru.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/saucenao.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/utility.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/statistics.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/debug.js
 // @connect      saucenao.com
@@ -402,10 +402,19 @@ async function CheckUtilityLibrary() {
     resultarray1 = JSPLib.utility.setSymmetricDifference(testarray1,testarray3);
     console.log(`Array ${repr(resultarray1)} should have a length of three`,RecordResult(resultarray1.length === 3));
 
+    console.log("Checking arrayEquals");
+    array1 = [1,2,3];
+    array2 = [1,2,3];
+    let array3 = [2,4];
+    resultbool1 = JSPLib.utility.arrayEquals(array1,array2);
+    resultbool2 = JSPLib.utility.arrayEquals(array1,array3);
+    console.log(`Array ${repr(array2)} should be equal to ${repr(array1)}`,RecordResult(resultbool1));
+    console.log(`Array ${repr(array3)} should not be equal to ${repr(array1)}`,RecordResult(!resultbool2));
+
     console.log("Checking isSubset");
     array1 = [1,2,3];
     array2 = [1,3];
-    let array3 = [2,4];
+    array3 = [2,4];
     resultbool1 = JSPLib.utility.isSubset(array1,array2);
     resultbool2 = JSPLib.utility.isSubset(array1,array3);
     console.log(`Array ${repr(array2)} should be a subset of ${repr(array1)}`,RecordResult(resultbool1));
@@ -693,6 +702,44 @@ async function CheckUtilityLibrary() {
     result1 = JSPLib.utility.walkDOM(child1,[[0,-1],[1,0],[0,2]])
     console.log(`Node ${child1.id} should have child1b as the second child of its parent's first sibling ${bracket(result1.id)}`,RecordResult(result1 && result1.id === "child1b"));
 
+    console.log("Checking getImageDimensions");
+    let dimensions1 = {width: 459, height: 650};
+    let dimensions2 = await JSPLib.utility.getImageDimensions("https://raikou1.donmai.us/d3/4e/d34e4cf0a437a5d65f8e82b7bcd02606.jpg");
+    console.log(`Dimensions should have width of 459 and height of 650 ${bracket(dimensions2)}`,RecordResult(Boolean(typeof dimensions2 === "object" && dimensions2.width === 459 && dimensions2.height === 650)));
+
+    console.log("Checking getPreviewDimensions");
+    let base_dimensions = 150;
+    dimensions2 = JSPLib.utility.getPreviewDimensions(dimensions1.width, dimensions1.height, base_dimensions);
+    console.log(`Dimensions should have width of 106 and height of 150 ${bracket(dimensions2)}`,RecordResult(Boolean(Array.isArray(dimensions2) && dimensions2[0] === 106 && dimensions2[1] === 150)));
+
+    console.log("Checking recheckTimer");
+    let checkvalue1 = false;
+    let checkvalue2 = false;
+    let checkvalue3 = false;
+    let iterator1 = 0;
+    let iterator2 = 0;
+    let timer1 = JSPLib.utility.recheckTimer({
+        check: ()=>{
+            console.log("[Non-expiring] Checking value", ++iterator1, "times.");
+            return checkvalue1;
+        },
+        exec: ()=>{checkvalue2 = true;}
+    }, 100);
+    let timer2 = JSPLib.utility.recheckTimer({
+        check: ()=>{
+            console.log("[Expiring] Checking value", ++iterator2, "times.");
+            return checkvalue1;
+        },
+        exec: ()=>{checkvalue3 = true;}
+    }, 100, 100);
+    await JSPLib.utility.sleep(JSPLib.utility.one_second);
+    checkvalue1 = true;
+    await JSPLib.utility.sleep(JSPLib.utility.one_second);
+    console.log(`Non-expiring timer should have been successful ${bracket(repr(timer1))}`,RecordResult(timer1.timer === true));
+    console.log(`Non-expiring timer should have changed value to true ${bracket(checkvalue2)}`,RecordResult(checkvalue2 === true));
+    console.log(`Expiring timer should have not been successful ${bracket(repr(timer2))}`,RecordResult(timer2.timer === false));
+    console.log(`Expiring timer should have changed value to true ${bracket(checkvalue3)}`,RecordResult(checkvalue3 === false));
+
     console.log("Checking readCookie");
     let cookiename1 = "doesnt-exist";
     result1 = JSPLib.utility.readCookie(cookiename1);
@@ -708,6 +755,12 @@ async function CheckUtilityLibrary() {
     JSPLib.utility.eraseCookie(cookiename1)
     result1 = JSPLib.utility.readCookie(cookiename1);
     console.log(`Cookie ${cookiename1} should now not exist after being erased ${bracket(result1)}`,RecordResult(result1 === null));
+
+    console.log("Checking getDomainName");
+    string1 = "http://danbooru.donmai.us";
+    string2 = "donmai.us";
+    let string3 = JSPLib.utility.getDomainName(string1, 2);
+    console.log(`URL of ${string1} should have a base domain of ${string2} ${bracket(string3)}`,RecordResult(string2 === string3));
 
     console.log("Checking parseParams");
     string1 = "test1=2&test2=3";
