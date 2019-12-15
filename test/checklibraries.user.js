@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.2
+// @version      10.3
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -12,7 +12,6 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/storage.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/concurrency.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/network.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/danbooru.js
@@ -20,6 +19,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/validate.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/utility.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/storage.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/debug.js
 // @connect      saucenao.com
 // ==/UserScript==
@@ -1134,7 +1134,7 @@ async function CheckStorageLibrary() {
     result1 = JSPLib.storage.checkStorageData('good-value',validator1,sessionStorage);
     result2 = JSPLib.storage.checkStorageData('good-value',validator2,sessionStorage);
     console.log(`good-value with data ${repr(data2)} with good validate should return value ${bracket(repr(result1))}]`,RecordResult(result1 && result1[0] === "check this"));
-    console.log(`good-value with data ${repr(data2)} with bad validate should return undefined ${bracket(repr(result2))}]`,RecordResult(result2 === undefined));
+    console.log(`good-value with data ${repr(data2)} with bad validate should return null ${bracket(repr(result2))}]`,RecordResult(result2 === null));
 
     console.log("Checking pruneStorageData");
     JSPLib.debug.level = JSPLib.debug.WARNING;
