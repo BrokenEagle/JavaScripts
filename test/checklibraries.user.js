@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.3
+// @version      10.4
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -13,7 +13,7 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/load.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/network.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/danbooru.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/saucenao.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/validate.js
@@ -1408,7 +1408,7 @@ async function CheckNetworkLibrary() {
 
     console.log("Checking getNotify"); //Visual confirmation required
     url1 = "/bad_url";
-    await JSPLib.network.getNotify(url1);
+    await JSPLib.network.getNotify(url1, {}, "Unable to get bad URL!");
     await JSPLib.utility.sleep(4000);
     jQuery("#close-notice-link").click();
     await JSPLib.utility.sleep(2000);
