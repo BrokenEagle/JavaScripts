@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.4
+// @version      10.5
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -14,7 +14,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/load.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/concurrency.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/danbooru.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/saucenao.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/validate.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/utility.js
@@ -1512,17 +1512,25 @@ async function CheckDanbooruLibrary() {
 
     console.log("Checking getAllItems");
     type1 = 'users';
-    addons1 = {search:{level:50}}; //Search for admins
+    addons1 = {search: {level: 50}, only: 'id,level'}; //Search for admins
     let page1 = 1; //Except for the first admin
     let limit1 = 1; //One at a time
     let reverse1 = true; //Starting from lowest to highest ID
-    result1 = await JSPLib.danbooru.getAllItems(type1,limit1,{addons:addons1,page:page1,reverse:true});
+    result1 = await JSPLib.danbooru.getAllItems(type1, limit1, 2, {addons: addons1, page: page1, reverse: true});
     result2 = JSPLib.utility.getObjectAttributes(result1,'id');
-    result3 = JSPLib.utility.getObjectAttributes(result1,'level').reduce((total,entry)=>{return total && entry === 50;},true);
-    console.log(`with type ${type1} and addons ${repr(addons1)}, four users should have been returned [${repr(result1)}]`,RecordResult(Array.isArray(result1) && result1.length === 4));
-    console.log(`should have also not returned the first user [${repr(result2)}]`,RecordResult(Array.isArray(result2) && !result2.includes(1)));
-    console.log(`should have also returned users in reverse order [${repr(result2)}]`,RecordResult(Array.isArray(result2) && result2.length === 4 && result2[0] < result2[1] && result2[1] < result2[2] && result2[2] < result2[3]));
-    console.log("should have also returned only admins",RecordResult(result3));
+    result3 = result2.sort((a,b) => a-b);
+    result4 = JSPLib.utility.getObjectAttributes(result1,'level').reduce((total,entry)=>{return total && entry === 50;},true);
+    console.log(`with type ${type1} and addons ${repr(addons1)}, two users should have been returned ${bracket(repr(result1))}`,RecordResult(Array.isArray(result1) && result1.length === 2));
+    console.log(`should have also not returned the first user ${bracket(repr(result2))}`,RecordResult(Array.isArray(result2) && !result2.includes(1)));
+    console.log(`should have also returned users in reverse order ${repr(result3)} ${bracket(repr(result2))}`,RecordResult(repr(result2) === repr(result3)));
+    console.log("should have also returned only admins",RecordResult(result4));
+
+    console.log("Checking getPostsCountdown");
+    JSPLib.danbooru.error_domname = "#checklibrary-count";
+    string1 = "id:1,2,3,4";
+    string2 = 'id'; //Grab only the ID
+    result1 = await JSPLib.danbooru.getPostsCountdown(string1, 1, string2, '#checklibrary-count');
+    console.log(`with query ${string1} and addons "${string2}", four posts should have been returned ${bracket(repr(result1))}`,RecordResult(Array.isArray(result1) && result1.length === 4));
 
     console.log("Checking rateLimit #2");
     JSPLib.danbooru.num_network_requests = JSPLib.danbooru.max_network_requests;
