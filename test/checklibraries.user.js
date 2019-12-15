@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.5
+// @version      10.6
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -15,7 +15,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/concurrency.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/network.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/saucenao.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/saucenao.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/validate.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/utility.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/statistics.js
@@ -1615,13 +1615,15 @@ async function CheckSaucenaoLibrary() {
 
         console.log("Checking getSauce #3");
         let url1 = 'https://raikou4.donmai.us/preview/d3/4e/d34e4cf0a437a5d65f8e82b7bcd02606.jpg';
-        let resp1 = await JSPLib.saucenao.getSauce(url1,JSPLib.saucenao.getDBIndex('danbooru'),true);
+        let num_results = 2;
+        let resp1 = await JSPLib.saucenao.getSauce(url1, JSPLib.saucenao.getDBIndex('danbooru'), num_results, true);
         let boolarray1 = [typeof resp1 === "object" && resp1 !== null];
         boolarray1[0] && boolarray1.push('header' in resp1);
         boolarray1[0] && boolarray1.push('results' in resp1);
         console.log(`Image with URL ${url1} should have a header and results ${bracket(repr(boolarray1))}`,resp1,RecordResult(boolarray1.every(val => val)));
         if (boolarray1.every(val => val)) {
             let bool1 = ArrayEqual(Object.keys(resp1.header.index),['9']);
+            console.log(`There should be two results ${bracket(resp1.header.results_returned)}`,RecordResult(resp1.header.results_returned === num_results));
             console.log(`All results should be from Danbooru ${bracket(bool1)}`,RecordResult(bool1));
         }
 
