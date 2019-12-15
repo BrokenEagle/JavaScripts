@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.6
+// @version      10.7
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -11,7 +11,7 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/test/checklibraries.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/load.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/concurrency.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/network.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/danbooru.js
@@ -1658,7 +1658,7 @@ async function CheckLoadLibrary() {
     jQuery("body").append(`<div class="class-does-exist">`);
 
     console.log("Starting program load with bad variable");
-    JSPLib.load.programInitialize(function1,'timer1',['window.badvariable'],[],5);
+    JSPLib.load.programInitialize(function1,'timer1',['window.badvariable'],[],[],5);
     let test_success = await LoadWait('timer1');
     if (test_success) {
         console.log(`program load waiting on "window.badvariable" should not have run`,RecordResult(JSPLib.load.program_load_timers.timer1 === false));
@@ -1668,7 +1668,7 @@ async function CheckLoadLibrary() {
     }
 
     console.log("Starting program load with bad DOM id");
-    JSPLib.load.programInitialize(function1,'timer2',[],['#id-doesnt-exist'],1);
+    JSPLib.load.programInitialize(function1,'timer2',[],['#id-doesnt-exist'],[],1);
     test_success = await LoadWait('timer2');
     if (test_success) {
         console.log(`program load waiting on #id-doesnt-exist should not have run`,RecordResult(JSPLib.load.program_load_timers.timer2 === false));
@@ -1678,7 +1678,7 @@ async function CheckLoadLibrary() {
     }
 
     console.log("Starting program load with bad DOM class");
-    JSPLib.load.programInitialize(function1,'timer3',[],['.class-doesnt-exist'],0);
+    JSPLib.load.programInitialize(function1,'timer3',[],['.class-doesnt-exist'],[],0);
     test_success = await LoadWait('timer3');
     if (test_success) {
         console.log(`program load waiting on .class-doesnt-exist should not have run`,RecordResult(JSPLib.load.program_load_timers.timer3 === false));
@@ -1688,7 +1688,7 @@ async function CheckLoadLibrary() {
     }
 
     console.log("Starting program load with bad DOM tagname");
-    JSPLib.load.programInitialize(function1,'timer4',[],['badtag'],0);
+    JSPLib.load.programInitialize(function1,'timer4',[],['badtag'],[],0);
     test_success = await LoadWait('timer4');
     if (test_success) {
         console.log(`program load waiting on <badtag> should not have run`,RecordResult(JSPLib.load.program_load_timers.timer4 === false));
@@ -1697,12 +1697,22 @@ async function CheckLoadLibrary() {
         RecordResult(test_success);
     }
 
-    console.log("Starting good program load");
-    JSPLib.load.programInitialize(function2,'timer5',['window.goodvariable'],['#id-does-exist','.class-does-exist','body'],5);
+    console.log("Starting program load with all bad optional selectors");
+    JSPLib.load.programInitialize(function1,'timer5',[],[],['badtag1','badtag2'],0);
     test_success = await LoadWait('timer5');
     if (test_success) {
-        console.log(`program load waiting on "window.goodvariable" should have run`,RecordResult(JSPLib.load.program_load_timers.timer5 === true));
-        console.log(`program load waiting on "window.goodvariable" should have tried once [${JSPLib.load.program_load_retries.timer5}]`,RecordResult(JSPLib.load.program_load_retries.timer5 === 0));
+        console.log(`program load waiting on <badtag1> or <badtag2> should not have run`,RecordResult(JSPLib.load.program_load_timers.timer5 === false));
+        console.log(`program load waiting on <badtag> or <badtag2> should have retried once [${JSPLib.load.program_load_retries.timer5}]`,RecordResult(JSPLib.load.program_load_retries.timer5 === 0));
+    } else {
+        RecordResult(test_success);
+    }
+
+    console.log("Starting good program load");
+    JSPLib.load.programInitialize(function2,'timer6',['window.goodvariable'],['#id-does-exist','.class-does-exist','body'],['#c-static','#c-posts'],5);
+    test_success = await LoadWait('timer6');
+    if (test_success) {
+        console.log(`program load waiting on "window.goodvariable" should have run`,RecordResult(JSPLib.load.program_load_timers.timer6 === true));
+        console.log(`program load waiting on "window.goodvariable" should have tried once [${JSPLib.load.program_load_retries.timer6}]`,RecordResult(JSPLib.load.program_load_retries.timer6 === 0));
     } else {
         RecordResult(test_success);
     }
