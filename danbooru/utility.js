@@ -20,7 +20,7 @@ Danbooru.Utility.notice_css = `
 #%s-notice {
     padding: .25em;
     position: fixed;
-    top: 4em;
+    top: 2em;
     left: 25%;
     width: 50%;
     z-index: 1002;
@@ -33,12 +33,11 @@ Danbooru.Utility.notice_css = `
 #%s-close-notice-link,
 #%s-close-notice-link:hover {
     color: #0073ff;
-}
-`;
+}`;
 
 /****FUNCTIONS****/
 
-Danbooru.Utility.notice = function(msg,permanent,append=true) {
+Danbooru.Utility.notice = function(msg,append=true,permanent=false) {
     Danbooru.Utility._processNotice('ui-state-highlight', 'ui-state-error', msg, append);
     if (!permanent) {
         Danbooru.Utility.notice_timeout_id = setTimeout(function() {
