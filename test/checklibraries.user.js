@@ -12,15 +12,16 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/concurrency.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/network.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/danbooru.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/validate.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/utility.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/statistics.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/storage.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/debug.js
+// @connect      raikou4.donmai.us
 // @connect      saucenao.com
 // ==/UserScript==
 
