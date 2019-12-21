@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DisplayPostInfo
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      8.6
+// @version      9.0
 // @description  Display views, uploader, and other info to the user.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -16,57 +16,51 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.2/rollups/md5.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru CryptoJS */
 
 /****GLOBAL VARIABLES****/
 
-//Variables for debug.js
-JSPLib.debug.debug_console = false;
-JSPLib.debug.pretext = "DPI:";
-JSPLib.debug.pretimer = "DPI-";
-JSPLib.debug.level = JSPLib.debug.INFO;
+//Exterior script variables
+const DANBOORU_TOPIC_ID = '15926';
+const JQUERY_TAB_WIDGET_URL = 'https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js';
 
 //Variables for load.js
-const program_load_required_variables = ['window.jQuery','Danbooru.PostTooltip'];
-const program_load_required_selectors = ["#page"];
+const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery','Danbooru.PostTooltip'];
+const PROGRAM_LOAD_REQUIRED_SELECTORS = ["#page"];
+const PROGRAM_LOAD_OPTIONAL_SELECTORS = ['#c-posts #a-show','#c-posts #a-index','#c-users #a-edit'];
+
+//Program name constants
+const PROGRAM_SHORTCUT = 'dpi';
+const PROGRAM_CLICK = 'click.dpi';
+const PROGRAM_NAME = 'DisplayPostInfo';
+
+//Program data constants
+const PROGRAM_DATA_REGEX = /^(tt|user|pv)-/; //Regex that matches the prefix of all program cache data
+const PROGRAM_DATA_KEY = {
+    tag_alias: 'ta',
+    tag_implication: 'ti',
+    artist_entry: 'are'
+};
 
 //Main program variable
 var DPI;
 
-//Timer function hash
-const Timer = {};
-
-//Regex that matches the prefix of all program cache data
-const program_cache_regex = /^(tt|user|pv)-/
-
-//Main program expires
-const prune_expires = JSPLib.utility.one_day;
-
-//For factory reset
-const localstorage_keys = [];
-const program_reset_keys = {};
-
-const all_source_types = ['indexed_db','local_storage'];
-const all_data_types = ['user_data','top_tagger','post_views','custom'];
-const reverse_data_key = {
-    user_data: 'user',
-    top_tagger: 'tt',
-    post_views: 'pv'
-};
+//TIMER function hash
+const TIMER = {};
 
 //Main settings
-const settings_config = {
+const SETTINGS_CONFIG = {
     post_views_enabled: {
         default: true,
         validate: (data)=>{return JSPLib.validate.isBoolean(data);},
@@ -102,7 +96,45 @@ const settings_config = {
         validate: (data)=>{return JSPLib.validate.isBoolean(data);},
         hint: "Shows the percentage of posts with the tags from the tag column."
     },
-}
+};
+
+const all_source_types = ['indexed_db', 'local_storage'];
+const all_data_types = ['user_data', 'top_tagger', 'post_views', 'custom'];
+
+const CONTROL_CONFIG = {
+    refresh_frequent_tags: {
+        value: "Click to refresh",
+        hint: "Gets the latest favorite tags from the user's profile.",
+    },
+    cache_info: {
+        value: "Click to populate",
+        hint: "Calculates the cache usage of the program and compares it to the total usage.",
+    },
+    purge_cache: {
+        display: `Purge cache (<span id="${PROGRAM_SHORTCUT}-purge-counter">...</span>)`,
+        value: "Click to purge",
+        hint: `Dumps all of the cached data related to ${PROGRAM_NAME}.`,
+    },
+    data_source: {
+        allitems: all_source_types,
+        value: 'indexed_db',
+        hint: "Indexed DB is <b>Cache Data</b> and Local Storage is <b>Program Data</b>.",
+    },
+    data_type: {
+        allitems: all_data_types,
+        value: 'user_data',
+        hint: "Select type of data. Use <b>Custom</b> for querying by keyname.",
+    },
+    raw_data: {
+        value: false,
+        hint: "Select to import/export all program data",
+    },
+    data_name: {
+        value: "",
+        buttons: ['get', 'save', 'delete'],
+        hint: "Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.",
+    },
+};
 
 //CSS constants
 
@@ -124,11 +156,15 @@ let post_index_css = `
 
 //HTML constants
 
+const POST_VIEWS_LINE = '<li id="dpi-post-views" style="display:none"></li>'
+const USER_NAMES_LINE = `<li id="dpi-post-uploader" style="display:none"></li><li id="dpi-top-tagger" style="display:none"></li>`;
+
+const CACHE_INFO_TABLE = '<div id="dpi-cache-info-table" style="display:none"></div>';
+
 const dpi_menu = `
 <div id="dpi-script-message" class="prose">
-    <h2>DisplayPostInfo</h2>
-    <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/15926" style="color:#0073ff">topic #15926</a>).</p>
-    <p>Check the original forum for information on earlier versions (<a class="dtext-link dtext-id-link dtext-forum-post-id-link" href="/forum_posts/154468">forum #154468</a>).</p>
+    <h2>${PROGRAM_NAME}</h2>
+    <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/${DANBOORU_TOPIC_ID}">topic #${DANBOORU_TOPIC_ID}</a>).</p>
 </div>
 <div id="dpi-console" class="jsplib-console">
     <div id="dpi-settings" class="jsplib-outer-menu">
@@ -213,8 +249,54 @@ const dpi_menu = `
 </div>
 `;
 
+const POST_STATISTICS_TABLE = `
+<section id="dpi-post-statistics">
+    <h1>Statistics</h1>
+    <table class="striped">
+        <tbody>
+            <tr>
+                <th>Score:</th>
+                <td>%SCORE_AVERAGE% ± %SCORE_DEVIATION%</td>
+            </tr>
+            <tr>
+                <th>Favorites:</th>
+                <td>%FAVES_AVERAGE% ± %FAVES_DEVIATION%</td>
+            </tr>
+            <tr>
+                <th>Safe:</th>
+                <td>%SAFE_PERCENTAGE%%</td>
+            </tr>
+            <tr>
+                <th><span style="font-size:90%;letter-spacing:-1px">Questionable:</span></th>
+                <td>%QUESTIONABLE_PERCENTAGE%%</td>
+            </tr>
+            <tr>
+                <th>Explicit:</th>
+                <td>%EXPLICIT_PERCENTAGE%%</td>
+            </tr>
+            <tr>
+                <th>Pending:</th>
+                <td>%PENDING_COUNT%</td>
+            </tr>
+            <tr>
+                <th>Banned:</th>
+                <td>%BANNED_COUNT%</td>
+            </tr>
+            <tr>
+                <th>Flagged:</th>
+                <td>%FLAGGED_COUNT%</td>
+            </tr>
+            <tr>
+                <th>Deleted:</th>
+                <td>%DELETED_COUNT%</td>
+            </tr>
+        </tbody>
+    </table>
+</section>`;
 
 //Time constants
+const prune_expires = JSPLib.utility.one_day;
+const noncritical_recheck = JSPLib.utility.one_minute;
 const thumbnail_hover_delay = 250;
 const top_tagger_expiration = JSPLib.utility.one_month;
 const user_expiration = JSPLib.utility.one_month;
@@ -235,7 +317,7 @@ const all_levels = ["Member","Gold","Platinum","Builder","Moderator","Admin"];
 
 const top_tagger_constraints = {
     expires: JSPLib.validate.expires_constraints,
-    value: JSPLib.validate.postcount_constraints
+    value: JSPLib.validate.id_constraints
 };
 
 const user_constraints = {
@@ -283,7 +365,7 @@ function ValidateProgramData(key,entry) {
     var checkerror=[];
     switch (key) {
         case 'dpi-user-settings':
-            checkerror = JSPLib.menu.validateUserSettings(entry,settings_config);
+            checkerror = JSPLib.menu.validateUserSettings(entry, SETTINGS_CONFIG);
             break;
         case 'dpi-prune-expires':
             if (!Number.isInteger(entry)) {
@@ -302,13 +384,7 @@ function ValidateProgramData(key,entry) {
 
 //Library functions
 
-JSPLib.utility.hijackFunction = function (oldfunc,newfunc) {
-    return function(...args) {
-        let data = oldfunc.call(this,...args);
-        data = newfunc.call(this,data,...args);
-        return data;
-    }
-};
+////NONE
 
 //Auxiliary functions
 
@@ -340,7 +416,7 @@ function RenderUsername(user_id,user_data) {
 
 function PopulateUserTags(current_tags,added_tags,user_tags,version_order,updater_id) {
     user_tags[updater_id] = user_tags[updater_id] || [];
-    user_tags[updater_id] = user_tags[updater_id].concat(added_tags);
+    user_tags[updater_id] = JSPLib.utility.concat(user_tags[updater_id], (added_tags));
     version_order.unshift(updater_id);
     current_tags.tags = JSPLib.utility.setDifference(current_tags.tags,added_tags);
 }
@@ -413,7 +489,7 @@ async function GetUserListData(userid_list) {
             GetUserListData.debuglog("Bad users:", bad_users);
             let bad_data = bad_users.map((userid)=>{return {[userid]: BlankUser(userid)};});
             SaveMappedListData(bad_data, bad_user_expiration);
-            mapped_list_data = mapped_list_data.concat(bad_data);
+            mapped_list_data = JSPLib.utility.concat(mapped_list_data, bad_data);
         }
     }
     if (found_users.length) {
@@ -423,7 +499,7 @@ async function GetUserListData(userid_list) {
             let default_val = {value: BlankUser(userid)};
             return {[userid]: JSPLib.storage.getStorageData('user-' + userid, sessionStorage, default_val).value};
         });
-        mapped_list_data = mapped_list_data.concat(found_data);
+        mapped_list_data = JSPLib.utility.concat(mapped_list_data, found_data);
     }
     return Object.assign({},...mapped_list_data);
 }
@@ -434,7 +510,7 @@ async function GetUserListData(userid_list) {
 
 async function DisplayPostViews() {
     var post_views;
-    let post_id = JSPLib.utility.getMeta('post-id');
+    let post_id = $('#image-container').data('id');
     let views_key = `pv-${post_id}`;
     DisplayPostViews.debuglog("Checking:", post_id);
     let view_data = await JSPLib.storage.checkLocalDB(views_key, ValidateEntry, max_views_expiration);
@@ -533,6 +609,9 @@ async function DisplayTopTagger() {
 async function RenderTooltip(render_promise, event, qtip) {
     let [,data] = await Promise.all([render_promise, DPI.all_uploaders]);
     var uploader_id = $(event.target).closest('.post-preview').data("uploader-id");
+    if (!(uploader_id in data)) {
+        data[uploader_id] = await GetUserData(uploader_id);
+    }
     let name_html = RenderUsername(uploader_id, data[uploader_id]);
     $(".post-tooltip-header-left", qtip.elements.content[0]).prepend(name_html);
 }
@@ -562,83 +641,49 @@ function ProcessTagStatistics() {
     $search_tags.each((i,entry)=>{
         let tag = column_tags[i];
         let tag_percentage = Math.ceil(100 * (column_info[tag] / total_posts));
+        let tag_percentage_string = JSPLib.utility.padNumber(tag_percentage, 2) + '%';
         let spacing_tyle = (tag_percentage === 100 ? `style="letter-spacing:-2px"` : "");
-        $(entry).before(` <span class="dpi-tag-statistic" ${spacing_tyle}>${JSPLib.utility.padNumber(tag_percentage,2)}%</span> `);
+        $(entry).before(` <span class="dpi-tag-statistic" ${spacing_tyle}>${tag_percentage_string}</span> `);
     });
 }
 
 function ProcessPostStatistics() {
     let $post_previews = $(".post-preview");
     let total_posts = $post_previews.length;
-    let score_list = $post_previews.map((i,entry)=>{return Number($(entry).data('score'));}).toArray();
-    let faves_list = $post_previews.map((i,entry)=>{return Number($(entry).data('fav-count'));}).toArray();
+    let score_list = JSPLib.utility.getDOMAttributes($post_previews, 'score', Number);
+    let faves_list = JSPLib.utility.getDOMAttributes($post_previews, 'fav-count', Number);
     let safe_count = $post_previews.filter("[data-rating=s]").length;
     let questionable_count = $post_previews.filter("[data-rating=q]").length;
     let explicit_count = $post_previews.filter("[data-rating=e]").length;
-    $("#tag-box").after(`
-<section id="dpi-post-statistics">
-    <h1>Statistics</h1>
-    <table class="striped">
-        <tbody>
-            <tr>
-                <th>Score:</th>
-                <td>${JSPLib.utility.setPrecision(JSPLib.statistics.average(score_list),1)} ± ${JSPLib.utility.setPrecision(JSPLib.statistics.standardDeviation(score_list),1)}</td>
-            </tr>
-            <tr>
-                <th>Favorites:</th>
-                <td>${JSPLib.utility.setPrecision(JSPLib.statistics.average(faves_list),1)} ± ${JSPLib.utility.setPrecision(JSPLib.statistics.standardDeviation(faves_list),1)}</td>
-            </tr>
-            <tr>
-                <th>Safe:</th>
-                <td>${Math.ceil(100 * (safe_count / total_posts))}%</td>
-            </tr>
-            <tr>
-                <th><span style="font-size:90%;letter-spacing:-1px">Questionable:</span></th>
-                <td>${Math.ceil(100 * (questionable_count / total_posts))}%</td>
-            </tr>
-            <tr>
-                <th>Explicit:</th>
-                <td>${Math.ceil(100 * (explicit_count / total_posts))}%</td>
-            </tr>
-        </tbody>
-    </table>
-</section>
-`);
+    let statistics_html = JSPLib.utility.regexReplace(POST_STATISTICS_TABLE, {
+        SCORE_AVERAGE: JSPLib.utility.setPrecision(JSPLib.statistics.average(score_list), 1) || 0,
+        SCORE_DEVIATION: JSPLib.utility.setPrecision(JSPLib.statistics.standardDeviation(score_list), 1) || 0,
+        FAVES_AVERAGE: JSPLib.utility.setPrecision(JSPLib.statistics.average(faves_list), 1) || 0,
+        FAVES_DEVIATION: JSPLib.utility.setPrecision(JSPLib.statistics.standardDeviation(faves_list), 1) ||0,
+        SAFE_PERCENTAGE: Math.ceil(100 * (safe_count / total_posts)) || 0,
+        QUESTIONABLE_PERCENTAGE: Math.ceil(100 * (questionable_count / total_posts)) || 0,
+        EXPLICIT_PERCENTAGE: Math.ceil(100 * (explicit_count / total_posts)) || 0,
+        PENDING_COUNT: $post_previews.filter('[data-flags*="pending"]').length,
+        BANNED_COUNT: $post_previews.filter('[data-flags*="banned"]').length,
+        FLAGGED_COUNT: $post_previews.filter('[data-flags*="flagged"]').length,
+        DELETED_COUNT: $post_previews.filter('[data-flags*="deleted"]').length,
+    });
+    $("#tag-box").after(statistics_html);
 }
 
 //Settings functions
 
-function BroadcastDPI(ev) {
-    BroadcastDPI.debuglog(`(${ev.data.type}):`, ev.data);
-    switch (ev.data.type) {
-        case "reset":
-            Object.assign(DPI,program_reset_keys);
-            //falls through
-        case "settings":
-            DPI.old_settings = JSPLib.utility.dataCopy(DPI.user_settings);
-            DPI.user_settings = ev.data.user_settings;
-            DPI.is_setting_menu && JSPLib.menu.updateUserSettings('dpi');
-            InitializeChangedSettings();
-            break;
-        case "purge":
-            Object.keys(sessionStorage).forEach((key)=>{
-                if (key.match(program_cache_regex)) {
-                    sessionStorage.removeItem(key);
-                }
-            });
-            //falls through
-        default:
-            //do nothing
-    }
+function RemoteSettingsCallback() {
+    InitializeChangedSettings();
 }
 
 function InitializeChangedSettings() {
-    if ($("#c-posts #a-show").length) {
-        if (JSPLib.menu.hasSettingChanged('dpi','post_views_enabled')) {
+    if (DPI.controller === 'posts' && DPI.action === 'show') {
+        if (JSPLib.menu.hasSettingChanged('post_views_enabled')) {
             let $post_views = $("#dpi-post-views");
             if (DPI.user_settings.post_views_enabled) {
                 if ($post_views.text() === "") {
-                    Timer.DisplayPostViews();
+                    TIMER.DisplayPostViews();
                 } else {
                     $post_views.show();
                 }
@@ -646,11 +691,11 @@ function InitializeChangedSettings() {
                 $post_views.hide();
             }
         }
-        if (JSPLib.menu.hasSettingChanged('dpi','post_uploader_enabled')) {
+        if (JSPLib.menu.hasSettingChanged('post_uploader_enabled')) {
             let $post_uploader = $("#dpi-post-uploader");
             if (DPI.user_settings.post_uploader_enabled) {
                 if ($post_uploader.text() === "") {
-                    Timer.DisplayPostUploader();
+                    TIMER.DisplayPostUploader();
                 } else {
                     $post_uploader.show();
                 }
@@ -658,11 +703,11 @@ function InitializeChangedSettings() {
                 $post_uploader.hide();
             }
         }
-        if (JSPLib.menu.hasSettingChanged('dpi','top_tagger_enabled')) {
+        if (JSPLib.menu.hasSettingChanged('top_tagger_enabled')) {
             let $top_tagger = $("#dpi-top-tagger");
             if (DPI.user_settings.top_tagger_enabled) {
                 if ($top_tagger.text() === "") {
-                    Timer.DisplayTopTagger();
+                    TIMER.DisplayTopTagger();
                 } else {
                     $top_tagger.show();
                 }
@@ -670,8 +715,8 @@ function InitializeChangedSettings() {
                 $top_tagger.hide();
             }
         }
-    } else if ($("#c-posts #a-index").length) {
-        if (JSPLib.menu.hasSettingChanged('dpi','post_statistics_enabled')) {
+    } else if (DPI.controller === 'posts' && DPI.action === 'index') {
+        if (JSPLib.menu.hasSettingChanged('post_statistics_enabled')) {
             let $post_statistics = $("#dpi-post-statistics");
             if (DPI.user_settings.post_statistics_enabled) {
                 if ($post_statistics.length === 0) {
@@ -683,7 +728,7 @@ function InitializeChangedSettings() {
                 $post_statistics.hide();
             }
         }
-        if (JSPLib.menu.hasSettingChanged('dpi','tag_statistics_enabled')) {
+        if (JSPLib.menu.hasSettingChanged('tag_statistics_enabled')) {
             let $tag_statistics = $(".dpi-tag-statistic");
             if (DPI.user_settings.tag_statistics_enabled) {
                 if ($tag_statistics.length === 0) {
@@ -701,72 +746,75 @@ function InitializeChangedSettings() {
 
 function RenderSettingsMenu() {
     $("#display-post-info").append(dpi_menu);
-    $("#dpi-general-settings").append(JSPLib.menu.renderDomainSelectors('dpi', 'DisplayPostInfo'));
-    $("#dpi-information-settings").append(JSPLib.menu.renderCheckbox("dpi",'post_views_enabled'));
-    $("#dpi-information-settings").append(JSPLib.menu.renderCheckbox("dpi",'post_uploader_enabled'));
-    $("#dpi-information-settings").append(JSPLib.menu.renderCheckbox("dpi",'top_tagger_enabled'));
-    $("#dpi-tooltip-settings").append(JSPLib.menu.renderCheckbox("dpi",'basic_post_tooltip'));
-    $("#dpi-tooltip-settings").append(JSPLib.menu.renderCheckbox("dpi",'advanced_post_tooltip'));
-    $("#dpi-statistics-settings").append(JSPLib.menu.renderCheckbox("dpi",'post_statistics_enabled'));
-    $("#dpi-statistics-settings").append(JSPLib.menu.renderCheckbox("dpi",'tag_statistics_enabled'));
-    $("#dpi-cache-settings").append(JSPLib.menu.renderLinkclick("dpi",'cache_info',"Cache info","Click to populate","Calculates the cache usage of the program and compares it to the total usage."));
-    $("#dpi-cache-settings").append(`<div id="dpi-cache-info-table" style="display:none"></div>`);
-    $("#dpi-cache-settings").append(JSPLib.menu.renderLinkclick("dpi",'purge_cache',`Purge cache (<span id="dpi-purge-counter">...</span>)`,"Click to purge","Dumps all of the cached data related to DisplayPostInfo."));
-    $("#dpi-cache-editor-controls").append(JSPLib.menu.renderKeyselect('dpi','data_source',true,'indexed_db',all_source_types,"Indexed DB is <b>Cache Data</b> and Local Storage is <b>Program Data</b>."));
-    $("#dpi-cache-editor-controls").append(JSPLib.menu.renderKeyselect('dpi','data_type',true,'tag_data',all_data_types,"Only applies to Indexed DB.  Use <b>Custom</b> for querying by keyname."));
-    $("#dpi-cache-editor-controls").append(JSPLib.menu.renderTextinput('dpi','data_name',20,true,"Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.",['get','save','delete']));
-    JSPLib.menu.engageUI('dpi',true);
-    JSPLib.menu.saveUserSettingsClick('dpi','DisplayPostInfo');
-    JSPLib.menu.resetUserSettingsClick('dpi','DisplayPostInfo',localstorage_keys,program_reset_keys);
-    JSPLib.menu.purgeCacheClick('dpi','DisplayPostInfo',program_cache_regex,"#dpi-purge-counter");
-    JSPLib.menu.cacheInfoClick('dpi',program_cache_regex,"#dpi-cache-info-table");
-    JSPLib.menu.getCacheClick('dpi',reverse_data_key);
-    JSPLib.menu.saveCacheClick('dpi',ValidateProgramData,ValidateEntry,reverse_data_key);
-    JSPLib.menu.deleteCacheClick('dpi',reverse_data_key);
-    JSPLib.menu.cacheAutocomplete('dpi',program_cache_regex,reverse_data_key);
+    $("#dpi-general-settings").append(JSPLib.menu.renderDomainSelectors());
+    $("#dpi-information-settings").append(JSPLib.menu.renderCheckbox('post_views_enabled'));
+    $("#dpi-information-settings").append(JSPLib.menu.renderCheckbox('post_uploader_enabled'));
+    $("#dpi-information-settings").append(JSPLib.menu.renderCheckbox('top_tagger_enabled'));
+    $("#dpi-tooltip-settings").append(JSPLib.menu.renderCheckbox('basic_post_tooltip'));
+    $("#dpi-tooltip-settings").append(JSPLib.menu.renderCheckbox('advanced_post_tooltip'));
+    $("#dpi-statistics-settings").append(JSPLib.menu.renderCheckbox('post_statistics_enabled'));
+    $("#dpi-statistics-settings").append(JSPLib.menu.renderCheckbox('tag_statistics_enabled'));
+    $("#dpi-cache-settings").append(JSPLib.menu.renderLinkclick('cache_info', true));
+    $("#dpi-cache-settings").append(CACHE_INFO_TABLE);
+    $("#dpi-cache-settings").append(JSPLib.menu.renderLinkclick('purge_cache', true));
+    $("#dpi-cache-editor-controls").append(JSPLib.menu.renderKeyselect('data_source', true));
+    $("#dpi-cache-editor-controls").append(JSPLib.menu.renderDataSourceSections());
+    $("#dpi-section-indexed-db").append(JSPLib.menu.renderKeyselect('data_type', true));
+    $("#dpi-section-local-storage").append(JSPLib.menu.renderCheckbox('raw_data', true));
+    $("#dpi-cache-editor-controls").append(JSPLib.menu.renderTextinput('data_name', 20, true));
+    JSPLib.menu.engageUI(true);
+    JSPLib.menu.saveUserSettingsClick();
+    JSPLib.menu.resetUserSettingsClick();
+    JSPLib.menu.cacheInfoClick();
+    JSPLib.menu.purgeCacheClick();
+    JSPLib.menu.dataSourceChange();
+    JSPLib.menu.rawDataChange();
+    JSPLib.menu.getCacheClick();
+    JSPLib.menu.saveCacheClick(ValidateProgramData, ValidateEntry);
+    JSPLib.menu.deleteCacheClick();
+    JSPLib.menu.cacheAutocomplete();
 }
 
 //Main program
 
 function Main() {
     Danbooru.DPI = DPI = {
-        basic_tooltips: JSON.parse(JSPLib.utility.getMeta('disable-post-tooltips')),
-        storage_keys: {indexed_db: [], local_storage: []},
-        is_setting_menu: Boolean($("#c-users #a-edit").length),
-        settings_config: settings_config,
-        channel: new BroadcastChannel('DisplayPostInfo')
+        controller: document.body.dataset.controller,
+        action: document.body.dataset.action,
+        basic_tooltips: document.body.dataset.userDisablePostTooltips === "true",
+        settings_config: SETTINGS_CONFIG,
+        control_config: CONTROL_CONFIG,
     };
-    DPI.user_settings = JSPLib.menu.loadUserSettings('dpi');
-    DPI.channel.onmessage = BroadcastDPI;
+    Object.assign(DPI, {
+        user_settings: JSPLib.menu.loadUserSettings(),
+    });
     if (JSPLib.danbooru.isSettingMenu()) {
-        JSPLib.validate.dom_output = "#dpi-cache-editor-errors";
-        JSPLib.menu.loadStorageKeys('dpi',program_cache_regex);
-        JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
-            JSPLib.menu.installSettingsMenu("DisplayPostInfo");
+        JSPLib.menu.loadStorageKeys();
+        JSPLib.utility.installScript(JQUERY_TAB_WIDGET_URL).done(()=>{
+            JSPLib.menu.installSettingsMenu();
             RenderSettingsMenu();
         });
         return;
     }
-    if (!JSPLib.menu.isScriptEnabled('DisplayPostInfo')) {
+    if (!JSPLib.menu.isScriptEnabled()) {
         Main.debuglog("Script is disabled on", window.location.hostname);
         return;
     }
-    if ($("#c-posts #a-show").length) {
-        //Render containers now so that completion time doesn't determine order
-        $("#post-information > ul > li:nth-of-type(6)").after(`<li id="dpi-post-views" style="display:none"></li>`);
-        $("#post-information > ul > li:nth-of-type(2)").after(`<li id="dpi-post-uploader" style="display:none"></li><li id="dpi-top-tagger" style="display:none"></li>`);
+    if (DPI.controller === 'posts' && DPI.action === 'show') {
+        $('#post-information #post-info-score').after(POST_VIEWS_LINE);
+        $('#post-information #post-info-date').after(USER_NAMES_LINE);
         if (DPI.user_settings.post_views_enabled) {
-            Timer.DisplayPostViews();
+            TIMER.DisplayPostViews();
         }
         if (DPI.user_settings.post_uploader_enabled) {
-            Timer.DisplayPostUploader();
+            TIMER.DisplayPostUploader();
         }
         if (DPI.user_settings.top_tagger_enabled) {
-            Timer.DisplayTopTagger();
+            TIMER.DisplayTopTagger();
         }
-    } else if ($("#c-posts #a-index").length) {
+    } else if (DPI.controller === 'posts' && DPI.action === 'index') {
         let all_uploaders = JSPLib.utility.setUnique(JSPLib.utility.getDOMAttributes($(".post-preview"), 'uploader-id'));
-        DPI.all_uploaders = Timer.GetUserListData(all_uploaders);
+        DPI.all_uploaders = TIMER.GetUserListData(all_uploaders);
         if (!Danbooru.DPI.basic_tooltips && DPI.user_settings.advanced_post_tooltip) {
             Danbooru.PostTooltip.QTIP_OPTIONS.content = JSPLib.utility.hijackFunction(Danbooru.PostTooltip.render_tooltip, RenderTooltip);
         } else if (Danbooru.DPI.basic_tooltips && DPI.user_settings.basic_post_tooltip) {
@@ -780,25 +828,47 @@ function Main() {
         }
         JSPLib.utility.setCSSStyle(post_index_css,'program');
     }
+    JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
     setTimeout(()=>{
-        JSPLib.storage.pruneEntries('dpi',program_cache_regex,prune_expires);
-    },JSPLib.utility.one_minute);
+        JSPLib.storage.pruneEntries(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, prune_expires);
+    }, noncritical_recheck);
 }
 
 /****Function decoration****/
 
-JSPLib.debug.addFunctionTimers(Timer,false,[
+JSPLib.debug.addFunctionTimers(TIMER, false, [
     RenderSettingsMenu
 ]);
 
-JSPLib.debug.addFunctionTimers(Timer,true,[
-    DisplayPostViews,DisplayPostUploader,DisplayTopTagger,GetUserListData
+JSPLib.debug.addFunctionTimers(TIMER, true, [
+    DisplayPostViews, DisplayPostUploader, DisplayTopTagger, GetUserListData,
 ]);
 
 JSPLib.debug.addFunctionLogs([
-    Main,BroadcastDPI,GetUserData,DisplayPostViews,DisplayTopTagger,RenderTooltip,GetUserListData,ValidateEntry
+    Main, GetUserData, DisplayPostViews, DisplayTopTagger, RenderTooltip, GetUserListData, ValidateEntry,
 ]);
+
+/****Initialization****/
+
+//Variables for debug.js
+JSPLib.debug.debug_console = false;
+JSPLib.debug.pretext = "DPI:";
+JSPLib.debug.pretimer = "DPI-";
+JSPLib.debug.level = JSPLib.debug.INFO;
+
+//Variables for menu.js
+JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
+JSPLib.menu.program_name = PROGRAM_NAME;
+JSPLib.menu.program_data_regex = PROGRAM_DATA_REGEX;
+JSPLib.menu.program_data_key = PROGRAM_DATA_KEY;
+JSPLib.menu.settings_callback = RemoteSettingsCallback;
+
+//Export JSPLib
+if (JSPLib.debug.debug_console) {
+    window.JSPLib.lib = window.JSPLib.lib || {};
+    window.JSPLib.lib[PROGRAM_NAME] = JSPLib;
+}
 
 /****Execution start****/
 
-JSPLib.load.programInitialize(Main,'DPI',program_load_required_variables,program_load_required_selectors);
+JSPLib.load.programInitialize(Main, PROGRAM_NAME, PROGRAM_LOAD_REQUIRED_VARIABLES, PROGRAM_LOAD_REQUIRED_SELECTORS, PROGRAM_LOAD_OPTIONAL_SELECTORS);
