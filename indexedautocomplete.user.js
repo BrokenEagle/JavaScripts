@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      25.5
+// @version      26.0
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -14,30 +14,46 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru validate LZString */
 
 /****Global variables****/
 
-//Variables for debug.js
-JSPLib.debug.debug_console = false;
-JSPLib.debug.pretext = "IAC:";
-JSPLib.debug.pretimer = "IAC-";
-JSPLib.debug.level = JSPLib.debug.INFO;
+//Exterior script variables
+const DANBOORU_TOPIC_ID = '14747';
+const JQUERY_TAB_WIDGET_URL = 'https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js';
 
 //Variables for load.js
 const program_load_required_variables = ['window.jQuery','window.Danbooru','Danbooru.Autocomplete','Danbooru.RelatedTag'];
 const program_load_required_selectors = ['#top','#page'];
+
+//Program name constants
+const PROGRAM_SHORTCUT = 'iac';
+const PROGRAM_CLICK = 'click.iac';
+const PROGRAM_NAME = 'IndexedAutocomplete';
+
+//Program data constants
+const PROGRAM_DATA_REGEX = /^(af|ref|ac|pl|us|fg|ss|ar|wp|ft|rt(gen|char|copy|art)?)-/; //Regex that matches the prefix of all program cache data
+const PROGRAM_DATA_KEY = {
+    tag: 'ac',
+    pool: 'pl',
+    user: 'us',
+    artist: 'ar',
+    wiki: 'wp',
+    forum: 'ft',
+    saved_search: 'ss',
+    favorite_group: 'fg',
+};
 
 //Main program variable
 var IAC;
@@ -45,21 +61,14 @@ var IAC;
 //Timer function hash
 const Timer = {};
 
-//Regex that matches the prefix of all program cache data
-const program_cache_regex = /^(af|ref|ac|pl|us|fg|ss|ar|wp|ft|rt(gen|char|copy|art)?)-/;
-
-//Main program expires
-const prune_expires = JSPLib.utility.one_day;
-const noncritical_recheck = JSPLib.utility.one_minute;
-
 //For factory reset
-const localstorage_keys = [
-    'iac-prune-expires',
-    'iac-choice-info'
+const LOCALSTORAGE_KEYS = [
+    'iac-choice-info',
 ];
-const program_reset_keys = {
+const PROGRAM_RESET_KEYS = {
     choice_order:{},
-    choice_data:{}
+    choice_data:{},
+    source_data:{},
 };
 
 //Available setting values
@@ -67,7 +76,7 @@ const tag_sources = ['metatag','exact','prefix','alias','correct'];
 const scale_types = ['linear','square_root','logarithmic'];
 
 //Main settings
-const settings_config = {
+const SETTINGS_CONFIG = {
     prefix_check_enabled: {
         default: true,
         validate: (data)=>{return JSPLib.validate.isBoolean(data);},
@@ -179,7 +188,48 @@ const settings_config = {
         validate: (data)=>{return Number.isInteger(data) && data >= 0 && data <= 3;},
         hint: "Number of days (0 - 3). Data expiring within this period gets automatically requeried. Setting to 0 disables this."
     }
-}
+};
+
+//Available config values
+const all_source_types = ['indexed_db','local_storage'];
+const all_data_types = ['tag','pool','user','artist','wiki','forum','saved_search','favorite_group','related_tag','custom'];
+const all_related = ['','general','copyright','character','artist'];
+
+const CONTROL_CONFIG = {
+    cache_info: {
+        value: "Click to populate",
+        hint: "Calculates the cache usage of the program and compares it to the total usage.",
+    },
+    purge_cache: {
+        display: `Purge cache (<span id="iac-purge-counter">...</span>)`,
+        value: "Click to purge",
+        hint: `Dumps all of the cached data related to ${PROGRAM_NAME}.`,
+    },
+    data_source: {
+        allitems: all_source_types,
+        value: 'indexed_db',
+        hint: "Indexed DB is <b>Cache Data</b> and Local Storage is <b>Program Data</b>.",
+    },
+    data_type: {
+        allitems: all_data_types,
+        value: 'tag',
+        hint: "Select type of data. Use <b>Custom</b> for querying by keyname.",
+    },
+    related_tag_type: {
+        allitems: all_related,
+        value: "",
+        hint: "Select type of related tag data. Blank selects uncategorized data.",
+    },
+    raw_data: {
+        value: false,
+        hint: "Select to import/export all program data",
+    },
+    data_name: {
+        value: "",
+        buttons: ['get', 'save', 'delete'],
+        hint: "Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.",
+    },
+};
 
 //Pre-CSS/HTML constants
 
@@ -273,10 +323,12 @@ const post_comment_search = `
     </form>
 </li>`;
 
+const CACHE_INFO_TABLE = '<div id="iac-cache-info-table" style="display:none"></div>';
+
 const iac_menu = `
 <div id="iac-script-message" class="prose">
-    <h2>IndexedAutocomplete</h2>
-    <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/14701">topic #14701</a>).</p>
+    <h2>${PROGRAM_NAME}</h2>
+    <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/${DANBOORU_TOPIC_ID}">topic #${DANBOORU_TOPIC_ID}</a>).</p>
 </div>
 <div id="iac-console" class="jsplib-console">
     <div id="iac-settings" class="jsplib-outer-menu">
@@ -494,21 +546,6 @@ const iac_menu = `
 </div>
 `;
 
-//Cache editor constants
-
-const all_source_types = ['indexed_db','local_storage'];
-const all_data_types = ['tag','pool','user','artist','wiki','forum','saved_search','favorite_group','related_tag','custom'];
-const reverse_data_key = {
-    tag: 'ac',
-    pool: 'pl',
-    user: 'us',
-    artist: 'ar',
-    wiki: 'wp',
-    forum: 'ft',
-    saved_search: 'ss',
-    favorite_group: 'fg'
-};
-
 //BUR constants
 const bur_keywords = ['->','alias','imply','update','unalias','unimply','category'];
 const bur_data = bur_keywords.map((tag)=>{
@@ -522,20 +559,17 @@ const bur_data = bur_keywords.map((tag)=>{
     };
 });
 
-//Polling interval for checking program status
-const timer_poll_interval = 100;
-
-//Interval for fixup callback functions
-const callback_interval = 1000;
-
-//Delay for calling functions after initialization
-const jquery_delay = 500;
+//Time constants
+const prune_expires = JSPLib.utility.one_day;
+const noncritical_recheck = JSPLib.utility.one_minute;
+const jquery_delay = 500; //Delay for calling functions after initialization
+const timer_poll_interval = 100; //Polling interval for checking program status
+const callback_interval = 1000; //Interval for fixup callback functions
 
 //Data inclusion lists
 const all_categories = [0,1,3,4,5];
 const all_topics = [0,1,2];
 const all_pools = ["collection","series"]
-const all_related = ['','general','copyright','character','artist'];
 const all_users = ["Member","Gold","Platinum","Builder","Moderator","Admin"];
 
 //All of the following are used to determine when to run the script
@@ -1004,7 +1038,7 @@ function ValidateProgramData(key,entry) {
     var checkerror=[];
     switch (key) {
         case 'iac-user-settings':
-            checkerror = JSPLib.menu.validateUserSettings(entry, settings_config);
+            checkerror = JSPLib.menu.validateUserSettings(entry, SETTINGS_CONFIG);
             break;
         case 'iac-prune-expires':
             if (!Number.isInteger(entry)) {
@@ -1594,6 +1628,7 @@ async function FindArtistSession(event) {
         FindArtistSession.debuglog("Found artist data", urlkey);
         $("#source-info").html(LZString.decompressFromUTF16(data.source_info));
         $(".source-related-tags-columns").html(LZString.decompressFromUTF16(data.source_column))
+        Danbooru.RelatedTag.update_selected();
     } else {
         FindArtistSession.debuglog("Missing artist data", urlkey);
         $("#source-info").addClass("loading");
@@ -1609,31 +1644,29 @@ async function FindArtistSession(event) {
 
 ////Setup functions
 
+function RebindRender() {
+    $(autocomplete_rebind_selectors).each((i,entry)=>{
+        let render_set = $(entry).data("iac-render");
+        let autocomplete_item = $(entry).data("uiAutocomplete");
+        if (!render_set && autocomplete_item) {
+            autocomplete_item._renderItem = Danbooru.Autocomplete.render_item;
+            $(entry).data("iac-render", true);
+        }
+    });
+}
+
 //Rebind callback functions
 
 function RebindRenderCheck() {
-    let render_expires = Date.now() + JSPLib.utility.one_second * 5;
-    let render_timer = JSPLib.utility.initializeInterval(()=>{
-        if(!JSPLib.utility.hasDOMDataKey(autocomplete_rebind_selectors, 'iac-render')) {
-            $(autocomplete_rebind_selectors).each((i,entry)=>{
-                let render_set = $(entry).data("iac-render");
-                let autocomplete_item = $(entry).data("uiAutocomplete");
-                if (!render_set && autocomplete_item) {
-                    autocomplete_item._renderItem = Danbooru.Autocomplete.render_item;
-                    $(entry).data("iac-render", true);
-                }
-            });
-        }
-        if (!JSPLib.utility.validateExpires(render_expires)) {
-            clearInterval(render_timer);
-            return;
-        }
-    }, timer_poll_interval);
+    JSPLib.utility.recheckTimer({
+        check: ()=>{return !JSPLib.utility.hasDOMDataKey(autocomplete_rebind_selectors, 'iac-render');},
+        exec: RebindRender,
+    }, timer_poll_interval, JSPLib.utility.one_second * 5);
 }
 
 function RebindRelatedTags() {
     //Only need to check one of them, since they're all bound at the same time
-    JSPLib.utility.rebindTimer({
+    JSPLib.utility.recheckTimer({
         check: ()=>{return JSPLib.utility.isNamespaceBound(document, 'click', 'danbooru', ".related-tags-button");},
         exec: ()=>{
             $(document).off("click.danbooru",".related-tags-button");
@@ -1643,7 +1676,7 @@ function RebindRelatedTags() {
 }
 
 function RebindFindArtist() {
-    JSPLib.utility.rebindTimer({
+    JSPLib.utility.recheckTimer({
         check: ()=>{return JSPLib.utility.isGlobalFunctionBound("danbooru:show-related-tags");},
         exec: ()=>{
             IAC.cached_data = true;
@@ -1657,7 +1690,7 @@ function RebindFindArtist() {
 }
 
 function RebindAnyAutocomplete(selector,keycode,multiple) {
-    JSPLib.utility.rebindTimer({
+    JSPLib.utility.recheckTimer({
         check: ()=>{return JSPLib.utility.hasDOMDataKey(selector, 'uiAutocomplete');},
         exec: ()=>{
             $(selector).autocomplete("destroy").off('keydown.Autocomplete.tab');
@@ -1667,7 +1700,7 @@ function RebindAnyAutocomplete(selector,keycode,multiple) {
 }
 
 function RebindSingleTag() {
-    JSPLib.utility.rebindTimer({
+    JSPLib.utility.recheckTimer({
         check: ()=>{return JSPLib.utility.hasDOMDataKey('[data-autocomplete=tag]', 'uiAutocomplete');},
         exec: ()=>{
             let autocomplete = AnySourceIndexed('ac', true);
@@ -1832,7 +1865,7 @@ function OptionCacheDataKey(data_type,data_value) {
         IAC.related_category = $("#iac-control-related-tag-type").val();
         return `${GetRelatedKeyModifer(IAC.related_category)}-${data_value}`;
     } else {
-        return `${reverse_data_key[data_type]}-${data_value}`;
+        return `${PROGRAM_DATA_KEY[data_type]}-${data_value}`;
     }
 }
 
@@ -1851,30 +1884,19 @@ function UpdateLocalData(key,data) {
 //Settings functions
 
 function BroadcastIAC(ev) {
-    BroadcastIAC.debuglog(`(${ev.data.type}):`, (ev.data.type === "reload" ? `${ev.data.name} ${ev.data.key}` : ev.data));
+    BroadcastIAC.debuglog(`(${ev.data.type}): ${ev.data.name} ${ev.data.key}`);
     switch (ev.data.type) {
         case "reload":
             IAC.choice_order = ev.data.choice_order;
             IAC.choice_data = ev.data.choice_data;
-            break;
-        case "reset":
-            Object.assign(IAC, program_reset_keys);
-            //falls through
-        case "settings":
-            IAC.user_settings = ev.data.user_settings;
-            IAC.is_setting_menu && JSPLib.menu.updateUserSettings('iac');
-            SetTagAutocompleteSource();
-            break;
-        case "purge":
-            Object.keys(sessionStorage).forEach((key)=>{
-                if (key.match(program_cache_regex)) {
-                    sessionStorage.removeItem(key);
-                }
-            });
             //falls through
         default:
             //do nothing
     }
+}
+
+function RemoteSettingsCallback() {
+    SetTagAutocompleteSource();
 }
 
 function SetTagAutocompleteSource() {
@@ -1893,45 +1915,57 @@ function GetRecheckExpires() {
     return IAC.user_settings.recheck_data_interval * JSPLib.utility.one_day;
 }
 
+function DataTypeChange(event) {
+    let data_type = $('#iac-control-data-type').val();
+    let action = (data_type === 'related_tag' ? 'show' : 'hide');
+    $('.iac-options[data-setting="related_tag_type"]')[action]();
+}
+
 function RenderSettingsMenu() {
     $("#indexed-autocomplete").append(iac_menu);
-    $("#iac-general-settings").append(JSPLib.menu.renderDomainSelectors('iac', 'IndexedAutocomplete'));
-    $("#iac-source-settings").append(JSPLib.menu.renderCheckbox('iac', 'BUR_source_enabled'));
-    $("#iac-source-settings").append(JSPLib.menu.renderCheckbox('iac', 'metatag_source_enabled'));
-    $("#iac-usage-settings").append(JSPLib.menu.renderCheckbox('iac', 'usage_enabled'));
-    $("#iac-usage-settings").append(JSPLib.menu.renderTextinput('iac', 'usage_multiplier'));
-    $("#iac-usage-settings").append(JSPLib.menu.renderTextinput('iac', 'usage_maximum'));
-    $("#iac-usage-settings").append(JSPLib.menu.renderTextinput('iac', 'usage_expires'));
-    $("#iac-usage-settings").append(JSPLib.menu.renderCheckbox('iac', 'prefix_check_enabled'));
-    $("#iac-display-settings").append(JSPLib.menu.renderTextinput('iac', 'source_results_returned', 5));
-    $("#iac-display-settings").append(JSPLib.menu.renderCheckbox('iac', 'source_highlight_enabled'));
-    $("#iac-display-settings").append(JSPLib.menu.renderCheckbox('iac', 'source_grouping_enabled'));
-    $("#iac-display-settings").append(JSPLib.menu.renderSortlist('iac', 'source_order'));
-    $("#iac-sort-settings").append(JSPLib.menu.renderCheckbox('iac', 'alternate_sorting_enabled'));
-    $("#iac-sort-settings").append(JSPLib.menu.renderInputSelectors('iac', 'postcount_scale', 'radio'));
-    $("#iac-sort-settings").append(JSPLib.menu.renderTextinput('iac', 'exact_source_weight', 5));
-    $("#iac-sort-settings").append(JSPLib.menu.renderTextinput('iac', 'prefix_source_weight', 5));
-    $("#iac-sort-settings").append(JSPLib.menu.renderTextinput('iac', 'alias_source_weight', 5));
-    $("#iac-sort-settings").append(JSPLib.menu.renderTextinput('iac', 'correct_source_weight', 5));
-    $("#iac-network-settings").append(JSPLib.menu.renderTextinput('iac', 'recheck_data_interval', 5));
-    $("#iac-network-settings").append(JSPLib.menu.renderCheckbox('iac', 'alternate_tag_source'));
-    $("#iac-network-settings").append(JSPLib.menu.renderCheckbox('iac', 'network_only_mode'));
-    $("#iac-cache-settings").append(JSPLib.menu.renderLinkclick('iac', 'cache_info', "Cache info", "Click to populate", "Calculates the cache usage of the program and compares it to the total usage."));
-    $("#iac-cache-settings").append(`<div id="iac-cache-info-table" style="display:none"></div>`);
-    $("#iac-cache-settings").append(JSPLib.menu.renderLinkclick('iac', 'purge_cache',`Purge cache (<span id="iac-purge-counter">...</span>)`, "Click to purge", "Dumps all of the cached data related to IndexedAutocomplete."));
-    $("#iac-cache-editor-controls").append(JSPLib.menu.renderKeyselect('iac', 'data_source', true, 'indexed_db', all_source_types, "Indexed DB is <b>Cache Data</b> and Local Storage is <b>Program Data</b>."));
-    $("#iac-cache-editor-controls").append(JSPLib.menu.renderKeyselect('iac', 'data_type', true, 'tag', all_data_types, "Only applies to Indexed DB. Use <b>Custom</b> for querying by keyname."));
-    $("#iac-cache-editor-controls").append(JSPLib.menu.renderKeyselect('iac', 'related_tag_type', true, '', all_related, "Only applies to related tag data."));
-    $("#iac-cache-editor-controls").append(JSPLib.menu.renderTextinput('iac', 'data_name', 20, true, "Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.", ['get','save','delete']));
-    JSPLib.menu.engageUI('iac', true, true);
-    JSPLib.menu.saveUserSettingsClick('iac', 'IndexedAutocomplete');
-    JSPLib.menu.resetUserSettingsClick('iac', 'IndexedAutocomplete', localstorage_keys, program_reset_keys);
-    JSPLib.menu.cacheInfoClick('iac', program_cache_regex, "#iac-cache-info-table");
-    JSPLib.menu.purgeCacheClick('iac','IndexedAutocomplete', program_cache_regex, "#iac-purge-counter");
-    JSPLib.menu.getCacheClick('iac', OptionCacheDataKey);
-    JSPLib.menu.saveCacheClick('iac',ValidateProgramData, ValidateEntry, OptionCacheDataKey, UpdateLocalData);
-    JSPLib.menu.deleteCacheClick('iac', OptionCacheDataKey);
-    JSPLib.menu.cacheAutocomplete('iac', program_cache_regex, OptionCacheDataKey);
+    $("#iac-general-settings").append(JSPLib.menu.renderDomainSelectors());
+    $("#iac-source-settings").append(JSPLib.menu.renderCheckbox('BUR_source_enabled'));
+    $("#iac-source-settings").append(JSPLib.menu.renderCheckbox('metatag_source_enabled'));
+    $("#iac-usage-settings").append(JSPLib.menu.renderCheckbox('usage_enabled'));
+    $("#iac-usage-settings").append(JSPLib.menu.renderTextinput('usage_multiplier'));
+    $("#iac-usage-settings").append(JSPLib.menu.renderTextinput('usage_maximum'));
+    $("#iac-usage-settings").append(JSPLib.menu.renderTextinput('usage_expires'));
+    $("#iac-usage-settings").append(JSPLib.menu.renderCheckbox('prefix_check_enabled'));
+    $("#iac-display-settings").append(JSPLib.menu.renderTextinput('source_results_returned', 5));
+    $("#iac-display-settings").append(JSPLib.menu.renderCheckbox('source_highlight_enabled'));
+    $("#iac-display-settings").append(JSPLib.menu.renderCheckbox('source_grouping_enabled'));
+    $("#iac-display-settings").append(JSPLib.menu.renderSortlist('source_order'));
+    $("#iac-sort-settings").append(JSPLib.menu.renderCheckbox('alternate_sorting_enabled'));
+    $("#iac-sort-settings").append(JSPLib.menu.renderInputSelectors('postcount_scale', 'radio'));
+    $("#iac-sort-settings").append(JSPLib.menu.renderTextinput('exact_source_weight', 5));
+    $("#iac-sort-settings").append(JSPLib.menu.renderTextinput('prefix_source_weight', 5));
+    $("#iac-sort-settings").append(JSPLib.menu.renderTextinput('alias_source_weight', 5));
+    $("#iac-sort-settings").append(JSPLib.menu.renderTextinput('correct_source_weight', 5));
+    $("#iac-network-settings").append(JSPLib.menu.renderTextinput('recheck_data_interval', 5));
+    $("#iac-network-settings").append(JSPLib.menu.renderCheckbox('alternate_tag_source'));
+    $("#iac-network-settings").append(JSPLib.menu.renderCheckbox('network_only_mode'));
+    $("#iac-cache-settings").append(JSPLib.menu.renderLinkclick('cache_info', true));
+    $("#iac-cache-settings").append(CACHE_INFO_TABLE);
+    $("#iac-cache-settings").append(JSPLib.menu.renderLinkclick('purge_cache', true));
+    $("#iac-cache-editor-controls").append(JSPLib.menu.renderKeyselect('data_source', true));
+    $("#iac-cache-editor-controls").append(JSPLib.menu.renderDataSourceSections());
+    $("#iac-section-indexed-db").append(JSPLib.menu.renderKeyselect('data_type', true));
+    $("#iac-section-indexed-db").append(JSPLib.menu.renderKeyselect('related_tag_type', true));
+    $("#iac-section-local-storage").append(JSPLib.menu.renderCheckbox('raw_data',true));
+    $("#iac-cache-editor-controls").append(JSPLib.menu.renderTextinput('data_name', 20, true));
+    $('.iac-options[data-setting="related_tag_type"]').hide();
+    JSPLib.menu.engageUI(true, true);
+    JSPLib.menu.saveUserSettingsClick(RemoteSettingsCallback);
+    JSPLib.menu.resetUserSettingsClick(LOCALSTORAGE_KEYS, RemoteSettingsCallback);
+    JSPLib.menu.cacheInfoClick();
+    JSPLib.menu.purgeCacheClick();
+    JSPLib.menu.dataSourceChange();
+    $("#iac-control-data-type").on('change.iac', DataTypeChange);
+    JSPLib.menu.rawDataChange();
+    JSPLib.menu.getCacheClick();
+    JSPLib.menu.saveCacheClick(ValidateProgramData, ValidateEntry, UpdateLocalData);
+    JSPLib.menu.deleteCacheClick();
+    JSPLib.menu.cacheAutocomplete();
 }
 
 //Main program
@@ -1944,27 +1978,23 @@ function Main() {
     Danbooru.IAC = IAC = {
         controller: document.body.dataset.controller,
         action: document.body.dataset.action,
-        source_data: {},
-        choice_info: JSPLib.storage.getStorageData('iac-choice-info', localStorage, {}),
-        is_bur: GetIsBur(),
         FindArtistSession: FindArtistSession,
         InitializeAutocompleteIndexed: InitializeAutocompleteIndexed,
-        storage_keys: {indexed_db: [], local_storage: []},
-        is_setting_menu: JSPLib.danbooru.isSettingMenu(),
-        settings_config: settings_config,
-        channel: new BroadcastChannel('IndexedAutocomplete')
+        settings_config: SETTINGS_CONFIG,
+        control_config: CONTROL_CONFIG,
+        channel: JSPLib.utility.createBroadcastChannel(PROGRAM_NAME, BroadcastIAC),
     };
-    IAC.user_settings = JSPLib.menu.loadUserSettings('iac');
-    IAC.channel.onmessage = BroadcastIAC;
-    if (IAC.is_setting_menu) {
-        JSPLib.validate.dom_output = "#iac-cache-editor-errors";
-        JSPLib.menu.loadStorageKeys('iac', program_cache_regex);
-        JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
-            JSPLib.menu.installSettingsMenu("IndexedAutocomplete");
+    Object.assign(IAC, {
+        user_settings: JSPLib.menu.loadUserSettings(),
+    });
+    if (JSPLib.danbooru.isSettingMenu()) {
+        JSPLib.menu.loadStorageKeys();
+        JSPLib.utility.installScript(JQUERY_TAB_WIDGET_URL).done(()=>{
+            JSPLib.menu.installSettingsMenu();
             Timer.RenderSettingsMenu();
         });
     }
-    if (!JSPLib.menu.isScriptEnabled('IndexedAutocomplete')) {
+    if (!JSPLib.menu.isScriptEnabled()) {
         Main.debuglog("Script is disabled on", window.location.hostname);
         return;
     }
@@ -1972,17 +2002,16 @@ function Main() {
         Main.debuglog("No autocomplete inputs! Exiting...");
         return;
     }
-    JSPLib.utility.setCSSStyle(program_css, 'program');
-    SetTagAutocompleteSource();
-    if (!JSPLib.validate.isHash(IAC.choice_info) || $.isEmptyObject(IAC.choice_info)) {
-        //Temporary transitory code
-        IAC.choice_order = JSPLib.storage.getStorageData('iac-choice-order', localStorage, {});
-        IAC.choice_data = JSPLib.storage.getStorageData('iac-choice-data', localStorage, {});
-        JSPLib.storage.setStorageData('iac-choice-info', {choice_order: IAC.choice_order, choice_data: IAC.choice_data}, localStorage);
-    } else {
+    Object.assign(IAC, {
+        choice_info: JSPLib.storage.getStorageData('iac-choice-info', localStorage, {}),
+        is_bur: GetIsBur(),
+    }, PROGRAM_RESET_KEYS);
+    if (JSPLib.validate.isHash(IAC.choice_info)) {
         IAC.choice_order = IAC.choice_info.choice_order;
         IAC.choice_data = IAC.choice_info.choice_data;
     }
+    JSPLib.utility.setCSSStyle(program_css, 'program');
+    SetTagAutocompleteSource();
     CorrectUsageData();
     /**Autocomplete bindings**/
     Danbooru.Autocomplete.tag_source = AnySourceIndexed('ac');
@@ -1993,7 +2022,10 @@ function Main() {
     Danbooru.Autocomplete.static_metatag_source = StaticMetatagSource;
     Danbooru.Autocomplete.insert_completion_old = Danbooru.Autocomplete.insert_completion;
     Danbooru.Autocomplete.insert_completion = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.insert_completion, InsertUserSelected);
+    Danbooru.Autocomplete.render_item_old = Danbooru.Autocomplete.render_item;
     Danbooru.Autocomplete.render_item = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.render_item, HighlightSelected);
+    Danbooru.Autocomplete.initialize_tag_autocomplete_old = Danbooru.Autocomplete.initialize_tag_autocomplete;
+    Danbooru.Autocomplete.initialize_tag_autocomplete = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.initialize_tag_autocomplete, RebindRender);
     RebindRenderCheck();
     //Tag-only queries need to be rebound to account for no metatag complete
     if ($('[data-autocomplete=tag]').length) {
@@ -2058,16 +2090,11 @@ function Main() {
         }
     }
     /**Other setup**/
-    JSPLib.debug.debugExecute(()=>{
-        window.addEventListener('beforeunload',()=>{
-            JSPLib.statistics.outputAdjustedMean("IndexedAutocomplete");
-        });
-    });
-    //Take care of other non-critical tasks at a later time
+    JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
     setTimeout(()=>{
         PruneUsageData();
-        JSPLib.storage.pruneEntries('iac', program_cache_regex, prune_expires);
-    },noncritical_recheck);
+        JSPLib.storage.pruneEntries('iac', PROGRAM_DATA_REGEX, prune_expires);
+    }, noncritical_recheck);
 }
 
 /****Function decoration****/
@@ -2080,6 +2107,29 @@ JSPLib.debug.addFunctionLogs([
     Main,BroadcastIAC,NetworkSource,FindArtistSession,RelatedTagsButton,PruneUsageData,CorrectUsageData,InsertUserSelected,
     SaveArtistData,GetArtistData,FixExpirationCallback,ValidateEntry
 ]);
+
+/****Initialization****/
+
+//Variables for debug.js
+JSPLib.debug.debug_console = false;
+JSPLib.debug.pretext = "IAC:";
+JSPLib.debug.pretimer = "IAC-";
+JSPLib.debug.level = JSPLib.debug.INFO;
+
+//Variables for menu.js
+JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
+JSPLib.menu.program_name = PROGRAM_NAME;
+JSPLib.menu.program_reset_data = PROGRAM_RESET_KEYS;
+JSPLib.menu.program_data_regex = PROGRAM_DATA_REGEX;
+JSPLib.menu.program_data_key = OptionCacheDataKey;
+JSPLib.menu.settings_callback = RemoteSettingsCallback;
+JSPLib.menu.reset_callback = RemoteSettingsCallback;
+
+//Export JSPLib
+if (JSPLib.debug.debug_console) {
+    window.JSPLib.lib = window.JSPLib.lib || {};
+    window.JSPLib.lib[PROGRAM_NAME] = JSPLib;
+}
 
 /****Execution start****/
 
