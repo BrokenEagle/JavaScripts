@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      15.5
+// @version      16.0
 // @description  Gives up-to-date stats on uploads.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -14,33 +14,36 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib jQuery $ Danbooru CanvasJS */
 
 /**GLOBAL VARIABLES**/
 
-//Variables for debug.js
-JSPLib.debug.debug_console = false;
-JSPLib.debug.pretext = "CU:";
-JSPLib.debug.pretimer = "CU-";
-JSPLib.debug.level = JSPLib.debug.INFO;
+//Exterior script variables
+const DANBOORU_TOPIC_ID = '15169';
+const JQUERY_TAB_WIDGET_URL = 'https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js';
 
 //Variables for load.js
 const program_load_required_variables = ['window.jQuery','window.Danbooru'];
 const program_load_required_selectors = ["#top","#page-footer"];
 
-//Variables for network.js
-JSPLib.network.counter_domname = "#loading-counter";
+//Program name constants
+const PROGRAM_SHORTCUT = 'cu';
+const PROGRAM_CLICK = 'click.cu';
+const PROGRAM_NAME = 'CurrentUploads';
+
+//Program data constants
+const PROGRAM_DATA_REGEX = /^rti-|ct(d|w|mo|y|at)-|(daily|weekly|monthly|yearly|alltime|previous)-(uploads|approvals)-/; //Regex that matches the prefix of all program cache data
 
 //Main program variable
 var CU;
@@ -48,30 +51,25 @@ var CU;
 //Timer function hash
 const Timer = {};
 
-//Regex that matches the prefix of all program cache data
-const program_cache_regex = /^rti-|ct(d|w|mo|y|at)-|(daily|weekly|monthly|yearly|alltime|previous)-(uploads|approvals)-/
-
-//Main program expires
-const prune_expires = JSPLib.utility.one_day;
-
 //For factory reset
-const localstorage_keys = [
+const LOCALSTORAGE_KEYS = [
     'cu-current-metric',
     'cu-hide-current-uploads',
     'cu-stash-current-uploads'
 ];
-const program_reset_keys = {
+const PROGRAM_RESET_KEYS = {
     checked_usernames: {},
-    checked_users: { user:{}, approver:{} },
-    user_copytags: { user:{}, approver:{} },
-    period_available: { user:{}, approver:{} }
+    checked_users: {user:{}, approver: {}},
+    user_copytags: {user:{}, approver: {}},
+    period_available: {user:{}, approver: {}},
+    reverse_implications: {},
 };
 
 //Available setting values
 const period_selectors = ['daily','weekly','monthly','yearly','alltime'];
 
 //Main settings
-const settings_config = {
+const SETTINGS_CONFIG = {
     copyrights_merge: {
         default: true,
         validate: (data)=>{return JSPLib.validate.isBoolean(data);},
@@ -100,19 +98,64 @@ const settings_config = {
         validate: (data)=>{return Number.isInteger(data) && data >= 0;},
         hint: "Minimum postcount to display copyright. Enter 0 to disable this threshold."
     }
-}
+};
+
+//Available config values
+const all_source_types = ['indexed_db', 'local_storage'];
+const all_data_types = ['count', 'uploads', 'approvals', 'reverse_implication', 'custom'];
+const all_periods = ['daily', 'weekly', 'monthly', 'yearly', 'alltime', 'previous'];
+
+const CONTROL_CONFIG = {
+    cache_info: {
+        value: "Click to populate",
+        hint: "Calculates the cache usage of the program and compares it to the total usage.",
+    },
+    purge_cache: {
+        display: `Purge cache (<span id="cu-purge-counter">...</span>)`,
+        value: "Click to purge",
+        hint: `Dumps all of the cached data related to ${PROGRAM_NAME}.`,
+    },
+    data_source: {
+        allitems: all_source_types,
+        value: 'indexed_db',
+        hint: "Indexed DB is <b>Cache Data</b> and Local Storage is <b>Program Data</b>.",
+    },
+    data_type: {
+        allitems: all_data_types,
+        value: 'count',
+        hint: "Select type of data. Use <b>Custom</b> for querying by keyname.",
+    },
+    data_period: {
+        allitems: all_periods,
+        value: "",
+        hint: "Select the data period. <b>Count</b> cannot use the 'Previous' period.",
+    },
+    raw_data: {
+        value: false,
+        hint: "Select to import/export all program data",
+    },
+    data_name: {
+        value: "",
+        buttons: ['get', 'save', 'delete'],
+        hint: "Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.",
+    },
+};
 
 //CSS Constants
 
 //Style information
 const program_css = `
 #upload-counts {
-    border: #EEE dotted;
+    border: var(--footer-border);
+    border-style: dotted;
+    border-width: 2px;
     max-width: 70em;
     margin-left: 2em;
 }
 #upload-counts.opened {
-    border: lightgrey dotted;
+    border: var(--form-input-border);
+    border-style: dashed;
+    border-width: 5px;
 }
 #upload-counts.stashed {
     display: none;
@@ -120,7 +163,7 @@ const program_css = `
 #count-module {
     margin-bottom: 1em;
     display: none;
-    border: lightgrey solid 1px;
+    border: var(--form-input-border);
 }
 #upload-counts.opened #count-module {
     display: block;
@@ -148,7 +191,7 @@ const program_css = `
     overflow-y: auto;
 }
 #count-order {
-    color: #666;
+    color: var(--muted-text-color);
     font-style: italic;
     margin-right: 4em;
     font-size: 70%;
@@ -167,9 +210,12 @@ const program_css = `
     margin: 0.5em;
 }
 #stash-count-notice {
-    color: #D44;
+    color: #F44;
     font-weight: bold;
     font-size: 80%;
+}
+#stash-count-notice:hover {
+    color: #F88;
 }
 #empty-uploads {
     margin: 1em;
@@ -187,7 +233,10 @@ const program_css = `
     display: inline-block;
 }
 #upload-counts-restore a {
-    color: green;
+    color: mediumseagreen;
+}
+#restore-count-notice:hover {
+    filter: brightness(1.1);
 }
 .cu-tooltip {
     position: relative;
@@ -232,6 +281,10 @@ const program_css = `
     color: grey;
     margin-right: 1em;
 }
+.cu-select-tooltip a:hover,
+.cu-select-period a:hover{
+    filter: brightness(1.5);
+}
 .cu-select-tooltip.cu-activetooltip a {
     font-weight: bold;
 }
@@ -240,9 +293,12 @@ const program_css = `
     border-left: 1px solid #444;
     margin-left: -1px;
 }
+[data-user-theme="dark"] .cu-period-header {
+    background-color: #666;
+}
 #count-header .cu-manual,
 #count-header .cu-limited {
-    background-color: white;
+    background-color: var(--body-background-color);
 }
 #count-header .cu-manual:hover,
 #count-header .cu-limited:hover {
@@ -253,9 +309,16 @@ const program_css = `
     background-color: lightcyan;
     border-left: 1px solid #CCC;
 }
+[data-user-theme="dark"] #count-table .cu-manual,
+[data-user-theme="dark"] #count-table .cu-limited {
+    background-color: darkcyan;
+}
 #count-table .cu-uploads {
-    background-color: white;
+    background-color: var(--body-background-color);
     padding: 0 5px;
+}
+#count-table a.with-style:hover {
+    filter: brightness(1.5);
 }
 #count-copyrights {
     margin: 1em;
@@ -264,6 +327,9 @@ const program_css = `
 #count-copyrights-header {
     font-size: 1.25em;
     font-weight: bold;
+}
+[data-user-theme="dark"] #count-copyrights .ui-icon {
+    background-image: url(/packs/media/images/ui-icons_ffffff_256x240-bf27228a.png);
 }
 #count-copyrights-section {
     margin: 0.5em;
@@ -291,6 +357,13 @@ const program_css = `
 #count-copyrights-manual {
     margin: 1em;
     display: none;
+}
+#count-module .ui-checkboxradio-label {
+    color: black;
+    background-color: lightgrey;
+}
+#count-module .ui-checkboxradio-label:hover {
+    filter: brightness(1.1);
 }
 `;
 
@@ -331,13 +404,16 @@ const notice_box = `
 </div>
 `;
 
-const unstash_notice = '<span id="upload-counts-restore"> - <a href="#" id="restore-count-notice">Restore CurrentUploads</a></span>';
+const unstash_notice = `<span id="upload-counts-restore"> - <a href="#" id="restore-count-notice">Restore ${PROGRAM_NAME}</a></span>`;
+
 const copyright_counter = '(<span id="loading-counter">...</span>)';
+
+const CACHE_INFO_TABLE = '<div id="cu-cache-info-table" style="display:none"></div>';
 
 const cu_menu = `
 <div id="cu-script-message" class="prose">
-    <h2>CurrentUploads</h2>
-    <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/15169" style="color:#0073ff">topic #15169</a>).</p>
+    <h2>${PROGRAM_NAME}</h2>
+    <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/${DANBOORU_TOPIC_ID}">topic #${DANBOORU_TOPIC_ID}</a>).</p>
 </div>
 <div id="cu-console" class="jsplib-console">
     <div id="cu-settings" class="jsplib-outer-menu">
@@ -431,9 +507,6 @@ const cu_menu = `
     </div>
 </div>`;
 
-const all_source_types = ['indexed_db','local_storage'];
-const all_data_types = ['count','uploads','approvals','reverse_implication','custom'];
-
 //Time periods
 const timevalues = ['d','w','mo','y','at'];
 const manual_periods = ['w','mo'];
@@ -498,8 +571,11 @@ const longname_key = {
     alltime: 'at'
 }
 
-//Reverse tag implication expiration
-const rti_expiration = JSPLib.utility.one_month; //one month
+//Time constants
+const prune_expires = JSPLib.utility.one_day;
+const noncritical_recheck = JSPLib.utility.one_minute;
+const rti_expiration = JSPLib.utility.one_month;
+const JQUERY_DELAY = 1; //For jQuery updates that should not be done synchronously
 
 //Network call configuration
 const max_post_limit_query = 100;
@@ -520,6 +596,7 @@ const copyright_no_statistics = 'No statistics available for this period (<span 
 
 const name_field = "name";
 const id_field = "id";
+const user_fields = "name,level_string";
 const post_fields = "id,score,up_score,down_score,fav_count,tag_count,tag_count_general,tag_string_copyright,created_at";
 
 //Validation values
@@ -658,7 +735,7 @@ function ValidateProgramData(key,entry) {
     var checkerror = [];
     switch (key) {
         case 'cu-user-settings':
-            checkerror = JSPLib.menu.validateUserSettings(entry,settings_config);
+            checkerror = JSPLib.menu.validateUserSettings(entry, SETTINGS_CONFIG);
             break;
         case 'cu-prune-expires':
             if (!Number.isInteger(entry)) {
@@ -753,9 +830,11 @@ function RenderBody() {
 }
 
 function RenderRow(key) {
-    var rowtag = (key === ''? `${CU.usertag}:` + CU.current_username : key);
-    var rowtext = (key === ''? CU.current_username : key).replace(/_/g,' ');
-    var tabletext = AddTableData(JSPLib.danbooru.postSearchLink(rowtag,JSPLib.utility.maxLengthString(rowtext)));
+    var rowtag = (key === ''? `${CU.usertag}:` + CU.display_username : key);
+    var rowtext = (key === ''? CU.display_username : key).replace(/_/g,' ');
+    rowtext = JSPLib.utility.maxLengthString(rowtext);
+    var rowaddon = (key === '' ? `class="user-${CU.level_string.toLowerCase()} with-style"` : 'class="tag-type-3"');
+    var tabletext = AddTableData(JSPLib.danbooru.postSearchLink(rowtag, rowtext, rowaddon));
     let times_shown = GetShownPeriodKeys();
     let click_periods = manual_periods.concat(limited_periods);
     for (let i = 0;i < times_shown.length; i++) {
@@ -816,7 +895,8 @@ function GetTableValue(key,type) {
 function RenderCopyrights(period) {
     let copytags = CU.user_copytags[CU.usertag][CU.current_username][period].sort();
     return copytags.map((copyright)=>{
-        let taglink = JSPLib.danbooru.postSearchLink(copyright,JSPLib.utility.maxLengthString(copyright));
+        let tag_text = JSPLib.utility.maxLengthString(copyright);
+        let taglink = JSPLib.danbooru.postSearchLink(copyright, tag_text, 'class="tag-type-3"');
         let active = CU.active_copytags.includes(copyright) ? ' class="cu-active-copyright"' : '';
         return `<span title="${copyright}" data-copyright="${copyright}"${active}>${taglink}</span>`;
     }).join(' ');
@@ -1139,6 +1219,13 @@ function GetPeriodKey(period_name) {
 }
 
 async function CheckPeriodUploads() {
+    let promise_array = [];
+    let checkPeriod = (key,period,check)=>{
+        CU.period_available[CU.usertag][CU.current_username][period] = Boolean(check);
+        if (!check) {
+            sessionStorage.removeItem(key);
+        }
+    };
     CU.period_available[CU.usertag][CU.current_username] = CU.period_available[CU.usertag][CU.current_username] || {};
     let times_shown = GetShownPeriodKeys();
     for (let i = 0; i < times_shown.length; i++) {
@@ -1148,12 +1235,10 @@ async function CheckPeriodUploads() {
         }
         let data_key = GetPeriodKey(period_info.longname[period]);
         let max_expires = period_info.uploadexpires[period]
-        var check = await JSPLib.storage.checkLocalDB(data_key,ValidateEntry,max_expires);
-        CU.period_available[CU.usertag][CU.current_username][period] = Boolean(check);
-        if (!check) {
-            sessionStorage.removeItem(data_key);
-        }
+        let check_promise = JSPLib.storage.checkLocalDB(data_key,ValidateEntry,max_expires).then((check)=>{checkPeriod(data_key,period,check);});
+        promise_array.push(check_promise);
     }
+    return Promise.all(promise_array);
 }
 
 async function PopulateTable() {
@@ -1183,12 +1268,12 @@ function InitializeControls() {
         $('.cu-program-checkbox').checkboxradio();
         $("#count-controls").html(RenderAllTooltipControls());
         $("#count-copyrights-controls").html(RenderCopyrightControls());
-        $(".cu-select-tooltip").on('click.cu',TooltipChange);
-        $(".cu-select-period a").on('click.cu',Timer.CopyrightPeriod);
-        $("#count-copyrights-header a").on('click.cu',ToggleCopyrightsSection);
-        $("#count_submit_user_id").on('click.cu',Timer.CheckUser);
-        $("#count_refresh_user_id").on('click.cu',Timer.RefreshUser);
-        $("#count_add_copyright").on('click.cu',Timer.AddCopyright);
+        $(".cu-select-tooltip").on(PROGRAM_CLICK,TooltipChange);
+        $(".cu-select-period a").on(PROGRAM_CLICK,Timer.CopyrightPeriod);
+        $("#count-copyrights-header a").on(PROGRAM_CLICK,ToggleCopyrightsSection);
+        $("#count_submit_user_id").on(PROGRAM_CLICK,Timer.CheckUser);
+        $("#count_refresh_user_id").on(PROGRAM_CLICK,Timer.RefreshUser);
+        $("#count_add_copyright").on(PROGRAM_CLICK,Timer.AddCopyright);
         CU.controls_initialized = true;
         setTimeout(()=>{Danbooru.IAC && Danbooru.IAC.InitializeAutocompleteIndexed && Danbooru.IAC.InitializeAutocompleteIndexed("#count_query_user_id",'us');},1000);
     }
@@ -1198,9 +1283,9 @@ function InitializeTable() {
     $("#count-header").html(AddTable(RenderHeader(),'class="striped"'));
     $("#count-table").html(AddTable(RenderBody(),'class="striped"'));
     $("#count-order").html(RenderOrderMessage("d",0));
-    $("#count-header .cu-process").on('click.cu',Timer.GetPeriod);
-    $("#count-header th").on('click.cu',SortTable);
-    $("#count-table .cu-manual,#count-table .cu-limited").on('click.cu',Timer.RenderChart);
+    $("#count-header .cu-process").on(PROGRAM_CLICK,Timer.GetPeriod);
+    $("#count-header th").on(PROGRAM_CLICK,SortTable);
+    $("#count-table .cu-manual,#count-table .cu-limited").on(PROGRAM_CLICK,Timer.RenderChart);
     $("#count-controls,#count-copyrights,#count-header").show();
     $(`.cu-select-tooltip[data-type="${CU.current_metric}"] a`).click();
     CU.sorttype = 0;
@@ -1321,7 +1406,7 @@ async function GetPeriod(event) {
     }
     $(`#count-header th[data-period=${period}] .cu-display`).hide();
     $(`.cu-select-tooltip[data-type="${CU.current_metric}"] a`).click();
-    $(event.target).off('click.cu');
+    $(event.target).off(PROGRAM_CLICK);
 }
 
 function SortTable(event) {
@@ -1468,7 +1553,7 @@ async function CopyrightPeriod(event) {
     if (short_period === 'manual') {
         $("#count-copyrights-manual").show();
         $('#count-copyrights-list').html(RenderCopyrights('manual'));
-        $("#count-copyrights-list a").off('click.cu').on('click.cu',ToggleCopyrightTag);
+        $("#count-copyrights-list a").off(PROGRAM_CLICK).on(PROGRAM_CLICK,ToggleCopyrightTag);
     } else {
         $("#count-copyrights-manual").hide();
         let current_period = period_info.longname[short_period];
@@ -1489,7 +1574,7 @@ async function CopyrightPeriod(event) {
                 $('#count-copyrights-list').html(`<div id="empty-statistics">${copyright_no_uploads}</div>`);
             } else {
                 $('#count-copyrights-list').html(RenderCopyrights(current_period));
-                $("#count-copyrights-list a").off('click.cu').on('click.cu',ToggleCopyrightTag);
+                $("#count-copyrights-list a").off(PROGRAM_CLICK).on(PROGRAM_CLICK,ToggleCopyrightTag);
             }
         } else {
             $('#count-copyrights-list').html(`<div id="empty-statistics">${copyright_no_statistics}</div>`);
@@ -1505,7 +1590,9 @@ function ToggleNotice(event) {
         if (!PopulateTable.is_started) {
             //Always show current user on open to prevent processing potentially bad usernames set by CheckUser
             CU.empty_uploads_message = (CU.username === "Anonymous" ? empty_uploads_message_anonymous : empty_uploads_message_owner);
-            CU.current_username = CU.username;
+            CU.display_username = CU.username;
+            CU.current_username = CU.username.toLowerCase();
+            CU.level_string = (CU.username === "Anonymous" ? 'Member' : document.body.dataset.userLevelString);
             CU.usertag = 'user';
             Timer.PopulateTable();
         }
@@ -1566,11 +1653,13 @@ async function CheckUser(event) {
             check_user = CU.checked_usernames[check_username];
         } else {
             //Check each time no matter what as misses can be catastrophic
-            check_user = await JSPLib.danbooru.submitRequest('users', {search: {name_matches: check_username}, only: name_field, expiry: 30});;
+            check_user = await JSPLib.danbooru.submitRequest('users', {search: {name_matches: check_username}, only: user_fields, expiry: 30});;
             CU.checked_usernames[check_username] = check_user;
         }
         if (check_user.length) {
-            CU.current_username = check_user[0].name;
+            CU.display_username = check_user[0].name;
+            CU.current_username = check_user[0].name.toLowerCase();
+            CU.level_string = check_user[0].level_string;
             let is_approvals = $("#count_approver_select")[0].checked;
             CU.empty_uploads_message = is_approvals ? empty_approvals_message_other : empty_uploads_message_other;
             CU.usertag = is_approvals ? 'approver' : 'user';
@@ -1596,7 +1685,7 @@ async function AddCopyright(event) {
     CU.active_copytags.push(tag);
     CU.active_copytags = JSPLib.utility.setUnique(CU.active_copytags);
     $('#count-copyrights-list').html(RenderCopyrights('manual'));
-    $("#count-copyrights-list a").off('click.cu').on('click.cu',ToggleCopyrightTag);
+    $("#count-copyrights-list a").off(PROGRAM_CLICK).on(PROGRAM_CLICK,ToggleCopyrightTag);
 }
 
 function TooltipHover(event) {
@@ -1703,99 +1792,94 @@ function BroadcastCU(ev) {
         case "unstash":
             CU.stashed = false;
             $('#upload-counts,#upload-counts-restore').removeClass('stashed');
-            break;
-        case "reset":
-            Object.assign(CU,program_reset_keys);
-            //falls through
-        case "settings":
-            CU.user_settings = ev.data.user_settings;
-            CU.is_setting_menu && JSPLib.menu.updateUserSettings('cu');
-            break;
-        case "purge":
-            Object.keys(sessionStorage).forEach((key)=>{
-                if (key.match(program_cache_regex)) {
-                    sessionStorage.removeItem(key);
-                }
-            });
             //falls through
         default:
             //do nothing
     }
 }
 
-function IsSettingEnabled(setting_name,selector) {
-    return CU.user_settings[setting_name].includes(selector);
+function RemoteResetCallback() {
+    if (!CU.hidden && !CU.stashed) {
+        CU.hidden = true;
+        $('#upload-counts').removeClass('opened');
+    }
 }
 
 function GetShownPeriodKeys() {
     return timevalues.filter((period_key)=>{return CU.user_settings.periods_shown.includes(period_info.longname[period_key]);});
 }
 
+function DataTypeChange(event) {
+    let data_type = $('#cu-control-data-type').val();
+    let action = (['count', 'uploads', 'approvals'].includes(data_type) ? 'show' : 'hide');
+    $('.cu-options[data-setting="data_period"]')[action]();
+}
+
 function RenderSettingsMenu() {
     $("#current-uploads").append(cu_menu);
-    $("#cu-general-settings").append(JSPLib.menu.renderDomainSelectors('cu', 'CurrentUploads'));
-    $("#cu-display-settings").append(JSPLib.menu.renderCheckbox('cu','copyrights_merge'));
-    $("#cu-display-settings").append(JSPLib.menu.renderCheckbox('cu','copyrights_enabled'));
-    $("#cu-display-settings").append(JSPLib.menu.renderTextinput("cu",'copyrights_threshold',10));
-    $("#cu-display-settings").append(JSPLib.menu.renderTextinput("cu",'postcount_threshold',10));
-    $("#cu-display-settings").append(JSPLib.menu.renderInputSelectors('cu','periods_shown','checkbox'));
-    $("#cu-cache-settings").append(JSPLib.menu.renderLinkclick("cu",'cache_info',"Cache info","Click to populate","Calculates the cache usage of the program and compares it to the total usage."));
-    $("#cu-cache-settings").append(`<div id="cu-cache-info-table" style="display:none"></div>`);
-    $("#cu-cache-settings").append(JSPLib.menu.renderLinkclick("cu",'purge_cache',`Purge cache (<span id="cu-purge-counter">...</span>)`,"Click to purge","Dumps all of the cached data related to CurrentUploads."));
-    $("#cu-cache-editor-controls").append(JSPLib.menu.renderKeyselect('cu','data_source',true,'indexed_db',all_source_types,"Indexed DB is <b>Cache Data</b> and Local Storage is <b>Program Data</b>."));
-    $("#cu-cache-editor-controls").append(JSPLib.menu.renderKeyselect('cu','data_type',true,'count',all_data_types,"Only applies to Indexed DB.  Use <b>Custom</b> for querying by keyname."));
-    $("#cu-cache-editor-controls").append(JSPLib.menu.renderKeyselect('cu','data_period',true,'daily',period_selectors.concat(['previous']),"Period is only for <b>Count</b>, <b>Uploads</b> and <b>Approvals</b>. <b>Count</b> cannot use the 'Previous' period."));
-    $("#cu-cache-editor-controls").append(JSPLib.menu.renderTextinput('cu','data_name',20,true,"Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.",['get','save','delete']));
-    JSPLib.menu.engageUI('cu',true);
+    $("#cu-general-settings").append(JSPLib.menu.renderDomainSelectors());
+    $("#cu-display-settings").append(JSPLib.menu.renderCheckbox('copyrights_merge'));
+    $("#cu-display-settings").append(JSPLib.menu.renderCheckbox('copyrights_enabled'));
+    $("#cu-display-settings").append(JSPLib.menu.renderTextinput('copyrights_threshold', 10));
+    $("#cu-display-settings").append(JSPLib.menu.renderTextinput('postcount_threshold', 10));
+    $("#cu-display-settings").append(JSPLib.menu.renderInputSelectors('periods_shown', 'checkbox'));
+    $("#cu-cache-settings").append(JSPLib.menu.renderLinkclick('cache_info', true));
+    $("#cu-cache-settings").append(CACHE_INFO_TABLE);
+    $("#cu-cache-settings").append(JSPLib.menu.renderLinkclick('purge_cache', true));
+    $("#cu-cache-editor-controls").append(JSPLib.menu.renderKeyselect('data_source', true));
+    $("#cu-cache-editor-controls").append(JSPLib.menu.renderDataSourceSections());
+    $("#cu-section-indexed-db").append(JSPLib.menu.renderKeyselect('data_type', true));
+    $("#cu-section-indexed-db").append(JSPLib.menu.renderKeyselect('data_period', true));
+    $("#cu-section-local-storage").append(JSPLib.menu.renderCheckbox('raw_data', true));
+    $("#cu-cache-editor-controls").append(JSPLib.menu.renderTextinput('data_name', 20, true));
+    JSPLib.menu.engageUI(true);
     $("#cu-select-periods-shown-daily").checkboxradio("disable"); //Daily period is mandatory
-    JSPLib.menu.saveUserSettingsClick('cu','CurrentUploads');
-    JSPLib.menu.resetUserSettingsClick('cu','CurrentUploads',localstorage_keys,program_reset_keys);
-    JSPLib.menu.cacheInfoClick('cu',program_cache_regex,"#cu-cache-info-table");
-    JSPLib.menu.purgeCacheClick('cu','CurrentUploads',program_cache_regex,"#cu-purge-counter");
-    JSPLib.menu.getCacheClick('cu',OptionCacheDataKey);
-    JSPLib.menu.saveCacheClick('cu',ValidateProgramData,ValidateEntry,OptionCacheDataKey);
-    JSPLib.menu.deleteCacheClick('cu',OptionCacheDataKey);
-    JSPLib.menu.cacheAutocomplete('cu',program_cache_regex,OptionCacheDataKey);
+    JSPLib.menu.saveUserSettingsClick();
+    JSPLib.menu.resetUserSettingsClick(LOCALSTORAGE_KEYS, RemoteResetCallback);
+    JSPLib.menu.cacheInfoClick();
+    JSPLib.menu.purgeCacheClick();
+    JSPLib.menu.dataSourceChange();
+    $("#cu-control-data-type").on('change.cu', DataTypeChange);
+    JSPLib.menu.rawDataChange();
+    JSPLib.menu.getCacheClick();
+    JSPLib.menu.saveCacheClick(ValidateProgramData, ValidateEntry);
+    JSPLib.menu.deleteCacheClick();
+    JSPLib.menu.cacheAutocomplete();
 }
 
 //Main program
 
 function Main() {
     Danbooru.CU = CU = {
-        username: JSPLib.utility.getMeta("current-user-name"),
-        is_gold_user: $('body').data('user-is-gold'),
+        username: document.body.dataset.userName,
+        is_gold_user: document.body.dataset.userIsGold,
         usertag: 'user',
         counttype: 'uploads',
-        channel: new BroadcastChannel('CurrentUploads'),
-        checked_usernames: {},
-        checked_users: { user:{}, approver:{} },
-        user_copytags: { user:{}, approver:{} },
-        period_available: { user:{}, approver:{} },
-        reverse_implications: {},
         controls_initialized: false,
         copyright_period: 'd',
-        current_metric: JSPLib.storage.checkStorageData('cu-current-metric',ValidateProgramData,localStorage,'score'),
-        hidden: Boolean(JSPLib.storage.checkStorageData('cu-hide-current-uploads',ValidateProgramData,localStorage,true)),
-        stashed: Boolean(JSPLib.storage.checkStorageData('cu-stash-current-uploads',ValidateProgramData,localStorage,false)),
-        storage_keys: {indexed_db: [], local_storage: []},
-        is_setting_menu: JSPLib.danbooru.isSettingMenu(),
-        settings_config: settings_config
+        settings_config: SETTINGS_CONFIG,
+        control_config: CONTROL_CONFIG,
+        channel: JSPLib.utility.createBroadcastChannel(PROGRAM_NAME, BroadcastCU),
     };
-    CU.user_settings = JSPLib.menu.loadUserSettings('cu');
-    CU.channel.onmessage = BroadcastCU;
-    if (CU.is_setting_menu) {
-        JSPLib.validate.dom_output = "#cu-cache-editor-errors";
-        JSPLib.menu.loadStorageKeys('cu',program_cache_regex);
-        JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
-            JSPLib.menu.installSettingsMenu("CurrentUploads");
+    Object.assign(CU, {
+        user_settings: JSPLib.menu.loadUserSettings(),
+    }, PROGRAM_RESET_KEYS);
+    if (JSPLib.danbooru.isSettingMenu()) {
+        JSPLib.menu.loadStorageKeys();
+        JSPLib.utility.installScript(JQUERY_TAB_WIDGET_URL).done(()=>{
+            JSPLib.menu.installSettingsMenu();
             Timer.RenderSettingsMenu();
         });
     }
-    if (!JSPLib.menu.isScriptEnabled('CurrentUploads')) {
+    if (!JSPLib.menu.isScriptEnabled()) {
         Main.debuglog("Script is disabled on", window.location.hostname);
         return;
     }
-    JSPLib.utility.setCSSStyle(program_css,'program');
+    Object.assign(CU, {
+        current_metric: JSPLib.storage.checkStorageData('cu-current-metric',ValidateProgramData,localStorage,'score'),
+        hidden: Boolean(JSPLib.storage.checkStorageData('cu-hide-current-uploads',ValidateProgramData,localStorage,true)),
+        stashed: Boolean(JSPLib.storage.checkStorageData('cu-stash-current-uploads',ValidateProgramData,localStorage,false)),
+    });
     var $notice_box = $(notice_box);
     var $footer_notice = $(unstash_notice);
     if (CU.stashed === true) {
@@ -1806,22 +1890,18 @@ function Main() {
     }
     $('header#top').append($notice_box);
     $('footer#page-footer').append($footer_notice);
-    $("#toggle-count-notice").on('click.cu',ToggleNotice);
-    $("#stash-count-notice,#restore-count-notice").on('click.cu',StashNotice);
+    $("#toggle-count-notice").on(PROGRAM_CLICK, ToggleNotice);
+    $("#stash-count-notice,#restore-count-notice").on(PROGRAM_CLICK, StashNotice);
     if (CU.hidden === false) {
         //Set to opposite so that click can be used and sets it back
         CU.hidden = true;
-        $("#toggle-count-notice").click();
+        setTimeout(()=>{$("#toggle-count-notice").click();}, JQUERY_DELAY);
     }
-    JSPLib.debug.debugExecute(()=>{
-        window.addEventListener('beforeunload',function () {
-            JSPLib.statistics.outputAdjustedMean("CurrentUploads");
-        });
-    });
-    //Take care of other non-critical tasks at a later time
+    JSPLib.utility.setCSSStyle(program_css,'program');
+    JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
     setTimeout(()=>{
-        JSPLib.storage.pruneEntries('cu',program_cache_regex,prune_expires);
-    },JSPLib.utility.one_minute);
+        JSPLib.storage.pruneEntries(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, prune_expires);
+    }, noncritical_recheck);
 }
 
 /****Function decoration****/
@@ -1838,6 +1918,30 @@ JSPLib.debug.addFunctionTimers(Timer,true,[
 JSPLib.debug.addFunctionLogs([
     Main,BroadcastCU,GetPeriodUploads,GetCount,GetReverseTagImplication,GetPostsCountdown,ValidateEntry
 ]);
+
+/****Initialization****/
+
+//Variables for debug.js
+JSPLib.debug.debug_console = false;
+JSPLib.debug.pretext = "CU:";
+JSPLib.debug.pretimer = "CU-";
+JSPLib.debug.level = JSPLib.debug.INFO;
+
+//Variables for menu.js
+JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
+JSPLib.menu.program_name = PROGRAM_NAME;
+JSPLib.menu.program_reset_data = PROGRAM_RESET_KEYS;
+JSPLib.menu.program_data_regex = PROGRAM_DATA_REGEX;
+JSPLib.menu.program_data_key = OptionCacheDataKey;
+
+//Variables for network.js
+JSPLib.network.counter_domname = "#loading-counter";
+
+//Export JSPLib
+if (JSPLib.debug.debug_console) {
+    window.JSPLib.lib = window.JSPLib.lib || {};
+    window.JSPLib.lib[PROGRAM_NAME] = JSPLib;
+}
 
 /****Execution start****/
 
