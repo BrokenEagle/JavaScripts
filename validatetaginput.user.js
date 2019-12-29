@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.0
+// @version      28.1
 // @description  Validates tag add/remove inputs on a post edit or upload, plus several other post validations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -675,7 +675,7 @@ async function ValidateTagAdds() {
     for (let i = 0; i < VTI.addedtags.length; i += QUERY_LIMIT) {
         let check_tags = VTI.addedtags.slice(i, i + QUERY_LIMIT);
         let url_addons = {search: {name: check_tags.join(','), hide_empty: 'yes'}, only: tag_fields, limit: QUERY_LIMIT};
-        let data = await JSPLib.danbooru.submitRequest('tags', url_addons);
+        let data = await JSPLib.danbooru.submitRequest('tags', url_addons, []);
         all_tags = JSPLib.utility.concat(all_tags, data);
     }
     VTI.checktags = all_tags.map(entry=>{return entry.name;});
@@ -796,7 +796,7 @@ async function ValidateArtist() {
             ValidateArtist.debuglog("No missing artists. [cache hit]");
             return;
         }
-        let tag_resp = await JSPLib.danbooru.submitRequest('tags',{search: {name: uncached_artists.join(','), has_artist: true}, only: tag_fields});
+        let tag_resp = await JSPLib.danbooru.submitRequest('tags',{search: {name: uncached_artists.join(','), has_artist: true}, only: tag_fields}, []);
         tag_resp.forEach((entry)=>{
             JSPLib.storage.saveData('are-' + entry.name,{value: true, expires: JSPLib.utility.getExpires(artist_expiration)});
         });
