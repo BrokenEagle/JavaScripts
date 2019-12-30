@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      17.2
+// @version      18.0
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -14,15 +14,15 @@
 // @require      https://cdn.jsdelivr.net/npm/xregexp@4.2.4/xregexp-all.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jsdiff/4.0.1/diff.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib jQuery $ Danbooru Diff XRegExp LZString */
@@ -30,25 +30,18 @@
 /****Global variables****/
 
 //Exterior script variables
-
 const DANBOORU_TOPIC_ID = '14747';
+const SERVER_USER_ID = 502584;
 const JQUERY_TAB_WIDGET_URL = 'https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js';
-
-//Variables for debug.js
-JSPLib.debug.debug_console = false;
-JSPLib.debug.level = JSPLib.debug.INFO;
-JSPLib.debug.pretext = 'EL:';
-JSPLib.debug.pretimer = 'EL-';
 
 //Variables for load.js
 const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery','window.Danbooru'];
 const PROGRAM_LOAD_REQUIRED_SELECTORS = ['#nav', '#page'];
 
 //Program name constants
-
-const PROGRAM_NAME = 'EventListener';
 const PROGRAM_SHORTCUT = 'el';
 const PROGRAM_CLICK = 'click.el';
+const PROGRAM_NAME = 'EventListener';
 
 //Main program variable
 const EL = {};
@@ -56,11 +49,13 @@ const EL = {};
 //Timer function hash
 const TIMER = {};
 
-//For factory reset
+//Event types
 const POST_QUERY_EVENTS = ['comment', 'note', 'commentary', 'approval', 'flag', 'appeal'];
 const SUBSCRIBE_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'forum', 'wiki', 'pool'];
 const OTHER_EVENTS = ['dmail', 'spam', 'ban', 'feedback', 'mod_action'];
 const ALL_EVENTS = JSPLib.utility.setUnique(POST_QUERY_EVENTS.concat(SUBSCRIBE_EVENTS).concat(OTHER_EVENTS));
+
+//For factory reset
 const LASTID_KEYS = Array.prototype.concat(
     POST_QUERY_EVENTS.map((type)=>{return `el-pq-${type}lastid`;}),
     SUBSCRIBE_EVENTS.map((type)=>{return `el-${type}lastid`;}),
@@ -70,19 +65,13 @@ const SAVED_KEYS = Array.prototype.concat(
     POST_QUERY_EVENTS.map((type)=>{return [`el-pq-saved${type}lastid`, `el-pq-saved${type}list`];}),
     SUBSCRIBE_EVENTS.map((type)=>{return [`el-saved${type}lastid`, `el-saved${type}list`];}),
     OTHER_EVENTS.map((type)=>{return [`el-ot-saved${type}lastid`, `el-ot-saved${type}list`];}),
-);
+).flat();
 const SUBSCRIBE_KEYS = SUBSCRIBE_EVENTS.map((type)=>{return [`el-${type}list`, `el-${type}overflow`];}).flat();
 const LOCALSTORAGE_KEYS = LASTID_KEYS.concat(SAVED_KEYS).concat(SUBSCRIBE_KEYS).concat([
-    'el-process-semaphore',
     'el-overflow',
-    'el-event-timeout',
-    'el-saved-timeout',
     'el-last-seen',
     'el-saved-notice',
 ]);
-const PROGRAM_RESET_KEYS = {
-    storage_keys: {local_storage: []},
-};
 
 //Available setting values
 const ENABLE_EVENTS = ['flag', 'appeal', 'dmail', 'comment', 'note', 'commentary', 'forum'];
@@ -128,7 +117,7 @@ const SETTINGS_CONFIG = {
     filter_autobans: {
         default: true,
         validate: (data)=>{return typeof data === 'boolean';},
-        hint: 'Only show bans not created by <a class="user-moderator with-style" style="color:var(--user-moderator-color)" href="/users/502584">DanbooruBot</a>.'
+        hint: `Only show bans not created by <a class="user-moderator with-style" style="color:var(--user-moderator-color)" href="/users/${SERVER_USER_ID}">DanbooruBot</a>.`
     },
     filter_autofeedback: {
         default: true,
@@ -228,6 +217,10 @@ const CONTROL_CONFIG = {
     cache_info: {
         value: "Click to populate",
         hint: "Calculates the cache usage of the program and compares it to the total usage.",
+    },
+    raw_data: {
+        value: false,
+        hint: "Select to import/export all program data",
     },
     data_name: {
         value: "",
@@ -707,8 +700,10 @@ const JQUERY_DELAY = 1; //For jQuery updates that should not be done synchronous
 const NONSYNCHRONOUS_DELAY = 1; //For operations too costly in events to do synchronously
 const MAX_ABSENCE = 30.0; //# of days before reset links get shown
 
-//The max number of items to grab with each network call
-const QUERY_LIMIT = 100;
+//Network constants
+
+const QUERY_LIMIT = 100; //The max number of items to grab with each network call
+const ID_FIELD = 'id';
 
 //Regex constants
 
@@ -993,209 +988,13 @@ function CorrectList(type,typelist) {
 
 //Library functions
 
-JSPLib.utility.createBroadcastChannel = function (name,func) {
-    let channel = new BroadcastChannel(name);
-    channel.onmessage = func;
-    return channel;
-};
-
-JSPLib.debug._getFuncTimerName = function (func,args,nameindex) {
-   let timer_name = func.name;
-    if (Number.isInteger(nameindex) && args[nameindex] !== undefined) {
-        timer_name += '.' + args[nameindex];
-    } else if (Array.isArray(nameindex)) {
-        for (let i = 0; i < nameindex.length; i++) {
-            let argindex = nameindex[i];
-            if (args[argindex] !== undefined) {
-                timer_name += '.' + args[argindex];
-            } else {
-                break;
-            }
-        }
-    }
-    return timer_name;
-};
-
-JSPLib.debug.debugSyncTimer = function (func,nameindex) {
-    return function(...args) {
-        let timer_name = JSPLib.debug._getFuncTimerName(func,args,nameindex);
-        JSPLib.debug.debugTime(timer_name);
-        let ret = func(...args);
-        JSPLib.debug.debugTimeEnd(timer_name);
-        return ret;
-    }
-};
-
-JSPLib.debug.debugAsyncTimer = function (func,nameindex) {
-    return async function(...args) {
-        let timer_name = JSPLib.debug._getFuncTimerName(func,args,nameindex);
-        JSPLib.debug.debugTime(timer_name);
-        let ret = await func(...args);
-        JSPLib.debug.debugTimeEnd(timer_name);
-        return ret;
-    }
-};
-
-JSPLib.debug.addFunctionTimers = function (hash,is_async,itemlist) {
-    let timerFunc = (is_async ? JSPLib.debug.debugAsyncTimer : JSPLib.debug.debugSyncTimer);
-    itemlist.forEach((item)=>{
-        let func = item;
-        let nameindex = null;
-        if (Array.isArray(item)) {
-            if (typeof item[0] === 'function' && item.length > 1 && item.slice(1).every(val => Number.isInteger(val))) {
-                func = item[0];
-                if (item.length === 2) {
-                    nameindex = item[1];
-                } else {
-                    nameindex = item.slice(1);
-                }
-            } else {
-                throw "JSPLib.debug.addFunctionTimers: Invalid array parameter";
-            }
-        } else if (typeof item !== 'function') {
-            throw "JSPLib.debug.addFunctionTimers: Item is not a function";
-        }
-        hash[func.name] = timerFunc(func,nameindex);
-        func.debuglog = function (...args) {
-            JSPLib.debug.debuglog(`${func.name} -`,...args);
-        };
-    });
-};
-
-JSPLib.menu.getProgramValues = function (program_shortcut,setting_name,is_control=false) {
-    let program_key = program_shortcut.toUpperCase();
-    let config = (!is_control ? Danbooru[program_key].settings_config: Danbooru[program_key].control_config);
-    let setting_key = JSPLib.utility.kebabCase(setting_name);
-    let display_name = JSPLib.utility.displayCase(setting_name);
-    let item = (!is_control ? Danbooru[program_key].user_settings[setting_name] : config[setting_name].value);
-    return [config,setting_key,display_name,item];
-};
-
-JSPLib.menu.renderInputSelectors = function (program_shortcut,setting_name,type,is_control=false,has_submit=false) {
-    let [config,setting_key,display_name,enabled_selectors] = JSPLib.menu.getProgramValues(program_shortcut,setting_name,is_control);
-    //The name must be the same for all selectors for radio buttons to work properly
-    let selection_name = `${program_shortcut}-${setting_key}`;
-    let menu_type = (is_control ? 'control' : 'setting');
-    let submit_control = (is_control && has_submit ? JSPLib.menu.renderControlGet(program_shortcut,setting_key,2) : '');
-    let hint_html = JSPLib.menu.renderSettingHint(program_shortcut,"block",config[setting_name].hint);
-    let html = "";
-    config[setting_name].allitems.forEach((selector)=>{
-        let checked = (enabled_selectors.includes(selector) ? "checked" : "");
-        let display_selection = JSPLib.utility.displayCase(selector);
-        let selection_key = `${program_shortcut}-select-${setting_key}-${selector}`;
-        html += `
-            <label for="${selection_key}">${display_selection}</label>
-            <input type="${type}" ${checked} class="${program_shortcut}-${menu_type} jsplib-${menu_type}" name="${selection_name}" id="${selection_key}" data-selector="${selector}" data-parent="2">`;
-    });
-    return `
-<div class="${program_shortcut}-selectors jsplib-selectors jsplib-menu-item" data-setting="${setting_name}">
-    <h4>${display_name}</h4>
-    <div>
-        ${html}
-        ${submit_control}
-        ${hint_html}
-    </div>
-</div>`;
-};
-
-JSPLib.menu.renderTextinput = function (program_shortcut,setting_name,length=20,is_control=false) {
-    let [config,setting_key,display_name,value] = JSPLib.menu.getProgramValues(program_shortcut,setting_name,is_control);
-    let textinput_key = `${program_shortcut}-setting-${setting_key}`;
-    let menu_type = (is_control ? 'control' : 'setting');
-    let submit_control = "";
-    if (is_control && config[setting_name].buttons.length) {
-        config[setting_name].buttons.forEach((button)=>{
-            submit_control += JSPLib.menu.renderControlButton(program_shortcut,setting_key,button,2);
-        });
-    }
-    let hint_html = JSPLib.menu.renderSettingHint(program_shortcut,"block",config[setting_name].hint);
-    return `
-<div class="${program_shortcut}-textinput jsplib-textinput jsplib-menu-item" data-setting="${setting_name}">
-    <h4>${display_name}</h4>
-    <div>
-        <input type="text" class="${program_shortcut}-${menu_type} jsplib-${menu_type}" name="${textinput_key}" id="${textinput_key}" value="${value}" size="${length}" autocomplete="off" data-parent="2">
-        ${submit_control}
-        ${hint_html}
-    </div>
-</div>`;
-};
-
-JSPLib.menu.renderLinkclick = function (program_shortcut,setting_name) {
-    let [config,setting_key,display_name,link_text] = JSPLib.menu.getProgramValues(program_shortcut,setting_name,true);
-    let hint_html = JSPLib.menu.renderSettingHint(program_shortcut,"inline",config[setting_name].hint);
-    return `
-<div class="${program_shortcut}-linkclick jsplib-linkclick jsplib-menu-item">
-    <h4>${display_name}</h4>
-    <div>
-        <b>
-            <span class="${program_shortcut}-control jsplib-control">
-                [ <a href="javascript:void(0)" id="${program_shortcut}-control-${setting_key}">${link_text}</a> ]
-            </span>
-        </b>
-        &emsp;
-        ${hint_html}
-    </div>
-</div>`;
-};
-
-JSPLib.danbooru.getPostsCountdown = async function (searchstring,limit,domname) {
-    let tag_addon = {tags: searchstring};
-    let limit_addon = {limit: limit};
-    let page_addon = {};
-    var return_items = [];
-    let page_num = 0;
-    if (domname) {
-        let total_posts = (await JSPLib.danbooru.submitRequest('counts/posts',tag_addon,{counts:{posts: 0}})).counts.posts;
-        page_num = Math.ceil(total_posts/limit);
-    }
-    while (true) {
-        JSPLib.debug.debuglogLevel("JSPLib.danbooru.getPostsCountdown: Pages left #",page_num,JSPLib.debug.INFO);
-        if (domname) {
-            jQuery(domname).html(page_num);
-        }
-        let request_addons = JSPLib.utility.joinArgs(tag_addon,limit_addon,page_addon);
-        let request_key = 'posts-' + jQuery.param(request_addons);
-        let temp_items = await JSPLib.danbooru.submitRequest('posts',request_addons,[],request_key);
-        return_items = JSPLib.utility.concat(return_items, temp_items);
-        if (temp_items.length < limit) {
-            return return_items;
-        }
-        let lastid = JSPLib.danbooru.getNextPageID(temp_items,false);
-        page_addon = {page:`b${lastid}`};
-        page_num -= 1;
-    }
-};
-
-JSPLib.danbooru.getAllItems = async function (type,limit,batches,options) {
-    let url_addons = options.addons || {};
-    let reverse = options.reverse || false;
-    let page_modifier = (reverse ? 'a' : 'b');
-    let page_addon = (Number.isInteger(options.page) ? {page:`${page_modifier}${options.page}`} : {});
-    let limit_addon = {limit: limit};
-    let batch_num = 1;
-    var return_items = [];
-    while (true) {
-        let request_addons = JSPLib.utility.joinArgs(url_addons,page_addon,limit_addon);
-        let temp_items = await JSPLib.danbooru.submitRequest(type,request_addons,[],null,options.domain,options.notify);
-        return_items = JSPLib.utility.concat(return_items, temp_items);
-        if (temp_items.length < limit || (batches && batch_num >= batches)) {
-            return return_items;
-        }
-        let lastid = JSPLib.danbooru.getNextPageID(temp_items,reverse);
-        page_addon = {page:`${page_modifier}${lastid}`};
-        JSPLib.debug.debuglogLevel("#",batch_num++,"Rechecking",type,"@",lastid,JSPLib.debug.INFO);
-    }
-};
-
-JSPLib.danbooru.getShowID = function() {
-    return (document.body.dataset.action === "show" && parseInt(JSPLib.utility.findAll(window.location.pathname,/\d+\/?$/)[0])) || 0;
-};
+////NONE
 
 //Helper functions
 
 async function SetRecentDanbooruID(type,qualifier) {
     let type_addon = TYPEDICT[type].addons || {};
-    let url_addons = JSPLib.utility.joinArgs(type_addon, {only: 'id', limit: 1});
+    let url_addons = JSPLib.utility.joinArgs(type_addon, {only: ID_FIELD, limit: 1});
     let jsonitem = await JSPLib.danbooru.submitRequest(TYPEDICT[type].controller, url_addons, []);
     if (jsonitem.length) {
         SaveLastID(type, JSPLib.danbooru.getNextPageID(jsonitem, true), qualifier);
@@ -1294,6 +1093,42 @@ function CheckList(type) {
 
 //Auxiliary functions
 
+function IsShownData(val,typelist,user_key=null,subscribe_key=null,other_filters=null) {
+    if (EL.user_settings.filter_user_events && user_key && val[user_key] === EL.userid) {
+        return false;
+    }
+    if (subscribe_key && typelist && !typelist.includes(val[subscribe_key])) {
+        return false;
+    }
+    if (other_filters && !other_filters(val)) {
+        return false;
+    }
+    return true;
+}
+
+function IsShownCommentary(val) {
+    if (!EL.user_settings.filter_untranslated_commentary) {
+        return true;
+    }
+    return (Boolean(val.translated_title) || Boolean(val.translated_description));
+}
+
+function IsShownFeedback(val) {
+    if (!EL.user_settings.filter_autofeedback) {
+        return true;
+    }
+    return (val.body.match(/^Banned for ((almost|over|about) )?\d+ (days?|months?|years?):/) === null)
+        && (val.body.match(/^You have been (promoted|demoted) to a \S+ level account from \S+\./) === null)
+        && (val.body.match(/\bYou (gained|lost) the ability to (approve posts|upload posts without limit|give user feedback|flag posts)\./) === null);
+}
+
+function IsShownBan(val) {
+    if (!EL.user_settings.filter_autobans) {
+        return true;
+    }
+    return val.banner_id !== SERVER_USER_ID;
+}
+
 function SaveLastID(type,lastid,qualifier='') {
     if (!JSPLib.validate.validateID(lastid)) {
         return;
@@ -1331,7 +1166,7 @@ function CheckOverflow(inputtype) {
 CheckOverflow.all_overflows = {};
 
 function ProcessEvent(inputtype, optype) {
-    if (!JSPLib.menu.isSettingEnabled('EL', optype, inputtype)) {
+    if (!JSPLib.menu.isSettingEnabled(optype, inputtype)) {
         return false;
     }
     if (optype === 'subscribe_events_enabled' && !CheckList(inputtype)) {
@@ -1414,8 +1249,8 @@ async function AddDmail(dmailid,rowelement) {
 
 async function AddWiki(wikiverid,rowelement) {
     let wikiid = rowelement.innerHTML.match(WIKI_PAGES_REGEX)[1];
-    let url_addons = {search: {wiki_page_id: wikiid}, page: `b${wikiverid}`, only: 'id', limit: 1};
-    let prev_wiki = await JSPLib.danbooru.submitRequest('wiki_page_versions', url_addons);
+    let url_addons = {search: {wiki_page_id: wikiid}, page: `b${wikiverid}`, only: ID_FIELD, limit: 1};
+    let prev_wiki = await JSPLib.danbooru.submitRequest('wiki_page_versions', url_addons, []);
     if (prev_wiki.length) {
         let wiki_diff_page = await JSPLib.network.getNotify('/wiki_page_versions/diff', {otherpage: wikiverid, thispage: prev_wiki[0].id});
         if (!wiki_diff_page) {
@@ -2114,15 +1949,7 @@ function ReloadEventNotice(event) {
     });
     Promise.all(promise_array).then(()=>{
         ProcessThumbnails();
-        let finish_promise = $.Deferred().resolve();
-        if (EL.post_ids.length) {
-            finish_promise = TIMER.GetThumbnails();
-        }
-        finish_promise.then(()=>{
-            InsertThumbnails();
-            localStorage['el-saved-notice'] = LZString.compressToUTF16($("#el-event-notice").html());
-            JSPLib.concurrency.setRecheckTimeout('el-saved-timeout', EL.timeout_expires);
-        });
+        FinalizeEventNotice();
     });
 }
 
@@ -2177,14 +2004,14 @@ function SubscribeDualLink(event) {
 async function PostEventPopulateControl(event) {
     let post_events = JSPLib.menu.getCheckboxRadioSelected(`[data-setting="post_events"] [data-selector]`);
     let operation = JSPLib.menu.getCheckboxRadioSelected(`[data-setting="operation"] [data-selector]`);
-    let search_query = $('#el-setting-search-query').val();
+    let search_query = $('#el-control-search-query').val();
     if (post_events.length === 0 || operation.length === 0) {
         JSPLib.utility.notice("Must select at least one post event type!");
     } else if (search_query === "") {
         JSPLib.utility.notice("Must have at least one search term!");
     } else {
         $('#el-search-query-display').show();
-        let posts = await JSPLib.danbooru.getPostsCountdown(search_query, 100, '#el-search-query-counter');
+        let posts = await JSPLib.danbooru.getPostsCountdown(search_query, 100, ID_FIELD, '#el-search-query-counter');
         let postids = JSPLib.utility.getObjectAttributes(posts, 'id');
         let post_changes = [];
         let was_subscribed = [];
@@ -2257,11 +2084,11 @@ function SubscribeMultiLinkCallback() {
 //Rebind functions
 
 function RebindMenuAutocomplete() {
-    JSPLib.utility.rebindTimer({
+    JSPLib.utility.recheckTimer({
         check: ()=>{return JSPLib.utility.hasDOMDataKey('#user_blacklisted_tags, #user_favorite_tags', 'uiAutocomplete');},
         exec: ()=>{
             $('#user_blacklisted_tags, #user_favorite_tags').autocomplete('destroy').off('keydown.Autocomplete.tab');
-            $('#el-setting-search-query,' + JSPLib.utility.joinList(POST_QUERY_EVENTS, '#el-setting-', '-query', ',')).attr('data-autocomplete', 'tag-query');
+            $('#el-control-search-query,' + JSPLib.utility.joinList(POST_QUERY_EVENTS, '#el-setting-', '-query', ',')).attr('data-autocomplete', 'tag-query');
             setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, JQUERY_DELAY);
         }
     }, TIMER_POLL_INTERVAL);
@@ -2402,20 +2229,24 @@ async function LoadHTMLType(type,idlist) {
     $('#el-event-notice').show();
 }
 
+function FinalizeEventNotice() {
+    let thumb_promise = Promise.resolve(null);
+    if (EL.post_ids.length) {
+        thumb_promise = TIMER.GetThumbnails();
+    }
+    thumb_promise.then(()=>{
+        InsertThumbnails();
+        localStorage['el-saved-notice'] = LZString.compressToUTF16($("#el-event-notice").html());
+        JSPLib.concurrency.setRecheckTimeout('el-saved-timeout', EL.timeout_expires);
+    });
+}
+
 async function CheckAllEvents(promise_array) {
     let hasevents_all = await Promise.all(promise_array);
     let hasevents = hasevents_all.some(val => val);
     ProcessThumbnails();
-    let finish_promise = hasevents && $.Deferred().resolve();
-    if (EL.post_ids.length) {
-        finish_promise = TIMER.GetThumbnails();
-    }
     if (hasevents) {
-        finish_promise.then(()=>{
-            InsertThumbnails();
-            localStorage['el-saved-notice'] = LZString.compressToUTF16($("#el-event-notice").html());
-            JSPLib.concurrency.setRecheckTimeout('el-saved-timeout', EL.timeout_expires);
-        });
+        FinalizeEventNotice();
     }
     JSPLib.storage.setStorageData('el-overflow', EL.item_overflow, localStorage);
     if (!EL.user_settings.autoclose_dmail_notice) {
@@ -2520,57 +2351,26 @@ function BroadcastEL(ev) {
                     UpdateDualLink(ev.data.eventtype, false, linkid);
                 }
             });
-            break;
-        case 'reset':
-            Object.assign(EL, PROGRAM_RESET_KEYS);
-            JSPLib.utility.fullHide('#el-event-notice, #el-subscribe-events, .el-subscribe-dual-links');
-            //falls through
-        case 'settings':
-            EL.user_settings = ev.data.user_settings;
-            if (JSPLib.danbooru.isSettingMenu()) {
-                JSPLib.menu.updateUserSettings(PROGRAM_SHORTCUT);
-            }
-            ToggleSubscribeLinks();
             //falls through
         default:
             //do nothing
     }
 }
 
-function IsShownData(val,typelist,user_key=null,subscribe_key=null,other_filters=null) {
-    if (EL.user_settings.filter_user_events && user_key && val[user_key] === EL.userid) {
-        return false;
+function InitializeChangedSettings() {
+    if (EL.user_settings.flag_query === "###INITIALIZE###" || EL.user_settings.appeal_query === "###INITIALIZE###") {
+        EL.user_settings.flag_query = EL.user_settings.appeal_query = 'user:' + EL.username;
+        JSPLib.menu.updateUserSettings();
+        JSPLib.storage.setStorageData('el-user-settings', EL.user_settings, localStorage);
     }
-    if (subscribe_key && typelist && !typelist.includes(val[subscribe_key])) {
-        return false;
-    }
-    if (other_filters && !other_filters(val)) {
-        return false;
-    }
-    return true;
 }
 
-function IsShownCommentary(val) {
-    if (!EL.user_settings.filter_untranslated_commentary) {
-        return true;
-    }
-    return (Boolean(val.translated_title) || Boolean(val.translated_description));
+function RemoteSettingsCallback() {
+    ToggleSubscribeLinks();
 }
 
-function IsShownFeedback(val) {
-    if (!EL.user_settings.filter_autofeedback) {
-        return true;
-    }
-    return (val.body.match(/^Banned for ((almost|over|about) )?\d+ (days?|months?|years?):/) === null)
-        && (val.body.match(/^You have been (promoted|demoted) to a \S+ level account from \S+\./) === null)
-        && (val.body.match(/\bYou (gained|lost) the ability to (approve posts|upload posts without limit|give user feedback|flag posts)\./) === null);
-}
-
-function IsShownBan(val) {
-    if (!EL.user_settings.filter_autobans) {
-        return true;
-    }
-    return val.banner_id !== 502584;
+function RemoteResetCallback() {
+    JSPLib.utility.fullHide('#el-event-notice, #el-subscribe-events, .el-subscribe-dual-links');
 }
 
 function GetRecheckExpires() {
@@ -2579,43 +2379,45 @@ function GetRecheckExpires() {
 
 function RenderSettingsMenu() {
     $('#event-listener').append(EL_MENU);
-    $('#el-general-settings').append(JSPLib.menu.renderDomainSelectors(PROGRAM_SHORTCUT, PROGRAM_NAME));
-    $('#el-notice-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'autolock_notices'));
-    $('#el-notice-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'mark_read_topics'));
-    $('#el-notice-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'autoclose_dmail_notice'));
-    $('#el-filter-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'filter_user_events'));
-    $('#el-filter-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'filter_untranslated_commentary'));
-    $('#el-filter-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'filter_autofeedback'));
-    $('#el-filter-settings').append(JSPLib.menu.renderCheckbox(PROGRAM_SHORTCUT, 'filter_autobans'));
-    $('#el-post-query-event-settings').append(JSPLib.menu.renderInputSelectors(PROGRAM_SHORTCUT, 'post_query_events_enabled', 'checkbox'));
-    $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput(PROGRAM_SHORTCUT, 'comment_query', 80));
-    $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput(PROGRAM_SHORTCUT, 'note_query', 80));
-    $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput(PROGRAM_SHORTCUT, 'commentary_query', 80));
-    $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput(PROGRAM_SHORTCUT, 'approval_query', 80));
-    $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput(PROGRAM_SHORTCUT, 'flag_query', 80));
-    $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput(PROGRAM_SHORTCUT, 'appeal_query', 80));
-    $('#el-subscribe-event-settings').append(JSPLib.menu.renderInputSelectors(PROGRAM_SHORTCUT, 'subscribe_events_enabled', 'checkbox'));
-    $('#el-subscribe-event-settings').append(JSPLib.menu.renderInputSelectors(PROGRAM_SHORTCUT, 'autosubscribe_enabled', 'checkbox'));
-    $('#el-other-event-settings').append(JSPLib.menu.renderInputSelectors(PROGRAM_SHORTCUT, 'other_events_enabled', 'checkbox'));
-    $('#el-other-event-settings').append(JSPLib.menu.renderInputSelectors(PROGRAM_SHORTCUT, 'subscribed_mod_actions', 'checkbox'));
-    $('#el-network-settings').append(JSPLib.menu.renderTextinput(PROGRAM_SHORTCUT, 'recheck_interval', 10));
-    $('#el-subscribe-controls').append(JSPLib.menu.renderInputSelectors(PROGRAM_SHORTCUT, 'post_events', 'checkbox', true));
-    $('#el-subscribe-controls').append(JSPLib.menu.renderInputSelectors(PROGRAM_SHORTCUT, 'operation','radio',true));
-    $('#el-subscribe-controls').append(JSPLib.menu.renderTextinput(PROGRAM_SHORTCUT, 'search_query', 50, true));
+    $('#el-general-settings').append(JSPLib.menu.renderDomainSelectors());
+    $('#el-notice-settings').append(JSPLib.menu.renderCheckbox('autolock_notices'));
+    $('#el-notice-settings').append(JSPLib.menu.renderCheckbox('mark_read_topics'));
+    $('#el-notice-settings').append(JSPLib.menu.renderCheckbox('autoclose_dmail_notice'));
+    $('#el-filter-settings').append(JSPLib.menu.renderCheckbox('filter_user_events'));
+    $('#el-filter-settings').append(JSPLib.menu.renderCheckbox('filter_untranslated_commentary'));
+    $('#el-filter-settings').append(JSPLib.menu.renderCheckbox('filter_autofeedback'));
+    $('#el-filter-settings').append(JSPLib.menu.renderCheckbox('filter_autobans'));
+    $('#el-post-query-event-settings').append(JSPLib.menu.renderInputSelectors('post_query_events_enabled', 'checkbox'));
+    $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput('comment_query', 80));
+    $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput('note_query', 80));
+    $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput('commentary_query', 80));
+    $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput('approval_query', 80));
+    $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput('flag_query', 80));
+    $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput('appeal_query', 80));
+    $('#el-subscribe-event-settings').append(JSPLib.menu.renderInputSelectors('subscribe_events_enabled', 'checkbox'));
+    $('#el-subscribe-event-settings').append(JSPLib.menu.renderInputSelectors('autosubscribe_enabled', 'checkbox'));
+    $('#el-other-event-settings').append(JSPLib.menu.renderInputSelectors('other_events_enabled', 'checkbox'));
+    $('#el-other-event-settings').append(JSPLib.menu.renderInputSelectors('subscribed_mod_actions', 'checkbox'));
+    $('#el-network-settings').append(JSPLib.menu.renderTextinput('recheck_interval', 10));
+    $('#el-subscribe-controls').append(JSPLib.menu.renderInputSelectors('post_events', 'checkbox', true));
+    $('#el-subscribe-controls').append(JSPLib.menu.renderInputSelectors('operation', 'radio', true));
+    $('#el-subscribe-controls').append(JSPLib.menu.renderTextinput('search_query', 50, true));
     $('#el-subscribe-controls').append(DISPLAY_COUNTER);
-    $('#el-cache-settings').append(JSPLib.menu.renderLinkclick(PROGRAM_SHORTCUT, 'cache_info'));
+    $('#el-cache-settings').append(JSPLib.menu.renderLinkclick('cache_info'));
     $('#el-cache-settings').append(CACHE_INFO_TABLE);
     $('#el-cache-editor-controls').append(CONTROL_DATA_SOURCE);
-    $('#el-cache-editor-controls').append(JSPLib.menu.renderTextinput(PROGRAM_SHORTCUT, 'data_name', 20, true));
-    JSPLib.menu.engageUI(PROGRAM_SHORTCUT, true);
-    JSPLib.menu.saveUserSettingsClick(PROGRAM_SHORTCUT, PROGRAM_NAME);
-    JSPLib.menu.resetUserSettingsClick(PROGRAM_SHORTCUT, PROGRAM_NAME, LOCALSTORAGE_KEYS, PROGRAM_RESET_KEYS);
-    $('#el-search-query-get').off(PROGRAM_CLICK).on(PROGRAM_CLICK, PostEventPopulateControl);
-    JSPLib.menu.cacheInfoClick(PROGRAM_SHORTCUT, EMPTY_REGEX, '#el-cache-info-table');
-    JSPLib.menu.getCacheClick(PROGRAM_SHORTCUT);
-    JSPLib.menu.saveCacheClick(PROGRAM_SHORTCUT, ValidateProgramData);
-    JSPLib.menu.deleteCacheClick(PROGRAM_SHORTCUT);
-    JSPLib.menu.cacheAutocomplete(PROGRAM_SHORTCUT);
+    $("#el-cache-editor-controls").append(JSPLib.menu.renderCheckbox('raw_data', true));
+    $('#el-cache-editor-controls').append(JSPLib.menu.renderTextinput('data_name', 20, true));
+    JSPLib.menu.engageUI(true);
+    JSPLib.menu.saveUserSettingsClick();
+    JSPLib.menu.resetUserSettingsClick(LOCALSTORAGE_KEYS, InitializeChangedSettings);
+    $('#el-search-query-get').on(PROGRAM_CLICK, PostEventPopulateControl);
+    JSPLib.menu.cacheInfoClick();
+    JSPLib.menu.rawDataChange();
+    JSPLib.menu.getCacheClick();
+    JSPLib.menu.saveCacheClick(ValidateProgramData);
+    JSPLib.menu.deleteCacheClick();
+    JSPLib.menu.cacheAutocomplete();
     RebindMenuAutocomplete();
 }
 
@@ -2636,7 +2438,6 @@ function Main() {
         no_limit: false,
         post_ids: [],
         thumbs: {},
-        storage_keys: {local_storage: []},
         settings_config: SETTINGS_CONFIG,
         control_config: CONTROL_CONFIG,
         channel: JSPLib.utility.createBroadcastChannel(PROGRAM_NAME, BroadcastEL),
@@ -2648,40 +2449,20 @@ function Main() {
         Main.debuglog("Invalid meta variables!");
         return;
     }
-    //Temporary transition code
-    if (!localStorage['el-transition-17.0']) {
-        let user_settings = JSPLib.storage.getStorageData('el-user-settings', localStorage);
-        if (JSPLib.validate.isHash(user_settings) && ('events_enabled' in user_settings) && Array.isArray(user_settings.events_enabled)) {
-            user_settings.post_query_events_enabled = JSPLib.utility.setIntersection(['flag', 'appeal'] , user_settings.events_enabled);
-            user_settings.subscribe_events_enabled = JSPLib.utility.setIntersection(SUBSCRIBE_EVENTS , user_settings.events_enabled);
-            user_settings.other_events_enabled = JSPLib.utility.setIntersection(['dmail', 'spam'] , user_settings.events_enabled);
-            JSPLib.storage.setStorageData('el-user-settings', user_settings, localStorage);
-        }
-        localStorage['el-transition-17.0'] = true;
-    }
     Object.assign(EL, {
-        user_settings: JSPLib.menu.loadUserSettings(PROGRAM_SHORTCUT),
+        user_settings: JSPLib.menu.loadUserSettings(),
     });
-    if (EL.user_settings.flag_query === "###INITIALIZE###" || EL.user_settings.appeal_query === "###INITIALIZE###") {
-        EL.user_settings.flag_query = EL.user_settings.appeal_query = 'user:' + EL.username;
-        JSPLib.storage.setStorageData('el-user-settings', EL.user_settings, localStorage);
-    }
-    if (EL.user_settings.flag_query === "###INITIALIZE###" || EL.user_settings.appeal_query === "###INITIALIZE###") {
-        EL.user_settings.flag_query = EL.user_settings.appeal_query = 'user:' + EL.username;
-        JSPLib.storage.setStorageData('el-user-settings', EL.user_settings, localStorage);
-    }
+    //Only used on new installs
+    InitializeChangedSettings();
     if (JSPLib.danbooru.isSettingMenu()) {
-        JSPLib.validate.dom_output = '#el-cache-editor-errors';
-        JSPLib.menu.loadStorageKeys(PROGRAM_SHORTCUT);
+        JSPLib.menu.loadStorageKeys();
         JSPLib.utility.installScript(JQUERY_TAB_WIDGET_URL).done(()=>{
-            JSPLib.menu.installSettingsMenu(PROGRAM_NAME);
+            JSPLib.menu.installSettingsMenu();
             RenderSettingsMenu();
         });
         JSPLib.utility.setCSSStyle(MENU_CSS, 'menu');
-        //Temporary style until JSPLib gets updated
-        JSPLib.utility.setCSSStyle(JSPLIB_CSS, 'jsplib_temp');
     }
-    if (!JSPLib.menu.isScriptEnabled(PROGRAM_NAME)) {
+    if (!JSPLib.menu.isScriptEnabled()) {
         Main.debuglog("Script is disabled on", window.location.hostname);
         return;
     }
@@ -2791,6 +2572,26 @@ JSPLib.debug.addFunctionLogs([
     Main, BroadcastEL, CheckSubscribeType, MarkAllAsRead, ProcessEvent, SaveLastID, CorrectList, GetInstanceID,
     CheckPostQueryType, CheckOtherType,
 ]);
+
+/****Initialization****/
+
+//Variables for debug.js
+JSPLib.debug.debug_console = false;
+JSPLib.debug.level = JSPLib.debug.INFO;
+JSPLib.debug.pretext = 'EL:';
+JSPLib.debug.pretimer = 'EL-';
+
+//Variables for menu.js
+JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
+JSPLib.menu.program_name = PROGRAM_NAME;
+JSPLib.menu.settings_callback = RemoteSettingsCallback;
+JSPLib.menu.reset_callback = RemoteResetCallback;
+
+//Export JSPLib
+if (JSPLib.debug.debug_console) {
+    window.JSPLib.lib = window.JSPLib.lib || {};
+    window.JSPLib.lib[PROGRAM_NAME] = JSPLib;
+}
 
 /****Execution start****/
 
