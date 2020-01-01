@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         BetterSavedSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.9
-// @description  Provides an alternative mechanism and UI for saved searches
+// @version      6.0
+// @description  Provides an alternative mechanism and UI for saved searches.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
 // @match        *://*.donmai.us/*
@@ -13,38 +13,41 @@
 // @require      https://cdn.jsdelivr.net/npm/core-js-bundle@3.2.1/minified.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20190929/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru validate */
 
-//Variables for debug.js
-JSPLib.debug.debug_console = false;
-JSPLib.debug.pretext = "BSS:";
-JSPLib.debug.pretimer = "BSS-";
-JSPLib.debug.level = JSPLib.debug.INFO;
-
-//Variables for utility.js
-JSPLib.utility.max_column_characters = 15;
-
-//Variables for network.js
-JSPLib.network.counter_domname = "#bss-initialize-counter";
-
-//Variables for danbooru.js
-JSPLib.danbooru.max_network_requests = 10;
+//Exterior script variables
+const DANBOORU_TOPIC_ID = '15462';
+const JQUERY_TAB_WIDGET_URL = 'https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js';
 
 //Variables for load.js
 const program_load_required_variables = ['window.jQuery','window.Danbooru'];
 const program_load_required_selectors = ['#page'];
+
+//Program name constants
+const PROGRAM_SHORTCUT = 'bss';
+const PROGRAM_CLICK = 'click.bss';
+const PROGRAM_NAME = 'BetterSavedSearches';
+
+//Program data constants
+const PROGRAM_DATA_REGEX = /(ta|plid|plname)-/; //Regex that matches the prefix of all program cache data
+const PROGRAM_DATA_KEY = {
+    tag_alias: 'ta',
+    pool_id: 'plid',
+    pool_name: 'plname',
+    program_data: 'bss-queries',
+};
 
 //Main program variable
 var BSS;
@@ -52,42 +55,25 @@ var BSS;
 //Timer function hash
 var Timer = {};
 
-//Regexes that match all program data
-const prune_cache_regex = /(ta|plid|plname)-/;
-const program_cache_regex = /(ta|plid|plname|bss)-/;
-
-//Main program expires
-const prune_expires = JSPLib.utility.one_day;
-
 //For factory reset
-const localstorage_keys = [];
-const program_reset_keys = {};
-
-//For cache editor
-const all_source_types = ['indexed_db','local_storage'];
-const all_data_types = ['tag_alias','pool_id','pool_name','program_data','custom'];
-const reverse_data_key = {
-    tag_alias: 'ta',
-    pool_id: 'plid',
-    pool_name: 'plname',
-    program_data: 'bss'
-};
+const localstorage_keys = [
+    'first-pass-resume',
+    'secondary-pass',
+    'overflow',
+    'hide-saved-searches',
+    'bss-seed-rate',
+];
 
 //Available setting values
 const profile_thumb_types = ['danbooru','script','both'];
 
 //Main settings
-const settings_config = {
-    main_script_enabled: {
-        default: true,
-        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
-        hint: "Allows the script to be turned on/off for different subdomains."
-    },
+const SETTINGS_CONFIG = {
     profile_thumb_source: {
         allitems: profile_thumb_types,
         default: ['danbooru'],
         validate: (data)=>{return Array.isArray(data) && data.length === 1 && profile_thumb_types.includes(data[0])},
-        hint: "Select which source to get thumbnails from on the profile page."
+        hint: "Currently disabled."
     },
     recheck_interval: {
         default: 5,
@@ -137,22 +123,62 @@ const settings_config = {
     },
 };
 
+const all_source_types = ['indexed_db','local_storage'];
+const all_data_types = ['program_data', 'tag_alias', 'pool_id', 'pool_name', 'custom'];
+
+const CONTROL_CONFIG = {
+    cache_info: {
+        value: "Click to populate",
+        hint: "Calculates the cache usage of the program and compares it to the total usage.",
+    },
+    purge_cache: {
+        display: `Purge cache (<span id="${PROGRAM_SHORTCUT}-purge-counter">...</span>)`,
+        value: "Click to purge",
+        hint: `Dumps all of the cached data related to ${PROGRAM_NAME}.`,
+    },
+    reset_query_data: {
+        display: `Reset query data (<span id="${PROGRAM_SHORTCUT}-initialize-counter">...</span>)`,
+        value: "Click to reset",
+        hint: `<span style="color:red"><b>Warning!</b></span> The program will have to reinitialize, including reseeding all saved searches.`,
+    },
+    data_source: {
+        allitems: all_source_types,
+        value: 'indexed_db',
+        hint: "Indexed DB is <b>Cache Data</b> and Local Storage is <b>Program Data</b>.",
+    },
+    data_type: {
+        allitems: all_data_types,
+        value: 'program_data',
+        hint: "Select type of data. Use <b>Custom</b> for querying by keyname.",
+    },
+    raw_data: {
+        value: false,
+        hint: "Select to import/export all program data",
+    },
+    data_name: {
+        value: "",
+        buttons: ['get', 'save', 'delete'],
+        hint: "Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.",
+    },
+};
+
 //CSS constants
 
 const post_css = `
-#bss-saved-search-box {
-    width: 200px;
-}
 #bss-message {
     font-size: 200%;
     margin: 10px;
 }
+#bss-saved-search-list .bss-link {
+    margin-left: -4px;
+}
 .bss-clear {
     color: red;
     font-weight: bold;
+    margin: 0 -4px;
 }
 .bss-reset {
-    margin-left: -5px;
+    margin: 0 -5px;
 }
 .bss-disabled > .bss-link {
     text-decoration: underline;
@@ -173,6 +199,8 @@ const search_css = `
 
 //HTML constants
 
+const CACHE_INFO_TABLE = '<div id="bss-cache-info-table" style="display:none"></div>';
+
 const saved_search_box = `
 <section id="bss-saved-search-box">
     <h1>
@@ -184,7 +212,7 @@ const saved_search_box = `
     </ul>
     <div id="bss-message" style="display:none">Loading (<span id="bss-initialize-counter">0</span>)</div>
     <div id="bss-last-updated" style="font-size:75%">
-        <span style="font-weight:bold">Last updated:</span>
+        <span style="font-weight:bold">Last post:</span>
         <span id="bss-time-ago">...</span>
         (
             <a id="bss-reset-position" style="color:red;font-weight:bold"  title="Click to reset position to latest post.">X</a>
@@ -218,7 +246,7 @@ const add_search_form = `
 const bss_menu = `
 <div id="bss-script-message" class="prose">
     <h2>BetterSavedSearches</h2>
-    <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/15462">topic #15462</a>).</p>
+    <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/${DANBOORU_TOPIC_ID}">topic #${DANBOORU_TOPIC_ID}</a>).</p>
 </div>
 <div id="bss-console" class="jsplib-console">
     <div id="bss-settings" class="jsplib-outer-menu">
@@ -275,6 +303,7 @@ const bss_menu = `
                         <li>ordpool</li>
                         <li>pixiv</li>
                         <li>pixiv_id</li>
+                        <li>pool</li>
                         <li>ratio</li>
                         <li>score</li>
                         <li>search</li>
@@ -307,9 +336,9 @@ const bss_menu = `
                 <h4>Filter settings</h4>
             </div>
         </div>
-        <div id="bss-cache-settings" class="jsplib-settings-grouping">
+        <div id="bss-cache-controls" class="jsplib-settings-grouping">
             <div id="bss-cache-message" class="prose">
-                <h4>Cache settings</h4>
+                <h4>Cache controls</h4>
                 <div class="expandable">
                     <div class="expandable-header">
                         <span>Cache Data details</span>
@@ -354,6 +383,7 @@ const bss_menu = `
                                         <li>This allows the program to catch up faster when it is behind.</li>
                                     </ul>
                                 </li>
+                                <li><b>bss-seed-rate:</b> List of timestamps over the last day when seed events occurred.</li>
                             </ul>
                         </li>
                         <li>Recheck data
@@ -399,17 +429,19 @@ const random_ratio = 1000;
 
 //At around 1000 the URI becomes too long and errors out on Danbooru
 //At around 500 Hijiribe/Sonohara refuses the connection
-const html_query_size = 500;
-const api_query_size = 100;
-const timer_poll_interval = 100;
+const HTML_QUERY_SIZE = 500;
+const API_QUERY_SIZE = 100;
+const MAX_QUERY_SIZE = 1000;
 
-//Main function expires
+//Time constants
+const prune_expires = JSPLib.utility.one_day;
+const noncritical_recheck = JSPLib.utility.one_minute;
+const heartbeat_timeout = JSPLib.utility.one_minute * 5;
 const saved_search_expires = JSPLib.utility.one_day;
 const normalize_expires = JSPLib.utility.one_week;
-
-//Data expires
 const pool_data_expires = JSPLib.utility.one_month;
 const alias_data_expires =JSPLib.utility.one_month;
+const timer_poll_interval = 100;
 
 //Only field parameters
 const post_fields = "id,created_at,tag_string,pool_string,rating,uploader_name,has_children,parent_id,file_ext,is_deleted,is_pending,is_flagged,is_banned";
@@ -438,19 +470,10 @@ const FREE_TAGS = /$(-?status:deleted|rating:s.*|limit:.+)$/i
 
 //Validation constants
 
-const basic_integer_validator = {
-    func: Number.isInteger,
-    type: "integer"
-};
-const basic_stringonly_validator = {
-    func: JSPLib.validate.isString,
-    type: "string"
-};
-
 const query_constraints = {
     queries: JSPLib.validate.array_constraints,
     queryentry: {
-        id: JSPLib.validate.integer_constraints,
+        id: JSPLib.validate.id_constraints,
         tags: JSPLib.validate.stringonly_constraints,
         original: JSPLib.validate.stringnull_constraints,
         found: JSPLib.validate.integer_constraints,
@@ -471,27 +494,30 @@ const query_constraints = {
     },
     inclusiondata: ['exclude', 'optional', 'require'],
     typedata: {
-        posts: basic_integer_validator,
-        unseen: basic_integer_validator,
-        labels: basic_stringonly_validator,
+        posts: JSPLib.validate.basic_ID_validator,
+        unseen: JSPLib.validate.basic_ID_validator,
+        labels: JSPLib.validate.basic_stringonly_validator,
+        require: JSPLib.validate.basic_stringonly_validator,
+        optional: JSPLib.validate.basic_stringonly_validator,
+        exclude: JSPLib.validate.basic_stringonly_validator,
     }
 };
 
 const relation_constraints = {
     entry: JSPLib.validate.arrayentry_constraints(),
-    value: basic_stringonly_validator
+    value: JSPLib.validate.basic_stringonly_validator
 };
 
 const pool_constraints = {
     entry: JSPLib.validate.hashentry_constraints,
     value: {
-        id: JSPLib.validate.integer_constraints,
+        id: JSPLib.validate.id_constraints,
         name: JSPLib.validate.stringonly_constraints
     }
 };
 
 const posttime_constraints = {
-    id: JSPLib.validate.integer_constraints,
+    id: JSPLib.validate.id_constraints,
     created: JSPLib.validate.integer_constraints
 }
 
@@ -500,12 +526,16 @@ const posttime_constraints = {
 //Validate functions
 
 function ValidateEntry(key,entry) {
+    if (key === 'bss-queries') {
+        return ValidateQueries(key,entry);
+    }
     if (!JSPLib.validate.validateIsHash(key, entry)) {
         return false;
     }
     if (key.match(/^ta-/)) {
         return ValidateRelationEntry(key, entry);
-    } else if (key.match(/^(plid|plname)-/)) {
+    }
+    if (key.match(/^(plid|plname)-/)) {
         return ValidatePoolEntry(key, entry);
     }
     ValidateEntry.debuglog("Bad key!");
@@ -614,12 +644,10 @@ function ValidatePostTimeEntry(key,entry) {
 function ValidateProgramData(key,entry) {
     var checkerror=[];
     switch (key) {
-        case 'bss-queries':
-            return ValidateQueries(key,entry);
         case 'bss-secondary-pass':
             return ValidatePostTimeEntry(key,entry);
         case 'bss-user-settings':
-            checkerror = JSPLib.menu.validateUserSettings(entry,settings_config);
+            checkerror = JSPLib.menu.validateUserSettings(entry, SETTINGS_CONFIG);
             break;
         case 'bss-overflow':
         case 'bss-hide-saved-searches':
@@ -651,7 +679,7 @@ function ValidateProgramData(key,entry) {
             if (!Array.isArray(entry)) {
                 checkerror = ["Value is not an array."];
             } else {
-                return JSPLib.validate.validateArrayValues(key,entry,basic_integer_validator);
+                return JSPLib.validate.validateArrayValues(key,entry,JSPLib.validate.basic_integer_validator);
             }
             break;
         default:
@@ -741,7 +769,7 @@ function GetAnyDirty() {
 }
 
 function GetAllTags() {
-    return JSPLib.utility.setUnique(QueryReduce((all_tags,entry)=>{return all_tags.concat(GetAllEntryTags(entry));},[]));
+    return JSPLib.utility.setUnique(QueryReduce((all_tags,entry)=>{return JSPLib.utility.concat(all_tags, GetAllEntryTags(entry));},[]));
 }
 
 function GetAllEntryTags(entry) {
@@ -830,13 +858,11 @@ function WasOverflow() {
 //Storage functions
 
 async function LoadBSSEntries() {
-    if (('bss-heartbeat' in sessionStorage) && JSPLib.concurrency.checkTimeout('bss-heartbeat', JSPLib.utility.one_minute * 5, sessionStorage)) {
+    if (('bss-heartbeat' in sessionStorage) && JSPLib.concurrency.checkTimeout('bss-heartbeat', heartbeat_timeout, sessionStorage)) {
         LoadBSSEntries.debuglog("Window timeout detected! Removing stale data...");
         sessionStorage.removeItem('bss-queries');
     }
     BSS.entries = await JSPLib.storage.retrieveData('bss-queries');
-    //Transition checked to found as it's more accurate to how it's used
-    BSS.entries && BSS.entries.forEach((query)=>{query.found = (query.checked ? query.checked : query.found)});
     if (!CorrectQueries(BSS)) {
         await StoreBSSEntries();
     }
@@ -889,7 +915,7 @@ function RenderSavedSearchLabel(label) {
 }
 
 function RenderCalendarTitle(query) {
-    let found_timestring = new Date(query.found).toLocaleString();
+    let found_timestring = (query.found > 0 ? new Date(query.found).toLocaleString() : 'N/A');
     let seeded_timestring = new Date(query.seeded).toLocaleString();
     return `
 Last found: ${found_timestring}
@@ -898,9 +924,8 @@ Last seeded: ${seeded_timestring}`.trim('\n');
 
 function SetLineOptions(entry) {
     return {
-        count_enabled: (entry.unseen.length ? "" : "display:none"),
-        clear_enabled: (!entry.unseen.length && entry.posts.length ? "" : "display:none"),
-        reset_enabled: (!entry.unseen.length && !entry.posts.length ? "" : "display:none"),
+        clear_enabled: (entry.posts.length > 0 ? "" : "display:none"),
+        reset_enabled: (entry.posts.length === 0 ? "" : "display:none"),
         active_class: (BSS.active_query == entry.id ? " bss-active" : ''),
         disabled_class: (entry.disabled ? " bss-disabled" : ''),
         metatag_class: (entry.metatags ? " bss-metatags" : ''),
@@ -914,10 +939,12 @@ function RenderQueryLine(classname,entry,options,pool_ids,preicon_html,linetext,
     ${preicon_html}
     <a class="bss-link" title="${linetext}">${JSPLib.utility.maxLengthString(linetext)}</a>
     ${JSPLib.danbooru.postSearchLink(linksearch,'&raquo;')}
+    <span class="bss-count">(<a title="${entry.posts.length}">${entry.unseen.length}</a>)</span>
     <span class="bss-last-control">
-        <span class="bss-count" style="${options.count_enabled}">(<a title="${entry.posts.length}">${entry.unseen.length}</a>)</span>
+        [
         <span class="bss-clear" style="${options.clear_enabled}"><a title="${entry.posts.length}">X</a></span>
         <span class="bss-reset" style="${options.reset_enabled}"><a class="ui-icon ui-icon-arrowrefresh-1-w"></a></span>
+        ]
     </span>`;
 }
 
@@ -954,7 +981,7 @@ async function PaginatePostIndex() {
         if (i === BSS.page) {
             continue;
         }
-        let html = `<li class="numbered-page"><a href="${PostIDQuery(posts,i)}">${i}</a></li>`;
+        let html = `<li class="numbered-page"><a class="bss-post-search" href="${PostIDQuery(posts,i)}">${i}</a></li>`;
         if (i < BSS.page) {
             $(".current-page").before(html);
         } else {
@@ -962,14 +989,14 @@ async function PaginatePostIndex() {
         }
     }
     if (first_page !== 1) {
-        let html = `<li class="numbered-page"><a href="${PostIDQuery(posts,1)}">1</a></li>`;
+        let html = `<li class="numbered-page"><a class="bss-post-search" href="${PostIDQuery(posts,1)}">1</a></li>`;
         if (first_page > 2) {
             html += `<li class="more"><i class="fas fa-ellipsis-h"></i></li>`;
         }
         $(".arrow:first-of-type").after(html);
     }
     if (last_page !== total_pages) {
-        let html = `<li class="numbered-page"><a href="${PostIDQuery(posts,total_pages)}">${total_pages}</a></li>`;
+        let html = `<li class="numbered-page"><a class="bss-post-search" href="${PostIDQuery(posts,total_pages)}">${total_pages}</a></li>`;
         if (last_page < (total_pages - 1)) {
             html = `<li class="more"><i class="fas fa-ellipsis-h"></i></li>` + html;
         }
@@ -977,14 +1004,14 @@ async function PaginatePostIndex() {
     }
     if (BSS.page !== 1) {
         let html = `
-<a rel="prev" id="paginator-prev" data-shortcut="a left" href="${PostIDQuery(posts,BSS.page-1)}" title="Shortcut is a or left">
+<a rel="prev" id="paginator-prev" class="bss-post-search" data-shortcut="a left" href="${PostIDQuery(posts,BSS.page-1)}" title="Shortcut is a or left">
     <i class="fas fa-chevron-left"></i>
 </a>`;
         $(".arrow:first-of-type").html(html);
     }
     if (BSS.page !== total_pages) {
         let html = `
-<a rel="next" id="paginator-next" data-shortcut="d right" href="${PostIDQuery(posts,BSS.page + 1)}" title="Shortcut is d or right">
+<a rel="next" id="paginator-next" class="bss-post-search" data-shortcut="d right" href="${PostIDQuery(posts,BSS.page + 1)}" title="Shortcut is d or right">
     <i class="fas fa-chevron-right"></i>
 </a>`;
         $(".arrow:last-of-type").html(html);
@@ -1017,11 +1044,11 @@ function InitializeUI() {
     SearchClick("h1 > .bss-link",0,'posts',ChooseAll);
     SearchClick("h1 > .bss-count",0,'unseen',ChooseAll);
     SearchClick(".bss-label-query > .bss-link",1,'posts',ChooseLabel);
-    SearchClick(".bss-label-query > span > .bss-count a",3,'unseen',ChooseLabel);
+    SearchClick(".bss-label-query > .bss-count a",2,'unseen',ChooseLabel);
     ClearClick(".bss-label-query > span > .bss-clear a",3,ChooseLabel);
     ResetClick(".bss-label-query > span > .bss-reset a",3,ChooseLabel);
     SearchClick(".bss-detailed-query .bss-link",1,'posts',ChooseID);
-    SearchClick(".bss-detailed-query .bss-count a",3,'unseen',ChooseID);
+    SearchClick(".bss-detailed-query .bss-count a",2,'unseen',ChooseID);
     ClearClick(".bss-detailed-query .bss-clear a",3,ChooseID);
     ResetClick(".bss-detailed-query .bss-reset a",3,ChooseID);
     MainToggle();
@@ -1057,12 +1084,7 @@ function RecalculateLine(entry,classname) {
     $(`.${classname}[data-id=${entry.id}] > span > .bss-count a`).attr('title',entry.posts.length);
     $(`.${classname}[data-id=${entry.id}] > span > .bss-clear a`).attr('title',entry.posts.length);
     $(`.${classname}[data-id=${entry.id}] > .bss-last-control > span`).hide();
-    let show_control = 'bss-count';
-    if (!entry.unseen.length && entry.posts.length) {
-        show_control = 'bss-clear';
-    } else if (!entry.unseen.length && !entry.posts.length) {
-        show_control = 'bss-reset';
-    }
+    let show_control = (entry.posts.length > 0 ? 'bss-clear' : 'bss-reset');
     $(`.${classname}[data-id=${entry.id}]  > span > .${show_control}`).show();
     if (entry.disabled) {
         $(`.${classname}[data-id=${entry.id}]`).addClass('bss-disabled');
@@ -1105,47 +1127,48 @@ async function SequentializePostShow() {
 
 ////#C-SAVED-SEARCHES #A-INDEX
 
-function RefreshLinkCount() {
-    let program_queries = BSS.entries.map((entry)=>{return (entry.original ? entry.original : entry.tags);});
-    let actual_queries = $(".striped td:first-of-type a").map((i,entry)=>{return entry.innerText;}).toArray();
-    let query_difference = JSPLib.utility.setSymmetricDifference(program_queries,actual_queries);
-    RefreshLinkCount.debuglog(query_difference);
-    $("#bss-refresh-count").html(query_difference.length);
-}
-
 //Check for existence of IndexedAutocomplete
 function AutocompleteRecheck() {
-    let autocomplete_timer = JSPLib.utility.initializeInterval(()=>{
+    AutocompleteRecheck.timer = JSPLib.utility.initializeInterval(()=>{
         if(Danbooru.IAC && Danbooru.IAC.InitializeAutocompleteIndexed) {
             setTimeout(()=>{Danbooru.IAC.InitializeAutocompleteIndexed("[data-autocomplete=saved-search]", 'ss', true);}, 500);
-            clearInterval(autocomplete_timer);
+            clearInterval(AutocompleteRecheck.timer);
         }
     }, timer_poll_interval, JSPLib.utility.one_second * 5);
 }
 
 //Alias functions
 
-async function QueryTagAlias(tag) {
-    let consequent = [];
-    let entryname = 'ta-' + tag;
-    let storeditem = await JSPLib.storage.checkLocalDB(entryname,ValidateEntry);
-    if (!storeditem) {
-        QueryTagAlias.debuglog("Querying alias:",tag);
-        let url_addons = {search: {antecedent_name: tag, status: 'active'}, only: alias_field};
-        let data = await JSPLib.danbooru.submitRequest('tag_aliases', url_addons,[],entryname);
-        if (data.length) {
-            //Alias antecedents are unique, so no need to check the size
-            QueryTagAlias.debuglog("Alias:",tag,data[0].consequent_name);
-            consequent = [data[0].consequent_name];
+async function QueryTagAliases(taglist) {
+    let [cached_aliases,uncached_aliases] = await JSPLib.storage.batchStorageCheck(taglist, ValidateEntry, alias_data_expires, 'ta');
+    QueryTagAliases.debuglog("Cached aliases:", cached_aliases);
+    QueryTagAliases.debuglog("Uncached aliases:", uncached_aliases);
+    if (uncached_aliases.length) {
+        let all_aliases = [];
+        for (let i = 0; i < uncached_aliases.length; i += API_QUERY_SIZE) {
+            let check_tags = uncached_aliases.slice(i, i + API_QUERY_SIZE);
+            let url_addons = {search: {antecedent_name: check_tags.join(' '), status:'active'}, only: alias_field, limit: MAX_QUERY_SIZE};
+            let data = await JSPLib.danbooru.submitRequest('tag_aliases', url_addons, []);
+            all_aliases = JSPLib.utility.concat(all_aliases, data);
         }
-        JSPLib.storage.saveData(entryname,{value: consequent, expires: JSPLib.utility.getExpires(alias_data_expires)});
-    } else {
-        consequent = storeditem.value;
-        if (consequent.length) {
-            QueryTagAlias.debuglog("Alias:",tag,consequent[0]);
-        }
+        let found_aliases = [];
+        all_aliases.forEach((alias)=>{
+            found_aliases.push(alias.antecedent_name);
+            JSPLib.storage.saveData('ta-' + alias.antecedent_name, {value: [alias.consequent_name], expires: JSPLib.utility.getExpires(alias_data_expires)});
+        });
+        let unfound_aliases = JSPLib.utility.setDifference(uncached_aliases, found_aliases);
+        unfound_aliases.forEach((tag)=>{
+            JSPLib.storage.saveData('ta-' + tag, {value: [], expires: JSPLib.utility.getExpires(alias_data_expires)});
+        });
+        QueryTagAliases.debuglog("Found aliases:", found_aliases);
+        QueryTagAliases.debuglog("Unfound aliases:", unfound_aliases);
     }
-    return {[tag]: consequent};
+    let alias_dict = {};
+    cached_aliases.forEach((tag)=>{
+        alias_dict[tag] = JSPLib.storage.getStorageData('ta-' + tag, sessionStorage).value;
+    });
+    QueryTagAliases.debuglog("Aliases:", alias_dict);
+    return alias_dict;
 }
 
 function GetLastConsequent(tag,tag_aliases) {
@@ -1206,7 +1229,7 @@ async function GetPoolIDFromName(poolname) {
 ////#C-POSTS #A-INDEX
 
 function SearchClick(selector,level,posttype,choosepost) {
-    $(selector).on('click.bss',async (event)=>{
+    $(selector).on(PROGRAM_CLICK,async (event)=>{
         if (!SearchClick.reserved) {
             let id = $(JSPLib.utility.getNthParent(event.target,level)).data('id');
             let posts = GetPosts(posttype,choosepost,id);
@@ -1225,7 +1248,7 @@ function SearchClick(selector,level,posttype,choosepost) {
 }
 
 function ClearClick(selector,level,choosepost) {
-    $(selector).on('click.bss',async (event)=>{
+    $(selector).on(PROGRAM_CLICK,async (event)=>{
         if (!ClearClick.reserved) {
             ClearClick.reserved = true;
             let $dom = $(JSPLib.utility.getNthParent(event.target,level));
@@ -1242,7 +1265,7 @@ function ClearClick(selector,level,choosepost) {
 }
 
 function ResetClick(selector,level,choosepost) {
-    $(selector).on('click.bss',async (event)=>{
+    $(selector).on(PROGRAM_CLICK,async (event)=>{
         if (!ResetClick.reserved) {
             ResetClick.reserved = true;
             let $dom = $(JSPLib.utility.getNthParent(event.target,level));
@@ -1269,7 +1292,7 @@ function ResetClick(selector,level,choosepost) {
 }
 
 function ResetPosition() {
-    $("#bss-reset-position").on('click.bss',(event)=>{
+    $("#bss-reset-position").on(PROGRAM_CLICK,(event)=>{
         if(confirm("This will skip all posts to the current. Continue?")) {
             JSPLib.danbooru.submitRequest('posts',{limit: 1, only: "id,created_at"}).then((data)=>{
                 JSPLib.storage.setStorageData('bss-recent-timestamp', new Date(data[0].created_at).getTime(), localStorage);
@@ -1281,7 +1304,7 @@ function ResetPosition() {
 }
 
 function DetailedSearchesToggle() {
-    $(".collapsible-saved-search-links").on('click.bss',(event)=>{
+    $(".collapsible-saved-search-links").on(PROGRAM_CLICK,(event)=>{
         let label = $(event.target.parentElement).data('id');
         $(event.target).toggleClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
         $(`.bss-label-query[data-id=${label}] > ul`).slideToggle(100);
@@ -1289,7 +1312,7 @@ function DetailedSearchesToggle() {
 }
 
 function MainToggle() {
-    $("#toggle-bss-saved-searches").on('click.bss',(event)=>{
+    $("#toggle-bss-saved-searches").on(PROGRAM_CLICK,(event)=>{
         $("#bss-saved-search-list").slideToggle(100);
         if (!JSPLib.storage.checkStorageData('bss-hide-saved-searches',ValidateProgramData,localStorage,false)) {
             JSPLib.storage.setStorageData('bss-hide-saved-searches',true,localStorage);
@@ -1320,7 +1343,7 @@ function BSSLinkHover() {
 ////#C-SAVED-SEARCHES #A-INDEX
 
 function RefreshLinkClick() {
-    $("#bss-refresh-saved-searches a").on('click.bss',async (event)=>{
+    $("#bss-refresh-saved-searches a").on(PROGRAM_CLICK,async (event)=>{
         if (!RefreshLinkClick.reserved) {
             RefreshLinkClick.reserved = true;
             JSPLib.utility.fullHide("#bss-refresh-saved-searches");
@@ -1328,7 +1351,6 @@ function RefreshLinkClick() {
             await CheckUserSavedSearches(true);
             await Timer.NormalizeBSSEntries(true);
             StoreBSSEntries();
-            RefreshLinkCount();
             JSPLib.utility.fullHide("#bss-loading-saved-searches");
             JSPLib.utility.clearHide("#bss-refresh-saved-searches");
             Danbooru.Utility.notice("Saved searches updated.");
@@ -1339,7 +1361,7 @@ function RefreshLinkClick() {
 }
 
 function SubmitNewQueryClick() {
-    $("#bss-new-saved-search button").on('click.bss',async (event)=>{
+    $("#bss-new-saved-search button").on(PROGRAM_CLICK,async (event)=>{
         let labels = $("#saved_search_label_string").val();
         let query = $("#saved_search_query").val();
         try {
@@ -1352,22 +1374,28 @@ function SubmitNewQueryClick() {
         }
         let html = RenderTableRow(saved_search);
         $(".striped tbody").append(html);
-        SubmitDeleteClick();
-        RefreshLinkCount();
         Danbooru.Utility.notice(`Saved search "${saved_search.query}" has been added.`);
     });
 }
 
-function SubmitDeleteClick() {
-    //Add an extra event to the Delete click
-    $(".striped [data-method=delete]").off('click.bss').on('click.bss',(event)=>{
-        let current_rows = $(".striped tbody tr").length;
-        JSPLib.utility.rebindTimer({
-            check: ()=>{return $(".striped tbody tr").length < current_rows;},
-            exec: ()=>{RefreshLinkCount();}
-        },timer_poll_interval);
+////Settings menu
+
+function ResetQueryDataClick() {
+    $('#bss-control-reset-query-data').on(PROGRAM_CLICK, (event)=>{
+        if(confirm("This will reset all query data. Continue?")) {
+            if (!ResetQueryDataClick.is_started) {
+                ResetQueryDataClick.is_started = true;
+                BSS.entries = [];
+                CheckUserSavedSearches(true).then(()=>{
+                    StoreBSSEntries();
+                    ResetQueryDataClick.is_started = false;
+                    JSPLib.utility.notice('Query data has finished reinitializing!');
+                });
+            }
+        }
     });
 }
+ResetQueryDataClick.is_started = false;
 
 //Profile functions
 
@@ -1466,10 +1494,10 @@ function ParseQuery(string) {
     return entry;
 }
 
-function UpdateQuery(post,query) {
-    UpdateQuery.debuglog(post.id,query);
-    query.unseen = NormalizePosts(query.unseen, [post.id], true, true, "add");
-    query.posts = NormalizePosts(query.posts, [post.id], true, true, "add");
+function UpdateQuery(post_ids,query) {
+    UpdateQuery.debuglog(post_ids,query);
+    query.unseen = NormalizePosts(query.unseen, post_ids, true, true, "add");
+    query.posts = NormalizePosts(query.posts, post_ids, true, true, "add");
     query.found = Date.now();
     query.dirty = true;
 }
@@ -1662,19 +1690,26 @@ function ResetBSSEntries() {
 async function UnaliasBSSEntries() {
     UnaliasBSSEntries.debuglog("Testing...");
     let all_tags = GetAllTags().filter((tag)=>{return !tag.match(ALL_META_TAGS);});
-    let url_addons = {search: {name: all_tags.join(','), hide_empty: 'yes'}, only: tag_fields};
-    let query_tags = await JSPLib.danbooru.getAllItems('tags', api_query_size, {addons: url_addons});
-    let found_tags = JSPLib.utility.getObjectAttributes(query_tags,'name');
-    let alias_entries = found_tags.map((tag)=>{return {[tag]: []};});
-    let missing_tags = JSPLib.utility.setDifference(all_tags,found_tags);
-    if (missing_tags.length) {
-        let network_aliases = await Promise.all(missing_tags.map((tag)=>{return QueryTagAlias(tag);}))
-        alias_entries = alias_entries.concat(network_aliases);
+    let query_tags = [];
+    for (let i = 0; i < all_tags.length; i += API_QUERY_SIZE) {
+        let check_tags = all_tags.slice(i, i + API_QUERY_SIZE);
+        let url_addons = {search: {name: check_tags.join(','), hide_empty: 'yes'}, only: tag_fields, limit: API_QUERY_SIZE};
+        let data = await JSPLib.danbooru.submitRequest('tags', url_addons, []);
+        query_tags = JSPLib.utility.concat(query_tags, data);
     }
-    //Convert array of hashes into one hash
-    let tag_aliases = alias_entries.reduce((a,b)=>{return Object.assign(a,b);});
+    let found_tags = JSPLib.utility.getObjectAttributes(query_tags,'name');
+    let tag_aliases = {};
+    found_tags.forEach((tag)=>{
+        tag_aliases[tag] = [];
+    })
+    let missing_tags = JSPLib.utility.setDifference(all_tags,found_tags);
+    if (missing_tags.length === 0) {
+        UnaliasBSSEntries.debuglog("No missing tags!");
+    }
+    let network_aliases = await QueryTagAliases(missing_tags);
+    Object.assign(tag_aliases, network_aliases);
     let change_tags = missing_tags.reduce((changes,tag)=>{return (tag != GetLastConsequent(tag,tag_aliases) ? changes.concat(tag) : changes);},[]);
-    if (!change_tags.length) {
+    if (change_tags.length === 0) {
         UnaliasBSSEntries.debuglog("No tags to unalias!")
         return;
     }
@@ -1743,6 +1778,7 @@ function RemoveDuplicateBSSEntries() {
 
 function ProcessPosts(posts) {
     let all_tags = GetAllTags();
+    let update_posts = {};
     posts.forEach((post)=>{
         let post_tags = GeneratePostTags(post);
         if (JSPLib.utility.hasIntersection(all_tags,post_tags)) {
@@ -1751,15 +1787,21 @@ function ProcessPosts(posts) {
                     return;
                 }
                 if (CheckPost(post_tags,query)) {
-                    UpdateQuery(post,query);
+                    update_posts[query.id] = update_posts[query.id] || [];
+                    update_posts[query.id].push(post.id);
                 }
             });
+        }
+    });
+    QueryIterator((query)=>{
+        if (query.id in update_posts) {
+            UpdateQuery(update_posts[query.id], query);
         }
     });
 }
 
 function GeneratePostTags(post) {
-    let tags = [post.tag_string,post.pool_string].join(' ').match(/\S+/g) || [];
+    let tags = post.tag_string.match(/\S+/g) || [];
     tags.push(`rating:{post.rating}`);
     tags.push(`user:post.uploader_name`);
     tags.push(post.has_children ? 'child:any' : 'child:none');
@@ -1774,22 +1816,20 @@ function GeneratePostTags(post) {
 }
 
 function NormalizePosts(postids1,postids2,slice=false,sort=true,operation) {
-    let returnids = JSPLib.utility.setUnique(postids1);
     if (postids2 && operation) {
         if (operation === "add") {
-            postids1 = JSPLib.utility.setUnion(postids1, postids2);
+            postids1 = JSPLib.utility.setUnion(postids2, postids1);
         } else if (operation === "subtract") {
             postids1 = JSPLib.utility.setDifference(postids1, postids2);
         }
     }
-    postids1 = JSPLib.utility.setUnique(postids1);
+    if (sort) {
+        postids1 = postids1.sort((a, b)=>{return b - a});
+    }
     if (typeof slice === "boolean" && slice) {
         postids1 = postids1.slice(0, BSS.user_settings.saved_search_size);
     } else if (Number.isInteger(slice)) {
         postids1 = postids1.slice(0, slice);
-    }
-    if (sort) {
-        postids1 = postids1.sort((a, b)=>{return b - a});
     }
     return postids1;
 }
@@ -1816,11 +1856,10 @@ async function InitialPass() {
     let pageid = JSPLib.storage.checkStorageData('bss-first-pass-resume',ValidateProgramData,localStorage);
     if (pageid) {
         options.page = pageid;
-        options.addons.tags = `id:${pageid}..${pageid+199}`;
     }
     InitialPass.debuglog("Network:",pageid);
-    let posts = await JSPLib.danbooru.getAllItems('posts', api_query_size, options);
-    if (posts.length === 199) {
+    let posts = await JSPLib.danbooru.getAllItems('posts', API_QUERY_SIZE, 2, options);
+    if (posts.length === (API_QUERY_SIZE * 2)) {
         InitialPass.debuglog("Overflow detected!");
         JSPLib.storage.setStorageData('bss-overflow',true,localStorage);
     } else {
@@ -1856,10 +1895,10 @@ async function SecondaryPass() {
     let process_posts = TimePostsFilter(BSS.secondary_pass, 'created', JSPLib.utility.one_hour, "gt");
     if (process_posts.length) {
         let process_ids = JSPLib.utility.getObjectAttributes(process_posts, 'id');
-        process_ids = NormalizePosts(process_ids, null, html_query_size);
+        process_ids = NormalizePosts(process_ids, null, HTML_QUERY_SIZE);
         let options = {addons: {tags: "id:" + process_ids.join(','), only: post_fields}};
         SecondaryPass.debuglog("Network:",process_ids);
-        let posts = await JSPLib.danbooru.getAllItems('posts', api_query_size, options);
+        let posts = await JSPLib.danbooru.getAllItems('posts', API_QUERY_SIZE, null, options);
         Timer.ProcessPosts(posts);
         let remaining_posts = JSPLib.utility.listFilter(BSS.secondary_pass,process_ids,'id',true);
         SecondaryPass.debuglog("Remaining:",remaining_posts);
@@ -1911,7 +1950,7 @@ async function DailyMetatagRecheck() {
 async function CheckUserSavedSearches(overide=false) {
     if (JSPLib.concurrency.checkTimeout('bss-saved-search-expires',saved_search_expires) || overide) {
         CheckUserSavedSearches.debuglog("Checking...");
-        let saved_searches = await JSPLib.danbooru.getAllItems('saved_searches',api_query_size,{page:0,reverse:true});
+        let saved_searches = await JSPLib.danbooru.getAllItems('saved_searches', API_QUERY_SIZE, null, {page: 0, reverse: true});
         let query_ids = JSPLib.utility.getObjectAttributes(BSS.entries,'id');
         let promise_array = [];
         BSS.dirty = false;
@@ -1956,13 +1995,17 @@ function OptionCacheDataKey(data_type,data_value) {
     if (data_type === "program_data") {
         return "bss-queries";
     } else {
-        return `${reverse_data_key[data_type]}-${data_value}`;
+        let type_shortcut = PROGRAM_DATA_REGEX[data_type];
+        return `${type_shortcut}-${data_value}`;
     }
 }
 
 //Settings functions
 
 function BSSBroadcast(ev) {
+    if (!BSS.is_enabled) {
+        return;
+    }
     BSSBroadcast.debuglog(`(${ev.data.type}):`,ev.data);
     BSS.entries = (ev.data.entries ? ev.data.entries : BSS.entries);
     if (BSS.is_post_index) {
@@ -1991,22 +2034,6 @@ function BSSBroadcast(ev) {
         case "reinstall":
             ResetDirty();
             JSPLib.storage.setStorageData('bss-queries',BSS.entries,sessionStorage);
-            break;
-        case "reset":
-            Object.assign(BSS,program_reset_keys);
-            //falls through
-        case "settings":
-            BSS.user_settings = ev.data.user_settings;
-            BSS.is_setting_menu && JSPLib.menu.updateUserSettings('bss');
-            break;
-        case "purge":
-            Object.keys(sessionStorage).forEach((key)=>{
-                if (key.match(program_cache_regex)) {
-                    sessionStorage.removeItem(key);
-                }
-            });
-            //Queries have been purged, so just hide until the next page refresh
-            $("#bss-saved-search-box").hide();
             //falls through
         default:
             //do nothing
@@ -2023,34 +2050,78 @@ function MaximumTagQueryLimit() {
     }
 }
 
+function GetRecheckExpires() {
+    return BSS.user_settings.recheck_interval * JSPLib.utility.one_minute;
+}
+
+function RemoteSettingsCallback() {
+    if (BSS.active_query) {
+        if (JSPLib.utility.hasSettingChanged('show_deleted_enabled')) {
+            $('.bss-post-search').each((i,link)=>{
+                let old_link = link.href;
+                let replacement = (BSS.user_settings.show_deleted_enabled ? 'status%3Aany%20' : "");
+                let new_link = old_link.replace(/tags=status%3Aany%20/,'tags=' + replacement);
+                link.href = new_link;
+            });
+        }
+        if (JSPLib.utility.hasSettingChanged('show_favorites_enabled')) {
+            $(".post-preview").each((i,post)=>{
+                if (!BSS.user_settings.show_favorites_enabled && $(post).data('is-favorited')) {
+                    post.style.setProperty('display','none','important');
+                } else {
+                    post.style.removeProperty('display');
+                }
+            });
+        }
+    }
+}
+
+function RemoteResetCallback() {
+    $("#bss-saved-search-list").show();
+    $("#bss-seeds-day").text(BSS.seed_rate.length);
+    RemoteSettingsCallback();
+}
+
+function RemoteDisableCallback() {
+    $("#bss-saved-search-box").hide();
+    JSPLib.utility.fullHide("#bss-refresh-saved-searches");
+    $("#bss-new-saved-search").hide();
+}
+
 function RenderSettingsMenu() {
     $("#better-saved-searches").append(bss_menu);
-    $("#bss-general-settings").append(JSPLib.menu.renderDomainSelectors('bss', 'BetterSavedSearches'));
-    $("#bss-general-settings").append(JSPLib.menu.renderInputSelectors("bss",'profile_thumb_source','radio'));
-    $("#bss-post-settings").append(JSPLib.menu.renderTextinput("bss",'seed_size',10));
-    $("#bss-post-settings").append(JSPLib.menu.renderTextinput("bss",'query_size',10));
-    $("#bss-post-settings").append(JSPLib.menu.renderTextinput("bss",'saved_search_size',10));
-    $("#bss-network-settings").append(JSPLib.menu.renderTextinput("bss",'recheck_interval',10));
-    $("#bss-network-settings").append(JSPLib.menu.renderTextinput("bss",'metatags_interval',10));
-    $("#bss-network-settings").append(JSPLib.menu.renderTextinput("bss",'random_reseed_interval',10));
-    $("#bss-filter-settings").append(JSPLib.menu.renderCheckbox("bss",'show_deleted_enabled'));
-    $("#bss-filter-settings").append(JSPLib.menu.renderCheckbox("bss",'show_favorites_enabled'));
-    $("#bss-cache-settings").append(JSPLib.menu.renderLinkclick("bss",'cache_info',"Cache info","Click to populate","Calculates the cache usage of the program and compares it to the total usage."));
-    $("#bss-cache-settings").append(`<div id="bss-cache-info-table" style="display:none"></div>`);
-    $("#bss-cache-settings").append(JSPLib.menu.renderLinkclick("bss",'purge_cache',`Purge cache (<span id="bss-purge-counter">...</span>)`,"Click to purge","Dumps all of the cached data related to DisplayPostInfo."));
-    $("#bss-cache-settings").append(JSPLib.menu.renderLinkclick("bss",'reset_program_data',"Reset program data","Click to reset",`<span style="color:red"><b>Warning!</b></span> The program will have to reinitialize, including reseeding all saved searches.`));
-    $("#bss-cache-editor-controls").append(JSPLib.menu.renderKeyselect('bss','data_source',true,'indexed_db',all_source_types,"Indexed DB is <b>Cache Data</b> and Local Storage is <b>Program Data</b>."));
-    $("#bss-cache-editor-controls").append(JSPLib.menu.renderKeyselect('bss','data_type',true,'tag_data',all_data_types,"Only applies to Indexed DB.  Use <b>Custom</b> for querying by keyname."));
-    $("#bss-cache-editor-controls").append(JSPLib.menu.renderTextinput('bss','data_name',20,true,"Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.",['get','save','delete']));
-    JSPLib.menu.engageUI('bss',true);
-    JSPLib.menu.saveUserSettingsClick('bss','BetterSavedSearches');
-    JSPLib.menu.resetUserSettingsClick('bss','BetterSavedSearches',localstorage_keys,program_reset_keys);
-    JSPLib.menu.purgeCacheClick('bss','BetterSavedSearches',program_cache_regex,"#bss-purge-counter");
-    JSPLib.menu.cacheInfoClick('bss',program_cache_regex,"#bss-cache-info-table");
-    JSPLib.menu.getCacheClick('bss',OptionCacheDataKey);
-    JSPLib.menu.saveCacheClick('bss',()=>{return false;},ValidateEntry,OptionCacheDataKey);
-    JSPLib.menu.deleteCacheClick('bss',OptionCacheDataKey);
-    JSPLib.menu.cacheAutocomplete('bss',program_cache_regex,OptionCacheDataKey);
+    $("#bss-general-settings").append(JSPLib.menu.renderDomainSelectors());
+    $("#bss-general-settings").append(JSPLib.menu.renderInputSelectors('profile_thumb_source', 'radio'));
+    $("#bss-post-settings").append(JSPLib.menu.renderTextinput('seed_size', 10));
+    $("#bss-post-settings").append(JSPLib.menu.renderTextinput('query_size', 10));
+    $("#bss-post-settings").append(JSPLib.menu.renderTextinput('saved_search_size', 10));
+    $("#bss-network-settings").append(JSPLib.menu.renderTextinput('recheck_interval', 10));
+    $("#bss-network-settings").append(JSPLib.menu.renderTextinput('metatags_interval', 10));
+    $("#bss-network-settings").append(JSPLib.menu.renderTextinput('random_reseed_interval', 10));
+    $("#bss-filter-settings").append(JSPLib.menu.renderCheckbox('show_deleted_enabled'));
+    $("#bss-filter-settings").append(JSPLib.menu.renderCheckbox('show_favorites_enabled'));
+    $("#bss-cache-controls").append(JSPLib.menu.renderLinkclick('cache_info', true));
+    $("#bss-cache-controls").append(CACHE_INFO_TABLE);
+    $("#bss-cache-controls").append(JSPLib.menu.renderLinkclick('purge_cache', true));
+    $("#bss-cache-controls").append(JSPLib.menu.renderLinkclick('reset_query_data', true));
+    $("#bss-cache-editor-controls").append(JSPLib.menu.renderKeyselect('data_source', true));
+    $("#bss-cache-editor-controls").append(JSPLib.menu.renderDataSourceSections());
+    $("#bss-section-indexed-db").append(JSPLib.menu.renderKeyselect('data_type', true));
+    $("#bss-section-local-storage").append(JSPLib.menu.renderCheckbox('raw_data', true));
+    $("#bss-cache-editor-controls").append(JSPLib.menu.renderTextinput('data_name', 20, true));
+    JSPLib.menu.engageUI(true);
+    $('.bss-selectors[data-setting=profile_thumb_source] input').checkboxradio('disable');
+    JSPLib.menu.saveUserSettingsClick();
+    JSPLib.menu.resetUserSettingsClick(localstorage_keys);
+    JSPLib.menu.cacheInfoClick();
+    JSPLib.menu.purgeCacheClick();
+    ResetQueryDataClick();
+    JSPLib.menu.dataSourceChange();
+    JSPLib.menu.rawDataChange();
+    JSPLib.menu.getCacheClick();
+    JSPLib.menu.saveCacheClick(ValidateProgramData, ValidateEntry);
+    JSPLib.menu.deleteCacheClick();
+    JSPLib.menu.cacheAutocomplete();
 }
 
 //Main function
@@ -2063,39 +2134,34 @@ async function Main() {
         controller: document.body.dataset.controller,
         action: document.body.dataset.action,
         dirty: false,
-        user_limit: MaximumTagQueryLimit(),
-        search_posts: JSPLib.storage.checkStorageData('bss-search-posts',ValidateProgramData,sessionStorage,[]),
-        tab_id: GetTabID(),
-        seed_rate: GetSeedRate(),
-        is_setting_menu: JSPLib.danbooru.isSettingMenu(),
-        storage_keys: {indexed_db: [], local_storage: []},
-        settings_config: settings_config,
-        channel: new BroadcastChannel('BetterSavedSearches')
+        is_enabled: JSPLib.menu.isScriptEnabled(),
+        settings_config: SETTINGS_CONFIG,
+        control_config: CONTROL_CONFIG,
+        channel: JSPLib.utility.createBroadcastChannel(PROGRAM_NAME, BSSBroadcast)
     };
     Object.assign(BSS, {
         is_post_index: BSS.controller === "posts" && BSS.action === "index",
-        is_post_show: BSS.controller === "posts" && BSS.action === "show",
         is_searches_index: BSS.controller === "saved-searches" && BSS.action === "index",
-        user_settings: JSPLib.menu.loadUserSettings('bss')
+        user_settings: JSPLib.menu.loadUserSettings(),
     });
-    if (BSS.is_setting_menu) {
-        JSPLib.validate.dom_output = "#bss-cache-editor-errors";
-        JSPLib.menu.loadStorageKeys('bss',program_cache_regex);
-        JSPLib.utility.installScript("https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js").done(()=>{
-            JSPLib.menu.installSettingsMenu("BetterSavedSearches");
+    if (JSPLib.danbooru.isSettingMenu()) {
+        JSPLib.menu.loadStorageKeys();
+        JSPLib.utility.installScript(JQUERY_TAB_WIDGET_URL).done(()=>{
+            JSPLib.menu.installSettingsMenu();
             RenderSettingsMenu();
         });
     }
-    if (!JSPLib.menu.isScriptEnabled('BetterSavedSearches')) {
+    if (!BSS.is_enabled) {
         Main.debuglog("Script is disabled on", window.location.hostname);
         return;
     }
-    if (!BSS.user_settings.main_script_enabled) {
-        Main.debuglog("Script is disabled!");
-        return;
-    }
-    BSS.timeout_expires = BSS.user_settings.recheck_interval * JSPLib.utility.one_minute;
-    BSS.channel.onmessage = BSSBroadcast;
+    Object.assign(BSS, {
+        user_limit: MaximumTagQueryLimit(),
+        tab_id: GetTabID(),
+        seed_rate: GetSeedRate(),
+        timeout_expires: GetRecheckExpires(),
+        search_posts: JSPLib.storage.checkStorageData('bss-search-posts',ValidateProgramData,sessionStorage,[]),
+    });
     if (BSS.controller === "posts") {
         if (location.search) {
             let parse = JSPLib.utility.parseParams(location.href.split('?')[1]);
@@ -2130,7 +2196,6 @@ async function Main() {
         AutocompleteRecheck();
         RefreshLinkClick();
         SubmitNewQueryClick();
-        SubmitDeleteClick();
         JSPLib.utility.setCSSStyle(search_css,'program');
     }
     //Load and/or process the data
@@ -2162,21 +2227,20 @@ async function Main() {
             PaginatePostIndex();
             InitializeIndexThumbnails();
         }
-    } else if (BSS.is_searches_index) {
-        RefreshLinkCount();
-    } else if (BSS.is_post_show && BSS.active_query) {
+    } else if (BSS.controller === "posts" && BSS.action === "show" && BSS.active_query) {
         SequentializePostShow();
     }
+    JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
     //Take care of other non-critical tasks at a later time
     setTimeout(()=>{
         JSPLib.utility.initializeInterval(()=>{
-            JSPLib.concurrency.setRecheckTimeout('bss-heartbeat', JSPLib.utility.one_minute * 5, sessionStorage);
+            JSPLib.concurrency.setRecheckTimeout('bss-heartbeat', heartbeat_timeout, sessionStorage);
         },JSPLib.utility.one_minute);
         CheckUserSavedSearches().then(()=>{
             Timer.NormalizeBSSEntries();
         });
-        JSPLib.storage.pruneEntries('bss',prune_cache_regex,prune_expires);
-    },JSPLib.utility.one_minute);
+        JSPLib.storage.pruneEntries('bss', PROGRAM_DATA_REGEX, prune_expires);
+    }, noncritical_recheck);
 }
 
 /****Function decoration****/
@@ -2192,9 +2256,41 @@ JSPLib.debug.addFunctionTimers(Timer,true,[
 JSPLib.debug.addFunctionLogs([
     Main,BSSBroadcast,InitializeUI,CheckUserSavedSearches,DailyMetatagRecheck,RandomQueryRecheck,SecondaryPass,InitialPass,
     NormalizeBSSEntries,SeedQuery,StoreBSSEntries,ValidateEntry,RemoveDuplicateBSSEntries,ReplacePoolNamesWithIDs,UnaliasBSSEntries,
-    UpdateQuery,BSSLinkHover,ResetClick,ClearClick,SearchClick,QueryTagAlias,RefreshLinkCount,RecalculateLine,RecalculateTree,
+    UpdateQuery,BSSLinkHover,ResetClick,ClearClick,SearchClick,QueryTagAliases,RecalculateLine,RecalculateTree,
     LoadBSSEntries,CorrectQueries
 ]);
+
+/****Initialization****/
+
+//Variables for debug.js
+JSPLib.debug.debug_console = true;
+JSPLib.debug.pretext = "BSS:";
+JSPLib.debug.pretimer = "BSS-";
+JSPLib.debug.level = JSPLib.debug.INFO;
+
+//Variables for menu.js
+JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
+JSPLib.menu.program_name = PROGRAM_NAME;
+JSPLib.menu.program_data_regex = PROGRAM_DATA_REGEX;
+JSPLib.menu.program_data_key = OptionCacheDataKey;
+JSPLib.menu.settings_callback = RemoteSettingsCallback;
+JSPLib.menu.reset_callback = RemoteResetCallback;
+JSPLib.menu.disable_callback = RemoteDisableCallback;
+
+//Variables for utility.js
+JSPLib.utility.max_column_characters = 15;
+
+//Variables for network.js
+JSPLib.network.counter_domname = "#bss-initialize-counter";
+
+//Variables for danbooru.js
+JSPLib.danbooru.max_network_requests = 10;
+
+//Export JSPLib
+if (JSPLib.debug.debug_console) {
+    window.JSPLib.lib = window.JSPLib.lib || {};
+    window.JSPLib.lib[PROGRAM_NAME] = JSPLib;
+}
 
 /****Execution start****/
 
