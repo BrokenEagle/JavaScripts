@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      18.0
+// @version      18.1
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2429,8 +2429,8 @@ function Main() {
         controller: document.body.dataset.controller,
         action: document.body.dataset.action,
         showid: JSPLib.danbooru.getShowID(),
-        username: document.body.dataset.userName,
-        userid: parseInt(document.body.dataset.userId),
+        username: Danbooru.CurrentUser.data('name'),
+        userid: Danbooru.CurrentUser.data('id'),
         subscribelist: {},
         openlist: {},
         marked_topic: [],

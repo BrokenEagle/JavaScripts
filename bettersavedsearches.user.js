@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         BetterSavedSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.0
+// @version      6.1
 // @description  Provides an alternative mechanism and UI for saved searches.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2041,9 +2041,9 @@ function BSSBroadcast(ev) {
 }
 
 function MaximumTagQueryLimit() {
-    if ($("body").data('user-is-platinum')) {
+    if (Danbooru.CurrentUser.data('is-platinum')) {
         return 12;
-    } else if ($("body").data('user-is-gold')) {
+    } else if (Danbooru.CurrentUser.data('is-gold')) {
         return 6;
     } else {
         return 2;
@@ -2263,7 +2263,7 @@ JSPLib.debug.addFunctionLogs([
 /****Initialization****/
 
 //Variables for debug.js
-JSPLib.debug.debug_console = true;
+JSPLib.debug.debug_console = false;
 JSPLib.debug.pretext = "BSS:";
 JSPLib.debug.pretimer = "BSS-";
 JSPLib.debug.level = JSPLib.debug.INFO;

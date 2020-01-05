@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.0
+// @version      16.1
 // @description  Gives up-to-date stats on uploads.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1592,7 +1592,7 @@ function ToggleNotice(event) {
             CU.empty_uploads_message = (CU.username === "Anonymous" ? empty_uploads_message_anonymous : empty_uploads_message_owner);
             CU.display_username = CU.username;
             CU.current_username = CU.username.toLowerCase();
-            CU.level_string = (CU.username === "Anonymous" ? 'Member' : document.body.dataset.userLevelString);
+            CU.level_string = (CU.username === "Anonymous" ? 'Member' : Danbooru.CurrentUser.data('level-string'));
             CU.usertag = 'user';
             Timer.PopulateTable();
         }
@@ -1851,8 +1851,8 @@ function RenderSettingsMenu() {
 
 function Main() {
     Danbooru.CU = CU = {
-        username: document.body.dataset.userName,
-        is_gold_user: document.body.dataset.userIsGold,
+        username: Danbooru.CurrentUser.data('name'),
+        is_gold_user: Danbooru.CurrentUser.data('is-gold'),
         usertag: 'user',
         counttype: 'uploads',
         controls_initialized: false,

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SafelistPlus
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.0
+// @version      4.1
 // @description  Alternate Danbooru blacklist handler.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1789,7 +1789,7 @@ function Main() {
     Danbooru.SL = SL = {
         controller: document.body.dataset.controller,
         action: document.body.dataset.action,
-        userid: parseInt(document.body.dataset.userId),
+        userid: Danbooru.CurrentUser.data('id'),
         settings_config: SETTINGS_CONFIG,
         control_config: CONTROL_CONFIG,
         channel: JSPLib.utility.createBroadcastChannel(PROGRAM_NAME, BroadcastSL),

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DisplayPostInfo
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9.0
+// @version      9.1
 // @description  Display views, uploader, and other info to the user.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -781,7 +781,7 @@ function Main() {
     Danbooru.DPI = DPI = {
         controller: document.body.dataset.controller,
         action: document.body.dataset.action,
-        basic_tooltips: document.body.dataset.userDisablePostTooltips === "true",
+        basic_tooltips: Danbooru.CurrentUser.data('disable-post-tooltips'),
         settings_config: SETTINGS_CONFIG,
         control_config: CONTROL_CONFIG,
     };

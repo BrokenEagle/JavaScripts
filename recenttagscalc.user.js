@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RecentTagsCalc
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.0
+// @version      7.1
 // @description  Use different mechanism to calculate RecentTags.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1138,7 +1138,7 @@ function Main() {
     Danbooru.RTC = RTC = {
         controller: document.body.dataset.controller,
         action: document.body.dataset.action,
-        userid: document.body.dataset.userId,
+        userid: Danbooru.CurrentUser.data('id'),
         is_setting_menu: JSPLib.danbooru.isSettingMenu(),
         settings_config: SETTINGS_CONFIG,
         control_config: CONTROL_CONFIG,
