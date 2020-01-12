@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      18.1
+// @version      18.2
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -12,7 +12,6 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/eventlistener.user.js
 // @require      https://cdn.jsdelivr.net/npm/core-js-bundle@3.2.1/minified.js
 // @require      https://cdn.jsdelivr.net/npm/xregexp@4.2.4/xregexp-all.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/jsdiff/4.0.1/diff.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/debug.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/load.js
@@ -375,9 +374,11 @@ const POOL_CSS = `
     text-decoration: none;
 }
 #el-event-notice #el-pool-section .el-full-item[data-type="poolposts"] .el-add-pool-posts {
+    display: flex;
     background-color: rgba(0, 255, 0, 0.2);
 }
 #el-event-notice #el-pool-section .el-full-item[data-type="poolposts"] .el-rem-pool-posts {
+    display: flex;
     background-color: rgba(255, 0, 0, 0.2);
 }
 #el-event-notice #el-pool-section .el-full-item[data-type="poolposts"] .post-preview {
@@ -764,7 +765,7 @@ const TYPEDICT = {
     },
     comment: {
         controller: 'comments',
-        addons: {group_by: 'comment'},
+        addons: {group_by: 'comment', search: {is_deleted: false}},
         only: 'id,creator_id,post_id',
         limit: 10,
         filter: (array, typelist)=>{return array.filter((val)=>{return IsShownData(val, typelist, 'creator_id', 'post_id');})},
@@ -772,7 +773,7 @@ const TYPEDICT = {
         process: ()=>{JSPLib.utility.setCSSStyle(COMMENT_CSS, 'comment');},
         plural: 'comments',
         display: "Comments",
-        subscribe: InitializeCommentPartialCommentLinks,
+        subscribe: InitializeCommentIndexLinks,
     },
     forum: {
         controller: 'forum_posts',
@@ -1023,35 +1024,16 @@ function GetTypeQuery(type) {
     return EL.user_settings[type + '_query'];
 }
 
+function GetTableType(table) {
+    return $('tbody tr', table).attr('id').replace(/-\d+$/, '');
+}
+
 function HideDmailNotice() {
     let $dmail_notice = $('#dmail-notice');
     if ($dmail_notice.length) {
         $dmail_notice.hide();
         let dmail_id = $dmail_notice.data('id');
         JSPLib.utility.createCookie('hide_dmail_notice', dmail_id);
-    }
-}
-
-function GetInstanceID(type,func) {
-    try {
-        if (EL.controller === type) {
-            return (EL.showid > 0 ? EL.showid : JSPLib.utility.throw(0));
-        } else {
-            return (func ? func() : JSPLib.utility.throw(-1));
-        }
-    } catch (e) {
-        //Bail if page is not as expected
-        if (Number.isInteger(e)) {
-            if (e === 0) {
-                JSPLib.utility.error("Warning: URL is malformed!");
-            } else {
-                JSPLib.utility.error("Warning: Wrong action for URL!");
-            }
-        } else {
-            JSPLib.utility.error("Warning: Page missing required elements!");
-            GetInstanceID.debuglog("Exception:", e);
-        }
-        return false;
     }
 }
 
@@ -1228,7 +1210,7 @@ async function AddForumPost(forumid,rowelement) {
 }
 
 function AddRenderedNote(noteid,rowelement) {
-    let notehtml = $('.el-note-body', rowelement).html();
+    let notehtml = $('.body-column', rowelement).html();
     notehtml = notehtml && $.parseHTML(notehtml.trim())[0].textContent;
     let $outerblock = $.parseHTML(RenderOpenItemContainer('note', noteid, 7));
     $('td', $outerblock).append(notehtml);
@@ -1270,30 +1252,14 @@ async function AddWiki(wikiverid,rowelement) {
 async function AddPoolDiff(poolverid,rowelement) {
     let pool_diff = await JSPLib.network.getNotify(`/pool_versions/${poolverid}/diff`);
     let $pool_diff = $.parseHTML(pool_diff);
-    let old_desc = $('#a-diff li:nth-of-type(2)', $pool_diff).text().replace(POOL_DESC_REGEX, "");
-    let new_desc = $('#a-diff li:nth-of-type(3)', $pool_diff).text().replace(POOL_DESC_REGEX, "");
-    //Description creations will have no new descriptions
-    if (new_desc === "") {
-        new_desc = old_desc;
-        old_desc = "";
-    }
-    let desc_diffs = Diff.diffWords(old_desc,new_desc);
-    let diff_desc = desc_diffs.map((entry)=>{
-        if (entry.added) {
-            return `<ins>${entry.value}</ins>`;
-        } else if (entry.removed) {
-            return `<del>${entry.value}</del>`;
-        } else {
-            return entry.value;
-        }
-    }).join("").replace(/\n/g, PARAGRAPH_MARK);
-    let $outerblock = $.parseHTML(RenderOpenItemContainer('pooldiff', poolverid, 6));
-    $('td', $outerblock).append(diff_desc);
+    $('#a-diff > h1', $pool_diff).hide();
+    let $outerblock = $.parseHTML(RenderOpenItemContainer('pooldiff', poolverid, 7));
+    $('td', $outerblock).append($('#a-diff', $pool_diff));
     $(rowelement).after($outerblock);
 }
 
 async function AddPoolPosts(poolverid,rowelement) {
-    let $post_changes = $('td:nth-of-type(2)', rowelement);
+    let $post_changes = $('.post-changes-column', rowelement);
     let add_posts = String($post_changes.data('add-posts') || "").split(',');
     let rem_posts = String($post_changes.data('rem-posts') || "").split(',');
     let total_posts = JSPLib.utility.concat(add_posts, rem_posts);
@@ -1303,7 +1269,7 @@ async function AddPoolPosts(poolverid,rowelement) {
         let $thumbnails = $.parseHTML(thumbnails);
         $('.post-preview', $thumbnails).each((i,thumb)=>{InitializeThumb(thumb);});
     }
-    let $outerblock = $.parseHTML(RenderOpenItemContainer('poolposts', poolverid, 6));
+    let $outerblock = $.parseHTML(RenderOpenItemContainer('poolposts', poolverid, 7));
     $('td', $outerblock).append(`<div class="el-add-pool-posts" style="display:none"></div><div class="el-rem-pool-posts" style="display:none"></div>`);
     if (add_posts.length) {
         let $container = $('.el-add-pool-posts', $outerblock).show();
@@ -1370,83 +1336,85 @@ function ToggleSubscribeLinks() {
 
 //Insert and process HTML onto page for various types
 
-function InsertEvents($eventpage,type) {
-    $(`#el-${type}-table`).append($('.striped', $eventpage));
-    $(`#el-${type}-table .post-preview`).addClass('blacklisted');
+function InsertEvents($event_page,type) {
+    InitializeTypeDiv(type, $('.striped', $event_page));
 }
 
-function InsertDmails($dmailpage,type) {
-    DecodeProtectedEmail($dmailpage);
-    $('tr.read-false', $dmailpage).css('font-weight', 'bold');
-    let $dmails_table = $(`#el-${type}-table`);
-    $dmails_table.append($('.striped', $dmailpage));
-    InitializeOpenDmailLinks($dmails_table[0]);
+function InsertDmails($dmail_page,type) {
+    DecodeProtectedEmail($dmail_page);
+    let $dmail_table = $('.striped', $dmail_page);
+    $('tr[data-is-read="false"]', $dmail_table).css('font-weight', 'bold');
+    let $dmail_div = InitializeTypeDiv(type, $dmail_table);
+    InitializeOpenDmailLinks($dmail_div[0]);
 }
 
-function InsertComments($commentpage) {
-    DecodeProtectedEmail($commentpage);
-    $('.post-preview', $commentpage).addClass('blacklisted');
-    let $commentsection = $('.list-of-comments', $commentpage);
-    $('#el-comment-table').append($commentsection);
-    InitializeCommentPartialCommentLinks($commentsection);
+function InsertComments($comment_page) {
+    DecodeProtectedEmail($comment_page);
+    let $comment_section = $('.list-of-comments', $comment_page);
+    let $comment_div = InitializeTypeDiv('comment', $comment_section);
+    InitializeCommentIndexLinks($comment_div);
 }
 
-function InsertForums($forumpage) {
-    DecodeProtectedEmail($forumpage);
-    let $forums_table = $('#el-forum-table');
-    $forums_table.append($('.striped', $forumpage));
-    InitializeTopicIndexLinks($forums_table[0]);
-    InitializeOpenForumLinks($forums_table[0]);
+function InsertForums($forum_page) {
+    DecodeProtectedEmail($forum_page);
+    let $forum_table = $('.striped', $forum_page);
+    let $forum_div = InitializeTypeDiv('forum', $forum_table);
+    InitializeTopicIndexLinks($forum_div[0]);
+    InitializeOpenForumLinks($forum_div[0]);
 }
 
-function InsertNotes($notepage) {
-    DecodeProtectedEmail($notepage);
-    let $notes_table = $('#el-note-table');
-    $notes_table.append($('.striped', $notepage));
-    $('th:first-of-type, td:first-of-type', $notes_table[0]).remove();
-    $('td:nth-of-type(1)', $notes_table[0]).addClass('el-post-id');
-    $('td:nth-of-type(2)', $notes_table[0]).addClass('el-note-id');
-    $('td:nth-of-type(3)', $notes_table[0]).addClass('el-note-body');
-    AddThumbnails($notes_table[0]);
-    InitializePostNoteIndexLinks('note', $notes_table[0]);
-    InitializeOpenNoteLinks($notes_table[0]);
+function InsertNotes($note_page) {
+    DecodeProtectedEmail($note_page);
+    let $note_table = $('.striped', $note_page);
+    $('th:first-of-type, td:first-of-type', $note_table[0]).remove();
+    let $note_div = InitializeTypeDiv('note', $note_table);
+    AddThumbnails($note_div[0]);
+    InitializePostNoteIndexLinks('note', $note_div[0]);
+    InitializeOpenNoteLinks($note_div[0]);
 }
 
-function InsertPosts($postpage) {
-    let $posts_table = $('#el-post-table');
-    $posts_table.append($('.striped', $postpage));
-    $('.striped th:first-of-type, .striped td:first-of-type', $posts_table[0]).remove();
-    $('.striped tr[id]', $posts_table[0]).each((i,row)=>{
-        let post_link = $('td:first-of-type a', row).attr('href');
-        let match = post_link && post_link.match(POSTS_REGEX);
-        if (!match) {
-            return;
-        }
-        $('td:first-of-type', row).html(`<a href="${post_link}">post #${match[1]}</a>`);
+function InsertPosts($post_page) {
+    let $post_table = $('.striped', $post_page);
+    $('.post-version-select-column', $post_table[0]).remove();
+    $('tbody tr', $post_table[0]).each((i,row)=>{
+        let post_id = $(row).data('post-id');
+        $('td:first-of-type', row).html(`<a href="/posts/${post_id}">post #${post_id}</a>`);
     });
-    AddThumbnails($posts_table[0]);
-    InitializePostNoteIndexLinks('post', $posts_table[0]);
+    let $post_div = InitializeTypeDiv('post', $post_table);
+    AddThumbnails($post_div[0]);
+    InitializePostNoteIndexLinks('post', $post_div[0]);
 }
 
-function InsertWikis($wikipage) {
-    DecodeProtectedEmail($wikipage);
-    let $wikis_table = $('#el-wiki-table');
-    $wikis_table.append($('.striped', $wikipage));
-    InitializeWikiIndexLinks($wikis_table[0]);
-    InitializeOpenWikiLinks($wikis_table[0]);
+function InsertWikis($wiki_page) {
+    DecodeProtectedEmail($wiki_page);
+    let $wiki_table = $('.striped', $wiki_page);
+    let $wiki_div = InitializeTypeDiv('wiki', $wiki_table);
+    InitializeWikiIndexLinks($wiki_div[0]);
+    InitializeOpenWikiLinks($wiki_div[0]);
 }
 
-function InsertPools($poolpage) {
-    DecodeProtectedEmail($poolpage);
-    let $pools_table = $('#el-pool-table');
-    $pools_table.append($('.striped', $poolpage));
-    $('.pool-category-collection, .pool-category-series', $pools_table[0]).each((i,entry)=>{
+function InsertPools($pool_page) {
+    DecodeProtectedEmail($pool_page);
+    let $pool_table = $('.striped', $pool_page);
+    $('.pool-category-collection, .pool-category-series', $pool_table[0]).each((i,entry)=>{
         let short_pool_title = JSPLib.utility.maxLengthString(entry.innerText, 50);
         $(entry).attr('title', entry.innerText);
         entry.innerText = short_pool_title;
     });
-    InitializePoolIndexLinks($pools_table[0]);
-    InitializeOpenPoolLinks($pools_table[0]);
+    let $pool_div = InitializeTypeDiv('pool', $pool_table);
+    InitializePoolIndexLinks($pool_div[0]);
+    InitializeOpenPoolLinks($pool_div[0]);
+}
+
+function InitializeTypeDiv(type,$type_page) {
+    let $type_table = $(`#el-${type}-table`);
+    if ($('>div', $type_table[0]).length) {
+        $('thead', $type_page[0]).hide();
+    }
+    let $type_div = $('<div></div>').append($type_page);
+    $('.post-preview', $type_div).addClass('blacklisted');
+    $type_table.append($type_div);
+    return $type_div;
 }
 
 function InitializeThumb(thumb) {
@@ -1559,7 +1527,7 @@ function ProcessThumbnails() {
 }
 
 function AdjustRowspan(rowelement,openitem) {
-    let postid = $('.el-post-id a:first-of-type', rowelement).html();
+    let postid = $(rowelement).data('id');
     let $thumb_cont = $(`#el-note-table .el-post-thumbnail[data-postid="${postid}"]`);
     let current_rowspan = $thumb_cont.attr('rowspan');
     let new_rowspan = parseInt(current_rowspan) + (openitem ? 1 : -1);
@@ -1634,11 +1602,7 @@ function InitializeNoticeBox(notice_html) {
 
 function InitializeOpenForumLinks(table) {
     $('.striped tbody tr', table).each((i,row)=>{
-        let match = row.id.match(/(\d+)$/);
-        if (!match) {
-            return;
-        }
-        let forumid = match[1];
+        let forumid = $(row).data('id');
         let link_html = RenderOpenItemLinks('forum',forumid);
         $('.forum-post-excerpt', row).prepend(link_html + '&nbsp;|&nbsp;');
     });
@@ -1647,37 +1611,25 @@ function InitializeOpenForumLinks(table) {
 
 function InitializeOpenNoteLinks(table) {
     $('.striped tr[id]', table).each((i,row)=>{
-        let noteid = $('.el-note-id a', row).html();
-        noteid = noteid && noteid.replace('.', '-');
-        if (!noteid) {
-            return;
-        }
+        let noteid = $(row).data('id');
         let link_html = RenderOpenItemLinks('note', noteid, "Render note", "Hide note");
-        $('.el-note-body', row).append(`<p style="text-align:center">${link_html}</p>`);
+        $('.body-column', row).append(`<p style="text-align:center">${link_html}</p>`);
     });
     OpenItemClick('note', 5, AddRenderedNote, AdjustRowspan);
 }
 
 function InitializeOpenDmailLinks(table) {
     $('.striped tbody tr', table).each((i,row)=>{
-        let match = row.innerHTML.match(DMAILS_REGEX);
-        if (!match) {
-            return;
-        }
-        let dmailid = match[1];
+        let dmailid = $(row).data('id');
         let link_html = RenderOpenItemLinks('dmail', dmailid);
-        $('td:nth-of-type(4)', row).prepend(link_html + '&nbsp;|&nbsp;');
+        $('.subject-column', row).prepend(link_html + '&nbsp;|&nbsp;');
     });
     OpenItemClick('dmail', 3, AddDmail);
 }
 
 function InitializeOpenWikiLinks(table) {
     $('.striped tbody tr', table).each((i,row)=>{
-        let match = row.innerHTML.match(WIKI_PAGE_VERSIONS_REGEX);
-        if (!match) {
-            return;
-        }
-        let wikiverid = parseInt(match[1]);
+        let wikiverid = $(row).data('id');
         let link_html = RenderOpenItemLinks('wiki', wikiverid, "Show diff", "Hide diff");
         $('.category-0, .category-1, .category-3, .category-4, .category-5', row).append(`<span style="float:right">(${link_html})</span>`);
     });
@@ -1686,12 +1638,8 @@ function InitializeOpenWikiLinks(table) {
 
 function InitializeOpenPoolLinks(table) {
     $('.striped tbody tr', table).each((i,row)=>{
-        let match = row.id.match(/\d+$/);
-        if (!match) {
-            return;
-        }
-        let poolverid = parseInt(match[0]);
-        let $post_changes = $('td:nth-of-type(2)', row);
+        let poolverid = $(row).data('id');
+        let $post_changes = $('.post-changes-column', row);
         let add_posts = $('.diff-list ins a[href^="/posts"]', $post_changes[0]).map((i,entry)=>{return entry.innerText;}).toArray();
         let rem_posts = $('.diff-list del a[href^="/posts"]', $post_changes[0]).map((i,entry)=>{return entry.innerText;}).toArray();
         if (add_posts.length || rem_posts.length) {
@@ -1700,10 +1648,10 @@ function InitializeOpenPoolLinks(table) {
             $post_changes.attr('data-add-posts', add_posts);
             $post_changes.attr('data-rem-posts', rem_posts);
         }
-        let $desc_changed = $('td:nth-of-type(4)', row);
-        if ($desc_changed.html() !== 'false') {
+        let $desc_changed_link = $('td:first-of-type a[href$="/diff"]', row);
+        if ($desc_changed_link.length !== 0) {
             let link_html = RenderOpenItemLinks('pooldiff', poolverid, 'Show diff', 'Hide diff');
-            $desc_changed.append(`&nbsp;(${link_html})`);
+            $desc_changed_link.replaceWith(link_html);
         }
     });
     OpenItemClick('pooldiff', 3, AddPoolDiff);
@@ -1712,10 +1660,7 @@ function InitializeOpenPoolLinks(table) {
 
 //#C-POSTS #A-SHOW
 function InitializePostShowMenu() {
-    let postid = GetInstanceID('posts');
-    if (!postid) {
-        return;
-    }
+    let postid = $('#image-container').data('id');
     let $menu_obj = $.parseHTML(RenderMultilinkMenu(postid, ALL_POST_EVENTS));
     ALL_POST_EVENTS.forEach((type)=>{
         let linkhtml = RenderSubscribeMultiLinks(TYPEDICT[type].display, [type], postid);
@@ -1735,12 +1680,7 @@ function InitializePostShowMenu() {
 
 //#C-FORUM-TOPICS #A-SHOW
 function InitializeTopicShowMenu() {
-    let topicid = GetInstanceID('forum-topics', ()=>{
-        return parseInt($('#subnav-subscribe-link, #subnav-unsubscribe-link').attr('href').match(FORUM_TOPICS_REGEX)[1]);
-    });
-    if (!topicid) {
-        return;
-    }
+    let topicid = $('body').data('forum-topic-id');
     let $menu_obj = $.parseHTML(RenderMultilinkMenu(topicid, ['forum']));
     let linkhtml = RenderSubscribeMultiLinks("Topic", ['forum'], topicid, "");
     let shownhtml = (IsEventEnabled('forum', 'subscribe_events_enabled') ? "" : 'style="display:none"');
@@ -1751,15 +1691,14 @@ function InitializeTopicShowMenu() {
     $('#el-subscribe-events a').off(PROGRAM_CLICK).on(PROGRAM_CLICK, SubscribeMultiLink);
 }
 
-//#C-FORUM-TOPICS #A-INDEX
+//#C-FORUM-TOPICS #A-INDEX / #C-FORUM-POSTS #A-INDEX / EVENT-NOTICE
 function InitializeTopicIndexLinks(table,render=true) {
+    let type = GetTableType(table);
     let typelist = GetList('forum');
-    $('.striped tr td:first-of-type', table).each((i,entry)=>{
-        let match = entry.innerHTML.match(FORUM_TOPICS_REGEX);
-        if (!match) {
-            return;
-        }
-        let topicid = parseInt(match[1]);
+    $('.striped tr', table).each((i,row)=>{
+        let data_selector = (type === 'forum-topic' ? 'id' : 'topic-id');
+        let topicid = $(row).data(data_selector);
+        let entry = $("td:first-of-type", row).get(0);
         if (render) {
             let linkhtml = RenderSubscribeDualLinks('forum', topicid, 'span', "", "", true);
             let shownhtml = (IsEventEnabled('forum', 'subscribe_events_enabled') ? "" : 'style="display:none"');
@@ -1772,15 +1711,10 @@ function InitializeTopicIndexLinks(table,render=true) {
     });
 }
 
-//#C-WIKI-PAGES #A-SHOW
+//#C-WIKI-PAGES #A-SHOW / #C-WIKI-PAGE-VERSIONS #A-SHOW
 function InitializeWikiShowMenu() {
-    let [selector,regex] = (EL.controller === 'wiki-pages' ? ['#subnav-history-link', WIKI_PAGE_HISTORY_REGEX] : ['#subnav-newest-link', WIKI_PAGES_REGEX]);
-    let url = $(selector).attr('href');
-    let wikiid = url && JSPLib.utility.findAll(url, regex);
-    if (wikiid.length === 0) {
-        return;
-    }
-    wikiid = parseInt(wikiid[1]);
+    let data_selector = (EL.controller === 'wiki-pages' ? 'wiki-page-id' : 'wiki-page-version-wiki-page-id');
+    let wikiid = $('body').data(data_selector);
     let $menu_obj = $.parseHTML(RenderMultilinkMenu(wikiid, ['wiki']));
     let linkhtml = RenderSubscribeMultiLinks("Wiki", ['wiki'], wikiid, "");
     let shownhtml = (IsEventEnabled('wiki', 'subscribe_events_enabled') ? "" : 'style="display:none"');
@@ -1789,19 +1723,17 @@ function InitializeWikiShowMenu() {
     $('#el-subscribe-events a').off(PROGRAM_CLICK).on(PROGRAM_CLICK, SubscribeMultiLink);
 }
 
-//#C-WIKI-PAGES #A-INDEX
+//#C-WIKI-PAGES #A-INDEX / #C-WIKI-PAGE-VERSIONS #A-INDEX / EVENT-NOTICE
 function InitializeWikiIndexLinks(table,render=true) {
+    let type = GetTableType(table);
     let typelist = GetList('wiki');
     $('.striped tbody tr', table).each((i,row)=>{
-        let match = row.innerHTML.match(WIKI_PAGES_REGEX);
-        if (!match) {
-            return;
-        }
-        let wikiid = parseInt(match[1]);
+        let data_selector = (type === 'wiki-pages' ? 'id' : 'wiki-page-id');
+        let wikiid = $(row).data(data_selector);
         if (render) {
             let linkhtml = RenderSubscribeDualLinks('wiki', wikiid, 'span', "", "", true);
             let shownhtml = (IsEventEnabled('wiki', 'subscribe_events_enabled') ? "" : 'style="display:none"');
-            $('td.category-0, td.category-1, td.category-3, td.category-4, td.category-5', row).prepend(`<span class="el-subscribe-wiki-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
+            $(' .category-0, .category-1, .category-3, .category-4, .category-5', row).parent().prepend(`<span class="el-subscribe-wiki-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
         } else {
             let subscribed = !typelist.includes(wikiid);
             UpdateDualLink('wiki', subscribed, wikiid);
@@ -1812,10 +1744,7 @@ function InitializeWikiIndexLinks(table,render=true) {
 
 //#C-POOLS #A-SHOW
 function InitializePoolShowMenu() {
-    let poolid = GetInstanceID('pools');
-    if (!poolid) {
-        return;
-    }
+    let poolid = $('body').data('pool-id');
     let $menu_obj = $.parseHTML(RenderMultilinkMenu(poolid, ['pool']));
     let linkhtml = RenderSubscribeMultiLinks("Pool", ['pool'], poolid, "");
     let shownhtml = (IsEventEnabled('pool', 'subscribe_events_enabled') ? "" : 'style="display:none"');
@@ -1824,15 +1753,13 @@ function InitializePoolShowMenu() {
     $('#el-subscribe-events a').off(PROGRAM_CLICK).on(PROGRAM_CLICK, SubscribeMultiLink);
 }
 
-//#C-POOLS #A-INDEX
+//#C-POOLS #A-INDEX / #C-POOL-VERSIONS #A-INDEX / EVENT-NOTICE
 function InitializePoolIndexLinks(table,render=true) {
+    let type = GetTableType(table);
     let typelist = GetList('pool');
     $('.striped tbody tr', table).each((i,row)=>{
-        let match = row.innerHTML.match(POOLS_REGEX);
-        if (!match) {
-            return;
-        }
-        let poolid = parseInt(match[1]);
+        let data_selector = (type === 'pools' ? 'id' : 'pool-id');
+        let poolid = $(row).data(data_selector);
         if (render) {
             let linkhtml = RenderSubscribeDualLinks('pool', poolid, 'span', "", "", true);
             let shownhtml = (IsEventEnabled('pool', 'subscribe_events_enabled') ? "" : 'style="display:none"');
@@ -1860,14 +1787,16 @@ function InitializePoolGalleryLinks() {
     });
 }
 //EVENT NOTICE
-
 function InitializePostNoteIndexLinks(type,table,render=true) {
     let typelist = GetList(type);
+    let seenlist = [];
     $('.striped tr[id]', table).each((i,row)=>{
-        let postid = parseInt($('.el-post-thumbnail', row).data('postid'));
-        if (!postid) {
+        let postid = $(row).data('post-id');
+        //Since posts and notes are aggragated by post, only process the first row for each post ID
+        if (seenlist.includes(postid)) {
             return;
         }
+        seenlist.push(postid);
         if (render) {
             let linkhtml = RenderSubscribeDualLinks(type, postid, 'span', " ", type, true);
             $('td:first-of-type', row).prepend(`<div style="text-align:center">${linkhtml}</div>`);
@@ -1879,28 +1808,11 @@ function InitializePostNoteIndexLinks(type,table,render=true) {
     });
 }
 
-//#C-COMMENTS #P-INDEX-BY-POST
-function InitializeCommentPartialPostLinks() {
-    $('#c-comments #a-index #p-index-by-post .comments-for-post').each((i,entry)=>{
-        let postid = parseInt($(entry).data('post-id'));
-        if (!postid) {
-            return;
-        }
-        let linkhtml = RenderSubscribeDualLinks('comment', postid, 'div', " ", 'comments');
-        let shownhtml = (IsEventEnabled('comment', 'subscribe_events_enabled') ? "" : 'style="display:none"');
-        $('.header', entry).after(`<div class="el-subscribe-comment-container "${shownhtml}>${linkhtml}</div>`);
-        $('.el-subscribe-dual-links a', entry).off(PROGRAM_CLICK).on(PROGRAM_CLICK, SubscribeDualLink);
-    });
-}
-
-//#C-COMMENTS #P-INDEX-BY-COMMENT
-function InitializeCommentPartialCommentLinks($obj,render=true) {
+//#C-COMMENTS #A-INDEX / EVENT-NOTICE
+function InitializeCommentIndexLinks($obj,render=true) {
     let typelist = GetList('comment');
     $('.post-preview', $obj).each((i,entry)=>{
-        var postid = parseInt($(entry).data('id'));
-        if (!postid) {
-            return;
-        }
+        var postid = $(entry).data('id');
         if (render) {
             var linkhtml = RenderSubscribeDualLinks('comment', postid, 'div', " ", 'comments');
             let shownhtml = (IsEventEnabled('comment', 'subscribe_events_enabled') ? "" : 'style="display:none"');
@@ -2061,8 +1973,8 @@ function OpenItemClick(type,parentlevel,htmlfunc,otherfunc) {
         }
         let hide = (openitem ? 'show' : 'hide');
         let show = (openitem ? 'hide' : 'show');
-        JSPLib.utility.fullHide(`.el-show-hide-links[data-id="${itemid}"] [data-action="${hide}"]`);
-        JSPLib.utility.clearHide(`.el-show-hide-links[data-id="${itemid}"] [data-action="${show}"]`);
+        JSPLib.utility.fullHide(`.el-show-hide-links[data-type="${type}"][data-id="${itemid}"] [data-action="${hide}"]`);
+        JSPLib.utility.clearHide(`.el-show-hide-links[data-type="${type}"][data-id="${itemid}"] [data-action="${show}"]`);
         if (openitem) {
             $(`.el-full-item[data-type="${type}"][data-id="${itemid}"]`).show();
         } else {
@@ -2525,7 +2437,7 @@ function Main() {
             SubscribeMultiLinkCallback();
         }
     } else if (EL.controller === 'comments' && EL.action === 'index') {
-        InitializeCommentPartialCommentLinks($main_section);
+        InitializeCommentIndexLinks($main_section);
     } else if (['forum-topics', 'forum-posts'].includes(EL.controller)) {
         if (EL.action === 'show') {
             InitializeTopicShowMenu();
@@ -2569,7 +2481,7 @@ JSPLib.debug.addFunctionTimers(TIMER, true, [
 ]);
 
 JSPLib.debug.addFunctionLogs([
-    Main, BroadcastEL, CheckSubscribeType, MarkAllAsRead, ProcessEvent, SaveLastID, CorrectList, GetInstanceID,
+    Main, BroadcastEL, CheckSubscribeType, MarkAllAsRead, ProcessEvent, SaveLastID, CorrectList,
     CheckPostQueryType, CheckOtherType,
 ]);
 
