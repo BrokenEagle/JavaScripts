@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      18.2
+// @version      18.3
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1024,8 +1024,8 @@ function GetTypeQuery(type) {
     return EL.user_settings[type + '_query'];
 }
 
-function GetTableType(table) {
-    return $('tbody tr', table).attr('id').replace(/-\d+$/, '');
+function GetTableType(container) {
+    return $('.striped tbody tr', container).attr('id').replace(/-\d+$/, '');
 }
 
 function HideDmailNotice() {
@@ -1240,9 +1240,7 @@ async function AddWiki(wikiverid,rowelement) {
         }
         let $wiki_diff_page = $.parseHTML(wiki_diff_page);
         let $outerblock = $.parseHTML(RenderOpenItemContainer('wiki', wikiverid, 4));
-        $('td', $outerblock).append($('#a-diff #content p', $wiki_diff_page));
-        let wiki_diff= $('#a-diff #content div', $wiki_diff_page).html().replace(/<br>/g, PARAGRAPH_MARK);
-        $('td', $outerblock).append(wiki_diff);
+        $('td', $outerblock).append($('#a-diff #content', $wiki_diff_page));
         $(rowelement).after($outerblock);
     } else {
         JSPLib.utility.notice("Wiki creations have no diff!");
@@ -1692,10 +1690,10 @@ function InitializeTopicShowMenu() {
 }
 
 //#C-FORUM-TOPICS #A-INDEX / #C-FORUM-POSTS #A-INDEX / EVENT-NOTICE
-function InitializeTopicIndexLinks(table,render=true) {
-    let type = GetTableType(table);
+function InitializeTopicIndexLinks(container,render=true) {
+    let type = GetTableType(container);
     let typelist = GetList('forum');
-    $('.striped tr', table).each((i,row)=>{
+    $('.striped tr', container).each((i,row)=>{
         let data_selector = (type === 'forum-topic' ? 'id' : 'topic-id');
         let topicid = $(row).data(data_selector);
         let entry = $("td:first-of-type", row).get(0);
@@ -1724,10 +1722,10 @@ function InitializeWikiShowMenu() {
 }
 
 //#C-WIKI-PAGES #A-INDEX / #C-WIKI-PAGE-VERSIONS #A-INDEX / EVENT-NOTICE
-function InitializeWikiIndexLinks(table,render=true) {
-    let type = GetTableType(table);
+function InitializeWikiIndexLinks(container,render=true) {
+    let type = GetTableType(container);
     let typelist = GetList('wiki');
-    $('.striped tbody tr', table).each((i,row)=>{
+    $('.striped tbody tr', container).each((i,row)=>{
         let data_selector = (type === 'wiki-pages' ? 'id' : 'wiki-page-id');
         let wikiid = $(row).data(data_selector);
         if (render) {
@@ -1754,10 +1752,10 @@ function InitializePoolShowMenu() {
 }
 
 //#C-POOLS #A-INDEX / #C-POOL-VERSIONS #A-INDEX / EVENT-NOTICE
-function InitializePoolIndexLinks(table,render=true) {
-    let type = GetTableType(table);
+function InitializePoolIndexLinks(container,render=true) {
+    let type = GetTableType(container);
     let typelist = GetList('pool');
-    $('.striped tbody tr', table).each((i,row)=>{
+    $('.striped tbody tr', container).each((i,row)=>{
         let data_selector = (type === 'pools' ? 'id' : 'pool-id');
         let poolid = $(row).data(data_selector);
         if (render) {
@@ -2388,7 +2386,7 @@ function Main() {
         InitializeNoticeBox(notice_html);
         for (let type in TYPEDICT) {
             let $section = $(`#el-${type}-section`);
-            if($section.length) {
+            if($section.children().length) {
                 TYPEDICT[type].open && TYPEDICT[type].open($section);
                 TYPEDICT[type].subscribe && TYPEDICT[type].subscribe($section, false);
                 TYPEDICT[type].process && TYPEDICT[type].process();
