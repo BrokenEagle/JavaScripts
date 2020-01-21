@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.2
+// @version      28.3
 // @description  Validates tag add/remove inputs on a post edit or upload, plus several other post validations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -712,7 +712,7 @@ async function ValidateTagAdds() {
     }
     let options = {addons: {search: {name_space: VTI.addedtags.join(' '), hide_empty: 'yes'}, only: tag_fields}, long_format: true}
     let all_aliases = await JSPLib.danbooru.getAllItems('tags', QUERY_LIMIT, null, options);
-    VTI.checktags = all_tags.map(entry=>{return entry.name;});
+    VTI.checktags = all_aliases.map(entry=>{return entry.name;});
     let nonexisttags = JSPLib.utility.setDifference(VTI.addedtags,VTI.checktags);
     if (VTI.user_settings.alias_check_enabled) {
         await Timer.QueryTagAliases(nonexisttags);
