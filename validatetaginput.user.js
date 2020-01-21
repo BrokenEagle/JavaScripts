@@ -27,7 +27,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/menu.js
 // ==/UserScript==
 
-/* global JSPLib $ Danbooru */
+/* global JSPLib $ jQuery Danbooru */
 
 /****Global variables****/
 
@@ -392,7 +392,56 @@ function ValidateProgramData(key,entry) {
 
 //Library functions
 
-////NONE
+JSPLib.danbooru.submitRequest = async function (type,url_addons={},default_val=null,long_query=false,key,domain='',notify_user=false) {
+    key = key || String(JSPLib.utility.getUniqueID());
+    if (JSPLib.danbooru.num_network_requests >= JSPLib.danbooru.max_network_requests) {
+        await JSPLib.network.rateLimit('danbooru');
+    }
+    JSPLib.network.incrementCounter('danbooru');
+    JSPLib.debug.recordTime(key,'Network');
+    if (long_query) {
+        url_addons._method = 'get';
+    }
+    let func = (long_query ? jQuery.post : jQuery.getJSON);
+    try {
+        return await func(`${domain}/${type}.json`,url_addons
+        ).always(()=>{
+            JSPLib.debug.recordTimeEnd(key,'Network');
+            JSPLib.network.decrementCounter('danbooru');
+        });
+    } catch(e) {
+        //Swallow exception... will return default value
+        e = JSPLib.network.processError(e,"danbooru.submitRequest");
+        let error_key = `${domain}/${type}.json?${jQuery.param(url_addons)}`;
+        JSPLib.network.logError(error_key,e);
+        if (notify_user) {
+            JSPLib.network.notifyError(e);
+        }
+        return default_val;
+    }
+};
+
+JSPLib.danbooru.getAllItems = async function (type,limit,batches,options) {
+    let url_addons = options.addons || {};
+    let reverse = options.reverse || false;
+    let long_format = options.long_format || false;
+    let page_modifier = (reverse ? 'a' : 'b');
+    let page_addon = (Number.isInteger(options.page) ? {page:`${page_modifier}${options.page}`} : {});
+    let limit_addon = {limit: limit};
+    let batch_num = 1;
+    var return_items = [];
+    while (true) {
+        let request_addons = JSPLib.utility.joinArgs(url_addons,page_addon,limit_addon);
+        let temp_items = await JSPLib.danbooru.submitRequest(type,request_addons,[],long_format,null,options.domain,options.notify);
+        return_items = JSPLib.utility.concat(return_items, temp_items);
+        if (temp_items.length < limit || (batches && batch_num >= batches)) {
+            return return_items;
+        }
+        let lastid = JSPLib.danbooru.getNextPageID(temp_items,reverse);
+        page_addon = {page:`${page_modifier}${lastid}`};
+        JSPLib.debug.debuglogLevel("danbooru.getAllItems - #",batch_num++,"Rechecking",type,"@",lastid,JSPLib.debug.INFO);
+    }
+};
 
 //Helper functions
 
@@ -485,13 +534,8 @@ async function QueryTagAliases(taglist) {
     QueryTagAliases.debuglog("Cached aliases:", cached_aliases);
     QueryTagAliases.debuglog("Uncached aliases:", uncached_aliases);
     if (uncached_aliases.length) {
-        let all_aliases = [];
-        for (let i = 0; i < uncached_aliases.length; i += QUERY_LIMIT) {
-            let check_tags = uncached_aliases.slice(i, i + QUERY_LIMIT);
-            let url_addons = {search: {antecedent_name_space: check_tags.join(' '), status:'active'}, only: relation_fields, limit: MAX_RESULTS_LIMIT};
-            let data = await JSPLib.danbooru.submitRequest('tag_aliases', url_addons, []);
-            all_aliases = JSPLib.utility.concat(all_aliases, data);
-        }
+        let options = {addons: {search: {antecedent_name_space: uncached_aliases.join(' '), status:'active'}, only: relation_fields}, long_format: true};
+        let all_aliases = await JSPLib.danbooru.getAllItems('tag_aliases', QUERY_LIMIT, null, options);
         let found_aliases = [];
         all_aliases.forEach((alias)=>{
             found_aliases.push(alias.antecedent_name);
@@ -521,13 +565,8 @@ async function QueryTagImplications(taglist) {
     QueryTagImplications.debuglog("Cached implications:", cached_implications);
     QueryTagImplications.debuglog("Uncached implications:", uncached_implications);
     if (uncached_implications.length) {
-        let all_implications = [];
-        for (let i = 0; i < uncached_implications.length; i += QUERY_LIMIT) {
-            let check_tags = uncached_implications.slice(i, i + QUERY_LIMIT);
-            let url_addons = {search: {consequent_name_space: check_tags.join(' '), status:'active'}, only: relation_fields, limit: MAX_RESULTS_LIMIT};
-            let data = await JSPLib.danbooru.submitRequest('tag_implications', url_addons, []);
-            all_implications = JSPLib.utility.concat(all_implications, data);
-        }
+        let options = {addons: {search: {consequent_name_space: uncached_implications.join(' '), status:'active'}, only: relation_fields}, long_format: true};
+        let all_implications = await JSPLib.danbooru.getAllItems('tag_implications', QUERY_LIMIT, null, options);
         all_implications.forEach((implication)=>{
             let tag = implication.consequent_name;
             VTI.implicationdict[tag] = VTI.implicationdict[tag] || [];
@@ -671,13 +710,8 @@ async function ValidateTagAdds() {
         $("#warning-new-tags").hide();
         return true;
     }
-    let all_tags = [];
-    for (let i = 0; i < VTI.addedtags.length; i += QUERY_LIMIT) {
-        let check_tags = VTI.addedtags.slice(i, i + QUERY_LIMIT);
-        let url_addons = {search: {name_space: check_tags.join(' '), hide_empty: 'yes'}, only: tag_fields, limit: QUERY_LIMIT};
-        let data = await JSPLib.danbooru.submitRequest('tags', url_addons, []);
-        all_tags = JSPLib.utility.concat(all_tags, data);
-    }
+    let options = {addons: {search: {name_space: VTI.addedtags.join(' '), hide_empty: 'yes'}, only: tag_fields}, long_format: true}
+    let all_aliases = await JSPLib.danbooru.getAllItems('tags', QUERY_LIMIT, null, options);
     VTI.checktags = all_tags.map(entry=>{return entry.name;});
     let nonexisttags = JSPLib.utility.setDifference(VTI.addedtags,VTI.checktags);
     if (VTI.user_settings.alias_check_enabled) {
