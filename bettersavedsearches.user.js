@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         BetterSavedSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.1
+// @version      6.2
 // @description  Provides an alternative mechanism and UI for saved searches.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1147,7 +1147,7 @@ async function QueryTagAliases(taglist) {
         let all_aliases = [];
         for (let i = 0; i < uncached_aliases.length; i += API_QUERY_SIZE) {
             let check_tags = uncached_aliases.slice(i, i + API_QUERY_SIZE);
-            let url_addons = {search: {antecedent_name: check_tags.join(' '), status:'active'}, only: alias_field, limit: MAX_QUERY_SIZE};
+            let url_addons = {search: {antecedent_name_space: check_tags.join(' '), status:'active'}, only: alias_field, limit: MAX_QUERY_SIZE};
             let data = await JSPLib.danbooru.submitRequest('tag_aliases', url_addons, []);
             all_aliases = JSPLib.utility.concat(all_aliases, data);
         }
@@ -1693,7 +1693,7 @@ async function UnaliasBSSEntries() {
     let query_tags = [];
     for (let i = 0; i < all_tags.length; i += API_QUERY_SIZE) {
         let check_tags = all_tags.slice(i, i + API_QUERY_SIZE);
-        let url_addons = {search: {name: check_tags.join(','), hide_empty: 'yes'}, only: tag_fields, limit: API_QUERY_SIZE};
+        let url_addons = {search: {name_space: check_tags.join(' '), hide_empty: true}, only: tag_fields, limit: API_QUERY_SIZE};
         let data = await JSPLib.danbooru.submitRequest('tags', url_addons, []);
         query_tags = JSPLib.utility.concat(query_tags, data);
     }

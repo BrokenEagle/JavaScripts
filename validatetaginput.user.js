@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.1
+// @version      28.2
 // @description  Validates tag add/remove inputs on a post edit or upload, plus several other post validations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -488,7 +488,7 @@ async function QueryTagAliases(taglist) {
         let all_aliases = [];
         for (let i = 0; i < uncached_aliases.length; i += QUERY_LIMIT) {
             let check_tags = uncached_aliases.slice(i, i + QUERY_LIMIT);
-            let url_addons = {search: {antecedent_name: check_tags.join(' '), status:'active'}, only: relation_fields, limit: MAX_RESULTS_LIMIT};
+            let url_addons = {search: {antecedent_name_space: check_tags.join(' '), status:'active'}, only: relation_fields, limit: MAX_RESULTS_LIMIT};
             let data = await JSPLib.danbooru.submitRequest('tag_aliases', url_addons, []);
             all_aliases = JSPLib.utility.concat(all_aliases, data);
         }
@@ -524,7 +524,7 @@ async function QueryTagImplications(taglist) {
         let all_implications = [];
         for (let i = 0; i < uncached_implications.length; i += QUERY_LIMIT) {
             let check_tags = uncached_implications.slice(i, i + QUERY_LIMIT);
-            let url_addons = {search: {consequent_name: check_tags.join(' '), status:'active'}, only: relation_fields, limit: MAX_RESULTS_LIMIT};
+            let url_addons = {search: {consequent_name_space: check_tags.join(' '), status:'active'}, only: relation_fields, limit: MAX_RESULTS_LIMIT};
             let data = await JSPLib.danbooru.submitRequest('tag_implications', url_addons, []);
             all_implications = JSPLib.utility.concat(all_implications, data);
         }
@@ -674,7 +674,7 @@ async function ValidateTagAdds() {
     let all_tags = [];
     for (let i = 0; i < VTI.addedtags.length; i += QUERY_LIMIT) {
         let check_tags = VTI.addedtags.slice(i, i + QUERY_LIMIT);
-        let url_addons = {search: {name: check_tags.join(','), hide_empty: 'yes'}, only: tag_fields, limit: QUERY_LIMIT};
+        let url_addons = {search: {name_space: check_tags.join(' '), hide_empty: 'yes'}, only: tag_fields, limit: QUERY_LIMIT};
         let data = await JSPLib.danbooru.submitRequest('tags', url_addons, []);
         all_tags = JSPLib.utility.concat(all_tags, data);
     }
@@ -796,7 +796,7 @@ async function ValidateArtist() {
             ValidateArtist.debuglog("No missing artists. [cache hit]");
             return;
         }
-        let tag_resp = await JSPLib.danbooru.submitRequest('tags',{search: {name: uncached_artists.join(','), has_artist: true}, only: tag_fields}, []);
+        let tag_resp = await JSPLib.danbooru.submitRequest('tags', {search: {name_space: uncached_artists.join(' '), has_artist: true}, only: tag_fields}, []);
         tag_resp.forEach((entry)=>{
             JSPLib.storage.saveData('are-' + entry.name,{value: true, expires: JSPLib.utility.getExpires(artist_expiration)});
         });

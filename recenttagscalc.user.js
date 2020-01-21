@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RecentTagsCalc
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.1
+// @version      7.2
 // @description  Use different mechanism to calculate RecentTags.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -840,8 +840,8 @@ async function CheckMissingTags(tag_list,list_name="") {
 
 async function QueryMissingTags(missing_taglist) {
     let promise_array = [];
-    let tag_query = missing_taglist.join(',');
-    let url_addons = {search:{name:tag_query,hide_empty:'no'}, only: tag_fields};
+    let tag_query = missing_taglist.join(' ');
+    let url_addons = {search: {name_space: tag_query, hide_empty: false}, only: tag_fields};
     let queried_tags = await JSPLib.danbooru.getAllItems('tags', max_item_limit, null, {addons: url_addons});
     queried_tags.forEach((tagentry)=>{
         let entryname = 'tag-' + tagentry.name;
