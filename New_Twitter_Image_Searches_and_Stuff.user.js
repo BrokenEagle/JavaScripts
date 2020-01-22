@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.0
+// @version      5.1
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -3740,7 +3740,7 @@ async function LoadDatabase() {
     var tweet_data = await JSPLib.network.getNotify(SERVER_DATABASE_URL, {}, JSPLib.utility.sprintf(SERVER_ERROR, "tweet database"));
     JSPLib.debug.debugTimeEnd('database-network');
     if (tweet_data !== false) {
-        TIMER.SaveDatabase(tweet_data, '#ntisas-counter');
+        await TIMER.SaveDatabase(tweet_data, '#ntisas-counter');
         return true;
     }
     return false;
