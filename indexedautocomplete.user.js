@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      26.1
+// @version      26.2
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -785,7 +785,8 @@ const source_config = {
         data: (term)=>{
             return {
                 search: {
-                    name_matches: term
+                    name_matches: term,
+                    creator_id: IAC.userid,
                 },
                 only: "name,post_count"
             };
@@ -1978,6 +1979,7 @@ function Main() {
     Danbooru.IAC = IAC = {
         controller: document.body.dataset.controller,
         action: document.body.dataset.action,
+        userid: Danbooru.CurrentUser.data('id'),
         FindArtistSession: FindArtistSession,
         InitializeAutocompleteIndexed: InitializeAutocompleteIndexed,
         settings_config: SETTINGS_CONFIG,
