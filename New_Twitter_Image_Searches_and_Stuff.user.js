@@ -456,8 +456,8 @@ const PROGRAM_CSS = `
 #ntisas-side-menu {
     font-size: 14px;
     margin-top: 10px;
-    margin-left: -10px;
-    width: 280px;
+    margin-left: -15px;
+    width: 285px;
     height: 450px;
     font-family: ${FONT_FAMILY};
 }
