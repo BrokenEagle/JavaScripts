@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      18.3
+// @version      18.4
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1682,9 +1682,7 @@ function InitializeTopicShowMenu() {
     let $menu_obj = $.parseHTML(RenderMultilinkMenu(topicid, ['forum']));
     let linkhtml = RenderSubscribeMultiLinks("Topic", ['forum'], topicid, "");
     let shownhtml = (IsEventEnabled('forum', 'subscribe_events_enabled') ? "" : 'style="display:none"');
-    $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-forum-container "${shownhtml}>${linkhtml} | </span>`);
-    let $email = $('#subnav-subscribe, #subnav-unsubscribe').detach().find('a').text("Email");
-    $('#el-add-links', $menu_obj).append($email);
+    $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-forum-container " ${shownhtml}>${linkhtml}</span>`);
     $('#nav').append($menu_obj);
     $('#el-subscribe-events a').off(PROGRAM_CLICK).on(PROGRAM_CLICK, SubscribeMultiLink);
 }
