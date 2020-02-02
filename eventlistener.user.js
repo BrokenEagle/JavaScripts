@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      18.4
+// @version      18.5
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1224,7 +1224,7 @@ async function AddDmail(dmailid,rowelement) {
     }
     let $dmail = $.parseHTML(dmail);
     $('.dmail h1:first-of-type', $dmail).hide();
-    let $outerblock = $.parseHTML(RenderOpenItemContainer('dmail', dmailid, 4));
+    let $outerblock = $.parseHTML(RenderOpenItemContainer('dmail', dmailid, 5));
     $('td', $outerblock).append($('.dmail', $dmail));
     $(rowelement).after($outerblock);
 }
@@ -2336,7 +2336,6 @@ function Main() {
     Danbooru.EL = Object.assign(EL, {
         controller: document.body.dataset.controller,
         action: document.body.dataset.action,
-        showid: JSPLib.danbooru.getShowID(),
         username: Danbooru.CurrentUser.data('name'),
         userid: Danbooru.CurrentUser.data('id'),
         subscribelist: {},
