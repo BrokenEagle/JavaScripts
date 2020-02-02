@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DisplayPostInfo
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9.1
+// @version      9.2
 // @description  Display views, uploader, and other info to the user.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -640,7 +640,7 @@ function ProcessTagStatistics() {
     });
     $search_tags.each((i,entry)=>{
         let tag = column_tags[i];
-        let tag_percentage = Math.ceil(100 * (column_info[tag] / total_posts));
+        let tag_percentage = Math.ceil(100 * (column_info[tag] / total_posts)) || 0;
         let tag_percentage_string = JSPLib.utility.padNumber(tag_percentage, 2) + '%';
         let spacing_tyle = (tag_percentage === 100 ? `style="letter-spacing:-2px"` : "");
         $(entry).before(` <span class="dpi-tag-statistic" ${spacing_tyle}>${tag_percentage_string}</span> `);
