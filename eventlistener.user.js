@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      18.5
+// @version      18.6
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -51,7 +51,7 @@ const TIMER = {};
 //Event types
 const POST_QUERY_EVENTS = ['comment', 'note', 'commentary', 'approval', 'flag', 'appeal'];
 const SUBSCRIBE_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'forum', 'wiki', 'pool'];
-const OTHER_EVENTS = ['dmail', 'spam', 'ban', 'feedback', 'mod_action'];
+const OTHER_EVENTS = ['dmail', 'ban', 'feedback', 'mod_action'];
 const ALL_EVENTS = JSPLib.utility.setUnique(POST_QUERY_EVENTS.concat(SUBSCRIBE_EVENTS).concat(OTHER_EVENTS));
 
 //For factory reset
@@ -504,7 +504,6 @@ const NOTICE_BOX = `
     <div id="el-feedback-section"></div>
     <div id="el-ban-section"></div>
     <div id="el-mod-action-section"></div>
-    <div id="el-spam-section"></div>
     <div style="margin-top:1em">
         <a href="javascript:void(0)" id="el-hide-event-notice">Close this</a>
         [
@@ -614,7 +613,6 @@ const EL_MENU = `
                     <div class="expandable-content">
                         <ul>
                             <li><b>dmail:</b> Received from another user.</li>
-                            <li><b>spam:</b> Received from another user.</li>
                             <li><b>ban:</b> None.</li>
                             <li><b>feedback:</b> No ban feedbacks.</li>
                             <li><b>mod action:</b> Specific categories must be subscribed.</li>
@@ -722,7 +720,7 @@ const EMPTY_REGEX = /^$/;
 
 const ALL_POST_EVENTS = ['post', 'approval', 'comment', 'note', 'commentary'];
 const ALL_TRANSLATE_EVENTS = ['note', 'commentary'];
-const ALL_MAIL_EVENTS = ['dmail', 'spam'];
+const ALL_MAIL_EVENTS = ['dmail'];
 
 //Type configurations
 const TYPEDICT = {
@@ -745,21 +743,11 @@ const TYPEDICT = {
     },
     dmail: {
         controller: 'dmails',
-        addons: {search: {is_spam: false}},
+        addons: {search: {is_deleted: false}},
         only: 'id,from_id',
         filter: (array)=>{return array.filter((val)=>{return IsShownData(val, [], 'from_id', null, (val)=>{return !val.is_read});})},
         insert: InsertDmails,
         plural: 'mail',
-        useritem: true,
-        open: ()=>{OpenItemClick('dmail', 3, AddDmail);},
-    },
-    spam: {
-        controller: 'dmails',
-        addons: {search: {is_spam: true}},
-        only: 'id,from_id',
-        filter: (array)=>{return array.filter((val)=>{return IsShownData(val, [], 'from_id', null, (val)=>{return !val.is_read});})},
-        insert: InsertDmails,
-        plural: 'spam',
         useritem: true,
         open: ()=>{OpenItemClick('dmail', 3, AddDmail);},
     },
@@ -989,7 +977,40 @@ function CorrectList(type,typelist) {
 
 //Library functions
 
-////NONE
+JSPLib.menu.validateUserSettings = function (settings,config) {
+    let error_messages = [];
+    if (!JSPLib.validate.isHash(settings)) {
+        return ["User settings are not a hash."];
+    }
+    for (let setting in config) {
+        if (!(setting in settings) || !config[setting].validate(settings[setting])) {
+            if (!(setting in settings)) {
+                error_messages.push(`'${setting}' setting not found.`);
+            } else {
+                error_messages.push(`'${setting}' contains invalid data.`);
+            }
+            let old_setting = settings[setting];
+            let message = "";
+            if (Array.isArray(config[setting].allitems) && Array.isArray(settings[setting])) {
+                settings[setting] = JSPLib.utility.setIntersection(config[setting].allitems,settings[setting]);
+                message = "Removing bad items";
+            } else {
+                settings[setting] = config[setting].default;
+                message = "Loading default";
+            }
+            JSPLib.debug.debuglogLevel(`menu.validateUserSettings - ${message}:`,setting,old_setting,"->",settings[setting],JSPLib.debug.WARNING);
+        }
+    }
+    let valid_settings = Object.keys(config);
+    for (let setting in settings) {
+        if (!valid_settings.includes(setting)) {
+            JSPLib.debug.debuglogLevel("menu.validateUserSettings - Deleting invalid setting:",setting,settings[setting],JSPLib.debug.WARNING);
+            delete settings[setting];
+            error_messages.push(`'${setting}' is an invalid setting.`);
+        }
+    }
+    return error_messages;
+};
 
 //Helper functions
 
