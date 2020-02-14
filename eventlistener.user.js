@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      18.6
+// @version      18.7
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1745,7 +1745,7 @@ function InitializeWikiIndexLinks(container,render=true) {
     let type = GetTableType(container);
     let typelist = GetList('wiki');
     $('.striped tbody tr', container).each((i,row)=>{
-        let data_selector = (type === 'wiki-pages' ? 'id' : 'wiki-page-id');
+        let data_selector = (type === 'wiki-page' ? 'id' : 'wiki-page-id');
         let wikiid = $(row).data(data_selector);
         if (render) {
             let linkhtml = RenderSubscribeDualLinks('wiki', wikiid, 'span', "", "", true);
@@ -1775,7 +1775,8 @@ function InitializePoolIndexLinks(container,render=true) {
     let type = GetTableType(container);
     let typelist = GetList('pool');
     $('.striped tbody tr', container).each((i,row)=>{
-        let data_selector = (type === 'pools' ? 'id' : 'pool-id');
+        let data_selector = (type === 'pool' ? 'id' : 'pool-id');
+
         let poolid = $(row).data(data_selector);
         if (render) {
             let linkhtml = RenderSubscribeDualLinks('pool', poolid, 'span', "", "", true);
