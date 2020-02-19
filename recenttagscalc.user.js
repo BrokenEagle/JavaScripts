@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RecentTagsCalc
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.2
+// @version      7.3
 // @description  Use different mechanism to calculate RecentTags.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -212,36 +212,36 @@ let program_css = `
 .rtc-user-related-tags-columns {
     display: flex;
 }
-.category-${metatags_category} a:link,
-.category-${metatags_category} a:visited {
+.tag-type-${metatags_category} a:link,
+.tag-type-${metatags_category} a:visited {
     color: darkgoldenrod;
     font-weight: bold;
 }
-.category-${metatags_category} a:hover {
+.tag-type-${metatags_category} a:hover {
     color: goldenrod;
     font-weight: bold;
 }
-.category-${alias_tag_category} a:link,
-.category-${alias_tag_category} a:visited {
+.tag-type-${alias_tag_category} a:link,
+.tag-type-${alias_tag_category} a:visited {
     color: #0CC;
     font-weight: bold;
 }
-.category-${alias_tag_category} a:hover {
+.tag-type-${alias_tag_category} a:hover {
     color: aqua;
     font-weight: bold;
 }
-.category-${deleted_tag_category} a:link,
-.category-${deleted_tag_category} a:visited {
+.tag-type-${deleted_tag_category} a:link,
+.tag-type-${deleted_tag_category} a:visited {
     color: black;
     background-color: red;
     font-weight: bold;
 }
-.category-${deleted_tag_category} a:hover {
+.tag-type-${deleted_tag_category} a:hover {
     color: black;
     background-color: white;
     font-weight: bold;
 }
-.category-${notfound_tag_category} a {
+.tag-type-${notfound_tag_category} a {
     text-decoration: underline dotted grey;
 }
 `;
@@ -744,7 +744,7 @@ function RenderTaglines(taglist,addon) {
     return taglist.map((tag)=>{
         let category = GetTagCategory(tag);
         let search_link = JSPLib.danbooru.postSearchLink(tag,tag.replace(/_/g,' '),`class="search-tag"`);
-        return `    <li class="category-${category}">${addon}${search_link}</li>\n`;
+        return `    <li class="tag-type-${category}">${addon}${search_link}</li>\n`;
     }).join('');
 }
 
@@ -832,7 +832,7 @@ async function CheckMissingTags(tag_list,list_name="") {
         let reload_tags = JSPLib.utility.setUnion(network_tags, unavailable_tags);
         reload_tags.forEach((tag)=>{
             let category = GetTagCategory(tag);
-            $(`li.category-${notfound_tag_category} a[href$="${tag}"]`).closest('li').removeClass().addClass(`category-${category}`);
+            $(`li.tag-type-${notfound_tag_category} a[href$="${tag}"]`).closest('li').removeClass().addClass(`tag-type-${category}`);
         });
     }
     return [unavailable_tags,missing_tags];
@@ -1058,7 +1058,7 @@ function BroadcastRTC(ev) {
             JSPLib.storage.batchStorageCheck(ev.data.network_tags, ValidateEntry, tag_expires, 'tag').then(()=>{
                 ev.data.network_tags.forEach((tag)=>{
                     let category = GetTagCategory(tag);
-                    $(`li.category-${notfound_tag_category} a[href$="${tag}"]`).closest('li').removeClass().addClass(`category-${category}`);
+                    $(`li.tag-type-${notfound_tag_category} a[href$="${tag}"]`).closest('li').removeClass().addClass(`tag-type-${category}`);
                 });
             });
             break;
