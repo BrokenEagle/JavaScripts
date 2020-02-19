@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      18.7
+// @version      18.8
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1650,7 +1650,7 @@ function InitializeOpenWikiLinks(table) {
     $('.striped tbody tr', table).each((i,row)=>{
         let wikiverid = $(row).data('id');
         let link_html = RenderOpenItemLinks('wiki', wikiverid, "Show diff", "Hide diff");
-        $('.category-0, .category-1, .category-3, .category-4, .category-5', row).append(`<span style="float:right">(${link_html})</span>`);
+        $('.tag-type-0, .tag-type-1, .tag-type-3, .tag-type-4, .tag-type-5', row).append(`<span style="float:right">(${link_html})</span>`);
     });
     OpenItemClick('wiki', 4, AddWiki);
 }
@@ -1750,7 +1750,7 @@ function InitializeWikiIndexLinks(container,render=true) {
         if (render) {
             let linkhtml = RenderSubscribeDualLinks('wiki', wikiid, 'span', "", "", true);
             let shownhtml = (IsEventEnabled('wiki', 'subscribe_events_enabled') ? "" : 'style="display:none"');
-            $(' .category-0, .category-1, .category-3, .category-4, .category-5', row).parent().prepend(`<span class="el-subscribe-wiki-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
+            $(' .tag-type-0, .tag-type-1, .tag-type-3, .tag-type-4, .tag-type-5', row).parent().prepend(`<span class="el-subscribe-wiki-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
         } else {
             let subscribed = !typelist.includes(wikiid);
             UpdateDualLink('wiki', subscribed, wikiid);
