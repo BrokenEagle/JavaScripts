@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.3
+// @version      28.4
 // @description  Validates tag add/remove inputs on a post edit or upload, plus several other post validations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -798,7 +798,7 @@ function ValidateUpload() {
 
 async function ValidateArtist() {
     let source_url = $("#post_source").val();
-    let artist_names = $(".artist-tag-list .category-1 .wiki-link").map((i,entry)=>{return decodeURIComponent(entry.search.split("=")[1]);}).toArray();
+    let artist_names = $(".artist-tag-list .tag-type-1 .wiki-link").map((i,entry)=>{return decodeURIComponent(entry.search.split("=")[1]);}).toArray();
     if (artist_names.length === 0 && !VTI.preedittags.includes('official_art')) {
         //Validate no artist tag
         let option_html = "";
@@ -852,7 +852,7 @@ async function ValidateArtist() {
 }
 
 function ValidateCopyright() {
-    let copyright_names_length = $(".copyright-tag-list .category-3 .wiki-link").length;
+    let copyright_names_length = $(".copyright-tag-list .tag-type-3 .wiki-link").length;
     if (copyright_names_length) {
         ValidateCopyright.debuglog("Has a copyright.");
         return;
@@ -866,7 +866,7 @@ function ValidateCopyright() {
 }
 
 function ValidateGeneral() {
-    let general_tags_length = $(".general-tag-list .category-0 .wiki-link").length;
+    let general_tags_length = $(".general-tag-list .tag-type-0 .wiki-link").length;
     if (general_tags_length < VTI.user_settings.general_minimum_threshold) {
         VTI.validate_lines.push("Posts must have at least 10 general tags. Please add some more tags. " + HOW_TO_TAG);
     } else if (VTI.user_settings.general_low_threshold && general_tags_length < VTI.user_settings.general_low_threshold) {
