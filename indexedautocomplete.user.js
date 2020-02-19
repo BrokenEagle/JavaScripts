@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      26.2
+// @version      26.3
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -310,6 +310,7 @@ const forum_topic_search = `
         <div class="input string optional">
             <input id="quick_search_title_matches" placeholder="Search topics" type="text" name="search[title_ilike]" class="string optional" data-autocomplete="forum-topic" autocomplete="off">
         </div>
+        <input type="hidden" name="redirect" value="true">
     </form>
 </li>`;
 
@@ -1216,7 +1217,7 @@ function RenderTaglist(taglist,columnname) {
         let category = tagdata[1];
         let display_name = tag.replace(/_/g, ' ');
         let search_link = JSPLib.danbooru.postSearchLink(tag, display_name, 'class="search-tag"');
-        html += `<li class="category-${category}">${search_link}</li>\n`;
+        html += `<li class="tag-type-${category}">${search_link}</li>\n`;
     });
     return `
 <h6>${columnname}</h6>
