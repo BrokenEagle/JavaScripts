@@ -59,6 +59,9 @@ var DPI;
 //TIMER function hash
 const TIMER = {};
 
+//Available setting values
+const SOURCE_TYPES = ['original','normalized'];
+
 //Main settings
 const SETTINGS_CONFIG = {
     post_views_enabled: {
@@ -95,6 +98,12 @@ const SETTINGS_CONFIG = {
         default: true,
         validate: (data)=>{return JSPLib.validate.isBoolean(data);},
         hint: "Shows domain statistics for all of the posts on a page."
+    },
+    domain_source_type: {
+        allitems: SOURCE_TYPES,
+        default: ['normalized'],
+        validate: (data)=>{return JSPLib.menu.validateCheckboxRadio(data,'radio',SOURCE_TYPES);},
+        hint: "Select the type of post source to be used for domain statistics."
     },
     tag_statistics_enabled: {
         default: true,
@@ -697,11 +706,12 @@ function ProcessPostStatistics() {
 
 function ProcessDomainStatistics() {
     let $domain_table = $(DOMAIN_STATISTICS_TABLE);
+    let source_key = GetSourceDataKey();
     let domain_frequency = $(".post-preview")
         .map((i,preview)=>{
             try {
                 //Will generate an exception for non-URL sources
-                return JSPLib.utility.getDomainName($(preview).data('source'), 2);
+                return JSPLib.utility.getDomainName($(preview).data(source_key), 2);
             } catch (e) {
                 return "";
             }
@@ -807,7 +817,16 @@ function InitializeChangedSettings() {
                 $tag_statistics.hide();
             }
         }
-        //Not handling tooltips at this time
+        //Not handling tooltips or domain source at this time
+    }
+}
+
+function GetSourceDataKey() {
+    switch (DPI.user_settings.domain_source_type[0]) {
+        case 'original':
+            return 'source';
+        case 'normalized':
+            return 'normalized-source';
     }
 }
 
@@ -821,6 +840,7 @@ function RenderSettingsMenu() {
     $("#dpi-tooltip-settings").append(JSPLib.menu.renderCheckbox('advanced_post_tooltip'));
     $("#dpi-statistics-settings").append(JSPLib.menu.renderCheckbox('post_statistics_enabled'));
     $("#dpi-statistics-settings").append(JSPLib.menu.renderCheckbox('domain_statistics_enabled'));
+    $("#dpi-statistics-settings").append(JSPLib.menu.renderInputSelectors('domain_source_type', 'radio'));
     $("#dpi-statistics-settings").append(JSPLib.menu.renderCheckbox('tag_statistics_enabled'));
     $("#dpi-cache-settings").append(JSPLib.menu.renderLinkclick('cache_info', true));
     $("#dpi-cache-settings").append(CACHE_INFO_TABLE);
