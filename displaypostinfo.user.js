@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DisplayPostInfo
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9.2
+// @version      10.0
 // @description  Display views, uploader, and other info to the user.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -89,7 +89,12 @@ const SETTINGS_CONFIG = {
     post_statistics_enabled: {
         default: true,
         validate: (data)=>{return JSPLib.validate.isBoolean(data);},
-        hint: "Shows page statistics for all of the posts on a page."
+        hint: "Shows post statistics for all of the posts on a page."
+    },
+    domain_statistics_enabled: {
+        default: true,
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
+        hint: "Shows domain statistics for all of the posts on a page."
     },
     tag_statistics_enabled: {
         default: true,
@@ -139,12 +144,16 @@ const CONTROL_CONFIG = {
 //CSS constants
 
 let post_index_css = `
-#dpi-post-statistics th {
+#dpi-post-statistics th,
+#dpi-domain-statistics th {
     text-align: right;
 }
 #dpi-post-statistics th,
 #dpi-post-statistics td {
     padding: 2px;
+}
+.dpi-domain-overflow {
+    color: blue;
 }
 .dpi-tag-statistic {
     color:lightpink;
@@ -249,50 +258,65 @@ const dpi_menu = `
 </div>
 `;
 
+const POST_INDEX_STATISTICS = `
+<section id="dpi-post-statistics"></section>
+<section id="dpi-domain-statistics"></section>`;
+
 const POST_STATISTICS_TABLE = `
-<section id="dpi-post-statistics">
-    <h1>Statistics</h1>
+<h1>Post statistics</h1>
+<table class="striped">
+    <tbody>
+        <tr>
+            <th>Score:</th>
+            <td>%SCORE_AVERAGE% ± %SCORE_DEVIATION%</td>
+        </tr>
+        <tr>
+            <th>Favorites:</th>
+            <td>%FAVES_AVERAGE% ± %FAVES_DEVIATION%</td>
+        </tr>
+        <tr>
+            <th>Safe:</th>
+            <td>%SAFE_PERCENTAGE%%</td>
+        </tr>
+        <tr>
+            <th><span style="font-size:90%;letter-spacing:-1px">Questionable:</span></th>
+            <td>%QUESTIONABLE_PERCENTAGE%%</td>
+        </tr>
+        <tr>
+            <th>Explicit:</th>
+            <td>%EXPLICIT_PERCENTAGE%%</td>
+        </tr>
+        <tr>
+            <th>Pending:</th>
+            <td>%PENDING_COUNT%</td>
+        </tr>
+        <tr>
+            <th>Banned:</th>
+            <td>%BANNED_COUNT%</td>
+        </tr>
+        <tr>
+            <th>Flagged:</th>
+            <td>%FLAGGED_COUNT%</td>
+        </tr>
+        <tr>
+            <th>Deleted:</th>
+            <td>%DELETED_COUNT%</td>
+        </tr>
+    </tbody>
+</table>`;
+
+const DOMAIN_STATISTICS_TABLE = `
+    <h1>Domain statistics</h1>
     <table class="striped">
         <tbody>
-            <tr>
-                <th>Score:</th>
-                <td>%SCORE_AVERAGE% ± %SCORE_DEVIATION%</td>
-            </tr>
-            <tr>
-                <th>Favorites:</th>
-                <td>%FAVES_AVERAGE% ± %FAVES_DEVIATION%</td>
-            </tr>
-            <tr>
-                <th>Safe:</th>
-                <td>%SAFE_PERCENTAGE%%</td>
-            </tr>
-            <tr>
-                <th><span style="font-size:90%;letter-spacing:-1px">Questionable:</span></th>
-                <td>%QUESTIONABLE_PERCENTAGE%%</td>
-            </tr>
-            <tr>
-                <th>Explicit:</th>
-                <td>%EXPLICIT_PERCENTAGE%%</td>
-            </tr>
-            <tr>
-                <th>Pending:</th>
-                <td>%PENDING_COUNT%</td>
-            </tr>
-            <tr>
-                <th>Banned:</th>
-                <td>%BANNED_COUNT%</td>
-            </tr>
-            <tr>
-                <th>Flagged:</th>
-                <td>%FLAGGED_COUNT%</td>
-            </tr>
-            <tr>
-                <th>Deleted:</th>
-                <td>%DELETED_COUNT%</td>
-            </tr>
         </tbody>
-    </table>
-</section>`;
+    </table>`;
+
+const DOMAIN_STATISTICS_ROW = `
+<tr>
+    <th>%DOMAIN_NAME%</th>
+    <td>%DOMAIN_COUNT%</th>
+</tr>`;
 
 //Time constants
 const prune_expires = JSPLib.utility.one_day;
@@ -668,7 +692,38 @@ function ProcessPostStatistics() {
         FLAGGED_COUNT: $post_previews.filter('[data-flags*="flagged"]').length,
         DELETED_COUNT: $post_previews.filter('[data-flags*="deleted"]').length,
     });
-    $("#tag-box").after(statistics_html);
+    $('#dpi-post-statistics').append(statistics_html);
+}
+
+function ProcessDomainStatistics() {
+    let $domain_table = $(DOMAIN_STATISTICS_TABLE);
+    let domain_frequency = $(".post-preview")
+        .map((i,preview)=>{
+            try {
+                //Will generate an exception for non-URL sources
+                return JSPLib.utility.getDomainName($(preview).data('source'), 2);
+            } catch (e) {
+                return "";
+            }
+        })
+        .toArray()
+        .filter((host)=>host !== "")
+        .reduce((total,host)=>{
+            total[host] = total[host] || 0;
+            total[host]++;
+            return total;
+        }, {});
+    let domain_keys = Object.keys(domain_frequency).sort((a,b) => domain_frequency[b] - domain_frequency[a]);
+    domain_keys.forEach((domain)=>{
+        let [class_addon,title_addon] = (domain.length > JSPLib.utility.max_column_characters ? ['class="dpi-domain-overflow"', `title="${domain}"`] : ["", ""]);
+        $('tbody', $domain_table).append(
+            JSPLib.utility.regexReplace(DOMAIN_STATISTICS_ROW, {
+                DOMAIN_NAME: `<span ${class_addon} ${title_addon}>${JSPLib.utility.maxLengthString(domain)}</span>`,
+                DOMAIN_COUNT: domain_frequency[domain],
+            })
+        );
+    });
+    $('#dpi-domain-statistics').append($domain_table);
 }
 
 //Settings functions
@@ -719,13 +774,25 @@ function InitializeChangedSettings() {
         if (JSPLib.menu.hasSettingChanged('post_statistics_enabled')) {
             let $post_statistics = $("#dpi-post-statistics");
             if (DPI.user_settings.post_statistics_enabled) {
-                if ($post_statistics.length === 0) {
+                if ($post_statistics.children().length === 0) {
                     ProcessPostStatistics();
                 } else {
                     $post_statistics.show();
                 }
             } else {
                 $post_statistics.hide();
+            }
+        }
+        if (JSPLib.menu.hasSettingChanged('domain_statistics_enabled')) {
+            let $domain_statistics = $('#dpi-domain-statistics');
+            if (DPI.user_settings.domain_statistics_enabled) {
+                if ($domain_statistics.children().length === 0) {
+                    ProcessDomainStatistics();
+                } else {
+                    $domain_statistics.show();
+                }
+            } else {
+                $domain_statistics.hide();
             }
         }
         if (JSPLib.menu.hasSettingChanged('tag_statistics_enabled')) {
@@ -753,6 +820,7 @@ function RenderSettingsMenu() {
     $("#dpi-tooltip-settings").append(JSPLib.menu.renderCheckbox('basic_post_tooltip'));
     $("#dpi-tooltip-settings").append(JSPLib.menu.renderCheckbox('advanced_post_tooltip'));
     $("#dpi-statistics-settings").append(JSPLib.menu.renderCheckbox('post_statistics_enabled'));
+    $("#dpi-statistics-settings").append(JSPLib.menu.renderCheckbox('domain_statistics_enabled'));
     $("#dpi-statistics-settings").append(JSPLib.menu.renderCheckbox('tag_statistics_enabled'));
     $("#dpi-cache-settings").append(JSPLib.menu.renderLinkclick('cache_info', true));
     $("#dpi-cache-settings").append(CACHE_INFO_TABLE);
@@ -820,8 +888,12 @@ function Main() {
         } else if (Danbooru.DPI.basic_tooltips && DPI.user_settings.basic_post_tooltip) {
             UpdateThumbnailTitles();
         }
+        $('#tag-box').after(POST_INDEX_STATISTICS);
         if (DPI.user_settings.post_statistics_enabled) {
             ProcessPostStatistics();
+        }
+        if (DPI.user_settings.domain_statistics_enabled) {
+            ProcessDomainStatistics();
         }
         if (DPI.user_settings.tag_statistics_enabled) {
             ProcessTagStatistics();
