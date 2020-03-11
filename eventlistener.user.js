@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      18.9
+// @version      18.10
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2446,6 +2446,8 @@ function Main() {
         }
         Main.debuglog("Waiting...");
     }
+    $(document).on(PROGRAM_CLICK, '.el-subscribe-dual-links a', SubscribeDualLink);
+    $(document).on(PROGRAM_CLICK, '#el-subscribe-events a', SubscribeMultiLink);
     let $main_section = $('#c-' + Danbooru.EL.controller);
     if (EL.controller === 'posts' && EL.action === 'show') {
         InitializePostShowMenu();
@@ -2475,8 +2477,6 @@ function Main() {
             InitializePoolGalleryLinks();
         }
     }
-    $(document).on(PROGRAM_CLICK, '.el-subscribe-dual-links a', SubscribeDualLink);
-    $(document).on(PROGRAM_CLICK, '#el-subscribe-events a', SubscribeMultiLink);
     if (EL.user_settings.autoclose_dmail_notice && EL.events_checked) {
         HideDmailNotice();
     }
