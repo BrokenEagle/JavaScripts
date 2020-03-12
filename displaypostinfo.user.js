@@ -675,8 +675,8 @@ function ProcessTagStatistics() {
         let tag = column_tags[i];
         let tag_percentage = Math.ceil(100 * (column_info[tag] / total_posts)) || 0;
         let tag_percentage_string = JSPLib.utility.padNumber(tag_percentage, 2) + '%';
-        let spacing_tyle = (tag_percentage === 100 ? `style="letter-spacing:-2px"` : "");
-        $(entry).before(` <span class="dpi-tag-statistic" ${spacing_tyle}>${tag_percentage_string}</span> `);
+        let spacing_style = (tag_percentage === 100 ? `style="letter-spacing:-2px"` : "");
+        $(entry).before(` <span class="dpi-tag-statistic" ${spacing_style}>${tag_percentage_string}</span> `);
     });
 }
 
