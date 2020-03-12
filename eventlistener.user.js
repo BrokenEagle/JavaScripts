@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      18.10
+// @version      18.11
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1890,7 +1890,6 @@ function UpdateAll(event) {
         SetLastSeenTime();
         JSPLib.utility.notice("All events checked!");
     });
-    $('#el-reset-all').off(PROGRAM_CLICK);
 }
 
 function ResetAll(event) {
@@ -1902,7 +1901,6 @@ function ResetAll(event) {
         SetLastSeenTime();
         JSPLib.utility.notice("All event positions reset!");
     });
-    $('#el-update-all').off(PROGRAM_CLICK);
 }
 
 function SubscribeMultiLink(event) {
@@ -2181,6 +2179,7 @@ async function CheckAllEvents(promise_array) {
     if (!EL.user_settings.autoclose_dmail_notice) {
         EL.dmail_notice.show();
     }
+    return hasevents;
 }
 
 function ProcessAllEvents(func) {
@@ -2194,8 +2193,8 @@ function ProcessAllEvents(func) {
     OTHER_EVENTS.forEach((inputtype)=>{
         promise_array.push(ProcessEvent(inputtype, 'other_events_enabled'));
     });
-    TIMER.CheckAllEvents(promise_array).then(()=>{
-        func();
+    TIMER.CheckAllEvents(promise_array).then((hasevents)=>{
+        func(hasevents);
     });
 }
 
@@ -2425,9 +2424,12 @@ function Main() {
         if (CheckAbsence()) {
             EL.events_checked = true;
             JSPLib.concurrency.setRecheckTimeout('el-event-timeout', EL.timeout_expires);
-            ProcessAllEvents(()=>{
+            ProcessAllEvents((hasevents)=>{
                 SetLastSeenTime();
                 JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT);
+                if (hasevents) {
+                    JSPLib.utility.notice("Events are ready for viewing!");
+                }
             });
         } else {
             $('#el-absent-section').html(ABSENT_NOTICE).show();
