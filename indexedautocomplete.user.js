@@ -9,7 +9,7 @@
 // @exclude      /^https?://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
 // @grant        none
 // @run-at       document-end
-// @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ntisas-release/indexedautocomplete.user.js
+// @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/iac-new-release/indexedautocomplete.user.js
 // @require      https://cdn.jsdelivr.net/npm/core-js-bundle@3.2.1/minified.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
@@ -215,6 +215,11 @@ const SETTINGS_CONFIG = {
         default: true,
         validate: (data)=>{return JSPLib.validate.isBoolean(data);},
         hint: "Places all related tag columns on the same row, with top/bottom scrollbars and arrow keys to support scrolling."
+    },
+    text_input_autocomplete_enabled: {
+        default: true,
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
+        hint: "Enables autocomplete in non-autocomplete text fields (Alt+A to enable/disable), inserting a wiki link upon completion."
     },
 };
 
@@ -1286,7 +1291,22 @@ function ValidateUsageData(choice_info) {
 
 //Library functions
 
-////NONE
+JSPLib.utility.getHTMLTree = function (domnode) {
+    var tree = [];
+    for (let checknode = domnode; checknode !== null; checknode = checknode.parentElement) {
+        let nodename = checknode.tagName.toLowerCase();
+        let id = (checknode.id !== "" ? "#" : "") + checknode.id;
+        let classlist = Object.assign(new Array(),checknode.classList).map((entry)=>{return '.' + entry;}).join('');
+        let index = "";
+        if (checknode.parentElement !== null) {
+            let similar_elements = [...checknode.parentElement.children].filter(entry => entry.tagName === checknode.tagName);
+            let similar_position = similar_elements.indexOf(checknode) + 1;
+            index = ":nth-of-type(" + similar_position + ")";
+        }
+        tree.push(nodename + id + classlist + index);
+    }
+    return tree.reverse().join(" > ");
+};
 
 //Helper functions
 
@@ -1728,6 +1748,28 @@ function InsertUserSelected(data,input,selected) {
     StoreUsageData('insert', term);
 }
 
+function InsertCompletion(input, completion) {
+    // Trim all whitespace (tabs, spaces) except for line returns
+    var before_caret_text = input.value.substring(0, input.selectionStart).replace(/^[ \t]+|[ \t]+$/gm, "");
+    var after_caret_text = input.value.substring(input.selectionStart).replace(/^[ \t]+|[ \t]+$/gm, "");
+    var regexp = new RegExp("(" + Danbooru.Autocomplete.TAG_PREFIXES + ")?\\S+$", "g");
+    let adjust_position = 0;
+    let $input = $(input);
+    let start = 0, end = 0;
+    if ($input.data('insert-autocomplete')) {
+        before_caret_text = before_caret_text.replace(regexp, "$1") + "[[" + completion + "|insert text]]";
+        start = before_caret_text.length - 13;
+        end = before_caret_text.length - 2;
+        setTimeout(()=>{DisableTextAreaAutocomplete($input);}, 100);
+    } else {
+        before_caret_text = before_caret_text.replace(regexp, "$1") + completion + " ";
+        start = end = before_caret_text.length;
+    }
+    input.value = before_caret_text + after_caret_text;
+    input.selectionStart = start;
+    input.selectionEnd = end;
+}
+
 function StaticMetatagSource(term, metatag) {
     let full_term = `${metatag}:${term}`;
     let data = SubmetatagData()
@@ -1969,7 +2011,7 @@ function RebindSingleTag() {
 
 //Initialization functions
 
-function InitializeAutocompleteIndexed(selector,keycode,multiple=false) {
+function InitializeAutocompleteIndexed(selector,keycode,multiple=false,wiki=false) {
     let type = source_key[keycode];
     var $fields = $(selector);
     let autocomplete = AnySourceIndexed(keycode, true);
@@ -1978,7 +2020,7 @@ function InitializeAutocompleteIndexed(selector,keycode,multiple=false) {
         delay: 100,
         source: async function(request, respond) {
             var term;
-            if (multiple) {
+            if (multiple || wiki) {
                 term = Danbooru.Autocomplete.parse_query(request.term, this.element.get(0).selectionStart).term;
                 if (!term) {
                     return respond([]);
@@ -1991,7 +2033,11 @@ function InitializeAutocompleteIndexed(selector,keycode,multiple=false) {
         },
         select: function (event,ui) {
             InsertUserSelected(keycode, this, ui.item);
-            if (multiple) {
+            if (wiki) {
+                InsertCompletion(this, ui.item.value);
+                event.stopImmediatePropagation();
+                return false;
+            } else if (multiple) {
                 if (event.key === "Enter") {
                     event.stopImmediatePropagation();
                 }
@@ -2006,14 +2052,50 @@ function InitializeAutocompleteIndexed(selector,keycode,multiple=false) {
     let alink_func = (source_config[type].render ? source_config[type].render : ($domobj,item)=>{return $domobj.text(item.value);});
     setTimeout(()=>{
         $fields.each((i,field)=>{
-            $(field).data('uiAutocomplete')._renderItem = RenderListItem(alink_func);
+            if (wiki) {
+                $(field).data('uiAutocomplete')._renderItem = Danbooru.Autocomplete.render_item;
+            } else {
+                $(field).data('uiAutocomplete')._renderItem = RenderListItem(alink_func);
+            }
         });
     }, jquery_delay);
     if (!JSPLib.utility.isNamespaceBound(selector, 'keydown', 'Autocomplete.tab')) {
         $fields.on('keydown.Autocomplete.tab', null, "tab", Danbooru.Autocomplete.on_tab);
     }
     $fields.data('autocomplete', type);
-    $fields.data('multiple', multiple);
+    $fields.data('multiple', multiple || wiki);
+}
+
+function InitializeTextAreaAutocomplete() {
+    $("textarea:not([data-autocomplete]), input[type=text]:not([data-autocomplete])").on("keydown.iac", null, "alt+a", (event)=>{
+        let $input = $(event.currentTarget);
+        if (!$input.data('insert-autocomplete')) {
+            EnableTextAreaAutocomplete($input);
+        } else {
+            DisableTextAreaAutocomplete($input);
+        }
+    }).data('insert-autocomplete', false);
+}
+
+function EnableTextAreaAutocomplete($input) {
+    if ($input.closest('.autocomplete-mentions').length > 0) {
+        $input.autocomplete("destroy").off('keydown.Autocomplete.tab');
+    }
+    let input_selector = JSPLib.utility.getHTMLTree($input[0]);
+    InitializeAutocompleteIndexed(input_selector, 'ac', false, true);
+    $input.data('insert-autocomplete', true);
+    $input.data('autocomplete', 'tag-edit');
+    JSPLib.utility.notice("Autocomplete turned on!");
+}
+
+function DisableTextAreaAutocomplete($input) {
+    $input.autocomplete("destroy").off('keydown.Autocomplete.tab');
+    $input.data('insert-autocomplete', false);
+    $input.data('autocomplete', "");
+    JSPLib.utility.notice("Autocomplete turned off!");
+    if ($input.closest('.autocomplete-mentions').length > 0) {
+        Danbooru.Autocomplete.initialize_mention_autocomplete($input);
+    }
 }
 
 function InitialiazeRelatedQueryControls() {
@@ -2229,6 +2311,7 @@ function DataTypeChange(event) {
 function RenderSettingsMenu() {
     $("#indexed-autocomplete").append(iac_menu);
     $("#iac-general-settings").append(JSPLib.menu.renderDomainSelectors());
+    $("#iac-general-settings").append(JSPLib.menu.renderCheckbox('text_input_autocomplete_enabled'));
     $("#iac-source-settings").append(JSPLib.menu.renderCheckbox('BUR_source_enabled'));
     $("#iac-source-settings").append(JSPLib.menu.renderCheckbox('metatag_source_enabled'));
     $("#iac-usage-settings").append(JSPLib.menu.renderCheckbox('usage_enabled'));
@@ -2332,7 +2415,7 @@ function Main() {
     Danbooru.Autocomplete.saved_search_source = AnySourceIndexed('ss');
     Danbooru.Autocomplete.static_metatag_source = StaticMetatagSource;
     Danbooru.Autocomplete.insert_completion_old = Danbooru.Autocomplete.insert_completion;
-    Danbooru.Autocomplete.insert_completion = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.insert_completion, InsertUserSelected);
+    Danbooru.Autocomplete.insert_completion = JSPLib.utility.hijackFunction(InsertCompletion, InsertUserSelected);
     Danbooru.Autocomplete.render_item_old = Danbooru.Autocomplete.render_item;
     Danbooru.Autocomplete.render_item = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.render_item, HighlightSelected);
     Danbooru.Autocomplete.initialize_tag_autocomplete_old = Danbooru.Autocomplete.initialize_tag_autocomplete;
@@ -2415,6 +2498,9 @@ function Main() {
         Danbooru.RelatedTag.show = JSPLib.utility.hijackFunction(Danbooru.RelatedTag.show, ()=>{
             $("#iac-edit-scroll-wrapper").hide();
         });
+    }
+    if (IAC.user_settings.text_input_autocomplete_enabled) {
+        InitializeTextAreaAutocomplete();
     }
     /**Other setup**/
     JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
