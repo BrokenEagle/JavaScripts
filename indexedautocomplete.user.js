@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      26.3
+// @version      27.0
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -74,6 +74,7 @@ const PROGRAM_RESET_KEYS = {
 //Available setting values
 const tag_sources = ['metatag','exact','prefix','alias','correct'];
 const scale_types = ['linear','square_root','logarithmic'];
+const related_query_types = ['default','frequent','similar','like'];
 
 //Main settings
 const SETTINGS_CONFIG = {
@@ -187,7 +188,39 @@ const SETTINGS_CONFIG = {
         parse: parseInt,
         validate: (data)=>{return Number.isInteger(data) && data >= 0 && data <= 3;},
         hint: "Number of days (0 - 3). Data expiring within this period gets automatically requeried. Setting to 0 disables this."
-    }
+    },
+    related_results_limit: {
+        default: 0,
+        parse: parseInt,
+        validate: (data)=>{return Number.isInteger(data) && data >= 0 && data <= 50;},
+        hint: "Number of results to show (1 - 50) for the primary <b>Tags</b> column. Setting to 0 uses Danbooru's default limit."
+    },
+    related_statistics_enabled: {
+        default: true,
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
+        hint: "Show tag overlap statistics for related tag results (<b>Tags</b> column only)."
+    },
+    related_query_enabled: {
+        default: true,
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
+        hint: "Show controls that allow for alternate query types on related tags."
+    },
+    related_query_default: {
+        allitems: related_query_types,
+        default: ['default'],
+        validate: (data)=>{return JSPLib.menu.validateCheckboxRadio(data,'radio',related_query_types);},
+        hint: "Select the default query type selected on the related tag controls."
+    },
+    expandable_related_section_enabled: {
+        default: true,
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
+        hint: "Places all related tag columns on the same row, with top/bottom scrollbars and arrow keys to support scrolling."
+    },
+    text_input_autocomplete_enabled: {
+        default: true,
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
+        hint: "Enables autocomplete in non-autocomplete text fields (Alt+A to enable/disable), inserting a wiki link upon completion."
+    },
 };
 
 //Available config values
@@ -287,6 +320,93 @@ const program_css = `
 }
 .iac-tag-highlight .tag-type-${metatag_tag_category}:hover {
     color: #444;
+}
+`;
+const related_query_control_css = `
+#iac-related-query-type label {
+    color: black;
+    background-color: lightgrey;
+    margin-left: 0.5em;
+    font-weight: bold;
+}
+#iac-related-query-type .ui-checkboxradio-radio-label.ui-checkboxradio-checked .ui-icon,
+#iac-related-query-type .ui-checkboxradio-radio-label.ui-checkboxradio-checked:hover .ui-icon {
+    background-image: none;
+    width: 8px;
+    height: 8px;
+    border-width: 4px;
+    border-style: solid;
+}
+#iac-related-query-type .ui-state-active .ui-icon-background {
+    border: black;
+    background-color: white;
+}
+#iac-related-query-type .ui-visual-focus,
+#iac-related-query-type .ui-state-active,
+#iac-related-query-type .ui-widget-content .ui-state-active,
+#iac-related-query-type .ui-button.ui-state-active:hover,
+#iac-related-query-type .ui-button.ui-state-active:focus,
+#iac-related-query-type .ui-button:focus,
+#iac-related-query-type .ui-button:active {
+    border: 1px solid white;
+    background: lightgrey;
+    outline: none;
+    box-shadow: none;
+}
+`;
+const expandable_related_section_css = `
+#iac-edit-scroll-wrapper {
+    height: 20px;
+    overflow-x: scroll;
+    overflow-y:h idden;
+    display: none;
+}
+#iac-edit-scroll-bar {
+    height: 20px;
+}
+.iac-tag-statistic {
+    color: hotpink;
+}
+#edit-dialog .related-tags,
+#c-posts #a-show .related-tags,
+#c-uploads #a-new .related-tags {
+    overflow-x: scroll;
+    flex-wrap: nowrap;
+    max-width: calc(100% - 2em);
+}
+#edit-dialog .related-tags .tag-column,
+#c-posts #a-show .related-tags .tag-column,
+#c-uploads #a-new .related-tags .tag-column {
+    width: 15em;
+    max-width: unset;
+}
+#edit-dialog .related-tags .tag-column.wide-column,
+#c-posts #a-show .related-tags .tag-column.wide-column,
+#c-uploads #a-new .related-tags .tag-column.wide-column {
+    width: 45em;
+    max-width: unset;
+}
+#edit-dialog .related-tags .tag-column li,
+#c-posts #a-show .related-tags .tag-column li,
+#c-uploads #a-new .related-tags .tag-column li {
+    text-indent: -1em;
+    margin-left: 1em;
+}
+#edit-dialog .related-tags .tag-column li a:not(:first-of-type),
+#c-posts #a-show .related-tags .tag-column li a:not(:first-of-type),
+#c-uploads #a-new .related-tags .tag-column li a:not(:first-of-type) {
+    text-indent: 0;
+}
+#edit-dialog .tag-column.general-related-tags-column.is-empty-false,
+#c-posts #a-show .tag-column.general-related-tags-column.is-empty-false,
+#c-uploads #a-new .tag-column.general-related-tags-column.is-empty-false {
+    width: 18em;
+}
+#edit-dialog .tag-column.general-related-tags-column.is-empty-false li,
+#c-posts #a-show .tag-column.general-related-tags-column.is-empty-false li,
+#c-uploads #a-new .tag-column.general-related-tags-column.is-empty-false li {
+    text-indent: -2.7em;
+    margin-left: 2.7em;
 }
 `;
 
@@ -426,6 +546,39 @@ const iac_menu = `
                 </div>
             </div>
         </div>
+        <div id="iac-related-tag-settings" class="jsplib-settings-grouping">
+            <div id="iac-related-tag-message" class="prose">
+                <h4>Related tag settings</h4>
+                <p>Affects the related tags shown in the post/upload edit menu.</p>
+                <div class="expandable">
+                    <div class="expandable-header">
+                        <span>Additional setting details</span>
+                        <input type="button" value="Show" class="expandable-button">
+                    </div>
+                    <div class="expandable-content">
+                        <ul>
+                            <li><b>Related query types:</b>
+                                <ul>
+                                    <li><b>Default:</b> Uses the similar query type when no category is used, and frequent when a category is used.</li>
+                                    <li><b>Frequent:</b> Uses the frequency of tags that appear with the queried tag from a sample of 1000 posts.</li>
+                                    <li><b>Similar:</b> Applies a cosine similarity to the results which is the interelation of the frequency between all tags.
+                                        <ul>
+                                            <li>I.e. it rates tags x and y, where tag x appears with high frequecy with tag y, and tag y appears with high frequency with tag x.</li>
+                                        </ul>
+                                    </li>
+                                    <li><b>Like:</b> Performs a wildcard search of the tag.
+                                        <ul>
+                                            <li>E.g. searching <code>military</code> will use the wildcard search <code>*military*</code> to find all tags with "military" in them.</li>
+                                        </ul>
+                                    </li>
+                                </ul>
+                            </li>
+                        </ul>
+                        <div style="font-size:80%"><b>Note:</b> Each related query type is stored separately, so results can be repeated with different values. The default query will save as either frequent or similar, depending on whether categories are used or not.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div id="iac-network-settings" class="jsplib-settings-grouping">
             <div id="iac-network-message" class="prose">
                 <h4>Network settings</h4>
@@ -544,8 +697,12 @@ const iac_menu = `
             <textarea></textarea>
         </div>
     </div>
-</div>
-`;
+</div>`;
+
+const iac_scroll_wrapper = `
+<div id="iac-edit-scroll-wrapper">
+    <div id="iac-edit-scroll-bar"></div>
+</div>`
 
 //BUR constants
 const bur_keywords = ['->','alias','imply','update','unalias','unimply','category'];
@@ -631,9 +788,6 @@ const expiration_config = {
     search: {
         minimum: JSPLib.utility.one_week
     },
-    relatedtag: {
-        minimum: JSPLib.utility.one_week
-    },
     wikipage: {
         logarithmic_start: 100,
         minimum: JSPLib.utility.one_week,
@@ -648,6 +802,9 @@ const expiration_config = {
         minimum: JSPLib.utility.one_week
     }
 };
+
+const post_count_expires = JSPLib.utility.one_month;
+const related_tag_expires = JSPLib.utility.one_week;
 
 //Source variables
 
@@ -966,9 +1123,11 @@ const relatedtag_constraints = {
         category: JSPLib.validate.inclusion_constraints(all_related),
         query: JSPLib.validate.stringonly_constraints,
         tags: JSPLib.validate.tagentryarray_constraints,
+        tags_overlap: JSPLib.validate.hash_constraints,
         wiki_page_tags: JSPLib.validate.tagentryarray_constraints,
         other_wikis: JSPLib.validate.hash_constraints
     },
+    tags_overlap: JSPLib.validate.basic_integer_validator,
     other_wiki_title: JSPLib.validate.stringonly_constraints,
     other_wiki_value: JSPLib.validate.tagentryarray_constraints
 };
@@ -982,6 +1141,11 @@ const usage_constraints = {
     }
 };
 
+const count_constraints = {
+    expires: JSPLib.validate.expires_constraints,
+    value: JSPLib.validate.counting_constraints,
+};
+
 /****Functions****/
 
 //Validate functions
@@ -992,8 +1156,10 @@ function ValidateEntry(key,entry) {
     }
     if (key.match(/^(?:ac|pl|us|fg|ss|ar|wp|ft)-/)) {
         return ValidateAutocompleteEntry(key, entry);
-    } else if (key.match(/^rt(?:gen|char|copy|art)?-/)) {
+    } else if (key.match(/^rt[fsl](gen|char|copy|art)?-/)) {
         return ValidateRelatedtagEntry(key, entry);
+    } else if (key.startsWith('ctat-')) {
+        return JSPLib.validate.validateHashEntries(key, entry, count_constraints);
     }
     ValidateEntry.debuglog("Bad key!");
     return false;
@@ -1017,6 +1183,9 @@ function ValidateRelatedtagEntry(key,entry) {
         return false;
     }
     if (!JSPLib.validate.validateHashEntries(key + '.value', entry.value, relatedtag_constraints.value)) {
+        return false;
+    }
+    if (!JSPLib.validate.validateHashValues(key + '.value.tags_overlap', entry.value.tags_overlap, relatedtag_constraints.tags_overlap)) {
         return false;
     }
     for (let title in entry.value.other_wikis) {
@@ -1131,7 +1300,35 @@ function ValidateUsageData(choice_info) {
 
 //Library functions
 
-////NONE
+JSPLib.utility.getHTMLTree = function (domnode) {
+    var tree = [];
+    for (let checknode = domnode; checknode !== null; checknode = checknode.parentElement) {
+        let nodename = checknode.tagName.toLowerCase();
+        let id = (checknode.id !== "" ? "#" : "") + checknode.id;
+        let classlist = Object.assign(new Array(),checknode.classList).map((entry)=>{return '.' + entry;}).join('');
+        let index = "";
+        if (checknode.parentElement !== null) {
+            let similar_elements = [...checknode.parentElement.children].filter(entry => entry.tagName === checknode.tagName);
+            let similar_position = similar_elements.indexOf(checknode) + 1;
+            index = ":nth-of-type(" + similar_position + ")";
+        }
+        tree.push(nodename + id + classlist + index);
+    }
+    return tree.reverse().join(" > ");
+};
+
+//For basic objects in a hash only, i.e. string, integer, etc.
+JSPLib.validate.validateHashValues = function(parent_key,hash,validator) {
+    for (let key in hash) {
+        if (!validator.func(hash[key])) {
+            let display_key = `${parent_key}.${key}`;
+            let display_item = JSON.stringify(hash[key]);
+            JSPLib.debug.debuglogLevel(display_key,`${display_item} is not a valid ${validator.type}.`,JSPLib.debug.INFO);
+            return false;
+        }
+    }
+    return true;
+};
 
 //Helper functions
 
@@ -1210,14 +1407,23 @@ function ExpirationTime(type,count) {
 
 //Render functions
 
-function RenderTaglist(taglist,columnname) {
+function RenderTaglist(taglist,columnname,tags_overlap,total_posts) {
     let html = "";
+    let display_percentage = IAC.user_settings.related_statistics_enabled && JSPLib.validate.isHash(tags_overlap) && Number.isInteger(total_posts);
     taglist.forEach((tagdata)=>{
         let tag = tagdata[0];
         let category = tagdata[1];
         let display_name = tag.replace(/_/g, ' ');
         let search_link = JSPLib.danbooru.postSearchLink(tag, display_name, 'class="search-tag"');
-        html += `<li class="tag-type-${category}">${search_link}</li>\n`;
+        let prefix = "";
+        if (display_percentage && Number.isInteger(tags_overlap[tag])) {
+            let sample_size = Math.min(total_posts, 1000);
+            let tag_percentage = Math.ceil(100 * (tags_overlap[tag] / sample_size)) || 0;
+            let tag_percentage_string = JSPLib.utility.padNumber(tag_percentage, 2) + '%';
+            let spacing_style = (tag_percentage === 100 ? `style="letter-spacing:-2px"` : "");
+            prefix = `<span class="iac-tag-statistic" ${spacing_style}>${tag_percentage_string}</span> `;
+        }
+        html += `<li class="tag-type-${category}">${prefix}${search_link}</li>\n`;
     });
     return `
 <h6>${columnname}</h6>
@@ -1226,23 +1432,23 @@ ${html}
 </ul>`;
 }
 
-function RenderTagColumns(data) {
-    let is_empty = data.tags.length === 0;
-    let display_name = data.query.replace(/_/g, ' ');
-    let column = (is_empty ? "" : RenderTaglist(data.tags, display_name));
+function RenderTagColumns(related_tags, post_count) {
+    let is_empty = related_tags.tags.length === 0;
+    let display_name = related_tags.query.replace(/_/g, ' ');
+    let column = (is_empty ? "" : RenderTaglist(related_tags.tags, display_name, related_tags.tags_overlap, post_count));
     let html = `
 <div class="tag-column general-related-tags-column is-empty-${is_empty}">
 ${column}
 </div>`;
-    is_empty = data.wiki_page_tags.length === 0;
-    column = (is_empty ? "" : RenderTaglist(data.wiki_page_tags, JSPLib.danbooru.wikiLink(data.query, `wiki:${display_name}`)));
+    is_empty = related_tags.wiki_page_tags.length === 0;
+    column = (is_empty ? "" : RenderTaglist(related_tags.wiki_page_tags, JSPLib.danbooru.wikiLink(related_tags.query, `wiki:${display_name}`)));
     html += `
-<div class="tag-column wiki-related-tags-column is-empty-${false}">
+<div class="tag-column wiki-related-tags-column is-empty-${is_empty}">
 ${column}
 </div>`;
-    for (let title in data.other_wikis) {
+    for (let title in related_tags.other_wikis) {
         let title_name = title.replace(/_/g, ' ');
-        column = RenderTaglist(data.other_wikis[title], JSPLib.danbooru.wikiLink(title, `wiki:${title_name}`));
+        column = RenderTaglist(related_tags.other_wikis[title], JSPLib.danbooru.wikiLink(title, `wiki:${title_name}`));
         html += `
 <div class="tag-column wiki-related-tags-column is-empty-false">
 ${column}
@@ -1258,6 +1464,22 @@ function RenderListItem(alink_func) {
         HighlightSelected($container, list, item);
         return $("<li/>").data("item.autocomplete", item).append($container).appendTo(list);
     }
+}
+
+function RenderRelatedQueryControls() {
+    let html = "";
+    related_query_types.forEach((type)=>{
+        let checked = (IAC.user_settings.related_query_default[0] === type ? "checked" : "");
+        let display_name = JSPLib.utility.displayCase(type);
+        html += `
+<label for="related_query_${type}">${display_name}</label>
+<input id="related_query_${type}" class="iac-program-checkbox" type="radio" name="related_query_type" data-selector="${type}" ${checked}>
+`;
+    });
+    return `
+<div id="iac-related-query-type">
+    ${html}
+</div>`;
 }
 
 //Main helper functions
@@ -1355,8 +1577,53 @@ function SaveArtistData() {
     }
 }
 
-function GetRelatedKeyModifer(category) {
-    return 'rt' + (category ? JSPLib.danbooru.getShortName(category) : "");
+function GetRelatedKeyModifer(category, query_type) {
+    let query_modifier = "";
+    if (['frequent','similar','like'].includes(query_type)) {
+        query_modifier = query_type[0];
+    } else if(category) {
+        query_modifier = 'f';
+    } else {
+        query_modifier = 's';
+    }
+    return 'rt' + query_modifier + (category ? JSPLib.danbooru.getShortName(category) : "");
+}
+
+//Network functions
+
+async function GetPostCount(tag) {
+    let key = 'ctat-' + tag;
+    GetPostCount.debuglog("Checking:", tag);
+    let cached = await JSPLib.storage.checkLocalDB(key, ValidateEntry, post_count_expires);
+    if (!cached) {
+        GetPostCount.debuglog("Querying:", tag);
+        let data = await JSPLib.danbooru.submitRequest('counts/posts', {tags: tag}, {counts: {posts: 0}});
+        cached = {value: data.counts.posts, expires: JSPLib.utility.getExpires(post_count_expires)};
+        JSPLib.storage.saveData(key, cached);
+    }
+    GetPostCount.debuglog("Found:", tag, cached.value);
+    return cached.value;
+}
+
+async function GetRelatedTags(tag, category, query_type) {
+    let key = GetRelatedKeyModifer(category, query_type) + "-" + tag
+    GetRelatedTags.debuglog("Checking:", key, category);
+    let cached = await JSPLib.storage.checkLocalDB(key, ValidateEntry, related_tag_expires);
+    if (!cached) {
+        GetRelatedTags.debuglog("Querying:", tag, category);
+        let url_addons = {query: tag, category: category};
+        if (['frequent','similar','like'].includes(query_type)) {
+            url_addons.type = query_type;
+        }
+        if (IAC.user_settings.related_results_limit > 0) {
+            url_addons.limit = IAC.user_settings.related_results_limit;
+        }
+        let data = await JSPLib.danbooru.submitRequest('related_tag', url_addons);
+        cached = {value: data, expires: JSPLib.utility.getExpires(related_tag_expires)};
+        JSPLib.storage.saveData(key, cached);
+    }
+    GetRelatedTags.debuglog("Found:", tag, category, cached.value);
+    return cached.value;
 }
 
 //Usage functions
@@ -1503,6 +1770,28 @@ function InsertUserSelected(data,input,selected) {
     StoreUsageData('insert', term);
 }
 
+function InsertCompletion(input, completion) {
+    // Trim all whitespace (tabs, spaces) except for line returns
+    var before_caret_text = input.value.substring(0, input.selectionStart).replace(/^[ \t]+|[ \t]+$/gm, "");
+    var after_caret_text = input.value.substring(input.selectionStart).replace(/^[ \t]+|[ \t]+$/gm, "");
+    var regexp = new RegExp("(" + Danbooru.Autocomplete.TAG_PREFIXES + ")?\\S+$", "g");
+    let adjust_position = 0;
+    let $input = $(input);
+    let start = 0, end = 0;
+    if ($input.data('insert-autocomplete')) {
+        before_caret_text = before_caret_text.replace(regexp, "$1") + "[[" + completion + "|insert text]]";
+        start = before_caret_text.length - 13;
+        end = before_caret_text.length - 2;
+        setTimeout(()=>{DisableTextAreaAutocomplete($input);}, 100);
+    } else {
+        before_caret_text = before_caret_text.replace(regexp, "$1") + completion + " ";
+        start = end = before_caret_text.length;
+    }
+    input.value = before_caret_text + after_caret_text;
+    input.selectionStart = start;
+    input.selectionEnd = end;
+}
+
 function StaticMetatagSource(term, metatag) {
     let full_term = `${metatag}:${term}`;
     let data = SubmetatagData()
@@ -1593,29 +1882,23 @@ function StoreUsageData(name,key='',save=true) {
 //Non-autocomplete storage
 
 async function RelatedTagsButton(event) {
+    let currenttag = Danbooru.RelatedTag.current_tag().trim().toLowerCase();
     let category = $(event.target).data("category") || "";
-    let currenttag = Danbooru.RelatedTag.current_tag().trim();
-    let keymodifier = GetRelatedKeyModifer(category);
-    let key = (keymodifier + "-" + currenttag).toLowerCase();
-    let max_expiration = MaximumExpirationTime('relatedtag');
-    RelatedTagsButton.debuglog("Checking relatedtag:", currenttag, category);
-    let cached = await JSPLib.storage.checkLocalDB(key, ValidateEntry, max_expiration);
-    if (cached) {
-        RelatedTagsButton.debuglog("Found relatedtag:", currenttag, category);
-        $("#related-tags-container .current-related-tags-columns").html(Timer.RenderTagColumns(cached.value));
+    let query_type = JSPLib.menu.getCheckboxRadioSelected('.iac-program-checkbox');
+    let promise_array = [GetRelatedTags(currenttag, category, query_type[0])];
+    if (IAC.user_settings.related_statistics_enabled) {
+        promise_array.push(GetPostCount(currenttag));
     } else {
-        RelatedTagsButton.debuglog("Querying relatedtag:", currenttag, category);
-        var data = await JSPLib.danbooru.submitRequest('related_tag', {query: currenttag, category: category});
-        if (!data) {
-            return;
-        }
-        //inclusion_constraints doesn't allow for null...yet
-        data.category = category;
-        JSPLib.storage.saveData(key, {value: data, expires: JSPLib.utility.getExpires(MinimumExpirationTime('relatedtag'))});
-        $("#related-tags-container .current-related-tags-columns").html(Timer.RenderTagColumns(data));
+        promise_array.push(Promise.resolve(null));
     }
+    let [related_tags, post_count] = await Promise.all(promise_array);
+    if (!related_tags) {
+        return;
+    }
+    $("#related-tags-container .current-related-tags-columns").html(Timer.RenderTagColumns(related_tags, post_count));
     Danbooru.RelatedTag.update_selected();
     Danbooru.RelatedTag.show();
+    InitializeRelatedTagColumnWidths();
 }
 
 async function FindArtistSession(event) {
@@ -1642,6 +1925,27 @@ async function FindArtistSession(event) {
         }
         $("#source-info").removeClass("loading");
     }
+}
+
+//Event handlers
+
+function RelatedTagsEnter(event) {
+    $(document).on('keydown.iac.scroll', null, 'left right', RelatedTagsScroll);
+}
+
+function RelatedTagsLeave(event) {
+    $(document).off('keydown.iac.scroll');
+}
+
+function RelatedTagsScroll(event) {
+    let $related_tags = $(".related-tags");
+    let current_left = $related_tags.prop("scrollLeft");
+    if (event.originalEvent.key === "ArrowLeft") {
+        current_left -= 40;
+    } else if (event.originalEvent.key === "ArrowRight") {
+        current_left += 40;
+    }
+    $related_tags.prop("scrollLeft", current_left);
 }
 
 ////Setup functions
@@ -1677,16 +1981,24 @@ function RebindRelatedTags() {
     },timer_poll_interval);
 }
 
-function RebindFindArtist() {
+function RebindOpenEditMenu() {
     JSPLib.utility.recheckTimer({
         check: ()=>{return JSPLib.utility.isGlobalFunctionBound("danbooru:show-related-tags");},
         exec: ()=>{
             IAC.cached_data = true;
             $(document).off("danbooru:show-related-tags");
             if (!Danbooru.RTC || !Danbooru.RTC.cached_data) {
-                $(document).one("danbooru:show-related-tags", Danbooru.RelatedTag.initialize_recent_and_favorite_tags);
+                $(document).one("danbooru:show-related-tags.danbooru", Danbooru.RelatedTag.initialize_recent_and_favorite_tags);
             }
-            $(document).one("danbooru:show-related-tags", Timer.FindArtistSession);
+            $(document).one("danbooru:show-related-tags.iac", Timer.FindArtistSession);
+            if (IAC.user_settings.related_query_enabled) {
+                JSPLib.utility.setCSSStyle(related_query_control_css, 'related_query');
+                $(document).one("danbooru:show-related-tags.iac", InitialiazeRelatedQueryControls);
+            }
+            if (IAC.user_settings.expandable_related_section_enabled) {
+                JSPLib.utility.setCSSStyle(expandable_related_section_css, 'expandable_related');
+                $(document).one("danbooru:show-related-tags.iac", InitialiazeRelatedExpandableSection);
+            }
         }
     },timer_poll_interval);
 }
@@ -1721,7 +2033,7 @@ function RebindSingleTag() {
 
 //Initialization functions
 
-function InitializeAutocompleteIndexed(selector,keycode,multiple=false) {
+function InitializeAutocompleteIndexed(selector,keycode,multiple=false,wiki=false) {
     let type = source_key[keycode];
     var $fields = $(selector);
     let autocomplete = AnySourceIndexed(keycode, true);
@@ -1730,7 +2042,7 @@ function InitializeAutocompleteIndexed(selector,keycode,multiple=false) {
         delay: 100,
         source: async function(request, respond) {
             var term;
-            if (multiple) {
+            if (multiple || wiki) {
                 term = Danbooru.Autocomplete.parse_query(request.term, this.element.get(0).selectionStart).term;
                 if (!term) {
                     return respond([]);
@@ -1743,7 +2055,11 @@ function InitializeAutocompleteIndexed(selector,keycode,multiple=false) {
         },
         select: function (event,ui) {
             InsertUserSelected(keycode, this, ui.item);
-            if (multiple) {
+            if (wiki) {
+                InsertCompletion(this, ui.item.value);
+                event.stopImmediatePropagation();
+                return false;
+            } else if (multiple) {
                 if (event.key === "Enter") {
                     event.stopImmediatePropagation();
                 }
@@ -1758,14 +2074,103 @@ function InitializeAutocompleteIndexed(selector,keycode,multiple=false) {
     let alink_func = (source_config[type].render ? source_config[type].render : ($domobj,item)=>{return $domobj.text(item.value);});
     setTimeout(()=>{
         $fields.each((i,field)=>{
-            $(field).data('uiAutocomplete')._renderItem = RenderListItem(alink_func);
+            if (wiki) {
+                $(field).data('uiAutocomplete')._renderItem = Danbooru.Autocomplete.render_item;
+            } else {
+                $(field).data('uiAutocomplete')._renderItem = RenderListItem(alink_func);
+            }
         });
     }, jquery_delay);
     if (!JSPLib.utility.isNamespaceBound(selector, 'keydown', 'Autocomplete.tab')) {
         $fields.on('keydown.Autocomplete.tab', null, "tab", Danbooru.Autocomplete.on_tab);
     }
     $fields.data('autocomplete', type);
-    $fields.data('multiple', multiple);
+    $fields.data('multiple', multiple || wiki);
+}
+
+function InitializeTextAreaAutocomplete() {
+    $("textarea:not([data-autocomplete]), input[type=text]:not([data-autocomplete])").on("keydown.iac", null, "alt+a", (event)=>{
+        let $input = $(event.currentTarget);
+        if (!$input.data('insert-autocomplete')) {
+            EnableTextAreaAutocomplete($input);
+        } else {
+            DisableTextAreaAutocomplete($input);
+        }
+    }).data('insert-autocomplete', false);
+}
+
+function EnableTextAreaAutocomplete($input) {
+    if ($input.closest('.autocomplete-mentions').length > 0) {
+        $input.autocomplete("destroy").off('keydown.Autocomplete.tab');
+    }
+    let input_selector = JSPLib.utility.getHTMLTree($input[0]);
+    InitializeAutocompleteIndexed(input_selector, 'ac', false, true);
+    $input.data('insert-autocomplete', true);
+    $input.data('autocomplete', 'tag-edit');
+    JSPLib.utility.notice("Autocomplete turned on!");
+}
+
+function DisableTextAreaAutocomplete($input) {
+    $input.autocomplete("destroy").off('keydown.Autocomplete.tab');
+    $input.data('insert-autocomplete', false);
+    $input.data('autocomplete', "");
+    JSPLib.utility.notice("Autocomplete turned off!");
+    if ($input.closest('.autocomplete-mentions').length > 0) {
+        Danbooru.Autocomplete.initialize_mention_autocomplete($input);
+    }
+}
+
+function InitialiazeRelatedQueryControls() {
+    $("#tags-container").append(RenderRelatedQueryControls());
+    $("#iac-related-query-type").css('display','inline-flex');
+    $('#iac-related-query-type .iac-program-checkbox').checkboxradio();
+    $("#iac-related-query-type .ui-state-hover").removeClass("ui-state-hover");
+}
+
+function InitialiazeRelatedExpandableSection() {
+    $(".related-tags").before(iac_scroll_wrapper);
+    $("#iac-edit-scroll-wrapper").on('scroll.iac',function(){
+        $(".related-tags").scrollLeft($("#iac-edit-scroll-wrapper").scrollLeft());
+    });
+    $(".related-tags").on('scroll.iac',function(){
+        $("#iac-edit-scroll-wrapper").scrollLeft($(".related-tags").scrollLeft());
+    });
+    let $container = $("#related-tags-container");
+    let observer = new ResizeObserver(()=>{
+        if ($container.hasClass("visible")) {
+            InitializeRelatedTagColumnWidths();
+        }
+    }).observe($container[0]);
+}
+
+function InitializeRelatedTagPopupListener() {
+    $(document).on("danbooru:open-post-edit-dialog.iac", (event)=>{
+        $(".related-tags").on('mouseenter.iac', RelatedTagsEnter);
+        $(".related-tags").on('mouseleave.iac', RelatedTagsLeave);
+    });
+    $(document).on("danbooru:close-post-edit-dialog.iac", (event)=>{
+        $(".related-tags").off('mouseenter.iac mouseleave.iac');
+    });
+}
+
+function InitializeRelatedTagColumnWidths() {
+    let $related_tags = $(".related-tags");
+    $('.tag-column', $related_tags[0]).each((i,column)=>{
+        let $column = $(column);
+        $column.css('width', "");
+        let max_width = Math.max(...$('li', column).map((i,entry)=>{
+            let child_widths = $(entry).children().map((i,child)=>$(child).width()).toArray();
+            return child_widths.reduce((a,b) => a + b, 0);
+        }));
+        $column.width(Math.ceil(max_width / 14) + 'em');
+    });
+    if ($related_tags.prop('scrollWidth') > ($related_tags.outerWidth() + 28)) {
+        $("#iac-edit-scroll-wrapper").width($related_tags.outerWidth());
+        $("#iac-edit-scroll-bar").width($related_tags.prop('scrollWidth') - 14);
+        $("#iac-edit-scroll-wrapper").show();
+    } else {
+        $("#iac-edit-scroll-wrapper").hide();
+    }
 }
 
 //Main execution functions
@@ -1926,6 +2331,7 @@ function DataTypeChange(event) {
 function RenderSettingsMenu() {
     $("#indexed-autocomplete").append(iac_menu);
     $("#iac-general-settings").append(JSPLib.menu.renderDomainSelectors());
+    $("#iac-general-settings").append(JSPLib.menu.renderCheckbox('text_input_autocomplete_enabled'));
     $("#iac-source-settings").append(JSPLib.menu.renderCheckbox('BUR_source_enabled'));
     $("#iac-source-settings").append(JSPLib.menu.renderCheckbox('metatag_source_enabled'));
     $("#iac-usage-settings").append(JSPLib.menu.renderCheckbox('usage_enabled'));
@@ -1943,6 +2349,11 @@ function RenderSettingsMenu() {
     $("#iac-sort-settings").append(JSPLib.menu.renderTextinput('prefix_source_weight', 5));
     $("#iac-sort-settings").append(JSPLib.menu.renderTextinput('alias_source_weight', 5));
     $("#iac-sort-settings").append(JSPLib.menu.renderTextinput('correct_source_weight', 5));
+    $("#iac-related-tag-settings").append(JSPLib.menu.renderTextinput('related_results_limit', 5));
+    $("#iac-related-tag-settings").append(JSPLib.menu.renderCheckbox('related_statistics_enabled'));
+    $("#iac-related-tag-settings").append(JSPLib.menu.renderCheckbox('related_query_enabled'));
+    $("#iac-related-tag-settings").append(JSPLib.menu.renderInputSelectors('related_query_default','radio'));
+    $("#iac-related-tag-settings").append(JSPLib.menu.renderCheckbox('expandable_related_section_enabled'));
     $("#iac-network-settings").append(JSPLib.menu.renderTextinput('recheck_data_interval', 5));
     $("#iac-network-settings").append(JSPLib.menu.renderCheckbox('alternate_tag_source'));
     $("#iac-network-settings").append(JSPLib.menu.renderCheckbox('network_only_mode'));
@@ -2024,7 +2435,7 @@ function Main() {
     Danbooru.Autocomplete.saved_search_source = AnySourceIndexed('ss');
     Danbooru.Autocomplete.static_metatag_source = StaticMetatagSource;
     Danbooru.Autocomplete.insert_completion_old = Danbooru.Autocomplete.insert_completion;
-    Danbooru.Autocomplete.insert_completion = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.insert_completion, InsertUserSelected);
+    Danbooru.Autocomplete.insert_completion = JSPLib.utility.hijackFunction(InsertCompletion, InsertUserSelected);
     Danbooru.Autocomplete.render_item_old = Danbooru.Autocomplete.render_item;
     Danbooru.Autocomplete.render_item = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.render_item, HighlightSelected);
     Danbooru.Autocomplete.initialize_tag_autocomplete_old = Danbooru.Autocomplete.initialize_tag_autocomplete;
@@ -2077,11 +2488,12 @@ function Main() {
     if ($(autocomplete_user_selectors).length) {
         setTimeout(()=>{InitializeAutocompleteIndexed(autocomplete_user_selectors, 'us');}, jquery_delay);
     }
-    /**Non-autocomplete bindings**/
+    /**Edit menu**/
     if ((IAC.controller === "posts" && IAC.action === "show") || (IAC.controller === "uploads" && IAC.action === "new")) {
+        /**Non-autocomplete bindings**/
         RebindRelatedTags();
         if (IAC.controller === "posts") {
-            RebindFindArtist();
+            RebindOpenEditMenu();
         } else if (IAC.controller === "uploads") {
             //Is source column empty?
             if (/^\s+$/.test($(".source-related-tags-columns").html())) {
@@ -2090,7 +2502,25 @@ function Main() {
             } else {
                 Timer.SaveArtistData();
             }
+            if (IAC.user_settings.related_query_enabled) {
+                JSPLib.utility.setCSSStyle(related_query_control_css, 'related_query');
+                InitialiazeRelatedQueryControls();
+            }
+            if (IAC.user_settings.expandable_related_section_enabled) {
+                JSPLib.utility.setCSSStyle(expandable_related_section_css, 'expandable_related');
+                InitialiazeRelatedExpandableSection();
+            }
         }
+        InitializeRelatedTagPopupListener();
+        Danbooru.RelatedTag.show = JSPLib.utility.hijackFunction(Danbooru.RelatedTag.show, ()=>{
+            setTimeout(()=>{InitializeRelatedTagColumnWidths();}, 100);
+        });
+        Danbooru.RelatedTag.show = JSPLib.utility.hijackFunction(Danbooru.RelatedTag.show, ()=>{
+            $("#iac-edit-scroll-wrapper").hide();
+        });
+    }
+    if (IAC.user_settings.text_input_autocomplete_enabled) {
+        InitializeTextAreaAutocomplete();
     }
     /**Other setup**/
     JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
@@ -2107,8 +2537,8 @@ JSPLib.debug.addFunctionTimers(Timer,false,[ValidateUsageData,SaveArtistData,Ren
 JSPLib.debug.addFunctionTimers(Timer,true,[RelatedTagsButton,FindArtistSession]);
 
 JSPLib.debug.addFunctionLogs([
-    Main,BroadcastIAC,NetworkSource,FindArtistSession,RelatedTagsButton,PruneUsageData,CorrectUsageData,InsertUserSelected,
-    SaveArtistData,GetArtistData,FixExpirationCallback,ValidateEntry
+    Main, BroadcastIAC, NetworkSource, FindArtistSession, PruneUsageData, CorrectUsageData, InsertUserSelected,
+    SaveArtistData, GetArtistData, FixExpirationCallback, ValidateEntry, GetPostCount, GetRelatedTags
 ]);
 
 /****Initialization****/
