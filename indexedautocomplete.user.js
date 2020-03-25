@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      27.0
+// @version      27.1
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -358,7 +358,7 @@ const expandable_related_section_css = `
 #iac-edit-scroll-wrapper {
     height: 20px;
     overflow-x: scroll;
-    overflow-y:h idden;
+    overflow-y: hidden;
     display: none;
 }
 #iac-edit-scroll-bar {
@@ -370,9 +370,14 @@ const expandable_related_section_css = `
 #edit-dialog .related-tags,
 #c-posts #a-show .related-tags,
 #c-uploads #a-new .related-tags {
-    overflow-x: scroll;
+    overflow-x: hidden;
     flex-wrap: nowrap;
     max-width: calc(100% - 2em);
+}
+#edit-dialog .related-tags.scrollable,
+#c-posts #a-show .related-tags.scrollable,
+#c-uploads #a-new .related-tags.scrollable {
+    overflow-x: scroll;
 }
 #edit-dialog .related-tags .tag-column,
 #c-posts #a-show .related-tags .tag-column,
@@ -1898,7 +1903,6 @@ async function RelatedTagsButton(event) {
     $("#related-tags-container .current-related-tags-columns").html(Timer.RenderTagColumns(related_tags, post_count));
     Danbooru.RelatedTag.update_selected();
     Danbooru.RelatedTag.show();
-    InitializeRelatedTagColumnWidths();
 }
 
 async function FindArtistSession(event) {
@@ -2138,7 +2142,7 @@ function InitialiazeRelatedExpandableSection() {
     let $container = $("#related-tags-container");
     let observer = new ResizeObserver(()=>{
         if ($container.hasClass("visible")) {
-            InitializeRelatedTagColumnWidths();
+            QueueRelatedTagColumnWidths();
         }
     }).observe($container[0]);
 }
@@ -2154,23 +2158,43 @@ function InitializeRelatedTagPopupListener() {
 }
 
 function InitializeRelatedTagColumnWidths() {
+    const em_size = 14;
+    const max_column_em = 18;
+    const min_column_em = 10;
+    const wide_column_em = 45;
+    const getChildWidth = (i,child) => (Math.ceil($(child).width() / em_size) * em_size);
+    const getSum = (a,b) => (a + b);
     let $related_tags = $(".related-tags");
     $('.tag-column', $related_tags[0]).each((i,column)=>{
         let $column = $(column);
         $column.css('width', "");
-        let max_width = Math.max(...$('li', column).map((i,entry)=>{
-            let child_widths = $(entry).children().map((i,child)=>$(child).width()).toArray();
-            return child_widths.reduce((a,b) => a + b, 0);
+        let max_child_width = Math.max(...$('li', column).map((i,entry)=>{
+            let child_widths = $(entry).children().map(getChildWidth).toArray();
+            return child_widths.reduce(getSum, 0);
         }));
-        $column.width(Math.ceil(max_width / 14) + 'em');
+        let max_column_width = ($column.hasClass('wide-column') ? wide_column_em * em_size : max_column_em * em_size);
+        let column_width = Math.max(Math.min(max_child_width, max_column_width), min_column_em * em_size);
+        $column.width(Math.ceil(column_width / em_size) + 'em');
     });
-    if ($related_tags.prop('scrollWidth') > ($related_tags.outerWidth() + 28)) {
+    if ($related_tags.prop('scrollWidth') > ($related_tags.outerWidth() + (2 * em_size))) {
         $("#iac-edit-scroll-wrapper").width($related_tags.outerWidth());
-        $("#iac-edit-scroll-bar").width($related_tags.prop('scrollWidth') - 14);
+        $("#iac-edit-scroll-bar").width($related_tags.prop('scrollWidth') - em_size);
         $("#iac-edit-scroll-wrapper").show();
+        $related_tags.addClass('scrollable');
     } else {
         $("#iac-edit-scroll-wrapper").hide();
+        $related_tags.removeClass('scrollable');
     }
+}
+
+function QueueRelatedTagColumnWidths() {
+    if (Number.isInteger(QueueRelatedTagColumnWidths.timer)) {
+        clearTimeout(QueueRelatedTagColumnWidths.timer);
+    }
+    QueueRelatedTagColumnWidths.timer = setTimeout(()=>{
+        InitializeRelatedTagColumnWidths();
+        QueueRelatedTagColumnWidths.timer = null;
+    }, 100);
 }
 
 //Main execution functions
@@ -2513,9 +2537,9 @@ function Main() {
         }
         InitializeRelatedTagPopupListener();
         Danbooru.RelatedTag.show = JSPLib.utility.hijackFunction(Danbooru.RelatedTag.show, ()=>{
-            setTimeout(()=>{InitializeRelatedTagColumnWidths();}, 100);
+            QueueRelatedTagColumnWidths();
         });
-        Danbooru.RelatedTag.show = JSPLib.utility.hijackFunction(Danbooru.RelatedTag.show, ()=>{
+        Danbooru.RelatedTag.hide = JSPLib.utility.hijackFunction(Danbooru.RelatedTag.hide, ()=>{
             $("#iac-edit-scroll-wrapper").hide();
         });
     }
