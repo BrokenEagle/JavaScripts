@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DisplayPostInfo
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.0
+// @version      10.1
 // @description  Display views, uploader, and other info to the user.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -543,7 +543,7 @@ async function GetUserListData(userid_list) {
 
 async function DisplayPostViews() {
     var post_views;
-    let post_id = $('#image-container').data('id');
+    let post_id = $('.image-container').data('id');
     let views_key = `pv-${post_id}`;
     DisplayPostViews.debuglog("Checking:", post_id);
     let view_data = await JSPLib.storage.checkLocalDB(views_key, ValidateEntry, max_views_expiration);
@@ -571,7 +571,7 @@ async function DisplayPostViews() {
 }
 
 async function DisplayPostUploader() {
-    let uploader_id = $("#image-container").data('uploader-id');
+    let uploader_id = $(".image-container").data('uploader-id');
     if (!(uploader_id in GetUserData.promises)) {
         GetUserData.promises[uploader_id] = GetUserData(uploader_id);
     }
@@ -583,7 +583,7 @@ async function DisplayPostUploader() {
 
 async function DisplayTopTagger() {
     var name_html, top_tagger_id;
-    let $image = $("#image-container");
+    let $image = $(".image-container");
     let uploader_id = $image.data('uploader-id');
     let post_id = $image.data('id');
     let tag_string = $image.data('tags')
@@ -675,8 +675,8 @@ function ProcessTagStatistics() {
         let tag = column_tags[i];
         let tag_percentage = Math.ceil(100 * (column_info[tag] / total_posts)) || 0;
         let tag_percentage_string = JSPLib.utility.padNumber(tag_percentage, 2) + '%';
-        let spacing_style = (tag_percentage === 100 ? `style="letter-spacing:-2px"` : "");
-        $(entry).before(` <span class="dpi-tag-statistic" ${spacing_style}>${tag_percentage_string}</span> `);
+        let spacing_tyle = (tag_percentage === 100 ? `style="letter-spacing:-2px"` : "");
+        $(entry).before(` <span class="dpi-tag-statistic" ${spacing_tyle}>${tag_percentage_string}</span> `);
     });
 }
 

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      18.11
+// @version      18.12
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1689,7 +1689,7 @@ function InitializeOpenPoolLinks(table) {
 
 //#C-POSTS #A-SHOW
 function InitializePostShowMenu() {
-    let postid = $('#image-container').data('id');
+    let postid = $('.image-container').data('id');
     let $menu_obj = $.parseHTML(RenderMultilinkMenu(postid, ALL_POST_EVENTS));
     ALL_POST_EVENTS.forEach((type)=>{
         let linkhtml = RenderSubscribeMultiLinks(TYPEDICT[type].display, [type], postid);
@@ -2453,7 +2453,7 @@ function Main() {
     let $main_section = $('#c-' + Danbooru.EL.controller);
     if (EL.controller === 'posts' && EL.action === 'show') {
         InitializePostShowMenu();
-        if ($(`#image-container[data-uploader-id="${EL.userid}"]`).length) {
+        if ($(`.image-container[data-uploader-id="${EL.userid}"]`).length) {
             SubscribeMultiLinkCallback();
         }
     } else if (EL.controller === 'comments' && EL.action === 'index') {

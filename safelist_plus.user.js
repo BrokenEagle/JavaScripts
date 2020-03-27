@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SafelistPlus
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.1
+// @version      4.2
 // @description  Alternate Danbooru blacklist handler.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1314,7 +1314,7 @@ function RemovePostStyles() {
 
 function SafelistPosts() {
     if (!('posts' in SafelistPosts)) {
-        SafelistPosts.posts = $(".post-preview, #image-container, #c-comments .post");
+        SafelistPosts.posts = $(".post-preview, .image-container, #c-comments .post");
     }
     return SafelistPosts.posts;
 }
@@ -1810,7 +1810,7 @@ function Main() {
     }
     Object.assign(SL, {
         blacklist_box: $("#blacklist-box"),
-        has_video: Boolean($("#image-container video").length),
+        has_video: Boolean($(".image-container video").length),
         is_shown: JSPLib.storage.checkStorageData('sl-show-menu', ValidateProgramData, localStorage, true),
     });
     LoadLevelData();

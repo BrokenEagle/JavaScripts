@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.4
+// @version      28.5
 // @description  Validates tag add/remove inputs on a post edit or upload, plus several other post validations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -957,7 +957,7 @@ function Main() {
         JSPLib.storage.setStorageData('vti-was-upload',false,sessionStorage);
     }
     if (VTI.controller === 'posts' && VTI.action === 'show') {
-        VTI.preedittags = $("#image-container").data('tags').split(' ');
+        VTI.preedittags = $(".image-container").data('tags').split(' ');
         Main.debuglog("Preedit tags:",VTI.preedittags);
         if (VTI.user_settings.implication_check_enabled) {
             VTI.implications_promise = Timer.QueryTagImplications(VTI.preedittags);
