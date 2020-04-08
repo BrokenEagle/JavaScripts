@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      18.12
+// @version      18.13
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -305,6 +305,11 @@ const PROGRAM_CSS = `
     color: var(--muted-text-color);
     font-weight: bold;
     margin-left: 1em;
+}`;
+
+const POST_CSS = `
+#el-event-notice #el-post-section #el-post-table .col-expand {
+    width: unset;
 }`;
 
 const COMMENT_CSS = `
@@ -798,6 +803,7 @@ const TYPEDICT = {
         limit: 2,
         filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val, typelist, 'updater_id', 'post_id');})},
         insert: InsertPosts,
+        process: ()=>{JSPLib.utility.setCSSStyle(POST_CSS, 'post');},
         plural: 'edits',
         display: "Edits",
         useritem: false,
