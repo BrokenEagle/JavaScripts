@@ -5256,7 +5256,7 @@ function ProcessTweetImage(obj,image_url,unprocessed_tweets) {
 }
 
 function ProcessTweetImages() {
-    let $unprocessed_images = $('.ntisas-tweet-media > div:not(.ntisas-tweet-quote) div:not([data-image-url]) > img:not(.ntisas-unhandled-image)');
+    let $unprocessed_images = $('.ntisas-tweet-media > div > div:not(.ntisas-tweet-quote) div:not([data-image-url]) > img:not(.ntisas-unhandled-image)');
     if ($unprocessed_images.length) {
         ProcessTweetImages.debuglog("Images found:", $unprocessed_images.length);
     }
