@@ -1565,9 +1565,9 @@ var TWITTER_ACCOUNT = String.raw`[\w-]+`;
 var TWITTER_ID = String.raw`\d+`;
 var QUERY_END = String.raw`(?:\?|$)`;
 
-const TWEET_REGEX = XRegExp.tag()`^https://twitter\.com/[\w-]+/status/(\d+)$`;
-const TWEET_URL_REGEX = XRegExp.tag()`^https://twitter\.com/[\w-]+/status/\d+`;
-const SOURCE_TWITTER_REGEX = XRegExp.tag()`^source:https://twitter\.com/[\w-]+/status/(\d+)$`;
+const TWEET_REGEX = XRegExp.tag('g')`^https://twitter\.com/[\w-]+/status/(\d+)$`;
+const TWEET_URL_REGEX = XRegExp.tag('g')`^https://twitter\.com/[\w-]+/status/\d+`;
+const SOURCE_TWITTER_REGEX = XRegExp.tag('g')`^source:https://twitter\.com/[\w-]+/status/(\d+)$`;
 
 const HANDLED_IMAGES = [{
     regex: XRegExp.tag()`^https://pbs\.twimg\.com/(media|tweet_video_thumb)/([^.?]+)`,
