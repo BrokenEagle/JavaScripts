@@ -4858,7 +4858,7 @@ function MarkupMediaType(tweet) {
             }
         }, TIMER_POLL_INTERVAL);
     } else {
-        let media_children = $('.ntisas-tweet-media', tweet).children();
+        let media_children = $('.ntisas-tweet-media', tweet).children().children();
         media_children.each((i,entry)=>{
             let $entry = $(entry);
             if ($entry.children().length === 0) {
@@ -4944,7 +4944,7 @@ function MarkupStreamTweet(tweet) {
         }
     } else if (tweet_menu_index === (1 + reply_line_count)) {
         let element = sub_body.children[0 + reply_line_count];
-        has_media = element.children[0].children[0].tagName.toUpperCase() !== 'SPAN';
+        has_media = !element.children[0].children[0] || element.children[0].children[0].tagName.toUpperCase() !== 'SPAN';
         let element_class = (has_media ? 'ntisas-tweet-media' : 'ntisas-tweet-text');
         $(element).addClass(element_class);
     }
@@ -4983,7 +4983,9 @@ function MarkupMainTweet(tweet) {
     }
     let reply_line_count = 0;
     let child2 = main_body.children[2];
-    if ( child2.children[0].tagName.toUpperCase() !== 'SPAN'
+    if (child2.children[0]
+      && child2.children[0].tagName.toUpperCase() !== 'SPAN'
+      && child2.children[0].children[0]
       && child2.children[0].children[0].tagName.toUpperCase() !== 'SPAN'
       && child2.innerText.match(/^Replying to/)) {
         $(child2).addClass('ntisas-reply-line');
@@ -5011,7 +5013,7 @@ function MarkupMainTweet(tweet) {
         $(tweet_image).addClass('ntisas-tweet-media');
         has_media = true;
     } else if (remaining_lines === 1) {
-        let element = sub_body.children[2 + reply_line_count];
+        let element = sub_body.children[reply_line_count];
         has_media = element.children[0].tagName.toUpperCase() !== 'SPAN' && element.children[0].children[0].tagName.toUpperCase() !== 'SPAN';
         let element_class = (has_media ? 'ntisas-tweet-media' : 'ntisas-tweet-text');
         $(element).addClass(element_class);
