@@ -1424,7 +1424,12 @@ function ExpirationTime(type,count) {
 
 function RenderTaglist(taglist,columnname,tags_overlap,total_posts) {
     let html = "";
-    let display_percentage = IAC.user_settings.related_statistics_enabled && JSPLib.validate.isHash(tags_overlap) && Number.isInteger(total_posts);
+    let display_percentage = false;
+    if (IAC.user_settings.related_statistics_enabled && JSPLib.validate.isHash(tags_overlap) && Number.isInteger(total_posts)) {
+        display_percentage = true;
+        let max_posts = Math.min(total_posts, 1000);
+        var sample_size = Math.max(...Object.values(tags_overlap), max_posts);
+    }
     taglist.forEach((tagdata)=>{
         let tag = tagdata[0];
         let category = tagdata[1];
@@ -1432,10 +1437,9 @@ function RenderTaglist(taglist,columnname,tags_overlap,total_posts) {
         let search_link = JSPLib.danbooru.postSearchLink(tag, display_name, 'class="search-tag"');
         let prefix = "";
         if (display_percentage && Number.isInteger(tags_overlap[tag])) {
-            let sample_size = Math.min(total_posts, 1000);
             let tag_percentage = Math.ceil(100 * (tags_overlap[tag] / sample_size)) || 0;
             let tag_percentage_string = JSPLib.utility.padNumber(tag_percentage, 2) + '%';
-            let spacing_style = (tag_percentage === 100 ? `style="letter-spacing:-2px"` : "");
+            let spacing_style = (tag_percentage >= 100 ? `style="letter-spacing:-2px"` : "");
             prefix = `<span class="iac-tag-statistic" ${spacing_style}>${tag_percentage_string}</span> `;
         }
         html += `<li class="tag-type-${category}">${prefix}${search_link}</li>\n`;
