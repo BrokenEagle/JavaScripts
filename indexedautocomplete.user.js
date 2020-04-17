@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      27.1
+// @version      27.2
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -424,8 +424,18 @@ const forum_css = `
 }
 .ui-menu-item .forum-topic-category-2 {
     color: red;
+}`;
+
+const forum_css_dark = `
+body[data-current-user-theme=dark] .ui-menu-item .forum-topic-category-0 {
+    color: var(--blue-1);
 }
-`;
+body[data-current-user-theme=dark] .ui-menu-item .forum-topic-category-1 {
+    color: var(--green-1);
+}
+body[data-current-user-theme=dark] .ui-menu-item .forum-topic-category-2 {
+    color: var(--red-1);
+}`;
 
 //HTML Constants
 
@@ -2416,6 +2426,7 @@ function Main() {
         controller: document.body.dataset.controller,
         action: document.body.dataset.action,
         userid: Danbooru.CurrentUser.data('id'),
+        theme: Danbooru.CurrentUser.data('theme'),
         FindArtistSession: FindArtistSession,
         InitializeAutocompleteIndexed: InitializeAutocompleteIndexed,
         settings_config: SETTINGS_CONFIG,
@@ -2492,7 +2503,11 @@ function Main() {
         RebindAnyAutocomplete('[data-autocomplete="saved-search-label"]', 'ss');
     }
     if (IAC.controller === "forum-topics" || IAC.controller === "forum-posts") {
-        JSPLib.utility.setCSSStyle(forum_css, 'forum');
+        if (IAC.theme === 'light') {
+            JSPLib.utility.setCSSStyle(forum_css, 'forum');
+        } else if (IAC.theme === 'dark') {
+            JSPLib.utility.setCSSStyle(forum_css_dark, 'forum');
+        }
         $('#subnav-menu .search_body_matches').closest("li").after(forum_topic_search);
         setTimeout(()=>{InitializeAutocompleteIndexed("#quick_search_title_matches", 'ft');}, jquery_delay);
         if (IAC.action === "search") {
