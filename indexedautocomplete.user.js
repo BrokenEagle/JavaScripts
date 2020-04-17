@@ -2176,14 +2176,23 @@ function InitializeRelatedTagColumnWidths() {
     const max_column_em = 18;
     const min_column_em = 10;
     const wide_column_em = 45;
-    const getChildWidth = (i,child) => (Math.ceil($(child).width() / em_size) * em_size);
+    const range = document.createRange();
+    const getChildWidth = (i,child) => {
+        if (child.nodeType === 3) {
+            range.selectNodeContents(child);
+            const rects = range.getClientRects();
+            return (rects.length > 0 ? rects[0].width : 0);
+        } else {
+            return $(child).outerWidth();
+        }
+    };
     const getSum = (a,b) => (a + b);
     let $related_tags = $(".related-tags");
     $('.tag-column', $related_tags[0]).each((i,column)=>{
         let $column = $(column);
         $column.css('width', "");
         let max_child_width = Math.max(...$('li', column).map((i,entry)=>{
-            let child_widths = $(entry).children().map(getChildWidth).toArray();
+            let child_widths = $(entry).contents().map(getChildWidth).toArray();
             return child_widths.reduce(getSum, 0);
         }));
         let max_column_width = ($column.hasClass('wide-column') ? wide_column_em * em_size : max_column_em * em_size);
