@@ -727,6 +727,15 @@ const PROGRAM_CSS = `
 }
 .ntisas-tweet-status > .ntisas-status-marker {
     margin-left: 3.75em;
+    display: flex;
+    padding-top: 2px;
+}
+.ntisas-retweet-marker {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+    white-space: nowrap;
 }
 .ntisas-tweet .r-n6v787 {
     font-size: 10px;
@@ -3424,6 +3433,7 @@ function InitializeStatusBar(tweet_status,is_main_tweet) {
         if (tweet_status.children[0] && tweet_status.children[0].children[0] && tweet_status.children[0].children[0].children[0]) {
             $container = $('> div > div > div > div:last-of-type', tweet_status);
             $("> div:last-of-type", $container[0]).css('flex-grow', 'unset').css('flex-basis', 'unset');
+            $("[role=link] > span > span", $container[0]).addClass('ntisas-retweet-marker');
         } else if (!is_main_tweet) {
             direction = 'prepend';
         }
