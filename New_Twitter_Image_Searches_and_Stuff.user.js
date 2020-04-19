@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.3
+// @version      6.4
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -3421,7 +3421,7 @@ function InitializeStatusBar(tweet_status,is_main_tweet) {
     var $container;
     var direction = 'append';
     if (tweet_status.childElementCount > 0) {
-        if (tweet_status.children[0] && tweet_status.children[0].children[0]) {
+        if (tweet_status.children[0] && tweet_status.children[0].children[0] && tweet_status.children[0].children[0].children[0]) {
             $container = $('> div > div > div > div:last-of-type', tweet_status);
             $("> div:last-of-type", $container[0]).css('flex-grow', 'unset').css('flex-basis', 'unset');
         } else if (!is_main_tweet) {
