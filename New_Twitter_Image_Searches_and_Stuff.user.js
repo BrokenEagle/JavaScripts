@@ -5222,7 +5222,7 @@ function PageNavigation(pagetype) {
 }
 
 function ProcessPhotoPopup() {
-    let $photo_container = $('#react-root > div > div > div:nth-last-of-type(2)');
+    let $photo_container = $('#layers');
     if ($photo_container.length) {
         let $photo_menu = $('[role=group]:not(.ntisas-photo-menu)', $photo_container[0]);
         if ($photo_menu.length) {
