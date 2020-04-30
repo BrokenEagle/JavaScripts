@@ -1430,7 +1430,7 @@ async function CheckNetworkLibrary() {
 
     if (typeof GM.xmlHttpRequest !== 'undefined') {
         console.log("Checking getImage");
-        let url1 = 'https://raikou4.donmai.us/preview/d3/4e/d34e4cf0a437a5d65f8e82b7bcd02606.jpg';
+        let url1 = 'https://cdn.donmai.us/preview/d3/4e/d34e4cf0a437a5d65f8e82b7bcd02606.jpg';
         let size1 = 7130;
         let type1 = "image/jpeg";
         let resp1 = await JSPLib.network.getImage(url1);
@@ -1440,7 +1440,7 @@ async function CheckNetworkLibrary() {
         console.log(`Image with URL ${url1} should be blob with size ${size1} and type ${type1} ${bracket(repr(boolarray1))}`,resp1,RecordResult(boolarray1.every(val => val)));
 
         console.log("Checking getImageSize");
-        url1 = 'https://raikou4.donmai.us/preview/d3/4e/d34e4cf0a437a5d65f8e82b7bcd02606.jpg';
+        url1 = 'https://cdn.donmai.us/preview/d3/4e/d34e4cf0a437a5d65f8e82b7bcd02606.jpg';
         size1 = 7130;
         resp1 = await JSPLib.network.getImageSize(url1);
         console.log(`Image with URL ${url1} should get the image size of ${size1} ${bracket(resp1)}`,resp1,RecordResult(resp1 === size1));
