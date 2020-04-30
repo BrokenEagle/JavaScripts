@@ -1614,6 +1614,10 @@ async function CheckDanbooruLibrary() {
     console.log(`with type ${type1} and addons ${repr(addons1)}, a single post should have been returned ${bracket(result1)}`,RecordResult(Array.isArray(result1) && result1.length === 1));
     console.log(`with nonexistent type ${type2}, null should be returned [${repr(result2)}]`,RecordResult(result2 === null));
 
+    console.log("Checking submitRequest (long)");
+    result1 = await JSPLib.danbooru.submitRequest(type1,addons1,null,true);
+    console.log(`with type ${type1} and addons ${repr(addons1)}, a single post should have been returned ${bracket(result1)}`,RecordResult(Array.isArray(result1) && result1.length === 1));
+
     console.log("Checking getAllItems");
     type1 = 'users';
     addons1 = {search: {level: 50}, only: 'id,level'}; //Search for admins
@@ -1621,6 +1625,16 @@ async function CheckDanbooruLibrary() {
     let limit1 = 1; //One at a time
     let reverse1 = true; //Starting from lowest to highest ID
     result1 = await JSPLib.danbooru.getAllItems(type1, limit1, 2, {addons: addons1, page: page1, reverse: true});
+    result2 = JSPLib.utility.getObjectAttributes(result1,'id');
+    result3 = result2.sort((a,b) => a-b);
+    result4 = JSPLib.utility.getObjectAttributes(result1,'level').reduce((total,entry)=>{return total && entry === 50;},true);
+    console.log(`with type ${type1} and addons ${repr(addons1)}, two users should have been returned ${bracket(repr(result1))}`,RecordResult(Array.isArray(result1) && result1.length === 2));
+    console.log(`should have also not returned the first user ${bracket(repr(result2))}`,RecordResult(Array.isArray(result2) && !result2.includes(1)));
+    console.log(`should have also returned users in reverse order ${repr(result3)} ${bracket(repr(result2))}`,RecordResult(repr(result2) === repr(result3)));
+    console.log("should have also returned only admins",RecordResult(result4));
+
+    console.log("Checking getAllItems (long)");
+    result1 = await JSPLib.danbooru.getAllItems(type1, limit1, 2, {addons: addons1, page: page1, reverse: true, long: true});
     result2 = JSPLib.utility.getObjectAttributes(result1,'id');
     result3 = result2.sort((a,b) => a-b);
     result4 = JSPLib.utility.getObjectAttributes(result1,'level').reduce((total,entry)=>{return total && entry === 50;},true);
