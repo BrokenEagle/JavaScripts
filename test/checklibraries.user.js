@@ -1073,10 +1073,10 @@ function CheckValidateLibrary() {
     let testdata3 = ["one","two","three","four"];
     result1 = JSPLib.validate.validateArrayValues('test',testdata1,JSPLib.validate.basic_integer_validator);
     result2 = JSPLib.validate.validateArrayValues('test',testdata2,JSPLib.validate.basic_ID_validator);
-    result2 = JSPLib.validate.validateArrayValues('test',testdata3,JSPLib.validate.basic_stringonly_validator);
+    result3 = JSPLib.validate.validateArrayValues('test',testdata3,JSPLib.validate.basic_stringonly_validator);
     console.log(`Object ${repr(testdata1)} should be all integers`,RecordResult(result1));
     console.log(`Object ${repr(testdata2)} should be all IDs`,RecordResult(result2));
-    console.log(`Object ${repr(testdata3)} should be all strings`,RecordResult(result2));
+    console.log(`Object ${repr(testdata3)} should be all strings`,RecordResult(result3));
 
     console.log("Checking correctArrayValues");
     testdata1 = [-1,-2,3,4];
@@ -1086,6 +1086,17 @@ function CheckValidateLibrary() {
     JSPLib.utility.concat(result1,result2).forEach((message)=>{console.log(message);});
     console.log(`Object ${repr(testdata1)} should have two corrections`,RecordResult(result1.length === 2));
     console.log(`Object ${repr(testdata2)} should have no corrections`,RecordResult(result2.length === 0));
+
+    console.log("Checking validateHashValues");
+    testdata1 = {a: -1, b: -2, c: 3, d: 4};
+    testdata2 = {a: 1, b: 2, c: 3, d: 4};
+    testdata3 = {a: "one", b: "two", c: "three", d: "four"};
+    result1 = JSPLib.validate.validateHashValues('test',testdata1,JSPLib.validate.basic_integer_validator);
+    result2 = JSPLib.validate.validateHashValues('test',testdata2,JSPLib.validate.basic_ID_validator);
+    result3 = JSPLib.validate.validateHashValues('test',testdata3,JSPLib.validate.basic_stringonly_validator);
+    console.log(`Object ${repr(testdata1)} should be all integers`,RecordResult(result1));
+    console.log(`Object ${repr(testdata2)} should be all IDs`,RecordResult(result2));
+    console.log(`Object ${repr(testdata3)} should be all strings`,RecordResult(result3));
 
     console.log("Checking isHash");
     testdata1 = [];
