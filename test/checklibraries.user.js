@@ -1162,8 +1162,12 @@ async function CheckStorageLibrary() {
     JSPLib.storage.setStorageData('local-value',data1,localStorage);
     let result1 = sessionStorage.getItem('session-value');
     let result2 = localStorage.getItem('local-value');
+    let memorydata1 = JSPLib.storage.memory_storage.sessionStorage['session-value'];
+    let memorydata2 = JSPLib.storage.memory_storage.localStorage['local-value'];
     console.log(`session-value stored in sessionStorage as ${repr(result1)} should be equal to the stringified data ${repr(data1)}`,RecordResult(result1 === data2));
+    console.log(`session-value stored in memory storage as ${repr(memorydata1)} should be equal to the data ${bracket(repr(data1))}`,RecordResult(ArrayEqual(memorydata1, data1)));
     console.log(`local-value stored in localStorage as ${repr(result1)} should be equal to the stringified data ${repr(data1)}`,RecordResult(result2 === data2));
+    console.log(`local-value stored in memory storage as ${repr(memorydata2)} should be equal to the data ${bracket(repr(data1))}`,RecordResult(ArrayEqual(memorydata2, data1)));
 
     console.log("Checking getStorageData");
     data1 = `[check this]`;
@@ -1181,6 +1185,7 @@ async function CheckStorageLibrary() {
     let validator1 = function (key,cached) { return true;};
     let validator2 = function (key,cached) { return false;};
     result1 = JSPLib.storage.checkStorageData('good-value',validator1,sessionStorage);
+    delete JSPLib.storage.memory_storage.sessionStorage['good-value'];
     result2 = JSPLib.storage.checkStorageData('good-value',validator2,sessionStorage);
     console.log(`good-value with data ${repr(data2)} with good validate should return value ${bracket(repr(result1))}]`,RecordResult(result1 && result1[0] === "check this"));
     console.log(`good-value with data ${repr(data2)} with bad validate should return null ${bracket(repr(result2))}]`,RecordResult(result2 === null));
@@ -1189,12 +1194,13 @@ async function CheckStorageLibrary() {
     JSPLib.debug.level = JSPLib.debug.WARNING;
     let testvalue = "test".repeat(1000);
     JSPLib.storage.setStorageData('testremove',{expires: 1, value: testvalue},sessionStorage);
+    delete JSPLib.storage.memory_storage.sessionStorage.testremove;
     JSPLib.storage.setStorageData('teststay',{expires: 0, value: testvalue},sessionStorage);
     JSPLib.storage.pruneStorageData(sessionStorage);
     result1 = JSPLib.storage.getStorageData('testremove',sessionStorage);
     result2 = JSPLib.storage.getStorageData('teststay',sessionStorage);
     console.log(`testremove should be pruned and return null with getStorageData ${bracket(repr(result1))}`,RecordResult(result1 === null));
-    console.log(`teststay shouldn't be pruned and return value with getStorageData ${bracket(repr(result2))}`,RecordResult(result2 && result2.value && result2.value === testvalue));
+    console.log(`teststay shouldn't be pruned and return value with getStorageData ${bracket(repr(result2))}`,RecordResult(Boolean(result2 && result2.value && result2.value === testvalue)));
 
     console.log("Checking storage quota exceeded");
     let testsize1 = JSON.stringify(sessionStorage).length;
@@ -1207,7 +1213,7 @@ async function CheckStorageLibrary() {
     JSPLib.debug.level = JSPLib.debug.VERBOSE;
 
     console.log("Checking hasDataExpired");
-    let max_expiration1 = 10000;
+    let max_expiration1 = 100000;
     let data3 = {expires: Date.now() - max_expiration1, value: data2};
     let data4 = {expires: Date.now() + max_expiration1, value: data2};
     result1 = JSPLib.storage.hasDataExpired("result1",undefined);
@@ -1269,6 +1275,55 @@ async function CheckStorageLibrary() {
         let [found1,missing1] = await JSPLib.storage.batchStorageCheck(keyarray1,validator1,max_expiration1);
         console.log(`Batch check of ${repr(keyarray1)} should return ${repr(expected1)} in missing array ${bracket(repr(missing1))}`,RecordResult(ArrayEqual(missing1,expected1)));
         console.log(`Batch check of ${repr(keyarray1)} should return ${repr(expected2)} in found array ${bracket(repr(expected2))}`,RecordResult(ArrayEqual(found1,expected2)));
+
+        console.log("Checking batchSaveData");
+        let value1 = {expires: 0, value: 1};
+        let value2 = {expires: 0, value: true};
+        let batchdata1 = {value1: value1, value2: value2};
+        await JSPLib.storage.batchSaveData(batchdata1);
+        result1 = JSPLib.storage.getStorageData('value1',sessionStorage);
+        result2 = JSPLib.storage.getStorageData('value2',sessionStorage);
+        result3 = await JSPLib.storage.danboorustorage.getItem('value1');
+        result4 = await JSPLib.storage.danboorustorage.getItem('value2');
+        console.log(`value1 with data ${repr(value1)} should return value (sessionStorage) ${bracket(repr(result1))}`,RecordResult(typeof result1 === "object" && result1.value === 1));
+        console.log(`value2 with data ${repr(value2)} should return value (sessionStorage) ${bracket(repr(result2))}`,RecordResult(typeof result2 === "object" && result2.value === true));
+        console.log(`value1 with data ${repr(value1)} should return value (indexedDB) ${bracket(repr(result3))}`,RecordResult(typeof result3 === "object" && result3.value === 1));
+        console.log(`value2 with data ${repr(value2)} should return value (indexedDB) ${bracket(repr(result4))}`,RecordResult(typeof result3 === "object" && result4.value === true));
+
+        console.log("Checking batchRetrieveData");
+        let keylist1 = ['value1', 'value2', 'value3'];
+        let keylist2 = ['value1', 'value2'];
+        keylist1.forEach((key)=>{
+            sessionStorage.removeItem(key);
+            delete JSPLib.storage.memory_storage.sessionStorage[key];
+        });
+        result1 = await JSPLib.storage.batchRetrieveData(keylist1);
+        result2 = Object.keys(result1);
+        console.log(`Batch retrieval of ${repr(keylist1)} should return the keys ${repr(keylist2)} ${bracket(repr(result2))}`,RecordResult(ArrayEqual(keylist2,result2)));
+        console.log(`value1 with data ${repr(value1)} should return value ${bracket(repr(result1.value1))}`,RecordResult(typeof result1.value1 === "object" && result1.value1.value === 1));
+        console.log(`value2 with data ${repr(value2)} should return value ${bracket(repr(result1.value2))}`,RecordResult(typeof result1.value2 === "object" && result1.value2.value === true));
+
+        console.log("Checking batchCheckLocalDB");
+        keylist1.forEach((key)=>{
+            sessionStorage.removeItem(key);
+            delete JSPLib.storage.memory_storage.sessionStorage[key];
+        });
+        result1 = await JSPLib.storage.batchCheckLocalDB(keylist1,()=>(true));
+        result2 = Object.keys(result1);
+        console.log(`Batch retrieval of ${repr(keylist1)} should return the keys ${repr(keylist2)} ${bracket(repr(result2))}`,RecordResult(ArrayEqual(keylist2,result2)));
+        console.log(`value1 with data ${repr(value1)} should return value ${bracket(repr(result1.value1))}`,RecordResult(typeof result1.value1 === "object" && result1.value1.value === 1));
+        console.log(`value2 with data ${repr(value2)} should return value ${bracket(repr(result1.value2))}`,RecordResult(typeof result1.value2 === "object" && result1.value2.value === true));
+
+        console.log("Checking batchRemoveData");
+        await JSPLib.storage.batchRemoveData(keylist2);
+        result1 = JSPLib.storage.getStorageData('value1',sessionStorage);
+        result2 = JSPLib.storage.getStorageData('value2',sessionStorage);
+        result3 = await JSPLib.storage.danboorustorage.getItem('value1');
+        result4 = await JSPLib.storage.danboorustorage.getItem('value2');
+        console.log(`value1 should return null (sessionStorage) ${bracket(repr(result1))}`,RecordResult(result1 === null));
+        console.log(`value2 should return null (sessionStorage) ${bracket(repr(result2))}`,RecordResult(result2 === null));
+        console.log(`value1 should return null (indexedDB) ${bracket(repr(result3))}`,RecordResult(result3 === null));
+        console.log(`value2 should return null (indexedDB) ${bracket(repr(result4))}`,RecordResult(result4 === null));
 
         console.log("Checking pruneStorage");
         await JSPLib.storage.pruneStorage(/-value$/);
