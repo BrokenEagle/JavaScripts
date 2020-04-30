@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.7
+// @version      11.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -10,18 +10,21 @@
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/test/checklibraries.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
+// @require      https://cdn.jsdelivr.net/npm/localforage-getitems@1.4.2/dist/localforage-getitems.js
+// @require      https://cdn.jsdelivr.net/npm/localforage-setitems@1.4.0/dist/localforage-setitems.js
+// @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/debug.js
-// @connect      raikou4.donmai.us
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/saucenao.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/debug.js
+// @connect      cdn.donmai.us
 // @connect      saucenao.com
 // ==/UserScript==
 
