@@ -311,12 +311,23 @@ async function CheckUtilityLibrary() {
     console.log("Checking kebabCase");
     let string1 = "testKebabCase";
     let string2 = "test-kebab-case";
+    let string3 = "test_kebab_case";
     let teststring1 = JSPLib.utility.kebabCase(string1);
+    let teststring2 = JSPLib.utility.kebabCase(string3);
     console.log(`Value ${repr(string1)} should should be changed to ${repr(string2)} ${bracket(repr(teststring1))}`,RecordResult(teststring1 === string2));
+    console.log(`Value ${repr(string3)} should should be changed to ${repr(string2)} ${bracket(repr(teststring2))}`,RecordResult(teststring2 === string2));
 
     console.log("Checking camelCase");
     teststring1 = JSPLib.utility.camelCase(string2);
+    teststring2 = JSPLib.utility.camelCase(string3);
     console.log(`Value ${repr(string2)} should should be changed to ${repr(string1)} ${bracket(repr(teststring1))}`,RecordResult(teststring1 === string1));
+    console.log(`Value ${repr(string3)} should should be changed to ${repr(string1)} ${bracket(repr(teststring2))}`,RecordResult(teststring2 === string1));
+
+    console.log("Checking snakeCase");
+    teststring1 = JSPLib.utility.snakeCase(string1);
+    teststring2 = JSPLib.utility.snakeCase(string2);
+    console.log(`Value ${repr(string1)} should should be changed to ${repr(string3)} ${bracket(repr(teststring1))}`,RecordResult(teststring1 === string3));
+    console.log(`Value ${repr(string2)} should should be changed to ${repr(string3)} ${bracket(repr(teststring2))}`,RecordResult(teststring2 === string3));
 
     console.log("Checking displayCase");
     string1 = "test_display_case";
@@ -685,6 +696,11 @@ async function CheckUtilityLibrary() {
     let resultmeta1 = JSPLib.utility.getMeta(metaselector1);
     console.log(`Meta ${metaselector1} should have the content of ${repr(expectedmeta1)} ${bracket(repr(resultmeta1))}`,RecordResult(expectedmeta1 === resultmeta1));
 
+    console.log("Checking getHTMLTree");
+    let expectedtree1 = "html > body.c-static.a-site-map:nth-of-type(1) > footer#page-footer.text-small:nth-of-type(1)";
+    result1 = JSPLib.utility.getHTMLTree(document.querySelector('footer'));
+    console.log(`The footer should have "${expectedtree1}" as the HTML tree ${bracket(result1)}`,RecordResult(result1 === expectedtree1));
+
     console.log("Checking getNthParent");
     $domtest = jQuery.parseHTML(walkdom_test);
     let child1 = jQuery("#child0a",$domtest)[0];
@@ -763,7 +779,7 @@ async function CheckUtilityLibrary() {
     console.log("Checking getDomainName");
     string1 = "http://danbooru.donmai.us";
     string2 = "donmai.us";
-    let string3 = JSPLib.utility.getDomainName(string1, 2);
+    string3 = JSPLib.utility.getDomainName(string1, 2);
     console.log(`URL of ${string1} should have a base domain of ${string2} ${bracket(string3)}`,RecordResult(string2 === string3));
 
     console.log("Checking parseParams");
@@ -778,12 +794,30 @@ async function CheckUtilityLibrary() {
     result1 = JSPLib.utility.HTMLEscape(string1);
     console.log(`Value ${repr(string1)} should should be changed to ${repr(string2)} ${bracket(repr(result1))}`,RecordResult(string2 === result1));
 
-    console.log("Checking setupMutationObserver");
+    console.log("Checking _getSelectorChecks");
+    string1 = 'span';
+    string2 = '.class';
+    string3 = '#id';
+    let string4 = '##text';
+    checkarray1 = ['tagName', 'SPAN'];
+    let checkarray2 = ['className', 'class'];
+    let checkarray3 = ['id', 'id'];
+    let checkarray4 = ['nodeName', '#text'];
+    testarray1 = JSPLib.utility._getSelectorChecks(string1);
+    testarray2 = JSPLib.utility._getSelectorChecks(string2);
+    testarray3 = JSPLib.utility._getSelectorChecks(string3);
+    let testarray4 = JSPLib.utility._getSelectorChecks(string4);
+    console.log(`Selector ${repr(string1)} should return the values ${repr(checkarray1)} ${bracket(repr(testarray1))}`,RecordResult(ArrayEqual(testarray1,checkarray1)));
+    console.log(`Selector ${repr(string2)} should return the values ${repr(checkarray2)} ${bracket(repr(testarray2))}`,RecordResult(ArrayEqual(testarray2,checkarray2)));
+    console.log(`Selector ${repr(string3)} should return the values ${repr(checkarray3)} ${bracket(repr(testarray3))}`,RecordResult(ArrayEqual(testarray3,checkarray3)));
+    console.log(`Selector ${repr(string4)} should return the values ${repr(checkarray4)} ${bracket(repr(testarray4))}`,RecordResult(ArrayEqual(testarray4,checkarray4)));
+
+    console.log("Checking setupMutationReplaceObserver");
     jQuery("#checklibrary-count").after('<span id="checklibrary-observe"></span>');
     string1 = 'nothing';
     string2 = 'something';
     value1 = string1;
-    JSPLib.utility.setupMutationRemoveObserver("footer","#checklibrary-observe",()=>{console.log("Observation found!");value1 = string2;});
+    JSPLib.utility.setupMutationReplaceObserver("footer","#checklibrary-observe",()=>{console.log("Observation found!");value1 = string2;});
     jQuery("#checklibrary-observe").replaceWith('<span id="checklibrary-observe" style="font-size:200%">(Observed)</span>');
     await JSPLib.utility.sleep(1000);
     console.log(`Value ${repr(value1)} should be equal to ${repr(string2)}`,RecordResult(value1 === string2));
