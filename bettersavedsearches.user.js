@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         BetterSavedSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.2
+// @version      6.3
 // @description  Provides an alternative mechanism and UI for saved searches.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -13,19 +13,25 @@
 // @require      https://cdn.jsdelivr.net/npm/core-js-bundle@3.2.1/minified.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru validate */
+
+/****Global variables****/
+
+//Library constants
+
+////NONE
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '15462';
@@ -694,7 +700,7 @@ function ValidateProgramData(key,entry) {
 
 //Library functions
 
-////None
+////NONE
 
 //Helper functions
 
