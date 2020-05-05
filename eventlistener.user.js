@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      18.13
+// @version      18.14
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -13,20 +13,24 @@
 // @require      https://cdn.jsdelivr.net/npm/core-js-bundle@3.2.1/minified.js
 // @require      https://cdn.jsdelivr.net/npm/xregexp@4.2.4/xregexp-all.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib jQuery $ Danbooru Diff XRegExp LZString */
 
 /****Global variables****/
+
+//Library constants
+
+////NONE
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '14747';
@@ -978,40 +982,7 @@ function CorrectList(type,typelist) {
 
 //Library functions
 
-JSPLib.menu.validateUserSettings = function (settings,config) {
-    let error_messages = [];
-    if (!JSPLib.validate.isHash(settings)) {
-        return ["User settings are not a hash."];
-    }
-    for (let setting in config) {
-        if (!(setting in settings) || !config[setting].validate(settings[setting])) {
-            if (!(setting in settings)) {
-                error_messages.push(`'${setting}' setting not found.`);
-            } else {
-                error_messages.push(`'${setting}' contains invalid data.`);
-            }
-            let old_setting = settings[setting];
-            let message = "";
-            if (Array.isArray(config[setting].allitems) && Array.isArray(settings[setting])) {
-                settings[setting] = JSPLib.utility.setIntersection(config[setting].allitems,settings[setting]);
-                message = "Removing bad items";
-            } else {
-                settings[setting] = config[setting].default;
-                message = "Loading default";
-            }
-            JSPLib.debug.debuglogLevel(`menu.validateUserSettings - ${message}:`,setting,old_setting,"->",settings[setting],JSPLib.debug.WARNING);
-        }
-    }
-    let valid_settings = Object.keys(config);
-    for (let setting in settings) {
-        if (!valid_settings.includes(setting)) {
-            JSPLib.debug.debuglogLevel("menu.validateUserSettings - Deleting invalid setting:",setting,settings[setting],JSPLib.debug.WARNING);
-            delete settings[setting];
-            error_messages.push(`'${setting}' is an invalid setting.`);
-        }
-    }
-    return error_messages;
-};
+////NONE
 
 //Helper functions
 
