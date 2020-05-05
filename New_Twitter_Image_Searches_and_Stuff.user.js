@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.4
+// @version      6.5
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -19,18 +19,18 @@
 // @require      https://cdn.jsdelivr.net/npm/xregexp@4.2.4/xregexp-all.js
 // @require      https://cdn.jsdelivr.net/npm/file-saver@2.0.2/dist/FileSaver.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/menu.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/danbooru/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/saucenao.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/danbooru/utility.js
 // @resource     jquery_ui_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/jquery_ui_custom.css
 // @resource     jquery_qtip_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.css
 // @grant        GM_getResourceText
@@ -48,6 +48,10 @@
 /* global $ jQuery Danbooru JSPLib validate localforage saveAs XRegExp */
 
 /****Global variables****/
+
+//Library constants
+
+////NONE
 
 //Exterior script variables
 
@@ -1873,8 +1877,6 @@ const MENU_DIALOG_BUTTONS = {
 
 //Validation constants
 
-JSPLib.validate.id_constraints = JSPLib.validate.postcount_constraints;
-
 const POST_CONSTRAINTS = {
     entry: JSPLib.validate.hashentry_constraints,
     value: {
@@ -2059,155 +2061,7 @@ function VaildateColorArray(array) {
 
 //Library functions
 
-JSPLib.network.getNotify = async function (url,url_addons={},custom_error) {
-    try {
-        return await jQuery.get(url,url_addons);
-    } catch(error) {
-        //Swallow exception... will return false value
-        error = JSPLib.network.processError(error,"network.getNotify");
-        let error_key = `${url}?${jQuery.param(url_addons)}`;
-        JSPLib.network.logError(error_key,error);
-        JSPLib.network.notifyError(error,custom_error);
-        return false;
-    }
-};
-
-JSPLib.network.logError = function (key,error) {
-    JSPLib.network.error_messages.push([key,error.status,error.responseText]);
-    if(JSPLib.network.error_domname) {
-        jQuery(JSPLib.network.error_domname).html(JSPLib.network.error_messages.length);
-    }
-};
-
-JSPLib.utility.isScrolledIntoView = function(elem,view_percentage=0.75) {
-    let docViewTop = window.scrollY;
-    let docViewBottom = docViewTop + window.innerHeight;
-    let elemTop = 0;
-    for (let currElem = elem; currElem.offsetParent !== null; currElem = currElem.offsetParent) {
-        elemTop += currElem.offsetTop
-    }
-    let elemBottom = elemTop + elem.offsetHeight;
-    if ((elemBottom <= docViewBottom) && (elemTop >= docViewTop)) {
-        //Is element entirely within view?
-        return true;
-    } else if ((elemBottom >= docViewBottom) && (elemTop <= docViewTop)) {
-        //Does element fill up the view?
-        return true;
-    } else if ((elemTop >= docViewTop) && (elemTop <= docViewBottom)) {
-        //Does the top portion of the element fill up a certain percentage of the view?
-        return ((docViewBottom - elemTop) / (docViewBottom - docViewTop)) > view_percentage;
-    } else if ((elemBottom >= docViewTop) && (elemBottom <= docViewBottom)) {
-        //Does the bottom portion of the element fill up a certain percentage of the view?
-        return ((elemBottom - docViewTop) / (docViewBottom - docViewTop)) > view_percentage;
-    }
-    return false;
-};
-
-JSPLib.storage.batchRetrieveData = async function (keylist,database=JSPLib.storage.danboorustorage) {
-    if (!this.use_storage || !database.getItems) {
-        return {};
-    }
-    let database_type = this.use_indexed_db ? "IndexDB" : "LocalStorage";
-    let session_items = {};
-    let missing_keys = [];
-    keylist.forEach((key)=>{
-        let data = this.getStorageData(key,sessionStorage);
-        if (data) {
-            session_items[key] = data;
-        } else {
-            missing_keys.push(key);
-        }
-    });
-    JSPLib.debug.debuglogLevel("storage.batchRetrieveData - Found items (Session):",Object.keys(session_items),JSPLib.debug.VERBOSE);
-    if (missing_keys.length === 0) {
-        return session_items;
-    }
-    let record_key = keylist.join(',');
-    JSPLib.debug.recordTime(record_key,database_type);
-    let database_items = await database.getItems(missing_keys);
-    JSPLib.debug.recordTimeEnd(record_key,database_type);
-    JSPLib.debug.debuglogLevel(`storage.retrieveData - Found item (${database_type}):`,Object.keys(database_items),JSPLib.debug.VERBOSE);
-    for (let key in database_items) {
-        this.setStorageData(key,database_items[key],sessionStorage);
-    }
-    return Object.assign(session_items,database_items);
-};
-
-JSPLib.storage.batchSaveData = function (data_items,database=JSPLib.storage.danboorustorage) {
-    if (!this.use_storage || !database.setItems) {
-        return;
-    }
-    for (let key in data_items) {
-        this.setStorageData(key,data_items[key],sessionStorage);
-    }
-    return database.setItems(data_items);
-};
-
-JSPLib.storage.batchRemoveData = function (keylist,database=JSPLib.storage.danboorustorage) {
-    if (!this.use_storage || !database.removeItems) {
-        return;
-    }
-    keylist.forEach((key)=>sessionStorage.removeItem(key));
-    this._channel.postMessage({type: 'remove_session_data', from: this.UID, keys: keylist});
-    return database.removeItems(keylist);
-};
-
-JSPLib.storage.batchCheckLocalDB = async function (keylist,validator,expiration,database=JSPLib.storage.danboorustorage) {
-    if (!this.use_storage || !database.getItems) {
-        return {};
-    }
-    var cached = await this.batchRetrieveData(keylist,database);
-    for (let key in cached) {
-        let max_expires = 0;
-        if (Number.isInteger(expiration)) {
-            max_expires = expiration;
-        } else if (typeof expiration === 'function') {
-            max_expires = expiration(key,cached[key]);
-        }
-        JSPLib.debug.debuglogLevel("storage.batchCheckLocalDB - Checking DB",key,JSPLib.debug.VERBOSE);
-        if (!validator(key,cached[key]) || this.hasDataExpired(key,cached[key],max_expires)) {
-            JSPLib.debug.debuglogLevel("storage.batchCheckLocalDB - DB Miss",key,JSPLib.debug.DEBUG);
-            delete cached[key];
-        } else {
-            JSPLib.debug.debuglogLevel("storage.checkLocalDB - DB Hit",key,JSPLib.debug.VERBOSE);
-        }
-    }
-    return cached;
-};
-
-JSPLib.storage.pruneStorage = async function (regex,database=JSPLib.storage.danboorustorage) {
-    if (!this.use_storage) {
-        return;
-    }
-    let pruned_keys = [];
-    let promise_array = [];
-    await database.iterate((value,key)=>{
-        if (key.match(regex)) {
-            if (this.hasDataExpired(key,value)) {
-                JSPLib.debug.debuglogLevel("storage.pruneStorage - Deleting",key,JSPLib.debug.DEBUG);
-                if (!database.removeItems) {
-                    promise_array.push(this.removeData(key,false,database));
-                }
-                pruned_keys.push(key);
-            }
-            if (!database.removeItems && pruned_keys.length >= this.prune_limit) {
-                JSPLib.debug.debuglogLevel("storage.pruneStorage - Prune limit reached!",JSPLib.debug.WARNING);
-                return true;
-            }
-        }
-    });
-    if (JSPLib.debug.debug_console) {
-        let all_keys = await database.keys();
-        let program_keys = all_keys.filter(key => key.match(regex));
-        JSPLib.debug.debuglogLevel(`storage.pruneStorage - Pruning ${pruned_keys.length}/${program_keys.length} items!`,JSPLib.debug.INFO);
-    }
-    if (database.removeItems) {
-        return JSPLib.storage.batchRemoveData(pruned_keys, database);
-    } else {
-        this._channel.postMessage({type: 'remove_session_data', from: this.UID, keys: pruned_keys});
-        return Promise.all(promise_array);
-    }
-};
+////NONE
 
 //Helper functions
 
@@ -3469,7 +3323,7 @@ function InitializeDatabaseLink() {
     }
     let database_timestring = new Date(NTISAS.server_info.timestamp).toLocaleString();
     //Add some validation to the following, and move it out of the RenderSideMenu function
-    JSPLib.storage.retrieveData('ntisas-database-info', JSPLib.storage.twitterstorage).then((database_info)=>{
+    JSPLib.storage.retrieveData('ntisas-database-info', false, JSPLib.storage.twitterstorage).then((database_info)=>{
         if (!JSPLib.validate.isHash(database_info)) {
             database_html = `<a id="ntisas-install" class="ntisas-expanded-link" title="${database_timestring}">Install Database</a>`;
             database_help = RenderHelp(INSTALL_DATABASE_HELP);
@@ -3903,7 +3757,7 @@ function IntervalNetworkHandler () {
             const items = requests.map((request) => request.item).flat();
             const params = NETWORK_REQUEST_DICT[type].params(items);
             const data_key = NETWORK_REQUEST_DICT[type].data_key;
-            JSPLib.danbooru.submitRequest(type, params, [], null, NTISAS.domain).then((data_items)=>{
+            JSPLib.danbooru.submitRequest(type, params, [], false, null, NTISAS.domain).then((data_items)=>{
                 requests.forEach((request)=>{
                     let request_data = data_items.filter((data)=>{
                         return request.item.includes(data[data_key]);
@@ -4012,7 +3866,7 @@ function SavePostvers(add_entries,rem_entries) {
     combined_keys.forEach((tweet_id)=>{
         let tweet_key = 'tweet-' + tweet_id;
         let post_ids = add_entries[tweet_id];
-        JSPLib.storage.retrieveData(tweet_key, JSPLib.storage.twitterstorage).then((data)=>{
+        JSPLib.storage.retrieveData(tweet_key, false, JSPLib.storage.twitterstorage).then((data)=>{
             if (JSPLib.validate.validateIDList(data)) {
                 SavePostvers.debuglog("Tweet adds/rems - existing IDs:", tweet_key, data);
                 post_ids = JSPLib.utility.setUnique(JSPLib.utility.setDifference(JSPLib.utility.setUnion(data, add_entries[tweet_id]), rem_entries[tweet_id]));
@@ -4029,7 +3883,7 @@ function SavePostvers(add_entries,rem_entries) {
     single_adds.forEach((tweet_id)=>{
         let tweet_key = 'tweet-' + tweet_id;
         let post_ids = add_entries[tweet_id];
-        JSPLib.storage.retrieveData(tweet_key, JSPLib.storage.twitterstorage).then((data)=>{
+        JSPLib.storage.retrieveData(tweet_key, false, JSPLib.storage.twitterstorage).then((data)=>{
             if (JSPLib.validate.validateIDList(data)) {
                 SavePostvers.debuglog("Tweet adds - existing IDs:", tweet_key, data);
                 post_ids = JSPLib.utility.setUnion(data, post_ids);
@@ -4046,7 +3900,7 @@ function SavePostvers(add_entries,rem_entries) {
     single_rems.forEach((tweet_id)=>{
         let tweet_key = 'tweet-' + tweet_id;
         let post_ids = [];
-        JSPLib.storage.retrieveData(tweet_key, JSPLib.storage.twitterstorage).then((data)=>{
+        JSPLib.storage.retrieveData(tweet_key, false, JSPLib.storage.twitterstorage).then((data)=>{
             if (data !== null && JSPLib.validate.validateIDList(data)) {
                 SavePostvers.debuglog("Tweet removes - existing IDs:", tweet_key, data);
                 post_ids = JSPLib.utility.setUnique(JSPLib.utility.setDifference(data, rem_entries[tweet_id]));
@@ -4106,7 +3960,7 @@ async function GetMaxVideoDownloadLink(tweet_id) {
 async function InstallUserProfileData() {
     NTISAS.user_data = JSPLib.storage.checkStorageData('ntisas-user-data', ValidateProgramData, localStorage);
     if (!NTISAS.user_data || JSPLib.concurrency.checkTimeout('ntisas-user-profile-recheck', USER_PROFILE_RECHECK_EXPIRES)) {
-        NTISAS.user_data = await JSPLib.danbooru.submitRequest('profile', {only: PROFILE_FIELDS}, {}, null, NTISAS.domain);
+        NTISAS.user_data = await JSPLib.danbooru.submitRequest('profile', {only: PROFILE_FIELDS}, {}, false, null, NTISAS.domain);
         if (!NTISAS.user_data.id || !NTISAS.user_data.level) {
             NTISAS.user_data = {id: 2, level: GOLD_LEVEL};
         }
@@ -4440,7 +4294,7 @@ function CurrentRecords(event) {
 
 function CurrentPostver(event) {
     if (confirm(CURRENT_POSTVER_CONFIRM)) {
-        JSPLib.danbooru.submitRequest('post_versions', {limit: 1}, null, null, NTISAS.domain, true).then((data)=>{
+        JSPLib.danbooru.submitRequest('post_versions', {limit: 1}, null, false, null, NTISAS.domain, true).then((data)=>{
             if (Array.isArray(data) && data.length > 0) {
                 JSPLib.storage.setStorageData('ntisas-postver-lastid', data[0].id, localStorage);
                 JSPLib.storage.setStorageData('ntisas-recent-timestamp', new Date(data[0].updated_at).getTime(), localStorage);
@@ -4467,7 +4321,7 @@ function CheckURL(event) {
     let wildcard_url = `https://twitter.com/*/status/${tweet_id}`;
     let check_url = (NTISAS.user_settings.URL_wildcards_enabled ? wildcard_url : normal_url);
     CheckURL.debuglog(check_url);
-    JSPLib.danbooru.submitRequest('posts', {tags: 'source:' + check_url, only: POST_FIELDS}, [], null, NTISAS.domain, true).then((data)=>{
+    JSPLib.danbooru.submitRequest('posts', {tags: 'source:' + check_url, only: POST_FIELDS}, [], false, null, NTISAS.domain, true).then((data)=>{
         let post_ids = [];
         if (data.length === 0) {
             NTISAS.no_url_results.push(tweet_id);
@@ -4496,7 +4350,7 @@ async function CheckIQDB(event) {
         return;
     }
     let [$link,$tweet,tweet_id,$replace,selected_image_urls] = pick;
-    let promise_array = selected_image_urls.map(image_url => JSPLib.danbooru.submitRequest('iqdb_queries', {url: image_url, similarity: NTISAS.user_settings.similarity_cutoff, limit: NTISAS.user_settings.results_returned}, [], null, NTISAS.domain, true));
+    let promise_array = selected_image_urls.map(image_url => JSPLib.danbooru.submitRequest('iqdb_queries', {url: image_url, similarity: NTISAS.user_settings.similarity_cutoff, limit: NTISAS.user_settings.results_returned}, [], false, null, NTISAS.domain, true));
     let all_iqdb_results = await Promise.all(promise_array);
     let flat_data = all_iqdb_results.flat();
     let similar_data = [];
@@ -5852,7 +5706,10 @@ JSPLib.danbooru.max_network_requests = 10;
 if (JSPLib.debug.debug_console) {
     unsafeWindow.JSPLib.lib = unsafeWindow.JSPLib.lib || {};
     unsafeWindow.JSPLib.lib[PROGRAM_NAME] = JSPLib;
-    unsafeWindow.Danbooru = Danbooru;
+    unsafeWindow.JSPLib.Danbooru = unsafeWindow.JSPLib.Danbooru || {};
+    unsafeWindow.JSPLib.Danbooru[PROGRAM_NAME] = Danbooru;
+    unsafeWindow.JSPLib.API_DATA = unsafeWindow.JSPLib.API_DATA || {};
+    unsafeWindow.JSPLib.API_DATA[PROGRAM_NAME] = API_DATA;
 }
 
 /****Execution start****/
