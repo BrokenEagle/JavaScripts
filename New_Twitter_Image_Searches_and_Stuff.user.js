@@ -5095,7 +5095,7 @@ function PageNavigation(pagetype) {
 }
 
 function ProcessPhotoPopup() {
-    let $photo_container = $('#layers');
+    let $photo_container = $('[data-at-shortcutkeys]').prev().find('[aria-labelledby="modal-header"] > div > div:first-of-type');
     if ($photo_container.length) {
         let $photo_menu = $('[role=group]:not(.ntisas-photo-menu)', $photo_container[0]);
         if ($photo_menu.length) {
