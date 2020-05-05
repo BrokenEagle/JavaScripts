@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.1
+// @version      16.2
 // @description  Gives up-to-date stats on uploads.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -14,20 +14,24 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib jQuery $ Danbooru CanvasJS */
 
-/**GLOBAL VARIABLES**/
+/****Global variables****/
+
+//Library constants
+
+////NONE
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '15169';
@@ -1319,7 +1323,7 @@ async function GetPostsCountdown(limit,searchstring,domname) {
         }
         let request_addons = JSPLib.utility.joinArgs(tag_addon,limit_addon,only_addon,page_addon);
         let request_key = 'posts-' + jQuery.param(request_addons);
-        let temp_items = await JSPLib.danbooru.submitRequest('posts',request_addons,[],request_key);
+        let temp_items = await JSPLib.danbooru.submitRequest('posts',request_addons,[],false,request_key);
         return_items = return_items.concat(temp_items);
         if (temp_items.length < limit) {
             return return_items;
@@ -1335,7 +1339,7 @@ async function GetReverseTagImplication(tag) {
     var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry,rti_expiration);
     if (!(check)) {
         GetReverseTagImplication.debuglog("Network:",key);
-        let data = await JSPLib.danbooru.submitRequest('tag_implications',{search: {antecedent_name: tag}, only: id_field},[],key)
+        let data = await JSPLib.danbooru.submitRequest('tag_implications',{search: {antecedent_name: tag}, only: id_field},[],false,key)
         JSPLib.storage.saveData(key, {value: data.length, expires: JSPLib.utility.getExpires(rti_expiration)});
         return data.length;
     }
@@ -1348,7 +1352,7 @@ async function GetCount(type,tag) {
     var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry,max_expires);
     if (!(check)) {
         GetCount.debuglog("Network:",key);
-        return JSPLib.danbooru.submitRequest('counts/posts',{tags: BuildTagParams(type,tag), skip_cache: true},{counts: {posts: 0}},key)
+        return JSPLib.danbooru.submitRequest('counts/posts',{tags: BuildTagParams(type,tag), skip_cache: true},{counts: {posts: 0}},false,key)
         .then(data=>{
             JSPLib.storage.saveData(key, {value: data.counts.posts, expires: JSPLib.utility.getExpires(max_expires)});
         });
@@ -1653,7 +1657,7 @@ async function CheckUser(event) {
             check_user = CU.checked_usernames[check_username];
         } else {
             //Check each time no matter what as misses can be catastrophic
-            check_user = await JSPLib.danbooru.submitRequest('users', {search: {name_matches: check_username}, only: user_fields, expiry: 30});;
+            check_user = await JSPLib.danbooru.submitRequest('users', {search: {name_matches: check_username}, only: user_fields, expiry: 30});
             CU.checked_usernames[check_username] = check_user;
         }
         if (check_user.length) {
