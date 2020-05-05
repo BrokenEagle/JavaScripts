@@ -596,7 +596,7 @@ async function ValidateTags(event) {
         let statuses = await Promise.all([Timer.ValidateTagAdds(),Timer.ValidateTagRemoves(),ValidateUpload()]);
         if (statuses.every((item)=>{return item;})) {
             ValidateTags.debuglog("Submit request!");
-            $("#form,#quick-edit-form").trigger("submit");
+            $("#form [name=commit],#quick-edit-form [name=commit]").click();
             if ((VTI.controller === 'uploads' && VTI.action === 'new') || (VTI.controller === 'posts' && VTI.controller === 'show')) {
                 ValidateTags.debuglog("Disabling return key!");
                 $("#upload_tag_string,#post_tag_string").off("keydown.vti");
@@ -943,10 +943,9 @@ function Main() {
         Main.debuglog("No validation needed!");
         return;
     }
-    $("#form [type=submit],#quick-edit-form [type=submit][value=Submit]").after(submit_button);
-    $("#form [type=submit],#quick-edit-form [type=submit][value=Submit]").hide();
+    $("#form [name=commit],#quick-edit-form [name=commit]").after(submit_button).hide();
     if (VTI.controller === 'posts' && VTI.action === 'index') {
-        $("#quick-edit-form [type=submit][value=Cancel]").after(input_validator);
+        $("#quick-edit-form").append(input_validator);
         $("#quick-edit-form").after(warning_messages);
     } else {
         $("#check-tags").after(input_validator);
