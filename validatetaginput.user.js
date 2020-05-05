@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.5
+// @version      28.6
 // @description  Validates tag add/remove inputs on a post edit or upload, plus several other post validations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -16,20 +16,24 @@
 // @require      https://cdn.jsdelivr.net/npm/core-js-bundle@3.2.1/minified.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ jQuery Danbooru */
 
 /****Global variables****/
+
+//Library constants
+
+////NONE
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '14474';
@@ -392,56 +396,7 @@ function ValidateProgramData(key,entry) {
 
 //Library functions
 
-JSPLib.danbooru.submitRequest = async function (type,url_addons={},default_val=null,long_query=false,key,domain='',notify_user=false) {
-    key = key || String(JSPLib.utility.getUniqueID());
-    if (JSPLib.danbooru.num_network_requests >= JSPLib.danbooru.max_network_requests) {
-        await JSPLib.network.rateLimit('danbooru');
-    }
-    JSPLib.network.incrementCounter('danbooru');
-    JSPLib.debug.recordTime(key,'Network');
-    if (long_query) {
-        url_addons._method = 'get';
-    }
-    let func = (long_query ? jQuery.post : jQuery.getJSON);
-    try {
-        return await func(`${domain}/${type}.json`,url_addons
-        ).always(()=>{
-            JSPLib.debug.recordTimeEnd(key,'Network');
-            JSPLib.network.decrementCounter('danbooru');
-        });
-    } catch(e) {
-        //Swallow exception... will return default value
-        e = JSPLib.network.processError(e,"danbooru.submitRequest");
-        let error_key = `${domain}/${type}.json?${jQuery.param(url_addons)}`;
-        JSPLib.network.logError(error_key,e);
-        if (notify_user) {
-            JSPLib.network.notifyError(e);
-        }
-        return default_val;
-    }
-};
-
-JSPLib.danbooru.getAllItems = async function (type,limit,batches,options) {
-    let url_addons = options.addons || {};
-    let reverse = options.reverse || false;
-    let long_format = options.long_format || false;
-    let page_modifier = (reverse ? 'a' : 'b');
-    let page_addon = (Number.isInteger(options.page) ? {page:`${page_modifier}${options.page}`} : {});
-    let limit_addon = {limit: limit};
-    let batch_num = 1;
-    var return_items = [];
-    while (true) {
-        let request_addons = JSPLib.utility.joinArgs(url_addons,page_addon,limit_addon);
-        let temp_items = await JSPLib.danbooru.submitRequest(type,request_addons,[],long_format,null,options.domain,options.notify);
-        return_items = JSPLib.utility.concat(return_items, temp_items);
-        if (temp_items.length < limit || (batches && batch_num >= batches)) {
-            return return_items;
-        }
-        let lastid = JSPLib.danbooru.getNextPageID(temp_items,reverse);
-        page_addon = {page:`${page_modifier}${lastid}`};
-        JSPLib.debug.debuglogLevel("danbooru.getAllItems - #",batch_num++,"Rechecking",type,"@",lastid,JSPLib.debug.INFO);
-    }
-};
+////NONE
 
 //Helper functions
 
