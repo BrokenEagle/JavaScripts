@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SiteTagSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.0
+// @version      4.1
 // @description  Presents additional site links for the wiki tag(s).
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -12,18 +12,22 @@
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/sitetagsearches.user.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/menu.js
 // ==/UserScript==
 
 /* global $ JSPLib Danbooru */
 
 /****Global variables****/
+
+//Library constants
+
+////NONE
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '14958';
@@ -173,6 +177,10 @@ const SITE_CONFIG = {
 };
 
 /***Functions***/
+
+//Library functions
+
+////NONE
 
 //Helper functions
 
@@ -324,9 +332,10 @@ JSPLib.debug.addFunctionLogs([
 /****Initialization****/
 
 //Variables for debug.js
-JSPLib.debug.debug_console = true;
-JSPLib.debug.pretext = 'STS:';
+JSPLib.debug.debug_console = false;
 JSPLib.debug.level = JSPLib.debug.INFO;
+JSPLib.debug.pretext = 'STS:';
+JSPLib.debug.pretimer = 'STS-';
 
 //Variables for menu.js
 JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
