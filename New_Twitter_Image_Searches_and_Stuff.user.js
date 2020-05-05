@@ -828,8 +828,11 @@ const PROGRAM_CSS = `
     border: 1px solid;
 }
 ${TWITTER_SPACING_SELECTOR} {
-    margin: -1px 0;
+    margin: -3px 0;
     padding: 0;
+}
+#ntisas-account-options .r-1jayybb {
+    min-height: 35px;
 }
 #ntisas-account-options [role=link] > div {
     padding: 8px;
@@ -5025,8 +5028,13 @@ function PageNavigation(pagetype) {
     //Only render pages with attachment points
     if (IsPageType(STREAMING_PAGES) || IsTweetPage()) {
         if ($('#ntisas-side-menu').length === 0) {
-            $('header[role=banner] > div > div > div').append(RenderSideMenu());
-            $('header[role=banner] > div > div > div').attr('id', 'ntisas-account-options'); //Marking this for the CSS
+            let $account_options = $('header[role=banner] > div > div > div');
+            let child_count = $account_options[0].childElementCount;
+            if (child_count > 1) {
+                $account_options.children().last().css('margin', '0');
+            }
+            $account_options.append(RenderSideMenu());
+            $account_options.attr('id', 'ntisas-account-options'); //Marking this for the CSS
             InitializeSideMenu();
             InitializeDatabaseLink();
             GetTotalRecords().then((total)=>{
