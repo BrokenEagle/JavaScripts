@@ -297,7 +297,7 @@ const program_css = `
     border-left: 1px solid #444;
     margin-left: -1px;
 }
-[data-user-theme="dark"] .cu-period-header {
+[data-current-user-theme="dark"] .cu-period-header {
     background-color: #666;
 }
 #count-header .cu-manual,
