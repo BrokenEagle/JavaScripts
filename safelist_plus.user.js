@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SafelistPlus
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.2
+// @version      4.3
 // @description  Alternate Danbooru blacklist handler.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -12,18 +12,26 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/safelist_plus.user.js
 // @require      https://cdn.jsdelivr.net/npm/core-js-bundle@3.2.1/minified.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru validate TextboxLogger ValidateBlacklist OrderBlacklist */
 
 /****Global variables****/
+
+//Library constants
+
+JSPLib.validate.string_constraints = function (string=true,length) {
+    let string_constraint = (string ? {string: string} : {});
+    let length_constraint = (length ? {length: length} : {});
+    return Object.assign(string_constraint,length_constraint);
+};
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '14221';
@@ -876,12 +884,6 @@ class Safelist {
 }
 
 //Validate constants
-
-JSPLib.validate.string_constraints = function (string=true,length) {
-    let string_constraint = (string ? {string: string} : {});
-    let length_constraint = (length ? {length: length} : {});
-    return Object.assign(string_constraint,length_constraint);
-};
 
 const level_constraints = {
     level: JSPLib.validate.string_constraints(true, {minimum: 1}),
