@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      27.2
+// @version      27.3
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -14,20 +14,24 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20191221/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru validate LZString */
 
 /****Global variables****/
+
+//Library constants
+
+////NONE
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '14747';
@@ -1315,35 +1319,7 @@ function ValidateUsageData(choice_info) {
 
 //Library functions
 
-JSPLib.utility.getHTMLTree = function (domnode) {
-    var tree = [];
-    for (let checknode = domnode; checknode !== null; checknode = checknode.parentElement) {
-        let nodename = checknode.tagName.toLowerCase();
-        let id = (checknode.id !== "" ? "#" : "") + checknode.id;
-        let classlist = Object.assign(new Array(),checknode.classList).map((entry)=>{return '.' + entry;}).join('');
-        let index = "";
-        if (checknode.parentElement !== null) {
-            let similar_elements = [...checknode.parentElement.children].filter(entry => entry.tagName === checknode.tagName);
-            let similar_position = similar_elements.indexOf(checknode) + 1;
-            index = ":nth-of-type(" + similar_position + ")";
-        }
-        tree.push(nodename + id + classlist + index);
-    }
-    return tree.reverse().join(" > ");
-};
-
-//For basic objects in a hash only, i.e. string, integer, etc.
-JSPLib.validate.validateHashValues = function(parent_key,hash,validator) {
-    for (let key in hash) {
-        if (!validator.func(hash[key])) {
-            let display_key = `${parent_key}.${key}`;
-            let display_item = JSON.stringify(hash[key]);
-            JSPLib.debug.debuglogLevel(display_key,`${display_item} is not a valid ${validator.type}.`,JSPLib.debug.INFO);
-            return false;
-        }
-    }
-    return true;
-};
+////NONE
 
 //Helper functions
 
@@ -2550,7 +2526,7 @@ function Main() {
             //Is source column empty?
             if (/^\s+$/.test($(".source-related-tags-columns").html())) {
                 Main.debuglog("Setting up mutation observer for source data.");
-                JSPLib.utility.setupMutationRemoveObserver(".related-tags", ".source-related-tags-columns", ()=>{Timer.SaveArtistData();});
+                JSPLib.utility.setupMutationReplaceObserver(".related-tags", ".source-related-tags-columns", ()=>{Timer.SaveArtistData();});
             } else {
                 Timer.SaveArtistData();
             }
