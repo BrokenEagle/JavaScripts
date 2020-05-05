@@ -3149,8 +3149,9 @@ function RenderPostsContainer(all_posts) {
         html += RenderPostPreview(post, addons)
     });
     let delete_all_checked = (NTISAS.user_settings.delete_all_default ? "checked" : "");
+    let width_addon = (all_posts.length > 10 ? 'style="width:900px"' : "");
     return `
-<div class="ntisas-post-result ntisas-qtip-container">
+<div class="ntisas-post-result ntisas-qtip-container" ${width_addon}>
     <h4>Danbooru matches (${RenderHelp(POST_SELECT_HELP)})</h4>
     <div class="ntisas-delete-label">Delete all</div>
     <input ${delete_all_checked} type="checkbox" class="ntisas-delete-all">
