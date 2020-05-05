@@ -1316,7 +1316,8 @@ function RemovePostStyles() {
 
 function SafelistPosts() {
     if (!('posts' in SafelistPosts)) {
-        SafelistPosts.posts = $(".post-preview, .image-container, #c-comments .post");
+        let post_preview_selector = `#c-${SL.controller} #a-${SL.action} .post-preview`;
+        SafelistPosts.posts = $(`${post_preview_selector}, .image-container, #c-comments .post`);
     }
     return SafelistPosts.posts;
 }
