@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.2
+// @version      16.3
 // @description  Gives up-to-date stats on uploads.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -16,7 +16,7 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/debug.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200506-storage/lib/storage.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/validate.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/utility.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/statistics.js

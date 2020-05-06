@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RecentTagsCalc
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.4
+// @version      7.5
 // @description  Use different mechanism to calculate RecentTags.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -19,7 +19,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/load.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/utility.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200506-storage/lib/storage.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/concurrency.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/validate.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/network.js
