@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      27.5
+// @version      27.6
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -282,6 +282,9 @@ const program_css = `
 .iac-already-used {
     background-color: #FFFFAA;
 }
+body[data-current-user-theme=dark] .iac-already-used {
+    background-color: #666622;
+}
 .iac-tag-alias a {
     font-style: italic;
 }
@@ -440,6 +443,16 @@ body[data-current-user-theme=dark] .ui-menu-item .forum-topic-category-1 {
 body[data-current-user-theme=dark] .ui-menu-item .forum-topic-category-2 {
     color: var(--red-1);
 }`;
+
+const settings_menu_css = `
+.ui-widget-content {
+    background: var(--jquery-ui-widget-content-background);
+    color: var(--jquery-ui-widget-content-text-color);
+}
+.ui-widget, .ui-widget button, .ui-widget input, .ui-widget select, .ui-widget textarea {
+    font-family: Verdana,Helvetica,sans-serif;
+}
+`;
 
 //HTML Constants
 
@@ -2430,6 +2443,7 @@ function Main() {
         JSPLib.utility.installScript(JQUERY_TAB_WIDGET_URL).done(()=>{
             JSPLib.menu.installSettingsMenu();
             Timer.RenderSettingsMenu();
+            JSPLib.utility.setCSSStyle(settings_menu_css, 'settings_menu');
         });
     }
     if (!JSPLib.menu.isScriptEnabled()) {
