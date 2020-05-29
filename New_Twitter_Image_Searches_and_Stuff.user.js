@@ -69,7 +69,7 @@ const PROGRAM_CLICK = 'click.ntisas';
 const PROGRAM_KEYDOWN = 'keydown.ntisas';
 
 //Variables for network.js
-const API_DATA = {tweets: {}, users_id: {}, users_name: {}, retweets: {}, has_data: false};
+const API_DATA = {tweets: {}, users_id: {}, users_name: {}, retweets: {}, has_data: false, raw_data: []};
 
 //Variables for storage.js
 JSPLib.storage.twitterstorage = localforage.createInstance({
@@ -3977,26 +3977,84 @@ async function InstallUserProfileData() {
 
 function TweetUserData(data) {
     if (typeof data === 'object' && 'globalObjects' in data) {
-        if ('tweets' in data.globalObjects) {
-            Object.assign(API_DATA.tweets, data.globalObjects.tweets);
-            for (let twitter_id in data.globalObjects.tweets) {
-                let entry = data.globalObjects.tweets[twitter_id];
-                if ('retweeted_status_id_str' in entry) {
-                    let tweet_id = entry.retweeted_status_id_str;
-                    API_DATA.retweets[tweet_id] = entry;
-                }
+        ProcessTwitterGlobalObjects(data)
+    } else if (typeof data === 'object' && 'data' in data) {
+        API_DATA.raw_data.push(data);
+        //Process in a separately in case there are errors
+        setTimeout(()=>{ProcessTwitterData(data);}, 1);
+    }
+}
+
+function ProcessTwitterGlobalObjects(data) {
+    if ('tweets' in data.globalObjects) {
+        Object.assign(API_DATA.tweets, data.globalObjects.tweets);
+        for (let twitter_id in data.globalObjects.tweets) {
+            let entry = data.globalObjects.tweets[twitter_id];
+            if ('retweeted_status_id_str' in entry) {
+                let tweet_id = entry.retweeted_status_id_str;
+                API_DATA.retweets[tweet_id] = entry;
             }
-            API_DATA.has_data = true;
         }
-        if ('users' in data.globalObjects) {
-            Object.assign(API_DATA.users_id, data.globalObjects.users);
-            for (let twitter_id in data.globalObjects.users) {
-                let entry = data.globalObjects.users[twitter_id];
-                API_DATA.users_name[entry.screen_name] = entry;
-            }
-            API_DATA.has_data = true;
+        API_DATA.has_data = true;
+    }
+    if ('users' in data.globalObjects) {
+        Object.assign(API_DATA.users_id, data.globalObjects.users);
+        for (let twitter_id in data.globalObjects.users) {
+            let entry = data.globalObjects.users[twitter_id];
+            API_DATA.users_name[entry.screen_name] = entry;
+        }
+        API_DATA.has_data = true;
+    }
+}
+
+function ProcessTwitterData(data) {
+    let checked_data = CheckGraphqlData(data);
+    let indicators_enabled = 'user_settings' in NTISAS && NTISAS.user_settings.tweet_indicators_enabled;
+    let display_user_id = 'user_settings' in NTISAS && NTISAS.user_settings.display_user_id;
+    if (indicators_enabled) {
+        var artist_list = GetList('artist-list');
+        var tweet_list = GetList('tweet-list');
+    }
+    for (let i = 0; i < checked_data.length; i++) {
+        let {type,id,item} = checked_data[i];
+        let $tweet = null;
+        switch(type) {
+            case 'tweet':
+                API_DATA.tweets[id] = item;
+                $tweet = $(`.ntisas-tweet[data-tweet-id=${id}]`);
+                if ($tweet.length > 0 && $tweet.data('user-id') === undefined) {
+                    $tweet.attr('data-user-id', item.user_id_str);
+                    if (display_user_id) {
+                        InitializeUserDisplay($tweet);
+                    }
+                    if (indicators_enabled) {
+                        UpdateTweetIndicator($tweet[0], artist_list, tweet_list);
+                    }
+                }
+                break;
+            case 'user':
+                API_DATA.users_id[id] = item;
+                API_DATA.users_name[item.name] = item;
+                //falls through
+            default:
+                //do nothing
         }
     }
+    if (checked_data.length) {
+        API_DATA.has_data = true;
+    }
+}
+
+function CheckGraphqlData(data,savedata=[]) {
+    for (let i in data) {
+        if ((i === "tweet" || i === "user") && 'legacy' in data[i] && 'rest_id' in data[i]) {
+            savedata.push({type: i, id: data[i].rest_id, item: data[i].legacy});
+        }
+        if (typeof data[i] === "object" && data[i] !== null) {
+            CheckGraphqlData(data[i], savedata);
+        }
+    }
+    return savedata;
 }
 
 //Database functions
