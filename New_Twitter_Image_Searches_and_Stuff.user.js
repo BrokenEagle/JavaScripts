@@ -4916,12 +4916,12 @@ function MarkupMainTweet(tweet) {
     }
     let reply_line_count = 0;
     let child2 = main_body.children[2];
-    if (child2.children[0]
-      && child2.children[0].tagName.toUpperCase() !== 'SPAN'
-      && child2.children[0].children[0]
-      && child2.children[0].children[0].tagName.toUpperCase() !== 'SPAN'
-      && child2.innerText.match(/^Replying to/)) {
-        $(child2).addClass('ntisas-reply-line');
+    if (child2.children[1]
+      && child2.children[1].tagName.toUpperCase() !== 'SPAN'
+      && child2.children[1].children[0]
+      && child2.children[1].children[0].tagName.toUpperCase() !== 'SPAN'
+      && child2.children[1].innerText.match(/^Replying to/)) {
+        $(child2.children[1]).addClass('ntisas-reply-line');
         reply_line_count = 1;
     }
     let sub_body = main_body.children[2];
@@ -4937,16 +4937,16 @@ function MarkupMainTweet(tweet) {
     }
     let time_line = sub_body.children[tweet_menu_index - 1 - retweet_like_count]
     $(time_line).addClass('ntisas-time-line');
-    let remaining_lines = tweet_menu_index - 1 - retweet_like_count - reply_line_count;
+    let remaining_lines = tweet_menu_index - 2 - retweet_like_count - reply_line_count;
     var has_media = false;
     if (remaining_lines === 2) {
-        let tweet_text = sub_body.children[reply_line_count];
+        let tweet_text = sub_body.children[reply_line_count + 1];
         $(tweet_text).addClass('ntisas-tweet-text');
-        let tweet_image = sub_body.children[1 + reply_line_count];
+        let tweet_image = sub_body.children[1 + reply_line_count + 1];
         $(tweet_image).addClass('ntisas-tweet-media');
         has_media = true;
     } else if (remaining_lines === 1) {
-        let element = sub_body.children[reply_line_count];
+        let element = sub_body.children[reply_line_count + 1];
         has_media = element.children[0].tagName.toUpperCase() !== 'SPAN' && element.children[0].children[0].tagName.toUpperCase() !== 'SPAN';
         let element_class = (has_media ? 'ntisas-tweet-media' : 'ntisas-tweet-text');
         $(element).addClass(element_class);
@@ -5250,14 +5250,20 @@ function ProcessNewTweets() {
     }
     NTISAS.uniqueid = JSPLib.utility.getUniqueID();
     ProcessNewTweets.debuglog(NTISAS.uniqueid);
+    let main_tweets = [];
     $tweets.each((i,entry)=>{
         $(entry).addClass('ntisas-tweet');
-        if ($('a > time', entry).length) {
+        if (IsTweetPage()) {
+            if ($('article > div', entry).children().length > 2) {
+                main_tweets.push(entry);
+            }
+        } else if ($('a > time', entry).length) {
             MarkupStreamTweet(entry);
-        } else if (IsTweetPage() && $('article > div > div', entry).children().length > 2) {
-            MarkupMainTweet(entry);
         }
     });
+    if (IsTweetPage() && main_tweets.length > 0) {
+        MarkupMainTweet(main_tweets.pop());
+    }
     let $image_tweets = $tweets.filter((i,entry) => $('.ntisas-tweet-image, .ntisas-tweet-video', entry).length);
     ProcessNewTweets.debuglog(`[${NTISAS.uniqueid}]`, "Unprocessed:", $tweets.length, $image_tweets.length);
     //Initialize tweets with images
