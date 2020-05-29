@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.7
+// @version      6.8
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2767,44 +2767,46 @@ function UpdateTweetIndicators() {
     }
     let artist_list = GetList('artist-list');
     let tweet_list = GetList('tweet-list');
-    $('.ntisas-tweet').each((i,entry)=>{
-        let $tweet = $(entry);
-        let [tweet_id,,,user_ident,all_idents] = GetTweetInfo($tweet);
-        let active_indicators = [];
-        if (JSPLib.utility.hasIntersection(artist_list, all_idents)) {
-            active_indicators.push('mark-artist');
-        }
-        if (tweet_list.includes(tweet_id)) {
-            active_indicators.push('mark-tweet');
-        }
-        if (NTISAS.counted_artists.includes(user_ident)) {
-            active_indicators.push('count-artist');
-        }
-        if (NTISAS.counted_tweets.includes(tweet_id)) {
-            active_indicators.push('count-tweet');
-        }
-        let shown_indicators = false;
-        ALL_INDICATOR_TYPES.forEach((type)=>{
-            if (active_indicators.includes(type)) {
-                $(`.ntisas-indicators .ntisas-${type}`, entry).show();
-                $(`.ntisas-footer-entries .ntisas-${type}`, entry).addClass('ntisas-activated');
-                shown_indicators = true;
-            } else {
-                $(`.ntisas-indicators .ntisas-${type}`, entry).hide();
-                $(`.ntisas-footer-entries .ntisas-${type}`, entry).removeClass('ntisas-activated');
-            }
-        });
-        if (shown_indicators) {
-            $('.ntisas-stream-tweet .ntisas-tweet-status', entry).css('min-height', '1.5em');
-        } else {
-            $('.ntisas-stream-tweet .ntisas-tweet-status', entry).css('min-height', '');
-        }
-    });
+    $('.ntisas-tweet').each((i,entry)=>{ UpdateTweetIndicator(entry, artist_list, tweet_list); });
     let indicators_enabled = JSPLib.storage.getStorageData('ntisas-indicator-controls', localStorage, true);
     if (indicators_enabled) {
         $('.ntisas-footer-entries').show();
     } else {
         $('.ntisas-footer-entries').hide();
+    }
+}
+
+function UpdateTweetIndicator(tweet,artist_list,tweet_list) {
+    let $tweet = $(tweet);
+    let [tweet_id,,,user_ident,all_idents] = GetTweetInfo($tweet);
+    let active_indicators = [];
+    if (JSPLib.utility.hasIntersection(artist_list, all_idents)) {
+        active_indicators.push('mark-artist');
+    }
+    if (tweet_list.includes(tweet_id)) {
+        active_indicators.push('mark-tweet');
+    }
+    if (NTISAS.counted_artists.includes(user_ident)) {
+        active_indicators.push('count-artist');
+    }
+    if (NTISAS.counted_tweets.includes(tweet_id)) {
+        active_indicators.push('count-tweet');
+    }
+    let shown_indicators = false;
+    ALL_INDICATOR_TYPES.forEach((type)=>{
+        if (active_indicators.includes(type)) {
+            $(`.ntisas-indicators .ntisas-${type}`, tweet).show();
+            $(`.ntisas-footer-entries .ntisas-${type}`, tweet).addClass('ntisas-activated');
+            shown_indicators = true;
+        } else {
+            $(`.ntisas-indicators .ntisas-${type}`, tweet).hide();
+            $(`.ntisas-footer-entries .ntisas-${type}`, tweet).removeClass('ntisas-activated');
+        }
+    });
+    if (shown_indicators) {
+        $('.ntisas-stream-tweet .ntisas-tweet-status', tweet).css('min-height', '1.5em');
+    } else {
+        $('.ntisas-stream-tweet .ntisas-tweet-status', tweet).css('min-height', '');
     }
 }
 
