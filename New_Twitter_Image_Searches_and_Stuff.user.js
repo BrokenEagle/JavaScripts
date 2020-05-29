@@ -4758,7 +4758,12 @@ ImportData.is_running = false;
 
 function AutoclickIQDB() {
     if (NTISAS.artist_iqdb_enabled && IsMediaTimeline()) {
-        $('.ntisas-check-iqdb').click();
+        $('.ntisas-check-iqdb').each((i,entry)=>{
+            let tweet = $(entry).closest('.ntisas-tweet').get(0);
+            if (JSPLib.utility.isScrolledIntoView(tweet, 0.25)) {
+                $(entry).click();
+            }
+        });
     } else if (IsTweetPage()) {
         $(`.ntisas-main-tweet[data-tweet-id=${NTISAS.tweet_id}] .ntisas-check-iqdb`).click();
     }
