@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      18.16
+// @version      18.17
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -982,7 +982,21 @@ function CorrectList(type,typelist) {
 
 //Library functions
 
-////NONE
+JSPLib.load._getWindow = function () {
+    return (typeof unsafeWindow !== "undefined" ? unsafeWindow : window);
+};
+
+JSPLib.load.exportData = function (program_name, program_value, other_data = null) {
+    let window_value = JSPLib.load._getWindow();
+    if (JSPLib.debug.debug_console) {
+        window_value.JSPLib.lib = window_value.JSPLib.lib || {};
+        window_value.JSPLib.lib[program_name] = JSPLib;
+        window_value.JSPLib.value = window_value.JSPLib.value || {};
+        window_value.JSPLib.value[program_name] = program_value;
+        window_value.JSPLib.other = window_value.JSPLib.other || {};
+        window_value.JSPLib.other[program_name] = other_data;
+    }
+};
 
 //Helper functions
 
@@ -1113,6 +1127,7 @@ function InsertPostPreview($container, post_id, query_string) {
 
 function SaveLastID(type,lastid,qualifier='') {
     if (!JSPLib.validate.validateID(lastid)) {
+        SaveLastID.debuglog("Last ID for", type, "is not valid!", lastid);
         return;
     }
     qualifier += (qualifier.length > 0 ? '-' : '');
@@ -1849,6 +1864,7 @@ function ReloadEventNotice(event) {
         }
         let savedlist = JSPLib.storage.getStorageData(key, localStorage, null);
         if (!JSPLib.validate.validateIDList(savedlist)) {
+            ReloadEventNotice.debuglog(key, "is not a list!", savedlist);
             return;
         }
         promise_array.push(LoadHTMLType(match[3], savedlist));
@@ -2189,6 +2205,7 @@ function MarkAllAsRead() {
         let savedlastid = JSPLib.storage.getStorageData(key, localStorage, null);
         localStorage.removeItem(key);
         if (!JSPLib.validate.validateID(savedlastid)) {
+            MarkAllAsRead.debuglog(key, "is not a valid ID!", savedlastid);
             return;
         }
         SaveLastID(match[2], savedlastid, match[1]);
@@ -2479,7 +2496,7 @@ JSPLib.debug.addFunctionTimers(TIMER, true, [
 
 JSPLib.debug.addFunctionLogs([
     Main, BroadcastEL, CheckSubscribeType, MarkAllAsRead, ProcessEvent, SaveLastID, CorrectList,
-    CheckPostQueryType, CheckOtherType,
+    CheckPostQueryType, CheckOtherType, ReloadEventNotice,
 ]);
 
 /****Initialization****/
@@ -2497,10 +2514,7 @@ JSPLib.menu.settings_callback = RemoteSettingsCallback;
 JSPLib.menu.reset_callback = RemoteResetCallback;
 
 //Export JSPLib
-if (JSPLib.debug.debug_console) {
-    window.JSPLib.lib = window.JSPLib.lib || {};
-    window.JSPLib.lib[PROGRAM_NAME] = JSPLib;
-}
+JSPLib.load.exportData(PROGRAM_NAME, EL);
 
 /****Execution start****/
 
