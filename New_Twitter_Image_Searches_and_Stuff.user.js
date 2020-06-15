@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.9
+// @version      6.10
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2455,6 +2455,10 @@ function GetImageLinks(tweet) {
     return JSPLib.utility.getDOMAttributes($obj, 'image-url');
 }
 
+function GetImageIndex(length) {
+    return (length === 4 ? [0, 2, 1, 3] : [0, 1, 2, 3]);
+}
+
 function GetTweetStat(tweet,types) {
     for (let i = 0; i < types.length; i++) {
         let label = $(`[data-testid=${types[i]}]`, tweet).attr('aria-label');
@@ -3041,13 +3045,16 @@ function RenderDownloadLinks($tweet,position,is_video) {
     var image_links = GetImageLinks($tweet[0]);
     var hrefs = image_links.map((image)=>{return image + ':orig'});
     let html = '<span class="ntisas-download-header">Download Originals</span><br>';
+    let image_index = GetImageIndex(image_links.length);
     for (let i = 0; i < image_links.length; i++) {
-        let [image_name,extension] = GetFileURLNameExt(image_links[i]);
+        let index = image_index[i];
+        let image_num = i + 1;
+        let [image_name,extension] = GetFileURLNameExt(image_links[index]);
         let download_filename = JSPLib.utility.regexReplace(NTISAS.filename_prefix, {
-            ORDER: 'img' + String(i + 1),
+            ORDER: 'img' + String(image_num),
             IMG: image_name
         }) + '.' + extension;
-        html += `<a class="ntisas-download-original ntisas-download-image ntisas-expanded-link" href="${hrefs[i]}" download="${download_filename}">Image #${i + 1}</a>`;
+        html += `<a class="ntisas-download-original ntisas-download-image ntisas-expanded-link" href="${hrefs[index]}" download="${download_filename}">Image #${image_num}</a>`;
     }
     if (is_video) {
         html += '<a class="ntisas-download-original ntisas-download-video ntisas-expanded-link" style="display:none">Video #1</a>';
@@ -5223,9 +5230,10 @@ function ProcessTweetImages() {
         let $tweet = unprocessed_tweets[tweet_id];
         let is_main_tweet = $tweet.hasClass('ntisas-main-tweet');
         let $images = $tweet.find('[data-image-url]');
-        let image_index = ($images.length === 4 ? [1, 3, 2, 4] : [1, 2, 3, 4]);
+        let image_index = GetImageIndex($images.length);
         $images.each((i,entry)=>{
-            $(entry).attr('data-image-num', image_index[i]);
+            let image_num = image_index[i] + 1;
+            $(entry).attr('data-image-num', image_num);
             if (is_main_tweet) {
                 $(entry.parentElement).on('mouseenter.ntisas', ImageEnter);
                 $(entry.parentElement).on('mouseleave.ntisas', ImageLeave);
