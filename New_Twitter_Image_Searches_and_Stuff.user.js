@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.8
+// @version      6.9
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -768,7 +768,7 @@ const PROGRAM_CSS = `
 .ntisas-main-tweet .ntisas-tweet-actions {
     height: 35px;
 }
-.ntisas-main-tweet .ntisas-retweets-likes {
+.ntisas-main-tweet [ntisas=retweets-likes] {
     padding: 10px 0;
 }
 .ntisas-footer-entries {
@@ -3591,7 +3591,7 @@ function InitializeImageTweets($image_tweets) {
     } else if (IsTweetPage()) {
         let $tweet = $image_tweets.filter(`[data-tweet-id=${NTISAS.tweet_id}]`);
         if ($tweet.length && $('.ntisas-tweet-image, .ntisas-tweet-video', $tweet[0]).length) {
-            InitializeImageMenu($tweet, '.ntisas-retweets-likes', 'ntisas-tweet-menu');
+            InitializeImageMenu($tweet, '[ntisas-image-menu=parent]', 'ntisas-tweet-menu');
             if (NTISAS.user_settings.original_download_enabled) {
                 InitializeDownloadLinks($tweet);
             }
@@ -4931,9 +4931,15 @@ function MarkupMainTweet(tweet) {
     $(tweet_menu).addClass('ntisas-tweet-actions');
     let retweet_like_count = 0;
     let childn1 = sub_body.children[tweet_menu_index - 1];
-    if ($('[href$="/retweets"]', childn1).length || $('[href$="/likes"]', childn1).length) {
+    if ($('[href$="/retweets"]', childn1).length || $('[href$="/likes"]', childn1).length || $('[href$="/retweets/with_comments"]', childn1).length) {
+        let retweets_with_comments = Boolean($('[href$="/retweets/with_comments"]', childn1).length);
         retweet_like_count = 1;
-        $(childn1).addClass('ntisas-retweets-likes');
+        $(childn1).attr('ntisas','retweets-likes');
+        if (childn1.childElementCount == 1) {
+            $(childn1.children[0]).attr('ntisas-image-menu','parent');
+        } else {
+            $(childn1).attr('ntisas-image-menu','parent');
+        }
     }
     let time_line = sub_body.children[tweet_menu_index - 1 - retweet_like_count]
     $(time_line).addClass('ntisas-time-line');
