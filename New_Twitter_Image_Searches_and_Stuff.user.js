@@ -5222,8 +5222,10 @@ function ProcessTweetImages() {
     for (let tweet_id in unprocessed_tweets) {
         let $tweet = unprocessed_tweets[tweet_id];
         let is_main_tweet = $tweet.hasClass('ntisas-main-tweet');
-        $tweet.find('[data-image-url]').each((i,entry)=>{
-            $(entry).attr('data-image-num', i + 1);
+        let $images = $tweet.find('[data-image-url]');
+        let image_index = ($images.length === 4 ? [1, 3, 2, 4] : [1, 2, 3, 4]);
+        $images.each((i,entry)=>{
+            $(entry).attr('data-image-num', image_index[i]);
             if (is_main_tweet) {
                 $(entry.parentElement).on('mouseenter.ntisas', ImageEnter);
                 $(entry.parentElement).on('mouseleave.ntisas', ImageLeave);
