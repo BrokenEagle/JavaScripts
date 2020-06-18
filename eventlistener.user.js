@@ -54,7 +54,7 @@ const TIMER = {};
 
 //Event types
 const POST_QUERY_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'flag', 'appeal'];
-const SUBSCRIBE_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'forum', 'wiki', 'pool'];
+const SUBSCRIBE_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'flag', 'appeal', 'forum', 'wiki', 'pool'];
 const OTHER_EVENTS = ['dmail', 'ban', 'feedback', 'mod_action'];
 const ALL_EVENTS = JSPLib.utility.setUnique(POST_QUERY_EVENTS.concat(SUBSCRIBE_EVENTS).concat(OTHER_EVENTS));
 
@@ -704,19 +704,21 @@ const TYPEDICT = {
     flag: {
         controller: 'post_flags',
         addons: {search: {category: 'normal'}},
-        only: 'id,creator_id',
+        only: 'id,creator_id,post_id',
         filter: (array) => (array.filter((val) => (IsShownData(val, 'creator_id', ['post', 'uploader_id'])))),
         insert: InsertEvents,
         plural: 'flags',
+        display: "Flags",
         includes: 'post[uploader_id]',
         useritem: false,
     },
     appeal: {
         controller: 'post_appeals',
-        only: 'id,creator_id',
+        only: 'id,creator_id,post_id',
         filter: (array) => (array.filter((val) => (IsShownData(val, 'creator_id', ['post', 'uploader_id'])))),
         insert: InsertEvents,
         plural: 'appeals',
+        display: "Appeals",
         includes: 'post[uploader_id]',
         useritem: false,
     },
