@@ -53,7 +53,7 @@ const EL = {};
 const TIMER = {};
 
 //Event types
-const POST_QUERY_EVENTS = ['comment', 'note', 'commentary', 'approval', 'flag', 'appeal'];
+const POST_QUERY_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'flag', 'appeal'];
 const SUBSCRIBE_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'forum', 'wiki', 'pool'];
 const OTHER_EVENTS = ['dmail', 'ban', 'feedback', 'mod_action'];
 const ALL_EVENTS = JSPLib.utility.setUnique(POST_QUERY_EVENTS.concat(SUBSCRIBE_EVENTS).concat(OTHER_EVENTS));
@@ -209,6 +209,13 @@ const SETTINGS_CONFIG = {
         parse: String,
         validate: JSPLib.validate.isString,
         hint: 'Enter a post search query to check.'
+    },
+    post_query: {
+        display: "Edit query",
+        default: "",
+        parse: String,
+        validate: JSPLib.validate.isString,
+        hint: 'Enter a list of tags to check. See <a href="#el-post-query-event-message">Additional setting details</a> for more info.'
     },
 };
 
@@ -537,6 +544,24 @@ const EL_MENU = `
             <div id="el-post-query-event-message" class="prose">
                 <h4>Post query event settings</h4>
                 <p>These events can be searched with a post query. A blank query line will return all events. See <a href="/wiki_pages/43049">Help:Cheatsheet</a> for more info.</p>
+                <div class="expandable">
+                    <div class="expandable-header">
+                        <span>Additional setting details</span>
+                        <input type="button" value="Show" class="expandable-button">
+                    </div>
+                    <div class="expandable-content">
+                        <ul>
+                            <li><b>Edit query:</b>
+                                <ul>
+                                    <li>Prepend tags with a "-" to add a search for removed tags.</li>
+                                    <li>Any other tags will add a search for added tags.</li>
+                                    <li>At least one tag from added/removed must be in the post edit.</li>
+                                    <li>Having no tags for either group removes that requirement.</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
         <div id="el-subscribe-event-settings" class="jsplib-settings-grouping">
@@ -766,6 +791,7 @@ const TYPEDICT = {
         display: "Edits",
         includes: 'post[uploader_id]',
         useritem: false,
+        customquery: PostCustomQuery,
         subscribe: (table)=>{InitializePostNoteIndexLinks('post', table, false);},
     },
     approval: {
@@ -1189,6 +1215,22 @@ function IsShownBan(val) {
         return true;
     }
     return val.banner_id !== SERVER_USER_ID;
+}
+
+function PostCustomQuery(query) {
+    let parameters = {}
+    let taglist = query.trim().split(/\s+/);
+    let tagadds = taglist.filter(tag => !tag.startsWith('-'));
+    if (tagadds.length) {
+        parameters.search = {};
+        parameters.search.added_tags_include_any = tagadds.join(' ');
+    }
+    let tagremoves = taglist.filter(tag => tag.startsWith('-'));
+    if (tagremoves.length) {
+        parameters.search = parameters.search || {};
+        parameters.search.removed_tags_include_any = tagremoves.join(' ');
+    }
+    return parameters;
 }
 
 function InsertPostPreview($container, post_id, query_string) {
@@ -2096,8 +2138,11 @@ async function CheckPostQueryType(type) {
         let savedlastidkey = `el-pq-saved${type}lastid`;
         let type_addon = TYPEDICT[type].addons || {};
         let post_query = GetTypeQuery(type);
+        let query_addon = {};
         //Check if the post query has any non-operator text
-        let query_addon = (post_query.replace(/[\s-*~]+/g, '').length ? {search: {post_tags_match: post_query}} : {});
+        if (post_query.replace(/[\s-*~]+/g, '').length > 0) {
+            query_addon = (TYPEDICT[type].customquery ? TYPEDICT[type].customquery(post_query) : {search: {post_tags_match: post_query}});
+        }
         let url_addons = JSPLib.utility.joinArgs(type_addon, query_addon, {only: TYPEDICT[type].only});
         let batches = (EL.no_limit ? null : 1);
         let jsontype = await JSPLib.danbooru.getAllItems(TYPEDICT[type].controller, QUERY_LIMIT, batches, {addons: url_addons, page: typelastid, reverse: true});
@@ -2392,6 +2437,7 @@ function RenderSettingsMenu() {
     $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput('comment_query', 80));
     $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput('note_query', 80));
     $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput('commentary_query', 80));
+    $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput('post_query', 80));
     $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput('approval_query', 80));
     $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput('flag_query', 80));
     $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput('appeal_query', 80));
