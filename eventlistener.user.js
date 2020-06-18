@@ -112,6 +112,11 @@ const SETTINGS_CONFIG = {
         validate: (data)=>{return typeof data === 'boolean';},
         hint: "Only show events not created by the user."
     },
+    show_creator_events: {
+        default: false,
+        validate: (data)=>{return typeof data === 'boolean';},
+        hint: "Show subscribe events regardless of subscribe status when creator is the user."
+    },
     filter_untranslated_commentary: {
         default: true,
         validate: (data)=>{return typeof data === 'boolean';},
@@ -669,24 +674,26 @@ const TYPEDICT = {
         controller: 'post_flags',
         addons: {search: {category: 'normal'}},
         only: 'id,creator_id',
-        filter: (array)=>{return array.filter((val)=>{return IsShownData(val, [], 'creator_id', null);})},
+        filter: (array) => (array.filter((val) => (IsShownData(val, 'creator_id', ['post', 'uploader_id'])))),
         insert: InsertEvents,
         plural: 'flags',
+        includes: 'post[uploader_id]',
         useritem: false,
     },
     appeal: {
         controller: 'post_appeals',
         only: 'id,creator_id',
-        filter: (array)=>{return array.filter((val)=>{return IsShownData(val, [], 'creator_id', null);})},
+        filter: (array) => (array.filter((val) => (IsShownData(val, 'creator_id', ['post', 'uploader_id'])))),
         insert: InsertEvents,
         plural: 'appeals',
+        includes: 'post[uploader_id]',
         useritem: false,
     },
     dmail: {
         controller: 'dmails',
         addons: {search: {is_deleted: false}},
         only: 'id,from_id',
-        filter: (array)=>{return array.filter((val)=>{return IsShownData(val, [], 'from_id', null, (val)=>{return !val.is_read});})},
+        filter: (array) => (array.filter((val) => (IsShownData(val, 'from_id', null, null, null, (val)=>{return !val.is_read})))),
         insert: InsertDmails,
         plural: 'mail',
         useritem: true,
@@ -697,21 +704,23 @@ const TYPEDICT = {
         addons: {group_by: 'comment', search: {is_deleted: false}},
         only: 'id,creator_id,post_id',
         limit: 10,
-        filter: (array, typelist)=>{return array.filter((val)=>{return IsShownData(val, typelist, 'creator_id', 'post_id');})},
+        filter: (array,typeset) => (array.filter((val) => (IsShownData(val, 'creator_id', ['post', 'uploader_id'], 'post_id', typeset)))),
         insert: InsertComments,
         process: ()=>{JSPLib.utility.setCSSStyle(COMMENT_CSS, 'comment');},
         plural: 'comments',
         display: "Comments",
+        includes: 'post[uploader_id]',
         subscribe: InitializeCommentIndexLinks,
     },
     forum: {
         controller: 'forum_posts',
         only: 'id,creator_id,topic_id',
         limit: 10,
-        filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val, typelist, 'creator_id', 'topic_id');})},
+        filter: (array,typeset) => (array.filter((val) => (IsShownData(val, 'creator_id', ['topic', 'creator_id'], 'topic_id', typeset)))),
         insert: InsertForums,
         process: ()=>{JSPLib.utility.setCSSStyle(FORUM_CSS, 'forum');},
         plural: 'forums',
+        includes: 'topic[creator_id]',
         useritem: false,
         open: ()=>{OpenItemClick('forum', AddForumPost);},
         subscribe: InitializeTopicIndexLinks,
@@ -720,10 +729,11 @@ const TYPEDICT = {
         controller: 'note_versions',
         only: 'id,updater_id,post_id',
         limit: 10,
-        filter: (array, typelist)=>{return array.filter((val)=>{return IsShownData(val, typelist, 'updater_id', 'post_id');})},
+        filter: (array,typeset) => (array.filter((val) => (IsShownData(val, 'updater_id', ['post', 'uploader_id'], 'post_id', typeset)))),
         insert: InsertNotes,
         plural: 'notes',
         display: "Notes",
+        includes: 'post[uploader_id]',
         useritem: false,
         open: ()=>{OpenItemClick('note', AddRenderedNote, AdjustRowspan);},
         subscribe: (table)=>{InitializePostNoteIndexLinks('note', table, false);},
@@ -732,21 +742,23 @@ const TYPEDICT = {
         controller: 'artist_commentary_versions',
         only: 'id,updater_id,post_id',
         limit: 10,
-        filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val, typelist, 'updater_id', 'post_id', IsShownCommentary);})},
+        filter: (array,typeset) => (array.filter((val) => (IsShownData(val, 'updater_id', ['post', 'uploader_id'], 'post_id', typeset, IsShownCommentary)))),
         insert: InsertEvents,
         plural: 'commentaries',
         display: "Artist commentary",
+        includes: 'post[uploader_id]',
         useritem: false,
     },
     post: {
         controller: 'post_versions',
         only: 'id,updater_id,post_id',
         limit: 2,
-        filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val, typelist, 'updater_id', 'post_id');})},
+        filter: (array,typeset) => (array.filter((val) => (IsShownData(val, 'updater_id', ['post', 'uploader_id'], 'post_id', typeset, IsShownPostEdit)))),
         insert: InsertPosts,
         process: ()=>{JSPLib.utility.setCSSStyle(POST_CSS, 'post');},
         plural: 'edits',
         display: "Edits",
+        includes: 'post[uploader_id]',
         useritem: false,
         subscribe: (table)=>{InitializePostNoteIndexLinks('post', table, false);},
     },
@@ -754,17 +766,18 @@ const TYPEDICT = {
         controller: 'post_approvals',
         only: 'id,user_id,post_id',
         limit: 10,
-        filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val, typelist, 'user_id', 'post_id');})},
+        filter: (array,typeset) => (array.filter((val) => (IsShownData(val, 'user_id', ['post', 'uploader_id'], 'post_id', typeset)))),
         insert: InsertEvents,
         plural: 'approvals',
         display: "Approval",
+        includes: 'post[uploader_id]',
         useritem: false,
     },
     wiki: {
         controller: 'wiki_page_versions',
         only: 'id,updater_id,wiki_page_id',
         limit: 10,
-        filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val, typelist, 'updater_id', 'wiki_page_id');})},
+        filter: (array,typeset) => (array.filter((val) => (IsShownData(val, 'updater_id', null, 'wiki_page_id', typeset)))),
         insert: InsertWikis,
         process: ()=>{JSPLib.utility.setCSSStyle(WIKI_CSS, 'wiki');},
         plural: 'wikis',
@@ -776,7 +789,7 @@ const TYPEDICT = {
         controller: 'pool_versions',
         only: 'id,updater_id,pool_id',
         limit: 2,
-        filter: (array,typelist)=>{return array.filter((val)=>{return IsShownData(val, typelist, 'updater_id', 'pool_id');})},
+        filter: (array,typeset) => (array.filter((val) => (IsShownData(val, 'updater_id', null, 'pool_id', typeset)))),
         insert: InsertPools,
         process: ()=>{JSPLib.utility.setCSSStyle(POOL_CSS, 'pool');},
         plural: 'pools',
@@ -790,7 +803,7 @@ const TYPEDICT = {
     feedback: {
         controller: 'user_feedbacks',
         only: 'id,creator_id,body',
-        filter: (array)=>{return array.filter((val)=>{return IsShownData(val, [], 'creator_id', null, IsShownFeedback);})},
+        filter: (array) => (array.filter((val) => (IsShownData(val, 'creator_id', null, null, null, IsShownFeedback)))),
         insert: InsertEvents,
         process: ()=>{JSPLib.utility.setCSSStyle(FEEDBACK_CSS, 'feedback');},
         plural: 'feedbacks',
@@ -799,7 +812,7 @@ const TYPEDICT = {
     ban: {
         controller: 'bans',
         only: 'id,banner_id',
-        filter: (array)=>{return array.filter((val)=>{return IsShownData(val, [], 'banner_id', null, IsShownBan);})},
+        filter: (array) => (array.filter((val) => (IsShownData(val, 'banner_id', null, null, null, IsShownBan)))),
         insert: InsertEvents,
         process: ()=>{JSPLib.utility.setCSSStyle(BAN_CSS, 'ban');},
         plural: 'bans',
@@ -1125,12 +1138,15 @@ function CheckList(type) {
 
 //Auxiliary functions
 
-function IsShownData(val,typeset,user_key=null,subscribe_key=null,other_filters=null) {
+function IsShownData(val,user_key=null,creator_keys=null,subscribe_key=null,typeset=null,other_filters=null) {
     if (EL.user_settings.filter_user_events && user_key && val[user_key] === EL.userid) {
         return false;
     }
-    if (subscribe_key && typeset && !typeset.has(val[subscribe_key])) {
-        return false;
+    if (typeset && subscribe_key) {
+        let is_creator_event = EL.user_settings.show_creator_events && creator_keys && JSPLib.utility.getNestedAttribute(val, creator_keys) === EL.userid;
+        if (!is_creator_event && typeset.has(val[subscribe_key]) === false) {
+            return false;
+        }
     }
     if (other_filters && !other_filters(val)) {
         return false;
@@ -2101,7 +2117,11 @@ async function CheckSubscribeType(type) {
         let savedlastidkey = `el-saved${type}lastid`;
         let overflowkey = `el-${type}overflow`;
         let type_addon = TYPEDICT[type].addons || {};
-        let urladdons = JSPLib.utility.joinArgs(type_addon, {only: TYPEDICT[type].only});
+        let only_attribs = TYPEDICT[type].only;
+        if (EL.user_settings.show_creator_events) {
+            only_attribs += (TYPEDICT[type].includes ? ',' + TYPEDICT[type].includes : "");
+        }
+        let urladdons = JSPLib.utility.joinArgs(type_addon, {only: only_attribs});
         let batches = TYPEDICT[type].limit;
         let batch_limit = TYPEDICT[type].limit * QUERY_LIMIT;
         if (EL.no_limit) {
@@ -2358,6 +2378,7 @@ function RenderSettingsMenu() {
     $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput('appeal_query', 80));
     $('#el-subscribe-event-settings').append(JSPLib.menu.renderInputSelectors('subscribe_events_enabled', 'checkbox'));
     $('#el-subscribe-event-settings').append(JSPLib.menu.renderInputSelectors('autosubscribe_enabled', 'checkbox'));
+    $('#el-subscribe-event-settings').append(JSPLib.menu.renderCheckbox('show_creator_events'));
     $('#el-other-event-settings').append(JSPLib.menu.renderInputSelectors('other_events_enabled', 'checkbox'));
     $('#el-other-event-settings').append(JSPLib.menu.renderInputSelectors('subscribed_mod_actions', 'checkbox'));
     $('#el-network-settings').append(JSPLib.menu.renderTextinput('recheck_interval', 10));
