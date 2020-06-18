@@ -132,6 +132,12 @@ const SETTINGS_CONFIG = {
         validate: (data)=>{return typeof data === 'boolean';},
         hint: 'Only show feedback not created by an administrative action, e.g. bans or promotions.'
     },
+    filter_post_edits: {
+        default: "",
+        parse: String,
+        validate: JSPLib.validate.isString,
+        hint: "Enter a list of tags to filter out edits when added to or removed from a post.",
+    },
     recheck_interval: {
         default: 5,
         parse: parseInt,
@@ -751,7 +757,7 @@ const TYPEDICT = {
     },
     post: {
         controller: 'post_versions',
-        only: 'id,updater_id,post_id',
+        only: 'id,updater_id,post_id,added_tags,removed_tags',
         limit: 2,
         filter: (array,typeset) => (array.filter((val) => (IsShownData(val, 'updater_id', ['post', 'uploader_id'], 'post_id', typeset, IsShownPostEdit)))),
         insert: InsertPosts,
@@ -1159,6 +1165,14 @@ function IsShownCommentary(val) {
         return true;
     }
     return (Boolean(val.translated_title) || Boolean(val.translated_description));
+}
+
+function IsShownPostEdit(val) {
+    if (EL.user_settings.filter_post_edits === "") {
+        return true;
+    }
+    let changed_tags = new Set(JSPLib.utility.concat(val.added_tags, val.removed_tags));
+    return !JSPLib.utility.setHasIntersection(changed_tags, EL.post_filter_tags);
 }
 
 function IsShownFeedback(val) {
@@ -2066,7 +2080,7 @@ function RebindMenuAutocomplete() {
         check: ()=>{return JSPLib.utility.hasDOMDataKey('#user_blacklisted_tags, #user_favorite_tags', 'uiAutocomplete');},
         exec: ()=>{
             $('#user_blacklisted_tags, #user_favorite_tags').autocomplete('destroy').off('keydown.Autocomplete.tab');
-            $('#el-control-search-query,' + JSPLib.utility.joinList(POST_QUERY_EVENTS, '#el-setting-', '-query', ',')).attr('data-autocomplete', 'tag-query');
+            $('#el-control-search-query, #el-setting-filter-post-edits, ' + JSPLib.utility.joinList(POST_QUERY_EVENTS, '#el-setting-', '-query', ',')).attr('data-autocomplete', 'tag-query');
             setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, JQUERY_DELAY);
         }
     }, TIMER_POLL_INTERVAL);
@@ -2359,6 +2373,10 @@ function GetRecheckExpires() {
     return EL.user_settings.recheck_interval * JSPLib.utility.one_minute;
 }
 
+function GetPostFilterTags() {
+    return new Set(EL.user_settings.filter_post_edits.trim().split(/\s+/));
+}
+
 function RenderSettingsMenu() {
     $('#event-listener').append(EL_MENU);
     $('#el-general-settings').append(JSPLib.menu.renderDomainSelectors());
@@ -2369,6 +2387,7 @@ function RenderSettingsMenu() {
     $('#el-filter-settings').append(JSPLib.menu.renderCheckbox('filter_untranslated_commentary'));
     $('#el-filter-settings').append(JSPLib.menu.renderCheckbox('filter_autofeedback'));
     $('#el-filter-settings').append(JSPLib.menu.renderCheckbox('filter_autobans'));
+    $('#el-filter-settings').append(JSPLib.menu.renderTextinput('filter_post_edits', 80));
     $('#el-post-query-event-settings').append(JSPLib.menu.renderInputSelectors('post_query_events_enabled', 'checkbox'));
     $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput('comment_query', 80));
     $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput('note_query', 80));
@@ -2452,6 +2471,7 @@ function Main() {
     Object.assign(EL, {
         timeout_expires: GetRecheckExpires(),
         locked_notice: EL.user_settings.autolock_notices,
+        post_filter_tags: GetPostFilterTags(),
     });
     EventStatusCheck();
     if (!document.hidden && localStorage['el-saved-notice'] !== undefined && !JSPLib.concurrency.checkTimeout('el-saved-timeout', EL.timeout_expires)) {
