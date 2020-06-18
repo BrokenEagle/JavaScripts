@@ -1253,14 +1253,13 @@ async function AddForumPost(forumid,rowelement) {
     let $forum_post = $(`#forum_post_${forumid}`, $forum_page);
     let $outerblock = $.parseHTML(RenderOpenItemContainer('forum', forumid, 4));
     $('td', $outerblock).append($forum_post);
-    $(rowelement).after($outerblock);
+    let $rowelement = $(rowelement);
+    $rowelement.after($outerblock);
     if (EL.user_settings.mark_read_topics) {
-        let topic_link = $('td:first-of-type > a', rowelement);
-        let topic_path = topic_link.length && topic_link[0].pathname;
-        let topic_match = topic_path && topic_path.match(FORUM_TOPICS_REGEX);
-        if (topic_match && !EL.marked_topic.includes(topic_match[1])) {
-            ReadForumTopic(topic_match[1]);
-            EL.marked_topic.push(topic_match[1]);
+        let topic_id = $rowelement.data('topic-id');
+        if (!EL.marked_topic.includes(topic_id)) {
+            ReadForumTopic(topic_id);
+            EL.marked_topic.push(topic_id);
         }
     }
 }
@@ -1286,7 +1285,8 @@ async function AddDmail(dmailid,rowelement) {
 }
 
 async function AddWiki(wikiverid,rowelement) {
-    let wikiid = rowelement.innerHTML.match(WIKI_PAGES_REGEX)[1];
+    let $rowelement = $(rowelement);
+    let wikiid = $rowelement.data('wiki-page-id');
     let url_addons = {search: {wiki_page_id: wikiid}, page: `b${wikiverid}`, only: ID_FIELD, limit: 1};
     let prev_wiki = await JSPLib.danbooru.submitRequest('wiki_page_versions', url_addons, []);
     if (prev_wiki.length) {
@@ -1297,7 +1297,7 @@ async function AddWiki(wikiverid,rowelement) {
         let $wiki_diff_page = $.parseHTML(wiki_diff_page);
         let $outerblock = $.parseHTML(RenderOpenItemContainer('wiki', wikiverid, 4));
         $('td', $outerblock).append($('#a-diff #content', $wiki_diff_page));
-        $(rowelement).after($outerblock);
+        $rowelement.after($outerblock);
     } else {
         JSPLib.utility.notice("Wiki creations have no diff!");
     }
