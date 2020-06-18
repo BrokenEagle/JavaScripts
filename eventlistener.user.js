@@ -431,64 +431,6 @@ const MENU_CSS = `
     margin-right: 5px;
 }`;
 
-//Temporary CSS
-const JSPLIB_CSS = `
-#userscript-settings-menu {
-    border: var(--footer-border);
-}
-#userscript-settings-menu,
-#userscript-settings-menu .ui-widget-content {
-    color: var(--text-color);
-    background: var(--body-background-color);
-}
-#userscript-settings-menu .ui-button {
-    color: var(--form-button-text-color);
-    border: var(--form-button-border);
-    background: var(--form-button-background);
-}
-#userscript-settings-menu .ui-button:hover {
-    filter: brightness(1.1);
-}
-#userscript-settings-menu .ui-widget-header {
-    border: var(--post-notice-border);
-    background: var(--form-button-background);
-    color: var(--text-color);
-}
-#userscript-settings-menu .ui-state-default {
-    background: var(--form-button-hover-background);
-}
-#userscript-settings-menu .ui-state-default a,
-#userscript-settings-menu .ui-state-default a:link,
-#userscript-settings-menu .ui-state-default a:visited {
-    color: black;
-}
-#userscript-settings-menu .ui-state-hover,
-#userscript-settings-menu .ui-state-focus  {
-    filter: brightness(1.1);
-}
-#userscript-settings-menu .ui-state-active {
-    border: 1px solid #003eff;
-    background: #007fff;
-    border-bottom-width: 0;
-    color: #ffffff;
-}
-#userscript-settings-menu .ui-state-active a,
-#userscript-settings-menu .ui-state-active a:link,
-#userscript-settings-menu .ui-state-active a:visited {
-    color: #ffffff;
-}
-#userscript-settings-menu .jsplib-console hr {
-    border: var(--footer-border);
-}
-#userscript-settings-menu .jsplib-console .expandable {
-    border: var(--dtext-expand-border);
-}
-#userscript-settings-menu .jsplib-block-tooltip,
-#userscript-settings-menu .jsplib-inline-tooltip {
-    color: var(--muted-text-color);
-}
-`;
-
 //HTML constants
 
 const NOTICE_BOX = `
@@ -515,7 +457,7 @@ const NOTICE_BOX = `
         |
         <a href="javascript:void(0)" id="el-read-event-notice" title="Mark all items as read.">READ</a>
         |
-        <a href="javascript:void(0)" id="el-reload-event-notice" title="Mark all items as read.">RELOAD</a>
+        <a href="javascript:void(0)" id="el-reload-event-notice" title="Reload events when the server errors.">RELOAD</a>
         ]
     </div>
 </div>`;
@@ -710,15 +652,7 @@ const ID_FIELD = 'id';
 
 //Regex constants
 
-const DMAILS_REGEX = XRegExp.tag()`/dmails/(\d+)`;
-const POSTS_REGEX = XRegExp.tag()`/posts/(\d+)`;
-const WIKI_PAGES_REGEX = XRegExp.tag()`/wiki_pages/(\d+)`;
-const WIKI_PAGE_VERSIONS_REGEX = XRegExp.tag()`/wiki_page_versions/(\d+)`;
-const WIKI_PAGE_HISTORY_REGEX = XRegExp.tag()`/wiki_page_versions\?search%5Bwiki_page_id%5D=(\d+)`
 const POOLS_REGEX = XRegExp.tag()`/pools/(\d+)`;
-const POOL_DESC_REGEX = /(Old|New) Desc: /;
-const FORUM_TOPICS_REGEX = XRegExp.tag()`/forum_topics/(\d+)`;
-const EMPTY_REGEX = /^$/;
 
 //Other constants
 
