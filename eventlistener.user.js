@@ -69,7 +69,7 @@ const SAVED_KEYS = Array.prototype.concat(
     SUBSCRIBE_EVENTS.map((type)=>{return [`el-saved${type}lastid`, `el-saved${type}list`];}),
     OTHER_EVENTS.map((type)=>{return [`el-ot-saved${type}lastid`, `el-ot-saved${type}list`];}),
 ).flat();
-const SUBSCRIBE_KEYS = SUBSCRIBE_EVENTS.map((type)=>{return [`el-${type}list`, `el-${type}overflow`];}).flat();
+const SUBSCRIBE_KEYS = SUBSCRIBE_EVENTS.map((type) => ([`el-${type}list`, `el-${type}overflow`])).flat();
 const LOCALSTORAGE_KEYS = LASTID_KEYS.concat(SAVED_KEYS).concat(SUBSCRIBE_KEYS).concat([
     'el-overflow',
     'el-last-seen',
@@ -743,6 +743,7 @@ const TYPEDICT = {
         plural: 'comments',
         display: "Comments",
         includes: 'post[uploader_id]',
+        useritem: false,
         subscribe: InitializeCommentIndexLinks,
     },
     forum: {
@@ -855,7 +856,7 @@ const TYPEDICT = {
     mod_action: {
         controller: 'mod_actions',
         only: 'id,category',
-        filter: (array)=>{return array.filter((val)=>{return IsCategorySubscribed(val.category);})},
+        filter: (array) => (array.filter((val) => (IsCategorySubscribed(val.category)))),
         insert: InsertEvents,
         plural: 'mod actions',
         useritem: false,
@@ -1621,10 +1622,9 @@ async function GetThumbnails() {
     for (let i = 0; i < missing_post_ids.length; i += QUERY_LIMIT) {
         let post_ids = missing_post_ids.slice(i, i + QUERY_LIMIT);
         let url_addon = {tags: `id:${post_ids} limit:${post_ids.length}`};
-        var html = await JSPLib.network.getNotify('/posts', url_addon);
-        var $posts = $.parseHTML(html);
-        var $thumbs = $('.post-preview', $posts);
-        $thumbs.each((i,thumb)=>{
+        let html = await JSPLib.network.getNotify('/posts', url_addon);
+        let $posts = $.parseHTML(html);
+        $('.post-preview', $posts).each((i,thumb)=>{
             InitializeThumb(thumb);
         });
     }
