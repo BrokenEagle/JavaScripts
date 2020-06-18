@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      18.17
+// @version      18.18
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -10,8 +10,8 @@
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/eventlistener.user.js
-// @require      https://cdn.jsdelivr.net/npm/core-js-bundle@3.2.1/minified.js
-// @require      https://cdn.jsdelivr.net/npm/xregexp@4.2.4/xregexp-all.js
+// @require      https://cdn.jsdelivr.net/npm/core-js-bundle@3.6.5/minified.js
+// @require      https://cdn.jsdelivr.net/npm/xregexp@4.3.0/xregexp-all.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/debug.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/load.js
