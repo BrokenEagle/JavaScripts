@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      18.18
+// @version      19.0
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -930,6 +930,115 @@ JSPLib.load.exportData = function (program_name, program_value, other_data = nul
         window_value.JSPLib.other = window_value.JSPLib.other || {};
         window_value.JSPLib.other[program_name] = other_data;
     }
+};
+
+JSPLib.utility._setOperation = function (iterator,comparator,result=new Set()) {
+    for (let val of iterator) {
+        if (comparator(val)) {
+            result.add(val);
+        }
+    }
+    return result;
+};
+
+JSPLib.utility.getNestedAttribute = function (data,attributes) {
+    for (let i = 0; i < attributes.length; i++) {
+        let attribute = attributes[i];
+        data = data[attribute]
+        if (data === undefined) {
+            return null;
+        }
+    }
+    return data;
+};
+
+JSPLib.utility.isSet = function (data) {
+    return data && data.constructor && data.constructor.name === "Set";
+};
+
+JSPLib.utility.setUnionN = function (set1,set2) {
+    let [small,large] = this._orderSets(set1,set2);
+    const comparator = ()=>(true);
+    return this._setOperation(small,comparator,new Set(large));
+};
+
+JSPLib.utility.setDifferenceN = function (set1,set2) {
+    const comparator = (val) => !set2.has(val);
+    return this._setOperation(set1,comparator);
+};
+
+JSPLib.utility.setIntersectionN = function (set1,set2) {
+    let [small,large] = this._orderSets(set1,set2);
+    const comparator = (val) => large.has(val);
+    return this._setOperation(small,comparator);
+};
+
+JSPLib.utility.setSymmetricDifferenceN = function (set1,set2) {
+    let combined = this.setUnionN(set1,set2);
+    let comparator = (val) => !(set1.has(val) && set2.has(val));
+    return this._setOperation(combined,comparator);
+};
+
+JSPLib.utility.setEqualsN = function (set1,set2) {
+    if (!this.isSet(set1) || !this.isSet(set2)) {
+        return false;
+    }
+    if (set1.size !== set2.size) {
+        return false;
+    }
+    let [small,large] = this._orderSets(set1,set2);
+    return [...small].every(val => large.has(val));
+};
+
+JSPLib.utility.isSubSetN = function (set1,set2) {
+    return set2.every(val => set1.has(val));
+};
+
+JSPLib.utility.isSuperSetN = function (set1,set2) {
+    return this.isSubset(set2,set1);
+};
+
+JSPLib.utility.arrayUnique = function (array) {
+    return [...(new Set(array))];
+};
+
+JSPLib.utility.arrayUnion = function (array1,array2) {
+    let [set1,set2] = this._makeSets(array1,array2);
+    return [...this.setUnionN(set1,set2)];
+};
+
+JSPLib.utility.arrayDifference = function (array1,array2) {
+    let [set1,set2] = this._makeSets(array1,array2);
+    return [...this.setDifferenceN(set1,set2)];
+};
+
+JSPLib.utility.arrayIntersection = function (array1,array2) {
+    let [set1,set2] = this._makeSets(array1,array2);
+    return [...this.setIntersectionN(set1,set2)];
+};
+
+JSPLib.utility.arraySymmetricDifference = function (array1,array2) {
+    let [set1,set2] = this._makeSets(array1,array2);
+    return [...this.setSymmetricDifferenceN(set1,set2)];
+};
+
+JSPLib.utility.isSubArray = function (array1,array2) {
+    let [set1,set2] = this._makeSets(array1,array2);
+    return this.isSubSetN(set1,set2);
+};
+
+JSPLib.utility.isSuperArray = function (array1,array2) {
+    return this.isSubArray(array2,array1);
+};
+
+JSPLib.utility.setHasIntersection = function (set1,set2) {
+    let [small,large] = this._orderSets(set1,set2);
+    return small.some(val => large.has(val));
+};
+
+JSPLib.utility.arrayHasIntersection = function (array1,array2) {
+    let [set1,set2] = this._makeSets(array1,array2);
+    return this.setHasIntersection(set1,set2);
 };
 
 //Helper functions
