@@ -81,13 +81,13 @@ const ENABLE_EVENTS = ['flag', 'appeal', 'dmail', 'comment', 'note', 'commentary
 const POST_QUERY_ENABLE_EVENTS = ['flag', 'appeal'];
 const SUBSCRIBE_ENABLE_EVENTS = ['comment', 'note', 'commentary', 'forum'];
 const OTHER_ENABLE_EVENTS = ['dmail'];
-const AUTOSUBSCRIBE_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval'];
+const AUTOSUBSCRIBE_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'flag', 'appeal'];
 const MODACTION_EVENTS = [
     'user_delete', 'user_ban', 'user_unban', 'user_name_change', 'user_level_change', 'user_approval_privilege', 'user_upload_privilege', 'user_account_upgrade',
     'user_feedback_update', 'user_feedback_delete', 'post_delete', 'post_undelete', 'post_ban', 'post_unban', 'post_permanent_delete', 'post_move_favorites',
     'pool_delete', 'pool_undelete', 'artist_ban', 'artist_unban', 'comment_update', 'comment_delete', 'forum_topic_delete', 'forum_topic_undelete', 'forum_topic_lock',
     'forum_post_update', 'forum_post_delete', 'tag_alias_create', 'tag_alias_update', 'tag_implication_create', 'tag_implication_update', 'ip_ban_create', 'ip_ban_delete',
-    'mass_update', 'bulk_revert', 'other'
+    'ip_ban_undelete', 'mass_update', 'bulk_revert', 'other'
 ];
 
 //Main settings
