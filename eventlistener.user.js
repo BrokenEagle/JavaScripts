@@ -903,7 +903,7 @@ function CorrectList(type,typelist) {
         let oldlist = JSPLib.utility.dataCopy(typelist[type]);
         typelist[type] = (Array.isArray(typelist[type]) ? typelist[type].filter(id => JSPLib.validate.validateID(id)) : []);
         JSPLib.debug.debugExecute(()=>{
-            let validation_error = (Array.isArray(oldlist) ? JSPLib.utility.setDifference(oldlist, typelist[type]) : typelist[type]);
+            let validation_error = (Array.isArray(oldlist) ? JSPLib.utility.arrayDifference(oldlist, typelist[type]) : typelist[type]);
             error_messages.push(["Validation error:", validation_error]);
         });
     }
@@ -1059,11 +1059,11 @@ function IsEventEnabled(type,event_type) {
 }
 
 function IsAnyEventEnabled(event_list,event_type) {
-    return Boolean(JSPLib.utility.setIntersection(event_list, EL.user_settings[event_type]).length);
+    return JSPLib.utility.arrayHasIntersection(event_list, EL.user_settings[event_type]);
 }
 
 function AreAllEventsEnabled(event_list,event_type) {
-    return !JSPLib.utility.setDifference(event_list, EL.user_settings[event_type]).length;
+    return JSPLib.utility.isSubArray(EL.user_settings[event_type], event_list);
 }
 
 function IsCategorySubscribed(type) {
@@ -1089,31 +1089,29 @@ function HideDmailNotice() {
 //Data storage functions
 
 function GetList(type) {
-    if (EL.subscribelist[type]) {
-        return EL.subscribelist[type];
+    if (EL.subscribeset[type]) {
+        return EL.subscribeset[type];
     }
-    EL.subscribelist[type] = JSPLib.storage.getStorageData(`el-${type}list`, localStorage, []);
-    if (CorrectList(type, EL.subscribelist)) {
-        setTimeout(()=>{JSPLib.storage.setStorageData(`el-${type}list`, EL.subscribelist[type], localStorage);}, 1);
+    EL.subscribeset[type] = JSPLib.storage.getStorageData(`el-${type}list`, localStorage, []);
+    if (CorrectList(type, EL.subscribeset)) {
+        setTimeout(()=>{
+            JSPLib.storage.setStorageData(`el-${type}list`, EL.subscribeset, localStorage);
+        }, NONSYNCHRONOUS_DELAY);
     }
-    return EL.subscribelist[type];
+    EL.subscribeset[type] = new Set(EL.subscribeset[type]);
+    return EL.subscribeset[type];
 }
 
-function SetList(type,input) {
-    let typelist = GetList(type);
-    let was_subscribed, itemid;
-    if (input[0] == '-') {
-        itemid = parseInt(input.slice(1));
-        typelist = JSPLib.utility.setDifference(typelist, [itemid]);
-        was_subscribed = true;
+function SetList(type,remove_item,itemid) {
+    let typeset = GetList(type);
+    if (remove_item) {
+        typeset.delete(itemid);
     } else {
-        itemid = parseInt(input);
-        typelist.push(itemid);
-        was_subscribed = false;
+        typeset.add(itemid);
     }
-    EL.subscribelist[type] = JSPLib.utility.setUnique(typelist);
-    JSPLib.storage.setStorageData(`el-${type}list`, EL.subscribelist[type], localStorage);
-    EL.channel.postMessage({type: 'subscribe', eventtype: type, was_subscribed: was_subscribed, itemid: itemid, eventlist: EL.subscribelist[type]});
+    JSPLib.storage.setStorageData(`el-${type}list`, [...typeset], localStorage);
+    EL.channel.postMessage({type: 'subscribe', eventtype: type, was_subscribed: remove_item, itemid: itemid, eventlist: typeset});
+    EL.subscribeset[type] = typeset;
 }
 
 //Quicker way to check list existence; avoids unnecessarily parsing very long lists
@@ -1124,11 +1122,11 @@ function CheckList(type) {
 
 //Auxiliary functions
 
-function IsShownData(val,typelist,user_key=null,subscribe_key=null,other_filters=null) {
+function IsShownData(val,typeset,user_key=null,subscribe_key=null,other_filters=null) {
     if (EL.user_settings.filter_user_events && user_key && val[user_key] === EL.userid) {
         return false;
     }
-    if (subscribe_key && typelist && !typelist.includes(val[subscribe_key])) {
+    if (subscribe_key && typeset && !typeset.has(val[subscribe_key])) {
         return false;
     }
     if (other_filters && !other_filters(val)) {
@@ -1192,7 +1190,7 @@ function SetLastSeenTime() {
 //Return true if there was no overflow at all, or overflow for the input type
 function CheckOverflow(inputtype) {
     if (Object.keys(CheckOverflow.all_overflows).length == 0) {
-        let enabled_events = JSPLib.utility.setIntersection(SUBSCRIBE_EVENTS, EL.user_settings.subscribe_events_enabled);
+        let enabled_events = JSPLib.utility.arrayIntersection(SUBSCRIBE_EVENTS, EL.user_settings.subscribe_events_enabled);
         enabled_events.forEach((type)=>{
             CheckOverflow.all_overflows[type] = JSPLib.storage.checkStorageData(`el-${type}overflow`, ValidateProgramData, localStorage, false);
             CheckOverflow.any_overflow = CheckOverflow.any_overflow || CheckOverflow.all_overflows[type];
@@ -1319,7 +1317,7 @@ async function AddPoolPosts(poolverid,rowelement) {
     let add_posts = String($post_count.data('add-posts') || "").split(',').sort().reverse();
     let rem_posts = String($post_count.data('rem-posts') || "").split(',').sort().reverse();
     let total_posts = JSPLib.utility.concat(add_posts, rem_posts);
-    let missing_posts = JSPLib.utility.setDifference(total_posts, Object.keys(EL.thumbs));
+    let missing_posts = JSPLib.utility.arrayDifference(total_posts, Object.keys(EL.thumbs));
     if (missing_posts.length) {
         let thumbnails = await JSPLib.network.getNotify(`/posts`, {tags: 'id:' + missing_posts.join(',') + ' status:any'});
         let $thumbnails = $.parseHTML(thumbnails);
@@ -1343,11 +1341,13 @@ async function AddPoolPosts(poolverid,rowelement) {
 //Update links
 
 function UpdateMultiLink(typelist,subscribed,itemid) {
-    let current_subscribed = JSPLib.utility.setUnique($('#el-subscribe-events .el-subscribed').map((i,entry)=>{return entry.dataset.type.split(',');}).toArray());
-    let new_subscribed = (subscribed ? JSPLib.utility.setDifference(current_subscribed, typelist) : JSPLib.utility.setUnion(current_subscribed, typelist));
-    $(`#el-subscribe-events[data-id="${itemid}"] .el-subscribed, #el-subscribe-events[data-id="${itemid}"] .el-unsubscribed`).each((i,entry)=>{
-        let entry_typelist = entry.dataset.type.split(',');
-        if (JSPLib.utility.setIntersection(entry_typelist, new_subscribed).length === entry_typelist.length) {
+    let typeset = new Set(typelist);
+    let current_subscribed = new Set($('#el-subscribe-events .el-subscribed').map((i, entry) => entry.dataset.type.split(',')));
+    let new_subscribed = (subscribed ?
+        JSPLib.utility.setDifferenceN(current_subscribed, typeset) :
+        JSPLib.utility.setUnionN(current_subscribed, typeset));
+        let entry_typelist = new Set(entry.dataset.type.split(','));
+        if (JSPLib.utility.isSuperSetN(entry_typelist, new_subscribed)) {
             $(entry).removeClass().addClass('el-subscribed');
         } else {
             $(entry).removeClass().addClass('el-unsubscribed');
@@ -1378,7 +1378,7 @@ function ToggleSubscribeLinks() {
         }
         if (IsAnyEventEnabled(ALL_POST_EVENTS, 'subscribe_events_enabled')) {
             $('#el-subscribe-events').show();
-            let enabled_post_events = JSPLib.utility.setIntersection(ALL_POST_EVENTS, EL.user_settings.subscribe_events_enabled);
+            let enabled_post_events = JSPLib.utility.arrayIntersection(ALL_POST_EVENTS, EL.user_settings.subscribe_events_enabled);
             $('#el-all-link').attr('data-type', enabled_post_events);
         } else {
             $('#el-subscribe-events').hide();
@@ -1513,7 +1513,7 @@ function DecodeProtectedEmail(obj) {
 function AddThumbnails(dompage) {
     $('.striped thead tr', dompage).prepend('<th>Thumb</th>');
     var row_save = {};
-    var post_ids = [];
+    var post_ids = new Set();
     $('.striped tr[id]', dompage).each((i,row)=>{
         let $postlink = $('td:first-of-type a:first-of-type', row);
         let match = $postlink.length && $postlink.attr('href').match(/\/posts\/(\d+)/);
@@ -1522,11 +1522,11 @@ function AddThumbnails(dompage) {
             return false;
         }
         let postid = parseInt(match[1]);
-        post_ids.push(postid);
+        post_ids.add(postid);
         row_save[postid] = row_save[postid] || [];
         row_save[postid].push($(row).detach());
     });
-    post_ids = JSPLib.utility.setUnique(post_ids).sort().reverse();
+    let display_ids = [...post_ids].sort().reverse();
     var $body = $('.striped tbody', dompage);
     post_ids.forEach((postid)=>{
         row_save[postid][0].prepend(`<td rowspan="${row_save[postid].length}" class="el-post-thumbnail" data-postid="${postid}"></td>`);
@@ -1534,18 +1534,15 @@ function AddThumbnails(dompage) {
             $body.append(row);
         });
     });
-    EL.post_ids = JSPLib.utility.setUnion(EL.post_ids, post_ids);
+    EL.post_ids = JSPLib.utility.setUnionN(EL.post_ids, post_ids);
 }
 
 async function GetThumbnails() {
-    let found_post_ids = Object.keys(EL.thumbs).map(Number);
-    for (let i = 0; i < EL.post_ids.length; i += QUERY_LIMIT) {
-        let post_ids = EL.post_ids.slice(i, i + QUERY_LIMIT);
-        let missing_post_ids = JSPLib.utility.setDifference(post_ids, found_post_ids);
-        if (missing_post_ids.length === 0) {
-            continue;
-        }
-        var url_addon = {tags: `id:${missing_post_ids} limit:${missing_post_ids.length}`};
+    let found_post_ids = new Set(Object.keys(EL.thumbs).map(Number));
+    let missing_post_ids = [...JSPLib.utility.setDifferenceN(EL.post_ids, found_post_ids)];
+    for (let i = 0; i < missing_post_ids.length; i += QUERY_LIMIT) {
+        let post_ids = missing_post_ids.slice(i, i + QUERY_LIMIT);
+        let url_addon = {tags: `id:${post_ids} limit:${post_ids.length}`};
         var html = await JSPLib.network.getNotify('/posts', url_addon);
         var $posts = $.parseHTML(html);
         var $thumbs = $('.post-preview', $posts);
@@ -1597,9 +1594,9 @@ function RenderMultilinkMenu(itemid,all_types) {
 }
 
 function RenderSubscribeDualLinks(type,itemid,tag,separator,ender,right=false) {
-    let typelist = GetList(type);
-    let subscribe = (typelist.includes(itemid) ? 'style="display:none !important"' : 'style');
-    let unsubscribe = (typelist.includes(itemid) ? 'style' : 'style="display:none !important"');
+    let typeset = GetList(type);
+    let subscribe = (typeset.has(itemid) ? 'style="display:none !important"' : 'style');
+    let unsubscribe = (typeset.has(itemid) ? 'style' : 'style="display:none !important"');
     let spacer = (right ? "&nbsp;&nbsp;" : "");
     return `
 <${tag} class="el-subscribe-dual-links"  data-type="${type}" data-id="${itemid}">
@@ -1609,11 +1606,7 @@ function RenderSubscribeDualLinks(type,itemid,tag,separator,ender,right=false) {
 }
 
 function RenderSubscribeMultiLinks(name,typelist,itemid) {
-    let itemdict = {};
-    typelist.forEach((type)=>{
-        itemdict[type] = GetList(type);
-    });
-    let is_subscribed = typelist.every((type)=>itemdict[type].includes(itemid));
+    let is_subscribed = typelist.every((type) => (GetList(type).has(itemid)));
     let classname = (is_subscribed ? 'el-subscribed' : 'el-unsubscribed');
     let keyname = JSPLib.utility.kebabCase(name);
     let idname = 'el-' + keyname + '-link';
@@ -1735,7 +1728,7 @@ function InitializePostShowMenu() {
     let linkhtml = RenderSubscribeMultiLinks("Translations", ALL_TRANSLATE_EVENTS, postid);
     $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-translated-container" ${shownhtml}>${linkhtml} | </span>`);
     //The All link is always shown when the outer menu is shown, so no need to individually hide it
-    let enabled_post_events = JSPLib.utility.setIntersection(ALL_POST_EVENTS, EL.user_settings.subscribe_events_enabled);
+    let enabled_post_events = JSPLib.utility.arrayIntersection(ALL_POST_EVENTS, EL.user_settings.subscribe_events_enabled);
     linkhtml = RenderSubscribeMultiLinks("All", enabled_post_events, postid);
     $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-all-container">${linkhtml}</span>`);
     $('#nav').append($menu_obj);
@@ -1754,7 +1747,7 @@ function InitializeTopicShowMenu() {
 //#C-FORUM-TOPICS #A-INDEX / #C-FORUM-POSTS #A-INDEX / EVENT-NOTICE
 function InitializeTopicIndexLinks(container,render=true) {
     let type = GetTableType(container);
-    let typelist = GetList('forum');
+    let typeset = GetList('forum');
     $('.striped tbody tr', container).each((i,row)=>{
         let data_selector = (type === 'forum-topic' ? 'id' : 'topic-id');
         let topicid = $(row).data(data_selector);
@@ -1764,7 +1757,7 @@ function InitializeTopicIndexLinks(container,render=true) {
             let shownhtml = (IsEventEnabled('forum', 'subscribe_events_enabled') ? "" : 'style="display:none"');
             $(".title-column, .topic-column", row).prepend(`<span class="el-subscribe-forum-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
         } else {
-            let subscribed = !typelist.includes(topicid);
+            let subscribed = !typeset.has(topicid);
             UpdateDualLink('forum', subscribed, topicid);
         }
     });
@@ -1784,7 +1777,7 @@ function InitializeWikiShowMenu() {
 //#C-WIKI-PAGES #A-INDEX / #C-WIKI-PAGE-VERSIONS #A-INDEX / EVENT-NOTICE
 function InitializeWikiIndexLinks(container,render=true) {
     let type = GetTableType(container);
-    let typelist = GetList('wiki');
+    let typeset = GetList('wiki');
     $('.striped tbody tr', container).each((i,row)=>{
         let data_selector = (type === 'wiki-page' ? 'id' : 'wiki-page-id');
         let wikiid = $(row).data(data_selector);
@@ -1793,7 +1786,7 @@ function InitializeWikiIndexLinks(container,render=true) {
             let shownhtml = (IsEventEnabled('wiki', 'subscribe_events_enabled') ? "" : 'style="display:none"');
             $(' .title-column', row).prepend(`<span class="el-subscribe-wiki-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
         } else {
-            let subscribed = !typelist.includes(wikiid);
+            let subscribed = !typeset.has(wikiid);
             UpdateDualLink('wiki', subscribed, wikiid);
         }
     });
@@ -1812,7 +1805,7 @@ function InitializePoolShowMenu() {
 //#C-POOLS #A-INDEX / #C-POOL-VERSIONS #A-INDEX / EVENT-NOTICE
 function InitializePoolIndexLinks(container,render=true) {
     let type = GetTableType(container);
-    let typelist = GetList('pool');
+    let typeset = GetList('pool');
     $('.striped tbody tr', container).each((i,row)=>{
         let data_selector = (type === 'pool' ? 'id' : 'pool-id');
         let poolid = $(row).data(data_selector);
@@ -1821,7 +1814,7 @@ function InitializePoolIndexLinks(container,render=true) {
             let shownhtml = (IsEventEnabled('pool', 'subscribe_events_enabled') ? "" : 'style="display:none"');
             $('.name-column, .pool-column', row).prepend(`<span class="el-subscribe-pool-container "${shownhtml}>${linkhtml}&nbsp|&nbsp</span>`);
         } else {
-            let subscribed = !typelist.includes(poolid);
+            let subscribed = !typeset.has(poolid);
             UpdateDualLink('pool', subscribed, poolid);
         }
     });
@@ -1842,7 +1835,7 @@ function InitializePoolGalleryLinks() {
 }
 //EVENT NOTICE
 function InitializePostNoteIndexLinks(type,table,render=true) {
-    let typelist = GetList(type);
+    let typeset = GetList(type);
     let seenlist = [];
     $('.striped tr[id]', table).each((i,row)=>{
         let postid = $(row).data('post-id');
@@ -1855,7 +1848,7 @@ function InitializePostNoteIndexLinks(type,table,render=true) {
             let linkhtml = RenderSubscribeDualLinks(type, postid, 'span', " ", type, true);
             $('td:first-of-type', row).prepend(`<div style="text-align:center">${linkhtml}</div>`);
         } else {
-            let subscribed = !typelist.includes(postid);
+            let subscribed = !typeset.has(postid);
             UpdateDualLink(type, subscribed, postid);
         }
     });
@@ -1863,7 +1856,7 @@ function InitializePostNoteIndexLinks(type,table,render=true) {
 
 //#C-COMMENTS #A-INDEX / EVENT-NOTICE
 function InitializeCommentIndexLinks($obj,render=true) {
-    let typelist = GetList('comment');
+    let typeset = GetList('comment');
     $('.post-preview', $obj).each((i,entry)=>{
         var postid = $(entry).data('id');
         if (render) {
@@ -1872,7 +1865,7 @@ function InitializeCommentIndexLinks($obj,render=true) {
             let $subscribe = $.parseHTML(`<div class="el-subscribe-comment-container "${shownhtml}>${linkhtml}</div>`);
             $('.preview', entry).append($subscribe);
         } else {
-            let subscribed = !typelist.includes(postid);
+            let subscribed = !typeset.has(postid);
             UpdateDualLink('comment', subscribed, postid);
         }
     });
@@ -1945,9 +1938,10 @@ function SubscribeMultiLink(event) {
     let itemid = $menu.data('id');
     let typelist = $container.data('type').split(',');
     let subscribed = ($container.hasClass('el-subscribed') ? true : false);
-    let prefix = (subscribed ? '-' : "");
     typelist.forEach((type)=>{
-        setTimeout(()=>{TIMER.SetList(type, prefix + itemid);}, NONSYNCHRONOUS_DELAY);
+        setTimeout(()=>{
+            TIMER.SetList(type, subscribed, itemid);
+        }, NONSYNCHRONOUS_DELAY);
         UpdateDualLink(type, subscribed, itemid);
     });
     UpdateMultiLink(typelist, subscribed, itemid);
@@ -1957,9 +1951,10 @@ function SubscribeDualLink(event) {
     let $container = $(JSPLib.utility.getNthParent(event.target, 2));
     let type = $container.data('type');
     let itemid = $container.data('id');
-    let subscribed = GetList(type).includes(itemid);
-    let prefix = (subscribed ? '-' : "");
-    setTimeout(()=>{TIMER.SetList(type, prefix + itemid);}, NONSYNCHRONOUS_DELAY);
+    let subscribed = GetList(type).has(itemid);
+    setTimeout(()=>{
+        TIMER.SetList(type, subscribed, itemid);
+    }, NONSYNCHRONOUS_DELAY);
     UpdateDualLink(type, subscribed, itemid);
     UpdateMultiLink([type], subscribed, itemid);
 }
@@ -1975,38 +1970,38 @@ async function PostEventPopulateControl(event) {
     } else {
         $('#el-search-query-display').show();
         let posts = await JSPLib.danbooru.getPostsCountdown(search_query, 100, ID_FIELD, '#el-search-query-counter');
-        let postids = JSPLib.utility.getObjectAttributes(posts, 'id');
-        let post_changes = [];
-        let was_subscribed = [];
-        let new_subscribed = [];
+        let postids = new Set(JSPLib.utility.getObjectAttributes(posts, 'id'));
+        let post_changes = new Set();
+        let was_subscribed, new_subscribed;
         post_events.forEach((eventtype)=>{
-            let typelist = GetList(eventtype);
+            let typeset = GetList(eventtype);
             switch (operation[0]) {
                 case 'add':
-                    new_subscribed = JSPLib.utility.setDifference(postids, typelist);
-                    was_subscribed = [];
-                    post_changes = JSPLib.utility.concat(post_changes, new_subscribed);
-                    typelist = JSPLib.utility.setUnion(typelist, postids);
+                    new_subscribed = JSPLib.utility.setDifferenceN(postids, typeset);
+                    was_subscribed = new Set();
+                    post_changes = JSPLib.utility.setUnionN(post_changes, new_subscribed);
+                    typeset = JSPLib.utility.setUnionN(typeset, postids);
                     break;
                 case 'subtract':
-                    new_subscribed = [];
-                    was_subscribed = JSPLib.utility.setIntersection(postids, typelist);
-                    post_changes = JSPLib.utility.concat(post_changes, was_subscribed)
-                    typelist = JSPLib.utility.setDifference(typelist, postids);
+                    new_subscribed = new Set();
+                    was_subscribed = JSPLib.utility.setIntersectionN(postids, typeset);
+                    post_changes = JSPLib.utility.setUnionN(post_changes, was_subscribed)
+                    typeset = JSPLib.utility.setDifferenceN(typeset, postids);
                     break;
                 case 'overwrite':
-                    was_subscribed = JSPLib.utility.setDifference(typelist, postids);
-                    new_subscribed = JSPLib.utility.setDifference(postids, typelist);
-                    post_changes = JSPLib.utility.concat(post_changes, postids);
-                    typelist = postids;
+                    was_subscribed = JSPLib.utility.setDifferenceN(typeset, postids);
+                    new_subscribed = JSPLib.utility.setDifferenceN(postids, typeset);
+                    post_changes = JSPLib.utility.setUnionN(post_changes, postids);
+                    typeset = postids;
             }
-            EL.subscribelist[eventtype] = typelist;
-            setTimeout(()=>{JSPLib.storage.setStorageData(`el-${eventtype}list`, EL.subscribelist[eventtype], localStorage);}, 1);
-            EL.channel.postMessage({type: 'reload', eventtype: eventtype, was_subscribed: was_subscribed, new_subscribed: new_subscribed, eventlist: EL.subscribelist[eventtype]});
+            EL.subscribeset[eventtype] = typeset;
+            setTimeout(()=>{
+                JSPLib.storage.setStorageData(`el-${eventtype}list`, [...EL.subscribeset[eventtype]], localStorage);
+            }, NONSYNCHRONOUS_DELAY);
+            EL.channel.postMessage({type: 'reload', eventtype: eventtype, was_subscribed: was_subscribed, new_subscribed: new_subscribed, eventlist: EL.subscribeset[eventtype]});
         });
         $('#el-search-query-counter').html(0);
-        post_changes = JSPLib.utility.setUnique(post_changes);
-        JSPLib.utility.notice(`Subscriptions were changed by ${post_changes.length} posts!`);
+        JSPLib.utility.notice(`Subscriptions were changed by ${post_changes.size} posts!`);
     }
 }
 
@@ -2097,7 +2092,7 @@ async function CheckSubscribeType(type) {
     let lastidkey = `el-${type}lastid`;
     let typelastid = JSPLib.storage.checkStorageData(lastidkey, ValidateProgramData, localStorage, 0);
     if (typelastid) {
-        let typelist = GetList(type);
+        let typeset = GetList(type);
         let savedlistkey = `el-saved${type}list`;
         let savedlastidkey = `el-saved${type}lastid`;
         let overflowkey = `el-${type}overflow`;
@@ -2117,7 +2112,7 @@ async function CheckSubscribeType(type) {
         } else {
             JSPLib.storage.setStorageData(overflowkey, false, localStorage);
         }
-        let filtertype = TYPEDICT[type].filter(jsontype, typelist);
+        let filtertype = TYPEDICT[type].filter(jsontype, typeset);
         let lastusertype = (jsontype.length ? JSPLib.danbooru.getNextPageID(jsontype, true) : null);
         if (filtertype.length) {
             CheckSubscribeType.debuglog(`Found ${TYPEDICT[type].plural}!`, lastusertype);
@@ -2194,7 +2189,7 @@ async function LoadHTMLType(type,idlist) {
 
 function FinalizeEventNotice() {
     let thumb_promise = Promise.resolve(null);
-    if (EL.post_ids.length) {
+    if (EL.post_ids.size) {
         thumb_promise = TIMER.GetThumbnails();
     }
     thumb_promise.then(()=>{
@@ -2261,20 +2256,20 @@ function MarkAllAsRead() {
 }
 
 function EventStatusCheck() {
-    let disabled_events = JSPLib.utility.setDifference(POST_QUERY_EVENTS, EL.user_settings.post_query_events_enabled);
+    let disabled_events = JSPLib.utility.arrayDifference(POST_QUERY_EVENTS, EL.user_settings.post_query_events_enabled);
     disabled_events.forEach((type)=>{
         //Delete every associated value but the list
         localStorage.removeItem(`el-pq-${type}lastid`);
         localStorage.removeItem(`el-pq-saved${type}lastid`);
     });
-    disabled_events = JSPLib.utility.setDifference(SUBSCRIBE_EVENTS, EL.user_settings.subscribe_events_enabled);
+    disabled_events = JSPLib.utility.arrayDifference(SUBSCRIBE_EVENTS, EL.user_settings.subscribe_events_enabled);
     disabled_events.forEach((type)=>{
         //Delete every associated value but the list
         localStorage.removeItem(`el-${type}lastid`);
         localStorage.removeItem(`el-saved${type}lastid`);
         localStorage.removeItem(`el-${type}overflow`);
     });
-    disabled_events = JSPLib.utility.setDifference(OTHER_EVENTS, EL.user_settings.other_events_enabled);
+    disabled_events = JSPLib.utility.arrayDifference(OTHER_EVENTS, EL.user_settings.other_events_enabled);
     disabled_events.forEach((type)=>{
         //Delete every associated value but the list
         localStorage.removeItem(`el-ot-${type}lastid`);
@@ -2294,23 +2289,23 @@ function BroadcastEL(ev) {
             }
             break;
         case 'subscribe':
-            EL.subscribelist[ev.data.eventtype] = ev.data.eventlist;
+            EL.subscribeset[ev.data.eventtype] = ev.data.eventset;
             UpdateMultiLink([ev.data.eventtype], ev.data.was_subscribed, ev.data.itemid);
             UpdateDualLink(ev.data.eventtype, ev.data.was_subscribed, ev.data.itemid);
             break;
         case 'reload':
-            EL.subscribelist[ev.data.eventtype] = ev.data.eventlist;
+            EL.subscribeset[ev.data.eventtype] = ev.data.eventset;
             menuid = $('#el-subscribe-events').data('id');
-            if (ev.data.was_subscribed.includes(menuid)) {
+            if (ev.data.was_subscribed.has(menuid)) {
                 UpdateMultiLink([ev.data.eventtype], true, menuid);
-            } else if (ev.data.new_subscribed.includes(menuid)) {
+            } else if (ev.data.new_subscribed.has(menuid)) {
                 UpdateMultiLink([ev.data.eventtype], false, menuid);
             }
             $(`.el-subscribe-${ev.data.eventtype}[data-id]`).each((i,entry)=>{
                 linkid = $(entry).data('id');
-                if (ev.data.was_subscribed.includes(linkid)) {
+                if (ev.data.was_subscribed.has(linkid)) {
                     UpdateDualLink(ev.data.eventtype, true, linkid);
-                } else if (ev.data.new_subscribed.includes(linkid)) {
+                } else if (ev.data.new_subscribed.has(linkid)) {
                     UpdateDualLink(ev.data.eventtype, false, linkid);
                 }
             });
@@ -2393,13 +2388,13 @@ function Main() {
         username: Danbooru.CurrentUser.data('name'),
         userid: Danbooru.CurrentUser.data('id'),
         dmail_notice: $('#dmail-notice').hide(),
-        subscribelist: {},
+        subscribeset: {},
         openlist: {},
         marked_topic: [],
         item_overflow: false,
         no_limit: false,
         events_checked: false,
-        post_ids: [],
+        post_ids: new Set(),
         thumbs: {},
         settings_config: SETTINGS_CONFIG,
         control_config: CONTROL_CONFIG,
