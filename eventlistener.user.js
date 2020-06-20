@@ -2281,8 +2281,14 @@ async function CheckOtherType(type) {
 async function LoadHTMLType(type,idlist) {
     let section_selector = '#el-' + JSPLib.utility.kebabCase(type) + '-section';
     let type_addon = TYPEDICT[type].addons || {};
-    for (let i = 0; i < idlist.length; i += QUERY_LIMIT) {
-        let querylist = idlist.slice(i, i + QUERY_LIMIT);
+    EL.renderedlist[type] = EL.renderedlist[type] || [];
+    let displaylist = JSPLib.utility.arrayDifference(idlist, EL.renderedlist[type]);
+    if (displaylist.length === 0) {
+        return;
+    }
+    EL.renderedlist[type] = JSPLib.utility.concat(EL.renderedlist[type], displaylist);
+    for (let i = 0; i < displaylist.length; i += QUERY_LIMIT) {
+        let querylist = displaylist.slice(i, i + QUERY_LIMIT);
         let url_addons = JSPLib.utility.joinArgs(type_addon, {search: {id: querylist.join(',')}, limit: querylist.length});
         let typehtml = await JSPLib.network.getNotify(`/${TYPEDICT[type].controller}`, url_addons);
         if (typehtml) {
@@ -2513,6 +2519,7 @@ function Main() {
         dmail_notice: $('#dmail-notice').hide(),
         subscribeset: {},
         openlist: {},
+        renderedlist: {},
         marked_topic: [],
         item_overflow: false,
         no_limit: false,
