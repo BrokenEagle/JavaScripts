@@ -245,8 +245,8 @@ const CONTROL_CONFIG = {
     },
     data_name: {
         value: "",
-        buttons: ['get', 'save', 'delete'],
-        hint: "Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.",
+        buttons: ['get', 'save', 'delete', 'list', 'refresh'],
+        hint: "Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.<br><b>List</b> shows keys in their raw format, and <b>Refresh</b> checks the keys again.",
     },
 };
 
@@ -666,6 +666,7 @@ const EL_MENU = `
                             </ul>
                         </li>
                     </ul>
+                    <p><b>Note:</b> The raw format of all data keys begins with "el-". which is unused by the cache editor controls.</p>
                 </div>
             </div>
         </div>
@@ -1090,6 +1091,23 @@ JSPLib.utility.setHasIntersection = function (set1,set2) {
 JSPLib.utility.arrayHasIntersection = function (array1,array2) {
     let [set1,set2] = this._makeSets(array1,array2);
     return this.setHasIntersection(set1,set2);
+};
+
+JSPLib.menu.loadStorageKeys = async function () {
+    let program_data_regex = this.program_data_regex;
+    let storage_keys = this.program_data.storage_keys = {};
+    if (program_data_regex) {
+        this._storage_keys_promise = JSPLib.storage.danboorustorage.keys();
+        let cache_keys = await this._storage_keys_promise;
+        this._storage_keys_loaded = true;
+        storage_keys.indexed_db = cache_keys.filter((key)=>{return key.match(program_data_regex);});
+        let program_keys = cache_keys.filter((key)=>{return key.match(this.program_regex);});
+        storage_keys.indexed_db = JSPLib.utility.concat(program_keys,storage_keys.indexed_db);
+    } else {
+        this._storage_keys_loaded = true;
+    }
+    let keys = Object.keys(localStorage);
+    storage_keys.local_storage = keys.filter((key)=>{return key.match(this.program_regex);});
 };
 
 //Helper functions
@@ -2467,6 +2485,8 @@ function RenderSettingsMenu() {
     JSPLib.menu.getCacheClick();
     JSPLib.menu.saveCacheClick(ValidateProgramData);
     JSPLib.menu.deleteCacheClick();
+    JSPLib.menu.listCacheClick();
+    JSPLib.menu.refreshCacheClick();
     JSPLib.menu.cacheAutocomplete();
     RebindMenuAutocomplete();
 }
