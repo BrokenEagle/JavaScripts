@@ -796,8 +796,9 @@ const TYPEDICT = {
     },
     post: {
         controller: 'post_versions',
+        addons: {search: {is_new: false}},
         only: 'id,updater_id,post_id,added_tags,removed_tags',
-        limit: 2,
+        limit: 4,
         filter: (array,typeset) => (array.filter((val) => (IsShownData(val, 'updater_id', ['post', 'uploader_id'], 'post_id', typeset, IsShownPostEdit)))),
         insert: InsertPosts,
         process: ()=>{JSPLib.utility.setCSSStyle(POST_CSS, 'post');},
