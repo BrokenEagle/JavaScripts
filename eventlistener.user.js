@@ -30,7 +30,17 @@
 
 //Library constants
 
-////NONE
+// Added here since global variables use this function
+JSPLib.utility.multiConcat = function (...arrays) {
+    if (arrays.length < 1) {
+        return arrays[0];
+    }
+    let merged_array = arrays[0];
+    for (let i = 1; i < arrays.length; i++) {
+        merged_array = JSPLib.utility.concat(merged_array, arrays[i]);
+    }
+    return merged_array;
+};
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '14747';
@@ -56,21 +66,21 @@ const TIMER = {};
 const POST_QUERY_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'flag', 'appeal'];
 const SUBSCRIBE_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'flag', 'appeal', 'forum', 'wiki', 'pool'];
 const OTHER_EVENTS = ['dmail', 'ban', 'feedback', 'mod_action'];
-const ALL_EVENTS = JSPLib.utility.setUnique(POST_QUERY_EVENTS.concat(SUBSCRIBE_EVENTS).concat(OTHER_EVENTS));
+const ALL_EVENTS = JSPLib.utility.setUnique(JSPLib.utility.multiConcat(POST_QUERY_EVENTS, SUBSCRIBE_EVENTS, OTHER_EVENTS));
 
 //For factory reset
-const LASTID_KEYS = Array.prototype.concat(
+const LASTID_KEYS = JSPLib.utility.multiConcat(
     POST_QUERY_EVENTS.map((type)=>{return `el-pq-${type}lastid`;}),
     SUBSCRIBE_EVENTS.map((type)=>{return `el-${type}lastid`;}),
     OTHER_EVENTS.map((type)=>{return `el-ot-${type}lastid`;}),
 );
-const SAVED_KEYS = Array.prototype.concat(
+const SAVED_KEYS = JSPLib.utility.multiConcat(
     POST_QUERY_EVENTS.map((type)=>{return [`el-pq-saved${type}lastid`, `el-pq-saved${type}list`];}),
     SUBSCRIBE_EVENTS.map((type)=>{return [`el-saved${type}lastid`, `el-saved${type}list`];}),
     OTHER_EVENTS.map((type)=>{return [`el-ot-saved${type}lastid`, `el-ot-saved${type}list`];}),
 ).flat();
 const SUBSCRIBE_KEYS = SUBSCRIBE_EVENTS.map((type) => ([`el-${type}list`, `el-${type}overflow`])).flat();
-const LOCALSTORAGE_KEYS = LASTID_KEYS.concat(SAVED_KEYS).concat(SUBSCRIBE_KEYS).concat([
+const LOCALSTORAGE_KEYS = JSPLib.utility.multiConcat(LASTID_KEYS, SAVED_KEYS, SUBSCRIBE_KEYS, [
     'el-overflow',
     'el-last-seen',
     'el-saved-notice',
