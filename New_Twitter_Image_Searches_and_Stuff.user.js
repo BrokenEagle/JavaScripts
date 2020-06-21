@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.10
+// @version      6.11
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -870,7 +870,11 @@ div#ntisas-notice {
     background: #fffa90;
     color: #777620;
     z-index: 1050;
-}`;
+}
+#close-notice-link {
+    bottom: 0;
+}
+`;
 
 const MENU_CSS = `
 .jsplib-outer-menu {
@@ -4851,7 +4855,7 @@ function MarkupStreamTweet(tweet) {
     $(profile_line).addClass('ntisas-profile-line');
     let sub_body = tweet_right.children[1];
     $(sub_body).addClass('ntisas-sub-body');
-        let child_count = sub_body.childElementCount;
+    let child_count = sub_body.childElementCount;
     let tweet_menu_index = child_count - 1;
     if (sub_body.children[tweet_menu_index].children[0].tagName.toUpperCase() === 'SVG') {
         let promoted_line = sub_body.children[child_count - 1];
@@ -4864,6 +4868,9 @@ function MarkupStreamTweet(tweet) {
     $('[data-testid="retweet"]', tweet_menu).parent().addClass('ntisas-retweet');
     $('[data-testid="like"]', tweet_menu).parent().addClass('ntisas-like');
     $('[role="button"]:not([data-testid])', tweet_menu).parent().addClass('ntisas-share');
+    if ($(sub_body.children[tweet_menu_index - 1]).text().match(/People they follow can reply/)) {
+        tweet_menu_index -= 1;
+    }
     let reply_line_count = 0;
     let child1 = sub_body.children[0];
     if (child1.children[0] && child1.children[0].tagName.toUpperCase() === 'DIV' && child1.innerText.match(/^Replying to/)) {
@@ -4934,6 +4941,9 @@ function MarkupMainTweet(tweet) {
     let sub_body = main_body.children[2];
     $(sub_body).addClass('ntisas-sub-body');
     let tweet_menu_index = sub_body.childElementCount - 1;
+    if ($(sub_body.children[tweet_menu_index]).text().match(/A conversation between @.+ and people they follow or mentioned in this Tweet/)) {
+        tweet_menu_index -= 1;
+    }
     let tweet_menu = sub_body.children[tweet_menu_index];
     $(tweet_menu).addClass('ntisas-tweet-actions');
     let retweet_like_count = 0;
