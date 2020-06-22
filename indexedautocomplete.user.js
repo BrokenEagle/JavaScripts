@@ -2517,6 +2517,14 @@ function ProcessSourceData(type,metatag,term,data,query_type) {
     return data;
 }
 
+function ScheduleCleanupTasks() {
+    //Take care of other non-critical tasks at a later time
+    setTimeout(()=>{
+        PruneUsageData();
+        JSPLib.storage.pruneEntries('iac', PROGRAM_DATA_REGEX, prune_expires);
+    }, noncritical_recheck);
+}
+
 //Cache functions
 
 function OptionCacheDataKey(data_type,data_value) {
@@ -2791,10 +2799,7 @@ function Main() {
     }
     /**Other setup**/
     JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
-    setTimeout(()=>{
-        PruneUsageData();
-        JSPLib.storage.pruneEntries('iac', PROGRAM_DATA_REGEX, prune_expires);
-    }, noncritical_recheck);
+    ScheduleCleanupTasks();
 }
 
 /****Function decoration****/
