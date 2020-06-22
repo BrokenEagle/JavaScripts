@@ -225,6 +225,16 @@ const SETTINGS_CONFIG = {
         validate: (data)=>{return JSPLib.validate.isBoolean(data);},
         hint: "Enables autocomplete in non-autocomplete text fields (Alt+A to enable/disable), inserting a wiki link upon completion."
     },
+    forum_quick_search_enabled: {
+        default: true,
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
+        hint: "Adds a quick search bar where applicable using forum topic titles."
+    },
+    comment_quick_search_enabled: {
+        default: true,
+        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
+        hint: "Adds a quick search bar where applicable using post search queries."
+    },
 };
 
 //Available config values
@@ -2574,6 +2584,8 @@ function RenderSettingsMenu() {
     $("#indexed-autocomplete").append(iac_menu);
     $("#iac-general-settings").append(JSPLib.menu.renderDomainSelectors());
     $("#iac-general-settings").append(JSPLib.menu.renderCheckbox('text_input_autocomplete_enabled'));
+    $("#iac-general-settings").append(JSPLib.menu.renderCheckbox('forum_quick_search_enabled'));
+    $("#iac-general-settings").append(JSPLib.menu.renderCheckbox('comment_quick_search_enabled'));
     $("#iac-source-settings").append(JSPLib.menu.renderCheckbox('BUR_source_enabled'));
     $("#iac-source-settings").append(JSPLib.menu.renderCheckbox('metatag_source_enabled'));
     $("#iac-usage-settings").append(JSPLib.menu.renderCheckbox('usage_enabled'));
@@ -2658,6 +2670,17 @@ function Main() {
         Main.debuglog("Script is disabled on", window.location.hostname);
         return;
     }
+    if (IAC.user_settings.forum_quick_search_enabled && (IAC.controller === "forum-topics" || IAC.controller === "forum-posts")) {
+        if (IAC.theme === 'light') {
+            JSPLib.utility.setCSSStyle(forum_css, 'forum');
+        } else if (IAC.theme === 'dark') {
+            JSPLib.utility.setCSSStyle(forum_css_dark, 'forum');
+        }
+        $('#subnav-menu .search_body_matches').closest("li").after(forum_topic_search);
+    }
+    if (IAC.user_settings.comment_quick_search_enabled && IAC.controller === "comments") {
+        $('#subnav-menu .search_body_matches').closest("li").after(post_comment_search);
+    }
     if ($(autocomplete_domlist.join(',')).length === 0) {
         Main.debuglog("No autocomplete inputs! Exiting...");
         return;
@@ -2714,19 +2737,12 @@ function Main() {
         RebindAnyAutocomplete('[data-autocomplete="saved-search-label"]', 'ss');
     }
     if (IAC.controller === "forum-topics" || IAC.controller === "forum-posts") {
-        if (IAC.theme === 'light') {
-            JSPLib.utility.setCSSStyle(forum_css, 'forum');
-        } else if (IAC.theme === 'dark') {
-            JSPLib.utility.setCSSStyle(forum_css_dark, 'forum');
-        }
-        $('#subnav-menu .search_body_matches').closest("li").after(forum_topic_search);
         setTimeout(()=>{InitializeAutocompleteIndexed("#quick_search_title_matches", 'ft');}, jquery_delay);
         if (IAC.action === "search") {
             setTimeout(()=>{InitializeAutocompleteIndexed("#search_topic_title_matches", 'ft');}, jquery_delay);
         }
     }
     if (IAC.controller === "comments") {
-        $('#subnav-menu .search_body_matches').closest("li").after(post_comment_search);
         setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, jquery_delay);
     }
     if ((IAC.controller === "uploads" && IAC.action === "index") || IAC.is_bur) {
