@@ -488,6 +488,45 @@ const iac_menu = `
         <div id="iac-general-settings" class="jsplib-settings-grouping">
             <div id="iac-general-message" class="prose">
                 <h4>General settings</h4>
+                <div class="expandable">
+                    <div class="expandable-header">
+                        <span>Text autocomplete details</span>
+                        <input type="button" value="Show" class="expandable-button">
+                    </div>
+                    <div class="expandable-content">
+                        <ul>
+                            <li><b>Source (Alt+1):</b>
+                                <ul>
+                                    <li><code>tag</code> - Will search tags.</li>
+                                    <li><code>wiki</code> - Will search wikis.</li>
+                                </ul>
+                            </li>
+                            <li><b>Mode (Alt+2):</b>
+                                <ul>
+                                    <li><code>tag</code> - Spaces appear as underscores.</li>
+                                    <li><code>normal</code> - Spaces appear as spaces, uses the entire value.</li>
+                                    <li><code>pipe</code> - Spaces appear as spaces, places a pipe "|" at the end.
+                                        <ul>
+                                            <li>This will remove a final parentheses value.</li>
+                                            <li>E.g. "pokemon_(game)" will appear as "pokemon".</li>
+                                        </ul>
+                                    </li>
+                                    <li><code>custom</code> - Default "insert text" in place for custom text by user.</li>
+                                </ul>
+                            </li>
+                            <li><b>Capitalization (Alt+3):</b>
+                                <ul>
+                                    <li><code>lowercase</code> - All lowercase letters.</li>
+                                    <li><code>uppercase</code> - All uppercase letters.</li>
+                                    <li><code>titlecase</code> - Only first letter capitalized.</li>
+                                    <li><code>propercase</code> - First letter of every word capitalized.</li>
+                                    <li><code>exceptcase</code> - Propercase except for "a", "an", "of", "the", "is".</li>
+                                    <li><code>romancase</code> - Exceptcase plus capitalize all letters in Roman numerals.</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
         <div id="iac-source-settings" class="jsplib-settings-grouping">
@@ -700,6 +739,13 @@ const iac_menu = `
                                 <li><b>user-settings:</b> All configurable settings.</li>
                             </ul>
                         </li>
+                        <li>Text autocomplete data
+                            <ul>
+                                <li><b>ac-source:</b> Numerical value designating the current source.</li>
+                                <li><b>ac-mode:</b> Numerical value designating the current mode.</li>
+                                <li><b>ac-caps:</b> Numerical value designating the current capitalization.</li>
+                            </ul>
+                        </li>
                         <li>Usage data
                             <ul>
                                 <li><b>choice-info:</b> Comprised of choice order and choice data
@@ -735,6 +781,33 @@ const iac_scroll_wrapper = `
 <div id="iac-edit-scroll-wrapper">
     <div id="iac-edit-scroll-bar"></div>
 </div>`
+
+const AUTOCOMPLETE_MESSAGE = `
+<b>Autocomplete turned on!</b>
+<hr>
+<table>
+    <tbody>
+        <tr>
+            <td style="text-align:right;font-weight:bold">Source:&emsp;</td><td>%s</td>
+        </tr>
+        <tr>
+            <td style="text-align:right;font-weight:bold">Mode:&emsp;</td><td>%s</td>
+        </tr>
+            <td style="text-align:right;font-weight:bold">Capitalization:&emsp;</td><td>%s</td>
+        </tr>
+   </tbody>
+</table>`;
+
+//Autocomplete constants
+
+const AUTOCOMPLETE_SOURCE = ['tag', 'wiki'];
+const AUTOCOMPLETE_MODE = ['tag', 'normal', 'pipe', 'custom'];
+const AUTOCOMPLETE_CAPITALIZATION = ['lowercase', 'uppercase', 'titlecase', 'propercase', 'exceptcase', 'romancase'];
+
+//Regex constants
+
+const WORDBREAK_REGEX = /\(+|\)+|[\s_]+|[^\s_\(\)]+/g;
+const ROMAN_REGEX = /^M?M?M?(CM|CD|D?C?C?C?)(XC|XL|L?X?X?X?)(IX|IV|V?I?I?I?)$/i;
 
 //BUR constants
 const bur_keywords = ['->','alias','imply','update','unalias','unimply','category'];
@@ -1336,6 +1409,26 @@ function ValidateUsageData(choice_info) {
 
 //Helper functions
 
+function ProperCase(string) {
+    return string.match(WORDBREAK_REGEX).map((word) => JSPLib.utility.titleizeString(word)).join('');
+}
+
+function ExceptCase(string) {
+    return string.match(WORDBREAK_REGEX).map((word) => TitleizeExcept(word)).join('');
+}
+
+function RomanCase(string) {
+    return string.match(WORDBREAK_REGEX).map((word) => TitleizeRoman(word)).join('');
+}
+
+function TitleizeExcept(word) {
+    return (['a', 'an', 'of', 'the', 'is'].includes(word) ? word : JSPLib.utility.titleizeString(word));
+}
+
+function TitleizeRoman(word) {
+    return (word.match(ROMAN_REGEX) ? word.toUpperCase() : TitleizeExcept(word));
+}
+
 function RemoveTerm(str,index) {
     str = " " + str + " ";
     let first_slice = str.slice(0, index);
@@ -1490,7 +1583,31 @@ function RenderRelatedQueryControls() {
 </div>`;
 }
 
+function RenderAutocompleteNotice(type, list, index) {
+    let values = list.map((val,i) => (index === i ? `<u>${val}</u>` : val));
+    let line = values.join('&nbsp;|&nbsp;');
+    return `<b>Autocomplete ${type}</b>: ${line}`;
+}
+
 //Main helper functions
+
+function CapitalizeAutocomplete(string) {
+    switch (IAC.ac_caps) {
+        case 1:
+            return string.toUpperCase();
+        case 2:
+            return JSPLib.utility.titleizeString(string);
+        case 3:
+            return ProperCase(string);
+        case 4:
+            return ExceptCase(string);
+        case 5:
+            return RomanCase(string);
+        case 0:
+        default:
+            return string;
+    }
+}
 
 function FixupMetatag(value,metatag) {
     switch(metatag) {
@@ -1787,9 +1904,31 @@ function InsertCompletion(input, completion) {
     let $input = $(input);
     let start = 0, end = 0;
     if ($input.data('insert-autocomplete')) {
-        before_caret_text = before_caret_text.replace(regexp, "$1") + "[[" + completion + "|insert text]]";
-        start = before_caret_text.length - 13;
-        end = before_caret_text.length - 2;
+        let display_text = completion;
+        let current_mode = AUTOCOMPLETE_MODE[IAC.ac_mode];
+        if (['tag', 'normal'].includes(current_mode)) {
+            if (current_mode === 'normal') {
+                display_text = display_text.replace(/_/g,' ');
+                display_text = CapitalizeAutocomplete(display_text);
+            }
+            before_caret_text = before_caret_text.replace(regexp, "$1") + "[[" + display_text + "]]";
+            start = end = before_caret_text.length;
+        } else if (['pipe', 'custom'].includes(current_mode)) {
+            let insert_text = "insert text";
+            if (current_mode === 'pipe') {
+                display_text = display_text.replace(/_/g,' ');
+                display_text = CapitalizeAutocomplete(display_text);
+                insert_text = "";
+            }
+            before_caret_text = before_caret_text.replace(regexp, "$1") + `[[${display_text}|${insert_text}]]`;
+            if (current_mode === 'pipe') {
+                start = end = before_caret_text.length;
+            } else {
+                //Current mode == custom
+                start = before_caret_text.length - 13;
+                end = before_caret_text.length - 2;
+            }
+        }
         setTimeout(()=>{DisableTextAreaAutocomplete($input);}, 100);
     } else {
         before_caret_text = before_caret_text.replace(regexp, "$1") + completion + " ";
@@ -2096,32 +2235,53 @@ function InitializeAutocompleteIndexed(selector,keycode,multiple=false,wiki=fals
 }
 
 function InitializeTextAreaAutocomplete() {
+    IAC.ac_source = JSPLib.storage.getStorageData('iac-ac-source', localStorage, 0);
+    IAC.ac_mode = JSPLib.storage.getStorageData('iac-ac-mode', localStorage, 0);
+    IAC.ac_caps = JSPLib.storage.getStorageData('iac-ac-caps', localStorage, 0);
     $("textarea:not([data-autocomplete]), input[type=text]:not([data-autocomplete])").on("keydown.iac", null, "alt+a", (event)=>{
         let $input = $(event.currentTarget);
+        let type = AUTOCOMPLETE_SOURCE[IAC.ac_source];
         if (!$input.data('insert-autocomplete')) {
-            EnableTextAreaAutocomplete($input);
+            EnableTextAreaAutocomplete($input, type);
         } else {
-            DisableTextAreaAutocomplete($input);
+            DisableTextAreaAutocomplete($input, type);
         }
     }).data('insert-autocomplete', false);
+    $("textarea:not([data-autocomplete]), input[type=text]:not([data-autocomplete])").on("keydown.iac", null, "alt+1 alt+2 alt+3", (event)=>{
+        if (event.originalEvent.key === "1") {
+            IAC.ac_source = (IAC.ac_source + 1) % AUTOCOMPLETE_SOURCE.length;
+            JSPLib.utility.notice(RenderAutocompleteNotice('source', AUTOCOMPLETE_SOURCE, IAC.ac_source));
+            JSPLib.storage.setStorageData('iac-ac-source', IAC.ac_source, localStorage);
+        } else if (event.originalEvent.key === "2") {
+            IAC.ac_mode = (IAC.ac_mode + 1) % AUTOCOMPLETE_MODE.length;
+            JSPLib.utility.notice(RenderAutocompleteNotice('mode', AUTOCOMPLETE_MODE, IAC.ac_mode));
+            JSPLib.storage.setStorageData('iac-ac-mode', IAC.ac_mode, localStorage);
+        } else if (event.originalEvent.key === "3") {
+            IAC.ac_caps = (IAC.ac_caps + 1) % AUTOCOMPLETE_CAPITALIZATION.length;
+            JSPLib.utility.notice(RenderAutocompleteNotice('capitalization', AUTOCOMPLETE_CAPITALIZATION, IAC.ac_caps));
+            JSPLib.storage.setStorageData('iac-ac-caps', IAC.ac_caps, localStorage);
+        }
+        IAC.channel.postMessage({type: "text_autocomplete", source: IAC.ac_source, mode: IAC.ac_mode , caps: IAC.ac_caps});
+    });
 }
 
-function EnableTextAreaAutocomplete($input) {
+function EnableTextAreaAutocomplete($input,type) {
     if ($input.closest('.autocomplete-mentions').length > 0) {
         $input.autocomplete("destroy").off('keydown.Autocomplete.tab');
     }
     let input_selector = JSPLib.utility.getHTMLTree($input[0]);
-    InitializeAutocompleteIndexed(input_selector, 'ac', false, true);
+    let type_shortcut = PROGRAM_DATA_KEY[type];
+    InitializeAutocompleteIndexed(input_selector, type_shortcut, false, true);
     $input.data('insert-autocomplete', true);
     $input.data('autocomplete', 'tag-edit');
-    JSPLib.utility.notice("Autocomplete turned on!");
+    JSPLib.utility.notice(JSPLib.utility.sprintf(AUTOCOMPLETE_MESSAGE, AUTOCOMPLETE_SOURCE[IAC.ac_source], AUTOCOMPLETE_MODE[IAC.ac_mode], AUTOCOMPLETE_CAPITALIZATION[IAC.ac_caps]));
 }
 
-function DisableTextAreaAutocomplete($input) {
+function DisableTextAreaAutocomplete($input,type) {
     $input.autocomplete("destroy").off('keydown.Autocomplete.tab');
     $input.data('insert-autocomplete', false);
     $input.data('autocomplete', "");
-    JSPLib.utility.notice("Autocomplete turned off!");
+    JSPLib.utility.notice("<b>Autocomplete turned off!</b>");
     if ($input.closest('.autocomplete-mentions').length > 0) {
         Danbooru.Autocomplete.initialize_mention_autocomplete($input);
     }
@@ -2329,6 +2489,11 @@ function UpdateLocalData(key,data) {
 function BroadcastIAC(ev) {
     BroadcastIAC.debuglog(`(${ev.data.type}): ${ev.data.name} ${ev.data.key}`);
     switch (ev.data.type) {
+        case "text_autocomplete":
+            IAC.ac_source = ev.data.source;
+            IAC.ac_mode = ev.data.mode;
+            IAC.ac_caps = ev.data.caps;
+            break;
         case "reload":
             IAC.choice_order = ev.data.choice_order;
             IAC.choice_data = ev.data.choice_data;
