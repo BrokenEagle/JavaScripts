@@ -2158,6 +2158,18 @@ function RebindRender() {
     });
 }
 
+function DelayInitializeAutocomplete(...args) {
+    setTimeout(()=>{InitializeAutocompleteIndexed(...args);}, jquery_delay);
+}
+
+function DelayInitializeTagAutocomplete(selector, type) {
+    if (selector && type) {
+        $(selector).attr('data-autocomplete', type);
+    }
+    clearTimeout(DelayInitializeTagAutocomplete.timer);
+    DelayInitializeTagAutocomplete.timer = setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, jquery_delay);
+}
+
 //Rebind callback functions
 
 function RebindRenderCheck() {
@@ -2727,32 +2739,28 @@ function Main() {
         RebindAnyAutocomplete('[data-autocomplete="saved-search-label"]', 'ss', true);
     }
     if (IAC.controller === "saved-searches" && IAC.action === "edit") {
-        $("#saved_search_query").attr('data-autocomplete', 'tag-query');
-        setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, jquery_delay);
+        DelayInitializeTagAutocomplete("#saved_search_query", 'tag-query');
         RebindAnyAutocomplete('[data-autocomplete="saved-search-label"]', 'ss', true);
     }
     if (IAC.controller === "saved-searches" && IAC.action === "index") {
-        $("#search_query_ilike").attr('data-autocomplete', 'tag-query');
-        setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, jquery_delay);
+        DelayInitializeTagAutocomplete("#search_query_ilike", 'tag-query');
         RebindAnyAutocomplete('[data-autocomplete="saved-search-label"]', 'ss');
     }
     if (IAC.controller === "forum-topics" || IAC.controller === "forum-posts") {
-        setTimeout(()=>{InitializeAutocompleteIndexed("#quick_search_title_matches", 'ft');}, jquery_delay);
+        DelayInitializeAutocomplete("#quick_search_title_matches", 'ft');
         if (IAC.action === "search") {
-            setTimeout(()=>{InitializeAutocompleteIndexed("#search_topic_title_matches", 'ft');}, jquery_delay);
+            DelayInitializeAutocomplete("#search_topic_title_matches", 'ft');
         }
     }
     if (IAC.controller === "comments") {
-        setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, jquery_delay);
+        DelayInitializeTagAutocomplete();
     }
     if ((IAC.controller === "uploads" && IAC.action === "index") || IAC.is_bur) {
-        $("#search_post_tags_match").attr('data-autocomplete', 'tag-query');
-        $("#bulk_update_request_script").attr('data-autocomplete', 'tag-edit');
-        //The initialize code doesn't work properly unless some time has elapsed after setting the attribute
-        setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, jquery_delay);
+        DelayInitializeTagAutocomplete("#search_post_tags_match", 'tag-query');
+        DelayInitializeTagAutocomplete("#bulk_update_request_script", 'tag-edit');
     }
     if ($(autocomplete_user_selectors).length) {
-        setTimeout(()=>{InitializeAutocompleteIndexed(autocomplete_user_selectors, 'us');}, jquery_delay);
+        DelayInitializeAutocomplete(autocomplete_user_selectors, 'us');;
     }
     /**Edit menu**/
     if ((IAC.controller === "posts" && IAC.action === "show") || (IAC.controller === "uploads" && IAC.action === "new")) {
