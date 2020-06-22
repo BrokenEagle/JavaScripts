@@ -301,29 +301,29 @@ body[data-current-user-theme=dark] .iac-already-used {
 .iac-tag-highlight {
     margin-top: -5px;
 }
-.iac-tag-highlight > div::before {
+.iac-tag-highlight > div:before {
     content: "●";
     padding-right: 4px;
     font-weight: bold;
     font-size: 150%;
 }
-.iac-tag-bur > div::before {
+.iac-tag-bur > div:before {
     color: #000;
 }
-.iac-tag-exact > div::before {
+.iac-tag-exact > div:before {
     color: #DDD;
 }
-.iac-tag-prefix > div::before {
+.iac-tag-prefix > div:before {
     color: hotpink;
 }
-.iac-tag-alias > div::before {
+.iac-tag-alias > div:before {
     color: gold;
 }
-.iac-tag-correct > div::before {
+.iac-tag-correct > div:before {
     color: cyan;
 }
-.iac-tag-bur > div::before,
-.iac-tag-metatag > div::before{
+.iac-tag-bur > div:before,
+.iac-tag-metatag > div:before{
     color: #000;
 }
 .iac-tag-highlight .tag-type-${bur_tag_category}:link {
@@ -338,7 +338,9 @@ body[data-current-user-theme=dark] .iac-already-used {
 .iac-tag-highlight .tag-type-${metatag_tag_category}:hover {
     color: #444;
 }
-`;
+div#notice a#close-notice-link {
+    bottom: 0;
+}`;
 const related_query_control_css = `
 #iac-related-query-type label {
     color: black;
@@ -369,8 +371,7 @@ const related_query_control_css = `
     background: lightgrey;
     outline: none;
     box-shadow: none;
-}
-`;
+}`;
 const expandable_related_section_css = `
 #iac-edit-scroll-wrapper {
     height: 20px;
@@ -429,8 +430,7 @@ const expandable_related_section_css = `
 #c-uploads #a-new .tag-column.general-related-tags-column.is-empty-false li {
     text-indent: -2.7em;
     margin-left: 2.7em;
-}
-`;
+}`;
 
 const forum_css = `
 .ui-menu-item .forum-topic-category-0 {
@@ -471,8 +471,7 @@ const settings_menu_css = `
 }
 .ui-widget, .ui-widget button, .ui-widget input, .ui-widget select, .ui-widget textarea {
     font-family: Verdana,Helvetica,sans-serif;
-}
-`;
+}`;
 
 //HTML Constants
 
@@ -800,7 +799,7 @@ const iac_menu = `
 const iac_scroll_wrapper = `
 <div id="iac-edit-scroll-wrapper">
     <div id="iac-edit-scroll-bar"></div>
-</div>`
+</div>`;
 
 const AUTOCOMPLETE_MESSAGE = `
 <b>Autocomplete turned on!</b>
