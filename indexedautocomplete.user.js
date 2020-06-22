@@ -829,7 +829,7 @@ const WORDBREAK_REGEX = /\(+|\)+|[\s_]+|[^\s_\(\)]+/g;
 const ROMAN_REGEX = /^M?M?M?(CM|CD|D?C?C?C?)(XC|XL|L?X?X?X?)(IX|IV|V?I?I?I?)$/i;
 
 //BUR constants
-const bur_keywords = ['->','alias','imply','update','unalias','unimply','category'];
+const bur_keywords = ['alias','imply','update','unalias','unimply','category'];
 const bur_data = bur_keywords.map((tag)=>{
     return {
         type: 'tag',
