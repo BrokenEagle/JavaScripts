@@ -2182,19 +2182,7 @@ function RebindOpenEditMenu() {
         check: ()=>{return JSPLib.utility.isGlobalFunctionBound("danbooru:show-related-tags");},
         exec: ()=>{
             IAC.cached_data = true;
-            $(document).off("danbooru:show-related-tags");
-            if (!Danbooru.RTC || !Danbooru.RTC.cached_data) {
-                $(document).one("danbooru:show-related-tags.danbooru", Danbooru.RelatedTag.initialize_recent_and_favorite_tags);
-            }
-            $(document).one("danbooru:show-related-tags.iac", Timer.FindArtistSession);
-            if (IAC.user_settings.related_query_enabled) {
-                JSPLib.utility.setCSSStyle(related_query_control_css, 'related_query');
-                $(document).one("danbooru:show-related-tags.iac", InitialiazeRelatedQueryControls);
-            }
-            if (IAC.user_settings.expandable_related_section_enabled) {
-                JSPLib.utility.setCSSStyle(expandable_related_section_css, 'expandable_related');
-                $(document).one("danbooru:show-related-tags.iac", InitialiazeRelatedExpandableSection);
-            }
+            InitializeShowRelatedTags();
         }
     },timer_poll_interval);
 }
@@ -2340,6 +2328,22 @@ function DisableTextAreaAutocomplete($input,type) {
     JSPLib.utility.notice("<b>Autocomplete turned off!</b>");
     if ($input.closest('.autocomplete-mentions').length > 0) {
         Danbooru.Autocomplete.initialize_mention_autocomplete($input);
+    }
+}
+
+function InitializeShowRelatedTags() {
+    $(document).off("danbooru:show-related-tags");
+    if (IAC.controller === 'posts' && (!Danbooru.RTC || !Danbooru.RTC.cached_data)) {
+        $(document).one("danbooru:show-related-tags.danbooru", Danbooru.RelatedTag.initialize_recent_and_favorite_tags);
+    }
+    $(document).one("danbooru:show-related-tags.iac", Timer.FindArtistSession);
+    if (IAC.user_settings.related_query_enabled) {
+        JSPLib.utility.setCSSStyle(related_query_control_css, 'related_query');
+        $(document).one("danbooru:show-related-tags.iac", InitialiazeRelatedQueryControls);
+    }
+    if (IAC.user_settings.expandable_related_section_enabled) {
+        JSPLib.utility.setCSSStyle(expandable_related_section_css, 'expandable_related');
+        $(document).one("danbooru:show-related-tags.iac", InitialiazeRelatedExpandableSection);
     }
 }
 
@@ -2613,22 +2617,18 @@ function SetupPostEditInitializations() {
             } else {
                 Timer.SaveArtistData();
             }
-            if (IAC.user_settings.related_query_enabled) {
-                JSPLib.utility.setCSSStyle(related_query_control_css, 'related_query');
-                InitialiazeRelatedQueryControls();
-            }
-            if (IAC.user_settings.expandable_related_section_enabled) {
-                JSPLib.utility.setCSSStyle(expandable_related_section_css, 'expandable_related');
-                InitialiazeRelatedExpandableSection();
-            }
+            InitializeShowRelatedTags();
+            $(document).trigger("danbooru:show-related-tags");
         }
-        InitializeRelatedTagPopupListener();
-        Danbooru.RelatedTag.show = JSPLib.utility.hijackFunction(Danbooru.RelatedTag.show, ()=>{
-            QueueRelatedTagColumnWidths();
-        });
-        Danbooru.RelatedTag.hide = JSPLib.utility.hijackFunction(Danbooru.RelatedTag.hide, ()=>{
-            $("#iac-edit-scroll-wrapper").hide();
-        });
+        if (IAC.user_settings.expandable_related_section_enabled) {
+            InitializeRelatedTagPopupListener();
+            Danbooru.RelatedTag.show = JSPLib.utility.hijackFunction(Danbooru.RelatedTag.show, ()=>{
+                QueueRelatedTagColumnWidths();
+            });
+            Danbooru.RelatedTag.hide = JSPLib.utility.hijackFunction(Danbooru.RelatedTag.hide, ()=>{
+                $("#iac-edit-scroll-wrapper").hide();
+            });
+        }
     }
 }
 
