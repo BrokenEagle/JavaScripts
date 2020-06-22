@@ -2215,8 +2215,9 @@ function RebindSingleTag() {
         check: ()=>{return JSPLib.utility.hasDOMDataKey('[data-autocomplete=tag]', 'uiAutocomplete');},
         exec: ()=>{
             let autocomplete = AnySourceIndexed('ac', true);
-            $('[data-autocomplete=tag]').autocomplete("destroy").off('keydown.Autocomplete.tab');
-            $('[data-autocomplete=tag]').autocomplete({
+            let $fields = $('[data-autocomplete=tag]');
+            $fields.autocomplete("destroy").off('keydown.Autocomplete.tab');
+            $fields.autocomplete({
                 minLength: 1,
                 autoFocus: true,
                 source: async function(request, respond) {
@@ -2224,6 +2225,11 @@ function RebindSingleTag() {
                     respond(results);
                 }
             });
+            setTimeout(()=>{
+                $fields.each((i,field)=>{
+                    $(field).data('uiAutocomplete')._renderItem = Danbooru.Autocomplete.render_item;
+                });
+            }, jquery_delay);
         }
     },timer_poll_interval);
 }
