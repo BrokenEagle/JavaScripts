@@ -1415,7 +1415,38 @@ function ValidateUsageData(choice_info) {
 
 //Library functions
 
-////NONE
+JSPLib.load._getWindow = function () {
+    return (typeof unsafeWindow !== "undefined" ? unsafeWindow : window);
+};
+
+JSPLib.load.exportData = function (program_name, program_value, other_data = null) {
+    let window_value = JSPLib.load._getWindow();
+    if (JSPLib.debug.debug_console) {
+        window_value.JSPLib.lib = window_value.JSPLib.lib || {};
+        window_value.JSPLib.lib[program_name] = JSPLib;
+        window_value.JSPLib.value = window_value.JSPLib.value || {};
+        window_value.JSPLib.value[program_name] = program_value;
+        window_value.JSPLib.other = window_value.JSPLib.other || {};
+        window_value.JSPLib.other[program_name] = other_data;
+    }
+};
+
+JSPLib.menu.loadStorageKeys = async function () {
+    let program_data_regex = this.program_data_regex;
+    let storage_keys = this.program_data.storage_keys = {};
+    if (program_data_regex) {
+        this._storage_keys_promise = JSPLib.storage.danboorustorage.keys();
+        let cache_keys = await this._storage_keys_promise;
+        this._storage_keys_loaded = true;
+        storage_keys.indexed_db = cache_keys.filter((key)=>{return key.match(program_data_regex);});
+        let program_keys = cache_keys.filter((key)=>{return key.match(this.program_regex);});
+        storage_keys.indexed_db = JSPLib.utility.concat(program_keys,storage_keys.indexed_db);
+    } else {
+        this._storage_keys_loaded = true;
+    }
+    let keys = Object.keys(localStorage);
+    storage_keys.local_storage = keys.filter((key)=>{return key.match(this.program_regex);});
+};
 
 //Helper functions
 
@@ -2778,10 +2809,7 @@ JSPLib.menu.settings_callback = RemoteSettingsCallback;
 JSPLib.menu.reset_callback = RemoteSettingsCallback;
 
 //Export JSPLib
-if (JSPLib.debug.debug_console) {
-    window.JSPLib.lib = window.JSPLib.lib || {};
-    window.JSPLib.lib[PROGRAM_NAME] = JSPLib;
-}
+JSPLib.load.exportData(PROGRAM_NAME, IAC);
 
 /****Execution start****/
 
