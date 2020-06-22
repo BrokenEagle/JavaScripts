@@ -263,8 +263,8 @@ const CONTROL_CONFIG = {
     },
     data_name: {
         value: "",
-        buttons: ['get', 'save', 'delete'],
-        hint: "Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.",
+        buttons: ['get', 'save', 'delete', 'list', 'refresh'],
+        hint: "Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.<br><b>List</b> shows keys in their raw format, and <b>Refresh</b> checks the keys again.",
     },
 };
 
@@ -445,6 +445,16 @@ body[data-current-user-theme=dark] .ui-menu-item .forum-topic-category-2 {
 }`;
 
 const settings_menu_css = `
+#indexed-autocomplete .jsplib-selectors label {
+    width: 125px;
+}
+.jsplib-sortlist li {
+    width: 6em;
+}
+.iac-formula {
+    font-family: mono;
+    font-size: 100%;
+}
 .ui-widget-content {
     background: var(--jquery-ui-widget-content-background);
     color: var(--jquery-ui-widget-content-text-color);
@@ -546,8 +556,8 @@ const iac_menu = `
                     <div class="expandable-content">
                         <h5>Equations</h5>
                         <ul>
-                            <li><span style="width:5em;display:inline-block"><b>Hit:</b></span><span style="font-family:monospace;font-size:125%">usage_count = Min( usage_count + 1 , usage_maximum )</span></li>
-                            <li><span style="width:5em;display:inline-block"><b>Miss:</b></span><span style="font-family:monospace;font-size:125%">usage_count = usage_count * usage_multiplier</span></li>
+                            <li><span style="width:5em;display:inline-block"><b>Hit:</b></span><span class="iac-formula">usage_count = Min( usage_count + 1 , usage_maximum )</span></li>
+                            <li><span style="width:5em;display:inline-block"><b>Miss:</b></span><span class="iac-formula">usage_count = usage_count * usage_multiplier</span></li>
                         </ul>
                     </div>
                 </div>
@@ -609,9 +619,9 @@ const iac_menu = `
                         </ul>
                         <h5>Equations</h5>
                         <ul>
-                            <li><span style="width:8em;display:inline-block"><b>Linear:</b></span><span style="font-family:monospace;font-size:125%">tag_weight = source_weight x post_count</span></li>
-                            <li><span style="width:8em;display:inline-block"><b>Square root:</b></span><span style="font-family:monospace;font-size:125%">tag_weight = source_weight x Sqrt( post_count )</span></li>
-                            <li><span style="width:8em;display:inline-block"><b>Logarithmic:</b></span><span style="font-family:monospace;font-size:125%">tag_weight = source_weight x Log( post_count )</span></li>
+                            <li><span style="width:8em;display:inline-block"><b>Linear:</b></span><span class="iac-formula">tag_weight = source_weight x post_count</span></li>
+                            <li><span style="width:8em;display:inline-block"><b>Square root:</b></span><span class="iac-formula">tag_weight = source_weight x Sqrt( post_count )</span></li>
+                            <li><span style="width:8em;display:inline-block"><b>Logarithmic:</b></span><span class="iac-formula">tag_weight = source_weight x Log( post_count )</span></li>
                         </ul>
                     </div>
                 </div>
@@ -733,20 +743,20 @@ const iac_menu = `
                 <div class="expandable-content">
                     <p class="tn">All timestamps are in milliseconds since the epoch (<a href="https://www.epochconverter.com">Epoch converter</a>).</p>
                     <ul>
-                        <li>General data
+                        <li><u>General data</u>
                             <ul>
                                 <li><b>prune-expires:</b> When the program will next check for cache data that has expired.</li>
                                 <li><b>user-settings:</b> All configurable settings.</li>
                             </ul>
                         </li>
-                        <li>Text autocomplete data
+                        <li><u>Text autocomplete data</u>
                             <ul>
                                 <li><b>ac-source:</b> Numerical value designating the current source.</li>
                                 <li><b>ac-mode:</b> Numerical value designating the current mode.</li>
                                 <li><b>ac-caps:</b> Numerical value designating the current capitalization.</li>
                             </ul>
                         </li>
-                        <li>Usage data
+                        <li><u>Usage data</u>
                             <ul>
                                 <li><b>choice-info:</b> Comprised of choice order and choice data
                                     <ul>
@@ -2579,6 +2589,8 @@ function RenderSettingsMenu() {
     JSPLib.menu.getCacheClick();
     JSPLib.menu.saveCacheClick(ValidateProgramData, ValidateEntry, UpdateLocalData);
     JSPLib.menu.deleteCacheClick();
+    JSPLib.menu.listCacheClick();
+    JSPLib.menu.refreshCacheClick();
     JSPLib.menu.cacheAutocomplete();
 }
 
