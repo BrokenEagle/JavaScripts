@@ -2425,7 +2425,7 @@ function QueueRelatedTagColumnWidths() {
     }, 100);
 }
 
-//Main execution functions
+//Main auxiliary functions
 
 async function NetworkSource(type,key,term,metatag,query_type,process=true) {
     NetworkSource.debuglog("Querying", type, ':', term);
@@ -2515,6 +2515,121 @@ function ProcessSourceData(type,metatag,term,data,query_type) {
         IAC.current_tags = adjusted_tag_string.split(/\s+/);
     }
     return data;
+}
+
+//Main execution functions
+
+function SetupAutocompleteBindings() {
+    Danbooru.Autocomplete.tag_source = AnySourceIndexed('ac');
+    Danbooru.Autocomplete.pool_source = AnySourceIndexed('pl');
+    Danbooru.Autocomplete.user_source = AnySourceIndexed('us');
+    Danbooru.Autocomplete.favorite_group_source = AnySourceIndexed('fg');
+    Danbooru.Autocomplete.saved_search_source = AnySourceIndexed('ss');
+    Danbooru.Autocomplete.static_metatag_source = StaticMetatagSource;
+    Danbooru.Autocomplete.insert_completion_old = Danbooru.Autocomplete.insert_completion;
+    Danbooru.Autocomplete.insert_completion = JSPLib.utility.hijackFunction(InsertCompletion, InsertUserSelected);
+    Danbooru.Autocomplete.render_item_old = Danbooru.Autocomplete.render_item;
+    Danbooru.Autocomplete.render_item = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.render_item, HighlightSelected);
+    Danbooru.Autocomplete.initialize_tag_autocomplete_old = Danbooru.Autocomplete.initialize_tag_autocomplete;
+    Danbooru.Autocomplete.initialize_tag_autocomplete = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.initialize_tag_autocomplete, RebindRender);
+}
+
+function SetupAutocompleteInitializations() {
+    switch (IAC.controller) {
+        case 'wiki-pages':
+        case 'wiki-page-versions':
+            RebindAnyAutocomplete('[data-autocomplete=wiki-page]', 'wp');
+            break;
+        case 'artists':
+        case 'artist-versions':
+        case 'artist-urls':
+            RebindAnyAutocomplete('[data-autocomplete=artist]', 'ar');
+            break;
+        case 'pools':
+        case 'pool-versions':
+            RebindAnyAutocomplete('[data-autocomplete=pool]', 'pl');
+            break;
+        case 'posts':
+            if (IAC.action === 'index') {
+                RebindAnyAutocomplete('[data-autocomplete=saved-search-label]', 'ss', true);
+            }
+            break;
+        case 'saved-searches':
+            if (IAC.action === 'index') {
+                DelayInitializeTagAutocomplete('#search_query_ilike', 'tag-query');
+                RebindAnyAutocomplete('[data-autocomplete=saved-search-label]', 'ss');
+            } else if (IAC.action === 'edit') {
+                DelayInitializeTagAutocomplete('#saved_search_query', 'tag-query');
+                RebindAnyAutocomplete('[data-autocomplete=saved-search-label]', 'ss', true);
+            }
+            break
+        case 'forum-topics':
+        case 'forum-posts':
+            DelayInitializeAutocomplete("#quick_search_title_matches", 'ft');
+            if (IAC.action === "search") {
+                DelayInitializeAutocomplete("#search_topic_title_matches", 'ft');
+            }
+            break;
+        case 'comments':
+            DelayInitializeTagAutocomplete();
+            break;
+        case 'uploads':
+            if (IAC.action === 'index') {
+                DelayInitializeTagAutocomplete("#search_post_tags_match", 'tag-query');
+            }
+            break;
+        case 'bulk-update-requests':
+            if (IAC.is_bur) {
+                DelayInitializeTagAutocomplete("#bulk_update_request_script", 'tag-edit');
+            }
+            //falls through
+        default:
+            //do nothing
+    }
+    if ($(autocomplete_rebind_selectors).length) {
+        RebindRenderCheck();
+    }
+    if ($('[data-autocomplete=tag]').length) {
+        RebindSingleTag();
+    }
+    if ($(autocomplete_user_selectors).length) {
+        DelayInitializeAutocomplete(autocomplete_user_selectors, 'us');
+    }
+    if (IAC.user_settings.text_input_autocomplete_enabled) {
+        InitializeTextAreaAutocomplete();
+    }
+}
+
+function SetupPostEditInitializations() {
+    if ((IAC.controller === "posts" && IAC.action === "show") || (IAC.controller === "uploads" && IAC.action === "new")) {
+        RebindRelatedTags();
+        if (IAC.controller === "posts") {
+            RebindOpenEditMenu();
+        } else if (IAC.controller === "uploads") {
+            //Is source column empty?
+            if (/^\s+$/.test($(".source-related-tags-columns").html())) {
+                Main.debuglog("Setting up mutation observer for source data.");
+                JSPLib.utility.setupMutationReplaceObserver(".related-tags", ".source-related-tags-columns", Timer.SaveArtistData);
+            } else {
+                Timer.SaveArtistData();
+            }
+            if (IAC.user_settings.related_query_enabled) {
+                JSPLib.utility.setCSSStyle(related_query_control_css, 'related_query');
+                InitialiazeRelatedQueryControls();
+            }
+            if (IAC.user_settings.expandable_related_section_enabled) {
+                JSPLib.utility.setCSSStyle(expandable_related_section_css, 'expandable_related');
+                InitialiazeRelatedExpandableSection();
+            }
+        }
+        InitializeRelatedTagPopupListener();
+        Danbooru.RelatedTag.show = JSPLib.utility.hijackFunction(Danbooru.RelatedTag.show, ()=>{
+            QueueRelatedTagColumnWidths();
+        });
+        Danbooru.RelatedTag.hide = JSPLib.utility.hijackFunction(Danbooru.RelatedTag.hide, ()=>{
+            $("#iac-edit-scroll-wrapper").hide();
+        });
+    }
 }
 
 function ScheduleCleanupTasks() {
@@ -2709,95 +2824,9 @@ function Main() {
     JSPLib.utility.setCSSStyle(program_css, 'program');
     SetTagAutocompleteSource();
     CorrectUsageData();
-    /**Autocomplete bindings**/
-    Danbooru.Autocomplete.tag_source = AnySourceIndexed('ac');
-    Danbooru.Autocomplete.pool_source = AnySourceIndexed('pl');
-    Danbooru.Autocomplete.user_source = AnySourceIndexed('us');
-    Danbooru.Autocomplete.favorite_group_source = AnySourceIndexed('fg');
-    Danbooru.Autocomplete.saved_search_source = AnySourceIndexed('ss');
-    Danbooru.Autocomplete.static_metatag_source = StaticMetatagSource;
-    Danbooru.Autocomplete.insert_completion_old = Danbooru.Autocomplete.insert_completion;
-    Danbooru.Autocomplete.insert_completion = JSPLib.utility.hijackFunction(InsertCompletion, InsertUserSelected);
-    Danbooru.Autocomplete.render_item_old = Danbooru.Autocomplete.render_item;
-    Danbooru.Autocomplete.render_item = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.render_item, HighlightSelected);
-    Danbooru.Autocomplete.initialize_tag_autocomplete_old = Danbooru.Autocomplete.initialize_tag_autocomplete;
-    Danbooru.Autocomplete.initialize_tag_autocomplete = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.initialize_tag_autocomplete, RebindRender);
-    RebindRenderCheck();
-    //Tag-only queries need to be rebound to account for no metatag complete
-    if ($('[data-autocomplete=tag]').length) {
-        RebindSingleTag();
-    }
-    if (['wiki-pages','wiki-page-versions'].includes(IAC.controller)) {
-        RebindAnyAutocomplete('[data-autocomplete="wiki-page"]', 'wp');
-    }
-    if (['artists','artist-versions','artist-urls'].includes(IAC.controller)) {
-        RebindAnyAutocomplete('[data-autocomplete="artist"]', 'ar');
-    }
-    if (['pools','pool-versions'].includes(IAC.controller)) {
-        RebindAnyAutocomplete('[data-autocomplete="pool"]', 'pl');
-    }
-    if (IAC.controller === "posts" && IAC.action === "index") {
-        RebindAnyAutocomplete('[data-autocomplete="saved-search-label"]', 'ss', true);
-    }
-    if (IAC.controller === "saved-searches" && IAC.action === "edit") {
-        DelayInitializeTagAutocomplete("#saved_search_query", 'tag-query');
-        RebindAnyAutocomplete('[data-autocomplete="saved-search-label"]', 'ss', true);
-    }
-    if (IAC.controller === "saved-searches" && IAC.action === "index") {
-        DelayInitializeTagAutocomplete("#search_query_ilike", 'tag-query');
-        RebindAnyAutocomplete('[data-autocomplete="saved-search-label"]', 'ss');
-    }
-    if (IAC.controller === "forum-topics" || IAC.controller === "forum-posts") {
-        DelayInitializeAutocomplete("#quick_search_title_matches", 'ft');
-        if (IAC.action === "search") {
-            DelayInitializeAutocomplete("#search_topic_title_matches", 'ft');
-        }
-    }
-    if (IAC.controller === "comments") {
-        DelayInitializeTagAutocomplete();
-    }
-    if ((IAC.controller === "uploads" && IAC.action === "index") || IAC.is_bur) {
-        DelayInitializeTagAutocomplete("#search_post_tags_match", 'tag-query');
-        DelayInitializeTagAutocomplete("#bulk_update_request_script", 'tag-edit');
-    }
-    if ($(autocomplete_user_selectors).length) {
-        DelayInitializeAutocomplete(autocomplete_user_selectors, 'us');;
-    }
-    /**Edit menu**/
-    if ((IAC.controller === "posts" && IAC.action === "show") || (IAC.controller === "uploads" && IAC.action === "new")) {
-        /**Non-autocomplete bindings**/
-        RebindRelatedTags();
-        if (IAC.controller === "posts") {
-            RebindOpenEditMenu();
-        } else if (IAC.controller === "uploads") {
-            //Is source column empty?
-            if (/^\s+$/.test($(".source-related-tags-columns").html())) {
-                Main.debuglog("Setting up mutation observer for source data.");
-                JSPLib.utility.setupMutationReplaceObserver(".related-tags", ".source-related-tags-columns", ()=>{Timer.SaveArtistData();});
-            } else {
-                Timer.SaveArtistData();
-            }
-            if (IAC.user_settings.related_query_enabled) {
-                JSPLib.utility.setCSSStyle(related_query_control_css, 'related_query');
-                InitialiazeRelatedQueryControls();
-            }
-            if (IAC.user_settings.expandable_related_section_enabled) {
-                JSPLib.utility.setCSSStyle(expandable_related_section_css, 'expandable_related');
-                InitialiazeRelatedExpandableSection();
-            }
-        }
-        InitializeRelatedTagPopupListener();
-        Danbooru.RelatedTag.show = JSPLib.utility.hijackFunction(Danbooru.RelatedTag.show, ()=>{
-            QueueRelatedTagColumnWidths();
-        });
-        Danbooru.RelatedTag.hide = JSPLib.utility.hijackFunction(Danbooru.RelatedTag.hide, ()=>{
-            $("#iac-edit-scroll-wrapper").hide();
-        });
-    }
-    if (IAC.user_settings.text_input_autocomplete_enabled) {
-        InitializeTextAreaAutocomplete();
-    }
-    /**Other setup**/
+    SetupAutocompleteBindings();
+    SetupAutocompleteInitializations();
+    SetupPostEditInitializations();
     JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
     ScheduleCleanupTasks();
 }
