@@ -857,35 +857,23 @@ const all_users = ["Member","Gold","Platinum","Builder","Moderator","Admin"];
 
 //All of the following are used to determine when to run the script
 const autocomplete_userlist = [
-    "#search_to_name",
-    "#search_from_name",
-    "#dmail_to_name",
-    "#search_user_name",
-    "#search_banner_name",
-    "#search_creator_name",
-    "#search_approver_name",
-    "#search_updater_name",
-    "#search_uploader_name",
-    "#user_feedback_user_name",
-    ".c-users .search_name_matches input",
-    ".c-user-upgrades .search_name_matches input",
+    '[data-autocomplete=user]',
 ];
 //DOM elements with race condition
 const autocomplete_rebindlist = [
     "[data-autocomplete=tag-query]",
     "[data-autocomplete=tag-edit]",
-    "[data-autocomplete=tag]",
     ".autocomplete-mentions textarea"
 ];
 //DOM elements with autocomplete
 const autocomplete_domlist = [
     '#bulk_update_request_script',
-    '.c-forum-topics #subnav-menu .search_body_matches',
-    '.c-forum-posts #subnav-menu .search_body_matches',
-    '[data-autocomplete="wiki-page"]',
-    '[data-autocomplete="artist"]',
-    '[data-autocomplete="pool"]',
-    '[data-autocomplete="saved-search-label"]',
+    '[data-autocomplete=tag]',
+    '[data-autocomplete=wiki-page]',
+    '[data-autocomplete=artist]',
+    '[data-autocomplete=pool]',
+    '[data-autocomplete=saved-search-label]',
+    '[data-autocomplete=forum-topic]',
     ].concat(autocomplete_rebindlist).concat(autocomplete_userlist);
 
 const autocomplete_user_selectors = autocomplete_userlist.join(',');
