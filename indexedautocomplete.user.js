@@ -240,7 +240,7 @@ const SETTINGS_CONFIG = {
 //Available config values
 const all_source_types = ['indexed_db', 'local_storage'];
 const all_data_types = ['tag', 'pool', 'user', 'artist', 'wiki', 'forum', 'saved_search', 'favorite_group', 'related_tag', 'custom'];
-const all_related = ['', 'general', 'copyright', 'character', 'artist'];
+const all_related = ["", 'general', 'copyright', 'character', 'artist'];
 
 const CONTROL_CONFIG = {
     cache_info: {
@@ -849,8 +849,8 @@ const callback_interval = 1000; //Interval for fixup callback functions
 //Data inclusion lists
 const all_categories = [0, 1, 3, 4, 5];
 const all_topics = [0, 1, 2];
-const all_pools = ["collection", "series"]
-const all_users = ["Member", "Gold", "Platinum", "Builder", "Moderator", "Admin"];
+const all_pools = ['collection', 'series']
+const all_users = ['Member', 'Gold', 'Platinum', 'Builder', 'Moderator', 'Admin'];
 
 //All of the following are used to determine when to run the script
 const autocomplete_userlist = [
@@ -858,9 +858,9 @@ const autocomplete_userlist = [
 ];
 //DOM elements with race condition
 const autocomplete_rebindlist = [
-    "[data-autocomplete=tag-query]",
-    "[data-autocomplete=tag-edit]",
-    ".autocomplete-mentions textarea",
+    '[data-autocomplete=tag-query]',
+    '[data-autocomplete=tag-edit]',
+    '.autocomplete-mentions textarea',
 ];
 //DOM elements with autocomplete
 const autocomplete_domlist = [
@@ -931,7 +931,7 @@ const source_key = {
 
 const source_config = {
     tag1: {
-        url: "tags/autocomplete",
+        url: 'tags/autocomplete',
         data: (term)=>{
             return {
                 search: {
@@ -942,7 +942,7 @@ const source_config = {
         map: (tag)=>{
             return {
                 type: 'tag',
-                label: tag.name.replace(/_/g, " "),
+                label: tag.name.replace(/_/g, ' '),
                 antecedent: tag.antecedent_name || null,
                 value: tag.name,
                 category: tag.category,
@@ -963,17 +963,17 @@ const source_config = {
         data: (term)=>{
             return {
                 search: {
-                    name_matches: term + "*",
+                    name_matches: term + '*',
                     hide_empty: true,
                     order: 'count'
                 },
-                only: "name,category,post_count"
+                only: 'name,category,post_count'
             };
         },
         map: (tag)=>{
             return {
                 type: 'tag',
-                label: tag.name.replace(/_/g, " "),
+                label: tag.name.replace(/_/g, ' '),
                 antecedent: null,
                 value: tag.name,
                 category: tag.category,
@@ -1000,7 +1000,7 @@ const source_config = {
                     order: 'post_count',
                     name_matches: term
                 },
-                only: "name,category,post_count"
+                only: 'name,category,post_count'
             };
         },
         map: (pool)=>{
@@ -1018,7 +1018,7 @@ const source_config = {
         fixupexpiration: false,
         searchstart: false,
         spacesallowed: true,
-        render: ($domobj,item) => $domobj.addClass("pool-category-" + item.category).text(item.label),
+        render: ($domobj,item) => $domobj.addClass('pool-category-' + item.category).text(item.label),
     },
     user: {
         url: 'users',
@@ -1027,9 +1027,9 @@ const source_config = {
                 search: {
                     order: 'post_upload_count',
                     current_user_first: true,
-                    name_matches: term + "*"
+                    name_matches: term + '*'
                 },
-                only: "name,level_string"
+                only: 'name,level_string'
             };
         },
         map: (user)=>{
@@ -1046,7 +1046,7 @@ const source_config = {
         fixupexpiration: false,
         searchstart: true,
         spacesallowed: false,
-        render: ($domobj,item) => $domobj.addClass("user-" + item.level.toLowerCase()).addClass("with-style").text(item.label),
+        render: ($domobj,item) => $domobj.addClass('user-' + item.level.toLowerCase()).addClass('with-style').text(item.label),
     },
     favgroup: {
         url: 'favorite_groups',
@@ -1056,7 +1056,7 @@ const source_config = {
                     name_matches: term,
                     creator_id: IAC.userid,
                 },
-                only: "name,post_count"
+                only: 'name,post_count'
             };
         },
         map: (favgroup)=>{
@@ -1078,7 +1078,7 @@ const source_config = {
         data: (term)=>{
             return {
                 search: {
-                    label: term + "*"
+                    label: term + '*'
                 }
             };
         },
@@ -1102,14 +1102,14 @@ const source_config = {
                 search: {
                     order: 'post_count',
                     hide_deleted: true,
-                    title_ilike: term + "*"
+                    title_ilike: term + '*'
                 },
-                only: "title,category_name"
+                only: 'title,category_name'
             };
         },
         map: (wikipage)=>{
             return {
-                label: wikipage.title.replace(/_/g, " "),
+                label: wikipage.title.replace(/_/g, ' '),
                 value: wikipage.title,
                 category: wikipage.category_name
             };
@@ -1121,7 +1121,7 @@ const source_config = {
         fixupexpiration: true,
         searchstart: true,
         spacesallowed: true,
-        render: ($domobj,item) => $domobj.addClass("tag-type-" + item.category).text(item.label),
+        render: ($domobj,item) => $domobj.addClass('tag-type-' + item.category).text(item.label),
     },
     artist: {
         url: 'artists',
@@ -1130,14 +1130,14 @@ const source_config = {
                 search: {
                     order: 'post_count',
                     is_active: true,
-                    name_like: term.trim().replace(/\s+/g, "_") + "*"
+                    name_like: term.trim().replace(/\s+/g, '_') + '*'
                 },
                 only: 'name'
             };
         },
         map: (artist)=>{
             return {
-                label: artist.name.replace(/_/g, " "),
+                label: artist.name.replace(/_/g, ' '),
                 value: artist.name
             };
         },
@@ -1148,7 +1148,7 @@ const source_config = {
         fixupexpiration: true,
         searchstart: true,
         spacesallowed: false,
-        render: ($domobj,item) => $domobj.addClass("tag-type-1").text(item.label),
+        render: ($domobj,item) => $domobj.addClass('tag-type-1').text(item.label),
     },
     forumtopic: {
         url: 'forum_topics',
@@ -1156,9 +1156,9 @@ const source_config = {
             return {
                 search: {
                     order: 'sticky',
-                    title_ilike: "*" + term + "*"
+                    title_ilike: '*' + term + '*'
                 },
-                only: "title,category_id"
+                only: 'title,category_id'
             };
         },
         map: (forumtopic)=>{
@@ -1174,7 +1174,7 @@ const source_config = {
         fixupexpiration: false,
         searchstart: false,
         spacesallowed: true,
-        render: ($domobj,item) => $domobj.addClass("forum-topic-category-" + item.category).text(item.value),
+        render: ($domobj,item) => $domobj.addClass('forum-topic-category-' + item.category).text(item.value),
     }
 };
 
@@ -1197,12 +1197,12 @@ const autocomplete_constraints = {
     pool: {
         category: JSPLib.validate.inclusion_constraints(all_pools),
         post_count: JSPLib.validate.counting_constraints,
-        type: JSPLib.validate.inclusion_constraints(["pool"]),
+        type: JSPLib.validate.inclusion_constraints(['pool']),
         name: JSPLib.validate.stringonly_constraints,
     },
     user: {
         level: JSPLib.validate.inclusion_constraints(all_users),
-        type: JSPLib.validate.inclusion_constraints(["user"]),
+        type: JSPLib.validate.inclusion_constraints(['user']),
         name: JSPLib.validate.stringonly_constraints,
     },
     favgroup: {
@@ -1306,7 +1306,7 @@ function ValidateRelatedtagEntry(key,entry) {
             JSPLib.validate.outputValidateError(wiki_key, check);
             return false;
         }
-        check = validate({value: value},{value: relatedtag_constraints.other_wiki_value});
+        check = validate({value: value}, {value: relatedtag_constraints.other_wiki_value});
         if (check !== undefined) {
             JSPLib.validate.outputValidateError(wiki_key, check);
             return false;
@@ -1411,7 +1411,7 @@ function ValidateUsageData(choice_info) {
 //Library functions
 
 JSPLib.load._getWindow = function () {
-    return (typeof unsafeWindow !== "undefined" ? unsafeWindow : window);
+    return (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window);
 };
 
 JSPLib.load.exportData = function (program_name, program_value, other_data = null) {
@@ -1435,7 +1435,7 @@ JSPLib.menu.loadStorageKeys = async function () {
         this._storage_keys_loaded = true;
         storage_keys.indexed_db = cache_keys.filter((key)=>key.match(program_data_regex));
         let program_keys = cache_keys.filter((key)=>key.match(this.program_regex));
-        storage_keys.indexed_db = JSPLib.utility.concat(program_keys,storage_keys.indexed_db);
+        storage_keys.indexed_db = JSPLib.utility.concat(program_keys, storage_keys.indexed_db);
     } else {
         this._storage_keys_loaded = true;
     }
@@ -1446,15 +1446,15 @@ JSPLib.menu.loadStorageKeys = async function () {
 //Helper functions
 
 function ProperCase(string) {
-    return string.match(WORDBREAK_REGEX).map((word) => JSPLib.utility.titleizeString(word)).join('');
+    return string.match(WORDBREAK_REGEX).map((word) => JSPLib.utility.titleizeString(word)).join("");
 }
 
 function ExceptCase(string) {
-    return string.match(WORDBREAK_REGEX).map((word) => TitleizeExcept(word)).join('');
+    return string.match(WORDBREAK_REGEX).map((word) => TitleizeExcept(word)).join("");
 }
 
 function RomanCase(string) {
-    return string.match(WORDBREAK_REGEX).map((word) => TitleizeRoman(word)).join('');
+    return string.match(WORDBREAK_REGEX).map((word) => TitleizeRoman(word)).join("");
 }
 
 function TitleizeExcept(word) {
@@ -1466,25 +1466,26 @@ function TitleizeRoman(word) {
 }
 
 function RemoveTerm(str,index) {
-    str = " " + str + " ";
+    str = ' ' + str + ' ';
     let first_slice = str.slice(0, index);
     let second_slice = str.slice(index);
     let first_space = first_slice.lastIndexOf(' ');
     let second_space = second_slice.indexOf(' ');
-    return (first_slice.slice(0, first_space) + second_slice.slice(second_space)).slice(1,-1);
+    return (first_slice.slice(0, first_space) + second_slice.slice(second_space)).slice(1, -1);
 }
 
 function GetPrefix(str) {
     if (!(str in GetPrefix.prefixhash)) {
-        GetPrefix.prefixhash[str] = str.split('_').map((part) => (part.replace(/[()]/g, '')[0])).join('');
+        GetPrefix.prefixhash[str] = str.split('_').map((part) => (part.replace(/[()]/g, "")[0])).join("");
     }
     return GetPrefix.prefixhash[str];
 }
 GetPrefix.prefixhash = {};
 
 function GetIsBur() {
-    return (document.body.dataset.controller === "bulk-update-requests") && ['edit','new'].includes(document.body.dataset.action);
+    return (document.body.dataset.controller === 'bulk-update-requests') && ['edit', 'new'].includes(document.body.dataset.action);
 }
+
 const MapMetatag = (type,metatag,value) => ({
     type: type,
     antecedent: null,
@@ -1498,8 +1499,8 @@ const MapMetatag = (type,metatag,value) => ({
 function MetatagData() {
     if (!MetatagData.data) {
         MetatagData.data = Danbooru.Autocomplete.METATAGS
-            .filter((tag) => (tag[0] !== "-"))
-            .map((tag)=>(MapMetatag('tag', tag, '')));
+            .filter((tag) => (tag[0] !== '-'))
+            .map((tag)=>(MapMetatag('tag', tag, "")));
     }
     return MetatagData.data;
 }
@@ -1594,17 +1595,17 @@ ${column}
 
 function RenderListItem(alink_func) {
     return function (list,item) {
-        let $link = alink_func($("<a/>"), item);
-        let $container = $("<div/>").append($link);
+        let $link = alink_func($('<a/>'), item);
+        let $container = $('<div/>').append($link);
         HighlightSelected($container, list, item);
-        return $("<li/>").data("item.autocomplete", item).append($container).appendTo(list);
+        return $('<li/>').data('item.autocomplete', item).append($container).appendTo(list);
     }
 }
 
 function RenderRelatedQueryControls() {
     let html = "";
     related_query_types.forEach((type)=>{
-        let checked = (IAC.user_settings.related_query_default[0] === type ? "checked" : "");
+        let checked = (IAC.user_settings.related_query_default[0] === type ? 'checked' : "");
         let display_name = JSPLib.utility.displayCase(type);
         html += `
 <label for="related_query_${type}">${display_name}</label>
@@ -1644,31 +1645,31 @@ function CapitalizeAutocomplete(string) {
 
 function FixupMetatag(value,metatag) {
     switch(metatag) {
-        case "@":
-            value.value = "@" + value.name;
+        case '@':
+            value.value = '@' + value.name;
             value.label = value.name;
             break;
         case "":
             value.value = value.name;
-            value.label = value.name.replace(/_/g, " ");
+            value.label = value.name.replace(/_/g, ' ');
             break;
         default:
-            metatag = metatag.replace(/:$/,'');
-            value.value = metatag + ":" + value.name;
-            value.label = value.name.replace(/_/g, " ");
+            metatag = metatag.replace(/:$/, "");
+            value.value = metatag + ':' + value.name;
+            value.label = value.name.replace(/_/g, ' ');
     }
 }
 
 function SortSources(data) {
     var scaler;
     switch(IAC.user_settings.postcount_scale[0]) {
-        case "logarithmic":
+        case 'logarithmic':
             scaler = ((num) => Math.log(num));
             break;
-        case "square_root":
+        case 'square_root':
             scaler = ((num) => Math.sqrt(num));
             break;
-        case "linear":
+        case 'linear':
         default:
             scaler = ((num) => num);
     }
@@ -1714,15 +1715,15 @@ function GetArtistData(url) {
 }
 
 function SaveArtistData() {
-    let url = $("#upload_source, #post_source").val();
-    let ref = $("#upload_referer_url").val();
+    let url = $('#upload_source, #post_source').val();
+    let ref = $('#upload_referer_url').val();
     if (!url.match(/^https?:\/\//)) {
         return;
     }
     let urlkey = 'af-' + url;
     let refkey = 'ref-' + ref;
-    let source_info = LZString.compressToUTF16($("#source-info").html());
-    let source_column = LZString.compressToUTF16($(".source-related-tags-columns").html());
+    let source_info = LZString.compressToUTF16($('#source-info').html());
+    let source_column = LZString.compressToUTF16($('.source-related-tags-columns').html());
     SaveArtistData.debuglog("Saving", urlkey);
     JSPLib.storage.setStorageData(urlkey, {source_info: source_info, source_column: source_column}, sessionStorage);
     if (ref) {
@@ -1760,7 +1761,7 @@ async function GetPostCount(tag) {
 }
 
 async function GetRelatedTags(tag, category, query_type) {
-    let key = GetRelatedKeyModifer(category, query_type) + "-" + tag
+    let key = GetRelatedKeyModifer(category, query_type) + '-' + tag
     GetRelatedTags.debuglog("Checking:", key, category);
     let cached = await JSPLib.storage.checkLocalDB(key, ValidateEntry, related_tag_expires);
     if (!cached) {
@@ -1785,7 +1786,7 @@ async function GetRelatedTags(tag, category, query_type) {
 function KeepSourceData(type,metatag,data) {
     IAC.source_data[type] = IAC.source_data[type] || {};
     data.forEach((val)=>{
-        let orig_key = val.value.replace(RegExp(`^${metatag}:?`), '');
+        let orig_key = val.value.replace(RegExp(`^${metatag}:?`), "");
         let key = (val.antecedent ? val.antecedent : orig_key);
         IAC.source_data[type][key] = val;
     });
@@ -1796,7 +1797,7 @@ function GetChoiceOrder(type,query) {
     let queryterm = query.toLowerCase();
     let available_choices = IAC.choice_order[type].filter((tag)=>{
         let tagterm = tag.toLowerCase();
-        let tagprefix = (checkprefix ? GetPrefix(tagterm) : '');
+        let tagprefix = (checkprefix ? GetPrefix(tagterm) : "");
         let queryindex = tagterm.indexOf(queryterm);
         let prefixindex = (checkprefix ? tagprefix.indexOf(queryterm) : -1);
         return (queryindex === 0) || (prefixindex === 0) || (!source_config[type].searchstart && queryindex > 0);
@@ -1818,7 +1819,7 @@ function AddUserSelected(type,metatag,term,data,query_type) {
     let user_order = GetChoiceOrder(type, term);
     for (let i = user_order.length - 1; i >= 0; i--) {
         let checkterm = metatag + user_order[i];
-        if (query_type === "tag" && choice[checkterm].category === metatag_tag_category) {
+        if (query_type === 'tag' && choice[checkterm].category === metatag_tag_category) {
             continue;
         }
         //Splice out Danbooru data if it exists
@@ -1847,14 +1848,14 @@ function InsertUserSelected(data,input,selected) {
     }
     var type,item,term,source_data;
     //Being hamstrung by Danbooru's select function of the multi-source tag complete
-    if (typeof selected === "string") {
-        let autocomplete = $(input).autocomplete("instance");
+    if (typeof selected === 'string') {
+        let autocomplete = $(input).autocomplete('instance');
         let list_container = autocomplete.menu.element[0];
         let $links = $('.ui-state-active', list_container).parent();
         if ($links.length === 0) {
-            $links = $(".ui-menu-item:first-of-type", list_container);
+            $links = $('.ui-menu-item:first-of-type', list_container);
         }
-        item = $links.data("item.autocomplete");
+        item = $links.data('item.autocomplete');
         if (!item) {
             InsertUserSelected.debuglog("Error: No autocomplete data found!", $links, item);
             return;
@@ -1866,7 +1867,7 @@ function InsertUserSelected(data,input,selected) {
                 let match = selected.match(Danbooru.Autocomplete.METATAGS_REGEX);
                 type = (match ? match[0] : 'tag');
             } else {
-                type = autocomplete_type.replace(/-/g, '');
+                type = autocomplete_type.replace(/-/g, "");
             }
         }
     } else {
@@ -1889,7 +1890,7 @@ function InsertUserSelected(data,input,selected) {
     if (item.category === metatag_tag_category) {
         if (item.type === 'tag') {
             input.selectionStart = input.selectionEnd = input.selectionStart - 1;
-            setTimeout(()=>{$(input).autocomplete("search");},100);
+            setTimeout(()=>{$(input).autocomplete('search');}, 100);
         }
         source_data = item;
     } else
@@ -1928,7 +1929,7 @@ function InsertCompletion(input, completion) {
     // Trim all whitespace (tabs, spaces) except for line returns
     var before_caret_text = input.value.substring(0, input.selectionStart).replace(/^[ \t]+|[ \t]+$/gm, "");
     var after_caret_text = input.value.substring(input.selectionStart).replace(/^[ \t]+|[ \t]+$/gm, "");
-    var regexp = new RegExp("(" + Danbooru.Autocomplete.TAG_PREFIXES + ")?\\S+$", "g");
+    var regexp = new RegExp('(' + Danbooru.Autocomplete.TAG_PREFIXES + ')?\\S+$', 'g');
     let adjust_position = 0;
     let $input = $(input);
     let start = 0, end = 0;
@@ -1940,7 +1941,7 @@ function InsertCompletion(input, completion) {
                 display_text = display_text.replace(/_/g, ' ');
                 display_text = CapitalizeAutocomplete(display_text);
             }
-            before_caret_text = before_caret_text.replace(regexp, "$1") + "[[" + display_text + "]]";
+            before_caret_text = before_caret_text.replace(regexp, '$1') + '[[' + display_text + ']]';
             start = end = before_caret_text.length;
         } else if (['pipe', 'custom'].includes(current_mode)) {
             let insert_text = "insert text";
@@ -1949,7 +1950,7 @@ function InsertCompletion(input, completion) {
                 display_text = CapitalizeAutocomplete(display_text);
                 insert_text = "";
             }
-            before_caret_text = before_caret_text.replace(regexp, "$1") + `[[${display_text}|${insert_text}]]`;
+            before_caret_text = before_caret_text.replace(regexp, '$1') + `[[${display_text}|${insert_text}]]`;
             if (current_mode === 'pipe') {
                 start = end = before_caret_text.length;
             } else {
@@ -1960,7 +1961,7 @@ function InsertCompletion(input, completion) {
         }
         setTimeout(()=>{DisableTextAreaAutocomplete($input);}, 100);
     } else {
-        before_caret_text = before_caret_text.replace(regexp, "$1") + completion + " ";
+        before_caret_text = before_caret_text.replace(regexp, '$1') + completion + ' ';
         start = end = before_caret_text.length;
     }
     input.value = before_caret_text + after_caret_text;
@@ -1973,8 +1974,8 @@ function StaticMetatagSource(term, metatag) {
     let data = SubmetatagData()
         .filter((data) => data.value.startsWith(full_term))
         .sort((a,b) => a.value.localeCompare(b.value))
-        .slice(0,IAC.user_settings.source_results_returned);
-    AddUserSelected('metatag', '', full_term,data)
+        .slice(0, IAC.user_settings.source_results_returned);
+    AddUserSelected('metatag', "", full_term, data)
     return data;
 }
 
@@ -1984,7 +1985,7 @@ function HighlightSelected($link,list,item) {
         if (item.expires) {
             $($link).addClass('iac-user-choice');
         }
-        if (item.type === 'tag' || item.type === "metatag") {
+        if (item.type === 'tag' || item.type === 'metatag') {
             $($link).addClass('iac-tag-highlight');
             switch (item.source) {
                 case 'exact':
@@ -2004,8 +2005,8 @@ function HighlightSelected($link,list,item) {
                     break;
                 case 'metatag':
                     $($link).addClass('iac-tag-metatag');
-                    $(".post-count", $link).text('metatag');
-                    $("a", $link).addClass("tag-type-" + item.category);
+                    $('.post-count', $link).text('metatag');
+                    $('a', $link).addClass('tag-type-' + item.category);
                     //falls through
                 default:
                     //Do nothing
@@ -2048,18 +2049,18 @@ function PruneUsageData() {
     }
 }
 
-function StoreUsageData(name,key='',save=true) {
+function StoreUsageData(name,key="",save=true) {
     if (save) {
         JSPLib.storage.setStorageData('iac-choice-info', {choice_order: IAC.choice_order, choice_data: IAC.choice_data}, localStorage);
     }
-    IAC.channel.postMessage({type: "reload", name: name, key: key, choice_order: IAC.choice_order, choice_data: IAC.choice_data});
+    IAC.channel.postMessage({type: 'reload', name: name, key: key, choice_order: IAC.choice_order, choice_data: IAC.choice_data});
 }
 
 //Non-autocomplete storage
 
 async function RelatedTagsButton(event) {
     let currenttag = Danbooru.RelatedTag.current_tag().trim().toLowerCase();
-    let category = $(event.target).data("category") || "";
+    let category = $(event.target).data('category') || "";
     let query_type = JSPLib.menu.getCheckboxRadioSelected('.iac-program-checkbox');
     let promise_array = [GetRelatedTags(currenttag, category, query_type[0])];
     if (IAC.user_settings.related_statistics_enabled) {
@@ -2071,13 +2072,13 @@ async function RelatedTagsButton(event) {
     if (!related_tags) {
         return;
     }
-    $("#related-tags-container .current-related-tags-columns").html(Timer.RenderTagColumns(related_tags, post_count));
+    $('#related-tags-container .current-related-tags-columns').html(Timer.RenderTagColumns(related_tags, post_count));
     Danbooru.RelatedTag.update_selected();
     Danbooru.RelatedTag.show();
 }
 
 async function FindArtistSession(event) {
-    var url = $("#post_source").val();
+    var url = $('#post_source').val();
     if (!url.match(/^https?:\/\//)) {
         return;
     }
@@ -2086,19 +2087,19 @@ async function FindArtistSession(event) {
     let data = GetArtistData(url);
     if (data) {
         FindArtistSession.debuglog("Found artist data", urlkey);
-        $("#source-info").html(LZString.decompressFromUTF16(data.source_info));
-        $(".source-related-tags-columns").html(LZString.decompressFromUTF16(data.source_column))
+        $('#source-info').html(LZString.decompressFromUTF16(data.source_info));
+        $('.source-related-tags-columns').html(LZString.decompressFromUTF16(data.source_column))
         Danbooru.RelatedTag.update_selected();
     } else {
         FindArtistSession.debuglog("Missing artist data", urlkey);
-        $("#source-info").addClass("loading");
+        $('#source-info').addClass('loading');
         try {
-            await $.get("/source.js", {url: url});
+            await $.get('/source.js', {url: url});
             Timer.SaveArtistData();
         } catch (e) {
             //swallow
         }
-        $("#source-info").removeClass("loading");
+        $('#source-info').removeClass('loading');
     }
 }
 
@@ -2113,25 +2114,25 @@ function RelatedTagsLeave(event) {
 }
 
 function RelatedTagsScroll(event) {
-    let $related_tags = $(".related-tags");
-    let current_left = $related_tags.prop("scrollLeft");
-    if (event.originalEvent.key === "ArrowLeft") {
+    let $related_tags = $('.related-tags');
+    let current_left = $related_tags.prop('scrollLeft');
+    if (event.originalEvent.key === 'ArrowLeft') {
         current_left -= 40;
-    } else if (event.originalEvent.key === "ArrowRight") {
+    } else if (event.originalEvent.key === 'ArrowRight') {
         current_left += 40;
     }
-    $related_tags.prop("scrollLeft", current_left);
+    $related_tags.prop('scrollLeft', current_left);
 }
 
 ////Setup functions
 
 function RebindRender() {
     $(autocomplete_rebind_selectors).each((i,entry)=>{
-        let render_set = $(entry).data("iac-render");
-        let autocomplete_item = $(entry).data("uiAutocomplete");
+        let render_set = $(entry).data('iac-render');
+        let autocomplete_item = $(entry).data('uiAutocomplete');
         if (!render_set && autocomplete_item) {
             autocomplete_item._renderItem = Danbooru.Autocomplete.render_item;
-            $(entry).data("iac-render", true);
+            $(entry).data('iac-render', true);
         }
     });
 }
@@ -2160,32 +2161,32 @@ function RebindRenderCheck() {
 function RebindRelatedTags() {
     //Only need to check one of them, since they're all bound at the same time
     JSPLib.utility.recheckTimer({
-        check: () => JSPLib.utility.isNamespaceBound(document, 'click', 'danbooru', ".related-tags-button"),
+        check: () => JSPLib.utility.isNamespaceBound(document, 'click', 'danbooru', '.related-tags-button'),
         exec: ()=>{
-            $(document).off("click.danbooru", ".related-tags-button");
-            $(document).on("click.danbooru", ".related-tags-button", Timer.RelatedTagsButton);
+            $(document).off('click.danbooru', '.related-tags-button');
+            $(document).on('click.danbooru', '.related-tags-button', Timer.RelatedTagsButton);
         }
-    },timer_poll_interval);
+    }, timer_poll_interval);
 }
 
 function RebindOpenEditMenu() {
     JSPLib.utility.recheckTimer({
-        check: () => JSPLib.utility.isGlobalFunctionBound("danbooru:show-related-tags"),
+        check: () => JSPLib.utility.isGlobalFunctionBound('danbooru:show-related-tags'),
         exec: ()=>{
             IAC.cached_data = true;
             InitializeShowRelatedTags();
         }
-    },timer_poll_interval);
+    }, timer_poll_interval);
 }
 
 function RebindAnyAutocomplete(selector,keycode,multiple) {
     JSPLib.utility.recheckTimer({
         check: () => JSPLib.utility.hasDOMDataKey(selector, 'uiAutocomplete'),
         exec: ()=>{
-            $(selector).autocomplete("destroy").off('keydown.Autocomplete.tab');
+            $(selector).autocomplete('destroy').off('keydown.Autocomplete.tab');
             InitializeAutocompleteIndexed(selector, keycode, multiple);
         }
-    },timer_poll_interval);
+    }, timer_poll_interval);
 }
 
 function RebindSingleTag() {
@@ -2194,7 +2195,7 @@ function RebindSingleTag() {
         exec: ()=>{
             let autocomplete = AnySourceIndexed('ac', true);
             let $fields = $('[data-autocomplete=tag]');
-            $fields.autocomplete("destroy").off('keydown.Autocomplete.tab');
+            $fields.autocomplete('destroy').off('keydown.Autocomplete.tab');
             $fields.autocomplete({
                 minLength: 1,
                 autoFocus: true,
@@ -2209,7 +2210,7 @@ function RebindSingleTag() {
                 });
             }, jquery_delay);
         }
-    },timer_poll_interval);
+    }, timer_poll_interval);
 }
 
 //Initialization functions
@@ -2242,7 +2243,7 @@ function InitializeAutocompleteIndexed(selector,keycode,multiple=false,wiki=fals
                 event.stopImmediatePropagation();
                 return false;
             } else if (multiple) {
-                if (event.key === "Enter") {
+                if (event.key === 'Enter') {
                     event.stopImmediatePropagation();
                 }
                 Danbooru.Autocomplete.insert_completion_old(this, ui.item.value);
@@ -2264,7 +2265,7 @@ function InitializeAutocompleteIndexed(selector,keycode,multiple=false,wiki=fals
         });
     }, jquery_delay);
     if (!JSPLib.utility.isNamespaceBound(selector, 'keydown', 'Autocomplete.tab')) {
-        $fields.on('keydown.Autocomplete.tab', null, "tab", Danbooru.Autocomplete.on_tab);
+        $fields.on('keydown.Autocomplete.tab', null, 'tab', Danbooru.Autocomplete.on_tab);
     }
     $fields.data('autocomplete', type);
     $fields.data('multiple', multiple || wiki);
@@ -2274,7 +2275,7 @@ function InitializeTextAreaAutocomplete() {
     IAC.ac_source = JSPLib.storage.getStorageData('iac-ac-source', localStorage, 0);
     IAC.ac_mode = JSPLib.storage.getStorageData('iac-ac-mode', localStorage, 0);
     IAC.ac_caps = JSPLib.storage.getStorageData('iac-ac-caps', localStorage, 0);
-    $("textarea:not([data-autocomplete]), input[type=text]:not([data-autocomplete])").on("keydown.iac", null, "alt+a", (event)=>{
+    $('textarea:not([data-autocomplete]), input[type=text]:not([data-autocomplete])').on('keydown.iac', null, 'alt+a', (event)=>{
         let $input = $(event.currentTarget);
         let type = AUTOCOMPLETE_SOURCE[IAC.ac_source];
         if (!$input.data('insert-autocomplete')) {
@@ -2283,27 +2284,27 @@ function InitializeTextAreaAutocomplete() {
             DisableTextAreaAutocomplete($input, type);
         }
     }).data('insert-autocomplete', false);
-    $("textarea:not([data-autocomplete]), input[type=text]:not([data-autocomplete])").on("keydown.iac", null, "alt+1 alt+2 alt+3", (event)=>{
-        if (event.originalEvent.key === "1") {
+    $('textarea:not([data-autocomplete]), input[type=text]:not([data-autocomplete])').on('keydown.iac', null, 'alt+1 alt+2 alt+3', (event)=>{
+        if (event.originalEvent.key === '1') {
             IAC.ac_source = (IAC.ac_source + 1) % AUTOCOMPLETE_SOURCE.length;
             JSPLib.utility.notice(RenderAutocompleteNotice('source', AUTOCOMPLETE_SOURCE, IAC.ac_source));
             JSPLib.storage.setStorageData('iac-ac-source', IAC.ac_source, localStorage);
-        } else if (event.originalEvent.key === "2") {
+        } else if (event.originalEvent.key === '2') {
             IAC.ac_mode = (IAC.ac_mode + 1) % AUTOCOMPLETE_MODE.length;
             JSPLib.utility.notice(RenderAutocompleteNotice('mode', AUTOCOMPLETE_MODE, IAC.ac_mode));
             JSPLib.storage.setStorageData('iac-ac-mode', IAC.ac_mode, localStorage);
-        } else if (event.originalEvent.key === "3") {
+        } else if (event.originalEvent.key === '3') {
             IAC.ac_caps = (IAC.ac_caps + 1) % AUTOCOMPLETE_CAPITALIZATION.length;
             JSPLib.utility.notice(RenderAutocompleteNotice('capitalization', AUTOCOMPLETE_CAPITALIZATION, IAC.ac_caps));
             JSPLib.storage.setStorageData('iac-ac-caps', IAC.ac_caps, localStorage);
         }
-        IAC.channel.postMessage({type: "text_autocomplete", source: IAC.ac_source, mode: IAC.ac_mode , caps: IAC.ac_caps});
+        IAC.channel.postMessage({type: 'text_autocomplete', source: IAC.ac_source, mode: IAC.ac_mode , caps: IAC.ac_caps});
     });
 }
 
 function EnableTextAreaAutocomplete($input,type) {
     if ($input.closest('.autocomplete-mentions').length > 0) {
-        $input.autocomplete("destroy").off('keydown.Autocomplete.tab');
+        $input.autocomplete('destroy').off('keydown.Autocomplete.tab');
     }
     let input_selector = JSPLib.utility.getHTMLTree($input[0]);
     let type_shortcut = PROGRAM_DATA_KEY[type];
@@ -2314,7 +2315,7 @@ function EnableTextAreaAutocomplete($input,type) {
 }
 
 function DisableTextAreaAutocomplete($input,type) {
-    $input.autocomplete("destroy").off('keydown.Autocomplete.tab');
+    $input.autocomplete('destroy').off('keydown.Autocomplete.tab');
     $input.data('insert-autocomplete', false);
     $input.data('autocomplete', "");
     JSPLib.utility.notice("<b>Autocomplete turned off!</b>");
@@ -2324,51 +2325,51 @@ function DisableTextAreaAutocomplete($input,type) {
 }
 
 function InitializeShowRelatedTags() {
-    $(document).off("danbooru:show-related-tags");
+    $(document).off('danbooru:show-related-tags');
     if (IAC.controller === 'posts' && (!Danbooru.RTC || !Danbooru.RTC.cached_data)) {
-        $(document).one("danbooru:show-related-tags.danbooru", Danbooru.RelatedTag.initialize_recent_and_favorite_tags);
+        $(document).one('danbooru:show-related-tags.danbooru', Danbooru.RelatedTag.initialize_recent_and_favorite_tags);
     }
-    $(document).one("danbooru:show-related-tags.iac", Timer.FindArtistSession);
+    $(document).one('danbooru:show-related-tags.iac', Timer.FindArtistSession);
     if (IAC.user_settings.related_query_enabled) {
         JSPLib.utility.setCSSStyle(related_query_control_css, 'related_query');
-        $(document).one("danbooru:show-related-tags.iac", InitialiazeRelatedQueryControls);
+        $(document).one('danbooru:show-related-tags.iac', InitialiazeRelatedQueryControls);
     }
     if (IAC.user_settings.expandable_related_section_enabled) {
         JSPLib.utility.setCSSStyle(expandable_related_section_css, 'expandable_related');
-        $(document).one("danbooru:show-related-tags.iac", InitialiazeRelatedExpandableSection);
+        $(document).one('danbooru:show-related-tags.iac', InitialiazeRelatedExpandableSection);
     }
 }
 
 function InitialiazeRelatedQueryControls() {
-    $("#tags-container").append(RenderRelatedQueryControls());
-    $("#iac-related-query-type").css('display','inline-flex');
+    $('#tags-container').append(RenderRelatedQueryControls());
+    $('#iac-related-query-type').css('display', 'inline-flex');
     $('#iac-related-query-type .iac-program-checkbox').checkboxradio();
-    $("#iac-related-query-type .ui-state-hover").removeClass("ui-state-hover");
+    $('#iac-related-query-type .ui-state-hover').removeClass('ui-state-hover');
 }
 
 function InitialiazeRelatedExpandableSection() {
-    $(".related-tags").before(iac_scroll_wrapper);
-    $("#iac-edit-scroll-wrapper").on('scroll.iac', ()=>{
-        $(".related-tags").scrollLeft($("#iac-edit-scroll-wrapper").scrollLeft());
+    $('.related-tags').before(iac_scroll_wrapper);
+    $('#iac-edit-scroll-wrapper').on('scroll.iac', ()=>{
+        $('.related-tags').scrollLeft($('#iac-edit-scroll-wrapper').scrollLeft());
     });
-    $(".related-tags").on('scroll.iac', ()=>{
-        $("#iac-edit-scroll-wrapper").scrollLeft($(".related-tags").scrollLeft());
+    $('.related-tags').on('scroll.iac', ()=>{
+        $('#iac-edit-scroll-wrapper').scrollLeft($('.related-tags').scrollLeft());
     });
-    let $container = $("#related-tags-container");
+    let $container = $('#related-tags-container');
     let observer = new ResizeObserver(()=>{
-        if ($container.hasClass("visible")) {
+        if ($container.hasClass('visible')) {
             QueueRelatedTagColumnWidths();
         }
     }).observe($container[0]);
 }
 
 function InitializeRelatedTagPopupListener() {
-    $(document).on("danbooru:open-post-edit-dialog.iac", (event)=>{
-        $(".related-tags").on('mouseenter.iac', RelatedTagsEnter);
-        $(".related-tags").on('mouseleave.iac', RelatedTagsLeave);
+    $(document).on('danbooru:open-post-edit-dialog.iac', (event)=>{
+        $('.related-tags').on('mouseenter.iac', RelatedTagsEnter);
+        $('.related-tags').on('mouseleave.iac', RelatedTagsLeave);
     });
-    $(document).on("danbooru:close-post-edit-dialog.iac", (event)=>{
-        $(".related-tags").off('mouseenter.iac mouseleave.iac');
+    $(document).on('danbooru:close-post-edit-dialog.iac', (event)=>{
+        $('.related-tags').off('mouseenter.iac mouseleave.iac');
     });
 }
 
@@ -2388,7 +2389,7 @@ function InitializeRelatedTagColumnWidths() {
         }
     };
     const getSum = (a,b) => (a + b);
-    let $related_tags = $(".related-tags");
+    let $related_tags = $('.related-tags');
     $('.tag-column', $related_tags[0]).each((i,column)=>{
         let $column = $(column);
         $column.css('width', "");
@@ -2401,12 +2402,12 @@ function InitializeRelatedTagColumnWidths() {
         $column.width(Math.ceil(column_width / em_size) + 'em');
     });
     if ($related_tags.prop('scrollWidth') > ($related_tags.outerWidth() + (2 * em_size))) {
-        $("#iac-edit-scroll-wrapper").width($related_tags.outerWidth());
-        $("#iac-edit-scroll-bar").width($related_tags.prop('scrollWidth') - em_size);
-        $("#iac-edit-scroll-wrapper").show();
+        $('#iac-edit-scroll-wrapper').width($related_tags.outerWidth());
+        $('#iac-edit-scroll-bar').width($related_tags.prop('scrollWidth') - em_size);
+        $('#iac-edit-scroll-wrapper').show();
         $related_tags.addClass('scrollable');
     } else {
-        $("#iac-edit-scroll-wrapper").hide();
+        $('#iac-edit-scroll-wrapper').hide();
         $related_tags.removeClass('scrollable');
     }
 }
@@ -2452,8 +2453,8 @@ function AnySourceIndexed(keycode,has_context=false) {
         if (term === "") {
             return [];
         }
-        var key = (keycode + "-" + term).toLowerCase();
-        var use_metatag = (JSPLib.validate.isString(prefix) ? prefix : '');
+        var key = (keycode + '-' + term).toLowerCase();
+        var use_metatag = (JSPLib.validate.isString(prefix) ? prefix : "");
         var query_type = (has_context ? $(this.element).data('autocomplete') : null);
         if (!IAC.user_settings.network_only_mode) {
             var max_expiration = MaximumExpirationTime(type);
@@ -2471,7 +2472,7 @@ function RecheckSourceData(type,key,term,data) {
     if (IAC.user_settings.recheck_data_interval > 0) {
         let recheck_time = data.expires - GetRecheckExpires();
         if (!JSPLib.utility.validateExpires(recheck_time)) {
-            JSPLib.debug.debuglog("Rechecking", type, ":", term);
+            JSPLib.debug.debuglog("Rechecking", type, ':', term);
             NetworkSource(type, key, term, null, null, false);
         }
     }
@@ -2505,7 +2506,7 @@ function ProcessSourceData(type,metatag,term,data,query_type) {
         data.splice(IAC.user_settings.source_results_returned);
     }
     //Doing this here to avoid processing it on each list item
-    IAC.highlight_used = (document.activeElement.tagName === 'TEXTAREA' && ['post_tag_string','upload_tag_string'].includes(document.activeElement.id));
+    IAC.highlight_used = (document.activeElement.tagName === 'TEXTAREA' && ['post_tag_string', 'upload_tag_string'].includes(document.activeElement.id));
     if (IAC.highlight_used) {
         let adjusted_tag_string = RemoveTerm(document.activeElement.value, document.activeElement.selectionStart);
         IAC.current_tags = adjusted_tag_string.split(/\s+/);
@@ -2516,16 +2517,16 @@ function ProcessSourceData(type,metatag,term,data,query_type) {
 //Main execution functions
 
 function InstallQuickSearchBars() {
-    if (IAC.user_settings.forum_quick_search_enabled && (IAC.controller === "forum-topics" || IAC.controller === "forum-posts")) {
+    if (IAC.user_settings.forum_quick_search_enabled && (IAC.controller === 'forum-topics' || IAC.controller === 'forum-posts')) {
         if (IAC.theme === 'light') {
             JSPLib.utility.setCSSStyle(forum_css, 'forum');
         } else if (IAC.theme === 'dark') {
             JSPLib.utility.setCSSStyle(forum_css_dark, 'forum');
         }
-        $('#subnav-menu .search_body_matches').closest("li").after(forum_topic_search);
+        $('#subnav-menu .search_body_matches').closest('li').after(forum_topic_search);
     }
-    if (IAC.user_settings.comment_quick_search_enabled && IAC.controller === "comments") {
-        $('#subnav-menu .search_body_matches').closest("li").after(post_comment_search);
+    if (IAC.user_settings.comment_quick_search_enabled && IAC.controller === 'comments') {
+        $('#subnav-menu .search_body_matches').closest('li').after(post_comment_search);
     }
 }
 
@@ -2575,9 +2576,9 @@ function SetupAutocompleteInitializations() {
             break
         case 'forum-topics':
         case 'forum-posts':
-            DelayInitializeAutocomplete("#quick_search_title_matches", 'ft');
-            if (IAC.action === "search") {
-                DelayInitializeAutocomplete("#search_topic_title_matches", 'ft');
+            DelayInitializeAutocomplete('#quick_search_title_matches', 'ft');
+            if (IAC.action === 'search') {
+                DelayInitializeAutocomplete('#search_topic_title_matches', 'ft');
             }
             break;
         case 'comments':
@@ -2585,12 +2586,12 @@ function SetupAutocompleteInitializations() {
             break;
         case 'uploads':
             if (IAC.action === 'index') {
-                DelayInitializeTagAutocomplete("#search_post_tags_match", 'tag-query');
+                DelayInitializeTagAutocomplete('#search_post_tags_match', 'tag-query');
             }
             break;
         case 'bulk-update-requests':
             if (IAC.is_bur) {
-                DelayInitializeTagAutocomplete("#bulk_update_request_script", 'tag-edit');
+                DelayInitializeTagAutocomplete('#bulk_update_request_script', 'tag-edit');
             }
             //falls through
         default:
@@ -2611,20 +2612,20 @@ function SetupAutocompleteInitializations() {
 }
 
 function SetupPostEditInitializations() {
-    if ((IAC.controller === "posts" && IAC.action === "show") || (IAC.controller === "uploads" && IAC.action === "new")) {
+    if ((IAC.controller === 'posts' && IAC.action === 'show') || (IAC.controller === 'uploads' && IAC.action === 'new')) {
         RebindRelatedTags();
-        if (IAC.controller === "posts") {
+        if (IAC.controller === 'posts') {
             RebindOpenEditMenu();
-        } else if (IAC.controller === "uploads") {
+        } else if (IAC.controller === 'uploads') {
             //Is source column empty?
-            if (/^\s+$/.test($(".source-related-tags-columns").html())) {
+            if (/^\s+$/.test($('.source-related-tags-columns').html())) {
                 Main.debuglog("Setting up mutation observer for source data.");
-                JSPLib.utility.setupMutationReplaceObserver(".related-tags", ".source-related-tags-columns", Timer.SaveArtistData);
+                JSPLib.utility.setupMutationReplaceObserver('.related-tags', '.source-related-tags-columns', Timer.SaveArtistData);
             } else {
                 Timer.SaveArtistData();
             }
             InitializeShowRelatedTags();
-            $(document).trigger("danbooru:show-related-tags");
+            $(document).trigger('danbooru:show-related-tags');
         }
         if (IAC.user_settings.expandable_related_section_enabled) {
             InitializeRelatedTagPopupListener();
@@ -2632,7 +2633,7 @@ function SetupPostEditInitializations() {
                 QueueRelatedTagColumnWidths();
             });
             Danbooru.RelatedTag.hide = JSPLib.utility.hijackFunction(Danbooru.RelatedTag.hide, ()=>{
-                $("#iac-edit-scroll-wrapper").hide();
+                $('#iac-edit-scroll-wrapper').hide();
             });
         }
     }
@@ -2648,8 +2649,8 @@ function ScheduleCleanupTasks() {
 //Cache functions
 
 function OptionCacheDataKey(data_type,data_value) {
-    IAC.related_category = $("#iac-control-related-tag-type").val();
-    let modifier = (data_type === "related_tag" ? GetRelatedKeyModifer(IAC.related_category) : PROGRAM_DATA_KEY[data_type]);
+    IAC.related_category = $('#iac-control-related-tag-type').val();
+    let modifier = (data_type === 'related_tag' ? GetRelatedKeyModifer(IAC.related_category) : PROGRAM_DATA_KEY[data_type]);
     return `${modifier}-${data_value}`;
 }
 
@@ -2658,7 +2659,7 @@ function UpdateLocalData(key,data) {
         case 'iac-choice-info':
             IAC.choice_order = data.choice_order;
             IAC.choice_data = data.choice_data;
-            StoreUsageData('save', '', false);
+            StoreUsageData('save', "", false);
             //falls through
         default:
             //Do nothing
@@ -2670,12 +2671,12 @@ function UpdateLocalData(key,data) {
 function BroadcastIAC(ev) {
     BroadcastIAC.debuglog(`(${ev.data.type}): ${ev.data.name} ${ev.data.key}`);
     switch (ev.data.type) {
-        case "text_autocomplete":
+        case 'text_autocomplete':
             IAC.ac_source = ev.data.source;
             IAC.ac_mode = ev.data.mode;
             IAC.ac_caps = ev.data.caps;
             break;
-        case "reload":
+        case 'reload':
             IAC.choice_order = ev.data.choice_order;
             IAC.choice_data = ev.data.choice_data;
             //falls through
@@ -2711,45 +2712,45 @@ function DataTypeChange(event) {
 }
 
 function RenderSettingsMenu() {
-    $("#indexed-autocomplete").append(iac_menu);
-    $("#iac-general-settings").append(JSPLib.menu.renderDomainSelectors());
-    $("#iac-general-settings").append(JSPLib.menu.renderCheckbox('text_input_autocomplete_enabled'));
-    $("#iac-general-settings").append(JSPLib.menu.renderCheckbox('forum_quick_search_enabled'));
-    $("#iac-general-settings").append(JSPLib.menu.renderCheckbox('comment_quick_search_enabled'));
-    $("#iac-source-settings").append(JSPLib.menu.renderCheckbox('BUR_source_enabled'));
-    $("#iac-source-settings").append(JSPLib.menu.renderCheckbox('metatag_source_enabled'));
-    $("#iac-usage-settings").append(JSPLib.menu.renderCheckbox('usage_enabled'));
-    $("#iac-usage-settings").append(JSPLib.menu.renderTextinput('usage_multiplier'));
-    $("#iac-usage-settings").append(JSPLib.menu.renderTextinput('usage_maximum'));
-    $("#iac-usage-settings").append(JSPLib.menu.renderTextinput('usage_expires'));
-    $("#iac-usage-settings").append(JSPLib.menu.renderCheckbox('prefix_check_enabled'));
-    $("#iac-display-settings").append(JSPLib.menu.renderTextinput('source_results_returned', 5));
-    $("#iac-display-settings").append(JSPLib.menu.renderCheckbox('source_highlight_enabled'));
-    $("#iac-display-settings").append(JSPLib.menu.renderCheckbox('source_grouping_enabled'));
-    $("#iac-display-settings").append(JSPLib.menu.renderSortlist('source_order'));
-    $("#iac-sort-settings").append(JSPLib.menu.renderCheckbox('alternate_sorting_enabled'));
-    $("#iac-sort-settings").append(JSPLib.menu.renderInputSelectors('postcount_scale', 'radio'));
-    $("#iac-sort-settings").append(JSPLib.menu.renderTextinput('exact_source_weight', 5));
-    $("#iac-sort-settings").append(JSPLib.menu.renderTextinput('prefix_source_weight', 5));
-    $("#iac-sort-settings").append(JSPLib.menu.renderTextinput('alias_source_weight', 5));
-    $("#iac-sort-settings").append(JSPLib.menu.renderTextinput('correct_source_weight', 5));
-    $("#iac-related-tag-settings").append(JSPLib.menu.renderTextinput('related_results_limit', 5));
-    $("#iac-related-tag-settings").append(JSPLib.menu.renderCheckbox('related_statistics_enabled'));
-    $("#iac-related-tag-settings").append(JSPLib.menu.renderCheckbox('related_query_enabled'));
-    $("#iac-related-tag-settings").append(JSPLib.menu.renderInputSelectors('related_query_default', 'radio'));
-    $("#iac-related-tag-settings").append(JSPLib.menu.renderCheckbox('expandable_related_section_enabled'));
-    $("#iac-network-settings").append(JSPLib.menu.renderTextinput('recheck_data_interval', 5));
-    $("#iac-network-settings").append(JSPLib.menu.renderCheckbox('alternate_tag_source'));
-    $("#iac-network-settings").append(JSPLib.menu.renderCheckbox('network_only_mode'));
-    $("#iac-cache-settings").append(JSPLib.menu.renderLinkclick('cache_info', true));
-    $("#iac-cache-settings").append(CACHE_INFO_TABLE);
-    $("#iac-cache-settings").append(JSPLib.menu.renderLinkclick('purge_cache', true));
-    $("#iac-cache-editor-controls").append(JSPLib.menu.renderKeyselect('data_source', true));
-    $("#iac-cache-editor-controls").append(JSPLib.menu.renderDataSourceSections());
-    $("#iac-section-indexed-db").append(JSPLib.menu.renderKeyselect('data_type', true));
-    $("#iac-section-indexed-db").append(JSPLib.menu.renderKeyselect('related_tag_type', true));
-    $("#iac-section-local-storage").append(JSPLib.menu.renderCheckbox('raw_data', true));
-    $("#iac-cache-editor-controls").append(JSPLib.menu.renderTextinput('data_name', 20, true));
+    $('#indexed-autocomplete').append(iac_menu);
+    $('#iac-general-settings').append(JSPLib.menu.renderDomainSelectors());
+    $('#iac-general-settings').append(JSPLib.menu.renderCheckbox('text_input_autocomplete_enabled'));
+    $('#iac-general-settings').append(JSPLib.menu.renderCheckbox('forum_quick_search_enabled'));
+    $('#iac-general-settings').append(JSPLib.menu.renderCheckbox('comment_quick_search_enabled'));
+    $('#iac-source-settings').append(JSPLib.menu.renderCheckbox('BUR_source_enabled'));
+    $('#iac-source-settings').append(JSPLib.menu.renderCheckbox('metatag_source_enabled'));
+    $('#iac-usage-settings').append(JSPLib.menu.renderCheckbox('usage_enabled'));
+    $('#iac-usage-settings').append(JSPLib.menu.renderTextinput('usage_multiplier'));
+    $('#iac-usage-settings').append(JSPLib.menu.renderTextinput('usage_maximum'));
+    $('#iac-usage-settings').append(JSPLib.menu.renderTextinput('usage_expires'));
+    $('#iac-usage-settings').append(JSPLib.menu.renderCheckbox('prefix_check_enabled'));
+    $('#iac-display-settings').append(JSPLib.menu.renderTextinput('source_results_returned', 5));
+    $('#iac-display-settings').append(JSPLib.menu.renderCheckbox('source_highlight_enabled'));
+    $('#iac-display-settings').append(JSPLib.menu.renderCheckbox('source_grouping_enabled'));
+    $('#iac-display-settings').append(JSPLib.menu.renderSortlist('source_order'));
+    $('#iac-sort-settings').append(JSPLib.menu.renderCheckbox('alternate_sorting_enabled'));
+    $('#iac-sort-settings').append(JSPLib.menu.renderInputSelectors('postcount_scale', 'radio'));
+    $('#iac-sort-settings').append(JSPLib.menu.renderTextinput('exact_source_weight', 5));
+    $('#iac-sort-settings').append(JSPLib.menu.renderTextinput('prefix_source_weight', 5));
+    $('#iac-sort-settings').append(JSPLib.menu.renderTextinput('alias_source_weight', 5));
+    $('#iac-sort-settings').append(JSPLib.menu.renderTextinput('correct_source_weight', 5));
+    $('#iac-related-tag-settings').append(JSPLib.menu.renderTextinput('related_results_limit', 5));
+    $('#iac-related-tag-settings').append(JSPLib.menu.renderCheckbox('related_statistics_enabled'));
+    $('#iac-related-tag-settings').append(JSPLib.menu.renderCheckbox('related_query_enabled'));
+    $('#iac-related-tag-settings').append(JSPLib.menu.renderInputSelectors('related_query_default', 'radio'));
+    $('#iac-related-tag-settings').append(JSPLib.menu.renderCheckbox('expandable_related_section_enabled'));
+    $('#iac-network-settings').append(JSPLib.menu.renderTextinput('recheck_data_interval', 5));
+    $('#iac-network-settings').append(JSPLib.menu.renderCheckbox('alternate_tag_source'));
+    $('#iac-network-settings').append(JSPLib.menu.renderCheckbox('network_only_mode'));
+    $('#iac-cache-settings').append(JSPLib.menu.renderLinkclick('cache_info', true));
+    $('#iac-cache-settings').append(CACHE_INFO_TABLE);
+    $('#iac-cache-settings').append(JSPLib.menu.renderLinkclick('purge_cache', true));
+    $('#iac-cache-editor-controls').append(JSPLib.menu.renderKeyselect('data_source', true));
+    $('#iac-cache-editor-controls').append(JSPLib.menu.renderDataSourceSections());
+    $('#iac-section-indexed-db').append(JSPLib.menu.renderKeyselect('data_type', true));
+    $('#iac-section-indexed-db').append(JSPLib.menu.renderKeyselect('related_tag_type', true));
+    $('#iac-section-local-storage').append(JSPLib.menu.renderCheckbox('raw_data', true));
+    $('#iac-cache-editor-controls').append(JSPLib.menu.renderTextinput('data_name', 20, true));
     $('.iac-options[data-setting=related_tag_type]').hide();
     JSPLib.menu.engageUI(true, true);
     JSPLib.menu.saveUserSettingsClick(RemoteSettingsCallback);
@@ -2757,7 +2758,7 @@ function RenderSettingsMenu() {
     JSPLib.menu.cacheInfoClick();
     JSPLib.menu.purgeCacheClick();
     JSPLib.menu.dataSourceChange();
-    $("#iac-control-data-type").on('change.iac', DataTypeChange);
+    $('#iac-control-data-type').on('change.iac', DataTypeChange);
     JSPLib.menu.rawDataChange();
     JSPLib.menu.getCacheClick();
     JSPLib.menu.saveCacheClick(ValidateProgramData, ValidateEntry, UpdateLocalData);
@@ -2842,8 +2843,8 @@ JSPLib.debug.addFunctionLogs([
 
 //Variables for debug.js
 JSPLib.debug.debug_console = false;
-JSPLib.debug.pretext = "IAC:";
-JSPLib.debug.pretimer = "IAC-";
+JSPLib.debug.pretext = 'IAC:';
+JSPLib.debug.pretimer = 'IAC-';
 JSPLib.debug.level = JSPLib.debug.INFO;
 
 //Variables for menu.js
