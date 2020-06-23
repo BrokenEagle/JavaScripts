@@ -2523,6 +2523,20 @@ function ProcessSourceData(type,metatag,term,data,query_type) {
 
 //Main execution functions
 
+function InstallQuickSearchBars() {
+    if (IAC.user_settings.forum_quick_search_enabled && (IAC.controller === "forum-topics" || IAC.controller === "forum-posts")) {
+        if (IAC.theme === 'light') {
+            JSPLib.utility.setCSSStyle(forum_css, 'forum');
+        } else if (IAC.theme === 'dark') {
+            JSPLib.utility.setCSSStyle(forum_css_dark, 'forum');
+        }
+        $('#subnav-menu .search_body_matches').closest("li").after(forum_topic_search);
+    }
+    if (IAC.user_settings.comment_quick_search_enabled && IAC.controller === "comments") {
+        $('#subnav-menu .search_body_matches').closest("li").after(post_comment_search);
+    }
+}
+
 function SetupAutocompleteBindings() {
     Danbooru.Autocomplete.tag_source = AnySourceIndexed('ac');
     Danbooru.Autocomplete.pool_source = AnySourceIndexed('pl');
@@ -2798,17 +2812,7 @@ function Main() {
         Main.debuglog("Script is disabled on", window.location.hostname);
         return;
     }
-    if (IAC.user_settings.forum_quick_search_enabled && (IAC.controller === "forum-topics" || IAC.controller === "forum-posts")) {
-        if (IAC.theme === 'light') {
-            JSPLib.utility.setCSSStyle(forum_css, 'forum');
-        } else if (IAC.theme === 'dark') {
-            JSPLib.utility.setCSSStyle(forum_css_dark, 'forum');
-        }
-        $('#subnav-menu .search_body_matches').closest("li").after(forum_topic_search);
-    }
-    if (IAC.user_settings.comment_quick_search_enabled && IAC.controller === "comments") {
-        $('#subnav-menu .search_body_matches').closest("li").after(post_comment_search);
-    }
+    InstallQuickSearchBars();
     if ($(autocomplete_domlist.join(',')).length === 0) {
         Main.debuglog("No autocomplete inputs! Exiting...");
         return;
