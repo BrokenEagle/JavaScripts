@@ -457,6 +457,10 @@ const MENU_CSS = `
 #event-listener .jsplib-selectors label {
     text-align: left;
     width: 175px;
+    letter-spacing: -1px;
+}
+#event-listener .jsplib-selectors[data-setting="domain_selector"] label {
+    width: 125px;
 }
 #event-listener .ui-checkboxradio-icon-space {
     margin-right: 5px;
