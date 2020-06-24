@@ -2299,7 +2299,7 @@ async function LoadHTMLType(type,idlist) {
     EL.renderedlist[type] = JSPLib.utility.concat(EL.renderedlist[type], displaylist);
     for (let i = 0; i < displaylist.length; i += QUERY_LIMIT) {
         let querylist = displaylist.slice(i, i + QUERY_LIMIT);
-        let url_addons = JSPLib.utility.joinArgs(type_addon, {search: {id: querylist.join(',')}, limit: querylist.length});
+        let url_addons = JSPLib.utility.joinArgs(type_addon, {search: {id: querylist.join(',')}, type: 'previous', limit: querylist.length});
         let typehtml = await JSPLib.network.getNotify(`/${TYPEDICT[type].controller}`, url_addons);
         if (typehtml) {
             if ($(`#el-${type}-regular`).length === 0) {
