@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      19.0
+// @version      19.1
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1119,6 +1119,16 @@ JSPLib.menu.loadStorageKeys = async function () {
     }
     let keys = Object.keys(localStorage);
     storage_keys.local_storage = keys.filter((key)=>{return key.match(this.program_regex);});
+};
+
+JSPLib.utility._combineArgs = function (results,data) {
+    for (let key in data) {
+        if (!(key in results) || !((typeof results[key] === "object") && (typeof data[key] === "object"))) {
+            results[key] = (typeof data[key] === "object" ? JSPLib.utility.dataCopy(data[key]) : data[key]);
+        } else {
+            JSPLib.utility._combineArgs(results[key],data[key]);
+        }
+    }
 };
 
 //Helper functions
