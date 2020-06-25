@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.11
+// @version      6.12
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -4832,7 +4832,7 @@ function MarkupStreamTweet(tweet) {
     }
     //Not marking this with a a class since Twitter alters it
     let article = tweet.children[0].children[0];
-    let main_body = article.children[0];
+    let main_body = article.children[0].children[0].children[0];
     $(main_body).addClass('ntisas-main-body');
     let tweet_status = main_body.children[0];
     $(tweet_status).addClass('ntisas-tweet-status');
@@ -4915,7 +4915,7 @@ function MarkupMainTweet(tweet) {
     if (data_tweet) {
         $(tweet).attr('data-user-id', data_tweet.user_id_str);
     }
-    let main_body = tweet.children[0].children[0].children[0];
+    let main_body = tweet.children[0].children[0].children[0].children[0].children[0];
     $(main_body).addClass('ntisas-main-body');
     let tweet_status = main_body.children[0];
     $(tweet_status).addClass('ntisas-tweet-status');
@@ -5280,7 +5280,7 @@ function ProcessNewTweets() {
     $tweets.each((i,entry)=>{
         $(entry).addClass('ntisas-tweet');
         if (IsTweetPage()) {
-            if ($('article > div', entry).children().length > 2) {
+            if ($('article > div > div > div', entry).children().length > 2) {
                 main_tweets.push(entry);
             }
         } else if ($('a > time', entry).length) {
