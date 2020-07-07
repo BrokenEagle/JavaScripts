@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DisplayPostInfo
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.4
+// @version      10.5
 // @description  Display views, uploader, and other info to the user.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -643,14 +643,19 @@ async function DisplayTopTagger() {
 
 ////#A-INDEX
 
-async function RenderTooltip(render_promise, event, qtip) {
+async function RenderTooltip(render_promise, instance) {
     let [,data] = await Promise.all([render_promise, DPI.all_uploaders]);
-    var uploader_id = $(event.target).closest('.post-preview').data("uploader-id");
+    let $tooltip = $(instance.popper);
+    if ($('.dpi-username', $tooltip[0]).length) {
+        return;
+    }
+    let $target = $(instance.reference);
+    var uploader_id = $target.closest('.post-preview').data("uploader-id");
     if (!(uploader_id in data)) {
         data[uploader_id] = await GetUserData(uploader_id);
     }
     let name_html = RenderUsername(uploader_id, data[uploader_id]);
-    $(".post-tooltip-header-left", qtip.elements.content[0]).prepend(name_html);
+    $(".post-tooltip-header-left", $tooltip[0]).prepend(name_html);
 }
 
 function UpdateThumbnailTitles() {
@@ -908,7 +913,7 @@ function Main() {
         let all_uploaders = JSPLib.utility.setUnique(JSPLib.utility.getDOMAttributes($(".post-preview"), 'uploader-id'));
         DPI.all_uploaders = TIMER.GetUserListData(all_uploaders);
         if (!Danbooru.DPI.basic_tooltips && DPI.user_settings.advanced_post_tooltip) {
-            Danbooru.PostTooltip.QTIP_OPTIONS.content = JSPLib.utility.hijackFunction(Danbooru.PostTooltip.render_tooltip, RenderTooltip);
+            Danbooru.PostTooltip.on_show = JSPLib.utility.hijackFunction(Danbooru.PostTooltip.on_show, RenderTooltip);
         } else if (Danbooru.DPI.basic_tooltips && DPI.user_settings.basic_post_tooltip) {
             UpdateThumbnailTitles();
         }
