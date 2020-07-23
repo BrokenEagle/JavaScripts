@@ -1307,7 +1307,7 @@ function IsShownData(val,user_key=null,creator_keys=null,subscribe_key=null,type
     }
     if (typeset && subscribe_key) {
         let is_creator_event = EL.user_settings.show_creator_events && creator_keys && JSPLib.utility.getNestedAttribute(val, creator_keys) === EL.userid;
-        if (!is_creator_event && typeset.has(val[subscribe_key]) === false) {
+        if (!is_creator_event && !typeset.has(val[subscribe_key])) {
             return false;
         }
     }
@@ -1419,7 +1419,7 @@ function ProcessEvent(inputtype, optype) {
     if (!JSPLib.menu.isSettingEnabled(optype, inputtype)) {
         return false;
     }
-    if (optype === 'subscribe_events_enabled' && !CheckList(inputtype)) {
+    if (optype === 'subscribe_events_enabled' && !EL.user_settings.show_creator_events && !CheckList(inputtype)) {
         return false;
     }
     JSPLib.debug.debugExecute(()=>{
@@ -2568,6 +2568,11 @@ function EventStatusCheck() {
         localStorage.removeItem(`el-pq-saved${type}lastid`);
     });
     disabled_events = JSPLib.utility.arrayDifference(SUBSCRIBE_EVENTS, EL.user_settings.subscribe_events_enabled);
+    EL.user_settings.subscribe_events_enabled.forEach((inputtype)=>{
+        if (!EL.user_settings.show_creator_events && !CheckList(inputtype)) {
+            disabled_events.push(inputtype);
+        }
+    });
     disabled_events.forEach((type)=>{
         //Delete every associated value but the list
         localStorage.removeItem(`el-${type}lastid`);
