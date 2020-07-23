@@ -279,6 +279,9 @@ const PROGRAM_CSS = `
 #c-comments #a-index #p-index-by-comment .preview {
     margin-right: 0;
 }
+.el-post-thumbnail article.post-preview {
+    width: 160px;
+}
 .striped .el-monospace-link:link,
 .striped .el-monospace-link:visited,
 .post-preview .el-monospace-link:link,
@@ -1643,7 +1646,11 @@ function InsertPosts($post_page) {
     $('.post-version-select-column', $post_table[0]).remove();
     $('tbody tr', $post_table[0]).each((i,row)=>{
         let post_id = $(row).data('post-id');
-        $('td:first-of-type', row).html(`<a href="/posts/${post_id}">post #${post_id}</a>`);
+        let $preview = $('td.post-column .post-preview', row).detach();
+        if ($preview.length) {
+            InitializeThumb($preview[0]);
+        }
+        $('td.post-column', row).html(`<a href="/posts/${post_id}">post #${post_id}</a>`);
     });
     AdjustColumnWidths($post_table[0]);
     let $post_div = InitializeTypeDiv('post', $post_table);
@@ -1756,7 +1763,7 @@ async function GetThumbnails() {
     let missing_post_ids = [...JSPLib.utility.setDifferenceN(EL.post_ids, found_post_ids)];
     for (let i = 0; i < missing_post_ids.length; i += QUERY_LIMIT) {
         let post_ids = missing_post_ids.slice(i, i + QUERY_LIMIT);
-        let url_addon = {tags: `id:${post_ids} limit:${post_ids.length}`};
+        let url_addon = {tags: `id:${post_ids} status:any limit:${post_ids.length}`};
         let html = await JSPLib.network.getNotify('/posts', url_addon);
         let $posts = $.parseHTML(html);
         $('.post-preview', $posts).each((i,thumb)=>{
@@ -1767,6 +1774,9 @@ async function GetThumbnails() {
 
 function InsertThumbnails() {
     $('#el-event-notice .el-post-thumbnail').each((i,marker)=>{
+        if ($('.post-preview', marker).length) {
+            return;
+        }
         let $marker = $(marker);
         let post_id = String($marker.data('postid'));
         let thumb_copy = $(EL.thumbs[post_id]).clone();
@@ -2121,6 +2131,7 @@ function ReloadEventNotice(event) {
     $("#el-event-notice").remove();
     InitializeNoticeBox();
     CalculateOverflow();
+    EL.renderedlist = {};
     let promise_array = [];
     Object.keys(localStorage).forEach((key)=>{
         let match = key.match(/el-((ot|pq)-)?saved(\S+)list/);
