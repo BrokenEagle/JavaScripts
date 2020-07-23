@@ -813,7 +813,7 @@ const TYPEDICT = {
     },
     commentary: {
         controller: 'artist_commentary_versions',
-        only: 'id,updater_id,post_id',
+        only: 'id,updater_id,post_id,translated_title,translated_description',
         limit: 10,
         filter: (array,typeset) => (array.filter((val) => (IsShownData(val, 'updater_id', ['post', 'uploader_id'], 'post_id', typeset, IsShownCommentary)))),
         insert: InsertEvents,
