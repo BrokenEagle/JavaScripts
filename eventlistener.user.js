@@ -329,6 +329,9 @@ const PROGRAM_CSS = `
 .el-event-hidden {
     display: none;
 }
+.el-overflow-notice {
+    font-weight: bold;
+}
 #el-lock-event-notice.el-locked,
 #el-read-event-notice.el-read {
     color: red;
@@ -516,6 +519,12 @@ const REGULAR_NOTICE = `
 <div id="el-%s-regular">
     <h1>You've got %s!</h1>
     <div id="el-%s-table"></div>
+    <div class="el-overflow-notice" data-type="%s" style="display:none">
+        <a data-type="more" href="javascript:void(0)">LOAD MORE</a>
+        |
+        <a data-type="all" href="javascript:void(0)">LOAD ALL</a>
+        ( <span class="el-%s-counter">...</span> )
+    </div>
 </div>`;
 
 const ERROR_NOTICE = `
@@ -2034,12 +2043,13 @@ function ReloadEventNotice(event) {
         if (!match) {
             return;
         }
+        let type = match[3];
         let savedlist = JSPLib.storage.getStorageData(key, localStorage, null);
         if (!JSPLib.validate.validateIDList(savedlist)) {
             ReloadEventNotice.debuglog(key, "is not a list!", savedlist);
             return;
         }
-        promise_array.push(LoadHTMLType(match[3], savedlist));
+        promise_array.push(LoadHTMLType(type, savedlist, CheckOverflow(type)));
     });
     Promise.all(promise_array).then(()=>{
         ProcessThumbnails();
@@ -2072,6 +2082,29 @@ function ResetAll(event) {
         JSPLib.utility.notice("All event positions reset!");
         $("#el-event-controls").show();
         $("#el-loading-message").hide();
+    });
+}
+
+function LoadMore(event) {
+    let $link = $(event.currentTarget);
+    let optype = $link.data('type');
+    let nolimit = (optype === 'all');
+    let $notice = $(event.currentTarget).closest('.el-overflow-notice');
+    let type = $notice.data('type');
+    EL.item_overflow = false;
+    EL.no_limit = nolimit;
+    TIMER.CheckSubscribeType(type, true).then((founditems)=>{
+        if (founditems) {
+            JSPLib.utility.notice("More events found!");
+            ProcessThumbnails();
+            FinalizeEventNotice();
+        } else if (EL.item_overflow) {
+            JSPLib.utility.notice("No events found, but more can be queried...");
+            FinalizeEventNotice();
+        } else {
+            JSPLib.utility.notice("No events found, nothing more to query!");
+            $notice.hide();
+        }
     });
 }
 
@@ -2234,7 +2267,7 @@ async function CheckPostQueryType(type) {
     return false;
 }
 
-async function CheckSubscribeType(type) {
+async function CheckSubscribeType(type, overflowcheck = false) {
     let lastidkey = `el-${type}lastid`;
     let typelastid = JSPLib.storage.checkStorageData(lastidkey, ValidateProgramData, localStorage, 0);
     if (typelastid) {
@@ -2242,6 +2275,7 @@ async function CheckSubscribeType(type) {
         let savedlistkey = `el-saved${type}list`;
         let savedlastidkey = `el-saved${type}lastid`;
         let overflowkey = `el-${type}overflow`;
+        let isoverflow = false;
         let type_addon = TYPEDICT[type].addons || {};
         let only_attribs = TYPEDICT[type].only;
         if (EL.user_settings.show_creator_events) {
@@ -2254,11 +2288,15 @@ async function CheckSubscribeType(type) {
             batches = null;
             batch_limit = Infinity;
         }
+        if (overflowcheck) {
+            typelastid = JSPLib.storage.getStorageData(savedlastidkey, localStorage);
+            domname = `.el-${type}-counter`;
+        }
         let jsontype = await JSPLib.danbooru.getAllItems(TYPEDICT[type].controller, QUERY_LIMIT, batches, {page: typelastid, addons: urladdons, reverse: true});
         if (jsontype.length === batch_limit) {
             CheckSubscribeType.debuglog(`${batch_limit} ${type} items; overflow detected!`);
             JSPLib.storage.setStorageData(overflowkey, true, localStorage);
-            EL.item_overflow = true;
+            EL.item_overflow = isoverflow = true;
         } else {
             JSPLib.storage.setStorageData(overflowkey, false, localStorage);
         }
@@ -2267,13 +2305,19 @@ async function CheckSubscribeType(type) {
         if (filtertype.length) {
             CheckSubscribeType.debuglog(`Found ${TYPEDICT[type].plural}!`, lastusertype);
             let idlist = JSPLib.utility.getObjectAttributes(filtertype, 'id');
-            await LoadHTMLType(type, idlist);
+            await LoadHTMLType(type, idlist, isoverflow);
             JSPLib.storage.setStorageData(savedlastidkey, lastusertype, localStorage);
+            if (overflowcheck) {
+                let previouslist = JSPLib.storage.getStorageData(savedlistkey, localStorage, []);
+                idlist = JSPLib.utility.concat(previouslist, idlist);
+            }
             JSPLib.storage.setStorageData(savedlistkey, idlist, localStorage);
             return true;
         } else {
             CheckSubscribeType.debuglog(`No ${TYPEDICT[type].plural}!`);
-            if (lastusertype && (typelastid !== lastusertype)) {
+            if (overflowcheck) {
+                JSPLib.storage.setStorageData(savedlastidkey, lastusertype, localStorage);
+            } else if (lastusertype && (typelastid !== lastusertype)) {
                 SaveLastID(type, lastusertype);
             }
         }
@@ -2314,8 +2358,9 @@ async function CheckOtherType(type) {
     return false;
 }
 
-async function LoadHTMLType(type,idlist) {
+async function LoadHTMLType(type,idlist, isoverflow = false) {
     let section_selector = '#el-' + JSPLib.utility.kebabCase(type) + '-section';
+    let $section = $(section_selector);
     let type_addon = TYPEDICT[type].addons || {};
     EL.renderedlist[type] = EL.renderedlist[type] || [];
     let displaylist = JSPLib.utility.arrayDifference(idlist, EL.renderedlist[type]);
@@ -2329,13 +2374,18 @@ async function LoadHTMLType(type,idlist) {
         let typehtml = await JSPLib.network.getNotify(`/${TYPEDICT[type].controller}`, url_addons);
         if (typehtml) {
             if ($(`#el-${type}-regular`).length === 0) {
-                $(section_selector).prepend(JSPLib.utility.sprintf(REGULAR_NOTICE, type, TYPEDICT[type].plural, type));
+                $section.prepend(JSPLib.utility.sprintf(REGULAR_NOTICE, type, TYPEDICT[type].plural, type, type, type));
             }
             let $typepage = $.parseHTML(typehtml);
             TYPEDICT[type].insert($typepage, type);
         } else if ($(`#el-${type}-error`).length === 0) {
-            $(section_selector).append(JSPLib.utility.sprintf(ERROR_NOTICE, type, TYPEDICT[type].plural));
+            $section.append(JSPLib.utility.sprintf(ERROR_NOTICE, type, TYPEDICT[type].plural));
         }
+    }
+    if (isoverflow) {
+        $section.find('.el-overflow-notice').show();
+    } else {
+        $section.find('.el-overflow-notice').hide();
     }
     if (TYPEDICT[type].process) {
         TYPEDICT[type].process();
@@ -2655,6 +2705,7 @@ function Main() {
     }
     $(document).on(PROGRAM_CLICK, '.el-subscribe-dual-links a', SubscribeDualLink);
     $(document).on(PROGRAM_CLICK, '#el-subscribe-events a', SubscribeMultiLink);
+    $(document).on(PROGRAM_CLICK, '.el-overflow-notice a', LoadMore);
     let $main_section = $('#c-' + Danbooru.EL.controller);
     if (EL.controller === 'posts' && EL.action === 'show') {
         InitializePostShowMenu();
