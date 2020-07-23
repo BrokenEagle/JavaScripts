@@ -1864,7 +1864,6 @@ function InitializeNoticeBox(notice_html) {
         $('#el-lock-event-notice').one(PROGRAM_CLICK, LockEventNotice);
     }
     $('#el-hide-event-notice').one(PROGRAM_CLICK, HideEventNotice);
-    $('#el-read-event-notice').one(PROGRAM_CLICK, ReadEventNotice);
     $('#el-reload-event-notice').one(PROGRAM_CLICK, ReloadEventNotice);
 }
 
@@ -2125,6 +2124,7 @@ function LockEventNotice(event) {
 function ReadEventNotice(event) {
     $(event.target).addClass('el-read');
     MarkAllAsRead();
+    $('#el-reload-event-notice').off(PROGRAM_CLICK);
 }
 
 function ReloadEventNotice(event) {
@@ -2496,6 +2496,8 @@ function FinalizeEventNotice() {
     }
     thumb_promise.then(()=>{
         InsertThumbnails();
+        $("#el-read-event-notice").removeClass("el-read");
+        $('#el-read-event-notice').off(PROGRAM_CLICK).one(PROGRAM_CLICK, ReadEventNotice);
         $("#el-event-controls").show();
         $("#el-loading-message").hide();
         localStorage['el-saved-notice'] = LZString.compressToUTF16($("#el-event-notice").html());
