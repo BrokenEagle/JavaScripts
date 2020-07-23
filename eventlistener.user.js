@@ -1154,6 +1154,62 @@ JSPLib.utility._combineArgs = function (results,data) {
     }
 };
 
+JSPLib.danbooru.getAllItems = async function (type,limit,batches,options,domname) {
+    //JSPLib.debug.debuglogLevel("danbooru.getAllItems:",type,limit,batches,options,domname,JSPLib.debug.DEBUG);
+    let url_addons = options.addons || {};
+    let reverse = options.reverse || false;
+    let long_format = options.long_format || false;
+    let page_modifier = (reverse ? 'a' : 'b');
+    let current_id = options.page;
+    let page_addon = (Number.isInteger(current_id) ? {page:`${page_modifier}${current_id}`} : {});
+    let limit_addon = {limit: limit};
+    let batch_num = 1;
+    var return_items = [];
+    await JSPLib.danbooru._initializePageCounter(domname,type,url_addons,limit,current_id,long_format,options);
+    while (true) {
+        let request_addons = JSPLib.utility.joinArgs(url_addons,page_addon,limit_addon);
+        let temp_items = await JSPLib.danbooru.submitRequest(type,request_addons,[],long_format,null,options.domain,options.notify);
+        return_items = JSPLib.utility.concat(return_items, temp_items);
+        let lastid = JSPLib.danbooru.getNextPageID(temp_items,reverse);
+        JSPLib.danbooru._updatePageCounter(domname,limit,lastid);
+        if (temp_items.length < limit || (batches && batch_num >= batches)) {
+            return return_items;
+        }
+        page_addon = {page:`${page_modifier}${lastid}`};
+        JSPLib.debug.debuglogLevel("danbooru.getAllItems - #",batch_num++,"Rechecking",type,"@",lastid,JSPLib.debug.INFO);
+    }
+};
+
+JSPLib.danbooru._initializePageCounter = async function (domname, type, url_addons, limit, current_id, long_format, options) {
+    if (domname) {
+        //var current_counter = Number(jQuery(domname).text());
+        var latest_id = jQuery(domname).data('latest-id');
+        if (!Number.isInteger(latest_id)) {
+            let request_addons = JSPLib.utility.joinArgs(url_addons,{limit:1});
+            request_addons.only = 'id';
+            let latest_item = await JSPLib.danbooru.submitRequest(type,request_addons,[],long_format,null,options.domain,options.notify);
+            if (latest_item.length && Number.isInteger(options.page)) {
+                latest_id = latest_item[0].id;
+                let current_counter = Math.ceil((latest_id-options.page)/limit);
+                jQuery(domname).text(current_counter);
+                jQuery(domname).data('latest-id', latest_id);
+                JSPLib.debug.debuglogLevel("danbooru._initializePageCounter:",current_counter,latest_id,current_id,JSPLib.debug.INFO);
+            }
+        }
+    }
+};
+
+JSPLib.danbooru._updatePageCounter = function (domname, limit, current_id) {
+    if (domname) {
+        let latest_id = jQuery(domname).data('latest-id');
+        if (Number.isInteger(latest_id)) {
+            let current_counter = (Number.isInteger(current_id) ? Math.ceil((latest_id-current_id)/limit) : 0);
+            jQuery(domname).text(current_counter);
+            JSPLib.debug.debuglogLevel("danbooru._updatePageCounter:",current_counter,latest_id,current_id,JSPLib.debug.INFO);
+        }
+    }
+};
+
 //Helper functions
 
 async function SetRecentDanbooruID(type,qualifier) {
@@ -2276,6 +2332,7 @@ async function CheckSubscribeType(type, overflowcheck = false) {
         let savedlastidkey = `el-saved${type}lastid`;
         let overflowkey = `el-${type}overflow`;
         let isoverflow = false;
+        let domname = null;
         let type_addon = TYPEDICT[type].addons || {};
         let only_attribs = TYPEDICT[type].only;
         if (EL.user_settings.show_creator_events) {
@@ -2292,7 +2349,7 @@ async function CheckSubscribeType(type, overflowcheck = false) {
             typelastid = JSPLib.storage.getStorageData(savedlastidkey, localStorage);
             domname = `.el-${type}-counter`;
         }
-        let jsontype = await JSPLib.danbooru.getAllItems(TYPEDICT[type].controller, QUERY_LIMIT, batches, {page: typelastid, addons: urladdons, reverse: true});
+        let jsontype = await JSPLib.danbooru.getAllItems(TYPEDICT[type].controller, QUERY_LIMIT, batches, {page: typelastid, addons: urladdons, reverse: true}, domname);
         if (jsontype.length === batch_limit) {
             CheckSubscribeType.debuglog(`${batch_limit} ${type} items; overflow detected!`);
             JSPLib.storage.setStorageData(overflowkey, true, localStorage);
