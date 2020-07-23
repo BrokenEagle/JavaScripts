@@ -745,6 +745,7 @@ const TYPEDICT = {
         display: "Flags",
         includes: 'post[uploader_id]',
         useritem: false,
+        multiinsert: true,
     },
     appeal: {
         controller: 'post_appeals',
@@ -755,6 +756,7 @@ const TYPEDICT = {
         display: "Appeals",
         includes: 'post[uploader_id]',
         useritem: false,
+        multiinsert: true,
     },
     dmail: {
         controller: 'dmails',
@@ -816,6 +818,7 @@ const TYPEDICT = {
         display: "Artist commentary",
         includes: 'post[uploader_id]',
         useritem: false,
+        multiinsert: true,
     },
     post: {
         controller: 'post_versions',
@@ -842,6 +845,7 @@ const TYPEDICT = {
         display: "Approval",
         includes: 'post[uploader_id]',
         useritem: false,
+        multiinsert: true,
     },
     wiki: {
         controller: 'wiki_page_versions',
@@ -878,6 +882,7 @@ const TYPEDICT = {
         process: ()=>{JSPLib.utility.setCSSStyle(FEEDBACK_CSS, 'feedback');},
         plural: 'feedbacks',
         useritem: false,
+        multiinsert: false,
     },
     ban: {
         controller: 'bans',
@@ -887,6 +892,7 @@ const TYPEDICT = {
         process: ()=>{JSPLib.utility.setCSSStyle(BAN_CSS, 'ban');},
         plural: 'bans',
         useritem: false,
+        multiinsert: false,
     },
     mod_action: {
         controller: 'mod_actions',
@@ -895,6 +901,7 @@ const TYPEDICT = {
         insert: InsertEvents,
         plural: 'mod actions',
         useritem: false,
+        multiinsert: false,
     },
 };
 
@@ -1590,7 +1597,11 @@ function ToggleSubscribeLinks() {
 //Insert and process HTML onto page for various types
 
 function InsertEvents($event_page,type) {
-    InitializeTypeDiv(type, $('.striped', $event_page));
+    let $table = $('.striped', $event_page);
+    if (TYPEDICT[type].multiinsert) {
+        AdjustColumnWidths($table[0]);
+    }
+    InitializeTypeDiv(type, $table);
 }
 
 function InsertDmails($dmail_page,type) {
@@ -1620,6 +1631,7 @@ function InsertNotes($note_page) {
     DecodeProtectedEmail($note_page);
     let $note_table = $('.striped', $note_page);
     $('th:first-of-type, td:first-of-type', $note_table[0]).remove();
+    AdjustColumnWidths($note_table[0]);
     let $note_div = InitializeTypeDiv('note', $note_table);
     AddThumbnails($note_div[0]);
     InitializePostNoteIndexLinks('note', $note_div[0]);
@@ -1633,6 +1645,7 @@ function InsertPosts($post_page) {
         let post_id = $(row).data('post-id');
         $('td:first-of-type', row).html(`<a href="/posts/${post_id}">post #${post_id}</a>`);
     });
+    AdjustColumnWidths($post_table[0]);
     let $post_div = InitializeTypeDiv('post', $post_table);
     AddThumbnails($post_div[0]);
     InitializePostNoteIndexLinks('post', $post_div[0]);
@@ -1913,6 +1926,21 @@ function InitializeOpenPoolLinks(table) {
     });
     OpenItemClick('pooldiff', AddPoolDiff);
     OpenItemClick('poolposts', AddPoolPosts);
+}
+
+function AdjustColumnWidths(table) {
+    let width_dict = Object.assign({}, ...$("thead th", table).map((i,entry)=>{
+        let classname = JSPLib.utility.findAll(entry.className, /\S+column/g)[0];
+        let width = $(entry).attr('width');
+        return {[classname]: width};
+    }));
+    $('tbody td', table).each((i,entry)=>{
+        let classname = JSPLib.utility.findAll(entry.className, /\S+column/g)[0];
+        if (!classname || !(classname in width_dict)) {
+            return;
+        }
+        $(entry).css('width', width_dict[classname]);
+    });
 }
 
 //#C-POSTS #A-SHOW
