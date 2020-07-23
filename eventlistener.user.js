@@ -313,6 +313,10 @@ const PROGRAM_CSS = `
 #subnav-subscribe-link:hover {
     filter: brightness(1.5);
 }
+#el-loading-message,
+#el-event-controls {
+    margin-top: 1em;
+}
 #el-lock-event-notice,
 #el-read-event-notice {
     font-weight: bold;
@@ -490,7 +494,8 @@ const NOTICE_BOX = `
     <div id="el-feedback-section"></div>
     <div id="el-ban-section"></div>
     <div id="el-mod-action-section"></div>
-    <div style="margin-top:1em">
+    <div id="el-loading-message"><b>Loading...</b></div>
+    <div id="el-event-controls" style="display:none">
         <a href="javascript:void(0)" id="el-hide-event-notice">Close this</a>
         [
         <a href="javascript:void(0)" id="el-lock-event-notice" title="Keep notice from being closed by other tabs.">LOCK</a>
@@ -2037,6 +2042,9 @@ function ReloadEventNotice(event) {
     Promise.all(promise_array).then(()=>{
         ProcessThumbnails();
         FinalizeEventNotice();
+        JSPLib.utility.notice("Notice reloaded.");
+        $("#el-event-controls").show();
+        $("#el-loading-message").hide();
     });
 }
 
@@ -2047,6 +2055,8 @@ function UpdateAll(event) {
         JSPLib.concurrency.setRecheckTimeout('el-event-timeout', EL.timeout_expires);
         SetLastSeenTime();
         JSPLib.utility.notice("All events checked!");
+        $("#el-event-controls").show();
+        $("#el-loading-message").hide();
     });
 }
 
@@ -2058,6 +2068,8 @@ function ResetAll(event) {
         JSPLib.concurrency.setRecheckTimeout('el-event-timeout', EL.timeout_expires);
         SetLastSeenTime();
         JSPLib.utility.notice("All event positions reset!");
+        $("#el-event-controls").show();
+        $("#el-loading-message").hide();
     });
 }
 
@@ -2336,6 +2348,8 @@ function FinalizeEventNotice() {
     }
     thumb_promise.then(()=>{
         InsertThumbnails();
+        $("#el-event-controls").show();
+        $("#el-loading-message").hide();
         localStorage['el-saved-notice'] = LZString.compressToUTF16($("#el-event-notice").html());
         JSPLib.concurrency.setRecheckTimeout('el-saved-timeout', EL.timeout_expires);
     });
@@ -2615,6 +2629,8 @@ function Main() {
                 JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT);
                 if (hasevents) {
                     JSPLib.utility.notice("Events are ready for viewing!");
+                    $("#el-event-controls").show();
+                    $("#el-loading-message").hide();
                 }
             });
         } else {
