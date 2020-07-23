@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      19.1
+// @version      20.0
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -147,6 +147,11 @@ const SETTINGS_CONFIG = {
         parse: String,
         validate: JSPLib.validate.isString,
         hint: "Enter a list of tags to filter out edits when added to or removed from a post.",
+    },
+    filter_BUR_edits: {
+        default: true,
+        validate: (data)=>{return typeof data === 'boolean';},
+        hint: `Only show edits not created by <a class="user-moderator with-style" style="color:var(--user-moderator-color)" href="/users/${SERVER_USER_ID}">DanbooruBot</a>.`
     },
     recheck_interval: {
         default: 5,
@@ -1240,6 +1245,9 @@ function IsShownCommentary(val) {
 }
 
 function IsShownPostEdit(val) {
+    if (EL.user_settings.filter_BUR_edits && val.updater_id === SERVER_USER_ID) {
+        return false;
+    }
     if (EL.user_settings.filter_post_edits === "") {
         return true;
     }
@@ -2482,6 +2490,7 @@ function RenderSettingsMenu() {
     $('#el-filter-settings').append(JSPLib.menu.renderCheckbox('filter_user_events'));
     $('#el-filter-settings').append(JSPLib.menu.renderCheckbox('filter_untranslated_commentary'));
     $('#el-filter-settings').append(JSPLib.menu.renderCheckbox('filter_autofeedback'));
+    $('#el-filter-settings').append(JSPLib.menu.renderCheckbox('filter_BUR_edits'));
     $('#el-filter-settings').append(JSPLib.menu.renderCheckbox('filter_autobans'));
     $('#el-filter-settings').append(JSPLib.menu.renderTextinput('filter_post_edits', 80));
     $('#el-post-query-event-settings').append(JSPLib.menu.renderInputSelectors('post_query_events_enabled', 'checkbox'));
