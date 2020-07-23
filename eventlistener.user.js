@@ -1321,21 +1321,24 @@ function SetLastSeenTime() {
     JSPLib.storage.setStorageData('el-last-seen', Date.now(), localStorage);
 }
 
-//Return true if there was no overflow at all, or overflow for the input type
-function CheckOverflow(inputtype) {
-    if (Object.keys(CheckOverflow.all_overflows).length == 0) {
+function CalculateOverflow() {
+    if (EL.any_overflow === undefined) {
+        EL.all_overflows = {};
+        EL.any_overflow = false;
         let enabled_events = JSPLib.utility.arrayIntersection(SUBSCRIBE_EVENTS, EL.user_settings.subscribe_events_enabled);
         enabled_events.forEach((type)=>{
-            CheckOverflow.all_overflows[type] = JSPLib.storage.checkStorageData(`el-${type}overflow`, ValidateProgramData, localStorage, false);
-            CheckOverflow.any_overflow = CheckOverflow.any_overflow || CheckOverflow.all_overflows[type];
+            EL.all_overflows[type] = JSPLib.storage.checkStorageData(`el-${type}overflow`, ValidateProgramData, localStorage, false);
+            EL.any_overflow = EL.any_overflow || EL.all_overflows[type];
         });
     }
+}
+
+function CheckOverflow(inputtype) {
     if (!SUBSCRIBE_EVENTS.includes(inputtype)) {
         return false;
     }
-    return !(Object.values(CheckOverflow.all_overflows).reduce((total,entry)=>{return total || entry;}, false)) || CheckOverflow.all_overflows[inputtype];
+    return EL.all_overflows[inputtype];
 }
-CheckOverflow.all_overflows = {};
 
 function ProcessEvent(inputtype, optype) {
     if (!JSPLib.menu.isSettingEnabled(optype, inputtype)) {
@@ -1344,14 +1347,12 @@ function ProcessEvent(inputtype, optype) {
     if (optype === 'subscribe_events_enabled' && !CheckList(inputtype)) {
         return false;
     }
-    //Waits always have priority over overflows
     JSPLib.debug.debugExecute(()=>{
-        ProcessEvent.debuglog(inputtype,
-                              (CheckOverflow(inputtype) && CheckOverflow.any_overflow),
-                              (!CheckOverflow.any_overflow));
+        ProcessEvent.debuglog(inputtype, optype, CheckOverflow(inputtype), !EL.any_overflow);
     });
-    if ((CheckOverflow(inputtype) && CheckOverflow.any_overflow) || /*Check for any overflow event but not a wait event*/
-        (!CheckOverflow.any_overflow) /*Check for no overflows*/) {
+    if ((optype === 'subscribe_events_enabled') && CheckOverflow(inputtype)) {
+        return TIMER.CheckSubscribeType(inputtype);
+    } else if (!EL.any_overflow) {
         switch(optype) {
             case 'post_query_events_enabled':
                 return TIMER.CheckPostQueryType(inputtype);
@@ -2026,6 +2027,7 @@ function ReadEventNotice(event) {
 function ReloadEventNotice(event) {
     $("#el-event-notice").remove();
     InitializeNoticeBox();
+    CalculateOverflow();
     let promise_array = [];
     Object.keys(localStorage).forEach((key)=>{
         let match = key.match(/el-((ot|pq)-)?saved(\S+)list/);
@@ -2370,6 +2372,7 @@ async function CheckAllEvents(promise_array) {
 }
 
 function ProcessAllEvents(func) {
+    CalculateOverflow();
     let promise_array = [];
     POST_QUERY_EVENTS.forEach((inputtype)=>{
         promise_array.push(ProcessEvent(inputtype, 'post_query_events_enabled'));
