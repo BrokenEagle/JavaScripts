@@ -772,7 +772,11 @@ function ValidateProgramData(key,entry) {
 
 //Library functions
 
-////NONE
+JSPLib.danbooru.getNextPageID = function (array,reverse) {
+    let ChooseID = (reverse ? Math.max : Math.min);
+    let valid_items = array.filter(val => ('id' in val));
+    return ChooseID(...valid_items.map(val=>{return val.id;}));
+};
 
 //Table functions
 
