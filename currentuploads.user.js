@@ -1312,35 +1312,6 @@ function TableMessage(message) {
 
 //Network functions
 
-async function GetPostsCountdown(limit,searchstring,domname) {
-    let tag_addon = {tags: searchstring};
-    let limit_addon = {limit: limit};
-    let only_addon = {only: post_fields};
-    let page_addon = {};
-    var return_items = [];
-    let page_num = 0;
-    if (domname) {
-        let total_posts = (await JSPLib.danbooru.submitRequest('counts/posts',tag_addon,{counts: {posts: 0}})).counts.posts;
-        page_num = Math.ceil(total_posts/limit);
-    }
-    while (true) {
-        GetPostsCountdown.debuglog("Pages left #",page_num);
-        if (domname) {
-            domname && jQuery(domname).html(page_num);
-        }
-        let request_addons = JSPLib.utility.joinArgs(tag_addon,limit_addon,only_addon,page_addon);
-        let request_key = 'posts-' + jQuery.param(request_addons);
-        let temp_items = await JSPLib.danbooru.submitRequest('posts',request_addons,[],false,request_key);
-        return_items = return_items.concat(temp_items);
-        if (temp_items.length < limit) {
-            return return_items;
-        }
-        let lastid = JSPLib.danbooru.getNextPageID(temp_items,false);
-        page_addon = {page:`b${lastid}`};
-        page_num -= 1;
-    }
-}
-
 async function GetReverseTagImplication(tag) {
     var key = 'rti-' + tag;
     var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry,rti_expiration);
@@ -1373,7 +1344,7 @@ async function GetPeriodUploads(username,period,limited=false,domname=null) {
     var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry,max_expires);
     if (!(check)) {
         GetPeriodUploads.debuglog(`Network (${period_name} ${CU.counttype})`);
-        let data = await GetPostsCountdown(max_post_limit_query,BuildTagParams(period,`${CU.usertag}:${username}`),domname);
+        let data = await JSPLib.danbooru.getPostsCountdown(BuildTagParams(period,`${CU.usertag}:${username}`),max_post_limit_query,post_fields,domname);
         let mapped_data = MapPostData(data);
         if (limited) {
             let indexed_posts = AssignPostIndexes(period,mapped_data,0);
