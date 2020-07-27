@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.4
+// @version      16.5
 // @description  Gives up-to-date stats on uploads.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -31,7 +31,10 @@
 
 //Library constants
 
-////NONE
+JSPLib.validate.basic_number_validator = {
+    func: (value => typeof value === "number"),
+    type: "number"
+};
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '15169';
@@ -632,7 +635,7 @@ const validation_constraints = {
         week: JSPLib.validate.array_constraints,
         day: JSPLib.validate.array_constraints
     },
-    timestat: JSPLib.validate.number_constraints,
+    timestat: JSPLib.validate.basic_number_validator,
     poststat: {
         max: JSPLib.validate.integer_constraints,
         average: JSPLib.validate.number_constraints,
