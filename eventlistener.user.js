@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      20.0
+// @version      20.1
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1218,6 +1218,12 @@ JSPLib.danbooru._updatePageCounter = function (domname, limit, current_id) {
             JSPLib.debug.debuglogLevel("danbooru._updatePageCounter:",current_counter,latest_id,current_id,JSPLib.debug.INFO);
         }
     }
+};
+
+JSPLib.danbooru.getNextPageID = function (array,reverse) {
+    let ChooseID = (reverse ? Math.max : Math.min);
+    let valid_items = array.filter(val => ('id' in val));
+    return ChooseID(...valid_items.map(val=>{return val.id;}));
 };
 
 //Helper functions
