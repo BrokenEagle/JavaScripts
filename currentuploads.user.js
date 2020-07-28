@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.5
+// @version      16.6
 // @description  Gives up-to-date stats on uploads.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1898,7 +1898,7 @@ JSPLib.debug.addFunctionTimers(Timer,true,[
 ]);
 
 JSPLib.debug.addFunctionLogs([
-    Main,BroadcastCU,GetPeriodUploads,GetCount,GetReverseTagImplication,GetPostsCountdown,ValidateEntry
+    Main,BroadcastCU,GetPeriodUploads,GetCount,GetReverseTagImplication,ValidateEntry
 ]);
 
 /****Initialization****/
