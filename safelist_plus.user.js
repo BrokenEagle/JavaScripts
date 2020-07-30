@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SafelistPlus
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.5
+// @version      4.6
 // @description  Alternate Danbooru blacklist handler.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1157,7 +1157,7 @@ function InitializeSettingsMenu() {
     }
     InitializeSettingsDOMs();
     InitializeSettingEvents();
-    !SL.user_settings.write_mode_enabled && $(".safelist-push").attr('disabled', true);
+    !SL.user_settings.write_mode_enabled && $(".safelist-push").attr('disabled', true).hide();
     !SL.user_settings.validate_mode_enabled && $(".safelist-validate").attr('disabled', true);
     !SL.user_settings.order_mode_enabled && $(".safelist-order").attr('disabled', true);
 }
@@ -1511,7 +1511,7 @@ function MenuAddButton(event) {
     let index = GetNextLevel().toString();
     let addlist = SL.level_data[index] = new Safelist(index);
     addlist.menu = $(addlist.renderedLevelSetting).insertBefore("#safelist-settings > hr");
-    !SL.user_settings.write_mode_enabled && $(".safelist-push", addlist.menu).attr('disabled', true);
+    !SL.user_settings.write_mode_enabled && $(".safelist-push", addlist.menu).attr('disabled', true).hide();
     !SL.user_settings.validate_mode_enabled && $(".safelist-validate", addlist.menu).attr('disabled', true);
     !SL.user_settings.order_mode_enabled && $(".safelist-order", addlist.menu).attr('disabled', true);
     addlist.initializeLevelMenuEvents();
@@ -1747,9 +1747,9 @@ function InitializeChangedSettings() {
     if (IsLevelMenu()) {
         if (JSPLib.menu.hasSettingChanged('write_mode_enabled')) {
             if (SL.user_settings.write_mode_enabled) {
-                $(".safelist-push").removeAttr('disabled');
+                $(".safelist-push").removeAttr('disabled').show();
             } else {
-                $(".safelist-push").attr('disabled',true);
+                $(".safelist-push").attr('disabled',true).hide();
             }
         }
     }
