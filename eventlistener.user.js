@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      20.1
+// @version      20.2
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1870,6 +1870,7 @@ function InitializeNoticeBox(notice_html) {
         $('#el-lock-event-notice').one(PROGRAM_CLICK, LockEventNotice);
     }
     $('#el-hide-event-notice').one(PROGRAM_CLICK, HideEventNotice);
+    $('#el-read-event-notice').one(PROGRAM_CLICK, ReadEventNotice);
     $('#el-reload-event-notice').one(PROGRAM_CLICK, ReloadEventNotice);
 }
 
@@ -2154,10 +2155,8 @@ function ReloadEventNotice(event) {
     });
     Promise.all(promise_array).then(()=>{
         ProcessThumbnails();
-        FinalizeEventNotice();
+        FinalizeEventNotice(true);
         JSPLib.utility.notice("Notice reloaded.");
-        $("#el-event-controls").show();
-        $("#el-loading-message").hide();
     });
 }
 
@@ -2198,14 +2197,13 @@ function LoadMore(event) {
         if (founditems) {
             JSPLib.utility.notice("More events found!");
             ProcessThumbnails();
-            FinalizeEventNotice();
         } else if (EL.item_overflow) {
             JSPLib.utility.notice("No events found, but more can be queried...");
-            FinalizeEventNotice();
         } else {
             JSPLib.utility.notice("No events found, nothing more to query!");
             $notice.hide();
         }
+        FinalizeEventNotice();
     });
 }
 
@@ -2495,17 +2493,20 @@ async function LoadHTMLType(type,idlist, isoverflow = false) {
     $('#el-event-notice').show();
 }
 
-function FinalizeEventNotice() {
+function FinalizeEventNotice(initial=false) {
     let thumb_promise = Promise.resolve(null);
     if (EL.post_ids.size) {
         thumb_promise = TIMER.GetThumbnails();
     }
     thumb_promise.then(()=>{
         InsertThumbnails();
-        $("#el-read-event-notice").removeClass("el-read");
-        $('#el-read-event-notice').off(PROGRAM_CLICK).one(PROGRAM_CLICK, ReadEventNotice);
-        $("#el-event-controls").show();
-        $("#el-loading-message").hide();
+        if (!initial) {
+            $("#el-read-event-notice").removeClass("el-read");
+            $('#el-read-event-notice').off(PROGRAM_CLICK).one(PROGRAM_CLICK, ReadEventNotice);
+        } else {
+            $("#el-event-controls").show();
+            $("#el-loading-message").hide();
+        }
         localStorage['el-saved-notice'] = LZString.compressToUTF16($("#el-event-notice").html());
         JSPLib.concurrency.setRecheckTimeout('el-saved-timeout', EL.timeout_expires);
     });
@@ -2516,7 +2517,7 @@ async function CheckAllEvents(promise_array) {
     let hasevents = hasevents_all.some(val => val);
     ProcessThumbnails();
     if (hasevents) {
-        FinalizeEventNotice();
+        FinalizeEventNotice(true);
     }
     JSPLib.storage.setStorageData('el-overflow', EL.item_overflow, localStorage);
     if (!EL.user_settings.autoclose_dmail_notice) {
