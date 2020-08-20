@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      11.0
+// @version      12.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -14,16 +14,16 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-setitems@1.4.0/dist/localforage-setitems.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/saucenao.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/debug.js
 // @connect      cdn.donmai.us
 // @connect      saucenao.com
 // ==/UserScript==
@@ -186,16 +186,16 @@ async function CheckDebugLibrary() {
     JSPLib.debug.debuglog("disabled: check this out");
     JSPLib.debug.pretext = "";
 
-    console.log("Checking debuglogLevel(): WARNING+");
+    console.log("Checking debugwarnLevel(): WARNING+");
     JSPLib.debug.debug_console = true;
     JSPLib.debug.pretext = "CheckLibraries:";
     JSPLib.debug.level = JSPLib.debug.WARNING;
-    JSPLib.debug.debuglogLevel("ALL",JSPLib.debug.ALL);
-    JSPLib.debug.debuglogLevel("VERBOSE",JSPLib.debug.VERBOSE);
-    JSPLib.debug.debuglogLevel("DEBUG",JSPLib.debug.DEBUG);
-    JSPLib.debug.debuglogLevel("INFO",JSPLib.debug.INFO);
-    JSPLib.debug.debuglogLevel("WARNING",JSPLib.debug.WARNING);
-    JSPLib.debug.debuglogLevel("ERROR",JSPLib.debug.ERROR);
+    JSPLib.debug.debugwarnLevel("ALL",JSPLib.debug.ALL);
+    JSPLib.debug.debugwarnLevel("VERBOSE",JSPLib.debug.VERBOSE);
+    JSPLib.debug.debugwarnLevel("DEBUG",JSPLib.debug.DEBUG);
+    JSPLib.debug.debugwarnLevel("INFO",JSPLib.debug.INFO);
+    JSPLib.debug.debugwarnLevel("WARNING",JSPLib.debug.WARNING);
+    JSPLib.debug.debugwarnLevel("ERROR",JSPLib.debug.ERROR);
 
     console.log("Checking debug timer");
     JSPLib.debug.pretimer = "CL-";
@@ -335,11 +335,33 @@ async function CheckUtilityLibrary() {
     teststring1 = JSPLib.utility.displayCase(string1);
     console.log(`Value ${repr(string1)} should should be changed to ${repr(string2)} ${bracket(repr(teststring1))}`,RecordResult(teststring1 === string2));
 
+    console.log("Checking properCase");
+    string1 = "Test proper case";
+    string2 = "Test Proper Case";
+    teststring1 = JSPLib.utility.properCase(string1);
+    console.log(`Value ${repr(string1)} should should be changed to ${repr(string2)} ${bracket(repr(teststring1))}`,RecordResult(teststring1 === string2));
+
+    console.log("Checking exceptCase");
+    string1 = "Test the except case";
+    string2 = "Test the Except Case";
+    teststring1 = JSPLib.utility.exceptCase(string1);
+    console.log(`Value ${repr(string1)} should should be changed to ${repr(string2)} ${bracket(repr(teststring1))}`,RecordResult(teststring1 === string2));
+
+    console.log("Checking romanCase");
+    string1 = "Test the roman case iii";
+    string2 = "Test the Roman Case III";
+    teststring1 = JSPLib.utility.romanCase(string1);
+    console.log(`Value ${repr(string1)} should should be changed to ${repr(string2)} ${bracket(repr(teststring1))}`,RecordResult(teststring1 === string2));
+
     console.log("Checking padNumber");
     let num1 = 23;
+    let num2 = 23.2
     string1 = "0023";
+    string2 = "0023.2";
     teststring1 = JSPLib.utility.padNumber(num1,4);
+    teststring2 = JSPLib.utility.padNumber(num2,6);
     console.log(`Value ${repr(num1)} should should be changed to ${repr(string1)} ${bracket(repr(teststring1))}`,RecordResult(teststring1 === string1));
+    console.log(`Value ${repr(num2)} should should be changed to ${repr(string2)} ${bracket(repr(teststring2))}`,RecordResult(teststring2 === string2));
 
     console.log("Checking sprintf");
     string1 = "%s test %s";
@@ -393,62 +415,73 @@ async function CheckUtilityLibrary() {
     resultarray1 = JSPLib.utility.concat(array1,array2);
     console.log(`Array ${repr(array1)} concatenated with ${repr(array2)} should become ${repr(checkarray1)} ${bracket(resultarray1)}`,RecordResult(ArrayEqual(checkarray1,resultarray1)));
 
-    console.log("Checking setUnique");
+    console.log("Checking multiConcat");
+    let array3 = [7,8,9];
+    checkarray1 = [1,2,3,4,5,6,7,8,9];
+    resultarray1 = JSPLib.utility.multiConcat(array1,array2,array3);
+    console.log(`Array ${repr(array1)} concatenated with ${repr(array2)} should become ${repr(checkarray1)} ${bracket(resultarray1)}`,RecordResult(ArrayEqual(checkarray1,resultarray1)));
+
+    console.log("Checking isSet");
+    let set1 = new Set();
+    resultbool1 = JSPLib.utility.isSet(set1);
+    console.log(`Set ${repr(set1)} should be a set ${bracket(resultbool1)}`,RecordResult(resultbool1));
+
+    console.log("Checking arrayUnique");
     let testarray3 = ["testing","first","testing"];
     checkarray1 = ["testing","first"];
-    resultarray1 = JSPLib.utility.setUnique(testarray3);
+    resultarray1 = JSPLib.utility.arrayUnique(testarray3);
     console.log(`Array ${repr(testarray3)} should become ${repr(checkarray1)} ${bracket(resultarray1)}`,RecordResult(ArrayEqual(checkarray1,resultarray1)));
 
-    console.log("Checking setDifference");
-    resultarray1 = JSPLib.utility.setDifference(testarray1,testarray2);
-    resultarray2 = JSPLib.utility.setDifference(testarray2,testarray1);
+    console.log("Checking arrayDifference");
+    resultarray1 = JSPLib.utility.arrayDifference(testarray1,testarray2);
+    resultarray2 = JSPLib.utility.arrayDifference(testarray2,testarray1);
     console.log(`Array ${repr(resultarray1)} should have a length of one`,RecordResult(resultarray1.length === 1));
     console.log(`Array ${repr(resultarray2)} should have a length of two`,RecordResult(resultarray2.length === 2));
 
-    console.log("Checking setIntersection");
-    resultarray1 = JSPLib.utility.setIntersection(testarray1,testarray2);
+    console.log("Checking arrayIntersection");
+    resultarray1 = JSPLib.utility.arrayIntersection(testarray1,testarray2);
     console.log(`Array ${repr(resultarray1)} should have a length of two`,RecordResult(resultarray1.length === 2));
 
-    console.log("Checking setUnion");
-    resultarray1 = JSPLib.utility.setUnion(testarray1,testarray3);
+    console.log("Checking arrayUnion");
+    resultarray1 = JSPLib.utility.arrayUnion(testarray1,testarray3);
     console.log(`Array ${repr(resultarray1)} should have a length of four`,RecordResult(resultarray1.length === 4));
 
-    console.log("Checking setSymmetricDifference");
-    resultarray1 = JSPLib.utility.setSymmetricDifference(testarray1,testarray3);
+    console.log("Checking arraySymmetricDifference");
+    resultarray1 = JSPLib.utility.arraySymmetricDifference(testarray1,testarray3);
     console.log(`Array ${repr(resultarray1)} should have a length of three`,RecordResult(resultarray1.length === 3));
 
     console.log("Checking arrayEquals");
     array1 = [1,2,3];
     array2 = [1,2,3];
-    let array3 = [2,4];
+    array3 = [2,4];
     resultbool1 = JSPLib.utility.arrayEquals(array1,array2);
     resultbool2 = JSPLib.utility.arrayEquals(array1,array3);
     console.log(`Array ${repr(array2)} should be equal to ${repr(array1)}`,RecordResult(resultbool1));
     console.log(`Array ${repr(array3)} should not be equal to ${repr(array1)}`,RecordResult(!resultbool2));
 
-    console.log("Checking isSubset");
+    console.log("Checking isSubArray");
     array1 = [1,2,3];
     array2 = [1,3];
     array3 = [2,4];
-    resultbool1 = JSPLib.utility.isSubset(array1,array2);
-    resultbool2 = JSPLib.utility.isSubset(array1,array3);
+    resultbool1 = JSPLib.utility.isSubArray(array1,array2);
+    resultbool2 = JSPLib.utility.isSubArray(array1,array3);
     console.log(`Array ${repr(array2)} should be a subset of ${repr(array1)}`,RecordResult(resultbool1));
     console.log(`Array ${repr(array3)} should not be a subset of ${repr(array1)}`,RecordResult(!resultbool2));
 
-    console.log("Checking isSuperset");
+    console.log("Checking isSuperArray");
     array1 = [1,2,3];
     array2 = [1,3];
-    resultbool1 = JSPLib.utility.isSuperset(array1,array2);
-    resultbool2 = JSPLib.utility.isSuperset(array2,array1);
+    resultbool1 = JSPLib.utility.isSuperArray(array1,array2);
+    resultbool2 = JSPLib.utility.isSuperArray(array2,array1);
     console.log(`Array ${repr(array2)} should not be a superset of ${repr(array1)}`,RecordResult(!resultbool1));
     console.log(`Array ${repr(array1)} should be a superset of ${repr(array2)}`,RecordResult(resultbool2));
 
-    console.log("Checking hasIntersection");
+    console.log("Checking arrayHasIntersection");
     array1 = [1,2,3];
     array2 = [3,5];
     array3 = [5,6];
-    resultbool1 = JSPLib.utility.hasIntersection(array1,array2);
-    resultbool2 = JSPLib.utility.hasIntersection(array1,array3);
+    resultbool1 = JSPLib.utility.arrayHasIntersection(array1,array2);
+    resultbool2 = JSPLib.utility.arrayHasIntersection(array1,array3);
     console.log(`Array ${repr(array1)} should have an intersection with ${repr(array2)}`,RecordResult(resultbool1));
     console.log(`Array ${repr(array1)} should not have an intersection with ${repr(array3)}`,RecordResult(!resultbool2));
 
@@ -505,11 +538,15 @@ async function CheckUtilityLibrary() {
     resultarray1 = JSPLib.utility.getObjectAttributes(testobjectarray1,'id');
     console.log(`Object array ${repr(testobjectarray1)} with getting the id attributes should be equal to ${repr(array1)} ${bracket(repr(resultarray1))}`,RecordResult(ArrayEqual(resultarray1,array1)));
 
+    console.log("Checking getNestedAttribute");
+    result1 = JSPLib.utility.getNestedAttribute(testobject1, ['type','a']);
+    console.log(`Object ${repr(testobject1)} with getting a nested attribute should be equal to 3 ${bracket(repr(result1))}`,RecordResult(result1 === 3));
+
     console.log("Checking getNestedObjectAttributes");
     array1 = [1,3];
     testobjectarray1 = [{id: 1, type: {a: 1, b:2}}, {id: 2, type: {a: 3, b:4}}];
     resultarray1 = JSPLib.utility.getNestedObjectAttributes(testobjectarray1,['type','a']);
-    console.log(`Object array ${repr(testobjectarray1)} with getting the id attributes should be equal to ${repr(array1)} ${bracket(repr(resultarray1))}`,RecordResult(ArrayEqual(resultarray1,array1)));
+    console.log(`Object array ${repr(testobjectarray1)} with getting nested attributes should be equal to ${repr(array1)} ${bracket(repr(resultarray1))}`,RecordResult(ArrayEqual(resultarray1,array1)));
 
     console.log("Checking objectReduce");
     testobject1 = {test1: 1, test2: 2, test3: 3};
@@ -597,7 +634,7 @@ async function CheckUtilityLibrary() {
     let script1 = "https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js";
     let state1 = typeof jQuery.ui.tabs;
     await JSPLib.utility.installScript(script1);
-    await JSPLib.utility.sleep(100);
+    await JSPLib.utility.sleep(200);
     let state2 = typeof jQuery.ui.tabs;
     console.log(`Initial state of jQuery tabs should be undefined ${bracket(repr(state1))}`,RecordResult(state1 === "undefined"));
     console.log(`Subsequent state of jQuery tabs should be a function ${bracket(repr(state2))}`,RecordResult(state2 === "function"));
@@ -1071,12 +1108,15 @@ function CheckValidateLibrary() {
     testdata1 = [-1,-2,3,4];
     testdata2 = [1,2,3,4];
     let testdata3 = ["one","two","three","four"];
+    let testdata4 = [1.2, 1.5];
     result1 = JSPLib.validate.validateArrayValues('test',testdata1,JSPLib.validate.basic_integer_validator);
     result2 = JSPLib.validate.validateArrayValues('test',testdata2,JSPLib.validate.basic_ID_validator);
     result3 = JSPLib.validate.validateArrayValues('test',testdata3,JSPLib.validate.basic_stringonly_validator);
+    result4 = JSPLib.validate.validateArrayValues('test',testdata4,JSPLib.validate.basic_number_validator);
     console.log(`Object ${repr(testdata1)} should be all integers`,RecordResult(result1));
     console.log(`Object ${repr(testdata2)} should be all IDs`,RecordResult(result2));
     console.log(`Object ${repr(testdata3)} should be all strings`,RecordResult(result3));
+    console.log(`Object ${repr(testdata4)} should be all numbers`,RecordResult(result4));
 
     console.log("Checking correctArrayValues");
     testdata1 = [-1,-2,3,4];
@@ -1168,6 +1208,14 @@ async function CheckStorageLibrary() {
     console.log(`session-value stored in memory storage as ${repr(memorydata1)} should be equal to the data ${bracket(repr(data1))}`,RecordResult(ArrayEqual(memorydata1, data1)));
     console.log(`local-value stored in localStorage as ${repr(result1)} should be equal to the stringified data ${repr(data1)}`,RecordResult(result2 === data2));
     console.log(`local-value stored in memory storage as ${repr(memorydata2)} should be equal to the data ${bracket(repr(data1))}`,RecordResult(ArrayEqual(memorydata2, data1)));
+
+    console.log("Checking removeStorageData");
+    JSPLib.storage.setStorageData('remove-value','blah',sessionStorage);
+    JSPLib.storage.removeStorageData('remove-value',sessionStorage);
+    result1 = sessionStorage.getItem('remove-value');
+    result2 = JSPLib.storage.memory_storage.sessionStorage['remove-value'];
+    console.log(`Removed value should return null ${bracket(repr(result1))}`,RecordResult(result1 === null));
+    console.log(`Memory storage value should be undefined ${bracket(repr(result2))}]`,RecordResult(result2 === undefined));
 
     console.log("Checking getStorageData");
     data1 = `[check this]`;
@@ -1357,7 +1405,7 @@ async function CheckStorageLibrary() {
         await JSPLib.storage.saveData('good-value',data4);
         result1 = await JSPLib.storage.programCacheInfo('cl',/^(good|expired)-value$/);
         result2 = Object.keys(result1);
-        console.log(`Cache info should have 3 storage keys ${bracket(result2)}`,RecordResult(result2.length === 3 && JSPLib.utility.setSymmetricDifference(result2,['index','session','local']).length === 0));
+        console.log(`Cache info should have 3 storage keys ${bracket(result2)}`,RecordResult(result2.length === 3 && JSPLib.utility.arraySymmetricDifference(result2,['index','session','local']).length === 0));
         console.log(`Cache info should have 2 Index DB items ${bracket(result1.index.program_items)}`,RecordResult(result1.index.program_items === 2));
         console.log(`Cache info should have 2 session storage items ${bracket(result1.session.program_items)}`,RecordResult(result1.session.program_items === 2));
         console.log(`Cache info should have 1 local storage items ${bracket(result1.local.program_items)}`,RecordResult(result1.local.program_items === 1));
@@ -1600,7 +1648,7 @@ async function CheckDanbooruLibrary() {
     string1 = "1girl";
     string2 = "Wiki link";
     option1 = 'class="category-0"';
-    string3 = '<a class="category-0" href="/wiki_pages/show_or_new?title=1girl">Wiki link</a>';
+    string3 = '<a class="category-0" href="/wiki_pages/1girl">Wiki link</a>';
     result1 = JSPLib.danbooru.wikiLink(string1,string2,option1);
     console.log(`the tag ${repr(string1)} with text ${repr(string2)} should produce the link  ${repr(string3)} ${bracket(result1)}`,RecordResult(result1 === string3));
 
@@ -1643,8 +1691,21 @@ async function CheckDanbooruLibrary() {
     console.log(`should have also returned users in reverse order ${repr(result3)} ${bracket(repr(result2))}`,RecordResult(repr(result2) === repr(result3)));
     console.log("should have also returned only admins",RecordResult(result4));
 
+    console.warn("Checking getAllItems (counter)");
+    let users_latest = await JSPLib.danbooru.submitRequest(type1, {limit: 10, only: 'id'});
+    let page_start = JSPLib.danbooru.getNextPageID(users_latest, false);
+    let page_end = JSPLib.danbooru.getNextPageID(users_latest, true);
+    array1 = JSPLib.utility.getObjectAttributes(users_latest, 'id');
+    result1 = await JSPLib.danbooru.getAllItems(type1, limit1, null, {page: page_end + 1, addons: {search: {id: `${page_end}..${page_start}`}, only: 'id'}}, '#checklibrary-count');
+    result2 = JSPLib.utility.getObjectAttributes(result1,'id');
+    result3 = jQuery('#checklibrary-count').data('latest-id');
+    result4 = Number(jQuery('#checklibrary-count').text());
+    console.log(`getting the latest users with IDs ${repr(array1)} should get the same users ${bracket(repr(result2))}`,RecordResult(ArrayEqual(array1, result2)));
+    console.log(`the countdown counter latest ID should be ${repr(page_start)} ${bracket(repr(result3))}`,RecordResult(result3 === page_start));
+    console.log(`the countdown counter should end at 0 ${bracket(repr(result4))}`,RecordResult(result4 === 0));
+
     console.log("Checking getPostsCountdown");
-    JSPLib.danbooru.error_domname = "#checklibrary-count";
+    JSPLib.danbooru.error_domname = "#checklibrary-error";
     string1 = "id:1,2,3,4";
     string2 = 'id'; //Grab only the ID
     result1 = await JSPLib.danbooru.getPostsCountdown(string1, 1, string2, '#checklibrary-count');
