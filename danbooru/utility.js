@@ -23,32 +23,44 @@ Danbooru.Utility.notice_css = `
     top: 2em;
     left: 25%;
     width: 50%;
-    z-index: 1002;
+    z-index: 1050;
     display: none;
 }
 #%s-close-notice-link {
     right: 1em;
+    bottom: 0;
     position: absolute;
 }
 #%s-close-notice-link,
 #%s-close-notice-link:hover {
     color: #0073ff;
+}
+div#%s-notice.ui-state-highlight {
+    color: #5f3f3f;
+    background-color: #fffbbf;
+    border: 1px solid #ccc999;
+}
+div#%s-notice.ui-state-error {
+    color: #5f3f3f;
+    background-color: #fddfde;
+    border: 1px solid #fbc7c6;
 }`;
 
 /****FUNCTIONS****/
 
 Danbooru.Utility.notice = function(msg,append=true,permanent=false) {
-    Danbooru.Utility._processNotice('ui-state-highlight', 'ui-state-error', msg, append);
+    this._processNotice('ui-state-highlight', 'ui-state-error', msg, append);
+    let context = this;
     if (!permanent) {
-        Danbooru.Utility.notice_timeout_id = setTimeout(function() {
-            jQuery(`#${Danbooru.Utility.program_shortcut}-close-notice-link`).click();
-            Danbooru.Utility.notice_timeout_id = undefined;
+        context.notice_timeout_id = setTimeout(function() {
+            jQuery(`#${context.program_shortcut}-close-notice-link`).click();
+            context.notice_timeout_id = undefined;
         }, 6000);
     }
 };
 
 Danbooru.Utility.error = function(msg,append=true) {
-    Danbooru.Utility._processNotice('ui-state-error', 'ui-state-highlight', msg, append);
+    this._processNotice('ui-state-error', 'ui-state-highlight', msg, append);
 };
 
 Danbooru.Utility.closeNotice = function (event) {
@@ -57,13 +69,13 @@ Danbooru.Utility.closeNotice = function (event) {
 };
 
 Danbooru.Utility.installBanner = function (program_shortcut) {
-    Danbooru.Utility.program_shortcut = program_shortcut;
+    this.program_shortcut = program_shortcut;
     let notice_banner = `<div id="${program_shortcut}-notice"><span>.</span><a href="#" id="${program_shortcut}-close-notice-link">close</a></div>`;
-    let css_shortcuts = Danbooru.Utility.notice_css.match(/%s/g).length;
-    let notice_css = JSPLib.utility.sprintf(Danbooru.Utility.notice_css, ...Array(css_shortcuts).fill(program_shortcut));
+    let css_shortcuts = this.notice_css.match(/%s/g).length;
+    let notice_css = JSPLib.utility.sprintf(this.notice_css, ...Array(css_shortcuts).fill(program_shortcut));
     JSPLib.utility.setCSSStyle(notice_css, 'Danbooru.Utility.notice');
     jQuery('body').append(notice_banner);
-    jQuery(`#${program_shortcut}-close-notice-link`).on(`click.${program_shortcut}`, Danbooru.Utility.closeNotice);
+    jQuery(`#${program_shortcut}-close-notice-link`).on(`click.${program_shortcut}`, this.closeNotice);
 };
 
 /****PRIVATE DATA****/
@@ -71,7 +83,7 @@ Danbooru.Utility.installBanner = function (program_shortcut) {
 //Functions
 
 Danbooru.Utility._processNotice = function(add_class,remove_class,msg,append) {
-    let $notice = jQuery(`#${Danbooru.Utility.program_shortcut}-notice`);
+    let $notice = jQuery(`#${this.program_shortcut}-notice`);
     $notice.addClass(add_class).removeClass(remove_class).fadeIn('fast');
     if (append) {
         let current_message = $notice.children('span').html();
@@ -84,8 +96,8 @@ Danbooru.Utility._processNotice = function(add_class,remove_class,msg,append) {
     } else {
         $notice.children('span').html(msg);
     }
-    if (Danbooru.Utility.notice_timeout_id !== undefined) {
-        clearTimeout(Danbooru.Utility.notice_timeout_id);
+    if (this.notice_timeout_id !== undefined) {
+        clearTimeout(this.notice_timeout_id);
     }
 };
 
