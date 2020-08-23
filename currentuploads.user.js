@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.6
+// @version      16.7
 // @description  Gives up-to-date stats on uploads.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -14,15 +14,15 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200506-storage/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200507-utility/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib jQuery $ Danbooru CanvasJS */
@@ -31,14 +31,10 @@
 
 //Library constants
 
-JSPLib.validate.basic_number_validator = {
-    func: (value => typeof value === "number"),
-    type: "number"
-};
+////NONE
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '15169';
-const JQUERY_TAB_WIDGET_URL = 'https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js';
 
 //Variables for load.js
 const program_load_required_variables = ['window.jQuery','window.Danbooru'];
@@ -53,7 +49,7 @@ const PROGRAM_NAME = 'CurrentUploads';
 const PROGRAM_DATA_REGEX = /^rti-|ct(d|w|mo|y|at)-|(daily|weekly|monthly|yearly|alltime|previous)-(uploads|approvals)-/; //Regex that matches the prefix of all program cache data
 
 //Main program variable
-var CU;
+const CU = {};
 
 //Timer function hash
 const Timer = {};
@@ -772,11 +768,7 @@ function ValidateProgramData(key,entry) {
 
 //Library functions
 
-JSPLib.danbooru.getNextPageID = function (array,reverse) {
-    let ChooseID = (reverse ? Math.max : Math.min);
-    let valid_items = array.filter(val => ('id' in val));
-    return ChooseID(...valid_items.map(val=>{return val.id;}));
-};
+////NONE
 
 //Table functions
 
@@ -1153,8 +1145,8 @@ function GetCopyrightCount(posts) {
 
 function CompareCopyrightCounts(dict1,dict2) {
     let difference = [];
-    $.each(JSPLib.utility.setUnique(Object.keys(dict1).concat(Object.keys(dict2))),(i,key)=>{
-        if (dict1[key] === undefined || dict2[key] === undefined || JSPLib.utility.setSymmetricDifference(dict1[key],dict2[key]).length) {
+    $.each(JSPLib.utility.arrayUnique(Object.keys(dict1).concat(Object.keys(dict2))),(i,key)=>{
+        if (dict1[key] === undefined || dict2[key] === undefined || JSPLib.utility.arraySymmetricDifference(dict1[key],dict2[key]).length) {
             difference.push(key);
         }
     });
@@ -1174,7 +1166,7 @@ function CheckCopyrightVelocity(tag) {
 }
 
 async function MergeCopyrightTags(user_copytags) {
-    let query_implications = JSPLib.utility.setDifference(user_copytags,Object.keys(CU.reverse_implications));
+    let query_implications = JSPLib.utility.arrayDifference(user_copytags,Object.keys(CU.reverse_implications));
     Object.assign(CU.reverse_implications,...(await Promise.all(query_implications.map(async (key)=>{return {[key]:await GetReverseTagImplication(key)};}))));
     return user_copytags.filter(value=>{return CU.reverse_implications[value] === 0;});
 }
@@ -1612,7 +1604,7 @@ function StashNotice(event) {
 
 async function RefreshUser(event) {
     $("#count-copyrights-counter").html(copyright_counter);
-    let diff_tags = JSPLib.utility.setDifference(CU.active_copytags,CU.shown_copytags);
+    let diff_tags = JSPLib.utility.arrayDifference(CU.active_copytags,CU.shown_copytags);
     let promise_array = [];
     $.each((diff_tags),(i,val)=>{
         promise_array.push(GetTagData(`${CU.usertag}:${CU.current_username} ${val}`));
@@ -1663,9 +1655,9 @@ async function AddCopyright(event) {
     }
     tag = tagdata[0].name;
     user_copytags.manual.push(tag);
-    user_copytags.manual = JSPLib.utility.setUnique(user_copytags.manual);
+    user_copytags.manual = JSPLib.utility.arrayUnique(user_copytags.manual);
     CU.active_copytags.push(tag);
-    CU.active_copytags = JSPLib.utility.setUnique(CU.active_copytags);
+    CU.active_copytags = JSPLib.utility.arrayUnique(CU.active_copytags);
     $('#count-copyrights-list').html(RenderCopyrights('manual'));
     $("#count-copyrights-list a").off(PROGRAM_CLICK).on(PROGRAM_CLICK,ToggleCopyrightTag);
 }
@@ -1695,7 +1687,7 @@ async function ProcessUploads() {
         let is_new_tab = JSPLib.storage.getStorageData(previous_key,sessionStorage) === null;
         let previous_uploads = await JSPLib.storage.checkLocalDB(previous_key,ValidateEntry) || {value: []};
         previous_uploads = PostDecompressData(previous_uploads.value);
-        let symmetric_difference = JSPLib.utility.setSymmetricDifference(JSPLib.utility.getObjectAttributes(current_uploads,'id'),JSPLib.utility.getObjectAttributes(previous_uploads,'id'));
+        let symmetric_difference = JSPLib.utility.arraySymmetricDifference(JSPLib.utility.getObjectAttributes(current_uploads,'id'),JSPLib.utility.getObjectAttributes(previous_uploads,'id'));
         if (is_new_tab || symmetric_difference.length || IsMissingTag(`${CU.usertag}:${CU.current_username}`)) {
             promise_array.push(GetTagData(`${CU.usertag}:${CU.current_username}`));
         }
@@ -1710,8 +1702,8 @@ async function ProcessUploads() {
                 user_copytags = user_copytags.slice(0,CU.user_settings.copyrights_threshold);
             }
             let copyright_symdiff = CompareCopyrightCounts(curr_copyright_count,prev_copyright_count);
-            let copyright_changed = (is_new_tab ? user_copytags : JSPLib.utility.setIntersection(user_copytags,copyright_symdiff));
-            let copyright_nochange = (is_new_tab ? [] : JSPLib.utility.setDifference(user_copytags,copyright_changed));
+            let copyright_changed = (is_new_tab ? user_copytags : JSPLib.utility.arrayIntersection(user_copytags,copyright_symdiff));
+            let copyright_nochange = (is_new_tab ? [] : JSPLib.utility.arrayDifference(user_copytags,copyright_changed));
             $.each(copyright_nochange,(i,val)=>{
                 if (CheckCopyrightVelocity(val) || IsMissingTag(val)) {
                     promise_array.push(GetTagData(val));
@@ -1832,7 +1824,7 @@ function RenderSettingsMenu() {
 //Main program
 
 function Main() {
-    Danbooru.CU = CU = {
+    Danbooru.CU = Object.assign(CU, {
         username: Danbooru.CurrentUser.data('name'),
         is_gold_user: Danbooru.CurrentUser.data('is-gold'),
         usertag: 'user',
@@ -1842,16 +1834,12 @@ function Main() {
         settings_config: SETTINGS_CONFIG,
         control_config: CONTROL_CONFIG,
         channel: JSPLib.utility.createBroadcastChannel(PROGRAM_NAME, BroadcastCU),
-    };
+    });
     Object.assign(CU, {
         user_settings: JSPLib.menu.loadUserSettings(),
     }, PROGRAM_RESET_KEYS);
     if (JSPLib.danbooru.isSettingMenu()) {
-        JSPLib.menu.loadStorageKeys();
-        JSPLib.utility.installScript(JQUERY_TAB_WIDGET_URL).done(()=>{
-            JSPLib.menu.installSettingsMenu();
-            Timer.RenderSettingsMenu();
-        });
+        JSPLib.menu.initializeSettingsMenu(RenderSettingsMenu);
     }
     if (!JSPLib.menu.isScriptEnabled()) {
         Main.debuglog("Script is disabled on", window.location.hostname);
@@ -1905,9 +1893,8 @@ JSPLib.debug.addFunctionLogs([
 
 //Variables for debug.js
 JSPLib.debug.debug_console = false;
-JSPLib.debug.pretext = "CU:";
-JSPLib.debug.pretimer = "CU-";
 JSPLib.debug.level = JSPLib.debug.INFO;
+JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
 //Variables for menu.js
 JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
@@ -1920,10 +1907,7 @@ JSPLib.menu.program_data_key = OptionCacheDataKey;
 JSPLib.network.counter_domname = "#loading-counter";
 
 //Export JSPLib
-if (JSPLib.debug.debug_console) {
-    window.JSPLib.lib = window.JSPLib.lib || {};
-    window.JSPLib.lib[PROGRAM_NAME] = JSPLib;
-}
+JSPLib.load.exportData(PROGRAM_NAME, CU);
 
 /****Execution start****/
 
