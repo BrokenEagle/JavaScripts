@@ -2050,7 +2050,7 @@ async function RelatedTagsButton(event) {
 
 async function FindArtistSession(event) {
     var url = $('#post_source').val();
-    if (!url.match(/^https?:\/\//)) {
+    if (!url || !url.match(/^https?:\/\//)) {
         return;
     }
     let urlkey = 'af-' + url;
@@ -2297,10 +2297,12 @@ function DisableTextAreaAutocomplete($input,type) {
 
 function InitializeShowRelatedTags() {
     $(document).off('danbooru:show-related-tags');
-    if (IAC.controller === 'posts' && (!Danbooru.RTC || !Danbooru.RTC.cached_data)) {
-        $(document).one('danbooru:show-related-tags.danbooru', Danbooru.RelatedTag.initialize_recent_and_favorite_tags);
+    if (IAC.controller === 'posts') {
+        if (!Danbooru.RTC || !Danbooru.RTC.cached_data) {
+            $(document).one('danbooru:show-related-tags.danbooru', Danbooru.RelatedTag.initialize_recent_and_favorite_tags);
+        }
+        $(document).one('danbooru:show-related-tags.iac', Timer.FindArtistSession);
     }
-    $(document).one('danbooru:show-related-tags.iac', Timer.FindArtistSession);
     if (IAC.user_settings.related_query_enabled) {
         JSPLib.utility.setCSSStyle(RELATED_QUERY_CONTROL_CSS, 'related_query');
         $(document).one('danbooru:show-related-tags.iac', InitialiazeRelatedQueryControls);
