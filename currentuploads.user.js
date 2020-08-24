@@ -804,7 +804,7 @@ function RenderHeader() {
     var tabletext = AddTableHeader('Name');
     let click_periods = manual_periods.concat(limited_periods);
     let times_shown = GetShownPeriodKeys();
-    $.each(times_shown,(i,period)=>{
+    times_shown.forEach((period)=>{
         let header = period_info.header[period];
         if (click_periods.includes(period)) {
             let is_available = CU.period_available[CU.usertag][CU.current_username][period];
@@ -1127,10 +1127,10 @@ function BuildTagParams(type,tag) {
 
 function GetCopyrightCount(posts) {
     let copyright_count = {};
-    $.each(posts,(i,entry)=>{
-        $.each(entry.copyrights.split(' '),(j,tag)=>{
+    posts.forEach((post)=>{
+        post.copyrights.split(' ').forEach((tag)=>{
             copyright_count[tag] = copyright_count[tag] || [];
-            copyright_count[tag] = copyright_count[tag].concat([entry.id]);
+            copyright_count[tag] = copyright_count[tag].concat([post.id]);
         });
     });
     if (CU.user_settings.postcount_threshold) {
@@ -1145,8 +1145,8 @@ function GetCopyrightCount(posts) {
 
 function CompareCopyrightCounts(dict1,dict2) {
     let difference = [];
-    $.each(JSPLib.utility.arrayUnique(Object.keys(dict1).concat(Object.keys(dict2))),(i,key)=>{
-        if (dict1[key] === undefined || dict2[key] === undefined || JSPLib.utility.arraySymmetricDifference(dict1[key],dict2[key]).length) {
+    JSPLib.utility.arrayUnion(Object.keys(dict1), Object.keys(dict2)).forEach((key)=>{
+        if (!JSPLib.utility.arrayEquals(dict1[key], dict2[key])) {
             difference.push(key);
         }
     });
@@ -1372,7 +1372,7 @@ async function GetPeriod(event) {
         let value = $(".cu-uploads",$cells[0]).html()
         $($cells[0]).html(RenderTooltipData(value,period,true));
     } else {
-        $.each($cells,(i,cell)=>{
+        $cells.each((i,cell)=>{
             let value = $(".cu-uploads",cell).html();
             $(cell).html(RenderTooltipData(value,period));
         });
@@ -1606,7 +1606,7 @@ async function RefreshUser(event) {
     $("#count-copyrights-counter").html(copyright_counter);
     let diff_tags = JSPLib.utility.arrayDifference(CU.active_copytags,CU.shown_copytags);
     let promise_array = [];
-    $.each((diff_tags),(i,val)=>{
+    diff_tags.forEach((val)=>{
         promise_array.push(GetTagData(`${CU.usertag}:${CU.current_username} ${val}`));
         promise_array.push(GetTagData(val));
     });
@@ -1687,8 +1687,9 @@ async function ProcessUploads() {
         let is_new_tab = JSPLib.storage.getStorageData(previous_key,sessionStorage) === null;
         let previous_uploads = await JSPLib.storage.checkLocalDB(previous_key,ValidateEntry) || {value: []};
         previous_uploads = PostDecompressData(previous_uploads.value);
-        let symmetric_difference = JSPLib.utility.arraySymmetricDifference(JSPLib.utility.getObjectAttributes(current_uploads,'id'),JSPLib.utility.getObjectAttributes(previous_uploads,'id'));
-        if (is_new_tab || symmetric_difference.length || IsMissingTag(`${CU.usertag}:${CU.current_username}`)) {
+        let current_ids = JSPLib.utility.getObjectAttributes(current_uploads,'id');
+        let previous_ids = JSPLib.utility.getObjectAttributes(previous_uploads,'id');
+        if (is_new_tab || !JSPLib.utility.arrayEquals(current_ids, previous_ids) || IsMissingTag(`${CU.usertag}:${CU.current_username}`)) {
             promise_array.push(GetTagData(`${CU.usertag}:${CU.current_username}`));
         }
         if (CU.is_gold_user && CU.user_settings.copyrights_enabled) {
@@ -1704,7 +1705,7 @@ async function ProcessUploads() {
             let copyright_symdiff = CompareCopyrightCounts(curr_copyright_count,prev_copyright_count);
             let copyright_changed = (is_new_tab ? user_copytags : JSPLib.utility.arrayIntersection(user_copytags,copyright_symdiff));
             let copyright_nochange = (is_new_tab ? [] : JSPLib.utility.arrayDifference(user_copytags,copyright_changed));
-            $.each(copyright_nochange,(i,val)=>{
+            copyright_nochange.forEach((val)=>{
                 if (CheckCopyrightVelocity(val) || IsMissingTag(val)) {
                     promise_array.push(GetTagData(val));
                 }
@@ -1712,7 +1713,7 @@ async function ProcessUploads() {
                     promise_array.push(GetTagData(`${CU.usertag}:${CU.current_username} ${val}`));
                 }
             });
-            $.each(copyright_changed,(i,val)=>{
+            copyright_changed.forEach((val)=>{
                 promise_array.push(GetTagData(`${CU.usertag}:${CU.current_username} ${val}`));
                 promise_array.push(GetTagData(val));
             });
