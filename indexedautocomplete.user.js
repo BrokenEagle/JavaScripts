@@ -1048,7 +1048,7 @@ const SOURCE_CONFIG = {
         fixupexpiration: false,
         searchstart: true,
         spacesallowed: false,
-        render: ($domobj,item) => $domobj.addClass('user-' + item.level.toLowerCase()).addClass('with-style').text(item.label),
+        render: ($domobj,item) => $domobj.addClass('user-' + item.level.toLowerCase()).text(item.label),
     },
     favgroup: {
         url: 'favorite_groups',
