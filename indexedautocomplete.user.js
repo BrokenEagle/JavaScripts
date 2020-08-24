@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.0
+// @version      28.1
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -14,15 +14,15 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.7.4/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200506-storage/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200507-utility/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru validate LZString */
@@ -35,7 +35,6 @@
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '14747';
-const JQUERY_TAB_WIDGET_URL = 'https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js';
 
 //Variables for load.js
 const program_load_required_variables = ['window.jQuery', 'window.Danbooru', 'Danbooru.Autocomplete', 'Danbooru.RelatedTag'];
@@ -63,7 +62,7 @@ const PROGRAM_DATA_KEY = {
 };
 
 //Main program variable
-var IAC;
+const IAC = {};
 
 //Timer function hash
 const Timer = {};
@@ -1389,7 +1388,7 @@ function ValidateUsageData(choice_info) {
         }
     }
     //Validate same types between both
-    let type_diff = JSPLib.utility.setSymmetricDifference(Object.keys(choice_order), Object.keys(choice_data));
+    let type_diff = JSPLib.utility.arraySymmetricDifference(Object.keys(choice_order), Object.keys(choice_data));
     if (type_diff.length) {
         error_messages.push("Type difference between choice order and choice data:", type_diff);
         type_diff.forEach((type)=>{
@@ -1399,11 +1398,11 @@ function ValidateUsageData(choice_info) {
     }
     //Validate same keys between both
     for (let type in choice_order) {
-        let key_diff = JSPLib.utility.setSymmetricDifference(choice_order[type], Object.keys(choice_data[type]));
+        let key_diff = JSPLib.utility.arraySymmetricDifference(choice_order[type], Object.keys(choice_data[type]));
         if (key_diff.length) {
             error_messages.push("Key difference between choice order and choice data:", type, key_diff);
             key_diff.forEach((key)=>{
-                choice_order[type] = JSPLib.utility.setDifference(choice_order[type], [key]);
+                choice_order[type] = JSPLib.utility.arrayDifference(choice_order[type], [key]);
                 delete choice_data[type][key];
             });
         }
@@ -1413,38 +1412,7 @@ function ValidateUsageData(choice_info) {
 
 //Library functions
 
-JSPLib.load._getWindow = function () {
-    return (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window);
-};
-
-JSPLib.load.exportData = function (program_name, program_value, other_data = null) {
-    let window_value = JSPLib.load._getWindow();
-    if (JSPLib.debug.debug_console) {
-        window_value.JSPLib.lib = window_value.JSPLib.lib || {};
-        window_value.JSPLib.lib[program_name] = JSPLib;
-        window_value.JSPLib.value = window_value.JSPLib.value || {};
-        window_value.JSPLib.value[program_name] = program_value;
-        window_value.JSPLib.other = window_value.JSPLib.other || {};
-        window_value.JSPLib.other[program_name] = other_data;
-    }
-};
-
-JSPLib.menu.loadStorageKeys = async function () {
-    let program_data_regex = this.program_data_regex;
-    let storage_keys = this.program_data.storage_keys = {};
-    if (program_data_regex) {
-        this._storage_keys_promise = JSPLib.storage.danboorustorage.keys();
-        let cache_keys = await this._storage_keys_promise;
-        this._storage_keys_loaded = true;
-        storage_keys.indexed_db = cache_keys.filter((key)=>key.match(program_data_regex));
-        let program_keys = cache_keys.filter((key)=>key.match(this.program_regex));
-        storage_keys.indexed_db = JSPLib.utility.concat(program_keys, storage_keys.indexed_db);
-    } else {
-        this._storage_keys_loaded = true;
-    }
-    let keys = Object.keys(localStorage);
-    storage_keys.local_storage = keys.filter((key)=>key.match(this.program_regex));
-};
+////NONE
 
 //Helper functions
 
@@ -1809,7 +1777,7 @@ function GetChoiceOrder(type,query) {
     sortable_choices.sort((a,b)=>{
         return IAC.choice_data[type][b].use_count - IAC.choice_data[type][a].use_count;
     });
-    return JSPLib.utility.setUnique(sortable_choices.concat(available_choices));
+    return JSPLib.utility.arrayUnique(sortable_choices.concat(available_choices));
 }
 
 function AddUserSelected(type,metatag,term,data,query_type) {
@@ -1910,7 +1878,7 @@ function InsertUserSelected(data,input,selected) {
     IAC.choice_order[type] = IAC.choice_order[type] || [];
     IAC.choice_data[type] = IAC.choice_data[type] || {};
     IAC.choice_order[type].unshift(term);
-    IAC.choice_order[type] = JSPLib.utility.setUnique(IAC.choice_order[type]);
+    IAC.choice_order[type] = JSPLib.utility.arrayUnique(IAC.choice_order[type]);
     //So the use count doesn't get squashed by the new variable assignment
     let use_count = (IAC.choice_data[type][term] && IAC.choice_data[type][term].use_count) || 0;
     IAC.choice_data[type][term] = source_data;
@@ -2041,7 +2009,7 @@ function PruneUsageData() {
             let entry = type_entry[key];
             if (!JSPLib.utility.validateExpires(entry.expires, GetUsageExpires())) {
                 PruneUsageData.debuglog("Pruning choice data!", type_key, key);
-                IAC.choice_order[type_key] = JSPLib.utility.setDifference(IAC.choice_order[type_key], [key])
+                IAC.choice_order[type_key] = JSPLib.utility.arrayDifference(IAC.choice_order[type_key], [key])
                 delete type_entry[key];
                 is_dirty = true;
             }
@@ -2778,7 +2746,7 @@ function Main() {
         Main.debuglog("No Indexed DB! Exiting...");
         return;
     }
-    Danbooru.IAC = IAC = {
+    Danbooru.IAC = Object.assign(IAC, {
         controller: document.body.dataset.controller,
         action: document.body.dataset.action,
         userid: Danbooru.CurrentUser.data('id'),
@@ -2788,17 +2756,12 @@ function Main() {
         settings_config: SETTINGS_CONFIG,
         control_config: CONTROL_CONFIG,
         channel: JSPLib.utility.createBroadcastChannel(PROGRAM_NAME, BroadcastIAC),
-    };
+    });
     Object.assign(IAC, {
         user_settings: JSPLib.menu.loadUserSettings(),
     });
     if (JSPLib.danbooru.isSettingMenu()) {
-        JSPLib.menu.loadStorageKeys();
-        JSPLib.utility.installScript(JQUERY_TAB_WIDGET_URL).done(()=>{
-            JSPLib.menu.installSettingsMenu();
-            Timer.RenderSettingsMenu();
-            JSPLib.utility.setCSSStyle(SETTINGS_MENU_CSS, 'settings_menu');
-        });
+        JSPLib.menu.initializeSettingsMenu(RenderSettingsMenu, SETTINGS_MENU_CSS);
     }
     if (!JSPLib.menu.isScriptEnabled()) {
         Main.debuglog("Script is disabled on", window.location.hostname);
@@ -2846,9 +2809,8 @@ JSPLib.debug.addFunctionLogs([
 
 //Variables for debug.js
 JSPLib.debug.debug_console = false;
-JSPLib.debug.pretext = 'IAC:';
-JSPLib.debug.pretimer = 'IAC-';
 JSPLib.debug.level = JSPLib.debug.INFO;
+JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
 //Variables for menu.js
 JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
