@@ -282,7 +282,7 @@ const POST_INDEX_STATISTICS = `
 <section id="dpi-domain-statistics"></section>`;
 
 const POST_STATISTICS_TABLE = `
-<h1>Post statistics</h1>
+<h2>Post statistics</h2>
 <table class="striped">
     <tbody>
         <tr>
@@ -325,11 +325,11 @@ const POST_STATISTICS_TABLE = `
 </table>`;
 
 const DOMAIN_STATISTICS_TABLE = `
-    <h1>Domain statistics</h1>
-    <table class="striped">
-        <tbody>
-        </tbody>
-    </table>`;
+<h2>Domain statistics</h2>
+<table class="striped">
+    <tbody>
+    </tbody>
+</table>`;
 
 const DOMAIN_STATISTICS_ROW = `
 <tr>
