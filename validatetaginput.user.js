@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.8
+// @version      28.9
 // @description  Validates tag add/remove inputs on a post edit or upload, plus several other post validations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -16,15 +16,15 @@
 // @require      https://cdn.jsdelivr.net/npm/core-js-bundle@3.2.1/minified.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200506-storage/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200507-utility/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ jQuery Danbooru */
@@ -37,7 +37,6 @@
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '14474';
-const JQUERY_TAB_WIDGET_URL = 'https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js';
 
 //Variables for load.js
 const program_load_required_variables = ['window.jQuery','window.Danbooru'];
@@ -57,7 +56,7 @@ const PROGRAM_DATA_KEY = {
 };
 
 //Main program variable
-var VTI;
+const VTI = {};
 
 //Timer function hash
 const Timer = {};
@@ -484,7 +483,7 @@ function EnableUI(type) {
 
 //Queries aliases of added tags... can be called multiple times
 async function QueryTagAliases(taglist) {
-    let unseen_tags = JSPLib.utility.setDifference(taglist, VTI.seenlist);
+    let unseen_tags = JSPLib.utility.arrayDifference(taglist, VTI.seenlist);
     let [cached_aliases,uncached_aliases] = await JSPLib.storage.batchStorageCheck(unseen_tags, ValidateEntry, relation_expiration, 'ta');
     QueryTagAliases.debuglog("Cached aliases:", cached_aliases);
     QueryTagAliases.debuglog("Uncached aliases:", uncached_aliases);
@@ -496,7 +495,7 @@ async function QueryTagAliases(taglist) {
             found_aliases.push(alias.antecedent_name);
             JSPLib.storage.saveData('ta-' + alias.antecedent_name, {value: [alias.consequent_name], expires: JSPLib.utility.getExpires(relation_expiration)});
         });
-        let unfound_aliases = JSPLib.utility.setDifference(uncached_aliases, found_aliases);
+        let unfound_aliases = JSPLib.utility.arrayDifference(uncached_aliases, found_aliases);
         unfound_aliases.forEach((tag)=>{
             JSPLib.storage.saveData('ta-' + tag, {value: [], expires: JSPLib.utility.getExpires(relation_expiration)});
         });
@@ -531,7 +530,7 @@ async function QueryTagImplications(taglist) {
             JSPLib.storage.saveData('ti-' + tag, {value: VTI.implicationdict[tag], expires: JSPLib.utility.getExpires(relation_expiration)});
         }
         let found_implications = Object.keys(VTI.implicationdict);
-        let unfound_implications = JSPLib.utility.setDifference(uncached_implications, found_implications);
+        let unfound_implications = JSPLib.utility.arrayDifference(uncached_implications, found_implications);
         unfound_implications.forEach((tag)=>{
             JSPLib.storage.saveData('ti-' + tag, {value: [], expires: JSPLib.utility.getExpires(relation_expiration)});
         });
@@ -657,8 +656,8 @@ function RebindHotkey() {
 async function ValidateTagAdds() {
     let postedittags = GetCurrentTags();
     let positivetags = JSPLib.utility.filterRegex(postedittags,negative_regex,true);
-    let useraddtags = JSPLib.utility.setDifference(positivetags,VTI.preedittags);
-    VTI.addedtags = JSPLib.utility.setDifference(useraddtags,GetNegativetags(postedittags));
+    let useraddtags = JSPLib.utility.arrayDifference(positivetags,VTI.preedittags);
+    VTI.addedtags = JSPLib.utility.arrayDifference(useraddtags,GetNegativetags(postedittags));
     ValidateTagAdds.debuglog("Added tags:",VTI.addedtags);
     if ((VTI.addedtags.length === 0) || IsSkipValidate()) {
         ValidateTagAdds.debuglog("Skipping!");
@@ -668,10 +667,10 @@ async function ValidateTagAdds() {
     let options = {addons: {search: {name_space: VTI.addedtags.join(' '), hide_empty: 'yes'}, only: tag_fields}, long_format: true}
     let all_aliases = await JSPLib.danbooru.getAllItems('tags', QUERY_LIMIT, null, options);
     VTI.checktags = all_aliases.map(entry=>{return entry.name;});
-    let nonexisttags = JSPLib.utility.setDifference(VTI.addedtags,VTI.checktags);
+    let nonexisttags = JSPLib.utility.arrayDifference(VTI.addedtags,VTI.checktags);
     if (VTI.user_settings.alias_check_enabled) {
         await Timer.QueryTagAliases(nonexisttags);
-        nonexisttags = JSPLib.utility.setDifference(nonexisttags,VTI.aliastags);
+        nonexisttags = JSPLib.utility.arrayDifference(nonexisttags,VTI.aliastags);
     }
     if (nonexisttags.length > 0) {
         ValidateTagAdds.debuglog("Nonexistant tags!");
@@ -695,15 +694,15 @@ async function ValidateTagRemoves() {
     }
     await VTI.implications_promise;
     let postedittags = TransformTypetags(GetCurrentTags());
-    let deletedtags = JSPLib.utility.setDifference(VTI.preedittags,postedittags);
-    let negatedtags = JSPLib.utility.setIntersection(GetNegativetags(postedittags),postedittags);
+    let deletedtags = JSPLib.utility.arrayDifference(VTI.preedittags,postedittags);
+    let negatedtags = JSPLib.utility.arrayIntersection(GetNegativetags(postedittags),postedittags);
     let removedtags = deletedtags.concat(negatedtags);
-    let finaltags = JSPLib.utility.setDifference(postedittags,removedtags);
+    let finaltags = JSPLib.utility.arrayDifference(postedittags,removedtags);
     ValidateTagRemoves.debuglog("Final tags:",finaltags);
     ValidateTagRemoves.debuglog("Removed tags:",deletedtags,negatedtags);
     let allrelations = [];
     removedtags.forEach((tag)=>{
-        let badremoves = JSPLib.utility.setIntersection(GetAllRelations(tag,VTI.implicationdict),finaltags);
+        let badremoves = JSPLib.utility.arrayIntersection(GetAllRelations(tag,VTI.implicationdict),finaltags);
         if (badremoves.length) {
             allrelations.push(badremoves.toString() + ' -> ' + tag);
         }
@@ -790,7 +789,7 @@ async function ValidateArtist() {
             JSPLib.storage.saveData('are-' + entry.name,{value: true, expires: JSPLib.utility.getExpires(artist_expiration)});
         });
         let found_artists = JSPLib.utility.getObjectAttributes(tag_resp,'name');
-        let missing_artists = JSPLib.utility.setDifference(uncached_artists,found_artists);
+        let missing_artists = JSPLib.utility.arrayDifference(uncached_artists,found_artists);
         if (missing_artists.length === 0) {
             ValidateArtist.debuglog("No missing artists. [cache miss]");
             return;
@@ -874,7 +873,7 @@ function RenderSettingsMenu() {
 //Main program
 
 function Main() {
-    Danbooru.VTI = VTI = {
+    Danbooru.VTI = Object.assign(VTI, {
         controller: document.body.dataset.controller,
         action: document.body.dataset.action,
         aliastags: [],
@@ -884,16 +883,12 @@ function Main() {
         validate_lines: [],
         settings_config: SETTINGS_CONFIG,
         control_config: CONTROL_CONFIG,
-    };
+    });
     Object.assign(VTI, {
         user_settings: JSPLib.menu.loadUserSettings(),
     });
     if (JSPLib.danbooru.isSettingMenu()) {
-        JSPLib.menu.loadStorageKeys();
-        JSPLib.utility.installScript(JQUERY_TAB_WIDGET_URL).done(()=>{
-            JSPLib.menu.installSettingsMenu();
-            Timer.RenderSettingsMenu();
-        });
+        JSPLib.menu.initializeSettingsMenu(RenderSettingsMenu);
         return;
     }
     if (!JSPLib.menu.isScriptEnabled()) {
@@ -936,7 +931,7 @@ function Main() {
         } else {
             Main.debuglog("Already pre-validated post.");
         }
-        JSPLib.storage.setStorageData('vti-seen-postlist',JSPLib.utility.setUnique(seen_post_list.concat(post_id)),sessionStorage);
+        JSPLib.storage.setStorageData('vti-seen-postlist',JSPLib.utility.arrayUnique(seen_post_list.concat(post_id)),sessionStorage);
     } else if (VTI.controller === 'posts' && VTI.action === 'index') {
         $(".post-preview a").on(PROGRAM_CLICK, PostModeMenu);
     } else if (!VTI.is_upload) {
@@ -980,9 +975,8 @@ JSPLib.debug.addFunctionLogs([
 
 //Variables for debug.js
 JSPLib.debug.debug_console = false;
-JSPLib.debug.pretext = "VTI:";
-JSPLib.debug.pretimer = "VTI-";
 JSPLib.debug.level = JSPLib.debug.INFO;
+JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
 //Variables for menu.js
 JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
@@ -991,10 +985,7 @@ JSPLib.menu.program_data_regex = PROGRAM_DATA_REGEX;
 JSPLib.menu.program_data_key = PROGRAM_DATA_KEY;
 
 //Export JSPLib
-if (JSPLib.debug.debug_console) {
-    window.JSPLib.lib = window.JSPLib.lib || {};
-    window.JSPLib.lib[PROGRAM_NAME] = JSPLib;
-}
+JSPLib.load.exportData(PROGRAM_NAME, VTI);
 
 /****Execution start****/
 
