@@ -454,7 +454,7 @@ function RenderUsername(user_id,user_data) {
     let level_class = "user-" + user_data.level.toLowerCase();
     let unlimited_class = (user_data.contributor ? " user-post-uploader" : "");
     let approver_class = (user_data.approver ? " user-post-approver" : "");
-    return `<a class="dpi-username ${level_class}${unlimited_class}${approver_class} with-style" href="/users/${user_id}">${user_name}</a>`;
+    return `<a class="dpi-username ${level_class}${unlimited_class}${approver_class} user" data-user-id="${user_id}" data-user-name="${user_name}" href="/users/${user_id}" aria-expanded="false">${user_name}</a>`;
 }
 
 function PopulateUserTags(current_tags,added_tags,user_tags,version_order,updater_id) {
