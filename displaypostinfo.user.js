@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DisplayPostInfo
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.5
+// @version      11.0
 // @description  Display views, uploader, and other info to the user.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -16,15 +16,15 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.2/rollups/md5.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200507-utility/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200506-storage/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru CryptoJS */
@@ -37,7 +37,6 @@
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '15926';
-const JQUERY_TAB_WIDGET_URL = 'https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js';
 
 //Variables for load.js
 const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery','Danbooru.PostTooltip'];
@@ -58,7 +57,7 @@ const PROGRAM_DATA_KEY = {
 };
 
 //Main program variable
-var DPI;
+const DPI = {};
 
 //TIMER function hash
 const TIMER = {};
@@ -455,7 +454,7 @@ function PopulateUserTags(current_tags,added_tags,user_tags,version_order,update
     user_tags[updater_id] = user_tags[updater_id] || [];
     user_tags[updater_id] = JSPLib.utility.concat(user_tags[updater_id], (added_tags));
     version_order.unshift(updater_id);
-    current_tags.tags = JSPLib.utility.setDifference(current_tags.tags,added_tags);
+    current_tags.tags = JSPLib.utility.arrayDifference(current_tags.tags,added_tags);
 }
 
 function SaveMappedListData(mapped_data,expiration) {
@@ -522,7 +521,7 @@ async function GetUserListData(userid_list) {
         SaveMappedListData(mapped_list_data, user_expiration);
         if (user_list.length !== missing_users.length) {
             let found_users = JSPLib.utility.getObjectAttributes(user_list,'id');
-            let bad_users = JSPLib.utility.setDifference(missing_users,found_users);
+            let bad_users = JSPLib.utility.arrayDifference(missing_users,found_users);
             GetUserListData.debuglog("Bad users:", bad_users);
             let bad_data = bad_users.map((userid)=>{return {[userid]: BlankUser(userid)};});
             SaveMappedListData(bad_data, bad_user_expiration);
@@ -604,17 +603,17 @@ async function DisplayTopTagger() {
         if (post_versions && post_versions.length) {
             post_versions.sort((a,b)=>{return a.version - b.version;});
             if (post_versions[0].unchanged_tags.length !== 0) {
-                let true_adds = JSPLib.utility.setIntersection(current_tags.tags,post_versions[0].unchanged_tags.split(' '));
+                let true_adds = JSPLib.utility.arrayIntersection(current_tags.tags,post_versions[0].unchanged_tags.split(' '));
                 PopulateUserTags(current_tags,true_adds,user_tags,version_order,uploader_id);
             }
             post_versions.forEach((postver)=>{
-                let true_adds = JSPLib.utility.setIntersection(postver.added_tags,current_tags.tags);
+                let true_adds = JSPLib.utility.arrayIntersection(postver.added_tags,current_tags.tags);
                 if (true_adds.length) {
                     let updater_id = postver.updater_id || 13;
                     PopulateUserTags(current_tags,true_adds,user_tags,version_order,updater_id);
                 }
             });
-            version_order = JSPLib.utility.setUnique(version_order);
+            version_order = JSPLib.utility.arrayUnique(version_order);
             let user_order = Object.keys(user_tags).map(Number).sort((a,b)=>{return user_tags[b].length - user_tags[a].length;});
             let top_taggers = user_order.filter((user)=>{return user_tags[user].length === user_tags[user_order[0]].length;});
             if (top_taggers.length > 1) {
@@ -875,22 +874,18 @@ function RenderSettingsMenu() {
 //Main program
 
 function Main() {
-    Danbooru.DPI = DPI = {
+    Danbooru.DPI = Object.assign(DPI, {
         controller: document.body.dataset.controller,
         action: document.body.dataset.action,
         basic_tooltips: Danbooru.CurrentUser.data('disable-post-tooltips'),
         settings_config: SETTINGS_CONFIG,
         control_config: CONTROL_CONFIG,
-    };
+    });
     Object.assign(DPI, {
         user_settings: JSPLib.menu.loadUserSettings(),
     });
     if (JSPLib.danbooru.isSettingMenu()) {
-        JSPLib.menu.loadStorageKeys();
-        JSPLib.utility.installScript(JQUERY_TAB_WIDGET_URL).done(()=>{
-            JSPLib.menu.installSettingsMenu();
-            RenderSettingsMenu();
-        });
+        JSPLib.menu.initializeSettingsMenu(RenderSettingsMenu);
         return;
     }
     if (!JSPLib.menu.isScriptEnabled()) {
@@ -910,7 +905,7 @@ function Main() {
             TIMER.DisplayTopTagger();
         }
     } else if (DPI.controller === 'posts' && DPI.action === 'index') {
-        let all_uploaders = JSPLib.utility.setUnique(JSPLib.utility.getDOMAttributes($(".post-preview"), 'uploader-id'));
+        let all_uploaders = JSPLib.utility.arrayUnique(JSPLib.utility.getDOMAttributes($(".post-preview"), 'uploader-id'));
         DPI.all_uploaders = TIMER.GetUserListData(all_uploaders);
         if (!Danbooru.DPI.basic_tooltips && DPI.user_settings.advanced_post_tooltip) {
             Danbooru.PostTooltip.on_show = JSPLib.utility.hijackFunction(Danbooru.PostTooltip.on_show, RenderTooltip);
@@ -953,9 +948,8 @@ JSPLib.debug.addFunctionLogs([
 
 //Variables for debug.js
 JSPLib.debug.debug_console = false;
-JSPLib.debug.pretext = "DPI:";
-JSPLib.debug.pretimer = "DPI-";
 JSPLib.debug.level = JSPLib.debug.INFO;
+JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
 //Variables for menu.js
 JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
@@ -965,10 +959,7 @@ JSPLib.menu.program_data_key = PROGRAM_DATA_KEY;
 JSPLib.menu.settings_callback = RemoteSettingsCallback;
 
 //Export JSPLib
-if (JSPLib.debug.debug_console) {
-    window.JSPLib.lib = window.JSPLib.lib || {};
-    window.JSPLib.lib[PROGRAM_NAME] = JSPLib;
-}
+JSPLib.load.exportData(PROGRAM_NAME, DPI);
 
 /****Execution start****/
 
