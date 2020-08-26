@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SafelistPlus
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.6
+// @version      4.7
 // @description  Alternate Danbooru blacklist handler.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -12,13 +12,13 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/safelist_plus.user.js
 // @require      https://cdn.jsdelivr.net/npm/core-js-bundle@3.2.1/minified.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200507-utility/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200506-storage/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru validate TextboxLogger ValidateBlacklist OrderBlacklist */
@@ -27,15 +27,10 @@
 
 //Library constants
 
-JSPLib.validate.string_constraints = function (string=true,length) {
-    let string_constraint = (string ? {string: string} : {});
-    let length_constraint = (length ? {length: length} : {});
-    return Object.assign(string_constraint,length_constraint);
-};
+////NONE
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '14221';
-const JQUERY_TAB_WIDGET_URL = 'https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js';
 
 //Variables for load.js
 const program_load_required_variables = ['window.jQuery', 'window.Danbooru', 'window.Danbooru.Blacklist'];
@@ -47,7 +42,7 @@ const PROGRAM_CLICK = 'click.sl';
 const PROGRAM_NAME = 'SafelistPlus';
 
 //Main program variable
-var SL;
+const SL = {};
 
 //Timer function hash
 const Timer = {};
@@ -458,10 +453,10 @@ class Safelist {
             if (nonstring_list.length === this.list.length) {
                 this.list = safelist_defaults.list;
             } else {
-                this.list = JSPLib.utility.setDifference(this.list, nonstring_list);
+                this.list = JSPLib.utility.arrayDifference(this.list, nonstring_list);
             }
         }
-        let extra_keys = JSPLib.utility.setDifference(Object.keys(this), Object.keys(safelist_defaults));
+        let extra_keys = JSPLib.utility.arrayDifference(Object.keys(this), Object.keys(safelist_defaults));
         if (extra_keys.length) {
             error_messages.push([`level_data[${level}]: bad keys found - `, extra_keys]);
             extra_keys.forEach((key)=>{delete this[key];});
@@ -1338,7 +1333,7 @@ function CalculatePassiveLists(deadline) {
         //Are we starting a new job?
         if (!('update_list' in CPL.background_work)) {
             //Get the next uncalculated list
-            let update_list = JSPLib.utility.setDifference(SL.menu_items.process_menus, Object.keys(SL.post_lists))[0];
+            let update_list = JSPLib.utility.arrayDifference(SL.menu_items.process_menus, Object.keys(SL.post_lists))[0];
             //Main exit condition
             if (update_list === undefined) {
                 CPL.debuglog("Done!");
@@ -1557,7 +1552,7 @@ function MenuSaveButton(event) {
     Danbooru.Utility.notice("Settings saved.");
     let changed_settings = JSPLib.utility.recurseCompareObjects(preconfig, SL.level_data);
     SL.menu_items = CalculateRenderedMenus();
-    let changed_menus = Boolean(JSPLib.utility.setSymmetricDifference(premenu.rendered_menus, SL.menu_items.rendered_menus).length);
+    let changed_menus = Boolean(JSPLib.utility.arraySymmetricDifference(premenu.rendered_menus, SL.menu_items.rendered_menus).length);
     MenuSaveButton.debuglog(changed_settings, changed_menus);
     if (!$.isEmptyObject(changed_settings) || changed_menus) {
         Timer.ReloadSafelist(changed_settings, changed_menus);
@@ -1664,7 +1659,7 @@ function BroadcastSL(ev) {
     if ('level_data' in ev.data) {
         SL.old_level_data = SL.level_data;
         SL.level_data = ev.data.level_data;
-        let removed_menus = JSPLib.utility.setDifference(Object.keys(SL.old_level_data), Object.keys(SL.level_data));
+        let removed_menus = JSPLib.utility.arrayDifference(Object.keys(SL.old_level_data), Object.keys(SL.level_data));
         removed_menus.forEach((level)=>{
             SL.old_level_data[level].disableLevel();
             delete SL.post_lists[level];
@@ -1789,23 +1784,19 @@ function RenderSettingsMenu() {
 function Main() {
     Main.debuglog("Initialize start:", JSPLib.utility.getProgramTime());
     JSPLib.debug.debugTime("Main-Load");
-    Danbooru.SL = SL = {
+    Danbooru.SL = Object.assign(SL, {
         controller: document.body.dataset.controller,
         action: document.body.dataset.action,
         userid: Danbooru.CurrentUser.data('id'),
         settings_config: SETTINGS_CONFIG,
         control_config: CONTROL_CONFIG,
         channel: JSPLib.utility.createBroadcastChannel(PROGRAM_NAME, BroadcastSL),
-    };
+    });
     Object.assign(SL, {
         user_settings: JSPLib.menu.loadUserSettings(),
     });
     if (JSPLib.danbooru.isSettingMenu()) {
-        JSPLib.menu.loadStorageKeys();
-        JSPLib.utility.installScript(JQUERY_TAB_WIDGET_URL).done(()=>{
-            JSPLib.menu.installSettingsMenu();
-            RenderSettingsMenu();
-        });
+        JSPLib.menu.initializeSettingsMenu(RenderSettingsMenu);
     }
     if (!JSPLib.menu.isScriptEnabled()) {
         Main.debuglog("Script is disabled on", window.location.hostname);
@@ -1863,8 +1854,7 @@ JSPLib.debug.addFunctionLogs([
 //Variables for debug.js
 JSPLib.debug.debug_console = false;
 JSPLib.debug.level = JSPLib.debug.INFO;
-JSPLib.debug.pretext = 'SL:';
-JSPLib.debug.pretimer = 'SL-';
+JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
 //Variables for menu.js
 JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
@@ -1874,10 +1864,7 @@ JSPLib.menu.settings_callback = RemoteSettingsCallback;
 JSPLib.menu.reset_callback = RemoteResetCallback;
 
 //Export JSPLib
-if (JSPLib.debug.debug_console) {
-    window.JSPLib.lib = window.JSPLib.lib || {};
-    window.JSPLib.lib[PROGRAM_NAME] = JSPLib;
-}
+JSPLib.load.exportData(PROGRAM_NAME, SL);
 
 /****Execution start****/
 
