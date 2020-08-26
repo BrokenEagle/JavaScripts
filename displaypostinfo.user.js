@@ -85,7 +85,19 @@ const SETTINGS_CONFIG = {
     advanced_post_tooltip: {
         default: true,
         validate: (data)=>{return JSPLib.validate.isBoolean(data);},
-        hint: "Adds the post uploader to the advanced post tooltips."
+        hint: "Enables the configuration of post tooltip settings."
+    },
+    post_show_delay: {
+        default: 500,
+        parse: parseInt,
+        validate: (data)=>{return Number.isInteger(data) && data >= 0;},
+        hint: "How long to delay showing the post tooltip (in milliseconds)."
+    },
+    post_hide_delay: {
+        default: 125,
+        parse: parseInt,
+        validate: (data)=>{return Number.isInteger(data) && data >= 0;},
+        hint: "How long to delay hiding the post tooltip (in milliseconds)."
     },
     post_statistics_enabled: {
         default: true,
@@ -817,6 +829,8 @@ function RenderSettingsMenu() {
     $("#dpi-information-settings").append(JSPLib.menu.renderCheckbox('top_tagger_enabled'));
     $("#dpi-tooltip-settings").append(JSPLib.menu.renderCheckbox('basic_post_tooltip'));
     $("#dpi-tooltip-settings").append(JSPLib.menu.renderCheckbox('advanced_post_tooltip'));
+    $('#dpi-tooltip-settings').append(JSPLib.menu.renderTextinput('post_show_delay', 10));
+    $('#dpi-tooltip-settings').append(JSPLib.menu.renderTextinput('post_hide_delay', 10));
     $("#dpi-statistics-settings").append(JSPLib.menu.renderCheckbox('post_statistics_enabled'));
     $("#dpi-statistics-settings").append(JSPLib.menu.renderCheckbox('domain_statistics_enabled'));
     $("#dpi-statistics-settings").append(JSPLib.menu.renderInputSelectors('domain_source_type', 'radio'));
@@ -876,6 +890,13 @@ function Main() {
         let all_uploaders = JSPLib.utility.arrayUnique(JSPLib.utility.getDOMAttributes($(".post-preview"), 'uploader-id'));
         DPI.all_uploaders = TIMER.GetUserListData(all_uploaders);
         if (!Danbooru.DPI.basic_tooltips && DPI.user_settings.advanced_post_tooltip) {
+            Danbooru.PostTooltip.SHOW_DELAY = DPI.user_settings.post_show_delay;
+            Danbooru.PostTooltip.HIDE_DELAY = DPI.user_settings.post_hide_delay;
+            if (document.body._tippy) {
+                $(document).off("click.danbooru.postTooltip");
+                document.body._tippy.destroy();
+                Danbooru.PostTooltip.initialize();
+            }
         } else if (Danbooru.DPI.basic_tooltips && DPI.user_settings.basic_post_tooltip) {
             UpdateThumbnailTitles();
         }
