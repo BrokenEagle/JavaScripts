@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SiteTagSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.3
+// @version      4.4
 // @description  Presents additional site links for the wiki tag(s).
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -12,13 +12,13 @@
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/sitetagsearches.user.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200507-utility/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200506-storage/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/menu.js
 // ==/UserScript==
 
 /* global $ JSPLib Danbooru */
@@ -31,7 +31,6 @@
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '14958';
-const JQUERY_TAB_WIDGET_URL = 'https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js';
 
 //Variables for load.js
 const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery'];
@@ -43,7 +42,7 @@ const PROGRAM_CLICK = 'click.sts';
 const PROGRAM_NAME = 'SiteTagSearches';
 
 //Main program variable
-var STS;
+const STS = {};
 
 //Available setting values
 const BOORU_SITES = ['gelbooru', 'yandere', 'sankaku', 'konachan'];
@@ -284,20 +283,16 @@ function RenderSettingsMenu() {
 //Main function
 
 function Main() {
-    Danbooru.STS = STS = {
+    Danbooru.STS = Object.assign(STS, {
         controller: document.body.dataset.controller,
         action: document.body.dataset.action,
         settings_config: SETTINGS_CONFIG,
-    };
+    });
     Object.assign(STS, {
         user_settings: JSPLib.menu.loadUserSettings(),
     });
     if (JSPLib.danbooru.isSettingMenu()) {
-        JSPLib.menu.loadStorageKeys();
-        JSPLib.utility.installScript(JQUERY_TAB_WIDGET_URL).done(()=>{
-            JSPLib.menu.installSettingsMenu();
-            RenderSettingsMenu();
-        });
+        JSPLib.menu.initializeSettingsMenu(RenderSettingsMenu);
     }
     if (!JSPLib.menu.isScriptEnabled()) {
         Main.debuglog("Script is disabled on", window.location.hostname);
@@ -334,18 +329,14 @@ JSPLib.debug.addFunctionLogs([
 //Variables for debug.js
 JSPLib.debug.debug_console = false;
 JSPLib.debug.level = JSPLib.debug.INFO;
-JSPLib.debug.pretext = 'STS:';
-JSPLib.debug.pretimer = 'STS-';
+JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
 //Variables for menu.js
 JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
 JSPLib.menu.program_name = PROGRAM_NAME;
 
 //Export JSPLib
-if (JSPLib.debug.debug_console) {
-    window.JSPLib.lib = window.JSPLib.lib || {};
-    window.JSPLib.lib[PROGRAM_NAME] = JSPLib;
-}
+JSPLib.load.exportData(PROGRAM_NAME, STS);
 
 /****Execution start****/
 
