@@ -72,11 +72,6 @@ const SETTINGS_CONFIG = {
         validate: (data)=>{return JSPLib.validate.isBoolean(data);},
         hint: "Shows post views on the post page."
     },
-    post_uploader_enabled: {
-        default: true,
-        validate: (data)=>{return JSPLib.validate.isBoolean(data);},
-        hint: "Shows the post uploader on the post page."
-    },
     top_tagger_enabled: {
         default: false,
         validate: (data)=>{return JSPLib.validate.isBoolean(data);},
@@ -178,7 +173,7 @@ let post_index_css = `
 //HTML constants
 
 const POST_VIEWS_LINE = '<li id="dpi-post-views" style="display:none"></li>'
-const USER_NAMES_LINE = `<li id="dpi-post-uploader" style="display:none"></li><li id="dpi-top-tagger" style="display:none"></li>`;
+const USER_NAMES_LINE = '<li id="dpi-top-tagger" style="display:none"></li>';
 
 const CACHE_INFO_TABLE = '<div id="dpi-cache-info-table" style="display:none"></div>';
 
@@ -573,17 +568,6 @@ async function DisplayPostViews() {
     $("#dpi-post-views").html(`Views: ${post_views}`).show();
 }
 
-async function DisplayPostUploader() {
-    let uploader_id = $(".image-container").data('uploader-id');
-    if (!(uploader_id in GetUserData.promises)) {
-        GetUserData.promises[uploader_id] = GetUserData(uploader_id);
-    }
-    let user_data = await GetUserData.promises[uploader_id];
-    let name_html = RenderUsername(uploader_id,user_data);
-    let search_html = JSPLib.danbooru.postSearchLink("user:" + user_data.name, "&raquo;");
-    $("#dpi-post-uploader").html(`Uploader: ${name_html}&ensp;${search_html}`).show();
-}
-
 async function DisplayTopTagger() {
     var name_html, top_tagger_id;
     let $image = $(".image-container");
@@ -764,18 +748,6 @@ function InitializeChangedSettings() {
                 $post_views.hide();
             }
         }
-        if (JSPLib.menu.hasSettingChanged('post_uploader_enabled')) {
-            let $post_uploader = $("#dpi-post-uploader");
-            if (DPI.user_settings.post_uploader_enabled) {
-                if ($post_uploader.text() === "") {
-                    TIMER.DisplayPostUploader();
-                } else {
-                    $post_uploader.show();
-                }
-            } else {
-                $post_uploader.hide();
-            }
-        }
         if (JSPLib.menu.hasSettingChanged('top_tagger_enabled')) {
             let $top_tagger = $("#dpi-top-tagger");
             if (DPI.user_settings.top_tagger_enabled) {
@@ -842,7 +814,6 @@ function RenderSettingsMenu() {
     $("#display-post-info").append(dpi_menu);
     $("#dpi-general-settings").append(JSPLib.menu.renderDomainSelectors());
     $("#dpi-information-settings").append(JSPLib.menu.renderCheckbox('post_views_enabled'));
-    $("#dpi-information-settings").append(JSPLib.menu.renderCheckbox('post_uploader_enabled'));
     $("#dpi-information-settings").append(JSPLib.menu.renderCheckbox('top_tagger_enabled'));
     $("#dpi-tooltip-settings").append(JSPLib.menu.renderCheckbox('basic_post_tooltip'));
     $("#dpi-tooltip-settings").append(JSPLib.menu.renderCheckbox('advanced_post_tooltip'));
@@ -894,12 +865,9 @@ function Main() {
     }
     if (DPI.controller === 'posts' && DPI.action === 'show') {
         $('#post-information #post-info-score').after(POST_VIEWS_LINE);
-        $('#post-information #post-info-date').after(USER_NAMES_LINE);
+        $('#post-information #post-info-uploader').after(USER_NAMES_LINE);
         if (DPI.user_settings.post_views_enabled) {
             TIMER.DisplayPostViews();
-        }
-        if (DPI.user_settings.post_uploader_enabled) {
-            TIMER.DisplayPostUploader();
         }
         if (DPI.user_settings.top_tagger_enabled) {
             TIMER.DisplayTopTagger();
@@ -908,7 +876,6 @@ function Main() {
         let all_uploaders = JSPLib.utility.arrayUnique(JSPLib.utility.getDOMAttributes($(".post-preview"), 'uploader-id'));
         DPI.all_uploaders = TIMER.GetUserListData(all_uploaders);
         if (!Danbooru.DPI.basic_tooltips && DPI.user_settings.advanced_post_tooltip) {
-            Danbooru.PostTooltip.on_show = JSPLib.utility.hijackFunction(Danbooru.PostTooltip.on_show, RenderTooltip);
         } else if (Danbooru.DPI.basic_tooltips && DPI.user_settings.basic_post_tooltip) {
             UpdateThumbnailTitles();
         }
@@ -937,7 +904,7 @@ JSPLib.debug.addFunctionTimers(TIMER, false, [
 ]);
 
 JSPLib.debug.addFunctionTimers(TIMER, true, [
-    DisplayPostViews, DisplayPostUploader, DisplayTopTagger, GetUserListData,
+    DisplayPostViews, DisplayTopTagger, GetUserListData,
 ]);
 
 JSPLib.debug.addFunctionLogs([
