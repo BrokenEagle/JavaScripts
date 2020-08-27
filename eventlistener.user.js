@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      20.2
+// @version      21.0
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -13,15 +13,15 @@
 // @require      https://cdn.jsdelivr.net/npm/core-js-bundle@3.6.5/minified.js
 // @require      https://cdn.jsdelivr.net/npm/xregexp@4.3.0/xregexp-all.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200507-utility/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200506-storage/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib jQuery $ Danbooru Diff XRegExp LZString */
@@ -30,22 +30,11 @@
 
 //Library constants
 
-// Added here since global variables use this function
-JSPLib.utility.multiConcat = function (...arrays) {
-    if (arrays.length < 1) {
-        return arrays[0];
-    }
-    let merged_array = arrays[0];
-    for (let i = 1; i < arrays.length; i++) {
-        merged_array = JSPLib.utility.concat(merged_array, arrays[i]);
-    }
-    return merged_array;
-};
+////NONE
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '14747';
 const SERVER_USER_ID = 502584;
-const JQUERY_TAB_WIDGET_URL = 'https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js';
 
 //Variables for load.js
 const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery','window.Danbooru'];
@@ -66,7 +55,7 @@ const TIMER = {};
 const POST_QUERY_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'flag', 'appeal'];
 const SUBSCRIBE_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'flag', 'appeal', 'forum', 'wiki', 'pool'];
 const OTHER_EVENTS = ['dmail', 'ban', 'feedback', 'mod_action'];
-const ALL_EVENTS = JSPLib.utility.setUnique(JSPLib.utility.multiConcat(POST_QUERY_EVENTS, SUBSCRIBE_EVENTS, OTHER_EVENTS));
+const ALL_EVENTS = JSPLib.utility.arrayUnique(JSPLib.utility.multiConcat(POST_QUERY_EVENTS, SUBSCRIBE_EVENTS, OTHER_EVENTS));
 
 //For factory reset
 const LASTID_KEYS = JSPLib.utility.multiConcat(
@@ -1012,219 +1001,7 @@ function CorrectList(type,typelist) {
 
 //Library functions
 
-JSPLib.load._getWindow = function () {
-    return (typeof unsafeWindow !== "undefined" ? unsafeWindow : window);
-};
-
-JSPLib.load.exportData = function (program_name, program_value, other_data = null) {
-    let window_value = JSPLib.load._getWindow();
-    if (JSPLib.debug.debug_console) {
-        window_value.JSPLib.lib = window_value.JSPLib.lib || {};
-        window_value.JSPLib.lib[program_name] = JSPLib;
-        window_value.JSPLib.value = window_value.JSPLib.value || {};
-        window_value.JSPLib.value[program_name] = program_value;
-        window_value.JSPLib.other = window_value.JSPLib.other || {};
-        window_value.JSPLib.other[program_name] = other_data;
-    }
-};
-
-JSPLib.utility._setOperation = function (iterator,comparator,result=new Set()) {
-    for (let val of iterator) {
-        if (comparator(val)) {
-            result.add(val);
-        }
-    }
-    return result;
-};
-
-JSPLib.utility.getNestedAttribute = function (data,attributes) {
-    for (let i = 0; i < attributes.length; i++) {
-        let attribute = attributes[i];
-        data = data[attribute]
-        if (data === undefined) {
-            return null;
-        }
-    }
-    return data;
-};
-
-JSPLib.utility.isSet = function (data) {
-    return data && data.constructor && data.constructor.name === "Set";
-};
-
-JSPLib.utility.setUnionN = function (set1,set2) {
-    let [small,large] = this._orderSets(set1,set2);
-    const comparator = ()=>(true);
-    return this._setOperation(small,comparator,new Set(large));
-};
-
-JSPLib.utility.setDifferenceN = function (set1,set2) {
-    const comparator = (val) => !set2.has(val);
-    return this._setOperation(set1,comparator);
-};
-
-JSPLib.utility.setIntersectionN = function (set1,set2) {
-    let [small,large] = this._orderSets(set1,set2);
-    const comparator = (val) => large.has(val);
-    return this._setOperation(small,comparator);
-};
-
-JSPLib.utility.setSymmetricDifferenceN = function (set1,set2) {
-    let combined = this.setUnionN(set1,set2);
-    let comparator = (val) => !(set1.has(val) && set2.has(val));
-    return this._setOperation(combined,comparator);
-};
-
-JSPLib.utility.setEqualsN = function (set1,set2) {
-    if (!this.isSet(set1) || !this.isSet(set2)) {
-        return false;
-    }
-    if (set1.size !== set2.size) {
-        return false;
-    }
-    let [small,large] = this._orderSets(set1,set2);
-    return [...small].every(val => large.has(val));
-};
-
-JSPLib.utility.isSubSetN = function (set1,set2) {
-    return set2.every(val => set1.has(val));
-};
-
-JSPLib.utility.isSuperSetN = function (set1,set2) {
-    return this.isSubset(set2,set1);
-};
-
-JSPLib.utility.arrayUnique = function (array) {
-    return [...(new Set(array))];
-};
-
-JSPLib.utility.arrayUnion = function (array1,array2) {
-    let [set1,set2] = this._makeSets(array1,array2);
-    return [...this.setUnionN(set1,set2)];
-};
-
-JSPLib.utility.arrayDifference = function (array1,array2) {
-    let [set1,set2] = this._makeSets(array1,array2);
-    return [...this.setDifferenceN(set1,set2)];
-};
-
-JSPLib.utility.arrayIntersection = function (array1,array2) {
-    let [set1,set2] = this._makeSets(array1,array2);
-    return [...this.setIntersectionN(set1,set2)];
-};
-
-JSPLib.utility.arraySymmetricDifference = function (array1,array2) {
-    let [set1,set2] = this._makeSets(array1,array2);
-    return [...this.setSymmetricDifferenceN(set1,set2)];
-};
-
-JSPLib.utility.isSubArray = function (array1,array2) {
-    let [set1,set2] = this._makeSets(array1,array2);
-    return this.isSubSetN(set1,set2);
-};
-
-JSPLib.utility.isSuperArray = function (array1,array2) {
-    return this.isSubArray(array2,array1);
-};
-
-JSPLib.utility.setHasIntersection = function (set1,set2) {
-    let [small,large] = this._orderSets(set1,set2);
-    return small.some(val => large.has(val));
-};
-
-JSPLib.utility.arrayHasIntersection = function (array1,array2) {
-    let [set1,set2] = this._makeSets(array1,array2);
-    return this.setHasIntersection(set1,set2);
-};
-
-JSPLib.menu.loadStorageKeys = async function () {
-    let program_data_regex = this.program_data_regex;
-    let storage_keys = this.program_data.storage_keys = {};
-    if (program_data_regex) {
-        this._storage_keys_promise = JSPLib.storage.danboorustorage.keys();
-        let cache_keys = await this._storage_keys_promise;
-        this._storage_keys_loaded = true;
-        storage_keys.indexed_db = cache_keys.filter((key)=>{return key.match(program_data_regex);});
-        let program_keys = cache_keys.filter((key)=>{return key.match(this.program_regex);});
-        storage_keys.indexed_db = JSPLib.utility.concat(program_keys,storage_keys.indexed_db);
-    } else {
-        this._storage_keys_loaded = true;
-    }
-    let keys = Object.keys(localStorage);
-    storage_keys.local_storage = keys.filter((key)=>{return key.match(this.program_regex);});
-};
-
-JSPLib.utility._combineArgs = function (results,data) {
-    for (let key in data) {
-        if (!(key in results) || !((typeof results[key] === "object") && (typeof data[key] === "object"))) {
-            results[key] = (typeof data[key] === "object" ? JSPLib.utility.dataCopy(data[key]) : data[key]);
-        } else {
-            JSPLib.utility._combineArgs(results[key],data[key]);
-        }
-    }
-};
-
-JSPLib.danbooru.getAllItems = async function (type,limit,batches,options,domname) {
-    //JSPLib.debug.debuglogLevel("danbooru.getAllItems:",type,limit,batches,options,domname,JSPLib.debug.DEBUG);
-    let url_addons = options.addons || {};
-    let reverse = options.reverse || false;
-    let long_format = options.long_format || false;
-    let page_modifier = (reverse ? 'a' : 'b');
-    let current_id = options.page;
-    let page_addon = (Number.isInteger(current_id) ? {page:`${page_modifier}${current_id}`} : {});
-    let limit_addon = {limit: limit};
-    let batch_num = 1;
-    var return_items = [];
-    await JSPLib.danbooru._initializePageCounter(domname,type,url_addons,limit,current_id,long_format,options);
-    while (true) {
-        let request_addons = JSPLib.utility.joinArgs(url_addons,page_addon,limit_addon);
-        let temp_items = await JSPLib.danbooru.submitRequest(type,request_addons,[],long_format,null,options.domain,options.notify);
-        return_items = JSPLib.utility.concat(return_items, temp_items);
-        let lastid = JSPLib.danbooru.getNextPageID(temp_items,reverse);
-        JSPLib.danbooru._updatePageCounter(domname,limit,lastid);
-        if (temp_items.length < limit || (batches && batch_num >= batches)) {
-            return return_items;
-        }
-        page_addon = {page:`${page_modifier}${lastid}`};
-        JSPLib.debug.debuglogLevel("danbooru.getAllItems - #",batch_num++,"Rechecking",type,"@",lastid,JSPLib.debug.INFO);
-    }
-};
-
-JSPLib.danbooru._initializePageCounter = async function (domname, type, url_addons, limit, current_id, long_format, options) {
-    if (domname) {
-        //var current_counter = Number(jQuery(domname).text());
-        var latest_id = jQuery(domname).data('latest-id');
-        if (!Number.isInteger(latest_id)) {
-            let request_addons = JSPLib.utility.joinArgs(url_addons,{limit:1});
-            request_addons.only = 'id';
-            let latest_item = await JSPLib.danbooru.submitRequest(type,request_addons,[],long_format,null,options.domain,options.notify);
-            if (latest_item.length && Number.isInteger(options.page)) {
-                latest_id = latest_item[0].id;
-                let current_counter = Math.ceil((latest_id-options.page)/limit);
-                jQuery(domname).text(current_counter);
-                jQuery(domname).data('latest-id', latest_id);
-                JSPLib.debug.debuglogLevel("danbooru._initializePageCounter:",current_counter,latest_id,current_id,JSPLib.debug.INFO);
-            }
-        }
-    }
-};
-
-JSPLib.danbooru._updatePageCounter = function (domname, limit, current_id) {
-    if (domname) {
-        let latest_id = jQuery(domname).data('latest-id');
-        if (Number.isInteger(latest_id)) {
-            let current_counter = (Number.isInteger(current_id) ? Math.ceil((latest_id-current_id)/limit) : 0);
-            jQuery(domname).text(current_counter);
-            JSPLib.debug.debuglogLevel("danbooru._updatePageCounter:",current_counter,latest_id,current_id,JSPLib.debug.INFO);
-        }
-    }
-};
-
-JSPLib.danbooru.getNextPageID = function (array,reverse) {
-    let ChooseID = (reverse ? Math.max : Math.min);
-    let valid_items = array.filter(val => ('id' in val));
-    return ChooseID(...valid_items.map(val=>{return val.id;}));
-};
+////NONE
 
 //Helper functions
 
@@ -1560,11 +1337,11 @@ function UpdateMultiLink(typelist,subscribed,itemid) {
     let typeset = new Set(typelist);
     let current_subscribed = new Set($('#el-subscribe-events .el-subscribed').map((i, entry) => entry.dataset.type.split(',')));
     let new_subscribed = (subscribed ?
-        JSPLib.utility.setDifferenceN(current_subscribed, typeset) :
-        JSPLib.utility.setUnionN(current_subscribed, typeset));
+        JSPLib.utility.setDifference(current_subscribed, typeset) :
+        JSPLib.utility.setUnion(current_subscribed, typeset));
     $(`#el-subscribe-events[data-id="${itemid}"] span:not(.el-event-hidden) > .el-multi-link`).each((i, entry)=>{
         let entry_typelist = new Set(entry.dataset.type.split(','));
-        if (JSPLib.utility.isSuperSetN(entry_typelist, new_subscribed)) {
+        if (JSPLib.utility.isSuperSet(entry_typelist, new_subscribed)) {
             $(entry).removeClass('el-unsubscribed').addClass('el-subscribed');
         } else {
             $(entry).removeClass('el-subscribed').addClass('el-unsubscribed');
@@ -1761,12 +1538,12 @@ function AddThumbnails(dompage) {
             $body.append(row);
         });
     });
-    EL.post_ids = JSPLib.utility.setUnionN(EL.post_ids, post_ids);
+    EL.post_ids = JSPLib.utility.setUnion(EL.post_ids, post_ids);
 }
 
 async function GetThumbnails() {
     let found_post_ids = new Set(Object.keys(EL.thumbs).map(Number));
-    let missing_post_ids = [...JSPLib.utility.setDifferenceN(EL.post_ids, found_post_ids)];
+    let missing_post_ids = [...JSPLib.utility.setDifference(EL.post_ids, found_post_ids)];
     for (let i = 0; i < missing_post_ids.length; i += QUERY_LIMIT) {
         let post_ids = missing_post_ids.slice(i, i + QUERY_LIMIT);
         let url_addon = {tags: `id:${post_ids} status:any limit:${post_ids.length}`};
@@ -2174,7 +1951,7 @@ function UpdateAll(event) {
 
 function ResetAll(event) {
     LASTID_KEYS.forEach((key)=>{
-        localStorage.removeItem(key);
+        JSPLib.storage.removeStorageData(key, localStorage);
     });
     ProcessAllEvents(()=>{
         JSPLib.concurrency.setRecheckTimeout('el-event-timeout', EL.timeout_expires);
@@ -2252,21 +2029,21 @@ async function PostEventPopulateControl(event) {
             let typeset = GetList(eventtype);
             switch (operation[0]) {
                 case 'add':
-                    new_subscribed = JSPLib.utility.setDifferenceN(postids, typeset);
+                    new_subscribed = JSPLib.utility.setDifference(postids, typeset);
                     was_subscribed = new Set();
-                    post_changes = JSPLib.utility.setUnionN(post_changes, new_subscribed);
-                    typeset = JSPLib.utility.setUnionN(typeset, postids);
+                    post_changes = JSPLib.utility.setUnion(post_changes, new_subscribed);
+                    typeset = JSPLib.utility.setUnion(typeset, postids);
                     break;
                 case 'subtract':
                     new_subscribed = new Set();
-                    was_subscribed = JSPLib.utility.setIntersectionN(postids, typeset);
-                    post_changes = JSPLib.utility.setUnionN(post_changes, was_subscribed)
-                    typeset = JSPLib.utility.setDifferenceN(typeset, postids);
+                    was_subscribed = JSPLib.utility.setIntersection(postids, typeset);
+                    post_changes = JSPLib.utility.setUnion(post_changes, was_subscribed)
+                    typeset = JSPLib.utility.setDifference(typeset, postids);
                     break;
                 case 'overwrite':
-                    was_subscribed = JSPLib.utility.setDifferenceN(typeset, postids);
-                    new_subscribed = JSPLib.utility.setDifferenceN(postids, typeset);
-                    post_changes = JSPLib.utility.setUnionN(post_changes, postids);
+                    was_subscribed = JSPLib.utility.setDifference(typeset, postids);
+                    new_subscribed = JSPLib.utility.setDifference(postids, typeset);
+                    post_changes = JSPLib.utility.setUnion(post_changes, postids);
                     typeset = postids;
             }
             EL.subscribeset[eventtype] = typeset;
@@ -2547,7 +2324,7 @@ function MarkAllAsRead() {
     Object.keys(localStorage).forEach((key)=>{
         let match = key.match(/el-(ot|pq)?-?saved(\S+)list/);
         if (match) {
-            localStorage.removeItem(key);
+            JSPLib.storage.removeStorageData(key, localStorage);
             return;
         }
         match = key.match(/el-(ot|pq)?-?saved(\S+)lastid/);
@@ -2555,14 +2332,14 @@ function MarkAllAsRead() {
             return;
         }
         let savedlastid = JSPLib.storage.getStorageData(key, localStorage, null);
-        localStorage.removeItem(key);
+        JSPLib.storage.removeStorageData(key, localStorage);
         if (!JSPLib.validate.validateID(savedlastid)) {
             MarkAllAsRead.debuglog(key, "is not a valid ID!", savedlastid);
             return;
         }
         SaveLastID(match[2], savedlastid, match[1]);
     });
-    localStorage.removeItem('el-saved-notice');
+    JSPLib.storage.removeStorageData('el-saved-notice', localStorage);
     if (!EL.user_settings.autoclose_dmail_notice) {
         EL.dmail_notice.show();
     }
@@ -2573,8 +2350,8 @@ function EventStatusCheck() {
     let disabled_events = JSPLib.utility.arrayDifference(POST_QUERY_EVENTS, EL.user_settings.post_query_events_enabled);
     disabled_events.forEach((type)=>{
         //Delete every associated value but the list
-        localStorage.removeItem(`el-pq-${type}lastid`);
-        localStorage.removeItem(`el-pq-saved${type}lastid`);
+        JSPLib.storage.removeStorageData(`el-pq-${type}lastid`, localStorage);
+        JSPLib.storage.removeStorageData(`el-pq-saved${type}lastid`, localStorage);
     });
     disabled_events = JSPLib.utility.arrayDifference(SUBSCRIBE_EVENTS, EL.user_settings.subscribe_events_enabled);
     EL.user_settings.subscribe_events_enabled.forEach((inputtype)=>{
@@ -2584,15 +2361,15 @@ function EventStatusCheck() {
     });
     disabled_events.forEach((type)=>{
         //Delete every associated value but the list
-        localStorage.removeItem(`el-${type}lastid`);
-        localStorage.removeItem(`el-saved${type}lastid`);
-        localStorage.removeItem(`el-${type}overflow`);
+        JSPLib.storage.removeStorageData(`el-${type}lastid`, localStorage);
+        JSPLib.storage.removeStorageData(`el-saved${type}lastid`, localStorage);
+        JSPLib.storage.removeStorageData(`el-${type}overflow`, localStorage);
     });
     disabled_events = JSPLib.utility.arrayDifference(OTHER_EVENTS, EL.user_settings.other_events_enabled);
     disabled_events.forEach((type)=>{
         //Delete every associated value but the list
-        localStorage.removeItem(`el-ot-${type}lastid`);
-        localStorage.removeItem(`el-ot-saved${type}lastid`);
+        JSPLib.storage.removeStorageData(`el-ot-${type}lastid`, localStorage);
+        JSPLib.storage.removeStorageData(`el-ot-saved${type}lastid`, localStorage);
     });
 }
 
@@ -2743,12 +2520,7 @@ function Main() {
     //Only used on new installs
     InitializeChangedSettings();
     if (JSPLib.danbooru.isSettingMenu()) {
-        JSPLib.menu.loadStorageKeys();
-        JSPLib.utility.installScript(JQUERY_TAB_WIDGET_URL).done(()=>{
-            JSPLib.menu.installSettingsMenu();
-            RenderSettingsMenu();
-        });
-        JSPLib.utility.setCSSStyle(MENU_CSS, 'menu');
+        JSPLib.menu.initializeSettingsMenu(RenderSettingsMenu, MENU_CSS);
     }
     if (!JSPLib.menu.isScriptEnabled()) {
         Main.debuglog("Script is disabled on", window.location.hostname);
@@ -2876,8 +2648,7 @@ JSPLib.debug.addFunctionLogs([
 //Variables for debug.js
 JSPLib.debug.debug_console = false;
 JSPLib.debug.level = JSPLib.debug.INFO;
-JSPLib.debug.pretext = 'EL:';
-JSPLib.debug.pretimer = 'EL-';
+JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
 //Variables for menu.js
 JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
