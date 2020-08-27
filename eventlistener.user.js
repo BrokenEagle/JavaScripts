@@ -339,10 +339,14 @@ const PROGRAM_CSS = `
     border: solid 1px grey;
     padding: 0.5em;
 }
-.el-error-notice {
+.el-error-message {
     color: var(--muted-text-color);
     font-weight: bold;
     margin-left: 1em;
+}
+.el-horizontal-rule {
+    border-top: 4px dashed tan;
+    margin: 10px 0;
 }`;
 
 const POST_CSS = `
@@ -506,23 +510,26 @@ const DISPLAY_COUNTER = `
     Pages left: <span id="el-search-query-counter">...</span>
 </div>`;
 
-const REGULAR_NOTICE = `
-<div id="el-%s-regular">
-    <h1>You've got %s!</h1>
-    <div id="el-%s-table"></div>
-    <div class="el-overflow-notice" data-type="%s" style="display:none">
-        <a data-type="more" href="javascript:void(0)">LOAD MORE</a>
-        |
-        <a data-type="all" href="javascript:void(0)">LOAD ALL</a>
-        ( <span class="el-%s-counter">...</span> )
-    </div>
-</div>`;
-
-const ERROR_NOTICE = `
-<div id="el-%s-error">
-    <h2>Error getting %s!</h2>
-    <div class="el-error-notice">Refresh page to try again.</div>
-</div>`;
+const SECTION_NOTICE = `
+<div class="el-found-notice" data-type="%TYPE%" style="display:none">
+    <h1>You've got %PLURAL%!</h1>
+    <div id="el-%TYPE%-table"></div>
+</div>
+<div class="el-missing-notice" style="display:none">
+    <h2>No %PLURAL% found!</h2>
+</div>
+<div class="el-overflow-notice" data-type="%TYPE%" style="display:none">
+    <b>%PLURAL%:</b>
+    <a data-type="more" href="javascript:void(0)">LOAD MORE</a>
+    |
+    <a data-type="all" href="javascript:void(0)">LOAD ALL</a>
+    ( <span class="el-%TYPE%-counter">...</span> )
+</div>
+<div class="el-error-notice" style="display:none">
+    <h2>Error getting %PLURAL%!</h2>
+    <div class="el-error-message">Refresh page to try again.</div>
+</div>
+<div class="el-horizontal-rule"></div>`;
 
 const ABSENT_NOTICE = `
 <p>You have been gone for <b><span id="el-days-absent"></span></b> days.
@@ -1907,6 +1914,7 @@ function LockEventNotice(event) {
 function ReadEventNotice(event) {
     $(event.target).addClass('el-read');
     MarkAllAsRead();
+    $('#el-event-notice .el-overflow-notice').hide();
     $('#el-reload-event-notice').off(PROGRAM_CLICK);
 }
 
@@ -1978,7 +1986,11 @@ function LoadMore(event) {
         } else {
             JSPLib.utility.notice("No events found, nothing more to query!");
             $notice.hide();
+            if (EL.renderedlist[type].length === 0) {
+                $notice.siblings('.el-missing-notice').show();
+            }
         }
+        $('#el-event-controls').show();
         FinalizeEventNotice();
     });
 }
@@ -2237,36 +2249,41 @@ async function CheckOtherType(type) {
 async function LoadHTMLType(type,idlist, isoverflow = false) {
     let section_selector = '#el-' + JSPLib.utility.kebabCase(type) + '-section';
     let $section = $(section_selector);
-    let type_addon = TYPEDICT[type].addons || {};
+    if ($section.children().length === 0) {
+        $section.prepend(JSPLib.utility.regexReplace(SECTION_NOTICE, {
+            TYPE: type,
+            PLURAL: JSPLib.utility.titleizeString(TYPEDICT[type].plural),
+        }));
+    }
+    $('#el-event-notice').show();
+    if (isoverflow) {
+        $section.find('.el-overflow-notice').show();
+    } else {
+        $section.find('.el-overflow-notice').hide();
+    }
     EL.renderedlist[type] = EL.renderedlist[type] || [];
     let displaylist = JSPLib.utility.arrayDifference(idlist, EL.renderedlist[type]);
     if (displaylist.length === 0) {
         return;
     }
     EL.renderedlist[type] = JSPLib.utility.concat(EL.renderedlist[type], displaylist);
+    JSPLib.storage.setStorageData('el-rendered-list', EL.renderedlist, localStorage);
+    let type_addon = TYPEDICT[type].addons || {};
     for (let i = 0; i < displaylist.length; i += QUERY_LIMIT) {
         let querylist = displaylist.slice(i, i + QUERY_LIMIT);
         let url_addons = JSPLib.utility.joinArgs(type_addon, {search: {id: querylist.join(','), order: 'custom'}, type: 'previous', limit: querylist.length});
         let typehtml = await JSPLib.network.getNotify(`/${TYPEDICT[type].controller}`, url_addons);
         if (typehtml) {
-            if ($(`#el-${type}-regular`).length === 0) {
-                $section.prepend(JSPLib.utility.sprintf(REGULAR_NOTICE, type, TYPEDICT[type].plural, type, type, type));
-            }
             let $typepage = $.parseHTML(typehtml);
             TYPEDICT[type].insert($typepage, type);
-        } else if ($(`#el-${type}-error`).length === 0) {
-            $section.append(JSPLib.utility.sprintf(ERROR_NOTICE, type, TYPEDICT[type].plural));
+            $section.find('.el-found-notice').show();
+        } else {
+            $section.find('.el-error-notice').show();
         }
-    }
-    if (isoverflow) {
-        $section.find('.el-overflow-notice').show();
-    } else {
-        $section.find('.el-overflow-notice').hide();
     }
     if (TYPEDICT[type].process) {
         TYPEDICT[type].process();
     }
-    $('#el-event-notice').show();
 }
 
 function FinalizeEventNotice(initial=false) {
@@ -2294,6 +2311,10 @@ async function CheckAllEvents(promise_array) {
     ProcessThumbnails();
     if (hasevents) {
         FinalizeEventNotice(true);
+    } else if (EL.item_overflow) {
+        //Don't save the notice when only overflow notice, since that prevents further network gets
+        $("#el-event-controls").show();
+        $("#el-loading-message").hide();
     }
     JSPLib.storage.setStorageData('el-overflow', EL.item_overflow, localStorage);
     if (!EL.user_settings.autoclose_dmail_notice) {
@@ -2338,6 +2359,7 @@ function MarkAllAsRead() {
         }
         SaveLastID(match[2], savedlastid, match[1]);
     });
+    JSPLib.storage.removeStorageData('el-rendered-list', localStorage);
     JSPLib.storage.removeStorageData('el-saved-notice', localStorage);
     if (!EL.user_settings.autoclose_dmail_notice) {
         EL.dmail_notice.show();
@@ -2495,7 +2517,6 @@ function Main() {
         dmail_notice: $('#dmail-notice').hide(),
         subscribeset: {},
         openlist: {},
-        renderedlist: {},
         marked_topic: [],
         item_overflow: false,
         no_limit: false,
@@ -2529,6 +2550,7 @@ function Main() {
         timeout_expires: GetRecheckExpires(),
         locked_notice: EL.user_settings.autolock_notices,
         post_filter_tags: GetPostFilterTags(),
+        renderedlist: JSPLib.storage.getStorageData('el-rendered-list', localStorage, {}), //Add a validation check to this
     });
     EventStatusCheck();
     if (!document.hidden && localStorage['el-saved-notice'] !== undefined && !JSPLib.concurrency.checkTimeout('el-saved-timeout', EL.timeout_expires)) {
