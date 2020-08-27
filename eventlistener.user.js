@@ -1141,19 +1141,25 @@ function IsShownBan(val) {
 }
 
 function PostCustomQuery(query) {
-    let parameters = {}
+    let parameters = {search: {}}
     let taglist = query.trim().split(/\s+/);
-    let tagadds = taglist.filter(tag => !tag.startsWith('-'));
+    let tagchanges = taglist.filter(tag => !tag.match(/^[+~-]/));
+    if (tagchanges.length) {
+        parameters.search.all_changed_tags = tagchanges.join(' ');
+    }
+    let tagadds = taglist.filter(tag => tag.startsWith('+')).map(tag => tag.slice(1));
     if (tagadds.length) {
-        parameters.search = {};
         parameters.search.added_tags_include_any = tagadds.join(' ');
     }
-    let tagremoves = taglist.filter(tag => tag.startsWith('-'));
+    let tagremoves = taglist.filter(tag => tag.startsWith('-')).map(tag => tag.slice(1));
     if (tagremoves.length) {
-        parameters.search = parameters.search || {};
         parameters.search.removed_tags_include_any = tagremoves.join(' ');
     }
-    return parameters;
+    let tagoptional = taglist.filter(tag => tag.startsWith('~')).map(tag => tag.slice(1));
+    if (tagoptional.length) {
+        parameters.search.any_changed_tags = tagoptional.join(' ');
+    }
+    return (Object.keys(parameters.search).length > 0 ? parameters : {});
 }
 
 function InsertPostPreview($container, post_id, query_string) {
