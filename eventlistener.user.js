@@ -54,6 +54,8 @@ const TIMER = {};
 //Event types
 const POST_QUERY_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'flag', 'appeal'];
 const SUBSCRIBE_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'flag', 'appeal', 'forum', 'wiki', 'pool'];
+const USER_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'appeal', 'forum', 'wiki', 'pool'];
+const ALL_SUBSCRIBES = JSPLib.utility.arrayUnion(SUBSCRIBE_EVENTS, USER_EVENTS);
 const OTHER_EVENTS = ['dmail', 'ban', 'feedback', 'mod_action'];
 const ALL_EVENTS = JSPLib.utility.arrayUnique(JSPLib.utility.multiConcat(POST_QUERY_EVENTS, SUBSCRIBE_EVENTS, OTHER_EVENTS));
 
@@ -78,6 +80,7 @@ const LOCALSTORAGE_KEYS = JSPLib.utility.multiConcat(LASTID_KEYS, SAVED_KEYS, SU
 //Available setting values
 const POST_QUERY_ENABLE_EVENTS = ['flag', 'appeal'];
 const SUBSCRIBE_ENABLE_EVENTS = ['comment', 'note', 'commentary', 'forum'];
+const USER_ENABLE_EVENTS = [];
 const OTHER_ENABLE_EVENTS = ['dmail'];
 const AUTOSUBSCRIBE_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'flag', 'appeal'];
 const MODACTION_EVENTS = [
@@ -157,6 +160,12 @@ const SETTINGS_CONFIG = {
         allitems: SUBSCRIBE_EVENTS,
         default: SUBSCRIBE_ENABLE_EVENTS,
         validate: (data)=>(JSPLib.menu.validateCheckboxRadio(data, 'checkbox', SUBSCRIBE_EVENTS)),
+        hint: "Select to enable event type."
+    },
+    user_events_enabled: {
+        allitems: USER_EVENTS,
+        default: USER_ENABLE_EVENTS,
+        validate: (data)=>(JSPLib.menu.validateCheckboxRadio(data, 'checkbox', USER_EVENTS)),
         hint: "Select to enable event type."
     },
     other_events_enabled: {
@@ -617,6 +626,12 @@ const EL_MENU = `
                 </div>
             </div>
         </div>
+        <div id="el-user-event-settings" class="jsplib-settings-grouping">
+            <div id="el-user-event-message" class="prose">
+                <h4>User event settings</h4>
+                <p>These events will not be checked unless there are one or more subscribed items.</p>
+            </div>
+        </div>
         <div id="el-other-event-settings" class="jsplib-settings-grouping">
             <div id="el-other-event-message" class="prose">
                 <h4>Other event settings</h4>
@@ -802,6 +817,7 @@ const TYPEDICT = {
         insert: InsertForums,
         process: ()=>{JSPLib.utility.setCSSStyle(FORUM_CSS, 'forum');},
         plural: 'forums',
+        display: "Forums",
         includes: 'topic[creator_id]',
         useritem: false,
         open: ()=>{OpenItemClick('forum', AddForumPost);},
@@ -883,6 +899,7 @@ const TYPEDICT = {
         insert: InsertWikis,
         process: ()=>{JSPLib.utility.setCSSStyle(WIKI_CSS, 'wiki');},
         plural: 'wikis',
+        display: "Wikis",
         useritem: false,
         open: ()=>{OpenItemClick('wiki', AddWiki);},
         subscribe: InitializeWikiIndexLinks,
@@ -897,6 +914,7 @@ const TYPEDICT = {
         insert: InsertPools,
         process: ()=>{JSPLib.utility.setCSSStyle(POOL_CSS, 'pool');},
         plural: 'pools',
+        display: "Pools",
         useritem: false,
         open: ()=>{
             OpenItemClick('pooldiff', AddPoolDiff);
@@ -1118,21 +1136,55 @@ function SetList(type,remove_item,itemid) {
     EL.subscribeset[type] = typeset;
 }
 
+function GetUserList(type) {
+    if (EL.userset[type]) {
+        return EL.userset[type];
+    }
+    EL.userset[type] = JSPLib.storage.getStorageData(`el-us-${type}list`, localStorage, []);
+    if (CorrectList(type, EL.userset)) {
+        setTimeout(()=>{
+            JSPLib.storage.setStorageData(`el-us-${type}list`, EL.userset, localStorage);
+        }, NONSYNCHRONOUS_DELAY);
+    }
+    EL.userset[type] = new Set(EL.userset[type]);
+    return EL.userset[type];
+}
+
+function SetUserList(type,remove_item,userid) {
+    let typeset = GetUserList(type);
+    if (remove_item) {
+        typeset.delete(userid);
+    } else {
+        typeset.add(userid);
+    }
+    JSPLib.storage.setStorageData(`el-us-${type}list`, [...typeset], localStorage);
+    EL.channel.postMessage({type: 'subscribe_user', eventtype: type, was_subscribed: remove_item, userid: userid, eventset: typeset});
+    EL.userset[type] = typeset;
+}
+
 //Quicker way to check list existence; avoids unnecessarily parsing very long lists
 function CheckList(type) {
     let typelist = localStorage.getItem(`el-${type}list`);
     return typelist && typelist !== '[]';
 }
 
-//Auxiliary functions
-
-function FilterData(array,subscribe_set) {
-    return array.filter(val => IsShownData.call(this,val,subscribe_set));
+function CheckUserList(type) {
+    let typelist = localStorage.getItem(`el-us-${type}list`);
+    return typelist && typelist !== '[]';
 }
 
-function IsShownData(val,subscribe_set) {
+//Auxiliary functions
+
+function FilterData(array,subscribe_set,user_set) {
+    return array.filter(val => IsShownData.call(this,val,subscribe_set,user_set));
+}
+
+function IsShownData(val,subscribe_set,user_set) {
     if (EL.user_settings.filter_user_events && this.user && val[this.user] === EL.userid) {
         return false;
+    }
+    if (user_set && this.user && user_set.has(val[this.user])) {
+        return true;
     }
     if (subscribe_set && this.item) {
         let is_creator_event = EL.user_settings.show_creator_events && this.creator && JSPLib.utility.getNestedAttribute(val, this.creator) === EL.userid;
@@ -1235,7 +1287,7 @@ function CalculateOverflow(recalculate=false) {
     if (EL.any_overflow === undefined || recalculate) {
         EL.all_overflows = {};
         EL.any_overflow = false;
-        let enabled_events = JSPLib.utility.arrayIntersection(SUBSCRIBE_EVENTS, EL.user_settings.subscribe_events_enabled);
+        let enabled_events = JSPLib.utility.arrayIntersection(ALL_SUBSCRIBES, EL.all_subscribe_events);
         enabled_events.forEach((type)=>{
             EL.all_overflows[type] = (EL.all_overflows[type] === undefined ? JSPLib.storage.checkStorageData(`el-${type}overflow`, ValidateProgramData, localStorage, false): EL.all_overflows[type]);
             EL.any_overflow = EL.any_overflow || EL.all_overflows[type];
@@ -1244,29 +1296,31 @@ function CalculateOverflow(recalculate=false) {
 }
 
 function CheckOverflow(inputtype) {
-    if (!SUBSCRIBE_EVENTS.includes(inputtype)) {
+    if (!ALL_SUBSCRIBES.includes(inputtype)) {
         return false;
     }
     return EL.all_overflows[inputtype];
 }
 
 function ProcessEvent(inputtype, optype) {
-    if (!JSPLib.menu.isSettingEnabled(optype, inputtype)) {
+    if ((optype !== 'all_subscribe_events' && !JSPLib.menu.isSettingEnabled(optype, inputtype)) || (optype === 'all_subscribe_events' && !EL.all_subscribe_events.includes(inputtype))) {
+        ProcessEvent.debuglog("Hard disable:", inputtype, optype);
         return false;
     }
-    if (optype === 'subscribe_events_enabled' && !EL.user_settings.show_creator_events && !CheckList(inputtype)) {
+    if (optype === 'all_subscribe_events' && !EL.user_settings.show_creator_events && !CheckList(inputtype) && !CheckUserList(inputtype)) {
+        ProcessEvent.debuglog("Soft disable:", inputtype, optype);
         return false;
     }
     JSPLib.debug.debugExecute(()=>{
         ProcessEvent.debuglog(inputtype, optype, CheckOverflow(inputtype), !EL.any_overflow);
     });
-    if ((optype === 'subscribe_events_enabled') && CheckOverflow(inputtype)) {
+    if ((optype === 'all_subscribe_events') && CheckOverflow(inputtype)) {
         return TIMER.CheckSubscribeType(inputtype);
     } else if (!EL.any_overflow) {
         switch(optype) {
             case 'post_query_events_enabled':
                 return TIMER.CheckPostQueryType(inputtype);
-            case 'subscribe_events_enabled':
+            case 'all_subscribe_events':
                 return TIMER.CheckSubscribeType(inputtype);
             case 'other_events_enabled':
                 return TIMER.CheckOtherType(inputtype);
@@ -1426,6 +1480,30 @@ function ToggleSubscribeLinks() {
             $('#el-subscribe-events').show();
             let enabled_post_events = JSPLib.utility.arrayIntersection(ALL_POST_EVENTS, EL.user_settings.subscribe_events_enabled);
             $('#el-all-link').attr('data-type', enabled_post_events);
+        } else {
+            $('#el-subscribe-events').hide();
+        }
+    }
+}
+
+function ToggleUserLinks() {
+    USER_EVENTS.forEach((type)=>{
+        if (IsEventEnabled(type, 'user_events_enabled')) {
+            $(`.el-user-${type}-container`).removeClass('el-event-hidden');
+        } else {
+            $(`.el-user-${type}-container`).addClass('el-event-hidden');
+        }
+    });
+    if (EL.controller === 'users' && EL.action === 'show') {
+        if (AreAllEventsEnabled(ALL_TRANSLATE_EVENTS, 'user_events_enabled')) {
+            $('.el-user-translated-container').removeClass('el-event-hidden');
+        } else {
+            $('.el-user-translated-container').addClass('el-event-hidden');
+        }
+        if (IsAnyEventEnabled(USER_EVENTS, 'user_events_enabled')) {
+            $('#el-subscribe-events').show();
+            let enabled_user_events = JSPLib.utility.arrayIntersection(USER_EVENTS, EL.user_settings.user_events_enabled);
+            $('#el-all-link').attr('data-type', enabled_user_events);
         } else {
             $('#el-subscribe-events').hide();
         }
@@ -1643,10 +1721,10 @@ function AdjustRowspan(rowelement,openitem) {
 
 //Render functions
 
-function RenderMultilinkMenu(itemid,all_types) {
-    let shown = (all_types.length === 0 || IsAnyEventEnabled(all_types, 'subscribe_events_enabled') ? "" : 'style="display:none"');
+function RenderMultilinkMenu(itemid,all_types,event_type) {
+    let shown = (all_types.length === 0 || IsAnyEventEnabled(all_types, event_type) ? "" : 'style="display:none"');
     return `
-<menu id="el-subscribe-events" data-id="${itemid}" ${shown}>
+<menu id="el-subscribe-events" data-id="${itemid}" data-type="${event_type}" ${shown}>
     Subscribe (<span id="el-add-links"></span>)
 </menu>`;
 }
@@ -1663,8 +1741,15 @@ function RenderSubscribeDualLinks(type,itemid,tag,separator,ender,right=false) {
 </${tag}>`;
 }
 
-function RenderSubscribeMultiLinks(name,typelist,itemid) {
-    let is_subscribed = typelist.every((type) => (GetList(type).has(itemid)));
+function RenderSubscribeMultiLinks(name,typelist,itemid,event_type) {
+    var subscribe_func;
+    if (event_type === 'subscribe_events_enabled') {
+        subscribe_func = GetList;
+    } else if (event_type === 'user_events_enabled') {
+        subscribe_func = GetUserList;
+    }
+    subscribe_func = subscribe_func || (event_type === 'user_events_enabled' ? GetList : null);
+    let is_subscribed = typelist.every((type) => (subscribe_func(type).has(itemid)));
     let classname = (is_subscribed ? 'el-subscribed' : 'el-unsubscribed');
     let keyname = JSPLib.utility.kebabCase(name);
     let idname = 'el-' + keyname + '-link';
@@ -1788,21 +1873,41 @@ function AdjustColumnWidths(table) {
     });
 }
 
+//#C-USERS #A-SHOW
+
+function InitializeUserShowMenu() {
+    let userid = $(document.body).data('user-id');
+    let $menu_obj = $.parseHTML(RenderMultilinkMenu(userid, USER_EVENTS, 'user_events_enabled'));
+    USER_EVENTS.forEach((type)=>{
+        let linkhtml = RenderSubscribeMultiLinks(TYPEDICT[type].display, [type], userid, 'user_events_enabled');
+        let shownclass = (IsEventEnabled(type, 'user_events_enabled') ? "" : 'el-event-hidden');
+        $('#el-add-links', $menu_obj).append(`<span class="el-user-${type}-container ${shownclass}">${linkhtml} | </span>`);
+    });
+    let shownclass = (AreAllEventsEnabled(ALL_TRANSLATE_EVENTS, 'user_events_enabled') ? "" : ' el-event-hidden');
+    let linkhtml = RenderSubscribeMultiLinks("Translations", ALL_TRANSLATE_EVENTS, userid, 'user_events_enabled');
+    $('#el-add-links', $menu_obj).append(`<span class="el-user-translated-container ${shownclass}">${linkhtml} | </span>`);
+    //The All link is always shown when the outer menu is shown, so no need to individually hide it
+    let enabled_user_events = JSPLib.utility.arrayIntersection(USER_EVENTS, EL.user_settings.user_events_enabled);
+    linkhtml = RenderSubscribeMultiLinks("All", enabled_user_events, userid, 'user_events_enabled');
+    $('#el-add-links', $menu_obj).append(`<span class="el-user-all-container">${linkhtml}</span>`);
+    $('#nav').append($menu_obj);
+}
+
 //#C-POSTS #A-SHOW
 function InitializePostShowMenu() {
     let postid = $('.image-container').data('id');
-    let $menu_obj = $.parseHTML(RenderMultilinkMenu(postid, ALL_POST_EVENTS));
+    let $menu_obj = $.parseHTML(RenderMultilinkMenu(postid, ALL_POST_EVENTS, 'subscribe_events_enabled'));
     ALL_POST_EVENTS.forEach((type)=>{
-        let linkhtml = RenderSubscribeMultiLinks(TYPEDICT[type].display, [type], postid);
+        let linkhtml = RenderSubscribeMultiLinks(TYPEDICT[type].display, [type], postid, 'subscribe_events_enabled');
         let shownclass = (IsEventEnabled(type, 'subscribe_events_enabled') ? "" : 'el-event-hidden');
         $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-${type}-container ${shownclass}">${linkhtml} | </span>`);
     });
     let shownclass = (AreAllEventsEnabled(ALL_TRANSLATE_EVENTS, 'subscribe_events_enabled') ? "" : ' el-event-hidden');
-    let linkhtml = RenderSubscribeMultiLinks("Translations", ALL_TRANSLATE_EVENTS, postid);
+    let linkhtml = RenderSubscribeMultiLinks("Translations", ALL_TRANSLATE_EVENTS, postid, 'subscribe_events_enabled');
     $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-translated-container ${shownclass}">${linkhtml} | </span>`);
     //The All link is always shown when the outer menu is shown, so no need to individually hide it
     let enabled_post_events = JSPLib.utility.arrayIntersection(ALL_POST_EVENTS, EL.user_settings.subscribe_events_enabled);
-    linkhtml = RenderSubscribeMultiLinks("All", enabled_post_events, postid);
+    linkhtml = RenderSubscribeMultiLinks("All", enabled_post_events, postid, 'subscribe_events_enabled');
     $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-all-container">${linkhtml}</span>`);
     $('#nav').append($menu_obj);
 }
@@ -1810,8 +1915,8 @@ function InitializePostShowMenu() {
 //#C-FORUM-TOPICS #A-SHOW
 function InitializeTopicShowMenu() {
     let topicid = $('body').data('forum-topic-id');
-    let $menu_obj = $.parseHTML(RenderMultilinkMenu(topicid, ['forum']));
-    let linkhtml = RenderSubscribeMultiLinks("Topic", ['forum'], topicid, "");
+    let $menu_obj = $.parseHTML(RenderMultilinkMenu(topicid, ['forum'], 'subscribe_events_enabled'));
+    let linkhtml = RenderSubscribeMultiLinks("Topic", ['forum'], topicid, 'subscribe_events_enabled');
     let shownclass = (IsEventEnabled('forum', 'subscribe_events_enabled') ? "" : 'el-event-hidden');
     $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-forum-container ${shownclass}">${linkhtml}</span>`);
     $('#nav').append($menu_obj);
@@ -1840,8 +1945,8 @@ function InitializeTopicIndexLinks(container,render=true) {
 function InitializeWikiShowMenu() {
     let data_selector = (EL.controller === 'wiki-pages' ? 'wiki-page-id' : 'wiki-page-version-wiki-page-id');
     let wikiid = $('body').data(data_selector);
-    let $menu_obj = $.parseHTML(RenderMultilinkMenu(wikiid, ['wiki']));
-    let linkhtml = RenderSubscribeMultiLinks("Wiki", ['wiki'], wikiid, "");
+    let $menu_obj = $.parseHTML(RenderMultilinkMenu(wikiid, ['wiki'], 'subscribe_events_enabled'));
+    let linkhtml = RenderSubscribeMultiLinks("Wiki", ['wiki'], wikiid, 'subscribe_events_enabled');
     let shownclass = (IsEventEnabled('wiki', 'subscribe_events_enabled') ? "" : 'el-event-hidden');
     $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-wiki-container ${shownclass}">${linkhtml}</span>`);
     $('#nav').append($menu_obj);
@@ -1868,8 +1973,8 @@ function InitializeWikiIndexLinks(container,render=true) {
 //#C-POOLS #A-SHOW
 function InitializePoolShowMenu() {
     let poolid = $('body').data('pool-id');
-    let $menu_obj = $.parseHTML(RenderMultilinkMenu(poolid, ['pool']));
-    let linkhtml = RenderSubscribeMultiLinks("Pool", ['pool'], poolid, "");
+    let $menu_obj = $.parseHTML(RenderMultilinkMenu(poolid, ['pool'], 'subscribe_events_enabled'));
+    let linkhtml = RenderSubscribeMultiLinks("Pool", ['pool'], poolid, 'subscribe_events_enabled');
     let shownclass = (IsEventEnabled('pool', 'subscribe_events_enabled') ? "" : 'el-event-hidden');
     $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-pool-container ${shownclass}">${linkhtml}</span>`);
     $('#nav').append($menu_obj);
@@ -2048,11 +2153,16 @@ function SubscribeMultiLink(event) {
     let $menu = $(JSPLib.utility.getNthParent(event.target, 4));
     let $container = $(event.target.parentElement);
     let itemid = $menu.data('id');
+    let eventtype = $menu.data('type');
     let typelist = $container.data('type').split(',');
     let subscribed = ($container.hasClass('el-subscribed') ? true : false);
     typelist.forEach((type)=>{
         setTimeout(()=>{
-            TIMER.SetList(type, subscribed, itemid);
+            if (eventtype === 'subscribe_events_enabled') {
+                TIMER.SetList(type, subscribed, itemid);
+            } else if (eventtype === 'user_events_enabled') {
+                TIMER.SetUserList(type, subscribed, itemid);
+            }
         }, NONSYNCHRONOUS_DELAY);
         UpdateDualLink(type, subscribed, itemid);
     });
@@ -2209,7 +2319,8 @@ async function CheckSubscribeType(type,domname=null) {
     let savedlastid = JSPLib.storage.getStorageData(savedlastidkey, localStorage);
     let typelastid = savedlastid || JSPLib.storage.checkStorageData(lastidkey, ValidateProgramData, localStorage, 0);
     if (typelastid) {
-        let typeset = GetList(type);
+        let subscribe_set = GetList(type);
+        let user_set = GetUserList(type);
         let savedlistkey = `el-saved${type}list`;
         let overflowkey = `el-${type}overflow`;
         let isoverflow = false;
@@ -2234,7 +2345,7 @@ async function CheckSubscribeType(type,domname=null) {
             JSPLib.storage.setStorageData(overflowkey, false, localStorage);
             EL.all_overflows[type] = false;
         }
-        let filtertype = TYPEDICT[type].filter(jsontype, typeset);
+        let filtertype = TYPEDICT[type].filter(jsontype, subscribe_set, user_set);
         let lastusertype = (jsontype.length ? JSPLib.danbooru.getNextPageID(jsontype, true) : typelastid);
         if (filtertype.length || savedlastid) {
             let idlist = JSPLib.utility.getObjectAttributes(filtertype, 'id');
@@ -2377,7 +2488,7 @@ function ProcessAllEvents(func) {
         promise_array.push(ProcessEvent(inputtype, 'post_query_events_enabled'));
     });
     SUBSCRIBE_EVENTS.forEach((inputtype)=>{
-        promise_array.push(ProcessEvent(inputtype, 'subscribe_events_enabled'));
+        promise_array.push(ProcessEvent(inputtype, 'all_subscribe_events'));
     });
     OTHER_EVENTS.forEach((inputtype)=>{
         promise_array.push(ProcessEvent(inputtype, 'other_events_enabled'));
@@ -2421,9 +2532,9 @@ function EventStatusCheck() {
         JSPLib.storage.removeStorageData(`el-pq-${type}lastid`, localStorage);
         JSPLib.storage.removeStorageData(`el-pq-saved${type}lastid`, localStorage);
     });
-    disabled_events = JSPLib.utility.arrayDifference(SUBSCRIBE_EVENTS, EL.user_settings.subscribe_events_enabled);
+    disabled_events = JSPLib.utility.arrayDifference(ALL_SUBSCRIBES, EL.all_subscribe_events);
     EL.user_settings.subscribe_events_enabled.forEach((inputtype)=>{
-        if (!EL.user_settings.show_creator_events && !CheckList(inputtype)) {
+        if (!EL.user_settings.show_creator_events && !CheckList(inputtype) && !CheckUserList(inputtype)) {
             disabled_events.push(inputtype);
         }
     });
@@ -2457,6 +2568,10 @@ function BroadcastEL(ev) {
             UpdateMultiLink([ev.data.eventtype], ev.data.was_subscribed, ev.data.itemid);
             UpdateDualLink(ev.data.eventtype, ev.data.was_subscribed, ev.data.itemid);
             break;
+        case 'subscribe_user':
+            EL.userset[ev.data.eventtype] = ev.data.eventset;
+            UpdateMultiLink([ev.data.eventtype], ev.data.was_subscribed, ev.data.userid);
+            break;
         case 'reload':
             EL.subscribeset[ev.data.eventtype] = ev.data.eventset;
             menuid = $('#el-subscribe-events').data('id');
@@ -2487,8 +2602,19 @@ function InitializeChangedSettings() {
     }
 }
 
+function InitializeAllSubscribes() {
+    EL.all_subscribe_events = JSPLib.utility.arrayUnion(EL.user_settings.subscribe_events_enabled, EL.user_settings.user_events_enabled);
+}
+
+function LocalResetCallback() {
+    InitializeChangedSettings();
+    InitializeAllSubscribes();
+}
+
 function RemoteSettingsCallback() {
+    InitializeAllSubscribes();
     ToggleSubscribeLinks();
+    ToggleUserLinks();
 }
 
 function RemoteResetCallback() {
@@ -2526,6 +2652,7 @@ function RenderSettingsMenu() {
     $('#el-subscribe-event-settings').append(JSPLib.menu.renderInputSelectors('subscribe_events_enabled', 'checkbox'));
     $('#el-subscribe-event-settings').append(JSPLib.menu.renderInputSelectors('autosubscribe_enabled', 'checkbox'));
     $('#el-subscribe-event-settings').append(JSPLib.menu.renderCheckbox('show_creator_events'));
+    $('#el-user-event-settings').append(JSPLib.menu.renderInputSelectors('user_events_enabled', 'checkbox'));
     $('#el-other-event-settings').append(JSPLib.menu.renderInputSelectors('other_events_enabled', 'checkbox'));
     $('#el-other-event-settings').append(JSPLib.menu.renderInputSelectors('subscribed_mod_actions', 'checkbox'));
     $('#el-network-settings').append(JSPLib.menu.renderTextinput('recheck_interval', 10));
@@ -2540,7 +2667,7 @@ function RenderSettingsMenu() {
     $('#el-cache-editor-controls').append(JSPLib.menu.renderTextinput('data_name', 20, true));
     JSPLib.menu.engageUI(true);
     JSPLib.menu.saveUserSettingsClick();
-    JSPLib.menu.resetUserSettingsClick(LOCALSTORAGE_KEYS, InitializeChangedSettings);
+    JSPLib.menu.resetUserSettingsClick(LOCALSTORAGE_KEYS, LocalResetCallback);
     $('#el-search-query-get').on(PROGRAM_CLICK, PostEventPopulateControl);
     JSPLib.menu.cacheInfoClick();
     JSPLib.menu.rawDataChange();
@@ -2563,6 +2690,7 @@ function Main() {
         userid: Danbooru.CurrentUser.data('id'),
         dmail_notice: $('#dmail-notice').hide(),
         subscribeset: {},
+        userset: {},
         openlist: {},
         marked_topic: [],
         item_overflow: false,
@@ -2586,6 +2714,7 @@ function Main() {
     });
     //Only used on new installs
     InitializeChangedSettings();
+    InitializeAllSubscribes();
     if (JSPLib.danbooru.isSettingMenu()) {
         JSPLib.menu.initializeSettingsMenu(RenderSettingsMenu, MENU_CSS);
     }
@@ -2689,6 +2818,10 @@ function Main() {
         } else if (EL.action === 'gallery') {
             InitializePoolGalleryLinks();
         }
+    } else if (EL.controller === 'users') {
+        if (EL.action === 'show') {
+            InitializeUserShowMenu();
+        }
     }
     if (EL.user_settings.autoclose_dmail_notice && EL.events_checked) {
         HideDmailNotice();
@@ -2701,6 +2834,7 @@ function Main() {
 JSPLib.debug.addFunctionTimers(TIMER, false, [
     RenderSettingsMenu,
     [SetList, 0],
+    [SetUserList, 0],
 ]);
 
 JSPLib.debug.addFunctionTimers(TIMER, true, [
