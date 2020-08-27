@@ -736,8 +736,11 @@ const TYPEDICT = {
     flag: {
         controller: 'post_flags',
         addons: {search: {category: 'normal'}},
+        user: 'creator_id',
+        creator: ['post', 'uploader_id'],
+        item: 'post_id',
         only: 'id,creator_id,post_id',
-        filter: (array) => (array.filter((val) => (IsShownData(val, 'creator_id', ['post', 'uploader_id'])))),
+        filter: FilterData,
         insert: InsertEvents,
         plural: 'flags',
         display: "Flags",
@@ -747,8 +750,11 @@ const TYPEDICT = {
     },
     appeal: {
         controller: 'post_appeals',
+        user: 'creator_id',
+        creator: ['post', 'uploader_id'],
+        item: 'post_id',
         only: 'id,creator_id,post_id',
-        filter: (array) => (array.filter((val) => (IsShownData(val, 'creator_id', ['post', 'uploader_id'])))),
+        filter: FilterData,
         insert: InsertEvents,
         plural: 'appeals',
         display: "Appeals",
@@ -760,7 +766,9 @@ const TYPEDICT = {
         controller: 'dmails',
         addons: {search: {is_deleted: false}},
         only: 'id,from_id',
-        filter: (array) => (array.filter((val) => (IsShownData(val, 'from_id', null, null, null, (val)=>{return !val.is_read})))),
+        user: 'from_id',
+        filter: FilterData,
+        other_filter: (val)=>(!val.is_read),
         insert: InsertDmails,
         plural: 'mail',
         useritem: true,
@@ -769,9 +777,12 @@ const TYPEDICT = {
     comment: {
         controller: 'comments',
         addons: {group_by: 'comment', search: {is_deleted: false}},
+        user: 'creator_id',
+        creator: ['post', 'uploader_id'],
+        item: 'post_id',
         only: 'id,creator_id,post_id',
         limit: 10,
-        filter: (array,typeset) => (array.filter((val) => (IsShownData(val, 'creator_id', ['post', 'uploader_id'], 'post_id', typeset)))),
+        filter: FilterData,
         insert: InsertComments,
         process: ()=>{JSPLib.utility.setCSSStyle(COMMENT_CSS, 'comment');},
         plural: 'comments',
@@ -782,9 +793,12 @@ const TYPEDICT = {
     },
     forum: {
         controller: 'forum_posts',
+        user: 'creator_id',
+        creator: ['topic', 'creator_id'],
+        item: 'topic_id',
         only: 'id,creator_id,topic_id',
         limit: 10,
-        filter: (array,typeset) => (array.filter((val) => (IsShownData(val, 'creator_id', ['topic', 'creator_id'], 'topic_id', typeset)))),
+        filter: FilterData,
         insert: InsertForums,
         process: ()=>{JSPLib.utility.setCSSStyle(FORUM_CSS, 'forum');},
         plural: 'forums',
@@ -795,9 +809,12 @@ const TYPEDICT = {
     },
     note: {
         controller: 'note_versions',
+        user: 'updater_id',
+        creator: ['post', 'uploader_id'],
+        item: 'post_id',
         only: 'id,updater_id,post_id',
         limit: 10,
-        filter: (array,typeset) => (array.filter((val) => (IsShownData(val, 'updater_id', ['post', 'uploader_id'], 'post_id', typeset)))),
+        filter: FilterData,
         insert: InsertNotes,
         plural: 'notes',
         display: "Notes",
@@ -808,9 +825,13 @@ const TYPEDICT = {
     },
     commentary: {
         controller: 'artist_commentary_versions',
+        user: 'updater_id',
+        creator: ['post', 'uploader_id'],
+        item: 'post_id',
         only: 'id,updater_id,post_id,translated_title,translated_description',
         limit: 10,
-        filter: (array,typeset) => (array.filter((val) => (IsShownData(val, 'updater_id', ['post', 'uploader_id'], 'post_id', typeset, IsShownCommentary)))),
+        filter: FilterData,
+        other_filter: IsShownCommentary,
         insert: InsertEvents,
         plural: 'commentaries',
         display: "Artist commentary",
@@ -821,9 +842,13 @@ const TYPEDICT = {
     post: {
         controller: 'post_versions',
         addons: {search: {is_new: false}},
+        user: 'updater_id',
+        creator: ['post', 'uploader_id'],
+        item: 'post_id',
         only: 'id,updater_id,post_id,added_tags,removed_tags',
         limit: 2,
-        filter: (array,typeset) => (array.filter((val) => (IsShownData(val, 'updater_id', ['post', 'uploader_id'], 'post_id', typeset, IsShownPostEdit)))),
+        filter: FilterData,
+        other_filter: IsShownPostEdit,
         insert: InsertPosts,
         process: ()=>{JSPLib.utility.setCSSStyle(POST_CSS, 'post');},
         plural: 'edits',
@@ -835,9 +860,12 @@ const TYPEDICT = {
     },
     approval: {
         controller: 'post_approvals',
+        user: 'user_id',
+        creator: ['post', 'uploader_id'],
+        item: 'post_id',
         only: 'id,user_id,post_id',
         limit: 10,
-        filter: (array,typeset) => (array.filter((val) => (IsShownData(val, 'user_id', ['post', 'uploader_id'], 'post_id', typeset)))),
+        filter: FilterData,
         insert: InsertEvents,
         plural: 'approvals',
         display: "Approval",
@@ -847,9 +875,11 @@ const TYPEDICT = {
     },
     wiki: {
         controller: 'wiki_page_versions',
+        user: 'updater_id',
+        item: 'wiki_page_id',
         only: 'id,updater_id,wiki_page_id',
         limit: 10,
-        filter: (array,typeset) => (array.filter((val) => (IsShownData(val, 'updater_id', null, 'wiki_page_id', typeset)))),
+        filter: FilterData,
         insert: InsertWikis,
         process: ()=>{JSPLib.utility.setCSSStyle(WIKI_CSS, 'wiki');},
         plural: 'wikis',
@@ -859,9 +889,11 @@ const TYPEDICT = {
     },
     pool: {
         controller: 'pool_versions',
+        user: 'updater_id',
+        item: 'pool_id',
         only: 'id,updater_id,pool_id',
         limit: 2,
-        filter: (array,typeset) => (array.filter((val) => (IsShownData(val, 'updater_id', null, 'pool_id', typeset)))),
+        filter: FilterData,
         insert: InsertPools,
         process: ()=>{JSPLib.utility.setCSSStyle(POOL_CSS, 'pool');},
         plural: 'pools',
@@ -874,8 +906,10 @@ const TYPEDICT = {
     },
     feedback: {
         controller: 'user_feedbacks',
+        user: 'creator_id',
         only: 'id,creator_id,body',
-        filter: (array) => (array.filter((val) => (IsShownData(val, 'creator_id', null, null, null, IsShownFeedback)))),
+        filter: FilterData,
+        other_filter: IsShownFeedback,
         insert: InsertEvents,
         process: ()=>{JSPLib.utility.setCSSStyle(FEEDBACK_CSS, 'feedback');},
         plural: 'feedbacks',
@@ -884,8 +918,10 @@ const TYPEDICT = {
     },
     ban: {
         controller: 'bans',
+        user: 'banner_id',
         only: 'id,banner_id',
-        filter: (array) => (array.filter((val) => (IsShownData(val, 'banner_id', null, null, null, IsShownBan)))),
+        filter: FilterData,
+        other_filter: IsShownBan,
         insert: InsertEvents,
         process: ()=>{JSPLib.utility.setCSSStyle(BAN_CSS, 'ban');},
         plural: 'bans',
@@ -1090,17 +1126,21 @@ function CheckList(type) {
 
 //Auxiliary functions
 
-function IsShownData(val,user_key=null,creator_keys=null,subscribe_key=null,typeset=null,other_filters=null) {
-    if (EL.user_settings.filter_user_events && user_key && val[user_key] === EL.userid) {
+function FilterData(array,subscribe_set) {
+    return array.filter(val => IsShownData.call(this,val,subscribe_set));
+}
+
+function IsShownData(val,subscribe_set) {
+    if (EL.user_settings.filter_user_events && this.user && val[this.user] === EL.userid) {
         return false;
     }
-    if (typeset && subscribe_key) {
-        let is_creator_event = EL.user_settings.show_creator_events && creator_keys && JSPLib.utility.getNestedAttribute(val, creator_keys) === EL.userid;
-        if (!is_creator_event && !typeset.has(val[subscribe_key])) {
+    if (subscribe_set && this.item) {
+        let is_creator_event = EL.user_settings.show_creator_events && this.creator && JSPLib.utility.getNestedAttribute(val, this.creator) === EL.userid;
+        if (!is_creator_event && !subscribe_set.has(val[this.item])) {
             return false;
         }
     }
-    if (other_filters && !other_filters(val)) {
+    if (this.other_filter && !this.other_filter(val)) {
         return false;
     }
     return true;
