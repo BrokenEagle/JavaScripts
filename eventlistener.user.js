@@ -76,7 +76,6 @@ const LOCALSTORAGE_KEYS = JSPLib.utility.multiConcat(LASTID_KEYS, SAVED_KEYS, SU
 ]);
 
 //Available setting values
-const ENABLE_EVENTS = ['flag', 'appeal', 'dmail', 'comment', 'note', 'commentary', 'forum'];
 const POST_QUERY_ENABLE_EVENTS = ['flag', 'appeal'];
 const SUBSCRIBE_ENABLE_EVENTS = ['comment', 'note', 'commentary', 'forum'];
 const OTHER_ENABLE_EVENTS = ['dmail'];
@@ -93,42 +92,42 @@ const MODACTION_EVENTS = [
 const SETTINGS_CONFIG = {
     autolock_notices: {
         default: false,
-        validate: (data)=>{return typeof data === 'boolean';},
+        validate: JSPLib.validate.isBoolean,
         hint: "Closing a notice will no longer close all other notices."
     },
     mark_read_topics: {
         default: true,
-        validate: (data)=>{return typeof data === 'boolean';},
+        validate: JSPLib.validate.isBoolean,
         hint: "Reading a forum post from the notice will mark the topic as read."
     },
     autoclose_dmail_notice: {
         default: false,
-        validate: (data)=>{return typeof data === 'boolean';},
+        validate: JSPLib.validate.isBoolean,
         hint: "Will automatically close the DMail notice provided by Danbooru."
     },
     filter_user_events: {
         default: true,
-        validate: (data)=>{return typeof data === 'boolean';},
+        validate: JSPLib.validate.isBoolean,
         hint: "Only show events not created by the user."
     },
     show_creator_events: {
         default: false,
-        validate: (data)=>{return typeof data === 'boolean';},
+        validate: JSPLib.validate.isBoolean,
         hint: "Show subscribe events regardless of subscribe status when creator is the user."
     },
     filter_untranslated_commentary: {
         default: true,
-        validate: (data)=>{return typeof data === 'boolean';},
+        validate: JSPLib.validate.isBoolean,
         hint: "Only show new commentary that has translated sections."
     },
     filter_autobans: {
         default: true,
-        validate: (data)=>{return typeof data === 'boolean';},
+        validate: JSPLib.validate.isBoolean,
         hint: `Only show bans not created by <a class="user-moderator with-style" style="color:var(--user-moderator-color)" href="/users/${SERVER_USER_ID}">DanbooruBot</a>.`
     },
     filter_autofeedback: {
         default: true,
-        validate: (data)=>{return typeof data === 'boolean';},
+        validate: JSPLib.validate.isBoolean,
         hint: 'Only show feedback not created by an administrative action, e.g. bans or promotions.'
     },
     filter_post_edits: {
@@ -139,43 +138,43 @@ const SETTINGS_CONFIG = {
     },
     filter_BUR_edits: {
         default: true,
-        validate: (data)=>{return typeof data === 'boolean';},
+        validate: JSPLib.validate.isBoolean,
         hint: `Only show edits not created by <a class="user-moderator with-style" style="color:var(--user-moderator-color)" href="/users/${SERVER_USER_ID}">DanbooruBot</a>.`
     },
     recheck_interval: {
         default: 5,
         parse: parseInt,
-        validate: (data)=>{return Number.isInteger(data) && data > 0;},
+        validate: (data)=>(Number.isInteger(data) && data > 0),
         hint: "How often to check for new events (# of minutes)."
     },
     post_query_events_enabled: {
         allitems: POST_QUERY_EVENTS,
         default: POST_QUERY_ENABLE_EVENTS,
-        validate: (data)=>{return JSPLib.menu.validateCheckboxRadio(data, 'checkbox', POST_QUERY_EVENTS);},
+        validate: (data)=>(JSPLib.menu.validateCheckboxRadio(data, 'checkbox', POST_QUERY_EVENTS)),
         hint: "Select to enable event type."
     },
     subscribe_events_enabled: {
         allitems: SUBSCRIBE_EVENTS,
         default: SUBSCRIBE_ENABLE_EVENTS,
-        validate: (data)=>{return JSPLib.menu.validateCheckboxRadio(data, 'checkbox', SUBSCRIBE_EVENTS);},
+        validate: (data)=>(JSPLib.menu.validateCheckboxRadio(data, 'checkbox', SUBSCRIBE_EVENTS)),
         hint: "Select to enable event type."
     },
     other_events_enabled: {
         allitems: OTHER_EVENTS,
         default: OTHER_ENABLE_EVENTS,
-        validate: (data)=>{return JSPLib.menu.validateCheckboxRadio(data, 'checkbox', OTHER_EVENTS);},
+        validate: (data)=>(JSPLib.menu.validateCheckboxRadio(data, 'checkbox', OTHER_EVENTS)),
         hint: "Select to enable event type."
     },
     autosubscribe_enabled: {
         allitems: AUTOSUBSCRIBE_EVENTS,
         default: [],
-        validate: (data)=>{return JSPLib.menu.validateCheckboxRadio(data, 'checkbox', AUTOSUBSCRIBE_EVENTS);},
+        validate: (data)=>(JSPLib.menu.validateCheckboxRadio(data, 'checkbox', AUTOSUBSCRIBE_EVENTS)),
         hint: "Select to autosubscribe event type."
     },
     subscribed_mod_actions: {
         allitems: MODACTION_EVENTS,
         default: [],
-        validate: (data)=>{return JSPLib.menu.validateCheckboxRadio(data, 'checkbox', MODACTION_EVENTS);},
+        validate: (data)=>(JSPLib.menu.validateCheckboxRadio(data, 'checkbox', MODACTION_EVENTS)),
         hint: "Select which mod action categories to subscribe to."
     },
     flag_query: {
@@ -1057,7 +1056,7 @@ function GetList(type) {
     EL.subscribeset[type] = JSPLib.storage.getStorageData(`el-${type}list`, localStorage, []);
     if (CorrectList(type, EL.subscribeset)) {
         setTimeout(()=>{
-            JSPLib.storage.setStorageData(`el-${type}list`, EL.subscribeset, localStorage);
+            JSPLib.storage.setStorageData(`el-${type}list`, EL.subscribeset[type], localStorage);
         }, NONSYNCHRONOUS_DELAY);
     }
     EL.subscribeset[type] = new Set(EL.subscribeset[type]);
@@ -1072,7 +1071,7 @@ function SetList(type,remove_item,itemid) {
         typeset.add(itemid);
     }
     JSPLib.storage.setStorageData(`el-${type}list`, [...typeset], localStorage);
-    EL.channel.postMessage({type: 'subscribe', eventtype: type, was_subscribed: remove_item, itemid: itemid, eventlist: typeset});
+    EL.channel.postMessage({type: 'subscribe', eventtype: type, was_subscribed: remove_item, itemid: itemid, eventset: typeset});
     EL.subscribeset[type] = typeset;
 }
 
@@ -1359,16 +1358,16 @@ function UpdateDualLink(type,subscribed,itemid) {
 function ToggleSubscribeLinks() {
     SUBSCRIBE_EVENTS.forEach((type)=>{
         if (IsEventEnabled(type, 'subscribe_events_enabled')) {
-            $(`.el-subscribe-${type}-container`).show();
+            $(`.el-subscribe-${type}-container`).removeClass('el-event-hidden');
         } else {
-            $(`.el-subscribe-${type}-container`).hide();
+            $(`.el-subscribe-${type}-container`).addClass('el-event-hidden');
         }
     });
     if (EL.controller === 'posts' && EL.action === 'show') {
         if (AreAllEventsEnabled(ALL_TRANSLATE_EVENTS, 'subscribe_events_enabled')) {
-            $('.el-subscribe-translated-container').show();
+            $('.el-subscribe-translated-container').removeClass('el-event-hidden');
         } else {
-            $('.el-subscribe-translated-container').hide();
+            $('.el-subscribe-translated-container').addClass('el-event-hidden');
         }
         if (IsAnyEventEnabled(ALL_POST_EVENTS, 'subscribe_events_enabled')) {
             $('#el-subscribe-events').show();
@@ -2050,7 +2049,7 @@ async function PostEventPopulateControl(event) {
             setTimeout(()=>{
                 JSPLib.storage.setStorageData(`el-${eventtype}list`, [...EL.subscribeset[eventtype]], localStorage);
             }, NONSYNCHRONOUS_DELAY);
-            EL.channel.postMessage({type: 'reload', eventtype: eventtype, was_subscribed: was_subscribed, new_subscribed: new_subscribed, eventlist: EL.subscribeset[eventtype]});
+            EL.channel.postMessage({type: 'reload', eventtype: eventtype, was_subscribed: was_subscribed, new_subscribed: new_subscribed, eventset: EL.subscribeset[eventtype]});
         });
         $('#el-search-query-counter').html(0);
         JSPLib.utility.notice(`Subscriptions were changed by ${post_changes.size} posts!`);
