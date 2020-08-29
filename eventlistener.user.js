@@ -487,20 +487,20 @@ const MENU_CSS = `
 const NOTICE_BOX = `
 <div id="el-event-notice" style="display:none" class="notice notice-info">
     <div id="el-absent-section" style="display:none"></div>
-    <div id="el-dmail-section"></div>
-    <div id="el-flag-section"></div>
-    <div id="el-appeal-section"></div>
-    <div id="el-forum-section"></div>
-    <div id="el-comment-section"  class="comments-for-post"></div>
-    <div id="el-note-section"></div>
-    <div id="el-commentary-section"></div>
-    <div id="el-wiki-section"></div>
-    <div id="el-pool-section"></div>
-    <div id="el-approval-section"></div>
-    <div id="el-post-section"></div>
-    <div id="el-feedback-section"></div>
-    <div id="el-ban-section"></div>
-    <div id="el-mod-action-section"></div>
+    <div id="el-dmail-section" style="display:none"></div>
+    <div id="el-flag-section" style="display:none"></div>
+    <div id="el-appeal-section" style="display:none"></div>
+    <div id="el-forum-section" style="display:none"></div>
+    <div id="el-comment-section" style="display:none" class="comments-for-post"></div>
+    <div id="el-note-section" style="display:none"></div>
+    <div id="el-commentary-section" style="display:none"></div>
+    <div id="el-wiki-section" style="display:none"></div>
+    <div id="el-pool-section" style="display:none"></div>
+    <div id="el-approval-section" style="display:none"></div>
+    <div id="el-post-section" style="display:none"></div>
+    <div id="el-feedback-section" style="display:none"></div>
+    <div id="el-ban-section" style="display:none"></div>
+    <div id="el-mod-action-section" style="display:none"></div>
     <div id="el-loading-message"><b>Loading...</b></div>
     <div id="el-event-controls" style="display:none">
         <a href="javascript:void(0)" id="el-hide-event-notice">Close this</a>
@@ -2407,13 +2407,13 @@ async function CheckOtherType(type) {
 async function LoadHTMLType(type,idlist,isoverflow=false) {
     let section_selector = '#el-' + JSPLib.utility.kebabCase(type) + '-section';
     let $section = $(section_selector);
+    let $children = $section.children();
     if ($section.children().length === 0) {
         $section.prepend(JSPLib.utility.regexReplace(SECTION_NOTICE, {
             TYPE: type,
             PLURAL: JSPLib.utility.titleizeString(TYPEDICT[type].plural),
         }));
     }
-    $('#el-event-notice').show();
     if (isoverflow) {
         $section.find('.el-overflow-notice').show();
     } else {
@@ -2422,6 +2422,8 @@ async function LoadHTMLType(type,idlist,isoverflow=false) {
     EL.renderedlist[type] = EL.renderedlist[type] || [];
     let displaylist = JSPLib.utility.arrayDifference(idlist, EL.renderedlist[type]);
     if (displaylist.length === 0) {
+        $section.show();
+        $('#el-event-notice').show();
         return;
     }
     EL.renderedlist[type] = JSPLib.utility.concat(EL.renderedlist[type], displaylist);
@@ -2442,6 +2444,8 @@ async function LoadHTMLType(type,idlist,isoverflow=false) {
     if (TYPEDICT[type].process) {
         TYPEDICT[type].process();
     }
+    $section.show();
+    $('#el-event-notice').show();
 }
 
 function FinalizeEventNotice(initial=false) {
