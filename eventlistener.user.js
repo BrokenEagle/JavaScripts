@@ -594,6 +594,7 @@ const EL_MENU = `
                             <li><b>Edit query:</b>
                                 <ul>
                                     <li>Prepend tags with a "-" to add a search for removed tags.</li>
+                                    <li>Prepend tags with a "~" to add a search for any changed tags.</li>
                                     <li>Any other tags will add a search for added tags.</li>
                                     <li>At least one tag from added/removed must be in the post edit.</li>
                                     <li>Having no tags for either group removes that requirement.</li>
