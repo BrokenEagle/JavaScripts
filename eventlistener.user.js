@@ -1549,7 +1549,7 @@ function InsertNotes($note_page) {
     $('th:first-of-type, td:first-of-type', $note_table[0]).remove();
     AdjustColumnWidths($note_table[0]);
     let $note_div = InitializeTypeDiv('note', $note_table);
-    AddThumbnails($note_div[0]);
+    AddThumbnailStubs($note_div[0]);
     InitializePostNoteIndexLinks('note', $note_div[0]);
     InitializeOpenNoteLinks($note_div[0]);
 }
@@ -1567,7 +1567,7 @@ function InsertPosts($post_page) {
     });
     AdjustColumnWidths($post_table[0]);
     let $post_div = InitializeTypeDiv('post', $post_table);
-    AddThumbnails($post_div[0]);
+    AddThumbnailStubs($post_div[0]);
     InitializePostNoteIndexLinks('post', $post_div[0]);
 }
 
@@ -1644,25 +1644,20 @@ function DecodeProtectedEmail(obj) {
     });
 }
 
-function AddThumbnails(dompage) {
+function AddThumbnailStubs(dompage) {
     $('.striped thead tr', dompage).prepend('<th>Thumb</th>');
     var row_save = {};
     var post_ids = new Set();
     $('.striped tr[id]', dompage).each((i,row)=>{
-        let $postlink = $('td:first-of-type a:first-of-type', row);
-        let match = $postlink.length && $postlink.attr('href').match(/\/posts\/(\d+)/);
-        if (!match) {
-            //Something is wrong... break loop
-            return false;
-        }
-        let postid = parseInt(match[1]);
+        let $row = $(row);
+        let postid = $row.data('post-id');
         post_ids.add(postid);
         row_save[postid] = row_save[postid] || [];
         row_save[postid].push($(row).detach());
     });
     let display_ids = [...post_ids].sort().reverse();
     var $body = $('.striped tbody', dompage);
-    post_ids.forEach((postid)=>{
+    display_ids.forEach((postid)=>{
         row_save[postid][0].prepend(`<td rowspan="${row_save[postid].length}" class="el-post-thumbnail" data-postid="${postid}"></td>`);
         row_save[postid].forEach((row)=>{
             $body.append(row);
