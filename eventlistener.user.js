@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      21.0
+// @version      21.1
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -501,7 +501,7 @@ const NOTICE_BOX = `
     <div id="el-feedback-section" style="display:none"></div>
     <div id="el-ban-section" style="display:none"></div>
     <div id="el-mod-action-section" style="display:none"></div>
-    <div id="el-loading-message"><b>Loading...</b></div>
+    <div id="el-loading-message" style="display:none"><b>Loading...</b></div>
     <div id="el-event-controls" style="display:none">
         <a href="javascript:void(0)" id="el-hide-event-notice">Close this</a>
         [
@@ -551,6 +551,9 @@ const EXCESSIVE_NOTICE = `
 <p><b><span style="color:red;font-size:150%">WARNING!</span> You have been gone longer than a month.</b></p>
 <p>Consider resetting the event positions to their most recent values instead by clicking "<b>Reset</b>".
 <p style="font-size:125%"><b><a id="el-reset-all" href="javascript:void(0)">Reset</a></b></p>`;
+
+const DISMISS_NOTICE = `
+<div id="el-dismiss-notice"><button type="button" class="ui-button ui-corner-all ui-widget">Dismiss</button></div>`;
 
 const CACHE_INFO_TABLE = '<div id="el-cache-info-table" style="display:none"></div>';
 
@@ -2094,6 +2097,8 @@ function ReloadEventNotice(event) {
 
 function UpdateAll(event) {
     JSPLib.network.counter_domname = '#el-activity-indicator';
+    $("#el-dismiss-notice").hide();
+    $("#el-loading-message").show();
     EL.no_limit = true;
     ProcessAllEvents(()=>{
         JSPLib.concurrency.setRecheckTimeout('el-event-timeout', EL.timeout_expires);
@@ -2108,13 +2113,18 @@ function ResetAll(event) {
     LASTID_KEYS.forEach((key)=>{
         JSPLib.storage.removeStorageData(key, localStorage);
     });
+    $("#el-dismiss-notice").hide();
     ProcessAllEvents(()=>{
         JSPLib.concurrency.setRecheckTimeout('el-event-timeout', EL.timeout_expires);
         SetLastSeenTime();
         JSPLib.utility.notice("All event positions reset!");
         $("#el-event-controls").show();
-        $("#el-loading-message").hide();
     });
+}
+
+function DismissNotice(event) {
+    SetLastSeenTime();
+    $('#el-event-notice').hide();
 }
 
 function LoadMore(event) {
@@ -2758,6 +2768,7 @@ function Main() {
     } else if (!document.hidden && (EL.not_snoozed || WasOverflow()) && JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT)) {
         InitializeNoticeBox();
         if (CheckAbsence()) {
+            $("#el-loading-message").show();
             EL.events_checked = true;
             ProcessAllEvents((hasevents)=>{
                 SetLastSeenTime();
@@ -2778,6 +2789,8 @@ function Main() {
                 $('#el-reset-all').one(PROGRAM_CLICK, ResetAll);
             }
             $('#el-days-absent').html(EL.days_absent);
+            $('#el-absent-section').append(DISMISS_NOTICE);
+            $('#el-dismiss-notice button').one(PROGRAM_CLICK, DismissNotice);
             $('#el-event-notice').show();
             JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT);
         }
