@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      21.1
+// @version      21.2
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -532,6 +532,8 @@ const SECTION_NOTICE = `
     <a data-type="more" href="javascript:void(0)">LOAD MORE</a>
     |
     <a data-type="all" href="javascript:void(0)">LOAD ALL</a>
+    |
+    <a data-type="skip" href="javascript:void(0)">SKIP</a>
     ( <span class="el-%TYPE%-counter">...</span> )
 </div>
 <div class="el-error-notice" style="display:none">
@@ -2130,11 +2132,27 @@ function DismissNotice(event) {
 function LoadMore(event) {
     let $link = $(event.currentTarget);
     let optype = $link.data('type');
-    let nolimit = (optype === 'all');
     let $notice = $(event.currentTarget).closest('.el-overflow-notice');
     let type = $notice.data('type');
+    if (optype === 'skip') {
+        SetRecentDanbooruID(type).then(()=>{
+            JSPLib.utility.notice("Event position has been reset!");
+            if (EL.renderedlist[type].length === 0) {
+                $notice.parent().hide();
+            } else {
+                $notice.hide();
+            }
+            EL.all_overflows[type] = false;
+            CalculateOverflow(true);
+            JSPLib.storage.setStorageData('el-overflow', EL.any_overflow, localStorage);
+            JSPLib.storage.setStorageData(`el-${type}overflow`, false, localStorage);
+            JSPLib.storage.removeStorageData(`el-saved${type}lastid`, localStorage);
+            JSPLib.storage.removeStorageData(`el-saved${type}list`, localStorage);
+        });
+        return;
+    }
+    EL.no_limit = (optype === 'all');
     EL.item_overflow = false;
-    EL.no_limit = nolimit;
     TIMER.CheckSubscribeType(type, `.el-${type}-counter`).then((founditems)=>{
         if (founditems) {
             JSPLib.utility.notice("More events found!");
