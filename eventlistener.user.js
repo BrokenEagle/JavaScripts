@@ -2384,7 +2384,7 @@ async function CheckSubscribeType(type,domname=null) {
             }
             JSPLib.storage.setStorageData(savedlastidkey, lastusertype, localStorage);
             JSPLib.storage.setStorageData(savedlistkey, idlist, localStorage);
-            return EL.not_snoozed && Boolean(filtertype.length);
+            return EL.not_snoozed;
         } else {
             CheckSubscribeType.debuglog(`No ${TYPEDICT[type].plural}:`, lastusertype);
             SaveLastID(type, lastusertype);
