@@ -2153,6 +2153,7 @@ function LoadMore(event) {
     }
     EL.no_limit = (optype === 'all');
     EL.item_overflow = false;
+    CalculateOverflow();
     TIMER.CheckSubscribeType(type, `.el-${type}-counter`).then((founditems)=>{
         if (founditems) {
             JSPLib.utility.notice("More events found!");
