@@ -879,7 +879,7 @@ div#ntisas-notice {
     color: #777620;
     z-index: 1050;
 }
-#close-notice-link {
+#ntisas-close-notice-link {
     bottom: 0;
 }
 `;
