@@ -4843,8 +4843,12 @@ function MarkupMediaType(tweet) {
                 $entry.addClass('ntisas-media-stub');
             } else if ($('[role=blockquote]', entry).length) {
                 $entry.addClass('ntisas-tweet-quote');
+            } else if ($('[data-testid="card.wrapper"]', entry).length) {
+                $entry.addClass('ntisas-tweet-card');
             } else if ($('video, [data-testid=playButton]', tweet).length) {
                 $entry.addClass('ntisas-tweet-video');
+            } else if ($entry.find('div[role=link]').length === 1) {
+                $entry.addClass('ntisas-tweet-quote2');
             } else {
                 $entry.addClass('ntisas-tweet-image');
             }
@@ -4902,7 +4906,7 @@ function MarkupStreamTweet(tweet) {
     $('[data-testid="retweet"]', tweet_menu).parent().addClass('ntisas-retweet');
     $('[data-testid="like"]', tweet_menu).parent().addClass('ntisas-like');
     $('[role="button"]:not([data-testid])', tweet_menu).parent().addClass('ntisas-share');
-    if ($(sub_body.children[tweet_menu_index - 1]).text().match(/People they follow can reply/)) {
+    if ($(sub_body.children[tweet_menu_index - 1]).text().match(/People they (?:mentioned|follow) can reply/)) {
         tweet_menu_index -= 1;
     }
     let reply_line_count = 0;
@@ -4964,7 +4968,7 @@ function MarkupMainTweet(tweet) {
     }
     let reply_line_count = 0;
     let child2 = main_body.children[2];
-    if (child2.children[1]
+    if (child2 && child2.children[1]
       && child2.children[1].tagName.toUpperCase() !== 'SPAN'
       && child2.children[1].children[0]
       && child2.children[1].children[0].tagName.toUpperCase() !== 'SPAN'
@@ -4975,7 +4979,10 @@ function MarkupMainTweet(tweet) {
     let sub_body = main_body.children[2];
     $(sub_body).addClass('ntisas-sub-body');
     let tweet_menu_index = sub_body.childElementCount - 1;
-    if ($(sub_body.children[tweet_menu_index]).text().match(/A conversation between @.+ and people they follow or mentioned in this Tweet/)) {
+    if ($(sub_body.children[tweet_menu_index]).text().match(/^Who can reply\?People @\S+ .*? can reply.$/)) {
+        tweet_menu_index -= 1;
+    }
+    if ($(sub_body.children[tweet_menu_index]).text().match(/A conversation between @.+ and people they (?:follow or )?mentioned in this Tweet/)) {
         tweet_menu_index -= 1;
     }
     let tweet_menu = sub_body.children[tweet_menu_index];
