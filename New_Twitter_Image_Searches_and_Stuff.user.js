@@ -5300,20 +5300,14 @@ function ProcessTweetImages() {
                 $(entry.parentElement).on('mouseleave.ntisas', ImageLeave);
             }
         });
-        if (is_main_tweet) {
-            $main_tweet = $tweet;
+        let tweet_deferred = $tweet.prop('ntisasDeferred');
+        if (tweet_deferred) {
+            tweet_deferred.resolve();
         }
     };
     let total_unprocessed = Object.keys(unprocessed_tweets).length;
     if (total_unprocessed > 0) {
         ProcessTweetImages.debuglog("Tweets updated:", total_unprocessed);
-    }
-    if (IsTweetPage() && $main_tweet) {
-        //Trigger download links to start initializing
-        let tweet_deferred = $main_tweet.prop('ntisasDeferred');
-        if (tweet_deferred) {
-            tweet_deferred.resolve();
-        }
     }
 }
 
