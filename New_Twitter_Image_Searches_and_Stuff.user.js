@@ -1615,6 +1615,8 @@ const UNHANDLED_IMAGES = [
     XRegExp.tag()`^https://pbs\.twimg\.com/profile_images/`,
     XRegExp.tag()`^https://[^.]+\.twimg\.com/emoji/`,
     XRegExp.tag()`^https://pbs.twimg.com/ad_img/`,
+    XRegExp.tag()`^https://abs.twimg.com/hashflags/`,
+    XRegExp.tag()`^https://pbs.twimg.com/card_img/`,
 ];
 
 var ALL_PAGE_REGEXES = {
