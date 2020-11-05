@@ -4477,7 +4477,8 @@ async function CheckIQDB(event) {
         SavePosts(mapped_posts);
         SaveUsers(network_users);
         similar_data = all_iqdb_results.map((image_result)=>{
-            let filter_results = image_result.filter(result => (parseFloat(result.score) >= NTISAS.user_settings.similarity_cutoff));
+            let valid_results = image_result.filter(result => (result.post !== undefined && result.post.id !== undefined));
+            let filter_results = valid_results.filter(result => (parseFloat(result.score) >= NTISAS.user_settings.similarity_cutoff));
             let sorted_results = filter_results.sort((resulta,resultb) => (resulta.score - resultb.score)).slice(0, NTISAS.user_settings.results_returned);
             return sorted_results.map((result)=>{
                 let score = result.score;
