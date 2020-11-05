@@ -839,6 +839,9 @@ ${TWITTER_SPACING_SELECTOR} {
     margin: -3px 0;
     padding: 0;
 }
+#ntisas-account-options {
+    justify-content: normal;
+}
 #ntisas-account-options .r-1jayybb {
     min-height: 35px;
 }
