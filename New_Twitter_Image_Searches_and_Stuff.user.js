@@ -3434,7 +3434,11 @@ function InitializeQtip($obj,tweet_id,delayfunc) {
             text: (event,qtip) => {
                 if (!qtip.tooltip[0].hasAttribute(PROGRAM_SHORTCUT)) {
                     if (delayfunc) {
-                        NTISAS.tweet_qtip[tweet_id] = delayfunc();
+                        let results = delayfunc();
+                        if (results === false) {
+                            return "Loading...";
+                        }
+                        NTISAS.tweet_qtip[tweet_id] = results;
                     }
                     qtip.tooltip.attr(PROGRAM_SHORTCUT, 'done');
                 }
@@ -3502,8 +3506,16 @@ async function InitializePostIDsLink(tweet_id, $link_container, tweet, post_ids)
     $link_container.html(RenderPostIDsLink(posts_data, 'ntisas-database-match'));
     if (NTISAS.user_settings.advanced_tooltips_enabled) {
         let $link = $('.ntisas-database-match, .ntisas-confirm-save', tweet);
-        let image_urls = GetImageLinks(tweet);
-        InitializeQtip($link, tweet_id, () => (InitializePostsContainer(posts_data, image_urls)));
+        InitializeQtip($link, tweet_id, () => {
+            if (!tweet.ntisasDeferred) {
+                return "Error initializing images...";
+            }
+            if (tweet.ntisasDeferred.state() !== 'resolved') {
+                return false;
+            }
+            let image_urls = GetImageLinks(tweet);
+            return InitializePostsContainer(posts_data, image_urls);
+        });
     }
 }
 
