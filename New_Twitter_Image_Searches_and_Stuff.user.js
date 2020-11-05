@@ -337,7 +337,7 @@ const CONTROL_CONFIG = {
 //CSS constants
 
 const FONT_FAMILY = '\'Segoe UI\', Arial, sans-serif';
-const BASE_PREVIEW_WIDTH = 165;
+const BASE_PREVIEW_WIDTH = 160;
 const POST_PREVIEW_DIMENSION = 150;
 const TWITTER_SPACING_CLASSES = [
     'r-1vvnge1', //padding for Twitter icon
@@ -3121,7 +3121,7 @@ function RenderAllSimilar(all_iqdb_results,image_urls,type) {
         let html = RenderSimilarContainer("Image " + (i + 1), iqdb_results, image_urls[i], i);
         image_results.push(html);
     });
-    let render_width = Math.min(((max_results + 1) * BASE_PREVIEW_WIDTH) + BASE_QTIP_WIDTH, 850);
+    let render_width = Math.min(((max_results + 1) * BASE_PREVIEW_WIDTH) + BASE_QTIP_WIDTH + 20, 850);
     return `
 <div class="ntisas-similar-results ntisas-qtip-container" data-type="${type}" style="width:${render_width}px">
     ${image_results.join(HORIZONTAL_RULE)}
@@ -3162,7 +3162,7 @@ function RenderPostsContainer(all_posts) {
         html += RenderPostPreview(post, addons)
     });
     let delete_all_checked = (NTISAS.user_settings.delete_all_default ? "checked" : "");
-    let width_addon = (all_posts.length > 10 ? 'style="width:900px"' : "");
+    let width_addon = (all_posts.length > 10 ? 'style="width:850px"' : "");
     return `
 <div class="ntisas-post-result ntisas-qtip-container" ${width_addon}>
     <h4>Danbooru matches (${RenderHelp(POST_SELECT_HELP)})</h4>
