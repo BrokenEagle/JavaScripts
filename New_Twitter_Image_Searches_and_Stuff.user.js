@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.12
+// @version      6.13
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -19,18 +19,18 @@
 // @require      https://cdn.jsdelivr.net/npm/xregexp@4.2.4/xregexp-all.js
 // @require      https://cdn.jsdelivr.net/npm/file-saver@2.0.2/dist/FileSaver.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200507-utility/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200506-storage/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/lib/menu.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200505/danbooru/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/saucenao.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/danbooru/utility.js
 // @resource     jquery_ui_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/jquery_ui_custom.css
 // @resource     jquery_qtip_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.css
 // @grant        GM_getResourceText
@@ -2061,7 +2061,7 @@ function CorrectStringArray(name,stringlist) {
     if (stringlist.length !== correctlist.length) {
         JSPLib.storage.setStorageData('ntisas-' + name, correctlist, localStorage);
         JSPLib.debug.debugExecute(()=>{
-            let bad_values = JSPLib.utility.setDifference(stringlist, correctlist);
+            let bad_values = JSPLib.utility.arrayDifference(stringlist, correctlist);
             CorrectStringArray.debuglog("Bad values found:", name, bad_values);
         });
     }
@@ -2302,7 +2302,7 @@ function GetFileURLNameExt(file_url) {
 }
 
 function GetNormalImageURL(image_url) {
-    let extension = JSPLib.utility.setIntersection(image_url.split(/\W+/), ['jpg', 'png', 'gif']);
+    let extension = JSPLib.utility.arrayIntersection(image_url.split(/\W+/), ['jpg', 'png', 'gif']);
     for (let i = 0; i < HANDLED_IMAGES.length; i++) {
         let match = image_url.match(HANDLED_IMAGES[i].regex);
         if (match && extension.length !== 0) {
@@ -2517,7 +2517,7 @@ function UpdatePostIDsLink(tweet_id, post_ids) {
 function PromptSavePostIDs($link,$tweet,tweet_id,$replace,message,initial_post_ids) {
     let prompt_string = prompt(message, initial_post_ids.join(', '));
     if (prompt_string !== null) {
-        let confirm_post_ids = JSPLib.utility.setUnique(
+        let confirm_post_ids = JSPLib.utility.arrayUnique(
             prompt_string.split(',')
             .map(Number)
             .filter((num)=>{
@@ -2555,7 +2555,7 @@ function SetThumbnailWait(container,all_posts) {
 //Checks and removes a value from a hash key if it exists
 function RemoveHashKeyValue(hash,key,value) {
     if ((key in hash) && hash[key].includes(value)) {
-        hash[key] = JSPLib.utility.setDifference(hash[key], [value]);
+        hash[key] = JSPLib.utility.arrayDifference(hash[key], [value]);
         if (hash[key].length === 0) {
             delete hash[key];
         }
@@ -2577,7 +2577,7 @@ function ProcessPostvers(postvers) {
                 let tweet_id = JSPLib.utility.findAll(postver.source, TWEET_REGEX)[1];
                 if (tweet_id) {
                     add_entries[tweet_id] = add_entries[tweet_id] || [];
-                    add_entries[tweet_id] = JSPLib.utility.setUnion(add_entries[tweet_id], [postver.post_id]);
+                    add_entries[tweet_id] = JSPLib.utility.arrayUnion(add_entries[tweet_id], [postver.post_id]);
                 }
             } else {
                 let tweet_id = {};
@@ -2595,14 +2595,14 @@ function ProcessPostvers(postvers) {
                 }
                 if (tweet_id.add) {
                     add_entries[tweet_id.add] = add_entries[tweet_id.add] || [];
-                    add_entries[tweet_id.add] = JSPLib.utility.setUnion(add_entries[tweet_id.add], [postver.post_id]);
+                    add_entries[tweet_id.add] = JSPLib.utility.arrayUnion(add_entries[tweet_id.add], [postver.post_id]);
                     if (RemoveHashKeyValue(rem_entries, tweet_id.add[0], postver.post_id)) {
                         ProcessPostvers.debuglog("Source delete reversal detected", tweet_id.add);
                     }
                 }
                 if (tweet_id.rem) {
                     rem_entries[tweet_id.rem] = rem_entries[tweet_id.rem] || [];
-                    JSPLib.utility.setUnion(rem_entries[tweet_id.rem], [postver.post_id]);
+                    JSPLib.utility.arrayUnion(rem_entries[tweet_id.rem], [postver.post_id]);
                     if (RemoveHashKeyValue(add_entries, tweet_id.rem, postver.post_id)) {
                         ProcessPostvers.debuglog("Source add reversal detected", tweet_id.rem);
                     }
@@ -2615,14 +2615,14 @@ function ProcessPostvers(postvers) {
                 if (postver.removed_tags.includes('bad_twitter_id')) {
                     ProcessPostvers.debuglog("Activated tweet:", tweet_id);
                     add_entries[tweet_id] = add_entries[tweet_id] || [];
-                    add_entries[tweet_id] = JSPLib.utility.setUnion(add_entries[tweet_id], [postver.post_id]);
+                    add_entries[tweet_id] = JSPLib.utility.arrayUnion(add_entries[tweet_id], [postver.post_id]);
                     reversed_posts++;
                     if (RemoveHashKeyValue(rem_entries, tweet_id, postver.post_id)) {
                         ProcessPostvers.debuglog("Tweet remove reversal detected", tweet_id);
                     }
                 } else if (postver.added_tags.includes('bad_twitter_id')) {
                     rem_entries[tweet_id] = rem_entries[tweet_id] || [];
-                    rem_entries[tweet_id] = JSPLib.utility.setUnion(rem_entries[tweet_id], [postver.post_id]);
+                    rem_entries[tweet_id] = JSPLib.utility.arrayUnion(rem_entries[tweet_id], [postver.post_id]);
                     inactive_posts++;
                     if (RemoveHashKeyValue(add_entries, tweet_id, postver.post_id)) {
                         ProcessPostvers.debuglog("Tweet add reversal detected", tweet_id);
@@ -2688,7 +2688,7 @@ function UpdateHighlightControls() {
     let [user_ident,all_idents] = GetUserIdent();
     if (user_ident && IsMediaTimeline()) {
         let no_highlight_list = GetList('no-highlight-list');
-        if (JSPLib.utility.hasIntersection(no_highlight_list, all_idents)) {
+        if (JSPLib.utility.arrayHasIntersection(no_highlight_list, all_idents)) {
             NTISAS.artist_highlights_enabled = false;
             DisplayControl('enable', HIGHLIGHT_CONTROLS, 'highlights');
             $('#ntisas-fade-level-display').hide();
@@ -2722,7 +2722,7 @@ function UpdateArtistHighlights() {
         let hide_selectors = JSPLib.utility.joinList(hide_levels, '.ntisas-', null, ',');
         $('.ntisas-fade').removeClass('ntisas-fade');
         $('.ntisas-hide').removeClass('ntisas-hide');
-        if (!JSPLib.utility.hasIntersection(no_highlight_list, all_idents)) {
+        if (!JSPLib.utility.arrayHasIntersection(no_highlight_list, all_idents)) {
             $(fade_selectors).addClass('ntisas-fade');
             $(hide_selectors).addClass('ntisas-hide');
         }
@@ -2741,7 +2741,7 @@ function UpdateIQDBControls() {
     let [user_ident,all_idents] = GetUserIdent();
     if (user_ident && IsMediaTimeline()) {
         let auto_iqdb_list = GetList('auto-iqdb-list');
-        if (JSPLib.utility.hasIntersection(auto_iqdb_list, all_idents)) {
+        if (JSPLib.utility.arrayHasIntersection(auto_iqdb_list, all_idents)) {
             NTISAS.artist_iqdb_enabled = true;
             DisplayControl('disable', IQDB_CONTROLS, 'autoiqdb');
         } else {
@@ -2799,7 +2799,7 @@ function UpdateTweetIndicator(tweet,artist_list,tweet_list) {
     let $tweet = $(tweet);
     let [tweet_id,,,user_ident,all_idents] = GetTweetInfo($tweet);
     let active_indicators = [];
-    if (JSPLib.utility.hasIntersection(artist_list, all_idents)) {
+    if (JSPLib.utility.arrayHasIntersection(artist_list, all_idents)) {
         active_indicators.push('mark-artist');
     }
     if (tweet_list.includes(tweet_id)) {
@@ -2893,11 +2893,11 @@ function ProcessSimilarData(type,tweet_id,$tweet,$replace,selected_image_urls,si
         } else if (max_score > 85.0) {
             classname = 'ntisas-similar-match-fair';
         }
-        let similar_post_ids = JSPLib.utility.setUnique(JSPLib.utility.getNestedObjectAttributes(flat_data, ['post', 'id']));
+        let similar_post_ids = JSPLib.utility.arrayUnique(JSPLib.utility.getNestedObjectAttributes(flat_data, ['post', 'id']));
         if (IsQuerySettingEnabled('auto_save', type) || ((typeof autosave_func === 'function') && autosave_func())) {
             if (NTISAS.merge_results.includes(tweet_id)) {
                 let merge_ids = JSPLib.storage.getStorageData('tweet-' + tweet_id, sessionStorage, []);
-                similar_post_ids = JSPLib.utility.setUnion(merge_ids, similar_post_ids);
+                similar_post_ids = JSPLib.utility.arrayUnion(merge_ids, similar_post_ids);
             }
             SaveData('tweet-' + tweet_id, similar_post_ids, 'twitter');
             InitializePostIDsLink(tweet_id, $replace, $tweet[0], similar_post_ids)
@@ -2923,7 +2923,7 @@ function GetTweetInfo($tweet) {
     let user_id = String($tweet.data('user-id') || "");
     let screen_name = String($tweet.data('screen-name'));
     let user_ident = user_id || screen_name;
-    let all_idents = JSPLib.utility.setUnique([user_ident, screen_name]);
+    let all_idents = JSPLib.utility.arrayUnique([user_ident, screen_name]);
     return [tweet_id, user_id, screen_name, user_ident, all_idents];
 }
 
@@ -3400,7 +3400,7 @@ function InitializeImageMenu($tweets,append_selector,menu_class) {
     let uniqueid = NTISAS.uniqueid;
     let timername = `InitializeImageMenu-${uniqueid}`;
     JSPLib.debug.debugTime(timername);
-    let tweet_ids = JSPLib.utility.setUnique(JSPLib.utility.getDOMAttributes($tweets, 'tweet-id', String));
+    let tweet_ids = JSPLib.utility.arrayUnique(JSPLib.utility.getDOMAttributes($tweets, 'tweet-id', String));
     let promise_array = [];
     InitializeImageMenu.debuglog(`[${uniqueid}]`, "Check Tweets:", tweet_ids);
     $tweets.each((i,tweet)=>{
@@ -3684,7 +3684,7 @@ function InitializeTweetStats(filter1,filter2) {
         AVERAGEFAVORITES: average_favorites,
     });
     $('#ntisas-tweet-stats-table').html(table_html);
-    let selected_metrics = JSPLib.utility.setUnique([filter1, filter2]);
+    let selected_metrics = JSPLib.utility.arrayUnique([filter1, filter2]);
     if (selected_metrics.length == 2 && selected_metrics.includes('total')) {
         selected_metrics.splice(selected_metrics.indexOf('total'), 1);
     }
@@ -3807,7 +3807,7 @@ async function GetItems(item_ids, storage_key, network_key) {
     storage_data = storage_data.filter((data) => (data !== null));
     storage_data = JSPLib.utility.getObjectAttributes(storage_data, 'value');
     let found_ids = JSPLib.utility.getObjectAttributes(storage_data, 'id');
-    let missing_ids = JSPLib.utility.setDifference(item_ids, found_ids);
+    let missing_ids = JSPLib.utility.arrayDifference(item_ids, found_ids);
     let network_data = [];
     if (missing_ids.length) {
         network_data = await QueueNetworkRequest(network_key, missing_ids);
@@ -3891,16 +3891,16 @@ async function CheckServerBadTweets() {
 }
 
 function SavePostvers(add_entries,rem_entries) {
-    let combined_keys = JSPLib.utility.setIntersection(Object.keys(add_entries), Object.keys(rem_entries));
+    let combined_keys = JSPLib.utility.arrayIntersection(Object.keys(add_entries), Object.keys(rem_entries));
     combined_keys.forEach((tweet_id)=>{
         let tweet_key = 'tweet-' + tweet_id;
         let post_ids = add_entries[tweet_id];
         JSPLib.storage.retrieveData(tweet_key, false, JSPLib.storage.twitterstorage).then((data)=>{
             if (JSPLib.validate.validateIDList(data)) {
                 SavePostvers.debuglog("Tweet adds/rems - existing IDs:", tweet_key, data);
-                post_ids = JSPLib.utility.setUnique(JSPLib.utility.setDifference(JSPLib.utility.setUnion(data, add_entries[tweet_id]), rem_entries[tweet_id]));
+                post_ids = JSPLib.utility.arrayUnique(JSPLib.utility.arrayDifference(JSPLib.utility.arrayUnion(data, add_entries[tweet_id]), rem_entries[tweet_id]));
             }
-            if (data === null || JSPLib.utility.setSymmetricDifference(post_ids, data)) {
+            if (data === null || JSPLib.utility.arraySymmetricDifference(post_ids, data)) {
                 SavePostvers.debuglog("Tweet adds/rems - saving:", tweet_key, post_ids);
                 SaveData(tweet_key, post_ids, 'twitter');
                 UpdatePostIDsLink(tweet_id, post_ids);
@@ -3908,14 +3908,14 @@ function SavePostvers(add_entries,rem_entries) {
             }
         });
     });
-    let single_adds = JSPLib.utility.setDifference(Object.keys(add_entries), combined_keys);
+    let single_adds = JSPLib.utility.arrayDifference(Object.keys(add_entries), combined_keys);
     single_adds.forEach((tweet_id)=>{
         let tweet_key = 'tweet-' + tweet_id;
         let post_ids = add_entries[tweet_id];
         JSPLib.storage.retrieveData(tweet_key, false, JSPLib.storage.twitterstorage).then((data)=>{
             if (JSPLib.validate.validateIDList(data)) {
                 SavePostvers.debuglog("Tweet adds - existing IDs:", tweet_key, data);
-                post_ids = JSPLib.utility.setUnion(data, post_ids);
+                post_ids = JSPLib.utility.arrayUnion(data, post_ids);
             }
             if (data === null || post_ids.length > data.length) {
                 SavePostvers.debuglog("Tweet adds - saving:", tweet_key, post_ids);
@@ -3925,14 +3925,14 @@ function SavePostvers(add_entries,rem_entries) {
             }
         });
     });
-    let single_rems = JSPLib.utility.setDifference(Object.keys(rem_entries), combined_keys);
+    let single_rems = JSPLib.utility.arrayDifference(Object.keys(rem_entries), combined_keys);
     single_rems.forEach((tweet_id)=>{
         let tweet_key = 'tweet-' + tweet_id;
         let post_ids = [];
         JSPLib.storage.retrieveData(tweet_key, false, JSPLib.storage.twitterstorage).then((data)=>{
             if (data !== null && JSPLib.validate.validateIDList(data)) {
                 SavePostvers.debuglog("Tweet removes - existing IDs:", tweet_key, data);
-                post_ids = JSPLib.utility.setUnique(JSPLib.utility.setDifference(data, rem_entries[tweet_id]));
+                post_ids = JSPLib.utility.arrayUnique(JSPLib.utility.arrayDifference(data, rem_entries[tweet_id]));
             }
             if (post_ids.length) {
                 SavePostvers.debuglog("Tweet removes - saving:", tweet_key, post_ids);
@@ -4265,10 +4265,10 @@ function ToggleArtistHilights(event) {
     let [user_ident,all_idents] = GetUserIdent();
     if (user_ident) {
         let no_highlight_list = GetList('no-highlight-list');
-        if (JSPLib.utility.hasIntersection(no_highlight_list, all_idents)) {
-            no_highlight_list = JSPLib.utility.setDifference(no_highlight_list, all_idents);
+        if (JSPLib.utility.arrayHasIntersection(no_highlight_list, all_idents)) {
+            no_highlight_list = JSPLib.utility.arrayDifference(no_highlight_list, all_idents);
         } else {
-            no_highlight_list = JSPLib.utility.setUnion(no_highlight_list, all_idents);
+            no_highlight_list = JSPLib.utility.arrayUnion(no_highlight_list, all_idents);
         }
         SaveList('no-highlight-list', no_highlight_list);
         UpdateHighlightControls();
@@ -4311,10 +4311,10 @@ function ToggleAutoclickIQDB(event) {
     let [user_ident,all_idents] = GetUserIdent();
     if (user_ident) {
         let auto_iqdb_list = GetList('auto-iqdb-list');
-        if (JSPLib.utility.hasIntersection(auto_iqdb_list, all_idents)) {
-            auto_iqdb_list = JSPLib.utility.setDifference(auto_iqdb_list, all_idents);
+        if (JSPLib.utility.arrayHasIntersection(auto_iqdb_list, all_idents)) {
+            auto_iqdb_list = JSPLib.utility.arrayDifference(auto_iqdb_list, all_idents);
         } else {
-            auto_iqdb_list = JSPLib.utility.setUnion(auto_iqdb_list, all_idents);
+            auto_iqdb_list = JSPLib.utility.arrayUnion(auto_iqdb_list, all_idents);
         }
         SaveList('auto-iqdb-list', auto_iqdb_list);
         UpdateIQDBControls();
@@ -4416,10 +4416,10 @@ function CheckURL(event) {
             let mapped_posts = MapPostData(data);
             SavePosts(mapped_posts);
             SavePostUsers(mapped_posts);
-            post_ids = JSPLib.utility.setUnique(JSPLib.utility.getObjectAttributes(data, 'id'));
+            post_ids = JSPLib.utility.arrayUnique(JSPLib.utility.getObjectAttributes(data, 'id'));
             if (NTISAS.merge_results.includes(tweet_id)) {
                 let merge_ids = JSPLib.storage.getStorageData('tweet-' + tweet_id, sessionStorage, []);
-                post_ids = JSPLib.utility.setUnion(merge_ids, post_ids);
+                post_ids = JSPLib.utility.arrayUnion(merge_ids, post_ids);
             }
             SaveData('tweet-' + tweet_id, post_ids, 'twitter');
         }
@@ -4446,7 +4446,7 @@ async function CheckIQDB(event) {
         let post_data = JSPLib.utility.getObjectAttributes(flat_data, 'post');
         let unique_posts = RemoveDuplicates(post_data, 'id');
         let mapped_posts = MapPostData(unique_posts);
-        let uploader_ids = JSPLib.utility.setUnique(JSPLib.utility.getObjectAttributes(mapped_posts, 'uploaderid'));
+        let uploader_ids = JSPLib.utility.arrayUnique(JSPLib.utility.getObjectAttributes(mapped_posts, 'uploaderid'));
         let [user_data, network_users] = await GetItems(uploader_ids, 'user', 'users');
         user_data = user_data.concat(network_users);
         mapped_posts.forEach((post)=>{
@@ -4490,7 +4490,7 @@ async function CheckSauce(event) {
     let similar_data = [];
     if (filtered_data.length) {
         CheckSauce.debuglog(`Found ${filtered_data.length} results.`);
-        let danbooru_ids = JSPLib.utility.setUnique(JSPLib.utility.getNestedObjectAttributes(filtered_data, ['data', 'danbooru_id']));
+        let danbooru_ids = JSPLib.utility.arrayUnique(JSPLib.utility.getNestedObjectAttributes(filtered_data, ['data', 'danbooru_id']));
         var posts_data = await GetPosts(danbooru_ids);
         similar_data = combined_data.map((image_result)=>{
             let filter_results = image_result.filter(result => (parseFloat(result.header.similarity) >= NTISAS.user_settings.similarity_cutoff));
@@ -4521,10 +4521,10 @@ function ConfirmSave(event) {
     let [$link,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event, 'ntisas-confirm-save');
     let select_post_ids = GetSelectPostIDs(tweet_id, 'tweet_qtip');
     let all_post_ids = NTISAS.similar_results[tweet_id];
-    let save_post_ids = JSPLib.utility.setDifference(all_post_ids, select_post_ids);
+    let save_post_ids = JSPLib.utility.arrayDifference(all_post_ids, select_post_ids);
     if (NTISAS.merge_results.includes(tweet_id)) {
         let merge_ids = JSPLib.storage.getStorageData('tweet-' + tweet_id, sessionStorage, []);
-        save_post_ids = JSPLib.utility.setUnion(merge_ids, save_post_ids);
+        save_post_ids = JSPLib.utility.arrayUnion(merge_ids, save_post_ids);
     }
     PromptSavePostIDs($link, $tweet, tweet_id, $replace, CONFIRM_SAVE_PROMPT, save_post_ids);
     event.preventDefault();
@@ -4542,7 +4542,7 @@ function ConfirmDelete(event) {
     } else {
         select_post_ids = GetSelectPostIDs(tweet_id, 'tweet_qtip');
     }
-    let save_post_ids = JSPLib.utility.setDifference(all_post_ids, select_post_ids);
+    let save_post_ids = JSPLib.utility.arrayDifference(all_post_ids, select_post_ids);
     let message = JSPLib.utility.sprintf(CONFIRM_DELETE_PROMPT, select_post_ids);
     PromptSavePostIDs($link, $tweet, tweet_id, $replace, message, save_post_ids);
     event.preventDefault();
@@ -4557,14 +4557,14 @@ function ResetResults(event) {
 
 function MergeResults(event) {
     let [,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event, 'ntisas-merge-results');
-    NTISAS.merge_results = JSPLib.utility.setUnion(NTISAS.merge_results, [tweet_id]);
+    NTISAS.merge_results = JSPLib.utility.arrayUnion(NTISAS.merge_results, [tweet_id]);
     $('.ntisas-database-match', $tweet[0]).qtiptisas('destroy', true);
     InitializeNoMatchesLinks(tweet_id, $replace, true);
 }
 
 function CancelMerge(event) {
     let [,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event, 'ntisas-cancel-merge');
-    NTISAS.merge_results = JSPLib.utility.setDifference(NTISAS.merge_results, [tweet_id]);
+    NTISAS.merge_results = JSPLib.utility.arrayDifference(NTISAS.merge_results, [tweet_id]);
     let post_ids = JSPLib.storage.getStorageData('tweet-' + tweet_id, sessionStorage, []);
     InitializePostIDsLink(tweet_id, $replace, $tweet[0], post_ids);
 }
@@ -4645,10 +4645,10 @@ function SelectMetric(event) {
 function MarkArtist(event) {
     let [$link,$tweet,,,,,all_idents,] = GetEventPreload(event, 'ntisas-mark-artist');
     let artist_list = GetList('artist-list');
-    if (JSPLib.utility.hasIntersection(artist_list, all_idents)) {
-        artist_list = JSPLib.utility.setDifference(artist_list, all_idents);
+    if (JSPLib.utility.arrayHasIntersection(artist_list, all_idents)) {
+        artist_list = JSPLib.utility.arrayDifference(artist_list, all_idents);
     } else {
-        artist_list = JSPLib.utility.setUnion(artist_list, all_idents);
+        artist_list = JSPLib.utility.arrayUnion(artist_list, all_idents);
     }
     SaveList('artist-list', artist_list);
     $link.toggleClass('ntisas-activated');
@@ -4661,9 +4661,9 @@ function MarkTweet(event) {
     let [$link,$tweet,tweet_id,,,,,] = GetEventPreload(event, 'ntisas-mark-tweet');
     let tweet_list = GetList('tweet-list');
     if (tweet_list.includes(tweet_id)) {
-        tweet_list = JSPLib.utility.setDifference(tweet_list, [tweet_id]);
+        tweet_list = JSPLib.utility.arrayDifference(tweet_list, [tweet_id]);
     } else {
-        tweet_list = JSPLib.utility.setUnion(tweet_list, [tweet_id]);
+        tweet_list = JSPLib.utility.arrayUnion(tweet_list, [tweet_id]);
     }
     SaveList('tweet-list', tweet_list);
     $link.toggleClass('ntisas-activated');
@@ -4674,9 +4674,9 @@ function MarkTweet(event) {
 function CountArtist(event) {
     let [$link,$tweet,,,,user_ident,,] = GetEventPreload(event, 'ntisas-count-artist');
     if (NTISAS.counted_artists.includes(user_ident)) {
-        NTISAS.counted_artists = JSPLib.utility.setDifference(NTISAS.counted_artists, [user_ident]);
+        NTISAS.counted_artists = JSPLib.utility.arrayDifference(NTISAS.counted_artists, [user_ident]);
     } else {
-        NTISAS.counted_artists = JSPLib.utility.setUnion(NTISAS.counted_artists, [user_ident]);
+        NTISAS.counted_artists = JSPLib.utility.arrayUnion(NTISAS.counted_artists, [user_ident]);
     }
     $link.toggleClass('ntisas-activated');
     $('.ntisas-indicators .ntisas-count-artist', $tweet[0]).toggle();
@@ -4687,9 +4687,9 @@ function CountArtist(event) {
 function CountTweet(event) {
     let [$link,$tweet,tweet_id,,,,,] = GetEventPreload(event, 'ntisas-count-tweet');
     if (NTISAS.counted_tweets.includes(tweet_id)) {
-        NTISAS.counted_tweets = JSPLib.utility.setDifference(NTISAS.counted_tweets, [tweet_id]);
+        NTISAS.counted_tweets = JSPLib.utility.arrayDifference(NTISAS.counted_tweets, [tweet_id]);
     } else {
-        NTISAS.counted_tweets = JSPLib.utility.setUnion(NTISAS.counted_tweets, [tweet_id]);
+        NTISAS.counted_tweets = JSPLib.utility.arrayUnion(NTISAS.counted_tweets, [tweet_id]);
     }
     $link.toggleClass('ntisas-activated');
     $('.ntisas-indicators .ntisas-count-tweet', $tweet[0]).toggle();
@@ -5065,7 +5065,7 @@ function RegularCheck() {
 
 function PageNavigation(pagetype) {
     //Use all non-URL matching groups as a page key to detect page changes
-    let page_key = JSPLib.utility.setUnique(
+    let page_key = JSPLib.utility.arrayUnique(
         Object.values(NTISAS.page_match).filter((val)=>{
             return typeof val === "string" && !val.startsWith('https:');
         })
@@ -5795,9 +5795,8 @@ JSPLib.debug.addFunctionLogs([
 
 //Variables for debug.js
 JSPLib.debug.debug_console = false;
-JSPLib.debug.pretext = 'NTISAS:';
-JSPLib.debug.pretimer = 'NTISAS-';
 JSPLib.debug.level = JSPLib.debug.INFO;
+JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
 //Variables for menu.js
 JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
@@ -5816,15 +5815,11 @@ JSPLib.network.rate_limit_wait = JSPLib.utility.one_second;
 //Variables for danbooru.js
 JSPLib.danbooru.max_network_requests = 10;
 
+//Variables for danbooru/utility.js
+Danbooru.Utility.program_shortcut = PROGRAM_SHORTCUT;
+
 //Export JSPLib
-if (JSPLib.debug.debug_console) {
-    unsafeWindow.JSPLib.lib = unsafeWindow.JSPLib.lib || {};
-    unsafeWindow.JSPLib.lib[PROGRAM_NAME] = JSPLib;
-    unsafeWindow.JSPLib.Danbooru = unsafeWindow.JSPLib.Danbooru || {};
-    unsafeWindow.JSPLib.Danbooru[PROGRAM_NAME] = Danbooru;
-    unsafeWindow.JSPLib.API_DATA = unsafeWindow.JSPLib.API_DATA || {};
-    unsafeWindow.JSPLib.API_DATA[PROGRAM_NAME] = API_DATA;
-}
+JSPLib.load.exportData(PROGRAM_NAME, NTISAS, {API_DATA: API_DATA, jQuery: jQuery});
 
 /****Execution start****/
 
