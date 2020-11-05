@@ -5333,7 +5333,7 @@ function ProcessNewTweets() {
         }
     });
     if (IsTweetPage() && main_tweets.length > 0) {
-        MarkupMainTweet(main_tweets.pop());
+        MarkupMainTweet(main_tweets[0]);
     }
     let $image_tweets = $tweets.filter((i,entry) => $('.ntisas-tweet-image, .ntisas-tweet-video', entry).length);
     ProcessNewTweets.debuglog(`[${NTISAS.uniqueid}]`, "Unprocessed:", $tweets.length, $image_tweets.length);
