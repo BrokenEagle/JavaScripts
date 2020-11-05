@@ -699,6 +699,12 @@ const PROGRAM_CSS = `
     justify-content: center;
     min-width: 50px;
 }
+.ntisas-main-tweet .ntisas-tweet-menu {
+    padding: 10px 0;
+    margin-left: 0;
+    border-top-width: 1px;
+    border-top-style: solid;
+}
 .ntisas-upload {
     font-size: 20px;
     font-weight: bold;
@@ -772,9 +778,6 @@ const PROGRAM_CSS = `
 }
 .ntisas-main-tweet .ntisas-tweet-actions {
     height: 35px;
-}
-.ntisas-main-tweet [ntisas=retweets-likes] {
-    padding: 10px 0;
 }
 .ntisas-footer-entries {
     font-size: 16px;
@@ -1043,6 +1046,7 @@ const COLOR_CSS = `
 #ntisas-tweet-stats-message {
     color: %TEXTMUTED%;
 }
+.ntisas-main-tweet .ntisas-tweet-menu,
 .ntisas-main-tweet .ntisas-footer-entries {
     border-color: %TEXTFADED%;
 }
@@ -4958,12 +4962,8 @@ function MarkupMainTweet(tweet) {
         let retweets_with_comments = Boolean($('[href$="/retweets/with_comments"]', childn1).length);
         retweet_like_count = 1;
         $(childn1).attr('ntisas','retweets-likes');
-        if (childn1.childElementCount == 1) {
-            $(childn1.children[0]).attr('ntisas-image-menu','parent');
-        } else {
-            $(childn1).attr('ntisas-image-menu','parent');
-        }
     }
+    $(childn1).after('<div ntisas-image-menu="parent"></div>');
     let time_line = sub_body.children[tweet_menu_index - 1 - retweet_like_count]
     $(time_line).addClass('ntisas-time-line');
     let remaining_lines = tweet_menu_index - 2 - retweet_like_count - reply_line_count;
