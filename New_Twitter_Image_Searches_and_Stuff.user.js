@@ -1321,7 +1321,7 @@ const SIDE_MENU = `
                 <td>(%CURRENTHIDEHELP%)</td>
             </tr>
             <tr data-setting="display_view_count">
-                <td><span>View highlights:</span></td>
+                <td><span>View indicators:</span></td>
                 <td>%VIEWS%</td>
                 <td>(%VIEWSHELP%)</td>
             </tr>
@@ -1437,8 +1437,8 @@ const HIDE_HIGHLIGHT_HTML = `
 
 const VIEWS_HTML = `
 <span id="ntisas-views-toggle">
-    <a id="ntisas-enable-views" class="ntisas-expanded-link">Enable</a>
-    <a id="ntisas-disable-views" class="ntisas-expanded-link">Disable</a>
+    <a id="ntisas-enable-views" class="ntisas-expanded-link">Show</a>
+    <a id="ntisas-disable-views" class="ntisas-expanded-link">Hide</a>
 </span>`;
 
 const AUTO_IQDB_HTML = `
