@@ -2282,7 +2282,7 @@ function ReadableBytes(bytes) {
     return JSPLib.utility.setPrecision((bytes / Math.pow(1024, i)), 2) + ' ' + sizes[i];
 }
 
-function GetFileExtension(url,splitter) {
+function GetFileExtension(url,splitter=' ') {
     let parser = new URL(url);
     let pathname = parser.pathname.split(splitter)[0];
     let extpos = pathname.lastIndexOf('.');
@@ -3584,8 +3584,12 @@ function InitializeUploadlinks(install) {
         $link = $('.ntisas-upload a');
         $link.attr('href', upload_link);
     }
-    GetImageAttributes(orig_image_url).then(({size,width,height})=>{
-        $link.attr('title', `${ReadableBytes(size)} (${width}x${height})`);
+    let qtip_key = NTISAS.page_match.photo_id + '-' + NTISAS.page_match.photo_index;
+    InitializeQtip($link, qtip_key, async ()=>{
+        let extension = GetFileExtension(image_url).toUpperCase();
+        return await GetImageAttributes(orig_image_url).then(({size,width,height})=>{
+            return `<span class="ntisas-code">${ReadableBytes(size)} : ${extension} : (${width} x ${height})</span>`;
+        });
     });
 }
 
