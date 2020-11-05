@@ -601,6 +601,11 @@ const PROGRAM_CSS = `
     font-size: 16px;
     font-weight: bold;
 }
+.ntisas-vr {
+    display: inline-block;
+    border-left: 1px solid #DDD;
+    height: 200px;
+}
 .ntisas-confirm-image > p {
     font-weight: 12px;
     padding: 6px;
@@ -3130,6 +3135,7 @@ function RenderAllSimilar(all_iqdb_results,image_urls,type) {
 
 function RenderSimilarContainer(header,iqdb_results,image_url,index) {
     var html = RenderTwimgPreview(image_url, index);
+    html += `<div class="ntisas-vr"></div>`;
     iqdb_results.forEach((iqdb_result,i)=>{
         let is_user_upload = iqdb_result.post.uploaderid === NTISAS.user_data.id;
         let addons = RenderPreviewAddons(iqdb_result.post.source, null, iqdb_result.score, iqdb_result.post.ext, iqdb_result.post.size, iqdb_result.post.width, iqdb_result.post.height, is_user_upload);
