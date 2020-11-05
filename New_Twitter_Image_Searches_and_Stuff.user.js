@@ -5234,7 +5234,7 @@ function PageNavigation(pagetype) {
 }
 
 function ProcessPhotoPopup() {
-    let $photo_container = $('[data-at-shortcutkeys]').prev().find('[aria-labelledby="modal-header"] > div > div:first-of-type');
+    let $photo_container = $('[aria-labelledby="modal-header"] > div > div:first-of-type');
     if ($photo_container.length) {
         let $photo_menu = $('[role=group]:not(.ntisas-photo-menu)', $photo_container[0]);
         if ($photo_menu.length) {
@@ -5261,14 +5261,14 @@ function ProcessTweetImage(obj,image_url,unprocessed_tweets) {
         JSPLib.debug.debugExecute(()=>{
             if (JSPLib.validate.isBoolean(image_url)) {
                 Danbooru.Utility.notice("New unhandled image found (see debug console)");
-                ProcessTweetImage.debuglog("Unhandled image", $(obj).closest('.ntisas-tweet').data('tweet-id'));
+                ProcessTweetImage.debuglog("Unhandled image", obj.src, $(obj).closest('.ntisas-tweet').data('tweet-id'));
             }
         });
     }
 }
 
 function ProcessTweetImages() {
-    let $unprocessed_images = $('.ntisas-tweet-media > div > div:not(.ntisas-tweet-quote) div:not([data-image-url]) > img:not(.ntisas-unhandled-image)');
+    let $unprocessed_images = $('.ntisas-tweet-media > div > div:not(.ntisas-tweet-quote):not(.ntisas-tweet-quote2) div:not([data-image-url]) > img:not(.ntisas-unhandled-image)');
     if ($unprocessed_images.length) {
         ProcessTweetImages.debuglog("Images found:", $unprocessed_images.length);
     }
