@@ -2079,7 +2079,10 @@ function VaildateColorArray(array) {
 
 //Library functions
 
-////NONE
+JSPLib.storage.invalidateStorageData = function (key,storage) {
+    let storage_type = this._getStorageType(storage);
+    delete this.memory_storage[storage_type][key];
+};
 
 //Helper functions
 
@@ -5430,6 +5433,7 @@ function BroadcastTISAS(ev) {
             if ('tweet_list' in ev.data &&'tweet-list' in GetList && 'list' in GetList['tweet-list']) {
                 GetList['tweet-list'].list = ev.data.tweet_list;
             }
+            JSPLib.storage.invalidateStorageData('ntisas-indicator-controls', localStorage);
             UpdateIndicatorControls();
             UpdateTweetIndicators();
             break;
