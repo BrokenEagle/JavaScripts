@@ -2867,6 +2867,7 @@ async function PickImage(event,type,pick_func) {
     if ((all_image_urls.length > 1) && IsQuerySettingEnabled('pick_image', type) && (typeof pick_func !== 'function' || pick_func())) {
         if (!NTISAS.tweet_dialog[tweet_id]) {
             NTISAS.tweet_dialog[tweet_id] = InitializeConfirmContainer(all_image_urls);
+            NTISAS.dialog_ancor[tweet_id] = $link;
         }
         NTISAS.tweet_dialog[tweet_id].dialog('open');
         let status = await NTISAS.tweet_dialog[tweet_id].prop('promiseConfirm');
@@ -3442,6 +3443,7 @@ function InitializeQtip($obj,tweet_id,delayfunc) {
         }
     });
     $obj.qtiptisas(qtip_settings);
+    NTISAS.qtip_ancor[tweet_id] = $obj;
 }
 
 function InitializeSimilarContainer(image_urls,similar_results,tweet_id,type) {
@@ -5050,6 +5052,20 @@ function RegularCheck() {
     if (NTISAS.user_settings.autoclick_IQDB_enabled) {
         AutoclickIQDB();
     }
+    for (let tweet_id in NTISAS.qtip_ancor) {
+        if (!document.body.contains(NTISAS.qtip_ancor[tweet_id].get(0))) {
+            NTISAS.qtip_ancor[tweet_id].qtiptisas('destroy', true);
+            delete NTISAS.tweet_qtip[tweet_id];
+            delete NTISAS.qtip_ancor[tweet_id];
+        }
+    }
+    for (let tweet_id in NTISAS.dialog_ancor) {
+        if (!document.body.contains(NTISAS.dialog_ancor[tweet_id].get(0))) {
+            NTISAS.tweet_dialog[tweet_id].dialog('destroy').remove();
+            delete NTISAS.tweet_dialog[tweet_id];
+            delete NTISAS.dialog_ancor[tweet_id];
+        }
+    }
     //Process any new images that have been loaded
     ProcessTweetImages();
     //Process events on newly rendered tweets that should only be done once
@@ -5711,7 +5727,9 @@ async function Main() {
     Danbooru.NTISAS = Object.assign(NTISAS, {
         tweet_index: {},
         tweet_qtip: {},
+        qtip_ancor: {},
         tweet_dialog: {},
+        dialog_ancor: {},
         similar_results: {},
         no_url_results: [],
         merge_results: [],
