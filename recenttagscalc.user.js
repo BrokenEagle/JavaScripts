@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RecentTagsCalc
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.7
+// @version      7.8
 // @description  Use different mechanism to calculate RecentTags.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1032,7 +1032,7 @@ async function QueryFrequentTags() {
         //Should never get here, but just in case
         return;
     }
-    RTC.frequent_tags = user_account[0].favorite_tags.split('\r\n').map((tag)=>{return tag.trim();});
+    RTC.frequent_tags = user_account[0].favorite_tags.split(/\s+/).map((tag)=>{return tag.trim();});
     QueryFrequentTags.debuglog("Found tags:",RTC.frequent_tags);
     JSPLib.storage.setStorageData('rtc-frequent-tags',RTC.frequent_tags,localStorage);
     JSPLib.concurrency.setRecheckTimeout('rtc-frequent-tags-expires',frequent_tags_expires);
