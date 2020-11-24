@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff (alpha)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.A.1
+// @version      7.A.2
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -4967,15 +4967,27 @@ function CountTweet(event) {
 }
 
 function DownloadOriginal(event) {
+    const mime_tyes = {
+        jpg: 'image/jpeg',
+        png: 'image/png',
+        mp4: 'video/mp4',
+    };
     let [$link,,,,,,,] = GetEventPreload(event, 'ntisas-download-original');
     let image_link = $link.attr('href');
     let download_name = $link.attr('download');
-
-    //Preload the image to avoid CORS issues... maybe...???
-    JSPLib.utility.getImageDimensions(image_link).then(()=>{
+    let [,extension] = GetFileURLNameExt(image_link);
+    let mime_type = mime_tyes[extension];
+    if (mime_type) {
         DownloadOriginal.debuglog("Saving", image_link, "as", download_name);
-        saveAs(image_link, download_name);
-    });
+        JSPLib.network.getImage(image_link).then((blob)=>{
+            let image_blob = blob.slice(0, blob.size, mime_type);
+            let blob_url = window.URL.createObjectURL(image_blob);
+            saveAs(blob_url, download_name);
+            DownloadOriginal.debuglog("Saved", extension, "file as", mime_type, "with size of", blob.size);
+        });
+    } else {
+        Danbooru.Utility.error("Unknown mime type for extension:", extension);
+    }
     event.preventDefault();
 }
 
