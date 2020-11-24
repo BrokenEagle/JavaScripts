@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff (alpha)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.A.0
+// @version      7.A.1
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -775,21 +775,22 @@ const PROGRAM_CSS = `
     font-size: 12px;
 }
 .ntisas-view-info,
-.ntisas-profile-user-view,
-.ntisas-profile-stream-view {
+.ntisas-profile-section {
     font-size: 12px;
     font-family: monospace;
     letter-spacing: -1px;
 }
-.ntisas-profile-view {
+.ntisas-profile-section {
     display: flex;
     flex-direction: column;
     margin-left: 1em;
     margin-top: auto;
 }
+.ntisas-profile-user-id,
 .ntisas-profile-user-view,
 .ntisas-profile-stream-view {
     display: flex;
+    border-bottom: 1px solid #CCC;
 }
 .ntisas-profile-user-view {
     border-bottom: 1px solid #CCC;
@@ -1142,8 +1143,7 @@ const COLOR_CSS = `
     border: 1px solid %TEXTFADED%;
 }
 .ntisas-view-info,
-.ntisas-profile-user-view,
-.ntisas-profile-stream-view,
+.ntisas-profile-section,
 .jsplib-inline-tooltip,
 .jsplib-block-tooltip {
     color: %TEXTSHADED%;
@@ -1493,8 +1493,9 @@ const VIEWS_HTML = `
     <a id="ntisas-disable-views" class="ntisas-expanded-link">Hide</a>
 </span>`;
 
-const PROFILE_VIEWS_HTML = `
-<div class="ntisas-profile-view">
+const PROFILE_TIMELINE_HTML = `
+<div class="ntisas-profile-section">
+    <div class="ntisas-profile-user-id"></div>
     <div class="ntisas-profile-user-view"></div>
     <div class="ntisas-profile-stream-view"></div>
 </div>`;
@@ -1525,13 +1526,15 @@ const MEDIA_LINKS_HTML = `
     <a class="ntisas-media-link" href="/%SCREENNAME%/likes">Likes</a>
 </div>`;
 
-
-
 const STATUS_MARKER = '<span class="ntisas-status-marker"><span class="ntisas-user-id"></span><span class="ntisas-retweet-id"></span><span class="ntisas-indicators"></span><span class="ntisas-view-info"></span></span>';
 const MAIN_COUNTER = '<span id="ntisas-indicator-counter">( <span class="ntisas-count-artist">0</span> , <span class="ntisas-count-tweet">0</span> )</span>';
 const TWEET_INDICATORS = '<span class="ntisas-mark-artist">Ⓐ</span><span class="ntisas-mark-tweet">Ⓣ</span><span class="ntisas-count-artist">ⓐ</span><span class="ntisas-count-tweet">ⓣ</span>';
 const NOTICE_BANNER = '<div id="ntisas-notice"><span>.</span><a href="javascript:void(0)" id="ntisas-close-notice-link">close</a></div>';
 const LOAD_COUNTER = '<span id="ntisas-load-message">Loading ( <span id="ntisas-counter">...</span> )</span>';
+
+const PROFILE_USER_ID = '<b>User ID&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; - %s</b>';
+const PROFILE_USER_VIEW = 'Viewed user&nbsp;&nbsp; - %s';
+const PROFILE_STREAM_VIEW = 'Viewed stream - %s';
 
 //Message constants
 
@@ -2207,7 +2210,7 @@ JSPLib.menu.loadUserSettings = function () {
 
 Danbooru.Utility.debugnotice = function(...args) {
     if (JSPLib.debug.debug_console) {
-        Danbooru.Utility.debugnotice(...args);
+        Danbooru.Utility.notice(...args);
     }
 };
 
@@ -3702,14 +3705,15 @@ async function InitializeViewCount(tweet) {
     }
 }
 
-function InitializeProfileViewCount(views,data_key,selector,text) {
+function InitializeProfileViewCount(views,data_key,selector,format) {
     let view_count = 0;
     let view_time = "initial"
     if (views && views.value.count > 0) {
         view_count = views.value.count
         view_time = ((Date.now() - views.value.viewed) < VIEWCOUNT_RECENT_DURATION ? "recently" : TimeAgo(views.value.viewed));
     }
-    $(selector).html(`<span title="${view_count} views">Viewed ${text} - ${view_time}</span>`);
+    let display_text = JSPLib.utility.sprintf(format, view_time);
+    $(selector).html(`<span title="${view_count} views">${display_text}</span>`);
     if (!NTISAS.recorded_views.includes(data_key)) {
         let mapped_view = {
             count: (views ? views.value.count : 0) + 1,
@@ -3721,7 +3725,7 @@ function InitializeProfileViewCount(views,data_key,selector,text) {
     }
 }
 
-function InitializeProfileCount() {
+function InitializeProfileTimeline() {
     let $navigation = $('nav[aria-label="Profile timelines"]');
     let $profile = $navigation.prev();
     let $header = $profile.children().first();
@@ -3729,15 +3733,15 @@ function InitializeProfileCount() {
     if ($info.length === 1) {
         let $children = $info.children();
         let name_line = $children.get(1);
-        if ($('.ntisas-profile-view', name_line).length === 0) {
+        if ($('.ntisas-profile-section', name_line).length === 0) {
             let $name_line = $(name_line);
             $name_line.addClass('ntisas-timeline-profile-name');
             let $entry = $name_line.children().first();
             $entry.css('flex-direction', 'row');
-            $entry.append(PROFILE_VIEWS_HTML);
+            $entry.append(PROFILE_TIMELINE_HTML);
         }
     } else {
-        InitializeProfileCount.debugwarn("Unable to find profile views attachment point!", $navigation,$profile,$header,$info);
+        InitializeProfileTimeline.debugwarn("Unable to find profile attachment point!", $navigation,$profile,$header,$info);
     }
 }
 
@@ -3922,6 +3926,7 @@ function QueueStorageRequest(type,key,value,database) {
             database,
             promise: $.Deferred(),
         };
+        JSPLib.debug.recordTime(key, 'Storage-queue');
         QUEUED_STORAGE_REQUESTS.push(request);
         CACHED_STORAGE_REQUESTS[queue_key] = request.promise;
     }
@@ -3940,6 +3945,7 @@ function FulfillStorageRequests(keylist,data_items,requests) {
         let data = (key in data_items ? data_items[key] : null);
         let request = requests.find((request) => (request.key === key));
         request.promise.resolve(data);
+        JSPLib.debug.recordTimeEnd(key, 'Storage-queue');
     });
 }
 
@@ -3953,14 +3959,20 @@ async function IntervalStorageHandler() {
         if (save_requests.length) {
             let save_data = Object.assign(...save_requests.map((request) => ({[request.key]: request.value})));
             JSPLib.storage.batchSaveData(save_data, STORAGE_DATABASES[database]).then(()=>{
-                save_requests.forEach((request) => request.promise.resolve(null));
+                save_requests.forEach((request)=>{
+                    request.promise.resolve(null);
+                    request.endtime = performance.now()
+                });
             });
         }
         let remove_requests = requests.filter((request) => (request.type === 'remove'));
         if (remove_requests.length) {
             let remove_keys = remove_requests.map((request) => request.key);
             JSPLib.storage.batchRemoveData(remove_keys, STORAGE_DATABASES[database]).then(()=>{
-                remove_requests.forEach((request) => request.promise.resolve(null));
+                remove_requests.forEach((request)=>{
+                    request.promise.resolve(null);
+                    request.endtime = performance.now();
+                });
             });
         }
         let check_requests = requests.filter((request) => (request.type === 'check'));
@@ -3982,11 +3994,14 @@ async function IntervalStorageHandler() {
 }
 
 function QueueNetworkRequest (type, item) {
+    const request_key = type + ',' + item.toString();
     const request = {
         type,
         item,
+        request_key,
         promise: $.Deferred(),
     };
+    JSPLib.debug.recordTime(request_key, 'Network-queue');
     QUEUED_NETWORK_REQUESTS.push(request);
     return request.promise;
 }
@@ -4007,6 +4022,7 @@ function IntervalNetworkHandler () {
                         return request.item.includes(data[data_key]);
                     });
                     request.promise.resolve(request_data);
+                    JSPLib.debug.recordTimeEnd(request.request_key, 'Network-queue');
                 });
             });
         }
@@ -5073,25 +5089,40 @@ function UpdateUserIDCallback() {
     }, TIMER_POLL_INTERVAL);
 }
 
-function UpdateProfileViewsCallback() {
-    NTISAS.update_views = JSPLib.utility.recheckTimer({
+function UpdateProfileCallback() {
+    if (NTISAS.update_profile.timer) {
+        clearInterval(NTISAS.update_profile.timer);
+    }
+    if (NTISAS.user_settings.display_user_id) {
+        $('.ntisas-profile-user-id').html(JSPLib.utility.sprintf(PROFILE_USER_ID, ''));
+    }
+    if (NTISAS.user_settings.display_profile_views) {
+        $('.ntisas-profile-user-view').html(JSPLib.utility.sprintf(PROFILE_USER_VIEW, ''));
+        $('.ntisas-profile-stream-view').html(JSPLib.utility.sprintf(PROFILE_STREAM_VIEW, ''));
+    }
+    NTISAS.update_profile = JSPLib.utility.recheckTimer({
         check: () => JSPLib.validate.isString(NTISAS.user_id),
         exec: ()=> {
-            let user_key = 'user-view-' + NTISAS.user_id;
-            GetData(user_key, 'danbooru').then((views)=>{
-                InitializeProfileViewCount(views, user_key, '.ntisas-profile-user-view', "user&nbsp;&nbsp;");
-            });
-            let stream_key1 = NTISAS.page + '-stream-view-' + NTISAS.account;
-            let stream_key2 = NTISAS.page + '-stream-view-' + NTISAS.user_id;
-            let stream_promise1 = GetData(stream_key1, 'danbooru');
-            let stream_promise2 = GetData(stream_key2, 'danbooru');
-            Promise.all([stream_promise1,stream_promise2]).then(([views1,views2])=>{
-                let views = views1 || views2;
-                InitializeProfileViewCount(views, stream_key2, '.ntisas-profile-stream-view', "stream");
-                if (views1) {
-                    RemoveData(stream_key1, 'danbooru');
-                }
-            });
+            if (NTISAS.user_settings.display_user_id) {
+                $('.ntisas-profile-user-id').html(JSPLib.utility.sprintf(PROFILE_USER_ID, NTISAS.user_id))
+            }
+            if (NTISAS.user_settings.display_profile_views) {
+                let user_key = 'user-view-' + NTISAS.user_id;
+                GetData(user_key, 'danbooru').then((views)=>{
+                    InitializeProfileViewCount(views, user_key, '.ntisas-profile-user-view', PROFILE_USER_VIEW);
+                });
+                let stream_key1 = NTISAS.page + '-stream-view-' + NTISAS.account;
+                let stream_key2 = NTISAS.page + '-stream-view-' + NTISAS.user_id;
+                let stream_promise1 = GetData(stream_key1, 'danbooru');
+                let stream_promise2 = GetData(stream_key2, 'danbooru');
+                Promise.all([stream_promise1,stream_promise2]).then(([views1,views2])=>{
+                    let views = views1 || views2;
+                    InitializeProfileViewCount(views, stream_key2, '.ntisas-profile-stream-view', PROFILE_STREAM_VIEW);
+                    if (views1) {
+                        RemoveData(stream_key1, 'danbooru');
+                    }
+                });
+            }
         }
     }, TIMER_POLL_INTERVAL, PROFILE_VIEWS_CALLBACK);
 }
@@ -5342,7 +5373,7 @@ function RegularCheck() {
         UpdateViewControls();
         UpdateIQDBControls();
         NTISAS.update_on_found = false;
-    } else if (NTISAS.update_views.timer === false) {
+    } else if (NTISAS.update_profile.timer === false) {
         RegularCheck.debugwarn("Failed to find user ID!!");
     }
 
@@ -5525,9 +5556,9 @@ function PageNavigation(pagetype) {
             $('#ntisas-tweet-stats-table').show();
             $('#ntisas-tweet-stats-message').hide();
         }
-        if (IsPageType(['main', 'media', 'likes', 'replies']) && (NTISAS.user_settings.display_profile_views)) {
-            InitializeProfileCount();
-            UpdateProfileViewsCallback();
+        if (IsPageType(['main', 'media', 'likes', 'replies'])) {
+            InitializeProfileTimeline();
+            UpdateProfileCallback();
         }
     }
     UpdateHighlightControls();
@@ -5857,22 +5888,27 @@ function InitializeChangedSettings() {
             InitializePostIDsLink(tweet_id, $post_link.parent(), tweet, post_ids);
         }
     });
-    if (API_DATA.has_data && IsTweetPage() && JSPLib.menu.hasSettingChanged('display_user_id')) {
-        if (NTISAS.user_settings.display_user_id) {
+    let called_profile_callback = false;
+    if (JSPLib.menu.hasSettingChanged('display_user_id')) {
+        if (NTISAS.user_settings.display_user_id && IsTweetPage()) {
             InitializeUserDisplay($processed_tweets);
-        } else {
+        } else if (NTISAS.user_settings.display_user_id && IsPageType(['main', 'media', 'likes', 'replies'])) {
+            UpdateProfileCallback();
+            called_profile_callback = true;
+        } else if (!NTISAS.user_settings.display_user_id) {
             $('.ntisas-user-id').html("");
+            $('.ntisas-profile-user-id').html("");
         }
     }
     if (JSPLib.menu.hasSettingChanged('auto_unhide_tweets_enabled') && NTISAS.user_settings.auto_unhide_tweets_enabled) {
         UnhideTweets();
     }
     if (JSPLib.menu.hasSettingChanged('display_profile_views') && IsPageType(['main', 'media', 'likes', 'replies'])) {
-        if (NTISAS.user_settings.display_profile_views) {
-            InitializeProfileCount();
-            UpdateProfileViewsCallback();
+        if (NTISAS.user_settings.display_profile_views && !called_profile_callback) {
+            UpdateProfileCallback();
         } else {
-            $('.ntisas-profile-view').hide();
+            $('.ntisas-profile-user-view').html("");
+            $('.ntisas-profile-stream-view').html("");
         }
     }
     if (JSPLib.menu.hasSettingChanged('image_popout_enabled') && IsPageType(STREAMING_PAGES)) {
@@ -6074,7 +6110,7 @@ async function Main() {
     JSPLib.network.jQuerySetup();
     Danbooru.Utility.installBanner(PROGRAM_SHORTCUT);
     Danbooru.NTISAS = Object.assign(NTISAS, {
-        update_views: {},
+        update_profile: {},
         tweet_images: {},
         tweet_index: {},
         tweet_qtip: {},
@@ -6167,7 +6203,7 @@ JSPLib.debug.addFunctionLogs([
     ReadFileAsync, ProcessPostvers, InitializeImageMenu, CorrectStringArray, ValidateEntry, BroadcastTISAS,
     PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages, InitializeUploadlinks, CheckSauce,
     GetMaxVideoDownloadLink, GetPageType, CheckServerBadTweets, SavePostvers, PickImage, MarkupMainTweet,
-    MarkupStreamTweet, MarkupMediaType, CheckViews, InitializeViewCount, ToggleImageSize, InitializeProfileCount,
+    MarkupStreamTweet, MarkupMediaType, CheckViews, InitializeViewCount, ToggleImageSize, InitializeProfileTimeline,
 ]);
 
 /****Initialization****/
