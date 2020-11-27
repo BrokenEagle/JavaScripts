@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff (alpha)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.A.2
+// @version      7.A.3
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1903,7 +1903,7 @@ const IMAGE_QTIP_SETTINGS = {
         viewport: false,
     },
     show: {
-        delay: 750,
+        delay: 1000,
         solo: true,
     },
     hide: {
@@ -2060,7 +2060,7 @@ function ValidateEntry(key,entry) {
     if (key.match(/^video-/)) {
         return JSPLib.validate.validateHashEntries(key, entry, VIDEO_CONSTRAINTS);
     }
-    ValidateEntry.debuglog("Bad key!");
+    ValidateEntry.debugerror("Bad key!");
     return false;
 }
 
@@ -2169,11 +2169,34 @@ function VaildateColorArray(array) {
 
 //Library functions
 
+JSPLib.debug.debugExecute = function (func,level=null) {
+    let execute_level = level || this.level;
+    if (this.debug_console && Number.isInteger(execute_level) && execute_level >= this.level) {
+        func();
+    }
+};
+
 JSPLib.debug.addFunctionLogs = function (funclist) {
     funclist.forEach((func)=>{
-        ['debuglog','debugwarn','debugerror','debugloglevel','debugwarnlevel','debugerrorlevel'].forEach((key)=>{
+        ['debuglog','debugwarn','debugerror','debuglogLevel','debugwarnLevel','debugerrorLevel'].forEach((key)=>{
             func[key] = function (...args) {
-                JSPLib.debug[key](`${func.name} -`,...args);
+                if (typeof args[0] === 'function') {
+                    let temp = args;
+                    args = [()=>(JSPLib.utility.concat([`${func.name} -`],temp[0]()))];
+                } else {
+                    args = JSPLib.utility.concat([`${func.name} -`], args);
+                }
+                JSPLib.debug[key](...args);
+            };
+        });
+    });
+};
+
+JSPLib.debug.moduleLogs = function (module,module_name,func_names) {
+    func_names.forEach((name)=>{
+        ['debuglog','debugwarn','debugerror','debuglogLevel','debugwarnLevel','debugerrorLevel'].forEach((key)=>{
+            module[name][key] = function (...args) {
+                JSPLib.debug[key](`${module_name}.${name} -`,...args);
             };
         });
     });
@@ -2185,6 +2208,53 @@ JSPLib.utility.safeMatch = function (string, regex, group = 0, defaultValue = ""
         return match[group];
     }
     return defaultValue;
+};
+
+JSPLib.storage.batchRetrieveData = async function (keylist,database=JSPLib.storage.danboorustorage) {
+    if (!this.use_storage || !database.getItems) {
+        return {};
+    }
+    var found_session,found_database;
+    let UUID = JSPLib.debug.debug_console && JSPLib.utility.getUniqueID();
+    this.batchRetrieveData.debuglogLevel(`[${UUID}]`,"Querying",keylist.length,"items:",keylist,JSPLib.debug.VERBOSE);
+    let database_type = this.use_indexed_db ? "IndexDB" : "LocalStorage";
+    let session_items = {};
+    let missing_keys = [];
+    keylist.forEach((key)=>{
+        let data = this.getStorageData(key,sessionStorage);
+        if (data) {
+            session_items[key] = data;
+        } else {
+            missing_keys.push(key);
+        }
+    });
+    JSPLib.debug.debugExecute(()=>{
+        found_session = Object.keys(session_items);
+        if (found_session.length) {
+            this.batchRetrieveData.debuglogLevel(`[${UUID}]`,"Found",found_session.length,"items (Session):",found_session,JSPLib.debug.VERBOSE);
+        }
+    },JSPLib.debug.VERBOSE);
+    if (missing_keys.length === 0) {
+        return session_items;
+    }
+    let record_key = keylist.join(',');
+    JSPLib.debug.recordTime(record_key,database_type);
+    let database_items = await database.getItems(missing_keys);
+    JSPLib.debug.recordTimeEnd(record_key,database_type);
+    JSPLib.debug.debugExecute(()=>{
+        found_database = Object.keys(database_items);
+        if (found_database.length) {
+            this.batchRetrieveData.debuglog(`[${UUID}]`,`Found ${found_database.length} items (${database_type}):`,found_database);
+        }
+        var missing_list = JSPLib.utility.arrayDifference(keylist,JSPLib.utility.concat(found_session,found_database));
+        if (missing_list.length) {
+            this.batchRetrieveData.debuglog(`[${UUID}]`,"Missing",missing_list.length,"items:",missing_list);
+        }
+    },JSPLib.debug.VERBOSE);
+    for (let key in database_items) {
+        this.setStorageData(key,database_items[key],sessionStorage);
+    }
+    return Object.assign(session_items,database_items);
 };
 
 JSPLib.menu.loadUserSettings = function () {
@@ -2201,10 +2271,10 @@ JSPLib.menu.loadUserSettings = function () {
     }
     let errors = this.validateUserSettings(settings,config);
     if (errors.length) {
-        JSPLib.debug.debuglogLevel("menu.loadUserSettings - Saving change to user settings!",JSPLib.debug.INFO);
+        this.loadUserSettings.debuglogLevel("Saving change to user settings!",JSPLib.debug.INFO);
         JSPLib.storage.setStorageData(`${program_shortcut}-user-settings`,settings,localStorage);
     }
-    JSPLib.debug.debuglogLevel("menu.loadUserSettings - Returning settings:",settings,JSPLib.debug.DEBUG);
+    this.loadUserSettings.debuglogLevel("Returning settings:",settings,JSPLib.debug.DEBUG);
     return settings;
 };
 
@@ -2213,6 +2283,9 @@ Danbooru.Utility.debugnotice = function(...args) {
         Danbooru.Utility.notice(...args);
     }
 };
+
+JSPLib.debug.moduleLogs(JSPLib.storage, 'storage', ['batchRetrieveData']);
+JSPLib.debug.moduleLogs(JSPLib.menu, 'menu', ['loadUserSettings']);
 
 //Helper functions
 
@@ -2399,9 +2472,14 @@ function GetImageAttributes(image_url) {
             resolve(GetImageAttributes.image_data[image_url]);
         }
         let size_promise = JSPLib.network.getImageSize(image_url);
-        let dimensions_promise = base_url in NTISAS.tweet_images ?
-            Promise.resolve(NTISAS.tweet_images[base_url].original_info) :
-            JSPLib.utility.getImageDimensions(image_url);
+        let dimensions_promise;
+        if (base_url in NTISAS.tweet_images) {
+            GetImageAttributes.debuglog("Found image API data:", base_url, NTISAS.tweet_images[base_url]);
+            dimensions_promise = Promise.resolve(NTISAS.tweet_images[base_url].original_info)
+        } else {
+            GetImageAttributes.debugwarn("Missing image API data:", base_url);
+            dimensions_promise = JSPLib.utility.getImageDimensions(image_url);
+        }
         Promise.all([size_promise, dimensions_promise]).then(([size,dimensions])=>{
             GetImageAttributes.image_data[image_url] = Object.assign(dimensions, {size: size});
             resolve(GetImageAttributes.image_data[image_url]);
@@ -2422,11 +2500,11 @@ function GetFileExtension(url,splitter=' ') {
     return pathname.slice(extpos + 1);
 }
 
-function GetThumbUrl(url,splitter,ext) {
+function GetThumbUrl(url,splitter,ext,size) {
     let parser = new URL(url);
     let pathname = parser.pathname.split(splitter)[0];
     let extpos = pathname.lastIndexOf('.');
-    return parser.origin + pathname.slice(0, extpos + 1) + ext;
+    return parser.origin + pathname.slice(0, extpos) + `?format=${ext}&name=${size}`;
 }
 
 function GetFileURLNameExt(file_url) {
@@ -2822,7 +2900,7 @@ function GetPageType() {
         case NTISAS.page_match.display:
             return 'display';
         default:
-            GetPageType.debuglog("Regex error:", window.location.href, NTISAS.page_match);
+            GetPageType.debugwarn("Regex error:", window.location.href, NTISAS.page_match);
             return 'default';
     }
 }
@@ -3350,7 +3428,7 @@ function RenderPostPreview(post,append_html="") {
 function RenderTwimgPreview(image_url,index,selectable) {
     let domain = 'twitter.com';
     let file_type = GetFileExtension(image_url, ':');
-    let thumb_url = GetThumbUrl(image_url, ':', 'jpg') + ':360x360';
+    let thumb_url = GetThumbUrl(image_url, ':', 'jpg', '360x360');
     let image_html = `<img width="${POST_PREVIEW_DIMENSION}" height="${POST_PREVIEW_DIMENSION}" src="${thumb_url}">`;
     let selected_class = "";
     if (selectable) {
@@ -3699,7 +3777,7 @@ async function InitializeViewCount(tweet) {
         $(tweet).addClass('ntisas-viewed');
     }
     if (!document.hidden && JSPLib.utility.isScrolledIntoView(tweet)) {
-        InitializeViewCount.debuglog("Viewable tweet:", tweet_id);
+        InitializeViewCount.debuglogLevel("Viewable tweet:", tweet_id, JSPLib.utility.DEBUG);
         AddViewCount(tweet_id);
         $(tweet).attr('viewed', 'true');
     }
@@ -3925,6 +4003,7 @@ function QueueStorageRequest(type,key,value,database) {
             value,
             database,
             promise: $.Deferred(),
+            error: (JSPLib.debug.debug_console ? new Error() : null),
         };
         JSPLib.debug.recordTime(key, 'Storage-queue');
         QUEUED_STORAGE_REQUESTS.push(request);
@@ -3949,14 +4028,16 @@ function FulfillStorageRequests(keylist,data_items,requests) {
     });
 }
 
-async function IntervalStorageHandler() {
+function IntervalStorageHandler() {
     if (QUEUED_STORAGE_REQUESTS.length === 0) {
         return;
     }
+    IntervalStorageHandler.debuglogLevel(()=>["Queued requests:",JSPLib.utility.dataCopy(QUEUED_STORAGE_REQUESTS)], JSPLib.debug.VERBOSE);
     for (let database in STORAGE_DATABASES) {
         let requests = QUEUED_STORAGE_REQUESTS.filter((request) => (request.database === database));
         let save_requests = requests.filter((request) => (request.type === 'save'));
         if (save_requests.length) {
+            IntervalStorageHandler.debuglogLevel("Save requests:", save_requests, JSPLib.debug.DEBUG);
             let save_data = Object.assign(...save_requests.map((request) => ({[request.key]: request.value})));
             JSPLib.storage.batchSaveData(save_data, STORAGE_DATABASES[database]).then(()=>{
                 save_requests.forEach((request)=>{
@@ -3967,6 +4048,7 @@ async function IntervalStorageHandler() {
         }
         let remove_requests = requests.filter((request) => (request.type === 'remove'));
         if (remove_requests.length) {
+            IntervalStorageHandler.debuglogLevel("Remove requests:", remove_requests, JSPLib.debug.DEBUG);
             let remove_keys = remove_requests.map((request) => request.key);
             JSPLib.storage.batchRemoveData(remove_keys, STORAGE_DATABASES[database]).then(()=>{
                 remove_requests.forEach((request)=>{
@@ -3977,6 +4059,7 @@ async function IntervalStorageHandler() {
         }
         let check_requests = requests.filter((request) => (request.type === 'check'));
         if (check_requests.length) {
+            IntervalStorageHandler.debuglogLevel("Check requests:", check_requests, JSPLib.debug.DEBUG);
             let check_keys = check_requests.map((request) => request.key);
             JSPLib.storage.batchCheckLocalDB(check_keys, ValidateEntry, ValidateExpiration, STORAGE_DATABASES[database]).then((check_data)=>{
                 FulfillStorageRequests(check_keys,check_data,check_requests);
@@ -3984,6 +4067,7 @@ async function IntervalStorageHandler() {
         }
         let noncheck_requests = requests.filter((request) => (request.type === 'get'));
         if (noncheck_requests.length) {
+            IntervalStorageHandler.debuglogLevel("Noncheck requests:", noncheck_requests, JSPLib.debug.DEBUG);
             let noncheck_keys = noncheck_requests.map((request) => request.key);
             JSPLib.storage.batchRetrieveData(noncheck_keys, STORAGE_DATABASES[database]).then((noncheck_data)=>{
                 FulfillStorageRequests(noncheck_keys,noncheck_data,noncheck_requests);
@@ -4000,6 +4084,7 @@ function QueueNetworkRequest (type, item) {
         item,
         request_key,
         promise: $.Deferred(),
+        error: (JSPLib.debug.debug_console ? new Error() : null),
     };
     JSPLib.debug.recordTime(request_key, 'Network-queue');
     QUEUED_NETWORK_REQUESTS.push(request);
@@ -4128,11 +4213,11 @@ function SavePostvers(add_entries,rem_entries) {
         let post_ids = add_entries[tweet_id];
         JSPLib.storage.retrieveData(tweet_key, false, JSPLib.storage.twitterstorage).then((data)=>{
             if (JSPLib.validate.validateIDList(data)) {
-                SavePostvers.debuglog("Tweet adds/rems - existing IDs:", tweet_key, data);
+                SavePostvers.debuglogLevel("Tweet adds/rems - existing IDs:", tweet_key, data, JSPLib.debug.DEBUG);
                 post_ids = JSPLib.utility.arrayUnique(JSPLib.utility.arrayDifference(JSPLib.utility.arrayUnion(data, add_entries[tweet_id]), rem_entries[tweet_id]));
             }
             if (data === null || JSPLib.utility.arraySymmetricDifference(post_ids, data)) {
-                SavePostvers.debuglog("Tweet adds/rems - saving:", tweet_key, post_ids);
+                SavePostvers.debuglogLevel("Tweet adds/rems - saving:", tweet_key, post_ids, JSPLib.debug.DEBUG);
                 SaveData(tweet_key, post_ids, 'twitter');
                 UpdatePostIDsLink(tweet_id, post_ids);
                 NTISAS.channel.postMessage({type: 'postlink', tweet_id: tweet_id, post_ids: post_ids});
@@ -4444,7 +4529,7 @@ function CheckViews(event) {
         $('.ntisas-tweet-image, .ntisas-tweet-video').closest('.ntisas-tweet').each((i,tweet)=>{
             if (JSPLib.utility.isScrolledIntoView(tweet)) {
                 let tweet_id = String($(tweet).data('tweet-id'));
-                CheckViews.debuglog("Viewable tweet:", event.type, tweet_id);
+                CheckViews.debuglogLevel("Viewable tweet:", event.type, tweet_id, JSPLib.debug.DEBUG);
                 AddViewCount(tweet_id);
                 $(tweet).attr('viewed', 'true');
             }
@@ -4776,6 +4861,12 @@ async function CheckSauce(event) {
         CheckSauce.debuglog("No results found.");
     }
     ProcessSimilarData('sauce', tweet_id, $tweet, $replace, selected_image_urls, similar_data);
+    let combined_headers = JSPLib.utility.getObjectAttributes(good_data, 'header');
+    let flat_headers = combined_headers.flat();
+    let sauce_remaining = flat_headers.reduce((total,header) => {
+        return Math.min(total, header.long_remaining);
+    }, Infinity);
+    Danbooru.Utility.notice(`Sauce remaining: ${sauce_remaining}`);
 }
 
 function ManualAdd(event) {
@@ -4981,8 +5072,7 @@ function DownloadOriginal(event) {
         DownloadOriginal.debuglog("Saving", image_link, "as", download_name);
         JSPLib.network.getImage(image_link).then((blob)=>{
             let image_blob = blob.slice(0, blob.size, mime_type);
-            let blob_url = window.URL.createObjectURL(image_blob);
-            saveAs(blob_url, download_name);
+            saveAs(image_blob, download_name);
             DownloadOriginal.debuglog("Saved", extension, "file as", mime_type, "with size of", blob.size);
         });
     } else {
@@ -5277,7 +5367,7 @@ function MarkupStreamTweet(tweet) {
         CheckHiddenMedia(tweet);
     }
     } catch (e) {
-        MarkupStreamTweet.debuglog(e, tweet);
+        MarkupStreamTweet.debugerror(e, tweet);
         if (JSPLib.debug.debug_console) {
             Danbooru.Utility.error("Error marking up stream tweet! (check debug console for details)", false);
         }
@@ -5355,7 +5445,7 @@ function MarkupMainTweet(tweet) {
         CheckHiddenMedia(tweet);
     }
     } catch (e) {
-        MarkupMainTweet.debuglog(e, tweet);
+        MarkupMainTweet.debugerror(e, tweet);
         if (JSPLib.debug.debug_console) {
             Danbooru.Utility.error("Error marking up main tweet! (check debug console for details)", false);
         }
@@ -5617,7 +5707,7 @@ function ProcessTweetImage(obj,image_url,unprocessed_tweets) {
         JSPLib.debug.debugExecute(()=>{
             if (JSPLib.validate.isBoolean(image_url)) {
                 Danbooru.Utility.notice("New unhandled image found (see debug console)");
-                ProcessTweetImage.debuglog("Unhandled image", obj.src, $obj.closest('.ntisas-tweet').data('tweet-id'));
+                ProcessTweetImage.debugwarn("Unhandled image", obj.src, $obj.closest('.ntisas-tweet').data('tweet-id'));
             }
         });
     }
@@ -5692,7 +5782,7 @@ function ProcessNewTweets() {
         MarkupMainTweet(main_tweets[0]);
     }
     let $image_tweets = $tweets.filter((i,entry) => $('.ntisas-tweet-image, .ntisas-tweet-video', entry).length);
-    ProcessNewTweets.debuglog(`[${NTISAS.uniqueid}]`, "Unprocessed:", $tweets.length, $image_tweets.length);
+    ProcessNewTweets.debuglog(`[${NTISAS.uniqueid}]`, "New:", $tweets.length, "Image:", $image_tweets.length);
     //Initialize tweets with images
     if ($image_tweets.length) {
         InitializeImageTweets($image_tweets);
@@ -6216,13 +6306,14 @@ JSPLib.debug.addFunctionLogs([
     PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages, InitializeUploadlinks, CheckSauce,
     GetMaxVideoDownloadLink, GetPageType, CheckServerBadTweets, SavePostvers, PickImage, MarkupMainTweet,
     MarkupStreamTweet, MarkupMediaType, CheckViews, InitializeViewCount, ToggleImageSize, InitializeProfileTimeline,
+    IntervalStorageHandler, GetImageAttributes,
 ]);
 
 /****Initialization****/
 
 //Variables for debug.js
 JSPLib.debug.debug_console = false;
-JSPLib.debug.level = JSPLib.debug.ALL;
+JSPLib.debug.level = JSPLib.debug.INFO;
 JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
 //Variables for menu.js
