@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      21.3
+// @version      21.4
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2083,18 +2083,16 @@ function ReloadEventNotice(event) {
     CalculateOverflow();
     EL.renderedlist = {};
     let promise_array = [];
-    Object.keys(localStorage).forEach((key)=>{
-        let match = key.match(/el-((ot|pq)-)?saved(\S+)list/);
-        if (!match) {
-            return;
+    ALL_EVENTS.forEach((type)=>{
+        let savedlist = JSPLib.utility.multiConcat(
+            JSPLib.storage.getStorageData(`el-saved${type}list`, localStorage, []),
+            JSPLib.storage.getStorageData(`el-ot-saved${type}list`, localStorage, []),
+            JSPLib.storage.getStorageData(`el-pq-saved${type}list`, localStorage, []),
+        );
+        let is_overflow = CheckOverflow(type);
+        if (savedlist.length || is_overflow) {
+            promise_array.push(LoadHTMLType(type, JSPLib.utility.arrayUnique(savedlist), CheckOverflow(type)));
         }
-        let type = match[3];
-        let savedlist = JSPLib.storage.getStorageData(key, localStorage, null);
-        if (!JSPLib.validate.validateIDList(savedlist)) {
-            ReloadEventNotice.debuglog(key, "is not a list!", savedlist);
-            return;
-        }
-        promise_array.push(LoadHTMLType(type, savedlist, CheckOverflow(type)));
     });
     Promise.all(promise_array).then(()=>{
         ProcessThumbnails();
@@ -2148,12 +2146,11 @@ function LoadMore(event) {
             } else {
                 $notice.hide();
             }
-            EL.all_overflows[type] = false;
-            CalculateOverflow(true);
-            JSPLib.storage.setStorageData('el-overflow', EL.any_overflow, localStorage);
             JSPLib.storage.setStorageData(`el-${type}overflow`, false, localStorage);
             JSPLib.storage.removeStorageData(`el-saved${type}lastid`, localStorage);
             JSPLib.storage.removeStorageData(`el-saved${type}list`, localStorage);
+            CalculateOverflow(true);
+            JSPLib.storage.setStorageData('el-overflow', EL.any_overflow, localStorage);
         });
         return;
     }
@@ -2379,18 +2376,19 @@ async function CheckSubscribeType(type,domname=null) {
         let filtertype = TYPEDICT[type].filter(jsontype, subscribe_set, user_set);
         let lastusertype = (jsontype.length ? JSPLib.danbooru.getNextPageID(jsontype, true) : typelastid);
         if (filtertype.length || savedlastid) {
+            let rendered_added = false;
             let idlist = JSPLib.utility.getObjectAttributes(filtertype, 'id');
             let previouslist = JSPLib.storage.getStorageData(savedlistkey, localStorage, []);
             idlist = JSPLib.utility.concat(previouslist, idlist);
             if (EL.not_snoozed) {
                 CheckSubscribeType.debuglog(`Displaying ${TYPEDICT[type].plural}:`, idlist.length, lastusertype);
-                await LoadHTMLType(type, idlist, isoverflow);
+                rendered_added = await LoadHTMLType(type, idlist, isoverflow);
             } else {
                 CheckSubscribeType.debuglog(`Available ${TYPEDICT[type].plural}:`, idlist.length, filtertype.length, lastusertype);
             }
             JSPLib.storage.setStorageData(savedlastidkey, lastusertype, localStorage);
             JSPLib.storage.setStorageData(savedlistkey, idlist, localStorage);
-            return EL.not_snoozed;
+            return rendered_added;
         } else {
             CheckSubscribeType.debuglog(`No ${TYPEDICT[type].plural}:`, lastusertype);
             SaveLastID(type, lastusertype);
@@ -2455,7 +2453,7 @@ async function LoadHTMLType(type,idlist,isoverflow=false) {
     if (displaylist.length === 0) {
         $section.show();
         $('#el-event-notice').show();
-        return;
+        return false;
     }
     EL.renderedlist[type] = JSPLib.utility.concat(EL.renderedlist[type], displaylist);
     JSPLib.storage.setStorageData('el-rendered-list', EL.renderedlist, localStorage);
@@ -2477,6 +2475,7 @@ async function LoadHTMLType(type,idlist,isoverflow=false) {
     }
     $section.show();
     $('#el-event-notice').show();
+    return true;
 }
 
 function FinalizeEventNotice(initial=false) {
@@ -2508,6 +2507,9 @@ async function CheckAllEvents(promise_array) {
         //Don't save the notice when only overflow notice, since that prevents further network gets
         $("#el-event-controls").show();
         $("#el-loading-message").hide();
+    } else {
+        JSPLib.storage.removeStorageData('el-rendered-list', localStorage);
+        JSPLib.storage.removeStorageData('el-saved-notice', localStorage);
     }
     JSPLib.storage.setStorageData('el-overflow', EL.item_overflow, localStorage);
     if (!EL.user_settings.autoclose_dmail_notice) {
