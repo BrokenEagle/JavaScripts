@@ -1083,6 +1083,10 @@ async function SetRecentDanbooruID(type,qualifier) {
     }
 }
 
+function AnyRenderedEvents() {
+    return Object.keys(EL.renderedlist).some((type) => (EL.renderedlist[type].length > 0));
+}
+
 function IsEventEnabled(type,event_type) {
     return EL.user_settings[event_type].includes(type);
 }
@@ -2078,6 +2082,7 @@ function ReadEventNotice(event) {
     MarkAllAsRead();
     $('#el-event-notice .el-overflow-notice').hide();
     $('#el-reload-event-notice').off(PROGRAM_CLICK);
+    JSPLib.concurrency.setRecheckTimeout('el-event-timeout', EL.timeout_expires);
 }
 
 function ReloadEventNotice(event) {
@@ -2493,8 +2498,10 @@ function FinalizeEventNotice(initial=false) {
             $("#el-event-controls").show();
             $("#el-loading-message").hide();
         }
-        localStorage['el-saved-notice'] = LZString.compressToUTF16($("#el-event-notice").html());
-        JSPLib.concurrency.setRecheckTimeout('el-saved-timeout', EL.timeout_expires);
+        if (AnyRenderedEvents()) {
+            localStorage['el-saved-notice'] = LZString.compressToUTF16($("#el-event-notice").html());
+            JSPLib.concurrency.setRecheckTimeout('el-saved-timeout', EL.timeout_expires);
+        }
     });
 }
 
