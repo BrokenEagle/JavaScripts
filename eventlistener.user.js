@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      21.4
+// @version      21.5
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -330,6 +330,7 @@ const PROGRAM_CSS = `
     display: none;
 }
 .el-overflow-notice {
+    border-top: 1px solid #DDD;
     font-weight: bold;
 }
 #el-lock-event-notice.el-locked,
@@ -528,10 +529,10 @@ const SECTION_NOTICE = `
     <h2>No %PLURAL% found!</h2>
 </div>
 <div class="el-overflow-notice" data-type="%TYPE%" style="display:none">
-    <b>%PLURAL%:</b>
-    <a data-type="more" href="javascript:void(0)">LOAD MORE</a>
+    <b>Check %PLURAL% controls:</b>
+    <a data-type="more" href="javascript:void(0)">CHECK MORE</a>
     |
-    <a data-type="all" href="javascript:void(0)">LOAD ALL</a>
+    <a data-type="all" href="javascript:void(0)">CHECK ALL</a>
     |
     <a data-type="skip" href="javascript:void(0)">SKIP</a>
     ( <span class="el-%TYPE%-counter">...</span> )
@@ -2059,6 +2060,7 @@ function InitializeCommentIndexLinks($obj,render=true) {
 //Event handlers
 
 function HideEventNotice(event) {
+    $('#close-notice-link').click();
     $('#el-event-notice').hide();
     MarkAllAsRead();
     JSPLib.concurrency.setRecheckTimeout('el-event-timeout', EL.timeout_expires);
@@ -2071,6 +2073,7 @@ function LockEventNotice(event) {
 }
 
 function ReadEventNotice(event) {
+    $('#close-notice-link').click();
     $(event.target).addClass('el-read');
     MarkAllAsRead();
     $('#el-event-notice .el-overflow-notice').hide();
@@ -2141,11 +2144,7 @@ function LoadMore(event) {
     if (optype === 'skip') {
         SetRecentDanbooruID(type).then(()=>{
             JSPLib.utility.notice("Event position has been reset!");
-            if (EL.renderedlist[type].length === 0) {
-                $notice.parent().hide();
-            } else {
-                $notice.hide();
-            }
+            $notice.hide();
             JSPLib.storage.setStorageData(`el-${type}overflow`, false, localStorage);
             JSPLib.storage.removeStorageData(`el-saved${type}lastid`, localStorage);
             JSPLib.storage.removeStorageData(`el-saved${type}list`, localStorage);
@@ -2166,9 +2165,6 @@ function LoadMore(event) {
         } else {
             JSPLib.utility.notice("No events found, nothing more to query!");
             $notice.hide();
-            if (EL.renderedlist[type].length === 0) {
-                $notice.siblings('.el-missing-notice').show();
-            }
         }
         $('#el-event-controls').show();
         FinalizeEventNotice();
@@ -2450,6 +2446,11 @@ async function LoadHTMLType(type,idlist,isoverflow=false) {
     }
     EL.renderedlist[type] = EL.renderedlist[type] || [];
     let displaylist = JSPLib.utility.arrayDifference(idlist, EL.renderedlist[type]);
+    if (EL.renderedlist[type].length === 0 && displaylist.length === 0) {
+        $section.find('.el-missing-notice').show();
+    } else {
+        $section.find('.el-missing-notice').hide();
+    }
     if (displaylist.length === 0) {
         $section.show();
         $('#el-event-notice').show();
@@ -2801,10 +2802,12 @@ function Main() {
                 SetLastSeenTime();
                 JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT);
                 if (hasevents) {
-                    JSPLib.utility.notice("Events are ready for viewing!");
+                    JSPLib.utility.notice("<b>EventListener:</b> Events are ready for viewing!", true);
                     $("#el-event-controls").show();
                     $("#el-loading-message").hide();
-                } else if (!EL.item_overflow) {
+                } else if (EL.item_overflow && EL.not_snoozed) {
+                    JSPLib.utility.notice("<b>EventListener:</b> No events found, but more can be queried...", true);
+                } else {
                     JSPLib.concurrency.setRecheckTimeout('el-event-timeout', EL.timeout_expires);
                 }
             });
