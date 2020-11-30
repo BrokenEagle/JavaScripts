@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff (alpha)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.A.4
+// @version      7.A.5
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -19,18 +19,19 @@
 // @require      https://cdn.jsdelivr.net/npm/xregexp@4.2.4/xregexp-all.js
 // @require      https://cdn.jsdelivr.net/npm/file-saver@2.0.2/dist/FileSaver.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/menu.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/danbooru/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3f6c18da7cf56c7900c9aa53ae62f79cbbd10f53/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3f6c18da7cf56c7900c9aa53ae62f79cbbd10f53/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3f6c18da7cf56c7900c9aa53ae62f79cbbd10f53/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3f6c18da7cf56c7900c9aa53ae62f79cbbd10f53/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3f6c18da7cf56c7900c9aa53ae62f79cbbd10f53/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3f6c18da7cf56c7900c9aa53ae62f79cbbd10f53/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3f6c18da7cf56c7900c9aa53ae62f79cbbd10f53/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3f6c18da7cf56c7900c9aa53ae62f79cbbd10f53/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3f6c18da7cf56c7900c9aa53ae62f79cbbd10f53/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3f6c18da7cf56c7900c9aa53ae62f79cbbd10f53/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3f6c18da7cf56c7900c9aa53ae62f79cbbd10f53/lib/saucenao.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3f6c18da7cf56c7900c9aa53ae62f79cbbd10f53/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3f6c18da7cf56c7900c9aa53ae62f79cbbd10f53/lib/menu.js
 // @resource     jquery_ui_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/jquery_ui_custom.css
 // @resource     jquery_qtip_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.css
 // @grant        GM_getResourceText
@@ -79,7 +80,6 @@ JSPLib.storage.twitterstorage = localforage.createInstance({
 
 //Main program variables
 const NTISAS = {};
-const JSP = {};
 
 //TIMER function hash
 const TIMER = {};
@@ -101,6 +101,26 @@ const PROGRAM_RESET_KEYS = {
     page_stats: {},
     counted_artists: [],
     counted_tweets: [],
+};
+const PROGRAM_DEFAULT_VALUES = {
+    lists: {},
+    update_profile: {},
+    tweet_images: {},
+    tweet_index: {},
+    tweet_qtip: {},
+    image_anchor: {},
+    qtip_ancor: {},
+    tweet_dialog: {},
+    dialog_ancor: {},
+    similar_results: {},
+    no_url_results: [],
+    merge_results: [],
+    recorded_views: [],
+    photo_navigation: false,
+    artist_iqdb_enabled: false,
+    opened_menu: false,
+    colors_checked: false,
+    page_locked: false,
 };
 
 //Settings constants
@@ -930,62 +950,6 @@ div#ntisas-notice {
 `;
 
 const MENU_CSS = `
-.jsplib-outer-menu {
-    float: left;
-    width: 100%;
-    min-width: 60em;
-}
-.jsplib-settings-grouping {
-    margin-bottom: 2em;
-}
-.jsplib-settings-buttons {
-    margin-top: 1em;
-}
-.jsplib-menu-item {
-    margin: 0.5em;
-}
-.jsplib-menu-item > div,
-.jsplib-menu-item > ul {
-    margin-left: 0.5em;
-}
-.jsplib-inline-tooltip {
-    display: inline;
-    font-style: italic;
-}
-.jsplib-block-tooltip {
-    display: block;
-    font-style: italic;
-}
-.jsplib-textinput jsplib-setting {
-    padding: 1px 0.5em;
-}
-.jsplib-sortlist li {
-    width: 5.5em;
-    font-size: 125%;
-}
-.jsplib-sortlist li > div {
-    padding: 5px;
-}
-.jsplib-textinput-control .jsplib-control {
-    padding: 1px 0.5em;
-}
-.jsplib-selectors.ntisas-selectors label,
-.jsplib-selectors.ntisas-selectors label:hover {
-    width: 140px;
-    font-weight: bold;
-}
-.jsplib-linkclick .jsplib-control {
-    display: inline;
-}
-.jsplib-console {
-    width: 100%;
-    min-width: 60em;
-}
-.jsplib-console hr,
-.jsplib-console .expandable {
-    width: 90%;
-    margin-left: 0;
-}
 #new-twitter-image-searches-and-stuff {
     z-index: 1001;
     font-size: 14px;
@@ -1034,6 +998,14 @@ const MENU_CSS = `
 }
 .ntisas-textinput input {
     width: unset;
+}
+#ntisas-console {
+    width: unset;
+    min-width: unset;
+}
+#ntisas-settings {
+    width: 100%;
+    min-width: unset;
 }
 #ntisas-settings > div {
     overflow-y: auto;
@@ -2061,7 +2033,7 @@ function ValidateEntry(key,entry) {
     if (key.match(/^video-/)) {
         return JSPLib.validate.validateHashEntries(key, entry, VIDEO_CONSTRAINTS);
     }
-    this.debugwarn("Bad key!");
+    this.debug('warn', "Bad key!");
     return false;
 }
 
@@ -2145,7 +2117,7 @@ function ValidateProgramData(key,entry) {
 function CorrectStringArray(name,stringlist) {
     let error_messages = [];
     if (!Array.isArray(stringlist)) {
-        this.debuglog("Value is not an array.");
+        this.debug('log', "Value is not an array.");
         return [];
     }
     let correctlist = stringlist.filter((name)=>{return JSPLib.validate.isString(name);});
@@ -2153,7 +2125,7 @@ function CorrectStringArray(name,stringlist) {
         SetLocalData('ntisas-' + name, correctlist);
         JSPLib.debug.debugExecute(()=>{
             let bad_values = JSPLib.utility.arrayDifference(stringlist, correctlist);
-            this.debuglog("Bad values found:", name, bad_values);
+            this.debug('log', "Bad values found:", name, bad_values);
         });
     }
     return correctlist;
@@ -2170,167 +2142,7 @@ function VaildateColorArray(array) {
 
 //Library functions
 
-JSPLib.debug.debugExecute = function (func,level=null) {
-    let execute_level = level || this.level;
-    if (this.debug_console && Number.isInteger(execute_level) && execute_level >= this.level) {
-        func();
-    }
-};
-
-JSPLib.debug.addFunctionLogs = function (funclist,global={}) {
-    funclist.forEach((func)=>{
-        ['debuglog','debugwarn','debugerror','debuglogLevel','debugwarnLevel','debugerrorLevel'].forEach((key)=>{
-             func[key] = function (...args) {
-                if (typeof args[0] === 'function') {
-                    let temp = args;
-                    args = [()=>(JSPLib.utility.concat([`${func.name} -`],temp[0]()))];
-                } else {
-                    args = JSPLib.utility.concat([`${func.name} -`], args);
-                }
-                JSPLib.debug[key](...args);
-            };
-        });
-        global[func.name] = func.bind(func);
-    });
-};
-
-JSPLib.debug.moduleLogs = function (module,module_name,func_names) {
-    func_names.forEach((name)=>{
-        ['debuglog','debugwarn','debugerror','debuglogLevel','debugwarnLevel','debugerrorLevel'].forEach((key)=>{
-            module[name][key] = function (...args) {
-                JSPLib.debug[key](`${module_name}.${name} -`,...args);
-            };
-        });
-    });
-};
-
-JSPLib.debug.addFunctionTimers = function (hash,is_async,itemlist) {
-    let context = this;
-    let timerFunc = (is_async ? this.debugAsyncTimer : this.debugSyncTimer);
-    itemlist.forEach((item)=>{
-        let func = item;
-        let nameindex = null;
-        if (Array.isArray(item)) {
-            if (typeof item[0] === 'function' && item.length > 1 && item.slice(1).every(val => Number.isInteger(val))) {
-                func = item[0];
-                if (item.length === 2) {
-                    nameindex = item[1];
-                } else {
-                    nameindex = item.slice(1);
-                }
-            } else {
-                throw "debug.addFunctionTimers: Invalid array parameter";
-            }
-        } else if (typeof item !== 'function') {
-            throw "debug.addFunctionTimers: Item is not a function";
-        }
-        let func_name = func.name.replace(/^bound /,"");
-        hash[func_name] = timerFunc.apply(context,[func,nameindex]);
-    });
-};
-
-JSPLib.utility.safeMatch = function (string, regex, group = 0, defaultValue = "") {
-    const match = string.match(regex);
-    if (match) {
-        return match[group];
-    }
-    return defaultValue;
-};
-
-JSPLib.storage.batchRetrieveData = async function (self,keylist,database=JSPLib.storage.danboorustorage) {
-    if (!this.use_storage || !database.getItems) {
-        return {};
-    }
-    var found_session,found_database;
-    let UUID = JSPLib.debug.debug_console && JSPLib.utility.getUniqueID();
-    self.debuglogLevel(`[${UUID}]`,"Querying",keylist.length,"items:",keylist,JSPLib.debug.VERBOSE);
-    let database_type = this.use_indexed_db ? "IndexDB" : "LocalStorage";
-    let session_items = {};
-    let missing_keys = [];
-    keylist.forEach((key)=>{
-        let data = this.getStorageData(key,sessionStorage);
-        if (data) {
-            session_items[key] = data;
-        } else {
-            missing_keys.push(key);
-        }
-    });
-    JSPLib.debug.debugExecute(()=>{
-        found_session = Object.keys(session_items);
-        if (found_session.length) {
-            self.debuglogLevel(`[${UUID}]`,"Found",found_session.length,"items (Session):",found_session,JSPLib.debug.VERBOSE);
-        }
-    },JSPLib.debug.VERBOSE);
-    if (missing_keys.length === 0) {
-        return session_items;
-    }
-    let record_key = keylist.join(',');
-    JSPLib.debug.recordTime(record_key,database_type);
-    let database_items = await database.getItems(missing_keys);
-    JSPLib.debug.recordTimeEnd(record_key,database_type);
-    JSPLib.debug.debugExecute(()=>{
-        found_database = Object.keys(database_items);
-        if (found_database.length) {
-            self.debuglog(`[${UUID}]`,`Found ${found_database.length} items (${database_type}):`,found_database);
-        }
-        var missing_list = JSPLib.utility.arrayDifference(keylist,JSPLib.utility.concat(found_session,found_database));
-        if (missing_list.length) {
-            self.debuglog(`[${UUID}]`,"Missing",missing_list.length,"items:",missing_list);
-        }
-    },JSPLib.debug.VERBOSE);
-    for (let key in database_items) {
-        this.setStorageData(key,database_items[key],sessionStorage);
-    }
-    return Object.assign(session_items,database_items);
-};
-
-JSPLib.menu.loadUserSettings = function (self) {
-    let program_shortcut = this.program_shortcut;
-    let config = this.program_data.settings_config;
-    let settings = JSPLib.storage.getStorageData(`${program_shortcut}-user-settings`,localStorage,{});
-    if (Array.isArray(this.settings_migrations)) {
-        this.settings_migrations.forEach((migration)=>{
-            if (config[migration.to].validate((settings[migration.from]))) {
-                settings[migration.to] = settings[migration.from];
-                delete settings[migration.from];
-            }
-        })
-    }
-    let errors = this.validateUserSettings(settings,config);
-    if (errors.length) {
-        self.debuglogLevel("Saving change to user settings!",JSPLib.debug.INFO);
-        JSPLib.storage.setStorageData(`${program_shortcut}-user-settings`,settings,localStorage);
-    }
-    self.debuglogLevel("Returning settings:",settings,JSPLib.debug.DEBUG);
-    return settings;
-};
-
-Danbooru.Utility.debugnotice = function(...args) {
-    if (JSPLib.debug.debug_console) {
-        Danbooru.Utility.notice(...args);
-    }
-};
-
-JSPLib.debug.moduleLogs(JSPLib.storage, 'storage', ['batchRetrieveData']);
-JSPLib.debug.moduleLogs(JSPLib.menu, 'menu', ['loadUserSettings']);
-
-for (let property in JSPLib.storage) {
-    if (['batchRetrieveData'].includes(property)) {
-        const func = JSPLib.storage[property];
-        JSPLib.storage[property] = function (...args) {
-            return func.apply(this, [func].concat(args));
-        };
-    }
-}
-
-for (let property in JSPLib.menu) {
-    if (['loadUserSettings'].includes(property)) {
-        const func = JSPLib.menu[property];
-        JSPLib.menu[property] = function (...args) {
-            return func.apply(this, [func].concat(args));
-        };
-    }
-}
+////NONE
 
 //Helper functions
 
@@ -2492,7 +2304,7 @@ function CheckSimilarResults(results,tweet_id,type) {
     if (results === null) {
         return false;
     }
-    if (!JSP.ValidateEntry(data_key, results) && JSPLib.storage.hasDataExpired(data_key, results, SIMILAR_EXPIRES)) {
+    if (!ValidateEntry(data_key, results) && JSPLib.storage.hasDataExpired(data_key, results, SIMILAR_EXPIRES)) {
         JSPLib.storage.removeData(data_key);
         return false;
     }
@@ -2536,10 +2348,10 @@ function GetImageAttributes(image_url) {
         let size_promise = JSPLib.network.getImageSize(image_url);
         let dimensions_promise;
         if (base_url in NTISAS.tweet_images) {
-            this.debuglog("Found image API data:", base_url, NTISAS.tweet_images[base_url]);
+            this.debug('log', "Found image API data:", base_url, NTISAS.tweet_images[base_url]);
             dimensions_promise = Promise.resolve(NTISAS.tweet_images[base_url].original_info)
         } else {
-            this.debugwarn("Missing image API data:", base_url);
+            this.debug('warn', "Missing image API data:", base_url);
             dimensions_promise = JSPLib.utility.getImageDimensions(image_url);
         }
         Promise.all([size_promise, dimensions_promise]).then(([size,dimensions])=>{
@@ -2626,16 +2438,16 @@ function LogarithmicExpiration(count, max_count, time_divisor, multiplier) {
 //Auxiliary functions
 
 function GetList(name) {
-    NTISAS.indicator_list[name] = NTISAS.indicator_list[name] || {};
-    if (!('list' in NTISAS.indicator_list[name])) {
-        NTISAS.indicator_list[name].list = GetLocalData('ntisas-' + name, []);
-        NTISAS.indicator_list[name].list = JSP.CorrectStringArray(name, NTISAS.indicator_list[name].list);
+    NTISAS.lists[name] = NTISAS.lists[name] || {};
+    if (!('list' in NTISAS.lists[name])) {
+        NTISAS.lists[name].list = GetLocalData('ntisas-' + name, []);
+        NTISAS.lists[name].list = CorrectStringArray(name, NTISAS.lists[name].list);
     }
-    return NTISAS.indicator_list[name].list;
+    return NTISAS.lists[name].list;
 }
 
 function SaveList(name,list,delay=true) {
-    NTISAS.indicator_list[name].list = list;
+    NTISAS.lists[name].list = list;
     if (delay) {
         setTimeout(()=>{
             SetLocalData('ntisas-' + name, list);
@@ -2685,7 +2497,7 @@ function SetCheckPostvers() {
         clearTimeout(CheckPostvers.timeout);
         CheckPostvers.timeout = setTimeout(()=>{
             if ((NTISAS.database_info || NTISAS.user_settings.bypass_server_mode) && JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'postvers')) {
-                TIMER.CheckPostvers();
+                CheckPostvers();
             }
         }, POST_VERSIONS_CALLBACK);
     }
@@ -2810,7 +2622,7 @@ function PromptSavePostIDs($link,$tweet,tweet_id,$replace,message,initial_post_i
                 return JSPLib.validate.validateID(num);
             })
         );
-        this.debuglog("Confirmed IDs:", confirm_post_ids);
+        this.debug('log', "Confirmed IDs:", confirm_post_ids);
         if (confirm_post_ids.length === 0) {
             RemoveData('tweet-' + tweet_id, 'twitter');
         } else {
@@ -2876,21 +2688,21 @@ function ProcessPostvers(postvers) {
                         tweet_id.add = tweet_id.rem = undefined;
                         account_swaps++;
                     } else {
-                        this.debuglog("ID swap detected", tweet_id.rem, "->", tweet_id.add);
+                        this.debug('log', "ID swap detected", tweet_id.rem, "->", tweet_id.add);
                     }
                 }
                 if (tweet_id.add) {
                     add_entries[tweet_id.add] = add_entries[tweet_id.add] || [];
                     add_entries[tweet_id.add] = JSPLib.utility.arrayUnion(add_entries[tweet_id.add], [postver.post_id]);
                     if (RemoveHashKeyValue(rem_entries, tweet_id.add[0], postver.post_id)) {
-                        this.debuglog("Source delete reversal detected", tweet_id.add);
+                        this.debug('log', "Source delete reversal detected", tweet_id.add);
                     }
                 }
                 if (tweet_id.rem) {
                     rem_entries[tweet_id.rem] = rem_entries[tweet_id.rem] || [];
                     JSPLib.utility.arrayUnion(rem_entries[tweet_id.rem], [postver.post_id]);
                     if (RemoveHashKeyValue(add_entries, tweet_id.rem, postver.post_id)) {
-                        this.debuglog("Source add reversal detected", tweet_id.rem);
+                        this.debug('log', "Source add reversal detected", tweet_id.rem);
                     }
                 }
             }
@@ -2899,32 +2711,32 @@ function ProcessPostvers(postvers) {
             let tweet_id = JSPLib.utility.findAll(postver.source, TWEET_REGEX)[1];
             if (tweet_id) {
                 if (postver.removed_tags.includes('bad_twitter_id')) {
-                    this.debuglog("Activated tweet:", tweet_id);
+                    this.debug('log', "Activated tweet:", tweet_id);
                     add_entries[tweet_id] = add_entries[tweet_id] || [];
                     add_entries[tweet_id] = JSPLib.utility.arrayUnion(add_entries[tweet_id], [postver.post_id]);
                     reversed_posts++;
                     if (RemoveHashKeyValue(rem_entries, tweet_id, postver.post_id)) {
-                        this.debuglog("Tweet remove reversal detected", tweet_id);
+                        this.debug('log', "Tweet remove reversal detected", tweet_id);
                     }
                 } else if (postver.added_tags.includes('bad_twitter_id')) {
                     rem_entries[tweet_id] = rem_entries[tweet_id] || [];
                     rem_entries[tweet_id] = JSPLib.utility.arrayUnion(rem_entries[tweet_id], [postver.post_id]);
                     inactive_posts++;
                     if (RemoveHashKeyValue(add_entries, tweet_id, postver.post_id)) {
-                        this.debuglog("Tweet add reversal detected", tweet_id);
+                        this.debug('log', "Tweet add reversal detected", tweet_id);
                     }
                 }
             }
         }
     });
     if (account_swaps > 0) {
-        this.debuglog("Account swaps detected:", account_swaps);
+        this.debug('log', "Account swaps detected:", account_swaps);
     }
     if (inactive_posts > 0) {
-        this.debuglog("Inactive tweets detected:", inactive_posts);
+        this.debug('log', "Inactive tweets detected:", inactive_posts);
     }
     if (reversed_posts > 0) {
-        this.debuglog("Activated tweets detected:", reversed_posts);
+        this.debug('log', "Activated tweets detected:", reversed_posts);
     }
     return [add_entries, rem_entries];
 }
@@ -2962,7 +2774,7 @@ function GetPageType() {
         case NTISAS.page_match.display:
             return 'display';
         default:
-            this.debugwarn("Regex error:", window.location.href, NTISAS.page_match);
+            this.debug('warn', "Regex error:", window.location.href, NTISAS.page_match);
             return 'default';
     }
 }
@@ -3124,10 +2936,10 @@ async function GetAllCurrentRecords() {
         }
         clearTimeout(CheckPostvers.timeout);
         if (JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'postvers')) {
-            Danbooru.Utility.notice(`Querying Danbooru...[${i}]`, false);
-            await TIMER.CheckPostvers();
+            JSPLib.notice.notice(`Querying Danbooru...[${i}]`, false);
+            await CheckPostvers();
         } else {
-            Danbooru.Utility.notice(`Waiting on other tasks to finish...[${i}]`, false);
+            JSPLib.notice.notice(`Waiting on other tasks to finish...[${i}]`, false);
             await JSPLib.utility.sleep(POST_VERSIONS_CALLBACK);
         }
         i++;
@@ -3139,10 +2951,10 @@ async function PickImage(event,type,pick_func) {
     let [$link,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event, similar_class);
     let all_image_urls = GetImageLinks($tweet[0]);
     if (all_image_urls.length === 0) {
-        this.debuglog("Images not loaded yet...");
+        this.debug('log', "Images not loaded yet...");
         return false;
     }
-    this.debuglog("All:", all_image_urls);
+    this.debug('log', "All:", all_image_urls);
     if ((all_image_urls.length > 1) && IsQuerySettingEnabled('pick_image', type) && (typeof pick_func !== 'function' || pick_func())) {
         if (!NTISAS.tweet_dialog[tweet_id]) {
             NTISAS.tweet_dialog[tweet_id] = InitializeConfirmContainer(all_image_urls);
@@ -3151,7 +2963,7 @@ async function PickImage(event,type,pick_func) {
         NTISAS.tweet_dialog[tweet_id].dialog('open');
         let status = await NTISAS.tweet_dialog[tweet_id].prop('promiseConfirm');
         if (!status) {
-            this.debuglog("Exiting...");
+            this.debug('log', "Exiting...");
             return false;
         }
         let selected_indexes = GetSelectPostIDs(tweet_id, 'tweet_dialog');
@@ -3159,7 +2971,7 @@ async function PickImage(event,type,pick_func) {
     } else {
         selected_image_urls = all_image_urls;
     }
-    this.debuglog("Selected:", selected_image_urls);
+    this.debug('log', "Selected:", selected_image_urls);
     $link.removeClass(similar_class).html("loading…");
     return [$link,$tweet,tweet_id,$replace,selected_image_urls];
 }
@@ -3248,13 +3060,13 @@ function ReadFileAsync(fileselector,is_json) {
         var reader = new FileReader();
         reader.onloadend = function(event) {
             if (event.target.readyState == FileReader.DONE) {
-                this.debuglog("File loaded:", file.size);
+                this.debug('log', "File loaded:", file.size);
                 let data = event.target.result;
                 if (is_json) {
                     try {
                         data = JSON.parse(data);
                     } catch (e) {
-                        Danbooru.Utility.error("Error: File is not JSON!");
+                        JSPLib.notice.error("Error: File is not JSON!");
                         reject();
                     }
                 }
@@ -3568,8 +3380,8 @@ function InitializeCleanupTasks() {
     //Take care of other non-critical tasks at a later time
     setTimeout(()=>{
         CheckDatabaseInfo();
-        JSP.CheckServerBadTweets();
-        JSP.CheckPurgeBadTweets();
+        CheckServerBadTweets();
+        CheckPurgeBadTweets();
         JSPLib.storage.pruneEntries(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, PRUNE_RECHECK_EXPIRES);
     }, CLEANUP_TASK_DELAY);
 }
@@ -3685,7 +3497,7 @@ function InitializeImageMenu($tweets,append_selector,menu_class) {
     JSPLib.debug.debugTime(timername);
     let tweet_ids = JSPLib.utility.arrayUnique(JSPLib.utility.getDOMAttributes($tweets, 'tweet-id', String));
     let promise_array = [];
-    this.debuglog(`[${uniqueid}]`, "Check Tweets:", tweet_ids);
+    this.debug('log', `[${uniqueid}]`, "Check Tweets:", tweet_ids);
     $tweets.each((i,tweet)=>{
         let tweet_promise = $.Deferred();
         promise_array.push(tweet_promise);
@@ -3772,7 +3584,7 @@ function InitializeTwitterImage(article,image_urls) {
     let index = Number($(article).data('id'));
     let image_url = image_urls[index] + ':orig';
     let image = $('img', article)[0];
-    let image_promise = JSP.GetImageAttributes(image_url);
+    let image_promise = GetImageAttributes(image_url);
     image_promise.then(({size,width,height})=>{
         let [preview_width,preview_height] = JSPLib.utility.getPreviewDimensions(width, height, POST_PREVIEW_DIMENSION);
         image.width = preview_width;
@@ -3835,7 +3647,7 @@ async function InitializeViewCount(tweet) {
         $(tweet).addClass('ntisas-viewed');
     }
     if (!document.hidden && JSPLib.utility.isScrolledIntoView(tweet)) {
-        this.debuglogLevel("Viewable tweet:", tweet_id, JSPLib.utility.DEBUG);
+        this.debug('logLevel', "Viewable tweet:", tweet_id, JSPLib.utility.DEBUG);
         AddViewCount(tweet_id);
         $(tweet).attr('viewed', 'true');
     }
@@ -3877,7 +3689,7 @@ function InitializeProfileTimeline() {
             $entry.append(PROFILE_TIMELINE_HTML);
         }
     } else {
-        this.debugwarn("Unable to find profile attachment point!", $navigation,$profile,$header,$info);
+        this.debug('warn', "Unable to find profile attachment point!", $navigation,$profile,$header,$info);
     }
 }
 
@@ -3897,7 +3709,7 @@ function InitializeDownloadLinks($tweet) {
         }
         if (is_video) {
             let tweet_id = String($tweet.data('tweet-id'));
-            JSP.GetMaxVideoDownloadLink(tweet_id).then((video_url)=>{
+            GetMaxVideoDownloadLink(tweet_id).then((video_url)=>{
                 if (video_url !== null) {
                     SetVideoDownload($download_section, video_url);
                 }
@@ -3913,7 +3725,7 @@ function InitializeUploadlinks(install) {
     if (selected_photo.length === 0) {
         selected_photo = $('img', $photo_container[0]);
         if (selected_photo.length === 0) {
-            this.debuglog("No popup images found!");
+            this.debug('log', "No popup images found!");
             return;
         }
     }
@@ -3935,7 +3747,7 @@ function InitializeUploadlinks(install) {
     let qtip_key = NTISAS.page_match.photo_id + '-' + NTISAS.page_match.photo_index;
     InitializeQtip($link, qtip_key, async ()=>{
         let extension = GetFileExtension(image_url).toUpperCase();
-        return await JSP.GetImageAttributes(orig_image_url).then(({size,width,height})=>{
+        return await GetImageAttributes(orig_image_url).then(({size,width,height})=>{
             return `<span class="ntisas-code">${ReadableBytes(size)} : ${extension} : (${width} x ${height})</span>`;
         });
     });
@@ -3965,11 +3777,11 @@ function InitializeUserDisplay($tweets) {
 
 function InitializeImageTweets($image_tweets) {
     if (IsPageType(STREAMING_PAGES)) {
-        JSP.InitializeImageMenu($image_tweets, '.ntisas-tweet-actions', 'ntisas-timeline-menu');
+        InitializeImageMenu($image_tweets, '.ntisas-tweet-actions', 'ntisas-timeline-menu');
     } else if (IsTweetPage()) {
         let $tweet = $image_tweets.filter(`[data-tweet-id=${NTISAS.tweet_id}]`);
         if ($tweet.length && $('.ntisas-tweet-image, .ntisas-tweet-video', $tweet[0]).length) {
-            JSP.InitializeImageMenu($tweet, '[ntisas-image-menu=parent]', 'ntisas-tweet-menu');
+            InitializeImageMenu($tweet, '[ntisas-image-menu=parent]', 'ntisas-tweet-menu');
             if (NTISAS.user_settings.original_download_enabled) {
                 InitializeDownloadLinks($tweet);
             }
@@ -4090,12 +3902,12 @@ function IntervalStorageHandler() {
     if (QUEUED_STORAGE_REQUESTS.length === 0) {
         return;
     }
-    this.debuglogLevel(()=>["Queued requests:",JSPLib.utility.dataCopy(QUEUED_STORAGE_REQUESTS)], JSPLib.debug.VERBOSE);
+    this.debug('logLevel', ()=>["Queued requests:",JSPLib.utility.dataCopy(QUEUED_STORAGE_REQUESTS)], JSPLib.debug.VERBOSE);
     for (let database in STORAGE_DATABASES) {
         let requests = QUEUED_STORAGE_REQUESTS.filter((request) => (request.database === database));
         let save_requests = requests.filter((request) => (request.type === 'save'));
         if (save_requests.length) {
-            this.debuglogLevel("Save requests:", save_requests, JSPLib.debug.DEBUG);
+            this.debug('logLevel', "Save requests:", save_requests, JSPLib.debug.DEBUG);
             let save_data = Object.assign(...save_requests.map((request) => ({[request.key]: request.value})));
             JSPLib.storage.batchSaveData(save_data, STORAGE_DATABASES[database]).then(()=>{
                 save_requests.forEach((request)=>{
@@ -4106,7 +3918,7 @@ function IntervalStorageHandler() {
         }
         let remove_requests = requests.filter((request) => (request.type === 'remove'));
         if (remove_requests.length) {
-            this.debuglogLevel("Remove requests:", remove_requests, JSPLib.debug.DEBUG);
+            this.debug('logLevel', "Remove requests:", remove_requests, JSPLib.debug.DEBUG);
             let remove_keys = remove_requests.map((request) => request.key);
             JSPLib.storage.batchRemoveData(remove_keys, STORAGE_DATABASES[database]).then(()=>{
                 remove_requests.forEach((request)=>{
@@ -4117,15 +3929,15 @@ function IntervalStorageHandler() {
         }
         let check_requests = requests.filter((request) => (request.type === 'check'));
         if (check_requests.length) {
-            this.debuglogLevel("Check requests:", check_requests, JSPLib.debug.DEBUG);
+            this.debug('logLevel', "Check requests:", check_requests, JSPLib.debug.DEBUG);
             let check_keys = check_requests.map((request) => request.key);
-            JSPLib.storage.batchCheckLocalDB(check_keys, JSP.ValidateEntry, ValidateExpiration, STORAGE_DATABASES[database]).then((check_data)=>{
+            JSPLib.storage.batchCheckLocalDB(check_keys, ValidateEntry, ValidateExpiration, STORAGE_DATABASES[database]).then((check_data)=>{
                 FulfillStorageRequests(check_keys,check_data,check_requests);
             });
         }
         let noncheck_requests = requests.filter((request) => (request.type === 'get'));
         if (noncheck_requests.length) {
-            this.debuglogLevel("Noncheck requests:", noncheck_requests, JSPLib.debug.DEBUG);
+            this.debug('logLevel', "Noncheck requests:", noncheck_requests, JSPLib.debug.DEBUG);
             let noncheck_keys = noncheck_requests.map((request) => request.key);
             JSPLib.storage.batchRetrieveData(noncheck_keys, STORAGE_DATABASES[database]).then((noncheck_data)=>{
                 FulfillStorageRequests(noncheck_keys,noncheck_data,noncheck_requests);
@@ -4210,16 +4022,16 @@ async function CheckPostvers() {
     }
     let post_versions = await JSPLib.danbooru.getAllItems('post_versions', QUERY_LIMIT, QUERY_BATCH_NUM, {page:postver_lastid, addons: url_addons, reverse: true, domain: NTISAS.domain, notify: true});
     if (post_versions.length === QUERY_BATCH_SIZE) {
-        this.debuglog("Overflow detected!");
+        this.debug('log', "Overflow detected!");
         SetLocalData('ntisas-overflow', true);
     } else {
-        this.debuglog("No overflow:", post_versions.length, QUERY_BATCH_SIZE);
+        this.debug('log', "No overflow:", post_versions.length, QUERY_BATCH_SIZE);
         SetLocalData('ntisas-overflow', false);
     }
     if (post_versions.length) {
-        let [add_entries,rem_entries] = JSP.ProcessPostvers(post_versions);
-        this.debuglog("Process:", add_entries, rem_entries);
-        JSP.SavePostvers(add_entries,rem_entries);
+        let [add_entries,rem_entries] = ProcessPostvers(post_versions);
+        this.debug('log', "Process:", add_entries, rem_entries);
+        SavePostvers(add_entries,rem_entries);
         let lastid = JSPLib.danbooru.getNextPageID(post_versions, true);
         //Since the post version last ID is critical, an extra sanity check has been added
         if (JSPLib.validate.validateID(lastid)) {
@@ -4242,15 +4054,15 @@ async function CheckServerBadTweets() {
         let url_addons = {search: {changed_tags: 'bad_twitter_id'}, only: POSTVER_FIELDS};
         let post_versions = await JSPLib.danbooru.getAllItems('post_versions', QUERY_LIMIT, QUERY_BATCH_NUM, {page:postver_lastid, addons: url_addons, reverse: true, domain: NTISAS.domain, notify: true});
         if (post_versions.length === QUERY_BATCH_SIZE) {
-            this.debuglog("Overflow detected!");
+            this.debug('log', "Overflow detected!");
         } else {
-            this.debuglog("No overflow:", post_versions.length, QUERY_BATCH_SIZE);
+            this.debug('log', "No overflow:", post_versions.length, QUERY_BATCH_SIZE);
             JSPLib.concurrency.setRecheckTimeout('ntisas-badver-recheck', BADVER_RECHECK_EXPIRES);
         }
         if (post_versions.length) {
-            let [add_entries,rem_entries] = JSP.ProcessPostvers(post_versions);
-            this.debuglog("Process:", add_entries, rem_entries);
-            JSP.SavePostvers(add_entries,rem_entries);
+            let [add_entries,rem_entries] = ProcessPostvers(post_versions);
+            this.debug('log', "Process:", add_entries, rem_entries);
+            SavePostvers(add_entries,rem_entries);
             let lastid = JSPLib.danbooru.getNextPageID(post_versions, true);
             //Since the post version last ID is critical, an extra sanity check has been added
             if (JSPLib.validate.validateID(lastid)) {
@@ -4271,11 +4083,11 @@ function SavePostvers(add_entries,rem_entries) {
         let post_ids = add_entries[tweet_id];
         JSPLib.storage.retrieveData(tweet_key, false, JSPLib.storage.twitterstorage).then((data)=>{
             if (JSPLib.validate.validateIDList(data)) {
-                this.debuglogLevel("Tweet adds/rems - existing IDs:", tweet_key, data, JSPLib.debug.DEBUG);
+                this.debug('logLevel', "Tweet adds/rems - existing IDs:", tweet_key, data, JSPLib.debug.DEBUG);
                 post_ids = JSPLib.utility.arrayUnique(JSPLib.utility.arrayDifference(JSPLib.utility.arrayUnion(data, add_entries[tweet_id]), rem_entries[tweet_id]));
             }
             if (data === null || JSPLib.utility.arraySymmetricDifference(post_ids, data)) {
-                this.debuglogLevel("Tweet adds/rems - saving:", tweet_key, post_ids, JSPLib.debug.DEBUG);
+                this.debug('logLevel', "Tweet adds/rems - saving:", tweet_key, post_ids, JSPLib.debug.DEBUG);
                 SaveData(tweet_key, post_ids, 'twitter');
                 UpdatePostIDsLink(tweet_id, post_ids);
                 NTISAS.channel.postMessage({type: 'postlink', tweet_id: tweet_id, post_ids: post_ids});
@@ -4288,11 +4100,11 @@ function SavePostvers(add_entries,rem_entries) {
         let post_ids = add_entries[tweet_id];
         JSPLib.storage.retrieveData(tweet_key, false, JSPLib.storage.twitterstorage).then((data)=>{
             if (JSPLib.validate.validateIDList(data)) {
-                this.debuglog("Tweet adds - existing IDs:", tweet_key, data);
+                this.debug('log', "Tweet adds - existing IDs:", tweet_key, data);
                 post_ids = JSPLib.utility.arrayUnion(data, post_ids);
             }
             if (data === null || post_ids.length > data.length) {
-                this.debuglog("Tweet adds - saving:", tweet_key, post_ids);
+                this.debug('log', "Tweet adds - saving:", tweet_key, post_ids);
                 SaveData(tweet_key, post_ids, 'twitter');
                 UpdatePostIDsLink(tweet_id, post_ids);
                 NTISAS.channel.postMessage({type: 'postlink', tweet_id: tweet_id, post_ids: post_ids});
@@ -4305,14 +4117,14 @@ function SavePostvers(add_entries,rem_entries) {
         let post_ids = [];
         JSPLib.storage.retrieveData(tweet_key, false, JSPLib.storage.twitterstorage).then((data)=>{
             if (data !== null && JSPLib.validate.validateIDList(data)) {
-                this.debuglog("Tweet removes - existing IDs:", tweet_key, data);
+                this.debug('log', "Tweet removes - existing IDs:", tweet_key, data);
                 post_ids = JSPLib.utility.arrayUnique(JSPLib.utility.arrayDifference(data, rem_entries[tweet_id]));
             }
             if (post_ids.length) {
-                this.debuglog("Tweet removes - saving:", tweet_key, post_ids);
+                this.debug('log', "Tweet removes - saving:", tweet_key, post_ids);
                 SaveData(tweet_key, post_ids, 'twitter');
             } else {
-                this.debuglog("Tweet removes - deleting:", tweet_key);
+                this.debug('log', "Tweet removes - deleting:", tweet_key);
                 RemoveData(tweet_key, 'twitter');
             }
             if (data !== null) {
@@ -4325,7 +4137,7 @@ function SavePostvers(add_entries,rem_entries) {
 
 async function GetMaxVideoDownloadLink(tweet_id) {
     let key = 'video-' + tweet_id;
-    let cached = await JSPLib.storage.checkLocalDB(key, JSP.ValidateEntry, VIDEO_EXPIRES);
+    let cached = await JSPLib.storage.checkLocalDB(key, ValidateEntry, VIDEO_EXPIRES);
     if (!cached) {
         if (API_DATA.has_data && tweet_id in API_DATA.tweets) {
             var data = GetAPIData('tweets', tweet_id);
@@ -4343,7 +4155,7 @@ async function GetMaxVideoDownloadLink(tweet_id) {
             var variants = data.extended_entities.media[0].video_info.variants;
         } catch (e) {
             //Bad data was returned!
-            this.debuglog("Bad data returned:", data);
+            this.debug('log', "Bad data returned:", data);
             variants = null;
         }
         if (variants) {
@@ -4474,12 +4286,12 @@ function RemoveData(key, database) {
 }
 
 async function LoadDatabase() {
-    this.debuglog("starting tweet load");
+    this.debug('log', "starting tweet load");
     JSPLib.debug.debugTime('database-network');
     var tweet_data = await JSPLib.network.getNotify(SERVER_DATABASE_URL, {}, JSPLib.utility.sprintf(SERVER_ERROR, "tweet database"));
     JSPLib.debug.debugTimeEnd('database-network');
     if (tweet_data !== false) {
-        await TIMER.SaveDatabase(tweet_data, '#ntisas-counter');
+        await SaveDatabase(tweet_data, '#ntisas-counter');
         return true;
     }
     return false;
@@ -4488,7 +4300,7 @@ async function LoadDatabase() {
 async function SaveDatabase(database,counter_selector) {
     var database_keys = Object.keys(database);
     let batches = Math.floor(database_keys.length / 2000);
-    this.debuglog("Database size:", database_keys.length);
+    this.debug('log', "Database size:", database_keys.length);
     var payload = {};
     for (var i = 0; i < database_keys.length; i++) {
         let key = database_keys[i];
@@ -4501,7 +4313,7 @@ async function SaveDatabase(database,counter_selector) {
         payload['tweet-' + key] = value;
         if (i !== 0 && (i % 2000 === 0)) {
             $(counter_selector).html(--batches);
-            this.debuglog("Saving batch #", batches);
+            this.debug('log', "Saving batch #", batches);
             JSPLib.debug.debugTime('database-save-' + batches);
             await JSPLib.storage.twitterstorage.setItems(payload);
             JSPLib.debug.debugTimeEnd('database-save-' + batches);
@@ -4542,7 +4354,7 @@ async function GetSavePackage(export_types) {
 function InitializeDatabase() {
     localStorage.removeItem('ntisas-length-recheck');
     NTISAS.channel.postMessage({type: 'database'});
-    Danbooru.Utility.notice("NTISAS will momentarily refresh the page to finish initializing the database.");
+    JSPLib.notice.notice("NTISAS will momentarily refresh the page to finish initializing the database.");
     //It's just easier to reload the page on database updates
     JSPLib.utility.refreshPage(PAGE_REFRESH_TIMEOUT);
 }
@@ -4559,8 +4371,8 @@ async function CheckDatabaseInfo(initial) {
 
 function CheckPurgeBadTweets() {
     if (!NTISAS.user_settings.bypass_server_mode && GetLocalData('ntisas-purge-bad', false) && JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'purgebad')) {
-        TIMER.PurgeBadTweets().then(()=>{
-            this.debuglog("All bad Tweets purged!");
+        PurgeBadTweets().then(()=>{
+            this.debug('log', "All bad Tweets purged!");
             SetLocalData('ntisas-purge-bad', false);
             JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT, 'purgebad')
         });
@@ -4575,7 +4387,7 @@ async function PurgeBadTweets() {
         let purge_set = new Set(purge_keylist)
         let database_set = new Set(database_keylist)
         let delete_keys = [...purge_set].filter((x)=>{return database_set.has(x);});
-        this.debuglog(delete_keys);
+        this.debug('log', delete_keys);
         await JSPLib.storage.batchRemoveData(delete_keys, JSPLib.storage.twitterstorage);
     }
 }
@@ -4587,7 +4399,7 @@ function CheckViews(event) {
         $('.ntisas-tweet-image, .ntisas-tweet-video').closest('.ntisas-tweet').each((i,tweet)=>{
             if (JSPLib.utility.isScrolledIntoView(tweet)) {
                 let tweet_id = String($(tweet).data('tweet-id'));
-                this.debuglogLevel("Viewable tweet:", event.type, tweet_id, JSPLib.debug.DEBUG);
+                this.debug('logLevel', "Viewable tweet:", event.type, tweet_id, JSPLib.debug.DEBUG);
                 AddViewCount(tweet_id);
                 $(tweet).attr('viewed', 'true');
             }
@@ -4601,10 +4413,10 @@ function PhotoNavigation(event) {
     }
     setTimeout(()=>{
         //Get the latest page regex match stored onto global variable
-        let pagetype = JSP.GetPageType();
+        let pagetype = GetPageType();
         if (pagetype === 'photo') {
             if (NTISAS.page_match.photo_index !== InitializeUploadlinks.photo_index) {
-                JSP.InitializeUploadlinks(false);
+                InitializeUploadlinks(false);
             }
         }
     }, TWITTER_DELAY);
@@ -4668,7 +4480,7 @@ function ToggleImageSize(event) {
             $image.data('showing-large', true);
         }
     } else {
-        this.debugwarn("No match!", image_url);
+        this.debug('warn', "No match!", image_url);
     }
     event.preventDefault();
 }
@@ -4746,7 +4558,7 @@ function InstallDatabase(event) {
     let message = JSPLib.utility.sprintf(INSTALL_CONFIRM, NTISAS.server_info.post_version, new Date(NTISAS.server_info.timestamp).toLocaleString());
     if (confirm(message)) {
         $('#ntisas-database-link').html(LOAD_COUNTER)
-        JSP.LoadDatabase().then((data)=>{
+        LoadDatabase().then((data)=>{
             if (data) {
                 JSPLib.storage.saveData('ntisas-database-info', NTISAS.server_info, JSPLib.storage.twitterstorage);
                 InitializeDatabase();
@@ -4760,7 +4572,7 @@ function UpgradeDatabase(event) {
                                                           NTISAS.database_info.post_version, new Date(NTISAS.database_info.timestamp).toLocaleString());
     if (confirm(message)) {
         $('#ntisas-database-link').html(LOAD_COUNTER);
-        JSP.LoadDatabase().then((data)=>{
+        LoadDatabase().then((data)=>{
             if (data) {
                 JSPLib.storage.saveData('ntisas-database-info', NTISAS.server_info, JSPLib.storage.twitterstorage);
                 SetLocalData('ntisas-purge-bad', true);
@@ -4780,10 +4592,10 @@ function CurrentRecords(event) {
                 }
                 JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT, 'records');
             } else {
-                Danbooru.Utility.error("Getting current records in another tab!");
+                JSPLib.notice.error("Getting current records in another tab!");
             }
         } else {
-            Danbooru.Utility.notice("Already up to date!");
+            JSPLib.notice.notice("Already up to date!");
         }
         CurrentRecords.is_running = false;
     }
@@ -4795,7 +4607,7 @@ function CurrentPostver(event) {
             if (Array.isArray(data) && data.length > 0) {
                 SetLocalData('ntisas-postver-lastid', data[0].id);
                 SetLocalData('ntisas-recent-timestamp', new Date(data[0].updated_at).getTime());
-                Danbooru.Utility.notice("Finished updating record position!");
+                JSPLib.notice.notice("Finished updating record position!");
                 InitializeCurrentRecords();
                 NTISAS.channel.postMessage({type: 'currentrecords'});
             }
@@ -4807,7 +4619,7 @@ function CurrentPostver(event) {
 function QueryTotalRecords(event) {
     GetTotalRecords(true).then((length)=>{
         $('#ntisas-total-records').html(length);
-        Danbooru.Utility.notice("Finished updating record count!");
+        JSPLib.notice.notice("Finished updating record count!");
     });
 }
 
@@ -4817,7 +4629,7 @@ function CheckURL(event) {
     let normal_url = `https://twitter.com/${screen_name}/status/${tweet_id}`;
     let wildcard_url = `https://twitter.com/*/status/${tweet_id}`;
     let check_url = (NTISAS.user_settings.URL_wildcards_enabled ? wildcard_url : normal_url);
-    this.debuglog(check_url);
+    this.debug('log', check_url);
     JSPLib.danbooru.submitRequest('posts', {tags: 'source:' + check_url, only: POST_FIELDS}, [], false, null, NTISAS.domain, true).then((data)=>{
         let post_ids = [];
         if (data.length === 0) {
@@ -4842,7 +4654,7 @@ function CheckURL(event) {
 }
 
 async function CheckIQDB(event) {
-    let pick = await JSP.PickImage(event, 'iqdb', (()=>!IsIQDBAutoclick()));
+    let pick = await PickImage(event, 'iqdb', (()=>!IsIQDBAutoclick()));
     if (!pick) {
         return;
     }
@@ -4852,7 +4664,7 @@ async function CheckIQDB(event) {
     let flat_data = all_iqdb_results.flat();
     let similar_data = [];
     if (flat_data.length) {
-        this.debuglog(`Found ${flat_data.length} results.`);
+        this.debug('log', `Found ${flat_data.length} results.`);
         let post_data = JSPLib.utility.getObjectAttributes(flat_data, 'post');
         let unique_posts = RemoveDuplicates(post_data, 'id');
         let mapped_posts = MapPostData(unique_posts);
@@ -4877,17 +4689,17 @@ async function CheckIQDB(event) {
             });
         });
     } else {
-        this.debuglog("Found no results.");
+        this.debug('log', "Found no results.");
     }
     ProcessSimilarData('iqdb', tweet_id, $tweet, $replace, selected_image_urls, similar_data, (()=>IsIQDBAutoclick()));
 }
 
 async function CheckSauce(event) {
     if (!NTISAS.user_settings.SauceNAO_API_key) {
-        Danbooru.Utility.error("<b>Error!</b> Must set SauceNAO API key in user settings.");
+        JSPLib.notice.error("<b>Error!</b> Must set SauceNAO API key in user settings.");
         return;
     }
-    let pick = await JSP.PickImage(event, 'sauce');
+    let pick = await PickImage(event, 'sauce');
     if (!pick) {
         return;
     }
@@ -4900,7 +4712,7 @@ async function CheckSauce(event) {
     let filtered_data = flat_data.filter(result => (parseFloat(result.header.similarity) >= NTISAS.user_settings.similarity_cutoff));
     let similar_data = [];
     if (filtered_data.length) {
-        this.debuglog(`Found ${filtered_data.length} results.`);
+        this.debug('log', `Found ${filtered_data.length} results.`);
         let danbooru_ids = JSPLib.utility.arrayUnique(JSPLib.utility.getNestedObjectAttributes(filtered_data, ['data', 'danbooru_id']));
         var posts_data = await GetPosts(danbooru_ids);
         similar_data = combined_data.map((image_result)=>{
@@ -4914,7 +4726,7 @@ async function CheckSauce(event) {
             });
         });
     } else {
-        this.debuglog("No results found.");
+        this.debug('log', "No results found.");
     }
     ProcessSimilarData('sauce', tweet_id, $tweet, $replace, selected_image_urls, similar_data);
     let combined_headers = JSPLib.utility.getObjectAttributes(good_data, 'header');
@@ -4922,12 +4734,12 @@ async function CheckSauce(event) {
     let sauce_remaining = flat_headers.reduce((total,header) => {
         return Math.min(total, header.long_remaining);
     }, Infinity);
-    Danbooru.Utility.notice(`Sauce remaining: ${sauce_remaining}`);
+    JSPLib.notice.notice(`Sauce remaining: ${sauce_remaining}`);
 }
 
 function ManualAdd(event) {
     let [$link,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event, 'ntisas-manual-add');
-    JSP.PromptSavePostIDs($link, $tweet, tweet_id, $replace, MANUAL_ADD_PROMPT, []);
+    PromptSavePostIDs($link, $tweet, tweet_id, $replace, MANUAL_ADD_PROMPT, []);
 }
 
 function ConfirmSave(event) {
@@ -4943,7 +4755,7 @@ function ConfirmSave(event) {
         let merge_ids = JSPLib.storage.getStorageData('tweet-' + tweet_id, sessionStorage, []);
         save_post_ids = JSPLib.utility.arrayUnion(merge_ids, save_post_ids);
     }
-    JSP.PromptSavePostIDs($link, $tweet, tweet_id, $replace, CONFIRM_SAVE_PROMPT, save_post_ids);
+    PromptSavePostIDs($link, $tweet, tweet_id, $replace, CONFIRM_SAVE_PROMPT, save_post_ids);
     event.preventDefault();
 }
 
@@ -4961,7 +4773,7 @@ function ConfirmDelete(event) {
     }
     let save_post_ids = JSPLib.utility.arrayDifference(all_post_ids, select_post_ids);
     let message = JSPLib.utility.sprintf(CONFIRM_DELETE_PROMPT, select_post_ids);
-    JSP.PromptSavePostIDs($link, $tweet, tweet_id, $replace, message, save_post_ids);
+    PromptSavePostIDs($link, $tweet, tweet_id, $replace, message, save_post_ids);
     event.preventDefault();
 }
 
@@ -5008,9 +4820,9 @@ function HelpInfo(event) {
 function ErrorMessages(event) {
     if (JSPLib.network.error_messages.length) {
         let help_text = JSPLib.network.error_messages.map(entry => `HTTP Error ${entry[1]}: ${entry[2]}<br>&emsp;&emsp;=> ${entry[0]}`).join('<br><br>');
-        Danbooru.Utility.error(help_text);
+        JSPLib.notice.error(help_text);
     } else {
-        Danbooru.Utility.notice("No error messages!");
+        JSPLib.notice.notice("No error messages!");
     }
 }
 
@@ -5055,7 +4867,7 @@ function SelectMetric(event) {
         NTISAS.tweet_type1_filter = filter1;
         NTISAS.tweet_type2_filter = filter2;
     } else {
-        Danbooru.Utility.notice("Must select category combinations with at least one tweet!");
+        JSPLib.notice.notice("Must select category combinations with at least one tweet!");
     }
 }
 
@@ -5125,19 +4937,19 @@ function DownloadOriginal(event) {
     let [,extension] = GetFileURLNameExt(image_link);
     let mime_type = mime_tyes[extension];
     if (mime_type) {
-        this.debuglog("Saving", image_link, "as", download_name);
+        this.debug('log', "Saving", image_link, "as", download_name);
         let $counter = $tweet.find('.ntisas-download-counter');
         let counter = parseInt($counter.text());
         $counter.text(counter + 1)
         JSPLib.network.getImage(image_link).then((blob)=>{
             let image_blob = blob.slice(0, blob.size, mime_type);
             saveAs(image_blob, download_name);
-            this.debuglog("Saved", extension, "file as", mime_type, "with size of", blob.size);
+            this.debug('log', "Saved", extension, "file as", mime_type, "with size of", blob.size);
             let counter = parseInt($counter.text());
             $counter.text(counter - 1)
         });
     } else {
-        Danbooru.Utility.error("Unknown mime type for extension:", extension);
+        JSPLib.notice.error("Unknown mime type for extension:", extension);
     }
     event.preventDefault();
 }
@@ -5150,7 +4962,7 @@ function DownloadAll(event) {
 function ResetLists(event) {
     let selected_lists = JSPLib.menu.getCheckboxRadioSelected('[data-setting="select_list"] [data-selector]');
     if (selected_lists.length === 0) {
-        Danbooru.Utility.notice("Must select at least one list!");
+        JSPLib.notice.notice("Must select at least one list!");
     } else {
         selected_lists.forEach((list)=>{
             SaveList(ALL_LISTS[list], [], false);
@@ -5159,18 +4971,18 @@ function ResetLists(event) {
         UpdateArtistHighlights();
         UpdateIQDBControls();
         UpdateTweetIndicators();
-        Danbooru.Utility.notice("Lists have been reset!");
+        JSPLib.notice.notice("Lists have been reset!");
     }
 }
 
 function ExportData(event) {
     let export_types = JSPLib.menu.getCheckboxRadioSelected('[data-setting="export_types"] [data-selector]');
     if (export_types.length === 0) {
-        Danbooru.Utility.notice("Must select at least one export type!");
+        JSPLib.notice.notice("Must select at least one export type!");
     } else if (!ExportData.is_running) {
         ExportData.is_running = true;
-        Danbooru.Utility.notice("Exporting data!");
-        TIMER.GetSavePackage(export_types).then((save_package)=>{
+        JSPLib.notice.notice("Exporting data!");
+        GetSavePackage(export_types).then((save_package)=>{
             let export_addon = export_types.map(type => `[${type}]`).join('-');
             let time_addon = GetNumericTimestamp(Date.now());
             let filename = `NTISAS-${export_addon}-${time_addon}.json`;
@@ -5184,11 +4996,11 @@ function ExportData(event) {
 function ImportData(event) {
     if (!this.is_running) {
         this.is_running = true;
-        JSP.ReadFileAsync('#ntisas-import-file', true).then((import_package)=>{
-            Danbooru.Utility.notice("Importing data!");
+        ReadFileAsync('#ntisas-import-file', true).then((import_package)=>{
+            JSPLib.notice.notice("Importing data!");
             let promise_array = [];
             if ('program_data' in import_package) {
-                this.debuglog("Program data:" ,import_package.program_data);
+                this.debug('log', "Program data:" ,import_package.program_data);
                 Object.keys(import_package.program_data).forEach((key)=>{
                     //For backwards compatibility
                     let store_key = key.replace(/^tisas-/, 'ntisas-');
@@ -5196,10 +5008,10 @@ function ImportData(event) {
                 });
             }
             if ('database_info' in import_package) {
-                this.debuglog("Database info:", import_package.database_info);
+                this.debug('log', "Database info:", import_package.database_info);
                 promise_array.push(JSPLib.storage.saveData('ntisas-database-info', import_package.database_info, JSPLib.storage.twitterstorage));
-                this.debuglog("Database length:", Object.keys(import_package.tweet_database).length);
-                promise_array.push(TIMER.SaveDatabase(import_package.tweet_database, '#ntisas-import-counter'));
+                this.debug('log', "Database length:", Object.keys(import_package.tweet_database).length);
+                promise_array.push(SaveDatabase(import_package.tweet_database, '#ntisas-import-counter'));
                 Promise.all(promise_array).then(()=>{
                     InitializeDatabase();
                     this.is_running = false;
@@ -5233,12 +5045,13 @@ function UpdateUserIDCallback() {
         let user_id;
         if (API_DATA.has_data && NTISAS.account && (NTISAS.account in API_DATA.users_name)) {
             NTISAS.user_id = GetAPIData('users_name', NTISAS.account, 'id_str');
+            JSPLib.notice.debugNotice("Primary user ID path");
         } else if (user_id = getUserID('[src*="/profile_banners/"]', 'src', BANNER_REGEX, 1)) {
             NTISAS.user_id = user_id;
-            Danbooru.Utility.debugnotice("Alternate user ID path #1");
+            JSPLib.notice.debugNotice("Alternate user ID path #1");
         } else if (user_id = getUserID('[href^="/i/connect_people?user_id="]', 'href', /\d+/, 0)) {
             NTISAS.user_id = user_id;
-            Danbooru.Utility.debugnotice("Alternate user ID path #2");
+            JSPLib.notice.debugNotice("Alternate user ID path #2");
         } else {
             found_ID = false;
         }
@@ -5306,7 +5119,7 @@ function AutoclickIQDB() {
 function UnhideTweets() {
     let $hidden_tweets = $('.ntisas-hidden-media [role=button]');
     if ($hidden_tweets.length) {
-        this.debuglog("Found hidden tweets:", $hidden_tweets.length);
+        this.debug('log', "Found hidden tweets:", $hidden_tweets.length);
         $hidden_tweets.click();
     }
 }
@@ -5317,11 +5130,11 @@ function MarkupMediaType(tweet) {
     if ($('[src*="/card_img/"], span > svg', tweet).length) {
         $('.ntisas-tweet-media', tweet).addClass('ntisas-tweet-card').removeClass('ntisas-tweet-media');
     } else if ($('[role=progressbar]', tweet).length) {
-        this.debuglog("Delaying media check for", $(tweet).data('tweet-id'));
+        this.debug('log', "Delaying media check for", $(tweet).data('tweet-id'));
         let timer = setInterval(()=>{
             if ($('[role=progressbar]', tweet).length === 0) {
                 clearInterval(timer);
-                JSP.MarkupMediaType(tweet);
+                MarkupMediaType(tweet);
             }
         }, TIMER_POLL_INTERVAL);
     } else {
@@ -5426,9 +5239,9 @@ function MarkupStreamTweet(tweet) {
         CheckHiddenMedia(tweet);
     }
     } catch (e) {
-        this.debugerror(e, tweet);
+        this.debug('error', e, tweet);
         if (JSPLib.debug.debug_console) {
-            Danbooru.Utility.error("Error marking up stream tweet! (check debug console for details)", false);
+            JSPLib.notice.error("Error marking up stream tweet! (check debug console for details)", false);
         }
     }
 }
@@ -5504,9 +5317,9 @@ function MarkupMainTweet(tweet) {
         CheckHiddenMedia(tweet);
     }
     } catch (e) {
-        this.debugerror(e, tweet);
+        this.debug('error', e, tweet);
         if (JSPLib.debug.debug_console) {
-            Danbooru.Utility.error("Error marking up main tweet! (check debug console for details)", false);
+            JSPLib.notice.error("Error marking up main tweet! (check debug console for details)", false);
         }
     }
 }
@@ -5518,11 +5331,11 @@ function CheckHiddenMedia(tweet) {
         $('.ntisas-tweet-media [role=button]', tweet).one(PROGRAM_CLICK, (event)=>{
             $('.ntisas-tweet-media', tweet).removeClass('ntisas-hidden-media');
             setTimeout(()=>{
-                JSP.MarkupMediaType(tweet);
+                MarkupMediaType(tweet);
             }, TWITTER_DELAY);
         });
     } else {
-        JSP.MarkupMediaType(tweet);
+        MarkupMediaType(tweet);
     }
 }
 
@@ -5535,12 +5348,12 @@ function RegularCheck() {
         UpdateIQDBControls();
         NTISAS.update_on_found = false;
     } else if (NTISAS.update_profile.timer === false) {
-        this.debugwarn("Failed to find user ID!!");
+        this.debug('warn', "Failed to find user ID!!");
     }
 
     //Get current page and previous page info
     NTISAS.prev_pagetype = NTISAS.page;
-    let pagetype = JSP.GetPageType();
+    let pagetype = GetPageType();
     if (pagetype === "other") {
         return;
     }
@@ -5554,7 +5367,7 @@ function RegularCheck() {
     }
 
     //Process events on a page change
-    JSP.PageNavigation(pagetype);
+    PageNavigation(pagetype);
 
     //Process events at each interval
     if (!NTISAS.colors_checked || window.location.pathname === '/i/display') {
@@ -5584,22 +5397,22 @@ function RegularCheck() {
         }
     }
     //Process any new images that have been loaded
-    JSP.ProcessTweetImages();
+    ProcessTweetImages();
     //Process events on newly rendered tweets that should only be done once
-    if (!JSP.ProcessNewTweets()) {
+    if (!ProcessNewTweets()) {
         //Only process further if there are new tweets
         return;
     }
 
     //Additional processing on all tweets when new tweets get added
     if (DisplayHighlights()) {
-        JSP.HighlightTweets();
+        HighlightTweets();
     }
     if (!IsPageType(['tweet', 'web_tweet', 'other'])) {
         CollectTweetStats();
     }
     if (NTISAS.user_settings.auto_unhide_tweets_enabled) {
-        JSP.UnhideTweets();
+        UnhideTweets();
     }
 }
 
@@ -5624,7 +5437,7 @@ function PageNavigation(pagetype) {
         case 'media':
         case 'likes':
         case 'replies':
-            this.debuglog(`User timeline [${NTISAS.page}]:`, account);
+            this.debug('log', `User timeline [${NTISAS.page}]:`, account);
             NTISAS.account = account;
             UpdateUserIDCallback();
             if (NTISAS.account === 'following' || NTISAS.account === 'lists') {
@@ -5634,16 +5447,16 @@ function PageNavigation(pagetype) {
         case 'home':
         case 'list':
         case 'moment':
-            this.debuglog(`Stream timeline [${NTISAS.page}]:`, page_id || "n/a");
+            this.debug('log', `Stream timeline [${NTISAS.page}]:`, page_id || "n/a");
             NTISAS.account = NTISAS.user_id = undefined;
             break;
         case 'hashtag':
-            this.debuglog("Hashtag timeline:", NTISAS.page_match.hashtag_hash);
+            this.debug('log', "Hashtag timeline:", NTISAS.page_match.hashtag_hash);
             NTISAS.account = NTISAS.user_id = undefined;
             NTISAS.hashtag_search = window.location.search;
             break;
         case 'search':
-            this.debuglog("Search timeline:", NTISAS.page_match.search_query);
+            this.debug('log', "Search timeline:", NTISAS.page_match.search_query);
             params = JSPLib.utility.parseParams(NTISAS.page_match.search_query);
             NTISAS.queries = ParseQueries(params.q);
             NTISAS.account = ('from' in NTISAS.queries ? NTISAS.queries.from : undefined);
@@ -5651,13 +5464,13 @@ function PageNavigation(pagetype) {
             break;
         case 'tweet':
         case 'web_tweet':
-            this.debuglog("Tweet ID:", page_id);
+            this.debug('log', "Tweet ID:", page_id);
             NTISAS.screen_name = account;
             NTISAS.tweet_id = page_id;
             NTISAS.account = NTISAS.user_id = undefined;
             break;
         case 'display':
-            this.debuglog("Twitter display settings");
+            this.debug('log', "Twitter display settings");
             return;
         default:
             //Do nothing
@@ -5718,7 +5531,7 @@ function PageNavigation(pagetype) {
             $('#ntisas-tweet-stats-message').hide();
         }
         if (IsPageType(['main', 'media', 'likes', 'replies'])) {
-            JSP.InitializeProfileTimeline();
+            InitializeProfileTimeline();
             UpdateProfileCallback();
         }
     }
@@ -5743,7 +5556,7 @@ function ProcessPhotoPopup() {
             $photo_menu.addClass('ntisas-photo-menu');
             $('.ntisas-photo-container [aria-label=Next], .ntisas-photo-container [aria-label=Previous]').on(PROGRAM_CLICK, PhotoNavigation);
             if (NTISAS.user_settings.display_upload_link) {
-                JSP.InitializeUploadlinks(true);
+                InitializeUploadlinks(true);
             }
         }
     }
@@ -5765,8 +5578,8 @@ function ProcessTweetImage(obj,image_url,unprocessed_tweets) {
         $obj.addClass('ntisas-unhandled-image');
         JSPLib.debug.debugExecute(()=>{
             if (JSPLib.validate.isBoolean(image_url)) {
-                Danbooru.Utility.notice("New unhandled image found (see debug console)");
-                this.debugwarn("Unhandled image", obj.src, $obj.closest('.ntisas-tweet').data('tweet-id'));
+                JSPLib.notice.notice("New unhandled image found (see debug console)");
+                this.debug('warn', "Unhandled image", obj.src, $obj.closest('.ntisas-tweet').data('tweet-id'));
             }
         });
     }
@@ -5775,21 +5588,21 @@ function ProcessTweetImage(obj,image_url,unprocessed_tweets) {
 function ProcessTweetImages() {
     let $unprocessed_images = $('.ntisas-tweet-media > div > div:not(.ntisas-tweet-quote):not(.ntisas-tweet-quote2) div:not([data-image-url]) > img:not(.ntisas-unhandled-image)');
     if ($unprocessed_images.length) {
-        this.debuglog("Images found:", $unprocessed_images.length);
+        this.debug('log', "Images found:", $unprocessed_images.length);
     }
     let unprocessed_tweets = {};
     $unprocessed_images.each((i,image)=>{
         let image_url = GetNormalImageURL(image.src);
-        JSP.ProcessTweetImage(image, image_url, unprocessed_tweets);
+        ProcessTweetImage(image, image_url, unprocessed_tweets);
     });
     //Only gets executed when videos are autoplay. Otherwise videos get found as images above.
     let $unprocessed_videos = $('.ntisas-tweet-media > div:not(.ntisas-tweet-quote) div:not([data-image-url]) > video');
     if ($unprocessed_videos.length) {
-        this.debuglog("Videos found:", $unprocessed_videos.length);
+        this.debug('log', "Videos found:", $unprocessed_videos.length);
     }
     $unprocessed_videos.each((i,video)=>{
         let image_url = video.poster;
-        JSP.ProcessTweetImage(video, image_url, unprocessed_tweets);
+        ProcessTweetImage(video, image_url, unprocessed_tweets);
     });
     let $main_tweet = null;
     for (let tweet_id in unprocessed_tweets) {
@@ -5812,7 +5625,7 @@ function ProcessTweetImages() {
     };
     let total_unprocessed = Object.keys(unprocessed_tweets).length;
     if (total_unprocessed > 0) {
-        this.debuglog("Tweets updated:", total_unprocessed);
+        this.debug('log', "Tweets updated:", total_unprocessed);
     }
 }
 
@@ -5825,7 +5638,7 @@ function ProcessNewTweets() {
         return false;
     }
     NTISAS.uniqueid = JSPLib.utility.getUniqueID();
-    this.debuglog(NTISAS.uniqueid);
+    this.debug('log', NTISAS.uniqueid);
     let main_tweets = [];
     $tweets.each((i,entry)=>{
         $(entry).addClass('ntisas-tweet').attr('viewed', 'false');
@@ -5834,20 +5647,20 @@ function ProcessNewTweets() {
                 main_tweets.push(entry);
             }
         } else if ($('a > time', entry).length) {
-            JSP.MarkupStreamTweet(entry);
+            MarkupStreamTweet(entry);
         }
     });
     if (IsTweetPage() && main_tweets.length > 0) {
-        JSP.MarkupMainTweet(main_tweets[0]);
+        MarkupMainTweet(main_tweets[0]);
     }
     let $image_tweets = $tweets.filter((i,entry) => $('.ntisas-tweet-image, .ntisas-tweet-video', entry).length);
-    this.debuglog(`[${NTISAS.uniqueid}]`, "New:", $tweets.length, "Image:", $image_tweets.length);
+    this.debug('log', `[${NTISAS.uniqueid}]`, "New:", $tweets.length, "Image:", $image_tweets.length);
     //Initialize tweets with images
     if ($image_tweets.length) {
         InitializeImageTweets($image_tweets);
         if (NTISAS.user_settings.display_tweet_views) {
             $image_tweets.each((i,entry)=>{
-                JSP.InitializeViewCount(entry);
+                InitializeViewCount(entry);
                 UpdateImageDict(entry);
             });
         }
@@ -5904,9 +5717,9 @@ function HighlightTweets() {
         var favorites = GetTweetStat(entry, ['like','unlike']);
         NTISAS.tweet_faves.push(favorites);
     });
-    this.debuglog("Tweets:", NTISAS.tweet_pos);
-    this.debuglog("Faves:", NTISAS.tweet_faves);
-    this.debuglog("Finish:", NTISAS.tweet_finish);
+    this.debug('log', "Tweets:", NTISAS.tweet_pos);
+    this.debug('log', "Faves:", NTISAS.tweet_faves);
+    this.debug('log', "Finish:", NTISAS.tweet_finish);
     var current_count = Object.assign(...ALL_SCORE_LEVELS.map(level => ({[level]: 0})));
     var visible_tweetids = JSPLib.utility.getDOMAttributes($('.ntisas-tweet'), 'tweet-id', String);
     NTISAS.tweet_pos.forEach((tweetid)=>{
@@ -5919,7 +5732,7 @@ function HighlightTweets() {
         }
     });
     UpdateArtistHighlights();
-    this.debuglog("Excellent:", current_count.excellent, "Good:", current_count.good, "Above average:", current_count.aboveavg, "Fair:", current_count.fair, "Belowavg:", current_count.belowavg, "Poor:", current_count.poor);
+    this.debug('log', "Excellent:", current_count.excellent, "Good:", current_count.good, "Above average:", current_count.aboveavg, "Fair:", current_count.fair, "Belowavg:", current_count.belowavg, "Poor:", current_count.poor);
 }
 
 function CollectTweetStats() {
@@ -5949,7 +5762,7 @@ function CollectTweetStats() {
 //Settings functions
 
 function BroadcastTISAS(ev) {
-    this.debuglog(`(${ev.data.type}):`, ev.data);
+    this.debug('log', `(${ev.data.type}):`, ev.data);
     switch (ev.data.type) {
         case 'postlink':
             if (ev.data.post_ids.length) {
@@ -5968,23 +5781,23 @@ function BroadcastTISAS(ev) {
             InitializeCurrentRecords();
             break;
         case 'indicators':
-            if ('artist_list' in ev.data && 'artist-list' in GetList && 'list' in GetList['artist-list']) {
-                GetList['artist-list'].list = ev.data.artist_list;
+            if ('artist_list' in ev.data && 'artist-list' in NTISAS.lists && 'list' in NTISAS.lists['artist-list']) {
+                NTISAS.lists['artist-list'].list = ev.data.artist_list;
             }
-            if ('tweet_list' in ev.data &&'tweet-list' in GetList && 'list' in GetList['tweet-list']) {
-                GetList['tweet-list'].list = ev.data.tweet_list;
+            if ('tweet_list' in ev.data &&'tweet-list' in NTISAS.lists && 'list' in NTISAS.lists['tweet-list']) {
+                NTISAS.lists['tweet-list'].list = ev.data.tweet_list;
             }
             InvalidateLocalData('ntisas-indicator-controls');
             UpdateIndicatorControls();
             UpdateTweetIndicators();
             break;
         case 'highlights':
-            GetList['no-highlight-list'] = ev.data.list;
+            NTISAS.lists['no-highlight-list'] = ev.data.list;
             UpdateHighlightControls();
             UpdateArtistHighlights();
             break;
         case 'autoiqdb':
-            GetList['auto-iqdb-list'] = ev.data.list;
+            NTISAS.lists['auto-iqdb-list'] = ev.data.list;
             UpdateIQDBControls();
             // falls through
         default:
@@ -6019,7 +5832,7 @@ function InitializeChangedSettings() {
         }
         if (JSPLib.menu.hasSettingChanged('display_tweet_views')) {
             if (NTISAS.user_settings.display_tweet_views) {
-                JSP.InitializeViewCount(tweet);
+                InitializeViewCount(tweet);
             } else {
                 $(".ntisas-view-info", tweet).html("");
             }
@@ -6063,7 +5876,7 @@ function InitializeChangedSettings() {
         }
     }
     if (JSPLib.menu.hasSettingChanged('auto_unhide_tweets_enabled') && NTISAS.user_settings.auto_unhide_tweets_enabled) {
-        JSP.UnhideTweets();
+        UnhideTweets();
     }
     if (JSPLib.menu.hasSettingChanged('display_profile_views') && IsPageType(['main', 'media', 'likes', 'replies'])) {
         if (NTISAS.user_settings.display_profile_views && !called_profile_callback) {
@@ -6096,7 +5909,7 @@ function InitializeChangedSettings() {
                 install = false;
             }
             if (NTISAS.page === "photo") {
-                JSP.InitializeUploadlinks(install);
+                InitializeUploadlinks(install);
             }
         } else {
             $('.ntisas-upload').hide();
@@ -6122,7 +5935,7 @@ function InitializeChangedSettings() {
             NTISAS.tweet_pos = [];
             NTISAS.tweet_faves = [];
             NTISAS.tweet_finish = {};
-            JSP.HighlightTweets();
+            HighlightTweets();
         }
     }
     if (JSPLib.menu.hasSettingChanged('query_subdomain')) {
@@ -6144,7 +5957,7 @@ function InitializeChangedSettings() {
 function OpenSettingsMenu(event) {
     if (!NTISAS.opened_menu) {
         if ($('#new-twitter-image-searches-and-stuff').length === 0) {
-            TIMER.RenderSettingsMenu();
+            RenderSettingsMenu();
         }
         $('#new-twitter-image-searches-and-stuff').dialog('open');
     }
@@ -6255,13 +6068,14 @@ function RenderSettingsMenu() {
     JSPLib.menu.saveUserSettingsClick(InitializeChangedSettings);
     JSPLib.menu.resetUserSettingsClick(LOCALSTORAGE_KEYS, InitializeChangedSettings);
     $('#ntisas-control-reset-list').on(PROGRAM_CLICK, ResetLists);
-    $('#ntisas-control-import-data').on(PROGRAM_CLICK, JSP.ImportData);
+    $('#ntisas-control-import-data').on(PROGRAM_CLICK, ImportData);
     $('#ntisas-control-export-data').on(PROGRAM_CLICK, ExportData);
     JSPLib.menu.cacheInfoClick();
     JSPLib.menu.purgeCacheClick();
     //Fixup forum links
     $('.ntisas-forum-topic-link').attr('href', `${NTISAS.domain}/forum_topics/${DANBOORU_TOPIC_ID}`);
     //Add CSS stylings
+    JSPLib.utility.setCSSStyle(JSPLib.menu.settings_css,'menu_settings');
     JSPLib.utility.setCSSStyle(MENU_CSS, 'menu');
     InitializeUIStyle();
 }
@@ -6270,33 +6084,13 @@ function RenderSettingsMenu() {
 
 async function Main() {
     JSPLib.network.jQuerySetup();
-    Danbooru.Utility.installBanner(PROGRAM_SHORTCUT);
-    Danbooru.NTISAS = Object.assign(NTISAS, {
-        indicator_list: {},
-        update_profile: {},
-        tweet_images: {},
-        tweet_index: {},
-        tweet_qtip: {},
-        image_anchor: {},
-        qtip_ancor: {},
-        tweet_dialog: {},
-        dialog_ancor: {},
-        similar_results: {},
-        no_url_results: [],
-        merge_results: [],
-        recorded_views: [],
-        photo_navigation: false,
-        artist_iqdb_enabled: false,
-        opened_menu: false,
-        colors_checked: false,
-        page_locked: false,
+    JSPLib.notice.installBanner(PROGRAM_SHORTCUT);
+    Object.assign(NTISAS, {
         settings_config: SETTINGS_CONFIG,
         control_config: CONTROL_CONFIG,
-        channel: JSPLib.utility.createBroadcastChannel(PROGRAM_NAME, JSP.BroadcastTISAS),
-    });
-    Object.assign(NTISAS, {
+        channel: JSPLib.utility.createBroadcastChannel(PROGRAM_NAME, BroadcastTISAS),
         user_settings: JSPLib.menu.loadUserSettings(),
-    }, PROGRAM_RESET_KEYS);
+    }, PROGRAM_DEFAULT_VALUES, PROGRAM_RESET_KEYS);
     if (!IsTISASInstalled()) {
         await CheckDatabaseInfo(true);
     }
@@ -6304,9 +6098,9 @@ async function Main() {
     SetQueryDomain();
     SetSauceAPIKey();
     await InstallUserProfileData();
-    $(document).on(PROGRAM_CLICK, '.ntisas-check-url', JSP.CheckURL);
-    $(document).on(PROGRAM_CLICK, '.ntisas-check-iqdb', JSP.CheckIQDB);
-    $(document).on(PROGRAM_CLICK, '.ntisas-check-sauce', JSP.CheckSauce);
+    $(document).on(PROGRAM_CLICK, '.ntisas-check-url', CheckURL);
+    $(document).on(PROGRAM_CLICK, '.ntisas-check-iqdb', CheckIQDB);
+    $(document).on(PROGRAM_CLICK, '.ntisas-check-sauce', CheckSauce);
     $(document).on(PROGRAM_CLICK, '.ntisas-manual-add', ManualAdd);
     $(document).on(PROGRAM_CLICK, '.ntisas-confirm-save', ConfirmSave);
     $(document).on(PROGRAM_CLICK, '.ntisas-confirm-delete', ConfirmDelete);
@@ -6315,16 +6109,16 @@ async function Main() {
     $(document).on(PROGRAM_CLICK, '.ntisas-cancel-merge', CancelMerge);
     $(document).on(PROGRAM_CLICK, '.ntisas-help-info', HelpInfo);
     $(document).on(PROGRAM_CLICK, '.ntisas-post-preview a', SelectPreview);
-    $(document).on(PROGRAM_CLICK, '.ntisas-download-original', JSP.DownloadOriginal);
+    $(document).on(PROGRAM_CLICK, '.ntisas-download-original', DownloadOriginal);
     $(document).on(PROGRAM_CLICK, '.ntisas-download-all', DownloadAll);
     $(document).on(PROGRAM_CLICK, '.ntisas-footer-entries .ntisas-mark-artist', MarkArtist);
     $(document).on(PROGRAM_CLICK, '.ntisas-footer-entries .ntisas-mark-tweet', MarkTweet);
     $(document).on(PROGRAM_CLICK, '.ntisas-footer-entries .ntisas-count-artist', CountArtist);
     $(document).on(PROGRAM_CLICK, '.ntisas-footer-entries .ntisas-count-tweet', CountTweet);
     $(document).on(PROGRAM_CLICK, '.ntisas-metric', SelectMetric);
-    $(document).on(PROGRAM_CLICK, '.ntisas-toggle-image-size', JSP.ToggleImageSize);
-    $(document).on('scroll.ntisas.check_views', JSP.CheckViews);
-    $(window).on('focus.ntisas.check_views', JSP.CheckViews);
+    $(document).on(PROGRAM_CLICK, '.ntisas-toggle-image-size', ToggleImageSize);
+    $(document).on('scroll.ntisas.check_views', CheckViews);
+    $(window).on('focus.ntisas.check_views', CheckViews);
     $(document).on(PROGRAM_KEYDOWN, null, 'left', PhotoNavigation);
     $(document).on(PROGRAM_KEYDOWN, null, 'right', PhotoNavigation);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+h', ToggleArtistHilights);
@@ -6338,54 +6132,62 @@ async function Main() {
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+c', CloseSettingsMenu);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+s', SaveSettingsMenu);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+r', ResetSettingsMenu);
-    setInterval(JSP.IntervalStorageHandler, TIMER_POLL_INTERVAL);
+    setInterval(IntervalStorageHandler, TIMER_POLL_INTERVAL);
     setInterval(IntervalNetworkHandler, TIMER_POLL_INTERVAL);
     JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
     JSPLib.utility.setCSSStyle(GM_getResourceText('jquery_qtip_css'), 'qtip');
     JSPLib.utility.setCSSStyle(NOTICE_CSS, 'notice');
     InitializeColorScheme();
-    JSPLib.utility.initializeInterval(JSP.RegularCheck, PROGRAM_RECHECK_INTERVAL);
+    JSPLib.utility.initializeInterval(RegularCheck, PROGRAM_RECHECK_INTERVAL);
     InitializeCleanupTasks();
     JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
-    this.debuglog("Hi!", window.location.href);
 }
 
 /****Function decoration****/
 
-JSPLib.debug.addFunctionLogs([
-    Main, UnhideTweets, HighlightTweets, RegularCheck, ImportData, DownloadOriginal, PromptSavePostIDs,
+[
+    UnhideTweets, HighlightTweets, RegularCheck, ImportData, DownloadOriginal, PromptSavePostIDs,
     CheckIQDB, CheckURL, PurgeBadTweets, CheckPurgeBadTweets, SaveDatabase, LoadDatabase, CheckPostvers,
     ReadFileAsync, ProcessPostvers, InitializeImageMenu, CorrectStringArray, ValidateEntry, BroadcastTISAS,
     PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages, InitializeUploadlinks, CheckSauce,
     GetMaxVideoDownloadLink, GetPageType, CheckServerBadTweets, SavePostvers, PickImage, MarkupMainTweet,
     MarkupStreamTweet, MarkupMediaType, CheckViews, InitializeViewCount, ToggleImageSize, InitializeProfileTimeline,
     IntervalStorageHandler, GetImageAttributes,
-], JSP);
-
-JSPLib.debug.addFunctionTimers(TIMER, false, [
-    RenderSettingsMenu,
+] = JSPLib.debug.addFunctionLogs([
+    UnhideTweets, HighlightTweets, RegularCheck, ImportData, DownloadOriginal, PromptSavePostIDs,
+    CheckIQDB, CheckURL, PurgeBadTweets, CheckPurgeBadTweets, SaveDatabase, LoadDatabase, CheckPostvers,
+    ReadFileAsync, ProcessPostvers, InitializeImageMenu, CorrectStringArray, ValidateEntry, BroadcastTISAS,
+    PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages, InitializeUploadlinks, CheckSauce,
+    GetMaxVideoDownloadLink, GetPageType, CheckServerBadTweets, SavePostvers, PickImage, MarkupMainTweet,
+    MarkupStreamTweet, MarkupMediaType, CheckViews, InitializeViewCount, ToggleImageSize, InitializeProfileTimeline,
+    IntervalStorageHandler, GetImageAttributes,
 ]);
 
-JSPLib.debug.addFunctionTimers(TIMER, true, [
-    JSP.PurgeBadTweets, JSP.SaveDatabase, GetSavePackage, JSP.CheckPostvers,
+[
+    RenderSettingsMenu, PurgeBadTweets, SaveDatabase, GetSavePackage, CheckPostvers
+] = JSPLib.debug.addFunctionTimers([
+    RenderSettingsMenu, PurgeBadTweets, SaveDatabase, GetSavePackage, CheckPostvers,
 ]);
 
 /****Initialization****/
 
 //Variables for debug.js
 JSPLib.debug.debug_console = false;
-JSPLib.debug.level = JSPLib.debug.INFO;
+JSPLib.debug.level = JSPLib.debug.DEBUG;
 JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
 //Variables for menu.js
 JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
 JSPLib.menu.program_name = PROGRAM_NAME;
+JSPLib.menu.program_data = NTISAS;
 JSPLib.menu.program_reset_data = PROGRAM_RESET_KEYS;
 JSPLib.menu.program_data_regex = PROGRAM_DATA_REGEX;
 JSPLib.menu.settings_callback = RemoteSettingsCallback;
 JSPLib.menu.settings_migrations = [
     {from: 'display_view_count', to: 'display_tweet_views'},
 ];
+JSPLib.menu.settings_config = SETTINGS_CONFIG;
+JSPLib.menu.control_config = CONTROL_CONFIG;
 
 //Variables for storage.js
 JSPLib.storage.prune_limit = 2000;
@@ -6398,12 +6200,13 @@ JSPLib.network.rate_limit_wait = JSPLib.utility.one_second;
 JSPLib.danbooru.max_network_requests = 10;
 
 //Variables for danbooru/utility.js
-Danbooru.Utility.program_shortcut = PROGRAM_SHORTCUT;
+JSPLib.notice.program_shortcut = PROGRAM_SHORTCUT;
 
 //Export JSPLib
-JSPLib.load.exportData(PROGRAM_NAME, NTISAS, {JSP, API_DATA, jQuery, XRegExp});
+JSPLib.load.exportData(PROGRAM_NAME, NTISAS, {API_DATA, jQuery, XRegExp});
+JSPLib.load.exportFuncs(PROGRAM_NAME, [GetList, SaveList]);
 
 /****Execution start****/
 
 JSPLib.network.installXHRHook([TweetUserData]);
-JSPLib.load.programInitialize(JSP.Main, PROGRAM_NAME, PROGRAM_LOAD_REQUIRED_VARIABLES, PROGRAM_LOAD_REQUIRED_SELECTORS, [], 100);
+JSPLib.load.programInitialize(Main, PROGRAM_NAME, PROGRAM_LOAD_REQUIRED_VARIABLES, PROGRAM_LOAD_REQUIRED_SELECTORS, [], 100);
