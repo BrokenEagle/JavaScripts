@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      21.5
+// @version      21.6
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2462,7 +2462,6 @@ async function LoadHTMLType(type,idlist,isoverflow=false) {
         return false;
     }
     EL.renderedlist[type] = JSPLib.utility.concat(EL.renderedlist[type], displaylist);
-    JSPLib.storage.setStorageData('el-rendered-list', EL.renderedlist, localStorage);
     let type_addon = TYPEDICT[type].addons || {};
     for (let i = 0; i < displaylist.length; i += QUERY_LIMIT) {
         let querylist = displaylist.slice(i, i + QUERY_LIMIT);
@@ -2500,6 +2499,7 @@ function FinalizeEventNotice(initial=false) {
         }
         if (AnyRenderedEvents()) {
             localStorage['el-saved-notice'] = LZString.compressToUTF16($("#el-event-notice").html());
+            JSPLib.storage.setStorageData('el-rendered-list', EL.renderedlist, localStorage);
             JSPLib.concurrency.setRecheckTimeout('el-saved-timeout', EL.timeout_expires);
         }
     });
@@ -2771,7 +2771,6 @@ function Main() {
         timeout_expires: GetRecheckExpires(),
         locked_notice: EL.user_settings.autolock_notices,
         post_filter_tags: GetPostFilterTags(),
-        renderedlist: JSPLib.storage.getStorageData('el-rendered-list', localStorage, {}), //Add a validation check to this
         recheck: JSPLib.concurrency.checkTimeout('el-event-timeout', EL.timeout_expires),
         get not_snoozed () {
             return this.recheck || Boolean(EL.dmail_notice.length);
@@ -2779,6 +2778,7 @@ function Main() {
     });
     EventStatusCheck();
     if (!document.hidden && localStorage['el-saved-notice'] !== undefined && !JSPLib.concurrency.checkTimeout('el-saved-timeout', EL.timeout_expires)) {
+        EL.renderedlist = JSPLib.storage.getStorageData('el-rendered-list', localStorage, {}); //Add a validation check to this
         let notice_html = LZString.decompressFromUTF16(localStorage['el-saved-notice']);
         InitializeNoticeBox(notice_html);
         for (let type in TYPEDICT) {
@@ -2801,6 +2801,7 @@ function Main() {
             });
         }
     } else if (!document.hidden && (EL.not_snoozed || WasOverflow()) && JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT)) {
+        EL.renderedlist = {};
         InitializeNoticeBox();
         if (CheckAbsence()) {
             $("#el-loading-message").show();
