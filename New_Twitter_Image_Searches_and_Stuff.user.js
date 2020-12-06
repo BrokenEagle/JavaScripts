@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff (alpha)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.A.6
+// @version      7.A.7
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -19,19 +19,19 @@
 // @require      https://cdn.jsdelivr.net/npm/xregexp@4.2.4/xregexp-all.js
 // @require      https://cdn.jsdelivr.net/npm/file-saver@2.0.2/dist/FileSaver.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/721d6ac06f044c0ce7cd245acaf97dc49a46fbca/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/721d6ac06f044c0ce7cd245acaf97dc49a46fbca/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/721d6ac06f044c0ce7cd245acaf97dc49a46fbca/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/721d6ac06f044c0ce7cd245acaf97dc49a46fbca/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/721d6ac06f044c0ce7cd245acaf97dc49a46fbca/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/721d6ac06f044c0ce7cd245acaf97dc49a46fbca/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/721d6ac06f044c0ce7cd245acaf97dc49a46fbca/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/721d6ac06f044c0ce7cd245acaf97dc49a46fbca/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/721d6ac06f044c0ce7cd245acaf97dc49a46fbca/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/721d6ac06f044c0ce7cd245acaf97dc49a46fbca/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/721d6ac06f044c0ce7cd245acaf97dc49a46fbca/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/721d6ac06f044c0ce7cd245acaf97dc49a46fbca/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/721d6ac06f044c0ce7cd245acaf97dc49a46fbca/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/saucenao.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/menu.js
 // @resource     jquery_ui_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/jquery_ui_custom.css
 // @resource     jquery_qtip_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.css
 // @grant        GM_getResourceText
@@ -78,11 +78,8 @@ JSPLib.storage.twitterstorage = localforage.createInstance({
     driver: [localforage.INDEXEDDB]
 });
 
-//Main program variables
+//Main program variable
 const NTISAS = {};
-
-//TIMER function hash
-const TIMER = {};
 
 //Program data constants
 const PROGRAM_DATA_REGEX = /^(post|view|iqdb|sauce|video)-/; //Regex that matches the prefix of all program cache data
@@ -1017,6 +1014,9 @@ const MENU_CSS = `
     color: black;
     background-color: white;
 }
+#new-twitter-image-searches-and-stuff .ntisas-selectors label {
+    width: 140px;
+}
 #new-twitter-image-searches-and-stuff .ntisas-striped {
     border-collapse: collapse;
     border-spacing: 0;
@@ -1607,6 +1607,7 @@ const STORAGE_DELAY = 1; //Don't save lists synchronously since large lists dela
 const JQUERY_DELAY = 1; //For jQuery updates that should not be done synchronously
 const TWITTER_DELAY = 100; //Give twitter handler some time to change the page
 const TIMER_POLL_INTERVAL = 100;
+const QUEUE_POLL_INTERVAL = 500;
 const PROGRAM_RECHECK_INTERVAL = JSPLib.utility.one_second;
 const VIEWCOUNT_RECENT_DURATION = JSPLib.utility.one_minute * 5;
 const POST_VERSIONS_CALLBACK = JSPLib.utility.one_second * 5;
@@ -3507,7 +3508,7 @@ function InitializeImageMenu($tweets,append_selector,menu_class) {
             let $link_container = $(`<div class="ntisas-link-menu ${menu_class} ntisas-links"></div>`);
             $(append_selector, tweet).append($link_container);
             if (post_ids !== null) {
-                InitializePostIDsLink(tweet_id, $link_container, tweet, post_ids)
+                InitializePostIDsLink(tweet_id, $link_container, tweet, post_ids);
             } else {
                 InitializeNoMatchesLinks(tweet_id, $link_container);
             }
@@ -3894,6 +3895,7 @@ function FulfillStorageRequests(keylist,data_items,requests) {
         let data = (key in data_items ? data_items[key] : null);
         let request = requests.find((request) => (request.key === key));
         request.promise.resolve(data);
+        request.data = data;
         JSPLib.debug.recordTimeEnd(key, 'Storage-queue');
     });
 }
@@ -3907,7 +3909,7 @@ function IntervalStorageHandler() {
         let requests = QUEUED_STORAGE_REQUESTS.filter((request) => (request.database === database));
         let save_requests = requests.filter((request) => (request.type === 'save'));
         if (save_requests.length) {
-            this.debug('logLevel', "Save requests:", save_requests, JSPLib.debug.DEBUG);
+             this.debug('logLevel', "Save requests:", save_requests, JSPLib.debug.DEBUG);
             let save_data = Object.assign(...save_requests.map((request) => ({[request.key]: request.value})));
             JSPLib.storage.batchSaveData(save_data, STORAGE_DATABASES[database]).then(()=>{
                 save_requests.forEach((request)=>{
@@ -3977,6 +3979,7 @@ function IntervalNetworkHandler () {
                         return request.item.includes(data[data_key]);
                     });
                     request.promise.resolve(request_data);
+                    request.data = request_data;
                     JSPLib.debug.recordTimeEnd(request.request_key, 'Network-queue');
                 });
             });
@@ -4196,6 +4199,7 @@ function TweetUserData(data) {
 
 function ProcessTwitterGlobalObjects(data) {
     if ('tweets' in data.globalObjects) {
+        let existing_keys = Object.keys(API_DATA.tweets);
         Object.assign(API_DATA.tweets, data.globalObjects.tweets);
         for (let twitter_id in data.globalObjects.tweets) {
             let entry = data.globalObjects.tweets[twitter_id];
@@ -4203,6 +4207,11 @@ function ProcessTwitterGlobalObjects(data) {
                 let tweet_id = entry.retweeted_status_id_str;
                 API_DATA.retweets[tweet_id] = entry;
             }
+        }
+        let current_keys = Object.keys(API_DATA.tweets);
+        let new_keys = JSPLib.utility.arrayDifference(current_keys, existing_keys);
+        if (new_keys.length) {
+            setTimeout(()=>{PreloadStorageData(new_keys);}, 1);
         }
         API_DATA.has_data = true;
     }
@@ -4224,6 +4233,7 @@ function ProcessTwitterData(data) {
         var artist_list = GetList('artist-list');
         var tweet_list = GetList('tweet-list');
     }
+    let existing_keys = Object.keys(API_DATA.tweets);
     for (let i = 0; i < checked_data.length; i++) {
         let {type,id,item} = checked_data[i];
         let $tweet = null;
@@ -4249,6 +4259,11 @@ function ProcessTwitterData(data) {
                 //do nothing
         }
     }
+    let current_keys = Object.keys(API_DATA.tweets);
+    let new_keys = JSPLib.utility.arrayDifference(current_keys, existing_keys);
+    if (new_keys.length) {
+        setTimeout(()=>{PreloadStorageData(new_keys);}, 1);
+    }
     if (checked_data.length) {
         API_DATA.has_data = true;
     }
@@ -4264,6 +4279,26 @@ function CheckGraphqlData(data,savedata=[]) {
         }
     }
     return savedata;
+}
+
+function PreloadStorageData(tweet_ids) {
+    this.debug('log', "Tweet IDs:", tweet_ids);
+    let promise_array = tweet_ids.map((tweet_id)=>[
+        GetData('tweet-' + tweet_id, 'twitter'),
+        GetData('iqdb-' + tweet_id, 'danbooru'),
+        GetData('sauce-' + tweet_id, 'danbooru'),
+        (NTISAS.user_settings && NTISAS.user_settings.display_tweet_views ? GetData('view-' + tweet_id, 'danbooru') : null),
+    ]).flat().filter((promise) => (promise !== null));
+    Promise.all(promise_array).then((data_items)=>{
+        this.debug('logLevel', "Data:", data_items, JSPLib.debug.DEBUG);
+        let post_ids = JSPLib.utility.arrayUnique(data_items.filter((data) => (Array.isArray(data))).flat());
+        this.debug('log', "Query post IDs:", post_ids);
+        if (post_ids.length) {
+            GetPosts(post_ids).then((post_data)=>{
+                this.debug('logLevel', "Query post data:", post_data, JSPLib.debug.INFO);
+            });
+        }
+    });
 }
 
 //Database functions
@@ -5034,10 +5069,12 @@ function UpdateUserIDCallback() {
     NTISAS.user_id = undefined;
     NTISAS.update_on_found = false;
     if (UpdateUserIDCallback.timer) {
+        this.debug('log', "Overwrite existing execution request!");
         clearInterval(UpdateUserIDCallback.timer);
     }
     UpdateUserIDCallback.timer = JSPLib.utility.initializeInterval(()=>{
         if (NTISAS.user_id && UpdateUserIDCallback.timer) {
+            this.debug('log', "Found user ID on 1st iteration.");
             clearInterval(UpdateUserIDCallback.timer);
             return;
         }
@@ -5056,10 +5093,13 @@ function UpdateUserIDCallback() {
             found_ID = false;
         }
         if (found_ID && UpdateUserIDCallback.timer) {
+            this.debug('log', "Found user ID on nth iteration.");
             clearInterval(UpdateUserIDCallback.timer);
         } else if (!found_ID && !UpdateUserIDCallback.timer) {
+            this.debug('log', "First execution did not find the user ID.");
             NTISAS.update_on_found = true;
         }
+        this.debug('logLevel', found_ID, user_id, NTISAS.user_id, JSPLib.debug.DEBUG);
     }, TIMER_POLL_INTERVAL);
 }
 
@@ -6132,8 +6172,8 @@ async function Main() {
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+c', CloseSettingsMenu);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+s', SaveSettingsMenu);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+r', ResetSettingsMenu);
-    setInterval(IntervalStorageHandler, TIMER_POLL_INTERVAL);
-    setInterval(IntervalNetworkHandler, TIMER_POLL_INTERVAL);
+    setInterval(IntervalStorageHandler, QUEUE_POLL_INTERVAL);
+    setInterval(IntervalNetworkHandler, QUEUE_POLL_INTERVAL);
     JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
     JSPLib.utility.setCSSStyle(GM_getResourceText('jquery_qtip_css'), 'qtip');
     JSPLib.utility.setCSSStyle(NOTICE_CSS, 'notice');
@@ -6152,7 +6192,7 @@ async function Main() {
     PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages, InitializeUploadlinks, CheckSauce,
     GetMaxVideoDownloadLink, GetPageType, CheckServerBadTweets, SavePostvers, PickImage, MarkupMainTweet,
     MarkupStreamTweet, MarkupMediaType, CheckViews, InitializeViewCount, ToggleImageSize, InitializeProfileTimeline,
-    IntervalStorageHandler, GetImageAttributes,
+    IntervalStorageHandler, GetImageAttributes, UpdateUserIDCallback, PreloadStorageData,
 ] = JSPLib.debug.addFunctionLogs([
     UnhideTweets, HighlightTweets, RegularCheck, ImportData, DownloadOriginal, PromptSavePostIDs,
     CheckIQDB, CheckURL, PurgeBadTweets, CheckPurgeBadTweets, SaveDatabase, LoadDatabase, CheckPostvers,
@@ -6160,7 +6200,7 @@ async function Main() {
     PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages, InitializeUploadlinks, CheckSauce,
     GetMaxVideoDownloadLink, GetPageType, CheckServerBadTweets, SavePostvers, PickImage, MarkupMainTweet,
     MarkupStreamTweet, MarkupMediaType, CheckViews, InitializeViewCount, ToggleImageSize, InitializeProfileTimeline,
-    IntervalStorageHandler, GetImageAttributes,
+    IntervalStorageHandler, GetImageAttributes, UpdateUserIDCallback, PreloadStorageData,
 ]);
 
 [
