@@ -1,37 +1,37 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff (alpha)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.A.7
+// @version      7.A.8
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ntisas-alpha7-release/New_Twitter_Image_Searches_and_Stuff.user.js
-// @require      https://cdn.jsdelivr.net/npm/core-js-bundle@3.2.1/minified.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/core-js/3.8.1/minified.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js
-// @require      https://cdn.jsdelivr.net/npm/jquery-hotkeys@0.2.2/jquery-hotkeys.js
+// @require      https://cdn.jsdelivr.net/npm/jquery-hotkeys@0.2.2/jquery-hotkeys.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.7.3/localforage.min.js
-// @require      https://cdn.jsdelivr.net/npm/localforage-getitems@1.4.2/dist/localforage-getitems.js
-// @require      https://cdn.jsdelivr.net/npm/localforage-setitems@1.4.0/dist/localforage-setitems.js
-// @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.js
-// @require      https://cdn.jsdelivr.net/npm/xregexp@4.2.4/xregexp-all.js
-// @require      https://cdn.jsdelivr.net/npm/file-saver@2.0.2/dist/FileSaver.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.9.0/localforage.min.js
+// @require      https://cdn.jsdelivr.net/npm/localforage-getitems@1.4.2/dist/localforage-getitems.min.js
+// @require      https://cdn.jsdelivr.net/npm/localforage-setitems@1.4.0/dist/localforage-setitems.min.js
+// @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
+// @require      https://cdn.jsdelivr.net/npm/xregexp@4.4.1/xregexp-all.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/08e96ce5a388229280b085a67ad9160aba23d17e/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f18e5d3e5df082baa6d3488340f72c2422460f10/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f18e5d3e5df082baa6d3488340f72c2422460f10/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f18e5d3e5df082baa6d3488340f72c2422460f10/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f18e5d3e5df082baa6d3488340f72c2422460f10/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f18e5d3e5df082baa6d3488340f72c2422460f10/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f18e5d3e5df082baa6d3488340f72c2422460f10/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f18e5d3e5df082baa6d3488340f72c2422460f10/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f18e5d3e5df082baa6d3488340f72c2422460f10/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f18e5d3e5df082baa6d3488340f72c2422460f10/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f18e5d3e5df082baa6d3488340f72c2422460f10/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f18e5d3e5df082baa6d3488340f72c2422460f10/lib/saucenao.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f18e5d3e5df082baa6d3488340f72c2422460f10/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f18e5d3e5df082baa6d3488340f72c2422460f10/lib/menu.js
 // @resource     jquery_ui_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/jquery_ui_custom.css
 // @resource     jquery_qtip_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.css
 // @grant        GM_getResourceText
@@ -256,6 +256,11 @@ const SETTINGS_CONFIG = {
         default: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Displays tweets statistics for the current timeline in the side menu."
+    },
+    display_available_sauce: {
+        default: true,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Displays the number of available sauce in the side menu."
     },
     display_network_errors: {
         default: true,
@@ -534,16 +539,28 @@ const PROGRAM_CSS = `
 #ntisas-side-border {
     border: solid lightgrey 1px;
 }
-#ntisas-menu-settings {
+#ntisas-menu-selection {
+    font-weight: bold;
+    margin: 0 1em;
+    padding: 0.1em;
+}
+#ntisas-menu-selection a {
+    padding: 5px;
+}
+#ntisas-menu-info,
+#ntisas-menu-controls {
     margin-left: 5px;
     font-weight: bold;
     line-height: 18px;
 }
-#ntisas-menu-settings td {
+#ntisas-menu-info td,
+#ntisas-menu-controls td {
     padding: 0 2px;
 }
-#ntisas-menu-settings td:nth-of-type(1),
-#ntisas-menu-settings td:nth-of-type(2) {
+#ntisas-menu-info td:nth-of-type(1),
+#ntisas-menu-info td:nth-of-type(2),
+#ntisas-menu-controls td:nth-of-type(1),
+#ntisas-menu-controls td:nth-of-type(2) {
     width: 115px;
 }
 #ntisas-version-header,
@@ -558,7 +575,8 @@ const PROGRAM_CSS = `
     letter-spacing: -1px;
 }
 #ntisas-menu-header {
-    margin: 8px -10px;
+    margin: 8px -10px 0;
+    padding: 2px;
     font-size: 18px;
     font-weight: bold;
     line-height: 1;
@@ -1070,13 +1088,15 @@ const COLOR_CSS = `
 .ntisas-download-original,
 .ntisas-download-all,
 .ntisas-media-link,
-#ntisas-tweet-stats-table th a {
+#ntisas-tweet-stats-table th a,
+#ntisas-menu-selection a.ntisas-selected {
     color: %BASECOLOR%;
 }
 .ntisas-media-link,
 #ntisas-tweet-stats-table th a {
     border-color: %BASECOLOR%;
 }
+#ntisas-menu-header,
 .ntisas-media-link:hover,
 #ntisas-tweet-stats-table th a:hover {
     background-color: %BASEFAINT%;
@@ -1089,6 +1109,7 @@ const COLOR_CSS = `
     border-color: %TEXTMUTED%;
     background-color: %TEXTFADED%;
 }
+#ntisas-menu-selection,
 #ntisas-increase-fade-level:hover,
 #ntisas-increase-hide-level:hover,
 #ntisas-decrease-fade-level:hover,
@@ -1117,6 +1138,8 @@ const COLOR_CSS = `
 }
 .ntisas-view-info,
 .ntisas-profile-section,
+#ntisas-menu-selection a,
+#ntisas-available-sauce,
 .jsplib-inline-tooltip,
 .jsplib-block-tooltip {
     color: %TEXTSHADED%;
@@ -1129,23 +1152,23 @@ const COLOR_CSS = `
 }
 .ui-dialog.ntisas-dialog .ui-widget-header {
     color: %TEXTCOLOR%;
-    background: %BASESHADED%;
+    background-color: %BASESHADED%;
 }
 .ui-dialog.ntisas-dialog .ui-button {
     color: %TEXTCOLOR%;
-    background: %BASEFAINT%;
+    background-color: %BASEFAINT%;
     border: 1px solid %BASESHADED%;
 }
 .ui-dialog.ntisas-dialog .ui-button:hover,
 .ui-dialog.ntisas-dialog .ui-tab:hover {
-    background: %BASESHADED%;
+    background-color: %BASESHADED%;
     border: 1px solid %BASECOLOR%;
 }
 
 .ui-dialog.ntisas-dialog .ui-widget-content .ui-state-active,
 .ui-dialog.ntisas-dialog .ui-widget-content .ui-state-active:focus {
     color: %BACKGROUNDCOLOR%;
-    background: %BASECOLOR%;
+    background-color: %BASECOLOR%;
     border: 1px solid %BASEDARKER%;
 }
 .ui-dialog.ntisas-dialog .ui-button:hover,
@@ -1168,7 +1191,7 @@ const COLOR_CSS = `
 /*qTips*/
 .qtiptisas.qtiptisas-twitter {
     color: %TEXTCOLOR%;
-    background: %BACKGROUNDCOLOR%;
+    background-color: %BACKGROUNDCOLOR%;
     border: 1px solid %TEXTSHADED%;
 }`;
 
@@ -1307,75 +1330,95 @@ const SIDE_MENU = `
 <div id="ntisas-side-menu" class="ntisas-links">
 <div id="ntisas-side-border">
     <div id="ntisas-menu-header">${PROGRAM_FULL_NAME}</div>
-    <div id="ntisas-menu-settings">
-        <table>
-            <tbody>
-            <tr>
-                <td><span id="ntisas-version-header">Database version:</span></td>
-                <td><span id="ntisas-database-link"></span></td>
-                <td>(<span id="ntisas-database-help"></span>)</td>
-            </tr>
-            <tr>
-                <td><span>Current records:</span></td>
-                <td>%CURRENTRECORDS%</td>
-                <td><span id="ntisas-current-records-help">(%CURRENTHELP%)</span></td>
-            </tr>
-            <tr>
-                <td><span>Total records:</span></td>
-                <td><span id="ntisas-records-stub"></span></td>
-                <td>(%RECORDSHELP%)</td>
-            </tr>
-            <tr data-setting="score_highlights_enabled">
-                <td><span>Artist highlights:</span></td>
-                <td>%HIGHLIGHTS%</td>
-                <td>(%HIGHLIGHTSHELP%)</td>
-            </tr>
-            <tr id="ntisas-fade-level-display">
-                <td><span id="ntisas-fade-level-header">Current fade level:</span></td>
-                <td>%CURRENTFADE%</td>
-                <td>(%CURRENTFADEHELP%)</td>
-            </tr>
-            <tr id="ntisas-hide-level-display">
-                <td><span id="ntisas-hide-level-header">Current hide level:</span></td>
-                <td>%CURRENTHIDE%</td>
-                <td>(%CURRENTHIDEHELP%)</td>
-            </tr>
-            <tr data-setting="display_tweet_views">
-                <td><span>View indicators:</span></td>
-                <td>%VIEWS%</td>
-                <td>(%VIEWSHELP%)</td>
-            </tr>
-            <tr data-setting="autoclick_IQDB_enabled">
-                <td><span>Autoclick IQDB:</span></td>
-                <td>%AUTOCLICKIQDB%</td>
-                <td>(%AUTOCLICKIQDBHELP%)</td>
-            </tr>
-            <tr data-setting="tweet_indicators_enabled">
-                <td><span>Tweet indicators:</span></td>
-                <td>%INDICATOR%</td>
-                <td>(%INDICATORHELP%)</td>
-            </tr>
-            <tr data-setting="lock_page_enabled">
-                <td><span>Page navigation:</span></td>
-                <td>%LOCKPAGE%</td>
-                <td>(%LOCKPAGEHELP%)</td>
-            </tr>
-            <tr data-setting="display_network_errors">
-                <td><span>Network errors:</span></td>
-                <td><a id="ntisas-error-messages">%ERRORMESSAGES%</a></td>
-                <td>(%ERRORMESSAGESHELP%)</td>
-            </tr>
-            </tbody>
-        </table>
+    <div id="ntisas-menu-selection">
+        <a id="ntisas-select-info" data-selector="info">Info</a>
+        <a id="ntisas-select-controls" data-selector="controls">Controls</a>
+        <a id="ntisas-select-info" data-selector="statistics">Statistics</a>
+    </div>
+    ${HORIZONTAL_RULE}
+    <div id="ntisas-content">
+        <div id="ntisas-menu-info" data-selector="info" style="display:none">
+            <table>
+                <tbody>
+                <tr>
+                    <td><span id="ntisas-version-header">Database version:</span></td>
+                    <td><span id="ntisas-database-link"></span></td>
+                    <td>(<span id="ntisas-database-help"></span>)</td>
+                </tr>
+                <tr>
+                    <td><span>Current records:</span></td>
+                    <td>%CURRENTRECORDS%</td>
+                    <td><span id="ntisas-current-records-help">(%CURRENTHELP%)</span></td>
+                </tr>
+                <tr>
+                    <td><span>Total records:</span></td>
+                    <td><span id="ntisas-records-stub"></span></td>
+                    <td>(%RECORDSHELP%)</td>
+                </tr>
+                <tr data-setting="display_available_sauce">
+                    <td><span>Available sauce:</span></td>
+                    <td><span id="ntisas-available-sauce">N/A</span></td>
+                    <td>(%SAUCEHELP%)</td>
+                </tr>
+                <tr data-setting="display_network_errors">
+                    <td><span>Network errors:</span></td>
+                    <td><a id="ntisas-error-messages">%ERRORMESSAGES%</a></td>
+                    <td>(%ERRORMESSAGESHELP%)</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="ntisas-menu-controls" data-selector="controls" style="display:none">
+            <table>
+                <tbody>
+                <tr data-setting="score_highlights_enabled">
+                    <td><span>Artist highlights:</span></td>
+                    <td>%HIGHLIGHTS%</td>
+                    <td>(%HIGHLIGHTSHELP%)</td>
+                </tr>
+                <tr id="ntisas-fade-level-display">
+                    <td><span id="ntisas-fade-level-header">Current fade level:</span></td>
+                    <td>%CURRENTFADE%</td>
+                    <td>(%CURRENTFADEHELP%)</td>
+                </tr>
+                <tr id="ntisas-hide-level-display">
+                    <td><span id="ntisas-hide-level-header">Current hide level:</span></td>
+                    <td>%CURRENTHIDE%</td>
+                    <td>(%CURRENTHIDEHELP%)</td>
+                </tr>
+                <tr data-setting="display_tweet_views">
+                    <td><span>View indicators:</span></td>
+                    <td>%VIEWS%</td>
+                    <td>(%VIEWSHELP%)</td>
+                </tr>
+                <tr data-setting="autoclick_IQDB_enabled">
+                    <td><span>Autoclick IQDB:</span></td>
+                    <td>%AUTOCLICKIQDB%</td>
+                    <td>(%AUTOCLICKIQDBHELP%)</td>
+                </tr>
+                <tr data-setting="tweet_indicators_enabled">
+                    <td><span>Tweet indicators:</span></td>
+                    <td>%INDICATOR%</td>
+                    <td>(%INDICATORHELP%)</td>
+                </tr>
+                <tr data-setting="lock_page_enabled">
+                    <td><span>Page navigation:</span></td>
+                    <td>%LOCKPAGE%</td>
+                    <td>(%LOCKPAGEHELP%)</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="ntisas-menu-statistics" data-selector="statistics" style="display:none">
+            <div data-setting="display_tweet_statistics">
+                <div id="ntisas-stats-header"><span>Tweet Statistics</span> (%STATISTICSHELP%)</div>
+                <div id="ntisas-tweet-stats-table"></div>
+                <div id="ntisas-tweet-stats-message">Unavailable on Tweet view.</div>
+            </div>
+        </div>
     </div>
     <div id="ntisas-open-settings">
         <input type="button" title="%SETTINGSHELP%" value="Settings">
-    </div>
-    <div data-setting="display_tweet_statistics">
-        ${HORIZONTAL_RULE}
-        <div id="ntisas-stats-header"><span>Tweet Statistics</span> (%STATISTICSHELP%)</div>
-        <div id="ntisas-tweet-stats-table"></div>
-        <div id="ntisas-tweet-stats-message">Unavailable on Tweet view.</div>
     </div>
 </div>
 </div>`;
@@ -1533,6 +1576,7 @@ const DATABASE_VERSION_HELP = "L-Click to set record position to latest on Danbo
 const UPDATE_RECORDS_HELP = "L-Click to update records to current.";
 const MUST_INSTALL_HELP = "The database must be installed before the script is fully functional.";
 const REFRESH_RECORDS_HELP = "L-Click to refresh record count.";
+const AVAILABLE_SAUCE_HELP = "Shows the number of API requests remaining.\nOnly shown after use of the Sauce link.\nResults are kept for only 1 hour.";
 const HIGHLIGHTS_HELP = "L-Click to toggle Tweet hiding/fading. (Shortcut: Alt+H)";
 const VIEWS_HELP = "L-Click to toggle borders on viewed Tweets. (Shortcut: Alt+V)";
 const FADE_HIGHLIGHT_HELP = "L-Click '-' to decrease fade level. (Shortcut: Alt+-)\nL-Click '+' to increase fade level. (Shortcut: Alt+=)";
@@ -1613,6 +1657,7 @@ const VIEWCOUNT_RECENT_DURATION = JSPLib.utility.one_minute * 5;
 const POST_VERSIONS_CALLBACK = JSPLib.utility.one_second * 5;
 const PAGE_REFRESH_TIMEOUT = JSPLib.utility.one_second * 5;
 const REMOVE_CHECK_TIMEOUT = JSPLib.utility.one_second * 10;
+const SAUCE_EXPIRES = JSPLib.utility.one_hour;
 const MIN_POST_EXPIRES = JSPLib.utility.one_day;
 const MAX_POST_EXPIRES = JSPLib.utility.one_month;
 const USER_EXPIRES = JSPLib.utility.one_month;
@@ -3102,6 +3147,7 @@ function RenderSideMenu() {
         CURRENTRECORDS: RenderCurrentRecords(),
         CURRENTHELP: RenderHelp(current_message),
         RECORDSHELP: RenderHelp(REFRESH_RECORDS_HELP),
+        SAUCEHELP: RenderHelp(AVAILABLE_SAUCE_HELP),
         HIGHLIGHTS: HIGHLIGHT_HTML,
         HIGHLIGHTSHELP: RenderHelp(HIGHLIGHTS_HELP),
         CURRENTFADE: current_fade_html,
@@ -3430,6 +3476,14 @@ function InitializeSideMenu() {
             $(entry).show();
         } else {
             $(entry).hide();
+        }
+    });
+    let selected_menu = JSPLib.storage.getStorageData('ntisas-side-selection', localStorage, 'info');
+    $(`#ntisas-menu-selection a[data-selector=${selected_menu}]`).addClass('ntisas-selected');
+    $(`#ntisas-content div[data-selector=${selected_menu}]`).show();
+    JSPLib.storage.retrieveData('ntisas-available-sauce').then((data)=>{
+        if (data && !JSPLib.storage.hasDataExpired('ntisas-available-sauce', data, SAUCE_EXPIRES)) {
+            $('#ntisas-available-sauce').text(data.value);
         }
     });
 }
@@ -4617,6 +4671,20 @@ function UpgradeDatabase(event) {
     }
 }
 
+function SideMenuSelection(event) {
+    let $link = $(event.target);
+    let selected_menu = $link.data('selector');
+    $('#ntisas-menu-selection > a').removeClass('ntisas-selected');
+    $(`#ntisas-menu-selection a[data-selector=${selected_menu}]`).addClass('ntisas-selected');
+    $('#ntisas-content > div').hide();
+    $(`#ntisas-content div[data-selector=${selected_menu}]`).show();
+    JSPLib.storage.setStorageData('ntisas-side-selection', selected_menu, localStorage);
+}
+
+function SideMenuHotkeys(event) {
+    $(`#ntisas-menu-selection a:nth-of-type(${event.originalEvent.key})`).click();
+}
+
 function CurrentRecords(event) {
     if (!CurrentRecords.is_running) {
         CurrentRecords.is_running = true;
@@ -4769,7 +4837,8 @@ async function CheckSauce(event) {
     let sauce_remaining = flat_headers.reduce((total,header) => {
         return Math.min(total, header.long_remaining);
     }, Infinity);
-    JSPLib.notice.notice(`Sauce remaining: ${sauce_remaining}`);
+    $('#ntisas-available-sauce').text(sauce_remaining);
+    JSPLib.storage.saveData('ntisas-available-sauce', {value: sauce_remaining, expires: JSPLib.utility.getExpires(SAUCE_EXPIRES)});
 }
 
 function ManualAdd(event) {
@@ -5534,6 +5603,7 @@ function PageNavigation(pagetype) {
         }
         //Bind events for creation/rebind
         if (!JSPLib.utility.isNamespaceBound('#ntisas-open-settings', 'click', PROGRAM_SHORTCUT)) {
+            $('#ntisas-menu-selection a').on(PROGRAM_CLICK, SideMenuSelection);
             $('#ntisas-current-records').on(PROGRAM_CLICK, CurrentRecords);
             $('#ntisas-artist-toggle a').on(PROGRAM_CLICK, ToggleArtistHilights);
             $('#ntisas-views-toggle a').on(PROGRAM_CLICK, ToggleViewHighlights);
@@ -6064,6 +6134,7 @@ function RenderSettingsMenu() {
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_image_number'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_upload_link'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_tweet_statistics'));
+    $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_available_sauce'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_network_errors'));
     $('#ntisas-function-settings').append(JSPLib.menu.renderCheckbox('advanced_tooltips_enabled'));
     $('#ntisas-function-settings').append(JSPLib.menu.renderCheckbox('image_popout_enabled'));
@@ -6172,6 +6243,7 @@ async function Main() {
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+c', CloseSettingsMenu);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+s', SaveSettingsMenu);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+r', ResetSettingsMenu);
+    $(document).on(PROGRAM_KEYDOWN, null, 'alt+1 alt+2 alt+3', SideMenuHotkeys);
     setInterval(IntervalStorageHandler, QUEUE_POLL_INTERVAL);
     setInterval(IntervalNetworkHandler, QUEUE_POLL_INTERVAL);
     JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
@@ -6239,8 +6311,11 @@ JSPLib.network.rate_limit_wait = JSPLib.utility.one_second;
 //Variables for danbooru.js
 JSPLib.danbooru.max_network_requests = 10;
 
-//Variables for danbooru/utility.js
+//Variables for notice.js
 JSPLib.notice.program_shortcut = PROGRAM_SHORTCUT;
+
+//Variables for load.js
+JSPLib.load.load_when_hidden = false;
 
 //Export JSPLib
 JSPLib.load.exportData(PROGRAM_NAME, NTISAS, {API_DATA, jQuery, XRegExp});
