@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff (alpha)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.A.9
+// @version      7.A.10
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -19,19 +19,19 @@
 // @require      https://cdn.jsdelivr.net/npm/xregexp@4.4.1/xregexp-all.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201210/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201210/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201210/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201210/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201210/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201210/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201210/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201210/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201210/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201210/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201210/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201210/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201210/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/saucenao.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/menu.js
 // @resource     jquery_ui_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/jquery_ui_custom.css
 // @resource     jquery_qtip_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.css
 // @grant        GM_getResourceText
@@ -3703,7 +3703,8 @@ function InitializeTwitterImage(article,image_urls) {
         image.width = preview_width;
         image.height = preview_height;
         image.style.paddingTop = `${POST_PREVIEW_DIMENSION - preview_height}px`;
-        $('p:nth-child(4)', article).html(`${ReadableBytes(size)} (${width}x${height})`);
+        let size_text = (size > 0 ? ReadableBytes(size) : 'Unavailable');
+        $('p:nth-child(4)', article).html(`${size_text} (${width}x${height})`);
     });
     return image_promise;
 }
@@ -3862,7 +3863,8 @@ function InitializeUploadlinks(install) {
     InitializeQtip($link, qtip_key, async ()=>{
         let extension = GetFileExtension(image_url).toUpperCase();
         return await GetImageAttributes(orig_image_url).then(({size,width,height})=>{
-            return `<span class="ntisas-code">${ReadableBytes(size)} : ${extension} : (${width} x ${height})</span>`;
+            let size_text = (size > 0 ? ReadableBytes(size) : 'Unavailable');
+            return `<span class="ntisas-code">${size_text} : ${extension} : (${width} x ${height})</span>`;
         });
     });
 }
@@ -5959,7 +5961,7 @@ function BroadcastTISAS(ev) {
             if ('artist_list' in ev.data && 'artist-list' in NTISAS.lists && 'list' in NTISAS.lists['artist-list']) {
                 NTISAS.lists['artist-list'].list = ev.data.artist_list;
             }
-            if ('tweet_list' in ev.data && 'tweet-list' in NTISAS.lists && 'list' in NTISAS.lists['tweet-list']) {
+            if ('tweet_list' in ev.data &&'tweet-list' in NTISAS.lists && 'list' in NTISAS.lists['tweet-list']) {
                 NTISAS.lists['tweet-list'].list = ev.data.tweet_list;
             }
             InvalidateLocalData('ntisas-indicator-controls');
