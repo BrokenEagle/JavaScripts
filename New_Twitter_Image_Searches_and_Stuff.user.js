@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff (alpha)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.A.10
+// @version      7.A.11
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -19,19 +19,19 @@
 // @require      https://cdn.jsdelivr.net/npm/xregexp@4.4.1/xregexp-all.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/288774cd8c8e987b5ba990e086c79816e5a23290/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/saucenao.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/menu.js
 // @resource     jquery_ui_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/jquery_ui_custom.css
 // @resource     jquery_qtip_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.css
 // @grant        GM_getResourceText
@@ -3222,16 +3222,14 @@ function RenderDownloadLinks($tweet,position,is_video) {
     var image_links = GetImageLinks($tweet[0]);
     var hrefs = image_links.map((image)=>{return image + ':orig'});
     let html = '<span class="ntisas-download-header">Download Originals</span><span style="font-size:75%;font-weight:bold">&emsp;(&nbsp;<span class="ntisas-download-counter">0</span>&nbsp;)</span><br>';
-    let image_index = GetImageIndex(image_links.length);
     for (let i = 0; i < image_links.length; i++) {
-        let index = image_index[i];
         let image_num = i + 1;
-        let [image_name,extension] = GetFileURLNameExt(image_links[index]);
+        let [image_name,extension] = GetFileURLNameExt(image_links[i]);
         let download_filename = JSPLib.utility.regexReplace(NTISAS.filename_prefix, {
             ORDER: 'img' + String(image_num),
             IMG: image_name
         }) + '.' + extension;
-        html += `<a class="ntisas-download-original ntisas-download-image ntisas-expanded-link" href="${hrefs[index]}" download="${download_filename}">Image #${image_num}</a>`;
+        html += `<a class="ntisas-download-original ntisas-download-image ntisas-expanded-link" href="${hrefs[i]}" download="${download_filename}">Image #${image_num}</a>`;
     }
     if (is_video) {
         html += '<a class="ntisas-download-original ntisas-download-video ntisas-expanded-link" style="display:none">Video #1</a>';
