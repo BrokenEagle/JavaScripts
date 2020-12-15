@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SiteTagSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.4
+// @version      4.5
 // @description  Presents additional site links for the wiki tag(s).
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -12,16 +12,19 @@
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/sitetagsearches.user.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/menu.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/core-js/3.8.1/minified.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/menu.js
 // ==/UserScript==
 
-/* global $ JSPLib Danbooru */
+/* global $ JSPLib */
 
 /****Global variables****/
 
@@ -53,13 +56,13 @@ const SETTINGS_CONFIG = {
     booru_sites_enabled: {
         allitems: BOORU_SITES,
         default: BOORU_SITES,
-        validate: (data)=>{return JSPLib.menu.validateCheckboxRadio(data, 'checkbox', BOORU_SITES);},
+        validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'checkbox', BOORU_SITES),
         hint: "Select to show booru type."
     },
     source_sites_enabled: {
         allitems: SOURCE_SITES,
         default: SOURCE_SITES,
-        validate: (data)=>{return JSPLib.menu.validateCheckboxRadio(data, 'checkbox', SOURCE_SITES);},
+        validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'checkbox', SOURCE_SITES),
         hint: "Select to show source type."
     },
 };
@@ -106,30 +109,15 @@ const PROGRAM_CSS = `
 
 //HTML constants
 
-const STS_MENU = `
-<div id="sts-script-message" class="prose">
-    <h2>${PROGRAM_NAME}</h2>
-    <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/${DANBOORU_TOPIC_ID}">topic #${DANBOORU_TOPIC_ID}</a>).</p>
-</div>
-<div id="sts-console" class="jsplib-console">
-    <div id="sts-settings" class="jsplib-outer-menu">
-        <div id="sts-general-settings" class="jsplib-settings-grouping">
-            <div id="sts-general-message" class="prose">
-                <h4>General settings</h4>
-            </div>
-        </div>
-        <div id="sts-source-settings" class="jsplib-settings-grouping">
-            <div id="sts-source-message" class="prose">
-                <h4>Source settings</h4>
-            </div>
-        </div>
-        <hr>
-        <div id="sts-settings-buttons" class="jsplib-settings-buttons">
-            <input type="button" id="sts-commit" value="Save">
-            <input type="button" id="sts-resetall" value="Factory Reset">
-        </div>
-    </div>
-</div>`;
+const MENU_CONFIG = {
+    topic_id: DANBOORU_TOPIC_ID,
+    settings: [{
+        name: 'general',
+    },{
+        name: 'source',
+    }],
+    controls: [],
+};
 
 //Site constants
 
@@ -265,13 +253,13 @@ function SiteLinkToggle(type,direction) {
         let id = $(event.target).data('id');
         $(`.sts-collapsible-${type}-links[data-id=${id}]`).toggleClass(`ui-icon-triangle-1-${direction} ui-icon-triangle-1-s`);
         $(`.sts-${type}-links[data-id=${id}]`).slideToggle(100);
-    }
+    };
 }
 
 //Settings functions
 
 function RenderSettingsMenu() {
-    $('#site-tag-searches').append(STS_MENU);
+    $('#site-tag-searches').append(JSPLib.menu.renderMenuFramework(MENU_CONFIG));
     $('#sts-general-settings').append(JSPLib.menu.renderDomainSelectors());
     $('#sts-source-settings').append(JSPLib.menu.renderInputSelectors('booru_sites_enabled', 'checkbox'));
     $('#sts-source-settings').append(JSPLib.menu.renderInputSelectors('source_sites_enabled', 'checkbox'));
@@ -283,23 +271,20 @@ function RenderSettingsMenu() {
 //Main function
 
 function Main() {
-    Danbooru.STS = Object.assign(STS, {
+    Object.assign(STS, {
         controller: document.body.dataset.controller,
         action: document.body.dataset.action,
-        settings_config: SETTINGS_CONFIG,
-    });
-    Object.assign(STS, {
         user_settings: JSPLib.menu.loadUserSettings(),
     });
     if (JSPLib.danbooru.isSettingMenu()) {
         JSPLib.menu.initializeSettingsMenu(RenderSettingsMenu);
     }
     if (!JSPLib.menu.isScriptEnabled()) {
-        Main.debuglog("Script is disabled on", window.location.hostname);
+        JSPLib.debug.debuglog("Script is disabled on", window.location.hostname);
         return;
     }
     if (!IsWikiPage()) {
-        Main.debuglog("No wiki page bodies!");
+        JSPLib.debug.debuglog("No wiki page bodies!");
         return;
     }
     let $wiki_other_names = $('.wiki-other-name');
@@ -320,9 +305,7 @@ function Main() {
 
 /****Function decoration****/
 
-JSPLib.debug.addFunctionLogs([
-    Main
-]);
+////NONE
 
 /****Initialization****/
 
@@ -334,6 +317,8 @@ JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 //Variables for menu.js
 JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
 JSPLib.menu.program_name = PROGRAM_NAME;
+JSPLib.menu.program_data = STS;
+JSPLib.menu.settings_config = SETTINGS_CONFIG;
 
 //Export JSPLib
 JSPLib.load.exportData(PROGRAM_NAME, STS);
