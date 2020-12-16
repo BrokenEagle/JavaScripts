@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.1
+// @version      28.2
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -10,19 +10,22 @@
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/indexedautocomplete.user.js
-// @require      https://cdn.jsdelivr.net/npm/core-js-bundle@3.6.5/minified.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.7.4/localforage.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/core-js/3.8.1/minified.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.9.0/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru validate LZString */
@@ -63,9 +66,6 @@ const PROGRAM_DATA_KEY = {
 
 //Main program variable
 const IAC = {};
-
-//Timer function hash
-const Timer = {};
 
 //For factory reset
 const LOCALSTORAGE_KEYS = [
@@ -278,6 +278,30 @@ const CONTROL_CONFIG = {
         buttons: ['get', 'save', 'delete', 'list', 'refresh'],
         hint: "Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.<br><b>List</b> shows keys in their raw format, and <b>Refresh</b> checks the keys again.",
     },
+};
+
+const MENU_CONFIG = {
+    topic_id: DANBOORU_TOPIC_ID,
+    settings: [{
+        name: 'general',
+    },{
+        name: 'source',
+    },{
+        name: 'usage',
+        message: "How items get sorted that are selected by the user.",
+    },{
+        name: 'display',
+        message: "Affects the presentation of autocomplete data to the user.",
+    },{
+        name: 'sort',
+        message: "Affects the order of tag autocomplete data.",
+    },{
+        name: 'related-tag',
+        message: "Affects the related tags shown in the post/upload edit menu.",
+    },{
+        name: 'network',
+    }],
+    controls: [],
 };
 
 //Pre-CSS/HTML constants
@@ -497,306 +521,185 @@ const POST_COMMENT_SEARCH = `
     </form>
 </li>`;
 
-const CACHE_INFO_TABLE = '<div id="iac-cache-info-table" style="display:none"></div>';
+const TEXT_AUTOCOMPLETE_DETAILS = `
+<ul>
+    <li><b>Source (Alt+1):</b>
+        <ul>
+            <li><code>tag</code> - Will search tags.</li>
+            <li><code>wiki</code> - Will search wikis.</li>
+        </ul>
+    </li>
+    <li><b>Mode (Alt+2):</b>
+        <ul>
+            <li><code>tag</code> - Spaces appear as underscores.</li>
+            <li><code>normal</code> - Spaces appear as spaces, uses the entire value.</li>
+            <li><code>pipe</code> - Spaces appear as spaces, places a pipe "|" at the end.
+                <ul>
+                    <li>This will remove a final parentheses value.</li>
+                    <li>E.g. "pokemon_(game)" will appear as "pokemon".</li>
+                </ul>
+            </li>
+            <li><code>custom</code> - Default "insert text" in place for custom text by user.</li>
+        </ul>
+    </li>
+    <li><b>Capitalization (Alt+3):</b>
+        <ul>
+            <li><code>lowercase</code> - All lowercase letters.</li>
+            <li><code>uppercase</code> - All uppercase letters.</li>
+            <li><code>titlecase</code> - Only first letter capitalized.</li>
+            <li><code>propercase</code> - First letter of every word capitalized.</li>
+            <li><code>exceptcase</code> - Propercase except for "a", "an", "of", "the", "is".</li>
+            <li><code>romancase</code> - Exceptcase plus capitalize all letters in Roman numerals.</li>
+        </ul>
+    </li>
+</ul>`;
 
-const IAC_MENU = `
-<div id="iac-script-message" class="prose">
-    <h2>${PROGRAM_NAME}</h2>
-    <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/${DANBOORU_TOPIC_ID}">topic #${DANBOORU_TOPIC_ID}</a>).</p>
-</div>
-<div id="iac-console" class="jsplib-console">
-    <div id="iac-settings" class="jsplib-outer-menu">
-        <div id="iac-general-settings" class="jsplib-settings-grouping">
-            <div id="iac-general-message" class="prose">
-                <h4>General settings</h4>
-                <div class="expandable">
-                    <div class="expandable-header">
-                        <span>Text autocomplete details</span>
-                        <input type="button" value="Show" class="expandable-button">
-                    </div>
-                    <div class="expandable-content">
+const USAGE_SETTINGS_DETAILS = `
+<h5>Equations</h5>
+<ul>
+    <li><span style="width:5em;display:inline-block"><b>Hit:</b></span><span class="iac-formula">usage_count = Min( usage_count + 1 , usage_maximum )</span></li>
+    <li><span style="width:5em;display:inline-block"><b>Miss:</b></span><span class="iac-formula">usage_count = usage_count * usage_multiplier</span></li>
+</ul>`;
+
+const DISPLAY_SETTINGS_DETAILS = `
+<ul>
+    <li><b>Source highlight enabled:</b> The following are the CSS classes and default styling.
+        <ul>
+            <li><code>.iac-user-choice</code> - bold text</li>
+            <li><code>.iac-tag-exact</code> - grey dot</li>
+            <li><code>.iac-tag-prefix</code> - pink dot</li>
+            <li><code>.iac-tag-alias</code> - gold dot, italic text</li>
+            <li><code>.iac-tag-correct</code> - cyan dot</li>
+        </ul>
+    </li>
+    <li><b>Source grouping enabled:</b>
+        <ul>
+            <li>When not enabled, the default is to order using the post count and a weighting scheme.</li>
+            <li><code>sort_value = post_count x weight_value</code></li>
+            <li>The different weights are: (Exact: 1.0), (Prefix: 0.8), (Alias: 0.2), (Correct: 0.1).</li>
+        </ul>
+    </li>
+    <li><b>Source order:</b>
+        <ul>
+            <li><b>Exact:</b> Matches exactly letter for letter.</li>
+            <li><b>Prefix:</b> Matches the first letter of each word.</li>
+            <li><b>Alias:</b> Same as exact, but it checks aliases.</li>
+            <li><b>Correct:</b> Tags off by 1-3 letters, i.e. mispellings.</li>
+        </ul>
+    </li>
+</ul>`;
+
+const SORT_SETTINGS_DETAILS = `
+<ul>
+    <li>Alternate sorting must be enabled to use the alternate scales/weights.</li>
+    <li>These settings won't affect anything if source grouping is enabled.</li>
+</ul>
+<h5>Equations</h5>
+<ul>
+    <li><span style="width:8em;display:inline-block"><b>Linear:</b></span><span class="iac-formula">tag_weight = source_weight x post_count</span></li>
+    <li><span style="width:8em;display:inline-block"><b>Square root:</b></span><span class="iac-formula">tag_weight = source_weight x Sqrt( post_count )</span></li>
+    <li><span style="width:8em;display:inline-block"><b>Logarithmic:</b></span><span class="iac-formula">tag_weight = source_weight x Log( post_count )</span></li>
+</ul>`;
+
+const RELATED_TAG_SETTINGS_DETAILS = `
+<ul>
+    <li><b>Related query types:</b>
+        <ul>
+            <li><b>Default:</b> Uses the similar query type when no category is used, and frequent when a category is used.</li>
+            <li><b>Frequent:</b> Uses the frequency of tags that appear with the queried tag from a sample of 1000 posts.</li>
+            <li><b>Similar:</b> Applies a cosine similarity to the results which is the interelation of the frequency between all tags.
+                <ul>
+                    <li>I.e. it rates tags x and y, where tag x appears with high frequecy with tag y, and tag y appears with high frequency with tag x.</li>
+                </ul>
+            </li>
+            <li><b>Like:</b> Performs a wildcard search of the tag.
+                <ul>
+                    <li>E.g. searching <code>military</code> will use the wildcard search <code>*military*</code> to find all tags with "military" in them.</li>
+                </ul>
+            </li>
+        </ul>
+    </li>
+</ul>
+<div style="font-size:80%"><b>Note:</b> Each related query type is stored separately, so results can be repeated with different values. The default query will save as either frequent or similar, depending on whether categories are used or not.</div>`;
+
+const NETWORK_SETTINGS_DETAILS = `
+<ul>
+    <li><b>Alternate tag source:</b>
+        <ul>
+            <li>No aliases.</li>
+            <li>No fuzzy or intelligent autocomplete.</li>
+            <li>All results will be exact matches.</li>
+        </ul>
+    </li>
+    <li><b>Network only mode:</b>
+        <ul>
+            <li>Can be used to correct cache data that has been changed on the server.</li>
+            <li><span style="color:red;font-weight:bold">Warning!</span> <span style="font-style:italic">As this negates the benefits of using local cached data, it should only be used sparingly.</span></li>
+        </ul>
+    </li>
+</ul>`;
+
+const CACHE_DATA_DETAILS = `
+<ul>
+    <li><b>Autocomplete data:</b> Data from every combination of keys in the text input.
+        <ul style="font-size:80%">
+            <li>tags (ac)</li>
+            <li>pools (pl)</li>
+            <li>users (us)</li>
+            <li>favorite groups (fg)</li>
+            <li>saved searches (ss)</li>
+            <li>wiki pages (wp)</li>
+            <li>artists (ar)</li>
+            <li>forum topics (ft)</li>
+        </ul>
+    </li>
+    <li><b>Related tag data:</b> Data from every use of the related tag functions (<span style="font-size:80%"><i>right beneath the tag edit box</i></span>).
+        <ul style="font-size:80%">
+            <li>related tags (rt)</li>
+            <li>general (rtgen)</li>
+            <li>artists (rtart)</li>
+            <li>characters (rtchar)</li>
+            <li>copyrights (rtcopy)</li>
+        </ul>
+    </li>
+</ul>`;
+
+const PROGRAM_DATA_DETAILS = `
+<p class="tn">All timestamps are in milliseconds since the epoch (<a href="https://www.epochconverter.com">Epoch converter</a>).</p>
+<ul>
+    <li><u>General data</u>
+        <ul>
+            <li><b>prune-expires:</b> When the program will next check for cache data that has expired.</li>
+            <li><b>user-settings:</b> All configurable settings.</li>
+        </ul>
+    </li>
+    <li><u>Text autocomplete data</u>
+        <ul>
+            <li><b>ac-source:</b> Numerical value designating the current source.</li>
+            <li><b>ac-mode:</b> Numerical value designating the current mode.</li>
+            <li><b>ac-caps:</b> Numerical value designating the current capitalization.</li>
+        </ul>
+    </li>
+    <li><u>Usage data</u>
+        <ul>
+            <li><b>choice-info:</b> Comprised of choice order and choice data
+                <ul>
+                    <li><b>choice_order:</b> The search terms per source ordered by last use.
                         <ul>
-                            <li><b>Source (Alt+1):</b>
-                                <ul>
-                                    <li><code>tag</code> - Will search tags.</li>
-                                    <li><code>wiki</code> - Will search wikis.</li>
-                                </ul>
-                            </li>
-                            <li><b>Mode (Alt+2):</b>
-                                <ul>
-                                    <li><code>tag</code> - Spaces appear as underscores.</li>
-                                    <li><code>normal</code> - Spaces appear as spaces, uses the entire value.</li>
-                                    <li><code>pipe</code> - Spaces appear as spaces, places a pipe "|" at the end.
-                                        <ul>
-                                            <li>This will remove a final parentheses value.</li>
-                                            <li>E.g. "pokemon_(game)" will appear as "pokemon".</li>
-                                        </ul>
-                                    </li>
-                                    <li><code>custom</code> - Default "insert text" in place for custom text by user.</li>
-                                </ul>
-                            </li>
-                            <li><b>Capitalization (Alt+3):</b>
-                                <ul>
-                                    <li><code>lowercase</code> - All lowercase letters.</li>
-                                    <li><code>uppercase</code> - All uppercase letters.</li>
-                                    <li><code>titlecase</code> - Only first letter capitalized.</li>
-                                    <li><code>propercase</code> - First letter of every word capitalized.</li>
-                                    <li><code>exceptcase</code> - Propercase except for "a", "an", "of", "the", "is".</li>
-                                    <li><code>romancase</code> - Exceptcase plus capitalize all letters in Roman numerals.</li>
-                                </ul>
-                            </li>
+                            <li>The order in this list only affects things when the usage counts of two terms are equal.</li>
                         </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div id="iac-source-settings" class="jsplib-settings-grouping">
-            <div id="iac-source-message" class="prose">
-                <h4>Source settings</h4>
-            </div>
-        </div>
-        <div id="iac-usage-settings" class="jsplib-settings-grouping">
-            <div id="iac-usage-message" class="prose">
-                <h4>Usage settings</h4>
-                <p>How items get sorted that are selected by the user.</p>
-                <div class="expandable">
-                    <div class="expandable-header">
-                        <span>Additional setting details</span>
-                        <input type="button" value="Show" class="expandable-button">
-                    </div>
-                    <div class="expandable-content">
-                        <h5>Equations</h5>
+                    </li>
+                    <li><b>choice_data:</b> The search terms per source with the autocomplete data.
                         <ul>
-                            <li><span style="width:5em;display:inline-block"><b>Hit:</b></span><span class="iac-formula">usage_count = Min( usage_count + 1 , usage_maximum )</span></li>
-                            <li><span style="width:5em;display:inline-block"><b>Miss:</b></span><span class="iac-formula">usage_count = usage_count * usage_multiplier</span></li>
+                            <li>The <b>use_count</b> affects how terms get sorted against each other.</li>
+                            <li>The <b>expiration</b> affects when data gets pruned, and gets renewed each time a term is selected.</li>
                         </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div id="iac-display-settings" class="jsplib-settings-grouping">
-            <div id="iac-display-message" class="prose">
-                <h4>Display settings</h4>
-                <p>Affects the presentation of autocomplete data to the user.</p>
-                <div class="expandable">
-                    <div class="expandable-header">
-                        <span>Additional setting details</span>
-                        <input type="button" value="Show" class="expandable-button">
-                    </div>
-                    <div class="expandable-content">
-                        <ul>
-                            <li><b>Source highlight enabled:</b> The following are the CSS classes and default styling.
-                                <ul>
-                                    <li><code>.iac-user-choice</code> - bold text</li>
-                                    <li><code>.iac-tag-exact</code> - grey dot</li>
-                                    <li><code>.iac-tag-prefix</code> - pink dot</li>
-                                    <li><code>.iac-tag-alias</code> - gold dot, italic text</li>
-                                    <li><code>.iac-tag-correct</code> - cyan dot</li>
-                                </ul>
-                            </li>
-                            <li><b>Source grouping enabled:</b>
-                                <ul>
-                                    <li>When not enabled, the default is to order using the post count and a weighting scheme.</li>
-                                    <li><code>sort_value = post_count x weight_value</code></li>
-                                    <li>The different weights are: (Exact: 1.0), (Prefix: 0.8), (Alias: 0.2), (Correct: 0.1).</li>
-                                </ul>
-                            </li>
-                            <li><b>Source order:</b>
-                                <ul>
-                                    <li><b>Exact:</b> Matches exactly letter for letter.</li>
-                                    <li><b>Prefix:</b> Matches the first letter of each word.</li>
-                                    <li><b>Alias:</b> Same as exact, but it checks aliases.</li>
-                                    <li><b>Correct:</b> Tags off by 1-3 letters, i.e. mispellings.</li>
-                                </ul>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div id="iac-sort-settings" class="jsplib-settings-grouping">
-            <div id="iac-sort-message" class="prose">
-                <h4>Sort settings</h4>
-                <p>Affects the order of tag autocomplete data.</p>
-                <div class="expandable">
-                    <div class="expandable-header">
-                        <span>Additional setting details</span>
-                        <input type="button" value="Show" class="expandable-button">
-                    </div>
-                    <div class="expandable-content">
-                        <ul>
-                            <li>Alternate sorting must be enabled to use the alternate scales/weights.</li>
-                            <li>These settings won't affect anything if source grouping is enabled.</li>
-                        </ul>
-                        <h5>Equations</h5>
-                        <ul>
-                            <li><span style="width:8em;display:inline-block"><b>Linear:</b></span><span class="iac-formula">tag_weight = source_weight x post_count</span></li>
-                            <li><span style="width:8em;display:inline-block"><b>Square root:</b></span><span class="iac-formula">tag_weight = source_weight x Sqrt( post_count )</span></li>
-                            <li><span style="width:8em;display:inline-block"><b>Logarithmic:</b></span><span class="iac-formula">tag_weight = source_weight x Log( post_count )</span></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div id="iac-related-tag-settings" class="jsplib-settings-grouping">
-            <div id="iac-related-tag-message" class="prose">
-                <h4>Related tag settings</h4>
-                <p>Affects the related tags shown in the post/upload edit menu.</p>
-                <div class="expandable">
-                    <div class="expandable-header">
-                        <span>Additional setting details</span>
-                        <input type="button" value="Show" class="expandable-button">
-                    </div>
-                    <div class="expandable-content">
-                        <ul>
-                            <li><b>Related query types:</b>
-                                <ul>
-                                    <li><b>Default:</b> Uses the similar query type when no category is used, and frequent when a category is used.</li>
-                                    <li><b>Frequent:</b> Uses the frequency of tags that appear with the queried tag from a sample of 1000 posts.</li>
-                                    <li><b>Similar:</b> Applies a cosine similarity to the results which is the interelation of the frequency between all tags.
-                                        <ul>
-                                            <li>I.e. it rates tags x and y, where tag x appears with high frequecy with tag y, and tag y appears with high frequency with tag x.</li>
-                                        </ul>
-                                    </li>
-                                    <li><b>Like:</b> Performs a wildcard search of the tag.
-                                        <ul>
-                                            <li>E.g. searching <code>military</code> will use the wildcard search <code>*military*</code> to find all tags with "military" in them.</li>
-                                        </ul>
-                                    </li>
-                                </ul>
-                            </li>
-                        </ul>
-                        <div style="font-size:80%"><b>Note:</b> Each related query type is stored separately, so results can be repeated with different values. The default query will save as either frequent or similar, depending on whether categories are used or not.</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div id="iac-network-settings" class="jsplib-settings-grouping">
-            <div id="iac-network-message" class="prose">
-                <h4>Network settings</h4>
-                <div class="expandable">
-                    <div class="expandable-header">
-                        <span>Additional setting details</span>
-                        <input type="button" value="Show" class="expandable-button">
-                    </div>
-                    <div class="expandable-content">
-                        <ul>
-                            <li><b>Alternate tag source:</b>
-                                <ul>
-                                    <li>No aliases.</li>
-                                    <li>No fuzzy or intelligent autocomplete.</li>
-                                    <li>All results will be exact matches.</li>
-                                </ul>
-                            </li>
-                            <li><b>Network only mode:</b>
-                                <ul>
-                                    <li>Can be used to correct cache data that has been changed on the server.</li>
-                                    <li><span style="color:red;font-weight:bold">Warning!</span> <span style="font-style:italic">As this negates the benefits of using local cached data, it should only be used sparingly.</span></li>
-                                </ul>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div id="iac-cache-settings" class="jsplib-settings-grouping">
-            <div id="iac-cache-message" class="prose">
-                <h4>Cache settings</h4>
-                <h5>Cache data</h5>
-                <div class="expandable">
-                    <div class="expandable-header">
-                        <span>Cache Data details</span>
-                        <input type="button" value="Show" class="expandable-button">
-                    </div>
-                    <div class="expandable-content">
-                        <ul>
-                            <li><b>Autocomplete data:</b> Data from every combination of keys in the text input.
-                                <ul style="font-size:80%">
-                                    <li>tags (ac)</li>
-                                    <li>pools (pl)</li>
-                                    <li>users (us)</li>
-                                    <li>favorite groups (fg)</li>
-                                    <li>saved searches (ss)</li>
-                                    <li>wiki pages (wp)</li>
-                                    <li>artists (ar)</li>
-                                    <li>forum topics (ft)</li>
-                                </ul>
-                            </li>
-                            <li><b>Related tag data:</b> Data from every use of the related tag functions (<span style="font-size:80%"><i>right beneath the tag edit box</i></span>).
-                                <ul style="font-size:80%">
-                                    <li>related tags (rt)</li>
-                                    <li>general (rtgen)</li>
-                                    <li>artists (rtart)</li>
-                                    <li>characters (rtchar)</li>
-                                    <li>copyrights (rtcopy)</li>
-                                </ul>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <hr>
-        <div id="iac-settings-buttons" class="jsplib-settings-buttons">
-            <input type="button" id="iac-commit" value="Save">
-            <input type="button" id="iac-resetall" value="Factory Reset">
-        </div>
-    </div>
-    <div id="iac-cache-editor" class="jsplib-outer-menu">
-        <div id="iac-editor-message" class="prose">
-            <h4>Cache editor</h4>
-            <p>See the <b><a href="#iac-cache-message">Cache Data</a></b> details for the list of all cache data and what they do.</p>
-            <div class="expandable">
-                <div class="expandable-header">
-                    <span>Program Data details</span>
-                    <input type="button" value="Show" class="expandable-button">
-                </div>
-                <div class="expandable-content">
-                    <p class="tn">All timestamps are in milliseconds since the epoch (<a href="https://www.epochconverter.com">Epoch converter</a>).</p>
-                    <ul>
-                        <li><u>General data</u>
-                            <ul>
-                                <li><b>prune-expires:</b> When the program will next check for cache data that has expired.</li>
-                                <li><b>user-settings:</b> All configurable settings.</li>
-                            </ul>
-                        </li>
-                        <li><u>Text autocomplete data</u>
-                            <ul>
-                                <li><b>ac-source:</b> Numerical value designating the current source.</li>
-                                <li><b>ac-mode:</b> Numerical value designating the current mode.</li>
-                                <li><b>ac-caps:</b> Numerical value designating the current capitalization.</li>
-                            </ul>
-                        </li>
-                        <li><u>Usage data</u>
-                            <ul>
-                                <li><b>choice-info:</b> Comprised of choice order and choice data
-                                    <ul>
-                                        <li><b>choice_order:</b> The search terms per source ordered by last use.
-                                            <ul>
-                                                <li>The order in this list only affects things when the usage counts of two terms are equal.</li>
-                                            </ul>
-                                        </li>
-                                        <li><b>choice_data:</b> The search terms per source with the autocomplete data.
-                                            <ul>
-                                                <li>The <b>use_count</b> affects how terms get sorted against each other.</li>
-                                                <li>The <b>expiration</b> affects when data gets pruned, and gets renewed each time a term is selected.</li>
-                                            </ul>
-                                        </li>
-                                    </ul>
-                                </li>
-                            </ul>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-        <div id="iac-cache-editor-controls"></div>
-        <div id="iac-cache-editor-errors" class="jsplib-cache-editor-errors"></div>
-        <div id="iac-cache-viewer" class="jsplib-cache-viewer">
-            <textarea></textarea>
-        </div>
-    </div>
-</div>`;
+                    </li>
+                </ul>
+            </li>
+        </ul>
+    </li>
+</ul>`;
 
 const IAC_SCROLL_WRAPPER = `
 <div id="iac-edit-scroll-wrapper">
@@ -827,7 +730,7 @@ const AUTOCOMPLETE_CAPITALIZATION = ['lowercase', 'uppercase', 'titlecase', 'pro
 
 //Regex constants
 
-const WORDBREAK_REGEX = /\(+|\)+|[\s_]+|[^\s_\(\)]+/g;
+const WORDBREAK_REGEX = /\(+|\)+|[\s_]+|[^\s_()]+/g;
 const ROMAN_REGEX = /^M?M?M?(CM|CD|D?C?C?C?)(XC|XL|L?X?X?X?)(IX|IV|V?I?I?I?)$/i;
 
 //BUR constants
@@ -851,7 +754,7 @@ const CALLBACK_INTERVAL = 1000; //Interval for fixup callback functions
 //Data inclusion lists
 const ALL_CATEGORIES = [0, 1, 3, 4, 5];
 const ALL_TOPICS = [0, 1, 2];
-const ALL_POOLS = ['collection', 'series']
+const ALL_POOLS = ['collection', 'series'];
 const ALL_USERS = ['Member', 'Gold', 'Platinum', 'Builder', 'Moderator', 'Admin'];
 
 //All of the following are used to determine when to run the script
@@ -1041,7 +944,7 @@ const SOURCE_CONFIG = {
                 level: user.level_string
             };
         },
-        expiration: (d)=>{
+        expiration: ()=>{
             return MinimumExpirationTime('user');
         },
         fixupmetatag: true,
@@ -1067,7 +970,7 @@ const SOURCE_CONFIG = {
                 post_count: favgroup.post_count
             };
         },
-        expiration: (d)=>{
+        expiration: ()=>{
             return MinimumExpirationTime('favgroup');
         },
         fixupmetatag: true,
@@ -1089,7 +992,7 @@ const SOURCE_CONFIG = {
                 name: label
             };
         },
-        expiration: (d)=>{
+        expiration: ()=>{
             return MinimumExpirationTime('search');
         },
         fixupmetatag: true,
@@ -1116,7 +1019,7 @@ const SOURCE_CONFIG = {
                 category: wikipage.category_name
             };
         },
-        expiration: (d)=>{
+        expiration: ()=>{
             return MinimumExpirationTime('wikipage');
         },
         fixupmetatag: false,
@@ -1143,7 +1046,7 @@ const SOURCE_CONFIG = {
                 value: artist.name
             };
         },
-        expiration: (d)=>{
+        expiration: ()=>{
             return MinimumExpirationTime('artist');
         },
         fixupmetatag: false,
@@ -1169,7 +1072,7 @@ const SOURCE_CONFIG = {
                 category: forumtopic.category_id
             };
         },
-        expiration: (d)=>{
+        expiration: ()=>{
             return MinimumExpirationTime('forumtopic');
         },
         fixupmetatag: false,
@@ -1264,7 +1167,7 @@ const COUNT_CONSTRAINTS = {
 
 function ValidateEntry(key,entry) {
     if (!JSPLib.validate.validateIsHash(key, entry)) {
-        return false
+        return false;
     }
     if (key.match(/^(?:ac|pl|us|fg|ss|ar|wp|ft)-/)) {
         return ValidateAutocompleteEntry(key, entry);
@@ -1273,7 +1176,7 @@ function ValidateEntry(key,entry) {
     } else if (key.startsWith('ctat-')) {
         return JSPLib.validate.validateHashEntries(key, entry, COUNT_CONSTRAINTS);
     }
-    ValidateEntry.debuglog("Bad key!");
+    this.debug('log',"Bad key!");
     return false;
 }
 
@@ -1330,7 +1233,7 @@ function ValidateProgramData(key,entry) {
             break;
         case 'iac-choice-info':
             if (JSPLib.validate.isHash(entry)) {
-                checkerror = Timer.ValidateUsageData(entry);
+                checkerror = ValidateUsageData(entry);
             } else {
                 checkerror = ['Value is not a hash'];
             }
@@ -1359,13 +1262,13 @@ function ValidateUsageData(choice_info) {
     //Validate choice order
     for (let type in choice_order) {
         if (!Array.isArray(choice_order[type])) {
-            error_messages.push(`choice_order[${type}] is not an array.`)
+            error_messages.push(`choice_order[${type}] is not an array.`);
             delete choice_order[type];
             continue;
         }
         for (let i = 0; i < choice_order[type].length; i++) {
             if (!JSPLib.validate.isString(choice_order[type][i])) {
-                error_messages.push(`choice_order[${type}][${i}] is not a string`)
+                error_messages.push(`choice_order[${type}][${i}] is not a string`);
                 choice_order[type].splice(i, 1);
                 i--;
             }
@@ -1374,7 +1277,7 @@ function ValidateUsageData(choice_info) {
     //Validate choice data
     for (let type in choice_data) {
         if (!JSPLib.validate.isHash(choice_data[type])) {
-            error_messages.push(`choice_data[${type}] is not a hash`)
+            error_messages.push(`choice_data[${type}] is not a hash`);
             delete choice_data[type];
             continue;
         }
@@ -1471,7 +1374,7 @@ function MetatagData() {
     if (!MetatagData.data) {
         MetatagData.data = Danbooru.Autocomplete.METATAGS
             .filter((tag) => (tag[0] !== '-'))
-            .map((tag)=>(MapMetatag('tag', tag, "")));
+            .map((tag) => (MapMetatag('tag', tag, "")));
     }
     return MetatagData.data;
 }
@@ -1548,14 +1451,14 @@ function RenderTagColumns(related_tags, post_count) {
 ${column}
 </div>`;
     is_empty = related_tags.wiki_page_tags.length === 0;
-    column = (is_empty ? "" : RenderTaglist(related_tags.wiki_page_tags, JSPLib.danbooru.wikiLink(related_tags.query, `wiki:${display_name}`)));
+    column = (is_empty ? "" : RenderTaglist(related_tags.wiki_page_tags, JSPLib.danbooru.wikiLink(related_tags.query, `wiki:${display_name}`, 'target="_blank"')));
     html += `
 <div class="tag-column wiki-related-tags-column is-empty-${is_empty}">
 ${column}
 </div>`;
     for (let title in related_tags.other_wikis) {
         let title_name = title.replace(/_/g, ' ');
-        column = RenderTaglist(related_tags.other_wikis[title], JSPLib.danbooru.wikiLink(title, `wiki:${title_name}`));
+        column = RenderTaglist(related_tags.other_wikis[title], JSPLib.danbooru.wikiLink(title, `wiki:${title_name}`, 'target="_blank"'));
         html += `
 <div class="tag-column wiki-related-tags-column is-empty-false">
 ${column}
@@ -1570,7 +1473,7 @@ function RenderListItem(alink_func) {
         let $container = $('<div/>').append($link);
         HighlightSelected($container, list, item);
         return $('<li/>').data('item.autocomplete', item).append($container).appendTo(list);
-    }
+    };
 }
 
 function RenderRelatedQueryControls() {
@@ -1661,7 +1564,7 @@ function GroupSources(data) {
 }
 
 function FixExpirationCallback(key,value,tagname,type) {
-    FixExpirationCallback.debuglog("Fixing expiration:", tagname);
+    this.debug('log',"Fixing expiration:", tagname);
     JSPLib.danbooru.submitRequest('tags', {search: {name: tagname}}).then((data)=>{
         if (!data.length) {
             return;
@@ -1680,7 +1583,7 @@ function GetArtistData(url) {
         }
         let redirect = JSPLib.storage.getStorageData(refkey, sessionStorage);
         if (redirect) {
-            GetArtistData.debuglog("Redirect found!", redirect);
+            this.debug('log',"Redirect found!", redirect);
             return JSPLib.storage.getStorageData(redirect, sessionStorage);
         }
 }
@@ -1695,10 +1598,10 @@ function SaveArtistData() {
     let refkey = 'ref-' + ref;
     let source_info = LZString.compressToUTF16($('#source-info').html());
     let source_column = LZString.compressToUTF16($('.source-related-tags-columns').html());
-    SaveArtistData.debuglog("Saving", urlkey);
+    this.debug('log',"Saving", urlkey);
     JSPLib.storage.setStorageData(urlkey, {source_info: source_info, source_column: source_column}, sessionStorage);
     if (ref) {
-        SaveArtistData.debuglog("Saving", refkey);
+        this.debug('log',"Saving", refkey);
         JSPLib.storage.setStorageData(refkey, urlkey, sessionStorage);
     }
 }
@@ -1719,24 +1622,24 @@ function GetRelatedKeyModifer(category, query_type) {
 
 async function GetPostCount(tag) {
     let key = 'ctat-' + tag;
-    GetPostCount.debuglog("Checking:", tag);
+    this.debug('log',"Checking:", tag);
     let cached = await JSPLib.storage.checkLocalDB(key, ValidateEntry, POST_COUNT_EXPIRES);
     if (!cached) {
-        GetPostCount.debuglog("Querying:", tag);
+        this.debug('log',"Querying:", tag);
         let data = await JSPLib.danbooru.submitRequest('counts/posts', {tags: tag}, {counts: {posts: 0}});
         cached = {value: data.counts.posts, expires: JSPLib.utility.getExpires(POST_COUNT_EXPIRES)};
         JSPLib.storage.saveData(key, cached);
     }
-    GetPostCount.debuglog("Found:", tag, cached.value);
+    this.debug('log',"Found:", tag, cached.value);
     return cached.value;
 }
 
 async function GetRelatedTags(tag, category, query_type) {
-    let key = GetRelatedKeyModifer(category, query_type) + '-' + tag
-    GetRelatedTags.debuglog("Checking:", key, category);
+    let key = GetRelatedKeyModifer(category, query_type) + '-' + tag;
+    this.debug('log',"Checking:", key, category);
     let cached = await JSPLib.storage.checkLocalDB(key, ValidateEntry, RELATED_TAG_EXPIRES);
     if (!cached) {
-        GetRelatedTags.debuglog("Querying:", tag, category);
+        this.debug('log',"Querying:", tag, category);
         let url_addons = {query: tag, category: category};
         if (['frequent', 'similar', 'like'].includes(query_type)) {
             url_addons.type = query_type;
@@ -1748,7 +1651,7 @@ async function GetRelatedTags(tag, category, query_type) {
         cached = {value: data, expires: JSPLib.utility.getExpires(RELATED_TAG_EXPIRES)};
         JSPLib.storage.saveData(key, cached);
     }
-    GetRelatedTags.debuglog("Found:", tag, category, cached.value);
+    this.debug('log',"Found:", tag, category, cached.value);
     return cached.value;
 }
 
@@ -1828,7 +1731,7 @@ function InsertUserSelected(data,input,selected) {
         }
         item = $links.data('item.autocomplete');
         if (!item) {
-            InsertUserSelected.debuglog("Error: No autocomplete data found!", $links, item);
+            this.debug('log',"Error: No autocomplete data found!", $links, item);
             return;
         }
         type = item.type;
@@ -1868,7 +1771,7 @@ function InsertUserSelected(data,input,selected) {
     //Final failsafe
     if (!IAC.source_data[type] || !IAC.source_data[type][term]) {
         if (!IAC.choice_data[type] || !IAC.choice_data[type][term]) {
-            InsertUserSelected.debuglog("Error: Bad data selector!", type, term, selected, data, item);
+            this.debug('log',"Error: Bad data selector!", type, term, selected, data, item);
             return;
         }
         source_data = IAC.choice_data[type][term];
@@ -1901,7 +1804,6 @@ function InsertCompletion(input, completion) {
     var before_caret_text = input.value.substring(0, input.selectionStart).replace(/^[ \t]+|[ \t]+$/gm, "");
     var after_caret_text = input.value.substring(input.selectionStart).replace(/^[ \t]+|[ \t]+$/gm, "");
     var regexp = new RegExp('(' + Danbooru.Autocomplete.TAG_PREFIXES + ')?\\S+$', 'g');
-    let adjust_position = 0;
     let $input = $(input);
     let start = 0, end = 0;
     if ($input.data('insert-autocomplete')) {
@@ -1946,7 +1848,7 @@ function StaticMetatagSource(term, metatag) {
         .filter((data) => data.value.startsWith(full_term))
         .sort((a,b) => a.value.localeCompare(b.value))
         .slice(0, IAC.user_settings.source_results_returned);
-    AddUserSelected('metatag', "", full_term, data)
+    AddUserSelected('metatag', "", full_term, data);
     return data;
 }
 
@@ -1991,13 +1893,13 @@ function HighlightSelected($link,list,item) {
 }
 
 function CorrectUsageData() {
-    let error_messages = Timer.ValidateUsageData(IAC);
+    let error_messages = ValidateUsageData(IAC);
     if (error_messages.length) {
-        CorrectUsageData.debuglog("Corrections to usage data detected!");
-        error_messages.forEach((error)=>{CorrectUsageData.debuglog(error)});
+        this.debug('log',"Corrections to usage data detected!");
+        error_messages.forEach((error)=>{this.debug('log',error);});
         StoreUsageData('correction');
     } else {
-        CorrectUsageData.debuglog("Usage data is valid.");
+        this.debug('log',"Usage data is valid.");
     }
 }
 
@@ -2008,8 +1910,8 @@ function PruneUsageData() {
         for (let key in type_entry) {
             let entry = type_entry[key];
             if (!JSPLib.utility.validateExpires(entry.expires, GetUsageExpires())) {
-                PruneUsageData.debuglog("Pruning choice data!", type_key, key);
-                IAC.choice_order[type_key] = JSPLib.utility.arrayDifference(IAC.choice_order[type_key], [key])
+                this.debug('log',"Pruning choice data!", type_key, key);
+                IAC.choice_order[type_key] = JSPLib.utility.arrayDifference(IAC.choice_order[type_key], [key]);
                 delete type_entry[key];
                 is_dirty = true;
             }
@@ -2043,30 +1945,30 @@ async function RelatedTagsButton(event) {
     if (!related_tags) {
         return;
     }
-    $('#related-tags-container .current-related-tags-columns').html(Timer.RenderTagColumns(related_tags, post_count));
+    $('#related-tags-container .current-related-tags-columns').html(RenderTagColumns(related_tags, post_count));
     Danbooru.RelatedTag.update_selected();
     Danbooru.RelatedTag.show();
 }
 
-async function FindArtistSession(event) {
+async function FindArtistSession() {
     var url = $('#post_source').val();
     if (!url || !url.match(/^https?:\/\//)) {
         return;
     }
     let urlkey = 'af-' + url;
-    FindArtistSession.debuglog("Checking artist", urlkey);
+    this.debug('log',"Checking artist", urlkey);
     let data = GetArtistData(url);
     if (data) {
-        FindArtistSession.debuglog("Found artist data", urlkey);
+        this.debug('log',"Found artist data", urlkey);
         $('#source-info').html(LZString.decompressFromUTF16(data.source_info));
-        $('.source-related-tags-columns').html(LZString.decompressFromUTF16(data.source_column))
+        $('.source-related-tags-columns').html(LZString.decompressFromUTF16(data.source_column));
         Danbooru.RelatedTag.update_selected();
     } else {
-        FindArtistSession.debuglog("Missing artist data", urlkey);
+        this.debug('log',"Missing artist data", urlkey);
         $('#source-info').addClass('loading');
         try {
             await $.get('/source.js', {url: url});
-            Timer.SaveArtistData();
+            SaveArtistData();
         } catch (e) {
             //swallow
         }
@@ -2076,11 +1978,11 @@ async function FindArtistSession(event) {
 
 //Event handlers
 
-function RelatedTagsEnter(event) {
+function RelatedTagsEnter() {
     $(document).on(PROGRAM_KEYDOWN + '.scroll', null, 'left right', RelatedTagsScroll);
 }
 
-function RelatedTagsLeave(event) {
+function RelatedTagsLeave() {
     $(document).off(PROGRAM_KEYDOWN + '.scroll');
 }
 
@@ -2135,7 +2037,7 @@ function RebindRelatedTags() {
         check: () => JSPLib.utility.isNamespaceBound(document, 'click', 'danbooru', '.related-tags-button'),
         exec: ()=>{
             $(document).off('click.danbooru', '.related-tags-button');
-            $(document).on('click.danbooru', '.related-tags-button', Timer.RelatedTagsButton);
+            $(document).on('click.danbooru', '.related-tags-button', RelatedTagsButton);
         }
     }, TIMER_POLL_INTERVAL);
 }
@@ -2258,15 +2160,15 @@ function InitializeTextAreaAutocomplete() {
     $('textarea:not([data-autocomplete]), input[type=text]:not([data-autocomplete])').on(PROGRAM_KEYDOWN, null, 'alt+1 alt+2 alt+3', (event)=>{
         if (event.originalEvent.key === '1') {
             IAC.ac_source = (IAC.ac_source + 1) % AUTOCOMPLETE_SOURCE.length;
-            JSPLib.utility.notice(RenderAutocompleteNotice('source', AUTOCOMPLETE_SOURCE, IAC.ac_source));
+            JSPLib.notice.notice(RenderAutocompleteNotice('source', AUTOCOMPLETE_SOURCE, IAC.ac_source));
             JSPLib.storage.setStorageData('iac-ac-source', IAC.ac_source, localStorage);
         } else if (event.originalEvent.key === '2') {
             IAC.ac_mode = (IAC.ac_mode + 1) % AUTOCOMPLETE_MODE.length;
-            JSPLib.utility.notice(RenderAutocompleteNotice('mode', AUTOCOMPLETE_MODE, IAC.ac_mode));
+            JSPLib.notice.notice(RenderAutocompleteNotice('mode', AUTOCOMPLETE_MODE, IAC.ac_mode));
             JSPLib.storage.setStorageData('iac-ac-mode', IAC.ac_mode, localStorage);
         } else if (event.originalEvent.key === '3') {
             IAC.ac_caps = (IAC.ac_caps + 1) % AUTOCOMPLETE_CAPITALIZATION.length;
-            JSPLib.utility.notice(RenderAutocompleteNotice('capitalization', AUTOCOMPLETE_CAPITALIZATION, IAC.ac_caps));
+            JSPLib.notice.notice(RenderAutocompleteNotice('capitalization', AUTOCOMPLETE_CAPITALIZATION, IAC.ac_caps));
             JSPLib.storage.setStorageData('iac-ac-caps', IAC.ac_caps, localStorage);
         }
         IAC.channel.postMessage({type: 'text_autocomplete', source: IAC.ac_source, mode: IAC.ac_mode , caps: IAC.ac_caps});
@@ -2282,14 +2184,14 @@ function EnableTextAreaAutocomplete($input,type) {
     InitializeAutocompleteIndexed(input_selector, type_shortcut, false, true);
     $input.data('insert-autocomplete', true);
     $input.data('autocomplete', 'tag-edit');
-    JSPLib.utility.notice(JSPLib.utility.sprintf(AUTOCOMPLETE_MESSAGE, AUTOCOMPLETE_SOURCE[IAC.ac_source], AUTOCOMPLETE_MODE[IAC.ac_mode], AUTOCOMPLETE_CAPITALIZATION[IAC.ac_caps]));
+    JSPLib.notice.notice(JSPLib.utility.sprintf(AUTOCOMPLETE_MESSAGE, AUTOCOMPLETE_SOURCE[IAC.ac_source], AUTOCOMPLETE_MODE[IAC.ac_mode], AUTOCOMPLETE_CAPITALIZATION[IAC.ac_caps]));
 }
 
-function DisableTextAreaAutocomplete($input,type) {
+function DisableTextAreaAutocomplete($input) {
     $input.autocomplete('destroy').off('keydown.Autocomplete.tab');
     $input.data('insert-autocomplete', false);
     $input.data('autocomplete', "");
-    JSPLib.utility.notice("<b>Autocomplete turned off!</b>");
+    JSPLib.notice.notice("<b>Autocomplete turned off!</b>");
     if ($input.closest('.autocomplete-mentions').length > 0) {
         Danbooru.Autocomplete.initialize_mention_autocomplete($input);
     }
@@ -2298,10 +2200,10 @@ function DisableTextAreaAutocomplete($input,type) {
 function InitializeShowRelatedTags() {
     $(document).off('danbooru:show-related-tags');
     if (IAC.controller === 'posts') {
-        if (!Danbooru.RTC || !Danbooru.RTC.cached_data) {
+        if (!IAC.RTC.cached_data) {
             $(document).one('danbooru:show-related-tags.danbooru', Danbooru.RelatedTag.initialize_recent_and_favorite_tags);
         }
-        $(document).one('danbooru:show-related-tags.iac', Timer.FindArtistSession);
+        $(document).one('danbooru:show-related-tags.iac', FindArtistSession);
     }
     if (IAC.user_settings.related_query_enabled) {
         JSPLib.utility.setCSSStyle(RELATED_QUERY_CONTROL_CSS, 'related_query');
@@ -2329,7 +2231,7 @@ function InitialiazeRelatedExpandableSection() {
         $('#iac-edit-scroll-wrapper').scrollLeft($('.related-tags').scrollLeft());
     });
     let $container = $('#related-tags-container');
-    let observer = new ResizeObserver(()=>{
+    new ResizeObserver(()=>{
         if ($container.hasClass('visible')) {
             QueueRelatedTagColumnWidths();
         }
@@ -2337,11 +2239,11 @@ function InitialiazeRelatedExpandableSection() {
 }
 
 function InitializeRelatedTagPopupListener() {
-    $(document).on('danbooru:open-post-edit-dialog.iac', (event)=>{
+    $(document).on('danbooru:open-post-edit-dialog.iac', ()=>{
         $('.related-tags').on(PROGRAM_MOUSEENTER, RelatedTagsEnter);
         $('.related-tags').on(PROGRAM_MOUSELEAVE, RelatedTagsLeave);
     });
-    $(document).on('danbooru:close-post-edit-dialog.iac', (event)=>{
+    $(document).on('danbooru:close-post-edit-dialog.iac', ()=>{
         $('.related-tags').off(PROGRAM_MOUSEENTER + ' ' + PROGRAM_MOUSELEAVE);
     });
 }
@@ -2398,7 +2300,7 @@ function QueueRelatedTagColumnWidths() {
 //Main auxiliary functions
 
 async function NetworkSource(type,key,term,metatag,query_type,process=true) {
-    NetworkSource.debuglog("Querying", type, ':', term);
+    this.debug('log',"Querying", type, ':', term);
     let url_addons = $.extend({limit: IAC.user_settings.source_results_returned}, SOURCE_CONFIG[type].data(term));
     let data = await JSPLib.danbooru.submitRequest(SOURCE_CONFIG[type].url, url_addons);
     if (!data || !Array.isArray(data)) {
@@ -2438,14 +2340,14 @@ function AnySourceIndexed(keycode,has_context=false) {
             }
         }
         return NetworkSource(type, key, term, use_metatag, query_type);
-    }
+    };
 }
 
 function RecheckSourceData(type,key,term,data) {
     if (IAC.user_settings.recheck_data_interval > 0) {
         let recheck_time = data.expires - GetRecheckExpires();
         if (!JSPLib.utility.validateExpires(recheck_time)) {
-            JSPLib.debug.debuglog("Rechecking", type, ':', term);
+            JSPLib.this.debug('log',"Rechecking", type, ':', term);
             NetworkSource(type, key, term, null, null, false);
         }
     }
@@ -2546,7 +2448,7 @@ function SetupAutocompleteInitializations() {
                 DelayInitializeTagAutocomplete('#saved_search_query', 'tag-query');
                 RebindAnyAutocomplete('[data-autocomplete=saved-search-label]', 'ss', true);
             }
-            break
+            break;
         case 'forum-topics':
         case 'forum-posts':
             DelayInitializeAutocomplete('#quick_search_title_matches', 'ft');
@@ -2592,10 +2494,10 @@ function SetupPostEditInitializations() {
         } else if (IAC.controller === 'uploads') {
             //Is source column empty?
             if (/^\s+$/.test($('.source-related-tags-columns').html())) {
-                Main.debuglog("Setting up mutation observer for source data.");
-                JSPLib.utility.setupMutationReplaceObserver('.related-tags', '.source-related-tags-columns', Timer.SaveArtistData);
+                this.debug('log',"Setting up mutation observer for source data.");
+                JSPLib.concurrency.setupMutationReplaceObserver('.related-tags', '.source-related-tags-columns', SaveArtistData);
             } else {
-                Timer.SaveArtistData();
+                SaveArtistData();
             }
             InitializeShowRelatedTags();
             $(document).trigger('danbooru:show-related-tags');
@@ -2641,17 +2543,17 @@ function UpdateLocalData(key,data) {
 
 //Settings functions
 
-function BroadcastIAC(ev) {
-    BroadcastIAC.debuglog(`(${ev.data.type}): ${ev.data.name} ${ev.data.key}`);
-    switch (ev.data.type) {
+function BroadcastIAC(event) {
+    this.debug('log',`(${event.data.type}): ${event.data.name} ${event.data.key}`);
+    switch (event.data.type) {
         case 'text_autocomplete':
-            IAC.ac_source = ev.data.source;
-            IAC.ac_mode = ev.data.mode;
-            IAC.ac_caps = ev.data.caps;
+            IAC.ac_source = event.data.source;
+            IAC.ac_mode = event.data.mode;
+            IAC.ac_caps = event.data.caps;
             break;
         case 'reload':
-            IAC.choice_order = ev.data.choice_order;
-            IAC.choice_data = ev.data.choice_data;
+            IAC.choice_order = event.data.choice_order;
+            IAC.choice_data = event.data.choice_data;
             //falls through
         default:
             //do nothing
@@ -2678,46 +2580,56 @@ function GetRecheckExpires() {
     return IAC.user_settings.recheck_data_interval * JSPLib.utility.one_day;
 }
 
-function DataTypeChange(event) {
+function DataTypeChange() {
     let data_type = $('#iac-control-data-type').val();
     let action = (data_type === 'related_tag' ? 'show' : 'hide');
     $('.iac-options[data-setting=related_tag_type]')[action]();
 }
 
 function RenderSettingsMenu() {
-    $('#indexed-autocomplete').append(IAC_MENU);
+    $('#indexed-autocomplete').append(JSPLib.menu.renderMenuFramework(MENU_CONFIG));
+    $('#iac-general-settings-message').append(JSPLib.menu.renderExpandable("Text autocomplete details", TEXT_AUTOCOMPLETE_DETAILS));
     $('#iac-general-settings').append(JSPLib.menu.renderDomainSelectors());
     $('#iac-general-settings').append(JSPLib.menu.renderCheckbox('text_input_autocomplete_enabled'));
     $('#iac-general-settings').append(JSPLib.menu.renderCheckbox('forum_quick_search_enabled'));
     $('#iac-general-settings').append(JSPLib.menu.renderCheckbox('comment_quick_search_enabled'));
     $('#iac-source-settings').append(JSPLib.menu.renderCheckbox('BUR_source_enabled'));
     $('#iac-source-settings').append(JSPLib.menu.renderCheckbox('metatag_source_enabled'));
+    $('#iac-usage-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", USAGE_SETTINGS_DETAILS));
     $('#iac-usage-settings').append(JSPLib.menu.renderCheckbox('usage_enabled'));
     $('#iac-usage-settings').append(JSPLib.menu.renderTextinput('usage_multiplier'));
     $('#iac-usage-settings').append(JSPLib.menu.renderTextinput('usage_maximum'));
     $('#iac-usage-settings').append(JSPLib.menu.renderTextinput('usage_expires'));
     $('#iac-usage-settings').append(JSPLib.menu.renderCheckbox('prefix_check_enabled'));
+    $('#iac-display-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", DISPLAY_SETTINGS_DETAILS));
     $('#iac-display-settings').append(JSPLib.menu.renderTextinput('source_results_returned', 5));
     $('#iac-display-settings').append(JSPLib.menu.renderCheckbox('source_highlight_enabled'));
     $('#iac-display-settings').append(JSPLib.menu.renderCheckbox('source_grouping_enabled'));
     $('#iac-display-settings').append(JSPLib.menu.renderSortlist('source_order'));
+    $('#iac-sort-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", SORT_SETTINGS_DETAILS));
     $('#iac-sort-settings').append(JSPLib.menu.renderCheckbox('alternate_sorting_enabled'));
     $('#iac-sort-settings').append(JSPLib.menu.renderInputSelectors('postcount_scale', 'radio'));
     $('#iac-sort-settings').append(JSPLib.menu.renderTextinput('exact_source_weight', 5));
     $('#iac-sort-settings').append(JSPLib.menu.renderTextinput('prefix_source_weight', 5));
     $('#iac-sort-settings').append(JSPLib.menu.renderTextinput('alias_source_weight', 5));
     $('#iac-sort-settings').append(JSPLib.menu.renderTextinput('correct_source_weight', 5));
+    $('#iac-related-tag-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", RELATED_TAG_SETTINGS_DETAILS));
     $('#iac-related-tag-settings').append(JSPLib.menu.renderTextinput('related_results_limit', 5));
     $('#iac-related-tag-settings').append(JSPLib.menu.renderCheckbox('related_statistics_enabled'));
     $('#iac-related-tag-settings').append(JSPLib.menu.renderCheckbox('related_query_enabled'));
     $('#iac-related-tag-settings').append(JSPLib.menu.renderInputSelectors('related_query_default', 'radio'));
     $('#iac-related-tag-settings').append(JSPLib.menu.renderCheckbox('expandable_related_section_enabled'));
+    $('#iac-network-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", NETWORK_SETTINGS_DETAILS));
     $('#iac-network-settings').append(JSPLib.menu.renderTextinput('recheck_data_interval', 5));
     $('#iac-network-settings').append(JSPLib.menu.renderCheckbox('alternate_tag_source'));
     $('#iac-network-settings').append(JSPLib.menu.renderCheckbox('network_only_mode'));
-    $('#iac-cache-settings').append(JSPLib.menu.renderLinkclick('cache_info', true));
-    $('#iac-cache-settings').append(CACHE_INFO_TABLE);
-    $('#iac-cache-settings').append(JSPLib.menu.renderLinkclick('purge_cache', true));
+    $('#iac-controls').append(JSPLib.menu.renderCacheControls());
+    $('#iac-cache-controls-message').append(JSPLib.menu.renderExpandable("Cache Data details", CACHE_DATA_DETAILS));
+    $('#iac-cache-controls').append(JSPLib.menu.renderLinkclick('cache_info', true));
+    $('#iac-cache-controls').append(JSPLib.menu.renderCacheInfoTable());
+    $('#iac-cache-controls').append(JSPLib.menu.renderLinkclick('purge_cache', true));
+    $('#iac-controls').append(JSPLib.menu.renderCacheEditor(true));
+    $('#iac-cache-editor-message').append(JSPLib.menu.renderExpandable("Program Data details", PROGRAM_DATA_DETAILS));
     $('#iac-cache-editor-controls').append(JSPLib.menu.renderKeyselect('data_source', true));
     $('#iac-cache-editor-controls').append(JSPLib.menu.renderDataSourceSections());
     $('#iac-section-indexed-db').append(JSPLib.menu.renderKeyselect('data_type', true));
@@ -2730,6 +2642,7 @@ function RenderSettingsMenu() {
     JSPLib.menu.resetUserSettingsClick(LOCALSTORAGE_KEYS, RemoteSettingsCallback);
     JSPLib.menu.cacheInfoClick();
     JSPLib.menu.purgeCacheClick();
+    JSPLib.menu.expandableClick();
     JSPLib.menu.dataSourceChange();
     $('#iac-control-data-type').on('change.iac', DataTypeChange);
     JSPLib.menu.rawDataChange();
@@ -2745,36 +2658,33 @@ function RenderSettingsMenu() {
 
 function Main() {
     if (!JSPLib.storage.use_indexed_db) {
-        Main.debuglog("No Indexed DB! Exiting...");
+        this.debug('log',"No Indexed DB! Exiting...");
         return;
     }
-    Danbooru.IAC = Object.assign(IAC, {
+    Object.assign(IAC, {
         controller: document.body.dataset.controller,
         action: document.body.dataset.action,
         userid: Danbooru.CurrentUser.data('id'),
         theme: Danbooru.CurrentUser.data('theme'),
-        FindArtistSession: FindArtistSession,
-        InitializeAutocompleteIndexed: InitializeAutocompleteIndexed,
-        settings_config: SETTINGS_CONFIG,
-        control_config: CONTROL_CONFIG,
+        FindArtistSession,
+        InitializeAutocompleteIndexed,
         channel: JSPLib.utility.createBroadcastChannel(PROGRAM_NAME, BroadcastIAC),
-    });
-    Object.assign(IAC, {
         user_settings: JSPLib.menu.loadUserSettings(),
     });
     if (JSPLib.danbooru.isSettingMenu()) {
         JSPLib.menu.initializeSettingsMenu(RenderSettingsMenu, SETTINGS_MENU_CSS);
     }
     if (!JSPLib.menu.isScriptEnabled()) {
-        Main.debuglog("Script is disabled on", window.location.hostname);
+        this.debug('log',"Script is disabled on", window.location.hostname);
         return;
     }
     InstallQuickSearchBars();
     if ($(AUTOCOMPLETE_DOMLIST.join(',')).length === 0) {
-        Main.debuglog("No autocomplete inputs! Exiting...");
+        this.debug('log',"No autocomplete inputs! Exiting...");
         return;
     }
     Object.assign(IAC, {
+        get RTC() {return JSPLib.load.getExport('RecentTagsCalc') || Danbooru.RTC || {};},
         choice_info: JSPLib.storage.getStorageData('iac-choice-info', localStorage, {}),
         is_bur: GetIsBur(),
     }, PROGRAM_RESET_KEYS);
@@ -2790,21 +2700,31 @@ function Main() {
     JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
     JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
     ScheduleCleanupTasks();
+
+    //Temporary export to Danbooru to support older versions of RecentTagsCalc
+    Danbooru.IAC = IAC;
 }
 
 /****Function decoration****/
 
-JSPLib.debug.addFunctionTimers(Timer, false, [
-    ValidateUsageData, SaveArtistData, RenderTagColumns, RenderSettingsMenu
-]);
-
-JSPLib.debug.addFunctionTimers(Timer, true, [
-    RelatedTagsButton, FindArtistSession
-]);
-
-JSPLib.debug.addFunctionLogs([
+[
     Main, BroadcastIAC, NetworkSource, FindArtistSession, PruneUsageData, CorrectUsageData, InsertUserSelected,
-    SaveArtistData, GetArtistData, FixExpirationCallback, ValidateEntry, GetPostCount, GetRelatedTags
+    SaveArtistData, GetArtistData, FixExpirationCallback, ValidateEntry, GetPostCount, GetRelatedTags,
+    SetupPostEditInitializations,RecheckSourceData,
+] = JSPLib.debug.addFunctionLogs([
+    Main, BroadcastIAC, NetworkSource, FindArtistSession, PruneUsageData, CorrectUsageData, InsertUserSelected,
+    SaveArtistData, GetArtistData, FixExpirationCallback, ValidateEntry, GetPostCount, GetRelatedTags,
+    SetupPostEditInitializations,RecheckSourceData,
+]);
+
+[
+    ValidateUsageData, SaveArtistData, RenderTagColumns, RenderSettingsMenu,
+    RelatedTagsButton, FindArtistSession,
+] = JSPLib.debug.addFunctionTimers([
+    //Sync
+    ValidateUsageData, SaveArtistData, RenderTagColumns, RenderSettingsMenu,
+    //Async
+    RelatedTagsButton, FindArtistSession,
 ]);
 
 /****Initialization****/
@@ -2817,14 +2737,18 @@ JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 //Variables for menu.js
 JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
 JSPLib.menu.program_name = PROGRAM_NAME;
+JSPLib.menu.program_data = IAC;
 JSPLib.menu.program_reset_data = PROGRAM_RESET_KEYS;
 JSPLib.menu.program_data_regex = PROGRAM_DATA_REGEX;
 JSPLib.menu.program_data_key = OptionCacheDataKey;
 JSPLib.menu.settings_callback = RemoteSettingsCallback;
 JSPLib.menu.reset_callback = RemoteSettingsCallback;
+JSPLib.menu.settings_config = SETTINGS_CONFIG;
+JSPLib.menu.control_config = CONTROL_CONFIG;
 
 //Export JSPLib
-JSPLib.load.exportData(PROGRAM_NAME, IAC);
+JSPLib.load.exportData(PROGRAM_NAME, IAC, {}, ['cached_data']);
+JSPLib.load.exportFuncs(PROGRAM_NAME, [], [FindArtistSession, InitializeAutocompleteIndexed]);
 
 /****Execution start****/
 
