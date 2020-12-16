@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SafelistPlus
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.7
+// @version      4.8
 // @description  Alternate Danbooru blacklist handler.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -10,18 +10,20 @@
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/safelist_plus.user.js
-// @require      https://cdn.jsdelivr.net/npm/core-js-bundle@3.2.1/minified.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20200820/lib/menu.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/core-js/3.8.1/minified.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/menu.js
 // ==/UserScript==
 
-/* global JSPLib $ Danbooru validate TextboxLogger ValidateBlacklist OrderBlacklist */
+/* global JSPLib $ Danbooru validate */
 
 /****Global variables****/
 
@@ -44,9 +46,6 @@ const PROGRAM_NAME = 'SafelistPlus';
 //Main program variable
 const SL = {};
 
-//Timer function hash
-const Timer = {};
-
 //For factory reset
 const LOCALSTORAGE_KEYS = [
     'sl-script-enabled',
@@ -58,34 +57,31 @@ const PROGRAM_RESET_KEYS = {
     is_shown: true,
 };
 
-//Setting values
-const disabled_settings = ['validate_mode_enabled', 'order_mode_enabled'];
-
 //Main settings
 const SETTINGS_CONFIG = {
     write_mode_enabled: {
         default: false,
-        validate: (data)=>{return typeof data === "boolean";},
+        validate: JSPLib.validate.isBoolean,
         hint: "Enable writes to your Danbooru blacklist with the <b><u>Push</u></b> button."
     },
     validate_mode_enabled: {
         default: false,
-        validate: (data)=>{return typeof data === "boolean";},
+        validate: JSPLib.validate.isBoolean,
         hint: "Currently disabled."
     },
     order_mode_enabled: {
         default: false,
-        validate: (data)=>{return typeof data === "boolean";},
+        validate: JSPLib.validate.isBoolean,
         hint: "Currently disabled."
     },
     session_use_enabled: {
         default: false,
-        validate: (data)=>{return typeof data === "boolean";},
+        validate: JSPLib.validate.isBoolean,
         hint: "Have a different state of enabled on every page tab."
     },
     session_level_enabled: {
         default: false,
-        validate: (data)=>{return typeof data === "boolean";},
+        validate: JSPLib.validate.isBoolean,
         hint: "Have a different active list on every page tab."
     }
 };
@@ -101,9 +97,30 @@ const CONTROL_CONFIG = {
     },
     data_name: {
         value: "",
-        buttons: ['get', 'save', 'delete'],
-        hint: "Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.",
+        buttons: ['get', 'save', 'delete', 'list', 'refresh'],
+        hint: "Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.<br><b>List</b> shows keys in their raw format, and <b>Refresh</b> checks the keys again.",
     },
+};
+
+const MENU_CONFIG = {
+    topic_id: DANBOORU_TOPIC_ID,
+    settings: [{
+        name: 'general',
+    },{
+        name: 'mode',
+    },{
+        name: 'session',
+    }],
+    controls: [],
+};
+
+// Default values
+
+const DEFAULT_VALUES = {
+    $safelist_posts: null,
+    active_background_work: {},
+    passive_background_work: {},
+    passive_lists_processed: 0,
 };
 
 //CSS Constants
@@ -273,12 +290,7 @@ const safelist_css = `
     color: hotpink;
 }
     /*Hide settings*/
-#safelist-settings .safelist-name,
-#safelist-settings .safelist-reset,
-#safelist-settings .safelist-apply,
-#safelist-settings .safelist-output,
-#safelist-settings .safelist-validate,
-#safelist-settings .safelist-order {
+#safelist-settings .safelist-name {
     display: none;
 }`;
 
@@ -299,79 +311,23 @@ const css_disabled = `
 
 //HTML constants
 
-const CACHE_INFO_TABLE = '<div id="sl-cache-info-table" style="display:none"></div>';
-
-const CONTROL_DATA_SOURCE = '<input id="sl-control-data-source" type="hidden" value="local_storage">';
-
-const sl_menu = `
-<div id="sl-script-message" class="prose">
-    <h2>${PROGRAM_NAME}</h2>
-    <p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/${DANBOORU_TOPIC_ID}">topic #${DANBOORU_TOPIC_ID}</a>).</p>
-</div>
-<div id="sl-console" class="jsplib-console">
-    <div id="sl-settings" class="jsplib-outer-menu">
-        <div id="sl-general-settings" class="jsplib-settings-grouping">
-            <div id="sl-general-message" class="prose">
-                <h4>General settings</h4>
-            </div>
-        </div>
-        <div id="sl-mode-settings" class="jsplib-settings-grouping">
-            <div id="sl-mode-message" class="prose">
-                <h4>Mode settings</h4>
-            </div>
-        </div>
-        <div id="sl-session-settings" class="jsplib-settings-grouping">
-            <div id="sl-session-message" class="prose">
-                <h4>Session settings</h4>
-            </div>
-        </div>
-        <div id="sl-cache-settings" class="jsplib-settings-grouping">
-            <div id="sl-cache-message" class="prose">
-                <h4>Cache settings</h4>
-            </div>
-        </div>
-        <hr>
-        <div id="sl-settings-buttons" class="jsplib-settings-buttons">
-            <input type="button" id="sl-commit" value="Save">
-            <input type="button" id="sl-resetall" value="Factory Reset">
-        </div>
-    </div>
-    <div id="sl-cache-editor" class="jsplib-outer-menu">
-        <div id="sl-editor-message" class="prose">
-            <h4>Cache editor</h4>
-            <p>See the <b><a href="#sl-cache-message">Cache Data</a></b> details for the list of all cache data and what they do.</p>
-            <div class="expandable">
-                <div class="expandable-header">
-                    <span>Program Data details</span>
-                    <input type="button" value="Show" class="expandable-button">
-                </div>
-                <div class="expandable-content">
-                    <p class="tn">All timestamps are in milliseconds since the epoch (<a href="https://www.epochconverter.com">Epoch converter</a>).</p>
-                    <ul>
-                        <li>Blacklist data
-                            <ul>
-                                <li><b>level-data:</b> All configurable settings for each ${PROGRAM_NAME} level.</li>
-                                <li><b>active-list:</b> Current ${PROGRAM_NAME} level (only with session level disabled).</li>
-                            </ul>
-                        </li>
-                        <li>General data
-                            <ul>
-                                <li><b>user-settings:</b> All program configurable settings.</li>
-                                <li><b>script-enabled:</b> Whether the ${PROGRAM_NAME} is active or not (only with session use disabled).</li>
-                                <li><b>show-menu:</b> Whether the ${PROGRAM_NAME} menu is shown or not.</li>
-                            </ul>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-        <div id="sl-cache-editor-controls"></div>
-        <div id="sl-cache-editor-errors" class="jsplib-cache-editor-errors"></div>
-        <div id="sl-cache-viewer" class="jsplib-cache-viewer">
-            <textarea></textarea>
-        </div>
-    </div>
-</div>`;
+const PROGRAM_DATA_DETAILS = `
+<p class="tn">All timestamps are in milliseconds since the epoch (<a href="https://www.epochconverter.com">Epoch converter</a>).</p>
+<ul>
+    <li>Blacklist data
+        <ul>
+            <li><b>level-data:</b> All configurable settings for each ${PROGRAM_NAME} level.</li>
+            <li><b>active-list:</b> Current ${PROGRAM_NAME} level (only with session level disabled).</li>
+        </ul>
+    </li>
+    <li>General data
+        <ul>
+            <li><b>user-settings:</b> All program configurable settings.</li>
+            <li><b>script-enabled:</b> Whether the ${PROGRAM_NAME} is active or not (only with session use disabled).</li>
+            <li><b>show-menu:</b> Whether the ${PROGRAM_NAME} menu is shown or not.</li>
+        </ul>
+    </li>
+</ul>`;
 
 //Message constants
 
@@ -382,8 +338,8 @@ const cssblock_help = "Style to apply to the whole site.";
 
 const button_hints = {
     pull: "Populate tag box with your Danbooru blacklist.",
-    push: "Save tag box to your Danbooru blacklist."
-}
+    push: "Save tag box to your Danbooru blacklist.",
+};
 
 //Other constants
 
@@ -408,12 +364,11 @@ const safelist_defaults = {
     background: true,
 };
 
-const safelist_keys = Object.keys(safelist_defaults).filter((key)=>{return !key.match(/^_/);});
+const safelist_keys = Object.keys(safelist_defaults).filter((key) => !key.match(/^_/));
 
-const level_buttons = ['pull', 'push', 'validate', 'reset', 'apply', 'order', 'delete'];
+const level_buttons = ['pull', 'push', 'delete'];
 const modifier_keys = ['', 'alt', 'shift', 'ctrl'];
 const keyselect_keys = [''].concat('abcdefghijklmnopqrstuvwxyz1234567890'.split(''));
-const addon_private_values = ['$results', 'logger', 'blacklist', 'instance'];
 
 const _private_data = new WeakMap();
 
@@ -426,8 +381,6 @@ class Safelist {
         _private_data.set(this, {});
         this.setupPrivateData('menu');
         this.setupPrivateData('side');
-    //Populate instantiated functions with function logs
-        this.addLogs();
     }
 
     correctData(level) {
@@ -447,7 +400,7 @@ class Safelist {
                 this.hotkey[key] = safelist_defaults.hotkey[key];
             }
         }
-        let nonstring_list = this.list.filter((entry)=>{return !JSPLib.validate.isString(entry);});
+        let nonstring_list = this.list.filter((entry) => !JSPLib.validate.isString(entry));
         if (nonstring_list.length > 0) {
             error_messages.push([`level_data[${level}].list: bad values found - `, nonstring_list]);
             if (nonstring_list.length === this.list.length) {
@@ -509,9 +462,7 @@ class Safelist {
                 data[name] = x;
                 _private_data.set(this, data);
             },
-            get: ()=>{
-                return _private_data.get(this)[name];
-            }
+            get: () => _private_data.get(this)[name],
         });
     }
 
@@ -535,7 +486,6 @@ class Safelist {
         let mainblock = (this.isVariable ? this.renderedTagBlock : this.renderedEnableCheckbox);
         let cssblock = this.renderedCSSBlock;
         let buttons = (this.isVariable ? this.renderedLevelButtons : "");
-        let feedback = (this.isVariable ? this.renderedFeedback : "");
         return `
         <div class="safelist-input" data-level="${this.level}">
             ${namerow}
@@ -546,7 +496,6 @@ class Safelist {
             ${mainblock}
             ${cssblock}
             ${buttons}
-            ${feedback}
         </div>`;
     }
     //List name, edit button and textbox
@@ -620,26 +569,10 @@ class Safelist {
 
     //Renders all level buttons
     get renderedLevelButtons() {
-        let buttons1 = level_buttons.map((type)=>{return RenderButton(type, button_hints[type]);}).join("");
+        let buttons1 = level_buttons.map((type) => RenderButton(type, button_hints[type])).join("");
         return `
     <div class="safelist-setting-buttons">
         ${buttons1}
-    </div>`;
-    }
-    //For the addon modules
-    get renderedFeedback() {
-        return `
-    <div class="safelist-output">
-        <div class="safelist-textblock">
-            <label for="safelist_feedback_level_${this.level}">Feedback</label>
-            <textarea readonly id="safelist_feedback_level_${this.level}" cols="40" rows="5"></textarea>
-        </div>
-        <div class="safelist-textblock">
-            <label for="safelist_results_level_${this.level}" style="width:15em">Results</label>
-            <div id="safelist_results_level_${this.level}" class="safelist-results"></div>
-            <span class="validate-blacklist"></span>
-        </div>
-        <div class="clearfix"></div>
     </div>`;
     }
 
@@ -657,7 +590,7 @@ class Safelist {
         }
         let context = this;
         let combokey = (this.hotkey[0] === '' ? this.hotkey[1] : this.hotkey.join('+'));
-        this.setKeypress.debuglog(`Level ${this.level} hotkey: ${combokey}`);
+        JSPLib.debug.debuglog('setKeypress',`Level ${this.level} hotkey: ${combokey}`);
         $(document).on(namespace, null, combokey,(event)=>{
             if (SL.enable_safelist) {
                 event.preventDefault();
@@ -676,7 +609,7 @@ class Safelist {
     setSideClick() {
         let context = this;
         $("a", this.side).off(PROGRAM_CLICK).on(PROGRAM_CLICK,(event)=>{
-            Timer.SetSideLevel(context);
+            SetSideLevel(context);
             event.preventDefault();
         });
     }
@@ -687,15 +620,11 @@ class Safelist {
         this.setNameChangeClick();
         this.setPullButtonClick();
         this.setPushButtonClick();
-        this.setValidateButtonClick();
-        this.setOrderButtonClick();
-        this.setResetButtonClick();
-        this.setApplyButtonClick();
         this.setDeleteButtonClick();
     }
     setNameChangeClick() {
         let context = this;
-        $(".safelist-edit", context.menu).off(PROGRAM_CLICK).on(PROGRAM_CLICK,(event)=>{
+        $(".safelist-edit", context.menu).off(PROGRAM_CLICK).on(PROGRAM_CLICK,()=>{
             $("h2", context.menu).hide();
             $(".safelist-edit", context.menu).hide();
             $(".safelist-name", context.menu).show();
@@ -703,9 +632,9 @@ class Safelist {
     }
     setPullButtonClick() {
         let context = this;
-        $(".safelist-pull", context.menu).off(PROGRAM_CLICK).on(PROGRAM_CLICK,(event)=>{
+        $(".safelist-pull", context.menu).off(PROGRAM_CLICK).on(PROGRAM_CLICK,()=>{
             $(".safelist-tags", context.menu).val(
-                Danbooru.Utility.meta("blacklisted-tags")
+                JSPLib.utility.getMeta("blacklisted-tags")
                 .replace(/(rating:[qes])\w+/ig, "$1")
                 .toLowerCase().split(/,/).join('\n')
             );
@@ -713,7 +642,7 @@ class Safelist {
     }
     setPushButtonClick() {
         let context = this;
-        $(".safelist-push", context.menu).off(PROGRAM_CLICK).on(PROGRAM_CLICK,(event)=>{
+        $(".safelist-push", context.menu).off(PROGRAM_CLICK).on(PROGRAM_CLICK,()=>{
             if (confirm("Update your blacklist on Danbooru?")) {
                 let tagdata = $(".safelist-tags", context.menu).val().replace(/\n/g, '\r\n');
                 let senddata = {'user': {'blacklisted_tags': tagdata}};
@@ -722,107 +651,20 @@ class Safelist {
                   url: `/users/${SL.userid}.json`,
                   data: senddata,
                   success: function(data) {
-                    context.setPushButtonClick.debuglog("Success", data);
-                    Danbooru.Utility.notice("Settings updated.");
+                    JSPLib.debug.debuglog('setPushButtonClick',"Success", data);
+                    JSPLib.notice.notice("Settings updated.");
                   },
                   error: function(data) {
-                    context.setPushButtonClick.debuglog("Failure", data);
-                    Danbooru.Utility.notice("Error updating settings!");
+                    JSPLib.debug.debuglog('setPushButtonClick',"Failure", data);
+                    JSPLib.notice.notice("Error updating settings!");
                   }
                 });
             }
         });
     }
-    setValidateButtonClick() {
-        let context = this;
-        $(".safelist-validate", context.menu).off(PROGRAM_CLICK).on(PROGRAM_CLICK,(event)=>{
-            //Only process if ValidateBlacklist is installed
-            if (typeof(ValidateBlacklist) == 'function') {
-                $(".safelist-validate", context.menu).hide();
-                $(".safelist-reset", context.menu).show();
-                $(".safelist-output", context.menu).show();
-                $(".safelist-order", context.menu).attr('disabled', true);
-                //Get current tags in tag box
-                let taglist = $(".safelist-tags", context.menu).val().split('\n');
-                addon_private_values.forEach((name)=>{context.setupPrivateData(name);});
-                context.$results = $(".safelist-results", context.menu);
-                context.logger = new TextboxLogger("#safelist_feedback_level_" + context.level);
-                context.blacklist = new ValidateBlacklist(taglist, context.logger);
-                context.instance = ValidateBlacklist;
-                //Clear both output areas
-                context.logger.clear();
-                context.$results.html("");
-                //Start processing the lists
-                context.blacklist.processList();
-                setTimeout(()=>{context.addonCallback();}, timeout_polling_interval);
-            } else {
-                Danbooru.Utility.notice("Validate Blacklist not installed!");
-                $(".safelist-validate", context.menu).attr('disabled', true);;
-            }
-        });
-    }
-    setOrderButtonClick() {
-        let context = this;
-        $(".safelist-order", context.menu).off(PROGRAM_CLICK).on(PROGRAM_CLICK,(event)=>{
-            //Only process if ValidateBlacklist is installed
-            if (typeof(OrderBlacklist) == 'function') {
-                $(".safelist-order", context.menu).hide();
-                $(".safelist-reset", context.menu).show();
-                $(".safelist-output", context.menu).show();
-                $(".safelist-validate", context.menu).attr('disabled', true);
-                //Get current tags in tag box
-                let taglist = $(".safelist-tags", context.menu).val().split('\n');
-                addon_private_values.forEach((name)=>{context.setupPrivateData(name);});
-                context.$results = $(".safelist-results", context.menu);
-                context.logger = new TextboxLogger("#safelist_feedback_level_" + context.level);
-                context.blacklist = new OrderBlacklist(taglist, context.logger);
-                context.instance = OrderBlacklist;
-                //Clear both output areas
-                context.logger.clear();
-                context.$results.html("");
-                //Start processing the lists
-                context.blacklist.processList();
-                setTimeout(()=>{context.addonCallback();}, timeout_polling_interval);
-            } else {
-                Danbooru.Utility.notice("Order Blacklist not installed!");
-                $(".safelist-order", context.menu).attr('disabled', true);;
-            }
-        });
-    }
-    setResetButtonClick() {
-        let context = this;
-        $(".safelist-reset", context.menu).off(PROGRAM_CLICK).on(PROGRAM_CLICK,(event)=>{
-            if ('blacklist' in context) {
-                $(".safelist-reset", context.menu).hide();
-                $(".safelist-validate", context.menu).show();
-                context.blacklist.allstop();
-            } else {
-                Danbooru.Utility.notice(`${PROGRAM_NAME} addon not initiated!`);
-                $(".safelist-reset", context.menu).attr('disabled', true);;
-            }
-        });
-    }
-    setApplyButtonClick() {
-        let context = this;
-        $(".safelist-apply", context.menu).off(PROGRAM_CLICK).on(PROGRAM_CLICK,(event)=>{
-            if ('blacklist' in context) {
-                $('safelist-apply', context.menu).hide();
-                context.resetButtons();
-                $(".safelist-tags", context.menu).val(context.blacklist.reconstructed_list.join('\n'));
-                context.logger.log("Blacklist has been updated in text area!");
-                context.logger.log(`Click 'Save' to update ${PROGRAM_NAME} settings...`);
-                if (SL.user_settings.write_mode_enabled) {
-                    context.logger.log("...or click 'Push' to update Danbooru blacklist.");
-                }
-            } else {
-                Danbooru.Utility.notice(`${PROGRAM_NAME} addon not initiated!`);
-                $(".safelist-apply", context.menu).attr('disabled', true);;
-            }
-        });
-    }
     setDeleteButtonClick() {
         let context = this;
-        $('.safelist-delete', context.menu).off(PROGRAM_CLICK).on(PROGRAM_CLICK,(event)=>{
+        $('.safelist-delete', context.menu).off(PROGRAM_CLICK).on(PROGRAM_CLICK,()=>{
             $(context.side).hide();
             $(context.menu).hide();
             context.enabled = false;
@@ -840,41 +682,11 @@ class Safelist {
         //This will remove the keypress when disabled
         this.setKeypress();
     }
-    //Callback for the validate button
-    addonCallback() {
-        let context = this;
-        if (this.blacklist.is_ready) {
-            this.$results.html(this.blacklist.reconstructed_html);
-            $(".safelist-reset", this.menu).hide();
-            if (!this.blacklist.unchanged) {
-                $(".safelist-apply", this.menu).show();
-                //Load the legend...
-                //Doing this here so that we don't have to check for the addon at program initialization
-                let $tooltip = $('.validate-blacklist', this.menu);
-                if ($tooltip.length && (this.instance.legend !== undefined)) {
-                    let $label = $tooltip.prev().prev();
-                    $tooltip.html(this.instance.legend);
-                    $tooltip.addClass("safelist-tooltip");
-                    $label.html("Results (hover for legend)");
-                }
-            } else {
-                this.resetButtons();
-            }
-        } else if ((!this.blacklist.stop)&&(!this.blacklist.error)) {
-            this.addonCallback.debuglog("Rescheduling...");
-            setTimeout(()=>{context.addonCallback();},timeout_polling_interval);
-        }
-    }
     resetButtons() {
         $(".safelist-validate", this.menu).show();
         $(".safelist-order", this.menu).show();
         SL.user_settings.validate_mode_enabled && $(".safelist-validate", this.menu).removeAttr('disabled');
         SL.user_settings.order_mode_enabled && $(".safelist-order", this.menu).removeAttr('disabled');
-    }
-    addLogs() {
-        JSPLib.debug.addFunctionLogs([
-            this.setKeypress,this.addonCallback,this.setPushButtonClick
-        ]);
     }
 }
 
@@ -907,7 +719,7 @@ function ValidateProgramData(key,entry) {
             break;
         case 'sl-level-data':
             checkerror = ValidateLevelData();
-            break
+            break;
         case 'sl-script-enabled':
         case 'sl-show-menu':
             if (!JSPLib.validate.isBoolean(entry)) {
@@ -918,7 +730,7 @@ function ValidateProgramData(key,entry) {
             if (!Object.keys(SL.level_data).includes(entry)) {
                 checkerror = ["Value is not a valid list key."];
             }
-            break
+            break;
         default:
             checkerror = ["Not a valid program data key."];
     }
@@ -948,12 +760,12 @@ function ValidateLevelData() {
 function CorrectLevelData() {
     let error_messages = ValidateLevelData();
     if (error_messages.length) {
-        CorrectLevelData.debuglog("Corrections to level data detected!");
-        error_messages.forEach((error)=>{CorrectLevelData.debuglog(...error)});
+        this.debug('log',"Corrections to level data detected!");
+        error_messages.forEach((error)=>{this.debug('log',...error);});
         SaveLevelData();
         SL.channel.postMessage({type: "correction", level_data: SL.level_data});
     } else {
-        CorrectLevelData.debuglog("Level data is valid.");
+        this.debug('log',"Level data is valid.");
     }
 }
 
@@ -1031,8 +843,8 @@ function CalculateRenderedMenus() {
         }
     }
     //Sort from lowest to highest, and then set to string
-    menu.variable_menus = menu.variable_menus.sort((a,b)=>{return a-b;}).map(String);
-    menu.process_menus = menu.process_menus.sort((a,b)=>{return a-b;}).map(String);
+    menu.variable_menus = menu.variable_menus.sort((a,b) => (a - b)).map(String);
+    menu.process_menus = menu.process_menus.sort((a,b) => (a - b)).map(String);
     return menu;
 }
 
@@ -1052,7 +864,7 @@ function RenderButton(type,hint) {
 function RenderSidemenu() {
     let all_side = SL.level_data.a.renderedSide;
     let none_side = SL.level_data.n.renderedSide;
-    let variable_sides = SL.menu_items.variable_menus.map((level)=>{return SL.level_data[level].renderedSide;}).join("");
+    let variable_sides = SL.menu_items.variable_menus.map((level) => SL.level_data[level].renderedSide).join("");
     let safelist_type = (SL.blacklist_box.hasClass("sidebar-blacklist") ? "sidebar-safelist" : "inline-safelist");
     let direction = (SL.is_shown ? "s" : "e");
     return `
@@ -1076,7 +888,7 @@ function RenderSettingMenuLink() {
 function RenderLevelMenu() {
     let all_menu = SL.level_data.a.renderedLevelSetting;
     let none_menu = SL.level_data.n.renderedLevelSetting;
-    let variable_menus = SL.menu_items.variable_menus.map((level)=>{return SL.level_data[level].renderedLevelSetting;}).join("");
+    let variable_menus = SL.menu_items.variable_menus.map((level) => SL.level_data[level].renderedLevelSetting).join("");
     return `
 <fieldset id="safelist-settings">
     ${all_menu}
@@ -1103,8 +915,8 @@ function InitializeSafelistData() {
 }
 
 function InitializeProgramData() {
-    SL.level_data = $.extend({},...['a','n','1'].map((level,i)=>{return {[level]: new Safelist(level)};}));
-    SaveLevelData()
+    SL.level_data = $.extend({},...['a','n','1'].map((level) => ({[level]: new Safelist(level)})));
+    SaveLevelData();
     SL.enable_safelist = true;
     SL.active_list = null;
     SaveSessionData();
@@ -1141,8 +953,8 @@ function InitializeSideEvents() {
         SL.level_data[level].setSideClick();
         SL.level_data[level].setKeypress();
     }
-    $("#enable-safelist").off(PROGRAM_CLICK).on(PROGRAM_CLICK, Timer.EnableSafelist);
-    $("#disable-safelist").off(PROGRAM_CLICK).on(PROGRAM_CLICK, Timer.DisableSafelist);
+    $("#enable-safelist").off(PROGRAM_CLICK).on(PROGRAM_CLICK, EnableSafelist);
+    $("#disable-safelist").off(PROGRAM_CLICK).on(PROGRAM_CLICK, DisableSafelist);
     $("#sl-collapsible-list").off(PROGRAM_CLICK).on(PROGRAM_CLICK, ToggleSafelist);
 }
 
@@ -1169,8 +981,8 @@ function InitializeSettingEvents() {
         SL.level_data[level].initializeLevelMenuEvents();
     }
     $(".safelist-help").off(PROGRAM_CLICK).on(PROGRAM_CLICK, HelpInfo);
-    $("#safelist-commit").off(PROGRAM_CLICK).on(PROGRAM_CLICK, Timer.MenuSaveButton);
-    $("#safelist-add").off(PROGRAM_CLICK).on(PROGRAM_CLICK, Timer.MenuAddButton);
+    $("#safelist-commit").off(PROGRAM_CLICK).on(PROGRAM_CLICK, MenuSaveButton);
+    $("#safelist-add").off(PROGRAM_CLICK).on(PROGRAM_CLICK, MenuAddButton);
     $("#safelist-resetall").off(PROGRAM_CLICK).on(PROGRAM_CLICK, MenuResetAllButton);
 }
 
@@ -1179,7 +991,7 @@ function InitializeActiveCSS() {
     value && JSPLib.utility.setCSSStyle(value.renderedCSS, 'safelist_user_css');
 }
 
-function InitializeNonpost(setcss=true,sethotkey=true) {
+function InitializeNonpost() {
     InitializeActiveCSS();
     for (let level in SL.level_data) {
         SL.level_data[level].setKeypress();
@@ -1193,10 +1005,10 @@ function ResetAllSettings() {
     //Side menu items
     SL.menu_items = CalculateRenderedMenus();
     $("#safelist-box").replaceWith(RenderSidemenu());
-    Timer.InitializeSide();
+    InitializeSide();
     //Settings menu
-    $("#safelist-settings").replaceWith(Timer.RenderLevelMenu());
-    Timer.InitializeSettingsMenu();
+    $("#safelist-settings").replaceWith(RenderLevelMenu());
+    InitializeSettingsMenu();
 }
 
 ///////////////////////////
@@ -1322,125 +1134,120 @@ function SafelistPosts() {
 
 //Asynchronous function that calculates inactive lists in the background
 function CalculatePassiveLists(deadline) {
-    let CPL = CalculatePassiveLists;
     //Only start calculating once the active enabled list is done
     if (CheckPriority()) {
-        CPL.handle = requestIdleCallback(CPL);
+        SL.passive_handle = requestIdleCallback(CalculatePassiveLists);
         return;
     }
-    CPL.$safelist_posts = CPL.$safelist_posts || SafelistPosts();
+    SL.$safelist_posts = SL.$safelist_posts || SafelistPosts();
     while (true) {
         //Are we starting a new job?
-        if (!('update_list' in CPL.background_work)) {
+        if (!('update_list' in SL.passive_background_work)) {
             //Get the next uncalculated list
             let update_list = JSPLib.utility.arrayDifference(SL.menu_items.process_menus, Object.keys(SL.post_lists))[0];
             //Main exit condition
             if (update_list === undefined) {
-                CPL.debuglog("Done!");
+                this.debug('log',"Done!");
                 return;
             }
-            if (CPL.lists_processed === 0) {
-                CPL.debuglog("Passive list start:", JSPLib.utility.getProgramTime());
+            if (SL.passive_lists_processed === 0) {
+                this.debug('log',"Passive list start:", JSPLib.utility.getProgramTime());
             }
-            CPL.lists_processed++;
+            SL.passive_lists_processed++;
             //Initialize FOR loop and other variables
-            CPL.background_work.update_list = update_list;
-            CPL.background_work.start_id = 0;
-            CPL.background_work.update_array = [];
-            CPL.background_work.start_time = performance.now();
-        } else if (CPL.background_work.update_list in SL.post_lists) {
+            SL.passive_background_work.update_list = update_list;
+            SL.passive_background_work.start_id = 0;
+            SL.passive_background_work.update_array = [];
+            SL.passive_background_work.start_time = performance.now();
+        } else if (SL.passive_background_work.update_list in SL.post_lists) {
             //User has changed list from inactive to active midst calculating
-            CPL.background_work = {};
+            SL.passive_background_work = {};
             continue;
         }
-        let index = CPL.background_work.update_list;
+        let index = SL.passive_background_work.update_list;
         //Restart the FOR loop where we left off
-        for (let i=CPL.background_work.start_id;i < CPL.$safelist_posts.length;i++) {
+        for (let i=SL.passive_background_work.start_id;i < SL.$safelist_posts.length;i++) {
             for (let j=0;j<SL.custom_entries[index].length;j++){
-                if (Danbooru.Blacklist.post_match(CPL.$safelist_posts[i], SL.custom_entries[index][j])) {
-                    CPL.background_work.update_array.push(CPL.$safelist_posts[i]);
+                if (Danbooru.Blacklist.post_match(SL.$safelist_posts[i], SL.custom_entries[index][j])) {
+                    SL.passive_background_work.update_array.push(SL.$safelist_posts[i]);
                     //Bail early on any entry match
                     break;
                 }
             }
-            CPL.background_work.start_id++;
+            SL.passive_background_work.start_id++;
             if (deadline.timeRemaining() <= 0.0) {
                 //Release function back to idle pool
-                CPL.handle = requestIdleCallback(CPL);
+                SL.passive_handle = requestIdleCallback(CalculatePassiveLists);
                 return;
             }
         }
         //Add finished list to global variable
-        SL.post_lists[index] = CPL.background_work.update_array;
+        SL.post_lists[index] = SL.passive_background_work.update_array;
         SetListCount(index);
-        CPL.debuglog(`Complete[${index}]:`, performance.now() - CPL.background_work.start_time);
-        CPL.background_work = {};
+        this.debug('log',`Complete[${index}]:`, performance.now() - SL.passive_background_work.start_time);
+        SL.passive_background_work = {};
     }
 }
-CalculatePassiveLists.background_work = {};
-CalculatePassiveLists.lists_processed = 0;
 
 //Like CalculatePassiveLists, but for the active list, plus it has higher priority
 function CalculateActiveList() {
-    let CAL = CalculateActiveList;
-    CAL.$safelist_posts = CAL.$safelist_posts || SafelistPosts();
-    if (('level' in CAL.background_work) && (SL.active_list !== CAL.background_work.level)) {
-        CAL.debuglog("Changing list...");
-        CAL.background_work = {};
+    SL.$safelist_posts = SL.$safelist_posts || SafelistPosts();
+    if (('level' in SL.active_background_work) && (SL.active_list !== SL.active_background_work.level)) {
+        this.debug('log',"Changing list...");
+        SL.active_background_work = {};
     }
     if ((SL.active_list in SL.post_lists) || (!SL.enable_safelist)) {
-        CAL.debuglog("Bailing on work...");
-        CAL.background_work = {};
+        this.debug('log',"Bailing on work...");
+        SL.active_background_work = {};
         SetActiveList(SL.active_list,'active');
         return;
     }
-    if (!('level' in CAL.background_work)) {
-        CAL.debuglog("Active list start:", JSPLib.utility.getProgramTime());
-        CAL.background_work.level = SL.active_list;
-        CAL.background_work.start_id = 0;
-        CAL.background_work.update_array = [];
-        CAL.background_work.start_time = performance.now();
+    if (!('level' in SL.active_background_work)) {
+        this.debug('log',"Active list start:", JSPLib.utility.getProgramTime());
+        SL.active_background_work.level = SL.active_list;
+        SL.active_background_work.start_id = 0;
+        SL.active_background_work.update_array = [];
+        SL.active_background_work.start_time = performance.now();
     }
-    let level = CAL.background_work.level;
+    let level = SL.active_background_work.level;
     let iteration_time = performance.now();
-    for (let i = CAL.background_work.start_id; i < CAL.$safelist_posts.length; i++) {
+    for (let i = SL.active_background_work.start_id; i < SL.$safelist_posts.length; i++) {
         for (let j = 0; j < SL.custom_entries[level].length; j++){
-            if (Danbooru.Blacklist.post_match(CAL.$safelist_posts[i], SL.custom_entries[level][j])) {
-                CAL.background_work.update_array.push(CAL.$safelist_posts[i]);
+            if (Danbooru.Blacklist.post_match(SL.$safelist_posts[i], SL.custom_entries[level][j])) {
+                SL.active_background_work.update_array.push(SL.$safelist_posts[i]);
                 //Bail early on any entry match
                 break;
             }
         }
-        CAL.background_work.start_id++;
+        SL.active_background_work.start_id++;
         //Pass control back every once in a while to avoid locking up the browser
         if ((performance.now() - iteration_time) > 50.0) {
-            CAL.timer = setTimeout(CAL, 1);
+            SL.active_timer = setTimeout(CalculateActiveList, 1);
             return ;
         }
     }
-    SL.post_lists[level] = CAL.background_work.update_array;
-    CAL.debuglog("Complete:",performance.now() - CAL.background_work.start_time);
+    SL.post_lists[level] = SL.active_background_work.update_array;
+    this.debug('log',"Complete:",performance.now() - SL.active_background_work.start_time);
     SetActiveList(SL.active_list, 'active');
     ShowHidePosts(SL.post_lists[level]);
     SetListCount(level);
-    CAL.background_work = {};
+    SL.active_background_work = {};
 }
-CalculateActiveList.background_work = {};
 
 //Signal CalculatePassiveLists to stop and restart work
 function RestartLists() {
-    cancelIdleCallback(CalculatePassiveLists.handle);
-    CalculatePassiveLists.background_work = {};
-    CalculatePassiveLists.handle = requestIdleCallback(CalculatePassiveLists);
+    cancelIdleCallback(SL.passive_handle);
+    SL.passive_background_work = {};
+    SL.passive_handle = requestIdleCallback(CalculatePassiveLists);
 }
 
 //Signal CalculateActiveList to stop, with an alternative restart
 function SignalActiveList(restart=false) {
-    clearTimeout(CalculateActiveList.timer);
+    clearTimeout(SL.active_timer);
     if (CheckPriority()) {
-        CalculateActiveList.background_work = {};
+        SL.active_background_work = {};
         if (restart) {
-            CalculateActiveList.timer = setTimeout(CalculateActiveList, 1);
+            SL.active_timer = setTimeout(CalculateActiveList, 1);
         }
     }
 }
@@ -1495,14 +1302,14 @@ function SetSafelistSettingsClick() {
 //These actions get executed along with any other existing click events
 function SetOtherSectionsClick() {
     if (!JSPLib.utility.isNamespaceBound("#show-posts-link,#show-excerpt-link", 'click', PROGRAM_SHORTCUT)) {
-        $("#show-posts-link,#show-excerpt-link").on(PROGRAM_CLICK,(event)=>{
+        $("#show-posts-link,#show-excerpt-link").on(PROGRAM_CLICK, ()=>{
             $("#display-safelist-settings").parent().removeClass('active');
             $('#safelist-settings').hide();
         });
     }
 }
 
-function MenuAddButton(event) {
+function MenuAddButton() {
     let index = GetNextLevel().toString();
     let addlist = SL.level_data[index] = new Safelist(index);
     addlist.menu = $(addlist.renderedLevelSetting).insertBefore("#safelist-settings > hr");
@@ -1512,7 +1319,7 @@ function MenuAddButton(event) {
     addlist.initializeLevelMenuEvents();
 }
 
-function MenuResetAllButton(event) {
+function MenuResetAllButton() {
     if (confirm("Reset all Safelist settings?")) {
         JSPLib.debug.debugTime("MenuResetAllButton");
         InitializeProgramData();
@@ -1522,7 +1329,7 @@ function MenuResetAllButton(event) {
     }
 }
 
-function MenuSaveButton(event) {
+function MenuSaveButton() {
     //Save presettings change for comparison later
     var preconfig = JSPLib.utility.dataCopy(SL.level_data);
     var premenu = SL.menu_items;
@@ -1549,14 +1356,39 @@ function MenuSaveButton(event) {
     $(".safelist-namerow h2").show();
     $(".safelist-namerow .btn").show();
     SaveLevelData();
-    Danbooru.Utility.notice("Settings saved.");
+    JSPLib.notice.notice("Settings saved.");
     let changed_settings = JSPLib.utility.recurseCompareObjects(preconfig, SL.level_data);
     SL.menu_items = CalculateRenderedMenus();
     let changed_menus = Boolean(JSPLib.utility.arraySymmetricDifference(premenu.rendered_menus, SL.menu_items.rendered_menus).length);
-    MenuSaveButton.debuglog(changed_settings, changed_menus);
+    this.debug('log',changed_settings, changed_menus);
     if (!$.isEmptyObject(changed_settings) || changed_menus) {
-        Timer.ReloadSafelist(changed_settings, changed_menus);
+        ReloadSafelist(changed_settings, changed_menus);
         SL.channel.postMessage({type: "reload", level_data: SL.level_data, changed_settings: changed_settings, changed_menus: changed_menus});
+    }
+}
+
+function PostPreviewUpdated(event,post) {
+    delete SafelistPosts.posts;
+    SL.$safelist_posts = SafelistPosts();
+    let $post = $(`#post_${post.id}`);
+    for (let level in SL.post_lists) {
+        if (level === 'a') {
+            continue;
+        } else if (level === 'n') {
+            SL.post_lists.n = SafelistPosts().toArray();
+            continue;
+        }
+        SL.post_lists[level] = SL.post_lists[level].filter((entry) => ($(entry).data('id') !== post.id));
+        for (let j = 0; j < SL.custom_entries[level].length; j++){
+            if (Danbooru.Blacklist.post_match($post, SL.custom_entries[level][j])) {
+                SL.post_lists[level].push($post);
+                if (SL.enable_safelist && (level === SL.active_list)) {
+                    SafelistHide($post);
+                }
+                //Bail early on any entry match
+                break;
+            }
+        }
     }
 }
 
@@ -1565,17 +1397,17 @@ function MenuSaveButton(event) {
 
 function SetSideLevel(context) {
     if (SL.post_lists[context.level] === undefined){
-        SetSideLevel.debuglog("List not ready!");
+        this.debug('log',"List not ready!");
         //If no lists are being actively calculated...?
-        if ($.isEmptyObject(CalculateActiveList.background_work)) {
+        if ($.isEmptyObject(SL.active_background_work)) {
             //Don't start calculating the list in the click event
-            CalculateActiveList.timer = setTimeout(CalculateActiveList, 1);
+            SL.active_timer = setTimeout(CalculateActiveList, 1);
         }
         SetActiveList(context.level,'pending');
         //Else CalculateActiveList will automatically switch over
     } else {
-        SetSideLevel.debuglog("Precalculated list change");
-        Timer.ShowHidePosts(SL.post_lists[context.level]);
+        this.debug('log',"Precalculated list change");
+        ShowHidePosts(SL.post_lists[context.level]);
         SetActiveList(context.level, 'active');
     }
     JSPLib.utility.setCSSStyle(context.renderedCSS, 'safelist_user_css');
@@ -1596,8 +1428,8 @@ function ReloadSafelist(changed_settings,changed_menus) {
         }
     } else if (!$.isEmptyObject(changed_settings)) {
         //A list has changed, so recreate the entry array
-        if (Object.keys(changed_settings).some((level)=>{return 'list' in changed_settings[level];})) {
-            ReloadSafelist.debuglog("Updating custom entries...");
+        if (Object.keys(changed_settings).some((level) => ('list' in changed_settings[level]))) {
+            this.debug('log',"Updating custom entries...");
             SL.custom_entries = CreateEntryArray();
         }
         for (let level in changed_settings) {
@@ -1632,7 +1464,7 @@ function ReloadSafelist(changed_settings,changed_menus) {
                             $(".safelist-background", value.menu).prop('checked',value.background);
                             break;
                         case 'enabled':
-                            $(".safelist-enable", value.menu).prop('checked',value.enabled)
+                            $(".safelist-enable", value.menu).prop('checked',value.enabled);
                             //falls through
                         default:
                             //Do nothing
@@ -1651,7 +1483,7 @@ function ReloadSafelist(changed_settings,changed_menus) {
 //Settings functions
 
 function BroadcastSL(ev) {
-    BroadcastSL.debuglog(`(${ev.data.type}):`, ev.data);
+    this.debug('log',`(${ev.data.type}):`, ev.data);
     if (((ev.data.type === "level_change") && SL.user_settings.session_level_enabled) &&
         ((ev.data.type === "status_change") && SL.user_settings.session_use_enabled)) {
         return;
@@ -1690,10 +1522,10 @@ function BroadcastSL(ev) {
                 }
                 break;
             case "correction":
-                Timer.ReloadSafelist({}, true);
+                ReloadSafelist({}, true);
                 break;
             case "reload":
-                Timer.ReloadSafelist(ev.data.changed_settings, ev.data.changed_menus);
+                ReloadSafelist(ev.data.changed_settings, ev.data.changed_menus);
                 break;
             case "reset_levels":
                 ResetAllSettings();
@@ -1734,7 +1566,7 @@ function RemoteSettingsCallback() {
 }
 
 function RemoteResetCallback() {
-    Timer.InitializeSide();
+    InitializeSide();
     RemoteSettingsCallback();
 }
 
@@ -1751,30 +1583,30 @@ function InitializeChangedSettings() {
 }
 
 function RenderSettingsMenu() {
-    $('#safelist-plus').append(sl_menu);
+    $('#safelist-plus').append(JSPLib.menu.renderMenuFramework(MENU_CONFIG));
     $('#sl-general-settings').append(JSPLib.menu.renderDomainSelectors());
     $('#sl-mode-settings').append(JSPLib.menu.renderCheckbox('write_mode_enabled'));
-    //Not rendering anymore for now
-    //$('#sl-mode-settings').append(JSPLib.menu.renderCheckbox('validate_mode_enabled'));
-    //$('#sl-mode-settings').append(JSPLib.menu.renderCheckbox('order_mode_enabled'));
     $('#sl-session-settings').append(JSPLib.menu.renderCheckbox('session_use_enabled'));
     $('#sl-session-settings').append(JSPLib.menu.renderCheckbox('session_level_enabled'));
-    $('#sl-cache-settings').append(JSPLib.menu.renderLinkclick('cache_info'));
-    $('#sl-cache-settings').append(CACHE_INFO_TABLE);
-    $('#sl-cache-editor-controls').append(CONTROL_DATA_SOURCE);
+    $('#sl-controls').append(JSPLib.menu.renderCacheControls());
+    $('#sl-cache-controls').append(JSPLib.menu.renderLinkclick('cache_info'));
+    $('#sl-cache-controls').append(JSPLib.menu.renderCacheInfoTable());
+    $('#sl-controls').append(JSPLib.menu.renderCacheEditor());
+    $('#sl-cache-editor-message').append(JSPLib.menu.renderExpandable("Program Data details", PROGRAM_DATA_DETAILS));
+    $('#sl-cache-editor-controls').append(JSPLib.menu.renderLocalStorageSource());
     $('#sl-cache-editor-controls').append(JSPLib.menu.renderCheckbox('raw_data', true));
     $('#sl-cache-editor-controls').append(JSPLib.menu.renderTextinput('data_name', 20, true));
     JSPLib.menu.engageUI(true);
-    disabled_settings.forEach((setting)=>{
-        $(`#sl-settings [data-setting=${setting}] input`).prop('disabled', true);
-    });
     JSPLib.menu.saveUserSettingsClick();
     JSPLib.menu.resetUserSettingsClick(LOCALSTORAGE_KEYS);
     JSPLib.menu.cacheInfoClick();
+    JSPLib.menu.expandableClick();
     JSPLib.menu.rawDataChange();
     JSPLib.menu.getCacheClick();
     JSPLib.menu.saveCacheClick(ValidateProgramData);
     JSPLib.menu.deleteCacheClick();
+    JSPLib.menu.listCacheClick();
+    JSPLib.menu.refreshCacheClick();
     JSPLib.menu.cacheAutocomplete();
 }
 
@@ -1782,24 +1614,22 @@ function RenderSettingsMenu() {
 //Main function
 
 function Main() {
-    Main.debuglog("Initialize start:", JSPLib.utility.getProgramTime());
+    this.debug('log',"Initialize start:", JSPLib.utility.getProgramTime());
     JSPLib.debug.debugTime("Main-Load");
-    Danbooru.SL = Object.assign(SL, {
+    Object.assign(SL, {
         controller: document.body.dataset.controller,
         action: document.body.dataset.action,
         userid: Danbooru.CurrentUser.data('id'),
         settings_config: SETTINGS_CONFIG,
         control_config: CONTROL_CONFIG,
         channel: JSPLib.utility.createBroadcastChannel(PROGRAM_NAME, BroadcastSL),
-    });
-    Object.assign(SL, {
         user_settings: JSPLib.menu.loadUserSettings(),
-    });
+    }, DEFAULT_VALUES);
     if (JSPLib.danbooru.isSettingMenu()) {
         JSPLib.menu.initializeSettingsMenu(RenderSettingsMenu);
     }
     if (!JSPLib.menu.isScriptEnabled()) {
-        Main.debuglog("Script is disabled on", window.location.hostname);
+        this.debug('log',"Script is disabled on", window.location.hostname);
         return;
     }
     Object.assign(SL, {
@@ -1816,8 +1646,8 @@ function Main() {
         JSPLib.utility.setCSSStyle(safelist_css, "safelist_css");
         SL.menu_items = CalculateRenderedMenus();
         SL.blacklist_box.after(RenderSidemenu());
-        Timer.InitializeSide()
-        CalculatePassiveLists.handle = requestIdleCallback(CalculatePassiveLists);
+        InitializeSide();
+        SL.passive_handle = requestIdleCallback(CalculatePassiveLists);
         JSPLib.debug.debugTimeEnd("Main-Post");
     } else if (SL.enable_safelist) {
         InitializeNonpost();
@@ -1828,25 +1658,34 @@ function Main() {
         JSPLib.debug.debugTime("Main-Menu");
         $("#post-sections li:last-child").after(RenderSettingMenuLink());
         $("#excerpt").before(RenderLevelMenu());
-        Timer.InitializeSettingsMenu();
+        InitializeSettingsMenu();
         //Accounts for other userscripts binding the same links
         JSPLib.utility.initializeInterval(()=>{
             SetSafelistSettingsClick();
             SetOtherSectionsClick();
         },timeout_polling_interval);
+        $(document).on('danbooru:post-preview-updated.temp', PostPreviewUpdated);
         JSPLib.debug.debugTimeEnd("Main-Menu");
     }
 }
 
 /****Function decoration****/
 
-JSPLib.debug.addFunctionTimers(Timer,false,[
-    SetSideLevel,EnableSafelist,DisableSafelist,ShowHidePosts,InitializeSide,InitializeSettingsMenu,ReloadSafelist,
-    RenderLevelMenu,MenuSaveButton,MenuAddButton,
+[
+    Main,SetSideLevel,MenuSaveButton,CalculateActiveList,CalculatePassiveLists,ReloadSafelist,CorrectLevelData,BroadcastSL,
+] = JSPLib.debug.addFunctionLogs([
+    Main,SetSideLevel,MenuSaveButton,CalculateActiveList,CalculatePassiveLists,ReloadSafelist,CorrectLevelData,BroadcastSL,
 ]);
 
-JSPLib.debug.addFunctionLogs([
-    Main,SetSideLevel,MenuSaveButton,CalculateActiveList,CalculatePassiveLists,ReloadSafelist,CorrectLevelData,BroadcastSL,
+[
+    SetSideLevel,EnableSafelist,DisableSafelist,ShowHidePosts,InitializeSide,InitializeSettingsMenu,ReloadSafelist,
+    RenderLevelMenu,MenuSaveButton,MenuAddButton,
+] = JSPLib.debug.addFunctionTimers([
+    //Sync
+    SetSideLevel,EnableSafelist,DisableSafelist,ShowHidePosts,InitializeSide,InitializeSettingsMenu,ReloadSafelist,
+    RenderLevelMenu,MenuSaveButton,MenuAddButton,
+    //Async
+    ////NONE
 ]);
 
 /****Initialization****/
@@ -1859,9 +1698,12 @@ JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 //Variables for menu.js
 JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
 JSPLib.menu.program_name = PROGRAM_NAME;
+JSPLib.menu.program_data = SL;
 JSPLib.menu.program_reset_data = PROGRAM_RESET_KEYS;
 JSPLib.menu.settings_callback = RemoteSettingsCallback;
 JSPLib.menu.reset_callback = RemoteResetCallback;
+JSPLib.menu.settings_config = SETTINGS_CONFIG;
+JSPLib.menu.control_config = CONTROL_CONFIG;
 
 //Export JSPLib
 JSPLib.load.exportData(PROGRAM_NAME, SL);
