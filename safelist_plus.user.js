@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SafelistPlus
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.8
+// @version      4.9
 // @description  Alternate Danbooru blacklist handler.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1370,7 +1370,7 @@ function MenuSaveButton() {
 function PostPreviewUpdated(event,post) {
     delete SafelistPosts.posts;
     SL.$safelist_posts = SafelistPosts();
-    let $post = $(`#post_${post.id}`);
+    let $post = $(`#post_${post.id}`).get(0);
     for (let level in SL.post_lists) {
         if (level === 'a') {
             continue;
@@ -1382,12 +1382,16 @@ function PostPreviewUpdated(event,post) {
         for (let j = 0; j < SL.custom_entries[level].length; j++){
             if (Danbooru.Blacklist.post_match($post, SL.custom_entries[level][j])) {
                 SL.post_lists[level].push($post);
-                if (SL.enable_safelist && (level === SL.active_list)) {
-                    SafelistHide($post);
-                }
                 //Bail early on any entry match
                 break;
             }
+        }
+    }
+    if (SL.enable_safelist) {
+        if (SL.post_lists[SL.active_list].some((entry) => ($(entry).data('id') === post.id))) {
+            SafelistHide($post);
+        } else {
+            SafelistUnhide($post);
         }
     }
 }
