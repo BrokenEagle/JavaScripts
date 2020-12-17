@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.2
+// @version      28.3
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2347,7 +2347,7 @@ function RecheckSourceData(type,key,term,data) {
     if (IAC.user_settings.recheck_data_interval > 0) {
         let recheck_time = data.expires - GetRecheckExpires();
         if (!JSPLib.utility.validateExpires(recheck_time)) {
-            JSPLib.this.debug('log',"Rechecking", type, ':', term);
+            this.debug('log',"Rechecking", type, ':', term);
             NetworkSource(type, key, term, null, null, false);
         }
     }
