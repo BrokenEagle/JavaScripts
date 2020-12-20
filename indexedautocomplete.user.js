@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.3
+// @version      28.4
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -78,13 +78,13 @@ const PROGRAM_RESET_KEYS = {
 };
 
 //Available setting values
-const tag_sources = ['metatag', 'exact', 'prefix', 'alias', 'correct'];
+const tag_sources = ['metatag', 'tag', 'tag-abbreviation', 'tag-alias', 'tag-correction', 'tag-other-name'];
 const scale_types = ['linear', 'square_root', 'logarithmic'];
 const related_query_types = ['default', 'frequent', 'similar', 'like'];
 
 //Main settings
 const SETTINGS_CONFIG = {
-    prefix_check_enabled: {
+    prefix_check_enabled: { //May be removed since prefixes now begin with /
         default: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Check the prefix/acronym of a tag for a match. Limited to prefixes of length 2-4."
@@ -176,7 +176,8 @@ const SETTINGS_CONFIG = {
     source_order: {
         allitems: tag_sources,
         default: tag_sources,
-        validate: (data) => (Array.isArray(data) && JSPLib.utility.arrayEquals(data, tag_sources)),
+        sortvalue: true,
+        validate: (data) => JSPLib.utility.arrayEquals(data, tag_sources),
         hint: "Used when source grouping is enabled. Drag and drop the sources to determine the group order."
     },
     alternate_tag_source: {
@@ -348,6 +349,9 @@ body[data-current-user-theme=dark] .iac-already-used {
 .iac-tag-correct > div:before {
     color: cyan;
 }
+.iac-tag-other > div:before {
+    color: orange;
+}
 .iac-tag-bur > div:before,
 .iac-tag-metatag > div:before{
     color: #000;
@@ -485,7 +489,7 @@ const SETTINGS_MENU_CSS = `
     width: 125px;
 }
 .jsplib-sortlist li {
-    width: 6em;
+    width: 10em;
 }
 .iac-formula {
     font-family: mono;
@@ -728,10 +732,53 @@ const AUTOCOMPLETE_SOURCE = ['tag', 'wiki'];
 const AUTOCOMPLETE_MODE = ['tag', 'normal', 'pipe', 'custom'];
 const AUTOCOMPLETE_CAPITALIZATION = ['lowercase', 'uppercase', 'titlecase', 'propercase', 'exceptcase', 'romancase'];
 
+//Danbooru constants
+
+const ALL_METATAGS = [
+    'user', 'approver', 'commenter', 'comm', 'noter', 'noteupdater', 'artcomm', 'commentaryupdater', 'flagger', 'appealer',
+    'upvote', 'downvote', 'fav', 'ordfav', 'favgroup', 'ordfavgroup', 'pool', 'ordpool', 'note', 'comment', 'commentary', 'id',
+    'rating', 'locked', 'source', 'status', 'filetype', 'disapproved', 'parent', 'child', 'search', 'embedded', 'md5', 'width',
+    'height', 'mpixels', 'ratio', 'score', 'favcount', 'filesize', 'date', 'age', 'order', 'limit', 'tagcount', 'pixiv_id', 'pixiv',
+    'unaliased', 'comment_count', 'deleted_comment_count', 'active_comment_count', 'note_count', 'deleted_note_count', 'active_note_count',
+    'flag_count', 'child_count', 'deleted_child_count', 'active_child_count', 'pool_count', 'deleted_pool_count', 'active_pool_count',
+    'series_pool_count', 'collection_pool_count', 'appeal_count', 'approval_count', 'replacement_count', 'comments', 'deleted_comments',
+    'active_comments', 'notes', 'deleted_notes', 'active_notes', 'flags', 'children', 'deleted_children', 'active_children', 'pools',
+    'deleted_pools', 'active_pools', 'series_pools', 'collection_pools', 'appeals', 'approvals', 'replacements', 'gentags', 'chartags',
+    'copytags', 'arttags', 'metatags',
+];
+
+const TYPE_TAGS = ['ch', 'co', 'gen', 'char', 'copy', 'art', 'meta', 'general', 'character', 'copyright', 'artist'];
+
+
+const STATIC_METATAGS = {
+    order: [
+        'id', 'id_desc', 'md5', 'md5_asc', 'score', 'score_asc', 'favcount', 'favcount_asc', 'created_at', 'created_at_asc', 'change', 'change_asc', 'comment',
+        'comment_asc', 'comment_bumped', 'comment_bumped_asc', 'note', 'note_asc', 'artcomm', 'artcomm_asc', 'mpixels', 'mpixels_asc', 'portrait', 'landscape',
+        'filesize', 'filesize_asc', 'tagcount', 'tagcount_asc', 'rank', 'curated', 'modqueue', 'random', 'custom', 'none', 'comment_count', 'deleted_comment_count',
+        'active_comment_count', 'note_count', 'deleted_note_count', 'active_note_count', 'flag_count', 'child_count', 'deleted_child_count', 'active_child_count',
+        'pool_count', 'deleted_pool_count', 'active_pool_count', 'series_pool_count', 'collection_pool_count', 'appeal_count', 'approval_count', 'replacement_count',
+        'comments', 'comments_asc', 'deleted_comments', 'deleted_comments_asc', 'active_comments', 'active_comments_asc', 'notes', 'notes_asc', 'deleted_notes',
+        'deleted_notes_asc', 'active_notes', 'active_notes_asc', 'flags', 'flags_asc', 'children', 'children_asc', 'deleted_children', 'deleted_children_asc',
+        'active_children', 'active_children_asc', 'pools', 'pools_asc', 'deleted_pools', 'deleted_pools_asc', 'active_pools', 'active_pools_asc', 'series_pools',
+        'series_pools_asc', 'collection_pools', 'collection_pools_asc', 'appeals', 'appeals_asc', 'approvals', 'approvals_asc', 'replacements', 'replacements_asc',
+        'gentags', 'gentags_asc', 'chartags', 'chartags_asc', 'copytags', 'copytags_asc', 'arttags', 'arttags_asc', 'metatags', 'metatags_asc',
+    ],
+    status: ['any', 'deleted', 'active', 'pending', 'flagged', 'banned', 'modqueue', 'unmoderated', 'appealed'],
+    rating: ['safe', 'questionable', 'explicit'],
+    locked: ['rating', 'note', 'status'],
+    embedded: ['true', 'false'],
+    child: ['any', 'none', 'deleted', 'active', 'pending', 'flagged', 'banned', 'modqueue', 'unmoderated', 'appealed'],
+    parent: ['any', 'none', 'deleted', 'active', 'pending', 'flagged', 'banned', 'modqueue', 'unmoderated', 'appealed'],
+    filetype: ['jpg', 'png', 'gif', 'swf', 'zip', 'webm', 'mp4'],
+    commentary: ['true', 'false', 'translated', 'untranslated'],
+    disapproved: ['breaks_rules', 'poor_quality', 'disinterest']
+};
+
 //Regex constants
 
 const WORDBREAK_REGEX = /\(+|\)+|[\s_]+|[^\s_()]+/g;
 const ROMAN_REGEX = /^M?M?M?(CM|CD|D?C?C?C?)(XC|XL|L?X?X?X?)(IX|IV|V?I?I?I?)$/i;
+const TERM_REGEX = RegExp('([-~]*)(?:(' + JSPLib.utility.concat(ALL_METATAGS, TYPE_TAGS).join('|') + '):)?(\\S*)$', 'i');
 
 //BUR constants
 const BUR_KEYWORDS = ['alias', 'imply', 'update', 'unalias', 'unimply', 'category'];
@@ -836,25 +883,26 @@ const SOURCE_KEY = {
 
 const SOURCE_CONFIG = {
     tag1: {
-        url: 'tags/autocomplete',
-        data: (term)=>{
-            return {
+        url: 'autocomplete',
+        data: (term) => (
+            {
                 search: {
-                    name_matches: term
+                    type: 'tag_query',
+                    query: term,
                 }
-            };
-        },
-        map: (tag)=>{
-            return {
+            }
+        ),
+        map: (tag) => (
+            {
                 type: 'tag',
-                label: tag.name.replace(/_/g, ' '),
-                antecedent: tag.antecedent_name || null,
-                value: tag.name,
+                label: tag.label,
+                antecedent: tag.antecedent,
+                value: tag.value,
                 category: tag.category,
                 post_count: tag.post_count,
-                source: tag.source
-            };
-        },
+                source: tag.type,
+            }
+        ),
         expiration: (d)=>{
             return (d.length ? ExpirationTime('tag', d[0].post_count) : MinimumExpirationTime('tag'));
         },
@@ -875,17 +923,17 @@ const SOURCE_CONFIG = {
                 only: 'name,category,post_count'
             };
         },
-        map: (tag)=>{
-            return {
+        map: (tag) => (
+            {
                 type: 'tag',
                 label: tag.name.replace(/_/g, ' '),
                 antecedent: null,
                 value: tag.name,
                 category: tag.category,
                 post_count: tag.post_count,
-                source: 'exact'
-            };
-        },
+                source: 'tag',
+            }
+        ),
         expiration: (d)=>{
             return (d.length ? ExpirationTime('tag', d[0].post_count) : MinimumExpirationTime('tag'));
         },
@@ -1094,7 +1142,7 @@ const AUTOCOMPLETE_CONSTRAINTS = {
         post_count: JSPLib.validate.postcount_constraints,
         type: JSPLib.validate.inclusion_constraints(['tag', 'metatag']),
         value: JSPLib.validate.stringonly_constraints,
-        source: JSPLib.validate.inclusion_constraints(tag_sources)
+        source: JSPLib.validate.inclusion_constraints(tag_sources),
     },
     get metatag() {
         return this.tag;
@@ -1315,7 +1363,80 @@ function ValidateUsageData(choice_info) {
 
 //Library functions
 
-////NONE
+//Fixes
+
+JSPLib.menu.loadUserSettings = function (self) {
+    let program_shortcut = this.program_shortcut;
+    let config = this.settings_config;
+    let settings = JSPLib.storage.getStorageData(`${program_shortcut}-user-settings`,localStorage,{});
+    let dirty = false;
+    if (Array.isArray(this.settings_migrations)) {
+        this.settings_migrations.forEach((migration)=>{
+            if (config[migration.to].validate((settings[migration.from]))) {
+                self.debug('logLevel',"Migrating setting: ",migration.from,"->",migration.to,JSPLib.debug.INFO);
+                settings[migration.to] = settings[migration.from];
+                delete settings[migration.from];
+                dirty = true;
+            }
+        })
+    }
+    if (!JSPLib.validate.isHash(settings)) {
+        self.debug('warnLevel',"User settings are not a hash!",JSPLib.debug.ERROR);
+        settings = {};
+    }
+    let errors = this.validateUserSettings(settings);
+    if (errors.length) {
+        self.debug('logLevel',"Errors found:\n",errors.join('\n'),JSPLib.debug.WARNING);
+        dirty = true;
+    }
+    if (dirty) {
+        self.debug('logLevel',"Saving updated changes to user settings!",JSPLib.debug.INFO);
+        JSPLib.storage.setStorageData(`${program_shortcut}-user-settings`,settings,localStorage);
+    }
+    self.debug('logLevel',"Returning settings:",settings,JSPLib.debug.DEBUG);
+    return settings;
+};
+
+JSPLib.menu.validateUserSettings = function (self,settings) {
+    let error_messages = [];
+    //This check is for validating settings through the cache editor
+    if (!JSPLib.validate.isHash(settings)) {
+        return ["User settings are not a hash."];
+    }
+    let config = this.settings_config;
+    for (let setting in config) {
+        if (!(setting in settings) || !config[setting].validate(settings[setting])) {
+            if (!(setting in settings)) {
+                error_messages.push(`'${setting}' setting not found.`);
+            } else {
+                error_messages.push(`'${setting}' contains invalid data.`);
+            }
+            let old_setting = settings[setting];
+            let message = "";
+            if (Array.isArray(config[setting].allitems) && Array.isArray(settings[setting]) && !config[setting].sortvalue) {
+                settings[setting] = JSPLib.utility.arrayIntersection(config[setting].allitems,settings[setting]);
+                message = "Removing bad items";
+            } else {
+                settings[setting] = config[setting].default;
+                message = "Loading default";
+            }
+            self.debug('logLevel',`${message}:`,setting,old_setting,"->",settings[setting],JSPLib.debug.WARNING);
+        }
+    }
+    let valid_settings = Object.keys(config);
+    for (let setting in settings) {
+        if (!valid_settings.includes(setting)) {
+            self.debug('logLevel',"Deleting invalid setting:",setting,settings[setting],JSPLib.debug.WARNING);
+            delete settings[setting];
+            error_messages.push(`'${setting}' is an invalid setting.`);
+        }
+    }
+    return error_messages;
+};
+
+//Initialize
+
+JSPLib.debug.addModuleLogs('menu',['loadUserSettings','validateUserSettings']);
 
 //Helper functions
 
@@ -1337,6 +1458,18 @@ function TitleizeExcept(word) {
 
 function TitleizeRoman(word) {
     return (word.match(ROMAN_REGEX) ? word.toUpperCase() : TitleizeExcept(word));
+}
+
+function ParseQuery(text, caret) {
+  let before_caret_text = text.substring(0, caret);
+  let match = before_caret_text.match(TERM_REGEX);
+  let operator = match[1];
+  let metatag = match[2] ? match[2].toLowerCase() : "tag";
+  let term = match[3];
+  if (metatag in Danbooru.Autocomplete.TAG_CATEGORIES) {
+    metatag = "tag";
+  }
+  return { operator: operator, metatag: metatag, term: term };
 }
 
 function RemoveTerm(str,index) {
@@ -1372,7 +1505,7 @@ const MapMetatag = (type,metatag,value) => ({
 
 function MetatagData() {
     if (!MetatagData.data) {
-        MetatagData.data = Danbooru.Autocomplete.METATAGS
+        MetatagData.data = ALL_METATAGS
             .filter((tag) => (tag[0] !== '-'))
             .map((tag) => (MapMetatag('tag', tag, "")));
     }
@@ -1667,7 +1800,7 @@ function KeepSourceData(type,metatag,data) {
 }
 
 function GetChoiceOrder(type,query) {
-    let checkprefix = IAC.user_settings.prefix_check_enabled && (type === 'tag') && (query.length >= 2 && query.length <= 4);
+    let checkprefix = false; //IAC.user_settings.prefix_check_enabled && (type === 'tag') && (query.length >= 2 && query.length <= 4);
     let queryterm = query.toLowerCase();
     let available_choices = IAC.choice_order[type].filter((tag)=>{
         let tagterm = tag.toLowerCase();
@@ -1861,17 +1994,20 @@ function HighlightSelected($link,list,item) {
         if (item.type === 'tag' || item.type === 'metatag') {
             $($link).addClass('iac-tag-highlight');
             switch (item.source) {
-                case 'exact':
+                case 'tag':
                     $($link).addClass('iac-tag-exact');
                     break;
-                case 'prefix':
+                case 'tag-abbreviation':
                     $($link).addClass('iac-tag-prefix');
                     break;
-                case 'alias':
+                case 'tag-alias':
                     $($link).addClass('iac-tag-alias');
                     break;
-                case 'correct':
+                case 'tag-autocorrect':
                     $($link).addClass('iac-tag-correct');
+                    break;
+                case 'tag-other-name':
+                    $($link).addClass('iac-tag-other');
                     break;
                 case 'bur':
                     $($link).addClass('iac-tag-bur');
@@ -2019,7 +2155,7 @@ function DelayInitializeTagAutocomplete(selector, type) {
         $(selector).attr('data-autocomplete', type);
     }
     clearTimeout(DelayInitializeTagAutocomplete.timer);
-    DelayInitializeTagAutocomplete.timer = setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, JQUERY_DELAY);
+    DelayInitializeTagAutocomplete.timer = setTimeout(DanbooruIntializeTagAutocomplete, JQUERY_DELAY);
 }
 
 //Rebind callback functions
@@ -2062,6 +2198,17 @@ function RebindAnyAutocomplete(selector,keycode,multiple) {
     }, TIMER_POLL_INTERVAL);
 }
 
+function RebindMultipleTag() {
+    const multi_selector = '[data-autocomplete=tag-query], [data-autocomplete=tag-edit]';
+    JSPLib.utility.recheckTimer({
+        check: () => JSPLib.utility.hasDOMDataKey(multi_selector, 'uiAutocomplete'),
+        exec: ()=>{
+            $(multi_selector).autocomplete('destroy').off('keydown.Autocomplete.tab');
+            DanbooruIntializeTagAutocomplete();
+        }
+    }, TIMER_POLL_INTERVAL);
+}
+
 function RebindSingleTag() {
     JSPLib.utility.recheckTimer({
         check: () => JSPLib.utility.hasDOMDataKey('[data-autocomplete=tag]', 'uiAutocomplete'),
@@ -2088,6 +2235,76 @@ function RebindSingleTag() {
 
 //Initialization functions
 
+function DanbooruIntializeTagAutocomplete() {
+    var $fields_multiple = $('[data-autocomplete="tag-query"], [data-autocomplete="tag-edit"]');
+    $fields_multiple.autocomplete({
+        select: function(event, ui) {
+            if (event.key === "Enter") {
+                event.stopImmediatePropagation();
+            }
+            Danbooru.Autocomplete.insert_completion(this, ui.item.value);
+            return false;
+        },
+        source: async function(req, resp) {
+            var query = ParseQuery(req.term, this.element.get(0).selectionStart);
+            var metatag = query.metatag;
+            var term = query.term;
+            var results = [];
+            switch (metatag) {
+                case "order":
+                case "status":
+                case "rating":
+                case "locked":
+                case "child":
+                case "parent":
+                case "filetype":
+                case "disapproved":
+                case "embedded":
+                    results = Danbooru.Autocomplete.static_metatag_source(term, metatag);
+                    break;
+                case "user":
+                case "approver":
+                case "commenter":
+                case "comm":
+                case "noter":
+                case "noteupdater":
+                case "commentaryupdater":
+                case "artcomm":
+                case "fav":
+                case "ordfav":
+                case "appealer":
+                case "flagger":
+                case "upvote":
+                case "downvote":
+                    results = await Danbooru.Autocomplete.user_source(term, metatag + ":");
+                    break;
+                case "pool":
+                case "ordpool":
+                    results = await Danbooru.Autocomplete.pool_source(term, metatag + ":");
+                    break;
+                case "favgroup":
+                case "ordfavgroup":
+                    results = await Danbooru.Autocomplete.favorite_group_source(term, metatag + ":", Danbooru.CurrentUser.data("id"));
+                    break;
+                case "search":
+                    results = await Danbooru.Autocomplete.saved_search_source(term, metatag + ":");
+                    break;
+                case "tag":
+                    results = await Danbooru.Autocomplete.tag_source(term);
+                    break;
+                default:
+                    results = [];
+                    break;
+            }
+            resp(results);
+        }
+    });
+    $fields_multiple.each((i,entry)=>{
+        let autocomplete = $(entry).data('uiAutocomplete');
+        autocomplete._render = Danbooru.Autocomplete._render;
+    });
+}
+
 function InitializeAutocompleteIndexed(selector,keycode,multiple=false,wiki=false) {
     let type = SOURCE_KEY[keycode];
     var $fields = $(selector);
@@ -2098,7 +2315,7 @@ function InitializeAutocompleteIndexed(selector,keycode,multiple=false,wiki=fals
         source: async function(request,respond) {
             var term;
             if (multiple || wiki) {
-                term = Danbooru.Autocomplete.parse_query(request.term, this.element.get(0).selectionStart).term;
+                term = ParseQuery(request.term, this.element.get(0).selectionStart).term;
                 if (!term) {
                     respond([]);
                     return;
@@ -2417,7 +2634,7 @@ function SetupAutocompleteBindings() {
     Danbooru.Autocomplete.render_item_old = Danbooru.Autocomplete.render_item;
     Danbooru.Autocomplete.render_item = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.render_item, HighlightSelected);
     Danbooru.Autocomplete.initialize_tag_autocomplete_old = Danbooru.Autocomplete.initialize_tag_autocomplete;
-    Danbooru.Autocomplete.initialize_tag_autocomplete = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.initialize_tag_autocomplete, RebindRender);
+    Danbooru.Autocomplete.initialize_tag_autocomplete = DanbooruIntializeTagAutocomplete;
 }
 
 function SetupAutocompleteInitializations() {
@@ -2477,6 +2694,9 @@ function SetupAutocompleteInitializations() {
     }
     if ($('[data-autocomplete=tag]').length) {
         RebindSingleTag();
+    }
+    if ($('[data-autocomplete=tag-query], [data-autocomplete=tag-edit]').length) {
+        RebindMultipleTag();
     }
     if ($(AUTOCOMPLETE_USER_SELECTORS).length) {
         RebindAnyAutocomplete(AUTOCOMPLETE_USER_SELECTORS, 'us');
@@ -2600,7 +2820,7 @@ function RenderSettingsMenu() {
     $('#iac-usage-settings').append(JSPLib.menu.renderTextinput('usage_multiplier'));
     $('#iac-usage-settings').append(JSPLib.menu.renderTextinput('usage_maximum'));
     $('#iac-usage-settings').append(JSPLib.menu.renderTextinput('usage_expires'));
-    $('#iac-usage-settings').append(JSPLib.menu.renderCheckbox('prefix_check_enabled'));
+    //$('#iac-usage-settings').append(JSPLib.menu.renderCheckbox('prefix_check_enabled'));
     $('#iac-display-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", DISPLAY_SETTINGS_DETAILS));
     $('#iac-display-settings').append(JSPLib.menu.renderTextinput('source_results_returned', 5));
     $('#iac-display-settings').append(JSPLib.menu.renderCheckbox('source_highlight_enabled'));
@@ -2746,9 +2966,11 @@ JSPLib.menu.reset_callback = RemoteSettingsCallback;
 JSPLib.menu.settings_config = SETTINGS_CONFIG;
 JSPLib.menu.control_config = CONTROL_CONFIG;
 
+JSPLib.menu.domains.push('testbooru');
+
 //Export JSPLib
-JSPLib.load.exportData(PROGRAM_NAME, IAC, {}, ['cached_data']);
-JSPLib.load.exportFuncs(PROGRAM_NAME, [], [FindArtistSession, InitializeAutocompleteIndexed]);
+JSPLib.load.exportData(PROGRAM_NAME, IAC, {TERM_REGEX}, ['cached_data']);
+JSPLib.load.exportFuncs(PROGRAM_NAME, [DanbooruIntializeTagAutocomplete], [FindArtistSession, InitializeAutocompleteIndexed]);
 
 /****Execution start****/
 
