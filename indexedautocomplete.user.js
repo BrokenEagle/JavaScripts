@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.4
+// @version      28.5
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -488,18 +488,22 @@ const SETTINGS_MENU_CSS = `
 #indexed-autocomplete .jsplib-selectors label {
     width: 125px;
 }
-.jsplib-sortlist li {
+#indexed-autocomplete .jsplib-sortlist li {
     width: 10em;
 }
-.iac-formula {
+#indexed-autocomplete .iac-formula {
     font-family: mono;
     font-size: 100%;
 }
-.ui-widget-content {
+#indexed-autocomplete .ui-widget-content {
     background: var(--jquery-ui-widget-content-background);
     color: var(--jquery-ui-widget-content-text-color);
 }
-.ui-widget, .ui-widget button, .ui-widget input, .ui-widget select, .ui-widget textarea {
+#indexed-autocomplete .ui-widget,
+#indexed-autocomplete .ui-widget button,
+#indexed-autocomplete .ui-widget input,
+#indexed-autocomplete .ui-widget select,
+#indexed-autocomplete .ui-widget textarea {
     font-family: Verdana,Helvetica,sans-serif;
 }`;
 
@@ -2965,8 +2969,6 @@ JSPLib.menu.settings_callback = RemoteSettingsCallback;
 JSPLib.menu.reset_callback = RemoteSettingsCallback;
 JSPLib.menu.settings_config = SETTINGS_CONFIG;
 JSPLib.menu.control_config = CONTROL_CONFIG;
-
-JSPLib.menu.domains.push('testbooru');
 
 //Export JSPLib
 JSPLib.load.exportData(PROGRAM_NAME, IAC, {TERM_REGEX}, ['cached_data']);
