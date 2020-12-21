@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.6
+// @version      28.7
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2305,7 +2305,7 @@ function DanbooruIntializeTagAutocomplete() {
     });
     $fields_multiple.each((i,entry)=>{
         let autocomplete = $(entry).data('uiAutocomplete');
-        autocomplete._render = Danbooru.Autocomplete._render;
+        autocomplete._renderItem = Danbooru.Autocomplete.render_item;
     });
 }
 
