@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.5
+// @version      28.6
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1519,9 +1519,9 @@ function MetatagData() {
 function SubmetatagData() {
     if (!SubmetatagData.data) {
         SubmetatagData.data = [];
-        for (let metatag in Danbooru.Autocomplete.static_metatags) {
-            for (let i = 0; i < Danbooru.Autocomplete.static_metatags[metatag].length; i++) {
-                let submetatag = Danbooru.Autocomplete.static_metatags[metatag][i];
+        for (let metatag in STATIC_METATAGS) {
+            for (let i = 0; i < STATIC_METATAGS[metatag].length; i++) {
+                let submetatag = STATIC_METATAGS[metatag][i];
                 SubmetatagData.data.push(MapMetatag('metatag', metatag, submetatag));
             }
         }
