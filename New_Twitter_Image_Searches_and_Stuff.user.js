@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff (alpha)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.A.12
+// @version      7.A.13
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -3782,9 +3782,7 @@ function InitializeProfileViewCount(views,data_key,selector,format) {
 }
 
 function InitializeProfileTimeline() {
-    let $navigation = $('nav[aria-label="Profile timelines"]');
-    let $profile = $navigation.prev();
-    let $header = $profile.children().first();
+    let $header = $('[href$="/header_photo"]');
     let $info = $header.next();
     if ($info.length === 1) {
         let $children = $info.children();
@@ -3798,7 +3796,7 @@ function InitializeProfileTimeline() {
             $entry.append(PROFILE_TIMELINE_HTML);
         }
     } else {
-        this.debug('warn', "Unable to find profile attachment point!", $navigation,$profile,$header,$info);
+        this.debug('warn', "Unable to find profile attachment point!",$header,$info);
     }
 }
 
