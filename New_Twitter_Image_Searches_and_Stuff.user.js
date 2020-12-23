@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff (alpha)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.A.13
+// @version      7.A.14
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -3782,8 +3782,7 @@ function InitializeProfileViewCount(views,data_key,selector,format) {
 }
 
 function InitializeProfileTimeline() {
-    let $header = $('[href$="/header_photo"]');
-    let $info = $header.next();
+    let $info = $('[href$="/photo"]').parent().parent();
     if ($info.length === 1) {
         let $children = $info.children();
         let name_line = $children.get(1);
@@ -3796,7 +3795,7 @@ function InitializeProfileTimeline() {
             $entry.append(PROFILE_TIMELINE_HTML);
         }
     } else {
-        this.debug('warn', "Unable to find profile attachment point!",$header,$info);
+        this.debug('warn', "Unable to find profile attachment point!", $info);
     }
 }
 
@@ -4790,7 +4789,7 @@ function CheckURL(event) {
     let wildcard_url = `https://twitter.com/*/status/${tweet_id}`;
     let check_url = (NTISAS.user_settings.URL_wildcards_enabled ? wildcard_url : normal_url);
     this.debug('log', check_url);
-    JSPLib.danbooru.submitRequest('posts', {tags: 'source:' + check_url, only: POST_FIELDS}, [], false, null, NTISAS.domain, true).then((data)=>{
+    JSPLib.danbooru.submitRequest('posts', {tags: 'status:any source:' + check_url, only: POST_FIELDS}, [], false, null, NTISAS.domain, true).then((data)=>{
         let post_ids = [];
         if (data.length === 0) {
             NTISAS.no_url_results.push(tweet_id);
