@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.0
+// @version      7.1
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -3623,9 +3623,9 @@ function InitializeImageMenu($tweets,append_selector,menu_class) {
         promise_array.push(tweet_promise);
         $(append_selector, tweet).addClass('ntisas-image-menu');
         let tweet_id = String($(tweet).data('tweet-id'));
+        let $link_container = $(`<div class="ntisas-link-menu ${menu_class} ntisas-links"><span style="font-weight:bold">Loading...</span></div>`);
+        $(append_selector, tweet).append($link_container);
         GetData('tweet-' + tweet_id, 'twitter').then(async (post_ids)=>{
-            let $link_container = $(`<div class="ntisas-link-menu ${menu_class} ntisas-links"></div>`);
-            $(append_selector, tweet).append($link_container);
             if (post_ids !== null) {
                 InitializePostIDsLink(tweet_id, $link_container, tweet, post_ids);
             } else {
