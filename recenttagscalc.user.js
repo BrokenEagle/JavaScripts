@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RecentTagsCalc
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.9
+// @version      7.10
 // @description  Use different mechanism to calculate RecentTags.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -15,7 +15,7 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/core-js/3.8.1/minified.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.9.0/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201230-module/lib/module.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/debug.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/utility.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/validate.js
@@ -26,7 +26,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/network.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/danbooru.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201230-menu/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru */
@@ -107,6 +107,7 @@ const SETTINGS_CONFIG = {
     category_order: {
         allitems: category_orders,
         default: category_orders,
+        sortvalue: true,
         validate: (data) => (Array.isArray(data) && JSPLib.utility.arraySymmetricDifference(data,category_orders).length === 0),
         hint: "Drag and drop the categories to determine the group order for the <b>Category</b> order type."
     },
@@ -1016,7 +1017,7 @@ function RenderSettingsMenu() {
     JSPLib.menu.expandableClick();
     JSPLib.menu.dataSourceChange();
     JSPLib.menu.rawDataChange();
-    JSPLib.menu.getCacheClick();
+    JSPLib.menu.getCacheClick(ValidateProgramData);
     JSPLib.menu.saveCacheClick(ValidateProgramData, ValidateEntry);
     JSPLib.menu.deleteCacheClick();
     JSPLib.menu.listCacheClick();

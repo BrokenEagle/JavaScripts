@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      21.7
+// @version      21.8
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -13,7 +13,7 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/core-js/3.8.1/minified.js
 // @require      https://cdn.jsdelivr.net/npm/xregexp@4.4.1/xregexp-all.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201230-module/lib/module.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/debug.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/utility.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/validate.js
@@ -23,7 +23,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/network.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/danbooru.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201230-menu/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru XRegExp LZString */
@@ -2663,7 +2663,7 @@ function RenderSettingsMenu() {
     JSPLib.menu.cacheInfoClick();
     JSPLib.menu.expandableClick();
     JSPLib.menu.rawDataChange();
-    JSPLib.menu.getCacheClick();
+    JSPLib.menu.getCacheClick(ValidateProgramData);
     JSPLib.menu.saveCacheClick(ValidateProgramData);
     JSPLib.menu.deleteCacheClick();
     JSPLib.menu.listCacheClick();

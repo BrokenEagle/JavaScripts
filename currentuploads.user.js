@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.8
+// @version      16.9
 // @description  Gives up-to-date stats on uploads.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -14,7 +14,7 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.9.0/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201230-module/lib/module.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/debug.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/utility.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/validate.js
@@ -24,7 +24,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/network.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/danbooru.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201230-menu/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru CanvasJS */
@@ -1784,7 +1784,7 @@ function RenderSettingsMenu() {
     JSPLib.menu.dataSourceChange();
     $("#cu-control-data-type").on('change.cu', DataTypeChange);
     JSPLib.menu.rawDataChange();
-    JSPLib.menu.getCacheClick();
+    JSPLib.menu.getCacheClick(ValidateProgramData);
     JSPLib.menu.saveCacheClick(ValidateProgramData, ValidateEntry);
     JSPLib.menu.deleteCacheClick();
     JSPLib.menu.listCacheClick();

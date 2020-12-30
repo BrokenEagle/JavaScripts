@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.7
+// @version      28.8
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -14,7 +14,7 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.9.0/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201230-module/lib/module.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/debug.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/utility.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/validate.js
@@ -25,7 +25,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/network.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/danbooru.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201230-menu/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru validate LZString */
@@ -1290,6 +1290,21 @@ function ValidateProgramData(key,entry) {
                 checkerror = ['Value is not a hash'];
             }
             break;
+        case 'iac-ac-source':
+            if (!Number.isInteger(entry) || entry > AUTOCOMPLETE_SOURCE.length || entry < 0) {
+                checkerror = [`Value is not an integer between 0 and {AUTOCOMPLETE_SOURCE.length - 1}.`];
+            }
+            break;
+        case 'iac-ac-mode':
+            if (!Number.isInteger(entry) || entry > AUTOCOMPLETE_MODE.length || entry < 0) {
+                checkerror = [`Value is not an integer between 0 and {AUTOCOMPLETE_MODE.length - 1}.`];
+            }
+            break;
+        case 'iac-ac-caps':
+            if (!Number.isInteger(entry) || entry > AUTOCOMPLETE_CAPITALIZATION.length || entry < 0) {
+                checkerror = [`Value is not an integer between 0 and {AUTOCOMPLETE_CAPITALIZATION.length - 1}.`];
+            }
+            break;
         default:
             checkerror = ["Not a valid program data key."];
     }
@@ -1367,80 +1382,7 @@ function ValidateUsageData(choice_info) {
 
 //Library functions
 
-//Fixes
-
-JSPLib.menu.loadUserSettings = function (self) {
-    let program_shortcut = this.program_shortcut;
-    let config = this.settings_config;
-    let settings = JSPLib.storage.getStorageData(`${program_shortcut}-user-settings`,localStorage,{});
-    let dirty = false;
-    if (Array.isArray(this.settings_migrations)) {
-        this.settings_migrations.forEach((migration)=>{
-            if (config[migration.to].validate((settings[migration.from]))) {
-                self.debug('logLevel',"Migrating setting: ",migration.from,"->",migration.to,JSPLib.debug.INFO);
-                settings[migration.to] = settings[migration.from];
-                delete settings[migration.from];
-                dirty = true;
-            }
-        })
-    }
-    if (!JSPLib.validate.isHash(settings)) {
-        self.debug('warnLevel',"User settings are not a hash!",JSPLib.debug.ERROR);
-        settings = {};
-    }
-    let errors = this.validateUserSettings(settings);
-    if (errors.length) {
-        self.debug('logLevel',"Errors found:\n",errors.join('\n'),JSPLib.debug.WARNING);
-        dirty = true;
-    }
-    if (dirty) {
-        self.debug('logLevel',"Saving updated changes to user settings!",JSPLib.debug.INFO);
-        JSPLib.storage.setStorageData(`${program_shortcut}-user-settings`,settings,localStorage);
-    }
-    self.debug('logLevel',"Returning settings:",settings,JSPLib.debug.DEBUG);
-    return settings;
-};
-
-JSPLib.menu.validateUserSettings = function (self,settings) {
-    let error_messages = [];
-    //This check is for validating settings through the cache editor
-    if (!JSPLib.validate.isHash(settings)) {
-        return ["User settings are not a hash."];
-    }
-    let config = this.settings_config;
-    for (let setting in config) {
-        if (!(setting in settings) || !config[setting].validate(settings[setting])) {
-            if (!(setting in settings)) {
-                error_messages.push(`'${setting}' setting not found.`);
-            } else {
-                error_messages.push(`'${setting}' contains invalid data.`);
-            }
-            let old_setting = settings[setting];
-            let message = "";
-            if (Array.isArray(config[setting].allitems) && Array.isArray(settings[setting]) && !config[setting].sortvalue) {
-                settings[setting] = JSPLib.utility.arrayIntersection(config[setting].allitems,settings[setting]);
-                message = "Removing bad items";
-            } else {
-                settings[setting] = config[setting].default;
-                message = "Loading default";
-            }
-            self.debug('logLevel',`${message}:`,setting,old_setting,"->",settings[setting],JSPLib.debug.WARNING);
-        }
-    }
-    let valid_settings = Object.keys(config);
-    for (let setting in settings) {
-        if (!valid_settings.includes(setting)) {
-            self.debug('logLevel',"Deleting invalid setting:",setting,settings[setting],JSPLib.debug.WARNING);
-            delete settings[setting];
-            error_messages.push(`'${setting}' is an invalid setting.`);
-        }
-    }
-    return error_messages;
-};
-
-//Initialize
-
-JSPLib.debug.addModuleLogs('menu',['loadUserSettings','validateUserSettings']);
+////NONE
 
 //Helper functions
 
@@ -2870,7 +2812,7 @@ function RenderSettingsMenu() {
     JSPLib.menu.dataSourceChange();
     $('#iac-control-data-type').on('change.iac', DataTypeChange);
     JSPLib.menu.rawDataChange();
-    JSPLib.menu.getCacheClick();
+    JSPLib.menu.getCacheClick(ValidateProgramData);
     JSPLib.menu.saveCacheClick(ValidateProgramData, ValidateEntry, UpdateLocalData);
     JSPLib.menu.deleteCacheClick();
     JSPLib.menu.listCacheClick();
