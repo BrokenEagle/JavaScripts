@@ -1385,15 +1385,15 @@ function ValidateUsageData(choice_info) {
 //Helper functions
 
 function ParseQuery(text, caret) {
-  let before_caret_text = text.substring(0, caret);
-  let match = before_caret_text.match(TERM_REGEX);
-  let operator = match[1];
-  let metatag = match[2] ? match[2].toLowerCase() : "tag";
-  let term = match[3];
-  if (metatag in Danbooru.Autocomplete.TAG_CATEGORIES) {
-    metatag = "tag";
-  }
-  return { operator: operator, metatag: metatag, term: term };
+    let before_caret_text = text.substring(0, caret);
+    let match = before_caret_text.match(TERM_REGEX);
+    let operator = match[1];
+    let metatag = match[2] ? match[2].toLowerCase() : "tag";
+    let term = match[3];
+    if (metatag in Danbooru.Autocomplete.TAG_CATEGORIES) {
+        metatag = "tag";
+    }
+    return { operator, metatag, term };
 }
 
 function RemoveTerm(str,index) {
@@ -1414,7 +1414,7 @@ function GetPrefix(str) {
 GetPrefix.prefixhash = {};
 
 function GetIsBur() {
-    return (document.body.dataset.controller === 'bulk-update-requests') && ['edit', 'new'].includes(document.body.dataset.action);
+    return (IAC.controller === 'bulk-update-requests') && ['edit', 'new'].includes(IAC.action);
 }
 
 const MapMetatag = (type,metatag,value) => ({
