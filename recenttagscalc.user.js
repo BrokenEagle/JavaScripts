@@ -596,8 +596,8 @@ function ListTypeCheck() {
     if (RTC.user_settings.list_type[0] === "multiple") {
         RTC.other_recent = JSPLib.storage.checkStorageData('rtc-other-recent',ValidateProgramData,localStorage,[]);
     } else {
-        localStorage.removeItem('rtc-other-recent');
-        localStorage.removeItem('rtc-was-upload');
+        JSPLib.storage.removeStorageData('rtc-other-recent', localStorage);
+        JSPLib.storage.removeStorageData('rtc-was-upload', localStorage);
     }
 }
 
@@ -851,7 +851,7 @@ async function CheckAllRecentTags() {
     if ((RTC.tag_order === "post_count" || RTC.tag_order === "category") && RTC.saved_recent_tags.length) {
         SortTagData(RTC.saved_recent_tags,RTC.tag_order);
     }
-    localStorage.removeItem('rtc-new-recent-tags');
+    JSPLib.storage.removeStorageData('rtc-new-recent-tags', localStorage);
     if (JSPLib.utility.arraySymmetricDifference(original_recent_tags,RTC.recent_tags).length || RTC.saved_recent_tags.length) {
         AddRecentTags(RTC.saved_recent_tags);
     }

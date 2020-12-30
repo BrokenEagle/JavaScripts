@@ -780,8 +780,6 @@ const STATIC_METATAGS = {
 
 //Regex constants
 
-const WORDBREAK_REGEX = /\(+|\)+|[\s_]+|[^\s_()]+/g;
-const ROMAN_REGEX = /^M?M?M?(CM|CD|D?C?C?C?)(XC|XL|L?X?X?X?)(IX|IV|V?I?I?I?)$/i;
 const TERM_REGEX = RegExp('([-~]*)(?:(' + JSPLib.utility.concat(ALL_METATAGS, TYPE_TAGS).join('|') + '):)?(\\S*)$', 'i');
 
 //BUR constants
@@ -1386,26 +1384,6 @@ function ValidateUsageData(choice_info) {
 
 //Helper functions
 
-function ProperCase(string) {
-    return string.match(WORDBREAK_REGEX).map((word) => JSPLib.utility.titleizeString(word)).join("");
-}
-
-function ExceptCase(string) {
-    return string.match(WORDBREAK_REGEX).map((word) => TitleizeExcept(word)).join("");
-}
-
-function RomanCase(string) {
-    return string.match(WORDBREAK_REGEX).map((word) => TitleizeRoman(word)).join("");
-}
-
-function TitleizeExcept(word) {
-    return (['a', 'an', 'of', 'the', 'is'].includes(word) ? word : JSPLib.utility.titleizeString(word));
-}
-
-function TitleizeRoman(word) {
-    return (word.match(ROMAN_REGEX) ? word.toUpperCase() : TitleizeExcept(word));
-}
-
 function ParseQuery(text, caret) {
   let before_caret_text = text.substring(0, caret);
   let match = before_caret_text.match(TERM_REGEX);
@@ -1585,11 +1563,11 @@ function CapitalizeAutocomplete(string) {
         case 2:
             return JSPLib.utility.titleizeString(string);
         case 3:
-            return ProperCase(string);
+            return JSPLib.utility.properCase(string);
         case 4:
-            return ExceptCase(string);
+            return JSPLib.utility.exceptCase(string);
         case 5:
-            return RomanCase(string);
+            return JSPLib.utility.romanCase(string);
         case 0:
         default:
             return string;
