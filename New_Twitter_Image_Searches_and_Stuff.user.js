@@ -4161,6 +4161,18 @@ function IntervalNetworkHandler () {
 
 //Network functions
 
+async function TwitterAPIRequest(endpoint,data) {
+    let url_addons = $.param(data);
+    return await $.ajax({
+        method: 'GET',
+        url: `https://api.twitter.com/1.1/${endpoint}.json?${url_addons}`,
+        processData: false,
+        beforeSend: function (request) {
+            request.setRequestHeader('authorization', 'Bearer AAAAAAAAAAAAAAAAAAAAALVzYQAAAAAAIItU1SgTX8I%2B7Q3Cl3mqvuZiAAc%3D0AtbuGPnZgRlOHbTIk3JudxSGqXxgfkwpMG367Rtyw6GGLwO6N');
+        },
+    });
+}
+
 async function GetItems(item_ids, storage_key, network_key) {
     let storage_promises = item_ids.map((id) => GetData(storage_key + '-' + id, 'danbooru'));
     let storage_data = await Promise.all(storage_promises);
@@ -4315,14 +4327,7 @@ async function GetMaxVideoDownloadLink(tweet_id) {
         if (API_DATA.has_data && tweet_id in API_DATA.tweets) {
             var data = GetAPIData('tweets', tweet_id);
         } else {
-            data = await $.ajax({
-                method: 'GET',
-                beforeSend: function (request) {
-                    request.setRequestHeader('authorization', 'Bearer AAAAAAAAAAAAAAAAAAAAALVzYQAAAAAAIItU1SgTX8I%2B7Q3Cl3mqvuZiAAc%3D0AtbuGPnZgRlOHbTIk3JudxSGqXxgfkwpMG367Rtyw6GGLwO6N');
-                },
-                url: `https://api.twitter.com/1.1/statuses/show.json?id=${tweet_id}&tweet_mode=extended&trim_user=true`,
-                processData: false
-            });
+            data = await TwitterAPIRequest('statuses/show', {id: tweet_id, tweet_mode: 'extended', trim_user: true});
         }
         try {
             var variants = data.extended_entities.media[0].video_info.variants;
