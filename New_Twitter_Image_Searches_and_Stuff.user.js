@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.1
+// @version      7.2
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
 // @match        https://twitter.com/*
-// @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/New_Twitter_Image_Searches_and_Stuff.user.js
+// @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/New_Twitter_Image_Searches_and_Stuff.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/core-js/3.8.1/minified.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js
@@ -19,19 +19,19 @@
 // @require      https://cdn.jsdelivr.net/npm/xregexp@4.4.1/xregexp-all.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b2c15d72e8ba4eec9858c7dd9af02aa54890acf8/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201230-module/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/saucenao.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201230-menu/lib/menu.js
 // @resource     jquery_ui_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/jquery_ui_custom.css
 // @resource     jquery_qtip_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.css
 // @grant        GM_getResourceText
