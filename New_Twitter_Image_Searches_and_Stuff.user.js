@@ -54,7 +54,7 @@
 
 //Library constants
 
-////NONE
+JSPLib.validate.timestamp_constraints = JSPLib.validate.id_constraints;
 
 //Exterior script variables
 
@@ -2102,6 +2102,11 @@ const PROFILE_CONSTRAINTS = {
     level: JSPLib.validate.id_constraints,
 };
 
+const DATABASE_CONSTRAINTS = {
+    post_version: JSPLib.validate.id_constraints,
+    timestamp: JSPLib.validate.timestamp_constraints,
+};
+
 /****Functions****/
 
 function ValidateEntry(key,entry) {
@@ -2341,8 +2346,14 @@ function WasOverflow() {
     return CheckLocalData('ntisas-overflow', false);
 }
 
+//This needs its own separate validation because it should not be exported
+function GetRemoteDatabase() {
+    let data = GetLocalData('ntisas-remote-database');
+    return (JSPLib.validate.validateHashEntries('ntisas-remote-database', data, DATABASE_CONSTRAINTS) ? data : null);
+}
+
 function IsTISASInstalled() {
-    return GetLocalData('ntisas-remote-database') !== null;
+    return GetRemoteDatabase() !== null;
 }
 
 function GetUserIdent() {
@@ -3596,7 +3607,7 @@ function InitializeDatabaseLink() {
         $('#ntisas-database-help').html('&nbsp;&nbsp;&nbsp;');
         return;
     }
-    NTISAS.server_info = GetLocalData('ntisas-remote-database');
+    NTISAS.server_info = GetRemoteDatabase();
     if (NTISAS.server_info === null) {
         return;
     }
