@@ -3820,14 +3820,15 @@ async function InitializeViewCount(tweet) {
 }
 
 function InitializeProfileViewCount(views,data_key,selector,format) {
-    let view_count = 0;
+    let view_title = "";
     let view_time = "initial";
     if (views && views.value.count > 0) {
-        view_count = views.value.count;
+        let date_string = new Date(views.value.viewed).toLocaleDateString();
+        view_title = `${date_string} : ${views.value.count} views`;
         view_time = ((Date.now() - views.value.viewed) < VIEWCOUNT_RECENT_DURATION ? "recently" : TimeAgo(views.value.viewed));
     }
     let display_text = JSPLib.utility.sprintf(format, view_time);
-    $(selector).html(`<span title="${view_count} views">${display_text}</span>`);
+    $(selector).html(`<span title="${view_title}">${display_text}</span>`);
     if (!NTISAS.recorded_views.includes(data_key)) {
         let mapped_view = {
             count: (views ? views.value.count : 0) + 1,
