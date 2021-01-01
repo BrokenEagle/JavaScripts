@@ -3124,6 +3124,7 @@ function IsIQDBAutoclick() {
 //File functions
 
 function ReadFileAsync(fileselector,is_json) {
+    const context = this;
     return new Promise((resolve,reject)=>{
         let files = $(fileselector).prop('files');
         if (!files.length) {
@@ -3135,7 +3136,7 @@ function ReadFileAsync(fileselector,is_json) {
         var reader = new FileReader();
         reader.onloadend = function(event) {
             if (event.target.readyState == FileReader.DONE) {
-                this.debug('log', "File loaded:", file.size);
+                context.debug('log', "File loaded:", file.size);
                 let data = event.target.result;
                 if (is_json) {
                     try {
