@@ -1069,6 +1069,9 @@ const MENU_CSS = `
     color: black;
     background-color: white;
 }
+#ntisas-import-data-errors {
+    border: 1px solid grey;
+}
 #new-twitter-image-searches-and-stuff .ntisas-selectors label {
     width: 140px;
 }
@@ -1264,6 +1267,8 @@ const SETTINGS_MENU = `<div id="new-twitter-image-searches-and-stuff" title="${P
 const IMPORT_FILE_INPUT = '<div class="jsplib-menu-item"><h4>Import file</h4><input size="50" type="file" name="ntisas-import-file" id="ntisas-import-file"></div>';
 
 const LIST_INFO_TABLE = '<div id="ntisas-list-info-table" style="display:none"></div>';
+
+const IMPORT_ERROR_DISPLAY = '<div id="ntisas-import-data-errors" style="display:none"></div>';
 
 const NTISAS_MENU = `
 <div id="ntisas-script-message" class="prose">
@@ -2157,9 +2162,31 @@ function ValidateTypeEntry(key,entry,constraints) {
 function ValidateProgramData(key,entry) {
     var checkerror = [], check;
     switch (key) {
-        case 'ntisas-recent-timestamp':
+        case 'ntisas-user-settings':
+            checkerror = JSPLib.menu.validateUserSettings(entry);
+            break;
+        case 'ntisas-database-length':
             if (!Number.isInteger(entry)) {
                 checkerror = ["Value is not an integer."];
+            }
+            break;
+        case 'ntisas-timeout':
+        case 'ntisas-database-recheck':
+        case 'ntisas-badver-recheck':
+        case 'ntisas-length-recheck':
+        case 'ntisas-user-profile-recheck':
+        case 'ntisas-recent-timestamp':
+        case 'ntisas-process-semaphore-checkuser':
+        case 'ntisas-process-semaphore-purgebad':
+        case 'ntisas-process-semaphore-badvers':
+        case 'ntisas-process-semaphore-records':
+        case 'ntisas-process-semaphore-checkpost':
+        case 'ntisas-process-semaphore-postvers':
+        case 'ntisas-prune-expires':
+            if (!Number.isInteger(entry)) {
+                checkerror = ["Value is not an integer."];
+            } else if (entry < 0) {
+                checkerror = ["Value is not greater than or equal to zero."];
             }
             break;
         case 'ntisas-postver-lastid':
@@ -2169,10 +2196,17 @@ function ValidateProgramData(key,entry) {
             }
             break;
         case 'ntisas-overflow':
+        case 'ntisas-purge-bad':
+        case 'ntisas-indicator-controls':
             if (!JSPLib.validate.isBoolean(entry)) {
                 checkerror = ["Value is not a boolean."];
             }
             break;
+        case 'ntisas-artist-list':
+        case 'ntisas-tweet-list':
+        case 'ntisas-auto-iqdb-list':
+        case 'ntisas-no-highlight-list':
+            return JSPLib.validate.validateArrayValues(key, entry, JSPLib.validate.basic_stringonly_validator);
         case 'ntisas-user-data':
             check = validate(entry, PROFILE_CONSTRAINTS);
             if (check) {
@@ -2201,7 +2235,7 @@ function ValidateProgramData(key,entry) {
             checkerror = ["Not a valid program data key."];
     }
     if (checkerror.length) {
-        JSPLib.validate.printValidateError(key, checkerror);
+        JSPLib.validate.outputValidateError(key, checkerror);
         return false;
     }
     return true;
@@ -4488,7 +4522,10 @@ async function GetSavePackage(export_types) {
     if (export_types.includes('program_data')) {
         Object.keys(localStorage).forEach((key)=>{
             if (key.match(/^ntisas-/)) {
-                save_package.program_data[key] = GetLocalData(key);
+                let temp_data = CheckLocalData(key);
+                if (temp_data !== null) {
+                    save_package.program_data[key] = temp_data;
+                }
             }
         });
     }
@@ -5171,14 +5208,25 @@ function ImportData() {
     if (!NTISAS.import_is_running) {
         NTISAS.import_is_running = true;
         ReadFileAsync('#ntisas-import-file', true).then((import_package)=>{
-            JSPLib.notice.notice("Importing data!");
+            JSPLib.notice.notice("Importing data...");
             let promise_array = [];
+            let errors = false;
+            function userOutput() {
+                if (errors) {
+                    JSPLib.notice.error("Error importing some data!");
+                } else {
+                    JSPLib.notice.notice("Finished importing data.");
+                }
+                NTISAS.import_is_running = false;
+            }
             if ('program_data' in import_package) {
                 this.debug('log', "Program data:" ,import_package.program_data);
                 Object.keys(import_package.program_data).forEach((key)=>{
-                    //For backwards compatibility
-                    let store_key = key.replace(/^tisas-/, 'ntisas-');
-                    SetLocalData(store_key, import_package.program_data[key]);
+                    if (ValidateProgramData(key, import_package.program_data[key])) {
+                        SetLocalData(key, import_package.program_data[key]);
+                    } else {
+                        errors = true;
+                    }
                 });
             }
             if ('database_info' in import_package) {
@@ -5188,8 +5236,10 @@ function ImportData() {
                 promise_array.push(SaveDatabase(import_package.tweet_database, '#ntisas-import-counter'));
                 Promise.all(promise_array).then(()=>{
                     InitializeDatabase();
-                    NTISAS.import_is_running = false;
+                    userOutput()
                 });
+            } else {
+                userOutput();
             }
         }).catch(()=>{
             NTISAS.import_is_running = false;
@@ -6241,6 +6291,7 @@ function RenderSettingsMenu() {
     $('#ntisas-cache-controls').append(JSPLib.menu.renderLinkclick('cache_info', true));
     $('#ntisas-cache-controls').append(JSPLib.menu.renderCacheInfoTable());
     $('#ntisas-cache-controls').append(JSPLib.menu.renderLinkclick('purge_cache', true));
+    $('#ntisas-cache-controls').append(IMPORT_ERROR_DISPLAY);
     //Engage jQuery UI
     JSPLib.menu.engageUI(true);
     $('#ntisas-settings').tabs();
@@ -6373,6 +6424,9 @@ JSPLib.menu.control_config = CONTROL_CONFIG;
 
 //Variables for storage.js
 JSPLib.storage.prune_limit = 2000;
+
+//Variables for validate.js
+JSPLib.validate.dom_output = '#ntisas-import-data-errors';
 
 //variables for network.js
 JSPLib.network.error_domname = '#ntisas-error-messages';
