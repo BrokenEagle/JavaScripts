@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.8
+// @version      28.9
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -184,6 +184,11 @@ const SETTINGS_CONFIG = {
         default: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Uses the <code>/tags</code> controller instead of the normal autocomplete source."
+    },
+    alternate_tag_wildcards: {
+        default: false,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Allows using a wildcard anywhere in a string with a wildcard always being added to the end."
     },
     network_only_mode: {
         default: false,
@@ -632,11 +637,12 @@ const RELATED_TAG_SETTINGS_DETAILS = `
 
 const NETWORK_SETTINGS_DETAILS = `
 <ul>
-    <li><b>Alternate tag source:</b>
-        <ul>
-            <li>No aliases.</li>
-            <li>No fuzzy or intelligent autocomplete.</li>
-            <li>All results will be exact matches.</li>
+    <li><b>Alternate tag source:</b> No tag correct or tag prefix matches.</li>
+    <li><b>Alternate tag wildcards:</b> This uses the <code>/tags</code> endpoint instead of the usual <code>/autocomplete</code> one when wildcards are used, though that shouldn't change the results being returned.
+        <ul><b>[Different wildcard bedhavior]</b>
+            <li>No wildcards - A wildcard always gets appended to the end of the string.</li>
+            <li>Danbooru wildcards - The wildcards get used as they are input, and no wildcard is appended at the end.</li>
+            <li>Alternate wildcards - A wildcard always gets appended to the end of the string.</li>
         </ul>
     </li>
     <li><b>Network only mode:</b>
@@ -915,21 +921,21 @@ const SOURCE_CONFIG = {
     },
     tag2: {
         url: 'tags',
-        data: (term)=>{
-            return {
+        data: (term) => (
+            {
                 search: {
-                    name_matches: term + '*',
+                    name_or_alias_matches: term + '*',
                     hide_empty: true,
-                    order: 'count'
+                    order: 'count',
                 },
-                only: 'name,category,post_count'
-            };
-        },
-        map: (tag) => (
+                only: 'name,category,post_count,consequent_aliases[antecedent_name]',
+            }
+        ),
+        map: (tag,term) => (
             {
                 type: 'tag',
                 label: tag.name.replace(/_/g, ' '),
-                antecedent: null,
+                antecedent: GetConsequentMatch(term, tag),
                 value: tag.name,
                 category: tag.category,
                 post_count: tag.post_count,
@@ -1412,6 +1418,15 @@ function GetPrefix(str) {
     return GetPrefix.prefixhash[str];
 }
 GetPrefix.prefixhash = {};
+
+function GetConsequentMatch(term,tag) {
+    let regex = RegExp(JSPLib.utility.regexpEscape(term).replace(/\\\*/g, '.*'));
+    if (tag.name.match(regex)) {
+        return null;
+    }
+    let matching_consequent = tag.consequent_aliases.filter((consequent) => consequent.antecedent_name.match(regex));
+    return (matching_consequent.length ? matching_consequent[0].antecedent_name : null);
+}
 
 function GetIsBur() {
     return (IAC.controller === 'bulk-update-requests') && ['edit', 'new'].includes(IAC.action);
@@ -2442,16 +2457,17 @@ function QueueRelatedTagColumnWidths() {
 
 async function NetworkSource(type,key,term,metatag,query_type,process=true) {
     this.debug('log',"Querying", type, ':', term);
-    let url_addons = $.extend({limit: IAC.user_settings.source_results_returned}, SOURCE_CONFIG[type].data(term));
-    let data = await JSPLib.danbooru.submitRequest(SOURCE_CONFIG[type].url, url_addons);
+    const CONFIG = (IAC.user_settings.alternate_tag_wildcards && type === 'tag' && Boolean(term.match(/\*/)) ? SOURCE_CONFIG.tag2 : SOURCE_CONFIG[type]);
+    let url_addons = $.extend({limit: IAC.user_settings.source_results_returned}, CONFIG.data(term));
+    let data = await JSPLib.danbooru.submitRequest(CONFIG.url, url_addons);
     if (!data || !Array.isArray(data)) {
         return [];
     }
-    var d = data.map(SOURCE_CONFIG[type].map);
-    var expiration_time = SOURCE_CONFIG[type].expiration(d);
+    var d = data.map((item) => CONFIG.map(item, term));
+    var expiration_time = CONFIG.expiration(d);
     var save_data = JSPLib.utility.dataCopy(d);
     JSPLib.storage.saveData(key, {value: save_data, expires: JSPLib.utility.getExpires(expiration_time)});
-    if (SOURCE_CONFIG[type].fixupexpiration && d.length) {
+    if (CONFIG.fixupexpiration && d.length) {
         setTimeout(()=>{FixExpirationCallback(key, save_data, save_data[0].value, type);}, CALLBACK_INTERVAL);
     }
     if (process) {
@@ -2766,6 +2782,7 @@ function RenderSettingsMenu() {
     $('#iac-network-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", NETWORK_SETTINGS_DETAILS));
     $('#iac-network-settings').append(JSPLib.menu.renderTextinput('recheck_data_interval', 5));
     $('#iac-network-settings').append(JSPLib.menu.renderCheckbox('alternate_tag_source'));
+    $('#iac-network-settings').append(JSPLib.menu.renderCheckbox('alternate_tag_wildcards'));
     $('#iac-network-settings').append(JSPLib.menu.renderCheckbox('network_only_mode'));
     $('#iac-controls').append(JSPLib.menu.renderCacheControls());
     $('#iac-cache-controls-message').append(JSPLib.menu.renderExpandable("Cache Data details", CACHE_DATA_DETAILS));
