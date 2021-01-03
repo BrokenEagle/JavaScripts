@@ -2172,6 +2172,19 @@ function RebindSingleTag() {
     }, TIMER_POLL_INTERVAL);
 }
 
+function ReorderAutocompleteEvent($obj) {
+    try {
+        let private_data = JSPLib.utility.getPrivateData($obj[0]);
+        let keydown_events = JSPLib.utility.getNestedAttribute(private_data, ['events', 'keydown']);
+        let autocomplete_event = keydown_events.filter((event) => event.namespace.startsWith("autocomplete"));
+        let autocomplete_position = keydown_events.indexOf(autocomplete_event[0]);
+        keydown_events.splice(autocomplete_position, 1);
+        keydown_events.unshift(autocomplete_event[0]);
+    } catch (error) {
+        JSPLib.debug.debugerror("Unable to reorder autocomplete events!", error);
+    }
+}
+
 //Initialization functions
 
 function DanbooruIntializeTagAutocomplete() {
@@ -2242,6 +2255,10 @@ function DanbooruIntializeTagAutocomplete() {
         let autocomplete = $(entry).data('uiAutocomplete');
         autocomplete._renderItem = Danbooru.Autocomplete.render_item;
     });
+    let $tag_input_fields = $("#upload_tag_string, #post_tag_string");
+    if ($tag_input_fields.length) {
+        ReorderAutocompleteEvent($tag_input_fields);
+    }
 }
 
 function InitializeAutocompleteIndexed(selector,keycode,multiple=false,wiki=false) {
