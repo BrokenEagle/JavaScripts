@@ -2181,6 +2181,11 @@ function ReorderAutocompleteEvent($obj) {
         let autocomplete_position = keydown_events.indexOf(autocomplete_event[0]);
         keydown_events.splice(autocomplete_position, 1);
         keydown_events.unshift(autocomplete_event[0]);
+        //The tab event handler must go before the autocomplete handler
+        let tab_event = keydown_events.filter((event) => event.namespace.startsWith("Autocomplete.tab"));
+        let tab_position = keydown_events.indexOf(tab_event[0]);
+        keydown_events.splice(tab_position, 1);
+        keydown_events.unshift(tab_event[0]);
     } catch (error) {
         JSPLib.debug.debugerror("Unable to reorder autocomplete events!", error);
     }
