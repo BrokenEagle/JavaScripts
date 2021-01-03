@@ -2174,18 +2174,17 @@ function RebindSingleTag() {
 }
 
 function ReorderAutocompleteEvent($obj) {
+    function RequeueEvent(str,event_array) {
+        let position = event_array.findIndex((event) => event.namespace.startsWith(str));
+        let item = event_array.splice(position, 1);
+        event_array.unshift(item[0]);
+    }
     try {
         let private_data = JSPLib.utility.getPrivateData($obj[0]);
         let keydown_events = JSPLib.utility.getNestedAttribute(private_data, ['events', 'keydown']);
-        let autocomplete_event = keydown_events.filter((event) => event.namespace.startsWith("autocomplete"));
-        let autocomplete_position = keydown_events.indexOf(autocomplete_event[0]);
-        keydown_events.splice(autocomplete_position, 1);
-        keydown_events.unshift(autocomplete_event[0]);
+        RequeueEvent('autocomplete', keydown_events);
         //The tab event handler must go before the autocomplete handler
-        let tab_event = keydown_events.filter((event) => event.namespace.startsWith("Autocomplete.tab"));
-        let tab_position = keydown_events.indexOf(tab_event[0]);
-        keydown_events.splice(tab_position, 1);
-        keydown_events.unshift(tab_event[0]);
+        RequeueEvent('Autocomplete.Tab', keydown_events);
     } catch (error) {
         JSPLib.debug.debugerror("Unable to reorder autocomplete events!", error);
     }
