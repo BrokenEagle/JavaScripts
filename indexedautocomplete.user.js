@@ -931,17 +931,15 @@ const SOURCE_CONFIG = {
                 only: 'name,category,post_count,consequent_aliases[antecedent_name]',
             }
         ),
-        map: (tag,term) => (
-            {
+        map: (tag,term) =>
+            Object.assign({
                 type: 'tag',
                 label: tag.name.replace(/_/g, ' '),
-                antecedent: GetConsequentMatch(term, tag),
                 value: tag.name,
                 category: tag.category,
                 post_count: tag.post_count,
-                source: 'tag',
-            }
-        ),
+            }, GetConsequentMatch(term, tag))
+        ,
         expiration: (d)=>{
             return (d.length ? ExpirationTime('tag', d[0].post_count) : MinimumExpirationTime('tag'));
         },
@@ -1420,12 +1418,15 @@ function GetPrefix(str) {
 GetPrefix.prefixhash = {};
 
 function GetConsequentMatch(term,tag) {
+    let retval = {source: 'tag', antecedent: null};
     let regex = RegExp(JSPLib.utility.regexpEscape(term).replace(/\\\*/g, '.*'));
-    if (tag.name.match(regex)) {
-        return null;
+    if (!tag.name.match(regex)) {
+        let matching_consequent = tag.consequent_aliases.filter((consequent) => consequent.antecedent_name.match(regex));
+        if (matching_consequent.length) {
+            retval = {source: 'tag-alias', antecedent: matching_consequent[0].antecedent_name};
+        }
     }
-    let matching_consequent = tag.consequent_aliases.filter((consequent) => consequent.antecedent_name.match(regex));
-    return (matching_consequent.length ? matching_consequent[0].antecedent_name : null);
+    return retval;
 }
 
 function GetIsBur() {
