@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      21.8
+// @version      21.9
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -797,7 +797,13 @@ const TYPEDICT = {
     },
     post: {
         controller: 'post_versions',
-        addons: {search: {is_new: false}},
+        get addons() {
+            let addons = {search: {is_new: false}};
+            if (EL.user_settings.filter_BUR_edits) {
+                addons.search.updater_id_not_eq = SERVER_USER_ID;
+            }
+            return addons;
+        },
         user: 'updater_id',
         creator: ['post', 'uploader_id'],
         item: 'post_id',
