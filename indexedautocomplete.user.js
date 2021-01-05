@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.10
+// @version      28.11
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1960,11 +1960,13 @@ function HighlightSelected($link,list,item) {
                 default:
                     //Do nothing
             }
-            $($link).attr('data-autocomplete-type', item.source);
         }
         if (IAC.highlight_used && IAC.current_tags.includes(item.value)) {
             $($link).addClass('iac-already-used');
         }
+    }
+    if (item.type === 'tag') {
+        $($link).attr('data-autocomplete-type', item.source);
     }
     return $link;
 }
