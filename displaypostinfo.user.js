@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DisplayPostInfo
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      12.0
+// @version      12.1
 // @description  Display views, uploader, and other info to the user.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -858,25 +858,6 @@ function Main() {
             DisplayTopTagger();
         }
     } else if (DPI.controller === 'posts' && DPI.action === 'index') {
-        let all_uploaders = JSPLib.utility.arrayUnique(JSPLib.utility.getDOMAttributes($(".post-preview"), 'uploader-id'));
-        DPI.all_uploaders = GetUserListData(all_uploaders);
-        if (!DPI.basic_tooltips && DPI.user_settings.advanced_post_tooltip) {
-            if (DPI.user_settings.post_favorites_enabled) {
-                Danbooru.PostTooltip.on_show = JSPLib.utility.hijackFunction(Danbooru.PostTooltip.on_show, RenderTooltip);
-            }
-            Danbooru.PostTooltip.SHOW_DELAY = DPI.user_settings.post_show_delay;
-            Danbooru.PostTooltip.HIDE_DELAY = DPI.user_settings.post_hide_delay;
-            if (document.body._tippy) {
-                $(document).off("click.danbooru.postTooltip");
-                document.body._tippy.destroy();
-                Danbooru.PostTooltip.initialize();
-            }
-        } else if (DPI.basic_tooltips && DPI.user_settings.basic_post_tooltip) {
-            UpdateThumbnailTitles();
-        }
-        if (DPI.user_settings.post_favorites_enabled) {
-            DPI.favorites_promise = ProcessPostFavorites();
-        }
         $('#tag-box').after(POST_INDEX_STATISTICS);
         if (DPI.user_settings.post_statistics_enabled) {
             ProcessPostStatistics();
@@ -888,6 +869,25 @@ function Main() {
             ProcessTagStatistics();
         }
         JSPLib.utility.setCSSStyle(post_index_css,'program');
+    }
+    if (DPI.user_settings.post_favorites_enabled) {
+        DPI.favorites_promise = ProcessPostFavorites();
+    }
+    if (!DPI.basic_tooltips && DPI.user_settings.advanced_post_tooltip) {
+        if (DPI.user_settings.post_favorites_enabled) {
+            Danbooru.PostTooltip.on_show = JSPLib.utility.hijackFunction(Danbooru.PostTooltip.on_show, RenderTooltip);
+        }
+        Danbooru.PostTooltip.SHOW_DELAY = DPI.user_settings.post_show_delay;
+        Danbooru.PostTooltip.HIDE_DELAY = DPI.user_settings.post_hide_delay;
+        if (document.body._tippy) {
+            $(document).off("click.danbooru.postTooltip");
+            document.body._tippy.destroy();
+            Danbooru.PostTooltip.initialize();
+        }
+    } else if (DPI.basic_tooltips && DPI.user_settings.basic_post_tooltip) {
+        let all_uploaders = JSPLib.utility.arrayUnique(JSPLib.utility.getDOMAttributes($(".post-preview"), 'uploader-id'));
+        DPI.all_uploaders = GetUserListData(all_uploaders);
+        UpdateThumbnailTitles();
     }
     JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
     setTimeout(()=>{
