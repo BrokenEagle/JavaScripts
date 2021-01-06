@@ -708,7 +708,8 @@ function ProcessDomainStatistics() {
 //Settings functions
 
 function RemoteSettingsCallback() {
-    InitializeChangedSettings();
+    //FIX FOR MENU LIBRARY
+    setTimeout(()=>{InitializeChangedSettings();}, 1);
 }
 
 function InitializeChangedSettings() {
