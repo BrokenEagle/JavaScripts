@@ -67,7 +67,7 @@ const SOURCE_TYPES = ['original','normalized'];
 //Main settings
 const SETTINGS_CONFIG = {
     post_views_enabled: {
-        default: true,
+        default: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Shows post views on the post page."
     },
@@ -77,12 +77,12 @@ const SETTINGS_CONFIG = {
         hint: "Shows top tagger on the post page."
     },
     basic_post_tooltip: {
-        default: true,
+        default: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Adds the post uploader to the basic post tooltips."
     },
     advanced_post_tooltip: {
-        default: true,
+        default: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Enables the configuration of post tooltip settings."
     },
@@ -104,12 +104,12 @@ const SETTINGS_CONFIG = {
         hint: "Adds attributes to posts that allows the user to apply their own CSS styles to them."
     },
     post_statistics_enabled: {
-        default: true,
+        default: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Shows post statistics for all of the posts on a page."
     },
     domain_statistics_enabled: {
-        default: true,
+        default: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Shows domain statistics for all of the posts on a page."
     },
@@ -120,7 +120,7 @@ const SETTINGS_CONFIG = {
         hint: "Select the type of post source to be used for domain statistics."
     },
     tag_statistics_enabled: {
-        default: true,
+        default: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Shows the percentage of posts with the tags from the tag column."
     },
