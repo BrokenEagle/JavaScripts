@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DisplayPostInfo
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      11.2
+// @version      12.0
 // @description  Display views, uploader, and other info to the user.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -97,6 +97,11 @@ const SETTINGS_CONFIG = {
         parse: parseInt,
         validate: (data) => (Number.isInteger(data) && data >= 0),
         hint: "How long to delay hiding the post tooltip (in milliseconds)."
+    },
+    post_favorites_enabled: {
+        default: false,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Adds attributes to posts that allows the user to apply their own CSS styles to them."
     },
     post_statistics_enabled: {
         default: true,
@@ -591,18 +596,13 @@ async function DisplayTopTagger() {
 ////#A-INDEX
 
 async function RenderTooltip(render_promise, instance) {
-    let [,data] = await Promise.all([render_promise, DPI.all_uploaders]);
-    let $tooltip = $(instance.popper);
-    if ($('.dpi-username', $tooltip[0]).length) {
+    await Promise.all([render_promise, DPI.favorites_promise]);
+    let $target = $(instance.reference);
+    let post_id = $target.closest('.post-preview').data('id');
+    if (!DPI.favorite_ids.includes(post_id)) {
         return;
     }
-    let $target = $(instance.reference);
-    var uploader_id = $target.closest('.post-preview').data("uploader-id");
-    if (!(uploader_id in data)) {
-        data[uploader_id] = await GetUserData(uploader_id);
-    }
-    let name_html = RenderUsername(uploader_id, data[uploader_id]);
-    $(".post-tooltip-header-left", $tooltip[0]).prepend(name_html);
+    $(instance.popper).find('.fa-heart').switchClass('far', 'fas');
 }
 
 function UpdateThumbnailTitles() {
@@ -614,6 +614,19 @@ function UpdateThumbnailTitles() {
             title += ` user:${data[uploader_id].name}`;
             $image.attr('title',title);
         });
+    });
+}
+
+async function ProcessPostFavorites() {
+    let $post_previews = $(".post-preview");
+    let post_ids = $post_previews.map((i,entry) => $(entry).data('id')).toArray();
+    let favorites = await JSPLib.danbooru.submitRequest('favorites', {search: {user_id: DPI.user_id, post_id: post_ids.join(',')}, limit: post_ids.length, only: 'post_id'});
+    DPI.favorite_ids = JSPLib.utility.getObjectAttributes(favorites, 'post_id');
+    $post_previews.each((i,entry)=>{
+        let $entry = $(entry);
+        let post_id = $entry.data('id');
+        let is_favorited = DPI.favorite_ids.includes(post_id);
+        $entry.attr('data-is-favorited', is_favorited).data('is_favorited', is_favorited);
     });
 }
 
@@ -779,6 +792,7 @@ function RenderSettingsMenu() {
     $("#dpi-general-settings").append(JSPLib.menu.renderDomainSelectors());
     $("#dpi-information-settings").append(JSPLib.menu.renderCheckbox('post_views_enabled'));
     $("#dpi-information-settings").append(JSPLib.menu.renderCheckbox('top_tagger_enabled'));
+    $("#dpi-information-settings").append(JSPLib.menu.renderCheckbox('post_favorites_enabled'));
     $("#dpi-tooltip-settings").append(JSPLib.menu.renderCheckbox('basic_post_tooltip'));
     $("#dpi-tooltip-settings").append(JSPLib.menu.renderCheckbox('advanced_post_tooltip'));
     $('#dpi-tooltip-settings').append(JSPLib.menu.renderTextinput('post_show_delay', 10));
@@ -821,6 +835,7 @@ function Main() {
     Object.assign(DPI, {
         controller: document.body.dataset.controller,
         action: document.body.dataset.action,
+        user_id: Danbooru.CurrentUser.data('id'),
         basic_tooltips: Danbooru.CurrentUser.data('disable-post-tooltips'),
         user_settings: JSPLib.menu.loadUserSettings(),
     }, DEFAULT_VALUES);
@@ -845,6 +860,9 @@ function Main() {
         let all_uploaders = JSPLib.utility.arrayUnique(JSPLib.utility.getDOMAttributes($(".post-preview"), 'uploader-id'));
         DPI.all_uploaders = GetUserListData(all_uploaders);
         if (!DPI.basic_tooltips && DPI.user_settings.advanced_post_tooltip) {
+            if (DPI.user_settings.post_favorites_enabled) {
+                Danbooru.PostTooltip.on_show = JSPLib.utility.hijackFunction(Danbooru.PostTooltip.on_show, RenderTooltip);
+            }
             Danbooru.PostTooltip.SHOW_DELAY = DPI.user_settings.post_show_delay;
             Danbooru.PostTooltip.HIDE_DELAY = DPI.user_settings.post_hide_delay;
             if (document.body._tippy) {
@@ -854,6 +872,9 @@ function Main() {
             }
         } else if (DPI.basic_tooltips && DPI.user_settings.basic_post_tooltip) {
             UpdateThumbnailTitles();
+        }
+        if (DPI.user_settings.post_favorites_enabled) {
+            DPI.favorites_promise = ProcessPostFavorites();
         }
         $('#tag-box').after(POST_INDEX_STATISTICS);
         if (DPI.user_settings.post_statistics_enabled) {
@@ -876,9 +897,9 @@ function Main() {
 /****Function decoration****/
 
 [
-    Main, GetUserData, DisplayPostViews, DisplayTopTagger, RenderTooltip, GetUserListData, ValidateEntry,
+    Main, GetUserData, DisplayPostViews, DisplayTopTagger, GetUserListData, ValidateEntry,
 ] = JSPLib.debug.addFunctionLogs([
-    Main, GetUserData, DisplayPostViews, DisplayTopTagger, RenderTooltip, GetUserListData, ValidateEntry,
+    Main, GetUserData, DisplayPostViews, DisplayTopTagger, GetUserListData, ValidateEntry,
 ]);
 
 [
