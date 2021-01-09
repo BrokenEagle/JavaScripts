@@ -5287,20 +5287,20 @@ function UpdateUserIDCallback() {
     function checkUserID() {
         //This will be true if the ID was found in storage
         if (JSPLib.validate.isString(NTISAS.user_id)) {
-            JSPLib.notice.debugNotice("User ID storage path");
+            JSPLib.notice.debugNoticeLevel("User ID storage path", JSPLib.debug.DEBUG);
             return true;
         }
         let found_ID = true;
         let user_id;
         if (API_DATA.has_data && NTISAS.account && (NTISAS.account in API_DATA.users_name)) {
             NTISAS.user_id = GetAPIData('users_name', NTISAS.account, 'id_str');
-            JSPLib.notice.debugNotice("Primary user ID path");
+            JSPLib.notice.debugNoticeLevel("Primary user ID path", JSPLib.debug.DEBUG);
         } else if (user_id = getUserID('[src*="/profile_banners/"]', 'src', BANNER_REGEX, 1)) {
             NTISAS.user_id = user_id;
-            JSPLib.notice.debugNotice("Alternate user ID path #1");
+            JSPLib.notice.debugNoticeLevel("Alternate user ID path #1", JSPLib.debug.DEBUG);
         } else if (user_id = getUserID('[href^="/i/connect_people?user_id="]', 'href', /\d+/, 0)) {
             NTISAS.user_id = user_id;
-            JSPLib.notice.debugNotice("Alternate user ID path #2");
+            JSPLib.notice.debugNoticeLevel("Alternate user ID path #2", JSPLib.debug.DEBUG);
         } else {
             found_ID = false;
         }
