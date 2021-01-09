@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         DisplayPostInfo
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      12.1
+// @version      12.2
 // @description  Display views, uploader, and other info to the user.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
 // @match        *://*.donmai.us/
 // @match        *://*.donmai.us/posts*
+// @match        *://*.donmai.us/explore/posts/*
 // @match        *://*.donmai.us/settings
 // @exclude      /^https?://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
 // @grant        none
@@ -44,7 +45,7 @@ const DANBOORU_TOPIC_ID = '15926';
 //Variables for load.js
 const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery','Danbooru.PostTooltip'];
 const PROGRAM_LOAD_REQUIRED_SELECTORS = ["#page"];
-const PROGRAM_LOAD_OPTIONAL_SELECTORS = ['#c-posts #a-show','#c-posts #a-index','#c-users #a-edit'];
+const PROGRAM_LOAD_OPTIONAL_SELECTORS = ['#c-posts #a-show','#c-posts #a-index',"#c-explore-posts #a-viewed","#c-explore-posts #a-curated",'#c-users #a-edit'];
 
 //Program name constants
 const PROGRAM_SHORTCUT = 'dpi';
