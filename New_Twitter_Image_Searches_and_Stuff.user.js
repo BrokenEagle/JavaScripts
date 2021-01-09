@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.2
+// @version      7.3
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -5592,7 +5592,11 @@ function MarkupMainTweet(tweet) {
         has_media = true;
     } else if (remaining_lines === 1) {
         let element = sub_body.children[reply_line_count + 1];
-        has_media = element.children[0].tagName.toUpperCase() !== 'SPAN' && element.children[0].children[0].tagName.toUpperCase() !== 'SPAN';
+        if (element.childElementCount === 0) {
+            $(element).addClass('ntisas-blank-line');
+            element = element.previousElementSibling;
+        }
+        has_media = $('[lang] > span', element).length === 0;
         let element_class = (has_media ? 'ntisas-tweet-media' : 'ntisas-tweet-text');
         $(element).addClass(element_class);
     }
@@ -6087,7 +6091,7 @@ function BroadcastTISAS(ev) {
 }
 
 function RemoteSettingsCallback() {
-    InitializeChangedSettings();
+    setTimeout(()=>{InitializeChangedSettings();}, 1);
 }
 
 function InitializeChangedSettings() {
