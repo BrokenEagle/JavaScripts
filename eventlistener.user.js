@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      21.9
+// @version      21.10
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1683,9 +1683,9 @@ function AdjustRowspan(rowelement,openitem) {
 function RenderMultilinkMenu(itemid,all_types,event_type) {
     let shown = (all_types.length === 0 || IsAnyEventEnabled(all_types, event_type) ? "" : 'style="display:none"');
     return `
-<menu id="el-subscribe-events" data-id="${itemid}" data-type="${event_type}" ${shown}>
+<div id="el-subscribe-events" data-id="${itemid}" data-type="${event_type}" ${shown}>
     Subscribe (<span id="el-add-links"></span>)
-</menu>`;
+</div>`;
 }
 
 function RenderSubscribeDualLinks(type,itemid,tag,separator,ender,right=false) {
@@ -1712,7 +1712,7 @@ function RenderSubscribeMultiLinks(name,typelist,itemid,event_type) {
     let classname = (is_subscribed ? 'el-subscribed' : 'el-unsubscribed');
     let keyname = JSPLib.utility.kebabCase(name);
     let idname = 'el-' + keyname + '-link';
-    return `<li id="${idname}" data-type="${typelist}" class="el-multi-link ${classname}"><a href="javascript:void(0)">${name}</a></li>`;
+    return `<span id="${idname}" data-type="${typelist}" class="el-multi-link ${classname}"><a href="javascript:void(0)">${name}</a></span>`;
 }
 
 function RenderOpenItemLinks(type,itemid,showtext="Show",hidetext="Hide") {
