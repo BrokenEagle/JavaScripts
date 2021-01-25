@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      21.10
+// @version      21.11
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -894,6 +894,9 @@ const TYPEDICT = {
     },
     mod_action: {
         controller: 'mod_actions',
+        get addons() {
+            return {search: {category: EL.user_settings.subscribed_mod_actions.join(',')}};
+        },
         only: 'id,category',
         filter: (array) => (array.filter((val) => (IsCategorySubscribed(val.category)))),
         insert: InsertEvents,
