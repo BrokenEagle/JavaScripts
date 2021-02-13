@@ -5619,7 +5619,7 @@ function MarkupMainTweet(tweet) {
             $(element).addClass('ntisas-blank-line');
             element = element.previousElementSibling;
         }
-        has_media = $('[lang] > span', element).length === 0;
+        has_media = $('[lang] > span', element).length === 0 || $('time', element).length === 1;
         let element_class = (has_media ? 'ntisas-tweet-media' : 'ntisas-tweet-text');
         $(element).addClass(element_class);
     }
@@ -5951,7 +5951,7 @@ function ProcessNewTweets() {
     $tweets.each((i,entry)=>{
         $(entry).addClass('ntisas-tweet').attr('viewed', 'false');
         if (IsTweetPage()) {
-            if ($('article > div > div > div', entry).children().length > 2) {
+            if ($('> div > article > div > div > div', entry).children().length > 2) {
                 main_tweets.push(entry);
             }
         } else if ($('a > time', entry).length) {
