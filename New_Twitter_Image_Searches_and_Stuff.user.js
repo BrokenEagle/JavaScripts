@@ -2282,7 +2282,21 @@ function VaildateColorArray(array) {
 
 //Library functions
 
-////NONE
+JSPLib.network.getImage = function (image_url) {
+    JSPLib.debug.recordTime(image_url, 'Network');
+    return GM.xmlHttpRequest({
+            method: 'GET',
+            url: image_url,
+            responseType: 'blob',
+    }).then((resp)=>{
+        if (resp.status < 200 || resp.status >= 400) {
+            JSPLib.utility.throw(resp.status);
+        }
+        return resp.response;
+    }).finally(()=>{
+        JSPLib.debug.recordTimeEnd(image_url, 'Network');
+    });
+};
 
 //Helper functions
 
@@ -5179,6 +5193,15 @@ function DownloadOriginal(event) {
             let image_blob = blob.slice(0, blob.size, mime_type);
             saveAs(image_blob, download_name);
             this.debug('log', "Saved", extension, "file as", mime_type, "with size of", blob.size);
+        }).catch((e)=>{
+            let error_text = 'Check the debug console.';
+            if (Number.isInteger(e)) {
+                error_text = 'HTTP ' + e;
+            } else {
+                console.error("DownloadOriginal error:", e);
+            }
+            JSPLib.notice.error(`Error downloading image: ${error_text}`);
+        }).finally(()=>{
             let counter = parseInt($counter.text());
             $counter.text(counter - 1);
         });
