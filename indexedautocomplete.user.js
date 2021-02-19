@@ -1061,7 +1061,7 @@ const SOURCE_CONFIG = {
                 search: {
                     order: 'post_count',
                     hide_deleted: true,
-                    title_ilike: term + '*'
+                    title_ilike: term.replace(/ /g, '_') + '*',
                 },
                 only: 'title,category_name'
             };
