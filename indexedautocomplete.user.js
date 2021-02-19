@@ -1070,7 +1070,7 @@ const SOURCE_CONFIG = {
             return {
                 label: wikipage.title.replace(/_/g, ' '),
                 value: wikipage.title,
-                category: wikipage.category_name
+                category: wikipage.category_name || 0,
             };
         },
         expiration: ()=>{
