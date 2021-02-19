@@ -1811,8 +1811,8 @@ function InsertUserSelected(data,input,selected) {
         if (!type) {
             let autocomplete_type = $(input).data('autocomplete');
             if (autocomplete_type === 'tag-query' || autocomplete_type === 'tag-edit') {
-                let match = selected.match(Danbooru.Autocomplete.METATAGS_REGEX);
-                type = (match ? match[0] : 'tag');
+                let match = selected.match(TERM_REGEX);
+                type = (match[2] && match[3].length ? match[2] : 'tag');
             } else {
                 type = autocomplete_type.replace(/-/g, "");
             }
