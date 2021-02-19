@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.11
+// @version      28.12
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1015,13 +1015,13 @@ const SOURCE_CONFIG = {
                     name_matches: term,
                     creator_id: IAC.userid,
                 },
-                only: 'name,post_count'
+                only: 'name,post_ids'
             };
         },
         map: (favgroup)=>{
             return {
                 name: favgroup.name,
-                post_count: favgroup.post_count
+                post_count: favgroup.post_ids.length,
             };
         },
         expiration: ()=>{
