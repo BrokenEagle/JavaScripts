@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.13
+// @version      28.14
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1389,7 +1389,9 @@ function ValidateUsageData(choice_info) {
 
 //Library functions
 
-////NONE
+JSPLib.load.setProgramGetter = function (program_value,other_program_key,other_program_name) {
+    Object.defineProperty(program_value, other_program_key, { get: function() {return JSPLib.load.getExport(other_program_name) || Danbooru[other_program_key] || {};}});
+};
 
 //Helper functions
 
@@ -2876,8 +2878,8 @@ function Main() {
         this.debug('log',"No autocomplete inputs! Exiting...");
         return;
     }
+    JSPLib.load.setProgramGetter(IAC, 'RTC', 'RecentTagsCalc');
     Object.assign(IAC, {
-        get RTC() {return JSPLib.load.getExport('RecentTagsCalc') || Danbooru.RTC || {};},
         choice_info: JSPLib.storage.getStorageData('iac-choice-info', localStorage, {}),
         is_bur: GetIsBur(),
     }, PROGRAM_RESET_KEYS);
