@@ -920,6 +920,11 @@ async function LoadFrequentTags() {
             }
         }
     } else {
+        if (RTC.controller === 'posts' && RTC.action === 'show') {
+            await new Promise((resolve)=>{
+                $(document).one("rtc:get-frequent-tags", () => resolve(null));
+            });
+        }
         await QueryFrequentTags();
     }
     return true;
@@ -968,6 +973,16 @@ function RebindShowRelatedTags() {
                 if (!RTC.IAC.cached_data) {
                     $(document).one("danbooru:show-related-tags", Danbooru.Upload.fetch_data_manual);
                 }
+                let timer = JSPLib.utility.initializeInterval(()=>{
+                    if (!JSPLib.utility.isNamespaceBound(document, 'danbooru:show-related-tags', 'rtc')) {
+                        $(document).one("danbooru:show-related-tags.rtc", () => {
+                            $(document).trigger("rtc:get-frequent-tags");
+                            clearInterval(timer);
+                        });
+                    } else if (JSPLib.utility.getProgramTime() > (JSPLib.utility.one_second * 10)) {
+                        clearInterval(timer);
+                    }
+                }, 100);
                 JSPLib.utility.rebindEventHandlers(old_handlers, "danbooru:show-related-tags", ['iac']);
             }
         }, 100);
