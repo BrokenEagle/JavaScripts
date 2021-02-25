@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RecentTagsCalc
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.10
+// @version      7.11
 // @description  Use different mechanism to calculate RecentTags.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -516,7 +516,9 @@ function ValidateProgramData(key,entry) {
 
 //Library functions
 
-////NONE
+JSPLib.load.setProgramGetter = function (program_value,other_program_key,other_program_name) {
+    Object.defineProperty(program_value, other_program_key, { get: function() {return JSPLib.load.getExport(other_program_name) || Danbooru[other_program_key] || {};}});
+};
 
 //Auxiliary functions
 
@@ -1046,8 +1048,8 @@ function Main() {
         return;
     }
     ListTypeCheck();
+    JSPLib.load.setProgramGetter(RTC, 'IAC', 'IndexedAutocomplete');
     Object.assign(RTC, {
-        get IAC() {return JSPLib.load.getExport('IndexedAutocomplete') || Danbooru.IAC || {};},
         tag_order: GetTagOrderType(),
         preedittags: GetTagList(),
         starting_tags: GetStartingTags(),
