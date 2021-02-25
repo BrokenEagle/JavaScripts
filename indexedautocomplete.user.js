@@ -2659,6 +2659,9 @@ function SetupAutocompleteInitializations() {
             if (IAC.is_bur) {
                 DelayInitializeTagAutocomplete('#bulk_update_request_script', 'tag-edit');
             }
+            break;
+        case 'related-tags':
+            DelayInitializeTagAutocomplete('#search_query', 'tag-query');
             //falls through
         default:
             //do nothing
