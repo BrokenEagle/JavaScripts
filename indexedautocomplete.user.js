@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.12
+// @version      28.13
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -444,12 +444,14 @@ const EXPANDABLE_RELATED_SECTION_CSS = `
     width: 45em;
     max-width: unset;
 }
+/*
 #edit-dialog .related-tags .tag-column li,
 #c-posts #a-show .related-tags .tag-column li,
 #c-uploads #a-new .related-tags .tag-column li {
     text-indent: -1em;
     margin-left: 1em;
 }
+*/
 #edit-dialog .related-tags .tag-column li a:not(:first-of-type),
 #c-posts #a-show .related-tags .tag-column li a:not(:first-of-type),
 #c-uploads #a-new .related-tags .tag-column li a:not(:first-of-type) {
@@ -460,12 +462,13 @@ const EXPANDABLE_RELATED_SECTION_CSS = `
 #c-uploads #a-new .tag-column.general-related-tags-column.is-empty-false {
     width: 18em;
 }
+/*
 #edit-dialog .tag-column.general-related-tags-column.is-empty-false li,
 #c-posts #a-show .tag-column.general-related-tags-column.is-empty-false li,
 #c-uploads #a-new .tag-column.general-related-tags-column.is-empty-false li {
     text-indent: -2.7em;
     margin-left: 2.7em;
-}`;
+}*/`;
 
 const FORUM_CSS = `
 .ui-menu-item .forum-topic-category-0 {
@@ -1499,20 +1502,22 @@ function RenderTaglist(taglist,columnname,tags_overlap,total_posts) {
         let category = tagdata[1];
         let display_name = tag.replace(/_/g, ' ');
         let search_link = JSPLib.danbooru.postSearchLink(tag, display_name, 'class="search-tag"');
+        let margin_style = 'text-indent: -1em; margin-left: 1em;';
         let prefix = "";
         if (display_percentage && Number.isInteger(tags_overlap[tag])) {
             let tag_percentage = Math.ceil(100 * (tags_overlap[tag] / sample_size)) || 0;
             let tag_percentage_string = JSPLib.utility.padNumber(tag_percentage, 2) + '%';
             let spacing_style = (tag_percentage >= 100 ? `style="letter-spacing:-2px"` : "");
             prefix = `<span class="iac-tag-statistic" ${spacing_style}>${tag_percentage_string}</span> `;
+            margin_style = 'text-indent: -2.7em; margin-left: 2.7em;';
         }
-        html += `<li class="tag-type-${category}">${prefix}${search_link}</li>\n`;
+        html += `<div style="${margin_style}">${prefix}<li class="tag-type-${category}" style="display: inline;">${search_link}</li></div>\n`;
     });
     return `
 <h6>${columnname}</h6>
-<ul>
+<div>
 ${html}
-</ul>`;
+</div>`;
 }
 
 function RenderTagColumns(related_tags, post_count) {
@@ -2455,7 +2460,7 @@ function InitializeRelatedTagColumnWidths() {
         }));
         let max_column_width = ($column.hasClass('wide-column') ? wide_column_em * em_size : max_column_em * em_size);
         let column_width = Math.max(Math.min(max_child_width, max_column_width), min_column_em * em_size);
-        $column.width(Math.ceil(column_width / em_size) + 'em');
+        $column.width((Math.ceil(column_width / em_size) + 1) + 'em');
     });
     if ($related_tags.prop('scrollWidth') > ($related_tags.outerWidth() + (2 * em_size))) {
         $('#iac-edit-scroll-wrapper').width($related_tags.outerWidth());
