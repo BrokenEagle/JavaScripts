@@ -271,6 +271,12 @@ const MENU_CSS = `
 #recent-tags-calc .jsplib-sortlist li {
     width: 120px;
 }
+#recent-tags-calc .rtc-selectors label {
+    width: 120px;
+}
+#recent-tags-calc .jsplib-selectors[data-setting="domain_selector"] label {
+    width: 140px;
+}
 `;
 
 //HTML Constants
