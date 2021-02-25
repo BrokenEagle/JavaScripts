@@ -377,7 +377,18 @@ body[data-current-user-theme=dark] .iac-already-used {
 }
 div#notice a#close-notice-link {
     bottom: 0;
-}`;
+}
+.related-tags .current-related-tags-columns li:before {
+    content: "*";
+    font-family: monospace;
+    font-weight: bold;
+    visibility: hidden;
+    padding-right: 0.2em;
+}
+.related-tags .current-related-tags-columns li.selected:before {
+    visibility: visible;
+}
+`;
 const RELATED_QUERY_CONTROL_CSS = `
 #iac-related-query-type label {
     color: black;
@@ -1506,14 +1517,14 @@ function RenderTaglist(taglist,columnname,tags_overlap,total_posts) {
         let category = tagdata[1];
         let display_name = tag.replace(/_/g, ' ');
         let search_link = JSPLib.danbooru.postSearchLink(tag, display_name, 'class="search-tag"');
-        let margin_style = 'text-indent: -1em; margin-left: 1em;';
+        let margin_style = 'text-indent: -1.5em; margin-left: 1.5em;';
         let prefix = "";
         if (display_percentage && Number.isInteger(tags_overlap[tag])) {
             let tag_percentage = Math.ceil(100 * (tags_overlap[tag] / sample_size)) || 0;
             let tag_percentage_string = JSPLib.utility.padNumber(tag_percentage, 2) + '%';
             let spacing_style = (tag_percentage >= 100 ? `style="letter-spacing:-2px"` : "");
             prefix = `<span class="iac-tag-statistic" ${spacing_style}>${tag_percentage_string}</span> `;
-            margin_style = 'text-indent: -2.7em; margin-left: 2.7em;';
+            margin_style = 'text-indent: -3.3em; margin-left: 3.3em;';
         }
         html += `<div style="${margin_style}">${prefix}<li class="tag-type-${category}" style="display: inline;">${search_link}</li></div>\n`;
     });
