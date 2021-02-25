@@ -536,6 +536,10 @@ JSPLib.utility.rebindEventHandlers = function (handlers,type,namespaces) {
     });
 };
 
+JSPLib.utility.concatUnique = function (array1, array2) {
+    return JSPLib.utility.arrayUnique(JSPLib.utility.concat(array1, array2));
+};
+
 JSPLib.load.setProgramGetter = function (program_value,other_program_key,other_program_name) {
     Object.defineProperty(program_value, other_program_key, { get: function() {return JSPLib.load.getExport(other_program_name) || Danbooru[other_program_key] || {};}});
 };
@@ -901,7 +905,7 @@ function AddRecentTags(newtags) {
             break;
         case "queue":
         default:
-            RTC.recent_tags = JSPLib.utility.arrayUnion(newtags,RTC.recent_tags);
+            RTC.recent_tags = JSPLib.utility.concatUnique(newtags,RTC.recent_tags);
     }
     RTC.recent_tags = RTC.recent_tags.slice(0,RTC.user_settings.maximum_tags);
     JSPLib.storage.setStorageData('rtc-recent-tags',RTC.recent_tags,localStorage);
