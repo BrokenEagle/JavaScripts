@@ -909,28 +909,36 @@ async function LoadFrequentTags() {
         //User must have an account to have frequent tags
         return;
     }
-    RTC.frequent_tags = JSPLib.storage.checkStorageData('rtc-frequent-tags',ValidateProgramData,localStorage,[]);
-    if (JSPLib.concurrency.checkTimeout('rtc-frequent-tags-expires',frequent_tags_expires)) {
-        if (JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'frequent')) {
-            await QueryFrequentTags();
-            JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT, 'frequent');
-        } else {
-            return false;
+    if (RTC.user_settings.cache_frequent_tags) {
+        RTC.frequent_tags = JSPLib.storage.checkStorageData('rtc-frequent-tags',ValidateProgramData,localStorage,[]);
+        if (JSPLib.concurrency.checkTimeout('rtc-frequent-tags-expires',frequent_tags_expires)) {
+            if (JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'frequent')) {
+                await QueryFrequentTags();
+                JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT, 'frequent');
+            } else {
+                return false;
+            }
         }
+    } else {
+        await QueryFrequentTags();
     }
     return true;
 }
 
 async function QueryFrequentTags() {
-    let user_account = await JSPLib.danbooru.submitRequest('users',{search: {id: RTC.userid}, only: user_fields});
+    let user_account = await JSPLib.danbooru.submitRequest('users',{search: {id: RTC.userid}, only: user_fields, expires_in: 300});
     if (!user_account || user_account.length === 0) {
         //Should never get here, but just in case
         return;
     }
     RTC.frequent_tags = user_account[0].favorite_tags.split(/\s+/).map((tag) => tag.trim());
     this.debug('log',"Found tags:",RTC.frequent_tags);
-    JSPLib.storage.setStorageData('rtc-frequent-tags',RTC.frequent_tags,localStorage);
-    JSPLib.concurrency.setRecheckTimeout('rtc-frequent-tags-expires',frequent_tags_expires);
+    if (RTC.user_settings.cache_frequent_tags) {
+        JSPLib.storage.setStorageData('rtc-frequent-tags',RTC.frequent_tags,localStorage);
+        JSPLib.concurrency.setRecheckTimeout('rtc-frequent-tags-expires',frequent_tags_expires);
+    } else {
+        JSPLib.storage.removeStorageData('rtc-frequent-tags', localStorage);
+    }
     RTC.channel.postMessage({type: "reload_frequent", frequent_tags: RTC.frequent_tags});
 }
 
