@@ -361,13 +361,15 @@ body[data-current-user-theme=dark] .iac-already-used {
 .iac-tag-metatag > div:before{
     color: #000;
 }
-.iac-tag-highlight .tag-type-${BUR_TAG_CATEGORY}:link {
+.iac-tag-highlight .tag-type-${BUR_TAG_CATEGORY}:link,
+.iac-tag-highlight .tag-type-${BUR_TAG_CATEGORY}:visited {
     color: #888;
 }
 .iac-tag-highlight .tag-type-${BUR_TAG_CATEGORY}:hover {
     color: #CCC;
 }
-.iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:link {
+.iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:link,
+.iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:visited {
     color: #000;
 }
 .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:hover {
