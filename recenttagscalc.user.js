@@ -955,6 +955,25 @@ async function CheckAllFrequentTags() {
     }
 }
 
+//Initialization functions
+
+function RebindShowRelatedTags() {
+    if (RTC.controller === 'posts' && RTC.action === 'show') {
+        JSPLib.utility.recheckTimer({
+            check: () => JSPLib.utility.isGlobalFunctionBound('danbooru:show-related-tags'),
+            exec: ()=> {
+                RTC.cached_data = true;
+                let old_handlers = JSPLib.utility.saveEventHandlers(document, 'danbooru:show-related-tags');
+                $(document).off("danbooru:show-related-tags");
+                if (!RTC.IAC.cached_data) {
+                    $(document).one("danbooru:show-related-tags", Danbooru.Upload.fetch_data_manual);
+                }
+                JSPLib.utility.rebindEventHandlers(old_handlers, "danbooru:show-related-tags", ['iac']);
+            }
+        }, 100);
+    }
+}
+
 //Settings functions
 
 function BroadcastRTC(ev) {
@@ -1078,33 +1097,16 @@ function Main() {
         recent_tags: JSPLib.storage.checkStorageData('rtc-recent-tags', ValidateProgramData,localStorage, []),
         pinned_tags: JSPLib.storage.checkStorageData('rtc-pinned-tags', ValidateProgramData,localStorage, []),
     });
+    RebindShowRelatedTags();
     RTC.pageload_recentcheck = CheckAllRecentTags();
     RTC.pageload_frequentcheck = CheckAllFrequentTags();
     $("#form").on('submit.rtc', CaptureTagSubmission);
-    if (RTC.user_settings.cache_frequent_tags) {
-        if (RTC.controller === 'posts' && RTC.action === 'show') {
-            RTC.cached_data = true;
-            $(document).off("danbooru:show-related-tags");
-            if (!RTC.IAC.cached_data) {
-                $(document).one("danbooru:show-related-tags", Danbooru.Upload.fetch_data_manual);
-            } else {
-                $(document).one("danbooru:show-related-tags", RTC.IAC.FindArtistSession);
-            }
-        }
-        $(".user-related-tags-columns")
-            .addClass("rtc-user-related-tags-columns")
-            .removeClass("user-related-tags-columns")
-            .html(usertag_columns_html);
-        DisplayRecentTags();
-        DisplayFrequentTags();
-    } else if ($(".recent-related-tags-column").length) {
-        DisplayRecentTags();
-    } else {
-        JSPLib.concurrency.setupMutationReplaceObserver(".related-tags",".user-related-tags-columns",()=>{
-            this.debug('log',"Server: User related tags have been added!");
-            DisplayRecentTags();
-        });
-    }
+    $(".user-related-tags-columns")
+        .toggleClass('user-related-tags-columns old-user-related-tags-columns')
+        .hide()
+        .after(`<div class="rtc-user-related-tags-columns">${usertag_columns_html}</div>`);
+    DisplayRecentTags();
+    DisplayFrequentTags();
     JSPLib.utility.setCSSStyle(program_css,'program');
     JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
     setTimeout(()=>{
