@@ -516,6 +516,20 @@ function ValidateProgramData(key,entry) {
 
 //Library functions
 
+JSPLib.utility.saveEventHandlers = function (root,type) {
+    let $obj = ((root === document || root === window) ? root : document.querySelector(root));
+    let private_data = JSPLib.utility.getPrivateData($obj);
+    return ('events' in private_data && type in private_data.events && private_data.events[type].map((event) => [event.namespace, event.handler])) || [];
+};
+
+JSPLib.utility.rebindEventHandlers = function (handlers,type,namespaces) {
+    let rebind_handlers = handlers.filter((handler) => namespaces.includes(handler[0]));
+    rebind_handlers.forEach((handler)=>{
+        let trigger = type + (handler[0].length === 0 ? "" : '.' + handler[0]);
+        $(document).on(trigger, handler[1]);
+    });
+};
+
 JSPLib.load.setProgramGetter = function (program_value,other_program_key,other_program_name) {
     Object.defineProperty(program_value, other_program_key, { get: function() {return JSPLib.load.getExport(other_program_name) || Danbooru[other_program_key] || {};}});
 };
