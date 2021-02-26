@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.14
+// @version      28.15
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -496,13 +496,13 @@ const FORUM_CSS = `
 
 const FORUM_CSS_DARK = `
 body[data-current-user-theme=dark] .ui-menu-item .forum-topic-category-0 {
-    color: var(--blue-1);
+    color: var(--blue-3);
 }
 body[data-current-user-theme=dark] .ui-menu-item .forum-topic-category-1 {
-    color: var(--green-1);
+    color: var(--green-3);
 }
 body[data-current-user-theme=dark] .ui-menu-item .forum-topic-category-2 {
-    color: var(--red-1);
+    color: var(--red-3);
 }`;
 
 const SETTINGS_MENU_CSS = `
