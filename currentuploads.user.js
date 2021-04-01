@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.9
+// @version      16.10
 // @description  Gives up-to-date stats on uploads.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -39,7 +39,7 @@
 const DANBOORU_TOPIC_ID = '15169';
 
 //Variables for load.js
-const program_load_required_variables = ['window.jQuery','window.Danbooru'];
+const program_load_required_variables = ['window.jQuery','window.Danbooru','Danbooru.CurrentUser'];
 const program_load_required_selectors = ["#top","#page-footer"];
 
 //Program name constants

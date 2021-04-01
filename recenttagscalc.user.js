@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RecentTagsCalc
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.11
+// @version      7.12
 // @description  Use different mechanism to calculate RecentTags.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -41,7 +41,7 @@
 const DANBOORU_TOPIC_ID = '15851';
 
 //Variables for load.js
-const program_load_required_variables = ['window.jQuery','window.Danbooru'];
+const program_load_required_variables = ['window.jQuery','window.Danbooru','Danbooru.CurrentUser'];
 const program_load_required_selectors = ['#page'];
 
 //Program name constants

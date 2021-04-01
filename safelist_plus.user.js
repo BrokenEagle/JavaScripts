@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SafelistPlus
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.10
+// @version      4.11
 // @description  Alternate Danbooru blacklist handler.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -35,7 +35,7 @@
 const DANBOORU_TOPIC_ID = '14221';
 
 //Variables for load.js
-const program_load_required_variables = ['window.jQuery', 'window.Danbooru', 'window.Danbooru.Blacklist'];
+const program_load_required_variables = ['window.jQuery', 'window.Danbooru', 'window.Danbooru.Blacklist', 'Danbooru.CurrentUser'];
 const program_load_required_selectors = ["#page"];
 
 //Program name constants

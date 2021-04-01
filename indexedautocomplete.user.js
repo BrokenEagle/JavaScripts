@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.15
+// @version      28.16
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -40,7 +40,7 @@
 const DANBOORU_TOPIC_ID = '14747';
 
 //Variables for load.js
-const program_load_required_variables = ['window.jQuery', 'window.Danbooru', 'Danbooru.Autocomplete', 'Danbooru.RelatedTag'];
+const program_load_required_variables = ['window.jQuery', 'window.Danbooru', 'Danbooru.Autocomplete', 'Danbooru.RelatedTag', 'Danbooru.CurrentUser'];
 const program_load_required_selectors = ['#top', '#page'];
 
 //Program name constants
