@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.4
+// @version      7.5
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/New_Twitter_Image_Searches_and_Stuff.user.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/core-js/3.8.1/minified.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/core-js/3.11.0/minified.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js
 // @require      https://cdn.jsdelivr.net/npm/jquery-hotkeys@0.2.2/jquery-hotkeys.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
@@ -42,7 +42,7 @@
 // @connect      api.twitter.com
 // @connect      google.com
 // @connect      googleusercontent.com
-// @run-at       document-start
+// @run-at       document-body
 // @noframes
 // ==/UserScript==
 
@@ -657,7 +657,7 @@ const PROGRAM_CSS = `
 }
 .ntisas-download-original,
 .ntisas-download-all {
-    margin: 0 0.5em;
+    margin: 0 0.4em;
     font-size: 75%;
 }
 .qtiptisas.ntisas-preview-tooltip,
@@ -995,6 +995,8 @@ div#ntisas-notice {
     background: #fffa90;
     color: #777620;
     z-index: 1050;
+    max-height: 90vh;
+    overflow: auto;
 }
 #ntisas-close-notice-link {
     bottom: 0;
@@ -5315,8 +5317,8 @@ function UpdateUserIDCallback() {
         }
         let found_ID = true;
         let user_id;
-        if (API_DATA.has_data && NTISAS.account && (NTISAS.account in API_DATA.users_name)) {
-            NTISAS.user_id = GetAPIData('users_name', NTISAS.account, 'id_str');
+        if (API_DATA.has_data && NTISAS.account && (NTISAS.account in API_DATA.users_name) && (user_id = GetAPIData('users_name', NTISAS.account, 'id_str'))) {
+            NTISAS.user_id = user_id;
             JSPLib.notice.debugNoticeLevel("Primary user ID path", JSPLib.debug.DEBUG);
         } else if (user_id = getUserID('[src*="/profile_banners/"]', 'src', BANNER_REGEX, 1)) {
             NTISAS.user_id = user_id;
