@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      21.12
+// @version      21.13
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -382,7 +382,14 @@ const PROGRAM_CSS = `
     font-weight: bold;
     color: orange;
 }
+#el-snooze-event-notice {
+    font-weight: bold;
+    color: darkviolet;
+}
 #el-reload-event-notice:hover {
+    filter: brightness(1.2);
+}
+#el-snooze-event-notice:hover {
     filter: brightness(1.5);
 }
 #el-absent-section {
@@ -552,6 +559,8 @@ const NOTICE_BOX = `
         <a href="javascript:void(0)" id="el-read-event-notice" title="Mark all items as read.">READ</a>
         |
         <a href="javascript:void(0)" id="el-reload-event-notice" title="Reload events when the server errors.">RELOAD</a>
+        |
+        <a href="javascript:void(0)" id="el-snooze-event-notice" title="Hides notices for 1 hour or 2x recheck interval, whichever is greater.">SNOOZE</a>
         ]
     </div>
 </div>`;
@@ -671,6 +680,7 @@ const TIMER_POLL_INTERVAL = 100; //Polling interval for checking program status
 const JQUERY_DELAY = 1; //For jQuery updates that should not be done synchronously
 const NONSYNCHRONOUS_DELAY = 1; //For operations too costly in events to do synchronously
 const MAX_ABSENCE = 30.0; //# of days before reset links get shown
+const MAX_SNOOZE_DURATION = JSPLib.utility.one_hour;
 
 //Network constants
 
@@ -1748,6 +1758,7 @@ function InitializeNoticeBox(notice_html) {
     $('#el-hide-event-notice').one(PROGRAM_CLICK, HideEventNotice);
     $('#el-read-event-notice').one(PROGRAM_CLICK, ReadEventNotice);
     $('#el-reload-event-notice').one(PROGRAM_CLICK, ReloadEventNotice);
+    $('#el-snooze-event-notice').one(PROGRAM_CLICK, SnoozeEventNotice);
 }
 
 function InitializeOpenForumLinks(table) {
@@ -2012,12 +2023,19 @@ function InitializeCommentIndexLinks($obj,render=true) {
 
 //Event handlers
 
-function HideEventNotice() {
+function HideEventNotice(settimeout=true) {
     $('#close-notice-link').click();
     $('#el-event-notice').hide();
     MarkAllAsRead();
-    JSPLib.concurrency.setRecheckTimeout('el-event-timeout', EL.timeout_expires);
+    if (settimeout) {
+        JSPLib.concurrency.setRecheckTimeout('el-event-timeout', EL.timeout_expires);
+    }
     EL.channel.postMessage({type: 'hide'});
+}
+
+function SnoozeEventNotice() {
+    HideEventNotice(false);
+    JSPLib.concurrency.setRecheckTimeout('el-event-timeout', Math.max(EL.timeout_expires * 2, MAX_SNOOZE_DURATION));
 }
 
 function LockEventNotice(event) {
