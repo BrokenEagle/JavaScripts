@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         New Twitter Image Searches and Stuff
+// @name         New Twitter Image Searches and Stuff (bookmark version)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.6
+// @version      7.6.e
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -42,12 +42,13 @@
 // @connect      api.twitter.com
 // @connect      google.com
 // @connect      googleusercontent.com
+// @connect      127.0.0.1
 // @run-at       document-body
 // @noframes
 // ==/UserScript==
 
 /* eslint-disable no-redeclare */
-/* global $ jQuery JSPLib validate localforage saveAs XRegExp GM_getResourceText */
+/* global $ jQuery JSPLib validate localforage saveAs XRegExp GM_getResourceText GM */
 /* eslint-enable no-redeclare */
 
 /****Global variables****/
@@ -59,6 +60,7 @@ JSPLib.validate.timestamp_constraints = JSPLib.validate.id_constraints;
 //Exterior script variables
 
 const DANBOORU_TOPIC_ID = '16342';
+const BOOKMARK_SERVER_URL = 'http://127.0.0.1:5000';
 
 //Variables for load.js
 const PROGRAM_LOAD_REQUIRED_VARIABLES = [];
@@ -77,6 +79,10 @@ const API_DATA = {tweets: {}, users_id: {}, users_name: {}, retweets: {}, has_da
 //Variables for storage.js
 JSPLib.storage.twitterstorage = localforage.createInstance({
     name: 'Twitter storage',
+    driver: [localforage.INDEXEDDB]
+});
+JSPLib.storage.bookmarkstorage = localforage.createInstance({
+    name: 'Bookmark storage',
     driver: [localforage.INDEXEDDB]
 });
 
@@ -135,6 +141,8 @@ const PROGRAM_DEFAULT_VALUES = {
     image_data: {},
     tweet_dialog: {},
     dialog_ancor: {},
+    bookmark_dialog: {},
+    bookmark_anchor: {},
     similar_results: {},
     no_url_results: [],
     merge_results: [],
@@ -170,6 +178,17 @@ const SETTINGS_CONFIG = {
         default: DEFAULT_QUERY_SETTINGS,
         validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'checkbox', COMMON_QUERY_SETTINGS),
         hint: "Check/uncheck to turn on/off setting."
+    },
+    bookmark_settings: {
+        allitems: COMMON_QUERY_SETTINGS,
+        default: DEFAULT_QUERY_SETTINGS,
+        validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'checkbox', COMMON_QUERY_SETTINGS),
+        hint: "Check/uncheck to turn on/off setting."
+    },
+    bookmarks_enabled: {
+        default: true,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Whether bookmarking via Prebooru is enabled or not."
     },
     SauceNAO_API_key: {
         default: "",
@@ -545,6 +564,7 @@ const PROGRAM_CSS = `
 #ntisas-enable-views,
 #ntisas-enable-autoiqdb,
 #ntisas-enable-indicators,
+#ntisas-enable-bookmarks,
 #ntisas-disable-lockpage {
     color: green;
 }
@@ -552,6 +572,7 @@ const PROGRAM_CSS = `
 #ntisas-disable-views,
 #ntisas-disable-autoiqdb,
 #ntisas-disable-indicators,
+#ntisas-disable-bookmarks,
 #ntisas-enable-lockpage {
     color: red;
 }
@@ -697,13 +718,15 @@ const PROGRAM_CSS = `
 .ntisas-confirm-image b {
     font-weight: bold;
 }
-.ntisas-delete-label {
+.ntisas-delete-label,
+.ntisas-select-label {
     font-size: 1em;
     margin-top: 0.25em;
     margin-right: 0.5em;
     float: left;
 }
-.ntisas-delete-all {
+.ntisas-delete-all,
+.ntisas-select-all {
     display: block;
     float: left;
 }
@@ -879,18 +902,60 @@ const PROGRAM_CSS = `
 .ntisas-main-tweet .ntisas-tweet-actions {
     height: 35px;
 }
-.ntisas-footer-entries {
+.ntisas-footer-entries,
+.ntisas-bookmark-entry,
+.ntisas-bookmark-stub {
     font-size: 16px;
     font-weight: bold;
     font-family: ${FONT_FAMILY};
 }
+.ntisas-bookmark-entry {
+    display: flex;
+    border: 2px solid black;
+    padding: 0.5em;
+}
+.ntisas-stream-tweet .ntisas-bookmark-header {
+    font-size: 1.1em;
+}
+.ntisas-main-tweet .ntisas-bookmark-header {
+    font-size: 1.5em;
+}
+.ntisas-stream-tweet .ntisas-bookmark-thumbs {
+    font-size: 0.8em;
+}
+.ntisas-bookmark-section {
+    padding-left: 0.5em;
+}
+.ntisas-bookmark-section > div {
+    padding: 0.25em;
+}
+.ntisas-bookmark-controls a {
+    padding: 0.2em;
+}
+.ntisas-bookmark-controls .ntisas-help-info {
+    padding: 8px;
+}
+.ntisas-bookmark-info {
+    font-size: 0.8em;
+}
+.ntisas-bookmark-info > a:not(.ntisas-help-info) {
+    display: inline-block;
+    min-width: 70px;
+    text-align: center;
+}
 .ntisas-main-tweet .ntisas-footer-entries {
     border-top-width: 1px;
     border-top-style: solid;
-    padding: 5px 0 20px;
+    padding: 5px 0 5px;
 }
-.ntisas-stream-tweet .ntisas-footer-entries {
+.ntisas-stream-tweet .ntisas-footer-entries,
+.ntisas-stream-tweet .ntisas-bookmark-entry,
+.ntisas-stream-tweet .ntisas-bookmark-stub {
     margin-top: 10px;
+}
+.ntisas-check-bookmark,
+.ntisas-check-bookmark:hover {
+    color: hotpink;
 }
 .ntisas-mark-artist,
 .ntisas-mark-artist:hover {
@@ -908,9 +973,23 @@ const PROGRAM_CSS = `
 .ntisas-count-tweet:hover {
     color: green;
 }
+.ntisas-all-bookmark,
+.ntisas-select-bookmark,
+.ntisas-bookmark-thumbs {
+    color: rgb(27, 149, 224);
+}
 .ntisas-activated,
 .ntisas-activated:hover {
     color: unset;
+}
+.ntisas-force-download {
+    color: goldenrod;
+}
+.ntisas-force-download.ntisas-activated {
+    color: red;
+}
+.ntisas-bookmark-upload {
+    color: green;
 }
 #ntisas-indicator-counter {
     position: absolute;
@@ -1455,6 +1534,11 @@ const SIDE_MENU = `
                     <td>%INDICATOR%</td>
                     <td>(%INDICATORHELP%)</td>
                 </tr>
+                <tr data-setting="bookmarks_enabled">
+                    <td><span>Prebooru menu:</span></td>
+                    <td>%BOOKMARK%</td>
+                    <td>(%BOOKMARKHELP%)</td>
+                </tr>
                 <tr data-setting="lock_page_enabled">
                     <td><span>Page navigation:</span></td>
                     <td>%LOCKPAGE%</td>
@@ -1594,6 +1678,12 @@ const INDICATOR_HTML = `
     <a id="ntisas-disable-indicators" class="ntisas-expanded-link">Hide</a>
 </span>`;
 
+const BOOKMARK_HTML = `
+<span id="ntisas-bookmark-toggle">
+    <a id="ntisas-enable-bookmarks" class="ntisas-expanded-link">Show</a>
+    <a id="ntisas-disable-bookmarks" class="ntisas-expanded-link">Hide</a>
+</span>`;
+
 const MEDIA_LINKS_HTML = `
 <div class="ntisas-main-links">
     <a class="ntisas-media-link" href="/%SCREENNAME%/media">Media</a>
@@ -1627,6 +1717,9 @@ const MERGE_RESULTS_HELP = "Merge: L-click, perform another query and merge with
 const IQDB_SELECT_HELP = "Select posts that aren't valid IQDB matches.\nClick the colored postlink when finished to confirm.";
 const POST_SELECT_HELP = "Select posts for deletion by clicking the thumbnail.\nLeaving the Delete all checkbox on will select all posts.\nUnsetting that checkbox allows adding posts to the current set.\nClick the colored postlink when finished to delete/add posts.";
 
+const BOOKMARK_MENU_HELP = "All: L-click, submit post for bookmark\nSelect: L-click, choose images to submit for bookmark\nForce: L-click, toggle forcing upload even if one already exists\n    (yellow = default, red = force)";
+const BOOKMARK_INFO_HELP = "thumbs: L-click, display post thumbnails (if exist)\nuploadlink: L-click, show/query upload(s) JSON\npostlink: L-click, show/query post(s) JSON\n";
+
 const INSTALL_DATABASE_HELP = "L-Click to install database.";
 const UPGRADE_DATABASE_HELP = "L-Click to upgrade database.";
 const DATABASE_VERSION_HELP = "L-Click to set record position to latest on Danbooru.\nR-Click to open page to Danbooru records.";
@@ -1640,6 +1733,7 @@ const FADE_HIGHLIGHT_HELP = "L-Click '-' to decrease fade level. (Shortcut: Alt+
 const HIDE_HIGHLIGHT_HELP = "L-Click '-' to decrease hide level. (Shortcut: Alt+[)\nL-Click '+' to increase hide level. (Shortcut: Alt+])";
 const AUTO_IQDB_HELP = "L-Click to toggle auto-IQDB click. (Shortcut: Alt+Q)";
 const INDICATOR_HELP = "L-Click to toggle display of Tweet mark/count controls. (Shortcut: Alt+I)";
+const BOOKMARK_HELP = "L-Click to toggle display of Prebooru menu. (Shortcut: Alt+B)";
 const LOCKPAGE_HELP = "L-Click to prevent navigating away from the page (does not prevent Twitter navigation).";
 const ERROR_MESSAGES_HELP = "L-Click to see full error messages.";
 const STATISTICS_HELP = 'L-Click any category heading to narrow down results.\nL-Click &quot;Total&quot; category to reset results.';
@@ -1721,6 +1815,7 @@ var QUERY_END = String.raw`(?:\?|$)`;
 
 const TWEET_REGEX = XRegExp.tag('g')`^https://twitter\.com/[\w-]+/status/(\d+)$`;
 const TWEET_URL_REGEX = XRegExp.tag('g')`^https://twitter\.com/[\w-]+/status/\d+`;
+const TWEET_ID_REGEX = XRegExp.tag()`^https://twitter\.com/[\w-]+/status/(\d+)(?:\?|$)`;
 const SOURCE_TWITTER_REGEX = XRegExp.tag('g')`^source:https://twitter\.com/[\w-]+/status/(\d+)$`;
 
 const IMAGE_REGEX = XRegExp.tag()`(https://pbs\.twimg\.com/media/[\w-]+\?format=(?:jpg|png|gif)&name=)(.+)`;
@@ -1874,6 +1969,7 @@ const HIGHLIGHT_CONTROLS = ['enable', 'disable', 'unavailable'];
 const VIEW_CONTROLS = ['enable', 'disable'];
 const IQDB_CONTROLS = ['enable', 'disable', 'active', 'unavailable'];
 const INDICATOR_CONTROLS = ['enable', 'disable'];
+const BOOKMARK_CONTROLS = ['enable', 'disable'];
 
 const ALL_INDICATOR_TYPES = ['mark-artist', 'mark-tweet', 'count-artist', 'count-tweet'];
 
@@ -1889,6 +1985,7 @@ const CACHE_STORAGE_TYPES = ['get','check'];
 const STORAGE_DATABASES = {
     danbooru: JSPLib.storage.danboorustorage,
     twitter: JSPLib.storage.twitterstorage,
+    bookmark: JSPLib.storage.bookmarkstorage,
 };
 
 const QUEUED_NETWORK_REQUESTS = [];
@@ -1997,6 +2094,22 @@ const CONFIRM_DIALOG_SETTINGS = {
             this.resolveConfirm && this.resolveConfirm(false);
             $(this).dialog('close');
         }
+    }
+};
+
+const BOOKMARK_DIALOG_SETTINGS = {
+    title: "Bookmark thumbnails",
+    modal: true,
+    resizable:false,
+    autoOpen: false,
+    classes: {
+        'ui-dialog': 'ntisas-dialog',
+        'ui-dialog-titlebar-close': 'ntisas-dialog-close'
+    },
+    buttons: {
+        'Close': function () {
+            $(this).dialog('close');
+        },
     }
 };
 
@@ -2300,6 +2413,123 @@ JSPLib.network.getImage = function (image_url) {
     });
 };
 
+JSPLib.storage._getSessionKey = function (datakey, database) {
+    database._jsplib_key = database._jsplib_key || database._config.name.toLowerCase().replace(" ", '-');
+    return database._jsplib_key + '-' + datakey;
+};
+
+JSPLib.storage.retrieveData = async function (self,key,bypass_cache=false,database=JSPLib.storage.danboorustorage) {
+    if (!(this.use_storage)) {
+        return null;
+    }
+    let data;
+    let database_type = this.use_indexed_db ? "IndexDB" : "LocalStorage";
+    if (!bypass_cache) {
+        data = this.getStorageData(this._getSessionKey(key,database),sessionStorage);
+        if (data) {
+            self.debug('logLevel',"Found item (Session):",key,JSPLib.debug.VERBOSE);
+            return data;
+        }
+    }
+    let record_key = this._getUID(key);
+    JSPLib.debug.recordTime(record_key,database_type);
+    data = await database.getItem(key);
+    JSPLib.debug.recordTimeEnd(record_key,database_type);
+    if (data !== null) {
+        self.debug('logLevel',`Found item (${database_type}):`,key,JSPLib.debug.VERBOSE);
+        this.setStorageData(this._getSessionKey(key,database),data,sessionStorage);
+    }
+    return data;
+};
+
+JSPLib.storage.saveData = function (key,value,database=JSPLib.storage.danboorustorage) {
+    if (this.use_storage) {
+        this.setStorageData(this._getSessionKey(key,database),value,sessionStorage);
+        return database.setItem(key,value);
+    }
+};
+
+JSPLib.storage.removeData = function (key,broadcast=true,database=JSPLib.storage.danboorustorage) {
+    if (this.use_storage) {
+        let session_key = this._getSessionKey(key,database);
+        this.removeStorageData(session_key,sessionStorage);
+        if (broadcast) {
+            this._channel.postMessage({type: 'remove_session_data', from: JSPLib.UID.value, keys: [session_key]});
+        }
+        return database.removeItem(key);
+    }
+};
+
+JSPLib.storage.batchRetrieveData = async function (self,keylist,database=JSPLib.storage.danboorustorage) {
+    if (!this.use_storage || !database.getItems) {
+        return {};
+    }
+    var found_session,found_database;
+    self.debug('logLevel',"Querying",keylist.length,"items:",keylist,JSPLib.debug.VERBOSE);
+    let database_type = this.use_indexed_db ? "IndexDB" : "LocalStorage";
+    let session_items = {};
+    let missing_keys = [];
+    keylist.forEach((key)=>{
+        let data = this.getStorageData(this._getSessionKey(key,database),sessionStorage);
+        if (data) {
+            session_items[key] = data;
+        } else {
+            missing_keys.push(key);
+        }
+    });
+    JSPLib.debug.debugExecute(()=>{
+        found_session = Object.keys(session_items);
+        if (found_session.length) {
+            self.debug('log',"Found",found_session.length,"items (Session):",found_session,JSPLib.debug.VERBOSE);
+        }
+    },JSPLib.debug.VERBOSE);
+    if (missing_keys.length === 0) {
+        return session_items;
+    }
+    let record_key = this._getUID(keylist);
+    JSPLib.debug.recordTime(record_key,database_type);
+    let database_items = await database.getItems(missing_keys);
+    JSPLib.debug.recordTimeEnd(record_key,database_type);
+    JSPLib.debug.debugExecute(()=>{
+        found_database = Object.keys(database_items);
+        if (found_database.length) {
+            self.debug('log',`Found ${found_database.length} items (${database_type}):`,found_database);
+        }
+        var missing_list = JSPLib.utility.arrayDifference(keylist,JSPLib.utility.concat(found_session,found_database));
+        if (missing_list.length) {
+            self.debug('log',"Missing",missing_list.length,"items:",missing_list);
+        }
+    },JSPLib.debug.VERBOSE);
+    for (let key in database_items) {
+        this.setStorageData(this._getSessionKey(key,database),database_items[key],sessionStorage);
+    }
+    return Object.assign(session_items,database_items);
+};
+
+JSPLib.storage.batchSaveData = function (data_items,database=JSPLib.storage.danboorustorage) {
+    if (!this.use_storage || !database.setItems) {
+        return;
+    }
+    for (let key in data_items) {
+        this.setStorageData(this._getSessionKey(key,database),data_items[key],sessionStorage);
+    }
+    return database.setItems(data_items);
+};
+
+JSPLib.storage.batchRemoveData = function (keylist,database=JSPLib.storage.danboorustorage) {
+    if (!this.use_storage || !database.removeItems) {
+        return;
+    }
+    let session_keylist = keylist.map(key => this._getSessionKey(key,database));
+    session_keylist.forEach((key)=>{
+        this.removeStorageData(this._getSessionKey(key,database),sessionStorage);
+    });
+    this._channel.postMessage({type: 'remove_session_data', from: JSPLib.UID.value, keys: session_keylist});
+    return database.removeItems(keylist);
+};
+
+JSPLib.debug.addModuleLogs('storage',['retrieveData','batchRetrieveData']);
+
 //Helper functions
 
 ////Make setting all of these into a library function
@@ -2317,6 +2547,34 @@ function SetLocalData(key,data) {
 
 function InvalidateLocalData(key) {
     JSPLib.storage.invalidateStorageData(key, localStorage);
+}
+
+function GetSessionTwitterData(tweet_id) {
+    return JSPLib.storage.getStorageData('twitter-storage-tweet-' + tweet_id, sessionStorage, []);
+}
+
+function GetDomDataIds($obj, key) {
+    let data = $obj.data(key);
+    if (Number.isInteger(data)) {
+        return [data];
+    }
+    if (Array.isArray(data)) {
+        return data;
+    }
+    if (!data) {
+        return [];
+    }
+    try {
+        return data.split(',').map(Number);
+    } catch (e) {
+        JSPLib.notice.error("Error: GetDomDataIds");
+        console.log("Bad data", data, e);
+        return [];
+    }
+}
+
+function JSONNotice(data) {
+    JSPLib.notice.notice('<pre>' + JSON.stringify(data, null, 2) + '</pre>', false, true);
 }
 
 function GetAPIData(key,id,value) {
@@ -2623,6 +2881,27 @@ function SavePostUsers(mapped_posts) {
     let all_users = mapped_posts.map((post)=>({id: post.uploaderid, name: post.uploadername}));
     let unique_users = RemoveDuplicates(all_users, 'id');
     SaveUsers(unique_users);
+}
+
+function UploadsQuery(screen_name, tweet_id) {
+    let request_url = `https://twitter.com/${screen_name}/status/${tweet_id}`;
+    return {request_url: request_url};
+}
+
+function PostsQuery(tweet_id) {
+    return {site_illust_id: tweet_id, isite_id: 3};
+}
+
+function IllustsQuery(tweet_id) {
+    return {site_illust_id: tweet_id};
+}
+
+function ArtistsQuery(user_id, tweet_id) {
+    if (user_id) {
+        return {site_artist_id: user_id};
+    } else {
+        return {illust_site_illust_id: tweet_id};
+    }
 }
 
 function PostExpiration(created_timestamp) {
@@ -3007,6 +3286,30 @@ function DisplayControl(control,all_controls,type) {
     setTimeout(()=>{$(`#ntisas-${control}-${type}`).show();}, JQUERY_DELAY);
 }
 
+function UpdateBookmarkControls() {
+    if (!NTISAS.user_settings.bookmarks_enabled) {
+        return;
+    }
+    let indicators_enabled = GetLocalData('ntisas-bookmark-menu', true);
+    if (indicators_enabled) {
+        DisplayControl('disable', BOOKMARK_CONTROLS, 'bookmarks');
+    } else {
+        DisplayControl('enable', BOOKMARK_CONTROLS, 'bookmarks');
+    }
+}
+
+function UpdateBookmarkMenu() {
+    if (!NTISAS.user_settings.bookmarks_enabled) {
+        return;
+    }
+    let indicators_enabled = GetLocalData('ntisas-bookmark-menu', true);
+    if (indicators_enabled) {
+        $('.ntisas-bookmark-entry, .ntisas-bookmark-stub').show();
+    } else {
+        $('.ntisas-bookmark-entry, .ntisas-bookmark-stub').hide();
+    }
+}
+
 function UpdateIndicatorControls() {
     if (!NTISAS.user_settings.tweet_indicators_enabled) {
         return;
@@ -3072,6 +3375,28 @@ function UpdateTweetIndicator(tweet,artist_list,tweet_list) {
     }
 }
 
+function UpdateBookmarkItems(tweet_id, item_ids, type, all_idents=null, message=true) {
+    console.log("UpdateBookmarkItems #1", tweet_id, item_ids, type, all_idents, message);
+    let plural = type + 's';
+    if (Array.isArray(all_idents) && all_idents.length) {
+        let screen_name = all_idents.find((ident) => !Number.isInteger(Number(ident)));
+        var $tweet = $(`.ntisas-tweet[data-screen-name=${screen_name}]`);
+        console.log("UpdateBookmarkItems #2", screen_name, $tweet);
+    } else {
+        $tweet = $(`.ntisas-tweet[data-tweet-id=${tweet_id}]`);
+    }
+    if (item_ids.length === 1) {
+        var item_label = "1 " + type;
+    } else {
+        item_label = item_ids.length + ' ' + plural;
+    }
+    $tweet.find('.ntisas-bookmark-' + plural).html(item_label).css('color', 'green');
+    $tweet.find('.ntisas-bookmark-entry').data(type + '-ids', item_ids);
+    if (message) {
+        NTISAS.channel.postMessage({type: 'bookmarklink', subtype: type, tweet_id, item_ids, all_idents});
+    }
+}
+
 async function GetAllCurrentRecords() {
     let i = 0;
     while (true) {
@@ -3091,9 +3416,9 @@ async function GetAllCurrentRecords() {
     }
 }
 
-async function PickImage(event,type,pick_func) {
+async function PickImage(event,type,pick_func,load_msg=true) {
     let similar_class = 'ntisas-check-' + type;
-    let [$link,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event, similar_class);
+    let [$link,$tweet,tweet_id,,,,all_idents,$replace] = GetEventPreload(event, similar_class);
     let all_image_urls = GetImageLinks($tweet[0]);
     if (all_image_urls.length === 0) {
         this.debug('log', "Images not loaded yet...");
@@ -3117,8 +3442,10 @@ async function PickImage(event,type,pick_func) {
         selected_image_urls = all_image_urls;
     }
     this.debug('log', "Selected:", selected_image_urls);
-    $link.removeClass(similar_class).html("loading…");
-    return [$link,$tweet,tweet_id,$replace,selected_image_urls];
+    if (load_msg) {
+        $link.removeClass(similar_class).html("loading…");
+    }
+    return [$link,$tweet,tweet_id,$replace,selected_image_urls,all_idents];
 }
 
 function ProcessSimilarData(type,tweet_id,$tweet,$replace,selected_image_urls,similar_data,autosave_func) {
@@ -3136,7 +3463,7 @@ function ProcessSimilarData(type,tweet_id,$tweet,$replace,selected_image_urls,si
         let similar_post_ids = JSPLib.utility.arrayUnique(JSPLib.utility.getNestedObjectAttributes(flat_data, ['post', 'id']));
         if (IsQuerySettingEnabled('auto_save', type) || ((typeof autosave_func === 'function') && autosave_func())) {
             if (NTISAS.merge_results.includes(tweet_id)) {
-                let merge_ids = JSPLib.storage.getStorageData('tweet-' + tweet_id, sessionStorage, []);
+                let merge_ids = GetSessionTwitterData(tweet_id);
                 similar_post_ids = JSPLib.utility.arrayUnion(merge_ids, similar_post_ids);
             }
             SaveData('tweet-' + tweet_id, similar_post_ids, 'twitter');
@@ -3156,6 +3483,84 @@ function ProcessSimilarData(type,tweet_id,$tweet,$replace,selected_image_urls,si
         SaveData(type + '-' + tweet_id, {value: true, expires: JSPLib.utility.getExpires(SIMILAR_EXPIRES)}, 'danbooru');
         InitializeNoMatchesLinks(tweet_id, $replace);
     }
+}
+
+function ProcessBookmarkUpload(post_data,tweet_id,$tweet,type,all_idents) {
+    $tweet.find('.ntisas-bookmark-controls').hide();
+    $tweet.find('.ntisas-bookmark-progress').progressbar({value: false}).show();
+    InitializeUIStyle();
+    $.post(BOOKMARK_SERVER_URL + '/uploads.json', post_data, null, 'json').then((resp)=>{
+        if (resp.error) {
+            JSPLib.notice.error(resp.message);
+        } else {
+            let data = resp.data;
+            let data_key = 'uploads-' + tweet_id;
+            GetData(data_key, 'bookmark').then((upload_ids)=>{
+                upload_ids = upload_ids || [];
+                upload_ids.push(data.id);
+                upload_ids = JSPLib.utility.arrayUnique(upload_ids);
+                SaveData(data_key, upload_ids, 'bookmark');
+                UpdateBookmarkItems(tweet_id, upload_ids, 'upload');
+            });
+            NTISAS.pending_uploads.push(data.id);
+            SetLocalData('ntisas-pending-bookmarks', NTISAS.pending_uploads);
+        }
+        setTimeout(()=>{
+            $tweet.find('.ntisas-bookmark-progress').progressbar('destroy').hide();
+            $tweet.find('.ntisas-bookmark-controls').show();
+        }, 1000);
+    }).catch(()=>{
+        JSPLib.notice.error("Network error: Check the client and server settings.");
+    });
+}
+
+function IllustsCallback(tweet_id) {
+    let query_data = IllustsQuery(tweet_id);
+    QueryPrebooruData(tweet_id, 'illust', query_data);
+}
+
+function ArtistsCallback(tweet_id) {
+    let $tweet = $(`[data-tweet-id=${tweet_id}]`);
+    let [,user_id,screen_name,user_ident,all_idents] = GetTweetInfo($tweet);
+    let query_data = ArtistsQuery(user_id, tweet_id);
+    QueryPrebooruData(tweet_id, 'artist', query_data, all_idents);
+}
+
+function RetrieveBookmarkData(tweet_id, item_ids, type, query_data, all_idents=null) {
+    let plural = type + 's';
+    if (item_ids.length > 0) {
+        GetPrebooruData(plural, item_ids).then((data)=>{
+            JSONNotice(data);
+        });
+    } else {
+        QueryPrebooruData(tweet_id, type, query_data, all_idents).then((data)=>{
+            if (data.length === 0) {
+                JSPLib.notice.notice(`No ${plural} found!`);
+            } else {
+                JSONNotice(data);
+            }
+        });
+    }
+}
+
+function GetPrebooruData(plural, item_ids) {
+    return $.getJSON(BOOKMARK_SERVER_URL + `/${plural}.json`, {search: {id: item_ids.join(',')}});
+}
+
+function QueryPrebooruData(tweet_id, type, query_data, all_idents=null) {
+    let plural = type + 's';
+    return $.getJSON(BOOKMARK_SERVER_URL + `/${plural}.json`, {search: query_data}).then((data)=>{
+        let item_ids = data.map(item => item.id);
+        if (all_idents !== null) {
+            all_idents.forEach((ident)=>{
+                SaveData(plural + '-' + ident, item_ids, 'bookmark');
+            });
+        } else {
+            SaveData(plural + '-' + tweet_id, item_ids, 'bookmark');
+        }
+        UpdateBookmarkItems(tweet_id, item_ids, type, all_idents);
+        return data;
+    });
 }
 
 function GetTweetInfo($tweet) {
@@ -3258,6 +3663,8 @@ function RenderSideMenu() {
         VIEWSHELP: RenderHelp(VIEWS_HELP),
         AUTOCLICKIQDB: AUTO_IQDB_HTML,
         AUTOCLICKIQDBHELP: RenderHelp(AUTO_IQDB_HELP),
+        BOOKMARK: BOOKMARK_HTML,
+        BOOKMARKHELP: RenderHelp(BOOKMARK_HELP),
         INDICATOR: INDICATOR_HTML,
         INDICATORHELP: RenderHelp(INDICATOR_HELP),
         LOCKPAGE: LOCKPAGE_HTML,
@@ -3401,7 +3808,7 @@ function RenderConfirmContainer(image_urls) {
     });
     return `
 <div class="ntisas-confirm-image">
-    <p style="font-size:12px">Selected images will be used for the query. Press <b>Submit</b> to execute query, or <b>Cancel</b> to go back.</p>
+    <div style="font-size:12px">Selected images will be used for the query. Press <b>Submit</b> to execute query, or <b>Cancel</b> to go back.</div>
     ${html}
 </div>`;
 }
@@ -3425,15 +3832,29 @@ function RenderPostsContainer(all_posts) {
 </div>`;
 }
 
+function RenderBookmarkContainer(posts) {
+    let html = "";
+    posts.forEach((post)=>{
+        let addons = RenderPreviewAddons('https://twitter.com', post.id, null, post.file_ext, post.size, post.width, post.height);
+        html += RenderPostPreview(post, addons, false);
+    });
+    let width_addon = (posts.length > 10 ? 'style="width:850px"' : "");
+    return `
+<div class="ntisas-bookmark-thumbs-container" ${width_addon}>
+    ${html}
+</div>`;
+}
+
 //Expects a mapped post as input
-function RenderPostPreview(post,append_html="") {
+function RenderPostPreview(post,append_html="",populate_title=true) {
     let [width,height] = JSPLib.utility.getPreviewDimensions(post.width, post.height, POST_PREVIEW_DIMENSION);
     let padding_height = POST_PREVIEW_DIMENSION - height;
+    let title = (populate_title ? GetLinkTitle(post) : "");
     return `
 <article class="ntisas-post-preview" data-id="${post.id}" data-size="${post.size}">
     <div class="ntisas-image-container">
         <a target="_blank" href="https://danbooru.donmai.us/posts/${post.id}">
-            <img width="${width}" height="${height}" style="padding-top:${padding_height}px" title="${GetLinkTitle(post)}">
+            <img width="${width}" height="${height}" style="padding-top:${padding_height}px" title="${title}">
         </a>
     </div>
     ${append_html}
@@ -3769,6 +4190,18 @@ function InitializeConfirmContainer(image_urls) {
     return $dialog;
 }
 
+function InitializeBookmarkContainer(bookmark_posts) {
+    let $dialog = $(RenderBookmarkContainer(bookmark_posts));
+    bookmark_posts.forEach((post)=>{post.thumbnail = post.preview_url;});
+    SetThumbnailWait($dialog[0], bookmark_posts);
+    const dialog_settings = Object.assign({}, BOOKMARK_DIALOG_SETTINGS, {
+        width: BASE_DIALOG_WIDTH + BASE_PREVIEW_WIDTH * bookmark_posts.length
+    });
+    InitializeUIStyle();
+    $dialog.dialog(dialog_settings);
+    return $dialog;
+}
+
 function InitializeTwitterImage(article,image_urls) {
     let index = Number($(article).data('id'));
     let image_url = image_urls[index] + ':orig';
@@ -3826,7 +4259,92 @@ async function InitializeNoMatchesLinks(tweet_id,$obj) {
 function InitializeTweetIndicators(tweet) {
     $('.ntisas-indicators', tweet).append(TWEET_INDICATORS);
     let view_indicators = (JSPLib.debug.debug_console ? VIEW_BLOCK : "");
-    $('.ntisas-tweet-actions', tweet).after(JSPLib.utility.sprintf(INDICATOR_LINKS, view_indicators));
+    $('.ntisas-footer-section', tweet).prepend(JSPLib.utility.sprintf(INDICATOR_LINKS, view_indicators));
+}
+
+function RenderBookmarkMenu(posts,uploads,illusts,artists) {
+    const types = ['upload', 'post', 'illust', 'artist'];
+    let itemdict = {uploads, posts, illusts, artists};
+    let info_html = types.map((type)=>{
+        let plural = type + 's';
+        let items = itemdict[plural] || [];
+        let label = (items.length === 1 ? type : plural);
+        let num = (items.length === 0 ? "no" : String(items.length));
+        let style = (items.length === 0 ? 'color: grey;' : 'color: green;');
+        let href = "#";
+        if (items.length) {
+            href = BOOKMARK_SERVER_URL + '/posts?search'
+            switch (type) {
+                case 'post':
+                    href += '[id]=' + items.join(',')
+                    break;
+                case 'illust':
+                    href += '[illust_id]=' + items[0];
+                    break;
+                case 'artist':
+                    href += '[artist_id]=' + items[0];
+                    break;
+                default:
+                    href = "#";
+            }
+        }
+        return `<a style="${style}" class="ntisas-bookmark-${plural}" href="${href}">${num} ${label}</a>`;
+    }).join(' | ');
+    let data_html = types.map((type)=>{
+        let plural = type + 's';
+        let items = itemdict[plural] || [];
+        let id_string = items.join(',');
+        return `data-${type}-ids="${id_string}"`;
+    }).join(' ');
+    let control_helplink = RenderHelp(BOOKMARK_MENU_HELP);
+    let info_helplink = RenderHelp(BOOKMARK_INFO_HELP);
+    return `
+<div class="ntisas-bookmark-entry ntisas-links" ${data_html}>
+    <div style="border-right: 1px solid grey; padding-right: 0.25em;">
+        <div class="ntisas-bookmark-header">Prebooru</div>
+        <div style="margin: 0.5em -0.5em 0;">〈&thinsp;<a class="ntisas-bookmark-thumbs">thumbs</a>&thinsp;〉</div>
+    </div>
+    <div class="ntisas-bookmark-section">
+        <div class="ntisas-bookmark-controls" style="border-bottom: 1px solid lightgrey; font-size: 0.9em;">
+            Upload&thinsp;<span style="display: inline-block; margin-right: 0.25em; padding: 2.5px 5px; background: #EEE; border: 1px solid black; border-radius: 10px;">
+                <a class="ntisas-all-bookmark">All</a> |
+                <a class="ntisas-select-bookmark">Select</a> |
+                <a class="ntisas-force-download">Force</a>
+            </span>
+            <span style="display: inline-block; margin-right: 0.25em; padding: 2.5px 5px; background: #EEE; border: 1px solid black; border-radius: 25px;"><a class="ntisas-create-illust">Illust</a></span>
+            <span style="display: inline-block; margin-right: 0.25em; padding: 2.5px 5px; background: #EEE; border: 1px solid black; border-radius: 25px;"><a class="ntisas-create-artist">Artist</a></span>
+            ( ${control_helplink} )
+        </div>
+        <div class="ntisas-bookmark-progress" style="width: 360px; height: 24px; display: none;"></div>
+        <div class="ntisas-bookmark-info">
+            [
+                ${info_html} | ${info_helplink}
+            ]
+        </div>
+    </div>
+</div>`;
+}
+
+function InitializeBookmarkMenu(tweet) {
+    let [tweet_id, user_id, screen_name, user_ident, all_idents] = GetTweetInfo($(tweet));
+    if (tweet_id === undefined) {
+        return;
+    }
+    let $bookmark_stub = $('<span class="ntisas-bookmark-stub">Loading...</span>');
+    $('.ntisas-footer-section', tweet).append($bookmark_stub);
+    let promise_array = [];
+    promise_array.push(GetData('uploads-' + tweet_id, 'bookmark'));
+    promise_array.push(GetData('posts-' + tweet_id, 'bookmark'));
+    promise_array.push(GetData('illusts-' + tweet_id, 'bookmark'));
+    promise_array.push(GetData('artists-' + user_ident, 'bookmark'));
+    Promise.all(promise_array).then(([uploads,posts,illusts,artists])=>{
+        let $bookmark_menu = $(RenderBookmarkMenu(posts,uploads,illusts,artists));
+        let is_shown = GetLocalData('ntisas-bookmark-menu', true);
+        if (!is_shown) {
+            $bookmark_menu.hide();
+        }
+        $bookmark_stub.replaceWith($bookmark_menu);
+    });
 }
 
 async function InitializeViewCount(tweet) {
@@ -4437,6 +4955,7 @@ function ProcessTwitterData(data) {
     for (let i = 0; i < checked_data.length; i++) {
         let {type,id,item} = checked_data[i];
         let $tweet = null;
+        let retweet = null;
         switch(type) {
             case 'tweet':
                 API_DATA.tweets[id] = item;
@@ -4450,10 +4969,17 @@ function ProcessTwitterData(data) {
                         UpdateTweetIndicator($tweet[0], artist_list, tweet_list);
                     }
                 }
+                if ('retweeted_status' in item) {
+                    retweet = item.retweeted_status && item.retweeted_status.legacy;
+                    if (retweet) {
+                        API_DATA.retweets[retweet.id_str] = item;
+                        API_DATA.tweets[retweet.id_str] = retweet;
+                    }
+                }
                 break;
             case 'user':
                 API_DATA.users_id[id] = item;
-                API_DATA.users_name[item.name] = item;
+                API_DATA.users_name[item.screen_name] = item;
                 //falls through
             default:
                 //do nothing
@@ -4792,6 +5318,14 @@ function ToggleTweetIndicators() {
     NTISAS.channel.postMessage({type: 'indicators'});
 }
 
+function ToggleBookmarkMenu() {
+    let INDICATOR_CONTROLS = GetLocalData('ntisas-bookmark-menu', true);
+    SetLocalData('ntisas-bookmark-menu', !INDICATOR_CONTROLS);
+    UpdateBookmarkControls();
+    UpdateBookmarkMenu();
+    NTISAS.channel.postMessage({type: 'bookmarks'});
+}
+
 function InstallDatabase() {
     let message = JSPLib.utility.sprintf(INSTALL_CONFIRM, NTISAS.server_info.post_version, new Date(NTISAS.server_info.timestamp).toLocaleString());
     if (confirm(message)) {
@@ -4891,7 +5425,7 @@ function CheckURL(event) {
             SavePostUsers(mapped_posts);
             post_ids = JSPLib.utility.arrayUnique(JSPLib.utility.getObjectAttributes(data, 'id'));
             if (NTISAS.merge_results.includes(tweet_id)) {
-                let merge_ids = JSPLib.storage.getStorageData('tweet-' + tweet_id, sessionStorage, []);
+                let merge_ids = GetSessionTwitterData(tweet_id);
                 post_ids = JSPLib.utility.arrayUnion(merge_ids, post_ids);
             }
             SaveData('tweet-' + tweet_id, post_ids, 'twitter');
@@ -4909,7 +5443,7 @@ async function CheckIQDB(event) {
     if (!pick) {
         return;
     }
-    let [,$tweet,tweet_id,$replace,selected_image_urls] = pick;
+    let [$link,$tweet,tweet_id,$replace,selected_image_urls,all_idents] = pick;
     let promise_array = selected_image_urls.map(image_url => JSPLib.danbooru.submitRequest('iqdb_queries', {url: image_url, similarity: NTISAS.user_settings.similarity_cutoff, limit: NTISAS.user_settings.results_returned}, [], false, null, NTISAS.domain, true));
     let all_iqdb_results = await Promise.all(promise_array);
     let flat_data = all_iqdb_results.flat();
@@ -4954,7 +5488,7 @@ async function CheckSauce(event) {
     if (!pick) {
         return;
     }
-    let [,$tweet,tweet_id,$replace,selected_image_urls] = pick;
+    let [$link,$tweet,tweet_id,$replace,selected_image_urls,all_idents] = pick;
     let promise_array = selected_image_urls.map(image_url => JSPLib.saucenao.getSauce(image_url, JSPLib.saucenao.getDBIndex('danbooru'), NTISAS.user_settings.results_returned));
     let all_data = await Promise.all(promise_array);
     let good_data = all_data.filter(data => JSPLib.saucenao.checkSauce(data));
@@ -5002,7 +5536,7 @@ function ConfirmSave(event) {
     let all_post_ids = NTISAS.similar_results[tweet_id];
     let save_post_ids = JSPLib.utility.arrayDifference(all_post_ids, select_post_ids);
     if (NTISAS.merge_results.includes(tweet_id)) {
-        let merge_ids = JSPLib.storage.getStorageData('tweet-' + tweet_id, sessionStorage, []);
+        let merge_ids = GetSessionTwitterData(tweet_id);
         save_post_ids = JSPLib.utility.arrayUnion(merge_ids, save_post_ids);
     }
     PromptSavePostIDs($link, $tweet, tweet_id, $replace, CONFIRM_SAVE_PROMPT, save_post_ids);
@@ -5015,7 +5549,7 @@ function ConfirmDelete(event) {
     }
     let [$link,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event, 'ntisas-confirm-delete');
     let delete_all = $('.ntisas-delete-all', NTISAS.tweet_qtip[tweet_id]).prop('checked');
-    let all_post_ids = JSPLib.storage.getStorageData('tweet-' + tweet_id, sessionStorage, []);
+    let all_post_ids = GetSessionTwitterData(tweet_id);
     if (delete_all) {
         var select_post_ids = all_post_ids;
     } else {
@@ -5044,7 +5578,7 @@ function MergeResults(event) {
 function CancelMerge(event) {
     let [,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event, 'ntisas-cancel-merge');
     NTISAS.merge_results = JSPLib.utility.arrayDifference(NTISAS.merge_results, [tweet_id]);
-    let post_ids = JSPLib.storage.getStorageData('tweet-' + tweet_id, sessionStorage, []);
+    let post_ids = GetSessionTwitterData(tweet_id);
     InitializePostIDsLink(tweet_id, $replace, $tweet[0], post_ids);
 }
 
@@ -5218,6 +5752,92 @@ function DownloadAll(event) {
     $('.ntisas-download-original', $tweet[0]).click();
 }
 
+async function ToggleForceDownload(event) {
+    $(event.currentTarget).toggleClass('ntisas-activated');
+}
+
+function BookmarkAll(event) {
+    let [$link,$tweet,tweet_id,,screen_name,,all_idents,] = GetEventPreload(event, 'ntisas-all-bookmark');
+    let request_url = `https://twitter.com/${screen_name}/status/${tweet_id}`;
+    let force_download = $tweet.find('.ntisas-force-download').hasClass('ntisas-activated');
+    let post_data = {
+        url: request_url,
+        user_id: 1,
+        force: force_download,
+    };
+    ProcessBookmarkUpload(post_data, tweet_id, $tweet, 'All', all_idents);
+}
+
+async function BookmarkSelect(event) {
+    let pick = await PickImage(event, 'bookmark', null, false);
+    if (!pick) {
+        return;
+    }
+    let [$link,$tweet,tweet_id,$replace,selected_image_urls,all_idents] = pick;
+    let screen_name = $tweet.data('screen-name');
+    let request_url = `https://twitter.com/${screen_name}/status/${tweet_id}`;
+    let force_download = $tweet.find('.ntisas-force-download').hasClass('ntisas-activated');
+    let post_data = {
+        url: request_url,
+        user_id: 1,
+        image_urls: selected_image_urls,
+        force: force_download,
+    };
+    ProcessBookmarkUpload(post_data, tweet_id, $tweet, 'Select', all_idents);
+}
+
+function BookmarkThumbs(event) {
+    let [$link,$tweet,tweet_id,,,,,] = GetEventPreload(event, 'ntisas-bookmark-thumbs');
+    let $info = $tweet.find('.ntisas-bookmark-entry');
+    let post_ids = GetDomDataIds($info, 'post-ids');
+    if (post_ids.length > 0) {
+        $.getJSON(BOOKMARK_SERVER_URL + '/posts.json', {search: {id: post_ids.join(',')}}).then((data)=>{
+            if (!NTISAS.bookmark_dialog[tweet_id]) {
+                NTISAS.bookmark_dialog[tweet_id] = InitializeBookmarkContainer(data);
+                NTISAS.bookmark_anchor[tweet_id] = $link;
+            }
+            NTISAS.bookmark_dialog[tweet_id].dialog('open');
+        });
+    }
+}
+
+function BookmarkUploads(event) {
+    let [,$tweet,tweet_id,,screen_name,,,$replace] = GetEventPreload(event, 'ntisas-bookmark-info');
+    let $info = $tweet.find('.ntisas-bookmark-entry');
+    let upload_ids = GetDomDataIds($info, 'upload-ids');
+    let query_data = UploadsQuery(screen_name, tweet_id);
+    RetrieveBookmarkData(tweet_id, upload_ids, 'upload', query_data);
+    event.preventDefault();
+}
+
+function BookmarkPosts(event) {
+    let [,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event, 'ntisas-bookmark-info');
+    let $info = $tweet.find('.ntisas-bookmark-entry');
+    let post_ids = GetDomDataIds($info, 'post-ids');
+    let query_data = PostsQuery(tweet_id);
+    RetrieveBookmarkData(tweet_id, post_ids, 'post', query_data);
+    event.preventDefault();
+}
+
+function BookmarkIllusts(event) {
+    let [,$tweet,tweet_id,,screen_name,,,$replace] = GetEventPreload(event, 'ntisas-bookmark-info');
+    let $info = $tweet.find('.ntisas-bookmark-entry');
+    let illust_ids = GetDomDataIds($info, 'illust-ids');
+    let query_data = IllustsQuery(tweet_id);
+    RetrieveBookmarkData(tweet_id, illust_ids, 'illust', query_data);
+    event.preventDefault();
+}
+
+function BookmarkArtists(event) {
+    let [,$tweet,tweet_id,,screen_name,,all_idents,$replace] = GetEventPreload(event, 'ntisas-bookmark-info');
+    let $info = $tweet.find('.ntisas-bookmark-entry');
+    let artist_ids = GetDomDataIds($info, 'artist-ids');
+    let user_id = $tweet.data('user-id');
+    let query_data = ArtistsQuery(user_id, tweet_id);
+    RetrieveBookmarkData(tweet_id, artist_ids, 'artist', query_data, all_idents);
+    event.preventDefault();
+}
+
 function ListInfo() {
     $('#ntisas-list-info-table').html(RenderListInfo()).show();
 }
@@ -5287,7 +5907,7 @@ function ImportData() {
                 promise_array.push(SaveDatabase(import_package.tweet_database, '#ntisas-import-counter'));
                 Promise.all(promise_array).then(()=>{
                     InitializeDatabase();
-                    userOutput()
+                    userOutput();
                 });
             } else {
                 userOutput();
@@ -5520,6 +6140,7 @@ function MarkupStreamTweet(tweet) {
     if ($(sub_body.children[tweet_menu_index - 1]).text().match(/People they (?:mentioned|follow) can reply/)) {
         tweet_menu_index -= 1;
     }
+    $(sub_body.children[tweet_menu_index]).after('<div class="ntisas-footer-section"></div>');
     let reply_line_count = 0;
     let child1 = sub_body.children[0];
     if (child1.children[0] && child1.children[0].tagName.toUpperCase() === 'DIV' && child1.innerText.match(/^Replying to/)) {
@@ -5591,11 +6212,14 @@ function MarkupMainTweet(tweet) {
     $(sub_body).addClass('ntisas-sub-body');
     let tweet_menu_index = sub_body.childElementCount - 1;
     if ($(sub_body.children[tweet_menu_index]).text().match(/^Who can reply\?People @\S+ .*? can reply.$/)) {
+        $(sub_body.children[tweet_menu_index]).addClass('ntisas-reply-notice');
         tweet_menu_index -= 1;
     }
     if ($(sub_body.children[tweet_menu_index]).text().match(/A conversation between @.+ and people they (?:follow or )?mentioned in this Tweet/)) {
         tweet_menu_index -= 1;
     }
+    let childn = sub_body.children[tweet_menu_index];
+    $(childn).after('<div class="ntisas-footer-section"></div>');
     let tweet_menu = sub_body.children[tweet_menu_index];
     $(tweet_menu).addClass('ntisas-tweet-actions');
     let retweet_like_count = 0;
@@ -5728,6 +6352,46 @@ function RegularCheck() {
     }
 }
 
+async function BookmarkServerRecheck() {
+    if (document.hidden || NTISAS.pending_uploads.length == 0) {
+        return;
+    }
+    let id_string = NTISAS.pending_uploads.join(',');
+    let pending_uploads = await $.getJSON(`${BOOKMARK_SERVER_URL}/uploads.json`, {search: {id: id_string}});
+    JSPLib.debug.debuglog("Pending uploads:", pending_uploads);
+    let pending_length = pending_uploads.length;
+    for (let i = 0; i < pending_uploads.length; i++) {
+        let upload = pending_uploads[i];
+        if (upload.status === 'complete') {
+            let tweet_id = upload.request_url.match(TWEET_ID_REGEX)[1];
+            if (upload.post_ids.length > 0) {
+                let bookmark_key = 'posts-' + tweet_id;
+                GetData(bookmark_key, 'bookmark').then((post_ids)=>{
+                    post_ids = post_ids || [];
+                    post_ids = JSPLib.utility.arrayUnion(post_ids, upload.post_ids);
+                    SaveData(bookmark_key, post_ids, 'bookmark');
+                    UpdateBookmarkItems(tweet_id, post_ids, 'post');
+                });
+                let $info = $(`[data-tweet-id=${tweet_id}] .ntisas-bookmark-entry`);
+                if (GetDomDataIds($info, 'illust-ids').length === 0) {
+                    IllustsCallback(tweet_id);
+                }
+                if (GetDomDataIds($info, 'artist-ids').length === 0) {
+                    ArtistsCallback(tweet_id);
+                }
+            } else {
+                let error_string = upload.errors.map(error => `${error.module}: ${error.message}`).join(' ;');
+                JSPLib.notice.error(`Error with upload #${upload.id}<br>&emsp;=> ${error_string}`);
+            }
+            NTISAS.pending_uploads = JSPLib.utility.arrayDifference(NTISAS.pending_uploads, [upload.id]);
+        }
+    }
+    if (pending_length !== NTISAS.pending_uploads.length) {
+        SetLocalData('ntisas-pending-bookmarks', NTISAS.pending_uploads);
+        NTISAS.channel.postMessage({type: 'pendingbookmarks', pending_uploads: NTISAS.pending_uploads});
+    }
+}
+
 function PageNavigation(pagetype) {
     //Use all non-URL matching groups as a page key to detect page changes
     let page_key = JSPLib.utility.arrayUnique(
@@ -5814,6 +6478,7 @@ function PageNavigation(pagetype) {
             $('#ntisas-decrease-hide-level').on(PROGRAM_CLICK, DecreaseHideLevel);
             $('#ntisas-iqdb-toggle a').on(PROGRAM_CLICK, ToggleAutoclickIQDB);
             $('#ntisas-indicator-toggle a').on(PROGRAM_CLICK, ToggleTweetIndicators);
+            $('#ntisas-bookmark-toggle a').on(PROGRAM_CLICK, ToggleBookmarkMenu);
             $('#ntisas-open-settings').on(PROGRAM_CLICK, OpenSettingsMenu);
             //These will only get bound here on a rebind
             $('#ntisas-database-version').on(PROGRAM_CLICK, CurrentPostver);
@@ -5850,11 +6515,13 @@ function PageNavigation(pagetype) {
     UpdateViewControls();
     UpdateIQDBControls();
     UpdateIndicatorControls();
+    UpdateBookmarkControls();
     SetCheckPostvers();
     //Tweets are not available upon page load, so don't bother processing them
     if (NTISAS.prev_pagetype !== undefined) {
         UpdateArtistHighlights();
         UpdateTweetIndicators();
+        UpdateBookmarkMenu();
     }
 }
 
@@ -5974,6 +6641,12 @@ function ProcessNewTweets() {
                 UpdateImageDict(entry);
             });
         }
+        if (NTISAS.user_settings.bookmarks_enabled) {
+            $image_tweets.each((i,entry)=>{
+                InitializeBookmarkMenu(entry);
+            });
+            UpdateBookmarkMenu();
+        }
     }
     if (NTISAS.user_settings.tweet_indicators_enabled) {
         $tweets.each((i,entry)=>{
@@ -6090,6 +6763,16 @@ function BroadcastTISAS(ev) {
             InvalidateLocalData('ntisas-recent-timestamp');
             InitializeCurrentRecords();
             break;
+        case 'pendinguploads':
+            NTISAS.pending_uploads = ev.data.pending_uploads;
+            break;
+        case 'bookmarklink':
+            UpdateBookmarkItems(ev.data.tweet_id, ev.data.item_ids, ev.data.subtype, ev.data.all_idents, false);
+            break;
+        case 'bookmarks':
+            UpdateBookmarkControls();
+            UpdateBookmarkMenu();
+            break;
         case 'indicators':
             if ('artist_list' in ev.data && 'artist-list' in NTISAS.lists && 'list' in NTISAS.lists['artist-list']) {
                 NTISAS.lists['artist-list'].list = ev.data.artist_list;
@@ -6125,7 +6808,7 @@ function InitializeChangedSettings() {
         let $tweet = $(tweet);
         let tweet_id = String($tweet.data('tweet-id'));
         let $post_link = $('.ntisas-database-match', tweet);
-        let post_ids = JSPLib.storage.getStorageData('tweet-' + tweet_id, sessionStorage, []);
+        let post_ids = GetSessionTwitterData(tweet_id);
         if ($post_link.length && JSPLib.menu.hasSettingChanged('advanced_tooltips_enabled')) {
             if (NTISAS.user_settings.advanced_tooltips_enabled) {
                 InitializePostIDsLink(tweet_id, $post_link.parent(), tweet, post_ids);
@@ -6431,6 +7114,14 @@ async function Main() {
     $(document).on(PROGRAM_CLICK, '.ntisas-footer-entries .ntisas-mark-tweet', MarkTweet);
     $(document).on(PROGRAM_CLICK, '.ntisas-footer-entries .ntisas-count-artist', CountArtist);
     $(document).on(PROGRAM_CLICK, '.ntisas-footer-entries .ntisas-count-tweet', CountTweet);
+    $(document).on(PROGRAM_CLICK, '.ntisas-force-download', ToggleForceDownload);
+    $(document).on(PROGRAM_CLICK, '.ntisas-all-bookmark', BookmarkAll);
+    $(document).on(PROGRAM_CLICK, '.ntisas-select-bookmark', BookmarkSelect);
+    $(document).on(PROGRAM_CLICK, '.ntisas-bookmark-uploads', BookmarkUploads);
+    $(document).on(PROGRAM_CLICK, '.ntisas-bookmark-posts', BookmarkPosts);
+    $(document).on(PROGRAM_CLICK, '.ntisas-bookmark-illusts', BookmarkIllusts);
+    $(document).on(PROGRAM_CLICK, '.ntisas-bookmark-artists', BookmarkArtists);
+    $(document).on(PROGRAM_CLICK, '.ntisas-bookmark-thumbs', BookmarkThumbs);
     $(document).on(PROGRAM_CLICK, '.ntisas-metric', SelectMetric);
     $(document).on(PROGRAM_CLICK, '.ntisas-toggle-image-size', ToggleImageSize);
     $(document).on('scroll.ntisas.check_views', CheckViews);
@@ -6444,6 +7135,7 @@ async function Main() {
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+[', DecreaseHideLevel);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+q', ToggleAutoclickIQDB);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+i', ToggleTweetIndicators);
+    $(document).on(PROGRAM_KEYDOWN, null, 'alt+b', ToggleBookmarkMenu);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+v', ToggleViewHighlights);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+m', OpenSettingsMenu);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+c', CloseSettingsMenu);
@@ -6457,6 +7149,8 @@ async function Main() {
     JSPLib.utility.setCSSStyle(NOTICE_CSS, 'notice');
     InitializeColorScheme();
     JSPLib.utility.initializeInterval(RegularCheck, PROGRAM_RECHECK_INTERVAL);
+    NTISAS.pending_uploads = GetLocalData('ntisas-pending-bookmarks', []);
+    JSPLib.utility.initializeInterval(BookmarkServerRecheck, JSPLib.utility.one_second * 2.5);
     InitializeCleanupTasks();
     JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
 }
@@ -6491,7 +7185,7 @@ async function Main() {
 
 //Variables for debug.js
 JSPLib.debug.debug_console = false;
-JSPLib.debug.level = JSPLib.debug.INFO;
+JSPLib.debug.level = JSPLib.debug.DEBUG;
 JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
 //Variables for menu.js
