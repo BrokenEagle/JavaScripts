@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff (bookmark version)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.6.e
+// @version      7.6.f
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -914,6 +914,60 @@ const PROGRAM_CSS = `
     border: 2px solid black;
     padding: 0.5em;
 }
+/*
+.ntisas-all-bookmark,
+.ntisas-select-bookmark,
+.ntisas-force-download,
+.ntisas-bookmark-uploads,
+.ntisas-bookmark-posts,
+.ntisas-bookmark-illusts,
+.ntisas-bookmark-artists,
+.ntisas-bookmark-thumbs {
+    position: relative;
+}
+.ntisas-all-bookmark:after,
+.ntisas-select-bookmark:after,
+.ntisas-force-download:after {
+    content: "";
+    position: absolute;
+    height: 36px;
+}
+.ntisas-all-bookmark:after {
+    width: 40px;
+    left: -10px;
+    top: -6px;
+}
+.ntisas-select-bookmark:after {
+    width: 58px;
+    left: -6px;
+    top: -6px;
+}
+.ntisas-force-download:after {
+    width: 56px;
+    left: -7px;
+    top: -6px;
+}
+.ntisas-bookmark-uploads:after,
+.ntisas-bookmark-posts:after,
+.ntisas-bookmark-illusts:after,
+.ntisas-bookmark-artists:after {
+    content: "";
+    position: absolute;
+    top: -4px;
+    left: -6px;
+    height: 30px;
+    width: 82px;
+}
+.ntisas-bookmark-thumbs:after {
+    content: "";
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    height: 40px;
+    width: 80px;
+    background: green;
+}
+*/
 .ntisas-stream-tweet .ntisas-bookmark-header {
     font-size: 1.1em;
 }
@@ -930,7 +984,7 @@ const PROGRAM_CSS = `
     padding: 0.25em;
 }
 .ntisas-bookmark-controls a {
-    padding: 0.2em;
+    padding: 10px;
 }
 .ntisas-bookmark-controls .ntisas-help-info {
     padding: 8px;
@@ -2418,6 +2472,21 @@ JSPLib.storage._getSessionKey = function (datakey, database) {
     return database._jsplib_key + '-' + datakey;
 };
 
+JSPLib.storage.getIndexedSessionData = function (key, database, default_val) {
+    let session_key = this._getSessionKey(key,database);
+    return this.getStorageData(session_key,sessionStorage,default_val);
+};
+
+JSPLib.storage.setIndexedSessionData = function (key, data, database) {
+    let session_key = this._getSessionKey(key,database);
+    this.setStorageData(session_key,data,sessionStorage);
+};
+
+JSPLib.storage.removeIndexedSessionData = function (key, database) {
+    let session_key = this._getSessionKey(key,database);
+    this.removeStorageData(session_key,sessionStorage);
+};
+
 JSPLib.storage.retrieveData = async function (self,key,bypass_cache=false,database=JSPLib.storage.danboorustorage) {
     if (!(this.use_storage)) {
         return null;
@@ -2425,7 +2494,7 @@ JSPLib.storage.retrieveData = async function (self,key,bypass_cache=false,databa
     let data;
     let database_type = this.use_indexed_db ? "IndexDB" : "LocalStorage";
     if (!bypass_cache) {
-        data = this.getStorageData(this._getSessionKey(key,database),sessionStorage);
+        data = this.getIndexedSessionData(key,database);
         if (data) {
             self.debug('logLevel',"Found item (Session):",key,JSPLib.debug.VERBOSE);
             return data;
@@ -2437,22 +2506,22 @@ JSPLib.storage.retrieveData = async function (self,key,bypass_cache=false,databa
     JSPLib.debug.recordTimeEnd(record_key,database_type);
     if (data !== null) {
         self.debug('logLevel',`Found item (${database_type}):`,key,JSPLib.debug.VERBOSE);
-        this.setStorageData(this._getSessionKey(key,database),data,sessionStorage);
+        this.setIndexedSessionData(key,data,database);
     }
     return data;
 };
 
 JSPLib.storage.saveData = function (key,value,database=JSPLib.storage.danboorustorage) {
     if (this.use_storage) {
-        this.setStorageData(this._getSessionKey(key,database),value,sessionStorage);
+        this.setIndexedSessionData(key,value,database);
         return database.setItem(key,value);
     }
 };
 
 JSPLib.storage.removeData = function (key,broadcast=true,database=JSPLib.storage.danboorustorage) {
     if (this.use_storage) {
+        this.removeIndexedSessionData(key,database);
         let session_key = this._getSessionKey(key,database);
-        this.removeStorageData(session_key,sessionStorage);
         if (broadcast) {
             this._channel.postMessage({type: 'remove_session_data', from: JSPLib.UID.value, keys: [session_key]});
         }
@@ -2470,7 +2539,7 @@ JSPLib.storage.batchRetrieveData = async function (self,keylist,database=JSPLib.
     let session_items = {};
     let missing_keys = [];
     keylist.forEach((key)=>{
-        let data = this.getStorageData(this._getSessionKey(key,database),sessionStorage);
+        let data = this.getIndexedSessionData(key,database);
         if (data) {
             session_items[key] = data;
         } else {
@@ -2501,7 +2570,7 @@ JSPLib.storage.batchRetrieveData = async function (self,keylist,database=JSPLib.
         }
     },JSPLib.debug.VERBOSE);
     for (let key in database_items) {
-        this.setStorageData(this._getSessionKey(key,database),database_items[key],sessionStorage);
+        this.setIndexedSessionData(key,database_items[key],database);
     }
     return Object.assign(session_items,database_items);
 };
@@ -2511,7 +2580,7 @@ JSPLib.storage.batchSaveData = function (data_items,database=JSPLib.storage.danb
         return;
     }
     for (let key in data_items) {
-        this.setStorageData(this._getSessionKey(key,database),data_items[key],sessionStorage);
+        this.setIndexedSessionData(key,data_items[key],database);
     }
     return database.setItems(data_items);
 };
@@ -2520,10 +2589,10 @@ JSPLib.storage.batchRemoveData = function (keylist,database=JSPLib.storage.danbo
     if (!this.use_storage || !database.removeItems) {
         return;
     }
-    let session_keylist = keylist.map(key => this._getSessionKey(key,database));
-    session_keylist.forEach((key)=>{
-        this.removeStorageData(this._getSessionKey(key,database),sessionStorage);
+    keylist.forEach((key)=>{
+        this.removeIndexedSessionData(key,database);
     });
+    let session_keylist = keylist.map((key) => this._getSessionKey(key,database));
     this._channel.postMessage({type: 'remove_session_data', from: JSPLib.UID.value, keys: session_keylist});
     return database.removeItems(keylist);
 };
@@ -2550,7 +2619,7 @@ function InvalidateLocalData(key) {
 }
 
 function GetSessionTwitterData(tweet_id) {
-    return JSPLib.storage.getStorageData('twitter-storage-tweet-' + tweet_id, sessionStorage, []);
+    return JSPLib.storage.getIndexedSessionData('tweet-' + tweet_id, STORAGE_DATABASES.twitter, []);
 }
 
 function GetDomDataIds($obj, key) {
@@ -3376,12 +3445,12 @@ function UpdateTweetIndicator(tweet,artist_list,tweet_list) {
 }
 
 function UpdateBookmarkItems(tweet_id, item_ids, type, all_idents=null, message=true) {
-    console.log("UpdateBookmarkItems #1", tweet_id, item_ids, type, all_idents, message);
+    //console.log("UpdateBookmarkItems #1", tweet_id, item_ids, type, all_idents, message);
     let plural = type + 's';
     if (Array.isArray(all_idents) && all_idents.length) {
         let screen_name = all_idents.find((ident) => !Number.isInteger(Number(ident)));
         var $tweet = $(`.ntisas-tweet[data-screen-name=${screen_name}]`);
-        console.log("UpdateBookmarkItems #2", screen_name, $tweet);
+        //console.log("UpdateBookmarkItems #2", screen_name, $tweet);
     } else {
         $tweet = $(`.ntisas-tweet[data-tweet-id=${tweet_id}]`);
     }
@@ -3390,7 +3459,14 @@ function UpdateBookmarkItems(tweet_id, item_ids, type, all_idents=null, message=
     } else {
         item_label = item_ids.length + ' ' + plural;
     }
-    $tweet.find('.ntisas-bookmark-' + plural).html(item_label).css('color', 'green');
+    let href = BOOKMARK_SERVER_URL + '/' + plural;
+    if (item_ids.length === 1) {
+        href += '/' + item_ids[0];
+    } else {
+        href += '?search[id]=' + item_ids.join(',');
+    }
+    let link_html = `<a style="color: green;" class="ntisas-bookmark-${plural} ntisas-expanded-link" href="${href}">${item_label}</a>`
+    $tweet.find('.ntisas-bookmark-' + plural).html(link_html);
     $tweet.find('.ntisas-bookmark-entry').data(type + '-ids', item_ids);
     if (message) {
         NTISAS.channel.postMessage({type: 'bookmarklink', subtype: type, tweet_id, item_ids, all_idents});
@@ -3503,7 +3579,8 @@ function ProcessBookmarkUpload(post_data,tweet_id,$tweet,type,all_idents) {
                 UpdateBookmarkItems(tweet_id, upload_ids, 'upload');
             });
             NTISAS.pending_uploads.push(data.id);
-            SetLocalData('ntisas-pending-bookmarks', NTISAS.pending_uploads);
+            SetLocalData('ntisas-pending-uploads', NTISAS.pending_uploads);
+            NTISAS.channel.postMessage({type: 'pendinguploads', pending_uploads: NTISAS.pending_uploads});
         }
         setTimeout(()=>{
             $tweet.find('.ntisas-bookmark-progress').progressbar('destroy').hide();
@@ -4253,6 +4330,7 @@ async function InitializeNoMatchesLinks(tweet_id,$obj) {
         GetData('sauce-' + tweet_id, 'danbooru'),
     ]);
     let merge_results = NTISAS.merge_results.includes(tweet_id);
+    //console.log("InitializeNoMatchesLinks:", iqdb_results, sauce_results, merge_results);
     $obj.html(RenderNomatchLinks(tweet_id, iqdb_results !== null && iqdb_results.value, sauce_results !== null && sauce_results.value, merge_results));
 }
 
@@ -4273,6 +4351,13 @@ function RenderBookmarkMenu(posts,uploads,illusts,artists) {
         let style = (items.length === 0 ? 'color: grey;' : 'color: green;');
         let href = "#";
         if (items.length) {
+            href = BOOKMARK_SERVER_URL + '/' + plural;
+            if (items.length === 1) {
+                href += '/' + items[0];
+            } else {
+                href += '?search[id]=' + items.join(',');
+            }
+            /*
             href = BOOKMARK_SERVER_URL + '/posts?search'
             switch (type) {
                 case 'post':
@@ -4287,8 +4372,9 @@ function RenderBookmarkMenu(posts,uploads,illusts,artists) {
                 default:
                     href = "#";
             }
+            */
         }
-        return `<a style="${style}" class="ntisas-bookmark-${plural}" href="${href}">${num} ${label}</a>`;
+        return `<a style="${style}" class="ntisas-bookmark-${plural} ntisas-expanded-link" href="${href}">${num} ${label}</a>`;
     }).join(' | ');
     let data_html = types.map((type)=>{
         let plural = type + 's';
@@ -4298,24 +4384,26 @@ function RenderBookmarkMenu(posts,uploads,illusts,artists) {
     }).join(' ');
     let control_helplink = RenderHelp(BOOKMARK_MENU_HELP);
     let info_helplink = RenderHelp(BOOKMARK_INFO_HELP);
-    return `
+    let html = `
 <div class="ntisas-bookmark-entry ntisas-links" ${data_html}>
     <div style="border-right: 1px solid grey; padding-right: 0.25em;">
         <div class="ntisas-bookmark-header">Prebooru</div>
-        <div style="margin: 0.5em -0.5em 0;">〈&thinsp;<a class="ntisas-bookmark-thumbs">thumbs</a>&thinsp;〉</div>
+        <div style="margin: 0.25em -0.5em 0;">〈&thinsp;<a class="ntisas-bookmark-thumbs ntisas-expanded-link">thumbs</a>&thinsp;〉</div>
     </div>
     <div class="ntisas-bookmark-section">
-        <div class="ntisas-bookmark-controls" style="border-bottom: 1px solid lightgrey; font-size: 0.9em;">
+        <div style="min-height: 30px; border-bottom: 1px solid lightgrey;">
+        <div class="ntisas-bookmark-controls" style="font-size: 0.9em;">
             Upload&thinsp;<span style="display: inline-block; margin-right: 0.25em; padding: 2.5px 5px; background: #EEE; border: 1px solid black; border-radius: 10px;">
-                <a class="ntisas-all-bookmark">All</a> |
-                <a class="ntisas-select-bookmark">Select</a> |
-                <a class="ntisas-force-download">Force</a>
+                <a class="ntisas-all-bookmark ntisas-expanded-link">All</a> |
+                <a class="ntisas-select-bookmark ntisas-expanded-link">Select</a> |
+                <a class="ntisas-force-download ntisas-expanded-link">Force</a>
             </span>
-            <span style="display: inline-block; margin-right: 0.25em; padding: 2.5px 5px; background: #EEE; border: 1px solid black; border-radius: 25px;"><a class="ntisas-create-illust">Illust</a></span>
-            <span style="display: inline-block; margin-right: 0.25em; padding: 2.5px 5px; background: #EEE; border: 1px solid black; border-radius: 25px;"><a class="ntisas-create-artist">Artist</a></span>
+            <span style="display: inline-block; margin-right: 0.25em; padding: 2.5px 5px; background: #EEE; border: 1px solid black; border-radius: 25px;"><a class="ntisas-create-illust ntisas-expanded-link">Illust</a></span>
+            <span style="display: inline-block; margin-right: 0.25em; padding: 2.5px 5px; background: #EEE; border: 1px solid black; border-radius: 25px;"><a class="ntisas-create-artist ntisas-expanded-link">Artist</a></span>
             ( ${control_helplink} )
         </div>
-        <div class="ntisas-bookmark-progress" style="width: 360px; height: 24px; display: none;"></div>
+        <div class="ntisas-bookmark-progress" style="width: 360px; height: 28px; display: none;"></div>
+        </div>
         <div class="ntisas-bookmark-info">
             [
                 ${info_html} | ${info_helplink}
@@ -4323,6 +4411,7 @@ function RenderBookmarkMenu(posts,uploads,illusts,artists) {
         </div>
     </div>
 </div>`;
+    return html;
 }
 
 function InitializeBookmarkMenu(tweet) {
@@ -5565,6 +5654,7 @@ function ResetResults(event) {
     let [$link,,tweet_id,,,,,$replace] = GetEventPreload(event, 'ntisas-reset-results');
     let type = $link.data('type');
     RemoveData(type + '-' + tweet_id, 'danbooru');
+    //console.log("ResetResults:", type, tweet_id, $link, $replace);
     InitializeNoMatchesLinks(tweet_id, $replace);
 }
 
@@ -6364,11 +6454,14 @@ async function BookmarkServerRecheck() {
         let upload = pending_uploads[i];
         if (upload.status === 'complete') {
             let tweet_id = upload.request_url.match(TWEET_ID_REGEX)[1];
-            if (upload.post_ids.length > 0) {
+            let duplicate_ids = upload.errors.map((error)=> JSPLib.utility.safeMatch(error.message, /Image already uploaded on post #(\d+)/, 1))
+                                             .filter((item) => item).map(Number);
+            let all_post_ids = JSPLib.utility.arrayUnion(upload.post_ids, duplicate_ids);
+            if (all_post_ids.length > 0) {
                 let bookmark_key = 'posts-' + tweet_id;
                 GetData(bookmark_key, 'bookmark').then((post_ids)=>{
                     post_ids = post_ids || [];
-                    post_ids = JSPLib.utility.arrayUnion(post_ids, upload.post_ids);
+                    post_ids = JSPLib.utility.arrayUnion(post_ids, all_post_ids);
                     SaveData(bookmark_key, post_ids, 'bookmark');
                     UpdateBookmarkItems(tweet_id, post_ids, 'post');
                 });
@@ -6379,7 +6472,8 @@ async function BookmarkServerRecheck() {
                 if (GetDomDataIds($info, 'artist-ids').length === 0) {
                     ArtistsCallback(tweet_id);
                 }
-            } else {
+            }
+            if (upload.errors.length) {
                 let error_string = upload.errors.map(error => `${error.module}: ${error.message}`).join(' ;');
                 JSPLib.notice.error(`Error with upload #${upload.id}<br>&emsp;=> ${error_string}`);
             }
@@ -6387,8 +6481,8 @@ async function BookmarkServerRecheck() {
         }
     }
     if (pending_length !== NTISAS.pending_uploads.length) {
-        SetLocalData('ntisas-pending-bookmarks', NTISAS.pending_uploads);
-        NTISAS.channel.postMessage({type: 'pendingbookmarks', pending_uploads: NTISAS.pending_uploads});
+        SetLocalData('ntisas-pending-uploads', NTISAS.pending_uploads);
+        NTISAS.channel.postMessage({type: 'pendinguploads', pending_uploads: NTISAS.pending_uploads});
     }
 }
 
@@ -6749,14 +6843,14 @@ function BroadcastTISAS(ev) {
     switch (ev.data.type) {
         case 'postlink':
             if (ev.data.post_ids.length) {
-                JSPLib.storage.setStorageData('tweet-' + ev.data.tweet_id, ev.data.post_ids, sessionStorage);
+                JSPLib.storage.setIndexedSessionData('tweet-' + ev.data.tweet_id, ev.data.post_ids, STORAGE_DATABASES.twitter);
             } else {
-                sessionStorage.removeItem('tweet-' + ev.data.tweet_id);
+                JSPLib.storage.removeIndexedSessionData('tweet-' + ev.data.tweet_id, STORAGE_DATABASES.twitter);
             }
             UpdatePostIDsLink(ev.data.tweet_id, ev.data.post_ids);
             break;
         case 'database':
-            sessionStorage.removeItem('ntisas-database-info');
+            JSPLib.storage.removeIndexedSessionData('ntisas-database-info', STORAGE_DATABASES.twitter);
             $(window).one('focus.ntisas.reload', ()=>{window.location.reload();});
             break;
         case 'currentrecords':
@@ -7122,6 +7216,15 @@ async function Main() {
     $(document).on(PROGRAM_CLICK, '.ntisas-bookmark-illusts', BookmarkIllusts);
     $(document).on(PROGRAM_CLICK, '.ntisas-bookmark-artists', BookmarkArtists);
     $(document).on(PROGRAM_CLICK, '.ntisas-bookmark-thumbs', BookmarkThumbs);
+    /*
+    $(document).on(PROGRAM_CLICK, '.ntisas-bookmark-entry', (event)=>{
+        console.log("#MAIN#", event);
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        return false;
+    });
+    */
     $(document).on(PROGRAM_CLICK, '.ntisas-metric', SelectMetric);
     $(document).on(PROGRAM_CLICK, '.ntisas-toggle-image-size', ToggleImageSize);
     $(document).on('scroll.ntisas.check_views', CheckViews);
@@ -7149,7 +7252,7 @@ async function Main() {
     JSPLib.utility.setCSSStyle(NOTICE_CSS, 'notice');
     InitializeColorScheme();
     JSPLib.utility.initializeInterval(RegularCheck, PROGRAM_RECHECK_INTERVAL);
-    NTISAS.pending_uploads = GetLocalData('ntisas-pending-bookmarks', []);
+    NTISAS.pending_uploads = GetLocalData('ntisas-pending-uploads', []);
     JSPLib.utility.initializeInterval(BookmarkServerRecheck, JSPLib.utility.one_second * 2.5);
     InitializeCleanupTasks();
     JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
@@ -7184,8 +7287,8 @@ async function Main() {
 /****Initialization****/
 
 //Variables for debug.js
-JSPLib.debug.debug_console = false;
-JSPLib.debug.level = JSPLib.debug.DEBUG;
+JSPLib.debug.debug_console = true;
+JSPLib.debug.level = JSPLib.debug.INFO;
 JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
 //Variables for menu.js
