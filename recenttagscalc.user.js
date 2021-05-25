@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RecentTagsCalc
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.12
+// @version      7.13
 // @description  Use different mechanism to calculate RecentTags.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -264,6 +264,16 @@ let program_css = `
 }
 .tag-type-${notfound_tag_category} a {
     text-decoration: underline dotted grey;
+}
+.related-tags .frequent-related-tags-column li:before {
+    content: "*";
+    font-family: monospace;
+    font-weight: bold;
+    visibility: hidden;
+    padding-right: 0.2em;
+}
+.related-tags .frequent-related-tags-column li.selected:before {
+    visibility: visible;
 }
 `;
 
