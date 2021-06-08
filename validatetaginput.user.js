@@ -581,7 +581,7 @@ function RebindHotkey() {
     JSPLib.utility.recheckTimer({
         check: ()=>{return JSPLib.utility.isNamespaceBound("#upload_tag_string,#post_tag_string",'keydown','danbooru.submit');},
         exec: ()=>{
-            $("#upload_tag_string,#post_tag_string").off("keydown.danbooru.submit").on("keydown.vti", null, "return", (event)=>{
+            $("#upload_tag_string,#post_tag_string").off("keydown.danbooru.submit").on("keydown.vti", null, "ctrl+return", (event)=>{
                 $("#validate-tags").click();
                 event.preventDefault();
             });
