@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.11
+// @version      28.12
 // @description  Validates tag add/remove inputs on a post edit or upload, plus several other post validations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -260,6 +260,8 @@ const PROGRAM_DATA_DETAILS = `
 // 1. Let box close before reenabling the submit button
 // 2. Let box open before querying the implications
 const quickedit_wait_time = 1000;
+
+const UPLOAD_SUBMIT_WAIT_TIME = JSPLib.utility.one_second * 5;
 
 //Polling interval for checking program status
 const timer_poll_interval = 100;
@@ -550,9 +552,12 @@ async function ValidateTags() {
                 $("#upload_tag_string,#post_tag_string").off("keydown.vti");
             }
             if (VTI.is_upload) {
-                //Check for the triggering of Danbooru's client validation (file/source/rating)
-                ReenableSubmitCallback();
-                $("#client-errors").hide();
+                setTimeout(()=>{
+                    EnableUI("submit");
+                    RebindHotkey();
+                    VTI.is_validate_ready = true;
+                    JSPLib.notice.error('Submission timed out: check client form for errors. (<a href="#client-errors">navigate</a>)');
+                }, UPLOAD_SUBMIT_WAIT_TIME);
             } else if (VTI.controller === 'posts' && VTI.action === 'index') {
                 //Wait until the edit box closes to reenable the submit button click
                 setTimeout(()=>{
@@ -571,21 +576,6 @@ async function ValidateTags() {
 }
 
 //Timer/callback functions
-
-function ReenableSubmitCallback() {
-    JSPLib.utility.recheckTimer({
-        check: ()=>{return $("#client-errors").css("display") !== "none";},
-        exec: ()=>{
-            this.debug('log',"Danbooru's client validation failed!");
-            EnableUI("submit");
-            $("#upload_tag_string").on("keydown.vti", null, "return", (event)=>{
-                $("#validate-tags").click();
-                event.preventDefault();
-            });
-            ValidateTags.isready = true;
-        }
-    },timer_poll_interval);
-}
 
 function RebindHotkey() {
     JSPLib.utility.recheckTimer({
@@ -907,11 +897,11 @@ function Main() {
 /****Function decoration****/
 
 [
-    Main, ValidateEntry, PostModeMenu, ValidateTags, ReenableSubmitCallback, GetAutoImplications,
+    Main, ValidateEntry, PostModeMenu, ValidateTags, GetAutoImplications,
     QueryTagAliases, QueryTagImplications, ValidateTagAdds, ValidateTagRemoves, ValidateUpload,
     ValidateArtist, ValidateCopyright, ValidateGeneral,
 ] = JSPLib.debug.addFunctionLogs([
-    Main, ValidateEntry, PostModeMenu, ValidateTags, ReenableSubmitCallback, GetAutoImplications,
+    Main, ValidateEntry, PostModeMenu, ValidateTags, GetAutoImplications,
     QueryTagAliases, QueryTagImplications, ValidateTagAdds, ValidateTagRemoves, ValidateUpload,
     ValidateArtist, ValidateCopyright, ValidateGeneral,
 ]);
