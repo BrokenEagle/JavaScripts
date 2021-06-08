@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff (bookmark version)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.6.f
+// @version      7.6.g
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -143,6 +143,8 @@ const PROGRAM_DEFAULT_VALUES = {
     dialog_ancor: {},
     bookmark_dialog: {},
     bookmark_anchor: {},
+    prebooru_similar_dialog: {},
+    prebooru_similar_anchor: {},
     similar_results: {},
     no_url_results: [],
     merge_results: [],
@@ -3492,7 +3494,7 @@ async function GetAllCurrentRecords() {
     }
 }
 
-async function PickImage(event,type,pick_func,load_msg=true) {
+async function PickImage(event,type,pick_func,load_msg=true,setting=true) {
     let similar_class = 'ntisas-check-' + type;
     let [$link,$tweet,tweet_id,,,,all_idents,$replace] = GetEventPreload(event, similar_class);
     let all_image_urls = GetImageLinks($tweet[0]);
@@ -3501,7 +3503,7 @@ async function PickImage(event,type,pick_func,load_msg=true) {
         return false;
     }
     this.debug('log', "All:", all_image_urls);
-    if ((all_image_urls.length > 1) && IsQuerySettingEnabled('pick_image', type) && (typeof pick_func !== 'function' || pick_func())) {
+    if ((all_image_urls.length > 1) && !setting || (IsQuerySettingEnabled('pick_image', type) && (typeof pick_func !== 'function' || pick_func()))) {
         if (!NTISAS.tweet_dialog[tweet_id]) {
             NTISAS.tweet_dialog[tweet_id] = InitializeConfirmContainer(all_image_urls);
             NTISAS.dialog_ancor[tweet_id] = $link;
@@ -3863,6 +3865,21 @@ function RenderAllSimilar(all_iqdb_results,image_urls,type) {
 </div>`;
 }
 
+function RenderAllSimilarPrebooru(all_similar_results) {
+    var image_results = [];
+    var max_results = 0;
+    all_similar_results.forEach((similar_result,i)=>{
+        max_results = Math.max(max_results, similar_result.post_results.length);
+        let html = RenderPrebooruSimilarContainer("Image " + (i + 1), similar_result, i);
+        image_results.push(html);
+    });
+    let render_width = Math.min(((max_results + 1) * BASE_PREVIEW_WIDTH) + BASE_QTIP_WIDTH + 20, 850);
+    return `
+<div class="ntisas-similar-results ntisas-qtip-container" data-type="prebooru" style="width:${render_width}px">
+    ${image_results.join(HORIZONTAL_RULE)}
+</div>`;
+}
+
 function RenderSimilarContainer(header,iqdb_results,image_url,index) {
     var html = RenderTwimgPreview(image_url, index);
     html += `<div class="ntisas-vr"></div>`;
@@ -3871,6 +3888,25 @@ function RenderSimilarContainer(header,iqdb_results,image_url,index) {
         let addons = RenderPreviewAddons(iqdb_result.post.source, null, iqdb_result.score, iqdb_result.post.ext, iqdb_result.post.size, iqdb_result.post.width, iqdb_result.post.height, is_user_upload);
         html += RenderPostPreview(iqdb_result.post, addons);
     });
+    return `
+<div class="ntisas-similar-result">
+    <h4>${header} (${RenderHelp(IQDB_SELECT_HELP)})</h4>
+    ${html}
+</div>`;
+}
+
+function RenderPrebooruSimilarContainer(header,similar_result,index) {
+    var html = RenderTwimgPreview(similar_result.image_url, index);
+    html += `<div class="ntisas-vr"></div>`;
+    if (similar_result.post_results.length) {
+        similar_result.post_results.forEach((post_result)=>{
+            let site_ids = JSPLib.utility.arrayUnique(post_result.post.illust_urls.map((illust_url) => illust_url.site_id));
+            let addons = RenderPreviewAddons(site_ids.join(' ,'), null, post_result.score, post_result.post.file_ext, post_result.post.size, post_result.post.width, post_result.post.height, false);
+            html += RenderPostPreview(post_result.post, addons, false);
+        });
+    } else {
+        html += '<div style="font-style: italic;">Nothing found.</div>';
+    }
     return `
 <div class="ntisas-similar-result">
     <h4>${header} (${RenderHelp(IQDB_SELECT_HELP)})</h4>
@@ -4279,6 +4315,31 @@ function InitializeBookmarkContainer(bookmark_posts) {
     return $dialog;
 }
 
+function InitializePrebooruSimilarContainer(similar_results) {
+    let $dialog = $(RenderAllSimilarPrebooru(similar_results));
+    let posts = [];
+    let image_urls = [];
+    similar_results.forEach((similar_result)=>{
+        similar_result.post_results.forEach((post_result)=>{
+            posts.push(post_result.post);
+        });
+        image_urls.push(similar_result.image_url);
+    })
+    let unique_posts = RemoveDuplicates(posts, 'id');
+    unique_posts.forEach((post)=>{post.thumbnail = post.preview_url;});
+    console.log(unique_posts);
+    SetThumbnailWait($dialog[0], unique_posts);
+    $('article', $dialog[0]).each((i,article)=>{
+        InitializeTwitterImage(article, image_urls);
+    });
+    const dialog_settings = Object.assign({}, BOOKMARK_DIALOG_SETTINGS, {
+        width: BASE_DIALOG_WIDTH + BASE_PREVIEW_WIDTH * 5,
+    });
+    InitializeUIStyle();
+    $dialog.dialog(dialog_settings);
+    return $dialog;
+}
+
 function InitializeTwitterImage(article,image_urls) {
     let index = Number($(article).data('id'));
     let image_url = image_urls[index] + ':orig';
@@ -4389,6 +4450,7 @@ function RenderBookmarkMenu(posts,uploads,illusts,artists) {
     <div style="border-right: 1px solid grey; padding-right: 0.25em;">
         <div class="ntisas-bookmark-header">Prebooru</div>
         <div style="margin: 0.25em -0.5em 0;">〈&thinsp;<a class="ntisas-bookmark-thumbs ntisas-expanded-link">thumbs</a>&thinsp;〉</div>
+        <div style="margin: 0.25em -0.5em 0;">〈&thinsp;<a class="ntisas-bookmark-similar ntisas-expanded-link">similar</a>&thinsp;〉</div>
     </div>
     <div class="ntisas-bookmark-section">
         <div style="min-height: 30px; border-bottom: 1px solid lightgrey;">
@@ -5624,11 +5686,17 @@ function ConfirmSave(event) {
     let select_post_ids = GetSelectPostIDs(tweet_id, 'tweet_qtip');
     let all_post_ids = NTISAS.similar_results[tweet_id];
     let save_post_ids = JSPLib.utility.arrayDifference(all_post_ids, select_post_ids);
-    if (NTISAS.merge_results.includes(tweet_id)) {
-        let merge_ids = GetSessionTwitterData(tweet_id);
-        save_post_ids = JSPLib.utility.arrayUnion(merge_ids, save_post_ids);
+    if (save_post_ids.length === 0) {
+        SaveData(type + '-' + tweet_id, {value: true, expires: JSPLib.utility.getExpires(SIMILAR_EXPIRES)}, 'danbooru');
+        $link.qtiptisas('hide');
+        InitializeNoMatchesLinks(tweet_id, $replace);
+    } else {
+        if (NTISAS.merge_results.includes(tweet_id)) {
+            let merge_ids = GetSessionTwitterData(tweet_id);
+            save_post_ids = JSPLib.utility.arrayUnion(merge_ids, save_post_ids);
+        }
+        PromptSavePostIDs($link, $tweet, tweet_id, $replace, CONFIRM_SAVE_PROMPT, save_post_ids);
     }
-    PromptSavePostIDs($link, $tweet, tweet_id, $replace, CONFIRM_SAVE_PROMPT, save_post_ids);
     event.preventDefault();
 }
 
@@ -5889,6 +5957,27 @@ function BookmarkThumbs(event) {
             NTISAS.bookmark_dialog[tweet_id].dialog('open');
         });
     }
+}
+
+async function BookmarkSimilar(event) {
+    let [$link, $tweet, tweet_id, user_id, screen_name, user_ident, all_idents, $replace] = GetEventPreload(event, 'ntisas-bookmark-similar');
+    if (!NTISAS.prebooru_similar_dialog[tweet_id]) {
+        let pick = await PickImage(event, 'similar', null, false, false);
+        if (!pick) {
+            return;
+        }
+        let [$link,$tweet,tweet_id,$replace,selected_image_urls,all_idents] = pick;
+        //Proxy this through main server... maybe
+        let data = await $.getJSON('http://127.0.0.1:3000/check_similarity.json', {urls: selected_image_urls});
+        console.log("Results:", data);
+        if (data.error === false) {
+            NTISAS.prebooru_similar_dialog[tweet_id] = InitializePrebooruSimilarContainer(data.similar_results);
+            NTISAS.prebooru_similar_anchor[tweet_id] = $link;
+        } else {
+            JSONNotice(data);
+        }
+    }
+    NTISAS.prebooru_similar_dialog[tweet_id].dialog('open');
 }
 
 function BookmarkUploads(event) {
@@ -7216,6 +7305,7 @@ async function Main() {
     $(document).on(PROGRAM_CLICK, '.ntisas-bookmark-illusts', BookmarkIllusts);
     $(document).on(PROGRAM_CLICK, '.ntisas-bookmark-artists', BookmarkArtists);
     $(document).on(PROGRAM_CLICK, '.ntisas-bookmark-thumbs', BookmarkThumbs);
+    $(document).on(PROGRAM_CLICK, '.ntisas-bookmark-similar', BookmarkSimilar);
     /*
     $(document).on(PROGRAM_CLICK, '.ntisas-bookmark-entry', (event)=>{
         console.log("#MAIN#", event);
