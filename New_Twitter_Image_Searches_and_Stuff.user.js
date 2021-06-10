@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff (bookmark version)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.6.g
+// @version      7.6.h
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -478,6 +478,7 @@ const PROGRAM_CSS = `
 .ntisas-show-views .ntisas-viewed .ntisas-tweet-left {
     border: 1px solid;
     border-radius: 25px;
+    margin-bottom: 7em;
 }
 .ntisas-code {
     font-family: monospace;
@@ -916,6 +917,9 @@ const PROGRAM_CSS = `
     border: 2px solid black;
     padding: 0.5em;
 }
+.ntisas-stream-tweet .ntisas-bookmark-entry {
+    margin-left: -4em;
+}
 /*
 .ntisas-all-bookmark,
 .ntisas-select-bookmark,
@@ -976,7 +980,8 @@ const PROGRAM_CSS = `
 .ntisas-main-tweet .ntisas-bookmark-header {
     font-size: 1.5em;
 }
-.ntisas-stream-tweet .ntisas-bookmark-thumbs {
+.ntisas-stream-tweet .ntisas-bookmark-thumbs,
+.ntisas-stream-tweet .ntisas-bookmark-similar {
     font-size: 0.8em;
 }
 .ntisas-bookmark-section {
@@ -1031,8 +1036,12 @@ const PROGRAM_CSS = `
 }
 .ntisas-all-bookmark,
 .ntisas-select-bookmark,
-.ntisas-bookmark-thumbs {
+.ntisas-bookmark-thumbs,
+.ntisas-bookmark-similar {
     color: rgb(27, 149, 224);
+}
+.ntisas-bookmark-similar.ntisas-active {
+    color: #CCC;
 }
 .ntisas-activated,
 .ntisas-activated:hover {
@@ -3503,7 +3512,7 @@ async function PickImage(event,type,pick_func,load_msg=true,setting=true) {
         return false;
     }
     this.debug('log', "All:", all_image_urls);
-    if ((all_image_urls.length > 1) && !setting || (IsQuerySettingEnabled('pick_image', type) && (typeof pick_func !== 'function' || pick_func()))) {
+    if ((all_image_urls.length > 1) && (!setting || IsQuerySettingEnabled('pick_image', type)) && (typeof pick_func !== 'function' || pick_func())) {
         if (!NTISAS.tweet_dialog[tweet_id]) {
             NTISAS.tweet_dialog[tweet_id] = InitializeConfirmContainer(all_image_urls);
             NTISAS.dialog_ancor[tweet_id] = $link;
@@ -3581,8 +3590,11 @@ function ProcessBookmarkUpload(post_data,tweet_id,$tweet,type,all_idents) {
                 UpdateBookmarkItems(tweet_id, upload_ids, 'upload');
             });
             NTISAS.pending_uploads.push(data.id);
+            NTISAS.pending_bookmarks.push(tweet_id);
             SetLocalData('ntisas-pending-uploads', NTISAS.pending_uploads);
+            SetLocalData('ntisas-pending-bookmarks', NTISAS.pending_bookmarks);
             NTISAS.channel.postMessage({type: 'pendinguploads', pending_uploads: NTISAS.pending_uploads});
+            NTISAS.channel.postMessage({type: 'pendingbookmarks', pending_bookmarks: NTISAS.pending_bookmarks});
         }
         setTimeout(()=>{
             $tweet.find('.ntisas-bookmark-progress').progressbar('destroy').hide();
@@ -3905,7 +3917,7 @@ function RenderPrebooruSimilarContainer(header,similar_result,index) {
             html += RenderPostPreview(post_result.post, addons, false);
         });
     } else {
-        html += '<div style="font-style: italic;">Nothing found.</div>';
+        html += '<div style="font-style: italic; display: inline-block; height: 200px; width: 160px; position: relative;"><span style="position: absolute; top: 2em; left: 2em;">Nothing found.</span></div>';
     }
     return `
 <div class="ntisas-similar-result">
@@ -4449,8 +4461,7 @@ function RenderBookmarkMenu(posts,uploads,illusts,artists) {
 <div class="ntisas-bookmark-entry ntisas-links" ${data_html}>
     <div style="border-right: 1px solid grey; padding-right: 0.25em;">
         <div class="ntisas-bookmark-header">Prebooru</div>
-        <div style="margin: 0.25em -0.5em 0;">〈&thinsp;<a class="ntisas-bookmark-thumbs ntisas-expanded-link">thumbs</a>&thinsp;〉</div>
-        <div style="margin: 0.25em -0.5em 0;">〈&thinsp;<a class="ntisas-bookmark-similar ntisas-expanded-link">similar</a>&thinsp;〉</div>
+        <div style="margin: 0.25em -0.4em;">〈&thinsp;<a class="ntisas-bookmark-thumbs ntisas-expanded-link">thumbs</a> | <a class="ntisas-bookmark-similar ntisas-expanded-link">similar</a>&thinsp;〉</div>
     </div>
     <div class="ntisas-bookmark-section">
         <div style="min-height: 30px; border-bottom: 1px solid lightgrey;">
@@ -5967,8 +5978,11 @@ async function BookmarkSimilar(event) {
             return;
         }
         let [$link,$tweet,tweet_id,$replace,selected_image_urls,all_idents] = pick;
+        $link.addClass('ntisas-active');
         //Proxy this through main server... maybe
-        let data = await $.getJSON('http://127.0.0.1:3000/check_similarity.json', {urls: selected_image_urls});
+        let send_urls = selected_image_urls.map((url) => (url + ':small'));
+        let data = await $.getJSON('http://127.0.0.1:3000/check_similarity.json', {urls: send_urls});
+        $link.removeClass('ntisas-active');
         console.log("Results:", data);
         if (data.error === false) {
             NTISAS.prebooru_similar_dialog[tweet_id] = InitializePrebooruSimilarContainer(data.similar_results);
@@ -6575,6 +6589,47 @@ async function BookmarkServerRecheck() {
     }
 }
 
+async function AddBookmarksToPool() {
+    console.log("AddBookmarksToPool-1", NTISAS.pending_bookmarks.length, NTISAS.pending_bookmarks);
+    if (document.hidden || NTISAS.pending_bookmarks.length == 0) {
+        return;
+    }
+    let pending_length = NTISAS.pending_bookmarks.length;
+    for (let i = 0; i < NTISAS.pending_bookmarks.length; i++) {
+        let tweet_id = NTISAS.pending_bookmarks[i];
+        let $tweet = $(`.ntisas-tweet[data-tweet-id=${tweet_id}]`);
+        let $info = $tweet.find('.ntisas-bookmark-entry');
+        let post_ids = GetDomDataIds($info, 'post-ids');
+        let illust_ids = GetDomDataIds($info, 'illust-ids');
+        console.log("AddBookmarksToPool-2", tweet_id, post_ids, illust_ids);
+        if (post_ids.length && illust_ids.length) {
+            let senddata = {pool: {}};
+            if (post_ids.length > 1) {
+                senddata.pool.illust_id = illust_ids[0];
+            } else {
+                senddata.pool.post_id = post_ids[0];
+            }
+            $.ajax({
+                type: "POST",
+                url: BOOKMARK_SERVER_URL + '/pools/18/element.json',
+                data: senddata,
+                dataType: 'json',
+            }).then((data)=>{
+                console.log("AddBookmarksToPool-3", data);
+                if (data.error) {
+                    JSPLib.notice.error(data.message);
+                }
+                
+            });
+            NTISAS.pending_bookmarks = JSPLib.utility.arrayDifference(NTISAS.pending_bookmarks, [tweet_id]);
+        }
+    }
+    if (pending_length !== NTISAS.pending_bookmarks.length) {
+        SetLocalData('ntisas-pending-bookmarks', NTISAS.pending_bookmarks);
+        NTISAS.channel.postMessage({type: 'pendingbookmarks', pending_bookmarks: NTISAS.pending_bookmarks});
+    }
+}
+
 function PageNavigation(pagetype) {
     //Use all non-URL matching groups as a page key to detect page changes
     let page_key = JSPLib.utility.arrayUnique(
@@ -6948,6 +7003,9 @@ function BroadcastTISAS(ev) {
             break;
         case 'pendinguploads':
             NTISAS.pending_uploads = ev.data.pending_uploads;
+            break;
+        case 'pendingbookmarks':
+            NTISAS.pending_bookmarks = ev.data.pending_bookmarks;
             break;
         case 'bookmarklink':
             UpdateBookmarkItems(ev.data.tweet_id, ev.data.item_ids, ev.data.subtype, ev.data.all_idents, false);
@@ -7343,7 +7401,9 @@ async function Main() {
     InitializeColorScheme();
     JSPLib.utility.initializeInterval(RegularCheck, PROGRAM_RECHECK_INTERVAL);
     NTISAS.pending_uploads = GetLocalData('ntisas-pending-uploads', []);
+    NTISAS.pending_bookmarks = GetLocalData('ntisas-pending-bookmarks', []);
     JSPLib.utility.initializeInterval(BookmarkServerRecheck, JSPLib.utility.one_second * 2.5);
+    JSPLib.utility.initializeInterval(AddBookmarksToPool, JSPLib.utility.one_second * 2.5);
     InitializeCleanupTasks();
     JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
 }
