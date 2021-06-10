@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.5
+// @version      7.6
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -5438,10 +5438,10 @@ function UnhideTweets() {
 function MarkupMediaType(tweet) {
     if ($('[src*="/card_img/"], span > svg', tweet).length) {
         $('.ntisas-tweet-media', tweet).addClass('ntisas-tweet-card').removeClass('ntisas-tweet-media');
-    } else if ($('[role=progressbar]', tweet).length) {
+    } else if ($('.ntisas-tweet-media [role=progressbar]', tweet).length) {
         this.debug('log', "Delaying media check for", $(tweet).data('tweet-id'));
         let timer = setInterval(()=>{
-            if ($('[role=progressbar]', tweet).length === 0) {
+            if ($('.ntisas-tweet-media [role=progressbar]', tweet).length === 0) {
                 clearInterval(timer);
                 MarkupMediaType(tweet);
             }
