@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff (bookmark version)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.6.h
+// @version      7.6.i
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1033,6 +1033,9 @@ const PROGRAM_CSS = `
 .ntisas-count-tweet,
 .ntisas-count-tweet:hover {
     color: green;
+}
+.ntisas-similar-controls a {
+    color: cornflowerblue;
 }
 .ntisas-all-bookmark,
 .ntisas-select-bookmark,
@@ -3590,11 +3593,8 @@ function ProcessBookmarkUpload(post_data,tweet_id,$tweet,type,all_idents) {
                 UpdateBookmarkItems(tweet_id, upload_ids, 'upload');
             });
             NTISAS.pending_uploads.push(data.id);
-            NTISAS.pending_bookmarks.push(tweet_id);
             SetLocalData('ntisas-pending-uploads', NTISAS.pending_uploads);
-            SetLocalData('ntisas-pending-bookmarks', NTISAS.pending_bookmarks);
             NTISAS.channel.postMessage({type: 'pendinguploads', pending_uploads: NTISAS.pending_uploads});
-            NTISAS.channel.postMessage({type: 'pendingbookmarks', pending_bookmarks: NTISAS.pending_bookmarks});
         }
         setTimeout(()=>{
             $tweet.find('.ntisas-bookmark-progress').progressbar('destroy').hide();
@@ -3902,7 +3902,16 @@ function RenderSimilarContainer(header,iqdb_results,image_url,index) {
     });
     return `
 <div class="ntisas-similar-result">
-    <h4>${header} (${RenderHelp(IQDB_SELECT_HELP)})</h4>
+    <div style="position: relative;">
+        <h4>${header} (${RenderHelp(IQDB_SELECT_HELP)})</h4>
+        <div style="position: absolute; right: 0; top: 0;" class="ntisas-similar-controls ntisas-links">
+        [
+            <a class="ntisas-expanded-link" data-type="all">all</a> |
+            <a class="ntisas-expanded-link" data-type="none">none</a> |
+            <a class="ntisas-expanded-link" data-type="invert">invert</a>
+        ]
+        </div>
+    </div>
     ${html}
 </div>`;
 }
@@ -3976,7 +3985,7 @@ function RenderPostPreview(post,append_html="",populate_title=true) {
     let padding_height = POST_PREVIEW_DIMENSION - height;
     let title = (populate_title ? GetLinkTitle(post) : "");
     return `
-<article class="ntisas-post-preview" data-id="${post.id}" data-size="${post.size}">
+<article class="ntisas-post-preview ntisas-post-selectable" data-id="${post.id}" data-size="${post.size}">
     <div class="ntisas-image-container">
         <a target="_blank" href="https://danbooru.donmai.us/posts/${post.id}">
             <img width="${width}" height="${height}" style="padding-top:${padding_height}px" title="${title}">
@@ -3993,7 +4002,7 @@ function RenderTwimgPreview(image_url,index,selectable) {
     let selected_class = "";
     if (selectable) {
         image_html = `<a>${image_html}</a>`;
-        selected_class = 'ntisas-post-select';
+        selected_class = 'ntisas-post-select ntisas-post-selectable';
     }
     let append_html = RenderPreviewAddons('https://twitter.com', null, null, file_type);
     return `
@@ -5765,6 +5774,25 @@ function SelectPreview(event) {
     event.preventDefault();
 }
 
+function SelectControls(event) {
+    let $container = $(event.target).closest('.ntisas-similar-result');
+    let type = $(event.target).data('type');
+    let $post_previews = $container.find('.ntisas-post-preview.ntisas-post-selectable');
+    switch (type) {
+        case 'all':
+            $post_previews.addClass('ntisas-post-select');
+            break;
+        case 'none':
+            $post_previews.removeClass('ntisas-post-select');
+            break;
+        case 'invert':
+            $post_previews.toggleClass('ntisas-post-select');
+            // falls through
+        default:
+            // do nothing
+    }
+}
+
 function HelpInfo(event) {
     let help_text = $(event.target).attr('title');
     alert(help_text);
@@ -6579,6 +6607,10 @@ async function BookmarkServerRecheck() {
             if (upload.errors.length) {
                 let error_string = upload.errors.map(error => `${error.module}: ${error.message}`).join(' ;');
                 JSPLib.notice.error(`Error with upload #${upload.id}<br>&emsp;=> ${error_string}`);
+            } else {
+                NTISAS.pending_bookmarks.push(tweet_id);
+                SetLocalData('ntisas-pending-bookmarks', NTISAS.pending_bookmarks);
+                NTISAS.channel.postMessage({type: 'pendingbookmarks', pending_bookmarks: NTISAS.pending_bookmarks});
             }
             NTISAS.pending_uploads = JSPLib.utility.arrayDifference(NTISAS.pending_uploads, [upload.id]);
         }
@@ -7349,6 +7381,7 @@ async function Main() {
     $(document).on(PROGRAM_CLICK, '.ntisas-cancel-merge', CancelMerge);
     $(document).on(PROGRAM_CLICK, '.ntisas-help-info', HelpInfo);
     $(document).on(PROGRAM_CLICK, '.ntisas-post-preview a', SelectPreview);
+    $(document).on(PROGRAM_CLICK, '.ntisas-similar-controls a', SelectControls);
     $(document).on(PROGRAM_CLICK, '.ntisas-download-original', DownloadOriginal);
     $(document).on(PROGRAM_CLICK, '.ntisas-download-all', DownloadAll);
     $(document).on(PROGRAM_CLICK, '.ntisas-footer-entries .ntisas-mark-artist', MarkArtist);
