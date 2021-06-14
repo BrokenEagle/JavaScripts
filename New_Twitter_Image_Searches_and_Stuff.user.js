@@ -143,6 +143,11 @@ const PROGRAM_DEFAULT_VALUES = {
     dialog_ancor: {},
     bookmark_dialog: {},
     bookmark_anchor: {},
+    current_pool: false,
+    prebooru_pool_dialog: {},
+    prebooru_pool_anchor: {},
+    prebooru_misc_dialog: {},
+    prebooru_misc_anchor: {},
     prebooru_similar_dialog: {},
     prebooru_similar_anchor: {},
     similar_results: {},
@@ -1641,30 +1646,11 @@ const SIDE_MENU = `
                 <div id="ntisas-tweet-stats-message">Unavailable on Tweet view.</div>
             </div>
         </div>
-        <div id="ntisas-menu-prebooru" class="ntisas-links" data-selector="prebooru" style="display:none">
-            <table>
-                <tbody>
-                    <tr>
-                        <td><b>Current pool:</b></td>
-                        <td><a class="ntisas-expanded-link" style="color: red; font-weight: bold;" id="ntisas-current-pool"><i>NONE</i></a></td>
-                    </tr>
-                    <tr>
-                        <td><b>Pool count:</b></td>
-                        <td><span id="ntisas-pool-count">N/A</span></td>
-                    </tr>
-                    <tr>
-                        <td colspan="2"><b><u>Pending:</u></b></td>
-                    </tr>
-                    <tr>
-                        <td>&emsp;<b>Uploads:</b></td>
-                        <td><span id="ntisas-pending-uploads">0</span></td>
-                    </tr>
-                    <tr>
-                        <td>&emsp;<b>Bookmarks:</b></td>
-                        <td><span id="ntisas-pending-bookmarks">0</span></td>
-                    </tr>
-                </tbody>
-            </table>
+        <div id="ntisas-menu-prebooru" class="ntisas-links" data-selector="prebooru" style="display:none; padding-left: 5px;">
+            <div style="font-size: 20px; font-weight: bold; margin-top: -8px;"><a class="ntisas-expanded-link" style="font-weight: bold; color: dodgerblue; text-decoration: underline;" id="prebooru-select-pool">Current Pool</a>:</div>
+            <div style="color: grey;">&emsp;<span id="prebooru-pool-name" style="font-weight: bold;"></span>&emsp;( <span id="prebooru-pool-count"></span> )</div>
+            <div style="font-size: 20px; font-weight: bold;"><u>Pending</u>:</div>
+            <div style="color: grey;">&emsp;<b>Uploads:</b>&emsp;<span id="prebooru-pending-uploads"></span>&emsp;<b>Pool adds:</b>&emsp;<span id="prebooru-pending-bookmarks"></span></div>
         </div>
     </div>
     <div id="ntisas-open-settings">
@@ -3512,7 +3498,7 @@ function UpdateTweetIndicator(tweet,artist_list,tweet_list) {
 }
 
 function UpdateBookmarkItems(tweet_id, item_ids, type, all_idents=null, message=true) {
-    //console.log("UpdateBookmarkItems #1", tweet_id, item_ids, type, all_idents, message);
+    console.log("UpdateBookmarkItems #1", tweet_id, item_ids, type, all_idents, message);
     let plural = type + 's';
     if (Array.isArray(all_idents) && all_idents.length) {
         let screen_name = all_idents.find((ident) => !Number.isInteger(Number(ident)));
@@ -3532,12 +3518,51 @@ function UpdateBookmarkItems(tweet_id, item_ids, type, all_idents=null, message=
     } else {
         href += '?search[id]=' + item_ids.join(',');
     }
-    let link_html = `<a style="color: green;" class="ntisas-bookmark-${plural} ntisas-expanded-link" href="${href}">${item_label}</a>`
-    $tweet.find('.ntisas-bookmark-' + plural).html(link_html);
-    $tweet.find('.ntisas-bookmark-entry').data(type + '-ids', item_ids);
+    let link_html = `<a style="color: green;" class="ntisas-bookmark-${plural} ntisas-expanded-link" href="${href}">${item_label}</a>`;
+    let $plural = $tweet.find('.ntisas-bookmark-' + plural);
+    let $info = $tweet.find('.ntisas-bookmark-entry');
+    $plural.html(link_html);
+    $info.data(type + '-ids', item_ids);
+    console.log("UpdateBookmarkItems #3", $tweet, $plural, $info);
     if (message) {
         NTISAS.channel.postMessage({type: 'bookmarklink', subtype: type, tweet_id, item_ids, all_idents});
     }
+}
+
+function UpdatePoolDisplay(pool) {
+    if (pool) {
+        $('#prebooru-pool-name').html(JSPLib.utility.maxLengthString(pool.name), 30);
+        $('#prebooru-pool-count').text(pool.element_count);
+    } else {
+        $('#prebooru-pool-name').html('<i>NONE</i>');
+        $('#prebooru-pool-count').text('N/A');
+    }
+}
+
+function UpdatePendingUploads(message=true) {
+    console.log("UpdatePendingUploads-1", message, NTISAS.pending_uploads);
+    if (message && NTISAS.pending_uploads) {
+        console.log("UpdatePendingUploads-2");
+        SetLocalData('ntisas-pending-uploads', NTISAS.pending_uploads);
+        NTISAS.channel.postMessage({type: 'pendinguploads', pending_uploads: NTISAS.pending_uploads});
+    } else if (!NTISAS.pending_uploads) {
+        NTISAS.pending_uploads = GetLocalData('ntisas-pending-uploads', []);
+        console.log("UpdatePendingUploads-3", NTISAS.pending_uploads);
+    }
+    $('#prebooru-pending-uploads').text(NTISAS.pending_uploads.length);
+}
+
+function UpdatePendingBookmarks(message=true) {
+    console.log("UpdatePendingBookmarks-1", message, NTISAS.pending_bookmarks);
+    if (message && NTISAS.pending_bookmarks) {
+        console.log("UpdatePendingBookmarks-2");
+        SetLocalData('ntisas-pending-bookmarks', NTISAS.pending_bookmarks);
+        NTISAS.channel.postMessage({type: 'pendingbookmarks', pending_bookmarks: NTISAS.pending_bookmarks});
+    } else if (!NTISAS.pending_bookmarks) {
+        NTISAS.pending_bookmarks = GetLocalData('ntisas-pending-bookmarks', []);
+        console.log("UpdatePendingBookmarks-3", NTISAS.pending_bookmarks);
+    }
+    $('#prebooru-pending-bookmarks').text(NTISAS.pending_bookmarks.length);
 }
 
 async function GetAllCurrentRecords() {
@@ -3559,7 +3584,7 @@ async function GetAllCurrentRecords() {
     }
 }
 
-async function PickImage(event,type,pick_func,load_msg=true,setting=true) {
+async function PickImage(event,type,pick_func,load_msg=true,setting=true,always=false) {
     let similar_class = 'ntisas-check-' + type;
     let [$link,$tweet,tweet_id,,,,all_idents,$replace] = GetEventPreload(event, similar_class);
     let all_image_urls = GetImageLinks($tweet[0]);
@@ -3568,7 +3593,7 @@ async function PickImage(event,type,pick_func,load_msg=true,setting=true) {
         return false;
     }
     this.debug('log', "All:", all_image_urls);
-    if (!setting || ((all_image_urls.length > 1) && (IsQuerySettingEnabled('pick_image', type)) && (typeof pick_func !== 'function' || pick_func()))) {
+    if (always || ((all_image_urls.length > 1) && (!setting || IsQuerySettingEnabled('pick_image', type)) && (typeof pick_func !== 'function' || pick_func()))) {
         if (!NTISAS.tweet_dialog[tweet_id]) {
             NTISAS.tweet_dialog[tweet_id] = InitializeConfirmContainer(all_image_urls);
             NTISAS.dialog_ancor[tweet_id] = $link;
@@ -3646,9 +3671,8 @@ function ProcessBookmarkUpload(post_data,tweet_id,$tweet,type,all_idents) {
                 UpdateBookmarkItems(tweet_id, upload_ids, 'upload');
             });
             NTISAS.pending_uploads.push(data.id);
-            SetLocalData('ntisas-pending-uploads', NTISAS.pending_uploads);
-            NTISAS.channel.postMessage({type: 'pendinguploads', pending_uploads: NTISAS.pending_uploads});
-            $('#ntisas-pending-uploads').text(NTISAS.pending_uploads.length);
+            console.log("ProcessBookmarkUpload - update pending uploads");
+            UpdatePendingUploads();
         }
         setTimeout(()=>{
             $tweet.find('.ntisas-bookmark-progress').progressbar('destroy').hide();
@@ -4241,11 +4265,12 @@ function InitializeSideMenu() {
     });
     JSPLib.storage.retrieveData('ntisas-prebooru-pool', false, JSPLib.storage.bookmarkstorage).then((pool)=>{
         NTISAS.current_pool = pool;
-        if (pool) {
-            $('#ntisas-current-pool').html(pool.name).css('color', 'dodgerblue');
-            $('#ntisas-pool-count').text(pool.element_count);
-        }
+        UpdatePoolDisplay(pool);
     });
+    console.log("InitializeSideMenu - initialize pending uploads/bookmarks");
+    UpdatePendingUploads(false);
+    UpdatePendingBookmarks(false);
+    NTISAS.failed_bookmarks = GetLocalData('ntisas-failed-bookmarks', []);
 }
 
 function InitializeDatabaseLink() {
@@ -4301,14 +4326,56 @@ function InitializePoolSelection(pool_data) {
             let pool = pool_data.find((pool) => (pool.id === pool_id));
             NTISAS.current_pool = pool;
             JSPLib.storage.saveData('ntisas-prebooru-pool', pool, JSPLib.storage.bookmarkstorage);
-            $('#ntisas-current-pool').html(pool.name).css('color', 'dodgerblue');
-            $('#ntisas-pool-count').html(pool.element_count);
         } else {
             NTISAS.current_pool = null;
             JSPLib.storage.removeData('ntisas-prebooru-pool', true, JSPLib.storage.bookmarkstorage);
-            $('#ntisas-current-pool').html('<i>NONE</i>');
-            $('#ntisas-pool-count').html('N/A');
         }
+        UpdatePoolDisplay(NTISAS.current_pool);
+    });
+    InitializeUIStyle();
+    $dialog.dialog(dialog_settings);
+    return $dialog;
+}
+
+function RenderMiscActionsDialog(tweet_id) {
+    return `
+<div class="prebooru-misc-actions-container ntisas-links" data-tweet-id="${tweet_id}">
+    <ul style="font-weight: bold; margin: 0; padding: 0.5em;">
+        <li><a class="prebooru-query-data ntisas-expanded-link">Query All Data</a></li>
+        <li><a class="prebooru-add-illust-notation ntisas-expanded-link">Add illust notation</a></li>
+        <li><a class="prebooru-add-post-notation ntisas-expanded-link">Add post notation</a></li>
+    </ul>
+</div>
+`;
+}
+
+function InitializeMiscActions(tweet_id) {
+    let $dialog = $(RenderMiscActionsDialog(tweet_id));
+    const dialog_settings = Object.assign({}, BOOKMARK_DIALOG_SETTINGS, {
+        width: 200
+    });
+    InitializeUIStyle();
+    $dialog.dialog(dialog_settings);
+    return $dialog;
+}
+
+function RenderPoolActionsDialog(tweet_id) {
+    return `
+<div class="prebooru-pool-actions-container ntisas-links" data-tweet-id="${tweet_id}">
+    <ul style="font-weight: bold; margin: 0; padding: 0.5em;">
+        <li><a class="prebooru-add-pool-illust ntisas-expanded-link">Add pool illust</a></li>
+        <li><a class="prebooru-add-pool-post ntisas-expanded-link">Add pool post</a></li>
+        <li><a class="prebooru-query-illust-pools ntisas-expanded-link">Query illust pools</a></li>
+        <li><a class="prebooru-query-post-pools ntisas-expanded-link">Query post pools</a></li>
+    </ul>
+</div>
+`;
+}
+
+function InitializePoolActions(tweet_id) {
+    let $dialog = $(RenderPoolActionsDialog(tweet_id));
+    const dialog_settings = Object.assign({}, BOOKMARK_DIALOG_SETTINGS, {
+        width: 200
     });
     InitializeUIStyle();
     $dialog.dialog(dialog_settings);
@@ -4574,8 +4641,8 @@ function RenderBookmarkMenu(posts,uploads,illusts,artists) {
                 <a class="ntisas-select-bookmark ntisas-expanded-link">Select</a> |
                 <a class="ntisas-force-download ntisas-expanded-link">Force</a>
             </span>
-            <span style="display: inline-block; margin-right: 0.25em; padding: 2.5px 5px; background: #EEE; border: 1px solid black; border-radius: 25px;"><a class="ntisas-query-tweet ntisas-expanded-link">Query</a></span>
-            <span style="display: inline-block; margin-right: 0.25em; padding: 2.5px 5px; background: #EEE; border: 1px solid black; border-radius: 25px;"><a class="ntisas-bookmark-tweet ntisas-expanded-link">Pool</a></span>
+            <span style="display: inline-block; margin-right: 0.25em; padding: 2.5px 5px; background: #EEE; border: 1px solid black; border-radius: 25px;"><a class="prebooru-pool-actions ntisas-expanded-link">Pool</a></span>
+            <span style="display: inline-block; margin-right: 0.25em; padding: 2.5px 5px; background: #EEE; border: 1px solid black; border-radius: 25px;"><a class="prebooru-misc-actions ntisas-expanded-link">Misc</a></span>
             ( ${control_helplink} )
         </div>
         <div class="ntisas-bookmark-progress" style="width: 360px; height: 28px; display: none;"></div>
@@ -6071,7 +6138,7 @@ function BookmarkAll(event) {
 }
 
 async function BookmarkSelect(event) {
-    let pick = await PickImage(event, 'bookmark', null, false, false);
+    let pick = await PickImage(event, 'bookmark', null, false, false, true);
     if (!pick) {
         return;
     }
@@ -6164,15 +6231,21 @@ function BookmarkArtists(event) {
     event.preventDefault();
 }
 
-function BookmarkQueryTweet(event) {
-    let [,$tweet,tweet_id,,screen_name,,all_idents,] = GetEventPreload(event, 'ntisas-bookmark-info');
+function GetPrebooruDialogPreload(event, container_class) {
+    let $container = $(event.currentTarget).closest(container_class);
+    let tweet_id = $container.data('tweet-id');
+    let $tweet = $(`.ntisas-tweet[data-tweet-id="${tweet_id}"]`);
+    return JSPLib.utility.concat([$tweet], GetTweetInfo($tweet));
+}
+
+function PrebooruQueryData(event) {
+    let [$tweet,tweet_id,user_id,screen_name,user_ident,all_idents] = GetPrebooruDialogPreload(event, '.prebooru-misc-actions-container');
     let upload_query_data = UploadsQuery(screen_name, tweet_id);
     let upload_promise = QueryPrebooruData(tweet_id, 'upload', upload_query_data);
     let post_query_data = PostsQuery(tweet_id);
     let post_promise = QueryPrebooruData(tweet_id, 'post', post_query_data);
     let illust_query_data = IllustsQuery(tweet_id);
     let illust_promise = QueryPrebooruData(tweet_id, 'illust', illust_query_data);
-    let user_id = $tweet.data('user-id');
     let artist_query_data = ArtistsQuery(user_id, tweet_id);
     let artist_promise = QueryPrebooruData(tweet_id, 'artist', artist_query_data, all_idents);
     Promise.all([upload_promise, post_promise, illust_promise, artist_promise]).then((query_data)=>{
@@ -6180,6 +6253,194 @@ function BookmarkQueryTweet(event) {
         JSPLib.notice.notice("Prebooru data updated.");
     });
     event.preventDefault();
+}
+
+function PrebooruAddIllustNotation(event) {
+    console.log("PrebooruAddIllustNotation-0");
+    let [$tweet,tweet_id,user_id,screen_name,user_ident,all_idents] = GetPrebooruDialogPreload(event, '.prebooru-misc-actions-container');
+    let $info = $tweet.find('.ntisas-bookmark-entry');
+    let illust_ids = GetDomDataIds($info, 'illust-ids');
+    if (illust_ids.length == 1) {
+        let illust_id = illust_ids[0];
+        let prompt_string = prompt(`Enter notation for illust #${illust_id}.`);
+        if (prompt_string !== null) {
+            let post_data = {
+                illust: {
+                    notation: prompt_string,
+                },
+            };
+            $.post(BOOKMARK_SERVER_URL + `/illusts/${illust_id}/notation.json`, post_data, null, 'json').done((data)=>{
+                console.log('PrebooruAddIllustNotation-1', data);
+                if (data.error) {
+                    JSPLib.notice.error(data.message);
+                } else {
+                    JSPLib.notice.notice("Notation added.");
+                }
+            }).fail((data)=>{
+                console.warn(data);
+                JSPLib.notice.error("Network error: illust notation.");
+            });
+        }
+    } else if (illust_ids.length == 0) {
+        JSPLib.notice.error("No illusts to notate!");
+    } else {
+        JSPLib.notice.notice("Multiple illustrations not handled yet.");
+    }
+}
+
+function PrebooruAddPostNotation(event) {
+    console.log("PrebooruAddPostNotation-0");
+    let [$tweet,tweet_id,user_id,screen_name,user_ident,all_idents] = GetPrebooruDialogPreload(event, '.prebooru-misc-actions-container');
+    let $info = $tweet.find('.ntisas-bookmark-entry');
+    let post_ids = GetDomDataIds($info, 'post-ids');
+    if (post_ids.length == 1) {
+        let post_id = post_ids[0];
+        let prompt_string = prompt(`Enter notation for post #${post_id}.`);
+        if (prompt_string !== null) {
+            let post_data = {
+                post: {
+                    notation: prompt_string,
+                },
+            };
+            $.post(BOOKMARK_SERVER_URL + `/posts/${post_id}/notation.json`, post_data, null, 'json').done((data)=>{
+                console.log('PrebooruAddPostNotation-1', data);
+                if (data.error) {
+                    JSPLib.notice.error(data.message);
+                } else {
+                    JSPLib.notice.notice("Notation added.");
+                }
+            }).fail((data)=>{
+                console.warn(data);
+                JSPLib.notice.error("Network error: post notation.");
+            });
+        }
+    } else if (post_ids.length == 0) {
+        JSPLib.notice.error("No posts to notate!");
+    } else {
+        JSPLib.notice.notice("Multiple posts not handled yet.");
+    }
+}
+
+function PrebooruAddPoolIllust(event) {
+    console.log("PrebooruAddPoolIllust-0");
+    let [$tweet,tweet_id,user_id,screen_name,user_ident,all_idents] = GetPrebooruDialogPreload(event, '.prebooru-pool-actions-container');
+    let $info = $tweet.find('.ntisas-bookmark-entry');
+    let illust_ids = GetDomDataIds($info, 'illust-ids');
+    if (illust_ids.length == 1) {
+        let illust_id = illust_ids[0];
+        if (confirm("Add illust to current pool?")) {
+            let post_data = {
+                pool: {
+                    illust_id: illust_id,
+                },
+            };
+            $.post(BOOKMARK_SERVER_URL + `/pools/${NTISAS.current_pool.id}/element.json`, post_data, null, 'json').done((data)=>{
+                console.log('PrebooruAddPoolIllust-1', data);
+                if (data.error) {
+                    JSPLib.notice.error(data.message);
+                } else {
+                    JSPLib.notice.notice("Illust added to pool.");
+                }
+            }).fail((data)=>{
+                console.warn(data);
+                JSPLib.notice.error("Network error: pool illust.");
+            });
+        }
+    } else if (illust_ids.length == 0) {
+        JSPLib.notice.error("No illusts to add!");
+    } else {
+        JSPLib.notice.notice("Multiple illusts not handled yet.");
+    }
+}
+
+function PrebooruAddPoolPost(event) {
+    console.log("PrebooruAddPoolPost-0");
+    let [$tweet,tweet_id,user_id,screen_name,user_ident,all_idents] = GetPrebooruDialogPreload(event, '.prebooru-pool-actions-container');
+    let $info = $tweet.find('.ntisas-bookmark-entry');
+    let post_ids = GetDomDataIds($info, 'post-ids');
+    if (post_ids.length == 1) {
+        let post_id = post_ids[0];
+        if (confirm("Add post to current pool?")) {
+            let post_data = {
+                pool: {
+                    post_id: post_id,
+                },
+            };
+            $.post(BOOKMARK_SERVER_URL + `/pools/${NTISAS.current_pool.id}/element.json`, post_data, null, 'json').done((data)=>{
+                console.log('PrebooruAddPoolPost-1', data);
+                if (data.error) {
+                    JSPLib.notice.error(data.message);
+                } else {
+                    JSPLib.notice.notice("Post added to pool.");
+                }
+            }).fail((data)=>{
+                console.warn(data);
+                JSPLib.notice.error("Network error: pool post.");
+            });
+        }
+    } else if (post_ids.length == 0) {
+        JSPLib.notice.error("No posts to add!");
+    } else {
+        JSPLib.notice.notice("Multiple posts not handled yet.");
+    }
+}
+
+function PrebooruQueryIllustPools(event) {
+    console.log("PrebooruQueryIllustPools");
+    let [$tweet,tweet_id,user_id,screen_name,user_ident,all_idents] = GetPrebooruDialogPreload(event, '.prebooru-pool-actions-container');
+    let $info = $tweet.find('.ntisas-bookmark-entry');
+    let illust_ids = GetDomDataIds($info, 'illust-ids');
+    if (illust_ids.length == 1) {
+        let illust_id = illust_ids[0];
+        $.getJSON(BOOKMARK_SERVER_URL + `/illusts/${illust_id}/pools.json`).done((data)=>{
+            JSONNotice(data);
+        }).fail((data)=>{
+            console.warn(data);
+            JSPLib.notice.error("Network error: PrebooruQueryIllustPools.");
+        });
+    } else if (illust_ids.length == 0) {
+        JSPLib.notice.error("No illusts to query!");
+    } else {
+        JSPLib.notice.notice("Multiple illusts not handled yet.");
+    }
+}
+
+function PrebooruQueryPostPools(event) {
+    console.log("PrebooruQueryPostPools");
+    let [$tweet,tweet_id,user_id,screen_name,user_ident,all_idents] = GetPrebooruDialogPreload(event, '.prebooru-pool-actions-container');
+    let $info = $tweet.find('.ntisas-bookmark-entry');
+    let post_ids = GetDomDataIds($info, 'post-ids');
+    if (post_ids.length == 1) {
+        let post_id = post_ids[0];
+        $.getJSON(BOOKMARK_SERVER_URL + `/posts/${post_id}/pools.json`).done((data)=>{
+            JSONNotice(data);
+        }).fail((data)=>{
+            console.warn(data);
+            JSPLib.notice.error("Network error: PrebooruQueryPostPools.");
+        });
+    } else if (post_ids.length == 0) {
+        JSPLib.notice.error("No posts to query!");
+    } else {
+        JSPLib.notice.notice("Multiple posts not handled yet.");
+    }
+}
+
+function PrebooruMiscActions(event) {
+    let [$link,$tweet,tweet_id,,screen_name,,all_idents,] = GetEventPreload(event, 'ntisas-bookmark-info');
+    if (!NTISAS.prebooru_misc_dialog[tweet_id]) {
+        NTISAS.prebooru_misc_dialog[tweet_id] = InitializeMiscActions(tweet_id);
+        NTISAS.prebooru_misc_anchor[tweet_id] = $link;
+    }
+    NTISAS.prebooru_misc_dialog[tweet_id].dialog('open');
+}
+
+function PrebooruPoolActions(event) {
+    let [$link,$tweet,tweet_id,,screen_name,,all_idents,] = GetEventPreload(event, 'ntisas-bookmark-info');
+    if (!NTISAS.prebooru_pool_dialog[tweet_id]) {
+        NTISAS.prebooru_pool_dialog[tweet_id] = InitializePoolActions(tweet_id);
+        NTISAS.prebooru_pool_anchor[tweet_id] = $link;
+    }
+    NTISAS.prebooru_pool_dialog[tweet_id].dialog('open');
 }
 
 function ListInfo() {
@@ -6732,27 +6993,29 @@ async function BookmarkServerRecheck() {
                 JSPLib.notice.error(`Error with upload #${upload.id}<br>&emsp;=> ${error_string}`);
             } else {
                 NTISAS.pending_bookmarks.push(tweet_id);
-                SetLocalData('ntisas-pending-bookmarks', NTISAS.pending_bookmarks);
-                NTISAS.channel.postMessage({type: 'pendingbookmarks', pending_bookmarks: NTISAS.pending_bookmarks});
-                $('#ntisas-pending-bookmarks').text(NTISAS.pending_bookmarks.length);
+                console.log("BookmarkServerRecheck - update pending bookmarks");
+                UpdatePendingBookmarks();
             }
             NTISAS.pending_uploads = JSPLib.utility.arrayDifference(NTISAS.pending_uploads, [upload.id]);
         }
     }
     if (pending_length !== NTISAS.pending_uploads.length) {
-        SetLocalData('ntisas-pending-uploads', NTISAS.pending_uploads);
-        NTISAS.channel.postMessage({type: 'pendinguploads', pending_uploads: NTISAS.pending_uploads});
-        $('#ntisas-pending-uploads').text(NTISAS.pending_uploads.length);
+        console.log("BookmarkServerRecheck - update pending uploads");
+        UpdatePendingUploads();
     }
 }
 
 async function AddBookmarksToPool() {
-    console.log("AddBookmarksToPool-1", NTISAS.pending_bookmarks.length, NTISAS.pending_bookmarks, NTISAS.current_pool);
+    //console.log("AddBookmarksToPool-1", NTISAS.pending_bookmarks.length, NTISAS.pending_bookmarks, NTISAS.current_pool);
     if (document.hidden || NTISAS.pending_bookmarks.length == 0) {
         return;
     }
     let pending_length = NTISAS.pending_bookmarks.length;
-    if (!NTISAS.current_pool) {
+    if (NTISAS.current_pool === false) {
+        console.log("AddBookmarksToPool-A");
+        return;
+    } else if (NTISAS.current_pool === null) {
+        console.log("AddBookmarksToPool-B");
         NTISAS.pending_bookmarks = [];
     }
     for (let i = 0; i < NTISAS.pending_bookmarks.length; i++) {
@@ -6774,25 +7037,30 @@ async function AddBookmarksToPool() {
                 url: BOOKMARK_SERVER_URL + `/pools/${NTISAS.current_pool.id}/element.json`,
                 data: senddata,
                 dataType: 'json',
-            }).then((data)=>{
+            }).done((data)=>{
                 console.log("AddBookmarksToPool-3", data);
                 if (data.error) {
                     JSPLib.notice.error(data.message);
+                    NTISAS.failed_bookmarks.push(tweet_id);
+                    SetLocalData('ntisas-failed-bookmarks', NTISAS.failed_bookmarks);
                 } else {
                     let pool = data.pool;
                     NTISAS.current_pool = pool;
                     JSPLib.storage.saveData('ntisas-prebooru-pool', NTISAS.current_pool, JSPLib.storage.bookmarkstorage);
-                    $('#ntisas-current-pool').html(pool.name);
-                    $('#ntisas-pool-count').html(pool.element_count);
+                    UpdatePoolDisplay(pool);
                 }
+            }).fail((data)=>{
+                JSPLib.notice.error("Network error: pool add.")
+                console.log(data);
+                NTISAS.failed_bookmarks.push(tweet_id);
+                SetLocalData('ntisas-failed-bookmarks', NTISAS.failed_bookmarks);
             });
             NTISAS.pending_bookmarks = JSPLib.utility.arrayDifference(NTISAS.pending_bookmarks, [tweet_id]);
         }
     }
     if (pending_length !== NTISAS.pending_bookmarks.length) {
-        SetLocalData('ntisas-pending-bookmarks', NTISAS.pending_bookmarks);
-        NTISAS.channel.postMessage({type: 'pendingbookmarks', pending_bookmarks: NTISAS.pending_bookmarks});
-        $('#ntisas-pending-bookmarks').text(NTISAS.pending_bookmarks.length);
+        console.log("AddBookmarksToPool - update pending bookmarks");
+        UpdatePendingBookmarks();
     }
 }
 
@@ -6883,7 +7151,7 @@ function PageNavigation(pagetype) {
             $('#ntisas-iqdb-toggle a').on(PROGRAM_CLICK, ToggleAutoclickIQDB);
             $('#ntisas-indicator-toggle a').on(PROGRAM_CLICK, ToggleTweetIndicators);
             $('#ntisas-bookmark-toggle a').on(PROGRAM_CLICK, ToggleBookmarkMenu);
-            $('#ntisas-current-pool').on(PROGRAM_CLICK, ChooseCurrentPool);
+            $('#prebooru-select-pool').on(PROGRAM_CLICK, ChooseCurrentPool);
             $('#ntisas-open-settings').on(PROGRAM_CLICK, OpenSettingsMenu);
             //These will only get bound here on a rebind
             $('#ntisas-database-version').on(PROGRAM_CLICK, CurrentPostver);
@@ -7169,10 +7437,14 @@ function BroadcastTISAS(ev) {
             InitializeCurrentRecords();
             break;
         case 'pendinguploads':
+            console.log('pendinguploads-old', NTISAS.pending_uploads);
             NTISAS.pending_uploads = ev.data.pending_uploads;
+            UpdatePendingUploads(false);
             break;
         case 'pendingbookmarks':
+            console.log('pendingbookmarks-old', NTISAS.pending_bookmarks);
             NTISAS.pending_bookmarks = ev.data.pending_bookmarks;
+            UpdatePendingBookmarks(false);
             break;
         case 'bookmarklink':
             UpdateBookmarkItems(ev.data.tweet_id, ev.data.item_ids, ev.data.subtype, ev.data.all_idents, false);
@@ -7532,7 +7804,15 @@ async function Main() {
     $(document).on(PROGRAM_CLICK, '.ntisas-bookmark-artists', BookmarkArtists);
     $(document).on(PROGRAM_CLICK, '.ntisas-bookmark-thumbs', BookmarkThumbs);
     $(document).on(PROGRAM_CLICK, '.ntisas-bookmark-similar', BookmarkSimilar);
-    $(document).on(PROGRAM_CLICK, '.ntisas-query-tweet', BookmarkQueryTweet);
+    $(document).on(PROGRAM_CLICK, '.prebooru-pool-actions', PrebooruPoolActions);
+    $(document).on(PROGRAM_CLICK, '.prebooru-misc-actions', PrebooruMiscActions);
+    $(document).on(PROGRAM_CLICK, '.prebooru-query-data', PrebooruQueryData);
+    $(document).on(PROGRAM_CLICK, '.prebooru-add-illust-notation', PrebooruAddIllustNotation);
+    $(document).on(PROGRAM_CLICK, '.prebooru-add-post-notation', PrebooruAddPostNotation);
+    $(document).on(PROGRAM_CLICK, '.prebooru-add-pool-illust', PrebooruAddPoolIllust);
+    $(document).on(PROGRAM_CLICK, '.prebooru-add-pool-post', PrebooruAddPoolPost);
+    $(document).on(PROGRAM_CLICK, '.prebooru-query-illust-pools', PrebooruQueryIllustPools);
+    $(document).on(PROGRAM_CLICK, '.prebooru-query-post-pools', PrebooruQueryPostPools);
     $(document).on(PROGRAM_CLICK, '.ntisas-metric', SelectMetric);
     $(document).on(PROGRAM_CLICK, '.ntisas-toggle-image-size', ToggleImageSize);
     $(document).on('scroll.ntisas.check_views', CheckViews);
@@ -7560,8 +7840,6 @@ async function Main() {
     JSPLib.utility.setCSSStyle(NOTICE_CSS, 'notice');
     InitializeColorScheme();
     JSPLib.utility.initializeInterval(RegularCheck, PROGRAM_RECHECK_INTERVAL);
-    NTISAS.pending_uploads = GetLocalData('ntisas-pending-uploads', []);
-    NTISAS.pending_bookmarks = GetLocalData('ntisas-pending-bookmarks', []);
     JSPLib.utility.initializeInterval(BookmarkServerRecheck, JSPLib.utility.one_second * 2.5);
     JSPLib.utility.initializeInterval(AddBookmarksToPool, JSPLib.utility.one_second * 2.5);
     InitializeCleanupTasks();
