@@ -144,6 +144,7 @@ const PROGRAM_DEFAULT_VALUES = {
     bookmark_dialog: {},
     bookmark_anchor: {},
     current_pool: false,
+    prebooru_data: {},
     prebooru_pool_dialog: {},
     prebooru_pool_anchor: {},
     prebooru_misc_dialog: {},
@@ -2695,6 +2696,17 @@ function GetDomDataIds($obj, key) {
     }
 }
 
+function LocalPrebooruData(tweet_id, type) {
+    let plural = type + 's';
+    if (!(tweet_id in NTISAS.prebooru_data)) {
+        NTISAS.prebooru_data[tweet_id] = {};
+    }
+    if (!(plural in NTISAS.prebooru_data[tweet_id])) {
+        NTISAS.prebooru_data[tweet_id][plural] = JSPLib.storage.getIndexedSessionData(plural + '-' + tweet_id, STORAGE_DATABASES.bookmark, []);
+    }
+    return NTISAS.prebooru_data[tweet_id][plural] || [];
+}
+
 function JSONNotice(data) {
     JSPLib.notice.notice('<pre>' + JSON.stringify(data, null, 2) + '</pre>', false, true);
 }
@@ -3728,6 +3740,7 @@ function QueryPrebooruData(tweet_id, type, query_data, all_idents=null) {
             SaveData(plural + '-' + tweet_id, item_ids, 'bookmark');
         }
         UpdateBookmarkItems(tweet_id, item_ids, type, all_idents);
+        NTISAS.prebooru_data[tweet_id][plural] = item_ids;
         return data;
     });
 }
@@ -4671,6 +4684,7 @@ function InitializeBookmarkMenu(tweet) {
     promise_array.push(GetData('artists-' + user_ident, 'bookmark'));
     Promise.all(promise_array).then(([uploads,posts,illusts,artists])=>{
         let $bookmark_menu = $(RenderBookmarkMenu(posts,uploads,illusts,artists));
+        NTISAS.prebooru_data[tweet_id] = {uploads, posts, illusts, artists};
         let is_shown = GetLocalData('ntisas-bookmark-menu', true);
         if (!is_shown) {
             $bookmark_menu.hide();
@@ -5248,6 +5262,9 @@ function TweetUserData(data) {
 }
 
 function ProcessTwitterGlobalObjects(data) {
+    let new_tweet_ids = [];
+    let new_twuser_ids = [];
+    let new_screen_names = [];
     if ('tweets' in data.globalObjects) {
         let existing_keys = Object.keys(API_DATA.tweets);
         Object.assign(API_DATA.tweets, data.globalObjects.tweets);
@@ -5259,19 +5276,25 @@ function ProcessTwitterGlobalObjects(data) {
             }
         }
         let current_keys = Object.keys(API_DATA.tweets);
-        let new_keys = JSPLib.utility.arrayDifference(current_keys, existing_keys);
-        if (new_keys.length) {
-            setTimeout(()=>{PreloadStorageData(new_keys);}, 1);
-        }
+        new_tweet_ids = JSPLib.utility.arrayDifference(current_keys, existing_keys);
         API_DATA.has_data = true;
     }
     if ('users' in data.globalObjects) {
+        let existing_keys = Object.keys(API_DATA.users_id);
         Object.assign(API_DATA.users_id, data.globalObjects.users);
+        let current_keys = Object.keys(API_DATA.users_id);
+        new_twuser_ids = JSPLib.utility.arrayDifference(current_keys, existing_keys);
+        existing_keys = Object.keys(API_DATA.users_name);
         for (let twitter_id in data.globalObjects.users) {
             let entry = data.globalObjects.users[twitter_id];
             API_DATA.users_name[entry.screen_name] = entry;
         }
+        current_keys = Object.keys(API_DATA.users_name);
+        new_screen_names = JSPLib.utility.arrayDifference(current_keys, existing_keys);
         API_DATA.has_data = true;
+    }
+    if (new_tweet_ids.length || new_twuser_ids.length || new_screen_names.length) {
+        setTimeout(()=>{PreloadStorageData(new_tweet_ids, new_twuser_ids, new_screen_names);}, 1);
     }
 }
 
@@ -5283,7 +5306,9 @@ function ProcessTwitterData(data) {
         var artist_list = GetList('artist-list');
         var tweet_list = GetList('tweet-list');
     }
-    let existing_keys = Object.keys(API_DATA.tweets);
+    let existing_tweet_keys = Object.keys(API_DATA.tweets);
+    let existing_twuser_keys = Object.keys(API_DATA.users_id);
+    let existing_name_keys = Object.keys(API_DATA.users_name);
     for (let i = 0; i < checked_data.length; i++) {
         let {type,id,item} = checked_data[i];
         let $tweet = null;
@@ -5317,10 +5342,14 @@ function ProcessTwitterData(data) {
                 //do nothing
         }
     }
-    let current_keys = Object.keys(API_DATA.tweets);
-    let new_keys = JSPLib.utility.arrayDifference(current_keys, existing_keys);
-    if (new_keys.length) {
-        setTimeout(()=>{PreloadStorageData(new_keys);}, 1);
+    let current_tweet_keys = Object.keys(API_DATA.tweets);
+    let current_twuser_keys = Object.keys(API_DATA.users_id);
+    let current_name_keys = Object.keys(API_DATA.users_name);
+    let new_tweet_ids = JSPLib.utility.arrayDifference(current_tweet_keys, existing_tweet_keys);
+    let new_twuser_ids = JSPLib.utility.arrayDifference(current_twuser_keys, existing_twuser_keys);
+    let new_screen_names = JSPLib.utility.arrayDifference(current_name_keys, existing_name_keys);
+    if (new_tweet_ids.length || new_twuser_ids.length || new_screen_names.length) {
+        setTimeout(()=>{PreloadStorageData(new_tweet_ids, new_twuser_ids, new_screen_names);}, 1);
     }
     if (checked_data.length) {
         API_DATA.has_data = true;
@@ -5339,8 +5368,9 @@ function CheckGraphqlData(data,savedata=[]) {
     return savedata;
 }
 
-function PreloadStorageData(tweet_ids) {
-    this.debug('log', "Tweet IDs:", tweet_ids);
+function PreloadStorageData(tweet_ids, twuser_ids, screen_names) {
+    //FIX THIS UP SO THAT DB MISSES SET BLANK DATA, E.G. []
+    this.debug('log', "\nTweet IDs:", tweet_ids, "\nTwuser IDs:", twuser_ids, "\nScreen names:", screen_names);
     let promise_array = tweet_ids.map((tweet_id)=>[
         GetData('tweet-' + tweet_id, 'twitter'),
         GetData('iqdb-' + tweet_id, 'danbooru'),
@@ -5357,6 +5387,32 @@ function PreloadStorageData(tweet_ids) {
             });
         }
     });
+    if (NTISAS.user_settings.bookmarks_enabled) {
+        let prebooru_key_array = tweet_ids.map((tweet_id)=>[
+            'uploads-' + tweet_id,
+            'posts-' + tweet_id,
+            'illusts-' + tweet_id,
+        ]).flat();
+        prebooru_key_array = JSPLib.utility.concat(prebooru_key_array,
+            twuser_ids.map((twuser_id) => ('artists-' + twuser_id))
+        );
+        prebooru_key_array = JSPLib.utility.concat(prebooru_key_array,
+            screen_names.map((screen_name) => ('artists-' + screen_name))
+        );
+        let prebooru_promise_array = prebooru_key_array.map((key) => GetData(key, 'bookmark'));
+        Promise.all(prebooru_promise_array).then((data_items)=>{
+            let data_dict = {};
+            for (let i = 0; i < prebooru_key_array.length; i++) {
+                let data_key = prebooru_key_array[i];
+                let data_item = data_items[i];
+                data_dict[data_key] = data_item;
+                if (data_item === null) {
+                    JSPLib.storage.setIndexedSessionData(data_key, [], STORAGE_DATABASES.bookmark);
+                }
+            }
+            this.debug('logLevel', "Prebooru data:", data_dict, JSPLib.debug.DEBUG);
+        });
+    }
 }
 
 //Database functions
@@ -6979,12 +7035,12 @@ async function BookmarkServerRecheck() {
                     post_ids = JSPLib.utility.arrayUnion(post_ids, all_post_ids);
                     SaveData(bookmark_key, post_ids, 'bookmark');
                     UpdateBookmarkItems(tweet_id, post_ids, 'post');
+                    NTISAS.prebooru_data[tweet_id].posts = post_ids;
                 });
-                let $info = $(`[data-tweet-id=${tweet_id}] .ntisas-bookmark-entry`);
-                if (GetDomDataIds($info, 'illust-ids').length === 0) {
+                if (LocalPrebooruData(tweet_id, 'illust').length === 0) {
                     IllustsCallback(tweet_id);
                 }
-                if (GetDomDataIds($info, 'artist-ids').length === 0) {
+                if (LocalPrebooruData(tweet_id, 'artist').length === 0) {
                     ArtistsCallback(tweet_id);
                 }
             }
@@ -7020,10 +7076,8 @@ async function AddBookmarksToPool() {
     }
     for (let i = 0; i < NTISAS.pending_bookmarks.length; i++) {
         let tweet_id = NTISAS.pending_bookmarks[i];
-        let $tweet = $(`.ntisas-tweet[data-tweet-id=${tweet_id}]`);
-        let $info = $tweet.find('.ntisas-bookmark-entry');
-        let post_ids = GetDomDataIds($info, 'post-ids');
-        let illust_ids = GetDomDataIds($info, 'illust-ids');
+        let post_ids = LocalPrebooruData(tweet_id, 'post');
+        let illust_ids = LocalPrebooruData(tweet_id, 'illust');
         console.log("AddBookmarksToPool-2", tweet_id, post_ids, illust_ids);
         if (post_ids.length && illust_ids.length) {
             let senddata = {pool: {}};
@@ -7448,6 +7502,7 @@ function BroadcastTISAS(ev) {
             break;
         case 'bookmarklink':
             UpdateBookmarkItems(ev.data.tweet_id, ev.data.item_ids, ev.data.subtype, ev.data.all_idents, false);
+            NTISAS.prebooru_data[ev.data.tweet_id][ev.data.subtype + 's'] = ev.data.item_ids;
             break;
         case 'bookmarks':
             UpdateBookmarkControls();
