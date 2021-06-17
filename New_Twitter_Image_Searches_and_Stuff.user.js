@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff (bookmark version)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.6.i
+// @version      7.6.j
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -4001,7 +4001,7 @@ function RenderSimilarContainer(header,iqdb_results,image_url,index) {
     iqdb_results.forEach((iqdb_result)=>{
         let is_user_upload = iqdb_result.post.uploaderid === NTISAS.user_data.id;
         let addons = RenderPreviewAddons(iqdb_result.post.source, null, iqdb_result.score, iqdb_result.post.ext, iqdb_result.post.size, iqdb_result.post.width, iqdb_result.post.height, is_user_upload);
-        html += RenderPostPreview(iqdb_result.post, addons);
+        html += RenderPostPreview(iqdb_result.post, NTISAS.domain, addons);
     });
     let controls = (iqdb_results.length > 1 ? SELECTION_CONTROLS : "");
     return `
@@ -4022,7 +4022,7 @@ function RenderPrebooruSimilarContainer(header,similar_result,index) {
         sorted_results.forEach((post_result)=>{
             let site_ids = JSPLib.utility.arrayUnique(post_result.post.illust_urls.map((illust_url) => illust_url.site_id));
             let addons = RenderPreviewAddons(site_ids.join(' ,'), null, post_result.score, post_result.post.file_ext, post_result.post.size, post_result.post.width, post_result.post.height, false);
-            html += RenderPostPreview(post_result.post, addons, false);
+            html += RenderPostPreview(post_result.post, NTISAS.domain, addons, false);
         });
     } else {
         html += '<div style="font-style: italic; display: inline-block; height: 200px; width: 160px; position: relative;"><span style="position: absolute; top: 2em; left: 2em;">Nothing found.</span></div>';
@@ -4053,7 +4053,7 @@ function RenderPostsContainer(all_posts) {
     all_posts.forEach((post)=>{
         let is_user_upload = post.uploaderid === NTISAS.user_data.id;
         let addons = RenderPreviewAddons(post.source, post.id, null, post.ext, post.size, post.width, post.height, is_user_upload);
-        html += RenderPostPreview(post, addons);
+        html += RenderPostPreview(post, NTISAS.domain, addons);
     });
     let controls = (all_posts.length > 1 ? `<div style="position: relative; height: 1.5em; margin-top: 1em">${SELECTION_CONTROLS}</div>` : "");
     let width_addon = (all_posts.length > 10 ? 'style="width:850px"' : "");
@@ -4069,7 +4069,7 @@ function RenderBookmarkContainer(posts) {
     let html = "";
     posts.forEach((post)=>{
         let addons = RenderPreviewAddons('https://twitter.com', post.id, null, post.file_ext, post.size, post.width, post.height);
-        html += RenderPostPreview(post, addons, false);
+        html += RenderPostPreview(post, BOOKMARK_SERVER_URL, addons, false);
     });
     let width_addon = (posts.length > 10 ? 'style="width:850px"' : "");
     return `
@@ -4079,14 +4079,14 @@ function RenderBookmarkContainer(posts) {
 }
 
 //Expects a mapped post as input
-function RenderPostPreview(post,append_html="",populate_title=true) {
+function RenderPostPreview(post,server_url,append_html="",populate_title=true) {
     let [width,height] = JSPLib.utility.getPreviewDimensions(post.width, post.height, POST_PREVIEW_DIMENSION);
     let padding_height = POST_PREVIEW_DIMENSION - height;
     let title = (populate_title ? GetLinkTitle(post) : "");
     return `
 <article class="ntisas-post-preview ntisas-post-selectable" data-id="${post.id}" data-size="${post.size}">
     <div class="ntisas-image-container">
-        <a target="_blank" href="https://danbooru.donmai.us/posts/${post.id}">
+        <a target="_blank" href="${server_url}/posts/${post.id}">
             <img width="${width}" height="${height}" style="padding-top:${padding_height}px" title="${title}">
         </a>
     </div>
@@ -5369,7 +5369,7 @@ function CheckGraphqlData(data,savedata=[]) {
 }
 
 function PreloadStorageData(tweet_ids, twuser_ids, screen_names) {
-    //FIX THIS UP SO THAT DB MISSES SET BLANK DATA, E.G. []
+    //FIX THIS UP SO THAT ALL DB MISSES SET BLANK DATA, E.G. []
     this.debug('log', "\nTweet IDs:", tweet_ids, "\nTwuser IDs:", twuser_ids, "\nScreen names:", screen_names);
     let promise_array = tweet_ids.map((tweet_id)=>[
         GetData('tweet-' + tweet_id, 'twitter'),
