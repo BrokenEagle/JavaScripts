@@ -3023,18 +3023,18 @@ function UploadsQuery(screen_name, tweet_id) {
 }
 
 function PostsQuery(tweet_id) {
-    return {site_illust_id: tweet_id, isite_id: 3};
+    return {illust_urls:{illust: {site_illust_id: tweet_id, site_id: 3}}};
 }
 
 function IllustsQuery(tweet_id) {
-    return {site_illust_id: tweet_id};
+    return {site_illust_id: tweet_id, site_id: 3};
 }
 
 function ArtistsQuery(user_id, tweet_id) {
     if (user_id) {
-        return {site_artist_id: user_id};
+        return {site_artist_id: user_id, site_id: 3};
     } else {
-        return {illust_site_illust_id: tweet_id};
+        return {illusts: {site_illust_id: tweet_id}, site_id: 3};
     }
 }
 
@@ -4022,7 +4022,7 @@ function RenderPrebooruSimilarContainer(header,similar_result,index) {
         sorted_results.forEach((post_result)=>{
             let site_ids = JSPLib.utility.arrayUnique(post_result.post.illust_urls.map((illust_url) => illust_url.site_id));
             let addons = RenderPreviewAddons(site_ids.join(' ,'), null, post_result.score, post_result.post.file_ext, post_result.post.size, post_result.post.width, post_result.post.height, false);
-            html += RenderPostPreview(post_result.post, NTISAS.domain, addons, false);
+            html += RenderPostPreview(post_result.post, BOOKMARK_SERVER_URL, addons, false);
         });
     } else {
         html += '<div style="font-style: italic; display: inline-block; height: 200px; width: 160px; position: relative;"><span style="position: absolute; top: 2em; left: 2em;">Nothing found.</span></div>';
@@ -4812,7 +4812,16 @@ function InitializeMediaLink($tweet) {
     let screen_name = String($tweet.data('screen-name'));
     let links_html = JSPLib.utility.regexReplace(MEDIA_LINKS_HTML, {SCREENNAME: screen_name});
     $('.r-18u37iz.r-1mi0q7o .r-1wtj0ep').css('display', 'flex');
-    $('[data-testid=caret]', $tweet[0]).before(links_html);
+    JSPLib.utility.recheckTimer({
+        check: ()=>{
+            let $mark = $('[data-testid=caret]', $tweet[0]);
+            console.log("InitializeMediaLink:", $mark);
+            return Boolean($mark.length);
+        },
+        exec: ()=>{
+            $('[data-testid=caret]', $tweet[0]).before(links_html);
+        }
+    }, JSPLib.utility.one_second, JSPLib.utility.one_second * 10);
 }
 
 function InitializeRetweetDisplay(tweet) {
@@ -5333,6 +5342,13 @@ function ProcessTwitterData(data) {
                         API_DATA.tweets[retweet.id_str] = retweet;
                     }
                 }
+                if ('retweeted_status_result' in item) {
+                    retweet = item.retweeted_status_result && item.retweeted_status_result.result && item.retweeted_status_result.result.legacy;
+                    if (retweet) {
+                        API_DATA.retweets[retweet.id_str] = item;
+                        API_DATA.tweets[retweet.id_str] = retweet;
+                    }
+                }
                 break;
             case 'user':
                 API_DATA.users_id[id] = item;
@@ -5361,6 +5377,10 @@ function CheckGraphqlData(data,savedata=[]) {
         if ((i === "tweet" || i === "user") && 'legacy' in data[i] && 'rest_id' in data[i]) {
             savedata.push({type: i, id: data[i].rest_id, item: data[i].legacy});
         }
+        if (i === '__typename' && data[i] === "Tweet" && 'legacy' in data && 'rest_id' in data) {
+            let type = data[i].toLowerCase();
+            savedata.push({type: type, id: data.rest_id, item: data.legacy});
+        }
         if (typeof data[i] === "object" && data[i] !== null) {
             CheckGraphqlData(data[i], savedata);
         }
@@ -5387,7 +5407,7 @@ function PreloadStorageData(tweet_ids, twuser_ids, screen_names) {
             });
         }
     });
-    if (NTISAS.user_settings.bookmarks_enabled) {
+    if ((NTISAS.user_settings === undefined) || NTISAS.user_settings.bookmarks_enabled) {
         let prebooru_key_array = tweet_ids.map((tweet_id)=>[
             'uploads-' + tweet_id,
             'posts-' + tweet_id,
