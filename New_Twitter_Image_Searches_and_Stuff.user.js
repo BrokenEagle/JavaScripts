@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff (bookmark version)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.6.j
+// @version      7.6.k
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -386,7 +386,7 @@ const SETTINGS_CONFIG = {
 };
 
 const ALL_LIST_TYPES = ['highlight', 'iqdb', 'artist', 'tweet'];
-const ALL_IMPORT_TYPES = ['program_data', 'tweet_database'];
+const ALL_IMPORT_TYPES = ['program_data', 'tweet_database', 'bookmark_database'];
 const CONTROL_CONFIG = {
     select_list: {
         allitems: ALL_LIST_TYPES,
@@ -3018,8 +3018,8 @@ function SavePostUsers(mapped_posts) {
 }
 
 function UploadsQuery(screen_name, tweet_id) {
-    let request_url = `https://twitter.com/${screen_name}/status/${tweet_id}`;
-    return {request_url: request_url};
+    let request_url = `https://twitter.com/*/status/${tweet_id}`;
+    return {request_url_like: request_url};
 }
 
 function PostsQuery(tweet_id) {
@@ -4355,6 +4355,7 @@ function RenderMiscActionsDialog(tweet_id) {
 <div class="prebooru-misc-actions-container ntisas-links" data-tweet-id="${tweet_id}">
     <ul style="font-weight: bold; margin: 0; padding: 0.5em;">
         <li><a class="prebooru-query-data ntisas-expanded-link">Query All Data</a></li>
+        <li><a class="prebooru-add-tweet-notation ntisas-expanded-link">Add tweet notation</a></li>
         <li><a class="prebooru-add-illust-notation ntisas-expanded-link">Add illust notation</a></li>
         <li><a class="prebooru-add-post-notation ntisas-expanded-link">Add post notation</a></li>
     </ul>
@@ -4376,10 +4377,18 @@ function RenderPoolActionsDialog(tweet_id) {
     return `
 <div class="prebooru-pool-actions-container ntisas-links" data-tweet-id="${tweet_id}">
     <ul style="font-weight: bold; margin: 0; padding: 0.5em;">
-        <li><a class="prebooru-add-pool-illust ntisas-expanded-link">Add pool illust</a></li>
-        <li><a class="prebooru-add-pool-post ntisas-expanded-link">Add pool post</a></li>
-        <li><a class="prebooru-query-illust-pools ntisas-expanded-link">Query illust pools</a></li>
-        <li><a class="prebooru-query-post-pools ntisas-expanded-link">Query post pools</a></li>
+        <li>Add pool: <a class="prebooru-add-pool-tweet ntisas-expanded-link" style="color: cornflowerblue;">Tweet</a>
+            <ul style="padding-inline-start: 1em;">
+                <li><a class="prebooru-add-pool-illust ntisas-expanded-link" style="color: orange;">Illust</a></li>
+                <li><a class="prebooru-add-pool-post ntisas-expanded-link" style="color: orange;">Post</a></li>
+            </ul>
+         </li>
+        <li>Query pool: <a class="prebooru-query-tweet-pools ntisas-expanded-link" style="color: cornflowerblue;">Tweet</a>
+            <ul style="padding-inline-start: 1em;">
+                <li><a class="prebooru-query-illust-pools ntisas-expanded-link" style="color: orange;">Illust</a></li>
+                <li><a class="prebooru-query-post-pools ntisas-expanded-link" style="color: orange;">Post</a></li>
+            </ul>
+         </li>
     </ul>
 </div>
 `;
@@ -5516,7 +5525,17 @@ async function GetSavePackage(export_types) {
                 save_package.database_info = value;
             }
             if ((i % 10000) === 0) {
-                $('#ntisas-export-counter').html(--batch_counter);
+                $('#ntisas-export-counter').html('T-' + --batch_counter);
+            }
+        });
+    }
+    if (export_types.includes('bookmark_database')) {
+        let database_length = await JSPLib.storage.bookmarkstorage.length();
+        let batch_counter = Math.floor(database_length / 10000);
+        await JSPLib.storage.bookmarkstorage.iterate((value,key,i)=>{
+            save_package.bookmark_database[key] = value;
+            if ((i % 10000) === 0) {
+                $('#ntisas-export-counter').html('B-' + --batch_counter);
             }
         });
     }
@@ -5736,7 +5755,7 @@ function ToggleBookmarkMenu() {
 
 function ChooseCurrentPool() {
     if (!NTISAS.pool_selection_dialog) {
-        return $.getJSON(BOOKMARK_SERVER_URL + '/pools.json').then((data)=>{
+        return $.getJSON(BOOKMARK_SERVER_URL + '/pools.json', {limit: 50}).then((data)=>{
             NTISAS.pool_selection_dialog = InitializePoolSelection(data);
             NTISAS.pool_selection_dialog.dialog('open');
         });
@@ -6257,7 +6276,7 @@ async function BookmarkSimilar(event) {
         $link.addClass('ntisas-active');
         //Proxy this through main server... maybe
         let send_urls = selected_image_urls.map((url) => (url + ':small'));
-        let data = await $.getJSON('http://127.0.0.1:3000/check_similarity.json', {urls: send_urls});
+        let data = await $.getJSON('http://127.0.0.1:3000/check_similarity.json', {urls: send_urls, include_posts: true});
         $link.removeClass('ntisas-active');
         console.log("Results:", data);
         if (data.error === false) {
@@ -6331,6 +6350,20 @@ function PrebooruQueryData(event) {
     event.preventDefault();
 }
 
+function PrebooruAddTweetNotation(event) {
+    let [$tweet,tweet_id,user_id,screen_name,user_ident,all_idents] = GetPrebooruDialogPreload(event, '.prebooru-misc-actions-container');
+    let $info = $tweet.find('.ntisas-bookmark-entry');
+    let post_ids = GetDomDataIds($info, 'post-ids');
+    let illust_ids = GetDomDataIds($info, 'illust-ids');
+    if (post_ids.length == 1) {
+        PrebooruAddPostNotation(event);
+    } else if (illust_ids.length == 1) {
+        PrebooruAddIllustNotation(event);
+    } else {
+        JSPLib.notice.error("No posts or illusts to notate!");
+    }
+}
+
 function PrebooruAddIllustNotation(event) {
     console.log("PrebooruAddIllustNotation-0");
     let [$tweet,tweet_id,user_id,screen_name,user_ident,all_idents] = GetPrebooruDialogPreload(event, '.prebooru-misc-actions-container');
@@ -6339,7 +6372,7 @@ function PrebooruAddIllustNotation(event) {
     if (illust_ids.length == 1) {
         let illust_id = illust_ids[0];
         let prompt_string = prompt(`Enter notation for illust #${illust_id}.`);
-        if (prompt_string !== null) {
+        if (prompt_string !== null && prompt_string.trim().length > 0) {
             let post_data = {
                 illust: {
                     notation: prompt_string,
@@ -6372,7 +6405,7 @@ function PrebooruAddPostNotation(event) {
     if (post_ids.length == 1) {
         let post_id = post_ids[0];
         let prompt_string = prompt(`Enter notation for post #${post_id}.`);
-        if (prompt_string !== null) {
+        if (prompt_string !== null && prompt_string.trim().length > 0) {
             let post_data = {
                 post: {
                     notation: prompt_string,
@@ -6394,6 +6427,20 @@ function PrebooruAddPostNotation(event) {
         JSPLib.notice.error("No posts to notate!");
     } else {
         JSPLib.notice.notice("Multiple posts not handled yet.");
+    }
+}
+
+function PrebooruAddPoolTweet(event) {
+    let [$tweet,tweet_id,user_id,screen_name,user_ident,all_idents] = GetPrebooruDialogPreload(event, '.prebooru-pool-actions-container');
+    let $info = $tweet.find('.ntisas-bookmark-entry');
+    let post_ids = GetDomDataIds($info, 'post-ids');
+    let illust_ids = GetDomDataIds($info, 'illust-ids');
+    if (post_ids.length == 1) {
+        PrebooruAddPoolPost(event);
+    } else if (illust_ids.length == 1) {
+        PrebooruAddPoolIllust(event);
+    } else {
+        JSPLib.notice.error("No posts or illusts to add to pool!");
     }
 }
 
@@ -6458,6 +6505,20 @@ function PrebooruAddPoolPost(event) {
         JSPLib.notice.error("No posts to add!");
     } else {
         JSPLib.notice.notice("Multiple posts not handled yet.");
+    }
+}
+
+function PrebooruQueryTweetPools(event) {
+    let [$tweet,tweet_id,user_id,screen_name,user_ident,all_idents] = GetPrebooruDialogPreload(event, '.prebooru-pool-actions-container');
+    let $info = $tweet.find('.ntisas-bookmark-entry');
+    let post_ids = GetDomDataIds($info, 'post-ids');
+    let illust_ids = GetDomDataIds($info, 'illust-ids');
+    if (post_ids.length == 1) {
+        PrebooruQueryPostPools(event);
+    } else if (illust_ids.length == 1) {
+        PrebooruQueryIllustPools(event);
+    } else {
+        JSPLib.notice.error("No posts or illusts to query pool!");
     }
 }
 
@@ -7882,10 +7943,13 @@ async function Main() {
     $(document).on(PROGRAM_CLICK, '.prebooru-pool-actions', PrebooruPoolActions);
     $(document).on(PROGRAM_CLICK, '.prebooru-misc-actions', PrebooruMiscActions);
     $(document).on(PROGRAM_CLICK, '.prebooru-query-data', PrebooruQueryData);
+    $(document).on(PROGRAM_CLICK, '.prebooru-add-tweet-notation', PrebooruAddTweetNotation);
     $(document).on(PROGRAM_CLICK, '.prebooru-add-illust-notation', PrebooruAddIllustNotation);
     $(document).on(PROGRAM_CLICK, '.prebooru-add-post-notation', PrebooruAddPostNotation);
+    $(document).on(PROGRAM_CLICK, '.prebooru-add-pool-tweet', PrebooruAddPoolTweet);
     $(document).on(PROGRAM_CLICK, '.prebooru-add-pool-illust', PrebooruAddPoolIllust);
     $(document).on(PROGRAM_CLICK, '.prebooru-add-pool-post', PrebooruAddPoolPost);
+    $(document).on(PROGRAM_CLICK, '.prebooru-query-tweet-pools', PrebooruQueryTweetPools);
     $(document).on(PROGRAM_CLICK, '.prebooru-query-illust-pools', PrebooruQueryIllustPools);
     $(document).on(PROGRAM_CLICK, '.prebooru-query-post-pools', PrebooruQueryPostPools);
     $(document).on(PROGRAM_CLICK, '.ntisas-metric', SelectMetric);
