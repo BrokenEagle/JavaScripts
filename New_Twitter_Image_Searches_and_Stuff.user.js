@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.6
+// @version      7.7
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -756,6 +756,7 @@ const PROGRAM_CSS = `
     letter-spacing: -1px;
 }
 .ntisas-timeline-menu {
+    margin-top: 1em;
     font-size: 13px;
     letter-spacing: -1px;
     font-weight: bold;
@@ -769,6 +770,7 @@ const PROGRAM_CSS = `
 }
 .ntisas-image-menu.ntisas-tweet-actions {
     max-width: 550px;
+    flex-direction: row;
 }
 .ntisas-image-menu.ntisas-tweet-actions .ntisas-reply {
     justify-content: flex-start;
