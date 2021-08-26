@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SiteTagSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.5
+// @version      4.6
 // @description  Presents additional site links for the wiki tag(s).
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -49,7 +49,7 @@ const STS = {};
 
 //Available setting values
 const BOORU_SITES = ['gelbooru', 'yandere', 'sankaku', 'konachan'];
-const SOURCE_SITES = ['pixiv', 'nicoseiga', 'twitter', 'deviantart', 'tumblr', 'artstation', 'E-Hentai', 'tinami'];
+const SOURCE_SITES = ['pixiv', 'nicoseiga', 'twitter', 'deviantart', 'tumblr', 'nijie', 'artstation', 'E-Hentai', 'tinami'];
 
 //Main settings
 const SETTINGS_CONFIG = {
@@ -105,6 +105,14 @@ const PROGRAM_CSS = `
 #wiki-page-body,
 #excerpt .prose {
     min-height: 15em;
+}`
+
+const MENU_CSS = `
+.sts-selectors.jsplib-selectors label {
+    width: 120px;
+}
+.sts-selectors.jsplib-selectors[data-setting="domain_selector"] label {
+    width: 150px;
 }`;
 
 //HTML constants
@@ -278,6 +286,7 @@ function Main() {
     });
     if (JSPLib.danbooru.isSettingMenu()) {
         JSPLib.menu.initializeSettingsMenu(RenderSettingsMenu);
+        JSPLib.utility.setCSSStyle(MENU_CSS, 'menu');
     }
     if (!JSPLib.menu.isScriptEnabled()) {
         JSPLib.debug.debuglog("Script is disabled on", window.location.hostname);
@@ -300,7 +309,7 @@ function Main() {
     }
     $('.sts-collapsible-source-links').on(PROGRAM_CLICK, SiteLinkToggle('source', 'e'));
     $('.sts-collapsible-booru-links').on(PROGRAM_CLICK, SiteLinkToggle('booru', 'w'));
-    JSPLib.utility.setCSSStyle(PROGRAM_CSS);
+    JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
 }
 
 /****Function decoration****/
