@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.13
+// @version      28.14
 // @description  Validates tag add/remove inputs on a post edit or upload, plus several other post validations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -579,7 +579,7 @@ async function ValidateTags() {
 
 function RebindHotkey() {
     JSPLib.utility.recheckTimer({
-        check: ()=>{return JSPLib.utility.isNamespaceBound("#upload_tag_string,#post_tag_string",'keydown','danbooru.submit');},
+        check: ()=>{return JSPLib.utility.isNamespaceBound("#upload_tag_string,#post_tag_string",'keydown','danbooru.submit_form');},
         exec: ()=>{
             $("#upload_tag_string,#post_tag_string").off("keydown.danbooru.submit").off("keydown.danbooru.submit_form").on("keydown.vti", null, "ctrl+return", (event)=>{
                 $("#validate-tags").click();
