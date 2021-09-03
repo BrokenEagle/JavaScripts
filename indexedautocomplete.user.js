@@ -2472,13 +2472,21 @@ function InitializeRelatedTagColumnWidths() {
     $('.tag-column', $related_tags[0]).each((i,column)=>{
         let $column = $(column);
         $column.css('width', "");
-        let max_child_width = Math.max(...$('li', column).map((i,entry)=>{
+        let $container = $('>ul,>div', column);
+        let $children = $container.children();
+        if ($children.length == 0) {
+            return;
+        }
+        let line_tag = $container.children().get(0).tagName.toLowerCase();
+        let container_tag = $container.get(0).tagName.toLowerCase();
+        let line_selector = container_tag + '>' + line_tag;
+        let max_child_width = Math.max(...$(line_selector, column).map((i,entry)=>{
             let child_widths = $(entry).contents().map(getChildWidth).toArray();
             return child_widths.reduce(getSum, 0);
         }));
         let max_column_width = ($column.hasClass('wide-column') ? wide_column_em * em_size : max_column_em * em_size);
         let column_width = Math.max(Math.min(max_child_width, max_column_width), min_column_em * em_size);
-        $column.width((Math.ceil(column_width / em_size) + 1) + 'em');
+        $column.width((Math.ceil(column_width / em_size) + 2) + 'em');
     });
     if ($related_tags.prop('scrollWidth') > ($related_tags.outerWidth() + (2 * em_size))) {
         $('#iac-edit-scroll-wrapper').width($related_tags.outerWidth());
