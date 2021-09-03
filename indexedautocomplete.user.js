@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.16
+// @version      28.17
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1049,17 +1049,18 @@ const SOURCE_CONFIG = {
         spacesallowed: true
     },
     search: {
-        url: 'saved_searches/labels',
+        url: 'autocomplete',
         data: (term)=>{
             return {
                 search: {
-                    label: term + '*'
+                    type: 'saved_search_label',
+                    query: term + '*'
                 }
             };
         },
         map: (label)=>{
             return {
-                name: label
+                name: label.value,
             };
         },
         expiration: ()=>{
