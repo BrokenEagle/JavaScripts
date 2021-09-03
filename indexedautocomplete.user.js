@@ -1755,7 +1755,7 @@ function KeepSourceData(type,metatag,data) {
     IAC.source_data[type] = IAC.source_data[type] || {};
     data.forEach((val)=>{
         let orig_key = val.value.replace(RegExp(`^${metatag}:?`), "");
-        let key = (val.antecedent ? val.antecedent : orig_key);
+        let key = (val.antecedent ? val.antecedent + '\xff' + orig_key : orig_key);
         IAC.source_data[type][key] = val;
     });
 }
@@ -1792,7 +1792,7 @@ function AddUserSelected(type,metatag,term,data,query_type) {
         }
         //Splice out Danbooru data if it exists
         for (let j = 0; j < data.length; j++) {
-            let compareterm = (data[j].antecedent ? data[j].antecedent : data[j].value);
+            let compareterm = (data[j].antecedent ? data[j].antecedent + '\xff' + data[j].value : data[j].value);
             if (compareterm === checkterm) {
                 data.splice(j, 1);
                 //Should only be one of these at most
@@ -1849,7 +1849,7 @@ function InsertUserSelected(data,input,selected) {
         input.value = input.value.trim();
     }
     if (item.antecedent) {
-        term = item.antecedent;
+        term = item.antecedent + '\xff' + item.value;
     } else if (item.name) {
         term = item.name;
     } else {
@@ -1860,6 +1860,8 @@ function InsertUserSelected(data,input,selected) {
             input.selectionStart = input.selectionEnd = input.selectionStart - 1;
             setTimeout(()=>{$(input).autocomplete('search');}, 100);
         }
+        source_data = item;
+    } else if (item.source == 'tag-abbreviation') {
         source_data = item;
     } else
     //Final failsafe
