@@ -1080,14 +1080,14 @@ const SOURCE_CONFIG = {
                     hide_deleted: true,
                     title_ilike: term.replace(/ /g, '_') + '*',
                 },
-                only: 'title,category_name'
+                only: 'title,tag[category]'
             };
         },
         map: (wikipage)=>{
             return {
                 label: wikipage.title.replace(/_/g, ' '),
                 value: wikipage.title,
-                category: wikipage.category_name || 0,
+                category: (wikipage.tag && wikipage.tag.category) || 0,
             };
         },
         expiration: ()=>{
