@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.17
+// @version      28.18
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1413,7 +1413,7 @@ function ParseQuery(text, caret) {
     let operator = match[1];
     let metatag = match[2] ? match[2].toLowerCase() : "tag";
     let term = match[3];
-    if (metatag in Danbooru.Autocomplete.TAG_CATEGORIES) {
+    if (metatag in IAC.categories) {
         metatag = "tag";
     }
     return { operator, metatag, term };
@@ -1899,7 +1899,7 @@ function InsertCompletion(input, completion) {
     // Trim all whitespace (tabs, spaces) except for line returns
     var before_caret_text = input.value.substring(0, input.selectionStart).replace(/^[ \t]+|[ \t]+$/gm, "");
     var after_caret_text = input.value.substring(input.selectionStart).replace(/^[ \t]+|[ \t]+$/gm, "");
-    var regexp = new RegExp('(' + Danbooru.Autocomplete.TAG_PREFIXES + ')?\\S+$', 'g');
+    var regexp = new RegExp('(' + IAC.prefixes + ')?\\S+$', 'g');
     let $input = $(input);
     let start = 0, end = 0;
     if ($input.data('insert-autocomplete')) {
@@ -2907,7 +2907,11 @@ function Main() {
     Object.assign(IAC, {
         choice_info: JSPLib.storage.getStorageData('iac-choice-info', localStorage, {}),
         is_bur: GetIsBur(),
+        prefixes: JSON.parse(JSPLib.utility.getMeta('autocomplete-tag-prefixes')),
     }, PROGRAM_RESET_KEYS);
+    Object.assign(IAC, {
+        categories: IAC.prefixes.filter((key) => (!['-', '~'].includes(key))).map((key) => (key.slice(0, -1))),
+    });
     if (JSPLib.validate.isHash(IAC.choice_info)) {
         IAC.choice_order = IAC.choice_info.choice_order;
         IAC.choice_data = IAC.choice_info.choice_data;
