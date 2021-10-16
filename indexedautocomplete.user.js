@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.19
+// @version      28.20
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1413,10 +1413,14 @@ function ParseQuery(text, caret) {
     let operator = match[1];
     let metatag = match[2] ? match[2].toLowerCase() : "tag";
     let term = match[3];
-    if (metatag in IAC.categories) {
-        metatag = "tag";
+    let prefix = operator;
+    if (metatag !== 'tag') {
+        prefix += metatag + ':';
     }
-    return { operator, metatag, term };
+    if (IAC.categories.includes(metatag)) {
+        metatag = 'tag';
+    }
+    return { operator, metatag, term, prefix };
 }
 
 function RemoveTerm(str,index) {
@@ -1899,7 +1903,7 @@ function InsertCompletion(input, completion) {
     // Trim all whitespace (tabs, spaces) except for line returns
     var before_caret_text = input.value.substring(0, input.selectionStart).replace(/^[ \t]+|[ \t]+$/gm, "");
     var after_caret_text = input.value.substring(input.selectionStart).replace(/^[ \t]+|[ \t]+$/gm, "");
-    var regexp = new RegExp('(' + IAC.prefixes + ')?\\S+$', 'g');
+    var regexp = new RegExp('(' + IAC.prefixes.join('|') + ')?\\S+$', 'g');
     let $input = $(input);
     let start = 0, end = 0;
     if ($input.data('insert-autocomplete')) {
@@ -1930,7 +1934,13 @@ function InsertCompletion(input, completion) {
         }
         setTimeout(()=>{DisableTextAreaAutocomplete($input);}, 100);
     } else {
-        before_caret_text = before_caret_text.replace(regexp, '$1') + completion + ' ';
+        var query = ParseQuery(input.value, input.selectionStart);
+        before_caret_text = before_caret_text.substring(0, before_caret_text.search(/\S+$/));
+        if (query.metatag === 'tag') {
+            before_caret_text += query.prefix + completion + ' ';
+        } else {
+            before_caret_text += completion + ' ';
+        }
         start = end = before_caret_text.length;
     }
     input.value = before_caret_text + after_caret_text;
@@ -2232,6 +2242,7 @@ function DanbooruIntializeTagAutocomplete() {
             var query = ParseQuery(req.term, this.element.get(0).selectionStart);
             var metatag = query.metatag;
             var term = query.term;
+            var prefix = query.prefix;
             var results = [];
             switch (metatag) {
                 case "order":
@@ -2259,18 +2270,18 @@ function DanbooruIntializeTagAutocomplete() {
                 case "flagger":
                 case "upvote":
                 case "downvote":
-                    results = await Danbooru.Autocomplete.user_source(term, metatag + ":");
+                    results = await Danbooru.Autocomplete.user_source(term, prefix);
                     break;
                 case "pool":
                 case "ordpool":
-                    results = await Danbooru.Autocomplete.pool_source(term, metatag + ":");
+                    results = await Danbooru.Autocomplete.pool_source(term, prefix);
                     break;
                 case "favgroup":
                 case "ordfavgroup":
-                    results = await Danbooru.Autocomplete.favorite_group_source(term, metatag + ":", Danbooru.CurrentUser.data("id"));
+                    results = await Danbooru.Autocomplete.favorite_group_source(term, prefix, Danbooru.CurrentUser.data("id"));
                     break;
                 case "search":
-                    results = await Danbooru.Autocomplete.saved_search_source(term, metatag + ":");
+                    results = await Danbooru.Autocomplete.saved_search_source(term, prefix);
                     break;
                 case "tag":
                     results = await Danbooru.Autocomplete.tag_source(term);
