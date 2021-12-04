@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SafelistPlus
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.11
+// @version      4.12
 // @description  Alternate Danbooru blacklist handler.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -35,7 +35,7 @@
 const DANBOORU_TOPIC_ID = '14221';
 
 //Variables for load.js
-const program_load_required_variables = ['window.jQuery', 'window.Danbooru', 'window.Danbooru.Blacklist', 'Danbooru.CurrentUser'];
+const program_load_required_variables = ['window.jQuery', 'window.Danbooru', 'Danbooru.Blacklist', 'Danbooru.CurrentUser'];
 const program_load_required_selectors = ["#page"];
 
 //Program name constants
@@ -1660,7 +1660,7 @@ function Main() {
     //Since it starts out hidden, we are doing it last
     if(IsLevelMenu()) {
         JSPLib.debug.debugTime("Main-Menu");
-        $("#post-sections li:last-child").after(RenderSettingMenuLink());
+        $("#post-sections > li:last-child").after(RenderSettingMenuLink());
         $("#excerpt").before(RenderLevelMenu());
         InitializeSettingsMenu();
         //Accounts for other userscripts binding the same links
