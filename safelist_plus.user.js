@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SafelistPlus
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.12
+// @version      4.13
 // @description  Alternate Danbooru blacklist handler.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -882,7 +882,7 @@ function RenderSidemenu() {
 
 function RenderSettingMenuLink() {
     return `
-<li><a href="#" id="display-safelist-settings">${PROGRAM_NAME}</a></li>`;
+<a href="#" id="display-safelist-settings">${PROGRAM_NAME}</a>`;
 }
 
 function RenderLevelMenu() {
@@ -1290,8 +1290,8 @@ function ToggleSafelist(event) {
 function SetSafelistSettingsClick() {
     if (!JSPLib.utility.isNamespaceBound("#display-safelist-settings", 'click', PROGRAM_SHORTCUT)) {
         $("#display-safelist-settings").on(PROGRAM_CLICK,(event)=>{
-            $("#post-sections li").removeClass('active');
-            $("#display-safelist-settings").parent().addClass('active');
+            $("#post-sections li a").removeClass('active');
+            $("#display-safelist-settings").addClass('active');
             $("#content > *:not(#post-sections)").hide();
             $("#safelist-settings").show();
             event.preventDefault();
@@ -1303,7 +1303,7 @@ function SetSafelistSettingsClick() {
 function SetOtherSectionsClick() {
     if (!JSPLib.utility.isNamespaceBound("#show-posts-link,#show-excerpt-link", 'click', PROGRAM_SHORTCUT)) {
         $("#show-posts-link,#show-excerpt-link").on(PROGRAM_CLICK, ()=>{
-            $("#display-safelist-settings").parent().removeClass('active');
+            $("#display-safelist-settings").removeClass('active');
             $('#safelist-settings').hide();
         });
     }
@@ -1660,7 +1660,7 @@ function Main() {
     //Since it starts out hidden, we are doing it last
     if(IsLevelMenu()) {
         JSPLib.debug.debugTime("Main-Menu");
-        $("#post-sections > li:last-child").after(RenderSettingMenuLink());
+        $("#post-sections > li:first-of-type").append(RenderSettingMenuLink());
         $("#excerpt").before(RenderLevelMenu());
         InitializeSettingsMenu();
         //Accounts for other userscripts binding the same links
