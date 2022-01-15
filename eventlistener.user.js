@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      21.14
+// @version      21.15
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -482,11 +482,29 @@ const POOL_CSS = `
     background-color: rgba(255, 0, 0, 0.2);
 }
 #el-event-notice #el-pool-section .el-full-item[data-type="poolposts"] .post-preview {
-    width: 154px;
-    height: 154px;
     margin: 5px;
     padding: 5px;
     border: var(--dtext-blockquote-border);
+}
+#el-event-notice #el-pool-section .el-full-item[data-type="poolposts"] .post-preview-150 {
+    width: 155px;
+    height: 175px;
+}
+#el-event-notice #el-pool-section .el-full-item[data-type="poolposts"] .post-preview-180 {
+    width: 185px;
+    height: 205px;
+}
+#el-event-notice #el-pool-section .el-full-item[data-type="poolposts"] .post-preview-225 {
+    width: 230px;
+    height: 250px;
+}
+#el-event-notice #el-pool-section .el-full-item[data-type="poolposts"] .post-preview-270 {
+    width: 275px;
+    height: 300px;
+}
+#el-event-notice #el-pool-section .el-full-item[data-type="poolposts"] .post-preview-360 {
+    width: 365px;
+    height: 390px;
 }
 .el-paragraph-mark {
     opacity: 0.25;
