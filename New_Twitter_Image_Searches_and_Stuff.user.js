@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.7
+// @version      7.8
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1631,6 +1631,7 @@ const POST_SELECT_HELP = "Select posts for deletion by clicking the thumbnail.\n
 
 const INSTALL_DATABASE_HELP = "L-Click to install database.";
 const UPGRADE_DATABASE_HELP = "L-Click to upgrade database.";
+const MANUAL_INSTALL_HELP = `Visit topic #${DANBOORU_TOPIC_ID} for manual install file.\n(see settings menu for link).`;
 const DATABASE_VERSION_HELP = "L-Click to set record position to latest on Danbooru.\nR-Click to open page to Danbooru records.";
 const UPDATE_RECORDS_HELP = "L-Click to update records to current.";
 const MUST_INSTALL_HELP = "The database must be installed before the script is fully functional.";
@@ -3631,7 +3632,7 @@ function InitializeDatabaseLink() {
     var database_help = "";
     if (NTISAS.user_settings.bypass_server_mode) {
         $('#ntisas-database-link').html('<span id="ntisas-server-bypass">Server Bypass</span>');
-        $('#ntisas-database-help').html('&nbsp;&nbsp;&nbsp;');
+        $('#ntisas-database-help').html(RenderHelp(MANUAL_INSTALL_HELP));
         return;
     }
     NTISAS.server_info = GetRemoteDatabase();
@@ -4619,10 +4620,12 @@ function CheckPurgeBadTweets() {
     }
 }
 
-async function PurgeBadTweets() {
-    let server_purgelist = await JSPLib.network.getNotify(SERVER_PURGELIST_URL, {}, JSPLib.utility.sprintf(SERVER_ERROR, "purge list"));
-    if (server_purgelist !== false) {
-        let purge_keylist = server_purgelist.map((tweet_id) => ('tweet-' + tweet_id));
+async function PurgeBadTweets(purgelist) {
+    if (purgelist === undefined) {
+        purgelist = await JSPLib.network.getNotify(SERVER_PURGELIST_URL, {}, JSPLib.utility.sprintf(SERVER_ERROR, "purge list"));
+    }
+    if (purgelist !== false) {
+        let purge_keylist = purgelist.map((tweet_id) => ('tweet-' + tweet_id));
         let database_keylist = await JSPLib.storage.twitterstorage.keys();
         let purge_set = new Set(purge_keylist);
         let database_set = new Set(database_keylist);
@@ -5260,9 +5263,9 @@ function ExportData() {
 function ImportData() {
     if (!NTISAS.import_is_running) {
         NTISAS.import_is_running = true;
-        ReadFileAsync('#ntisas-import-file', true).then((import_package)=>{
+        $('#ntisas-import-counter').text('reading');
+        ReadFileAsync('#ntisas-import-file', true).then(async (import_package)=>{
             JSPLib.notice.notice("Importing data...");
-            let promise_array = [];
             let errors = false;
             function userOutput() {
                 if (errors) {
@@ -5284,16 +5287,20 @@ function ImportData() {
             }
             if ('database_info' in import_package) {
                 this.debug('log', "Database info:", import_package.database_info);
-                promise_array.push(JSPLib.storage.saveData('ntisas-database-info', import_package.database_info, JSPLib.storage.twitterstorage));
-                this.debug('log', "Database length:", Object.keys(import_package.tweet_database).length);
-                promise_array.push(SaveDatabase(import_package.tweet_database, '#ntisas-import-counter'));
-                Promise.all(promise_array).then(()=>{
-                    InitializeDatabase();
-                    userOutput()
-                });
-            } else {
-                userOutput();
+                await JSPLib.storage.saveData('ntisas-database-info', import_package.database_info, JSPLib.storage.twitterstorage);
             }
+            if ('tweet_purgelist' in import_package) {
+                this.debug('log', "Purgelist length:", Object.keys(import_package.tweet_purgelist).length);
+                $('#ntisas-import-counter').text('purging');
+                await PurgeBadTweets(import_package.tweet_purgelist);
+            }
+            if ('tweet_database' in import_package) {
+                this.debug('log', "Database length:", Object.keys(import_package.tweet_database).length);
+                await SaveDatabase(import_package.tweet_database, '#ntisas-import-counter');
+            }
+            userOutput();
+            await JSPLib.utility.sleep(JSPLib.utility.one_second * 2);
+            InitializeDatabase();
         }).catch(()=>{
             NTISAS.import_is_running = false;
         });
