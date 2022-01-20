@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      21.15
+// @version      21.16
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1602,6 +1602,7 @@ function InitializeTypeDiv(type,$type_page) {
 function InitializeThumb(thumb,query_string="") {
     let $thumb = $(thumb);
     $thumb.addClass('blacklisted');
+    $thumb.find('.post-preview-score').remove();
     let postid = String($thumb.data('id'));
     let $link = $('a', thumb);
     let post_url = $link.attr('href').split('?')[0];
