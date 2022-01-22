@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RecentTagsCalc
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.13
+// @version      7.14
 // @description  Use different mechanism to calculate RecentTags.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -951,7 +951,7 @@ async function LoadFrequentTags() {
 }
 
 async function QueryFrequentTags() {
-    let user_account = await JSPLib.danbooru.submitRequest('users',{search: {id: RTC.userid}, only: user_fields, expires_in: 300});
+    let user_account = await JSPLib.danbooru.submitRequest('users',{search: {id: RTC.userid}, only: user_fields, expires_in: '300s'});
     if (!user_account || user_account.length === 0) {
         //Should never get here, but just in case
         return;
