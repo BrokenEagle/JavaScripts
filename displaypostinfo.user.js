@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DisplayPostInfo
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      12.3
+// @version      12.2
 // @description  Display views, uploader, and other info to the user.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -43,7 +43,7 @@
 const DANBOORU_TOPIC_ID = '15926';
 
 //Variables for load.js
-const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery','window.Danbooru','Danbooru.PostTooltip','Danbooru.CurrentUser'];
+const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery','Danbooru.PostTooltip'];
 const PROGRAM_LOAD_REQUIRED_SELECTORS = ["#page"];
 const PROGRAM_LOAD_OPTIONAL_SELECTORS = ['#c-posts #a-show','#c-posts #a-index',"#c-explore-posts #a-viewed","#c-explore-posts #a-curated",'#c-users #a-edit'];
 
@@ -113,12 +113,6 @@ const SETTINGS_CONFIG = {
         default: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Shows domain statistics for all of the posts on a page."
-    },
-    domain_source_type: {
-        allitems: SOURCE_TYPES,
-        default: ['normalized'],
-        validate: (data) => JSPLib.menu.validateCheckboxRadio(data,'radio',SOURCE_TYPES),
-        hint: "Select the type of post source to be used for domain statistics."
     },
     tag_statistics_enabled: {
         default: false,
@@ -388,6 +382,10 @@ function ValidateProgramData(key,entry) {
 ////NONE
 
 //Auxiliary functions
+
+function IsPostShow() {
+    return DPI.controller === 'posts' && DPI.action === 'show';
+}
 
 function BlankUser(user_id) {
     return {
@@ -674,19 +672,19 @@ function ProcessPostStatistics() {
     $('#dpi-post-statistics').append(statistics_html);
 }
 
-function ProcessDomainStatistics() {
+async function ProcessDomainStatistics() {
     let $domain_table = $(DOMAIN_STATISTICS_TABLE);
-    let source_key = GetSourceDataKey();
-    let domain_frequency = $(".post-preview")
-        .map((i,preview)=>{
+    let post_ids = JSPLib.utility.getDOMAttributes($(".post-preview"), 'id', Number);
+    let posts = await JSPLib.danbooru.submitRequest('posts', {tags: `id:${post_ids.join(',')} status:any`, limit: post_ids.length, only: 'source'});
+    let domain_frequency = posts
+        .map((post)=>{
             try {
                 //Will generate an exception for non-URL sources
-                return JSPLib.utility.getDomainName($(preview).data(source_key), 2);
+                return JSPLib.utility.getDomainName(post.source, 2);
             } catch (e) {
                 return "";
             }
         })
-        .toArray()
         .filter((host) => (host !== ""))
         .reduce((total,host)=>{
             total[host] = total[host] || 0;
@@ -780,15 +778,6 @@ function InitializeChangedSettings() {
     }
 }
 
-function GetSourceDataKey() {
-    switch (DPI.user_settings.domain_source_type[0]) {
-        case 'original':
-            return 'source';
-        case 'normalized':
-            return 'normalized-source';
-    }
-}
-
 function RenderSettingsMenu() {
     $('#display-post-info').append(JSPLib.menu.renderMenuFramework(MENU_CONFIG));
     $("#dpi-general-settings").append(JSPLib.menu.renderDomainSelectors());
@@ -801,7 +790,6 @@ function RenderSettingsMenu() {
     $('#dpi-tooltip-settings').append(JSPLib.menu.renderTextinput('post_hide_delay', 10));
     $("#dpi-statistics-settings").append(JSPLib.menu.renderCheckbox('post_statistics_enabled'));
     $("#dpi-statistics-settings").append(JSPLib.menu.renderCheckbox('domain_statistics_enabled'));
-    $("#dpi-statistics-settings").append(JSPLib.menu.renderInputSelectors('domain_source_type', 'radio'));
     $("#dpi-statistics-settings").append(JSPLib.menu.renderCheckbox('tag_statistics_enabled'));
     $('#dpi-controls').append(JSPLib.menu.renderCacheControls());
     $('#dpi-cache-controls-message').append(JSPLib.menu.renderExpandable("Cache Data details", CACHE_DATA_DETAILS));
