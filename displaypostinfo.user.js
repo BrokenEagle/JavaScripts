@@ -675,7 +675,7 @@ function ProcessPostStatistics() {
 async function ProcessDomainStatistics() {
     let $domain_table = $(DOMAIN_STATISTICS_TABLE);
     let post_ids = JSPLib.utility.getDOMAttributes($(".post-preview"), 'id', Number);
-    let posts = await JSPLib.danbooru.submitRequest('posts', {tags: `id:${post_ids.join(',')} status:any`, limit: post_ids.length, only: 'source'});
+    let posts = await JSPLib.danbooru.submitRequest('posts', {tags: `id:${post_ids.join(',')} status:any`, limit: post_ids.length, only: 'source', expires_in: '3600s'});
     let domain_frequency = posts
         .map((post)=>{
             try {
