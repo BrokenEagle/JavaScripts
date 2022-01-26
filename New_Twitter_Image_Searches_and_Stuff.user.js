@@ -3869,7 +3869,14 @@ function InitializeProfileViewCount(views,data_key,selector,format) {
 }
 
 function InitializeProfileTimeline() {
-    let $info = $('[href$="/photo"]').parent().parent();
+    let $info = $('[href$="/photo"],[href^="/i/spaces"]');
+    while ($info.find('[href$="/following"]').length === 0) {
+        $info = $info.parent();
+        if ($info.length === 0) {
+            //The top of the document has been reached
+            break;
+        }
+    }
     if ($info.length === 1) {
         let $children = $info.children();
         let name_line = $children.get(1);
