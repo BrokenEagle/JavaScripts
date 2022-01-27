@@ -47,7 +47,7 @@
 // ==/UserScript==
 
 /* eslint-disable no-redeclare */
-/* global $ jQuery JSPLib validate localforage saveAs XRegExp GM_getResourceText */
+/* global $ jQuery JSPLib validate localforage saveAs XRegExp GM_getResourceText GM */
 /* eslint-enable no-redeclare */
 
 /****Global variables****/
