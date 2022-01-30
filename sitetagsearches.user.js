@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SiteTagSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.6
+// @version      4.7
 // @description  Presents additional site links for the wiki tag(s).
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -49,7 +49,7 @@ const STS = {};
 
 //Available setting values
 const BOORU_SITES = ['gelbooru', 'yandere', 'sankaku', 'konachan'];
-const SOURCE_SITES = ['pixiv', 'nicoseiga', 'twitter', 'deviantart', 'tumblr', 'nijie', 'artstation', 'E-Hentai', 'tinami'];
+const SOURCE_SITES = ['pixiv', 'twitter', 'tumblr', 'deviantart', 'E-Hentai', 'nijie', 'artstation', 'nicoseiga', 'naver', 'skeb', 'tinami'];
 
 //Main settings
 const SETTINGS_CONFIG = {
@@ -156,6 +156,12 @@ const SITE_CONFIG = {
     },
     'E-Hentai': {
         url: 'https://e-hentai.org/?f_search=%s',
+    },
+    naver: {
+        url: 'https://section.blog.naver.com/Search/Post.naver?keyword=%s',
+    },
+    skeb: {
+        url: 'https://skeb.jp/search?q=%s',
     },
     gelbooru: {
         url: 'https://gelbooru.com/index.php?page=post&s=list&tags=%s',
