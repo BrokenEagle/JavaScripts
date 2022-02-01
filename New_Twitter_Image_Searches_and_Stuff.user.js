@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.11
+// @version      7.12
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -5559,7 +5559,7 @@ function MarkupStreamTweet(tweet) {
     $('[data-testid="retweet"]', tweet_menu).parent().addClass('ntisas-retweet');
     $('[data-testid="like"]', tweet_menu).parent().addClass('ntisas-like');
     $('[role="button"]:not([data-testid])', tweet_menu).parent().addClass('ntisas-share');
-    if ($(sub_body.children[tweet_menu_index - 1]).text().match(/People they (?:mentioned|follow) can reply/)) {
+    if ($(sub_body.children[tweet_menu_index - 1]).text().match(/People (?:\S+) (?:mentioned|follow) can reply/)) {
         tweet_menu_index -= 1;
     }
     let reply_line_count = 0;
@@ -5632,12 +5632,15 @@ function MarkupMainTweet(tweet) {
     let sub_body = main_body.children[2];
     $(sub_body).addClass('ntisas-sub-body');
     let tweet_menu_index = sub_body.childElementCount - 1;
-    if ($(sub_body.children[tweet_menu_index]).text().match(/^Who can reply\?People @\S+ .*? can reply.$/)) {
+    if ($(sub_body.children[tweet_menu_index]).text().match(/^Who can reply\?People @\S+ .*? can reply/)) {
+        $(sub_body.children[tweet_menu_index]).addClass('ntisas-reply-notice');
         tweet_menu_index -= 1;
     }
     if ($(sub_body.children[tweet_menu_index]).text().match(/A conversation between @.+ and people they (?:follow or )?mentioned in this Tweet/)) {
         tweet_menu_index -= 1;
     }
+    tweet_menu_index -= 1;
+    let childn = sub_body.children[tweet_menu_index];
     let tweet_menu = sub_body.children[tweet_menu_index];
     $(tweet_menu).addClass('ntisas-tweet-actions');
     let retweet_like_count = 0;
