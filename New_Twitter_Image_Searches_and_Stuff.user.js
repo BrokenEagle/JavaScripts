@@ -424,29 +424,57 @@ const PROGRAM_CSS = `
    padding: 8px;
    margin: -8px;
 }
-.ntisas-highlight.ntisas-excellent {
-    border: red solid 10px;
+.ntisas-highlight {
+    position: relative;
 }
-.ntisas-highlight.ntisas-good {
-    border: orange solid 10px;
+.ntisas-highlight-border {
+    display: none;
+    position: absolute;
 }
-.ntisas-highlight.ntisas-aboveavg {
-    border: green solid 10px;
+.ntisas-highlight .ntisas-highlight-border {
+    display: block;
 }
-.ntisas-highlight.ntisas-fair {
-    border: blue solid 10px;
+.ntisas-highlight-left {
+    top: -4px;
+    left: 0;
+    width: 10px;
+    height: 100%;
 }
-.ntisas-highlight.ntisas-belowavg {
-    border: purple solid 10px;
+.ntisas-highlight-right {
+    top: -4px;
+    right: 0;
+    width: 10px;
+    height: 100%;
 }
-.ntisas-highlight.ntisas-poor {
-    border: black solid 10px;
+.ntisas-highlight-top {
+    top: -6px;
+    left: 0;
+    width: 100%;
+    height: 10px;
 }
-.ntisas-highlight.ntisas-fade article {
-    opacity: 0.2;
+.ntisas-highlight-bottom {
+    bottom: 4px;
+    left: 0;
+    width: 100%;
+    height: 10px;
 }
-.ntisas-highlight.ntisas-fade article:hover {
-    opacity: 1.0;
+.ntisas-excellent .ntisas-highlight-border {
+    background-color: green;
+}
+.ntisas-good .ntisas-highlight-border {
+    background-color: orange;
+}
+.ntisas-aboveavg .ntisas-highlight-border {
+    background-color: green;
+}
+.ntisas-fair .ntisas-highlight-border {
+    background-color: blue;
+}
+.ntisas-belowavg .ntisas-highlight-border {
+    background-color: purple;
+}
+.ntisas-poor .ntisas-highlight-border {
+    background-color: black;
 }
 .ntisas-highlight.ntisas-hide article {
     opacity: 0.0;
@@ -5595,6 +5623,7 @@ function MarkupStreamTweet(tweet) {
             JSPLib.notice.error("Error marking up stream tweet! (check debug console for details)", false);
         }
     }
+$(tweet).append('<div class="ntisas-highlight-border ntisas-highlight-left"></div><div class="ntisas-highlight-border ntisas-highlight-right"></div><div class="ntisas-highlight-border ntisas-highlight-top"></div><div class="ntisas-highlight-border ntisas-highlight-bottom"></div>');
 }
 
 function MarkupMainTweet(tweet) {
