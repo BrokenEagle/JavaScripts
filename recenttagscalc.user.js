@@ -275,6 +275,9 @@ let program_css = `
 .related-tags .frequent-related-tags-column li.selected:before {
     visibility: visible;
 }
+.tag-column {
+    overflow: hidden;
+}
 `;
 
 const MENU_CSS = `
