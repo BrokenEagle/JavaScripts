@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.15
+// @version      28.16
 // @description  Validates tag add/remove inputs on a post edit or upload, plus several other post validations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
 // @match        *://*.donmai.us/
 // @match        *://*.donmai.us/posts*
-// @match        *://*.donmai.us/uploads/new*
+// @match        *://*.donmai.us/uploads/*
 // @match        *://*.donmai.us/settings
 // @exclude      /^https?://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
 // @grant        none
@@ -669,12 +669,9 @@ function ValidateUpload() {
     }
     let errormessages = [];
     let ratingtag = Boolean(JSPLib.utility.filterRegex(GetTagList(),/^rating:[sqe]/i).length);
-    let ratingradio = $(".upload_rating input").toArray().some((input) => input.checked);
+    let ratingradio = $(".post_rating input").toArray().some((input) => input.checked);
     if (!ratingtag && !ratingradio) {
         errormessages.push("Must specify a rating.");
-    }
-    if ($("#upload_file,#upload_source,#upload_md5_confirmation").toArray().every((input) => ($(input).val() === ""))) {
-        errormessages.push("Must choose file or specify source.");
     }
     if (errormessages.length) {
         this.debug('log',"Errors: " + errormessages.join(' '));
@@ -834,7 +831,7 @@ function Main() {
         return;
     }
     Object.assign(VTI, {
-        is_upload: VTI.controller === 'uploads' && VTI.action === 'new',
+        is_upload: VTI.controller === 'uploads' && VTI.action === 'show',
         was_upload: JSPLib.storage.getStorageData('vti-was-upload',sessionStorage,false),
     });
     if (VTI.is_upload) {
