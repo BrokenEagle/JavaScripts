@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.20
+// @version      28.21
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2717,7 +2717,7 @@ function SetupAutocompleteInitializations() {
 }
 
 function SetupPostEditInitializations() {
-    if ((IAC.controller === 'posts' && IAC.action === 'show') || (IAC.controller === 'uploads' && IAC.action === 'new')) {
+    if ((IAC.controller === 'posts' && IAC.action === 'show') || (IAC.controller === 'uploads' && IAC.action === 'show')) {
         RebindRelatedTags();
         if (IAC.controller === 'posts') {
             RebindOpenEditMenu();
