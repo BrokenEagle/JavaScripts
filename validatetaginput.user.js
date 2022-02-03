@@ -687,7 +687,7 @@ function ValidateUpload() {
 
 async function ValidateArtist() {
     let source_url = $("#post_source").val();
-    let artist_names = $(".artist-tag-list .tag-type-1 .wiki-link").map((i,entry) => JSPLib.utility.parseParams(entry.search.slice(1)).name).toArray();
+    let artist_names = $(".artist-tag-list .tag-type-1 .wiki-link").map((i,entry) => decodeURIComponent(JSPLib.utility.parseParams(entry.search.slice(1)).name)).toArray();
     if (artist_names.length === 0 && !VTI.preedittags.includes('official_art')) {
         //Validate no artist tag
         let option_html = "";
