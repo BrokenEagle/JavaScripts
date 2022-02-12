@@ -1,0 +1,83 @@
+/***JQUERY-UI***/
+#userscript-settings-menu {
+    color: var(--text-color);
+    background: var(--body-background-color);
+    border: 1px solid var(--footer-border-color);
+}
+#userscript-settings-menu .ui-widget-content {
+    color: var(--text-color);
+    background: var(--body-background-color);
+}
+#userscript-settings-menu .ui-widget-content a,
+#userscript-settings-menu .ui-widget-content a:link,
+#userscript-settings-menu .ui-widget-content a:visited {
+    color: var(--link-color);
+}
+#userscript-settings-menu .ui-button,
+#userscript-settings-menu .ui-sortable .ui-sortable-handle {
+    color: var(--form-button-text-color);
+    background: var(--form-button-background);
+    border: 1px solid var(--form-button-border-color);
+}
+#userscript-settings-menu .ui-widget-header {
+    color: var(--text-color);
+    background: var(--form-button-background);
+    border: 1px solid var(--form-button-border-color);
+}
+#userscript-settings-menu .ui-state-default {
+    background: var(--form-button-hover-background);
+}
+#userscript-settings-menu .ui-state-default a,
+#userscript-settings-menu .ui-state-default a:link,
+#userscript-settings-menu .ui-state-default a:visited {
+    color: black;
+}
+#userscript-settings-menu .ui-state-active {
+    color: #ffffff;
+    background: #007fff;
+    border: 1px solid #003eff;
+}
+#userscript-settings-menu .ui-state-active a,
+#userscript-settings-menu .ui-state-active a:link,
+#userscript-settings-menu .ui-state-active a:visited {
+    color: #ffffff;
+}
+/***JSPLIB***/
+#userscript-settings-menu .jsplib-console hr {
+    border: 1px solid var(--footer-border-color);
+}
+#userscript-settings-menu .jsplib-expandable {
+  border: var(--dtext-expand-border);
+}
+#userscript-settings-menu .jsplib-expandable-content {
+    border-top: var(--dtext-expand-border);
+}
+#userscript-settings-menu .jsplib-block-tooltip,
+#userscript-settings-menu .jsplib-inline-tooltip {
+    color: var(--muted-text-color);
+}
+#userscript-settings-menu .jsplib-cache-editor-errors {
+    border: 1px solid var(--form-button-border-color);
+}
+/***HOVER***/
+#userscript-settings-menu .ui-state-hover,
+#userscript-settings-menu .ui-state-focus,
+#userscript-settings-menu .ui-button:hover,
+#userscript-settings-menu .ui-sortable-handle:hover {
+    filter: brightness(1.1);
+}
+#userscript-settings-menu .jsplib-console input[type=button]:hover {
+    background: var(--form-button-background);
+}
+#userscript-settings-menu .ui-widget-content a:hover {
+    color: var(--link-hover-color);
+}
+.jsplib-settings-buttons input {
+    color: var(--button-primary-text-color);
+}
+.jsplib-settings-buttons .jsplib-commit {
+    background-color: var(--green-5);
+}
+.jsplib-settings-buttons .jsplib-resetall {
+    background-color: var(--red-5);
+}

@@ -1,0 +1,133 @@
+.ui-tabs {
+    position: inherit;
+}
+.jsplib-outer-menu {
+    float: left;
+    width: 50%;
+    min-width: 50em;
+}
+.jsplib-settings-grouping {
+    margin-bottom: 2em;
+}
+.jsplib-controls-grouping {
+    margin-bottom: 2em;
+}
+.jsplib-settings-buttons {
+    margin: 1em 0;
+}
+.jsplib-settings-buttons input {
+    font-weight: bold;
+}
+.jsplib-menu-item {
+    margin: 0.5em;
+}
+.jsplib-menu-item > div {
+    margin-left: 0.5em;
+}
+.jsplib-inline-tooltip {
+    display: inline;
+    font-style: italic;
+}
+.jsplib-block-tooltip {
+    display: block;
+    font-style: italic;
+}
+.jsplib-textinput .jsplib-setting {
+    padding: 2px 8px;
+}
+.jsplib-sortlist li {
+    width: 8em;
+    font-size: 125%;
+}
+.jsplib-sortlist li > div {
+    padding: 5px;
+}
+.jsplib-textinput-control .jsplib-control {
+    padding: 1px 0.5em;
+}
+.jsplib-selectors label {
+    text-align: left;
+    width: 100px;
+    margin-right: 5px;
+    margin-bottom: 5px;
+}
+.jsplib-selectors .ui-checkboxradio-icon {
+    margin-left: -5px;
+}
+.jsplib-selectors .ui-checkboxradio-icon-space {
+    margin-right: 5px;
+}
+.jsplib-selectors[data-setting="domain_selector"] label {
+    width: 200px;
+    margin-right: 50px;
+}
+.jsplib-linkclick .jsplib-control {
+    display: inline;
+}
+.jsplib-console {
+    width: 100%;
+    min-width: 100em;
+}
+.jsplib-prose {
+    line-height: 1.4em;
+    word-break: break-word;
+}
+.jsplib-console hr,
+.jsplib-expandable {
+    width: 90%;
+    margin-left: 0;
+    margin-bottom: 1em;
+}
+.jsplib-expandable-header {
+    padding: .4em;
+}
+.jsplib-expandable-header span {
+    margin-right: .5em;
+    font-weight: 700;
+}
+.jsplib-expandable-content {
+    display: none;
+    padding: .4em;
+}
+.jsplib-cache-viewer textarea {
+    width: 100%;
+    min-width: 40em;
+    height: 50em;
+    padding: 5px;
+}
+.jsplib-cache-editor-errors {
+    display: none;
+    margin: 0.5em;
+    padding: 0.5em;
+}
+.jsplib-striped {
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+.jsplib-striped thead tr {
+    border-bottom: 2px solid #666;
+}
+.jsplib-striped thead th {
+    font-weight: 700;
+    text-align: left;
+}
+.jsplib-striped tbody tr {
+    border-bottom: 1px solid #CCC;
+}
+.jsplib-striped tbody td {
+    text-align: right;
+}
+.jsplib-striped tbody th {
+    text-align: left;
+}
+.jsplib-striped td, .jsplib-striped th {
+    padding: 4px 20px;
+}
+/*Fix for not using href on links*/
+#userscript-settings-menu a {
+    cursor: pointer;
+}
+/*Fix for setting the border with the color CSS*/
+#userscript-settings-menu #userscript-settings-tabs .ui-state-active {
+    border-bottom-width: 0;
+}
