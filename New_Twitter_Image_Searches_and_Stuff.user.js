@@ -7,31 +7,31 @@
 // @author       BrokenEagle
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/New_Twitter_Image_Searches_and_Stuff.user.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/core-js/3.11.0/minified.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/core-js/3.21.0/minified.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js
 // @require      https://cdn.jsdelivr.net/npm/jquery-hotkeys@0.2.2/jquery-hotkeys.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.9.0/localforage.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-getitems@1.4.2/dist/localforage-getitems.min.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-setitems@1.4.0/dist/localforage-setitems.min.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
-// @require      https://cdn.jsdelivr.net/npm/xregexp@4.4.1/xregexp-all.min.js
+// @require      https://cdn.jsdelivr.net/npm/xregexp@5.1.0/xregexp-all.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201230-module/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201230-menu/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/saucenao.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/menu.js
 // @resource     jquery_ui_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/jquery_ui_custom.css
 // @resource     jquery_qtip_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.css
 // @grant        GM_getResourceText
@@ -54,7 +54,7 @@
 
 //Library constants
 
-JSPLib.validate.timestamp_constraints = JSPLib.validate.id_constraints;
+////NONE
 
 //Exterior script variables
 
@@ -2315,21 +2315,7 @@ function VaildateColorArray(array) {
 
 //Library functions
 
-JSPLib.network.getImage = function (image_url) {
-    JSPLib.debug.recordTime(image_url, 'Network');
-    return GM.xmlHttpRequest({
-            method: 'GET',
-            url: image_url,
-            responseType: 'blob',
-    }).then((resp)=>{
-        if (resp.status < 200 || resp.status >= 400) {
-            JSPLib.utility.throw(resp.status);
-        }
-        return resp.response;
-    }).finally(()=>{
-        JSPLib.debug.recordTimeEnd(image_url, 'Network');
-    });
-};
+////None
 
 //Helper functions
 
@@ -2348,6 +2334,10 @@ function SetLocalData(key,data) {
 
 function InvalidateLocalData(key) {
     JSPLib.storage.invalidateStorageData(key, localStorage);
+}
+
+function GetSessionTwitterData(tweet_id) {
+    return JSPLib.storage.getIndexedSessionData('tweet-' + tweet_id, [], STORAGE_DATABASES.twitter);
 }
 
 function GetAPIData(key,id,value) {
@@ -2525,7 +2515,7 @@ function GetImageAttributes(image_url) {
         if (image_url in NTISAS.image_data) {
             resolve(NTISAS.image_data[image_url]);
         }
-        let size_promise = JSPLib.network.getImageSize(image_url);
+        let size_promise = JSPLib.network.getDataSize(image_url);
         let dimensions_promise;
         if (base_url in NTISAS.tweet_images) {
             this.debug('log', "Found image API data:", base_url, NTISAS.tweet_images[base_url]);
@@ -2819,7 +2809,7 @@ function GetSelectPostIDs(tweet_id,type) {
 
 function SetThumbnailWait(container,all_posts) {
     all_posts.forEach(async (post)=>{
-        let blob = await JSPLib.network.getImage(post.thumbnail);
+        let blob = await JSPLib.network.getData(post.thumbnail);
         let image_blob = blob.slice(0, blob.size, 'image/jpeg');
         let blob_url = window.URL.createObjectURL(image_blob);
         $(`[data-id=${post.id}] img`, container).attr('src', blob_url);
@@ -3112,10 +3102,10 @@ async function GetAllCurrentRecords() {
         }
         clearTimeout(CheckPostvers.timeout);
         if (JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'postvers')) {
-            JSPLib.notice.notice(`Querying Danbooru...[${i}]`, false);
+            JSPLib.notice.notice(`Querying Danbooru...[${i}]`, false, false);
             await CheckPostvers();
         } else {
-            JSPLib.notice.notice(`Waiting on other tasks to finish...[${i}]`, false);
+            JSPLib.notice.notice(`Waiting on other tasks to finish...[${i}]`, false, false);
             await JSPLib.utility.sleep(POST_VERSIONS_CALLBACK);
         }
         i++;
@@ -3167,7 +3157,7 @@ function ProcessSimilarData(type,tweet_id,$tweet,$replace,selected_image_urls,si
         let similar_post_ids = JSPLib.utility.arrayUnique(JSPLib.utility.getNestedObjectAttributes(flat_data, ['post', 'id']));
         if (IsQuerySettingEnabled('auto_save', type) || ((typeof autosave_func === 'function') && autosave_func())) {
             if (NTISAS.merge_results.includes(tweet_id)) {
-                let merge_ids = JSPLib.storage.getStorageData('tweet-' + tweet_id, sessionStorage, []);
+                let merge_ids = GetSessionTwitterData(tweet_id);
                 similar_post_ids = JSPLib.utility.arrayUnion(merge_ids, similar_post_ids);
             }
             SaveData('tweet-' + tweet_id, similar_post_ids, 'twitter');
@@ -3820,7 +3810,7 @@ function InitializePostsContainer(all_posts,image_urls) {
     let $attachment = $(RenderPostsContainer(all_posts));
     SetThumbnailWait($attachment[0], all_posts);
     image_urls.forEach((image_url)=>{
-        JSPLib.network.getImageSize(image_url + ':orig').then((size)=>{
+        JSPLib.network.getDataSize(image_url + ':orig').then((size)=>{
             $(`[data-size=${size}]`, $attachment[0]).addClass('ntisas-post-match');
         });
     });
@@ -4956,7 +4946,7 @@ function CheckURL(event) {
             SavePostUsers(mapped_posts);
             post_ids = JSPLib.utility.arrayUnique(JSPLib.utility.getObjectAttributes(data, 'id'));
             if (NTISAS.merge_results.includes(tweet_id)) {
-                let merge_ids = JSPLib.storage.getStorageData('tweet-' + tweet_id, sessionStorage, []);
+                let merge_ids = GetSessionTwitterData(tweet_id);
                 post_ids = JSPLib.utility.arrayUnion(merge_ids, post_ids);
             }
             SaveData('tweet-' + tweet_id, post_ids, 'twitter');
@@ -5067,7 +5057,7 @@ function ConfirmSave(event) {
     let all_post_ids = NTISAS.similar_results[tweet_id];
     let save_post_ids = JSPLib.utility.arrayDifference(all_post_ids, select_post_ids);
     if (NTISAS.merge_results.includes(tweet_id)) {
-        let merge_ids = JSPLib.storage.getStorageData('tweet-' + tweet_id, sessionStorage, []);
+        let merge_ids = GetSessionTwitterData(tweet_id);
         save_post_ids = JSPLib.utility.arrayUnion(merge_ids, save_post_ids);
     }
     PromptSavePostIDs($link, $tweet, tweet_id, $replace, CONFIRM_SAVE_PROMPT, save_post_ids);
@@ -5080,7 +5070,7 @@ function ConfirmDelete(event) {
     }
     let [$link,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event, 'ntisas-confirm-delete');
     let delete_all = $('.ntisas-delete-all', NTISAS.tweet_qtip[tweet_id]).prop('checked');
-    let all_post_ids = JSPLib.storage.getStorageData('tweet-' + tweet_id, sessionStorage, []);
+    let all_post_ids = GetSessionTwitterData(tweet_id);
     if (delete_all) {
         var select_post_ids = all_post_ids;
     } else {
@@ -5109,7 +5099,7 @@ function MergeResults(event) {
 function CancelMerge(event) {
     let [,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event, 'ntisas-cancel-merge');
     NTISAS.merge_results = JSPLib.utility.arrayDifference(NTISAS.merge_results, [tweet_id]);
-    let post_ids = JSPLib.storage.getStorageData('tweet-' + tweet_id, sessionStorage, []);
+    let post_ids = GetSessionTwitterData(tweet_id);
     InitializePostIDsLink(tweet_id, $replace, $tweet[0], post_ids);
 }
 
@@ -5256,7 +5246,7 @@ function DownloadOriginal(event) {
         let $counter = $tweet.find('.ntisas-download-counter');
         let counter = parseInt($counter.text());
         $counter.text(counter + 1);
-        JSPLib.network.getImage(image_link).then((blob)=>{
+        JSPLib.network.getData(image_link).then((blob)=>{
             let image_blob = blob.slice(0, blob.size, mime_type);
             saveAs(image_blob, download_name);
             this.debug('log', "Saved", extension, "file as", mime_type, "with size of", blob.size);
@@ -6200,7 +6190,7 @@ function InitializeChangedSettings() {
         let $tweet = $(tweet);
         let tweet_id = String($tweet.data('tweet-id'));
         let $post_link = $('.ntisas-database-match', tweet);
-        let post_ids = JSPLib.storage.getStorageData('tweet-' + tweet_id, sessionStorage, []);
+        let post_ids = GetSessionTwitterData(tweet_id);
         if ($post_link.length && JSPLib.menu.hasSettingChanged('advanced_tooltips_enabled')) {
             if (NTISAS.user_settings.advanced_tooltips_enabled) {
                 InitializePostIDsLink(tweet_id, $post_link.parent(), tweet, post_ids);
