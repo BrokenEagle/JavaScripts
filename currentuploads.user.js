@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.10
+// @version      16.11
 // @description  Gives up-to-date stats on uploads.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -10,21 +10,21 @@
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/currentuploads.user.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/core-js/3.8.1/minified.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.9.0/localforage.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/core-js/3.21.0/minified.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201230-module/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201230-menu/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru CanvasJS */
@@ -840,7 +840,7 @@ function RenderOrderMessage(period,sorttype) {
 
 //Get the data and validate it without checking the expires
 function GetCountData(key,default_val=null) {
-    let count_data = JSPLib.storage.getStorageData(key, sessionStorage);
+    let count_data = JSPLib.storage.getIndexedSessionData(key);
     if (!ValidateEntry(key,count_data)) {
         return default_val;
     }
@@ -905,7 +905,8 @@ function RenderToolcontrol(metric) {
 }
 
 function RenderStatistics(key,attribute,period,limited=false) {
-    let data = JSPLib.storage.getStorageData(GetPeriodKey(period_info.longname[period]),sessionStorage);
+    let period_key = GetPeriodKey(period_info.longname[period]);
+    let data = JSPLib.storage.getIndexedSessionData(period_key);
     if (!data) {
         return "No data!";
     }
@@ -1115,8 +1116,8 @@ function CompareCopyrightCounts(dict1,dict2) {
 }
 
 function CheckCopyrightVelocity(tag) {
-    var dayuploads = JSPLib.storage.getStorageData('ctd-' + tag,sessionStorage);
-    var weekuploads = JSPLib.storage.getStorageData('ctw-' + tag,sessionStorage);
+    var dayuploads = JSPLib.storage.getIndexedSessionData('ctd-' + tag);
+    var weekuploads = JSPLib.storage.getIndexedSessionData('ctw-' + tag);
     if (dayuploads === null || weekuploads === null) {
         return true;
     }
@@ -1189,7 +1190,7 @@ async function CheckPeriodUploads() {
     const checkPeriod = (key,period,check)=>{
         CU.period_available[CU.usertag][CU.current_username][period] = Boolean(check);
         if (!check) {
-            sessionStorage.removeItem(key);
+            JSPLib.storage.removeIndexedSessionData(key);
         }
     };
     CU.period_available[CU.usertag][CU.current_username] = CU.period_available[CU.usertag][CU.current_username] || {};
@@ -1398,7 +1399,8 @@ function RenderChart(event) {
     let is_limited = $(event.target).hasClass("cu-limited");
     let longname = period_info.longname[period];
     let points = period_info.points[period];
-    let data = JSPLib.storage.getStorageData(GetPeriodKey(longname),sessionStorage);
+    let period_key = GetPeriodKey(longname);
+    let data = JSPLib.storage.getIndexedSessionData(period_key);
     if (!data || (!is_limited && data.value.length === 0) || (is_limited && !data.value.chart_data)) {
         JSPLib.notice.notice(`${period_info.header[period]} period not populated! Click the period header to activate the chart.`);
         return;
@@ -1497,7 +1499,8 @@ async function CopyrightPeriod(event) {
         let is_period_enabled = CU.period_available[CU.usertag][CU.current_username][short_period];
         if (is_period_enabled) {
             if (CU.user_copytags[CU.usertag][CU.current_username][current_period] === undefined) {
-                let data = JSPLib.storage.getStorageData(GetPeriodKey(current_period),sessionStorage);
+                let period_key = GetPeriodKey(current_period);
+                let data = JSPLib.storage.getIndexedSessionData(period_key);
                 let copyright_count = GetCopyrightCount(PostDecompressData(data.value));
                 let user_copytags = SortDict(copyright_count);
                 if (CU.user_settings.copyrights_merge) {
@@ -1647,7 +1650,7 @@ async function ProcessUploads() {
     }
     let previous_key = GetPeriodKey("previous");
     if (current_uploads.length) {
-        let is_new_tab = JSPLib.storage.getStorageData(previous_key,sessionStorage) === null;
+        let is_new_tab = JSPLib.storage.getIndexedSessionData(previous_key) === null;
         let previous_uploads = await JSPLib.storage.checkLocalDB(previous_key,ValidateEntry) || {value: []};
         previous_uploads = PostDecompressData(previous_uploads.value);
         let current_ids = JSPLib.utility.getObjectAttributes(current_uploads,'id');
