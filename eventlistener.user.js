@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      21.16
+// @version      21.17
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -10,20 +10,20 @@
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/eventlistener.user.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/core-js/3.8.1/minified.js
-// @require      https://cdn.jsdelivr.net/npm/xregexp@4.4.1/xregexp-all.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/core-js/3.21.0/minified.js
+// @require      https://cdn.jsdelivr.net/npm/xregexp@5.1.0/xregexp-all.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201230-module/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201230-menu/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru XRegExp LZString */
@@ -537,15 +537,13 @@ const MENU_CSS = `
     padding: 0.5em;
     width: 7.5em;
 }
-#event-listener .jsplib-selectors label {
+#event-listener .jsplib-settings-grouping:not(#el-general-settings) .jsplib-selectors label,
+#event-listener #el-subscribe-controls .jsplib-selectors label {
     text-align: left;
-    width: 175px;
+    width: 180px;
     letter-spacing: -1px;
 }
-#event-listener .jsplib-selectors[data-setting="domain_selector"] label {
-    width: 125px;
-}
-#event-listener .ui-checkboxradio-icon-space {
+#event-listener .jsplib-settings-grouping:not(#el-general-settings) .ui-checkboxradio-icon-space {
     margin-right: 5px;
 }`;
 
@@ -983,27 +981,27 @@ function ValidateProgramData(key,entry) {
     var checkerror=[];
     let match = XRegExp.exec(key, VALIDATE_REGEX) || {};
     switch (key) {
-        case match.setting:
+        case match.groups.setting:
             checkerror = JSPLib.menu.validateUserSettings(entry);
             break;
-        case match.bool:
+        case match.groups.bool:
             if (!JSPLib.validate.isBoolean(entry)) {
                 checkerror = ["Value is not a boolean."];
             }
             break;
-        case match.time:
+        case match.groups.time:
             if (!Number.isInteger(entry)) {
                 checkerror = ["Value is not an integer."];
             } else if (entry < 0) {
                 checkerror = ["Value is not greater than or equal to zero."];
             }
             break;
-        case match.id:
+        case match.groups.id:
             if (!JSPLib.validate.validateID(entry)) {
                 checkerror = ["Value is not a valid ID."];
             }
             break;
-        case match.idlist:
+        case match.groups.idlist:
             if (!JSPLib.validate.validateIDList(entry)) {
                 checkerror = ["Value is not a valid ID list."];
             }
