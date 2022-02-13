@@ -1219,7 +1219,7 @@ function IsShownFeedback(val) {
         return true;
     }
     return (val.body.match(/^Banned forever:/) === null)
-        && (val.body.match(/^Banned (for ((almost|over|about) )?)?\d+ (days?|months?|years?):/) === null)
+        && (val.body.match(/^Banned \d+ (days?|weeks|months?|years?):/) === null)
         && (val.body.match(/^You have been (promoted|demoted) to a \S+ level account from \S+\./) === null)
         && (val.body.match(/\bYou (gained|lost) the ability to (approve posts|upload posts without limit|give user feedback|flag posts)\./) === null);
 }
