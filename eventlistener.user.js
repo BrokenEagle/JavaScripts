@@ -88,7 +88,7 @@ const MODACTION_EVENTS = [
     'post_note_lock_create', 'post_note_lock_delete', 'post_rating_lock_create', 'post_rating_lock_delete', 'post_vote_delete', 'post_vote_undelete', 'pool_delete',
     'pool_undelete', 'artist_ban', 'artist_unban', 'comment_update', 'comment_delete', 'comment_vote_delete', 'comment_vote_undelete', 'forum_topic_delete', 'forum_topic_undelete',
     'forum_topic_lock', 'forum_post_update', 'forum_post_delete', 'moderation_report_handled', 'moderation_report_rejected', 'tag_alias_create', 'tag_alias_update', 'tag_alias_delete',
-    'tag_implication_create', 'tag_implication_update', 'tag_alias_delete', 'ip_ban_create', 'ip_ban_delete', 'ip_ban_undelete', 'other',
+    'tag_implication_create', 'tag_implication_update', 'tag_implication_delete', 'ip_ban_create', 'ip_ban_delete', 'ip_ban_undelete', 'other',
 ];
 
 //Main settings
@@ -547,7 +547,7 @@ const MENU_CSS = `
 #event-listener .jsplib-settings-grouping:not(#el-general-settings) .jsplib-selectors label,
 #event-listener #el-subscribe-controls .jsplib-selectors label {
     text-align: left;
-    width: 180px;
+    width: 200px;
     letter-spacing: -1px;
 }
 #event-listener .jsplib-settings-grouping:not(#el-general-settings) .ui-checkboxradio-icon-space {
