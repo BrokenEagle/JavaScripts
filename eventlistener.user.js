@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      21.17
+// @version      22.0
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -142,6 +142,12 @@ const SETTINGS_CONFIG = {
         default: true,
         validate: JSPLib.validate.isBoolean,
         hint: `Only show edits not created by <a class="user-moderator with-style" style="color:var(--user-moderator-color)" href="/users/${SERVER_USER_ID}">DanbooruBot</a>.`
+    },
+    filter_users: {
+        default: "",
+        parse: (input)=>(JSPLib.utility.arrayUnique(input.split(/\s*,\s*/).map(Number))),
+        validate: (input)=>(JSPLib.validate.validateIDList(input)),
+        hint: 'Enter a list of users to filter (comma separated).'
     },
     recheck_interval: {
         default: 5,
@@ -1171,7 +1177,7 @@ function FilterData(array,subscribe_set,user_set) {
 }
 
 function IsShownData(val,subscribe_set,user_set) {
-    if (EL.user_settings.filter_user_events && this.user && val[this.user] === EL.userid) {
+    if ((EL.user_settings.filter_user_events && this.user && (val[this.user] === EL.userid)) || EL.user_settings.filter_users.includes(val[this.user])) {
         return false;
     }
     if (user_set && this.user && user_set.has(val[this.user])) {
@@ -2670,6 +2676,7 @@ function RenderSettingsMenu() {
     $('#el-filter-settings').append(JSPLib.menu.renderCheckbox('filter_BUR_edits'));
     $('#el-filter-settings').append(JSPLib.menu.renderCheckbox('filter_autobans'));
     $('#el-filter-settings').append(JSPLib.menu.renderTextinput('filter_post_edits', 80));
+    $('#el-filter-settings').append(JSPLib.menu.renderTextinput('filter_users', 80));
     $('#el-post-query-event-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", POST_QUERY_EVENT_SETTINGS_DETAILS));
     $('#el-post-query-event-settings').append(JSPLib.menu.renderInputSelectors('post_query_events_enabled', 'checkbox'));
     $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput('comment_query', 80));
