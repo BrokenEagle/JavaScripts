@@ -167,14 +167,14 @@ const DEFAULT_VALUES = {
 //Style information
 const program_css = `
 #upload-counts {
-    border: var(--footer-border);
+    border-color: var(--footer-border-color);
     border-style: dotted;
     border-width: 2px;
     max-width: 70em;
     margin-left: 2em;
 }
 #upload-counts.opened {
-    border: var(--form-input-border);
+    border-color: var(--divider-border-color);
     border-style: dashed;
     border-width: 5px;
 }
@@ -268,7 +268,7 @@ const program_css = `
 }
 .cu-tooltip .cu-tooltiptext {
     visibility: hidden;
-    width: 80px;
+    width: 90px;
     background-color: black;
     color: #fff;
     text-align: left;
