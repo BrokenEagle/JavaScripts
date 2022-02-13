@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.21
+// @version      28.22
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -10,22 +10,22 @@
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/indexedautocomplete.user.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/core-js/3.8.1/minified.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.9.0/localforage.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/core-js/3.21.0/minified.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201230-module/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201230-menu/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru validate LZString */
@@ -506,26 +506,14 @@ body[data-current-user-theme=dark] .ui-menu-item .forum-topic-category-2 {
 }`;
 
 const SETTINGS_MENU_CSS = `
-#indexed-autocomplete .jsplib-selectors label {
-    width: 125px;
+#indexed-autocomplete .jsplib-settings-grouping:not(#iac-general-settings) .iac-selectors label {
+    width: 150px;
 }
-#indexed-autocomplete .jsplib-sortlist li {
+#indexed-autocomplete .iac-sortlist li {
     width: 10em;
 }
 #indexed-autocomplete .iac-formula {
     font-family: mono;
-    font-size: 100%;
-}
-#indexed-autocomplete .ui-widget-content {
-    background: var(--jquery-ui-widget-content-background);
-    color: var(--jquery-ui-widget-content-text-color);
-}
-#indexed-autocomplete .ui-widget,
-#indexed-autocomplete .ui-widget button,
-#indexed-autocomplete .ui-widget input,
-#indexed-autocomplete .ui-widget select,
-#indexed-autocomplete .ui-widget textarea {
-    font-family: Verdana,Helvetica,sans-serif;
 }`;
 
 //HTML Constants
@@ -1401,9 +1389,7 @@ function ValidateUsageData(choice_info) {
 
 //Library functions
 
-JSPLib.load.setProgramGetter = function (program_value,other_program_key,other_program_name) {
-    Object.defineProperty(program_value, other_program_key, { get: function() {return JSPLib.load.getExport(other_program_name) || Danbooru[other_program_key] || {};}});
-};
+////NONE
 
 //Helper functions
 
