@@ -5,8 +5,8 @@
 // @description  Use different mechanism to calculate RecentTags.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
-// @match        *://*.donmai.us/uploads/*
-// @match        *://*.donmai.us/posts/*
+// @include      /^https?://\w+\.donmai\.us/uploads/\d+(\?|$)/
+// @include      /^https?://\w+\.donmai\.us/posts/\d+(\?|$)/
 // @match        *://*.donmai.us/settings
 // @exclude      /^https?://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
 // @grant        none
@@ -42,7 +42,7 @@ const DANBOORU_TOPIC_ID = '15851';
 
 //Variables for load.js
 const program_load_required_variables = ['window.jQuery','window.Danbooru','Danbooru.CurrentUser'];
-const program_load_required_selectors = ['#page'];
+const program_load_required_selectors = ['#c-uploads #a-show, #c-posts #a-show'];
 
 //Program name constants
 const PROGRAM_SHORTCUT = 'rtc';
