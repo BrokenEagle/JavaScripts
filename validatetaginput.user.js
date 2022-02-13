@@ -7,7 +7,7 @@
 // @author       BrokenEagle
 // @match        *://*.donmai.us/
 // @match        *://*.donmai.us/posts*
-// @match        *://*.donmai.us/uploads/*
+// @include      /^https?://\w+\.donmai\.us/uploads/\d+(\?|$)/
 // @match        *://*.donmai.us/settings
 // @exclude      /^https?://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
 // @grant        none
