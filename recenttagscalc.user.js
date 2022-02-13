@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RecentTagsCalc
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.15
+// @version      7.16
 // @description  Use different mechanism to calculate RecentTags.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -12,21 +12,21 @@
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/recenttagscalc.user.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/core-js/3.8.1/minified.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.9.0/localforage.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/core-js/3.21.0/minified.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201230-module/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201230-menu/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru */
@@ -281,16 +281,12 @@ let program_css = `
 `;
 
 const MENU_CSS = `
-#recent-tags-calc .jsplib-sortlist li {
+#recent-tags-calc .rtc-sortlist li {
+    width: 150px;
+}
+#recent-tags-calc .jsplib-settings-grouping:not(#rtc-general-settings) .rtc-selectors label {
     width: 120px;
-}
-#recent-tags-calc .rtc-selectors label {
-    width: 120px;
-}
-#recent-tags-calc .jsplib-selectors[data-setting="domain_selector"] label {
-    width: 140px;
-}
-`;
+}`;
 
 //HTML Constants
 
@@ -605,7 +601,7 @@ function GetTagData(tag) {
         return {postcount:postcount,category:metatags_category};
     }
     if (!(tag in RTC.tag_data) || RTC.tag_data[tag].category === notfound_tag_category) {
-        RTC.tag_data[tag] = JSPLib.storage.getStorageData('tag-'+tag,sessionStorage,{value:default_tag_data}).value;
+        RTC.tag_data[tag] = JSPLib.storage.getIndexedSessionData('tag-'+tag,{value:default_tag_data}).value;
     }
     if (RTC.tag_data[tag].is_alias) {
         RTC.tag_data[tag].category = alias_tag_category;
