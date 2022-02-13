@@ -4576,7 +4576,7 @@ function RemoveData(key, database) {
 async function LoadDatabase() {
     this.debug('log', "starting tweet load");
     JSPLib.debug.debugTime('database-network');
-    var tweet_data = await JSPLib.network.getNotify(SERVER_DATABASE_URL, {}, JSPLib.utility.sprintf(SERVER_ERROR, "tweet database"));
+    var tweet_data = await JSPLib.network.getNotify(SERVER_DATABASE_URL, {}, JSPLib.utility.sprintf(SERVER_ERROR, "tweet database"), {anonymous: true});
     JSPLib.debug.debugTimeEnd('database-network');
     if (tweet_data !== false) {
         await SaveDatabase(tweet_data, '#ntisas-counter');
@@ -4652,7 +4652,7 @@ function InitializeDatabase() {
 
 async function CheckDatabaseInfo(initial) {
     if (!NTISAS.user_settings.bypass_server_mode && (initial || JSPLib.concurrency.checkTimeout('ntisas-database-recheck', DATABASE_RECHECK_EXPIRES))) {
-        let database_info = await JSPLib.network.getNotify(DATABASE_INFO_URL, {}, JSPLib.utility.sprintf(SERVER_ERROR, "database info"));
+        let database_info = await JSPLib.network.getNotify(DATABASE_INFO_URL, {}, JSPLib.utility.sprintf(SERVER_ERROR, "database info"), {anonymous: true});
         if (database_info !== false) {
             SetLocalData('ntisas-remote-database', database_info);
         }
@@ -4672,7 +4672,7 @@ function CheckPurgeBadTweets() {
 
 async function PurgeBadTweets(purgelist) {
     if (purgelist === undefined) {
-        purgelist = await JSPLib.network.getNotify(SERVER_PURGELIST_URL, {}, JSPLib.utility.sprintf(SERVER_ERROR, "purge list"));
+        purgelist = await JSPLib.network.getNotify(SERVER_PURGELIST_URL, {}, JSPLib.utility.sprintf(SERVER_ERROR, "purge list"), {anonymous: true});
     }
     if (purgelist !== false) {
         let purge_keylist = purgelist.map((tweet_id) => ('tweet-' + tweet_id));
