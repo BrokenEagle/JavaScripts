@@ -187,6 +187,10 @@ const PROGRAM_CSS = `
 #validation-input > * {
     margin: 5px;
     display: block;
+}
+#check-tags {
+    width: 7em;
+    margin-right: 2em;
 }`;
 
 //HTML constants
@@ -873,12 +877,14 @@ function Main() {
         this.debug('log',"No validation needed!");
         return;
     }
+    let $pending_input = $('.post_is_pending').detach();
     $("#form [name=commit],#quick-edit-form [name=commit]").after(submit_button).hide();
+    $("#check-tags").after($pending_input);
     if (VTI.controller === 'posts' && VTI.action === 'index') {
         $("#quick-edit-form").append(input_validator);
         $("#quick-edit-form").after(warning_messages);
     } else {
-        $("#check-tags").after(input_validator);
+        $("#related-tags-container").before(input_validator);
         $("#related-tags-container").before(warning_messages);
     }
     $("#validate-tags").on(PROGRAM_CLICK, ValidateTags);
