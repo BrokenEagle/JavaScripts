@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.17
+// @version      29.0
 // @description  Validates tag add/remove inputs on a post edit or upload, plus several other post validations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -77,6 +77,11 @@ const SETTINGS_CONFIG = {
         default: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Performs the same rating and source checks that Danbooru does."
+    },
+    approval_check_enabled: {
+        default: false,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Confirms sending an upload for approval (Contributors only)."
     },
     artist_check_enabled: {
         default: true,
@@ -549,6 +554,11 @@ async function ValidateTags() {
         DisableUI("submit");
         let statuses = await Promise.all([ValidateTagAdds(),ValidateTagRemoves(),ValidateUpload()]);
         if (statuses.every((item) => item)) {
+            if (VTI.user_settings.approval_check_enabled && $('#post_is_pending').prop('checked') && !confirm("Submit upload for approval?")) {
+                VTI.is_validate_ready = true;
+                EnableUI("submit");
+                return;
+            }
             this.debug('log',"Submit request!");
             $("#form [name=commit],#quick-edit-form [name=commit]").click();
             if ((VTI.controller === 'uploads' && VTI.action === 'new') || (VTI.controller === 'posts' && VTI.controller === 'show')) {
@@ -790,6 +800,7 @@ function RenderSettingsMenu() {
     $("#vti-post-edit-settings").append(JSPLib.menu.renderCheckbox('alias_check_enabled'));
     $("#vti-post-edit-settings").append(JSPLib.menu.renderCheckbox('implication_check_enabled'));
     $("#vti-post-edit-settings").append(JSPLib.menu.renderCheckbox('upload_check_enabled'));
+    $("#vti-post-edit-settings").append(JSPLib.menu.renderCheckbox('approval_check_enabled'));
     $('#vti-controls').append(JSPLib.menu.renderCacheControls());
     $('#vti-cache-controls-message').append(JSPLib.menu.renderExpandable("Cache Data details", CACHE_DATA_DETAILS));
     $("#vti-cache-controls").append(JSPLib.menu.renderLinkclick('cache_info', true));
