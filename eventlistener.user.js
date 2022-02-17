@@ -1043,7 +1043,15 @@ function CorrectList(type,typelist) {
 
 //Library functions
 
-////NONE
+JSPLib.utility.createPromise = function () {
+    var resolve, reject;
+    function resolver(_resolve, _reject) {
+        resolve = _resolve;
+        reject = _reject;
+    }
+    var promise = new Promise(resolver);
+    return {promise, resolve, reject};
+};
 
 //Helper functions
 
@@ -2511,9 +2519,7 @@ async function CheckAllEvents(promise_array) {
         JSPLib.storage.removeStorageData('el-saved-notice', localStorage);
     }
     JSPLib.storage.setStorageData('el-overflow', EL.item_overflow, localStorage);
-    if (!EL.user_settings.autoclose_dmail_notice) {
-        EL.dmail_notice.show();
-    }
+    EL.dmail_promise.resolve(null);
     return hasevents;
 }
 
@@ -2555,10 +2561,8 @@ function MarkAllAsRead() {
     });
     JSPLib.storage.removeStorageData('el-rendered-list', localStorage);
     JSPLib.storage.removeStorageData('el-saved-notice', localStorage);
-    if (!EL.user_settings.autoclose_dmail_notice) {
-        EL.dmail_notice.show();
-    }
     SetLastSeenTime();
+    EL.dmail_promise.resolve(null);
 }
 
 function EventStatusCheck() {
@@ -2743,6 +2747,7 @@ function Main() {
         controller: document.body.dataset.controller,
         action: document.body.dataset.action,
         dmail_notice: $('#dmail-notice').hide(),
+        dmail_promise: JSPLib.utility.createPromise(),
         channel: JSPLib.utility.createBroadcastChannel(PROGRAM_NAME, BroadcastEL),
         user_settings: JSPLib.menu.loadUserSettings(),
     }, DEFAULT_VALUES);
@@ -2754,6 +2759,7 @@ function Main() {
     }
     if (!JSPLib.menu.isScriptEnabled()) {
         this.debug('log',"Script is disabled on", window.location.hostname);
+        EL.dmail_notice.show();
         return;
     }
     Object.assign(EL, {
@@ -2762,7 +2768,10 @@ function Main() {
         post_filter_tags: GetPostFilterTags(),
         recheck: JSPLib.concurrency.checkTimeout('el-event-timeout', EL.timeout_expires),
         get not_snoozed () {
-            return this.recheck || Boolean(EL.dmail_notice.length);
+            return EL.recheck || (EL.hide_dmail_notice && Boolean(this.dmail_notice.length));
+        },
+        get hide_dmail_notice () {
+            return EL.user_settings.autoclose_dmail_notice && IsEventEnabled('dmail', 'other_events_enabled');
         },
     });
     EventStatusCheck();
@@ -2822,9 +2831,6 @@ function Main() {
             JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT);
         }
     } else {
-        if (!EL.user_settings.autoclose_dmail_notice) {
-            EL.dmail_notice.show();
-        }
         this.debug('log',"Waiting...");
     }
     $(document).on(PROGRAM_CLICK, '.el-subscribe-dual-links a', SubscribeDualLink);
@@ -2863,8 +2869,12 @@ function Main() {
             InitializeUserShowMenu();
         }
     }
-    if (EL.user_settings.autoclose_dmail_notice && EL.events_checked) {
-        HideDmailNotice();
+    if (EL.hide_dmail_notice) {
+        if (EL.events_checked) HideDmailNotice();
+    } else {
+        EL.dmail_promise.promise.then(()=>{
+            EL.dmail_notice.show();
+        });
     }
     JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
 }
