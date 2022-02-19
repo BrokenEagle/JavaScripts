@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      22.0
+// @version      22.1
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -146,7 +146,7 @@ const SETTINGS_CONFIG = {
     },
     filter_users: {
         default: "",
-        parse: (input)=>(JSPLib.utility.arrayUnique(input.split(/\s*,\s*/).map(Number))),
+        parse: (input)=>(JSPLib.utility.arrayUnique(input.split(/\s*,\s*/).map(Number).filter((num) => (num !== 0)))),
         validate: (input)=>(JSPLib.validate.validateIDList(input)),
         hint: 'Enter a list of users to filter (comma separated).'
     },
