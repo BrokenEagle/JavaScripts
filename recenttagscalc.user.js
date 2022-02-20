@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         RecentTagsCalc
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.16
+// @version      7.17
 // @description  Use different mechanism to calculate RecentTags.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
 // @include      /^https?://\w+\.donmai\.us/uploads/\d+(\?|$)/
+// @include      /^https?://\w+\.donmai\.us/uploads/\d+/assets/\d+(\?|$)/
 // @include      /^https?://\w+\.donmai\.us/posts/\d+(\?|$)/
 // @match        *://*.donmai.us/settings
 // @exclude      /^https?://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
@@ -1110,7 +1111,6 @@ function Main() {
         action: document.body.dataset.action,
         userid: Danbooru.CurrentUser.data('id'),
         is_setting_menu: JSPLib.danbooru.isSettingMenu(),
-        is_upload: document.body.dataset.controller === 'uploads' && document.body.dataset.action === 'new',
         channel: JSPLib.utility.createBroadcastChannel(PROGRAM_NAME, BroadcastRTC),
         user_settings: JSPLib.menu.loadUserSettings(),
     }, PROGRAM_RESET_KEYS);
@@ -1122,6 +1122,9 @@ function Main() {
         this.debug('log',"Script is disabled on", window.location.hostname);
         return;
     }
+    Object.assign(RTC, {
+        is_upload: (RTC.controller === 'uploads' && RTC.action === 'show') || (RTC.controller === 'upload-media-assets' && RTC.action === 'show'),
+    });
     ListTypeCheck();
     JSPLib.load.setProgramGetter(RTC, 'IAC', 'IndexedAutocomplete');
     Object.assign(RTC, {

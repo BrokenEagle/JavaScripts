@@ -1,13 +1,14 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.0
+// @version      29.1
 // @description  Validates tag add/remove inputs on a post edit or upload, plus several other post validations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
 // @match        *://*.donmai.us/
 // @match        *://*.donmai.us/posts*
 // @include      /^https?://\w+\.donmai\.us/uploads/\d+(\?|$)/
+// @include      /^https?://\w+\.donmai\.us/uploads/\d+/assets/\d+(\?|$)/
 // @match        *://*.donmai.us/settings
 // @exclude      /^https?://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
 // @grant        none
@@ -846,7 +847,7 @@ function Main() {
         return;
     }
     Object.assign(VTI, {
-        is_upload: VTI.controller === 'uploads' && VTI.action === 'show',
+        is_upload: (VTI.controller === 'uploads' && VTI.action === 'show') || (VTI.controller === 'upload-media-assets' && VTI.action === 'show'),
         was_upload: JSPLib.storage.getStorageData('vti-was-upload',sessionStorage,false),
     });
     if (VTI.is_upload) {
