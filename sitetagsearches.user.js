@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SiteTagSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.8
+// @version      4.9
 // @description  Presents additional site links for the wiki tag(s).
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -149,7 +149,7 @@ const SITE_CONFIG = {
         url: 'https://www.tumblr.com/tagged/%s',
     },
     twitter: {
-        url: 'https://twitter.com/hashtag/%s',
+        url: 'https://twitter.com/hashtag/%s?src=hashtag_click&f=live',
     },
     'E-Hentai': {
         url: 'https://e-hentai.org/?f_search=%s',
