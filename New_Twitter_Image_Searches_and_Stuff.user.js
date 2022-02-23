@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.12
+// @version      7.13
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2912,32 +2912,32 @@ function GetPageType() {
     if (!NTISAS.page_match) {
         return 'other';
     }
-    switch (NTISAS.page_match.site) {
-        case NTISAS.page_match.main:
+    switch (NTISAS.page_match.groups.site) {
+        case NTISAS.page_match.groups.main:
             return 'main';
-        case NTISAS.page_match.media:
+        case NTISAS.page_match.groups.media:
             return 'media';
-        case NTISAS.page_match.search:
+        case NTISAS.page_match.groups.search:
             return 'search';
-        case NTISAS.page_match.tweet:
+        case NTISAS.page_match.groups.tweet:
             return 'tweet';
-        case NTISAS.page_match.web_tweet:
+        case NTISAS.page_match.groups.web_tweet:
             return 'web_tweet';
-        case NTISAS.page_match.hashtag:
+        case NTISAS.page_match.groups.hashtag:
             return 'hashtag';
-        case NTISAS.page_match.list:
+        case NTISAS.page_match.groups.list:
             return 'list';
-        case NTISAS.page_match.home:
+        case NTISAS.page_match.groups.home:
             return 'home';
-        case NTISAS.page_match.likes:
+        case NTISAS.page_match.groups.likes:
             return 'likes';
-        case NTISAS.page_match.replies:
+        case NTISAS.page_match.groups.replies:
             return 'replies';
-        case NTISAS.page_match.photo:
+        case NTISAS.page_match.groups.photo:
             return 'photo';
-        case NTISAS.page_match.moment:
+        case NTISAS.page_match.groups.moment:
             return 'moment';
-        case NTISAS.page_match.display:
+        case NTISAS.page_match.groups.display:
             return 'display';
         default:
             this.debug('warn', "Regex error:", window.location.href, NTISAS.page_match);
@@ -3937,7 +3937,7 @@ function InitializeDownloadLinks($tweet) {
 }
 
 function InitializeUploadlinks(install) {
-    NTISAS.photo_index = NTISAS.page_match.photo_index;
+    NTISAS.photo_index = NTISAS.page_match.groups.photo_index;
     let $photo_container = $('.ntisas-photo-container');
     let selected_photo = $(`li:nth-of-type(${NTISAS.photo_index}) img`, $photo_container[0]);
     if (selected_photo.length === 0) {
@@ -3962,7 +3962,7 @@ function InitializeUploadlinks(install) {
         $link = $('.ntisas-upload a');
         $link.attr('href', upload_link);
     }
-    let qtip_key = NTISAS.page_match.photo_id + '-' + NTISAS.page_match.photo_index;
+    let qtip_key = NTISAS.page_match.groups.photo_id + '-' + NTISAS.page_match.groups.photo_index;
     InitializeQtip($link, qtip_key, async ()=>{
         let extension = GetFileExtension(image_url).toUpperCase();
         return await GetImageAttributes(orig_image_url).then(({size,width,height})=>{
@@ -4708,7 +4708,7 @@ function PhotoNavigation() {
         //Get the latest page regex match stored onto global variable
         let pagetype = GetPageType();
         if (pagetype === 'photo') {
-            if (NTISAS.page_match.photo_index !== NTISAS.photo_index) {
+            if (NTISAS.page_match.groups.photo_index !== NTISAS.photo_index) {
                 InitializeUploadlinks(false);
             }
         }
@@ -5796,14 +5796,14 @@ function RegularCheck() {
 function PageNavigation(pagetype) {
     //Use all non-URL matching groups as a page key to detect page changes
     let page_key = JSPLib.utility.arrayUnique(
-        Object.values(NTISAS.page_match).filter((val) => (JSPLib.validate.isString(val) && !val.startsWith('https:')))
+        Object.values(NTISAS.page_match.groups).filter((val) => (JSPLib.validate.isString(val) && !val.startsWith('https:')))
     ).join(',');
     if (NTISAS.page === pagetype && NTISAS.page_key === page_key && (pagetype !== 'hashtag' || NTISAS.hashtag_search === window.location.search)) {
         return;
     }
     var params;
-    let account = NTISAS.page_match[pagetype + '_account'];
-    let page_id = NTISAS.page_match[pagetype + '_id'];
+    let account = NTISAS.page_match.groups[pagetype + '_account'];
+    let page_id = NTISAS.page_match.groups[pagetype + '_id'];
     NTISAS.prev_page = NTISAS.page;
     NTISAS.page = pagetype;
     NTISAS.page_key = page_key;
@@ -5826,13 +5826,13 @@ function PageNavigation(pagetype) {
             NTISAS.account = NTISAS.user_id = undefined;
             break;
         case 'hashtag':
-            this.debug('log', "Hashtag timeline:", NTISAS.page_match.hashtag_hash);
+            this.debug('log', "Hashtag timeline:", NTISAS.page_match.groups.hashtag_hash);
             NTISAS.account = NTISAS.user_id = undefined;
             NTISAS.hashtag_search = window.location.search;
             break;
         case 'search':
-            this.debug('log', "Search timeline:", NTISAS.page_match.search_query);
-            params = JSPLib.utility.parseParams(NTISAS.page_match.search_query);
+            this.debug('log', "Search timeline:", NTISAS.page_match.groups.search_query);
+            params = JSPLib.utility.parseParams(NTISAS.page_match.groups.search_query);
             NTISAS.queries = ParseQueries(params.q);
             NTISAS.account = ('from' in NTISAS.queries ? NTISAS.queries.from : undefined);
             NTISAS.user_id = NTISAS.account && GetAPIData('users_name', NTISAS.account, 'id_str');
