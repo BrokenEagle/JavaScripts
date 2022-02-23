@@ -6598,4 +6598,4 @@ JSPLib.load.exportFuncs(PROGRAM_NAME, [GetList, SaveList, GetData, SaveData]);
 /****Execution start****/
 
 JSPLib.network.installXHRHook([TweetUserData]);
-JSPLib.load.programInitialize(Main, PROGRAM_NAME, PROGRAM_LOAD_REQUIRED_VARIABLES, PROGRAM_LOAD_REQUIRED_SELECTORS, [], 100);
+JSPLib.load.programInitialize(Main, PROGRAM_NAME, PROGRAM_LOAD_REQUIRED_VARIABLES, PROGRAM_LOAD_REQUIRED_SELECTORS, [], 100, 500);
