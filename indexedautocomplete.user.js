@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.22
+// @version      28.23
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2703,11 +2703,11 @@ function SetupAutocompleteInitializations() {
 }
 
 function SetupPostEditInitializations() {
-    if ((IAC.controller === 'posts' && IAC.action === 'show') || (IAC.controller === 'uploads' && IAC.action === 'show')) {
+    if ((IAC.controller === 'posts' && IAC.action === 'show') || (IAC.controller === 'uploads' && IAC.action === 'show') || (IAC.controller === 'upload-media-assets' && IAC.action === 'show')) {
         RebindRelatedTags();
         if (IAC.controller === 'posts') {
             RebindOpenEditMenu();
-        } else if (IAC.controller === 'uploads') {
+        } else if (IAC.controller === 'uploads' || IAC.controller === 'upload-media-assets') {
             //Is source column empty?
             if (/^\s+$/.test($('.source-related-tags-columns').html())) {
                 this.debug('log',"Setting up mutation observer for source data.");
