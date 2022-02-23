@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.23
+// @version      28.24
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -433,55 +433,24 @@ const EXPANDABLE_RELATED_SECTION_CSS = `
 .iac-tag-statistic {
     color: hotpink;
 }
-#edit-dialog .related-tags,
-#c-posts #a-show .related-tags,
-#c-uploads #a-new .related-tags {
+div#related-tags-container div.related-tags {
     overflow-x: hidden;
     flex-wrap: nowrap;
     max-width: calc(100% - 2em);
 }
-#edit-dialog .related-tags.scrollable,
-#c-posts #a-show .related-tags.scrollable,
-#c-uploads #a-new .related-tags.scrollable {
+div#related-tags-container div.related-tags.scrollable {
     overflow-x: scroll;
 }
-#edit-dialog .related-tags .tag-column,
-#c-posts #a-show .related-tags .tag-column,
-#c-uploads #a-new .related-tags .tag-column {
+div#related-tags-container div.related-tags div.tag-column {
     width: 15em;
     max-width: unset;
 }
-#edit-dialog .related-tags .tag-column.wide-column,
-#c-posts #a-show .related-tags .tag-column.wide-column,
-#c-uploads #a-new .related-tags .tag-column.wide-column {
-    width: 45em;
-    max-width: unset;
-}
-/*
-#edit-dialog .related-tags .tag-column li,
-#c-posts #a-show .related-tags .tag-column li,
-#c-uploads #a-new .related-tags .tag-column li {
-    text-indent: -1em;
-    margin-left: 1em;
-}
-*/
-#edit-dialog .related-tags .tag-column li a:not(:first-of-type),
-#c-posts #a-show .related-tags .tag-column li a:not(:first-of-type),
-#c-uploads #a-new .related-tags .tag-column li a:not(:first-of-type) {
-    text-indent: 0;
-}
-#edit-dialog .tag-column.general-related-tags-column.is-empty-false,
-#c-posts #a-show .tag-column.general-related-tags-column.is-empty-false,
-#c-uploads #a-new .tag-column.general-related-tags-column.is-empty-false {
+div#related-tags-container div.related-tags div.tag-column.general-related-tags-column.is-empty-false {
     width: 18em;
 }
-/*
-#edit-dialog .tag-column.general-related-tags-column.is-empty-false li,
-#c-posts #a-show .tag-column.general-related-tags-column.is-empty-false li,
-#c-uploads #a-new .tag-column.general-related-tags-column.is-empty-false li {
-    text-indent: -2.7em;
-    margin-left: 2.7em;
-}*/`;
+div#related-tags-container div.related-tags div.tag-column.is-empty-true {
+    display: none;
+}`;
 
 const FORUM_CSS = `
 .ui-menu-item .forum-topic-category-0 {
@@ -2451,9 +2420,8 @@ function InitializeRelatedTagPopupListener() {
 
 function InitializeRelatedTagColumnWidths() {
     const em_size = 14;
-    const max_column_em = 18;
+    const max_column_em = 20;
     const min_column_em = 10;
-    const wide_column_em = 45;
     const range = document.createRange();
     const getChildWidth = (i,child) => {
         if (child.nodeType === 3) {
@@ -2481,7 +2449,7 @@ function InitializeRelatedTagColumnWidths() {
             let child_widths = $(entry).contents().map(getChildWidth).toArray();
             return child_widths.reduce(getSum, 0);
         }));
-        let max_column_width = ($column.hasClass('wide-column') ? wide_column_em * em_size : max_column_em * em_size);
+        let max_column_width = max_column_em * em_size;
         let column_width = Math.max(Math.min(max_child_width, max_column_width), min_column_em * em_size);
         $column.width((Math.ceil(column_width / em_size) + 2) + 'em');
     });
