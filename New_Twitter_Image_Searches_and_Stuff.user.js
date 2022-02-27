@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.13
+// @version      7.14
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
 // @match        https://twitter.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/New_Twitter_Image_Searches_and_Stuff.user.js
+// @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/New_Twitter_Image_Searches_and_Stuff.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/core-js/3.21.0/minified.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js
@@ -30,7 +31,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/concurrency.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/danbooru.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220226-network/lib/network.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/menu.js
 // @resource     jquery_ui_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/jquery_ui_custom.css
 // @resource     jquery_qtip_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.css
