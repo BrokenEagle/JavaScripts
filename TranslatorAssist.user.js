@@ -2400,15 +2400,15 @@ function LastNotedAt() {
 }
 
 function CheckLastNoted() {
+    let seen_key = 'ta-post-seen-' + TA.post_id;
     let last_noted_cutoff = TA.user_settings.last_noted_cutoff * JSPLib.utility.one_minute;
     if ((Date.now() - TA.last_noted) < last_noted_cutoff) {
-        let seen_key = 'ta-post-seen-' + TA.post_id;
         let post_seen = JSPLib.storage.getStorageData(seen_key, sessionStorage, false);
         if (!post_seen) {
             JSPLib.notice.notice("Post was noted: " + TimeAgo(TA.last_noted));
-            JSPLib.storage.setStorageData(seen_key, true, sessionStorage);
         }
     }
+    JSPLib.storage.setStorageData(seen_key, true, sessionStorage);
 }
 
 function CheckMissedLastNoterPolls() {
