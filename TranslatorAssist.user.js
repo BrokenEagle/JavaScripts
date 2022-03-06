@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.A
+// @version      4.B
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -210,14 +210,15 @@ const PROGRAM_CSS = `
 .ta-menu-tab {
     border: 1px solid #888;
     border-radius: 0.7em 0.7em 0 0;
-    background: #F8F8F8;
+    background: var(--subnav-menu-background-color);
     padding: 0.5em;
     margin: 0 -0.2em;
     display: inline-block;
 }
 .ta-menu-tab.ta-active {
-    text-shadow: 1px 1px 1px var(--link-color);
-    background: #EEE;
+    color: white;
+    background: blue;
+    text-shadow: 1px 0px 0px;
 }
 /** Side menu **/
 #ta-side-menu {
@@ -227,11 +228,11 @@ const PROGRAM_CSS = `
     width: 20em;
     height: auto;
     z-index: 100;
-    background: white;
+    background: var(--body-background-color);
 }
 #ta-side-menu > div {
     position: relative;
-    border: 1px solid black;
+    border: 1px solid var(--text-color);
     padding: 0.35em;
 }
 #ta-side-menu #ta-side-menu-header {
@@ -319,14 +320,14 @@ const PROGRAM_CSS = `
 /****** Ruby subsection ******/
 #ta-constructs-ruby-subsection ruby {
     font-size: 1.5em;
-    border: 1px solid #CCC;
+    border: 1px solid var(--form-button-border-color);
     padding: 0.6em 0.2em 0.1em;
 }
 #ta-constructs-ruby-subsection #ta-ruby-text {
     margin: 0.25em 3em 1em 1em;
     padding: 2em 1em 1em;
-    background-color: #F8F8F8;
-    border: 1px solid #DDD;
+    background-color: var(--subnav-background-color);
+    border: 1px solid var(--footer-border-color);
 }
 #ta-constructs-ruby-subsection #ta-ruby-dialog-open {
     width: 90%;
@@ -338,10 +339,11 @@ const PROGRAM_CSS = `
 #ta-section-embedded #ta-embedded-mode {
     font-size: 1.2em;
     padding: 5px;
-    border: 4px dashed #EEE;
+    border: 4px dashed var(--default-border-color);
     margin: 1em;
     width: 15.5em;
-    box-shadow: 0 0 0 4px #EEE;
+    box-shadow: 0 0 0 4px var(--subnav-menu-background-color);
+    background: var(--subnav-menu-background-color);
 }
 /****** Embedded block subsection ******/
 #ta-embedded-block-subsection {
@@ -387,7 +389,7 @@ const PROGRAM_CSS = `
     font-size: 2em;
 }
 #ta-controls-placement-subsection #ta-placement-info {
-    border: 1px solid #EEE;
+    border: 1px solid var(--footer-border-color);
     padding: 5px 5px 0 5px;
 }
 #ta-controls-placement-subsection #ta-placement-info > div:not(:nth-last-child(1)) {
@@ -1212,7 +1214,7 @@ function RenderTextShadowGrid() {
         let row_val = -1;
         ['top', 'middle', 'bottom'].forEach((rowname)=>{
             if (colname === 'center' && rowname === 'middle') {
-                grid_html += `<div class="ta-grid-item" style="top: ${top_em}em; right: ${right_em}em; background-color: black;"></div>`;
+                grid_html += `<div class="ta-grid-item" style="top: ${top_em}em; right: ${right_em}em; background-color: var(--text-color);"></div>`;
             } else {
                 let input_name = 'shadow-grid-' + rowname + '-' + colname;
                 let classname = (row_val === 0 || col_val === 0 ? 'ta-grid-side' : 'ta-grid-corner');
