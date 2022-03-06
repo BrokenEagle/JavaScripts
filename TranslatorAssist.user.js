@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.B
+// @version      4.C
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1381,8 +1381,28 @@ function TokenizeHTML(html_string) {
     tag_stack.concat(unclosed_tags).forEach((tag)=>{
         tag.close_tag_start = tag.close_tag_end = html_length;
     });
+    html_tags.forEach((tag)=>{
+        tag.ancestor_tags = html_tags.filter((outer_tag)=>{
+            if (tag === outer_tag) return false;
+            return outer_tag.open_tag_end <= tag.open_tag_start && outer_tag.close_tag_start >= tag.close_tag_end;
+        });
+        tag.descendant_tags = html_tags.filter((inner_tag)=>{
+            if (tag === inner_tag) return false;
+            return tag.open_tag_end <= inner_tag.open_tag_start && tag.close_tag_start >= inner_tag.close_tag_end;
+        });
+    });
     return html_tags;
 }
+
+function GetParentTag(html_tags, cursor) {
+    let ancestor_tags = html_tags.filter((tag)=>{
+        return tag.open_tag_end <= cursor && tag.close_tag_start >= cursor;
+    });
+    return ancestor_tags.reduce((acc, tag)=>{
+        return (!acc || (tag.ancestor_tags.length > acc.ancestor_tags.length) ? tag : acc);
+    }, null);
+}
+
 function GetTag(html_text, cursor) {
     let tag;
     if (TA.mode === 'main' || TA.mode === 'constructs') {
@@ -1498,30 +1518,17 @@ function InsertHTMLBlock(text_area, tag_name, style_dict) {
 }
 
 function AddBlockElement(text_area, tag_name) {
+    let html_text = text_area.value;
     let cursor = text_area.selectionStart;
     let cursor_end = text_area.selectionEnd;
-    if (cursor != cursor_end) {
-        let html_tags = TokenizeHTML(text_area.value);
-        // Get the tag closest right to the starting cursor
-        let closest_tag = html_tags.reduce((acc, tag)=>{
-            let acc_difference = acc.open_tag_start - cursor;
-            let tag_difference = tag.open_tag_start - cursor;
-            return ((acc_difference > tag_difference) && (tag_difference >= 0) ? tag : acc);
-        }, {open_tag_start: Infinity});
-        // The closest tag will be the original accumulator value if there are no tags
-        if (closest_tag.open_tag_start !== Infinity) {
-            let error_messages = [];
-            if (closest_tag.close_tag_end > cursor_end) {
-                error_messages.push("Current selection does not surround the closest tag.");
-            }
-            if (IsInsideHTMLTag(text_area.value, cursor_end)) {
-                error_messages.push("Cannot end selection inside another tag.");
-            }
-            if (error_messages.length) {
-                ShowErrorMessages(error_messages);
-                return;
-            }
-        }
+    if (IsInsideHTMLTag(html_text, cursor_end)) {
+        ShowErrorMessages(["Cannot end selection inside another tag."]);
+        return;
+    }
+    let html_tags = TokenizeHTML(html_text);
+    if (GetParentTag(html_tags, cursor) !== GetParentTag(html_tags, cursor_end)) {
+        ShowErrorMessages(["Selection end cannot end inside a sibling tag."]);
+        return;
     }
     let initialize = $('#ta-css-style-initialize').get(0)?.checked;
     let [create_styles, invalid_styles] = (initialize ? GetCSSStyles(false, INPUT_SECTIONS[TA.mode]) : [{},{}]);
