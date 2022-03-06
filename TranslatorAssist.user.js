@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.C
+// @version      4.D
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -61,9 +61,9 @@ const DEFAULT_VALUES = {
 
 //Available setting values
 const HTML_TAGS = ['div', 'span', 'b', 'i', 'u', 's', 'tn', 'small', 'big', 'code', 'center', 'p'];
-const HTML_STYLES = ['color', 'font-size', 'font-family', 'font-weight', 'font-style', 'font-variant', 'text-align', 'line-height', 'letter-spacing', 'margin', 'padding', 'white-space', 'background-color'];
-const OUTER_RUBY_STYLES = ['color', 'font-size', 'font-family', 'font-weight', 'font-style', 'font-variant', 'line-height', 'letter-spacing', 'padding', 'white-space', 'background-color'];
-const INNER_RUBY_STYLES = ['color', 'font-size', 'font-family', 'font-weight', 'font-style', 'font-variant', 'letter-spacing'];
+const HTML_STYLES = ['color', 'font-size', 'font-family', 'font-weight', 'font-style', 'font-variant', 'text-align', 'text-decoration', 'line-height', 'letter-spacing', 'margin', 'padding', 'white-space', 'background-color'];
+const OUTER_RUBY_STYLES = ['color', 'font-size', 'font-family', 'font-weight', 'font-style', 'font-variant', 'text-decoration', 'line-height', 'letter-spacing', 'padding', 'white-space', 'background-color'];
+const INNER_RUBY_STYLES = ['color', 'font-size', 'font-family', 'font-weight', 'font-style', 'font-variant', 'text-decoration', 'letter-spacing'];
 const RUBY_STYLES = OUTER_RUBY_STYLES;
 const EMBEDDED_STYLES = ['border-radius', 'transform', 'background-color', 'justify-content', 'align-items'];
 
