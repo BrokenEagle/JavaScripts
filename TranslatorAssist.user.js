@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.D
+// @version      4.E
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1314,10 +1314,12 @@ function IsInsideHTMLTag(html_text, cursor) {
     (((html_text.lastIndexOf('>', d) < 0) && (html_text.lastIndexOf('<', d) >= 0)), (html_text.lastIndexOf('>', d) < html_text.lastIndexOf('<', d)));
 }
 
-function BuildHTMLTag(tag_name, attrib_dict, style_dict) {
+function BuildHTMLTag(tag_name, attrib_dict, style_dict, blank_style=false) {
     let style_pairs = Object.entries(style_dict).filter((style_pair)=>(style_pair[1] !== ""));
     if (style_pairs.length){
         attrib_dict.style = style_pairs.map((style_pair)=>(style_pair[0] + ": " + style_pair[1])).join('; ') + ';';
+    } else if (blank_style) {
+        attrib_dict.style = "";
     } else {
         delete attrib_dict.style;
     }
@@ -1403,20 +1405,20 @@ function GetParentTag(html_tags, cursor) {
     }, null);
 }
 
-function GetTag(html_text, cursor) {
+function GetTag(html_text, cursor, warning=true) {
     let tag;
     if (TA.mode === 'main' || TA.mode === 'constructs') {
         tag = GetHTMLTag(html_text, cursor);
-        if (!tag) {
+        if (!tag && warning) {
             ShowErrorMessages(["No open tag selected."]);
         }
     } else if (TA.mode === 'embedded') {
         tag = GetEmbeddedTag(html_text);
-        if (!tag) {
-            ShowErrorMessages(["No tag with class <code>note-box-attributes</code>."]);
+        if (!tag && warning) {
+            ShowErrorMessages(["No tag with class <code>note-box-attributes</code> ."]);
         }
-    } else {
-        ShowErrorMessages([`Copy not implemented for mode <code>${TA.mode}</code>.`]);
+    } else if (warning) {
+        ShowErrorMessages([`Mode <code>${TA.mode}</code> not implement for current function.`]);
     }
     return tag;
 }
@@ -1966,14 +1968,8 @@ function CopyTagStyles() {
 function ApplyTagStyles() {
     let text_area = GetActiveTextArea(false);
     if (!text_area) return;
-    let html_tags = TokenizeHTML(text_area.value);
-    let selected_tag = html_tags.find((tag)=>{
-        return (tag.open_tag_start <= text_area.selectionStart) && (text_area.selectionStart < tag.open_tag_end);
-    });
-    if (!selected_tag) {
-        ShowErrorMessages(["No open tag selected."]);
-        return;
-    }
+    let html_tag = GetTag(text_area.value, text_area.selectionStart);
+    if (!html_tag) return;
     let overwrite = $('#ta-css-style-overwrite').get(0)?.checked;
     var add_styles = {};
     var invalid_styles = {};
@@ -2097,16 +2093,16 @@ function ToggleEmbeddedMode() {
 function AddEmbeddedElement() {
     let text_area = GetActiveTextArea(false);
     if (!text_area) return;
-    let ret = GetEmbeddedTag(text_area.value);
-    if (ret) {
-        var [html_text, html_full_tag, , , , ] = ret;
-        var note_html = html_text.replace(html_full_tag, "");
-    } else {
-        note_html = text_area.value;
+    let html_text = text_area.value;
+    let html_tag = GetTag(html_text, text_area.selectionStart, false);
+    if (html_tag) {
+        ShowErrorMessages(['Tag with class <code>note-box-attributes</code> already exists.']);
+        return;
     }
+    let note_html = (html_tag ? html_text.replace(html_tag.full_tag, "") : html_text);
     let initialize = $('#ta-css-style-initialize').get(0)?.checked;
-    let [add_styles, invalid_styles] = GetCSSStyles(false, INPUT_SECTIONS[TA.mode]);
-    let embedded_tag = BuildHTMLTag('div', {class: 'note-box-attributes'}, add_styles, !initialize) + '</div>';
+    let [add_styles, invalid_styles] = (initialize ? GetCSSStyles(false, INPUT_SECTIONS[TA.mode]) : [{},{}]);
+    let embedded_tag = BuildHTMLTag('div', {class: 'note-box-attributes'}, add_styles, true) + '</div>';
     note_html += embedded_tag;
     text_area.value = note_html;
     let style_errors = Object.entries(invalid_styles).map((style_pair)=>(`<code>${style_pair[0]}</code> => "${style_pair[1]}"`));
@@ -2120,28 +2116,26 @@ function AddEmbeddedElement() {
 function RemoveEmbeddedElement() {
     let text_area = GetActiveTextArea();
     if (!text_area) return;
-    let ret = GetEmbeddedTag(text_area.value);
-    if (!ret) return;
-    var [html_text, html_full_tag, , , , ] = ret;
-    text_area.value = html_text.replace(html_full_tag, "");
+    let html_text = text_area.value;
+    let html_tag = GetTag(html_text, text_area.selectionStart);
+    if (!html_tag) return;
+    text_area.value = html_text.replace(html_tag.full_tag, "")
 }
 
 function SetEmbeddedLevel() {
     let text_area = GetActiveTextArea();
     if (!text_area) return;
-    let ret = GetEmbeddedTag(text_area.value);
-    if (!ret) return;
-    var [html_text, , html_tag, tag_name, , ] = ret;
-    var [attrib_dict, style_dict] = ParseTagAttributes(html_tag, false);
-    let classlist = attrib_dict.class.split(/\s+/).filter((classname)=>(!classname.match(/level-[1-5]/)));
+    let html_text = text_area.value;
+    let html_tag = GetTag(html_text, text_area.selectionStart);
+    if (!html_tag) return;
+    let classlist = html_tag.attrib_dict.class.split(/\s+/).filter((classname)=>(!classname.match(/level-[1-5]/)));
     let level = $('#ta-embedded-level-select').val();
     if (level.match(/^[1-5]$/)){
         classlist.push('level-' + level);
     }
-    attrib_dict.class = classlist.join(' ');
-    let final_tag = BuildHTMLTag(tag_name, attrib_dict, style_dict, false);
-    var note_html = html_text.replace(html_tag, final_tag);
-    text_area.value = note_html;
+    html_tag.attrib_dict.class = classlist.join(' ');
+    let final_tag = BuildHTMLTag(html_tag.tag_name, html_tag.attrib_dict, html_tag.style_dict);
+    text_area.value = html_text.replace(html_tag.open_tag, final_tag);
 }
 
 //// Controls section handlers
