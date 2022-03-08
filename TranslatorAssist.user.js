@@ -2068,12 +2068,25 @@ function ToggleEmbeddedMode() {
     }
     let $notes = $('#notes');
     Danbooru.Note.notes.forEach((note)=>{
-        if (TA.starting_notes.has(note.id) || note.id === null) return;
-        let santized_html = (note.body.$note_body.html() === '<em>Click to edit</em>' ? note.box.$note_box.find('.note-box-inner-border').html() : note.body.$note_body.html());
+        if (note.id === null) return;
+        let santized_html = (note.body.$note_body.html() === '<em>Click to edit</em>' ? note.box.$inner_border.html() : note.body.$note_body.html());
         let original_html = note.original_body;
-        let html = `<article data-width="${note.width}" data-height="${note.height}" data-x="${note.x}" data-y="${note.y}" data-id="${note.id}" data-body="${santized_html}">${original_html}</article>`;
-        $notes.append(html);
-        TA.starting_notes.add(note.id);
+        if (TA.starting_notes.has(note.id)) {
+            let $note = $notes.find(`[data-id="${note.id}"]`);
+            $note.attr({
+                'data-width': note.w,
+                'data-height': note.h,
+                'data-x': note.x,
+                'data-y': note.y,
+                'data-id': note.id,
+                'data-body': original_html,
+            });
+            $note.html(santized_html);
+        } else {
+            let html = `<article data-width="${note.w}" data-height="${note.h}" data-x="${note.x}" data-y="${note.y}" data-id="${note.id}" data-body="${original_html}">${santized_html}</article>`;
+            $notes.append(html);
+            TA.starting_notes.add(note.id);
+        }
     });
     ReloadNotes();
     TA.has_embedded = !TA.has_embedded;
