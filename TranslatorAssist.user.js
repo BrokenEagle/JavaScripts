@@ -509,7 +509,7 @@ const PROGRAM_CSS = `
 }`;
 
 const MENU_CSS = `
-.jsplib-selectors.ta-selectors:not([data-setting="available_html_tags"]) label {
+.jsplib-selectors.ta-selectors:not([data-setting="available_html_tags"], [data-setting="domain_selector"]) label {
     width: 165px;
 }`;
 
