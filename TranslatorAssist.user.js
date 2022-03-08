@@ -2363,11 +2363,11 @@ function ApplyRubyTag() {
     let [bottom_add_styles, bottom_invalid_styles] = GetCSSStyles(false, '#ta-ruby-dialog-styles-bottom input');
     let ruby_segments = [];
     for (let i = 0; i < top_segments.length; i++) {
-        let top_segment = BuildHTMLTag('rt', {}, top_add_styles, false) + top_segments[i].replace(' ', '\u2002') + '</rt>';
-        let bottom_segment = BuildHTMLTag('span', {}, bottom_add_styles, false) + bottom_segments[i].replace(' ', '\u2002') + '</span>';
+        let top_segment = BuildHTMLTag('rt', {}, top_add_styles) + top_segments[i].replace(' ', '\u2002') + '</rt>';
+        let bottom_segment = BuildHTMLTag('span', {}, bottom_add_styles) + bottom_segments[i].replace(' ', '\u2002') + '</span>';
         ruby_segments.push(bottom_segment + top_segment);
     }
-    let overall_segment = BuildHTMLTag('ruby', {}, overall_add_styles, false) + ruby_segments.join("") + '</ruby>';
+    let overall_segment = BuildHTMLTag('ruby', {}, overall_add_styles) + ruby_segments.join("") + '</ruby>';
     let select_start = (ruby_tag ? ruby_tag.overall.open_tag_start : text_area.selectionStart);
     let final_text = text_area.value.slice(0, select_start);
     final_text += overall_segment;
