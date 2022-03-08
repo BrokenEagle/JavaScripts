@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.E
+// @version      4.F
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2203,8 +2203,14 @@ function ResetNote() {
     if (!note.is_new()) {
         $.getJSON(`/notes/${note.id}.json`).then((data)=>{
             note.box.place_note(data.x, data.y, data.width, data.height);
-            note.box.$note_box.removeClass("unsaved");
-            JSPLib.notice.notice(`Note #${note.id} reset.`);
+            let text_area = GetActiveTextArea();
+            if (text_area) {
+                text_area.value = data.body;
+            }
+            note.body.preview_text(data.body).then(()=>{
+                JSPLib.notice.notice(`Note #${note.id} reset.`);
+                note.box.$note_box.removeClass("unsaved");
+            });
         });
     } else {
         JSPLib.notice.error("Reset not available for new unsaved notes.");
