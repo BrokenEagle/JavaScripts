@@ -2097,11 +2097,11 @@ function ToggleEmbeddedMode() {
                 'data-x': note.x,
                 'data-y': note.y,
                 'data-id': note.id,
-                'data-body': original_html,
+                'data-body': JSPLib.utility.HTMLEscape(original_html),
             });
             $note.html(santized_html);
         } else {
-            let html = `<article data-width="${note.w}" data-height="${note.h}" data-x="${note.x}" data-y="${note.y}" data-id="${note.id}" data-body="${original_html}">${santized_html}</article>`;
+            let html = `<article data-width="${note.w}" data-height="${note.h}" data-x="${note.x}" data-y="${note.y}" data-id="${note.id}" data-body="${JSPLib.utility.HTMLEscape(original_html)}">${santized_html}</article>`;
             $notes.append(html);
             TA.starting_notes.add(note.id);
         }
