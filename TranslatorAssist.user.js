@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.F
+// @version      4.G
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -621,31 +621,31 @@ const CONTROLS_SECTION = `
 <div class="ta-header ta-cursor-text">Placement:</div>
 <div id="ta-controls-placement-subsection" style="display: flex;" class="ta-subsection ta-cursor-initial">
     <div id="ta-placement-controls">
-        <button class="ta-button-svg" data-action="expand-width" title="Expand width">
+        <button class="ta-button-placement ta-button-svg" data-action="expand-width" title="Expand width">
             <img style="top: 0.75em; left: 1em;" src="data:image/svg+xml,${JSPLib.utility.fullEncodeURIComponent(EXPAND_LR_SVG)}">
         </button>
-        <button data-action="move-up" title="Move up">
+        <button class="ta-button-placement" data-action="move-up" title="Move up">
             <div style="transform: rotate(270deg);">➜</div>
         </button>
-        <button class="ta-button-svg" data-action="expand-height" title="Expand height">
+        <button class="ta-button-placement ta-button-svg" data-action="expand-height" title="Expand height">
             <img style="top: 0.5em; left: 0.75em;" src="data:image/svg+xml,${JSPLib.utility.fullEncodeURIComponent(EXPAND_TB_SVG)}">
         </button>
-        <button data-action="move-left" title="Move left">
+        <button class="ta-button-placement move-left" title="Move left">
             <div style="transform: rotate(180deg);">➜</div>
         </button>
-        <button data-action="get-placement" title="Get coordinate and size info">
+        <button id="ta-get-placement" title="Get coordinate and size info">
             <div style="font-size: 1.5em;font-weight: bold; margin-left: -0.2em;">Get</div>
         </button>
-        <button data-action="move-right" title="Move right">
+        <button class="ta-button-placement" data-action="move-right" title="Move right">
             <div>➜</div>
         </button>
-        <button class="ta-button-svg" data-action="contract-width" title="Contract width">
+        <button class="ta-button-placement ta-button-svg" data-action="contract-width" title="Contract width">
             <img style="top: 0.75em; left: 1em;" src="data:image/svg+xml,${JSPLib.utility.fullEncodeURIComponent(CONTRACT_LR_SVG)}">
         </button>
-        <button data-action="move-down" title="Move down">
+        <button class="ta-button-placement" data-action="move-down" title="Move down">
             <div style="transform: rotate(90deg);">➜</div>
         </button>
-        <button class="ta-button-svg" data-action="contract-height" title="Contract height">
+        <button class="ta-button-placement ta-button-svg" data-action="contract-height" title="Contract height">
             <img style="top: 0.5em; left: 0.75em;" src="data:image/svg+xml,${JSPLib.utility.fullEncodeURIComponent(CONTRACT_TB_SVG)}">
         </button>
     </div>
@@ -1104,6 +1104,24 @@ const INPUT_SECTIONS = {
 /****Functions****/
 
 /** Library functions **/
+
+JSPLib.utility.clickAndHold = function(selector, func, namespace="", wait_time=500, interval_time=100) {
+    let $obj = (typeof selector === 'string' ? JSPLib._jQuery(selector) : selector);
+    let event_namespaces = ['mousedown', 'mouseup', 'mouseleave'].map((event_type)=>(event_type + (namespace ? '.' + namespace : "")));
+    let timer = null;
+    let interval = null;
+    $obj.on(event_namespaces[0], (event)=>{
+        func(event);
+        timer = setTimeout(()=>{
+            interval = JSPLib.utility.initializeInterval(()=>{
+                PlacementControl(event);
+            }, interval_time)
+        }, wait_time);
+    }).on(event_namespaces.slice(1).join(','), (event)=>{
+        clearTimeout(timer);
+        clearInterval(interval);
+    });
+};
 
 JSPLib.menu.renderMenuSection = function (value,type) {
     let message = (value.message ? `<p>${value.message}</p>` : "");
@@ -2153,6 +2171,12 @@ function SetEmbeddedLevel() {
 
 //// Controls section handlers
 
+function GetPlacement() {
+    let note = GetMovableNote();
+    if (!note) return;
+    GetNotePlacement(note);
+}
+
 function PlacementControl(event) {
     let note = GetMovableNote();
     if (!note) return;
@@ -2490,7 +2514,8 @@ function InitializeSideMenu() {
     $('#ta-normalize-note').on(PROGRAM_CLICK, NormalizeNote);
     $('#ta-text-shadow-controls a').on(PROGRAM_CLICK, TextShadowControls);
     $('#ta-ruby-dialog-open').on(PROGRAM_CLICK, OpenRubyDialog);
-    $('#ta-placement-controls button').on(PROGRAM_CLICK, PlacementControl);
+    JSPLib.utility.clickAndHold('#ta-placement-controls .ta-button-placement', PlacementControl, PROGRAM_SHORTCUT);
+    $('#ta-get-placement').on(PROGRAM_CLICK, GetPlacement);
     $('#ta-save-note').on(PROGRAM_CLICK, SaveNote);
     $('#ta-edit-note').on(PROGRAM_CLICK, EditNote);
     $('#ta-delete-note').on(PROGRAM_CLICK, DeleteNote);
