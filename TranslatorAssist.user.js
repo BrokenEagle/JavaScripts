@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.G
+// @version      4.H
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -630,7 +630,7 @@ const CONTROLS_SECTION = `
         <button class="ta-button-placement ta-button-svg" data-action="expand-height" title="Expand height">
             <img style="top: 0.5em; left: 0.75em;" src="data:image/svg+xml,${JSPLib.utility.fullEncodeURIComponent(EXPAND_TB_SVG)}">
         </button>
-        <button class="ta-button-placement move-left" title="Move left">
+        <button class="ta-button-placement move-left" data-action="move-left" title="Move left">
             <div style="transform: rotate(180deg);">➜</div>
         </button>
         <button id="ta-get-placement" title="Get coordinate and size info">
@@ -2181,37 +2181,35 @@ function PlacementControl(event) {
     let note = GetMovableNote();
     if (!note) return;
     let action = $(event.currentTarget).data('action');
-    if (action !== 'get-placement') {
-        switch (action) {
-            case 'move-up':
-                note.y -= 1;
-                break;
-            case 'move-down':
-                note.y += 1;
-                break;
-            case 'move-left':
-                note.x -= 1;
-                break;
-            case 'move-right':
-                note.x += 1;
-                break;
-            case 'contract-width':
-                note.w -= 1;
-                break;
-            case 'expand-width':
-                note.w += 1;
-                break;
-            case 'contract-height':
-                note.h -= 1;
-                break;
-            case 'expand-height':
-                note.h += 1;
-                //falls through
-             default:
-                //do nothing
-        }
-        SetNotePlacement(note);
+    switch (action) {
+        case 'move-up':
+            note.y -= 1;
+            break;
+        case 'move-down':
+            note.y += 1;
+            break;
+        case 'move-left':
+            note.x -= 1;
+            break;
+        case 'move-right':
+            note.x += 1;
+            break;
+        case 'contract-width':
+            note.w -= 1;
+            break;
+        case 'expand-width':
+            note.w += 1;
+            break;
+        case 'contract-height':
+            note.h -= 1;
+            break;
+        case 'expand-height':
+            note.h += 1;
+            //falls through
+        default:
+            //do nothing
     }
+    SetNotePlacement(note);
     GetNotePlacement(note);
 }
 
