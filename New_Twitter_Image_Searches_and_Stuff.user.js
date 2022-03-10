@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.14
+// @version      7.15
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2735,10 +2735,6 @@ function GetTweetQuartile(tweetid) {
 function GetImageLinks(tweet) {
     let $obj = $('[data-image-url]', tweet).sort((entrya,entryb)=>($(entrya).data('image-num') - $(entryb).data('image-num')));
     return JSPLib.utility.getDOMAttributes($obj, 'image-url');
-}
-
-function GetImageIndex(length) {
-    return (length === 4 ? [0, 2, 1, 3] : [0, 1, 2, 3]);
 }
 
 function GetTweetStat(tweet,types) {
@@ -5985,9 +5981,8 @@ function ProcessTweetImages() {
         let $tweet = unprocessed_tweets[tweet_id];
         let is_main_tweet = $tweet.hasClass('ntisas-main-tweet');
         let $images = $tweet.find('[data-image-url]');
-        let image_index = GetImageIndex($images.length);
         $images.each((i,entry)=>{
-            let image_num = image_index[i] + 1;
+            let image_num = i + 1;
             $(entry).attr('data-image-num', image_num);
             if (is_main_tweet) {
                 $(entry.parentElement).on('mouseenter.ntisas', ImageEnter);
