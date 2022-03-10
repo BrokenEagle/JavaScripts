@@ -263,6 +263,9 @@ const PROGRAM_CSS = `
     letter-spacing: -1px;
     border-bottom: 1px solid #F0F0F0;
 }
+#ta-side-menu button {
+    font-weight: bold;
+}
 /** Sections **/
 #ta-sections > div {
     font-size: 0.85em;
@@ -1115,9 +1118,9 @@ JSPLib.utility.clickAndHold = function(selector, func, namespace="", wait_time=5
         timer = setTimeout(()=>{
             interval = JSPLib.utility.initializeInterval(()=>{
                 PlacementControl(event);
-            }, interval_time)
+            }, interval_time);
         }, wait_time);
-    }).on(event_namespaces.slice(1).join(','), (event)=>{
+    }).on(event_namespaces.slice(1).join(','), ()=>{
         clearTimeout(timer);
         clearInterval(interval);
     });
@@ -2150,7 +2153,7 @@ function RemoveEmbeddedElement() {
     let html_text = text_area.value;
     let html_tag = GetTag(html_text, text_area.selectionStart);
     if (!html_tag) return;
-    text_area.value = html_text.replace(html_tag.full_tag, "")
+    text_area.value = html_text.replace(html_tag.full_tag, "");
 }
 
 function SetEmbeddedLevel() {
