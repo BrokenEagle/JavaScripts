@@ -1652,7 +1652,6 @@ function ClearInputs(selector) {
     $(selector).each((_i, input)=>{
         input.value = "";
     });
-    JSPLib.notice.notice("Inputs cleared.");
 }
 
 function GetActiveTextArea(close_notice = true) {
@@ -2029,7 +2028,6 @@ function CopyTagStyles() {
         let style_value = style_dict[style_name] || "";
         input.value = style_value;
     });
-    JSPLib.notice.notice("Values copied.");
 }
 
 function ApplyTagStyles() {
@@ -2431,7 +2429,6 @@ function CopyRubyTag() {
             $(`#ta-ruby-${direction} textarea`).val(segments.join('\n'));
         }
     });
-    JSPLib.notice.notice("Values copied.");
 }
 
 function ApplyRubyTag() {
