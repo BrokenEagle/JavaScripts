@@ -118,10 +118,10 @@ const SETTINGS_CONFIG = {
         validate: (data) => (JSPLib.menu.validateCheckboxRadio(data, 'checkbox', HTML_TAGS) && data.length > 0),
         hint: "Select the list of available HTML tags to be shown. Must have at least one."
     },
-    available_html_styles: {
+    available_css_styles: {
         allitems: HTML_STYLES,
         default: HTML_STYLES,
-        display: "Available HTML styles",
+        display: "Available CSS styles",
         validate: (data) => (JSPLib.menu.validateCheckboxRadio(data, 'checkbox', HTML_STYLES) && data.length > 0),
         hint: "Select the list of available HTML styles to be shown. Must have at least one."
     },
@@ -1207,7 +1207,7 @@ function RenderSideMenu() {
         }) : "");
     let html = JSPLib.utility.regexReplace(SIDE_MENU, {
         BLOCKHTML: RenderHTMLBlockButtons(),
-        BLOCKCSS: RenderSectionTextInputs('block-style', TA.user_settings.available_html_styles, STYLE_CONFIG),
+        BLOCKCSS: RenderSectionTextInputs('block-style', TA.user_settings.available_css_styles, STYLE_CONFIG),
         CONSTRUCTSTAB: constructs_section,
         EMBEDDEDTAB: embedded_section,
         CONTROLSTAB: CONTROLS_SECTION,
@@ -2589,7 +2589,7 @@ function RenderSettingsMenu() {
     $('#ta-last-noted-settings').append(JSPLib.menu.renderCheckbox('new_noter_check_enabled'));
     $('#ta-last-noted-settings').append(JSPLib.menu.renderTextinput('new_noter_check_interval', 10));
     $("#ta-html-settings").append(JSPLib.menu.renderInputSelectors('available_html_tags', 'checkbox'));
-    $("#ta-html-settings").append(JSPLib.menu.renderInputSelectors('available_html_styles', 'checkbox'));
+    $("#ta-html-settings").append(JSPLib.menu.renderInputSelectors('available_css_styles', 'checkbox'));
     $('#ta-constructs-settings').append(JSPLib.menu.renderCheckbox('text_shadow_enabled'));
     $('#ta-constructs-settings').append(JSPLib.menu.renderCheckbox('ruby_enabled'));
     $("#ta-constructs-settings").append(JSPLib.menu.renderInputSelectors('available_ruby_styles', 'checkbox'));
@@ -2643,6 +2643,9 @@ JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
 JSPLib.menu.program_name = PROGRAM_NAME;
 JSPLib.menu.program_data = TA;
+JSPLib.menu.settings_migrations = [
+    {from: 'available_html_styles', to: 'available_css_styles'},
+];
 JSPLib.menu.settings_config = SETTINGS_CONFIG;
 
 //Export JSPLib
