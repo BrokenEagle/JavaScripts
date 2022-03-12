@@ -230,7 +230,7 @@ const PROGRAM_CSS = `
 /** Side menu **/
 #ta-side-menu {
     position: fixed;
-    top: 8em;
+    top: clamp(1rem, 100vh - 51.2rem, 8rem);
     left: 1em;
     width: 20em;
     height: auto;
