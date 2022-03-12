@@ -1006,15 +1006,11 @@ const RUBY_DIALOG_SETTINGS = {
             ClearInputs('#ta-ruby-dialog input, #ta-ruby-dialog textarea');
         },
     },{
-        'text': 'Apply',
-        'click': function() {
-            ApplyRubyTag();
-        },
-    },{
         'text': 'Copy',
-        'click': function() {
-            CopyRubyTag();
-        },
+        'click': CopyRubyTag,
+    },{
+        'text': 'Apply',
+        'click': ApplyRubyTag,
     },{
         'text': 'Close',
         'click': function () {
