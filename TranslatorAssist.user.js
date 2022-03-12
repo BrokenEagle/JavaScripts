@@ -2599,8 +2599,8 @@ function RenderSettingsMenu() {
     $('#ta-last-noted-settings').append(JSPLib.menu.renderTextinput('last_noter_cache_time', 10));
     $('#ta-last-noted-settings').append(JSPLib.menu.renderCheckbox('new_noter_check_enabled'));
     $('#ta-last-noted-settings').append(JSPLib.menu.renderTextinput('new_noter_check_interval', 10));
-    $("#ta-html-settings").append(JSPLib.menu.renderInputSelectors('available_html_tags', 'checkbox'));
-    $("#ta-html-settings").append(JSPLib.menu.renderInputSelectors('available_css_styles', 'checkbox'));
+    $("#ta-main-settings").append(JSPLib.menu.renderInputSelectors('available_html_tags', 'checkbox'));
+    $("#ta-main-settings").append(JSPLib.menu.renderInputSelectors('available_css_styles', 'checkbox'));
     $('#ta-constructs-settings').append(JSPLib.menu.renderCheckbox('text_shadow_enabled'));
     $('#ta-constructs-settings').append(JSPLib.menu.renderCheckbox('ruby_enabled'));
     $("#ta-constructs-settings").append(JSPLib.menu.renderInputSelectors('available_ruby_styles', 'checkbox'));
