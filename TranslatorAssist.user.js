@@ -862,8 +862,8 @@ const SPECIAL_CHARS = [{
     char: '❤',
     title: 'heavy black heart',
 },{
-    char: '💢',
-    title: 'anger vein',
+    char: '💕',
+    title: 'two hearts',
 },{
     char: '•',
     title: 'bullet',
@@ -879,6 +879,24 @@ const SPECIAL_CHARS = [{
 },{
     char: '〇',
     title: 'ideographic number zero',
+},{
+    char: '💢',
+    title: 'anger vein',
+},{
+    char: '…',
+    title: 'horizontal ellipsis',
+},{
+    char: '\u22EE',
+    title: 'vertical ellipsis',
+},{
+    char: '\u22EF',
+    title: 'midline horizontalk ellipsis',
+},{
+    char: '\u22F0',
+    title: 'up right diagonal ellipsis',
+},{
+    char: '\u22F1',
+    title: 'down right diagonal ellipsis',
 },{
     char: '￥',
     title: 'yen sign',
@@ -901,8 +919,8 @@ const SPECIAL_CHARS = [{
     char: '░',
     title: 'light shade',
 },{
-    char: '…',
-    title: 'horizontal ellipsis',
+    char: '\u223F',
+    title: 'sine wave',
 },{
     char: '〜',
     title: 'wave dash',
