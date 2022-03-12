@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.H
+// @version      4.0
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -10,8 +10,8 @@
 // @exclude      /^https?://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
 // @grant        none
 // @run-at       document-end
-// @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/translator-assist/TranslatorAssist.user.js
-// @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/translator-assist/TranslatorAssist.user.js
+// @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/TranslatorAssist.user.js
+// @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/TranslatorAssist.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/core-js/3.21.0/minified.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/module.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/debug.js
@@ -32,6 +32,10 @@
 //Library constants
 
 ////NONE
+
+//Exterior script variables
+const DANBOORU_TOPIC_ID = null;
+const GITHUB_WIKI_PAGE = 'https://github.com/BrokenEagle/JavaScripts/wiki/TranslatorAssist';
 
 //Variables for load.js
 const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.CurrentUser', 'Danbooru.Note'];
@@ -110,12 +114,14 @@ const SETTINGS_CONFIG = {
     available_html_tags: {
         allitems: HTML_TAGS,
         default: HTML_TAGS,
+        display: "Available HTML tags",
         validate: (data) => (JSPLib.menu.validateCheckboxRadio(data, 'checkbox', HTML_TAGS) && data.length > 0),
         hint: "Select the list of available HTML tags to be shown. Must have at least one."
     },
     available_html_styles: {
         allitems: HTML_STYLES,
         default: HTML_STYLES,
+        display: "Available HTML styles",
         validate: (data) => (JSPLib.menu.validateCheckboxRadio(data, 'checkbox', HTML_STYLES) && data.length > 0),
         hint: "Select the list of available HTML styles to be shown. Must have at least one."
     },
@@ -159,13 +165,14 @@ const SETTINGS_CONFIG = {
 };
 
 const MENU_CONFIG = {
-    topic_id: 1234,
+    topic_id: DANBOORU_TOPIC_ID,
+    wiki_page: GITHUB_WIKI_PAGE,
     settings: [{
         name: 'general',
     },{
         name: 'last_noted',
     },{
-        name: 'html',
+        name: 'main',
     },{
         name: 'constructs',
     },{
@@ -1124,6 +1131,31 @@ JSPLib.utility.clickAndHold = function(selector, func, namespace="", wait_time=5
         clearTimeout(timer);
         clearInterval(interval);
     });
+};
+
+JSPLib.menu.renderMenuFramework = function (menu_config) {
+    let settings_html = menu_config.settings.map((setting) => this.renderMenuSection(setting,'settings')).join('\n');
+    let control_html = menu_config.controls.map((control) => this.renderMenuSection(control,'controls')).join('\n');
+    let topic_message = (menu_config.topic_id ? `<p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/${menu_config.topic_id}">topic #${menu_config.topic_id}</a>).</p>` : "");
+    let wiki_message = (menu_config.wiki_page ? `<p>Visit the wiki page for usage information (<a rel="external noreferrer" target="_blank"href="${menu_config.wiki_page}">${menu_config.wiki_page}</a>).</p>` : "");
+return `
+<div id="${this.program_shortcut}-script-message" class="prose">
+    <h2>${this.program_name}</h2>
+    ${topic_message}
+    ${wiki_message}
+</div>
+<div id="${this.program_shortcut}-console" class="jsplib-console">
+    <div id="${this.program_shortcut}-settings" class="jsplib-outer-menu">
+        ${settings_html}
+        <div id="${this.program_shortcut}-settings-buttons" class="jsplib-settings-buttons">
+            <input type="button" id="${this.program_shortcut}-commit" class="jsplib-commit" value="Save">
+            <input type="button" id="${this.program_shortcut}-resetall" class="jsplib-resetall" value="Factory Reset">
+        </div>
+    </div>
+    <div id="${this.program_shortcut}-controls" class="jsplib-outer-menu">
+        ${control_html}
+    </div>
+</div>`;
 };
 
 JSPLib.menu.renderMenuSection = function (value,type) {
