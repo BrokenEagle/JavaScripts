@@ -569,7 +569,7 @@ const SIDE_MENU = `
             <button id="ta-side-menu-copy" title="Copy styles from HTML tag to inputs">Copy</button>
             <button id="ta-side-menu-apply" title="Apply styles from inputs to HTML tag">Apply</button>
         </div>
-        <button id="ta-side-menu-close" title="Close the side menu">Close</button>
+        <button id="ta-side-menu-close" title="Close the side menu (Hotkey: alt+t)">Close</button>
     </div>
 </div>`;
 
@@ -709,7 +709,7 @@ const NOTICE_INFO = `
 
 const MENU_OPTION = `
 <li id="post-option-translator-assist" style="display: none;">
-    <a id="ta-side-menu-open" href="javascript:void(0)">Translator assist</a>
+    <a id="ta-side-menu-open" href="javascript:void(0)" title="Open the side menu (Hotkey: alt+t)">Translator Assist</a>
 </li>`;
 
 const RUBY_DIALOG = `
