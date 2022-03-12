@@ -34,7 +34,7 @@
 ////NONE
 
 //Exterior script variables
-const DANBOORU_TOPIC_ID = null;
+const DANBOORU_TOPIC_ID = '20687';
 const GITHUB_WIKI_PAGE = 'https://github.com/BrokenEagle/JavaScripts/wiki/TranslatorAssist';
 
 //Variables for load.js
