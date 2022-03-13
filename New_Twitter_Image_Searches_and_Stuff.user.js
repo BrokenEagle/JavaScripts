@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.15
+// @version      7.16
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1875,9 +1875,16 @@ var ALL_PAGE_REGEXES = {
     moments: {
         format: ' {{moments}} ( {{moment_id}} ) {{end}} ',
         subs: {
-            moment_account: TWITTER_ACCOUNT,
             moment_id: TWITTER_ID,
             moments: 'i/moments/',
+            end: QUERY_END,
+        }
+    },
+    topics: {
+        format: ' {{topics}} ( {{topic_id}} ) {{end}} ',
+        subs: {
+            topic_id: TWITTER_ID,
+            topics: 'i/topics/',
             end: QUERY_END,
         }
     },
@@ -1952,7 +1959,7 @@ const NETWORK_REQUEST_DICT = {
 
 //Other constants
 
-const STREAMING_PAGES = ['home', 'main', 'likes', 'replies', 'media', 'list', 'search', 'hashtag', 'moment'];
+const STREAMING_PAGES = ['home', 'main', 'likes', 'replies', 'media', 'list', 'search', 'hashtag', 'moments', 'topics'];
 const MEDIA_TYPES = ['images', 'media', 'videos'];
 
 const ALL_LISTS = {
@@ -2932,8 +2939,10 @@ function GetPageType() {
             return 'replies';
         case NTISAS.page_match.groups.photo:
             return 'photo';
-        case NTISAS.page_match.groups.moment:
-            return 'moment';
+        case NTISAS.page_match.groups.topics:
+            return 'topics';
+        case NTISAS.page_match.groups.moments:
+            return 'moments';
         case NTISAS.page_match.groups.display:
             return 'display';
         default:
@@ -5818,7 +5827,8 @@ function PageNavigation(pagetype) {
             break;
         case 'home':
         case 'list':
-        case 'moment':
+        case 'topics':
+        case 'moments':
             this.debug('log', `Stream timeline [${NTISAS.page}]:`, page_id || "n/a");
             NTISAS.account = NTISAS.user_id = undefined;
             break;
