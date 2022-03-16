@@ -1707,7 +1707,7 @@ const SIDE_MENU = `
             <div style="color: grey;">&emsp;<span id="prebooru-prior-name" style="font-weight: bold;"></span>&emsp;( <span id="prebooru-prior-count"></span> )</div>
             <div style="font-size: 20px; font-weight: bold; margin-top: -8px;"><a class="ntisas-expanded-link" style="font-weight: bold; color: dodgerblue; text-decoration: underline;" id="prebooru-select-pool">Current Pool</a>:</div>
             <div style="color: grey;">&emsp;<span id="prebooru-pool-name" style="font-weight: bold;"></span>&emsp;( <span id="prebooru-pool-count"></span> )</div>
-            <div style="font-size: 20px; font-weight: bold;"><u>Pending</u>:</div>
+            <div style="font-size: 20px; font-weight: bold;"><a class="ntisas-expanded-link" style="font-weight: bold; color: dodgerblue; text-decoration: underline;" id="prebooru-clear-pending">Pending</a>:</div>
             <div style="color: grey;">&emsp;<b>Uploads:</b>&emsp;<span id="prebooru-pending-uploads"></span>&emsp;<b>Pool adds:</b>&emsp;<span id="prebooru-pending-pool-adds"></span></div>
         </div>
     </div>
@@ -3124,10 +3124,6 @@ function GetImageLinks(tweet) {
     return JSPLib.utility.getDOMAttributes($obj, 'image-url');
 }
 
-function GetImageIndex(length) {
-    return (length === 4 ? [0, 2, 1, 3] : [0, 1, 2, 3]);
-}
-
 function GetTweetStat(tweet,types) {
     for (let i = 0; i < types.length; i++) {
         let label = $(`[data-testid=${types[i]}]`, tweet).attr('aria-label');
@@ -3379,6 +3375,12 @@ function UpdateArtistHighlights() {
             $(hide_selectors).addClass('ntisas-hide');
         }
     }
+}
+
+function UpdateViewDisplay() {
+    NTISAS.view_highlights ??= GetLocalData('ntisas-show-views', false);
+    let action = (NTISAS.view_highlights ? 'addClass' :'removeClass');
+    $('[role=main]')[action]('ntisas-show-views');
 }
 
 function UpdateViewControls() {
@@ -4423,10 +4425,7 @@ function RenderMiscActionsDialog(tweet_id) {
 <div class="prebooru-misc-actions-container ntisas-links" data-tweet-id="${tweet_id}">
     <ul style="font-weight: bold; margin: 0; padding: 0.5em;">
         <li><a class="prebooru-query-data ntisas-expanded-link">Query All Data</a></li>
-        <li><a class="prebooru-create-illust ntisas-expanded-link">Create Illust</a></li>
         <li><a class="prebooru-add-tweet-notation ntisas-expanded-link">Add tweet notation</a></li>
-        <li><a class="prebooru-add-illust-notation ntisas-expanded-link">Add illust notation</a></li>
-        <li><a class="prebooru-add-post-notation ntisas-expanded-link">Add post notation</a></li>
     </ul>
 </div>
 `;
@@ -4472,18 +4471,8 @@ function RenderPoolActionsDialog(tweet_id) {
     return `
 <div class="prebooru-pool-actions-container ntisas-links" data-tweet-id="${tweet_id}">
     <ul style="font-weight: bold; margin: 0; padding: 0.5em;">
-        <li>Add pool: <a class="prebooru-add-pool-tweet ntisas-expanded-link" style="color: cornflowerblue;">Tweet</a>
-            <ul style="padding-inline-start: 1em;">
-                <li><a class="prebooru-add-pool-illust ntisas-expanded-link" style="color: orange;">Illust</a></li>
-                <li><a class="prebooru-add-pool-post ntisas-expanded-link" style="color: orange;">Post</a></li>
-            </ul>
-         </li>
-        <li>Query pool: <a class="prebooru-query-tweet-pools ntisas-expanded-link" style="color: cornflowerblue;">Tweet</a>
-            <ul style="padding-inline-start: 1em;">
-                <li><a class="prebooru-query-illust-pools ntisas-expanded-link" style="color: orange;">Illust</a></li>
-                <li><a class="prebooru-query-post-pools ntisas-expanded-link" style="color: orange;">Post</a></li>
-            </ul>
-         </li>
+        <li><a class="prebooru-add-pool-tweet ntisas-expanded-link" style="color: cornflowerblue;">Add pool</a></li>
+        <li><a class="prebooru-query-tweet-pools ntisas-expanded-link" style="color: cornflowerblue;">Query pool</a></li>
     </ul>
 </div>
 `;
@@ -5872,8 +5861,10 @@ function DecreaseHideLevel() {
 
 function ToggleViewHighlights() {
     NTISAS.view_highlights = !NTISAS.view_highlights;
-    $('[role=main]').toggleClass('ntisas-show-views');
+    UpdateViewDisplay();
     UpdateViewControls();
+    SetLocalData('ntisas-show-views', NTISAS.view_highlights);
+    NTISAS.channel.postMessage({type: 'views', view_highlights: NTISAS.view_highlights});
 }
 
 function ToggleAutoclickIQDB() {
@@ -7648,6 +7639,13 @@ function PageNavigation(pagetype) {
             $('#prebooru-menu-toggle a').on(PROGRAM_CLICK, TogglePrebooruMenu);
             $('#prebooru-select-pool').on(PROGRAM_CLICK, ChooseCurrentPool);
             $('#prebooru-select-prior').on(PROGRAM_CLICK, ChoosePriorPool);
+            $('#prebooru-clear-pending').on(PROGRAM_CLICK, (event)=>{
+                if (confirm("Empty all upload data?")) {
+                    NTISAS.upload_records = [];
+                    SetUploadRecords();
+                }
+                event.preventDefault();
+            });
             $('#ntisas-open-settings').on(PROGRAM_CLICK, OpenSettingsMenu);
             //These will only get bound here on a rebind
             $('#ntisas-database-version').on(PROGRAM_CLICK, CurrentPostver);
@@ -7681,6 +7679,7 @@ function PageNavigation(pagetype) {
         }
     }
     UpdateHighlightControls();
+    UpdateViewDisplay();
     UpdateViewControls();
     UpdateIQDBControls();
     UpdateIndicatorControls();
@@ -7755,9 +7754,8 @@ function ProcessTweetImages() {
         let $tweet = unprocessed_tweets[tweet_id];
         let is_main_tweet = $tweet.hasClass('ntisas-main-tweet');
         let $images = $tweet.find('[data-image-url]');
-        let image_index = GetImageIndex($images.length);
         $images.each((i,entry)=>{
-            let image_num = image_index[i] + 1;
+            let image_num = i + 1;
             $(entry).attr('data-image-num', image_num);
             if (is_main_tweet) {
                 $(entry.parentElement).on('mouseenter.ntisas', ImageEnter);
@@ -7965,6 +7963,11 @@ function BroadcastTISAS(ev) {
             NTISAS.lists['no-highlight-list'] = ev.data.list;
             UpdateHighlightControls();
             UpdateArtistHighlights();
+            break;
+        case 'views':
+            NTISAS.view_highlights = ev.data.view_highlights;
+            UpdateViewDisplay();
+            UpdateViewControls();
             break;
         case 'autoiqdb':
             NTISAS.lists['auto-iqdb-list'] = ev.data.list;
