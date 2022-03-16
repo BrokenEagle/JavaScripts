@@ -1331,7 +1331,7 @@ function QueryNewNotations() {
 function QueryLastNotation() {
     let query_options = {only: 'id,updated_at,updater[name]'};
     if (TA.user_settings.last_noter_cache_time > 0) {
-        query_options.expires_in = TA.user_settings.last_noter_cache_time * 'min';
+        query_options.expires_in = TA.user_settings.last_noter_cache_time + 'min';
     }
     QueryNoteVersions({}, query_options).then((data)=>{
         JSPLib.debug.debuglog("Last note record:", data);
