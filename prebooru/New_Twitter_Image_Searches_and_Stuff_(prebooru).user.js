@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         New Twitter Image Searches and Stuff (library 14, Prebooru version)
+// @name         New Twitter Image Searches and Stuff (Prebooru version)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
 // @version      7.7.n
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
@@ -1201,7 +1201,12 @@ ${TWITTER_SPACING_SELECTOR} {
 }
 .ntisas-view-indicator {
     width: 2em;
-}`;
+}
+/*TEMP STUFF*/
+.ntisas-profile-line [id] > .css-1dbjc4n.r-1wbh5a2.r-dnmrzs {
+    max-width: 50%;
+}
+`;
 
 const NOTICE_CSS = `
 div#ntisas-notice.ui-state-highlight {
