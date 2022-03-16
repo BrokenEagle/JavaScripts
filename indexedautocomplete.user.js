@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.24
+// @version      28.25
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1904,7 +1904,8 @@ function InsertCompletion(input, completion) {
 }
 
 function StaticMetatagSource(term, metatag) {
-    let full_term = `${metatag}:${term}`;
+    let lower_term = term.toLowerCase();
+    let full_term = `${metatag}:${lower_term}`;
     let data = SubmetatagData()
         .filter((data) => data.value.startsWith(full_term))
         .sort((a,b) => a.value.localeCompare(b.value))
