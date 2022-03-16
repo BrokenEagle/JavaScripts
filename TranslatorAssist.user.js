@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.0
+// @version      4.1
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1333,11 +1333,11 @@ function QueryLastNotation() {
     if (TA.user_settings.last_noter_cache_time > 0) {
         query_options.expires_in = TA.user_settings.last_noter_cache_time * 'min';
     }
-    QueryNoteVersions({}, QueryLastNotation).then((data)=>{
+    QueryNoteVersions({}, query_options).then((data)=>{
         JSPLib.debug.debuglog("Last note record:", data);
         TA.last_noter_queried = true;
         let timeago_timestamp = (data.length ? TimeAgo(ToTimeStamp(data[0].updated_at)) : 'N/A');
-        let updater_name = (data.length ? data[0].updater.name : 'N/A');
+        let updater_name = data[0]?.updater?.name || 'N/A';
         let total_notes = $('#notes > article').length;
         let [embedded_status, embedded_color] = (TA.has_embedded ? ['Enabled', 'green'] : ['Disabled', 'red']);
         let html = JSPLib.utility.regexReplace(NOTICE_INFO, {
