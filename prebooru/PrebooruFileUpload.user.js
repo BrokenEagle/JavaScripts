@@ -1,25 +1,26 @@
 // ==UserScript==
 // @name         PrebooruFileUpload
-// @namespace    https://gist.github.com/BrokenEagle
-// @version      1.0
+// @namespace    https://github.com/BrokenEagle/JavaScripts
+// @version      2.0
 // @description  Facilitates uploading dead illusts through file uploads.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
-// @match        *://*.donmai.us/uploads/new*
+// @include      /^https?://\w+\.donmai\.us/uploads/(new|\d+)(\?|$)/
 // @exclude      /^https?://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
 // @grant        none
 // @run-at       document-body
-// @downloadURL  https://gist.github.com/BrokenEagle/35f46ecfb4f9c13bc97efc968bcf396e/raw/PrebooruFileUpload.user.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201230-module/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20201215/lib/load.js
+// @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ntisas-prebooru/preboorufileupload.user.js
+// @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ntisas-prebooru/preboorufileupload.user.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/load.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru */
@@ -38,7 +39,6 @@ const PROGRAM_LOAD_REQUIRED_SELECTORS = ['#page'];
 
 //Program name constants
 const PROGRAM_SHORTCUT = 'pfu';
-const PROGRAM_CLICK = 'click.pfu';
 const PROGRAM_NAME = 'PrebooruFileUpload';
 
 //Main program variable
@@ -60,28 +60,13 @@ const COMMON_HASHTAG_REGEXES = [
 
 //HTML constants
 
-const UPLOAD_PREVIEW = `
-<p id="upload-image-metadata">
-    <span id="upload-image-metadata-filesize"></span>
-    <span id="upload-image-metadata-resolution"></span>
-    <span id="upload-image-metadata-size-links">
-        (
-        <a id="upload-image-view-small" href="">small</a>
-        |
-        <a id="upload-image-view-large" href="">large</a>
-        |
-        <a id="upload-image-view-full" href="">full</a>
-        )
-    </span>
-</p>
-<div id="upload-image">
-    <img src="%s" title="Shortcut is z" id="image" referrerpolicy="no-referrer" class="fit-width fit-height" onerror="Danbooru.Upload.no_image_available()" data-shortcut="z">
-    <div id="pfu-prebooru-progress" style="width: 1000px; height: 50px;"></div>
-</div>
-`;
+const PROGRESS_BAR = `
+<div id="upload-file">
+    <div id="pfu-prebooru-progress" style="width: 800px; height: 50px;"></div>
+</div>`;
 
 const RELATED_TAG_COLUMN = `<div class="source-related-tags-columns">
-    <div class="tag-column translated-tags-related-tags-column" style="width: 12em;">
+    <div class="tag-column translated-tags-related-tags-column" style="width: 18em;">
         <h3 class="flex items-center space-x-1">
             <input type="checkbox" class="invisible">
             <span>Translated Tags</span>
@@ -110,10 +95,6 @@ function fixedEncodeURIComponent(str) {
 
 //Render functions
 
-function RenderPreview(post) {
-    return JSPLib.utility.sprintf(UPLOAD_PREVIEW, post.file_url);
-}
-
 function RenderTagSelector(name, category) {
     return JSPLib.utility.regexReplace(TAG_SELECTOR, {
         NAME: name,
@@ -130,8 +111,8 @@ function RenderTranslatedTagsColumn(artist_names, other_tags) {
     });
 
     for (let name in other_tags) {
-        html += RenderTagSelector(name, String(other_tags[name].category));
-        let category = other_tags[name].category;
+        let category = String(other_tags[name].category);
+        html += RenderTagSelector(name, category);
     }
     return JSPLib.utility.sprintf(RELATED_TAG_COLUMN, html);
 }
@@ -177,7 +158,7 @@ function QueryTagData(tags) {
             name_lower_comma: tags.join(','),
         },
         only: 'name,category,post_count',
-    }
+    };
     return JSPLib.danbooru.submitRequest('tags', tag_query);
 }
 
@@ -200,8 +181,9 @@ function GetRelatedTagData(preprocess_data) {
     return promise_array;
 }
 
-function InitializeRelatedTags(preprocess_data) {
-    Promise.all(GetRelatedTagData(preprocess_data)).then(([artist_urls, wikis, tags])=>{
+function InitializeRelatedTags(data) {
+    Promise.all(GetRelatedTagData(data)).then(([artist_urls, wikis, tags])=>{
+        JSPLib.debug.debuglog('InitializeRelatedTags', {artist_urls, wikis, tags});
         let artist_names = JSPLib.utility.arrayUnique(artist_urls.map((artist_url) => artist_url.artist.name));
         let other_tags = {};
         wikis.forEach((wiki)=>{
@@ -217,35 +199,33 @@ function InitializeRelatedTags(preprocess_data) {
 
 //Main execution functions
 
-async function InitializeUploadForm(post_id) {
-    let preprocess_data = await $.post(PREBOORU_SERVER_URL + '/proxy/danbooru_upload_data.json', {post_id});
-    if (preprocess_data.error) {
-        JSPLib.notice.error('Prebooru post data: ' + preprocess_data.message);
-        return false
-    }
-    $('#filedropzone, .source-data, .upload_source').hide();
-    let current_tag_string = $('#upload_tag_string').val();
-    let updated_tag_string = ['source:' + preprocess_data.post_url, preprocess_data.tags.join(' '), current_tag_string].join(' ');
-    $('#upload_tag_string').val(updated_tag_string);
-    let commentary_string = preprocess_data.illust_commentaries.join('\r\n\r\n--------------------------------------------------\r\n\r\n');
-    if (commentary_string.length) {
-        $('#upload_artist_commentary_desc').val(commentary_string);
-        setTimeout(()=>{$('#toggle-artist-commentary').click();}, 1000);
-    }
-    $('#upload_md5_confirmation').val(preprocess_data.post.md5);
-    $('#upload-guide-notice').after(RenderPreview(preprocess_data.post));
-    $('#pfu-prebooru-progress').progressbar({value: false}).show();
-    Danbooru.Upload.update_scale();
-    InitializeRelatedTags(preprocess_data);
-    return true;
+function InitializeUploadForm(post_id, illust_id) {
+    JSPLib.network.post(PREBOORU_SERVER_URL + '/proxy/danbooru_upload_data.json', {post_id, illust_id}).then((data)=>{
+        JSPLib.debug.debuglog('InitializeUploadForm', {post_id, illust_id, data});
+        if (data.error) {
+            JSPLib.notice.error('Prebooru post data: ' + data.message);
+        }
+        $('#post_source').val(data.post_url);
+        let current_tag_string = $('#post_tag_string').val();
+        let updated_tag_string = [data.tags.join(' '), current_tag_string].join(' ');
+        $('#post_tag_string').val(updated_tag_string);
+        let commentary_string = data.illust_commentaries.join('\r\n\r\n--------------------------------------------------\r\n\r\n');
+        if (commentary_string.length) {
+            $('#post_artist_commentary_desc').val(commentary_string);
+            setTimeout(()=>{$('#toggle-artist-commentary').click();}, 1000);
+        }
+        InitializeRelatedTags(data);
+    });
 }
 
 function PreprocessFileUpload(post_id) {
-    $.post(PREBOORU_SERVER_URL + '/proxy/danbooru_preprocess_upload.json', {post_id}).then((upload_status)=>{
+    JSPLib.network.post(PREBOORU_SERVER_URL + '/proxy/danbooru_preprocess_upload.json', {post_id}).then((data)=>{
+        JSPLib.debug.debuglog('PreprocessFileUpload', {post_id, data});
         $('#pfu-prebooru-progress').progressbar('destroy').hide();
-        if (upload_status.error) {
-            JSPLib.notice.error('Prebooru file upload: ' + upload_status.message);
-            return;
+        if (data.error) {
+            JSPLib.notice.error('Prebooru file upload: ' + data.message);
+        } else {
+            window.location.replace(`/uploads/${data.upload.id}` + window.location.search);
         }
     });
 }
@@ -263,11 +243,15 @@ async function Main() {
         JSPLib.debug.debugwarn("Post id must be a valid ID:", url_params.prebooru_post_id, post_id);
         return;
     }
-    let result = await InitializeUploadForm(post_id);
-    if (!result) {
-        return;
+    JSPLib.debug.debuglog('Main', {url_params});
+    if (document.body.dataset.action === 'new') {
+        $('.file-upload-component').css('width', '50rem').append(PROGRESS_BAR);
+        $('#pfu-prebooru-progress').progressbar({value: false}).show();
+        PreprocessFileUpload(post_id);
+    } else if (document.body.dataset.action === 'show') {
+        let illust_id = parseInt(url_params.prebooru_illust_id);
+        InitializeUploadForm(post_id, illust_id);
     }
-    PreprocessFileUpload(post_id);
 }
 
 /****Initialization****/
