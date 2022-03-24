@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      14.0
+// @version      14.1
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -15,18 +15,18 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-setitems@1.4.0/dist/localforage-setitems.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2022-02-12/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2022-02-12/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2022-02-12/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2022-02-12/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2022-02-12/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2022-02-12/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2022-02-12/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2022-02-12/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2022-02-12/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2022-02-12/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2022-02-12/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2022-02-12/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/saucenao.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/load.js
 // @connect      cdn.donmai.us
 // @connect      saucenao.com
 // ==/UserScript==
