@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         New Twitter Image Searches and Stuff (Prebooru version)
+// @name         New Twitter Image Searches and Stuff (library 14, Prebooru version)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
 // @version      7.7.n
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
@@ -208,13 +208,13 @@ const SETTINGS_CONFIG = {
     similarity_cutoff: {
         default: 80.0,
         parse: parseFloat,
-        validate: (data) => JSPLib.validate.isNumber(data) && data > 0 && data < 100,
+        validate: (data) =>JSPLib.menu.validateNumber(data, false, 0., 100.0),
         hint: "Minimum similiarity score of an image match to return. Valid values: 0 - 100."
     },
     results_returned: {
         default: 5,
         parse: parseInt,
-        validate: (data) => Number.isInteger(data) && data > 0 && data <= 20,
+        validate: (data) => JSPLib.menu.validateNumber(data, true, 1, 20),
         hint: "Maximum number of results to return per image. Valid values: 1 - 20."
     },
     URL_wildcards_enabled: {
@@ -225,7 +225,7 @@ const SETTINGS_CONFIG = {
     recheck_interval: {
         default: 10,
         parse: parseInt,
-        validate: (data) => Number.isInteger(data) && data >= 5,
+        validate: (data) => JSPLib.menu.validateNumber(data, true, 5),
         hint: "Number of minutes. Valid values: >= 5. How often to check post versions once up to date."
     },
     custom_order_enabled: {
@@ -364,7 +364,7 @@ const SETTINGS_CONFIG = {
     score_window_size: {
         default: 40,
         parse: parseInt,
-        validate: (data) => Number.isInteger(data) && data >= 10,
+        validate: (data) => JSPLib.menu.validateNumber(data, true, 10),
         hint: "Valid values: >= 10. The number of surrounding tweets to consider when calculating levels."
     },
     original_download_enabled: {
@@ -383,7 +383,7 @@ const SETTINGS_CONFIG = {
         parse: String,
         validate: JSPLib.validate.isString,
         hint: "Prefix to add to original image downloads. Available format keywords include:<br><span class=\"ntisas-code\">%TWEETID%, %USERID%, %USERACCOUNT%, %IMG%, %DATE%, %TIME%, %ORDER%</span>."
-    }
+    },
 };
 
 const ALL_LIST_TYPES = ['highlight', 'iqdb', 'artist', 'tweet'];
@@ -1708,9 +1708,9 @@ const SIDE_MENU = `
             </div>
         </div>
         <div id="ntisas-menu-prebooru" class="ntisas-links" data-selector="prebooru" style="display:none; padding-left: 5px;">
-            <div style="font-size: 20px; font-weight: bold; margin-top: -8px;"><a class="ntisas-expanded-link" style="font-weight: bold; color: dodgerblue; text-decoration: underline;" id="prebooru-select-prior">Prior Pool</a>:</div>
+            <div style="font-size: 20px; font-weight: bold; margin-top: -8px;"><a class="ntisas-expanded-link" style="font-weight: bold; color: dodgerblue; text-decoration: underline;" id="prebooru-select-prior">Prior Pool</a>: <a class="ntisas-expanded-link" style="font-weight: bold; color: orange;" id="prebooru-prior-last">&raquo;</a></div>
             <div style="color: grey;">&emsp;<span id="prebooru-prior-name" style="font-weight: bold;"></span>&emsp;( <span id="prebooru-prior-count"></span> )</div>
-            <div style="font-size: 20px; font-weight: bold; margin-top: -8px;"><a class="ntisas-expanded-link" style="font-weight: bold; color: dodgerblue; text-decoration: underline;" id="prebooru-select-pool">Current Pool</a>:</div>
+            <div style="font-size: 20px; font-weight: bold; margin-top: -8px;"><a class="ntisas-expanded-link" style="font-weight: bold; color: dodgerblue; text-decoration: underline;" id="prebooru-select-pool">Current Pool</a>: <a class="ntisas-expanded-link" style="font-weight: bold; color: orange;" id="prebooru-pool-last">&raquo;</a></div>
             <div style="color: grey;">&emsp;<span id="prebooru-pool-name" style="font-weight: bold;"></span>&emsp;( <span id="prebooru-pool-count"></span> )</div>
             <div style="font-size: 20px; font-weight: bold;"><a class="ntisas-expanded-link" style="font-weight: bold; color: dodgerblue; text-decoration: underline;" id="prebooru-clear-pending">Pending</a>:</div>
             <div style="color: grey;">&emsp;<b>Uploads:</b>&emsp;<span id="prebooru-pending-uploads"></span>&emsp;<b>Pool adds:</b>&emsp;<span id="prebooru-pending-pool-adds"></span></div>
@@ -2634,7 +2634,57 @@ function VaildateColorArray(array) {
 
 //Library functions
 
-////NONE
+JSPLib.utility.timeAgo = function (time_value, precision=2) {
+    let timestamp = Number(time_value) || this.toTimeStamp(time_value);
+    if (Number.isNaN(timestamp)) return "N/A";
+    let time_interval = Date.now() - timestamp;
+    if (time_interval < JSPLib.utility.one_hour) {
+        return JSPLib.utility.setPrecision(time_interval / JSPLib.utility.one_minute, precision) + " minutes ago";
+    } else if (time_interval < JSPLib.utility.one_day) {
+        return JSPLib.utility.setPrecision(time_interval / JSPLib.utility.one_hour, precision) + " hours ago";
+    } else if (time_interval < JSPLib.utility.one_month) {
+        return JSPLib.utility.setPrecision(time_interval / JSPLib.utility.one_day, precision) + " days ago";
+    } else if (time_interval < JSPLib.utility.one_year) {
+        return JSPLib.utility.setPrecision(time_interval / JSPLib.utility.one_month, precision) + " months ago";
+    } else {
+        return JSPLib.utility.setPrecision(time_interval / JSPLib.utility.one_year, precision) + " years ago";
+    }
+};
+
+JSPLib.utility.toTimeStamp = function (time_string) {
+    while (typeof time_string === 'string') {
+        try {
+            var tmp = JSON.parse(time_string);
+        } catch(e) {
+            break;
+        }
+        time_string = tmp;
+    }
+    return new Date(time_string).getTime();
+};
+
+JSPLib.utility.getImageDimensions = function (image_url) {
+    return new Promise((resolve, reject)=>{
+        let fake_image = document.createElement('img');
+        fake_image.onload = function () {
+            resolve({
+                width: fake_image.naturalWidth,
+                height: fake_image.naturalHeight,
+            });
+        };
+        fake_image.onerror = function() {
+            reject(null);
+        };
+        fake_image.src = image_url;
+    });
+};
+
+JSPLib.menu.validateNumber = function (data, is_integer, min, max) {
+    const validator = (is_integer ? Number.isInteger : JSPLib.validate.isNumber);
+    min = min || -Infinity;
+    max = max || Infinity;
+    return validator(data) && data >= min && data <= max;
+};
 
 //Helper functions
 
@@ -2739,21 +2789,6 @@ function ParseQueries(str) {
     }, {});
 }
 
-function TimeAgo(timestamp) {
-    let time_interval = Date.now() - timestamp;
-    if (time_interval < JSPLib.utility.one_hour) {
-        return JSPLib.utility.setPrecision(time_interval / JSPLib.utility.one_minute, 2) + " minutes ago";
-    } else if (time_interval < JSPLib.utility.one_day) {
-        return JSPLib.utility.setPrecision(time_interval / JSPLib.utility.one_hour, 2) + " hours ago";
-    } else if (time_interval < JSPLib.utility.one_month) {
-        return JSPLib.utility.setPrecision(time_interval / JSPLib.utility.one_day, 2) + " days ago";
-    } else if (time_interval < JSPLib.utility.one_year) {
-        return JSPLib.utility.setPrecision(time_interval / JSPLib.utility.one_month, 2) + " months ago";
-    } else {
-        return JSPLib.utility.setPrecision(time_interval / JSPLib.utility.one_year, 2) + " years ago";
-    }
-}
-
 function GetPostVersionsExpiration() {
     return NTISAS.user_settings.recheck_interval * JSPLib.utility.one_minute;
 }
@@ -2838,14 +2873,14 @@ function MapSimilar(post,score) {
 
 function GetLinkTitle(post) {
     let tags = JSPLib.utility.HTMLEscape(post.tags);
-    let age = JSPLib.utility.HTMLEscape(`age:"${TimeAgo(post.created)}"`);
+    let age = JSPLib.utility.HTMLEscape(`age:"${JSPLib.utility.timeAgo(post.created)}"`);
     return `user:${post.uploadername} score:${post.score} favcount:${post.favcount} rating:${post.rating} ${age} ${tags}`;
 }
 
 function GetMultiLinkTitle(posts) {
     let title = [];
     posts.forEach((post)=>{
-        let age = JSPLib.utility.HTMLEscape(`age:"${TimeAgo(post.created)}"`);
+        let age = JSPLib.utility.HTMLEscape(`age:"${JSPLib.utility.timeAgo(post.created)}"`);
         title.push(`post #${post.id} - user:${post.uploadername} score:${post.score} favcount:${post.favcount} rating:${post.rating} ${age}`);
     });
     return title.join('\n');
@@ -2879,6 +2914,7 @@ async function GetTotalRecords(manual=false) {
 }
 
 function GetImageAttributes(image_url) {
+    const self = this;
     let base_url = image_url.split(':orig')[0];
     NTISAS.image_data = NTISAS.image_data || {};
     return new Promise((resolve)=>{
@@ -2888,13 +2924,22 @@ function GetImageAttributes(image_url) {
         let size_promise = JSPLib.network.getDataSize(image_url);
         let dimensions_promise;
         if (base_url in NTISAS.tweet_images) {
-            this.debug('log', "Found image API data:", base_url, NTISAS.tweet_images[base_url]);
+            self.debug('log', "Found image API data:", base_url, NTISAS.tweet_images[base_url]);
             dimensions_promise = Promise.resolve(NTISAS.tweet_images[base_url].original_info);
         } else {
-            this.debug('warn', "Missing image API data:", base_url);
+            self.debug('warn', "Missing image API data:", base_url);
             dimensions_promise = JSPLib.utility.getImageDimensions(image_url);
+            console.warn('blah');
         }
-        Promise.all([size_promise, dimensions_promise]).then(([size,dimensions])=>{
+        Promise.allSettled([size_promise, dimensions_promise]).then(([size_result, dimensions_result])=>{
+            let size = (size_result.status === 'fulfilled' ? size_result.value : null);
+            if (size_result.status === 'rejected') {
+                self.debug('error', `Error getting image size - HTTP ${size_result.reason.status}:`, image_url);
+            }
+            let dimensions = (dimensions_result.status === 'fulfilled' ? dimensions_result.value : {width: null, height: null})
+            if (dimensions_result.status === 'rejected') {
+                self.debug('error', 'Error getting image dimensions:', image_url);
+            }
             NTISAS.image_data[image_url] = Object.assign(dimensions, {size: size});
             resolve(NTISAS.image_data[image_url]);
         });
@@ -3542,9 +3587,13 @@ function UpdatePoolDisplay(other_pool=null) {
         if (NTISAS.pool_selection_dialog) {
             $(`.ntisas-pool[data-id=${NTISAS.current_pool.id}] .ntisas-pool-count`).text(NTISAS.current_pool.element_count);
         }
+        $('#prebooru-select-pool').attr('href', `${PREBOORU_SERVER_URL}/pools/${NTISAS.current_pool.id}`);
+        $('#prebooru-pool-last').attr('href', `${PREBOORU_SERVER_URL}/pools/${NTISAS.current_pool.id}/last`);
     } else {
         $('#prebooru-pool-name').html('<i>NONE</i>');
         $('#prebooru-pool-count').text('N/A');
+        $('#prebooru-select-pool').attr('href', "");
+        $('#prebooru-pool-last').attr('href', "");
     }
     if (NTISAS.prior_pool) {
         $('#prebooru-prior-name').html(JSPLib.utility.maxLengthString(NTISAS.prior_pool.name), 30);
@@ -3552,9 +3601,13 @@ function UpdatePoolDisplay(other_pool=null) {
         if (NTISAS.pool_selection_dialog) {
             $(`.ntisas-pool[data-id=${NTISAS.prior_pool.id}] .ntisas-pool-count`).text(NTISAS.prior_pool.element_count);
         }
+        $('#prebooru-select-prior').attr('href', `${PREBOORU_SERVER_URL}/pools/${NTISAS.prior_pool.id}`);
+        $('#prebooru-prior-last').attr('href', `${PREBOORU_SERVER_URL}/pools/${NTISAS.prior_pool.id}/last`);
     } else {
         $('#prebooru-prior-name').html('<i>NONE</i>');
         $('#prebooru-prior-count').text('N/A');
+        $('#prebooru-select-prior').attr('href', "");
+        $('#prebooru-prior-last').attr('href', "");
     }
     if (other_pool !== null) {
         $(`.ntisas-pool[data-id=${other_pool.id}] .ntisas-pool-count`).text(other_pool.element_count);
@@ -3922,7 +3975,7 @@ function RenderCurrentRecords() {
     let timestamp = CheckLocalData('ntisas-recent-timestamp');
     if (timestamp) {
         let timestring = new Date(timestamp).toLocaleString();
-        let timeagostring = ((Date.now() - timestamp) < GetPostVersionsExpiration() * 2 ? "Up to date" : TimeAgo(timestamp));
+        let timeagostring = ((Date.now() - timestamp) < GetPostVersionsExpiration() * 2 ? "Up to date" : JSPLib.utility.timeAgo(timestamp));
         record_html = `<a id="ntisas-current-records" class="ntisas-expanded-link" title="${timestring}">${timeagostring}</a>`;
     } else {
         record_html = '<span id="ntisas-current-records">Loading...</span>';
@@ -3940,7 +3993,7 @@ function RenderPoolSelection(pool_data) {
     let html = "";
     pool_data.forEach((pool,i)=>{
         let index_str = JSPLib.utility.padNumber(i + 1, 2);
-        html += `<li class="ntisas-pool" style="height: 1.5em;" data-id="${pool.id}"><b>${index_str}. <a style="color: dodgerblue;" class="ntisas-expaned-link ntisas-pool-selection">${pool.name}</a>:</b> <span class="ntisas-pool-count">${pool.element_count}</span></li>`;
+        html += `<li class="ntisas-pool" style="height: 1.5em;" data-id="${pool.id}"><b>${index_str}. <a style="color: dodgerblue;" class="ntisas-expaned-link ntisas-pool-selection" href="${PREBOORU_SERVER_URL}/pools/${pool.id}">${pool.name}</a>: <a style="color: orange;" class="ntisas-expaned-link" href="${PREBOORU_SERVER_URL}/pools/${pool.id}/last">&raquo;</a></b> <span class="ntisas-pool-count">${pool.element_count}</span></li>`;
     });
     html += `<li style="height: 1.5em;" data-id="0"><b>XX. <a style="color: red;" class="ntisas-expaned-link ntisas-pool-selection">NONE</a></b></li>`;
     return `<ul style="margin-left: 1em;" class="ntisas-links">${html}</ul>`;
@@ -4164,7 +4217,7 @@ function RenderTwimgPreview(image_url,index,selectable) {
     }
     let append_html = RenderPreviewAddons('https://twitter.com', null, null, file_type);
     return `
-<article class="ntisas-post-preview ${selected_class}" data-id="${index}">
+<article class="ntisas-post-preview ntisas-tweet-preview ${selected_class}" data-id="${index}">
     <div class="ntisas-image-container">
         ${image_html}
     </div>
@@ -4619,8 +4672,9 @@ function InitializePrebooruSimilarContainer(similar_results) {
     })
     let unique_posts = RemoveDuplicates(posts, 'id');
     unique_posts.forEach((post)=>{post.thumbnail = post.preview_url;});
+    console.log({unique_posts});
     SetThumbnailWait($dialog[0], unique_posts);
-    $('article', $dialog[0]).each((i,article)=>{
+    $('article.ntisas-tweet-preview', $dialog[0]).each((i,article)=>{
         InitializeTwitterImage(article, image_urls).then(({size})=>{
             $(article).closest('.ntisas-similar-result').find(`[data-size=${size}]`).addClass('ntisas-post-match');
         });
@@ -4637,13 +4691,15 @@ function InitializeTwitterImage(article,image_urls) {
     let index = Number($(article).data('id'));
     let image_url = image_urls[index] + ':orig';
     let image = $('img', article)[0];
+    console.warn({article, image_url, image_urls, index});
     let image_promise = GetImageAttributes(image_url);
     image_promise.then(({size,width,height})=>{
-        let [preview_width,preview_height] = JSPLib.utility.getPreviewDimensions(width, height, POST_PREVIEW_DIMENSION);
-        image.width = preview_width;
-        image.height = preview_height;
+            let [use_width, use_height] = (width && height ? [width, height] : [image.naturalWidth, image.naturalHeight]);
+            let [preview_width,preview_height] = JSPLib.utility.getPreviewDimensions(use_width, use_height, POST_PREVIEW_DIMENSION);
+            image.width = preview_width;
+            image.height = preview_height;
         image.style.paddingTop = `${POST_PREVIEW_DIMENSION - preview_height}px`;
-        let size_text = (size > 0 ? ReadableBytes(size) : 'Unavailable');
+        let size_text = (Number.isInteger(size) && size > 0 ? ReadableBytes(size) : 'Unavailable');
         $('p:nth-child(4)', article).html(`${size_text} (${width}x${height})`);
     });
     return image_promise;
@@ -4830,7 +4886,7 @@ async function InitializeViewCount(tweet) {
     let tweet_id = String($(tweet).data('tweet-id'));
     let views = await GetData('view-' + tweet_id, 'danbooru');
     if (views && views.value.count > 0) {
-        let timeagostring = ((Date.now() - views.value.viewed) < VIEWCOUNT_RECENT_DURATION ? "recently" : TimeAgo(views.value.viewed));
+        let timeagostring = ((Date.now() - views.value.viewed) < VIEWCOUNT_RECENT_DURATION ? "recently" : JSPLib.utility.timeAgo(views.value.viewed));
         $('.ntisas-view-info', tweet).append(`<span title="${views.value.count} views">[Viewed ${timeagostring}]</span>`);
         $(tweet).addClass('ntisas-viewed');
     }
@@ -4847,7 +4903,7 @@ function InitializeProfileViewCount(views,data_key,selector,format) {
     if (views && views.value.count > 0) {
         let date_string = new Date(views.value.viewed).toLocaleDateString();
         view_title = `${date_string} : ${views.value.count} views`;
-        view_time = ((Date.now() - views.value.viewed) < VIEWCOUNT_RECENT_DURATION ? "recently" : TimeAgo(views.value.viewed));
+        view_time = ((Date.now() - views.value.viewed) < VIEWCOUNT_RECENT_DURATION ? "recently" : JSPLib.utility.timeAgo(views.value.viewed));
     }
     let display_text = JSPLib.utility.sprintf(format, view_time);
     $(selector).html(`<span title="${view_title}">${display_text}</span>`);
@@ -5903,18 +5959,19 @@ function TogglePrebooruMenu() {
     NTISAS.channel.postMessage({type: 'prebooru_ui'});
 }
 
-function ChooseCurrentPool() {
+function ChooseCurrentPool(event) {
     if (!NTISAS.pool_selection_dialog) {
-        return $.getJSON(PREBOORU_SERVER_URL + '/pools.json', {limit: 50, search: {order: 'updated'}}).then((data)=>{
+        $.getJSON(PREBOORU_SERVER_URL + '/pools.json', {limit: 50, search: {order: 'updated'}}).then((data)=>{
             NTISAS.pool_selection_dialog = InitializePoolSelection(data);
             NTISAS.pool_selection_dialog.dialog('open');
         });
     } else {
         NTISAS.pool_selection_dialog.dialog('open');
     }
+    event.preventDefault();
 }
 
-function ChoosePriorPool() {
+function ChoosePriorPool(event) {
     let temp = NTISAS.current_pool;
     NTISAS.current_pool = NTISAS.prior_pool;
     NTISAS.prior_pool = temp;
@@ -5929,6 +5986,7 @@ function ChoosePriorPool() {
         JSPLib.storage.removeData('ntisas-prior-pool', true, STORAGE_DATABASES.prebooru);
     }
     UpdatePoolDisplay();
+    event.preventDefault();
 }
 
 function InstallDatabase() {
@@ -8384,8 +8442,8 @@ async function Main() {
 /****Initialization****/
 
 //Variables for debug.js
-JSPLib.debug.debug_console = false;
-JSPLib.debug.level = JSPLib.debug.DEBUG;
+JSPLib.debug.debug_console = true;
+JSPLib.debug.level = JSPLib.debug.INFO;
 JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
 //Variables for menu.js
