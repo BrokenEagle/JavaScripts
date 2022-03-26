@@ -8,7 +8,8 @@
 // @match        *://*.donmai.us/*
 // @grant        none
 // @run-at       document-end
-// @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/dtextstyle.user.js
+// @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/DTextStyler.user.js
+// @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/DTextStyler.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/PapaParse/4.3.3/papaparse.min.js
 // ==/UserScript==
 
