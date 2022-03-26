@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.1
+// @version      4.2
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1319,8 +1319,8 @@ function QueryNoteVersions(search_options, query_options) {
 function QueryNewNotations() {
     QueryNoteVersions({id_gt: TA.last_id}, {only: 'id,updated_at'}).then((data)=>{
         if (data.length > 0) {
-            JSPLib.notice.notice("New noter detected: " + TimeAgo(ToTimeStamp(data[0].updated_at)), true);
             JSPLib.debug.debuglog("New note record:", data);
+            alert("New noter detected: " + TimeAgo(ToTimeStamp(data[0].updated_at)));
             TA.noter_detected = true;
         } else {
             JSPLib.debug.debuglog("No new noter detected.");
@@ -2486,7 +2486,7 @@ function CheckLastNoted() {
     if ((Date.now() - TA.last_noted) < last_noted_cutoff) {
         let post_seen = JSPLib.storage.getStorageData(seen_key, sessionStorage, false);
         if (!post_seen) {
-            JSPLib.notice.notice("Post was noted: " + TimeAgo(TA.last_noted));
+            alert("Post was noted: " + TimeAgo(TA.last_noted));
         }
     }
     JSPLib.storage.setStorageData(seen_key, true, sessionStorage);
