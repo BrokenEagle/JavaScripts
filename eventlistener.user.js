@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      22.2
+// @version      22.3
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2078,7 +2078,7 @@ function InitializeCommentIndexLinks($obj,render=true) {
 //Event handlers
 
 function HideEventNotice(settimeout=true) {
-    $('#close-notice-link').click();
+    $('#el-close-notice-link').click();
     $('#el-event-notice').hide();
     MarkAllAsRead();
     if (settimeout) {
@@ -2098,7 +2098,7 @@ function LockEventNotice(event) {
 }
 
 function ReadEventNotice(event) {
-    $('#close-notice-link').click();
+    $('#el-close-notice-link').click();
     $(event.target).addClass('el-read');
     MarkAllAsRead();
     $('#el-event-notice .el-overflow-notice').hide();
