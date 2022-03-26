@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      22.1
+// @version      22.2
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -10,6 +10,7 @@
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/eventlistener.user.js
+// @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/eventlistener.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/core-js/3.21.0/minified.js
 // @require      https://cdn.jsdelivr.net/npm/xregexp@5.1.0/xregexp-all.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
@@ -412,6 +413,10 @@ const PROGRAM_CSS = `
 .el-horizontal-rule {
     border-top: 4px dashed tan;
     margin: 10px 0;
+}
+div#el-notice {
+    top: unset;
+    bottom: 2em;
 }`;
 
 const POST_CSS = `
@@ -1051,6 +1056,22 @@ JSPLib.utility.createPromise = function () {
     }
     var promise = new Promise(resolver);
     return {promise, resolve, reject};
+};
+
+JSPLib.notice.notice = function (...args) {
+    if (this.danbooru_installed && !this.banner_installed) {
+        JSPLib._Danbooru.Utility.notice(...args);
+    } else {
+        this._notice(...args);
+    }
+};
+
+JSPLib.notice.error = function (...args) {
+    if (this.danbooru_installed && !this.banner_installed) {
+        JSPLib._Danbooru.Utility.error(...args);
+    } else {
+        this._error(...args);
+    }
 };
 
 //Helper functions
@@ -2762,6 +2783,7 @@ function Main() {
         EL.dmail_notice.show();
         return;
     }
+    JSPLib.notice.installBanner(PROGRAM_SHORTCUT);
     Object.assign(EL, {
         timeout_expires: GetRecheckExpires(),
         locked_notice: EL.user_settings.autolock_notices,
