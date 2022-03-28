@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DTextStyler
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.0
+// @version      5.1
 // @description  Danbooru DText UI addon.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -809,6 +809,14 @@ function OpenDialog() {
     DtextEdit();
 }
 
+function ClearPreview(event) {
+    setTimeout(()=>{
+        if (event.currentTarget.value === 'Preview') {
+            $(event.currentTarget).closest('form').find('.dtext-preview').html("");
+        }
+    }, 500);
+}
+
 function DtextPreview() {
     DS.$edit_commentary.hide();
     let promise_array = [];
@@ -908,6 +916,7 @@ function InitializeDtextPreviews() {
         InitializeButtons($container.find('.ds-buttons'));
         $(textarea).on(PROGRAM_KEYUP, ClearActions);
     });
+    $('.dtext-preview-button').on(PROGRAM_CLICK, ClearPreview);
 }
 
 function InitializeCommentaryDialog() {
