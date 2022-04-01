@@ -109,7 +109,7 @@ const SETTINGS_CONFIG = {
         allitems: category_orders,
         default: category_orders,
         sortvalue: true,
-        validate: (data) => (Array.isArray(data) && JSPLib.utility.arraySymmetricDifference(data,category_orders).length === 0),
+        validate: (data) => JSPLib.utility.arrayEquals(data, category_orders),
         hint: "Drag and drop the categories to determine the group order for the <b>Category</b> order type."
     },
     list_type: {
@@ -121,13 +121,13 @@ const SETTINGS_CONFIG = {
     maximum_tags: {
         default: 25,
         parse: parseInt,
-        validate: (data) => (Number.isInteger(data) && data > 0),
+        validate: (data) => JSPLib.menu.validateNumber(data, true, 1),
         hint: "The number of recent tags to store and show."
     },
     maximum_tag_groups: {
         default: 5,
         parse: parseInt,
-        validate: (data) => (Number.isInteger(data) && data > 0),
+        validate: (data) => JSPLib.menu.validateNumber(data, true, 1),
         hint: "Number of recent tag groups to store and show. Only affects the <b>Multiple</b> list type."
     },
     include_metatags: {
@@ -444,6 +444,15 @@ const other_recent_constraints = {
 
 /****Functions****/
 
+//Library functions
+
+JSPLib.menu.validateNumber = function (data, is_integer, min, max) {
+    const validator = (is_integer ? Number.isInteger : JSPLib.validate.isNumber);
+    min = min || -Infinity;
+    max = max || Infinity;
+    return validator(data) && data >= min && data <= max;
+};
+
 //Validation functions
 
 function ValidateEntry(key,entry) {
@@ -529,30 +538,6 @@ function ValidateProgramData(key,entry) {
     }
     return true;
 }
-
-//Library functions
-
-JSPLib.utility.saveEventHandlers = function (root,type) {
-    let $obj = ((root === document || root === window) ? root : document.querySelector(root));
-    let private_data = JSPLib.utility.getPrivateData($obj);
-    return ('events' in private_data && type in private_data.events && private_data.events[type].map((event) => [event.namespace, event.handler])) || [];
-};
-
-JSPLib.utility.rebindEventHandlers = function (handlers,type,namespaces) {
-    let rebind_handlers = handlers.filter((handler) => namespaces.includes(handler[0]));
-    rebind_handlers.forEach((handler)=>{
-        let trigger = type + (handler[0].length === 0 ? "" : '.' + handler[0]);
-        $(document).on(trigger, handler[1]);
-    });
-};
-
-JSPLib.utility.concatUnique = function (array1, array2) {
-    return JSPLib.utility.arrayUnique(JSPLib.utility.concat(array1, array2));
-};
-
-JSPLib.load.setProgramGetter = function (program_value,other_program_key,other_program_name) {
-    Object.defineProperty(program_value, other_program_key, { get: function() {return JSPLib.load.getExport(other_program_name) || Danbooru[other_program_key] || {};}});
-};
 
 //Auxiliary functions
 
@@ -1003,7 +988,7 @@ function RebindShowRelatedTags() {
                         clearInterval(timer);
                     }
                 }, 100);
-                JSPLib.utility.rebindEventHandlers(old_handlers, "danbooru:show-related-tags", ['iac']);
+                JSPLib.utility.rebindEventHandlers(document, "danbooru:show-related-tags", old_handlers, ['iac']);
             }
         }, 100);
     }
