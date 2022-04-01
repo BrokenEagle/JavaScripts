@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RecentTagsCalc
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.18
+// @version      7.20
 // @description  Use different mechanism to calculate RecentTags.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -703,7 +703,7 @@ function RecheckDisplaySemaphore(name) {
 function RenderTaglines(taglist,addon) {
     return taglist.map((tag)=>{
         let category = GetTagCategory(tag);
-        let search_link = JSPLib.danbooru.postSearchLink(tag,tag.replace(/_/g,' '),`class="search-tag"`);
+        let search_link = JSPLib.danbooru.postSearchLink(tag,tag.replace(/_/g,' '),`class="search-tag" data-tag-name="${tag}"`);
         return `    <li class="tag-type-${category}">${addon}${search_link}</li>\n`;
     }).join('');
 }
@@ -711,10 +711,10 @@ function RenderTaglines(taglist,addon) {
 function RenderTaglist(taglist,columnname,pinned_tags) {
     let html = "";
     if (pinned_tags && pinned_tags.length) {
-        html += RenderTaglines(pinned_tags,`<a class="ui-icon ui-icon-pin-s" style="min-width:unset"></a>&thinsp;`);
+        html += RenderTaglines(pinned_tags,`<span class="ui-icon ui-icon-pin-s" style="min-width:unset"></span>&thinsp;`);
         taglist = JSPLib.utility.arrayDifference(taglist,pinned_tags);
     }
-    let pin_html = (pinned_tags ? `<a class="ui-icon ui-icon-radio-off" style="min-width:unset"></a>&thinsp;` : '');
+    let pin_html = (pinned_tags ? `<span class="ui-icon ui-icon-radio-off" style="min-width:unset"></span>&thinsp;` : '');
     html += RenderTaglines(taglist,pin_html);
     return `
 <h6>${columnname}</h6>
