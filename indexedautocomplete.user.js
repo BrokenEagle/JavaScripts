@@ -92,19 +92,19 @@ const SETTINGS_CONFIG = {
     usage_multiplier: {
         default: 0.9,
         parse: parseFloat,
-        validate: (data) => (JSPLib.validate.isNumber(data) && data >= 0.0 && data <= 1.0),
+        validate: (data) => JSPLib.menu.validateNumber(data, false, 0.0, 1.0),
         hint: "Valid values: 0.0 - 1.0."
     },
     usage_maximum: {
         default: 20,
         parse: parseFloat,
-        validate: (data) => (JSPLib.validate.isNumber(data) && data >= 0.0),
+        validate: (data) => JSPLib.menu.validateNumber(data, false, 0.0),
         hint: "Set to 0 for no maximum."
     },
     usage_expires: {
         default: 2,
         parse: parseInt,
-        validate: (data) => (Number.isInteger(data) && data > 0),
+        validate: (data) => JSPLib.menu.validateNumber(data, true, 1),
         hint: "Number of days."
     },
     usage_enabled: {
@@ -126,25 +126,25 @@ const SETTINGS_CONFIG = {
     exact_source_weight: {
         default: 1.0,
         parse: parseFloat,
-        validate: (data) => (JSPLib.validate.isNumber(data) && data >= 0.0 && data <= 1.0),
+        validate: (data) => JSPLib.menu.validateNumber(data, false, 0.0, 1.0),
         hint: "Valid values: 0.0 - 1.0."
     },
     prefix_source_weight: {
         default: 0.8,
         parse: parseFloat,
-        validate: (data) => (JSPLib.validate.isNumber(data) && data >= 0.0 && data <= 1.0),
+        validate: (data) => JSPLib.menu.validateNumber(data, false, 0.0, 1.0),
         hint: "Valid values: 0.0 - 1.0."
     },
     alias_source_weight: {
         default: 0.2,
         parse: parseFloat,
-        validate: (data) => (JSPLib.validate.isNumber(data) && data >= 0.0 && data <= 1.0),
+        validate: (data) => JSPLib.menu.validateNumber(data, false, 0.0, 1.0),
         hint: "Valid values: 0.0 - 1.0."
     },
     correct_source_weight: {
         default: 0.1,
         parse: parseFloat,
-        validate: (data) => (JSPLib.validate.isNumber(data) && data >= 0.0 && data <= 1.0),
+        validate: (data) => JSPLib.menu.validateNumber(data, false, 0.0, 1.0),
         hint: "Valid values: 0.0 - 1.0."
     },
     metatag_source_enabled: {
@@ -160,7 +160,7 @@ const SETTINGS_CONFIG = {
     source_results_returned: {
         default: 10,
         parse: parseInt,
-        validate: (data) => (Number.isInteger(data) && data >= 5 && data <= 20),
+        validate: (data) => JSPLib.menu.validateNumber(data, true, 5, 20),
         hint: "Number of results to return (5 - 20)."
     },
     source_highlight_enabled: {
@@ -198,13 +198,13 @@ const SETTINGS_CONFIG = {
     recheck_data_interval: {
         default: 1,
         parse: parseInt,
-        validate: (data) => (Number.isInteger(data) && data >= 0 && data <= 3),
+        validate: (data) => JSPLib.menu.validateNumber(data, true, 0, 3),
         hint: "Number of days (0 - 3). Data expiring within this period gets automatically requeried. Setting to 0 disables this."
     },
     related_results_limit: {
         default: 0,
         parse: parseInt,
-        validate: (data) => (Number.isInteger(data) && data >= 0 && data <= 50),
+        validate: (data) => JSPLib.menu.validateNumber(data, true, 0, 50),
         hint: "Number of results to show (1 - 50) for the primary <b>Tags</b> column. Setting to 0 uses Danbooru's default limit."
     },
     related_statistics_enabled: {
@@ -1188,6 +1188,15 @@ const COUNT_CONSTRAINTS = {
 
 /****Functions****/
 
+//Library functions
+
+JSPLib.menu.validateNumber = function (data, is_integer, min, max) {
+    const validator = (is_integer ? Number.isInteger : JSPLib.validate.isNumber);
+    min = min || -Infinity;
+    max = max || Infinity;
+    return validator(data) && data >= min && data <= max;
+};
+
 //Validate functions
 
 function ValidateEntry(key,entry) {
@@ -1352,10 +1361,6 @@ function ValidateUsageData(choice_info) {
     }
     return error_messages;
 }
-
-//Library functions
-
-////NONE
 
 //Helper functions
 
