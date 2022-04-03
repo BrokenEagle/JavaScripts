@@ -122,6 +122,9 @@ function RenderTranslatedTagsColumn(artist_names, other_tags) {
 function QueryArtistUrlData(preprocess_data) {
     let artist_query = {
         search: {
+            artist: {
+                is_deleted: false,
+            },
             url_lower_array: preprocess_data.profile_urls,
         },
         only: 'artist[name]',
@@ -257,7 +260,7 @@ async function Main() {
 /****Initialization****/
 
 //Variables for debug.js
-JSPLib.debug.debug_console = false;
+JSPLib.debug.debug_console = true;
 JSPLib.debug.level = JSPLib.debug.INFO;
 JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 

@@ -3588,12 +3588,12 @@ function UpdatePoolDisplay(other_pool=null) {
             $(`.ntisas-pool[data-id=${NTISAS.current_pool.id}] .ntisas-pool-count`).text(NTISAS.current_pool.element_count);
         }
         $('#prebooru-select-pool').attr('href', `${PREBOORU_SERVER_URL}/pools/${NTISAS.current_pool.id}`);
-        $('#prebooru-pool-last').attr('href', `${PREBOORU_SERVER_URL}/pools/${NTISAS.current_pool.id}/last`);
+        $('#prebooru-pool-last').attr('href', `${PREBOORU_SERVER_URL}/pools/${NTISAS.current_pool.id}/last`).show();
     } else {
         $('#prebooru-pool-name').html('<i>NONE</i>');
         $('#prebooru-pool-count').text('N/A');
-        $('#prebooru-select-pool').attr('href', "");
-        $('#prebooru-pool-last').attr('href', "");
+        $('#prebooru-select-pool').attr('href', `${PREBOORU_SERVER_URL}/posts`);
+        $('#prebooru-pool-last').attr('href', "").hide();
     }
     if (NTISAS.prior_pool) {
         $('#prebooru-prior-name').html(JSPLib.utility.maxLengthString(NTISAS.prior_pool.name), 30);
@@ -3602,12 +3602,12 @@ function UpdatePoolDisplay(other_pool=null) {
             $(`.ntisas-pool[data-id=${NTISAS.prior_pool.id}] .ntisas-pool-count`).text(NTISAS.prior_pool.element_count);
         }
         $('#prebooru-select-prior').attr('href', `${PREBOORU_SERVER_URL}/pools/${NTISAS.prior_pool.id}`);
-        $('#prebooru-prior-last').attr('href', `${PREBOORU_SERVER_URL}/pools/${NTISAS.prior_pool.id}/last`);
+        $('#prebooru-prior-last').attr('href', `${PREBOORU_SERVER_URL}/pools/${NTISAS.prior_pool.id}/last`).show();
     } else {
         $('#prebooru-prior-name').html('<i>NONE</i>');
         $('#prebooru-prior-count').text('N/A');
-        $('#prebooru-select-prior').attr('href', "");
-        $('#prebooru-prior-last').attr('href', "");
+        $('#prebooru-select-prior').attr('href', `${PREBOORU_SERVER_URL}/posts`);
+        $('#prebooru-prior-last').attr('href', "").hide();
     }
     if (other_pool !== null) {
         $(`.ntisas-pool[data-id=${other_pool.id}] .ntisas-pool-count`).text(other_pool.element_count);
@@ -3995,7 +3995,7 @@ function RenderPoolSelection(pool_data) {
         let index_str = JSPLib.utility.padNumber(i + 1, 2);
         html += `<li class="ntisas-pool" style="height: 1.5em;" data-id="${pool.id}"><b>${index_str}. <a style="color: dodgerblue;" class="ntisas-expaned-link ntisas-pool-selection" href="${PREBOORU_SERVER_URL}/pools/${pool.id}">${pool.name}</a>: <a style="color: orange;" class="ntisas-expaned-link" href="${PREBOORU_SERVER_URL}/pools/${pool.id}/last">&raquo;</a></b> <span class="ntisas-pool-count">${pool.element_count}</span></li>`;
     });
-    html += `<li style="height: 1.5em;" data-id="0"><b>XX. <a style="color: red;" class="ntisas-expaned-link ntisas-pool-selection">NONE</a></b></li>`;
+    html += `<li style="height: 1.5em;" data-id="0"><b>XX. <a style="color: red;" href="${PREBOORU_SERVER_URL}/posts"class="ntisas-expaned-link ntisas-pool-selection">NONE</a></b></li>`;
     return `<ul style="margin-left: 1em;" class="ntisas-links">${html}</ul>`;
 }
 
@@ -4085,7 +4085,7 @@ function RenderAllSimilar(all_iqdb_results,image_urls,type) {
     });
     let render_width = Math.min(((max_results + 1) * BASE_PREVIEW_WIDTH) + BASE_QTIP_WIDTH + 20, 850);
     return `
-<div class="ntisas-similar-results ntisas-qtip-container" data-type="${type}" style="width:${render_width}px">
+<div class="ntisas-similar-results ntisas-qtip-container" data-type="${type}" style="width:${render_width}px; max-height: 75vh;">
     ${image_results.join(HORIZONTAL_RULE)}
 </div>`;
 }
@@ -4100,7 +4100,7 @@ function RenderAllSimilarPrebooru(all_similar_results) {
     });
     let render_width = Math.min(((max_results + 1) * BASE_PREVIEW_WIDTH) + BASE_QTIP_WIDTH + 20, 850);
     return `
-<div class="ntisas-similar-results ntisas-qtip-container" data-type="prebooru" style="width:${render_width}px">
+<div class="ntisas-similar-results ntisas-qtip-container" data-type="prebooru" style="width:${render_width}px; max-height: 75vh;">
     ${image_results.join(HORIZONTAL_RULE)}
 </div>`;
 }
@@ -4472,6 +4472,7 @@ function InitializePoolSelection(pool_data) {
         }
         UpdatePoolDisplay();
         NTISAS.channel.postMessage({type: 'pool'});
+        event.preventDefault();
     });
     InitializeUIStyle();
     $dialog.dialog(dialog_settings);
@@ -4484,6 +4485,7 @@ function RenderMiscActionsDialog(tweet_id) {
     <ul style="font-weight: bold; margin: 0; padding: 0.5em;">
         <li><a class="prebooru-query-data ntisas-expanded-link">Query All Data</a></li>
         <li><a class="prebooru-add-tweet-notation ntisas-expanded-link">Add tweet notation</a></li>
+        <li><a class="prebooru-add-tweet-tag ntisas-expanded-link">Add tweet tag</a></li>
     </ul>
 </div>
 `;
@@ -4681,6 +4683,7 @@ function InitializePrebooruSimilarContainer(similar_results) {
     });
     const dialog_settings = Object.assign({}, PREBOORU_DIALOG_SETTINGS, {
         width: BASE_DIALOG_WIDTH + BASE_PREVIEW_WIDTH * 5,
+        maxHeight: 800,
     });
     InitializeUIStyle();
     $dialog.dialog(dialog_settings);
@@ -5582,14 +5585,12 @@ function ProcessTwitterData(data) {
     }
 }
 
-function CheckGraphqlData(data,savedata=[]) {
+function CheckGraphqlData(data, savedata=[]) {
     for (let i in data) {
-        if ((i === "tweet" || i === "user") && 'legacy' in data[i] && 'rest_id' in data[i]) {
+        if ((i === "tweet" || i === "user") && ('legacy' in data[i]) && ('rest_id' in data[i])) {
             savedata.push({type: i, id: data[i].rest_id, item: data[i].legacy});
-        }
-        if (i === '__typename' && data[i] === "Tweet" && 'legacy' in data && 'rest_id' in data) {
-            let type = data[i].toLowerCase();
-            savedata.push({type: type, id: data.rest_id, item: data.legacy});
+        } else if ((i === 'result') && (data[i]?.__typename === 'Tweet' || data[i]?.__typename === 'User')) {
+            savedata.push({type: data[i].__typename.toLowerCase(), id: data[i].rest_id, item: data[i].legacy});
         }
         if (typeof data[i] === "object" && data[i] !== null) {
             CheckGraphqlData(data[i], savedata);
@@ -6682,6 +6683,10 @@ async function PrebooruCreateIllust(event) {
             JSPLib.notice.error(data.message);
         } else {
             JSPLib.notice.notice("Illust created.");
+            let item_ids = [data.item.id];
+            SaveData('illusts-' + tweet_id, item_ids, 'prebooru');
+            UpdatePrebooruItems(tweet_id, item_ids, 'illust', []);
+            NTISAS.prebooru_data[tweet_id].illusts = item_ids;
         }
         console.warn('PrebooruCreateIllust-3', data);
     });
@@ -6762,6 +6767,39 @@ function PrebooruAddPostNotation(event) {
         JSPLib.notice.error("No posts to notate!");
     } else {
         JSPLib.notice.notice("Multiple posts not handled yet.");
+    }
+}
+
+function PrebooruAddTweetTag(event) {
+    let [$tweet,tweet_id,user_id,screen_name,user_ident,all_idents] = GetPrebooruDialogPreload(event, '.prebooru-misc-actions-container');
+    let $info = $tweet.find('.ntisas-prebooru-entry');
+    let post_ids = GetDomDataIds($info, 'post-ids');
+    let illust_ids = GetDomDataIds($info, 'illust-ids');
+    if (post_ids.length == 1) {
+        let post_id = post_ids[0];
+        let prompt_string = prompt(`Enter tag for post #${post_id}.`);
+        if (prompt_string !== null && prompt_string.trim().length > 0) {
+            let post_data = {
+                tag: {
+                    name: prompt_string,
+                    post_id,
+                },
+            };
+            JSPLib.network.post(PREBOORU_SERVER_URL + `/tags/append.json`, post_data, null, 'json').done((data)=>{
+                if (data.error) {
+                    JSPLib.notice.error(data.message);
+                } else {
+                    JSPLib.notice.notice("Tag added.");
+                }
+            }).fail((data)=>{
+                console.warn("Network data:", data);
+                JSPLib.notice.error("Network error: post tag.");
+            });
+        }
+    } else if (illust_ids.length == 1) {
+        JSPLib.notice.notice("Illusts not handled yet...");
+    } else {
+        JSPLib.notice.error("No posts or illusts to notate!");
     }
 }
 
@@ -8371,6 +8409,7 @@ async function Main() {
     $(document).on(PROGRAM_CLICK, '.prebooru-misc-actions', PrebooruMiscActions);
     $(document).on(PROGRAM_CLICK, '.prebooru-query-data', PrebooruQueryData);
     $(document).on(PROGRAM_CLICK, '.prebooru-create-illust', PrebooruCreateIllust);
+    $(document).on(PROGRAM_CLICK, '.prebooru-add-tweet-tag', PrebooruAddTweetTag);
     $(document).on(PROGRAM_CLICK, '.prebooru-add-tweet-notation', PrebooruAddTweetNotation);
     $(document).on(PROGRAM_CLICK, '.prebooru-add-illust-notation', PrebooruAddIllustNotation);
     $(document).on(PROGRAM_CLICK, '.prebooru-add-post-notation', PrebooruAddPostNotation);
