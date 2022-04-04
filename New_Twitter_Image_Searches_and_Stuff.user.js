@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.17
+// @version      7.18
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -4530,12 +4530,14 @@ function ProcessTwitterData(data) {
 
 function CheckGraphqlData(data, savedata=[]) {
     for (let i in data) {
-        if ((i === "tweet" || i === "user") && ('legacy' in data[i]) && ('rest_id' in data[i])) {
-            savedata.push({type: i, id: data[i].rest_id, item: data[i].legacy});
-        } else if ((i === 'result') && (data[i]?.__typename === 'Tweet' || data[i]?.__typename === 'User')) {
-            savedata.push({type: data[i].__typename.toLowerCase(), id: data[i].rest_id, item: data[i].legacy});
-        }
         if (typeof data[i] === "object" && data[i] !== null) {
+            if (('legacy' in data[i]) && ('rest_id' in data[i])) {
+                if ((i === "tweet" || i === "user")) {
+                    savedata.push({type: i, id: data[i].rest_id, item: data[i].legacy});
+                } else if ((i === 'result') && (data[i]?.__typename === 'Tweet' || data[i]?.__typename === 'User')) {
+                    savedata.push({type: data[i].__typename.toLowerCase(), id: data[i].rest_id, item: data[i].legacy});
+                }
+            }
             CheckGraphqlData(data[i], savedata);
         }
     }
