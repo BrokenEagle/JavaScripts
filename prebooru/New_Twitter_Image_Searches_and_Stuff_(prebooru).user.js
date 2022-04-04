@@ -5564,8 +5564,12 @@ function ProcessTwitterData(data) {
                 }
                 break;
             case 'user':
-                API_DATA.users_id[id] = item;
-                API_DATA.users_name[item.screen_name] = item;
+                try {
+                    API_DATA.users_id[id] = item;
+                    API_DATA.users_name[item.screen_name] = item;
+                } catch (e) {
+                    console.error('ProcessTwitterData-switch-user', e, item, checked_data[i]);
+                }
                 //falls through
             default:
                 //do nothing
@@ -5587,12 +5591,14 @@ function ProcessTwitterData(data) {
 
 function CheckGraphqlData(data, savedata=[]) {
     for (let i in data) {
-        if ((i === "tweet" || i === "user") && ('legacy' in data[i]) && ('rest_id' in data[i])) {
-            savedata.push({type: i, id: data[i].rest_id, item: data[i].legacy});
-        } else if ((i === 'result') && (data[i]?.__typename === 'Tweet' || data[i]?.__typename === 'User')) {
-            savedata.push({type: data[i].__typename.toLowerCase(), id: data[i].rest_id, item: data[i].legacy});
-        }
         if (typeof data[i] === "object" && data[i] !== null) {
+            if (('legacy' in data[i]) && ('rest_id' in data[i])) {
+                if ((i === "tweet" || i === "user")) {
+                    savedata.push({type: i, id: data[i].rest_id, item: data[i].legacy});
+                } else if ((i === 'result') && (data[i]?.__typename === 'Tweet' || data[i]?.__typename === 'User')) {
+                    savedata.push({type: data[i].__typename.toLowerCase(), id: data[i].rest_id, item: data[i].legacy});
+                }
+            }
             CheckGraphqlData(data[i], savedata);
         }
     }
@@ -5801,6 +5807,15 @@ function CheckViews(event) {
             }
         });
     }
+}
+
+function CheckViews2(entries, observer) {
+    entries.forEach((entry)=>{
+        if (entry.isIntersecting) {
+            console.warn("CheckViews2", entry);
+            observer.unobserve(entry.target);
+        }
+    });
 }
 
 function PhotoNavigation() {
@@ -7914,6 +7929,7 @@ function ProcessNewTweets() {
             $image_tweets.each((i,entry)=>{
                 InitializeViewCount(entry);
                 UpdateImageDict(entry);
+                NTISAS.intersection_observer.observe(entry);
             });
         }
     }
@@ -8368,6 +8384,7 @@ async function Main() {
     JSPLib.network.jQuerySetup();
     JSPLib.notice.installBanner(PROGRAM_SHORTCUT);
     Object.assign(NTISAS, {
+        intersection_observer: new IntersectionObserver(CheckViews2, {threshold: 0.75}),
         channel: JSPLib.utility.createBroadcastChannel(PROGRAM_NAME, BroadcastTISAS),
         user_settings: JSPLib.menu.loadUserSettings(),
     }, PROGRAM_DEFAULT_VALUES, PROGRAM_RESET_KEYS);
