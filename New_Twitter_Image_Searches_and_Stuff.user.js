@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.18
+// @version      7.19
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -5268,7 +5268,7 @@ function DownloadOriginal(event) {
                 console.error("DownloadOriginal error:", e);
             }
             JSPLib.notice.error(`Error downloading image: ${error_text}`);
-        }).finally(()=>{
+        }).always(()=>{
             let counter = parseInt($counter.text());
             $counter.text(counter - 1);
         });
