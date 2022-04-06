@@ -5525,7 +5525,7 @@ function MarkupMediaType(tweet) {
                 $entry.addClass('ntisas-tweet-quote').attr('ntisas-media-type', 'quote');
             } else if ($('[data-testid="card.wrapper"]', entry).length) {
                 $entry.addClass('ntisas-tweet-card').attr('ntisas-media-type', 'card');
-            } else if ($('video, [data-testid=playButton]', tweet).length) {
+            } else if ($('video, [data-testid=playButton]', tweet).length || $('.ntisas-tweet-media [role=button]').toArray().some((entry)=>entry.innerText === 'Load video')) {
                 $entry.addClass('ntisas-tweet-video').attr('ntisas-media-type', 'video');
             } else if ($entry.find('div[role=link]').length === 1) {
                 $entry.addClass('ntisas-tweet-quote2').attr('ntisas-media-type', 'quote2');
