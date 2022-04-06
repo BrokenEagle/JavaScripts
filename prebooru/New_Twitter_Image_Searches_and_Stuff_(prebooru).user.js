@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff (library 14, Prebooru version)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.7.n
+// @version      7.7.o
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -4893,11 +4893,13 @@ async function InitializeViewCount(tweet) {
         $('.ntisas-view-info', tweet).append(`<span title="${views.value.count} views">[Viewed ${timeagostring}]</span>`);
         $(tweet).addClass('ntisas-viewed');
     }
+    /*
     if (!document.hidden && JSPLib.utility.isScrolledIntoView(tweet)) {
         this.debug('logLevel', "Viewable tweet:", tweet_id, JSPLib.utility.DEBUG);
         AddViewCount(tweet_id);
         $(tweet).attr('viewed', 'true');
     }
+    */
 }
 
 function InitializeProfileViewCount(views,data_key,selector,format) {
@@ -5797,6 +5799,7 @@ async function PurgeBadTweets() {
 //Event handlers
 
 function CheckViews(event) {
+    return;
     if (NTISAS.user_settings.display_tweet_views) {
         $('[ntisas-media-type=image], [ntisas-media-type=video]').closest('.ntisas-tweet').each((i,tweet)=>{
             if (JSPLib.utility.isScrolledIntoView(tweet)) {
@@ -5812,7 +5815,11 @@ function CheckViews(event) {
 function CheckViews2(entries, observer) {
     entries.forEach((entry)=>{
         if (entry.isIntersecting) {
-            console.warn("CheckViews2", entry);
+            let $tweet = $(entry.target);
+            let tweet_id = String($tweet.data('tweet-id'));
+            console.warn("Viewable tweet:", tweet_id, entry);
+            AddViewCount(tweet_id);
+            $tweet.attr('viewed', 'true');
             observer.unobserve(entry.target);
         }
     });
@@ -7364,21 +7371,39 @@ function MarkupMainTweet(tweet) {
       && child2.children[1].children[0]
       && child2.children[1].children[0].tagName.toUpperCase() !== 'SPAN'
       && child2.children[1].innerText.match(/^Replying to/)) {
+        this.debug('log', "Reply section found.");
         $(child2.children[1]).addClass('ntisas-reply-line');
         reply_line_count = 1;
     }
     let sub_body = main_body.children[2];
     $(sub_body).addClass('ntisas-sub-body');
+    $(sub_body.children[0]).addClass('ntisas-tweet-text');
+    $(sub_body.children[1]).addClass('ntisas-tweet-media');
+    let has_media = Boolean($(sub_body.children[1]).children().length);
+    $(sub_body.children[2]).addClass('ntisas-time-line');
+    let childn3 = sub_body.children[3];
+    if ($('[href$="/retweets"]', childn3).length || $('[href$="/likes"]', childn3).length || $('[href$="/retweets/with_comments"]', childn3).length) {
+        console.log("Retweets-likes found.");
+        $(childn3).addClass('ntisas-retweets-likes');
+        var action_child = sub_body.children[4];
+    } else {
+        action_child = childn3;
+    }
+    $(action_child).addClass('ntisas-tweet-actions');
+    $(action_child).after('<div ntisas-image-menu="parent"></div><div class="ntisas-footer-section"></div>');
+/*
     let tweet_menu_index = sub_body.childElementCount - 1;
-        console.log("#1", $(sub_body.children[tweet_menu_index]).text(), $(sub_body.children[tweet_menu_index]).text().match(/^Who can reply\?People @\S+ .*? can reply/))
     if ($(sub_body.children[tweet_menu_index]).text().match(/^Who can reply\?People @\S+ .*? can reply/)) {
+        this.debug('log', "Reply section found.");
         $(sub_body.children[tweet_menu_index]).addClass('ntisas-reply-notice');
         tweet_menu_index -= 1;
     }
     if ($(sub_body.children[tweet_menu_index]).text().match(/A conversation between @.+ and people they (?:follow or )?mentioned in this Tweet/)) {
+        this.debug('log', "Conversation section found.");
+        $(sub_body.children[tweet_menu_index]).addClass('ntisas-converation-notice');
         tweet_menu_index -= 1;
     }
-    tweet_menu_index -= 1;
+    //tweet_menu_index -= 1; ###TESTING THIS###
     let childn = sub_body.children[tweet_menu_index];
     $(childn).after('<div class="ntisas-footer-section"></div>');
     let tweet_menu = sub_body.children[tweet_menu_index];
@@ -7386,6 +7411,7 @@ function MarkupMainTweet(tweet) {
     let retweet_like_count = 0;
     let childn1 = sub_body.children[tweet_menu_index - 1];
     if ($('[href$="/retweets"]', childn1).length || $('[href$="/likes"]', childn1).length || $('[href$="/retweets/with_comments"]', childn1).length) {
+        this.debug('log', "Retweets-likes section found.");
         retweet_like_count = 1;
         $(childn1).attr('ntisas','retweets-likes');
     }
@@ -7395,6 +7421,7 @@ function MarkupMainTweet(tweet) {
     let remaining_lines = tweet_menu_index - 2 - retweet_like_count - reply_line_count;
     var has_media = false;
     if (remaining_lines === 2) {
+        this.debug('log', "Tweet has text and media.");
         let tweet_text = sub_body.children[reply_line_count + 1];
         $(tweet_text).addClass('ntisas-tweet-text');
         let tweet_image = sub_body.children[1 + reply_line_count + 1];
@@ -7409,7 +7436,9 @@ function MarkupMainTweet(tweet) {
         has_media = $('[lang] > span', element).length === 0 || $('time', element).length === 1;
         let element_class = (has_media ? 'ntisas-tweet-media' : 'ntisas-tweet-text');
         $(element).addClass(element_class);
+        this.debug('log', "Tweet has media? ", has_media);
     }
+*/
     if (has_media) {
         CheckHiddenMedia(tweet);
     }
@@ -7929,7 +7958,17 @@ function ProcessNewTweets() {
             $image_tweets.each((i,entry)=>{
                 InitializeViewCount(entry);
                 UpdateImageDict(entry);
-                NTISAS.intersection_observer.observe(entry);
+                if (IsTweetPage()) {
+                    console.log("Mark main tweet viewed.");
+                    let tweet_id = String($(entry).data('tweet-id'));
+                    this.debug('logLevel', "Viewable tweet:", tweet_id, JSPLib.utility.DEBUG);
+                    AddViewCount(tweet_id);
+                    AddViewCount(tweet_id);
+                    $(entry).attr('viewed', 'true');
+                } else {
+                    console.log("Observe stream tweet.");
+                    NTISAS.intersection_observer.observe(entry);
+                }
             });
         }
     }
@@ -8438,8 +8477,8 @@ async function Main() {
     $(document).on(PROGRAM_CLICK, '.prebooru-query-post-pools', PrebooruQueryPostPools);
     $(document).on(PROGRAM_CLICK, '.ntisas-metric', SelectMetric);
     $(document).on(PROGRAM_CLICK, '.ntisas-toggle-image-size', ToggleImageSize);
-    $(document).on('scroll.ntisas.check_views', CheckViews);
-    $(window).on('focus.ntisas.check_views', CheckViews);
+    //$(document).on('scroll.ntisas.check_views', CheckViews);
+    //$(window).on('focus.ntisas.check_views', CheckViews);
     $(document).on(PROGRAM_KEYDOWN, null, 'left', PhotoNavigation);
     $(document).on(PROGRAM_KEYDOWN, null, 'right', PhotoNavigation);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+h', ToggleArtistHighlights);
@@ -8542,18 +8581,3 @@ JSPLib.load.exportFuncs(PROGRAM_NAME, [GetList, SaveList, GetData, SaveData, Get
 
 JSPLib.network.installXHRHook([TweetUserData]);
 JSPLib.load.programInitialize(Main, PROGRAM_NAME, PROGRAM_LOAD_REQUIRED_VARIABLES, PROGRAM_LOAD_REQUIRED_SELECTORS, [], 100);
-/*
-JSPLib.debug.debugExecute(()=>{
-    function reportIn(e){
-        var a = this.lastListenerInfo[this.lastListenerInfo.length-1];
-        console.log("#10", a)
-    }
-    document.realAddEventListener = document.addEventListener;
-    document.addEventListener = function(a,b,c){
-        this.realAddEventListener(a,reportIn,c);
-        this.realAddEventListener(a,b,c);
-        if(!this.lastListenerInfo){this.lastListenerInfo = new Array()};
-        this.lastListenerInfo.push({a : a, b : b , c : c});
-    };
-});
-*/
