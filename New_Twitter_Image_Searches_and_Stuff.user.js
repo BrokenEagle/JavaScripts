@@ -3763,7 +3763,7 @@ function InitializeImageQtip($image) {
     let image_url = $image.attr('src');
     const qtip_settings = Object.assign({}, IMAGE_QTIP_SETTINGS, {
         content: {
-            text: () => `<a data-orig-size="${image_url}" data-showing-large="false" class="ntisas-toggle-image-size" href="#"><img src="${image_url}"></a>`,
+            text: () => (`<a data-orig-size="${image_url}" data-showing-large="false" class="ntisas-toggle-image-size" href="#"><img src="${image_url}"></a>`),
         },
     });
     $image.qtiptisas(qtip_settings);
