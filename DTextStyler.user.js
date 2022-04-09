@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DTextStyler
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.1
+// @version      5.2
 // @description  Danbooru DText UI addon.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -880,16 +880,18 @@ function ToggleCommentary() {
 }
 
 function ToggleTranslation() {
+    DS.$translation_edit_commentary ||= DS.$upload_commentary_translation_container.find('.ds-edit-commentary');
+    DS.$translation_preview_display ||= DS.$upload_commentary_translation_container.find('.ds-preview-display');
     if (DS.translation_open) {
         DS.$toggle_commentary_translation.text('show »');
-        DS.$edit_commentary.slideUp();
-        DS.$preview_display.slideUp();
+        DS.$translation_edit_commentary.slideUp();
+        DS.$translation_preview_display.slideUp();
     } else {
         DS.$toggle_commentary_translation.text('« hide');
         if (DS.mode === 'preview') {
-            DS.$preview_display.slideDown();
+            DS.$translation_preview_display.slideDown();
         } else if (DS.mode === 'edit') {
-            DS.$edit_commentary.slideDown();
+            DS.$translation_edit_commentary.slideDown();
         }
     }
     DS.translation_open = !DS.translation_open;
