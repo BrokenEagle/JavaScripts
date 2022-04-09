@@ -79,7 +79,7 @@ const SETTINGS_CONFIG = {
     available_dtext_markup: {
         allitems: ALL_MARKUP,
         default: ALL_MARKUP,
-        validate: (data) => (console.log("validate", data, data.length > 0) || (JSPLib.menu.validateCheckboxRadio(data, 'checkbox', ALL_MARKUP) && (data.length > 0))),
+        validate: (data) => (JSPLib.menu.validateCheckboxRadio(data, 'checkbox', ALL_MARKUP) && (data.length > 0)),
         hint: "Select the list of available DText tags to be shown. Must have at least one.",
     },
     available_dtext_actions: {
@@ -912,11 +912,12 @@ function InitializeDtextPreviews() {
     let containers = JSPLib.utility.multiConcat(...DS.user_settings.dtext_types_handled.map((type) => DTEXT_SELECTORS[type]));
     let final_selector = JSPLib.utility.joinList(containers, '.', ' .dtext-previewable textarea', ', ');
     $(final_selector).each((_i, textarea)=>{
-        let $container = $(textarea).closest('.input.dtext');
+        let $textarea = $(textarea);
+        let $container = $textarea.closest('.input.dtext');
         $container.addClass('ds-container');
         $container.find('.dtext-previewable').before(RenderMarkupControls());
         InitializeButtons($container.find('.ds-buttons'));
-        $(textarea).on(PROGRAM_KEYUP, ClearActions);
+        $textarea.on(PROGRAM_KEYUP, ClearActions);
     });
     $('.dtext-preview-button').on(PROGRAM_CLICK, ClearPreview);
 }
