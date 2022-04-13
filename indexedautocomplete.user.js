@@ -760,7 +760,7 @@ const STATIC_METATAGS = {
 const TERM_REGEX = RegExp('([-~]*)(?:(' + JSPLib.utility.concat(ALL_METATAGS, TYPE_TAGS).join('|') + '):)?(\\S*)$', 'i');
 
 //BUR constants
-const BUR_KEYWORDS = ['alias', 'imply', 'update', 'unalias', 'unimply', 'category'];
+const BUR_KEYWORDS = ['alias', 'unalias', 'imply', 'unimply', 'rename', 'update', 'deprecate', 'undeprecate', 'nuke', 'category'];
 const BUR_DATA = BUR_KEYWORDS.map((tag) => ({
     type: 'tag',
     label: tag,
