@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.27
+// @version      28.28
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1896,6 +1896,8 @@ function InsertCompletion(input, completion) {
         before_caret_text = before_caret_text.substring(0, before_caret_text.search(/\S+$/));
         if (query.metatag === 'tag') {
             before_caret_text += query.prefix + completion + ' ';
+        } else if (query.metatag in STATIC_METATAGS) {
+            before_caret_text += query.operator + completion + ' ';
         } else {
             before_caret_text += completion + ' ';
         }
