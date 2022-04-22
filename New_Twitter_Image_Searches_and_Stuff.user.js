@@ -5987,14 +5987,17 @@ function ProcessPhotoPopup() {
 function ProcessTweetImage(obj,image_url,unprocessed_tweets) {
     let $obj = $(obj);
     if (image_url) {
-        $obj.parent().attr('data-image-url', image_url);
         let $tweet = $obj.closest('.ntisas-tweet');
         let tweet_id = $tweet.data('tweet-id');
-        if (!(tweet_id in unprocessed_tweets)) {
-            unprocessed_tweets[tweet_id] = $tweet;
-        }
-        if (NTISAS.user_settings.image_popout_enabled && $tweet.hasClass('ntisas-stream-tweet')) {
-            InitializeImageQtip($obj);
+        let image_urls = (IsTweetPage() ? GetImageLinks($tweet[0]) : []); // Only causes issues on the tweet page so far
+        if (!image_urls.includes(image_url)) {
+            $obj.parent().attr('data-image-url', image_url);
+            if (!(tweet_id in unprocessed_tweets)) {
+                unprocessed_tweets[tweet_id] = $tweet;
+            }
+            if (NTISAS.user_settings.image_popout_enabled && $tweet.hasClass('ntisas-stream-tweet')) {
+                InitializeImageQtip($obj);
+            }
         }
     } else {
         $obj.addClass('ntisas-unhandled-image');
