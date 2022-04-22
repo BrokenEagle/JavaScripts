@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.20
+// @version      7.21
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -211,6 +211,12 @@ const SETTINGS_CONFIG = {
         default: ['danbooru'],
         validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'radio', SUBDOMAINS),
         hint: "Select which subdomain of Danbooru to query from. <b>Note:</b> The chosen subdomain must be logged into or the script will fail to work."
+    },
+    use_graphql: {
+        display: "Use GraphQL",
+        default: false,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Select whether to use the GraphQL endpoint instead of the API endpoint for network requests."
     },
     confirm_delete_enabled: {
         default: true,
@@ -1898,6 +1904,26 @@ var ALL_PAGE_REGEXES = {
 };
 
 //Network constants
+
+const TWEET_GRAPHQL_PARAMS = {
+    with_rux_injections: false,
+    includePromotedContent: true,
+    withCommunity: false,
+    withQuickPromoteEligibilityTweetFields: true,
+    withBirdwatchNotes: false,
+    withSuperFollowsUserFields: true,
+    withDownvotePerspective: false,
+    withReactionsMetadata: false,
+    withReactionsPerspective: false,
+    withSuperFollowsTweetFields: true,
+    withVoice: true,
+    withV2Timeline: true,
+    __fs_responsive_web_like_by_author_enabled: false,
+    __fs_dont_mention_me_view_api_enabled: true,
+    __fs_interactive_text_enabled: true,
+    __fs_responsive_web_uc_gql_enabled: false,
+    __fs_responsive_web_edit_tweet_api_enabled: false
+};
 
 const QUERY_LIMIT = 100;
 const QUERY_BATCH_NUM = 5;
@@ -4245,15 +4271,43 @@ function IntervalNetworkHandler () {
 
 //Network functions
 
-async function TwitterAPIRequest(endpoint,data) {
+function TwitterAPI1_1Request(endpoint, data) {
     let url_addons = $.param(data);
-    return await $.ajax({
+    return $.ajax({
         method: 'GET',
         url: `https://api.twitter.com/1.1/${endpoint}.json?${url_addons}`,
         processData: false,
         beforeSend: function (request) {
             request.setRequestHeader('authorization', 'Bearer AAAAAAAAAAAAAAAAAAAAALVzYQAAAAAAIItU1SgTX8I%2B7Q3Cl3mqvuZiAAc%3D0AtbuGPnZgRlOHbTIk3JudxSGqXxgfkwpMG367Rtyw6GGLwO6N');
         },
+    });
+}
+
+function TwitterGraphQLRequest(endpoint, data) {
+    let url_addons = $.param({'variables': JSON.stringify(data)});
+    let csrf_token = JSPLib.utility.readCookie('ct0');
+    return $.ajax({
+        method: 'GET',
+        url: `https://twitter.com/i/api/graphql/${endpoint}?${url_addons}`,
+        processData: false,
+        beforeSend: function (request) {
+            request.setRequestHeader('authorization', 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA');
+            request.setRequestHeader('x-csrf-token', csrf_token);
+        },
+    });
+}
+
+function GetTweetAPI1_1(tweet_id) {
+    return TwitterAPI1_1Request('statuses/show', {id: tweet_id, tweet_mode: 'extended', trim_user: true});
+}
+
+function GetTweetGQL(tweet_id) {
+    let data = Object.assign({
+        focalTweetId: tweet_id,
+    }, TWEET_GRAPHQL_PARAMS);
+    return TwitterGraphQLRequest('L1DeQfPt7n3LtTvrBqkJ2g/TweetDetail', data).then((data)=>{
+        let found_items = CheckGraphqlData(data);
+        return found_items.find((item) => item.type === 'tweet' && item.id === tweet_id)?.item;
     });
 }
 
@@ -4411,7 +4465,13 @@ async function GetMaxVideoDownloadLink(tweet_id) {
         if (API_DATA.has_data && tweet_id in API_DATA.tweets) {
             var data = GetAPIData('tweets', tweet_id);
         } else {
-            data = await TwitterAPIRequest('statuses/show', {id: tweet_id, tweet_mode: 'extended', trim_user: true});
+            let tweet_func = (NTISAS.user_settings.use_graphql ? GetTweetGQL : GetTweetAPI1_1);
+            try {
+                data = await tweet_func(tweet_id);
+            } catch (e) {
+                this.debug('warn', "HTTP Error:", e.status, e);
+                data = null;
+            }
         }
         try {
             var variants = data.extended_entities.media[0].video_info.variants;
@@ -6411,6 +6471,7 @@ function RenderSettingsMenu() {
     $('#ntisas-network-settings').append(JSPLib.menu.renderCheckbox('custom_order_enabled'));
     $('#ntisas-network-settings').append(JSPLib.menu.renderTextinput('recheck_interval', 5));
     $('#ntisas-network-settings').append(JSPLib.menu.renderInputSelectors('query_subdomain', 'radio'));
+    $('#ntisas-network-settings').append(JSPLib.menu.renderCheckbox('use_graphql'));
     $('#ntisas-download-settings').append(JSPLib.menu.renderCheckbox('original_download_enabled'));
     $('#ntisas-download-settings').append(JSPLib.menu.renderInputSelectors('download_position', 'radio'));
     $('#ntisas-download-settings').append(JSPLib.menu.renderTextinput('filename_prefix_format', 80));
