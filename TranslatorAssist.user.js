@@ -1,28 +1,26 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.3
+// @version      4.4
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
-// @include      /^https?://\w+\.donmai\.us/posts/\d+(\?|$)/
-// @include      /^https?://\w+\.donmai\.us/settings(\?|$)/
+// @match        https://*.donmai.us/posts/*
+// @match        https://*.donmai.us/settings
 // @exclude      /^https?://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
 // @grant        none
-// @run-at       document-end
-// @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/TranslatorAssist.user.js
-// @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/TranslatorAssist.user.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/core-js/3.21.0/minified.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220417-menu/lib/menu.js
+// @run-at       document-idle
+// @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/TranslatorAssist.user.js
+// @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/TranslatorAssist.user.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/menu.js
 // ==/UserScript==
 
 /* global $ JSPLib Danbooru */
@@ -74,91 +72,91 @@ const EMBEDDED_STYLES = ['border-radius', 'transform', 'background-color', 'just
 //Main settings
 const SETTINGS_CONFIG = {
     close_notice_enabled: {
-        default: true,
+        reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Show a notice when closing the side menu."
     },
     check_last_noted_enabled: {
-        default: true,
+        reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Show a notice when navigating to a post if the post has been noted within a cutoff period."
     },
     last_noted_cutoff: {
-        default: 15,
+        reset: 15,
         parse: parseInt,
         validate: (data) => (Number.isInteger(data) && data > 0),
         hint: "Number of minutes used as a cutoff when determining whether to show the last noted notice (greater than 0)."
     },
     query_last_noter_enabled: {
-        default: true,
+        reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Query for the last noter when opening the side menu."
     },
     last_noter_cache_time: {
-        default: 5,
+        reset: 5,
         parse: parseInt,
         validate: (data) => (Number.isInteger(data) && data >= 0),
         hint: "Number of minutes to cache the query last noter data (greater than 0; setting to zero disables caching)."
     },
     new_noter_check_enabled: {
-        default: true,
+        reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Poll for new noters when the side menu is open."
     },
     new_noter_check_interval: {
-        default: 5,
+        reset: 5,
         parse: parseInt,
         validate: (data) => (Number.isInteger(data) && data > 0),
         hint: "How often to check for new noters (# of minutes)."
     },
     available_html_tags: {
         allitems: HTML_TAGS,
-        default: HTML_TAGS,
+        reset: HTML_TAGS,
         display: "Available HTML tags",
         validate: (data) => (JSPLib.menu.validateCheckboxRadio(data, 'checkbox', HTML_TAGS) && data.length > 0),
         hint: "Select the list of available HTML tags to be shown. Must have at least one."
     },
     available_css_styles: {
         allitems: HTML_STYLES,
-        default: HTML_STYLES,
+        reset: HTML_STYLES,
         display: "Available CSS styles",
         validate: (data) => (JSPLib.menu.validateCheckboxRadio(data, 'checkbox', HTML_STYLES) && data.length > 0),
         hint: "Select the list of available HTML styles to be shown. Must have at least one."
     },
     text_shadow_enabled: {
-        default: true,
+        reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Uncheck to removed text shadow section."
     },
     ruby_enabled: {
-        default: true,
+        reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Uncheck to removed ruby section."
     },
     available_ruby_styles: {
         allitems: RUBY_STYLES,
-        default: RUBY_STYLES,
+        reset: RUBY_STYLES,
         validate: (data) => (JSPLib.menu.validateCheckboxRadio(data, 'checkbox', RUBY_STYLES) && data.length > 0),
         hint: "Select the list of available ruby styles to be shown. Must have at least one."
     },
     embedded_enabled: {
-        default: true,
+        reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Uncheck to removed embedded tab."
     },
     available_embedded_styles: {
         allitems: EMBEDDED_STYLES,
-        default: EMBEDDED_STYLES,
+        reset: EMBEDDED_STYLES,
         validate: (data) => (JSPLib.menu.validateCheckboxRadio(data, 'checkbox', EMBEDDED_STYLES) && data.length > 0),
         hint: "Select the list of available embedded styles to be shown. Must have at least one."
     },
     controls_enabled: {
-        default: true,
+        reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Uncheck to removed controls tab."
     },
     codes_enabled: {
-        default: true,
+        reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Uncheck to removed codes tab."
     },
@@ -1127,64 +1125,9 @@ const INPUT_SECTIONS = {
 
 /****Functions****/
 
-/** Library functions **/
+//Library functions
 
-JSPLib.utility.clickAndHold = function(selector, func, namespace="", wait_time=500, interval_time=100) {
-    let $obj = (typeof selector === 'string' ? JSPLib._jQuery(selector) : selector);
-    let event_namespaces = ['mousedown', 'mouseup', 'mouseleave'].map((event_type)=>(event_type + (namespace ? '.' + namespace : "")));
-    let timer = null;
-    let interval = null;
-    $obj.on(event_namespaces[0], (event)=>{
-        func(event);
-        timer = setTimeout(()=>{
-            interval = JSPLib.utility.initializeInterval(()=>{
-                PlacementControl(event);
-            }, interval_time);
-        }, wait_time);
-    }).on(event_namespaces.slice(1).join(','), ()=>{
-        clearTimeout(timer);
-        clearInterval(interval);
-    });
-};
-
-JSPLib.menu.renderMenuFramework = function (menu_config) {
-    let settings_html = menu_config.settings.map((setting) => this.renderMenuSection(setting,'settings')).join('\n');
-    let control_html = menu_config.controls.map((control) => this.renderMenuSection(control,'controls')).join('\n');
-    let topic_message = (menu_config.topic_id ? `<p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/${menu_config.topic_id}">topic #${menu_config.topic_id}</a>).</p>` : "");
-    let wiki_message = (menu_config.wiki_page ? `<p>Visit the wiki page for usage information (<a rel="external noreferrer" target="_blank"href="${menu_config.wiki_page}">${menu_config.wiki_page}</a>).</p>` : "");
-return `
-<div id="${this.program_shortcut}-script-message" class="prose">
-    <h2>${this.program_name}</h2>
-    ${topic_message}
-    ${wiki_message}
-</div>
-<div id="${this.program_shortcut}-console" class="jsplib-console">
-    <div id="${this.program_shortcut}-settings" class="jsplib-outer-menu">
-        ${settings_html}
-        <div id="${this.program_shortcut}-settings-buttons" class="jsplib-settings-buttons">
-            <input type="button" id="${this.program_shortcut}-commit" class="jsplib-commit" value="Save">
-            <input type="button" id="${this.program_shortcut}-resetall" class="jsplib-resetall" value="Factory Reset">
-        </div>
-    </div>
-    <div id="${this.program_shortcut}-controls" class="jsplib-outer-menu">
-        ${control_html}
-    </div>
-</div>`;
-};
-
-JSPLib.menu.renderMenuSection = function (value,type) {
-    let message = (value.message ? `<p>${value.message}</p>` : "");
-    let section_key = JSPLib.utility.kebabCase(value.name);
-    let section_name = JSPLib.utility.displayCase(value.name);
-    return `
-<div id="${this.program_shortcut}-${section_key}-${type}" class="jsplib-${type}-grouping">
-    <div id="${this.program_shortcut}-${section_key}-${type}-message" class="prose">
-        <h4>${section_name} ${type}</h4>
-        ${message}
-    </div>
-</div>
-<hr>`;
-};
+////NONE
 
 // Helper functions
 
@@ -1320,7 +1263,7 @@ function QueryNewNotations() {
     QueryNoteVersions({id_gt: TA.last_id}, {only: 'id,updated_at'}).then((data)=>{
         if (data.length > 0) {
             JSPLib.debug.debuglog("New note record:", data);
-            alert("New noter detected: " + TimeAgo(ToTimeStamp(data[0].updated_at)));
+            alert("New noter detected: " + JSPLib.utility.timeAgo(data[0].updated_at));
             TA.noter_detected = true;
         } else {
             JSPLib.debug.debuglog("No new noter detected.");
@@ -1336,7 +1279,7 @@ function QueryLastNotation() {
     QueryNoteVersions({}, query_options).then((data)=>{
         JSPLib.debug.debuglog("Last note record:", data);
         TA.last_noter_queried = true;
-        let timeago_timestamp = (data.length ? TimeAgo(ToTimeStamp(data[0].updated_at)) : 'N/A');
+        let timeago_timestamp = (data.length ? JSPLib.utility.timeAgo(data[0].updated_at) : 'N/A');
         let updater_name = data[0]?.updater?.name || 'N/A';
         let total_notes = $('#notes > article').length;
         let [embedded_status, embedded_color] = (TA.has_embedded ? ['Enabled', 'green'] : ['Disabled', 'red']);
@@ -1351,25 +1294,6 @@ function QueryLastNotation() {
         ToggleSideMenu(true, false);
         TA.last_id = data[0]?.id || TA.last_id;
     });
-}
-
-// Time functions
-
-function ToTimeStamp(time_string) {
-    return new Date(time_string).getTime();
-}
-
-function TimeAgo(timestamp) {
-    let time_interval = Date.now() - timestamp;
-    if (time_interval < JSPLib.utility.one_hour) {
-        return JSPLib.utility.setPrecision(time_interval / JSPLib.utility.one_minute, 2) + " minutes ago";
-    } else if (time_interval < JSPLib.utility.one_day) {
-        return JSPLib.utility.setPrecision(time_interval / JSPLib.utility.one_hour, 2) + " hours ago";
-    } else if (time_interval < JSPLib.utility.one_month) {
-        return JSPLib.utility.setPrecision(time_interval / JSPLib.utility.one_day, 2) + " days ago";
-    } else {
-        return "> 1 month ago";
-    }
 }
 
 //// HTML functions
@@ -1677,7 +1601,7 @@ function ReloadNotes() {
 }
 
 function GetMovableNote() {
-    let note = [...Danbooru.Note.notes.filter((note) => note.is_selected())][0];
+    let note = [...Danbooru.Note.notes].filter((note) => note.is_selected())[0];
     if (!note) {
         JSPLib.notice.error("No selected note!");
     } else {
@@ -1943,7 +1867,7 @@ function OpenSideMenu() {
 function CloseSideMenu() {
     ToggleSideMenu(false);
     if (!TA.close_notice_shown && TA.user_settings.close_notice_enabled) {
-        JSPLib.notice.notice("The Translator Assist menu can be reopened by clicking <u>Translator Assist</u> in the <b>Post options</b> menu.");
+        JSPLib.notice.notice("The Translator Assist menu can be reopened by clicking <u>Translator Assist</u> in the <b>Post options</b> menu (Alt+T).");
         TA.close_notice_shown = true;
     } else {
         TA.$close_notice_link.click();
@@ -2155,17 +2079,10 @@ function ToggleEmbeddedMode() {
     });
     ReloadNotes();
     TA.has_embedded = !TA.has_embedded;
-    JSPLib.network.ajax({
-        type: 'PUT',
-        url: `/posts/${TA.post_id}.json`,
-        data: {
-            'post': {
-                'has_embedded_notes': TA.has_embedded,
-            },
-        },
-        success: ()=>{JSPLib.notice.notice("Settings updated.");},
-        error:()=>{JSPLib.notice.error("Error updating settings.");},
-    });
+    JSPLib.network.put(`/posts/${TA.post_id}.json`, {data: {post: {has_embedded_notes: TA.has_embedded}}}).then(
+        ()=>{JSPLib.notice.notice("Settings updated.");},
+        ()=>{JSPLib.notice.error("Error updating settings.");},
+    );
 }
 
 function AddEmbeddedElement() {
@@ -2270,10 +2187,13 @@ function SaveNote() {
             width: note.w,
             height: note.h
         };
-        $.ajax(`/notes/${note.id}.json`, { type: "PUT", data: { note: params }}).then(()=>{
-            note.box.$note_box.removeClass("unsaved");
-            JSPLib.notice.notice(`Note #${note.id} saved.`);
-        });
+        JSPLib.network.put(`/notes/${note.id}.json`, {data: {note: params }}).then(
+            ()=>{
+                note.box.$note_box.removeClass("unsaved");
+                JSPLib.notice.notice(`Note #${note.id} saved.`);
+            },
+            ()=>{JSPLib.notice.error(`Error saving note #${note.id}`);}
+        );
     } else {
         JSPLib.notice.error("Save not available for new unsaved notes.");
     }
@@ -2283,7 +2203,7 @@ function ResetNote() {
     let note = GetMovableNote();
     if (!note) return;
     if (!note.is_new()) {
-        $.getJSON(`/notes/${note.id}.json`).then((data)=>{
+        JSPLib.network.getJSON(`/notes/${note.id}.json`).then((data)=>{
             note.box.place_note(data.x, data.y, data.width, data.height);
             let text_area = GetActiveTextArea();
             if (text_area) {
@@ -2304,9 +2224,10 @@ async function DeleteNote() {
     if (!note) return;
     if (!note.is_new()) {
         if (!confirm("Do you really want to delete this note?")) return;
-        $.ajax(`/notes/${note.id}.json`, { type: "DELETE" }).then(()=>{
-            JSPLib.notice.notice(`Note #${note.id} deleted.`);
-        });
+        JSPLib.network.delete(`/notes/${note.id}.json`).then(
+            ()=>{JSPLib.notice.notice(`Note #${note.id} deleted.`);},
+            ()=>{JSPLib.notice.error(`Error deleting note #${note.id}.`);},
+        );
     }
     note.box.$note_box.remove();
     note.body.$note_body.remove();
@@ -2476,17 +2397,13 @@ function ApplyRubyTag() {
 
 // Last noted functions
 
-function LastNotedAt() {
-    return ToTimeStamp(JSON.parse(document.body.dataset.postLastNotedAt));
-}
-
 function CheckLastNoted() {
     let seen_key = 'ta-post-seen-' + TA.post_id;
     let last_noted_cutoff = TA.user_settings.last_noted_cutoff * JSPLib.utility.one_minute;
     if ((Date.now() - TA.last_noted) < last_noted_cutoff) {
         let post_seen = JSPLib.storage.getStorageData(seen_key, sessionStorage, false);
         if (!post_seen) {
-            alert("Post was noted: " + TimeAgo(TA.last_noted));
+            alert("Post was noted: " + JSPLib.utility.timeAgo(TA.last_noted));
         }
     }
     JSPLib.storage.setStorageData(seen_key, true, sessionStorage);
@@ -2589,6 +2506,16 @@ function InitializeSideMenu() {
 
 // Settings functions
 
+function InitializeProgramValues() {
+    Object.assign(TA, {
+        post_id: JSPLib.danbooru.getShowID(),
+        user_id: Danbooru.CurrentUser.data('id'),
+        has_embedded: JSPLib.utility.getMeta('post-has-embedded-notes') === 'true',
+        last_noted: JSPLib.utility.toTimeStamp(document.body.dataset.postLastNotedAt),
+    });
+    return true;
+}
+
 function RenderSettingsMenu() {
     $('#translator-assist').append(JSPLib.menu.renderMenuFramework(MENU_CONFIG));
     $("#ta-general-settings").append(JSPLib.menu.renderDomainSelectors());
@@ -2616,27 +2543,14 @@ function RenderSettingsMenu() {
 // Main function
 
 function Main() {
-    Object.assign(TA, {
-        controller: document.body.dataset.controller,
-        action: document.body.dataset.action,
-        post_id: $('body').data('post-id'),
-        user_id: Danbooru.CurrentUser.data('id'),
-        user_settings: JSPLib.menu.loadUserSettings(),
-    } , DEFAULT_VALUES);
-    if (JSPLib.danbooru.isSettingMenu()) {
-        JSPLib.menu.initializeSettingsMenu(RenderSettingsMenu);
-        JSPLib.utility.setCSSStyle(MENU_CSS, 'menu');
-        return;
-    }
-    if (!JSPLib.menu.isScriptEnabled()) {
-        JSPLib.debug.debuglog("Script is disabled on", window.location.hostname);
-        return;
-    }
-    Object.assign(TA, {
-        has_embedded: JSPLib.utility.getMeta('post-has-embedded-notes') === 'true',
-        was_noted: $(document.body).data('post-last-noted-at') !== null,
-        last_noted: LastNotedAt(),
-    });
+    JSPLib.debug.debuglog("Initialize start:", JSPLib.utility.getProgramTime());
+    const preload = {
+        run_on_settings: false,
+        default_data: DEFAULT_VALUES,
+        initialize_func: InitializeProgramValues,
+        menu_css: MENU_CSS,
+    };
+    if (!JSPLib.menu.preloadScript(TA, RenderSettingsMenu, preload)) return;
     $('#translate').on(PROGRAM_CLICK, ToggleSideNotice);
     if (TA.user_settings.check_last_noted_enabled) {
         CheckLastNoted();
@@ -2664,4 +2578,4 @@ JSPLib.load.exportData(PROGRAM_NAME, TA);
 
 /****Execution start****/
 
-JSPLib.load.programInitialize(Main, PROGRAM_NAME, PROGRAM_LOAD_REQUIRED_VARIABLES, [], PROGRAM_LOAD_OPTIONAL_SELECTORS);
+JSPLib.load.programInitialize(Main, {program_name: PROGRAM_NAME, required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, optional_selectors: PROGRAM_LOAD_OPTIONAL_SELECTORS});
