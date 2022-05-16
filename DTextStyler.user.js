@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DTextStyler
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.3
+// @version      5.4
 // @description  Danbooru DText UI addon.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -9,19 +9,17 @@
 // @exclude      /^https?://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
 // @grant        none
 // @run-at       document-end
-// @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/DTextStyler.user.js
-// @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/stable/DTextStyler.user.js
+// @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/DTextStyler.user.js
+// @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/DTextStyler.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220417-menu/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru Papa */
@@ -61,30 +59,30 @@ const ALL_ACTIONS = ['undo', 'redo'];
 //Main settings
 const SETTINGS_CONFIG = {
     post_commentary_enabled: {
-        default: true,
+        reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Show dtext controls on the post commentary dialog."
     },
     upload_commentary_enabled: {
-        default: true,
+        reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Show dtext controls above the upload commentary inputs."
     },
     dtext_types_handled: {
         allitems: ALL_TYPES,
-        default: ALL_TYPES,
+        reset: ALL_TYPES,
         validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'checkbox', ALL_TYPES),
         hint: "Show dtext controls above the preview area for the available types.",
     },
     available_dtext_markup: {
         allitems: ALL_MARKUP,
-        default: ALL_MARKUP,
+        reset: ALL_MARKUP,
         validate: (data) => (JSPLib.menu.validateCheckboxRadio(data, 'checkbox', ALL_MARKUP) && (data.length > 0)),
         hint: "Select the list of available DText tags to be shown. Must have at least one.",
     },
     available_dtext_actions: {
         allitems: ALL_ACTIONS,
-        default: ALL_ACTIONS,
+        reset: ALL_ACTIONS,
         validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'checkbox', ALL_ACTIONS),
         hint: "Select the list of available DText actions to be shown.",
     },
@@ -484,51 +482,7 @@ const DTEXT_SELECTORS = {
 
 //Library functions
 
-JSPLib.utility.blockActiveElementSwitch = function (selector) {
-    $(selector).each((_i , elem)=>{
-        // Allows the use of document.activeElement to get the last selected text input or textarea
-        elem.onmousedown = (e)=>{(e || window.event).preventDefault();};
-    });
-};
-
-JSPLib.menu.renderMenuFramework = function (menu_config) {
-    let settings_html = menu_config.settings.map((setting) => this.renderMenuSection(setting,'settings')).join('\n');
-    let control_html = menu_config.controls.map((control) => this.renderMenuSection(control,'controls')).join('\n');
-    let topic_message = (menu_config.topic_id ? `<p>Check the forum for the latest on information and updates (<a class="dtext-link dtext-id-link dtext-forum-topic-id-link" href="/forum_topics/${menu_config.topic_id}">topic #${menu_config.topic_id}</a>).</p>` : "");
-    let wiki_message = (menu_config.wiki_page ? `<p>Visit the wiki page for usage information (<a rel="external noreferrer" target="_blank" href="${menu_config.wiki_page}">${menu_config.wiki_page}</a>).</p>` : "");
-return `
-<div id="${this.program_shortcut}-script-message" class="prose">
-    <h2>${this.program_name}</h2>
-    ${topic_message}
-    ${wiki_message}
-</div>
-<div id="${this.program_shortcut}-console" class="jsplib-console">
-    <div id="${this.program_shortcut}-settings" class="jsplib-outer-menu">
-        ${settings_html}
-        <div id="${this.program_shortcut}-settings-buttons" class="jsplib-settings-buttons">
-            <input type="button" id="${this.program_shortcut}-commit" class="jsplib-commit" value="Save">
-            <input type="button" id="${this.program_shortcut}-resetall" class="jsplib-resetall" value="Factory Reset">
-        </div>
-    </div>
-    <div id="${this.program_shortcut}-controls" class="jsplib-outer-menu">
-        ${control_html}
-    </div>
-</div>`;
-};
-
-JSPLib.menu.renderMenuSection = function (value,type) {
-    let message = (value.message ? `<p>${value.message}</p>` : "");
-    let section_key = JSPLib.utility.kebabCase(value.name);
-    let section_name = JSPLib.utility.displayCase(value.name);
-    return `
-<div id="${this.program_shortcut}-${section_key}-${type}" class="jsplib-${type}-grouping">
-    <div id="${this.program_shortcut}-${section_key}-${type}-message" class="prose">
-        <h4>${section_name} ${type}</h4>
-        ${message}
-    </div>
-</div>
-<hr>`;
-};
+////NONE
 
 //Auxiliary functions
 
@@ -826,7 +780,7 @@ function DtextPreview() {
         let preview = {section, part};
         let inline = preview.inline = [...input.classList].includes('string');
         let body = preview.body = input.value;
-        let promise = (body.trim(/\s+/).length > 0 ? JSPLib.network.post('/dtext_preview', {body, inline}) : Promise.resolve(null));
+        let promise = (body.trim(/\s+/).length > 0 ? JSPLib.network.post('/dtext_preview', {data: {body, inline}}) : Promise.resolve(null));
         promise_array.push(promise);
         preview_array.push(preview);
     });
@@ -1023,6 +977,13 @@ function InitializeUploadCommentary() {
 
 // Settings functions
 
+function InitializeProgramValues() {
+    Object.assign(DS, {
+        $close_notice: $('#close-notice-link'),
+    });
+    return true;
+}
+
 function RenderSettingsMenu() {
     $('#dtext-styler').append(JSPLib.menu.renderMenuFramework(MENU_CONFIG));
     $("#ds-general-settings").append(JSPLib.menu.renderDomainSelectors());
@@ -1039,21 +1000,14 @@ function RenderSettingsMenu() {
 //Main program
 
 function Main() {
-    Object.assign(DS, {
-        controller: document.body.dataset.controller,
-        action: document.body.dataset.action,
-        $close_notice: $('#close-notice-link'),
-        user_settings: JSPLib.menu.loadUserSettings(),
-    } , DEFAULT_VALUES);
-    if (JSPLib.danbooru.isSettingMenu()) {
-        JSPLib.menu.initializeSettingsMenu(RenderSettingsMenu);
-        JSPLib.utility.setCSSStyle(MENU_CSS, 'menu');
-        return;
-    }
-    if (!JSPLib.menu.isScriptEnabled()) {
-        JSPLib.debug.debuglog("Script is disabled on", window.location.hostname);
-        return;
-    }
+    JSPLib.debug.debuglog("Initialize start:", JSPLib.utility.getProgramTime());
+    const preload = {
+        run_on_settings: false,
+        default_data: DEFAULT_VALUES,
+        initialize_func: InitializeProgramValues,
+        menu_css: MENU_CSS,
+    };
+    if (!JSPLib.menu.preloadScript(DS, RenderSettingsMenu, preload)) return;
     if (DS.user_settings.dtext_types_handled.length) {
         InitializeDtextPreviews();
     }
@@ -1088,4 +1042,4 @@ JSPLib.load.exportData(PROGRAM_NAME, DS);
 
 /****Execution start****/
 
-JSPLib.load.programInitialize(Main, 'DS', PROGRAM_LOAD_REQUIRED_VARIABLES, [], PROGRAM_LOAD_OPTIONAL_SELECTORS);
+JSPLib.load.programInitialize(Main, {program_name: PROGRAM_NAME, required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, optional_selectors: PROGRAM_LOAD_OPTIONAL_SELECTORS});
