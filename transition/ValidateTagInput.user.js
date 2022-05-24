@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.3
+// @version      29.4
 // @description  Validates tag add/remove inputs on a post edit or upload, plus several other post validations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -681,7 +681,7 @@ function ValidateUpload() {
         return true;
     }
     let errormessages = [];
-    let ratingtag = Boolean(JSPLib.utility.filterRegex(GetTagList(),/^rating:[sqe]/i).length);
+    let ratingtag = Boolean(JSPLib.utility.filterRegex(GetTagList(),/^rating:\w/).length);
     let ratingradio = $(".post_rating input").toArray().some((input) => input.checked);
     if (!ratingtag && !ratingradio) {
         errormessages.push("Must specify a rating.");
