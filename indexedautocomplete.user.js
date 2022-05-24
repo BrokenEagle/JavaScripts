@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.30
+// @version      28.31
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -717,45 +717,81 @@ const AUTOCOMPLETE_CAPITALIZATION = ['lowercase', 'uppercase', 'titlecase', 'pro
 
 //Danbooru constants
 
-const ALL_METATAGS = [
-    'user', 'approver', 'commenter', 'comm', 'noter', 'noteupdater', 'artcomm', 'commentaryupdater', 'flagger', 'appealer',
-    'upvote', 'downvote', 'fav', 'ordfav', 'favgroup', 'ordfavgroup', 'pool', 'ordpool', 'note', 'comment', 'commentary', 'id',
-    'rating', 'locked', 'source', 'status', 'filetype', 'disapproved', 'parent', 'child', 'search', 'embedded', 'md5', 'width',
-    'height', 'mpixels', 'ratio', 'score', 'favcount', 'filesize', 'date', 'age', 'order', 'limit', 'tagcount', 'pixiv_id', 'pixiv',
-    'unaliased', 'comment_count', 'deleted_comment_count', 'active_comment_count', 'note_count', 'deleted_note_count', 'active_note_count',
+const COUNT_METATAGS = [
+    'comment_count', 'deleted_comment_count', 'active_comment_count', 'note_count', 'deleted_note_count', 'active_note_count',
     'flag_count', 'child_count', 'deleted_child_count', 'active_child_count', 'pool_count', 'deleted_pool_count', 'active_pool_count',
-    'series_pool_count', 'collection_pool_count', 'appeal_count', 'approval_count', 'replacement_count', 'comments', 'deleted_comments',
-    'active_comments', 'notes', 'deleted_notes', 'active_notes', 'flags', 'children', 'deleted_children', 'active_children', 'pools',
-    'deleted_pools', 'active_pools', 'series_pools', 'collection_pools', 'appeals', 'approvals', 'replacements', 'gentags', 'chartags',
-    'copytags', 'arttags', 'metatags',
+    'series_pool_count', 'collection_pool_count', 'appeal_count', 'approval_count', 'replacement_count',
 ];
 
-const TYPE_TAGS = ['ch', 'co', 'gen', 'char', 'copy', 'art', 'meta', 'general', 'character', 'copyright', 'artist'];
+const COUNT_METATAG_SYNONYMS = COUNT_METATAGS.map((metatag) => {
+    metatag = metatag.replace(/_count/, "");
+    if (metatag.match(/child$/)) {
+        metatag = metatag.replace(/child$/, 'children');
+    } else {
+        metatag += 's';
+    }
+    return metatag;
+});
 
+const CATEGORY_COUNT_METATAGS = ['gentags', 'arttags', 'copytags', 'chartags', 'metatags'];
+
+const ALL_METATAGS = JSPLib.utility.multiConcat([
+    'user', 'approver', 'commenter', 'comm', 'noter', 'noteupdater', 'artcomm', 'commentaryupdater',
+    'flagger', 'appealer', 'upvote', 'downvote', 'fav', 'ordfav', 'favgroup', 'ordfavgroup', 'pool',
+    'ordpool', 'note', 'comment', 'commentary', 'id', 'rating', 'locked', 'source', 'status', 'filetype',
+    'disapproved', 'parent', 'child', 'search', 'embedded', 'md5', 'width', 'height', 'mpixels', 'ratio',
+    'score', 'favcount', 'filesize', 'date', 'age', 'order', 'limit', 'tagcount', 'pixiv_id', 'pixiv',
+    'unaliased', 'exif', 'duration', 'random', 'is', 'has'
+], COUNT_METATAGS, COUNT_METATAG_SYNONYMS, CATEGORY_COUNT_METATAGS);
+
+const ORDER_METATAGS = JSPLib.utility.multiConcat([
+    'id', 'id_desc',
+    'md5', 'md5_asc',
+    'score', 'score_asc',
+    'upvotes', 'upvotes_asc',
+    'downvotes', 'downvotes_asc',
+    'favcount', 'favcount_asc',
+    'created_at', 'created_at_asc',
+    'change', 'change_asc',
+    'comment', 'comment_asc',
+    'comment_bumped', 'comment_bumped_asc',
+    'note', 'note_asc',
+    'artcomm', 'artcomm_asc',
+    'mpixels', 'mpixels_asc',
+    'portrait', 'landscape',
+    'filesize', 'filesize_asc',
+    'tagcount', 'tagcount_asc',
+    'duration', 'duration_asc',
+    'rank',
+    'curated',
+    'modqueue',
+    'random',
+    'custom',
+    'none',
+    ], COUNT_METATAGS,
+    COUNT_METATAG_SYNONYMS.flatMap((metatag) => [metatag, metatag + '_asc']),
+    CATEGORY_COUNT_METATAGS.flatMap((metatag) => [metatag, metatag + '_asc'])
+);
+
+const POST_STATUSES = ['active', 'deleted', 'pending', 'flagged', 'appealed', 'banned', 'modqueue', 'unmoderated'];
+const POST_RATINGS = ['general', 'sensitive', 'questionable', 'explicit'];
+const FILE_TYPES = ['jpg', 'png', 'gif', 'swf', 'zip', 'webm', 'mp4'];
 
 const STATIC_METATAGS = {
-    order: [
-        'id', 'id_desc', 'md5', 'md5_asc', 'score', 'score_asc', 'favcount', 'favcount_asc', 'created_at', 'created_at_asc', 'change', 'change_asc', 'comment',
-        'comment_asc', 'comment_bumped', 'comment_bumped_asc', 'note', 'note_asc', 'artcomm', 'artcomm_asc', 'mpixels', 'mpixels_asc', 'portrait', 'landscape',
-        'filesize', 'filesize_asc', 'tagcount', 'tagcount_asc', 'rank', 'curated', 'modqueue', 'random', 'custom', 'none', 'comment_count', 'deleted_comment_count',
-        'active_comment_count', 'note_count', 'deleted_note_count', 'active_note_count', 'flag_count', 'child_count', 'deleted_child_count', 'active_child_count',
-        'pool_count', 'deleted_pool_count', 'active_pool_count', 'series_pool_count', 'collection_pool_count', 'appeal_count', 'approval_count', 'replacement_count',
-        'comments', 'comments_asc', 'deleted_comments', 'deleted_comments_asc', 'active_comments', 'active_comments_asc', 'notes', 'notes_asc', 'deleted_notes',
-        'deleted_notes_asc', 'active_notes', 'active_notes_asc', 'flags', 'flags_asc', 'children', 'children_asc', 'deleted_children', 'deleted_children_asc',
-        'active_children', 'active_children_asc', 'pools', 'pools_asc', 'deleted_pools', 'deleted_pools_asc', 'active_pools', 'active_pools_asc', 'series_pools',
-        'series_pools_asc', 'collection_pools', 'collection_pools_asc', 'appeals', 'appeals_asc', 'approvals', 'approvals_asc', 'replacements', 'replacements_asc',
-        'gentags', 'gentags_asc', 'chartags', 'chartags_asc', 'copytags', 'copytags_asc', 'arttags', 'arttags_asc', 'metatags', 'metatags_asc',
-    ],
-    status: ['any', 'deleted', 'active', 'pending', 'flagged', 'banned', 'modqueue', 'unmoderated', 'appealed'],
-    rating: ['safe', 'questionable', 'explicit'],
-    locked: ['rating', 'note', 'status'],
+    is: JSPLib.utility.multiConcat(['parent', 'child', 'sfw', 'nsfw'], POST_STATUSES, FILE_TYPES, POST_RATINGS),
+    has: ['parent', 'children', 'source', 'appeals', 'flags', 'replacements', 'comments', 'commentary', 'notes', 'pools',],
+    status: JSPLib.utility.concat(['any'], POST_STATUSES),
+    child: JSPLib.utility.concat(['any', 'none'], POST_STATUSES),
+    parent: JSPLib.utility.concat(['any', 'none'], POST_STATUSES),
+    rating: POST_RATINGS,
     embedded: ['true', 'false'],
-    child: ['any', 'none', 'deleted', 'active', 'pending', 'flagged', 'banned', 'modqueue', 'unmoderated', 'appealed'],
-    parent: ['any', 'none', 'deleted', 'active', 'pending', 'flagged', 'banned', 'modqueue', 'unmoderated', 'appealed'],
-    filetype: ['jpg', 'png', 'gif', 'swf', 'zip', 'webm', 'mp4'],
+    filetype: FILE_TYPES,
     commentary: ['true', 'false', 'translated', 'untranslated'],
-    disapproved: ['breaks_rules', 'poor_quality', 'disinterest']
+    disapproved: ['breaks_rules', 'poor_quality', 'disinterest'],
+    order: ORDER_METATAGS,
 };
+
+const TYPE_TAGS = ['ch', 'co', 'gen', 'char', 'copy', 'art', 'meta', 'general', 'character', 'copyright', 'artist'];
 
 //Regex constants
 
