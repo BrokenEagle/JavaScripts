@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DisplayPostInfo
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      12.5
+// @version      12.6
 // @description  Display views, uploader, and other info to the user.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -246,8 +246,12 @@ const POST_STATISTICS_TABLE = `
             <td>%FAVES_AVERAGE% ± %FAVES_DEVIATION%</td>
         </tr>
         <tr>
-            <th>Safe:</th>
-            <td>%SAFE_PERCENTAGE%%</td>
+            <th>General:</th>
+            <td>%GENERAL_PERCENTAGE%%</td>
+        </tr>
+        <tr>
+            <th>Sensitive:</th>
+            <td>%SENSITIVE_PERCENTAGE%%</td>
         </tr>
         <tr>
             <th><span style="font-size:90%;letter-spacing:-1px">Questionable:</span></th>
@@ -652,7 +656,8 @@ function ProcessPostStatistics() {
     let total_posts = $post_previews.length;
     let score_list = JSPLib.utility.getDOMAttributes($post_previews, 'score', Number);
     let faves_list = JSPLib.utility.getDOMAttributes($post_previews, 'fav-count', Number);
-    let safe_count = $post_previews.filter("[data-rating=s]").length;
+    let general_count = $post_previews.filter("[data-rating=g]").length;
+    let sensitive_count = $post_previews.filter("[data-rating=s]").length;
     let questionable_count = $post_previews.filter("[data-rating=q]").length;
     let explicit_count = $post_previews.filter("[data-rating=e]").length;
     let statistics_html = JSPLib.utility.regexReplace(POST_STATISTICS_TABLE, {
@@ -660,7 +665,8 @@ function ProcessPostStatistics() {
         SCORE_DEVIATION: JSPLib.utility.setPrecision(JSPLib.statistics.standardDeviation(score_list), 1) || 0,
         FAVES_AVERAGE: JSPLib.utility.setPrecision(JSPLib.statistics.average(faves_list), 1) || 0,
         FAVES_DEVIATION: JSPLib.utility.setPrecision(JSPLib.statistics.standardDeviation(faves_list), 1) ||0,
-        SAFE_PERCENTAGE: Math.ceil(100 * (safe_count / total_posts)) || 0,
+        GENERAL_PERCENTAGE: Math.ceil(100 * (general_count / total_posts)) || 0,
+        SENSITIVE_PERCENTAGE: Math.ceil(100 * (sensitive_count / total_posts)) || 0,
         QUESTIONABLE_PERCENTAGE: Math.ceil(100 * (questionable_count / total_posts)) || 0,
         EXPLICIT_PERCENTAGE: Math.ceil(100 * (explicit_count / total_posts)) || 0,
         PENDING_COUNT: $post_previews.filter('[data-flags*="pending"]').length,
