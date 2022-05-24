@@ -77,9 +77,9 @@ const PROGRAM_RESET_KEYS = {
 };
 
 //Available setting values
-const tag_sources = ['metatag', 'tag', 'tag-abbreviation', 'tag-alias', 'tag-correction', 'tag-other-name'];
-const scale_types = ['linear', 'square_root', 'logarithmic'];
-const related_query_types = ['default', 'frequent', 'similar', 'like'];
+const TAG_SOURCES = ['metatag', 'tag', 'tag-abbreviation', 'tag-alias', 'tag-correction', 'tag-other-name'];
+const SCALE_TYPES = ['linear', 'square_root', 'logarithmic'];
+const RELATED_QUERY_TYPES = ['default', 'frequent', 'similar', 'like'];
 
 //Main settings
 const SETTINGS_CONFIG = {
@@ -117,9 +117,9 @@ const SETTINGS_CONFIG = {
         hint: "Check to use alternate weights and/or scales for sorting calculations."
     },
     postcount_scale: {
-        allitems: scale_types,
+        allitems: SCALE_TYPES,
         reset: ['linear'],
-        validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'radio', scale_types),
+        validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'radio', SCALE_TYPES),
         hint: "Select the type of scaling to be applied to the post count."
     },
     exact_source_weight: {
@@ -173,10 +173,10 @@ const SETTINGS_CONFIG = {
         hint: "Groups the results by tag autocomplete sources."
     },
     source_order: {
-        allitems: tag_sources,
-        reset: tag_sources,
+        allitems: TAG_SOURCES,
+        reset: TAG_SOURCES,
         sortvalue: true,
-        validate: (data) => JSPLib.utility.arrayEquals(data, tag_sources),
+        validate: (data) => JSPLib.utility.arrayEquals(data, TAG_SOURCES),
         hint: "Used when source grouping is enabled. Drag and drop the sources to determine the group order."
     },
     alternate_tag_source: {
@@ -217,9 +217,9 @@ const SETTINGS_CONFIG = {
         hint: "Show controls that allow for alternate query types on related tags."
     },
     related_query_default: {
-        allitems: related_query_types,
+        allitems: RELATED_QUERY_TYPES,
         reset: ['default'],
-        validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'radio', related_query_types),
+        validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'radio', RELATED_QUERY_TYPES),
         hint: "Select the default query type selected on the related tag controls."
     },
     expandable_related_section_enabled: {
@@ -1113,7 +1113,7 @@ const AUTOCOMPLETE_CONSTRAINTS = {
         post_count: JSPLib.validate.postcount_constraints,
         type: JSPLib.validate.inclusion_constraints(['tag', 'metatag']),
         value: JSPLib.validate.stringonly_constraints,
-        source: JSPLib.validate.inclusion_constraints(tag_sources),
+        source: JSPLib.validate.inclusion_constraints(TAG_SOURCES),
     },
     get metatag() {
         return this.tag;
@@ -1527,7 +1527,7 @@ function RenderListItem(alink_func) {
 
 function RenderRelatedQueryControls() {
     let html = "";
-    related_query_types.forEach((type) => {
+    RELATED_QUERY_TYPES.forEach((type) => {
         let checked = (IAC.user_settings.related_query_default[0] === type ? 'checked' : "");
         let display_name = JSPLib.utility.displayCase(type);
         html += `
@@ -2886,9 +2886,6 @@ function Main() {
     JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
     JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
     JSPLib.load.noncriticalTasks(CleanupTasks);
-
-    //Temporary export to Danbooru to support older versions of RecentTagsCalc
-    Danbooru.IAC = IAC;
 }
 
 /****Function decoration****/
