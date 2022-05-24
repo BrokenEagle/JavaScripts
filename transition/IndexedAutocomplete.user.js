@@ -71,9 +71,9 @@ const LOCALSTORAGE_KEYS = [
     'iac-choice-info',
 ];
 const PROGRAM_RESET_KEYS = {
-    choice_order:{},
-    choice_data:{},
-    source_data:{},
+    choice_order: {},
+    choice_data: {},
+    source_data: {},
 };
 
 //Available setting values
@@ -289,21 +289,21 @@ const MENU_CONFIG = {
     topic_id: DANBOORU_TOPIC_ID,
     settings: [{
         name: 'general',
-    },{
+    }, {
         name: 'source',
-    },{
+    }, {
         name: 'usage',
         message: "How items get sorted that are selected by the user.",
-    },{
+    }, {
         name: 'display',
         message: "Affects the presentation of autocomplete data to the user.",
-    },{
+    }, {
         name: 'sort',
         message: "Affects the order of tag autocomplete data.",
-    },{
+    }, {
         name: 'related-tag',
         message: "Affects the related tags shown in the post/upload edit menu.",
-    },{
+    }, {
         name: 'network',
     }],
     controls: [],
@@ -387,8 +387,8 @@ body[data-current-user-theme=dark] .iac-already-used {
 }
 .related-tags .current-related-tags-columns li.selected:before {
     visibility: visible;
-}
-`;
+}`;
+
 const RELATED_QUERY_CONTROL_CSS = `
 #iac-related-query-type label {
     color: black;
@@ -420,6 +420,7 @@ const RELATED_QUERY_CONTROL_CSS = `
     outline: none;
     box-shadow: none;
 }`;
+
 const EXPANDABLE_RELATED_SECTION_CSS = `
 #iac-edit-scroll-wrapper {
     height: 20px;
@@ -768,9 +769,9 @@ const ORDER_METATAGS = JSPLib.utility.multiConcat([
     'random',
     'custom',
     'none',
-    ], COUNT_METATAGS,
-    COUNT_METATAG_SYNONYMS.flatMap((metatag) => [metatag, metatag + '_asc']),
-    CATEGORY_COUNT_METATAGS.flatMap((metatag) => [metatag, metatag + '_asc'])
+], COUNT_METATAGS,
+COUNT_METATAG_SYNONYMS.flatMap((metatag) => [metatag, metatag + '_asc']),
+CATEGORY_COUNT_METATAGS.flatMap((metatag) => [metatag, metatag + '_asc'])
 );
 
 const POST_STATUSES = ['active', 'deleted', 'pending', 'flagged', 'appealed', 'banned', 'modqueue', 'unmoderated'];
@@ -779,7 +780,7 @@ const FILE_TYPES = ['jpg', 'png', 'gif', 'swf', 'zip', 'webm', 'mp4'];
 
 const STATIC_METATAGS = {
     is: JSPLib.utility.multiConcat(['parent', 'child', 'sfw', 'nsfw'], POST_STATUSES, FILE_TYPES, POST_RATINGS),
-    has: ['parent', 'children', 'source', 'appeals', 'flags', 'replacements', 'comments', 'commentary', 'notes', 'pools',],
+    has: ['parent', 'children', 'source', 'appeals', 'flags', 'replacements', 'comments', 'commentary', 'notes', 'pools'],
     status: JSPLib.utility.concat(['any'], POST_STATUSES),
     child: JSPLib.utility.concat(['any', 'none'], POST_STATUSES),
     parent: JSPLib.utility.concat(['any', 'none'], POST_STATUSES),
@@ -810,7 +811,6 @@ const BUR_DATA = BUR_KEYWORDS.map((tag) => ({
 
 //Time constants
 const PRUNE_EXPIRES = JSPLib.utility.one_day;
-const NONCRITICAL_RECHECK = JSPLib.utility.one_minute;
 const JQUERY_DELAY = 500; //Delay for calling functions after initialization
 const TIMER_POLL_INTERVAL = 100; //Polling interval for checking program status
 const CALLBACK_INTERVAL = 1000; //Interval for fixup callback functions
@@ -840,7 +840,7 @@ const AUTOCOMPLETE_DOMLIST = [
     '[data-autocomplete=pool]',
     '[data-autocomplete=saved-search-label]',
     '[data-autocomplete=forum-topic]',
-    ].concat(AUTOCOMPLETE_REBINDLIST).concat(AUTOCOMPLETE_USERLIST);
+].concat(AUTOCOMPLETE_REBINDLIST).concat(AUTOCOMPLETE_USERLIST);
 
 const AUTOCOMPLETE_ALL_SELECTORS = AUTOCOMPLETE_DOMLIST.join(',');
 const AUTOCOMPLETE_USER_SELECTORS = AUTOCOMPLETE_USERLIST.join(',');
@@ -921,9 +921,7 @@ const SOURCE_CONFIG = {
                 source: tag.type,
             }
         ),
-        expiration: (d)=>{
-            return (d.length ? ExpirationTime('tag', d[0].post_count) : MinimumExpirationTime('tag'));
-        },
+        expiration: (d) => (d.length ? ExpirationTime('tag', d[0].post_count) : MinimumExpirationTime('tag')),
         fixupmetatag: false,
         fixupexpiration: false,
         searchstart: true,
@@ -941,7 +939,7 @@ const SOURCE_CONFIG = {
                 only: 'name,category,post_count,consequent_aliases[antecedent_name]',
             }
         ),
-        map: (tag,term) =>
+        map: (tag, term) =>
             Object.assign({
                 type: 'tag',
                 label: tag.name.replace(/_/g, ' '),
@@ -950,9 +948,7 @@ const SOURCE_CONFIG = {
                 post_count: tag.post_count,
             }, GetConsequentMatch(term, tag))
         ,
-        expiration: (d)=>{
-            return (d.length ? ExpirationTime('tag', d[0].post_count) : MinimumExpirationTime('tag'));
-        },
+        expiration: (d) => (d.length ? ExpirationTime('tag', d[0].post_count) : MinimumExpirationTime('tag')),
         fixupmetatag: false,
         fixupexpiration: false,
         searchstart: true,
@@ -963,80 +959,62 @@ const SOURCE_CONFIG = {
     },
     pool: {
         url: 'pools',
-        data: (term)=>{
-            return {
-                search: {
-                    order: 'post_count',
-                    name_matches: term
-                },
-                only: 'name,category,post_count'
-            };
-        },
-        map: (pool)=>{
-            return {
-                type: 'pool',
-                name: pool.name,
-                post_count: pool.post_count,
-                category: pool.category
-            };
-        },
-        expiration: (d)=>{
-            return (d.length ? ExpirationTime('pool', d[0].post_count) : MinimumExpirationTime('pool'));
-        },
+        data: (term) => ({
+            search: {
+                order: 'post_count',
+                name_matches: term
+            },
+            only: 'name,category,post_count'
+        }),
+        map: (pool) => ({
+            type: 'pool',
+            name: pool.name,
+            post_count: pool.post_count,
+            category: pool.category
+        }),
+        expiration: (d) => (d.length ? ExpirationTime('pool', d[0].post_count) : MinimumExpirationTime('pool')),
         fixupmetatag: true,
         fixupexpiration: false,
         searchstart: false,
         spacesallowed: true,
-        render: ($domobj,item) => $domobj.addClass('pool-category-' + item.category).text(item.label),
+        render: ($domobj, item) => $domobj.addClass('pool-category-' + item.category).text(item.label),
     },
     user: {
         url: 'users',
-        data: (term)=>{
-            return {
-                search: {
-                    order: 'post_upload_count',
-                    current_user_first: true,
-                    name_matches: term + '*'
-                },
-                only: 'name,level_string'
-            };
-        },
-        map: (user)=>{
-            return {
-                type: 'user',
-                name: user.name,
-                level: user.level_string
-            };
-        },
-        expiration: ()=>{
-            return MinimumExpirationTime('user');
-        },
+        data: (term) => ({
+            search: {
+                order: 'post_upload_count',
+                current_user_first: true,
+                name_matches: term + '*'
+            },
+            only: 'name,level_string'
+        }),
+        map: (user) => ({
+            type: 'user',
+            name: user.name,
+            level: user.level_string
+        }),
+        expiration: () => MinimumExpirationTime('user'),
         fixupmetatag: true,
         fixupexpiration: false,
         searchstart: true,
         spacesallowed: false,
-        render: ($domobj,item) => $domobj.addClass('user-' + item.level.toLowerCase()).text(item.label),
+        render: ($domobj, item) => $domobj.addClass('user-' + item.level.toLowerCase()).text(item.label),
     },
     favgroup: {
         url: 'favorite_groups',
-        data: (term)=>{
-            return {
-                search: {
-                    name_matches: term,
-                    creator_id: IAC.userid,
-                },
-                only: 'name,post_ids'
-            };
-        },
-        map: (favgroup)=>{
-            return {
-                name: favgroup.name,
-                post_count: favgroup.post_ids.length,
-            };
-        },
-        expiration: ()=>{
-            return MinimumExpirationTime('favgroup');
-        },
+        data: (term) => ({
+            search: {
+                name_matches: term,
+                creator_id: IAC.userid,
+            },
+            only: 'name,post_ids'
+        }),
+        map: (favgroup) => ({
+            name: favgroup.name,
+            post_count: favgroup.post_ids.length,
+        }),
+        expiration: () => MinimumExpirationTime('favgroup'),
         fixupmetatag: true,
         fixupexpiration: false,
         searchstart: false,
@@ -1044,22 +1022,16 @@ const SOURCE_CONFIG = {
     },
     search: {
         url: 'autocomplete',
-        data: (term)=>{
-            return {
-                search: {
-                    type: 'saved_search_label',
-                    query: term + '*'
-                }
-            };
-        },
-        map: (label)=>{
-            return {
-                name: label.value,
-            };
-        },
-        expiration: ()=>{
-            return MinimumExpirationTime('search');
-        },
+        data: (term) => ({
+            search: {
+                type: 'saved_search_label',
+                query: term + '*'
+            }
+        }),
+        map: (label) => ({
+            name: label.value,
+        }),
+        expiration: () => MinimumExpirationTime('search'),
         fixupmetatag: true,
         fixupexpiration: false,
         searchstart: true,
@@ -1067,84 +1039,66 @@ const SOURCE_CONFIG = {
     },
     wikipage: {
         url: 'wiki_pages',
-        data: (term)=>{
-            return {
-                search: {
-                    order: 'post_count',
-                    hide_deleted: true,
-                    title_ilike: term.replace(/ /g, '_') + '*',
-                },
-                only: 'title,tag[category]'
-            };
-        },
-        map: (wikipage)=>{
-            return {
-                label: wikipage.title.replace(/_/g, ' '),
-                value: wikipage.title,
-                category: (wikipage.tag && wikipage.tag.category) || 0,
-            };
-        },
-        expiration: ()=>{
-            return MinimumExpirationTime('wikipage');
-        },
+        data: (term) => ({
+            search: {
+                order: 'post_count',
+                hide_deleted: true,
+                title_ilike: term.replace(/ /g, '_') + '*',
+            },
+            only: 'title,tag[category]'
+        }),
+        map: (wikipage) => ({
+            label: wikipage.title.replace(/_/g, ' '),
+            value: wikipage.title,
+            category: (wikipage.tag && wikipage.tag.category) || 0,
+        }),
+        expiration: () => MinimumExpirationTime('wikipage'),
         fixupmetatag: false,
         fixupexpiration: true,
         searchstart: true,
         spacesallowed: true,
-        render: ($domobj,item) => $domobj.addClass('tag-type-' + item.category).text(item.label),
+        render: ($domobj, item) => $domobj.addClass('tag-type-' + item.category).text(item.label),
     },
     artist: {
         url: 'artists',
-        data: (term)=>{
-            return {
-                search: {
-                    order: 'post_count',
-                    is_active: true,
-                    name_like: term.trim().replace(/\s+/g, '_') + '*'
-                },
-                only: 'name'
-            };
-        },
-        map: (artist)=>{
-            return {
-                label: artist.name.replace(/_/g, ' '),
-                value: artist.name
-            };
-        },
-        expiration: ()=>{
-            return MinimumExpirationTime('artist');
-        },
+        data: (term) => ({
+            search: {
+                order: 'post_count',
+                is_active: true,
+                name_like: term.trim().replace(/\s+/g, '_') + '*'
+            },
+            only: 'name'
+        }),
+        map: (artist) => ({
+            label: artist.name.replace(/_/g, ' '),
+            value: artist.name
+        }),
+        expiration: () => MinimumExpirationTime('artist'),
         fixupmetatag: false,
         fixupexpiration: true,
         searchstart: true,
         spacesallowed: false,
-        render: ($domobj,item) => $domobj.addClass('tag-type-1').text(item.label),
+        render: ($domobj, item) => $domobj.addClass('tag-type-1').text(item.label),
     },
     forumtopic: {
         url: 'forum_topics',
-        data: (term)=>{
-            return {
-                search: {
-                    order: 'sticky',
-                    title_ilike: '*' + term + '*'
-                },
-                only: 'title,category_id'
-            };
-        },
-        map: (forumtopic)=>{
-            return {
-                value: forumtopic.title,
-                category: forumtopic.category_id
-            };
-        },
-        expiration: ()=>{
-            return MinimumExpirationTime('forumtopic');
-        },
+        data: (term) => ({
+            search: {
+                order: 'sticky',
+                title_ilike: '*' + term + '*'
+            },
+            only: 'title,category_id'
+        }),
+        map: (forumtopic) => ({
+            value: forumtopic.title,
+            category: forumtopic.category_id
+        }),
+        expiration: () => MinimumExpirationTime('forumtopic'),
         fixupmetatag: false,
         fixupexpiration: false,
         searchstart: false,
         spacesallowed: true,
-        render: ($domobj,item) => $domobj.addClass('forum-topic-category-' + item.category).text(item.value),
+        render: ($domobj, item) => $domobj.addClass('forum-topic-category-' + item.category).text(item.value),
     }
 };
 
@@ -1234,22 +1188,22 @@ const COUNT_CONSTRAINTS = {
 
 //Validate functions
 
-function ValidateEntry(key,entry) {
+function ValidateEntry(key, entry) {
     if (!JSPLib.validate.validateIsHash(key, entry)) {
         return false;
     }
     if (key.match(/^(?:ac|pl|us|fg|ss|ar|wp|ft)-/)) {
         return ValidateAutocompleteEntry(key, entry);
-    } else if (key.match(/^rt[fsl](gen|char|copy|art)?-/)) {
+    } if (key.match(/^rt[fsl](gen|char|copy|art)?-/)) {
         return ValidateRelatedtagEntry(key, entry);
-    } else if (key.startsWith('ctat-')) {
+    } if (key.startsWith('ctat-')) {
         return JSPLib.validate.validateHashEntries(key, entry, COUNT_CONSTRAINTS);
     }
-    this.debug('log',"Bad key!");
+    this.debug('log', "Bad key!");
     return false;
 }
 
-function ValidateAutocompleteEntry(key,entry) {
+function ValidateAutocompleteEntry(key, entry) {
     if (!JSPLib.validate.validateHashEntries(key, entry, AUTOCOMPLETE_CONSTRAINTS.entry)) {
         return false;
     }
@@ -1262,7 +1216,7 @@ function ValidateAutocompleteEntry(key,entry) {
     return true;
 }
 
-function ValidateRelatedtagEntry(key,entry) {
+function ValidateRelatedtagEntry(key, entry) {
     if (!JSPLib.validate.validateHashEntries(key, entry, RELATEDTAG_CONSTRAINTS.entry)) {
         return false;
     }
@@ -1275,12 +1229,12 @@ function ValidateRelatedtagEntry(key,entry) {
     for (let title in entry.value.other_wikis) {
         let value = entry.value.other_wikis[title];
         let wiki_key = key + '.value.other_wikis.' + title;
-        let check = validate({title: title}, {title: RELATEDTAG_CONSTRAINTS.other_wiki_title});
+        let check = validate({title}, {title: RELATEDTAG_CONSTRAINTS.other_wiki_title});
         if (check !== undefined) {
             JSPLib.validate.outputValidateError(wiki_key, check);
             return false;
         }
-        check = validate({value: value}, {value: RELATEDTAG_CONSTRAINTS.other_wiki_value});
+        check = validate({value}, {value: RELATEDTAG_CONSTRAINTS.other_wiki_value});
         if (check !== undefined) {
             JSPLib.validate.outputValidateError(wiki_key, check);
             return false;
@@ -1289,8 +1243,8 @@ function ValidateRelatedtagEntry(key,entry) {
     return true;
 }
 
-function ValidateProgramData(key,entry) {
-    var checkerror=[];
+function ValidateProgramData(key, entry) {
+    var checkerror = [];
     switch (key) {
         case 'iac-user-settings':
             checkerror = JSPLib.menu.validateUserSettings(entry, SETTINGS_CONFIG);
@@ -1378,7 +1332,7 @@ function ValidateUsageData(choice_info) {
     let type_diff = JSPLib.utility.arraySymmetricDifference(Object.keys(choice_order), Object.keys(choice_data));
     if (type_diff.length) {
         error_messages.push("Type difference between choice order and choice data:", type_diff);
-        type_diff.forEach((type)=>{
+        type_diff.forEach((type) => {
             delete choice_order[type];
             delete choice_data[type];
         });
@@ -1388,7 +1342,7 @@ function ValidateUsageData(choice_info) {
         let key_diff = JSPLib.utility.arraySymmetricDifference(choice_order[type], Object.keys(choice_data[type]));
         if (key_diff.length) {
             error_messages.push("Key difference between choice order and choice data:", type, key_diff);
-            key_diff.forEach((key)=>{
+            key_diff.forEach((key) => {
                 choice_order[type] = JSPLib.utility.arrayDifference(choice_order[type], [key]);
                 delete choice_data[type][key];
             });
@@ -1415,7 +1369,7 @@ function ParseQuery(text, caret) {
     return { operator, metatag, term, prefix };
 }
 
-function RemoveTerm(str,index) {
+function RemoveTerm(str, index) {
     str = ' ' + str + ' ';
     let first_slice = str.slice(0, index);
     let second_slice = str.slice(index);
@@ -1432,7 +1386,7 @@ function GetPrefix(str) {
 }
 GetPrefix.prefixhash = {};
 
-function GetConsequentMatch(term,tag) {
+function GetConsequentMatch(term, tag) {
     let retval = {source: 'tag', antecedent: null};
     let regex = RegExp(JSPLib.utility.regexpEscape(term).replace(/\\\*/g, '.*'));
     if (!tag.name.match(regex)) {
@@ -1452,8 +1406,8 @@ function GetHasQuickSearchBar() {
     return ['forum-topics', 'forum-posts', 'comments'].includes(IAC.controller);
 }
 
-const MapMetatag = (type,metatag,value) => ({
-    type: type,
+const MapMetatag = (type, metatag, value) => ({
+    type,
     antecedent: null,
     label: metatag + ':' + value,
     value: metatag + ':' + value,
@@ -1495,7 +1449,7 @@ function MaximumExpirationTime(type) {
 }
 
 //Logarithmic increase of expiration time based upon a count
-function ExpirationTime(type,count) {
+function ExpirationTime(type, count) {
     let config = EXPIRATION_CONFIG[type];
     let expiration = Math.log10(10 * count / config.logarithmic_start) * config.minimum;
     expiration = Math.max(expiration, config.minimum);
@@ -1505,15 +1459,16 @@ function ExpirationTime(type,count) {
 
 //Render functions
 
-function RenderTaglist(taglist,columnname,tags_overlap,total_posts) {
+function RenderTaglist(taglist, columnname, tags_overlap, total_posts) {
     let html = "";
     let display_percentage = false;
+    var sample_size;
     if (IAC.user_settings.related_statistics_enabled && JSPLib.validate.isHash(tags_overlap) && Number.isInteger(total_posts)) {
         display_percentage = true;
         let max_posts = Math.min(total_posts, 1000);
-        var sample_size = Math.max(...Object.values(tags_overlap), max_posts);
+        sample_size = Math.max(...Object.values(tags_overlap), max_posts);
     }
-    taglist.forEach((tagdata)=>{
+    taglist.forEach((tagdata) => {
         let tag = tagdata[0];
         let category = tagdata[1];
         let display_name = tag.replace(/_/g, ' ');
@@ -1562,7 +1517,7 @@ ${column}
 }
 
 function RenderListItem(alink_func) {
-    return function (list,item) {
+    return function (list, item) {
         let $link = alink_func($('<a/>'), item);
         let $container = $('<div/>').append($link);
         HighlightSelected($container, list, item);
@@ -1572,7 +1527,7 @@ function RenderListItem(alink_func) {
 
 function RenderRelatedQueryControls() {
     let html = "";
-    related_query_types.forEach((type)=>{
+    related_query_types.forEach((type) => {
         let checked = (IAC.user_settings.related_query_default[0] === type ? 'checked' : "");
         let display_name = JSPLib.utility.displayCase(type);
         html += `
@@ -1586,7 +1541,7 @@ function RenderRelatedQueryControls() {
 }
 
 function RenderAutocompleteNotice(type, list, index) {
-    let values = list.map((val,i) => (index === i ? `<u>${val}</u>` : val));
+    let values = list.map((val, i) => (index === i ? `<u>${val}</u>` : val));
     let line = values.join('&nbsp;|&nbsp;');
     return `<b>Autocomplete ${type}</b>: ${line}`;
 }
@@ -1611,7 +1566,7 @@ function CapitalizeAutocomplete(string) {
     }
 }
 
-function FixupMetatag(value,metatag) {
+function FixupMetatag(value, metatag) {
     switch(metatag) {
         case '@':
             value.value = '@' + value.name;
@@ -1641,45 +1596,45 @@ function SortSources(data) {
         default:
             scaler = ((num) => num);
     }
-    data.sort((a,b)=>{
+    data.sort((a, b) => {
         let mult_a = IAC.user_settings[`${a.source}_source_weight`];
         let mult_b = IAC.user_settings[`${b.source}_source_weight`];
         let weight_a = mult_a * scaler(a.post_count);
         let weight_b = mult_b * scaler(b.post_count);
         return weight_b - weight_a;
-    }).forEach((entry,i)=>{
+    }).forEach((entry, i) => {
         data[i] = entry;
     });
 }
 
 function GroupSources(data) {
     let source_order = IAC.user_settings.source_order;
-    data.sort((a,b)=>(source_order.indexOf(a.source) - source_order.indexOf(b.source)));
+    data.sort((a, b) => (source_order.indexOf(a.source) - source_order.indexOf(b.source)));
 }
 
-function FixExpirationCallback(key,value,tagname,type) {
-    this.debug('log',"Fixing expiration:", tagname);
-    JSPLib.danbooru.submitRequest('tags', {search: {name: tagname}}).then((data)=>{
+function FixExpirationCallback(key, value, tagname, type) {
+    this.debug('log', "Fixing expiration:", tagname);
+    JSPLib.danbooru.submitRequest('tags', {search: {name: tagname}}).then((data) => {
         if (!data.length) {
             return;
         }
         let expiration_time = ExpirationTime(type, data[0].post_count);
-        JSPLib.storage.saveData(key, {value: value, expires: JSPLib.utility.getExpires(expiration_time)});
+        JSPLib.storage.saveData(key, {value, expires: JSPLib.utility.getExpires(expiration_time)});
     });
 }
 
 function GetArtistData(url) {
-        let urlkey = 'af-' + url;
-        let refkey = 'ref-' + url;
-        let data = JSPLib.storage.getStorageData(urlkey, sessionStorage);
-        if (data) {
-            return data;
-        }
-        let redirect = JSPLib.storage.getStorageData(refkey, sessionStorage);
-        if (redirect) {
-            this.debug('log',"Redirect found!", redirect);
-            return JSPLib.storage.getStorageData(redirect, sessionStorage);
-        }
+    let urlkey = 'af-' + url;
+    let refkey = 'ref-' + url;
+    let data = JSPLib.storage.getStorageData(urlkey, sessionStorage);
+    if (data) {
+        return data;
+    }
+    let redirect = JSPLib.storage.getStorageData(refkey, sessionStorage);
+    if (redirect) {
+        this.debug('log', "Redirect found!", redirect);
+        return JSPLib.storage.getStorageData(redirect, sessionStorage);
+    }
 }
 
 function SaveArtistData() {
@@ -1692,10 +1647,10 @@ function SaveArtistData() {
     let refkey = 'ref-' + ref;
     let source_info = LZString.compressToUTF16($('#source-info').html());
     let source_column = LZString.compressToUTF16($('.source-related-tags-columns').html());
-    this.debug('log',"Saving", urlkey);
-    JSPLib.storage.setStorageData(urlkey, {source_info: source_info, source_column: source_column}, sessionStorage);
+    this.debug('log', "Saving", urlkey);
+    JSPLib.storage.setStorageData(urlkey, {source_info, source_column}, sessionStorage);
     if (ref) {
-        this.debug('log',"Saving", refkey);
+        this.debug('log', "Saving", refkey);
         JSPLib.storage.setStorageData(refkey, urlkey, sessionStorage);
     }
 }
@@ -1716,25 +1671,25 @@ function GetRelatedKeyModifer(category, query_type) {
 
 async function GetPostCount(tag) {
     let key = 'ctat-' + tag;
-    this.debug('log',"Checking:", tag);
+    this.debug('log', "Checking:", tag);
     let cached = await JSPLib.storage.checkLocalDB(key, ValidateEntry, POST_COUNT_EXPIRES);
     if (!cached) {
-        this.debug('log',"Querying:", tag);
+        this.debug('log', "Querying:", tag);
         let data = await JSPLib.danbooru.submitRequest('counts/posts', {tags: tag}, {default_val: {counts: {posts: 0}}});
         cached = {value: data.counts.posts, expires: JSPLib.utility.getExpires(POST_COUNT_EXPIRES)};
         JSPLib.storage.saveData(key, cached);
     }
-    this.debug('log',"Found:", tag, cached.value);
+    this.debug('log', "Found:", tag, cached.value);
     return cached.value;
 }
 
 async function GetRelatedTags(tag, category, query_type) {
     let key = GetRelatedKeyModifer(category, query_type) + '-' + tag;
-    this.debug('log',"Checking:", key, category);
+    this.debug('log', "Checking:", key, category);
     let cached = await JSPLib.storage.checkLocalDB(key, ValidateEntry, RELATED_TAG_EXPIRES);
     if (!cached) {
-        this.debug('log',"Querying:", tag, category);
-        let url_addons = {query: tag, category: category};
+        this.debug('log', "Querying:", tag, category);
+        let url_addons = {query: tag, category};
         if (['frequent', 'similar', 'like'].includes(query_type)) {
             url_addons.type = query_type;
         }
@@ -1745,25 +1700,25 @@ async function GetRelatedTags(tag, category, query_type) {
         cached = {value: data, expires: JSPLib.utility.getExpires(RELATED_TAG_EXPIRES)};
         JSPLib.storage.saveData(key, cached);
     }
-    this.debug('log',"Found:", tag, category, cached.value);
+    this.debug('log', "Found:", tag, category, cached.value);
     return cached.value;
 }
 
 //Usage functions
 
-function KeepSourceData(type,metatag,data) {
+function KeepSourceData(type, metatag, data) {
     IAC.source_data[type] = IAC.source_data[type] || {};
-    data.forEach((val)=>{
+    data.forEach((val) => {
         let orig_key = val.value.replace(RegExp(`^${metatag}:?`), "");
         let key = (val.antecedent ? val.antecedent + '\xff' + orig_key : orig_key);
         IAC.source_data[type][key] = val;
     });
 }
 
-function GetChoiceOrder(type,query) {
+function GetChoiceOrder(type, query) {
     let checkprefix = false; //IAC.user_settings.prefix_check_enabled && (type === 'tag') && (query.length >= 2 && query.length <= 4);
     let queryterm = query.toLowerCase();
-    let available_choices = IAC.choice_order[type].filter((tag)=>{
+    let available_choices = IAC.choice_order[type].filter((tag) => {
         let tagterm = tag.toLowerCase();
         let tagprefix = (checkprefix ? GetPrefix(tagterm) : "");
         let queryindex = tagterm.indexOf(queryterm);
@@ -1771,13 +1726,11 @@ function GetChoiceOrder(type,query) {
         return (queryindex === 0) || (prefixindex === 0) || (!SOURCE_CONFIG[type].searchstart && queryindex > 0);
     });
     let sortable_choices = available_choices.filter((tag) => (IAC.choice_data[type][tag].use_count > 0));
-    sortable_choices.sort((a,b)=>{
-        return IAC.choice_data[type][b].use_count - IAC.choice_data[type][a].use_count;
-    });
+    sortable_choices.sort((a, b) => IAC.choice_data[type][b].use_count - IAC.choice_data[type][a].use_count);
     return JSPLib.utility.arrayUnique(sortable_choices.concat(available_choices));
 }
 
-function AddUserSelected(type,metatag,term,data,query_type) {
+function AddUserSelected(type, metatag, term, data, query_type) {
     IAC.shown_data = [];
     let order = IAC.choice_order[type];
     let choice = IAC.choice_data[type];
@@ -1810,11 +1763,11 @@ function AddUserSelected(type,metatag,term,data,query_type) {
 }
 
 //For autocomplete select
-function InsertUserSelected(data,input,selected) {
+function InsertUserSelected(data, input, selected) {
     if (!IAC.user_settings.usage_enabled) {
         return;
     }
-    var type,item,term,source_data;
+    var type, item, term, source_data;
     //Being hamstrung by Danbooru's select function of the multi-source tag complete
     if (typeof selected === 'string') {
         let autocomplete = $(input).autocomplete('instance');
@@ -1825,7 +1778,7 @@ function InsertUserSelected(data,input,selected) {
         }
         item = $links.data('item.autocomplete');
         if (!item) {
-            this.debug('log',"Error: No autocomplete data found!", $links, item);
+            this.debug('log', "Error: No autocomplete data found!", $links, item);
             return;
         }
         type = item.type;
@@ -1858,16 +1811,16 @@ function InsertUserSelected(data,input,selected) {
     if (item.category === METATAG_TAG_CATEGORY) {
         if (item.type === 'tag') {
             input.selectionStart = input.selectionEnd = input.selectionStart - 1;
-            setTimeout(()=>{$(input).autocomplete('search');}, 100);
+            setTimeout(() => {$(input).autocomplete('search');}, 100);
         }
         source_data = item;
-    } else if (item.source == 'tag-abbreviation') {
+    } else if (item.source === 'tag-abbreviation') {
         source_data = item;
     } else
     //Final failsafe
     if (!IAC.source_data[type] || !IAC.source_data[type][term]) {
         if (!IAC.choice_data[type] || !IAC.choice_data[type][term]) {
-            this.debug('log',"Error: Bad data selector!", type, term, selected, data, item);
+            this.debug('log', "Error: Bad data selector!", type, term, selected, data, item);
             return;
         }
         source_data = IAC.choice_data[type][term];
@@ -1886,7 +1839,7 @@ function InsertUserSelected(data,input,selected) {
     if (IAC.user_settings.usage_maximum > 0) {
         IAC.choice_data[type][term].use_count = Math.min(IAC.choice_data[type][term].use_count, IAC.user_settings.usage_maximum);
     }
-    IAC.shown_data.forEach((key)=>{
+    IAC.shown_data.forEach((key) => {
         if (key !== term) {
             IAC.choice_data[type][key].use_count = IAC.choice_data[type][key].use_count || 0;
             IAC.choice_data[type][key].use_count *= IAC.user_settings.usage_multiplier;
@@ -1928,7 +1881,7 @@ function InsertCompletion(input, completion) {
                 end = before_caret_text.length - 2;
             }
         }
-        setTimeout(()=>{DisableTextAreaAutocomplete($input);}, 100);
+        setTimeout(() => {DisableTextAreaAutocomplete($input);}, 100);
     } else {
         var query = ParseQuery(input.value, input.selectionStart);
         before_caret_text = before_caret_text.substring(0, before_caret_text.search(/\S+$/));
@@ -1951,14 +1904,14 @@ function StaticMetatagSource(term, metatag) {
     let full_term = `${metatag}:${lower_term}`;
     let data = SubmetatagData()
         .filter((data) => data.value.startsWith(full_term))
-        .sort((a,b) => a.value.localeCompare(b.value))
+        .sort((a, b) => a.value.localeCompare(b.value))
         .slice(0, IAC.user_settings.source_results_returned);
     AddUserSelected('metatag', "", full_term, data);
     return data;
 }
 
 //For autocomplete render
-function HighlightSelected($link,list,item) {
+function HighlightSelected($link, list, item) {
     if (IAC.user_settings.source_highlight_enabled) {
         if (item.expires) {
             $($link).addClass('iac-user-choice');
@@ -2006,11 +1959,11 @@ function HighlightSelected($link,list,item) {
 function CorrectUsageData() {
     let error_messages = ValidateUsageData(IAC);
     if (error_messages.length) {
-        this.debug('log',"Corrections to usage data detected!");
-        error_messages.forEach((error)=>{this.debug('log',error);});
+        this.debug('log', "Corrections to usage data detected!");
+        error_messages.forEach((error) => {this.debug('log', error);});
         StoreUsageData('correction');
     } else {
-        this.debug('log',"Usage data is valid.");
+        this.debug('log', "Usage data is valid.");
     }
 }
 
@@ -2021,7 +1974,7 @@ function PruneUsageData() {
         for (let key in type_entry) {
             let entry = type_entry[key];
             if (!JSPLib.utility.validateExpires(entry.expires, GetUsageExpires())) {
-                this.debug('log',"Pruning choice data!", type_key, key);
+                this.debug('log', "Pruning choice data!", type_key, key);
                 IAC.choice_order[type_key] = JSPLib.utility.arrayDifference(IAC.choice_order[type_key], [key]);
                 delete type_entry[key];
                 is_dirty = true;
@@ -2033,11 +1986,11 @@ function PruneUsageData() {
     }
 }
 
-function StoreUsageData(name,key="",save=true) {
+function StoreUsageData(name, key = "", save = true) {
     if (save) {
         JSPLib.storage.setStorageData('iac-choice-info', {choice_order: IAC.choice_order, choice_data: IAC.choice_data}, localStorage);
     }
-    IAC.channel.postMessage({type: 'reload', name: name, key: key, choice_order: IAC.choice_order, choice_data: IAC.choice_data});
+    IAC.channel.postMessage({type: 'reload', name, key, choice_order: IAC.choice_order, choice_data: IAC.choice_data});
 }
 
 //Non-autocomplete storage
@@ -2067,18 +2020,18 @@ async function FindArtistSession() {
         return;
     }
     let urlkey = 'af-' + url;
-    this.debug('log',"Checking artist", urlkey);
+    this.debug('log', "Checking artist", urlkey);
     let data = GetArtistData(url);
     if (data) {
-        this.debug('log',"Found artist data", urlkey);
+        this.debug('log', "Found artist data", urlkey);
         $('#source-info').html(LZString.decompressFromUTF16(data.source_info));
         $('.source-related-tags-columns').html(LZString.decompressFromUTF16(data.source_column));
         Danbooru.RelatedTag.update_selected();
     } else {
-        this.debug('log',"Missing artist data", urlkey);
+        this.debug('log', "Missing artist data", urlkey);
         $('#source-info').addClass('loading');
         try {
-            await $.get('/source.js', {url: url});
+            await $.get('/source.js', {url});
             SaveArtistData();
         } catch (e) {
             //swallow
@@ -2111,7 +2064,7 @@ function RelatedTagsScroll(event) {
 ////Setup functions
 
 function RebindRender() {
-    $(AUTOCOMPLETE_REBIND_SELECTORS).each((i,entry)=>{
+    $(AUTOCOMPLETE_REBIND_SELECTORS).each((i, entry) => {
         let render_set = $(entry).data('iac-render');
         let autocomplete_item = $(entry).data('uiAutocomplete');
         if (!render_set && autocomplete_item) {
@@ -2122,7 +2075,7 @@ function RebindRender() {
 }
 
 function DelayInitializeAutocomplete(...args) {
-    setTimeout(()=>{InitializeAutocompleteIndexed(...args);}, JQUERY_DELAY);
+    setTimeout(() => {InitializeAutocompleteIndexed(...args);}, JQUERY_DELAY);
 }
 
 function DelayInitializeTagAutocomplete(selector, type) {
@@ -2146,7 +2099,7 @@ function RebindRelatedTags() {
     //Only need to check one of them, since they're all bound at the same time
     JSPLib.utility.recheckTimer({
         check: () => JSPLib.utility.isNamespaceBound(document, 'click', 'danbooru', '.related-tags-button'),
-        exec: ()=>{
+        exec: () => {
             $(document).off('click.danbooru', '.related-tags-button');
             $(document).on('click.danbooru', '.related-tags-button', RelatedTagsButton);
         }
@@ -2156,17 +2109,17 @@ function RebindRelatedTags() {
 function RebindOpenEditMenu() {
     JSPLib.utility.recheckTimer({
         check: () => JSPLib.utility.isGlobalFunctionBound('danbooru:show-related-tags'),
-        exec: ()=>{
+        exec: () => {
             IAC.cached_data = true;
             InitializeShowRelatedTags();
         }
     }, TIMER_POLL_INTERVAL);
 }
 
-function RebindAnyAutocomplete(selector,keycode,multiple) {
+function RebindAnyAutocomplete(selector, keycode, multiple) {
     JSPLib.utility.recheckTimer({
         check: () => JSPLib.utility.hasDOMDataKey(selector, 'uiAutocomplete'),
-        exec: ()=>{
+        exec: () => {
             $(selector).autocomplete('destroy').off('keydown.Autocomplete.tab');
             InitializeAutocompleteIndexed(selector, keycode, multiple);
         }
@@ -2177,7 +2130,7 @@ function RebindMultipleTag() {
     const multi_selector = '[data-autocomplete=tag-query], [data-autocomplete=tag-edit]';
     JSPLib.utility.recheckTimer({
         check: () => JSPLib.utility.hasDOMDataKey(multi_selector, 'uiAutocomplete'),
-        exec: ()=>{
+        exec: () => {
             $(multi_selector).autocomplete('destroy').off('keydown.Autocomplete.tab');
             DanbooruIntializeTagAutocomplete();
         }
@@ -2187,20 +2140,20 @@ function RebindMultipleTag() {
 function RebindSingleTag() {
     JSPLib.utility.recheckTimer({
         check: () => JSPLib.utility.hasDOMDataKey('[data-autocomplete=tag]', 'uiAutocomplete'),
-        exec: ()=>{
+        exec: () => {
             let autocomplete = AnySourceIndexed('ac', true);
             let $fields = $('[data-autocomplete=tag]');
             $fields.autocomplete('destroy').off('keydown.Autocomplete.tab');
             $fields.autocomplete({
                 minLength: 1,
                 autoFocus: true,
-                source: async function(request,respond) {
+                async source(request, respond) {
                     let results = await autocomplete.call(this, request.term);
                     respond(results);
                 }
             });
-            setTimeout(()=>{
-                $fields.each((i,field)=>{
+            setTimeout(() => {
+                $fields.each((i, field) => {
                     $(field).data('uiAutocomplete')._renderItem = Danbooru.Autocomplete.render_item;
                 });
             }, JQUERY_DELAY);
@@ -2209,7 +2162,7 @@ function RebindSingleTag() {
 }
 
 function ReorderAutocompleteEvent($obj) {
-    function RequeueEvent(str,event_array) {
+    function RequeueEvent(str, event_array) {
         let position = event_array.findIndex((event) => event.namespace.startsWith(str));
         let item = event_array.splice(position, 1);
         event_array.unshift(item[0]);
@@ -2230,14 +2183,14 @@ function ReorderAutocompleteEvent($obj) {
 function DanbooruIntializeTagAutocomplete() {
     var $fields_multiple = $('[data-autocomplete="tag-query"], [data-autocomplete="tag-edit"]');
     $fields_multiple.autocomplete({
-        select: function(event, ui) {
+        select(event, ui) {
             if (event.key === "Enter") {
                 event.stopImmediatePropagation();
             }
             Danbooru.Autocomplete.insert_completion(this, ui.item.value);
             return false;
         },
-        source: async function(req, resp) {
+        async source(req, resp) {
             var query = ParseQuery(req.term, this.element.get(0).selectionStart);
             var metatag = query.metatag;
             var term = query.term;
@@ -2292,7 +2245,7 @@ function DanbooruIntializeTagAutocomplete() {
             resp(results);
         }
     });
-    $fields_multiple.each((i,entry)=>{
+    $fields_multiple.each((i, entry) => {
         let autocomplete = $(entry).data('uiAutocomplete');
         autocomplete._renderItem = Danbooru.Autocomplete.render_item;
     });
@@ -2302,14 +2255,14 @@ function DanbooruIntializeTagAutocomplete() {
     }
 }
 
-function InitializeAutocompleteIndexed(selector,keycode,multiple=false,wiki=false) {
+function InitializeAutocompleteIndexed(selector, keycode, multiple = false, wiki = false) {
     let type = SOURCE_KEY[keycode];
     var $fields = $(selector);
     let autocomplete = AnySourceIndexed(keycode, true);
     $fields.autocomplete({
         minLength: 1,
         delay: 100,
-        source: async function(request,respond) {
+        async source(request, respond) {
             var term;
             if (multiple || wiki) {
                 term = ParseQuery(request.term, this.element.get(0).selectionStart).term;
@@ -2323,27 +2276,27 @@ function InitializeAutocompleteIndexed(selector,keycode,multiple=false,wiki=fals
             let results = await autocomplete.call(this, term);
             respond(results);
         },
-        select: function (event,ui) {
+        select (event, ui) {
             InsertUserSelected(keycode, this, ui.item);
             if (wiki) {
                 InsertCompletion(this, ui.item.value);
                 event.stopImmediatePropagation();
                 return false;
-            } else if (multiple) {
+            } if (multiple) {
                 if (event.key === 'Enter') {
                     event.stopImmediatePropagation();
                 }
                 Danbooru.Autocomplete.insert_completion_old(this, ui.item.value);
                 return false;
-            } else {
-                ui.item.value = ui.item.value.trim();
-            }
+            } 
+            ui.item.value = ui.item.value.trim();
+            
             return ui.item.value;
         }
     });
-    let alink_func = (SOURCE_CONFIG[type].render ? SOURCE_CONFIG[type].render : ($domobj,item) => $domobj.text(item.value));
-    setTimeout(()=>{
-        $fields.each((i,field)=>{
+    let alink_func = (SOURCE_CONFIG[type].render ? SOURCE_CONFIG[type].render : ($domobj, item) => $domobj.text(item.value));
+    setTimeout(() => {
+        $fields.each((i, field) => {
             if (wiki) {
                 $(field).data('uiAutocomplete')._renderItem = Danbooru.Autocomplete.render_item;
             } else {
@@ -2362,7 +2315,7 @@ function InitializeTextAreaAutocomplete() {
     IAC.ac_source = JSPLib.storage.getStorageData('iac-ac-source', localStorage, 0);
     IAC.ac_mode = JSPLib.storage.getStorageData('iac-ac-mode', localStorage, 0);
     IAC.ac_caps = JSPLib.storage.getStorageData('iac-ac-caps', localStorage, 0);
-    $('textarea:not([data-autocomplete]), input[type=text]:not([data-autocomplete])').on(PROGRAM_KEYDOWN, null, 'alt+a', (event)=>{
+    $('textarea:not([data-autocomplete]), input[type=text]:not([data-autocomplete])').on(PROGRAM_KEYDOWN, null, 'alt+a', (event) => {
         let $input = $(event.currentTarget);
         let type = AUTOCOMPLETE_SOURCE[IAC.ac_source];
         if (!$input.data('insert-autocomplete')) {
@@ -2371,7 +2324,7 @@ function InitializeTextAreaAutocomplete() {
             DisableTextAreaAutocomplete($input, type);
         }
     }).data('insert-autocomplete', false);
-    $('textarea:not([data-autocomplete]), input[type=text]:not([data-autocomplete])').on(PROGRAM_KEYDOWN, null, 'alt+1 alt+2 alt+3', (event)=>{
+    $('textarea:not([data-autocomplete]), input[type=text]:not([data-autocomplete])').on(PROGRAM_KEYDOWN, null, 'alt+1 alt+2 alt+3', (event) => {
         if (event.originalEvent.key === '1') {
             IAC.ac_source = (IAC.ac_source + 1) % AUTOCOMPLETE_SOURCE.length;
             JSPLib.notice.notice(RenderAutocompleteNotice('source', AUTOCOMPLETE_SOURCE, IAC.ac_source));
@@ -2385,11 +2338,11 @@ function InitializeTextAreaAutocomplete() {
             JSPLib.notice.notice(RenderAutocompleteNotice('capitalization', AUTOCOMPLETE_CAPITALIZATION, IAC.ac_caps));
             JSPLib.storage.setStorageData('iac-ac-caps', IAC.ac_caps, localStorage);
         }
-        IAC.channel.postMessage({type: 'text_autocomplete', source: IAC.ac_source, mode: IAC.ac_mode , caps: IAC.ac_caps});
+        IAC.channel.postMessage({type: 'text_autocomplete', source: IAC.ac_source, mode: IAC.ac_mode, caps: IAC.ac_caps});
     });
 }
 
-function EnableTextAreaAutocomplete($input,type) {
+function EnableTextAreaAutocomplete($input, type) {
     if ($input.closest('.autocomplete-mentions').length > 0) {
         $input.autocomplete('destroy').off('keydown.Autocomplete.tab');
     }
@@ -2438,14 +2391,14 @@ function InitialiazeRelatedQueryControls() {
 
 function InitialiazeRelatedExpandableSection() {
     $('.related-tags').before(IAC_SCROLL_WRAPPER);
-    $('#iac-edit-scroll-wrapper').on(PROGRAM_SCROLL, ()=>{
+    $('#iac-edit-scroll-wrapper').on(PROGRAM_SCROLL, () => {
         $('.related-tags').scrollLeft($('#iac-edit-scroll-wrapper').scrollLeft());
     });
-    $('.related-tags').on(PROGRAM_SCROLL, ()=>{
+    $('.related-tags').on(PROGRAM_SCROLL, () => {
         $('#iac-edit-scroll-wrapper').scrollLeft($('.related-tags').scrollLeft());
     });
     let $container = $('#related-tags-container');
-    new ResizeObserver(()=>{
+    new ResizeObserver(() => {
         if ($container.hasClass('visible')) {
             QueueRelatedTagColumnWidths();
         }
@@ -2453,11 +2406,11 @@ function InitialiazeRelatedExpandableSection() {
 }
 
 function InitializeRelatedTagPopupListener() {
-    $(document).on('danbooru:open-post-edit-dialog.iac', ()=>{
+    $(document).on('danbooru:open-post-edit-dialog.iac', () => {
         $('.related-tags').on(PROGRAM_MOUSEENTER, RelatedTagsEnter);
         $('.related-tags').on(PROGRAM_MOUSELEAVE, RelatedTagsLeave);
     });
-    $(document).on('danbooru:close-post-edit-dialog.iac', ()=>{
+    $(document).on('danbooru:close-post-edit-dialog.iac', () => {
         $('.related-tags').off(PROGRAM_MOUSEENTER + ' ' + PROGRAM_MOUSELEAVE);
     });
 }
@@ -2467,29 +2420,29 @@ function InitializeRelatedTagColumnWidths() {
     const max_column_em = 20;
     const min_column_em = 10;
     const range = document.createRange();
-    const getChildWidth = (i,child) => {
+    const getChildWidth = (i, child) => {
         if (child.nodeType === 3) {
             range.selectNodeContents(child);
             const rects = range.getClientRects();
             return (rects.length > 0 ? rects[0].width : 0);
-        } else {
-            return $(child).outerWidth();
-        }
+        } 
+        return $(child).outerWidth();
+        
     };
-    const getSum = (a,b) => (a + b);
+    const getSum = (a, b) => (a + b);
     let $related_tags = $('.related-tags');
-    $('.tag-column', $related_tags[0]).each((i,column)=>{
+    $('.tag-column', $related_tags[0]).each((i, column) => {
         let $column = $(column);
         $column.css('width', "");
         let $container = $('>ul,>div', column);
         let $children = $container.children();
-        if ($children.length == 0) {
+        if ($children.length === 0) {
             return;
         }
         let line_tag = $container.children().get(0).tagName.toLowerCase();
         let container_tag = $container.get(0).tagName.toLowerCase();
         let line_selector = container_tag + '>' + line_tag;
-        let max_child_width = Math.max(...$(line_selector, column).map((i,entry)=>{
+        let max_child_width = Math.max(...$(line_selector, column).map((i, entry) => {
             let child_widths = $(entry).contents().map(getChildWidth).toArray();
             return child_widths.reduce(getSum, 0);
         }));
@@ -2512,7 +2465,7 @@ function QueueRelatedTagColumnWidths() {
     if (Number.isInteger(QueueRelatedTagColumnWidths.timer)) {
         clearTimeout(QueueRelatedTagColumnWidths.timer);
     }
-    QueueRelatedTagColumnWidths.timer = setTimeout(()=>{
+    QueueRelatedTagColumnWidths.timer = setTimeout(() => {
         InitializeRelatedTagColumnWidths();
         QueueRelatedTagColumnWidths.timer = null;
     }, 100);
@@ -2520,8 +2473,8 @@ function QueueRelatedTagColumnWidths() {
 
 //Main auxiliary functions
 
-async function NetworkSource(type,key,term,metatag,query_type,process=true) {
-    this.debug('log',"Querying", type, ':', term);
+async function NetworkSource(type, key, term, metatag, query_type, process = true) {
+    this.debug('log', "Querying", type, ':', term);
     const CONFIG = (IAC.user_settings.alternate_tag_wildcards && type === 'tag' && Boolean(term.match(/\*/)) ? SOURCE_CONFIG.tag2 : SOURCE_CONFIG[type]);
     let url_addons = $.extend({limit: IAC.user_settings.source_results_returned}, CONFIG.data(term));
     let data = await JSPLib.danbooru.submitRequest(CONFIG.url, url_addons);
@@ -2533,14 +2486,14 @@ async function NetworkSource(type,key,term,metatag,query_type,process=true) {
     var save_data = JSPLib.utility.dataCopy(d);
     JSPLib.storage.saveData(key, {value: save_data, expires: JSPLib.utility.getExpires(expiration_time)});
     if (CONFIG.fixupexpiration && d.length) {
-        setTimeout(()=>{FixExpirationCallback(key, save_data, save_data[0].value, type);}, CALLBACK_INTERVAL);
+        setTimeout(() => {FixExpirationCallback(key, save_data, save_data[0].value, type);}, CALLBACK_INTERVAL);
     }
     if (process) {
         return ProcessSourceData(type, metatag, term, d, query_type);
     }
 }
 
-function AnySourceIndexed(keycode,has_context=false) {
+function AnySourceIndexed(keycode, has_context = false) {
     var type = SOURCE_KEY[keycode];
     return async function (term, prefix) {
         if ((!SOURCE_CONFIG[type].spacesallowed || JSPLib.validate.isString(prefix)) && term.match(/\S\s/)) {
@@ -2565,19 +2518,19 @@ function AnySourceIndexed(keycode,has_context=false) {
     };
 }
 
-function RecheckSourceData(type,key,term,data) {
+function RecheckSourceData(type, key, term, data) {
     if (IAC.user_settings.recheck_data_interval > 0) {
         let recheck_time = data.expires - GetRecheckExpires();
         if (!JSPLib.utility.validateExpires(recheck_time)) {
-            this.debug('log',"Rechecking", type, ':', term);
+            this.debug('log', "Rechecking", type, ':', term);
             NetworkSource(type, key, term, null, null, false);
         }
     }
 }
 
-function ProcessSourceData(type,metatag,term,data,query_type) {
+function ProcessSourceData(type, metatag, term, data, query_type) {
     if (SOURCE_CONFIG[type].fixupmetatag) {
-        data.forEach((val)=> {FixupMetatag(val, metatag);});
+        data.forEach((val) => {FixupMetatag(val, metatag);});
     }
     KeepSourceData(type, metatag, data);
     if (type === 'tag') {
@@ -2722,7 +2675,7 @@ function SetupPostEditInitializations() {
         } else if (IAC.controller === 'uploads' || IAC.controller === 'upload-media-assets') {
             //Is source column empty?
             if (/^\s+$/.test($('.source-related-tags-columns').html())) {
-                this.debug('log',"Setting up mutation observer for source data.");
+                this.debug('log', "Setting up mutation observer for source data.");
                 JSPLib.concurrency.setupMutationReplaceObserver('.related-tags', '.source-related-tags-columns', SaveArtistData);
             } else {
                 SaveArtistData();
@@ -2732,10 +2685,10 @@ function SetupPostEditInitializations() {
         }
         if (IAC.user_settings.expandable_related_section_enabled) {
             InitializeRelatedTagPopupListener();
-            Danbooru.RelatedTag.show = JSPLib.utility.hijackFunction(Danbooru.RelatedTag.show, ()=>{
+            Danbooru.RelatedTag.show = JSPLib.utility.hijackFunction(Danbooru.RelatedTag.show, () => {
                 QueueRelatedTagColumnWidths();
             });
-            Danbooru.RelatedTag.hide = JSPLib.utility.hijackFunction(Danbooru.RelatedTag.hide, ()=>{
+            Danbooru.RelatedTag.hide = JSPLib.utility.hijackFunction(Danbooru.RelatedTag.hide, () => {
                 $('#iac-edit-scroll-wrapper').hide();
             });
         }
@@ -2749,13 +2702,13 @@ function CleanupTasks() {
 
 //Cache functions
 
-function OptionCacheDataKey(data_type,data_value) {
+function OptionCacheDataKey(data_type, data_value) {
     IAC.related_category = $('#iac-control-related-tag-type').val();
     let modifier = (data_type === 'related_tag' ? GetRelatedKeyModifer(IAC.related_category) : PROGRAM_DATA_KEY[data_type]);
     return `${modifier}-${data_value}`;
 }
 
-function UpdateLocalData(key,data) {
+function UpdateLocalData(key, data) {
     switch (key) {
         case 'iac-choice-info':
             IAC.choice_order = data.choice_order;
@@ -2770,7 +2723,7 @@ function UpdateLocalData(key,data) {
 //Settings functions
 
 function BroadcastIAC(event) {
-    this.debug('log',`(${event.data.type}): ${event.data.name} ${event.data.key}`);
+    this.debug('log', `(${event.data.type}): ${event.data.name} ${event.data.key}`);
     switch (event.data.type) {
         case 'text_autocomplete':
             IAC.ac_source = event.data.source;
@@ -2914,7 +2867,7 @@ function RenderSettingsMenu() {
 //Main program
 
 function Main() {
-    this.debug('log',"Initialize start:", JSPLib.utility.getProgramTime());
+    this.debug('log', "Initialize start:", JSPLib.utility.getProgramTime());
     const preload = {
         run_on_settings: true,
         default_data: DEFAULT_VALUES,
@@ -2943,11 +2896,11 @@ function Main() {
 [
     Main, BroadcastIAC, NetworkSource, FindArtistSession, PruneUsageData, CorrectUsageData, InsertUserSelected,
     SaveArtistData, GetArtistData, FixExpirationCallback, ValidateEntry, GetPostCount, GetRelatedTags,
-    SetupPostEditInitializations,RecheckSourceData, InitializeProgramValues,
+    SetupPostEditInitializations, RecheckSourceData, InitializeProgramValues,
 ] = JSPLib.debug.addFunctionLogs([
     Main, BroadcastIAC, NetworkSource, FindArtistSession, PruneUsageData, CorrectUsageData, InsertUserSelected,
     SaveArtistData, GetArtistData, FixExpirationCallback, ValidateEntry, GetPostCount, GetRelatedTags,
-    SetupPostEditInitializations,RecheckSourceData, InitializeProgramValues,
+    SetupPostEditInitializations, RecheckSourceData, InitializeProgramValues,
 ]);
 
 [
