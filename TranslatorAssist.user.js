@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.5
+// @version      5.0
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -230,7 +230,7 @@ const PROGRAM_CSS = `
 /** Side menu **/
 #ta-side-menu {
     position: fixed;
-    top: clamp(1rem, 100vh - 51.2rem, 8rem);
+    top: clamp(1rem, 100vh - 52.5rem, 8rem);
     left: 1em;
     width: 20em;
     height: auto;
@@ -291,10 +291,14 @@ const PROGRAM_CSS = `
 }
 /**** Main section ****/
 /****** Block subsection ******/
-.ta-html-style-tag {
+button.ta-html-style-tag {
     background-color: cadetblue;
     border-color: darkcyan;
     color: white;
+}
+button.ta-html-style-tag:hover {
+    background-color: cadetblue;
+    filter: brightness(1.25);
 }
 /****** Styles subsection ******/
 #ta-main-styles-subsection .ta-text-input {
@@ -554,12 +558,17 @@ const SIDE_MENU = `
                 <div id="ta-main-blocks-subsection" class="ta-subsection ta-cursor-initial">%BLOCKHTML%</div>
                 <div class="ta-header ta-cursor-text">Styles:</div>
                 <div id="ta-main-styles-subsection" class="ta-subsection ta-cursor-initial">%BLOCKCSS%</div>
+                <div class="ta-header ta-cursor-text">Actions:</div>
+                <div id="ta-main-actions-subsection" class="ta-subsection ta-cursor-initial">
+                    <button id="ta-delete-block" title="Delete HTML tag">Delete</button>
+                    <button id="ta-undo-action" disabled title="Undo the last action">Undo</button>
+                    <button id="ta-redo-action" disabled title="Redo the last action">Redo</button>
+                </div>
                 <div class="ta-header ta-cursor-text">Process:</div>
                 <div id="ta-main-process-subsection" class="ta-subsection ta-cursor-initial">
-                    <button id="ta-validate-note" disabled title="Validate HTML contents">Validate</button>
                     <button id="ta-normalize-note" title="Fix missing HTML tags">Fix</button>
                     <button id="ta-sanitize-note" disabled title="Have Danbooru render HTML">Sanitize</button>
-                    <button id="ta-sanitize-note" disabled title="Undo the last action">Undo</button>
+                    <button id="ta-validate-note" disabled title="Validate HTML contents">Validate</button>
                 </div>
                 <hr>
             </div>
@@ -1565,6 +1574,23 @@ function ChangeBlockElement(text_area, tag_name) {
     TA.$close_notice_link.click();
 }
 
+function DeleteBlockElement(text_area) {
+    let cursor = text_area.selectionStart;
+    let html_string = text_area.value;
+    let html_tags = TokenizeHTML(html_string);
+    let html_tag = html_tags.filter((tag)=>((cursor > tag.open_tag_start && cursor < tag.open_tag_end) || (cursor > tag.close_tag_start && cursor < tag.close_tag_end)))[0];
+    if (!html_tag) return;
+    if (html_tag.close_tag_start) {
+        //Open tags may not have a close tag
+        html_string = html_string.slice(0, html_tag.close_tag_start) + html_string.slice(html_tag.close_tag_end);
+    }
+    html_string = html_string.slice(0, html_tag.open_tag_start) + html_string.slice(html_tag.open_tag_end);
+    text_area.value = html_string;
+    text_area.focus();
+    text_area.setSelectionRange(cursor, cursor);
+    TA.$close_notice_link.click();
+}
+
 //// Input functions
 
 function SaveInputs() {
@@ -1994,13 +2020,23 @@ function ApplyTagStyles() {
 
 //// Main section handlers
 
-function ApplyBlockElement(event) {
+function ApplyBlock(event) {
     let text_area = GetActiveTextArea(false);
     if (!text_area) return;
     if (IsInsideHTMLTag(text_area.value, text_area.selectionStart)) {
         ChangeBlockElement(text_area, event.currentTarget.value);
     } else {
         AddBlockElement(text_area, event.currentTarget.value);
+    }
+}
+
+function DeleteBlock(event) {
+    let text_area = GetActiveTextArea(false);
+    if (!text_area) return;
+    if (IsInsideHTMLTag(text_area.value, text_area.selectionStart)) {
+        DeleteBlockElement(text_area);
+    } else {
+        JSPLib.notice.error("No tag selected!");
     }
 }
 
@@ -2480,7 +2516,8 @@ function InitializeSideMenu() {
     $('#ta-add-embedded-element').on(PROGRAM_CLICK, AddEmbeddedElement);
     $('#ta-remove-embedded-element').on(PROGRAM_CLICK, RemoveEmbeddedElement);
     $('#ta-set-embedded-level').on(PROGRAM_CLICK, SetEmbeddedLevel);
-    $('.ta-apply-block-element').on(PROGRAM_CLICK, ApplyBlockElement);
+    $('.ta-apply-block-element').on(PROGRAM_CLICK, ApplyBlock);
+    $('#ta-delete-block').on(PROGRAM_CLICK, DeleteBlock);
     $('#ta-normalize-note').on(PROGRAM_CLICK, NormalizeNote);
     $('#ta-text-shadow-controls a').on(PROGRAM_CLICK, TextShadowControls);
     $('#ta-ruby-dialog-open').on(PROGRAM_CLICK, OpenRubyDialog);
