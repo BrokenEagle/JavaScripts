@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.31
+// @version      28.32
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -362,21 +362,17 @@ body[data-current-user-theme=dark] .iac-already-used {
 }
 .iac-tag-bur > div:before,
 .iac-tag-metatag > div:before{
-    color: #000;
+    color: var(--button-primary-text-color);
 }
 .iac-tag-highlight .tag-type-${BUR_TAG_CATEGORY}:link,
-.iac-tag-highlight .tag-type-${BUR_TAG_CATEGORY}:visited {
+.iac-tag-highlight .tag-type-${BUR_TAG_CATEGORY}:visited,
+.iac-tag-highlight .tag-type-${BUR_TAG_CATEGORY}:hover {
     color: #888;
 }
-.iac-tag-highlight .tag-type-${BUR_TAG_CATEGORY}:hover {
-    color: #CCC;
-}
 .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:link,
-.iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:visited {
-    color: #000;
-}
+.iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:visited,
 .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:hover {
-    color: #444;
+    color: var(--button-primary-text-color);
 }
 .related-tags .current-related-tags-columns li:before {
     content: "*";
