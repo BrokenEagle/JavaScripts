@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.4
+// @version      4.5
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -62,7 +62,9 @@ const DEFAULT_VALUES = {
 };
 
 //Available setting values
-const HTML_TAGS = ['div', 'span', 'b', 'i', 'u', 's', 'tn', 'small', 'big', 'code', 'center', 'p'];
+const HTML_STYLE_TAGS = ['div', 'span'];
+const HTML_ONLY_TAGS = ['b', 'i', 'u', 's', 'tn', 'small', 'big', 'code', 'center', 'p'];
+const HTML_TAGS = JSPLib.utility.concat(HTML_STYLE_TAGS, HTML_ONLY_TAGS);
 const HTML_STYLES = ['color', 'font-size', 'font-family', 'font-weight', 'font-style', 'font-variant', 'text-align', 'text-decoration', 'line-height', 'letter-spacing', 'margin', 'padding', 'white-space', 'background-color'];
 const OUTER_RUBY_STYLES = ['color', 'font-size', 'font-family', 'font-weight', 'font-style', 'font-variant', 'text-decoration', 'line-height', 'letter-spacing', 'padding', 'white-space', 'background-color'];
 const INNER_RUBY_STYLES = ['color', 'font-size', 'font-family', 'font-weight', 'font-style', 'font-variant', 'text-decoration', 'letter-spacing'];
@@ -288,6 +290,12 @@ const PROGRAM_CSS = `
     border: 1px solid var(--default-border-color);
 }
 /**** Main section ****/
+/****** Block subsection ******/
+.ta-html-style-tag {
+    background-color: cadetblue;
+    border-color: darkcyan;
+    color: white;
+}
 /****** Styles subsection ******/
 #ta-main-styles-subsection .ta-text-input {
     line-height: 1em;
@@ -1186,7 +1194,8 @@ function RenderRubyDialog() {
 function RenderHTMLBlockButtons() {
     let block_html = "";
     TA.user_settings.available_html_tags.forEach((tag)=>{
-        block_html += `<button class="ta-apply-block-element" value="${tag}">${tag}</button>`;
+        let button_class = (HTML_STYLE_TAGS.includes(tag) ? 'ta-html-style-tag' : 'ta-html-only-tag');
+        block_html += `<button class="ta-apply-block-element ${button_class}" value="${tag}">${tag}</button>`;
     });
     return block_html;
 }
@@ -1524,7 +1533,7 @@ function AddBlockElement(text_area, tag_name) {
         return;
     }
     let initialize = $('#ta-css-style-initialize').get(0)?.checked;
-    let [create_styles, invalid_styles] = (initialize ? GetCSSStyles(false, INPUT_SECTIONS[TA.mode]) : [{},{}]);
+    let [create_styles, invalid_styles] = (initialize && HTML_STYLE_TAGS.includes(tag_name) ? GetCSSStyles(false, INPUT_SECTIONS[TA.mode]) : [{},{}]);
     InsertHTMLBlock(text_area, tag_name, create_styles);
     let style_errors = Object.entries(invalid_styles).map((style_pair)=>(`<code>${style_pair[0]}</code> => "${style_pair[1]}"`));
     if (style_errors.length) {
