@@ -282,6 +282,7 @@ const PROGRAM_CSS = `
 #ta-sections .ta-subsection {
     padding-left: 0.5em;
     margin-bottom: 1em;
+    display: inline-block;
 }
 #ta-sections button {
     font-size: 1em;
