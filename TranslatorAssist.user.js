@@ -595,7 +595,7 @@ const SIDE_MENU = `
                 <div class="ta-header ta-cursor-text">Process:</div>
                 <div id="ta-main-process-subsection" class="ta-subsection ta-cursor-initial">
                     <button id="ta-normalize-note" title="Fix missing HTML tags">Fix</button>
-                    <button id="ta-sanitize-note" disabled title="Have Danbooru render HTML">Sanitize</button>
+                    <button id="ta-sanitize-note" title="Have Danbooru render HTML">Sanitize</button>
                     <button id="ta-validate-note" disabled title="Validate HTML contents">Validate</button>
                 </div>
                 <hr>
@@ -2219,6 +2219,14 @@ function NormalizeNote() {
     text_area.focus();
 }
 
+async function SanitizeNote() {
+    let text_area = GetActiveTextArea();
+    if (!text_area) return;
+    let data = await JSPLib.danbooru.submitRequest('note_previews', {body: text_area.value});
+    text_area.value = data.body;
+    text_area.focus();
+}
+
 //// Constructs section handlers
 
 function TextShadowControls(event) {
@@ -2774,6 +2782,7 @@ function InitializeSideMenu() {
     $('.ta-apply-block-element').on(PROGRAM_CLICK, ApplyBlock);
     $('#ta-delete-block').on(PROGRAM_CLICK, DeleteBlock);
     $('#ta-normalize-note').on(PROGRAM_CLICK, NormalizeNote);
+    $('#ta-sanitize-note').on(PROGRAM_CLICK, SanitizeNote);
     $('#ta-text-shadow-controls a').on(PROGRAM_CLICK, TextShadowControls);
     $('#ta-ruby-dialog-open').on(PROGRAM_CLICK, OpenRubyDialog);
     JSPLib.utility.clickAndHold('#ta-placement-controls .ta-button-placement', PlacementControl, PROGRAM_SHORTCUT);
