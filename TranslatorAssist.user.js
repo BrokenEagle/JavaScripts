@@ -59,6 +59,7 @@ const DEFAULT_VALUES = {
     mode: 'main',
     save_data: null,
     shadow_grid: {},
+    $load_dialog: {},
 };
 
 //Available setting values
@@ -494,6 +495,33 @@ button.ta-html-style-tag:hover {
 #ta-ruby-editor .ta-ruby-textarea textarea {
     height: 7em;
 }
+/** Load dialog **/
+.ta-load-message ul {
+    font-size: 90%;
+    list-style: disc;
+}
+.ta-load-saved-controls {
+    margin-bottom: 1em;
+}
+.ta-load-sessions {
+    height: 26em;
+    border: 1px solid #DDD;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+.ta-load-sessions ul {
+    margin: 0 !important;
+}
+.ta-load-sessions li {
+    white-space: nowrap;
+}
+.ta-load-sessions label {
+    padding: 5px;
+}
+.ta-load-session-item {
+    padding: 5px;
+    display: inline-block;
+}
 /** Post options **/
 #ta-side-menu-open {
     color: green;
@@ -579,7 +607,7 @@ const SIDE_MENU = `
         </div>
         <div id="ta-menu-options" class="ta-cursor-initial">%CSSOPTIONS%</div>
         <div id="ta-menu-controls">
-            <button id="ta-side-menu-load" title="Load custom values" disabled>Load</button>
+            <button id="ta-side-menu-load" title="Load custom values">Load</button>
             <button id="ta-side-menu-clear" title="Clear the inputs">Clear</button>
             <button id="ta-side-menu-copy" title="Copy styles from HTML tag to inputs">Copy</button>
             <button id="ta-side-menu-apply" title="Apply styles from inputs to HTML tag">Apply</button>
@@ -757,6 +785,29 @@ const RUBY_DIALOG = `
         <div id="ta-ruby-bottom" class="ta-ruby-textarea"><textarea></textarea></div>
     </div>
 </div>`;
+
+
+const LOAD_DIALOG = `
+<div class="ta-load-dialog">
+    <div class="ta-header">Saved sessions (%LOADNAME%):</div>
+    <div class="ta-load-saved">
+        <div class="ta-load-message">
+            <ul>
+                <li>Click an item to load that session into the current set of inputs.</li>
+                <li>Click <b>Delete</b> to delete selected sessions.</li>
+                <li>Click <b>Save</b> to save the current inputs as a new session.</li>
+            </ul>
+        </div>
+        <div class="ta-load-saved-controls">
+            <a href="javascript:void(0)" data-value="all">All</a> |
+            <a href="javascript:void(0)" data-value="none">None</a> |
+            <a href="javascript:void(0)" data-value="invert">Invert</a>
+        </div>
+        <div class="ta-load-sessions">%LOADSAVED%</div>
+    </div>
+</div>`;
+
+const NO_SESSIONS = '<div style="font-style: italic; padding: 0.5em;">There are no sessions saved.</div>';
 
 //Menu constants
 
@@ -1014,7 +1065,7 @@ const RUBY_DIALOG_SETTINGS = {
     buttons: [
     {
         'text': 'Load',
-        'disabled': true,
+        'click': LoadRubyStyles,
     },{
         'text': 'Clear',
         'click': function() {
@@ -1026,6 +1077,35 @@ const RUBY_DIALOG_SETTINGS = {
     },{
         'text': 'Apply',
         'click': ApplyRubyTag,
+    },{
+        'text': 'Close',
+        'click': function () {
+            $(this).dialog('close');
+        },
+    },
+    ]
+};
+
+const LOAD_DIALOG_SETTINGS = {
+    title: "Load Sessions",
+    width: 500,
+    height: 600,
+    modal: true,
+    draggable: false,
+    resizable:false,
+    autoOpen: false,
+    position: {my: 'center', at: 'center'},
+    classes: {
+        'ui-dialog': 'ta-dialog',
+        'ui-dialog-titlebar-close': 'ta-dialog-close'
+    },
+    buttons: [
+    {
+        'text': 'Save',
+        'click': SaveSessionInputs,
+    },{
+        'text': 'Delete',
+        'click': DeleteSessions,
     },{
         'text': 'Close',
         'click': function () {
@@ -1140,6 +1220,13 @@ const INPUT_SECTIONS = {
     'ruby-bottom-text': '#ta-ruby-bottom textarea',
 };
 
+const LOAD_PANEL_KEYS = {
+    main: ['main'],
+    embedded: ['embedded'],
+    constructs: ['constructs', 'text-shadow-grid'],
+    ruby: ['ruby-overall-style', 'ruby-top-style', 'ruby-bottom-style'],
+}
+
 /****Functions****/
 
 //Library functions
@@ -1198,6 +1285,36 @@ function RenderRubyDialog() {
         RUBYSTYLETOP: RenderSectionTextInputs('ruby-top-style', available_inner_styles, STYLE_CONFIG),
         RUBYSTYLEBOTTOM: RenderSectionTextInputs('ruby-bottom-style', available_inner_styles, STYLE_CONFIG),
     });
+}
+
+function RenderLoadDialog(panel) {
+    let sessions = JSPLib.storage.getStorageData('ta-load-session-' + panel, localStorage, []);
+    return JSPLib.utility.regexReplace(LOAD_DIALOG, {
+        LOADNAME: panel,
+        LOADSAVED: RenderLoadSessions(panel, sessions),
+    });
+}
+
+function RenderLoadSessions(panel, sessions) {
+    let html = "";
+    let updated_list = [];
+    sessions.forEach((item)=>{
+        if (item.key) {
+            html += RenderLoadItem(item);
+            updated_list.push(item);
+        } else {
+            JSPLib.debug.debugerror("Malformed item found:", item);
+        }
+    });
+    if (updated_list.length !== sessions.length) {
+        JSPLib.storage.setStorageData('ta-load-session-' + panel, updated_list, localStorage);
+    }
+    return (html === "" ? NO_SESSIONS : `<ul>${html}</ul>`);
+}
+
+function RenderLoadItem(item) {
+    let checkbox_key = 'ta-delete-' + item.key;
+    return `<li><label for="${checkbox_key}"><input id="${checkbox_key}" type="checkbox"></label><a href="javascript:void(0)" class="ta-load-session-item" data-name="${item.name}" data-key="${item.key}">${item.name}</a></li>`;
 }
 
 function RenderHTMLBlockButtons() {
@@ -1593,16 +1710,34 @@ function DeleteBlockElement(text_area) {
 
 //// Input functions
 
+function GetInputs(key) {
+    let save_data = {};
+    let selector = INPUT_SECTIONS[key];
+    $(selector).each((_i, input)=>{
+        if (input.tagName === 'INPUT' && input.type === 'checkbox') {
+            save_data[input.name] = input.checked;
+        } else {
+            save_data[input.name] = input.value;
+        }
+    });
+    return save_data;
+}
+
+function SetInputs(key, load_data) {
+    let selector = INPUT_SECTIONS[key];
+    $(selector).each((_i, input)=>{
+        if (!(input.name in load_data)) return;
+        if (input.tagName === 'INPUT' && input.type === 'checkbox') {
+            input.checked = load_data[input.name]
+        } else {
+            input.value = load_data[input.name];
+        }
+    });
+}
+
 function SaveInputs() {
     for (let key in INPUT_SECTIONS) {
-        let selector = INPUT_SECTIONS[key];
-        $(selector).each((_i, input)=>{
-            if (input.tagName === 'INPUT' && input.type === 'checkbox') {
-                TA.save_data[input.name] = input.checked;
-            } else {
-                TA.save_data[input.name] = input.value;
-            }
-        });
+        TA.save_data = Object.assign(TA.save_data, GetInputs(key));
     }
     JSPLib.storage.setStorageData('ta-saved-inputs', TA.save_data, localStorage);
 }
@@ -1889,6 +2024,33 @@ function ParseTextShadows(style_dict) {
     return shadow_style;
 }
 
+// Dialogs
+
+function OpenLoadDialog(panel) {
+    if (!TA.$load_dialog[panel]) {
+        let $dialog = $(RenderLoadDialog(panel));
+        $dialog.find('.ta-load-session-item').on(PROGRAM_CLICK, LoadSessionInput);
+        $dialog.find('.ta-load-saved-controls a').on(PROGRAM_CLICK, LoadControls);
+        $dialog.dialog(LOAD_DIALOG_SETTINGS);
+        TA.$load_dialog[panel] = $dialog;
+    }
+    TA.active_panel = panel;
+    TA.$load_dialog[panel].dialog('open');
+}
+
+function OpenRubyDialog() {
+    if (!TA.$ruby_dialog) {
+        TA.$ruby_dialog = $(RenderRubyDialog());
+        TA.$ruby_dialog.find('#ta-ruby-dialog-tabs > .ta-menu-tab').on(PROGRAM_CLICK, SwitchRubySections);
+        TA.$ruby_dialog.dialog(RUBY_DIALOG_SETTINGS);
+        TA.$pin_button = $("<button/>").button({icons: {primary: "ui-icon-pin-w"}, label: "pin", text: false});
+        TA.$pin_button.css({width: "20px", height: "20px", position: "absolute", right: "28.4px"});
+        TA.$ruby_dialog.parent().children(".ui-dialog-titlebar").append(TA.$pin_button);
+        TA.$pin_button.on(PROGRAM_CLICK, PinRubyDialog);
+    }
+    TA.$ruby_dialog.dialog('open');
+}
+
 // Event handlers
 
 //// Side menu handlers
@@ -2018,6 +2180,14 @@ function ApplyTagStyles() {
     }
 }
 
+function ClearTagStyles() {
+    ClearInputs(INPUT_SECTIONS[TA.mode]);
+}
+
+function LoadTagStyles() {
+    OpenLoadDialog(TA.mode);
+}
+
 //// Main section handlers
 
 function ApplyBlock(event) {
@@ -2071,19 +2241,6 @@ function TextShadowControls(event) {
         default:
             //do nothing
     }
-}
-
-function OpenRubyDialog() {
-    if (!TA.$ruby_dialog) {
-        TA.$ruby_dialog = $(RenderRubyDialog());
-        TA.$ruby_dialog.find('#ta-ruby-dialog-tabs > .ta-menu-tab').on(PROGRAM_CLICK, SwitchRubySections);
-        TA.$ruby_dialog.dialog(RUBY_DIALOG_SETTINGS);
-        TA.$pin_button = $("<button/>").button({icons: {primary: "ui-icon-pin-w"}, label: "pin", text: false});
-        TA.$pin_button.css({width: "20px", height: "20px", position: "absolute", right: "28.4px"});
-        TA.$ruby_dialog.parent().children(".ui-dialog-titlebar").append(TA.$pin_button);
-        TA.$pin_button.on(PROGRAM_CLICK, PinRubyDialog);
-    }
-    TA.$ruby_dialog.dialog('open');
 }
 
 //// Embedded section handlers
@@ -2440,6 +2597,104 @@ function ApplyRubyTag() {
     }
 }
 
+function LoadRubyStyles() {
+    OpenLoadDialog('ruby');
+}
+
+//// Load dialog handlers
+
+function SaveSessionInputs() {
+    let name = prompt("Enter a name for this session:");
+    if (!name) return;
+    let panel = TA.active_panel;
+    let section_keys = LOAD_PANEL_KEYS[panel];
+    let save_inputs = {};
+    section_keys.forEach((key)=>{
+        save_inputs = Object.assign(save_inputs, GetInputs(key));
+    });
+    let key = JSPLib.utility.getUniqueID();
+    let session_list = JSPLib.storage.getStorageData('ta-load-session-' + panel, localStorage, []);
+    let item = {key, name: JSPLib.utility.maxLengthString(name, 50)};
+    session_list.push(item);
+    JSPLib.storage.setStorageData('ta-load-session-' + panel, session_list, localStorage);
+    JSPLib.storage.setStorageData('ta-session-' + key, save_inputs, localStorage);
+    let $load_item = $(RenderLoadItem(item));
+    $load_item.find('a').on(PROGRAM_CLICK, LoadSessionInput);
+    let $list = TA.$load_dialog[panel].find('.ta-load-sessions ul');
+    if ($list.length === 0) {
+        $list = $('<ul></ul>');
+        TA.$load_dialog[panel].find('.ta-load-sessions').html("").append($list);
+    }
+    $list.append($load_item);
+}
+
+function DeleteSessions() {
+    let panel = TA.active_panel;
+    let $dialog = TA.$load_dialog[panel];
+    let update_items = [];
+    $dialog.find('.ta-load-sessions input').each((_i, input)=>{
+        let key = input.id.match(/^ta-delete-(.*)/)[1];
+        let $link = $dialog.find(`.ta-load-session-item[data-key=${key}]`);
+        let item = $link.data();
+        if (input.checked) {
+            $link.closest('li').addClass('ta-delete');
+            JSPLib.storage.removeStorageData('ta-session-' + item.key, localStorage);
+        } else {
+            update_items.push(item);
+        }
+    });
+    let session_list = JSPLib.storage.getStorageData('ta-load-session-' + panel, localStorage, []);
+    if (update_items.length !== session_list.length) {
+        $dialog.find('.ta-delete').remove();
+        JSPLib.storage.setStorageData('ta-load-session-' + panel, update_items, localStorage);
+        JSPLib.notice.notice('Sessions deleted.');
+        if (update_items.length === 0) {
+            TA.$load_dialog[panel].find('.ta-load-sessions').html(NO_SESSIONS);
+        }
+    } else {
+        JSPLib.notice.error('No sessions selected!');
+    }
+}
+
+function LoadSessionInput(event) {
+    let panel = TA.active_panel;
+    let {key} = $(event.currentTarget).data();
+    let session_list = JSPLib.storage.getStorageData('ta-load-session-' + panel, localStorage);
+    let session_item = session_list.find((item) => item.key === key);
+    let load_inputs = JSPLib.storage.getStorageData('ta-session-' + key, localStorage);
+    if (!load_inputs) {
+        JSPLib.debug.debugerror('Missing session:', panel, key, session_item);
+        session_list = session_list.filter((item) => item.key !== key);
+        JSPLib.storage.setStorageData('ta-load-session-' + panel, session_list, localStorage);
+        $(event.currentTarget).closest('li').remove();
+        return;
+    }
+    let section_keys = LOAD_PANEL_KEYS[panel];
+    section_keys.forEach((section_key)=>{
+        SetInputs(section_key, load_inputs);
+    });
+    JSPLib.notice.notice("Inputs loaded.");
+}
+
+function LoadControls(event) {
+    let panel = TA.active_panel;
+    let $dialog = TA.$load_dialog[panel];
+    let value = $(event.currentTarget).data('value');
+    switch (value) {
+        case 'all':
+            $dialog.find('.ta-load-sessions input').each((_i, input) => {input.checked = true;});
+            break;
+        case 'none':
+            $dialog.find('.ta-load-sessions input').each((_i, input) => {input.checked = false;});
+            break;
+        case 'invert':
+            $dialog.find('.ta-load-sessions input').each((_i, input) => {input.checked = !input.checked;});
+            //falls through
+        default:
+            //do nothing
+    }
+}
+
 // Last noted functions
 
 function CheckLastNoted() {
@@ -2534,9 +2789,10 @@ function InitializeSideMenu() {
     $('#ta-unselect-note').on(PROGRAM_CLICK, UnselectNote);
     $('#ta-section-codes button').on(PROGRAM_CLICK, InsertCharacter);
     $('#ta-side-menu-copy').on(PROGRAM_CLICK, CopyTagStyles);
-    $('#ta-side-menu-clear').on(PROGRAM_CLICK, ()=>{ClearInputs(INPUT_SECTIONS[TA.mode]);});
+    $('#ta-side-menu-clear').on(PROGRAM_CLICK, ClearTagStyles);
     $('#ta-side-menu-apply').on(PROGRAM_CLICK, ApplyTagStyles);
     $('#ta-side-menu-close').on(PROGRAM_CLICK, CloseSideMenu);
+    $('#ta-side-menu-load').on(PROGRAM_CLICK, LoadTagStyles);
     $('#ta-side-menu-open').on(PROGRAM_CLICK, OpenSideMenu);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+t', KeyboardMenuToggle);
     $(document).on('visibilitychange.ta', CheckMissedLastNoterPolls);
