@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.32
+// @version      28.33
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -324,12 +324,6 @@ const PROGRAM_CSS = `
 .iac-user-choice a {
     font-weight: bold;
 }
-.iac-already-used {
-    background-color: #FFFFAA;
-}
-body[data-current-user-theme=dark] .iac-already-used {
-    background-color: #666622;
-}
 .iac-tag-alias a {
     font-style: italic;
 }
@@ -361,18 +355,10 @@ body[data-current-user-theme=dark] .iac-already-used {
     color: orange;
 }
 .iac-tag-bur > div:before,
-.iac-tag-metatag > div:before{
-    color: var(--button-primary-text-color);
-}
 .iac-tag-highlight .tag-type-${BUR_TAG_CATEGORY}:link,
 .iac-tag-highlight .tag-type-${BUR_TAG_CATEGORY}:visited,
 .iac-tag-highlight .tag-type-${BUR_TAG_CATEGORY}:hover {
     color: #888;
-}
-.iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:link,
-.iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:visited,
-.iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:hover {
-    color: var(--button-primary-text-color);
 }
 .related-tags .current-related-tags-columns li:before {
     content: "*";
@@ -383,7 +369,49 @@ body[data-current-user-theme=dark] .iac-already-used {
 }
 .related-tags .current-related-tags-columns li.selected:before {
     visibility: visible;
-}`;
+}
+/** DARK/LIGHT Color Setup **/
+body[data-current-user-theme=light] .iac-already-used {
+    background-color: #FFFFAA;
+}
+body[data-current-user-theme=light] .iac-tag-metatag > div:before,
+body[data-current-user-theme=light] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:link,
+body[data-current-user-theme=light] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:visited,
+body[data-current-user-theme=light] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:hover {
+    color: #000;
+}
+body[data-current-user-theme=dark] .iac-already-used {
+    background-color: #666622;
+}
+body[data-current-user-theme=dark] .iac-tag-metatag > div:before,
+body[data-current-user-theme=dark] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:link,
+body[data-current-user-theme=dark] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:visited,
+body[data-current-user-theme=dark] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:hover {
+    color: #FFF;
+}
+@media (prefers-color-scheme: light) {
+    .iac-already-used {
+        background-color: #FFFFAA;
+    }
+    .iac-tag-metatag > div:before,
+    .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:link,
+    .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:visited,
+    .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:hover {
+        color: #000;
+    }
+}
+@media (prefers-color-scheme: dark) {
+    .iac-already-used {
+        background-color: #666622;
+    }
+    .iac-tag-metatag > div:before,
+    .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:link,
+    .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:visited,
+    .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:hover {
+        color: #FFF;
+    }
+}
+`;
 
 const RELATED_QUERY_CONTROL_CSS = `
 #iac-related-query-type label {
@@ -450,17 +478,15 @@ div#related-tags-container div.related-tags div.tag-column.is-empty-true {
 }`;
 
 const FORUM_CSS = `
-.ui-menu-item .forum-topic-category-0 {
+body[data-current-user-theme=light] .ui-menu-item .forum-topic-category-0 {
     color: blue;
 }
-.ui-menu-item .forum-topic-category-1 {
+body[data-current-user-theme=light] .ui-menu-item .forum-topic-category-1 {
     color: green;
 }
-.ui-menu-item .forum-topic-category-2 {
+body[data-current-user-theme=light] .ui-menu-item .forum-topic-category-2 {
     color: red;
-}`;
-
-const FORUM_CSS_DARK = `
+}
 body[data-current-user-theme=dark] .ui-menu-item .forum-topic-category-0 {
     color: var(--blue-3);
 }
@@ -469,6 +495,28 @@ body[data-current-user-theme=dark] .ui-menu-item .forum-topic-category-1 {
 }
 body[data-current-user-theme=dark] .ui-menu-item .forum-topic-category-2 {
     color: var(--red-3);
+}
+@media (prefers-color-scheme: light) {
+    .ui-menu-item .forum-topic-category-0 {
+        color: blue;
+    }
+    .ui-menu-item .forum-topic-category-1 {
+        color: green;
+    }
+    .ui-menu-item .forum-topic-category-2 {
+        color: red;
+    }
+}
+@media (prefers-color-scheme: dark) {
+    .ui-menu-item .forum-topic-category-0 {
+        color: var(--blue-3);
+    }
+    .ui-menu-item .forum-topic-category-1 {
+        color: var(--green-3);
+    }
+    .ui-menu-item .forum-topic-category-2 {
+        color: var(--red-3);
+    }
 }`;
 
 const SETTINGS_MENU_CSS = `
@@ -2564,11 +2612,7 @@ function ProcessSourceData(type, metatag, term, data, query_type) {
 
 function InstallQuickSearchBars() {
     if (IAC.user_settings.forum_quick_search_enabled && (IAC.controller === 'forum-topics' || IAC.controller === 'forum-posts')) {
-        if (IAC.theme === 'light') {
-            JSPLib.utility.setCSSStyle(FORUM_CSS, 'forum');
-        } else if (IAC.theme === 'dark') {
-            JSPLib.utility.setCSSStyle(FORUM_CSS_DARK, 'forum');
-        }
+        JSPLib.utility.setCSSStyle(FORUM_CSS, 'forum');
         $('#subnav-menu .search_body_matches').closest('li').after(FORUM_TOPIC_SEARCH);
     }
     if (IAC.user_settings.comment_quick_search_enabled && IAC.controller === 'comments') {
@@ -2772,7 +2816,6 @@ function InitializeProgramValues() {
     }
     Object.assign(IAC, {
         userid: Danbooru.CurrentUser.data('id'),
-        theme: Danbooru.CurrentUser.data('theme'),
         FindArtistSession,
         InitializeAutocompleteIndexed,
     });
