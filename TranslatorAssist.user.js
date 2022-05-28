@@ -170,17 +170,17 @@ const MENU_CONFIG = {
     wiki_page: GITHUB_WIKI_PAGE,
     settings: [{
         name: 'general',
-    },{
+    }, {
         name: 'last_noted',
-    },{
+    }, {
         name: 'main',
-    },{
+    }, {
         name: 'constructs',
-    },{
+    }, {
         name: 'embedded',
-    },{
+    }, {
         name: 'controls',
-    },{
+    }, {
         name: 'codes',
     }],
     controls: [],
@@ -819,23 +819,23 @@ const HTML_CHARS = [{
     display: '&amp;',
     char: '&amp;amp;',
     title: 'ampersand',
-},{
+}, {
     display: '&lt;',
     char: '&amp;lt;',
     title: 'less than',
-},{
-    display:'&gt;',
+}, {
+    display: '&gt;',
     char: '&amp;gt;',
     title: 'greater than',
-},{
+}, {
     display: '&quot;',
     char: '&amp;quot;',
     title: 'quotation',
-},{
+}, {
     display: '&#x27;',
     char: '&amp;#x27;',
     title: 'apostrophe',
-},{
+}, {
     display: '&#x60;',
     char: '&amp;#x60;',
     title: 'backtick',
@@ -844,163 +844,163 @@ const HTML_CHARS = [{
 const SPECIAL_CHARS = [{
     char: '♥',
     title: 'black heart',
-},{
+}, {
     char: '\u2661',
     title: 'white heart',
-},{
+}, {
     char: '♦',
     title: 'black diamond',
-},{
+}, {
     char: '\u2662',
     title: 'white diamond',
-},{
+}, {
     char: '♠',
     title: 'black spade',
-},{
+}, {
     char: '\u2664',
     title: 'white spade',
-},{
+}, {
     char: '♣',
     title: 'black club',
-},{
+}, {
     char: '\u2667',
     title: 'white club',
-},{
+}, {
     char: '\u2669',
     title: 'quarter note',
-},{
+}, {
     char: '♪',
     title: 'eighth note',
-},{
+}, {
     char: '♫',
     title: 'beamed eighth notes',
-},{
+}, {
     char: '\u266C',
     title: 'beamed sixteenth notes',
-},{
+}, {
     char: '←',
     title: 'leftwards arrow',
-},{
+}, {
     char: '→',
     title: 'rightwards arrow',
-},{
+}, {
     char: '↓',
     title: 'downwards arrow',
-},{
+}, {
     char: '↑',
     title: 'upwards arrow',
-},{
+}, {
     char: '✓',
     title: 'check mark',
-},{
+}, {
     char: '✔',
     title: 'heavy check mark',
-},{
+}, {
     char: '★',
     title: 'black star',
-},{
+}, {
     char: '☆',
     title: 'white star',
-},{
+}, {
     char: '■',
     title: 'black square',
-},{
+}, {
     char: '□',
     title: 'white square',
-},{
+}, {
     char: '◆',
     title: 'black diamond',
-},{
+}, {
     char: '◇',
     title: 'white diamond',
-},{
+}, {
     char: '▲',
     title: 'black up triangle',
-},{
+}, {
     char: '△',
     title: 'white up triangle',
-},{
+}, {
     char: '▼',
     title: 'black down triangle',
-},{
+}, {
     char: '▽',
     title: 'white down triangle',
-},{
+}, {
     char: '❤',
     title: 'heavy black heart',
-},{
+}, {
     char: '💕',
     title: 'two hearts',
-},{
+}, {
     char: '•',
     title: 'bullet',
-},{
+}, {
     char: '●',
     title: 'black circle',
-},{
+}, {
     char: '○',
     title: 'white circle',
-},{
+}, {
     char: '◯',
     title: 'large circle',
-},{
+}, {
     char: '〇',
     title: 'ideographic number zero',
-},{
+}, {
     char: '💢',
     title: 'anger vein',
-},{
+}, {
     char: '…',
     title: 'horizontal ellipsis',
-},{
+}, {
     char: '\u22EE',
     title: 'vertical ellipsis',
-},{
+}, {
     char: '\u22EF',
     title: 'midline horizontalk ellipsis',
-},{
+}, {
     char: '\u22F0',
     title: 'up right diagonal ellipsis',
-},{
+}, {
     char: '\u22F1',
     title: 'down right diagonal ellipsis',
-},{
+}, {
     char: '￥',
     title: 'yen sign',
-},{
+}, {
     char: '＊',
     title: 'fullwidth asterisk',
-},{
+}, {
     char: '※',
     title: 'reference mark',
-},{
+}, {
     char: '♂',
     title: 'Mars symbol',
-},{
+}, {
     char: '♀',
     title: 'Venus symbol',
-},{
+}, {
     char: '█',
     title: 'full block',
-},{
+}, {
     char: '░',
     title: 'light shade',
-},{
+}, {
     char: '\u223F',
     title: 'sine wave',
-},{
+}, {
     char: '〜',
     title: 'wave dash',
-},{
+}, {
     char: '〰',
     title: 'wavy dash',
-},{
+}, {
     char: '～',
     title: 'fullwidth tilde',
-},{
+}, {
     char: '\u299a',
     title: 'vertical zigzag',
-},{
+}, {
     char: '\u2307',
     title: 'wavy line',
 }];
@@ -1009,19 +1009,19 @@ const DASH_CHARS = [{
     display: 'en',
     char: '–',
     title: 'en dash',
-},{
+}, {
     display: 'em',
     char: '—',
     title: 'em dash',
-},{
+}, {
     display: 'jp',
     char: 'ー',
     title: 'Katakana extension mark',
-},{
+}, {
     display: 'bar',
     char: '―',
     title: 'horizontal bar',
-},{
+}, {
     display: 'box',
     char: '─',
     title: 'box light horizontal',
@@ -1031,19 +1031,19 @@ const SPACE_CHARS = [{
     display: 'en',
     char: '&amp;ensp;',
     title: 'en space',
-},{
+}, {
     display: 'em',
     char: '&amp;emsp;',
     title: 'em space',
-},{
+}, {
     display: 'thin',
     char: '&amp;thinsp;',
     title: 'thin space'
-},{
+}, {
     display: 'nb',
     char: '&amp;nbsp;',
     title: 'non-breaking space',
-},{
+}, {
     display: 'zero',
     char: '&amp;ZeroWidthSpace;',
     title: 'zero-width space',
@@ -1056,7 +1056,7 @@ const RUBY_DIALOG_SETTINGS = {
     width: 750,
     height: 500,
     modal: false,
-    resizable:false,
+    resizable: false,
     autoOpen: false,
     position: {my: 'left top', at: 'left top'},
     classes: {
@@ -1064,26 +1064,26 @@ const RUBY_DIALOG_SETTINGS = {
         'ui-dialog-titlebar-close': 'ta-dialog-close'
     },
     buttons: [
-    {
-        'text': 'Load',
-        'click': LoadRubyStyles,
-    },{
-        'text': 'Clear',
-        'click': function() {
-            ClearInputs('#ta-ruby-dialog input, #ta-ruby-dialog textarea');
+        {
+            'text': 'Load',
+            'click': LoadRubyStyles,
+        }, {
+            'text': 'Clear',
+            'click'() {
+                ClearInputs('#ta-ruby-dialog input, #ta-ruby-dialog textarea');
+            },
+        }, {
+            'text': 'Copy',
+            'click': CopyRubyTag,
+        }, {
+            'text': 'Apply',
+            'click': ApplyRubyTag,
+        }, {
+            'text': 'Close',
+            'click' () {
+                $(this).dialog('close');
+            },
         },
-    },{
-        'text': 'Copy',
-        'click': CopyRubyTag,
-    },{
-        'text': 'Apply',
-        'click': ApplyRubyTag,
-    },{
-        'text': 'Close',
-        'click': function () {
-            $(this).dialog('close');
-        },
-    },
     ]
 };
 
@@ -1093,7 +1093,7 @@ const LOAD_DIALOG_SETTINGS = {
     height: 600,
     modal: true,
     draggable: false,
-    resizable:false,
+    resizable: false,
     autoOpen: false,
     position: {my: 'center', at: 'center'},
     classes: {
@@ -1101,18 +1101,18 @@ const LOAD_DIALOG_SETTINGS = {
         'ui-dialog-titlebar-close': 'ta-dialog-close'
     },
     buttons: [
-    {
-        'text': 'Save',
-        'click': SaveSessionInputs,
-    },{
-        'text': 'Delete',
-        'click': DeleteSessions,
-    },{
-        'text': 'Close',
-        'click': function () {
-            $(this).dialog('close');
+        {
+            'text': 'Save',
+            'click': SaveSessionInputs,
+        }, {
+            'text': 'Delete',
+            'click': DeleteSessions,
+        }, {
+            'text': 'Close',
+            'click' () {
+                $(this).dialog('close');
+            },
         },
-    },
     ]
 };
 
@@ -1125,15 +1125,15 @@ const FAMILY_DICT = {
 
 const STYLE_CONFIG = {
     'font-family': {
-        normalize: function (text) {
+        normalize (text) {
             return this._fixup(text, '"');
         },
-        finalize: function (text) {
+        finalize (text) {
             return this._fixup(text, "'");
         },
-        _fixup: function (text, char) {
+        _fixup (text, char) {
             let family_list = text.split(',');
-            let normalized_list = family_list.map((name)=>{
+            let normalized_list = family_list.map((name) => {
                 name = name.replace(/\s+/g, ' ').trim();
                 if (name.match(/^['"][^'"]+['"]$/)) {
                     name = name.replace(/['"]/g, "");
@@ -1151,13 +1151,13 @@ const STYLE_CONFIG = {
     },
     direction_styles: {
         parse: ParseDirection,
-        normalize: function (text) {
+        normalize (text) {
             return this._collapse(NormalizeSize(text).split(/\s+/));
         },
-        finalize: function (text) {
+        finalize (text) {
             return this._collapse(text.split(/\s+/));
         },
-        _collapse: function (size_list) {
+        _collapse (size_list) {
             if (size_list.length === 0) return "";
             if (size_list.every((size) => (size === size_list[0]))) return size_list[0];
             size_list[3] = (size_list[3] === size_list[1] ? undefined : size_list[3]);
@@ -1180,10 +1180,10 @@ STYLE_CONFIG['letter-height'] = STYLE_CONFIG['letter-spacing'] = STYLE_CONFIG['f
 
 STYLE_CONFIG['border-radius'] = JSPLib.utility.dataCopy(STYLE_CONFIG.direction_styles);
 
-['margin', 'padding'].forEach((family)=>{
+['margin', 'padding'].forEach((family) => {
     STYLE_CONFIG[family] = JSPLib.utility.dataCopy(STYLE_CONFIG.direction_styles);
     STYLE_CONFIG[family].family = FAMILY_DICT[family];
-    ['top', 'right', 'bottom', 'left'].forEach((direction)=>{
+    ['top', 'right', 'bottom', 'left'].forEach((direction) => {
         let style_name = family + '-' + direction;
         STYLE_CONFIG[style_name] = {
             copy: CopyDirection,
@@ -1226,7 +1226,7 @@ const LOAD_PANEL_KEYS = {
     embedded: ['embedded'],
     constructs: ['constructs', 'text-shadow-grid'],
     ruby: ['ruby-overall-style', 'ruby-top-style', 'ruby-bottom-style'],
-}
+};
 
 /****Functions****/
 
@@ -1236,9 +1236,9 @@ const LOAD_PANEL_KEYS = {
 
 // Helper functions
 
-function ShowErrorMessages(error_messages, header='Error') {
+function ShowErrorMessages(error_messages, header = 'Error') {
     let header_name = (error_messages.length === 1 ? header : header + 's');
-    let error_html = error_messages.map((message)=>('* ' + message)).join('<br>');
+    let error_html = error_messages.map((message) => ('* ' + message)).join('<br>');
     JSPLib.notice.error(`<div class="prose"><b>${header_name}:</b><br><div style="padding-left: 1em;">${error_html}</div></div>`, true);
 }
 
@@ -1299,7 +1299,7 @@ function RenderLoadDialog(panel) {
 function RenderLoadSessions(panel, sessions) {
     let html = "";
     let updated_list = [];
-    sessions.forEach((item)=>{
+    sessions.forEach((item) => {
         if (item.key) {
             html += RenderLoadItem(item);
             updated_list.push(item);
@@ -1320,7 +1320,7 @@ function RenderLoadItem(item) {
 
 function RenderHTMLBlockButtons() {
     let block_html = "";
-    TA.user_settings.available_html_tags.forEach((tag)=>{
+    TA.user_settings.available_html_tags.forEach((tag) => {
         let button_class = (HTML_STYLE_TAGS.includes(tag) ? 'ta-html-style-tag' : 'ta-html-only-tag');
         block_html += `<button class="ta-apply-block-element ${button_class}" value="${tag}">${tag}</button>`;
     });
@@ -1329,7 +1329,7 @@ function RenderHTMLBlockButtons() {
 
 function RenderSectionTextInputs(section_class, section_names, config) {
     let html = "";
-    section_names.forEach((name)=>{
+    section_names.forEach((name) => {
         let display_name = JSPLib.utility.displayCase(name);
         let input_name = section_class + '-' + JSPLib.utility.kebabCase(name);
         let label_style = config[name]?.label || "";
@@ -1341,7 +1341,7 @@ function RenderSectionTextInputs(section_class, section_names, config) {
 
 function RenderSectionCheckboxes(section_class, section_names, config) {
     let html = "";
-    section_names.forEach((name)=>{
+    section_names.forEach((name) => {
         let display_name = JSPLib.utility.displayCase(name);
         let input_name = section_class + '-' + JSPLib.utility.kebabCase(name);
         let title = (config[name].title ? `title="${config[name].title}"` : "");
@@ -1355,10 +1355,10 @@ function RenderTextShadowGrid() {
     let grid_html = "";
     let right_em = 9;
     let col_val = -1;
-    ['left', 'center', 'right'].forEach((colname)=>{
+    ['left', 'center', 'right'].forEach((colname) => {
         let top_em = 1;
         let row_val = -1;
-        ['top', 'middle', 'bottom'].forEach((rowname)=>{
+        ['top', 'middle', 'bottom'].forEach((rowname) => {
             if (colname === 'center' && rowname === 'middle') {
                 grid_html += `<div class="ta-grid-item" style="top: ${top_em}em; right: ${right_em}em; background-color: var(--text-color);"></div>`;
             } else {
@@ -1379,9 +1379,9 @@ function RenderTextShadowGrid() {
 
 function RenderCharButtons(char_list) {
     let html = "";
-    char_list.forEach((item)=>{
-        let display = item.display || item.char;
-        html += `<button value="${item.char}" title="${item.title}">${display}</button>`;
+    char_list.forEach((item) => {
+        let display = item.display || item["char"];
+        html += `<button value="${item["char"]}" title="${item.title}">${display}</button>`;
     });
     return html;
 }
@@ -1396,7 +1396,7 @@ function QueryNoteVersions(search_options, query_options) {
 }
 
 function QueryNewNotations() {
-    QueryNoteVersions({id_gt: TA.last_id}, {only: 'id,updated_at'}).then((data)=>{
+    QueryNoteVersions({id_gt: TA.last_id}, {only: 'id,updated_at'}).then((data) => {
         if (data.length > 0) {
             JSPLib.debug.debuglog("New note record:", data);
             alert("New noter detected: " + JSPLib.utility.timeAgo(data[0].updated_at));
@@ -1412,7 +1412,7 @@ function QueryLastNotation() {
     if (TA.user_settings.last_noter_cache_time > 0) {
         query_options.expires_in = TA.user_settings.last_noter_cache_time + 'min';
     }
-    QueryNoteVersions({}, query_options).then((data)=>{
+    QueryNoteVersions({}, query_options).then((data) => {
         JSPLib.debug.debuglog("Last note record:", data);
         TA.last_noter_queried = true;
         let timeago_timestamp = (data.length ? JSPLib.utility.timeAgo(data[0].updated_at) : 'N/A');
@@ -1441,27 +1441,28 @@ function IsInsideHTMLTag(html_text, cursor) {
     (((html_text.lastIndexOf('>', d) < 0) && (html_text.lastIndexOf('<', d) >= 0)), (html_text.lastIndexOf('>', d) < html_text.lastIndexOf('<', d)));
 }
 
-function BuildHTMLTag(tag_name, attrib_dict, style_dict, blank_style=false) {
-    let style_pairs = Object.entries(style_dict).filter((style_pair)=>(style_pair[1] !== ""));
+function BuildHTMLTag(tag_name, attrib_dict, style_dict, blank_style = false) {
+    let style_pairs = Object.entries(style_dict).filter((style_pair) => (style_pair[1] !== ""));
     if (style_pairs.length){
-        attrib_dict.style = style_pairs.map((style_pair)=>(style_pair[0] + ": " + style_pair[1])).join('; ') + ';';
+        attrib_dict.style = style_pairs.map((style_pair) => (style_pair[0] + ": " + style_pair[1])).join('; ') + ';';
     } else if (blank_style) {
         attrib_dict.style = "";
     } else {
         delete attrib_dict.style;
     }
-    let attrib_html = Object.entries(attrib_dict).map((attrib_pair)=>(attrib_pair[0] + '="' + attrib_pair[1] + '"')).join(' ');
+    let attrib_html = Object.entries(attrib_dict).map((attrib_pair) => (attrib_pair[0] + '="' + attrib_pair[1] + '"')).join(' ');
     attrib_html = (attrib_html ? " " : "") + attrib_html;
     return '<' + tag_name + attrib_html + '>';
 }
 
 function ParseTagAttributes(html_tag) {
     let attrib_items = JSPLib.utility.findAll(html_tag, /\w+="[^"]+"/g);
-    let attrib_pairs = attrib_items.map((attrib)=>JSPLib.utility.findAll(attrib, /(\w+)="([^"]+)"/g).filter((_item,i)=>(i % 3)));
-    let attrib_dict = Object.assign({}, ...attrib_pairs.map((attrib_pair)=>({[attrib_pair[0]]: attrib_pair[1]})));
+    let attrib_pairs = attrib_items.map((attrib) => JSPLib.utility.findAll(attrib, /(\w+)="([^"]+)"/g).filter((_item, i) => (i % 3)));
+    let attrib_dict = Object.assign({}, ...attrib_pairs.map((attrib_pair) => ({[attrib_pair[0]]: attrib_pair[1]})));
+    var style_dict;
     if ('style' in attrib_dict) {
-        let style_pairs = attrib_dict.style.split(';').filter((style)=>(!style.match(/^\s*$/))).map((style)=>(style.split(':').map((str)=>str.trim())));
-        var style_dict = Object.assign({}, ...style_pairs.map((style)=>({[style[0]]: style[1]})));
+        let style_pairs = attrib_dict.style.split(';').filter((style) => (!style.match(/^\s*$/))).map((style) => (style.split(':').map((str) => str.trim())));
+        style_dict = Object.assign({}, ...style_pairs.map((style) => ({[style[0]]: style[1]})));
     } else {
         style_dict = {};
     }
@@ -1486,10 +1487,10 @@ function TokenizeHTML(html_string) {
                 if (html_tag.tag_name === match[2]) {
                     html_tag.close_tag_start = start_pos;
                     html_tag.close_tag_end = end_pos;
-                    unclosed_tags.forEach((tag)=>{
+                    unclosed_tags.forEach((tag) => {
                         tag.close_tag_start = tag.close_tag_end = start_pos;
                     });
-                    unclosed_tags.length= 0;
+                    unclosed_tags.length = 0;
                 } else {
                     unclosed_tags.push(html_tag);
                 }
@@ -1507,15 +1508,15 @@ function TokenizeHTML(html_string) {
         position += increment;
         html_string = html_string.slice(increment);
     }
-    tag_stack.concat(unclosed_tags).forEach((tag)=>{
+    tag_stack.concat(unclosed_tags).forEach((tag) => {
         tag.close_tag_start = tag.close_tag_end = html_length;
     });
-    html_tags.forEach((tag)=>{
-        tag.ancestor_tags = html_tags.filter((outer_tag)=>{
+    html_tags.forEach((tag) => {
+        tag.ancestor_tags = html_tags.filter((outer_tag) => {
             if (tag === outer_tag) return false;
             return outer_tag.open_tag_end <= tag.open_tag_start && outer_tag.close_tag_start >= tag.close_tag_end;
         });
-        tag.descendant_tags = html_tags.filter((inner_tag)=>{
+        tag.descendant_tags = html_tags.filter((inner_tag) => {
             if (tag === inner_tag) return false;
             return tag.open_tag_end <= inner_tag.open_tag_start && tag.close_tag_start >= inner_tag.close_tag_end;
         });
@@ -1524,15 +1525,11 @@ function TokenizeHTML(html_string) {
 }
 
 function GetParentTag(html_tags, cursor) {
-    let ancestor_tags = html_tags.filter((tag)=>{
-        return tag.open_tag_end <= cursor && tag.close_tag_start >= cursor;
-    });
-    return ancestor_tags.reduce((acc, tag)=>{
-        return (!acc || (tag.ancestor_tags.length > acc.ancestor_tags.length) ? tag : acc);
-    }, null);
+    let ancestor_tags = html_tags.filter((tag) => tag.open_tag_end <= cursor && tag.close_tag_start >= cursor);
+    return ancestor_tags.reduce((acc, tag) => (!acc || (tag.ancestor_tags.length > acc.ancestor_tags.length) ? tag : acc), null);
 }
 
-function GetTag(html_text, cursor, warning=true) {
+function GetTag(html_text, cursor, warning = true) {
     let tag;
     if (TA.mode === 'main' || TA.mode === 'constructs') {
         tag = GetHTMLTag(html_text, cursor);
@@ -1552,7 +1549,7 @@ function GetTag(html_text, cursor, warning=true) {
 
 function GetHTMLTag(html_text, cursor) {
     let html_tags = TokenizeHTML(html_text);
-    let html_tag = html_tags.filter((tag)=>(cursor >= tag.open_tag_start && cursor < tag.open_tag_end))[0];
+    let html_tag = html_tags.filter((tag) => (cursor >= tag.open_tag_start && cursor < tag.open_tag_end))[0];
     if (!html_tag) return;
     html_tag.open_tag = html_text.slice(html_tag.open_tag_start, html_tag.open_tag_end);
     html_tag.close_tag = html_text.slice(html_tag.close_tag_start, html_tag.open_tag_end);
@@ -1566,11 +1563,11 @@ function GetHTMLTag(html_text, cursor) {
 
 function GetEmbeddedTag(html_text) {
     let html_tags = TokenizeHTML(html_text);
-    let embedded_tag = html_tags.find((html_tag)=>{
+    let embedded_tag = html_tags.find((html_tag) => {
         html_tag.open_tag = html_text.slice(html_tag.open_tag_start, html_tag.open_tag_end);
         if (!html_tag.open_tag.match(/ class="[^"]+"/)) return;
         Object.assign(html_tag, ParseTagAttributes(html_tag.open_tag));
-        if (html_tag.attrib_dict.class.split(' ').includes('note-box-attributes')) return html_tag;
+        if (html_tag.attrib_dict["class"].split(' ').includes('note-box-attributes')) return html_tag;
     });
     if (!embedded_tag) return;
     embedded_tag.close_tag = html_text.slice(embedded_tag.close_tag_start, embedded_tag.open_tag_end);
@@ -1583,7 +1580,7 @@ function GetEmbeddedTag(html_text) {
 
 function GetRubyTag(html_text, cursor) {
     let html_tags = TokenizeHTML(html_text);
-    let overall_ruby_tag = html_tags.find((html_tag)=>{
+    let overall_ruby_tag = html_tags.find((html_tag) => {
         if (html_tag.open_tag_start > cursor || html_tag.open_tag_end <= cursor) return;
         html_tag.open_tag = html_text.slice(html_tag.open_tag_start, html_tag.open_tag_end);
         html_tag.tag_name = html_tag.open_tag.match(/<(\w+)/)[1];
@@ -1595,12 +1592,12 @@ function GetRubyTag(html_text, cursor) {
         return html_tag;
     });
     if (!overall_ruby_tag) return;
-    let inner_tags = html_tags.filter((html_tag)=>((html_tag.open_tag_start >= overall_ruby_tag.open_tag_end) && (html_tag.close_tag_end <= overall_ruby_tag.close_tag_start)))
-                                  .sort((a, b)=>(a.open_tag_start - b.open_tag_start));
+    let inner_tags = html_tags.filter((html_tag) => ((html_tag.open_tag_start >= overall_ruby_tag.open_tag_end) && (html_tag.close_tag_end <= overall_ruby_tag.close_tag_start)))
+        .sort((a, b) => (a.open_tag_start - b.open_tag_start));
     let temp_inner_tags = [...inner_tags];
     let base_inner_tags = [];
     var next_inner_tag;
-    const _unshift_tags = function (current_tag, html_tags) {return html_tags.filter((html_tag)=>(html_tag.open_tag_start >= next_inner_tag.close_tag_end));};
+    const _unshift_tags = function (current_tag, html_tags) {return html_tags.filter((html_tag) => (html_tag.open_tag_start >= next_inner_tag.close_tag_end));};
     while (next_inner_tag = inner_tags.shift()) {
         inner_tags = _unshift_tags(next_inner_tag, inner_tags);
         next_inner_tag.open_tag = html_text.slice(next_inner_tag.open_tag_start, next_inner_tag.open_tag_end);
@@ -1612,8 +1609,8 @@ function GetRubyTag(html_text, cursor) {
         Object.assign(next_inner_tag, ParseTagAttributes(next_inner_tag.open_tag));
         base_inner_tags.push(next_inner_tag);
     }
-    let top_ruby_tags = base_inner_tags.filter((html_tag)=>(html_tag.tag_name === 'rt'));
-    let bottom_ruby_tags = base_inner_tags.filter((html_tag)=>(html_tag.tag_name === 'span'));
+    let top_ruby_tags = base_inner_tags.filter((html_tag) => (html_tag.tag_name === 'rt'));
+    let bottom_ruby_tags = base_inner_tags.filter((html_tag) => (html_tag.tag_name === 'span'));
     return {overall: overall_ruby_tag, top: top_ruby_tags, bottom: bottom_ruby_tags, temp_inner_tags, html_tags};
 }
 
@@ -1660,9 +1657,9 @@ function AddBlockElement(text_area, tag_name) {
         return;
     }
     let initialize = $('#ta-css-style-initialize').get(0)?.checked;
-    let [create_styles, invalid_styles] = (initialize && HTML_STYLE_TAGS.includes(tag_name) ? GetCSSStyles(false, INPUT_SECTIONS[TA.mode]) : [{},{}]);
+    let [create_styles, invalid_styles] = (initialize && HTML_STYLE_TAGS.includes(tag_name) ? GetCSSStyles(false, INPUT_SECTIONS[TA.mode]) : [{}, {}]);
     InsertHTMLBlock(text_area, tag_name, create_styles);
-    let style_errors = Object.entries(invalid_styles).map((style_pair)=>(`<code>${style_pair[0]}</code> => "${style_pair[1]}"`));
+    let style_errors = Object.entries(invalid_styles).map((style_pair) => (`<code>${style_pair[0]}</code> => "${style_pair[1]}"`));
     if (style_errors.length) {
         ShowStyleErrors(style_errors);
     } else {
@@ -1674,7 +1671,7 @@ function ChangeBlockElement(text_area, tag_name) {
     let cursor = text_area.selectionStart;
     let html_string = text_area.value;
     let html_tags = TokenizeHTML(html_string);
-    let html_tag = html_tags.filter((tag)=>((cursor > tag.open_tag_start && cursor < tag.open_tag_end) || (cursor > tag.close_tag_start && cursor < tag.close_tag_end)))[0];
+    let html_tag = html_tags.filter((tag) => ((cursor > tag.open_tag_start && cursor < tag.open_tag_end) || (cursor > tag.close_tag_start && cursor < tag.close_tag_end)))[0];
     if (!html_tag) return;
     if (html_tag.close_tag_start) {
         //Open tags may not have a close tag
@@ -1696,7 +1693,7 @@ function DeleteBlockElement(text_area) {
     let cursor = text_area.selectionStart;
     let html_string = text_area.value;
     let html_tags = TokenizeHTML(html_string);
-    let html_tag = html_tags.filter((tag)=>((cursor > tag.open_tag_start && cursor < tag.open_tag_end) || (cursor > tag.close_tag_start && cursor < tag.close_tag_end)))[0];
+    let html_tag = html_tags.filter((tag) => ((cursor > tag.open_tag_start && cursor < tag.open_tag_end) || (cursor > tag.close_tag_start && cursor < tag.close_tag_end)))[0];
     if (!html_tag) return;
     if (html_tag.close_tag_start) {
         //Open tags may not have a close tag
@@ -1714,7 +1711,7 @@ function DeleteBlockElement(text_area) {
 function GetInputs(key) {
     let save_data = {};
     let selector = INPUT_SECTIONS[key];
-    $(selector).each((_i, input)=>{
+    $(selector).each((_i, input) => {
         if (input.tagName === 'INPUT' && input.type === 'checkbox') {
             save_data[input.name] = input.checked;
         } else {
@@ -1726,10 +1723,10 @@ function GetInputs(key) {
 
 function SetInputs(key, load_data) {
     let selector = INPUT_SECTIONS[key];
-    $(selector).each((_i, input)=>{
+    $(selector).each((_i, input) => {
         if (!(input.name in load_data)) return;
         if (input.tagName === 'INPUT' && input.type === 'checkbox') {
-            input.checked = load_data[input.name]
+            input.checked = load_data[input.name];
         } else {
             input.value = load_data[input.name];
         }
@@ -1744,13 +1741,13 @@ function SaveInputs() {
 }
 
 function ClearInputs(selector) {
-    $(selector).each((_i, input)=>{
+    $(selector).each((_i, input) => {
         input.value = "";
     });
 }
 
 function GetActiveTextArea(close_notice = true) {
-    let text_area = $('.note-edit-dialog').filter((_i, entry)=>(entry.style.display !== 'none')).find('textarea').get(0);
+    let text_area = $('.note-edit-dialog').filter((_i, entry) => (entry.style.display !== 'none')).find('textarea').get(0);
     if (!text_area) {
         JSPLib.notice.error("No active note edit box!");
         return;
@@ -1782,8 +1779,8 @@ function GetMovableNote() {
 }
 
 function GetAllNotesOrdered() {
-    let [new_notes, saved_notes] = [...Danbooru.Note.notes].reduce((total, note)=>((note.id === null ? total[0].push(note) : total[1].push(note)) && total), [[],[]]);
-    saved_notes.sort((a, b)=>(a.id - b.id));
+    let [new_notes, saved_notes] = [...Danbooru.Note.notes].reduce((total, note) => ((note.id === null ? total[0].push(note) : total[1].push(note)) && total), [[], []]);
+    saved_notes.sort((a, b) => (a.id - b.id));
     return JSPLib.utility.concat(saved_notes, new_notes);
 }
 
@@ -1827,7 +1824,7 @@ function GetCSSStyles(overwrite, selector) {
     let add_styles = {};
     let invalid_styles = {};
     let test_div = document.createElement('div');
-    $(selector).each((_i, input)=>{
+    $(selector).each((_i, input) => {
         let value = input.value.trim(/\s/);
         if (value === "" && !overwrite) return;
         let style_name = input.dataset.name;
@@ -1850,7 +1847,7 @@ function MergeCSSStyles(style_dict, add_styles) {
     let copy_style_dict = JSPLib.utility.dataCopy(style_dict);
     let copy_keys = Object.keys(copy_style_dict);
     for (let style_name in add_styles) {
-        copy_keys.forEach((key)=>{
+        copy_keys.forEach((key) => {
             if (STYLE_CONFIG[style_name]?.family?.includes(key)) {
                 delete copy_style_dict[key];
             }
@@ -1926,7 +1923,7 @@ function ParseDirection(style_name, text) {
 }
 
 function CopyDirection(style_name, text) {
-    let [ ,name, direction] = style_name.match(/(\S+)-(top|bottom|left|right)/);
+    let [ , name, direction] = style_name.match(/(\S+)-(top|bottom|left|right)/);
     return [name, direction + ' ' + text];
 }
 
@@ -1947,11 +1944,12 @@ function ParseDirectionStyles(style_dict) {
 
 function BuildTextShadowStyle() {
     let errors = [];
-    let attribs = Object.assign(...$('#ta-text-shadow-attribs input').map((i,entry)=>({[entry.dataset.name.trim()]: entry.value})));
+    let attribs = Object.assign(...$('#ta-text-shadow-attribs input').map((i, entry) => ({[entry.dataset.name.trim()]: entry.value})));
     if (attribs.size === "") {
         return "";
-    } else {
-        if (!ValidateSize(attribs.size)) errors.push("Invalid size specified.");
+    } 
+    if (!ValidateSize(attribs.size)) {
+        errors.push("Invalid size specified.");
     }
     if ((attribs.color !== "") && !ValidateColor(attribs.color)) errors.push("Invalid color specified.");
     if ((attribs.blur !== "") && !ValidateSize(attribs.blur)) errors.push("Invalid blur specified.");
@@ -1960,8 +1958,8 @@ function BuildTextShadowStyle() {
         return false;
     }
     attribs.color = FinalizeColor(attribs.color);
-    let grid_points = $('#ta-text-shadow-grid input').filter((i,entry)=>entry.checked).map((i,entry)=>entry.value).toArray().map(JSON.parse);
-    let text_shadows = grid_points.map((grid_point)=>{
+    let grid_points = $('#ta-text-shadow-grid input').filter((i, entry) => entry.checked).map((i, entry) => entry.value).toArray().map(JSON.parse);
+    let text_shadows = grid_points.map((grid_point) => {
         let horizontal = (grid_point[0] === 0 ? '0' : "") || ((grid_point[0] === -1 ? '-' : "") + attribs.size);
         let vertical = (grid_point[1] === 0 ? '0' : "") || ((grid_point[1] === -1 ? '-' : "") + attribs.size);
         let text_shadow = horizontal + ' ' + vertical;
@@ -1999,25 +1997,25 @@ function TokenizeTextShadow(shadow) {
 
 function ParseTextShadows(style_dict) {
     if (!style_dict['text-shadow']) return;
-    let text_shadows = style_dict['text-shadow'].split(',').map((str)=>str.trim());
+    let text_shadows = style_dict['text-shadow'].split(',').map((str) => str.trim());
     //The first shadow is used for style parsing
     let shadow_style = TokenizeTextShadow(text_shadows[0]);
     if (!shadow_style) return;
-    ['left', 'center', 'right'].forEach((colname)=>{
-        ['top', 'middle', 'bottom'].forEach((rowname)=>{
+    ['left', 'center', 'right'].forEach((colname) => {
+        ['top', 'middle', 'bottom'].forEach((rowname) => {
             let input_name = 'shadow-grid-' + rowname + '-' + colname;
             TA.shadow_grid[input_name] = false;
         });
     });
-    text_shadows.forEach((shadow)=>{
+    text_shadows.forEach((shadow) => {
         let style = TokenizeTextShadow(shadow);
         if (!style) return;
         //Break out of the loop when a new style is detected
-        if (style.blur !== shadow_style.blur || style.color != shadow_style.color) return false;
+        if (style.blur !== shadow_style.blur || style.color !== shadow_style.color) return false;
         let match = shadow.match(/^\s*(-)?(\d)\S*\s+(-)?(\d)/);
         if (!match) return null;
-        let colname = (match[1] ? 'left' : (match[2] === '0' ? 'center': 'right'));
-        let rowname = (match[3] ? 'top' : (match[4] === '0' ? 'middle': 'bottom'));
+        let colname = (match[1] ? 'left' : (match[2] === '0' ? 'center' : 'right'));
+        let rowname = (match[3] ? 'top' : (match[4] === '0' ? 'middle' : 'bottom'));
         let input_name = 'shadow-grid-' + rowname + '-' + colname;
         TA.shadow_grid[input_name] = true;
     });
@@ -2110,7 +2108,7 @@ function ToggleSideNotice() {
         }
         if (TA.user_settings.new_noter_check_enabled) {
             let interval_period = TA.user_settings.new_noter_check_interval * JSPLib.utility.one_minute;
-            TA.poll_timer = setInterval(()=>{PollForNewNotations();}, interval_period);
+            TA.poll_timer = setInterval(() => {PollForNewNotations();}, interval_period);
         }
     } else {
         if (TA.side_menu_open) {
@@ -2138,14 +2136,14 @@ function CopyTagStyles() {
             return;
         }
         style_dict = shadow_style;
-        $('#ta-text-shadow-grid input').each((_i, input)=>{
+        $('#ta-text-shadow-grid input').each((_i, input) => {
             let input_name = input.name;
             let input_value = TA.shadow_grid[input_name];
             input.checked = input_value;
         });
     }
     let selector = INPUT_SECTIONS[TA.mode];
-    $(selector).each((_i, input)=>{
+    $(selector).each((_i, input) => {
         let style_name = input.dataset.name;
         let style_value = style_dict[style_name] || "";
         input.value = style_value;
@@ -2167,7 +2165,7 @@ function ApplyTagStyles() {
     } else {
         [add_styles, invalid_styles] = GetCSSStyles(overwrite, INPUT_SECTIONS[TA.mode]);
     }
-    let style_errors = Object.entries(invalid_styles).map((style_pair)=>(`<code>${style_pair[0]}</code> => "${style_pair[1]}"`));
+    let style_errors = Object.entries(invalid_styles).map((style_pair) => (`<code>${style_pair[0]}</code> => "${style_pair[1]}"`));
     if (Object.keys(add_styles).length) {
         UpdateHTMLStyles(text_area, add_styles);
     } else if (!overwrite && style_errors.length === 0) {
@@ -2201,7 +2199,7 @@ function ApplyBlock(event) {
     }
 }
 
-function DeleteBlock(event) {
+function DeleteBlock() {
     let text_area = GetActiveTextArea(false);
     if (!text_area) return;
     if (IsInsideHTMLTag(text_area.value, text_area.selectionStart)) {
@@ -2234,18 +2232,18 @@ function TextShadowControls(event) {
     let value = $(event.currentTarget).data('value');
     switch (value) {
         case 'all':
-            $('#ta-text-shadow-grid input').each((i, entry)=>{$(entry).prop('checked', true);});
+            $('#ta-text-shadow-grid input').each((i, entry) => {$(entry).prop('checked', true);});
             break;
         case 'sides':
-            $('#ta-text-shadow-grid .ta-grid-side').each((i, entry)=>{$(entry).prop('checked', true);});
-            $('#ta-text-shadow-grid .ta-grid-corner').each((i, entry)=>{$(entry).prop('checked', false);});
+            $('#ta-text-shadow-grid .ta-grid-side').each((i, entry) => {$(entry).prop('checked', true);});
+            $('#ta-text-shadow-grid .ta-grid-corner').each((i, entry) => {$(entry).prop('checked', false);});
             break;
         case 'corners':
-            $('#ta-text-shadow-grid .ta-grid-corner').each((i, entry)=>{$(entry).prop('checked', true);});
-            $('#ta-text-shadow-grid .ta-grid-side').each((i, entry)=>{$(entry).prop('checked', false);});
+            $('#ta-text-shadow-grid .ta-grid-corner').each((i, entry) => {$(entry).prop('checked', true);});
+            $('#ta-text-shadow-grid .ta-grid-side').each((i, entry) => {$(entry).prop('checked', false);});
             break;
         case 'none':
-            $('#ta-text-shadow-grid input').each((i, entry)=>{$(entry).prop('checked', false);});
+            $('#ta-text-shadow-grid input').each((i, entry) => {$(entry).prop('checked', false);});
             //falls through
         default:
             //do nothing
@@ -2267,7 +2265,7 @@ function ToggleEmbeddedMode() {
         $('#post_has_embedded_notes').attr('checked', true);
     }
     let $notes = $('#notes');
-    Danbooru.Note.notes.forEach((note)=>{
+    Danbooru.Note.notes.forEach((note) => {
         if (note.id === null) return;
         let santized_html = (note.body.$note_body.html() === '<em>Click to edit</em>' ? note.box.$inner_border.html() : note.body.$note_body.html());
         let original_html = note.original_body;
@@ -2291,8 +2289,8 @@ function ToggleEmbeddedMode() {
     ReloadNotes();
     TA.has_embedded = !TA.has_embedded;
     JSPLib.network.put(`/posts/${TA.post_id}.json`, {data: {post: {has_embedded_notes: TA.has_embedded}}}).then(
-        ()=>{JSPLib.notice.notice("Settings updated.");},
-        ()=>{JSPLib.notice.error("Error updating settings.");},
+        () => {JSPLib.notice.notice("Settings updated.");},
+        () => {JSPLib.notice.error("Error updating settings.");},
     );
 }
 
@@ -2307,11 +2305,11 @@ function AddEmbeddedElement() {
     }
     let note_html = (html_tag ? html_text.replace(html_tag.full_tag, "") : html_text);
     let initialize = $('#ta-css-style-initialize').get(0)?.checked;
-    let [add_styles, invalid_styles] = (initialize ? GetCSSStyles(false, INPUT_SECTIONS[TA.mode]) : [{},{}]);
+    let [add_styles, invalid_styles] = (initialize ? GetCSSStyles(false, INPUT_SECTIONS[TA.mode]) : [{}, {}]);
     let embedded_tag = BuildHTMLTag('div', {class: 'note-box-attributes'}, add_styles, true) + '</div>';
     note_html += embedded_tag;
     text_area.value = note_html;
-    let style_errors = Object.entries(invalid_styles).map((style_pair)=>(`<code>${style_pair[0]}</code> => "${style_pair[1]}"`));
+    let style_errors = Object.entries(invalid_styles).map((style_pair) => (`<code>${style_pair[0]}</code> => "${style_pair[1]}"`));
     if (style_errors.length) {
         ShowStyleErrors(style_errors);
     } else {
@@ -2334,12 +2332,12 @@ function SetEmbeddedLevel() {
     let html_text = text_area.value;
     let html_tag = GetTag(html_text, text_area.selectionStart);
     if (!html_tag) return;
-    let classlist = html_tag.attrib_dict.class.split(/\s+/).filter((classname)=>(!classname.match(/level-[1-5]/)));
+    let classlist = html_tag.attrib_dict["class"].split(/\s+/).filter((classname) => (!classname.match(/level-[1-5]/)));
     let level = $('#ta-embedded-level-select').val();
     if (level.match(/^[1-5]$/)){
         classlist.push('level-' + level);
     }
-    html_tag.attrib_dict.class = classlist.join(' ');
+    html_tag.attrib_dict["class"] = classlist.join(' ');
     let final_tag = BuildHTMLTag(html_tag.tag_name, html_tag.attrib_dict, html_tag.style_dict);
     text_area.value = html_text.replace(html_tag.open_tag, final_tag);
 }
@@ -2399,11 +2397,11 @@ function SaveNote() {
             height: note.h
         };
         JSPLib.network.put(`/notes/${note.id}.json`, {data: {note: params }}).then(
-            ()=>{
+            () => {
                 note.box.$note_box.removeClass("unsaved");
                 JSPLib.notice.notice(`Note #${note.id} saved.`);
             },
-            ()=>{JSPLib.notice.error(`Error saving note #${note.id}`);}
+            () => {JSPLib.notice.error(`Error saving note #${note.id}`);}
         );
     } else {
         JSPLib.notice.error("Save not available for new unsaved notes.");
@@ -2414,13 +2412,13 @@ function ResetNote() {
     let note = GetMovableNote();
     if (!note) return;
     if (!note.is_new()) {
-        JSPLib.network.getJSON(`/notes/${note.id}.json`).then((data)=>{
+        JSPLib.network.getJSON(`/notes/${note.id}.json`).then((data) => {
             note.box.place_note(data.x, data.y, data.width, data.height);
             let text_area = GetActiveTextArea();
             if (text_area) {
                 text_area.value = data.body;
             }
-            note.body.preview_text(data.body).then(()=>{
+            note.body.preview_text(data.body).then(() => {
                 JSPLib.notice.notice(`Note #${note.id} reset.`);
                 note.box.$note_box.removeClass("unsaved");
             });
@@ -2430,20 +2428,20 @@ function ResetNote() {
     }
 }
 
-async function DeleteNote() {
+function DeleteNote() {
     let note = GetMovableNote();
     if (!note) return;
     if (!note.is_new()) {
         if (!confirm("Do you really want to delete this note?")) return;
-        JSPLib.network.delete(`/notes/${note.id}.json`).then(
-            ()=>{JSPLib.notice.notice(`Note #${note.id} deleted.`);},
-            ()=>{JSPLib.notice.error(`Error deleting note #${note.id}.`);},
+        JSPLib.network["delete"](`/notes/${note.id}.json`).then(
+            () => {JSPLib.notice.notice(`Note #${note.id} deleted.`);},
+            () => {JSPLib.notice.error(`Error deleting note #${note.id}.`);},
         );
     }
     note.box.$note_box.remove();
     note.body.$note_body.remove();
-    Danbooru.Note.notes.delete(note);
-    TA.starting_notes.delete(note.id);
+    Danbooru.Note.notes["delete"](note);
+    TA.starting_notes["delete"](note.id);
 }
 
 function EditNote() {
@@ -2467,7 +2465,7 @@ function HideNote() {
 }
 
 function NextNote() {
-    SelectNote((current_note, all_notes)=>{
+    SelectNote((current_note, all_notes) => {
         if (current_note) {
             let next_index = (all_notes.indexOf(current_note) + 1) % Danbooru.Note.notes.size ;
             return all_notes[next_index];
@@ -2477,7 +2475,7 @@ function NextNote() {
 }
 
 function PreviousNote() {
-    SelectNote((current_note, all_notes)=>{
+    SelectNote((current_note, all_notes) => {
         if (current_note) {
             let previous_index = all_notes.indexOf(current_note) - 1;
             previous_index = (previous_index < 0 ? (Danbooru.Note.notes.size - 1) : previous_index);
@@ -2524,13 +2522,13 @@ function PinRubyDialog() {
         pos.left -= $(window).scrollLeft();
         pos.top -= $(window).scrollTop();
         $dialog_widget.offset(pos).css({ position: "fixed" });
-        TA.$ruby_dialog.dialog("option", "resize", ()=>{ $dialog_widget.css({ position: "fixed" }); });
+        TA.$ruby_dialog.dialog("option", "resize", () => { $dialog_widget.css({ position: "fixed" }); });
         TA.$pin_button.button("option", "icons", {primary: "ui-icon-pin-s"});
     } else {
         pos.left += $(window).scrollLeft();
         pos.top += $(window).scrollTop();
         $dialog_widget.offset(pos).css({ position: "absolute" });
-        TA.$ruby_dialog.dialog("option", "resize", ()=>{ /* do nothing */ });
+        TA.$ruby_dialog.dialog("option", "resize", () => { /* do nothing */ });
         TA.$pin_button.button("option", "icons", {primary: "ui-icon-pin-w"});
     }
 }
@@ -2544,15 +2542,15 @@ function CopyRubyTag() {
         return;
     }
     let overall_style_dict = ParseDirectionStyles(ruby_tag.overall.style_dict);
-    $('#ta-ruby-dialog-styles-overall input').each((_i, input)=>{
+    $('#ta-ruby-dialog-styles-overall input').each((_i, input) => {
         let style_name = input.dataset.name;
         let style_value = overall_style_dict[style_name] || "";
         input.value = style_value;
     });
-    ['top', 'bottom'].forEach((direction)=>{
+    ['top', 'bottom'].forEach((direction) => {
         if (ruby_tag[direction].length) {
             let style_dict = ruby_tag[direction][0].style_dict;
-            $(`#ta-ruby-dialog-styles-${direction} input`).each((_i, input)=>{
+            $(`#ta-ruby-dialog-styles-${direction} input`).each((_i, input) => {
                 let style_name = input.dataset.name;
                 let style_value = style_dict[style_name] || "";
                 input.value = style_value;
@@ -2596,9 +2594,9 @@ function ApplyRubyTag() {
     text_area.value = final_text;
     text_area.focus();
     text_area.setSelectionRange(select_start, select_end);
-    let style_errors = Object.entries(overall_invalid_styles).map((style_pair)=>(`<b>Overall</b> - <code>${style_pair[0]}</code> => "${style_pair[1]}"`));
-    style_errors = JSPLib.utility.concat(style_errors, Object.entries(top_invalid_styles).map((style_pair)=>(`<b>Top</b> - <code>${style_pair[0]}</code> => "${style_pair[1]}"`)));
-    style_errors = JSPLib.utility.concat(style_errors, Object.entries(bottom_invalid_styles).map((style_pair)=>(`<b>Bottom</b> - <code>${style_pair[0]}</code> => "${style_pair[1]}"`)));
+    let style_errors = Object.entries(overall_invalid_styles).map((style_pair) => (`<b>Overall</b> - <code>${style_pair[0]}</code> => "${style_pair[1]}"`));
+    style_errors = JSPLib.utility.concat(style_errors, Object.entries(top_invalid_styles).map((style_pair) => (`<b>Top</b> - <code>${style_pair[0]}</code> => "${style_pair[1]}"`)));
+    style_errors = JSPLib.utility.concat(style_errors, Object.entries(bottom_invalid_styles).map((style_pair) => (`<b>Bottom</b> - <code>${style_pair[0]}</code> => "${style_pair[1]}"`)));
     if (style_errors.length) {
         ShowStyleErrors(style_errors);
     } else {
@@ -2618,7 +2616,7 @@ function SaveSessionInputs() {
     let panel = TA.active_panel;
     let section_keys = LOAD_PANEL_KEYS[panel];
     let save_inputs = {};
-    section_keys.forEach((key)=>{
+    section_keys.forEach((key) => {
         save_inputs = Object.assign(save_inputs, GetInputs(key));
     });
     let key = JSPLib.utility.getUniqueID();
@@ -2641,7 +2639,7 @@ function DeleteSessions() {
     let panel = TA.active_panel;
     let $dialog = TA.$load_dialog[panel];
     let update_items = [];
-    $dialog.find('.ta-load-sessions input').each((_i, input)=>{
+    $dialog.find('.ta-load-sessions input').each((_i, input) => {
         let key = input.id.match(/^ta-delete-(.*)/)[1];
         let $link = $dialog.find(`.ta-load-session-item[data-key=${key}]`);
         let item = $link.data();
@@ -2679,7 +2677,7 @@ function LoadSessionInput(event) {
         return;
     }
     let section_keys = LOAD_PANEL_KEYS[panel];
-    section_keys.forEach((section_key)=>{
+    section_keys.forEach((section_key) => {
         SetInputs(section_key, load_inputs);
     });
     JSPLib.notice.notice("Inputs loaded.");
@@ -2736,7 +2734,7 @@ function PollForNewNotations() {
 
 // Side menu functions
 
-function ToggleSideMenu(open_menu, toggle_link=true) {
+function ToggleSideMenu(open_menu, toggle_link = true) {
     if (open_menu) {
         TA.$side_menu.show();
         TA.$side_menu.draggable({cancel: 'a, button, input, select, label, .ta-cursor-text'});
