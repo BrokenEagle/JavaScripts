@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.33
+// @version      28.34
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1432,7 +1432,7 @@ GetPrefix.prefixhash = {};
 
 function GetConsequentMatch(term, tag) {
     let retval = {source: 'tag', antecedent: null};
-    let regex = RegExp(JSPLib.utility.regexpEscape(term).replace(/\\\*/g, '.*'));
+    let regex = RegExp('^' + JSPLib.utility.regexpEscape(term).replace(/\\\*/g, '.*'));
     if (!tag.name.match(regex)) {
         let matching_consequent = tag.consequent_aliases.filter((consequent) => consequent.antecedent_name.match(regex));
         if (matching_consequent.length) {
