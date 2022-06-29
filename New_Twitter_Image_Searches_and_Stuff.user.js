@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.22
+// @version      7.23
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -159,207 +159,207 @@ const ALL_POSITIONS = ['above', 'below'];
 const SETTINGS_CONFIG = {
     IQDB_settings: {
         allitems: COMMON_QUERY_SETTINGS,
-        default: DEFAULT_QUERY_SETTINGS,
+        reset: DEFAULT_QUERY_SETTINGS,
         validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'checkbox', COMMON_QUERY_SETTINGS),
         hint: "Check/uncheck to turn on/off setting."
     },
     sauce_settings: {
         allitems: COMMON_QUERY_SETTINGS,
-        default: DEFAULT_QUERY_SETTINGS,
+        reset: DEFAULT_QUERY_SETTINGS,
         validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'checkbox', COMMON_QUERY_SETTINGS),
         hint: "Check/uncheck to turn on/off setting."
     },
     SauceNAO_API_key: {
-        default: "",
+        reset: "",
         parse: String,
         validate: JSPLib.validate.isString,
         hint: "Required to use SauceNAO queries. See <a href=\"http://saucenao.com\" target=\"_blank\">SauceNAO</a> for how to get an API key."
     },
     similarity_cutoff: {
-        default: 80.0,
+        reset: 80.0,
         parse: parseFloat,
         validate: (data) => JSPLib.validate.isNumber(data) && data > 0 && data < 100,
         hint: "Minimum similiarity score of an image match to return. Valid values: 0 - 100."
     },
     results_returned: {
-        default: 5,
+        reset: 5,
         parse: parseInt,
         validate: (data) => Number.isInteger(data) && data > 0 && data <= 20,
         hint: "Maximum number of results to return per image. Valid values: 1 - 20."
     },
     URL_wildcards_enabled: {
-        default: false,
+        reset: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Manual searches of URLs will use wildcards in the search. <b>Note:</b> This will make the search take longer or timeout."
     },
     recheck_interval: {
-        default: 10,
+        reset: 10,
         parse: parseInt,
         validate: (data) => Number.isInteger(data) && data >= 5,
         hint: "Number of minutes. Valid values: >= 5. How often to check post versions once up to date."
     },
     custom_order_enabled: {
-        default: false,
+        reset: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Multi-post results will use <span class=\"ntisas-code\">order:custom</span>, showing results with Twitter's order. <b>Note:</b> This will break the tag limit for non-Gold+."
     },
     query_subdomain: {
         allitems: SUBDOMAINS,
-        default: ['danbooru'],
+        reset: ['danbooru'],
         validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'radio', SUBDOMAINS),
         hint: "Select which subdomain of Danbooru to query from. <b>Note:</b> The chosen subdomain must be logged into or the script will fail to work."
     },
     use_graphql: {
         display: "Use GraphQL",
-        default: false,
+        reset: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Select whether to use the GraphQL endpoint instead of the API endpoint for network requests."
     },
     confirm_delete_enabled: {
-        default: true,
+        reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Prompt the user on deleting results from the database."
     },
-    delete_all_default: {
-        default: true,
+    delete_all_reset: {
+        reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Whether to start out with <b>Delete all</b> enabled or not on the advanced tooltips."
     },
     merge_results_enabled: {
-        default: true,
+        reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Displays a merge link that allows a new query merging the old results with the new."
     },
     bypass_server_mode: {
-        default: false,
+        reset: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Operates without information from the tweet server database. <b>Note:</b> Should only be used when the server is unreachable."
     },
     autocheck_IQDB_enabled: {
-        default: false,
+        reset: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Will trigger the <b>IQDB</b> link if no results are found with the <b>URL</b> link."
     },
     autoclick_IQDB_enabled: {
-        default: false,
+        reset: false,
         validate: JSPLib.validate.isBoolean,
         hint: `Will automatically trigger the <b>IQDB</b> links (limited availability, see <a class="ntisas-forum-topic-link" target="_blank">topic #${DANBOORU_TOPIC_ID}</a> for details). <b>Note:</b> Any results are saved automatically.`
     },
     auto_unhide_tweets_enabled: {
-        default: false,
+        reset: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Automatically unhides sensitive Tweet content."
     },
     display_retweet_id: {
-        default: false,
+        reset: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Displays the retweet ID next to the retweeter's name. <b>Note:</b> Only available with access to Twitter's API."
     },
     display_tweet_views: {
-        default: false,
+        reset: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Displays the the number of times a tweet has been seen."
     },
     display_profile_views: {
-        default: false,
+        reset: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Displays the the number of times a user/timeline has been seen."
     },
     display_user_id: {
-        default: false,
+        reset: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Displays the user ID above the username on the Tweet view. <b>Note:</b> Only available with access to Twitter's API."
     },
     display_media_link: {
-        default: true,
+        reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Displays a link to the media/likes timeline in the tweet view."
     },
     display_image_number: {
-        default: true,
+        reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Displays the image number used by <b>Download Originals</b>."
     },
     display_upload_link: {
-        default: true,
+        reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Displays an <b>Upload</b> link to Danbooru in the enlarged image view."
     },
     display_tweet_statistics: {
-        default: true,
+        reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Displays tweets statistics for the current timeline in the side menu."
     },
     display_available_sauce: {
-        default: true,
+        reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Displays the number of available sauce in the side menu."
     },
     display_network_errors: {
-        default: true,
+        reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Displays network error count and controls in the side menu."
     },
     image_popout_enabled: {
-        default: false,
+        reset: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Displays the image without any clipping (stream view only)."
     },
     lock_page_enabled: {
-        default: true,
+        reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Displays controls in the side menu to allow page navigation to be locked."
     },
     tweet_indicators_enabled: {
-        default: false,
+        reset: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Displays controls that allow temporary/permanent marking of a Tweet/Account."
     },
     score_highlights_enabled: {
-        default: true,
+        reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: `Adds colored borders and other stylings based upon the Tweet score (limited availability, see <a class="ntisas-forum-topic-link" target="_blank">topic #${DANBOORU_TOPIC_ID}</a> for details).`
     },
     advanced_tooltips_enabled: {
-        default: true,
+        reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Displays extra information and thumbnails on IQDB results. <b>Note:</b> Only when the data is not auto-saved."
     },
     score_levels_faded: {
         allitems: SCORE_LEVELS,
-        default: ['belowavg'],
+        reset: ['belowavg'],
         validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'radio', SCORE_LEVELS),
         hint: "Select the default score level cutoff (inclusive) where Tweets get faded automatically."
     },
     score_levels_hidden: {
         allitems: SCORE_LEVELS,
-        default: ['poor'],
+        reset: ['poor'],
         validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'radio', SCORE_LEVELS),
         hint: "Select the default score level cutoff (inclusive) where Tweets get hidden automatically."
     },
     score_window_size: {
-        default: 40,
+        reset: 40,
         parse: parseInt,
         validate: (data) => Number.isInteger(data) && data >= 10,
         hint: "Valid values: >= 10. The number of surrounding tweets to consider when calculating levels."
     },
     original_download_enabled: {
-        default: false,
+        reset: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Shows download links for the original images on the Tweet view with customizable filename prefixes."
     },
     download_position: {
         allitems: ALL_POSITIONS,
-        default: ['above'],
+        reset: ['above'],
         validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'radio', ALL_POSITIONS),
         hint: "Select whether the download image links will appear above or below the images."
     },
     filename_prefix_format: {
-        default: "%TWEETID%--%IMG%",
+        reset: "%TWEETID%--%IMG%",
         parse: String,
         validate: JSPLib.validate.isString,
         hint: "Prefix to add to original image downloads. Available format keywords include:<br><span class=\"ntisas-code\">%TWEETID%, %USERID%, %USERACCOUNT%, %IMG%, %DATE%, %TIME%, %ORDER%</span>."
-    }
+    },
 };
 
 const ALL_LIST_TYPES = ['highlight', 'iqdb', 'artist', 'tweet'];
