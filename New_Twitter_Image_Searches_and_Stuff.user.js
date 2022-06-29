@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.23
+// @version      7.24
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -3462,7 +3462,7 @@ function RenderPostsContainer(all_posts) {
         let addons = RenderPreviewAddons(post.source, post.id, null, post.ext, post.size, post.width, post.height, is_user_upload);
         html += RenderPostPreview(post, addons);
     });
-    let delete_all_checked = (NTISAS.user_settings.delete_all_default ? "checked" : "");
+    let delete_all_checked = (NTISAS.user_settings.delete_all_reset ? "checked" : "");
     let width_addon = (all_posts.length > 10 ? 'style="width:850px"' : "");
     return `
 <div class="ntisas-post-result ntisas-qtip-container" ${width_addon}>
@@ -6273,7 +6273,7 @@ function InitializeChangedSettings() {
                 $('.ntisas-footer-entries', tweet).remove();
             }
         }
-        if ($post_link.length && ((post_ids.length > 1 && JSPLib.menu.hasSettingChanged('custom_order_enabled')) || JSPLib.menu.hasSettingChanged('delete_all_default') || JSPLib.menu.hasSettingChanged('merge_results_enabled'))) {
+        if ($post_link.length && ((post_ids.length > 1 && JSPLib.menu.hasSettingChanged('custom_order_enabled')) || JSPLib.menu.hasSettingChanged('delete_all_reset') || JSPLib.menu.hasSettingChanged('merge_results_enabled'))) {
             $post_link.qtiptisas('destroy', true);
             InitializePostIDsLink(tweet_id, $post_link.parent(), tweet, post_ids);
         }
@@ -6459,7 +6459,7 @@ function RenderSettingsMenu() {
     $('#ntisas-query-settings').append(JSPLib.menu.renderTextinput('results_returned', 10));
     $('#ntisas-query-settings').append(JSPLib.menu.renderTextinput('SauceNAO_API_key', 80));
     $('#ntisas-database-settings').append(JSPLib.menu.renderCheckbox('confirm_delete_enabled'));
-    $('#ntisas-database-settings').append(JSPLib.menu.renderCheckbox('delete_all_default'));
+    $('#ntisas-database-settings').append(JSPLib.menu.renderCheckbox('delete_all_reset'));
     $('#ntisas-database-settings').append(JSPLib.menu.renderCheckbox('merge_results_enabled'));
     $('#ntisas-database-settings').append(JSPLib.menu.renderCheckbox('bypass_server_mode'));
     $('#ntisas-network-settings').append(JSPLib.menu.renderCheckbox('URL_wildcards_enabled'));
@@ -6609,6 +6609,7 @@ JSPLib.menu.program_data_regex = PROGRAM_DATA_REGEX;
 JSPLib.menu.settings_callback = RemoteSettingsCallback;
 JSPLib.menu.settings_migrations = [
     {from: 'display_view_count', to: 'display_tweet_views'},
+    {from: 'delete_all_default', to: 'delete_all_reset'},
 ];
 JSPLib.menu.settings_config = SETTINGS_CONFIG;
 JSPLib.menu.control_config = CONTROL_CONFIG;
