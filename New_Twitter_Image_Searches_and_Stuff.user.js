@@ -3146,6 +3146,7 @@ async function PickImage(event,type,pick_func) {
     let all_image_urls = GetImageLinks($tweet[0]);
     if (all_image_urls.length === 0) {
         this.debug('log', "Images not loaded yet...");
+        JSPLib.notice.notice("No images detected.");
         return false;
     }
     this.debug('log', "All:", all_image_urls);
