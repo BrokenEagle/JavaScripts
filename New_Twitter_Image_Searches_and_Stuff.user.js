@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.24
+// @version      7.25
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -5713,16 +5713,16 @@ function MarkupMainTweet(tweet) {
     }
     let sub_body = main_body.children[2];
     $(sub_body).addClass('ntisas-sub-body');
-    $(sub_body.children[0]).addClass('ntisas-tweet-text');
-    $(sub_body.children[1]).addClass('ntisas-tweet-media');
+    $(sub_body.children[1]).addClass('ntisas-tweet-text');
+    $(sub_body.children[2]).addClass('ntisas-tweet-media');
     let has_media = Boolean($(sub_body.children[1]).children().length);
-    $(sub_body.children[2]).addClass('ntisas-time-line');
-    let childn3 = sub_body.children[3];
-    if ($('[href$="/retweets"]', childn3).length || $('[href$="/likes"]', childn3).length || $('[href$="/retweets/with_comments"]', childn3).length) {
-        $(childn3).addClass('ntisas-retweets-likes');
+    $(sub_body.children[3]).addClass('ntisas-time-line');
+    let childn4 = sub_body.children[4];
+    if ($('[href$="/retweets"]', childn4).length || $('[href$="/likes"]', childn4).length || $('[href$="/retweets/with_comments"]', childn4).length) {
+        $(childn4).addClass('ntisas-retweets-likes');
         var action_child = sub_body.children[4];
     } else {
-        action_child = childn3;
+        action_child = childn4;
     }
     $(action_child).addClass('ntisas-tweet-actions');
     $(action_child).before('<div ntisas-image-menu="parent"></div>');
