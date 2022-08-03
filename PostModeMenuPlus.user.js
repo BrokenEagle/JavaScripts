@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://gist.github.com/BrokenEagle
-// @version      5.1
+// @version      5.2
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -103,8 +103,8 @@ const DEFAULT_VALUES = {
 
 const PROGRAM_CSS = `
 #posts {
-    margin: -1em -2em;
-    padding: 2em;
+    margin: -1em;
+    padding: 1em;
 }
 .post-preview {
     border: solid 1px transparent;
