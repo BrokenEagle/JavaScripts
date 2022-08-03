@@ -384,7 +384,7 @@ function InitializeProgramValues() {
     Object.assign(PMM, {
         mode: JSPLib.storage.getStorageData('pmm-mode', localStorage),
         available_modes: new Set(PMM.user_settings.available_modes.map((mode) => JSPLib.utility.kebabCase(mode.toLocaleLowerCase()))),
-        id_separator: SEPARATOR_DICT[PMM.user_settings.id_separator[0]], 
+        id_separator: SEPARATOR_DICT[PMM.user_settings.id_separator[0]],
     });
     if (PMM.user_settings.drag_select_enabled) {
         PMM.dragger = new DragSelect({
@@ -436,8 +436,8 @@ function Main() {
 /****Initialization****/
 
 //Variables for debug.js
-JSPLib.debug.debug_console = true;
-JSPLib.debug.level = JSPLib.debug.DEBUG;
+JSPLib.debug.debug_console = false;
+JSPLib.debug.level = JSPLib.debug.INFO;
 JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
 //Variables for menu.js
