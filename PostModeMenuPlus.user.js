@@ -277,9 +277,9 @@ function MenuFunctions(post_ids) {
             case 'copy-id':
                 Danbooru.Utility.copyToClipboard(post_ids.join(PMM.id_separator));
                 return;
-            case 'up-vote':
-            case 'down-vote':
-                VotePost(post_id, (PMM.mode === 'up-vote' ? 1 : -1));
+            case 'upvote':
+            case 'downvote':
+                VotePost(post_id, (PMM.mode === 'upvote' ? 1 : (PMM.mode === 'downvote' ? -1 : 0)));
                 break;
             case 'unvote':
                 UnvotePost(post_id);
