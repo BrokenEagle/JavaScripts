@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://gist.github.com/BrokenEagle
-// @version      5.0
+// @version      5.1
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -33,6 +33,9 @@
 //Library variables
 
 JSPLib.danbooru.pending_update_count = 0;
+
+//Exterior script variables
+const DANBOORU_TOPIC_ID = '21812';
 
 //Variables for load.js
 const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.Utility'];
@@ -79,7 +82,7 @@ const SETTINGS_CONFIG = {
 };
 
 const MENU_CONFIG = {
-    topic_id: null,
+    topic_id: DANBOORU_TOPIC_ID,
     settings: [{
         name: 'general',
     }, {
