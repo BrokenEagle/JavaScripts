@@ -111,8 +111,8 @@ const PROGRAM_CSS = `
     padding-top: 5px;
 }
 .pmm-selected {
-    background-color: #EEE;
-    border: solid 1px #DDD;
+    background-color: var(--default-border-color);
+    border: solid 1px var(--form-input-border-color);
 }`;
 
 const MENU_CSS = `
@@ -370,7 +370,7 @@ function DragSelectCallback({items}) {
             return;
         }
     }
-    let articles = items.map((entry) => $(entry).closest('article'));
+    let articles = items.map((entry) => $(entry).closest('article').get(0));
     let post_ids = articles.map((entry) => $(entry).data('id'));
     $(articles).addClass('pmm-selected');
     post_ids.forEach(PMM.modified.add, PMM.modified);
