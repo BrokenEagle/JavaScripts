@@ -34,9 +34,6 @@
 
 JSPLib.danbooru.pending_update_count = 0;
 
-//Exterior script variables
-const DANBOORU_TOPIC_ID = '21812';
-
 //Variables for load.js
 const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.Utility'];
 const PROGRAM_LOAD_OPTIONAL_SELECTORS = ['#c-posts #a-index #mode-box', '#c-users #a-edit'];
@@ -82,7 +79,7 @@ const SETTINGS_CONFIG = {
 };
 
 const MENU_CONFIG = {
-    topic_id: DANBOORU_TOPIC_ID,
+    topic_id: null,
     settings: [{
         name: 'general',
     }, {
@@ -235,7 +232,8 @@ async function UnvotePost(post_id) {
         score = -1;
     }
     JSPLib.danbooru.num_network_requests += 1;
-    JSPLib.network['delete'](`/posts/${post_id}/votes.json`)
+    // eslint-disable-next-line dot-notation
+    JSPLib.network.delete(`/posts/${post_id}/votes.json`)
         .always(() => {
             JSPLib.danbooru.pending_update_count -= 1;
             JSPLib.danbooru.num_network_requests -= 1;
