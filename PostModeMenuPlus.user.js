@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://gist.github.com/BrokenEagle
-// @version      5.2
+// @version      5.3
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -311,7 +311,9 @@ function RenderPostModeMenuAddons() {
 function PostModeMenu(event) {
     if (PMM.available_modes.has(PMM.mode)) {
         let $link = $(event.currentTarget);
-        let post_id = $link.closest("article").data("id");
+        let $article = $link.closest("article");
+        let post_id = $article.data("id");
+        $article.addClass('pmm-selected');
         PMM.modified.add(post_id);
         if (PMM.mode === 'tag-script') {
             PMM.dragger.removeSelectables($link.find('img'), true);
