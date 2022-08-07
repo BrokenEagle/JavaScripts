@@ -315,9 +315,6 @@ function PostModeMenu(event) {
         let post_id = $article.data("id");
         $article.addClass('pmm-selected');
         PMM.modified.add(post_id);
-        if (PMM.mode === 'tag-script') {
-            PMM.dragger.removeSelectables($link.find('img'), true);
-        }
         MenuFunctions([post_id]);
         event.preventDefault();
         event.stopImmediatePropagation();
