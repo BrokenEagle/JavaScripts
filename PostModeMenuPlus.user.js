@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://gist.github.com/BrokenEagle
-// @version      5.3
+// @version      5.4
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -351,9 +351,10 @@ function PostPreviewUpdated(event, post) {
     }, 1000);
 }
 
-function DragSelectCallback({items}) {
-    if (!PMM.available_modes.has(PMM.mode)) return;
-    JSPLib.debug.debuglog('DragSelectCallback', items);
+function DragSelectCallback({items, event}) {
+    // Only process drag select events when the primary (left) and only the primary mouse button is used.
+    if (!PMM.available_modes.has(PMM.mode) || (event.button !== 0 && event.buttons !== 0)) return;
+    JSPLib.debug.debuglog('DragSelectCallback', items, event);
     let click_coords = PMM.dragger.getInitialCursorPosition();
     let mouseup_coords = PMM.dragger.getCurrentCursorPosition();
     if (mouseup_coords.x === click_coords.x && mouseup_coords.y === click_coords.y) {
