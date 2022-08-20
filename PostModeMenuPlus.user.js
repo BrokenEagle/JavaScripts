@@ -77,6 +77,16 @@ const SETTINGS_CONFIG = {
         validate: JSPLib.validate.isBoolean,
         hint: "Turns on being able to select posts before applying the desired function."
     },
+    long_searchbar_enabled: {
+        reset: false,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Adds additional CSS which repositions the searchbar and has it span the entire screen."
+    },
+    long_tagscript_enabled: {
+        reset: false,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Adds additional CSS which makes the tagscript bar span the entire screen when selected."
+    },
     drag_select_enabled: {
         reset: true,
         validate: JSPLib.validate.isBoolean,
@@ -94,6 +104,8 @@ const MENU_CONFIG = {
         name: 'network',
     }, {
         name: 'select',
+    }, {
+        name: 'interface',
     }],
     controls: [],
 };
@@ -139,6 +151,14 @@ button.pmm-select {
 }
 button.pmm-select:disabled {
     cursor: default;
+}
+input#tag-script-field {
+    width: 100%;
+}
+input#tag-script-field.pmm-long-focus:focus {
+    width: 95vw;
+    z-index: 10;
+    position: relative;
 }
 button#pmm-apply-all {
     width: 100%;
@@ -385,6 +405,9 @@ function MenuFunctions(post_ids) {
 
 function InitializeModeMenu() {
     $("#mode-box select option[value=tag-script]").after(RenderPostModeMenuAddons());
+    if (PMM.user_settings.long_tagscript_enabled) {
+        $('#tag-script-field').addClass('pmm-long-focus').css('width', "");
+    }
     $(".post-preview a.post-preview-link").on(PROGRAM_CLICK, PostModeMenu);
     $("#mode-box select").on(PROGRAM_CHANGE, ChangeModeMenu);
     $(document).on('danbooru:post-preview-updated.pmm', PostPreviewUpdated);
@@ -574,6 +597,8 @@ function RenderSettingsMenu() {
     $("#pmm-network-settings").append(JSPLib.menu.renderTextinput('maximum_concurrent_requests', 10));
     $('#pmm-select-settings').append(JSPLib.menu.renderCheckbox('select_only_enabled'));
     $('#pmm-select-settings').append(JSPLib.menu.renderCheckbox('drag_select_enabled'));
+    $('#pmm-interface-settings').append(JSPLib.menu.renderCheckbox('long_searchbar_enabled'));
+    $('#pmm-interface-settings').append(JSPLib.menu.renderCheckbox('long_tagscript_enabled'));
     JSPLib.menu.engageUI(true);
     JSPLib.menu.saveUserSettingsClick();
     JSPLib.menu.resetUserSettingsClick();
@@ -593,6 +618,9 @@ function Main() {
     InitializeModeMenu();
     if (PMM.user_settings.select_only_enabled) {
         InitializeSelectOnly();
+    }
+    if (PMM.user_settings.long_searchbar_enabled) {
+        JSPLib.utility.setCSSStyle(SEARCHBAR_CSS, 'searchbar');
     }
     JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
 }
