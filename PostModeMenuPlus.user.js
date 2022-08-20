@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://gist.github.com/BrokenEagle
-// @version      5.4
+// @version      6.0
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -42,6 +42,7 @@ const PROGRAM_LOAD_OPTIONAL_SELECTORS = ['#c-posts #a-index #mode-box', '#c-user
 const PROGRAM_NAME = 'PostModeMenu';
 const PROGRAM_SHORTCUT = 'pmm';
 const PROGRAM_CLICK = 'click.pmm';
+const PROGRAM_CHANGE = 'change.pmm';
 
 //Program variable
 const PMM = {};
@@ -70,6 +71,11 @@ const SETTINGS_CONFIG = {
         reset: ['comma'],
         validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'radio', ID_SEPARATORS),
         hint: "Choose how to separate multiple post IDs copied with Copy ID."
+    },
+    select_only_enabled: {
+        reset: true,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Turns on being able to select posts before applying the desired function."
     },
     drag_select_enabled: {
         reset: true,
@@ -113,12 +119,94 @@ const PROGRAM_CSS = `
 .pmm-selected {
     background-color: var(--default-border-color);
     border: solid 1px var(--form-input-border-color);
+}
+div#pmm-select-controls {
+    margin: 0.2em 0 0 0.5em;
+}
+div#pmm-select-only-input {
+    border: 1px dotted #ddd;
+    padding: 1px 5px;
+    margin: 1px;
+}
+div#pmm-select-only-input label {
+    font-size: 14px;
+    font-weight: bold;
+    padding-right: 0.75em;
+}
+button.pmm-select {
+    font-size: 11px;
+    margin: 0 1px;
+}
+button.pmm-select:disabled {
+    cursor: default;
+}
+button#pmm-apply-all {
+    width: 100%;
+    margin: 0.2em 0;
+    border: 1px solid green;
+    background: forestgreen;
+    color: white;
+    font-weight: bold;
+    border-radius: 10px;
+}
+button#pmm-apply-all:hover {
+    filter: brightness(1.25);
+    box-shadow: 0 0 2px var(--form-button-hover-box-shadow-color);
+}
+button#pmm-apply-all:disabled {
+    background: darkseagreen;
+    color: #EEE;
+    cursor: default;
+    filter: none;
+}`;
+
+const SEARCHBAR_CSS = `
+@media screen and (min-width: 661px){
+    /* Position the main side bar down and make it relative to allow absolute positioning. */
+    #c-posts #sidebar {
+        margin-top: 4em;
+        position: relative;
+    }
+    /* Push the content area down so that it doesn't overlap with the search bar. */
+    #c-posts #content {
+        margin-top: 4em;
+    }
+    /* Move the search box down. */
+    #c-posts #search-box {
+        position: absolute;
+        top: -4em;
+    }
+    /*Screen-wide search bar*/
+    #c-posts #search-box-form,
+    #c-posts #tags {
+        width: 95vw;
+    }
 }`;
 
 const MENU_CSS = `
 .jsplib-selectors.pmm-selectors[data-setting="available_modes"] label {
     width: 120px;
 }`;
+
+// HTML constants
+
+const SELECT_CONTROLS = `
+<div id="pmm-select-controls">
+    <div id="pmm-select-only-input">
+        <label for="pmm-select-only">Select Only</label>
+        <input type="checkbox" id="pmm-select-only" %CHECKED%>
+    </div>
+    <div id="pmm-selection-buttons">
+        <button class="pmm-select" %DISABLED% data-type="all">All</button>
+        <button class="pmm-select" %DISABLED% data-type="none">None</button>
+        <button class="pmm-select" %DISABLED% data-type="invert">Invert</button>
+    </div>
+</div>`;
+
+const APPLY_BUTTON = `
+<div id="pmm-long-inputs">
+    <button id="pmm-apply-all" %s>Apply</button>
+</div>`;
 
 // Other constants
 
@@ -293,6 +381,43 @@ function MenuFunctions(post_ids) {
     });
 }
 
+//Initialize functions
+
+function InitializeModeMenu() {
+    $("#mode-box select option[value=tag-script]").after(RenderPostModeMenuAddons());
+    $(".post-preview a.post-preview-link").on(PROGRAM_CLICK, PostModeMenu);
+    $("#mode-box select").on(PROGRAM_CHANGE, ChangeModeMenu);
+    $(document).on('danbooru:post-preview-updated.pmm', PostPreviewUpdated);
+    PMM.dragger.subscribe('callback', DragSelectCallback);
+    UpdateDraggerStatus();
+    if (PMM.mode) {
+        let set_mode = (PMM.available_modes.has(PMM.mode) ? PMM.mode : 'view');
+        setTimeout(() => {$("#mode-box select").val(set_mode);}, JSPLib.utility.one_second);
+    }
+}
+
+function InitializeSelectOnly() {
+    //Reorganize and apply additional controls to mode menu box
+    let $tag_script = $('#tag-script-field').detach();
+    let $mode_select = $('#mode-box').children().detach();
+    let $mode_select_div = $('<div style="display: flex;"></div>');
+    let $mode_select_container = $('<div></div>');
+    $mode_select_container.append($mode_select);
+    $mode_select_div.append($mode_select_container);
+    let disabled = (PMM.select_only ? "" : 'disabled');
+    $mode_select_div.append(JSPLib.utility.regexReplace(SELECT_CONTROLS, {
+        DISABLED: disabled,
+        CHECKED: (PMM.select_only ? 'checked' : ""),
+    }));
+    $('#mode-box').append($mode_select_div);
+    $('#mode-box').append(JSPLib.utility.sprintf(APPLY_BUTTON, disabled));
+    $('#pmm-long-inputs').prepend($tag_script);
+    //Initialize all event handlers
+    $('#pmm-select-only').on(PROGRAM_CHANGE, ChangeSelectOnly);
+    $('.pmm-select').on(PROGRAM_CLICK, BatchSelection);
+    $('#pmm-apply-all').on(PROGRAM_CLICK, BatchApply);
+}
+
 //Render functions
 
 function RenderPostModeMenuAddons() {
@@ -313,12 +438,37 @@ function PostModeMenu(event) {
         let $link = $(event.currentTarget);
         let $article = $link.closest("article");
         let post_id = $article.data("id");
-        $article.addClass('pmm-selected');
-        PMM.modified.add(post_id);
-        MenuFunctions([post_id]);
+        if (PMM.select_only) {
+            $article.toggleClass('pmm-selected');
+            // eslint-disable-next-line dot-notation
+            let toggle_func = (PMM.modified.has(post_id) ? PMM.modified.delete : PMM.modified.add);
+            toggle_func.call(PMM.modified, post_id);
+        } else {
+            $article.addClass('pmm-selected');
+            PMM.modified.add(post_id);
+            MenuFunctions([post_id]);
+        }
         event.preventDefault();
         event.stopImmediatePropagation();
     }
+}
+
+function BatchSelection(event) {
+    let type = $(event.currentTarget).data('type');
+    if (type === 'all') {
+        PMM.modified = JSPLib.utility.copySet(PMM.all_post_ids);
+        $('.post-preview').addClass('pmm-selected');
+    } else if (type === 'none') {
+        PMM.modified.clear();
+        $('.post-preview').removeClass('pmm-selected');
+    } else if (type === 'invert') {
+        PMM.modified = JSPLib.utility.setDifference(PMM.all_post_ids, PMM.modified);
+        $('.post-preview').toggleClass('pmm-selected');
+    }
+}
+
+function BatchApply() {
+    MenuFunctions([...PMM.modified]);
 }
 
 function ChangeModeMenu() {
@@ -328,9 +478,20 @@ function ChangeModeMenu() {
     } else {
         JSPLib.storage.removeStorageData('pmm-mode', localStorage);
     }
+    if (!PMM.select_only) {
+        $('.pmm-selected').removeClass('pmm-selected');
+        PMM.modified.clear();
+    }
+    UpdateDraggerStatus();
+}
+
+function ChangeSelectOnly(event) {
+    PMM.select_only = event.currentTarget.checked;
+    JSPLib.storage.setStorageData('pmm-select-only', PMM.select_only, localStorage);
+    let $modify_controls = $('#pmm-apply-all, .pmm-select');
+    $modify_controls.prop('disabled', !PMM.select_only);
     $('.pmm-selected').removeClass('pmm-selected');
     PMM.modified.clear();
-    UpdateDraggerStatus();
 }
 
 function PostPreviewUpdated(event, post) {
@@ -372,9 +533,14 @@ function DragSelectCallback({items, event}) {
     }
     let articles = items.map((entry) => $(entry).closest('article').get(0));
     let post_ids = articles.map((entry) => $(entry).data('id'));
-    $(articles).addClass('pmm-selected');
-    post_ids.forEach(PMM.modified.add, PMM.modified);
-    MenuFunctions(post_ids);
+    if (PMM.select_only) {
+        $(articles).toggleClass('pmm-selected');
+        PMM.modified = JSPLib.utility.setSymmetricDifference(PMM.modified, post_ids);
+    } else {
+        $(articles).addClass('pmm-selected');
+        post_ids.forEach(PMM.modified.add, PMM.modified);
+        MenuFunctions(post_ids);
+    }
     document.getSelection().removeAllRanges();
 }
 
@@ -385,6 +551,8 @@ function InitializeProgramValues() {
         mode: JSPLib.storage.getStorageData('pmm-mode', localStorage),
         available_modes: new Set(PMM.user_settings.available_modes.map((mode) => JSPLib.utility.kebabCase(mode.toLocaleLowerCase()))),
         id_separator: SEPARATOR_DICT[PMM.user_settings.id_separator[0]],
+        select_only: JSPLib.storage.getStorageData('pmm-select-only', localStorage, false),
+        all_post_ids: new Set(JSPLib.utility.getDOMAttributes($('.post-preview'), 'id', parseInt)),
     });
     if (PMM.user_settings.drag_select_enabled) {
         PMM.dragger = new DragSelect({
@@ -402,8 +570,9 @@ function RenderSettingsMenu() {
     $('#post-mode-menu').append(JSPLib.menu.renderMenuFramework(MENU_CONFIG));
     $('#pmm-general-settings').append(JSPLib.menu.renderDomainSelectors());
     $('#pmm-mode-settings').append(JSPLib.menu.renderInputSelectors('available_modes', 'checkbox'));
+    $('#pmm-mode-settings').append(JSPLib.menu.renderInputSelectors('id_separator', 'radio'));
     $("#pmm-network-settings").append(JSPLib.menu.renderTextinput('maximum_concurrent_requests', 10));
-    $('#pmm-select-settings').append(JSPLib.menu.renderInputSelectors('id_separator', 'radio'));
+    $('#pmm-select-settings').append(JSPLib.menu.renderCheckbox('select_only_enabled'));
     $('#pmm-select-settings').append(JSPLib.menu.renderCheckbox('drag_select_enabled'));
     JSPLib.menu.engageUI(true);
     JSPLib.menu.saveUserSettingsClick();
@@ -421,14 +590,9 @@ function Main() {
         menu_css: MENU_CSS,
     };
     if (!JSPLib.menu.preloadScript(PMM, RenderSettingsMenu, preload)) return;
-    $("#mode-box select option[value=tag-script]").after(RenderPostModeMenuAddons());
-    $(".post-preview a.post-preview-link").on(PROGRAM_CLICK, PostModeMenu);
-    $("#mode-box select").on("change.pmm", ChangeModeMenu);
-    $(document).on('danbooru:post-preview-updated.pmm', PostPreviewUpdated);
-    PMM.dragger.subscribe('callback', DragSelectCallback);
-    UpdateDraggerStatus();
-    if (PMM.mode) {
-        setTimeout(() => {$("#mode-box select").val(PMM.mode);}, JSPLib.utility.one_second);
+    InitializeModeMenu();
+    if (PMM.user_settings.select_only_enabled) {
+        InitializeSelectOnly();
     }
     JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
 }
