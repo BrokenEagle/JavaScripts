@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://github.com/BrokenEagle
-// @version      6.1
+// @version      6.2
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -310,7 +310,7 @@ JSPLib.danbooru.highlightPost = function (post_id, highlight_on) {
     if (highlight_on) {
         JSPLib.danbooru.post_highlight_dict[post_id].show();
     } else {
-        JSPLib.danbooru.post_highlight_dict[post_id].hide();
+        JSPLib.danbooru.post_highlight_dict[post_id]?.hide();
     }
 };
 
@@ -604,12 +604,13 @@ function DragSelectCallback({items, event}) {
     }
     let articles = items.map((entry) => $(entry).closest('article').get(0));
     let post_ids = articles.map((entry) => $(entry).data('id'));
+    let set_post_ids = JSPLib.utility.arrayToSet(post_ids);
     if (PMM.select_only) {
         $(articles).toggleClass('pmm-selected');
-        PMM.modified = JSPLib.utility.setSymmetricDifference(PMM.modified, post_ids);
+        PMM.modified = JSPLib.utility.setSymmetricDifference(PMM.modified, set_post_ids);
     } else {
         $(articles).addClass('pmm-selected');
-        post_ids.forEach(PMM.modified.add, PMM.modified);
+        PMM.modified = JSPLib.utility.setUnion(PMM.modified, set_post_ids);
         MenuFunctions(post_ids);
     }
     document.getSelection().removeAllRanges();
