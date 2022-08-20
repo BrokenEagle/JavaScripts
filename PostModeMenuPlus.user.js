@@ -33,6 +33,16 @@
 //Library variables
 
 JSPLib.danbooru.pending_update_count = 0;
+JSPLib.danbooru.post_highlight_dict = {};
+JSPLib.danbooru.highlight_post_enabled = true;
+JSPLib.danbooru.highlight_css = `
+div.danbooru-post-highlight {
+    top: 0;
+    left: 0;
+    position: absolute;
+    background: repeating-linear-gradient( 45deg, #FF0000, rgba(0,0,0, 0) 5px,rgba(0,0,0, 0) 50px);
+    pointer-events: none;
+}`;
 
 //Variables for load.js
 const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.Utility'];
@@ -86,6 +96,11 @@ const SETTINGS_CONFIG = {
         reset: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Adds additional CSS which makes the tagscript bar span the entire screen when selected."
+    },
+    highlight_errors_enabled: {
+        reset: false,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Adds visualization to the specific posts when network errors occur."
     },
     drag_select_enabled: {
         reset: true,
@@ -267,12 +282,33 @@ JSPLib.danbooru.updatePost = async function (post_id, mode, params) {
             //Success
             () => {
                 this.showPendingUpdateNotice();
+                JSPLib.danbooru.highlightPost(post_id, false);
             },
             //Failure
             (error) => {
-                JSPLib.notice.error(`Network error: HTTP ${error.status}`);
+                error = JSPLib.network.processError(error, "danbooru.updatePost");
+                let error_key = `updatePost-${post_id}-${mode}-${JSPLib._jQuery.param(params)}`;
+                JSPLib.network.logError(error_key, error);
+                JSPLib.network.notifyError(error);
+                JSPLib.danbooru.highlightPost(post_id, true);
             }
         );
+};
+
+JSPLib.danbooru.highlightPost = function (post_id, highlight_on) {
+    if (!JSPLib.danbooru.highlight_post_enabled) return;
+    if (highlight_on && !(post_id in JSPLib.danbooru.post_highlight_dict)) {
+        let $post = JSPLib._jQuery('#post_' + post_id);
+        let $highlight = JSPLib.danbooru.post_highlight_dict[post_id] = JSPLib._jQuery('<div class="danbooru-post-highlight"></div>');
+        $highlight.css({height: $post[0].offsetHeight, width: $post[0].offsetWidth});
+        $post.css('position', 'relative');
+        $post.append($highlight);
+    }
+    if (highlight_on) {
+        JSPLib.danbooru.post_highlight_dict[post_id].show();
+    } else {
+        JSPLib.danbooru.post_highlight_dict[post_id].hide();
+    }
 };
 
 // Helper functions
@@ -313,14 +349,16 @@ async function VotePost(post_id, score) {
             //Success
             () => {
                 JSPLib.danbooru.showPendingUpdateNotice();
+                JSPLib.danbooru.highlightPost(post_id, false);
+
             },
             //Failure
             (error) => {
-                if ('responseJSON' in error && 'message' in error.responseJSON) {
-                    Danbooru.Utility.error(error.responseJSON.message);
-                } else {
-                    Danbooru.Utility.error(`Unable to vote on post #${post_id}!`);
-                }
+                error = JSPLib.network.processError(error, "VotePost");
+                let error_key = `VotePost-${post_id}-${score}`;
+                JSPLib.network.logError(error_key, error);
+                JSPLib.network.notifyError(error);
+                JSPLib.danbooru.highlightPost(post_id, true);
             }
         );
 }
@@ -354,14 +392,15 @@ async function UnvotePost(post_id) {
                 let current_score = Number($score_link.text());
                 $score_link.text(current_score - score);
                 $post_article.find('.active-link').toggleClass('active-link inactive-link');
+                JSPLib.danbooru.highlightPost(post_id, false);
             },
             //Failure
             (error) => {
-                if ('responseJSON' in error && 'message' in error.responseJSON) {
-                    Danbooru.Utility.error(error.responseJSON.message);
-                } else {
-                    Danbooru.Utility.error(`Unable to unvote on post #${post_id}!`);
-                }
+                error = JSPLib.network.processError(error, "UnvotePost");
+                let error_key = `UnvotePost-${post_id}`;
+                JSPLib.network.logError(error_key, error);
+                JSPLib.network.notifyError(error);
+                JSPLib.danbooru.highlightPost(post_id, true);
             }
         );
 }
@@ -586,6 +625,7 @@ function InitializeProgramValues() {
         });
     }
     JSPLib.danbooru.max_network_requests = PMM.user_settings.maximum_concurrent_requests;
+    JSPLib.danbooru.highlight_post_enabled = PMM.user_settings.highlight_errors_enabled;
     return true;
 }
 
@@ -595,6 +635,7 @@ function RenderSettingsMenu() {
     $('#pmm-mode-settings').append(JSPLib.menu.renderInputSelectors('available_modes', 'checkbox'));
     $('#pmm-mode-settings').append(JSPLib.menu.renderInputSelectors('id_separator', 'radio'));
     $("#pmm-network-settings").append(JSPLib.menu.renderTextinput('maximum_concurrent_requests', 10));
+    $('#pmm-network-settings').append(JSPLib.menu.renderCheckbox('highlight_errors_enabled'));
     $('#pmm-select-settings').append(JSPLib.menu.renderCheckbox('select_only_enabled'));
     $('#pmm-select-settings').append(JSPLib.menu.renderCheckbox('drag_select_enabled'));
     $('#pmm-interface-settings').append(JSPLib.menu.renderCheckbox('long_searchbar_enabled'));
@@ -621,6 +662,9 @@ function Main() {
     }
     if (PMM.user_settings.long_searchbar_enabled) {
         JSPLib.utility.setCSSStyle(SEARCHBAR_CSS, 'searchbar');
+    }
+    if (PMM.user_settings.highlight_errors_enabled) {
+        JSPLib.utility.setCSSStyle(JSPLib.danbooru.highlight_css, 'highlight');
     }
     JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
 }
