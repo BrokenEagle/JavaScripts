@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://gist.github.com/BrokenEagle
-// @version      6.0
+// @version      6.1
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -450,8 +450,10 @@ function InitializeModeMenu() {
     $(".post-preview a.post-preview-link").on(PROGRAM_CLICK, PostModeMenu);
     $("#mode-box select").on(PROGRAM_CHANGE, ChangeModeMenu);
     $(document).on('danbooru:post-preview-updated.pmm', PostPreviewUpdated);
-    PMM.dragger.subscribe('callback', DragSelectCallback);
-    UpdateDraggerStatus();
+    if (PMM.user_settings.drag_select_enabled) {
+        PMM.dragger.subscribe('callback', DragSelectCallback);
+        UpdateDraggerStatus();
+    }
     if (PMM.mode) {
         let set_mode = (PMM.available_modes.has(PMM.mode) ? PMM.mode : 'view');
         setTimeout(() => {$("#mode-box select").val(set_mode);}, JSPLib.utility.one_second);
@@ -544,7 +546,9 @@ function ChangeModeMenu() {
         $('.pmm-selected').removeClass('pmm-selected');
         PMM.modified.clear();
     }
-    UpdateDraggerStatus();
+    if (PMM.user_settings.drag_select_enabled) {
+        UpdateDraggerStatus();
+    }
 }
 
 function ChangeSelectOnly(event) {
@@ -565,13 +569,15 @@ function PostPreviewUpdated(event, post) {
     if (Number.isInteger(PMM.init_timer)) {
         clearTimeout(PMM.init_timer);
     }
-    PMM.init_timer = setTimeout(() => {
-        PMM.dragger.SelectableSet._initElements = [...document.querySelectorAll('.post-preview img')];
-        PMM.dragger.SelectableSet.clear();
-        PMM.dragger.SelectedSet.clear();
-        PMM.dragger.setSelectables(document.querySelectorAll('.post-preview img'));
-        PMM.init_timer = null;
-    }, 1000);
+    if (PMM.user_settings.drag_select_enabled) {
+        PMM.init_timer = setTimeout(() => {
+            PMM.dragger.SelectableSet._initElements = [...document.querySelectorAll('.post-preview img')];
+            PMM.dragger.SelectableSet.clear();
+            PMM.dragger.SelectedSet.clear();
+            PMM.dragger.setSelectables(document.querySelectorAll('.post-preview img'));
+            PMM.init_timer = null;
+        }, 1000);
+    }
 }
 
 function DragSelectCallback({items, event}) {
