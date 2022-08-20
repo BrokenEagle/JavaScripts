@@ -58,7 +58,7 @@ const PROGRAM_CHANGE = 'change.pmm';
 const PMM = {};
 
 //Available setting values
-const SUPPORTED_MODES = ['copy_ID', 'upvote', 'downvote', 'unvote', 'tag_script'];
+const SUPPORTED_MODES = ['copy_ID', 'vote_up', 'vote_down', 'unvote', 'tag_script'];
 const ID_SEPARATORS = ['comma', 'space', 'return'];
 
 //Main settings
@@ -424,9 +424,9 @@ function MenuFunctions(post_ids) {
             case 'copy-id':
                 Danbooru.Utility.copyToClipboard(post_ids.join(PMM.id_separator));
                 return;
-            case 'upvote':
-            case 'downvote':
-                VotePost(post_id, (PMM.mode === 'upvote' ? 1 : (PMM.mode === 'downvote' ? -1 : 0)));
+            case 'vote-up':
+            case 'vote-down':
+                VotePost(post_id, (PMM.mode === 'vote-up' ? 1 : (PMM.mode === 'vote-down' ? -1 : 0)));
                 break;
             case 'unvote':
                 UnvotePost(post_id);
