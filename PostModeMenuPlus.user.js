@@ -135,15 +135,15 @@ const DEFAULT_VALUES = {
 // CSS constants
 
 const PROGRAM_CSS = `
-#posts {
+div#posts {
     margin: -1em;
     padding: 1em;
 }
-.post-preview {
+article.post-preview {
     border: solid 1px transparent;
-    padding-top: 5px;
+    padding-top: 10px;
 }
-.pmm-selected {
+article.pmm-selected {
     background-color: var(--default-border-color);
     border: solid 1px var(--form-input-border-color);
 }
