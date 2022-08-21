@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://github.com/BrokenEagle
-// @version      6.2
+// @version      6.3
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -587,17 +587,21 @@ function DragSelectCallback({items, event}) {
     // Only process drag select events when the primary (left) and only the primary mouse button is used.
     if (!PMM.available_modes.has(PMM.mode) || (event.button !== 0 && event.buttons !== 0)) return;
     JSPLib.debug.debuglog('DragSelectCallback', items, event);
-    let click_coords = PMM.dragger.getInitialCursorPosition();
-    let mouseup_coords = PMM.dragger.getCurrentCursorPosition();
+    let click_coords = PMM.dragger.getInitialCursorPositionArea();
+    let mouseup_coords = PMM.dragger.getCurrentCursorPositionArea();
     if (mouseup_coords.x === click_coords.x && mouseup_coords.y === click_coords.y) {
         JSPLib.debug.debuglog("Drag callback: click.");
         return;
     }
     if (items.length === 1) {
+        let area_coords = JSPLib.utility.getElemPosition(PMM.$drag_area);
+        let page_click_coords = {x: click_coords.x + area_coords.left, y: click_coords.y + area_coords.top};
+        let page_mouseup_coords = {x: mouseup_coords.x + area_coords.left, y: mouseup_coords.y + area_coords.top};
         let box = JSPLib.utility.getElemPosition(items[0]);
         box.bottom = box.top + items[0].offsetHeight;
         box.right = box.left + items[0].offsetWidth;
-        if (CoordinateInBox(click_coords, box) && CoordinateInBox(mouseup_coords, box)) {
+        JSPLib.debug.debuglog('DragSelectCallback', page_click_coords, page_mouseup_coords, box);
+        if (CoordinateInBox(page_click_coords, box) && CoordinateInBox(page_mouseup_coords, box)) {
             JSPLib.debug.debuglog("Drag callback: click-in-element.");
             return;
         }
@@ -605,6 +609,7 @@ function DragSelectCallback({items, event}) {
     let articles = items.map((entry) => $(entry).closest('article').get(0));
     let post_ids = articles.map((entry) => $(entry).data('id'));
     let set_post_ids = JSPLib.utility.arrayToSet(post_ids);
+    JSPLib.debug.debuglog('Drag Select IDs', set_post_ids);
     if (PMM.select_only) {
         $(articles).toggleClass('pmm-selected');
         PMM.modified = JSPLib.utility.setSymmetricDifference(PMM.modified, set_post_ids);
@@ -625,11 +630,12 @@ function InitializeProgramValues() {
         id_separator: SEPARATOR_DICT[PMM.user_settings.id_separator[0]],
         select_only: JSPLib.storage.getStorageData('pmm-select-only', localStorage, false),
         all_post_ids: new Set(JSPLib.utility.getDOMAttributes($('.post-preview'), 'id', parseInt)),
+        $drag_area: document.querySelector('#posts'),
     });
     if (PMM.user_settings.drag_select_enabled) {
         PMM.dragger = new DragSelect({
             selectables: GetAllPreviews(),
-            area: document.querySelector('#posts'),
+            area: PMM.$drag_area,
             draggability: false,
             immediateDrag: false
         });
