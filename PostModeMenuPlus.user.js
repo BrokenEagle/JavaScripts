@@ -65,8 +65,9 @@ const PROGRAM_CHANGE = 'change.pmm';
 const PMM = {};
 
 //Available setting values
-const SUPPORTED_MODES = ['copy_ID', 'vote_up', 'vote_down', 'unvote', 'tag_script'];
-const ID_SEPARATORS = ['comma', 'space', 'return'];
+const SUPPORTED_MODES = ['copy_ID', 'copy_short', 'copy_link', 'vote_up', 'vote_down', 'unvote', 'tag_script', 'favorite', 'unfavorite'];
+const SITE_MODES = ['view', 'edit', 'tag_script', 'favorite', 'unfavorite'];
+const ID_SEPARATORS = ['comma', 'colon', 'semicolon', 'space', 'return'];
 
 //Main settings
 const SETTINGS_CONFIG = {
@@ -254,6 +255,8 @@ const APPLY_BUTTON = `
 
 const SEPARATOR_DICT = {
     comma: ',',
+    colon: ':',
+    semicolon: ';',
     space: ' ',
     return: '\n',
 };
@@ -466,11 +469,20 @@ function TagscriptPost(post_id) {
 // Main execution functions
 
 function MenuFunctions(post_ids) {
+    const copyToClipboard = function (post_ids, prefix, suffix, separator) {
+        let post_string = JSPLib.utility.joinList(post_ids, prefix, suffix, separator);
+        Danbooru.Utility.copyToClipboard(post_string);
+    };
+    var prefix;
+    var post_string;
     post_ids.forEach((post_id) => {
         switch (PMM.mode) {
             case 'copy-id':
-                Danbooru.Utility.copyToClipboard(post_ids.join(PMM.id_separator));
-                return;
+                return copyToClipboard(post_ids, "", "", PMM.id_separator);
+            case 'copy-short':
+                return copyToClipboard(post_ids, " post #", "", PMM.id_separator);
+            case 'copy-link':
+                return copyToClipboard(post_ids, " https://danbooru.donmai.us/posts/", " ", PMM.id_separator);
             case 'vote-up':
             case 'vote-down':
                 VotePost(post_id, (PMM.mode === 'vote-up' ? 1 : (PMM.mode === 'vote-down' ? -1 : 0)));
@@ -534,7 +546,7 @@ function InitializeSelectOnly() {
 function RenderPostModeMenuAddons() {
     let html = "";
     PMM.user_settings.available_modes.forEach((mode) => {
-        if (mode === 'tag_script') return;
+        if (SITE_MODES.includes(mode)) return;
         let key = JSPLib.utility.kebabCase(mode);
         let name = JSPLib.utility.displayCase(mode);
         html += `<option value="${key}">${name}</option>`;
