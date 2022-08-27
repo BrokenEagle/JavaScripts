@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://github.com/BrokenEagle
-// @version      6.3
+// @version      7.0
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -32,6 +32,8 @@
 
 //Library variables
 
+JSPLib.danbooru.rate_limited = false;
+JSPLib.danbooru.min_rate_limit = 10;
 JSPLib.danbooru.pending_update_count = 0;
 JSPLib.danbooru.post_highlight_dict = {};
 JSPLib.danbooru.highlight_post_enabled = true;
@@ -43,6 +45,8 @@ div.danbooru-post-highlight {
     background: repeating-linear-gradient( 45deg, #FF0000, rgba(0,0,0, 0) 5px,rgba(0,0,0, 0) 50px);
     pointer-events: none;
 }`;
+/* Commented out for now since the property cannot be reconfigured. */
+//Object.defineProperty(JSPLib.danbooru, 'max_network_requests', {get: () => (this.rate_limited ? 1 : this._max_network_requests), set: (val) => (this._max_network_requests = val)});
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '21812';
@@ -258,6 +262,16 @@ const SEPARATOR_DICT = {
 
 //Library functions
 
+JSPLib.network.rateLimit = async function (self, module) {
+    while (JSPLib[module].num_network_requests >= JSPLib[module].max_network_requests) {
+        self.debug('logLevel', "Max simultaneous network requests exceeded! Sleeping...", JSPLib.debug.WARNING);
+        let rate_limit_wait = JSPLib[module].rate_limit_wait || this.rate_limit_wait;
+        await new Promise((resolve) => setTimeout(resolve, rate_limit_wait)); //Sleep
+    }
+};
+
+JSPLib.debug.addModuleLogs('network', ['rateLimit']);
+
 JSPLib.danbooru.showPendingUpdateNotice = function() {
     if (this.pending_update_count === 0) {
         JSPLib.notice.notice("Posts updated");
@@ -277,9 +291,10 @@ JSPLib.danbooru.updatePost = async function (post_id, mode, params) {
     let size = url_params.get("size");
     this.num_network_requests += 1;
     return JSPLib.network.put(`/posts/${post_id}.js`, {data: {mode, show_votes, size, ...params}})
-        .always(() => {
+        .always((_data, _message, resp) => {
             this.num_network_requests -= 1;
             this.pending_update_count -= 1;
+            JSPLib.danbooru.checkAPIRateLimit(resp);
         })
         .then(
             //Success
@@ -314,6 +329,34 @@ JSPLib.danbooru.highlightPost = function (post_id, highlight_on) {
     }
 };
 
+JSPLib.danbooru.checkAPIRateLimit = function (resp) {
+    try {
+        var data = JSON.parse(resp.getResponseHeader('x-rate-limit'))
+    } catch (error) {
+        JSPLib.debug.debugerrorLevel('danbooru.checkAPIRateLimit', "Unable to get response rate limit.", JSPLib.debug.ERROR);
+        return;
+    }
+    if (!JSPLib.validate.isHash(data.limits)) return;
+    let current_limit = JSPLib.danbooru.current_limit = Math.min(...Object.values(data.limits));
+    let rate_limited = current_limit < this.min_rate_limit;
+    JSPLib.debug.debuglogLevel('danbooru.checkAPIRateLimit', current_limit, rate_limited, JSPLib.debug.DEBUG);
+    // Temporary (maybe)... will use getter/setter at the top of the script for the library release
+    if (rate_limited !== this.rate_limited) {
+        if (rate_limited) {
+            JSPLib.debug.debugwarnLevel('danbooru.checkAPIRateLimit', "Throttling connection.", JSPLib.debug.WARNING);
+            this._max_network_requests = this.max_network_requests;
+            this.max_network_requests = 1;
+            this._rate_limit_wait = this.rate_limit_wait;
+            this.rate_limit_wait = JSPLib.utility.one_second * 2;
+        } else {
+            JSPLib.debug.debugwarnLevel('danbooru.checkAPIRateLimit', "Releasing rate limit.", JSPLib.debug.INFO);
+            this.max_network_requests = this._max_network_requests;
+            this.rate_limit_wait = this._rate_limit_wait;
+        }
+        this.rate_limited = rate_limited;
+    }
+};
+
 // Helper functions
 
 function CoordinateInBox(coord, box) {
@@ -344,16 +387,16 @@ async function VotePost(post_id, score) {
     }
     JSPLib.danbooru.num_network_requests += 1;
     JSPLib.network.post(`/posts/${post_id}/votes?score=${score}`)
-        .always(() => {
+        .always((_data, _message, resp) => {
             JSPLib.danbooru.pending_update_count -= 1;
             JSPLib.danbooru.num_network_requests -= 1;
+            JSPLib.danbooru.checkAPIRateLimit(resp);
         })
         .then(
             //Success
             () => {
                 JSPLib.danbooru.showPendingUpdateNotice();
                 JSPLib.danbooru.highlightPost(post_id, false);
-
             },
             //Failure
             (error) => {
@@ -383,9 +426,10 @@ async function UnvotePost(post_id) {
     JSPLib.danbooru.num_network_requests += 1;
     // eslint-disable-next-line dot-notation
     JSPLib.network.delete(`/posts/${post_id}/votes.json`)
-        .always(() => {
+        .always((_data, _message, resp) => {
             JSPLib.danbooru.pending_update_count -= 1;
             JSPLib.danbooru.num_network_requests -= 1;
+            JSPLib.danbooru.checkAPIRateLimit(resp);
         })
         .then(
             //Success
