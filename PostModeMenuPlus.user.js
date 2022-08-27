@@ -234,7 +234,7 @@ const MENU_CSS = `
 // HTML constants
 
 const SELECT_CONTROLS = `
-<div id="pmm-select-controls">
+<div id="pmm-select-controls" style="display: %SHOWN%;">
     <div id="pmm-select-only-input">
         <label for="pmm-select-only">Select Only</label>
         <input type="checkbox" id="pmm-select-only" %CHECKED%>
@@ -247,7 +247,7 @@ const SELECT_CONTROLS = `
 </div>`;
 
 const APPLY_BUTTON = `
-<div id="pmm-long-inputs">
+<div id="pmm-long-inputs" style="display: %s;">
     <button id="pmm-apply-all" %s>Apply</button>
 </div>`;
 
@@ -528,12 +528,14 @@ function InitializeSelectOnly() {
     $mode_select_container.append($mode_select);
     $mode_select_div.append($mode_select_container);
     let disabled = (PMM.select_only ? "" : 'disabled');
+    let shown = (PMM.available_modes.has(PMM.mode) ? 'block' : 'none');
     $mode_select_div.append(JSPLib.utility.regexReplace(SELECT_CONTROLS, {
+        SHOWN: shown,
         DISABLED: disabled,
         CHECKED: (PMM.select_only ? 'checked' : ""),
     }));
     $('#mode-box').append($mode_select_div);
-    $('#mode-box').append(JSPLib.utility.sprintf(APPLY_BUTTON, disabled));
+    $('#mode-box').append(JSPLib.utility.sprintf(APPLY_BUTTON, shown, disabled));
     $('#pmm-long-inputs').prepend($tag_script);
     //Initialize all event handlers
     $('#pmm-select-only').on(PROGRAM_CHANGE, ChangeSelectOnly);
@@ -598,8 +600,10 @@ function ChangeModeMenu() {
     PMM.mode = $("#mode-box select").val();
     if (PMM.available_modes.has(PMM.mode)) {
         JSPLib.storage.setStorageData('pmm-mode', PMM.mode, localStorage);
+        $('#pmm-select-controls, #pmm-long-inputs').show();
     } else {
         JSPLib.storage.removeStorageData('pmm-mode', localStorage);
+        $('#pmm-select-controls, #pmm-long-inputs').hide();
     }
     if (!PMM.select_only) {
         $('.pmm-selected').removeClass('pmm-selected');
