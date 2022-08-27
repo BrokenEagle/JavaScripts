@@ -8,6 +8,7 @@
 // @match        *://*.donmai.us/
 // @match        *://*.donmai.us/posts*
 // @match        *://*.donmai.us/settings
+// @exclude      /^https?://\w+\.donmai\.us/posts/\d+(\?|$)/
 // @exclude      /^https?://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
 // @grant        none
 // @run-at       document-end
