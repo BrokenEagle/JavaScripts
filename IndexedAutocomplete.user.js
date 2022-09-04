@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.35
+// @version      28.36
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1503,6 +1503,55 @@ function ExpirationTime(type, count) {
 
 //Render functions
 
+function AutocompleteRenderItem(list, item) {
+    var $link = $("<a/>");
+    $link.text(item.label);
+    $link.attr("href", "/posts?tags=" + encodeURIComponent(item.value));
+    $link.on("click.danbooru", function(e) {
+        e.preventDefault();
+    });
+
+    if (item.antecedent) {
+        var antecedent = item.antecedent.replace(/_/g, " ");
+        var arrow = $("<span/>").html(" &rarr; ").addClass("autocomplete-arrow");
+        var antecedent_element = $("<span/>").text(antecedent).addClass("autocomplete-antecedent");
+        $link.prepend([
+            antecedent_element,
+            arrow
+        ]);
+    }
+
+    if (item.post_count !== undefined) {
+        var count = item.post_count;
+
+        if (count >= 1000) {
+            count = Math.floor(count / 1000) + "k";
+        }
+
+        var $post_count = $("<span/>").addClass("post-count").css("float", "right").text(count);
+        $link.append($post_count);
+    }
+
+    if (/^tag/.test(item.type)) {
+        $link.addClass("tag-type-" + item.category);
+    } else if (item.type === "user") {
+        var level_class = "user-" + item.level.toLowerCase();
+        $link.addClass(level_class);
+    } else if (item.type === "pool") {
+        $link.addClass("pool-category-" + item.category);
+    }
+
+    var $menu_item = $("<div/>").append($link);
+    var $list_item = $("<li/>").data("item.autocomplete", item).append($menu_item);
+
+    var data_attributes = ["type", "antecedent", "value", "category", "post_count"];
+    data_attributes.forEach(attr => {
+        $list_item.attr(`data-autocomplete-${attr.replace(/_/g, "-")}`, item[attr]);
+    });
+
+    return $list_item.appendTo(list);
+}
+
 function RenderTaglist(taglist, columnname, tags_overlap, total_posts) {
     let html = "";
     let display_percentage = false;
@@ -2332,9 +2381,8 @@ function InitializeAutocompleteIndexed(selector, keycode, multiple = false, wiki
                 }
                 Danbooru.Autocomplete.insert_completion_old(this, ui.item.value);
                 return false;
-            } 
+            }
             ui.item.value = ui.item.value.trim();
-            
             return ui.item.value;
         }
     });
@@ -2469,9 +2517,8 @@ function InitializeRelatedTagColumnWidths() {
             range.selectNodeContents(child);
             const rects = range.getClientRects();
             return (rects.length > 0 ? rects[0].width : 0);
-        } 
+        }
         return $(child).outerWidth();
-        
     };
     const getSum = (a, b) => (a + b);
     let $related_tags = $('.related-tags');
@@ -2630,7 +2677,7 @@ function SetupAutocompleteBindings() {
     Danbooru.Autocomplete.insert_completion_old = Danbooru.Autocomplete.insert_completion;
     Danbooru.Autocomplete.insert_completion = JSPLib.utility.hijackFunction(InsertCompletion, InsertUserSelected);
     Danbooru.Autocomplete.render_item_old = Danbooru.Autocomplete.render_item;
-    Danbooru.Autocomplete.render_item = JSPLib.utility.hijackFunction(Danbooru.Autocomplete.render_item, HighlightSelected);
+    Danbooru.Autocomplete.render_item = JSPLib.utility.hijackFunction(AutocompleteRenderItem, HighlightSelected);
     Danbooru.Autocomplete.initialize_tag_autocomplete_old = Danbooru.Autocomplete.initialize_tag_autocomplete;
     Danbooru.Autocomplete.initialize_tag_autocomplete = DanbooruIntializeTagAutocomplete;
 }
