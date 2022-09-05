@@ -347,16 +347,19 @@ const PROGRAM_CSS = `
 .iac-tag-exact > div:before {
     color: #DDD;
 }
-.iac-tag-prefix > div:before {
+.iac-tag-word > div:before {
+    color: #888;
+}
+.iac-tag-abbreviation > div:before {
     color: hotpink;
 }
 .iac-tag-alias > div:before {
     color: gold;
 }
-.iac-tag-correct > div:before {
+.iac-tag-autocorrect > div:before {
     color: cyan;
 }
-.iac-tag-other > div:before {
+.iac-tag-other-name > div:before {
     color: orange;
 }
 .iac-tag-bur > div:before,
@@ -602,10 +605,12 @@ const DISPLAY_SETTINGS_DETAILS = `
     <li><b>Source highlight enabled:</b> The following are the CSS classes and default styling.
         <ul>
             <li><code>.iac-user-choice</code> - bold text</li>
-            <li><code>.iac-tag-exact</code> - grey dot</li>
-            <li><code>.iac-tag-prefix</code> - pink dot</li>
+            <li><code>.iac-tag-exact</code> - light grey dot</li>
+            <li><code>.iac-tag-word</code> - dark grey dot</li>
+            <li><code>.iac-tag-abbreviation</code> - pink dot</li>
             <li><code>.iac-tag-alias</code> - gold dot, italic text</li>
-            <li><code>.iac-tag-correct</code> - cyan dot</li>
+            <li><code>.iac-tag-other-name</code> - orange dot</li>
+            <li><code>.iac-tag-autocorrect</code> - cyan dot</li>
         </ul>
     </li>
     <li><b>Source grouping enabled:</b>
@@ -2020,17 +2025,20 @@ function HighlightSelected($link, list, item) {
                 case 'tag':
                     $($link).addClass('iac-tag-exact');
                     break;
+                case 'tag-word':
+                    $($link).addClass('iac-tag-word');
+                    break;
                 case 'tag-abbreviation':
-                    $($link).addClass('iac-tag-prefix');
+                    $($link).addClass('iac-tag-abbreviation');
                     break;
                 case 'tag-alias':
                     $($link).addClass('iac-tag-alias');
                     break;
                 case 'tag-autocorrect':
-                    $($link).addClass('iac-tag-correct');
+                    $($link).addClass('iac-tag-autocorrect');
                     break;
                 case 'tag-other-name':
-                    $($link).addClass('iac-tag-other');
+                    $($link).addClass('iac-tag-other-name');
                     break;
                 case 'bur':
                     $($link).addClass('iac-tag-bur');
