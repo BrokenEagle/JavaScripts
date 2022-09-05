@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.0
+// @version      29.1
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -77,7 +77,7 @@ const PROGRAM_RESET_KEYS = {
 };
 
 //Available setting values
-const TAG_SOURCES = ['metatag', 'tag', 'tag-abbreviation', 'tag-alias', 'tag-correction', 'tag-other-name'];
+const TAG_SOURCES = ['metatag', 'tag', 'tag-word', 'tag-abbreviation', 'tag-alias', 'tag-correction', 'tag-other-name'];
 const SCALE_TYPES = ['linear', 'square_root', 'logarithmic'];
 const RELATED_QUERY_TYPES = ['default', 'frequent', 'similar', 'like'];
 
