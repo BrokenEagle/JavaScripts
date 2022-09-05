@@ -1243,7 +1243,33 @@ const COUNT_CONSTRAINTS = {
 
 //Library functions
 
-////NONE
+JSPLib.menu.preloadScript = function (self, program_value, render_menu_func, {run_on_settings = false, default_data = {}, reset_data = {}, initialize_func = null, broadcast_func = null, menu_css = null} = {}) {
+    program_value.user_settings = this.loadUserSettings();
+    for (let key in program_value.user_settings) {
+        Object.defineProperty(program_value, key, {get() {return program_value.user_settings[key];}});
+    }
+    if (this._isSettingMenu()) {
+        this.initializeSettingsMenu(render_menu_func, menu_css);
+        if (!run_on_settings) return false;
+    }
+    if (!this.isScriptEnabled()) {
+        self.debug('logLevel', "Script is disabled on", window.location.hostname, JSPLib.debug.INFO);
+        return false;
+    }
+    Object.assign(program_value, {
+        controller: document.body.dataset.controller,
+        action: document.body.dataset.action,
+    }, JSPLib.utility.dataCopy(default_data), JSPLib.utility.dataCopy(reset_data));
+    if (typeof broadcast_func == 'function') {
+        program_value.channel = JSPLib.utility.createBroadcastChannel(this.program_name, broadcast_func);
+    }
+    if (typeof initialize_func == 'function') {
+        return initialize_func();
+    }
+    return true;
+};
+
+JSPLib.debug.addModuleLogs('menu', ['preloadScript']);
 
 //Validate functions
 
@@ -1571,7 +1597,7 @@ function RenderTaglist(taglist, columnname, tags_overlap, total_posts) {
     let html = "";
     let display_percentage = false;
     var sample_size;
-    if (IAC.user_settings.related_statistics_enabled && JSPLib.validate.isHash(tags_overlap) && Number.isInteger(total_posts)) {
+    if (IAC.related_statistics_enabled && JSPLib.validate.isHash(tags_overlap) && Number.isInteger(total_posts)) {
         display_percentage = true;
         let max_posts = Math.min(total_posts, 1000);
         sample_size = Math.max(...Object.values(tags_overlap), max_posts);
@@ -1636,7 +1662,7 @@ function RenderListItem(alink_func) {
 function RenderRelatedQueryControls() {
     let html = "";
     RELATED_QUERY_TYPES.forEach((type) => {
-        let checked = (IAC.user_settings.related_query_default[0] === type ? 'checked' : "");
+        let checked = (IAC.related_query_default[0] === type ? 'checked' : "");
         let display_name = JSPLib.utility.displayCase(type);
         html += `
 <label for="related_query_${type}">${display_name}</label>
@@ -1693,7 +1719,7 @@ function FixupMetatag(value, metatag) {
 
 function SortSources(data) {
     var scaler;
-    switch(IAC.user_settings.postcount_scale[0]) {
+    switch(IAC.postcount_scale[0]) {
         case 'logarithmic':
             scaler = ((num) => Math.log(num));
             break;
@@ -1705,8 +1731,8 @@ function SortSources(data) {
             scaler = ((num) => num);
     }
     data.sort((a, b) => {
-        let mult_a = IAC.user_settings[`${a.source}_source_weight`];
-        let mult_b = IAC.user_settings[`${b.source}_source_weight`];
+        let mult_a = IAC[`${a.source}_source_weight`];
+        let mult_b = IAC[`${b.source}_source_weight`];
         let weight_a = mult_a * scaler(a.post_count);
         let weight_b = mult_b * scaler(b.post_count);
         return weight_b - weight_a;
@@ -1716,7 +1742,7 @@ function SortSources(data) {
 }
 
 function GroupSources(data) {
-    let source_order = IAC.user_settings.source_order;
+    let source_order = IAC.source_order;
     data.sort((a, b) => (source_order.indexOf(a.source) - source_order.indexOf(b.source)));
 }
 
@@ -1801,8 +1827,8 @@ async function GetRelatedTags(tag, category, query_type) {
         if (['frequent', 'similar', 'like'].includes(query_type)) {
             url_addons.type = query_type;
         }
-        if (IAC.user_settings.related_results_limit > 0) {
-            url_addons.limit = IAC.user_settings.related_results_limit;
+        if (IAC.related_results_limit > 0) {
+            url_addons.limit = IAC.related_results_limit;
         }
         let data = await JSPLib.danbooru.submitRequest('related_tag', url_addons);
         cached = {value: data, expires: JSPLib.utility.getExpires(RELATED_TAG_EXPIRES)};
@@ -1824,7 +1850,7 @@ function KeepSourceData(type, metatag, data) {
 }
 
 function GetChoiceOrder(type, query) {
-    let checkprefix = false; //IAC.user_settings.prefix_check_enabled && (type === 'tag') && (query.length >= 2 && query.length <= 4);
+    let checkprefix = false; //IAC.prefix_check_enabled && (type === 'tag') && (query.length >= 2 && query.length <= 4);
     let queryterm = query.toLowerCase();
     let available_choices = IAC.choice_order[type].filter((tag) => {
         let tagterm = tag.toLowerCase();
@@ -1867,12 +1893,12 @@ function AddUserSelected(type, metatag, term, data, query_type) {
         data.unshift(add_data);
         IAC.shown_data.push(user_order[i]);
     }
-    data.splice(IAC.user_settings.source_results_returned);
+    data.splice(IAC.source_results_returned);
 }
 
 //For autocomplete select
 function InsertUserSelected(data, input, selected) {
-    if (!IAC.user_settings.usage_enabled) {
+    if (!IAC.usage_enabled) {
         return;
     }
     var type, item, term, source_data;
@@ -1944,13 +1970,13 @@ function InsertUserSelected(data, input, selected) {
     IAC.choice_data[type][term] = source_data;
     IAC.choice_data[type][term].expires = JSPLib.utility.getExpires(GetUsageExpires());
     IAC.choice_data[type][term].use_count = use_count + 1;
-    if (IAC.user_settings.usage_maximum > 0) {
-        IAC.choice_data[type][term].use_count = Math.min(IAC.choice_data[type][term].use_count, IAC.user_settings.usage_maximum);
+    if (IAC.usage_maximum > 0) {
+        IAC.choice_data[type][term].use_count = Math.min(IAC.choice_data[type][term].use_count, IAC.usage_maximum);
     }
     IAC.shown_data.forEach((key) => {
         if (key !== term) {
             IAC.choice_data[type][key].use_count = IAC.choice_data[type][key].use_count || 0;
-            IAC.choice_data[type][key].use_count *= IAC.user_settings.usage_multiplier;
+            IAC.choice_data[type][key].use_count *= IAC.usage_multiplier;
         }
     });
     StoreUsageData('insert', term);
@@ -2013,14 +2039,14 @@ function StaticMetatagSource(term, metatag) {
     let data = SubmetatagData()
         .filter((data) => data.value.startsWith(full_term))
         .sort((a, b) => a.value.localeCompare(b.value))
-        .slice(0, IAC.user_settings.source_results_returned);
+        .slice(0, IAC.source_results_returned);
     AddUserSelected('metatag', "", full_term, data);
     return data;
 }
 
 //For autocomplete render
 function HighlightSelected($link, list, item) {
-    if (IAC.user_settings.source_highlight_enabled) {
+    if (IAC.source_highlight_enabled) {
         if (item.expires) {
             $($link).addClass('iac-user-choice');
         }
@@ -2032,7 +2058,7 @@ function HighlightSelected($link, list, item) {
                     break;
                 case 'tag-word':
                     $($link).addClass('iac-tag-word');
-                    if (IAC.user_settings.highlight_words_enabled) {
+                    if (IAC.highlight_words_enabled) {
                         WordifyLink($link, list, item);
                     }
                     break;
@@ -2130,7 +2156,7 @@ async function RelatedTagsButton(event) {
     let category = $(event.target).data('category') || "";
     let query_type = JSPLib.menu.getCheckboxRadioSelected('.iac-program-checkbox');
     let promise_array = [GetRelatedTags(currenttag, category, query_type[0])];
-    if (IAC.user_settings.related_statistics_enabled) {
+    if (IAC.related_statistics_enabled) {
         promise_array.push(GetPostCount(currenttag));
     } else {
         promise_array.push(Promise.resolve(null));
@@ -2501,11 +2527,11 @@ function InitializeShowRelatedTags() {
         }
         $(document).one('danbooru:show-related-tags.iac', FindArtistSession);
     }
-    if (IAC.user_settings.related_query_enabled) {
+    if (IAC.related_query_enabled) {
         JSPLib.utility.setCSSStyle(RELATED_QUERY_CONTROL_CSS, 'related_query');
         $(document).one('danbooru:show-related-tags.iac', InitialiazeRelatedQueryControls);
     }
-    if (IAC.user_settings.expandable_related_section_enabled) {
+    if (IAC.expandable_related_section_enabled) {
         JSPLib.utility.setCSSStyle(EXPANDABLE_RELATED_SECTION_CSS, 'expandable_related');
         $(document).one('danbooru:show-related-tags.iac', InitialiazeRelatedExpandableSection);
     }
@@ -2603,11 +2629,11 @@ function QueueRelatedTagColumnWidths() {
 
 async function NetworkSource(type, key, term, metatag, query_type, process = true) {
     this.debug('log', "Querying", type, ':', term);
-    const CONFIG = (IAC.user_settings.alternate_tag_wildcards && type === 'tag' && Boolean(term.match(/\*/)) ? SOURCE_CONFIG.tag2 : SOURCE_CONFIG[type]);
+    const CONFIG = (IAC.alternate_tag_wildcards && type === 'tag' && Boolean(term.match(/\*/)) ? SOURCE_CONFIG.tag2 : SOURCE_CONFIG[type]);
     if (CONFIG === SOURCE_CONFIG.tag1) {
-        term = term + (IAC.user_settings.word_start_matches && !term.startsWith('/') && !term.endsWith('*') ? '*' : "");
+        term = term + (IAC.word_start_matches && !term.startsWith('/') && !term.endsWith('*') ? '*' : "");
     }
-    let url_addons = $.extend({limit: IAC.user_settings.source_results_returned}, CONFIG.data(term));
+    let url_addons = $.extend({limit: IAC.source_results_returned}, CONFIG.data(term));
     let data = await JSPLib.danbooru.submitRequest(CONFIG.url, url_addons);
     if (!data || !Array.isArray(data)) {
         return [];
@@ -2637,7 +2663,7 @@ function AnySourceIndexed(keycode, has_context = false) {
         var key = (keycode + '-' + term).toLowerCase();
         var use_metatag = (JSPLib.validate.isString(prefix) ? prefix : "");
         var query_type = (has_context ? $(this.element).data('autocomplete') : null);
-        if (!IAC.user_settings.network_only_mode) {
+        if (!IAC.network_only_mode) {
             var max_expiration = MaximumExpirationTime(type);
             var cached = await JSPLib.storage.checkLocalDB(key, ValidateEntry, max_expiration);
             if (cached) {
@@ -2650,7 +2676,7 @@ function AnySourceIndexed(keycode, has_context = false) {
 }
 
 function RecheckSourceData(type, key, term, data) {
-    if (IAC.user_settings.recheck_data_interval > 0) {
+    if (IAC.recheck_data_interval > 0) {
         let recheck_time = data.expires - GetRecheckExpires();
         if (!JSPLib.utility.validateExpires(recheck_time)) {
             this.debug('log', "Rechecking", type, ':', term);
@@ -2668,26 +2694,26 @@ function ProcessSourceData(type, metatag, term, data, query_type) {
     });
     KeepSourceData(type, metatag, data);
     if (type === 'tag') {
-        if (IAC.user_settings.alternate_sorting_enabled) {
+        if (IAC.alternate_sorting_enabled) {
             SortSources(data);
         }
-        if (IAC.user_settings.metatag_source_enabled) {
+        if (IAC.metatag_source_enabled) {
             if (query_type !== 'tag') {
                 let add_data = MetatagData().filter((data) => data.value.startsWith(term));
                 data.unshift(...add_data);
             }
         }
-        if (IAC.user_settings.source_grouping_enabled) {
+        if (IAC.source_grouping_enabled) {
             GroupSources(data);
         }
     }
-    if (IAC.user_settings.usage_enabled) {
+    if (IAC.usage_enabled) {
         AddUserSelected(type, metatag, term, data, query_type);
     }
-    if (IAC.is_bur && IAC.user_settings.BUR_source_enabled) {
+    if (IAC.is_bur && IAC.BUR_source_enabled) {
         let add_data = BUR_DATA.filter((data) => (term.length === 1 || data.value.startsWith(term)));
         data.unshift(...add_data);
-        data.splice(IAC.user_settings.source_results_returned);
+        data.splice(IAC.source_results_returned);
     }
     //Doing this here to avoid processing it on each list item
     IAC.highlight_used = (document.activeElement.tagName === 'TEXTAREA' && ['post_tag_string', 'upload_tag_string'].includes(document.activeElement.id));
@@ -2701,11 +2727,11 @@ function ProcessSourceData(type, metatag, term, data, query_type) {
 //Main execution functions
 
 function InstallQuickSearchBars() {
-    if (IAC.user_settings.forum_quick_search_enabled && (IAC.controller === 'forum-topics' || IAC.controller === 'forum-posts')) {
+    if (IAC.forum_quick_search_enabled && (IAC.controller === 'forum-topics' || IAC.controller === 'forum-posts')) {
         JSPLib.utility.setCSSStyle(FORUM_CSS, 'forum');
         $('#subnav-menu .search_body_matches').closest('li').after(FORUM_TOPIC_SEARCH);
     }
-    if (IAC.user_settings.comment_quick_search_enabled && IAC.controller === 'comments') {
+    if (IAC.comment_quick_search_enabled && IAC.controller === 'comments') {
         $('#subnav-menu .search_body_matches').closest('li').after(POST_COMMENT_SEARCH);
     }
 }
@@ -2792,7 +2818,7 @@ function SetupAutocompleteInitializations() {
     if ($(AUTOCOMPLETE_USER_SELECTORS).length) {
         RebindAnyAutocomplete(AUTOCOMPLETE_USER_SELECTORS, 'us');
     }
-    if (IAC.user_settings.text_input_autocomplete_enabled) {
+    if (IAC.text_input_autocomplete_enabled) {
         InitializeTextAreaAutocomplete();
     }
 }
@@ -2813,7 +2839,7 @@ function SetupPostEditInitializations() {
             InitializeShowRelatedTags();
             $(document).trigger('danbooru:show-related-tags');
         }
-        if (IAC.user_settings.expandable_related_section_enabled) {
+        if (IAC.expandable_related_section_enabled) {
             InitializeRelatedTagPopupListener();
             Danbooru.RelatedTag.show = JSPLib.utility.hijackFunction(Danbooru.RelatedTag.show, () => {
                 QueueRelatedTagColumnWidths();
@@ -2874,7 +2900,7 @@ function RemoteSettingsCallback() {
 }
 
 function SetTagAutocompleteSource() {
-    if (IAC.user_settings.alternate_tag_source) {
+    if (IAC.alternate_tag_source) {
         SOURCE_CONFIG.tag = SOURCE_CONFIG.tag2;
     } else {
         SOURCE_CONFIG.tag = SOURCE_CONFIG.tag1;
@@ -2882,11 +2908,11 @@ function SetTagAutocompleteSource() {
 }
 
 function GetUsageExpires() {
-    return IAC.user_settings.usage_expires * JSPLib.utility.one_day;
+    return IAC.usage_expires * JSPLib.utility.one_day;
 }
 
 function GetRecheckExpires() {
-    return IAC.user_settings.recheck_data_interval * JSPLib.utility.one_day;
+    return IAC.recheck_data_interval * JSPLib.utility.one_day;
 }
 
 function DataTypeChange() {
