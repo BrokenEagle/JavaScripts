@@ -167,6 +167,11 @@ const SETTINGS_CONFIG = {
         validate: JSPLib.validate.isBoolean,
         hint: "Adds highlights and stylings to the HTML classes set by the program."
     },
+    highlight_words_enabled: {
+        reset: true,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Underlines word matches on word match results."
+    },
     source_grouping_enabled: {
         reset: true,
         validate: JSPLib.validate.isBoolean,
@@ -2027,6 +2032,9 @@ function HighlightSelected($link, list, item) {
                     break;
                 case 'tag-word':
                     $($link).addClass('iac-tag-word');
+                    if (IAC.user_settings.highlight_words_enabled) {
+                        WordifyLink($link, list, item);
+                    }
                     break;
                 case 'tag-abbreviation':
                     $($link).addClass('iac-tag-abbreviation');
@@ -2060,6 +2068,22 @@ function HighlightSelected($link, list, item) {
         $($link).attr('data-autocomplete-type', item.source);
     }
     return $link;
+}
+
+function WordifyLink($link, list, item) {
+    let words = item.term.split('_');
+    let regex = new RegExp(`^(${words.join('|')})?(.*)`);
+    new RegExp('^(girls|und|p)?(.*)')
+    let tokens = item.value.split('_');
+    let value = tokens.map((val)=>{
+        let [ ,prefix, word, suffix] = val.match(/(^|\(|\[)([^()\[\]]*)($|\)|\])/);
+        let [ ,match, remainder] = word.match(regex);
+        word = (match ? `<u>${match}</u>` : "") + remainder;
+        return prefix + word + suffix;
+    }).join(' ');
+    let $count = $link.find('a .post-count');
+    let html = value + $count.prop('outerHTML');
+    $link.find('a').html(html);
 }
 
 function CorrectUsageData() {
@@ -2636,9 +2660,12 @@ function RecheckSourceData(type, key, term, data) {
 }
 
 function ProcessSourceData(type, metatag, term, data, query_type) {
-    if (SOURCE_CONFIG[type].fixupmetatag) {
-        data.forEach((val) => {FixupMetatag(val, metatag);});
-    }
+    data.forEach((val) => {
+        if (SOURCE_CONFIG[type].fixupmetatag) {
+            FixupMetatag(val, metatag);
+        }
+        val.term = term;
+    });
     KeepSourceData(type, metatag, data);
     if (type === 'tag') {
         if (IAC.user_settings.alternate_sorting_enabled) {
@@ -2915,6 +2942,7 @@ function RenderSettingsMenu() {
     $('#iac-display-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", DISPLAY_SETTINGS_DETAILS));
     $('#iac-display-settings').append(JSPLib.menu.renderTextinput('source_results_returned', 5));
     $('#iac-display-settings').append(JSPLib.menu.renderCheckbox('source_highlight_enabled'));
+    $('#iac-display-settings').append(JSPLib.menu.renderCheckbox('highlight_words_enabled'));
     $('#iac-display-settings').append(JSPLib.menu.renderCheckbox('source_grouping_enabled'));
     $('#iac-display-settings').append(JSPLib.menu.renderSortlist('source_order'));
     $('#iac-sort-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", SORT_SETTINGS_DETAILS));
