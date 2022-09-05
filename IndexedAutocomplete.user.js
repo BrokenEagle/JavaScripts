@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      28.36
+// @version      29.0
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -188,6 +188,11 @@ const SETTINGS_CONFIG = {
         reset: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Allows using a wildcard anywhere in a string with a wildcard always being added to the end."
+    },
+    word_start_matches: {
+        reset: false,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Always adds a wildcard to the end, which forces the old behavior of searching from the beginning only."
     },
     network_only_mode: {
         reset: false,
@@ -2567,6 +2572,9 @@ function QueueRelatedTagColumnWidths() {
 async function NetworkSource(type, key, term, metatag, query_type, process = true) {
     this.debug('log', "Querying", type, ':', term);
     const CONFIG = (IAC.user_settings.alternate_tag_wildcards && type === 'tag' && Boolean(term.match(/\*/)) ? SOURCE_CONFIG.tag2 : SOURCE_CONFIG[type]);
+    if (CONFIG === SOURCE_CONFIG.tag1) {
+        term = term + (IAC.user_settings.word_start_matches && !term.startsWith('/') && !term.endsWith('*') ? '*' : "");
+    }
     let url_addons = $.extend({limit: IAC.user_settings.source_results_returned}, CONFIG.data(term));
     let data = await JSPLib.danbooru.submitRequest(CONFIG.url, url_addons);
     if (!data || !Array.isArray(data)) {
@@ -2918,6 +2926,7 @@ function RenderSettingsMenu() {
     $('#iac-network-settings').append(JSPLib.menu.renderTextinput('recheck_data_interval', 5));
     $('#iac-network-settings').append(JSPLib.menu.renderCheckbox('alternate_tag_source'));
     $('#iac-network-settings').append(JSPLib.menu.renderCheckbox('alternate_tag_wildcards'));
+    $('#iac-network-settings').append(JSPLib.menu.renderCheckbox('word_start_matches'));
     $('#iac-network-settings').append(JSPLib.menu.renderCheckbox('network_only_mode'));
     $('#iac-controls').append(JSPLib.menu.renderCacheControls());
     $('#iac-cache-controls-message').append(JSPLib.menu.renderExpandable("Cache Data details", CACHE_DATA_DETAILS));
