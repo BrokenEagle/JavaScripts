@@ -1,26 +1,26 @@
 // ==UserScript==
-// @name         PrebooruFileUpload
+// @name         PrebooruFileUpload (Library 15)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2.0
+// @version      2.0.a
 // @description  Facilitates uploading dead illusts through file uploads.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
-// @include      /^https?://\w+\.donmai\.us/uploads/(new|\d+)(\?|$)/
+// @match        *://*.donmai.us/uploads/*
 // @exclude      /^https?://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
 // @grant        none
 // @run-at       document-body
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ntisas-prebooru/preboorufileupload.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ntisas-prebooru/preboorufileupload.user.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220212/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/load.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru */
@@ -111,7 +111,7 @@ function RenderTranslatedTagsColumn(artist_names, other_tags) {
     });
 
     for (let name in other_tags) {
-        let category = String(other_tags[name].category);
+        let category = String(other_tags[name]);
         html += RenderTagSelector(name, category);
     }
     return JSPLib.utility.sprintf(RELATED_TAG_COLUMN, html);
@@ -119,24 +119,24 @@ function RenderTranslatedTagsColumn(artist_names, other_tags) {
 
 //Danbooru network functions
 
-function QueryArtistUrlData(preprocess_data) {
+function QueryArtistUrlData(profile_urls) {
     let artist_query = {
         search: {
             artist: {
                 is_deleted: false,
             },
-            url_lower_array: preprocess_data.profile_urls,
+            url_lower_array: profile_urls,
         },
         only: 'artist[name]',
     };
     return JSPLib.danbooru.submitRequest('artist_urls', artist_query);
 }
 
-function QueryWikiData(preprocess_data) {
+function QueryWikiData(tags) {
     // Add the tags as they are
-    let other_names = new Set(preprocess_data.illust.tags);
+    let other_names = new Set();
     // Add the tags with common appelations discarded
-    preprocess_data.illust.tags.forEach((other_name)=>{
+    tags.forEach((other_name)=>{
         for (let regexp of COMMON_HASHTAG_REGEXES) {
             let normalized_name = other_name.replace(regexp, "");
             if (normalized_name != other_name) {
@@ -169,9 +169,9 @@ function QueryTagData(tags) {
 
 function GetRelatedTagData(preprocess_data) {
     let promise_array = [];
-    promise_array.push(QueryArtistUrlData(preprocess_data));
+    promise_array.push(QueryArtistUrlData(preprocess_data.profile_urls));
     if (preprocess_data.illust.tags.length) {
-        promise_array.push(QueryWikiData(preprocess_data));
+        promise_array.push(QueryWikiData(preprocess_data.illust.tags));
     } else {
         promise_array.push(Promise.resolve([]));
     }
@@ -269,4 +269,4 @@ JSPLib.load.exportData(PROGRAM_NAME, PFU);
 
 /****Execution start****/
 
-JSPLib.load.programInitialize(Main, 'PFU', PROGRAM_LOAD_REQUIRED_VARIABLES, PROGRAM_LOAD_REQUIRED_SELECTORS);
+JSPLib.load.programInitialize(Main, 'PFU', {required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, required_selectors: PROGRAM_LOAD_REQUIRED_SELECTORS});
