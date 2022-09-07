@@ -2061,9 +2061,6 @@ function HighlightSelected($link, list, item) {
                     break;
                 case 'tag-word':
                     $($link).addClass('iac-tag-word');
-                    if (IAC.highlight_words_enabled) {
-                        WordifyLink($link, list, item);
-                    }
                     break;
                 case 'tag-abbreviation':
                     $($link).addClass('iac-tag-abbreviation');
@@ -2092,6 +2089,9 @@ function HighlightSelected($link, list, item) {
         if (IAC.highlight_used && IAC.current_tags.includes(item.value)) {
             $($link).addClass('iac-already-used');
         }
+    }
+    if (IAC.highlight_words_enabled && item.source === 'tag-word') {
+        WordifyLink($link, list, item);
     }
     if (item.type === 'tag') {
         $($link).attr('data-autocomplete-type', item.source);
