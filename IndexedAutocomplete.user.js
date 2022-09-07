@@ -2097,7 +2097,7 @@ function HighlightSelected($link, list, item) {
 }
 
 function WordifyLink($link, list, item) {
-    let words = item.term.split('_');
+    let words = item.term.split('_').map((word)=>JSPLib.utility.regexpEscape(word.replace(/[()[\]]+/g, "")));
     let regex = new RegExp(`^(${words.join('|')})?(.*)`);
     new RegExp('^(girls|und|p)?(.*)')
     let tokens = item.value.split('_');
