@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RecentTagsCalc
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.25
+// @version      7.26
 // @description  Use different mechanism to calculate RecentTags.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -678,7 +678,8 @@ function RecheckDisplaySemaphore(name) {
 function RenderTaglines(taglist,addon) {
     return taglist.map((tag)=>{
         let category = GetTagCategory(tag);
-        let search_link = JSPLib.danbooru.postSearchLink(tag,tag.replace(/_/g,' '),`class="search-tag" data-tag-name="${tag}"`);
+        let escaped_tag = JSPLib.utility.HTMLEscape(tag);
+        let search_link = JSPLib.danbooru.postSearchLink(tag,tag.replace(/_/g,' '),`class="search-tag" data-tag-name="${escaped_tag}"`);
         return `    <li class="tag-type-${category}">${addon}${search_link}</li>\n`;
     }).join('');
 }
@@ -767,7 +768,8 @@ async function CheckMissingTags(tag_list,list_name="") {
         let reload_tags = JSPLib.utility.arrayUnion(network_tags, unavailable_tags);
         reload_tags.forEach((tag)=>{
             let category = GetTagCategory(tag);
-            $(`li.tag-type-${notfound_tag_category} a[href$="${tag}"]`).closest('li').removeClass().addClass(`tag-type-${category}`);
+            let escaped_tag = JSPLib.utility.HTMLEscape(tag);
+            $(`li.tag-type-${notfound_tag_category} a[href$="${escaped_tag}"]`).closest('li').removeClass().addClass(`tag-type-${category}`);
         });
     }
     return [unavailable_tags,missing_tags];
@@ -1007,7 +1009,8 @@ function BroadcastRTC(ev) {
             JSPLib.storage.batchStorageCheck(ev.data.network_tags, ValidateEntry, tag_expires, 'tag').then(()=>{
                 ev.data.network_tags.forEach((tag)=>{
                     let category = GetTagCategory(tag);
-                    $(`li.tag-type-${notfound_tag_category} a[href$="${tag}"]`).closest('li').removeClass().addClass(`tag-type-${category}`);
+                    let escaped_tag = JSPLib.utility.HTMLEscape(tag);
+                    $(`li.tag-type-${notfound_tag_category} a[href$="${escaped_tag}"]`).closest('li').removeClass().addClass(`tag-type-${category}`);
                 });
             });
             break;
