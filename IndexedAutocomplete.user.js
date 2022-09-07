@@ -373,6 +373,9 @@ const PROGRAM_CSS = `
 .iac-tag-highlight .tag-type-${BUR_TAG_CATEGORY}:hover {
     color: #888;
 }
+.iac-word-match {
+    text-decoration: underline;
+}
 .related-tags .current-related-tags-columns li:before {
     content: "*";
     font-family: monospace;
@@ -2104,7 +2107,7 @@ function WordifyLink($link, list, item) {
     let value = tokens.map((val)=>{
         let [ ,prefix, word, suffix] = val.match(/(^|\(|\[)([^()\[\]]*)($|\)|\])/);
         let [ ,match, remainder] = word.match(regex);
-        word = (match ? `<u>${match}</u>` : "") + remainder;
+        word = (match ? `<span class="iac-word-match">${match}</span>` : "") + remainder;
         return prefix + word + suffix;
     }).join(' ');
     let $count = $link.find('a .post-count');
