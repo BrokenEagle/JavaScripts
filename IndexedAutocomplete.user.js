@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.3
+// @version      29.4
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1606,7 +1606,8 @@ function RenderTaglist(taglist, columnname, tags_overlap, total_posts) {
         sample_size = Math.max(...Object.values(tags_overlap), max_posts);
     }
     taglist.forEach((tagdata) => {
-        let escaped_tag = JSPLib.utility.HTMLEscape(tagdata[0]);
+        let tag = tagdata[0];
+        let escaped_tag = JSPLib.utility.HTMLEscape(tag);
         let category = tagdata[1];
         let display_name = tag.replace(/_/g, ' ');
         let search_link = JSPLib.danbooru.postSearchLink(tag, display_name, `class="search-tag" data-tag-name="${escaped_tag}"`);
