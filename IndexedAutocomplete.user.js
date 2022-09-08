@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.2
+// @version      29.3
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2100,19 +2100,23 @@ function HighlightSelected($link, list, item) {
 }
 
 function WordifyLink($link, list, item) {
-    let words = item.term.split('_').map((word)=>JSPLib.utility.regexpEscape(word.replace(/[()[\]]+/g, "")));
+    let term = item.term;
+    let words = term.split('_').map((word)=>JSPLib.utility.regexpEscape(word.replace(/[()[\]]+/g, "")));
     let regex = new RegExp(`^(${words.join('|')})?(.*)`);
-    new RegExp('^(girls|und|p)?(.*)')
-    let tokens = item.value.split('_');
+    let tokens = (item.antecedent || item.value).split('_');
     let value = tokens.map((val)=>{
         let [ ,prefix, word, suffix] = val.match(/(^|\(|\[)([^()\[\]]*)($|\)|\])/);
         let [ ,match, remainder] = word.match(regex);
         word = (match ? `<span class="iac-word-match">${match}</span>` : "") + remainder;
         return prefix + word + suffix;
     }).join(' ');
-    let $count = $link.find('a .post-count');
-    let html = value + $count.prop('outerHTML');
-    $link.find('a').html(html);
+    if (item.antecedent) {
+        $link.find('.autocomplete-antecedent').html(value);
+    } else {
+        let $count = $link.find('a .post-count');
+        let html = value + $count.prop('outerHTML');
+        $link.find('a').html(html);
+    }
 }
 
 function CorrectUsageData() {
