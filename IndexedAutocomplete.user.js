@@ -976,7 +976,7 @@ const SOURCE_CONFIG = {
             {
                 type: 'tag',
                 label: tag.label,
-                antecedent: tag.antecedent,
+                antecedent: tag.antecedent ?? null,
                 value: tag.value,
                 category: tag.category,
                 post_count: tag.post_count,
