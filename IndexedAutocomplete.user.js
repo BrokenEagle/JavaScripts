@@ -621,6 +621,7 @@ const DISPLAY_SETTINGS_DETAILS = `
             <li><code>.iac-tag-autocorrect</code> - cyan dot</li>
         </ul>
     </li>
+    <li><b>Source highlight enabled:</b> Class and default style: <code>.iac-word-match</code> - underline</li>
     <li><b>Source grouping enabled:</b>
         <ul>
             <li>When not enabled, the default is to order using the post count and a weighting scheme.</li>
