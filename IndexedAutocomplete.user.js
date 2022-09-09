@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.4
+// @version      29.5
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2102,15 +2102,23 @@ function HighlightSelected($link, list, item) {
 
 function WordifyLink($link, list, item) {
     let term = item.term;
-    let words = term.split('_').map((word)=>JSPLib.utility.regexpEscape(word.replace(/[()[\]]+/g, "")));
+    let words = term.split(/[_-]/g).map((word)=>JSPLib.utility.regexpEscape(word.replace(/[()[\]]+/g, "")));
     let regex = new RegExp(`^(${words.join('|')})?(.*)`);
-    let tokens = (item.antecedent || item.value).split('_');
-    let value = tokens.map((val)=>{
+    let token_string = (item.antecedent || item.value);
+    let tokens = token_string.split(/[_-]/g);
+    let delimiters = token_string.split(/[^_-]+/g);
+    let values = tokens.map((val)=>{
         let [ ,prefix, word, suffix] = val.match(/(^|\(|\[)([^()\[\]]*)($|\)|\])/);
         let [ ,match, remainder] = word.match(regex);
         word = (match ? `<span class="iac-word-match">${match}</span>` : "") + remainder;
         return prefix + word + suffix;
-    }).join(' ');
+    });
+    let value = "";
+    let loop_length = Math.max(tokens.length, delimiters.length);
+    for (let i = 0; i < loop_length; i++) {
+        value += (delimiters[i] === '_' ? ' ' : delimiters[i] ?? "");
+        value += values[i] ?? "";
+    }
     if (item.antecedent) {
         $link.find('.autocomplete-antecedent').html(value);
     } else {
