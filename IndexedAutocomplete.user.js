@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.5
+// @version      29.6
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2109,7 +2109,7 @@ function WordifyLink($link, list, item) {
     let tokens = token_string.split(/[_-]/g);
     let delimiters = token_string.split(/[^_-]+/g);
     let values = tokens.map((val)=>{
-        let [ ,prefix, word, suffix] = val.match(/(^|\(|\[)([^()\[\]]*)($|\)|\])/);
+        let [ ,prefix, word, suffix] = val.match(/(^|[(\[]+)([^(\[\])]*)($|[)\]]+)/);
         let [ ,match, remainder] = word.match(regex);
         word = (match ? `<span class="iac-word-match">${match}</span>` : "") + remainder;
         return prefix + word + suffix;
