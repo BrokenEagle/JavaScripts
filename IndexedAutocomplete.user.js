@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.6
+// @version      29.7
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -908,6 +908,11 @@ const AUTOCOMPLETE_DOMLIST = [
 const AUTOCOMPLETE_ALL_SELECTORS = AUTOCOMPLETE_DOMLIST.join(',');
 const AUTOCOMPLETE_USER_SELECTORS = AUTOCOMPLETE_USERLIST.join(',');
 const AUTOCOMPLETE_REBIND_SELECTORS = AUTOCOMPLETE_REBINDLIST.join(',');
+const AUTOCOMPLETE_MULTITAG_SELECTORS = ['tag-query', 'tag-edit'].map((ac_type)=>{
+    return ['nav', 'page'].map((id_select)=>{
+        return `#${id_select} [data-autocomplete=${ac_type}]`;
+    }).join(', ');
+}).join(', ');
 
 //Expiration variables
 
@@ -2300,11 +2305,10 @@ function RebindAnyAutocomplete(selector, keycode, multiple) {
 }
 
 function RebindMultipleTag() {
-    const multi_selector = '[data-autocomplete=tag-query], [data-autocomplete=tag-edit]';
     JSPLib.utility.recheckTimer({
-        check: () => JSPLib.utility.hasDOMDataKey(multi_selector, 'uiAutocomplete'),
+        check: () => JSPLib.utility.hasDOMDataKey(AUTOCOMPLETE_MULTITAG_SELECTORS, 'uiAutocomplete'),
         exec: () => {
-            $(multi_selector).autocomplete('destroy').off('keydown.Autocomplete.tab');
+            $(AUTOCOMPLETE_MULTITAG_SELECTORS).autocomplete('destroy').off('keydown.Autocomplete.tab');
             DanbooruIntializeTagAutocomplete();
         }
     }, TIMER_POLL_INTERVAL);
@@ -2354,7 +2358,7 @@ function ReorderAutocompleteEvent($obj) {
 //Initialization functions
 
 function DanbooruIntializeTagAutocomplete() {
-    var $fields_multiple = $('[data-autocomplete="tag-query"], [data-autocomplete="tag-edit"]');
+    var $fields_multiple = $(AUTOCOMPLETE_MULTITAG_SELECTORS);
     $fields_multiple.autocomplete({
         select(event, ui) {
             if (event.key === "Enter") {
@@ -2829,7 +2833,7 @@ function SetupAutocompleteInitializations() {
     if ($('[data-autocomplete=tag]').length) {
         RebindSingleTag();
     }
-    if ($('[data-autocomplete=tag-query], [data-autocomplete=tag-edit]').length) {
+    if ($(AUTOCOMPLETE_MULTITAG_SELECTORS).length) {
         RebindMultipleTag();
     }
     if ($(AUTOCOMPLETE_USER_SELECTORS).length) {
