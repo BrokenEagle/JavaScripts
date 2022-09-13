@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.9
+// @version      29.10
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1913,7 +1913,7 @@ function AddUserSelected(type, metatag, term, data, query_type) {
 
 //For autocomplete select
 function InsertUserSelected(data, input, selected) {
-    if (!IAC.usage_enabled) {
+    if (!IAC.usage_enabled || !$(input).hasClass('iac-autocomplete')) {
         return;
     }
     var type, item, term, source_data;
@@ -1998,6 +1998,10 @@ function InsertUserSelected(data, input, selected) {
 }
 
 function InsertCompletion(input, completion) {
+    if (!$(input).hasClass('iac-autocomplete')) {
+        Danbooru.Autocomplete.insert_completion_old(input, completion);
+        return;
+    }
     // Trim all whitespace (tabs, spaces) except for line returns
     var before_caret_text = input.value.substring(0, input.selectionStart).replace(/^[ \t]+|[ \t]+$/gm, "");
     var after_caret_text = input.value.substring(input.selectionStart).replace(/^[ \t]+|[ \t]+$/gm, "");
@@ -2334,6 +2338,7 @@ function RebindSingleTag() {
                     respond(results);
                 }
             });
+            $fields.addClass('iac-autocomplete');
             setTimeout(() => {
                 $fields.each((i, field) => {
                     $(field).data('uiAutocomplete')._renderItem = Danbooru.Autocomplete.render_item;
@@ -2435,6 +2440,7 @@ function DanbooruIntializeTagAutocomplete() {
     if ($tag_input_fields.length) {
         ReorderAutocompleteEvent($tag_input_fields);
     }
+    $fields_multiple.addClass('iac-autocomplete');
 }
 
 function InitializeAutocompleteIndexed(selector, keycode, multiple = false, wiki = false) {
@@ -2490,6 +2496,7 @@ function InitializeAutocompleteIndexed(selector, keycode, multiple = false, wiki
     }
     $fields.data('autocomplete', type);
     $fields.data('multiple', multiple || wiki);
+    $fields.addClass('iac-autocomplete');
 }
 
 function InitializeTextAreaAutocomplete() {
