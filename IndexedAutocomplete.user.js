@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.7
+// @version      29.8
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1574,8 +1574,10 @@ function AutocompleteRenderItem(list, item) {
     if (item.post_count !== undefined) {
         var count = item.post_count;
 
-        if (count >= 1000) {
-            count = Math.floor(count / 1000) + "k";
+        if (count >= 1000000) {
+            count = JSPLib.utility.setPrecision(count / 1000000, 2) + 'M';
+        } else if (count >= 1000) {
+            count = JSPLib.utility.setPrecision(count / 1000, 2) + "k";
         }
 
         var $post_count = $("<span/>").addClass("post-count").css("float", "right").text(count);
