@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.25
+// @version      7.26
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -5569,20 +5569,24 @@ function MarkupMediaType(tweet) {
                 MarkupMediaType(tweet);
             }
         }, TIMER_POLL_INTERVAL);
+    } else if ($('.ntisas-tweet-media [data-testid="tweetText"]', tweet).length) {
+        $('.ntisas-tweet-media', tweet).addClass('ntisas-tweet-text').removeClass('ntisas-tweet-media');
     } else {
-        let media_children = $('.ntisas-tweet-media', tweet).children().children();
+        let media_children = $('.ntisas-tweet-media', tweet).children();
         media_children.each((i,entry)=>{
             let $entry = $(entry);
             if ($entry.children().length === 0) {
                 $entry.addClass('ntisas-media-stub').attr('ntisas-media-type', 'stub');
             } else if ($('[role=blockquote]', entry).length) {
                 $entry.addClass('ntisas-tweet-quote').attr('ntisas-media-type', 'quote');
-            } else if ($('[data-testid="card.wrapper"]', entry).length) {
+            } else if ($('[data-testid="card.wrapper"]', entry).length || $entry.data('testid') === 'card.wrapper') {
                 $entry.addClass('ntisas-tweet-card').attr('ntisas-media-type', 'card');
             } else if ($('video, [data-testid=playButton]', tweet).length || $('.ntisas-tweet-media [role=button]').toArray().some((entry)=>entry.innerText === 'Load video')) {
                 $entry.addClass('ntisas-tweet-video').attr('ntisas-media-type', 'video');
             } else if ($entry.find('div[role=link]').length === 1) {
                 $entry.addClass('ntisas-tweet-quote2').attr('ntisas-media-type', 'quote2');
+            } else if ($entry.text().trim() !== "") {
+                $entry.addClass('ntisas-tweet-unknown').attr('ntisas-media-type', 'unknown');
             } else {
                 $entry.addClass('ntisas-tweet-image').attr('ntisas-media-type', 'image');
             }
