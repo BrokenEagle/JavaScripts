@@ -3145,8 +3145,8 @@ async function PickImage(event,type,pick_func) {
     let [$link,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event, similar_class);
     let all_image_urls = GetImageLinks($tweet[0]);
     if (all_image_urls.length === 0) {
-        this.debug('log', "Images not loaded yet...");
-        JSPLib.notice.notice("No images detected.");
+        this.debug('log', "Images not loaded yet.");
+        JSPLib.notice.debugNoticeLevel("No images detected.", JSPLib.debug.DEBUG);
         return false;
     }
     this.debug('log', "All:", all_image_urls);
@@ -6000,7 +6000,7 @@ function ProcessTweetImage(obj,image_url,unprocessed_tweets) {
         $obj.addClass('ntisas-unhandled-image');
         JSPLib.debug.debugExecute(()=>{
             if (JSPLib.validate.isBoolean(image_url)) {
-                JSPLib.notice.notice("New unhandled image found (see debug console)");
+                JSPLib.notice.debugNoticeLevel("New unhandled image found (see debug console)", JSPLib.debug.INFO);
                 this.debug('warn', "Unhandled image", obj.src, $obj.closest('.ntisas-tweet').data('tweet-id'));
             }
         });
