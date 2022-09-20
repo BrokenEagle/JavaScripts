@@ -342,6 +342,11 @@ const METATAG_TAG_CATEGORY = 500;
 //CSS Constants
 
 const PROGRAM_CSS = `
+.iac-user-choice .autocomplete-item {
+    box-shadow: 0px 2px 0px #000;
+    padding-bottom: 1px;
+    line-height: 150%;
+}
 .iac-tag-alias a {
     font-style: italic;
 }
@@ -396,14 +401,8 @@ const PROGRAM_CSS = `
     visibility: visible;
 }
 /** DARK/LIGHT Color Setup **/
-body[data-current-user-theme=light] .iac-user-choice {
-    background-color: cyan;
-}
 body[data-current-user-theme=light] .iac-already-used {
     background-color: #FFFFAA;
-}
-body[data-current-user-theme=light] .iac-user-choice.iac-already-used {
-    background: linear-gradient(to right, #FFFFAA, cyan);
 }
 body[data-current-user-theme=light] .iac-tag-metatag > div:before,
 body[data-current-user-theme=light] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:link,
@@ -414,14 +413,8 @@ body[data-current-user-theme=light] .iac-tag-highlight .tag-type-${METATAG_TAG_C
 body[data-current-user-theme=light] .iac-highlight-match {
     filter: brightness(0.75);
 }
-body[data-current-user-theme=dark] .iac-user-choice {
-    background-color: #444488;
-}
 body[data-current-user-theme=dark] .iac-already-used {
     background-color: #666622;
-}
-body[data-current-user-theme=dark] .iac-user-choice.iac-already-used {
-    background: linear-gradient(to right, #666622, #444488);
 }
 body[data-current-user-theme=dark] .iac-tag-metatag > div:before,
 body[data-current-user-theme=dark] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:link,
@@ -433,14 +426,8 @@ body[data-current-user-theme=dark] .iac-highlight-match {
     filter: brightness(1.25);
 }
 @media (prefers-color-scheme: light) {
-    body[data-current-user-theme=auto] .iac-user-choice {
-        background-color: cyan;
-    }
     body[data-current-user-theme=auto] .iac-already-used {
         background-color: #FFFFAA;
-    }
-    body[data-current-user-theme=auto] .iac-user-choice.iac-already-used {
-        background: linear-gradient(to right, #FFFFAA, cyan);
     }
     body[data-current-user-theme=auto] .iac-tag-metatag > div:before,
     body[data-current-user-theme=auto] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:link,
@@ -453,14 +440,8 @@ body[data-current-user-theme=dark] .iac-highlight-match {
     }
 }
 @media (prefers-color-scheme: dark) {
-    body[data-current-user-theme=auto] .iac-user-choice {
-        background-color: #444488;
-    }
     body[data-current-user-theme=auto] .iac-already-used {
         background-color: #666622;
-    }
-    body[data-current-user-theme=auto] .iac-user-choice.iac-already-used {
-        background: linear-gradient(to right, #666622, #444488);
     }
     body[data-current-user-theme=auto] .iac-tag-metatag > div:before,
     body[data-current-user-theme=auto] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:link,
@@ -1090,7 +1071,9 @@ const SOURCE_CONFIG = {
         render: ($domobj, item) => {
             let html = `
 <div style="display: flex; width: 100%;">
-    <a class="pool-category-${item.category}" style="flex-basis: 90%;">${item.label}</a>
+    <span style="flex-basis: 90%;">
+        <a class="pool-category-${item.category} autocomplete-item">${item.label}</a>
+    </span>
     <span class="post-count" style="flex-basis: 10%; text-align: right">${item.post_count}</span>
 </div>`;
             return $(html);
@@ -1114,7 +1097,15 @@ const SOURCE_CONFIG = {
         fixupexpiration: false,
         searchstart: true,
         spacesallowed: false,
-        render: ($domobj, item) => $domobj.addClass('user-' + item.level.toLowerCase()).text(item.label),
+        render: ($domobj, item) => {
+            let html = `
+<div style="display: flex; width: 100%;">
+    <span style="flex-basis: 100%;">
+        <a class="user-${item.level.toLowerCase()} autocomplete-item">${item.label}</a>
+    </span>
+</div>`;
+            return $(html);
+        },
     },
     favgroup: {
         url: 'favorite_groups',
@@ -1136,7 +1127,9 @@ const SOURCE_CONFIG = {
         render: ($domobj, item) => {
             let html = `
 <div style="display: flex; width: 100%;">
-    <a style="flex-basis: 90%;">${item.label}</a>
+    <span style="flex-basis: 90%;">
+        <a class="autocomplete-item">${item.label}</a>
+    </span>
     <span class="post-count" style="flex-basis: 10%; text-align: right">${item.post_count}</span>
 </div>`;
             return $(html);
@@ -1156,7 +1149,16 @@ const SOURCE_CONFIG = {
         expiration: () => MinimumExpirationTime('search'),
         fixupexpiration: false,
         searchstart: true,
-        spacesallowed: false
+        spacesallowed: false,
+        render: ($domobj, item) => {
+            let html = `
+<div style="display: flex; width: 100%;">
+    <span style="flex-basis: 100%;">
+        <a class="autocomplete-item">${item.label}</a>
+    </span>
+</div>`;
+            return $(html);
+        },
     },
     wikipage: {
         url: 'wiki_pages',
@@ -1182,7 +1184,9 @@ const SOURCE_CONFIG = {
             let count = (item.no_tag ? 'No tag' : item.post_count);
             let html = `
 <div style="display: flex; width: 100%;">
-    <a class="tag-type-${item.category}" style="flex-basis: 85%;">${item.label}</a>
+    <span style="flex-basis: 85%;">
+        <a class="tag-type-${item.category} autocomplete-item">${item.label}</a>
+    </span>
     <span class="post-count" style="flex-basis: 15%; text-align: right">${count}</span>
 </div>`;
             return $(html);
@@ -1211,7 +1215,9 @@ const SOURCE_CONFIG = {
             let count = (item.no_tag ? 'No tag' : item.post_count);
             let html = `
 <div style="display: flex; width: 100%;">
-    <a class="tag-type-1" style="flex-basis: 90%;">${item.label}</a>
+    <span style="flex-basis: 90%;">
+        <a class="tag-type-1 autocomplete-item">${item.label}</a>
+    </span>
     <span class="post-count" style="flex-basis: 10%; text-align: right">${count}</span>
 </div>`;
             return $(html);
@@ -1238,7 +1244,9 @@ const SOURCE_CONFIG = {
         render: ($domobj, item) => {
             let html = `
 <div style="display: flex; width: 100%;">
-    <a class="forum-topic-category-${item.category}" style="flex-basis: 90%;">${item.label}</a>
+    <span style="flex-basis: 90%;">
+        <a class="forum-topic-category-${item.category} autocomplete-item">${item.label}</a>
+    </span>
     <span class="response-count" style="flex-basis: 10%; text-align: right">${item.response_count}</span>
 </div>`;
             return $(html);
@@ -1706,11 +1714,14 @@ function AutocompleteRenderItem(list, item) {
     if (SOURCE_CONFIG[item.type].render) {
         return RenderListItem(SOURCE_CONFIG[item.type].render)(list, item);
     }
-    let tag_info = `<span class="autocomplete-tag">${item.label}</span>`;
+    let tag_info = "";
     if (item.antecedent) {
+        tag_info = `<span class="autocomplete-tag">${item.label}</span>`;
         let antecedent = item.antecedent.replace(/_/g, " ");
         tag_info = '<span class="autocomplete-arrow">→</span>' + tag_info;
-        tag_info = `<span class="autocomplete-antecedent">${antecedent}</span>` + tag_info;
+        tag_info = `<span class="autocomplete-antecedent autocomplete-item">${antecedent}</span>` + tag_info;
+    } else {
+        tag_info = `<span class="autocomplete-tag autocomplete-item">${item.label}</span>`;
     }
     let post_text = "";
     if (item.post_count !== undefined) {
