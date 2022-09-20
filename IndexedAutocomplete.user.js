@@ -2288,7 +2288,7 @@ function HighlightWords(search, name) {
     let word_match = name.match(regex);
     if (!word_match) return null;
     let html_sections = word_match.slice(1).map((match, i) => {
-        let label = match.replace(/_/g, "&nbsp;");
+        let label = match.replace(/_/g, "&ensp;");
         return (capture_groups[i] !== '(.*)' ? `<span class="iac-highlight-match iac-word-match">${label}</span>` : label);
     });
     return html_sections.join("");
@@ -2300,7 +2300,7 @@ function HighlightGlobs(search, name) {
     let glob_match = name.match(regex);
     if (!glob_match) return null;
     let html_sections = glob_match.slice(1).map((match, i) => {
-        let label = match.replace(/_/g, "&nbsp;");
+        let label = match.replace(/_/g, "&ensp;");
         return (capture_groups[i] !== '(.*)' ? `<span class="iac-highlight-match iac-glob-match">${label}</span>` : label);
     });
     return html_sections.join("");
