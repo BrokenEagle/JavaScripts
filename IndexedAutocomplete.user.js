@@ -1703,6 +1703,9 @@ function AutocompleteRenderItem(list, item) {
     if ('html' in item) {
         return Danbooru.Autocomplete.render_item_old(list, item);
     }
+    if (SOURCE_CONFIG[item.type].render) {
+        return RenderListItem(SOURCE_CONFIG[item.type].render)(list, item);
+    }
     let tag_info = `<span class="autocomplete-tag">${item.label}</span>`;
     if (item.antecedent) {
         let antecedent = item.antecedent.replace(/_/g, " ");
