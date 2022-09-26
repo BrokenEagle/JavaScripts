@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      22.6
+// @version      22.7
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1536,6 +1536,7 @@ function InsertDmails($dmail_page,type) {
 function InsertComments($comment_page) {
     DecodeProtectedEmail($comment_page);
     let $comment_section = $('.list-of-comments', $comment_page);
+    $comment_section.find('> form').remove();
     let $comment_div = InitializeTypeDiv('comment', $comment_section);
     InitializeCommentIndexLinks($comment_div);
 }
