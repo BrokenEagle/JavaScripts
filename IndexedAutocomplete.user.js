@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.10
+// @version      29.11
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -321,7 +321,9 @@ const MENU_CONFIG = {
 
 // Default values
 
-const DEFAULT_VALUES = PROGRAM_RESET_KEYS;
+const DEFAULT_VALUES = Object.assign({
+    query_UID: {},
+}, PROGRAM_RESET_KEYS);
 
 //Pre-CSS/HTML constants
 
@@ -331,9 +333,6 @@ const METATAG_TAG_CATEGORY = 500;
 //CSS Constants
 
 const PROGRAM_CSS = `
-.iac-user-choice a {
-    font-weight: bold;
-}
 .iac-tag-alias a {
     font-style: italic;
 }
@@ -373,8 +372,8 @@ const PROGRAM_CSS = `
 .iac-tag-highlight .tag-type-${BUR_TAG_CATEGORY}:hover {
     color: #888;
 }
-.iac-word-match {
-    text-decoration: underline;
+.iac-highlight-match {
+    font-weight: bold;
 }
 .related-tags .current-related-tags-columns li:before {
     content: "*";
@@ -387,8 +386,14 @@ const PROGRAM_CSS = `
     visibility: visible;
 }
 /** DARK/LIGHT Color Setup **/
+body[data-current-user-theme=light] .iac-user-choice {
+    background-color: cyan;
+}
 body[data-current-user-theme=light] .iac-already-used {
     background-color: #FFFFAA;
+}
+body[data-current-user-theme=light] .iac-user-choice.iac-already-used {
+    background: linear-gradient(to right, #FFFFAA, cyan);
 }
 body[data-current-user-theme=light] .iac-tag-metatag > div:before,
 body[data-current-user-theme=light] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:link,
@@ -396,8 +401,17 @@ body[data-current-user-theme=light] .iac-tag-highlight .tag-type-${METATAG_TAG_C
 body[data-current-user-theme=light] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:hover {
     color: #000;
 }
+body[data-current-user-theme=light] .iac-highlight-match {
+    filter: brightness(0.75);
+}
+body[data-current-user-theme=dark] .iac-user-choice {
+    background-color: #444488;
+}
 body[data-current-user-theme=dark] .iac-already-used {
     background-color: #666622;
+}
+body[data-current-user-theme=dark] .iac-user-choice.iac-already-used {
+    background: linear-gradient(to right, #666622, #444488);
 }
 body[data-current-user-theme=dark] .iac-tag-metatag > div:before,
 body[data-current-user-theme=dark] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:link,
@@ -405,26 +419,47 @@ body[data-current-user-theme=dark] .iac-tag-highlight .tag-type-${METATAG_TAG_CA
 body[data-current-user-theme=dark] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:hover {
     color: #FFF;
 }
+body[data-current-user-theme=dark] .iac-highlight-match {
+    filter: brightness(1.25);
+}
 @media (prefers-color-scheme: light) {
-    .iac-already-used {
+    body[data-current-user-theme=auto] .iac-user-choice {
+        background-color: cyan;
+    }
+    body[data-current-user-theme=auto] .iac-already-used {
         background-color: #FFFFAA;
     }
-    .iac-tag-metatag > div:before,
-    .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:link,
-    .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:visited,
-    .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:hover {
+    body[data-current-user-theme=auto] .iac-user-choice.iac-already-used {
+        background: linear-gradient(to right, #FFFFAA, cyan);
+    }
+    body[data-current-user-theme=auto] .iac-tag-metatag > div:before,
+    body[data-current-user-theme=auto] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:link,
+    body[data-current-user-theme=auto] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:visited,
+    body[data-current-user-theme=auto] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:hover {
         color: #000;
+    }
+    body[data-current-user-theme=auto] .iac-highlight-match {
+        filter: brightness(0.75);
     }
 }
 @media (prefers-color-scheme: dark) {
-    .iac-already-used {
+    body[data-current-user-theme=auto] .iac-user-choice {
+        background-color: #444488;
+    }
+    body[data-current-user-theme=auto] .iac-already-used {
         background-color: #666622;
     }
-    .iac-tag-metatag > div:before,
-    .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:link,
-    .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:visited,
-    .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:hover {
+    body[data-current-user-theme=auto] .iac-user-choice.iac-already-used {
+        background: linear-gradient(to right, #666622, #444488);
+    }
+    body[data-current-user-theme=auto] .iac-tag-metatag > div:before,
+    body[data-current-user-theme=auto] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:link,
+    body[data-current-user-theme=auto] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:visited,
+    body[data-current-user-theme=auto] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:hover {
         color: #FFF;
+    }
+    body[data-current-user-theme=auto] .iac-highlight-match {
+        filter: brightness(1.25);
     }
 }
 `;
@@ -861,6 +896,13 @@ const TYPE_TAGS = ['ch', 'co', 'gen', 'char', 'copy', 'art', 'meta', 'general', 
 
 const TERM_REGEX = RegExp('([-~]*)(?:(' + JSPLib.utility.concat(ALL_METATAGS, TYPE_TAGS).join('|') + '):)?(\\S*)$', 'i');
 
+const WORD_DELIMITERS = '_+:;!./()-';
+const DELIMITER_GROUP = `[${WORD_DELIMITERS}]`;
+const DELIMITER_NOT_GROUP = `[^${WORD_DELIMITERS}]`;
+const DELIMITER_LOOKBEHIND = `(?<=^|${DELIMITER_GROUP})`;
+const DELIMITER_GROUP_RG = new RegExp(DELIMITER_GROUP);
+const ALL_DELIMTER_RG = new RegExp(DELIMITER_GROUP + '|' + DELIMITER_NOT_GROUP + '+', 'g');
+
 //BUR constants
 const BUR_KEYWORDS = ['alias', 'unalias', 'imply', 'unimply', 'rename', 'update', 'deprecate', 'undeprecate', 'nuke', 'category'];
 const BUR_DATA = BUR_KEYWORDS.map((tag) => ({
@@ -980,17 +1022,14 @@ const SOURCE_CONFIG = {
         ),
         map: (tag) => (
             {
-                type: 'tag',
-                label: tag.label,
                 antecedent: tag.antecedent ?? null,
-                value: tag.value,
+                name: tag.value,
                 category: tag.category,
                 post_count: tag.post_count,
                 source: tag.type,
             }
         ),
         expiration: (d) => (d.length ? ExpirationTime('tag', d[0].post_count) : MinimumExpirationTime('tag')),
-        fixupmetatag: false,
         fixupexpiration: false,
         searchstart: true,
         spacesallowed: false
@@ -1000,7 +1039,7 @@ const SOURCE_CONFIG = {
         data: (term) => (
             {
                 search: {
-                    name_or_alias_matches: term + '*',
+                    name_or_alias_matches: term,
                     hide_empty: true,
                     order: 'count',
                 },
@@ -1009,22 +1048,17 @@ const SOURCE_CONFIG = {
         ),
         map: (tag, term) =>
             Object.assign({
-                type: 'tag',
-                label: tag.name.replace(/_/g, ' '),
-                value: tag.name,
+                name: tag.name,
                 category: tag.category,
                 post_count: tag.post_count,
             }, GetConsequentMatch(term, tag))
         ,
         expiration: (d) => (d.length ? ExpirationTime('tag', d[0].post_count) : MinimumExpirationTime('tag')),
-        fixupmetatag: false,
         fixupexpiration: false,
         searchstart: true,
         spacesallowed: false
     },
-    metatag: {
-        fixupmetatag: false
-    },
+    metatag: {},
     pool: {
         url: 'pools',
         data: (term) => ({
@@ -1035,17 +1069,22 @@ const SOURCE_CONFIG = {
             only: 'name,category,post_count'
         }),
         map: (pool) => ({
-            type: 'pool',
             name: pool.name,
             post_count: pool.post_count,
             category: pool.category
         }),
         expiration: (d) => (d.length ? ExpirationTime('pool', d[0].post_count) : MinimumExpirationTime('pool')),
-        fixupmetatag: true,
         fixupexpiration: false,
         searchstart: false,
         spacesallowed: true,
-        render: ($domobj, item) => $domobj.addClass('pool-category-' + item.category).text(item.label),
+        render: ($domobj, item) => {
+            let html = `
+<div style="display: flex; width: 100%;">
+    <a class="pool-category-${item.category}" style="flex-basis: 90%;">${item.label}</a>
+    <span class="post-count" style="flex-basis: 10%; text-align: right">${item.post_count}</span>
+</div>`;
+            return $(html);
+        },
     },
     user: {
         url: 'users',
@@ -1053,17 +1092,15 @@ const SOURCE_CONFIG = {
             search: {
                 order: 'post_upload_count',
                 current_user_first: true,
-                name_matches: term + '*'
+                name_matches: term,
             },
             only: 'name,level_string'
         }),
         map: (user) => ({
-            type: 'user',
             name: user.name,
             level: user.level_string
         }),
         expiration: () => MinimumExpirationTime('user'),
-        fixupmetatag: true,
         fixupexpiration: false,
         searchstart: true,
         spacesallowed: false,
@@ -1083,24 +1120,30 @@ const SOURCE_CONFIG = {
             post_count: favgroup.post_ids.length,
         }),
         expiration: () => MinimumExpirationTime('favgroup'),
-        fixupmetatag: true,
         fixupexpiration: false,
         searchstart: false,
-        spacesallowed: true
+        spacesallowed: true,
+        render: ($domobj, item) => {
+            let html = `
+<div style="display: flex; width: 100%;">
+    <a style="flex-basis: 90%;">${item.label}</a>
+    <span class="post-count" style="flex-basis: 10%; text-align: right">${item.post_count}</span>
+</div>`;
+            return $(html);
+        },
     },
     search: {
         url: 'autocomplete',
         data: (term) => ({
             search: {
                 type: 'saved_search_label',
-                query: term + '*'
+                query: term,
             }
         }),
         map: (label) => ({
             name: label.value,
         }),
         expiration: () => MinimumExpirationTime('search'),
-        fixupmetatag: true,
         fixupexpiration: false,
         searchstart: true,
         spacesallowed: false
@@ -1111,21 +1154,29 @@ const SOURCE_CONFIG = {
             search: {
                 order: 'post_count',
                 hide_deleted: true,
-                title_ilike: term.replace(/ /g, '_') + '*',
+                title_ilike: term.replace(/ /g, '_'),
             },
-            only: 'title,tag[category]'
+            only: 'title,tag[category,post_count]'
         }),
         map: (wikipage) => ({
-            label: wikipage.title.replace(/_/g, ' '),
-            value: wikipage.title,
-            category: (wikipage.tag && wikipage.tag.category) || 0,
+            name: wikipage.title,
+            category: wikipage.tag?.category || 0,
+            post_count: wikipage.tag?.post_count || 0,
+            no_tag: !wikipage.tag,
         }),
         expiration: () => MinimumExpirationTime('wikipage'),
-        fixupmetatag: false,
         fixupexpiration: true,
         searchstart: true,
         spacesallowed: true,
-        render: ($domobj, item) => $domobj.addClass('tag-type-' + item.category).text(item.label),
+        render: ($domobj, item) => {
+            let count = (item.no_tag ? 'No tag' : item.post_count);
+            let html = `
+<div style="display: flex; width: 100%;">
+    <a class="tag-type-${item.category}" style="flex-basis: 85%;">${item.label}</a>
+    <span class="post-count" style="flex-basis: 15%; text-align: right">${count}</span>
+</div>`;
+            return $(html);
+        },
     },
     artist: {
         url: 'artists',
@@ -1133,40 +1184,55 @@ const SOURCE_CONFIG = {
             search: {
                 order: 'post_count',
                 is_active: true,
-                name_like: term.trim().replace(/\s+/g, '_') + '*'
+                name_like: term.trim().replace(/\s+/g, '_')
             },
-            only: 'name'
+            only: 'name,tag[post_count]'
         }),
         map: (artist) => ({
-            label: artist.name.replace(/_/g, ' '),
-            value: artist.name
+            post_count: artist.tag?.post_count,
+            name: artist.name,
+            no_tag: !artist.tag,
         }),
         expiration: () => MinimumExpirationTime('artist'),
-        fixupmetatag: false,
         fixupexpiration: true,
         searchstart: true,
         spacesallowed: false,
-        render: ($domobj, item) => $domobj.addClass('tag-type-1').text(item.label),
+        render: ($domobj, item) => {
+            let count = (item.no_tag ? 'No tag' : item.post_count);
+            let html = `
+<div style="display: flex; width: 100%;">
+    <a class="tag-type-1" style="flex-basis: 90%;">${item.label}</a>
+    <span class="post-count" style="flex-basis: 10%; text-align: right">${count}</span>
+</div>`;
+            return $(html);
+        },
     },
     forumtopic: {
         url: 'forum_topics',
         data: (term) => ({
             search: {
                 order: 'sticky',
-                title_ilike: '*' + term + '*'
+                title_ilike: term,
             },
-            only: 'title,category_id'
+            only: 'title,category_id,response_count'
         }),
         map: (forumtopic) => ({
-            value: forumtopic.title,
-            category: forumtopic.category_id
+            response_count: forumtopic.response_count,
+            category: forumtopic.category_id,
+            name: forumtopic.title,
         }),
         expiration: () => MinimumExpirationTime('forumtopic'),
-        fixupmetatag: false,
         fixupexpiration: false,
         searchstart: false,
         spacesallowed: true,
-        render: ($domobj, item) => $domobj.addClass('forum-topic-category-' + item.category).text(item.value),
+        render: ($domobj, item) => {
+            let html = `
+<div style="display: flex; width: 100%;">
+    <a class="forum-topic-category-${item.category}" style="flex-basis: 90%;">${item.label}</a>
+    <span class="response-count" style="flex-basis: 10%; text-align: right">${item.response_count}</span>
+</div>`;
+            return $(html);
+        },
     }
 };
 
@@ -1177,10 +1243,8 @@ const AUTOCOMPLETE_CONSTRAINTS = {
     tag: {
         antecedent: JSPLib.validate.stringnull_constraints,
         category: JSPLib.validate.inclusion_constraints(ALL_CATEGORIES.concat(METATAG_TAG_CATEGORY)),
-        label: JSPLib.validate.stringonly_constraints,
         post_count: JSPLib.validate.postcount_constraints,
-        type: JSPLib.validate.inclusion_constraints(['tag', 'metatag']),
-        value: JSPLib.validate.stringonly_constraints,
+        name: JSPLib.validate.stringonly_constraints,
         source: JSPLib.validate.inclusion_constraints(TAG_SOURCES),
     },
     get metatag() {
@@ -1189,12 +1253,10 @@ const AUTOCOMPLETE_CONSTRAINTS = {
     pool: {
         category: JSPLib.validate.inclusion_constraints(ALL_POOLS),
         post_count: JSPLib.validate.counting_constraints,
-        type: JSPLib.validate.inclusion_constraints(['pool']),
         name: JSPLib.validate.stringonly_constraints,
     },
     user: {
         level: JSPLib.validate.inclusion_constraints(ALL_USERS),
-        type: JSPLib.validate.inclusion_constraints(['user']),
         name: JSPLib.validate.stringonly_constraints,
     },
     favgroup: {
@@ -1205,16 +1267,19 @@ const AUTOCOMPLETE_CONSTRAINTS = {
         name: JSPLib.validate.stringonly_constraints,
     },
     artist: {
-        label: JSPLib.validate.stringonly_constraints,
-        value: JSPLib.validate.stringonly_constraints,
+        post_count: JSPLib.validate.counting_constraints,
+        name: JSPLib.validate.stringonly_constraints,
+        no_tag: JSPLib.validate.boolean_constraints,
     },
     wikipage: {
-        label: JSPLib.validate.stringonly_constraints,
-        value: JSPLib.validate.stringonly_constraints,
+        post_count: JSPLib.validate.counting_constraints,
+        name: JSPLib.validate.stringonly_constraints,
         category: JSPLib.validate.inclusion_constraints(ALL_CATEGORIES),
+        no_tag: JSPLib.validate.boolean_constraints,
     },
     forumtopic: {
-        value: JSPLib.validate.stringonly_constraints,
+        response_count: JSPLib.validate.counting_constraints,
+        name: JSPLib.validate.stringonly_constraints,
         category: JSPLib.validate.inclusion_constraints(ALL_TOPICS),
     },
 };
@@ -1419,6 +1484,12 @@ function ValidateUsageData(choice_info) {
             if (check !== undefined) {
                 error_messages.push(`choice_data[${type}][${key}]`, check);
                 delete choice_data[type][key];
+                continue;
+            }
+            let extra_keys = JSPLib.utility.arrayDifference(Object.keys(choice_data[type][key]), Object.keys(validator));
+            if (extra_keys.length) {
+                error_messages.push(`Hash contains extra keys: ${type} - ${key}`, extra_keys);
+                delete choice_data[type][key];
             }
         }
     }
@@ -1443,6 +1514,16 @@ function ValidateUsageData(choice_info) {
         }
     }
     return error_messages;
+}
+
+function ValidateCached(cached, type, term, word_mode) {
+    if (!cached) return false;
+    if (type !== 'tag') return true;
+    if (word_mode) {
+        return cached.value.every((item) => GetWordMatches(item.antecedent || item.name, term, false));
+    } else {
+        return cached.value.every((item) => GetGlobMatches(item.antecedent || item.name, term, false));
+    }
 }
 
 //Helper functions
@@ -1505,6 +1586,7 @@ const MapMetatag = (type, metatag, value) => ({
     antecedent: null,
     label: metatag + ':' + value,
     value: metatag + ':' + value,
+    name: metatag + ':' + value,
     post_count: METATAG_TAG_CATEGORY,
     source: 'metatag',
     category: METATAG_TAG_CATEGORY
@@ -1532,6 +1614,60 @@ function SubmetatagData() {
     return SubmetatagData.data;
 }
 
+function GlobRegex(search, use_capture, return_groups = false) {
+    GlobRegex.regexes ||= {};
+    GlobRegex.capture_groups ||= {};
+    let key = search + '\xff' + use_capture;
+    if (!(key in GlobRegex.regexes)) {
+        const captureMap = (
+                               use_capture ?
+                               (val) => (val.slice(0, 2) === String.raw`\*` ? '(.*)' : `(${val})`) :
+                               (val) => (val.slice(0, 2) === String.raw`\*` ? '.*' : `${val}`)
+                           );
+        GlobRegex.capture_groups[key] = JSPLib.utility.findAll(search, /\*|[^*]+/g)
+                                           .filter((val) => val !== '')
+                                           .map((val) => JSPLib.utility.regexpEscape(val))
+                                           .map(captureMap);
+        GlobRegex.regexes[key] = new RegExp('^' + GlobRegex.capture_groups[key].join("") + '$', 'i');
+    }
+    return (return_groups ? GlobRegex.capture_groups[key] : GlobRegex.regexes[key]);
+}
+
+function WordRegex(search, use_capture, return_groups = false) {
+    WordRegex.regexes ||= {};
+    WordRegex.capture_groups ||= {};
+    let key = search + '\xff' + use_capture;
+    if (!(key in WordRegex.regexes)) {
+        let bookend = (use_capture ? '(.*)' : '.*');
+        let capture_groups = JSPLib.utility.findAll(search, ALL_DELIMTER_RG)
+            .filter((val)=>val !== '')
+            .map((word)=>{
+                if (word.match(DELIMITER_GROUP_RG)) {
+                    return (use_capture ? '(.*)' : '.*');
+                }
+                let escape_word = JSPLib.utility.regexpEscape(word);
+                return DELIMITER_LOOKBEHIND + (use_capture ? `(${escape_word})` : escape_word);
+            });
+        WordRegex.capture_groups[key] = [bookend, ...capture_groups, bookend];
+        WordRegex.regexes[key] = new RegExp(WordRegex.capture_groups[key].join("") + '(.*)', 'i');
+    }
+    return (return_groups ? WordRegex.capture_groups[key] : WordRegex.regexes[key]);
+}
+
+//Get regex from separate function and memoize that value
+function GetGlobMatches(name, search, use_capture) {
+    let regex = GlobRegex(search, use_capture);
+    let match = name.match(regex);
+    return match;
+}
+
+//Get regex from separate function and memoize that value
+function GetWordMatches(name, search, use_capture) {
+    let regex = WordRegex(search, use_capture);
+    let match = name.match(regex);
+    return match;
+}
+
 //Time functions
 
 function MinimumExpirationTime(type) {
@@ -1557,53 +1693,45 @@ function AutocompleteRenderItem(list, item) {
     if ('html' in item) {
         return Danbooru.Autocomplete.render_item_old(list, item);
     }
-    var $link = $("<a/>");
-    $link.text(item.label);
-    $link.attr("href", "/posts?tags=" + encodeURIComponent(item.value));
-    $link.on("click.danbooru", function(e) {
-        e.preventDefault();
-    });
-
+    let tag_info = `<span class="autocomplete-tag">${item.label}</span>`;
     if (item.antecedent) {
-        var antecedent = item.antecedent.replace(/_/g, " ");
-        var arrow = $("<span/>").html(" &rarr; ").addClass("autocomplete-arrow");
-        var antecedent_element = $("<span/>").text(antecedent).addClass("autocomplete-antecedent");
-        $link.prepend([
-            antecedent_element,
-            arrow
-        ]);
+        let antecedent = item.antecedent.replace(/_/g, " ");
+        tag_info = '<span class="autocomplete-arrow">→</span>' + tag_info;
+        tag_info = `<span class="autocomplete-antecedent">${antecedent}</span>` + tag_info;
     }
-
+    let post_text = "";
     if (item.post_count !== undefined) {
-        var count = item.post_count;
-
+        let count = item.post_count;
+        post_text = String(item.post_count);
         if (count >= 1000000) {
-            count = JSPLib.utility.setPrecision(count / 1000000, 2) + 'M';
+            post_text = JSPLib.utility.setPrecision(count / 1000000, 2) + 'M';
         } else if (count >= 1000) {
-            count = JSPLib.utility.setPrecision(count / 1000, 2) + "k";
+            post_text = JSPLib.utility.setPrecision(count / 1000, 2) + "k";
         }
-
-        var $post_count = $("<span/>").addClass("post-count").css("float", "right").text(count);
-        $link.append($post_count);
     }
-
-    if (/^tag/.test(item.type)) {
-        $link.addClass("tag-type-" + item.category);
-    } else if (item.type === "user") {
-        var level_class = "user-" + item.level.toLowerCase();
-        $link.addClass(level_class);
-    } else if (item.type === "pool") {
-        $link.addClass("pool-category-" + item.category);
+    let post_info = `<span class="post-count">${post_text}</span>`;
+    let url = '/posts?tags=' + encodeURIComponent(item.name);
+    let link_classes = ['iac-autocomplete-link'];
+    if (item.type === 'tag') {
+        link_classes.push('tag-type-' + item.category)
+    } else if (item.type === 'user') {
+        link_classes.push('user-' + item.level.toLowerCase());
+    } else if (item.type === 'pool') {
+        link_classes.push('pool-category-' + item.category);
     }
-
-    var $menu_item = $("<div/>").append($link);
-    var $list_item = $("<li/>").data("item.autocomplete", item).append($menu_item);
-
-    var data_attributes = ["type", "antecedent", "value", "category", "post_count"];
-    data_attributes.forEach(attr => {
-        $list_item.attr(`data-autocomplete-${attr.replace(/_/g, "-")}`, item[attr]);
-    });
-
+    let link = `
+<a href="${url}" class="${link_classes.join(' ')}" style="display: flex;">
+    <div class="iac-tag-info" style="flex-basis: 90%">${tag_info}</div>
+    <div class="iac-post-info" style="flex-basis: 10%; text-align: right;">${post_info}</div>
+</a>`;
+    let data_attributes = ["type", "antecedent", "value", "category", "post_count"];
+    let data_items = ["type", "antecedent", "value", "category", "post_count"].map((attr) => `data-autocomplete-${attr.replace(/_/g, "-")}="${item[attr]}"`);
+    let $list_item = $(`
+<li ${data_items.join(' ')}>
+    <div>${link}</div>
+</li>`);
+    $list_item.data("item.autocomplete", item);
+    $list_item.find('a').on('click.iac', (event) => {event.preventDefault();});
     return $list_item.appendTo(list);
 }
 
@@ -1671,6 +1799,22 @@ function RenderListItem(alink_func) {
         let $container = $('<div/>').append($link);
         HighlightSelected($container, list, item);
         return $('<li/>').data('item.autocomplete', item).append($container).appendTo(list);
+    };
+}
+
+function RenderMenuItem() {
+    return function (ul, items) {
+        let event_UID = items.UID || IAC.query_UID[items.key];
+        if (Number.isInteger(event_UID)) {
+            JSPLib.debug.debugTime('renderitem-' + event_UID);
+        }
+        items.forEach((item)=>{
+            this._renderItemData(ul, item);
+        });
+        if (Number.isInteger(event_UID)) {
+            JSPLib.debug.debugTimeEnd('renderitem-' + event_UID);
+            JSPLib.debug.debugTimeEnd('autocomplete-' + event_UID);
+        }
     };
 }
 
@@ -1858,53 +2002,50 @@ async function GetRelatedTags(tag, category, query_type) {
 function KeepSourceData(type, metatag, data) {
     IAC.source_data[type] = IAC.source_data[type] || {};
     data.forEach((val) => {
-        let orig_key = val.value.replace(RegExp(`^${metatag}:?`), "");
+        let orig_key = val.name.replace(RegExp(`^${metatag}:?`), "");
         let key = (val.antecedent ? val.antecedent + '\xff' + orig_key : orig_key);
         IAC.source_data[type][key] = val;
     });
 }
 
-function GetChoiceOrder(type, query) {
-    let checkprefix = false; //IAC.prefix_check_enabled && (type === 'tag') && (query.length >= 2 && query.length <= 4);
-    let queryterm = query.toLowerCase();
-    let available_choices = IAC.choice_order[type].filter((tag) => {
-        let tagterm = tag.toLowerCase();
-        let tagprefix = (checkprefix ? GetPrefix(tagterm) : "");
-        let queryindex = tagterm.indexOf(queryterm);
-        let prefixindex = (checkprefix ? tagprefix.indexOf(queryterm) : -1);
-        return (queryindex === 0) || (prefixindex === 0) || (!SOURCE_CONFIG[type].searchstart && queryindex > 0);
+function GetChoiceOrder(type, query, word_mode) {
+    let queryterm = query.toLowerCase() + (type === 'metatag' && !query.endsWith('*') ? '*' : "");
+    let regex = (word_mode ? WordRegex(queryterm, false) : GlobRegex(queryterm, false));
+    let available_choices = IAC.choice_order[type].filter((name) => {
+        return name.toLowerCase().match(regex);
     });
     let sortable_choices = available_choices.filter((tag) => (IAC.choice_data[type][tag].use_count > 0));
     sortable_choices.sort((a, b) => IAC.choice_data[type][b].use_count - IAC.choice_data[type][a].use_count);
     return JSPLib.utility.arrayUnique(sortable_choices.concat(available_choices));
 }
 
-function AddUserSelected(type, metatag, term, data, query_type) {
+function AddUserSelected(type, metatag, term, data, query_type, word_mode, key) {
     IAC.shown_data = [];
     let order = IAC.choice_order[type];
     let choice = IAC.choice_data[type];
     if (!order || !choice) {
         return;
     }
-    let user_order = GetChoiceOrder(type, term);
+    let user_order = GetChoiceOrder(type, term, word_mode);
     for (let i = user_order.length - 1; i >= 0; i--) {
-        let checkterm = metatag + user_order[i];
+        let checkterm = user_order[i];
         if (query_type === 'tag' && choice[checkterm].category === METATAG_TAG_CATEGORY) {
             continue;
         }
         //Splice out Danbooru data if it exists
         for (let j = 0; j < data.length; j++) {
-            let compareterm = (data[j].antecedent ? data[j].antecedent + '\xff' + data[j].value : data[j].value);
+            let compareterm = (data[j].antecedent ? data[j].antecedent + '\xff' + data[j].name : data[j].name);
             if (compareterm === checkterm) {
                 data.splice(j, 1);
                 //Should only be one of these at most
                 break;
             }
         }
-        let add_data = choice[user_order[i]];
-        if (SOURCE_CONFIG[type].fixupmetatag) {
-            FixupMetatag(add_data, metatag);
+        let add_data = Object.assign({}, choice[user_order[i]], {term, key, type});
+        if (type === 'tag' && ['tag', 'tag-word'].includes(add_data.source)) {
+            add_data.source = (word_mode ? 'tag-word' : 'tag');
         }
+        FixupMetatag(add_data, metatag);
         data.unshift(add_data);
         IAC.shown_data.push(user_order[i]);
     }
@@ -1948,14 +2089,12 @@ function InsertUserSelected(data, input, selected) {
         return;
     }
     if ($(input).data('multiple') === false) {
-        input.value = input.value.trim();
+        input.name = input.name.trim();
     }
     if (item.antecedent) {
-        term = item.antecedent + '\xff' + item.value;
-    } else if (item.name) {
-        term = item.name;
+        term = item.antecedent + '\xff' + item.name;
     } else {
-        term = item.value;
+        term = item.name;
     }
     if (item.category === METATAG_TAG_CATEGORY) {
         if (item.type === 'tag') {
@@ -1982,7 +2121,8 @@ function InsertUserSelected(data, input, selected) {
     IAC.choice_order[type] = JSPLib.utility.arrayUnique(IAC.choice_order[type]);
     //So the use count doesn't get squashed by the new variable assignment
     let use_count = (IAC.choice_data[type][term] && IAC.choice_data[type][term].use_count) || 0;
-    IAC.choice_data[type][term] = source_data;
+    IAC.choice_data[type][term] = JSPLib.utility.dataCopy(source_data);
+    ['key', 'term', 'label', 'value', 'type'].forEach((e) => {delete IAC.choice_data[type][term][e];});
     IAC.choice_data[type][term].expires = JSPLib.utility.getExpires(GetUsageExpires());
     IAC.choice_data[type][term].use_count = use_count + 1;
     if (IAC.usage_maximum > 0) {
@@ -2037,14 +2177,11 @@ function InsertCompletion(input, completion) {
         setTimeout(() => {DisableTextAreaAutocomplete($input);}, 100);
     } else {
         var query = ParseQuery(input.value, input.selectionStart);
+        var select = ParseQuery(completion, completion.length);
         before_caret_text = before_caret_text.substring(0, before_caret_text.search(/\S+$/));
-        if (query.metatag === 'tag') {
-            before_caret_text += query.prefix + completion + ' ';
-        } else if (query.metatag in STATIC_METATAGS) {
-            before_caret_text += query.operator + completion + ' ';
-        } else {
-            before_caret_text += completion + ' ';
-        }
+        var prefix = (query.metatag !== "tag" ? (query.prefix || select.prefix) : "");
+        var name = (query.metatag === "tag" ? completion : select.term);
+        before_caret_text += prefix + name + ' ';
         start = end = before_caret_text.length;
     }
     input.value = before_caret_text + after_caret_text;
@@ -2056,10 +2193,11 @@ function StaticMetatagSource(term, metatag) {
     let lower_term = term.toLowerCase();
     let full_term = `${metatag}:${lower_term}`;
     let data = SubmetatagData()
-        .filter((data) => data.value.startsWith(full_term))
-        .sort((a, b) => a.value.localeCompare(b.value))
+        .filter((item) => item.name.startsWith(full_term))
+        .map((item) => Object.assign({}, item, {term}))
+        .sort((a, b) => a.name.localeCompare(b.name))
         .slice(0, IAC.source_results_returned);
-    AddUserSelected('metatag', "", full_term, data);
+    AddUserSelected('metatag', "", full_term, data, false, null);
     return data;
 }
 
@@ -2095,19 +2233,35 @@ function HighlightSelected($link, list, item) {
                     break;
                 case 'metatag':
                     $($link).addClass('iac-tag-metatag');
-                    $('.post-count', $link).text('metatag');
-                    $('a', $link).addClass('tag-type-' + item.category);
                     //falls through
                 default:
                     //Do nothing
             }
         }
-        if (IAC.highlight_used && IAC.current_tags.includes(item.value)) {
+        if (IAC.highlight_used && IAC.current_tags.includes(item.name)) {
             $($link).addClass('iac-already-used');
         }
     }
-    if (IAC.highlight_words_enabled && item.source === 'tag-word') {
-        WordifyLink($link, list, item);
+    if (IAC.highlight_words_enabled) {
+        let term = item.term;
+        if (item.type === 'tag' || item.type === 'metatag') {
+            term += (item.source === 'metatag' && !item.term.endsWith('*') ? '*' : "");
+            let [tagname, tagclass] = (item.antecedent ? [item.antecedent, 'autocomplete-antecedent'] : [item.name, 'autocomplete-tag']);
+            let highlight_html = (item.source === 'tag-word' ? HighlightWords(term, tagname) : HighlightGlobs(term, tagname, item.type));
+            if (highlight_html) {
+                $link.find('.' + tagclass).html(highlight_html);
+            }
+        } else {
+            let value = term;
+            let highlight_html = HighlightGlobs(value, item.name);
+            if (highlight_html) {
+                $link.find('a').html(highlight_html);
+            }
+        }
+    }
+    if (item.source == 'metatag') {
+        $('a', $link).addClass('tag-type-' + item.category);
+        $('.post-count', $link).text('metatag');
     }
     if (item.type === 'tag') {
         $($link).attr('data-autocomplete-type', item.source);
@@ -2115,32 +2269,28 @@ function HighlightSelected($link, list, item) {
     return $link;
 }
 
-function WordifyLink($link, list, item) {
-    let term = item.term;
-    let words = term.split(/[_-]/g).map((word)=>JSPLib.utility.regexpEscape(word.replace(/[()[\]]+/g, "")));
-    let regex = new RegExp(`^(${words.join('|')})?(.*)`);
-    let token_string = (item.antecedent || item.value);
-    let tokens = token_string.split(/[_-]/g);
-    let delimiters = token_string.split(/[^_-]+/g);
-    let values = tokens.map((val)=>{
-        let [ ,prefix, word, suffix] = val.match(/(^|[(\[]+)([^(\[\])]*)($|[)\]]+)/);
-        let [ ,match, remainder] = word.match(regex);
-        word = (match ? `<span class="iac-word-match">${match}</span>` : "") + remainder;
-        return prefix + word + suffix;
+function HighlightWords(search, name) {
+    let regex = WordRegex(search, true);
+    let capture_groups = WordRegex(search, true, true);
+    let word_match = name.match(regex);
+    if (!word_match) return null;
+    let html_sections = word_match.slice(1).map((match, i) => {
+        let label = match.replace(/_/g, "&nbsp;");
+        return (capture_groups[i] !== '(.*)' ? `<span class="iac-highlight-match iac-word-match">${label}</span>` : label);
     });
-    let value = "";
-    let loop_length = Math.max(tokens.length, delimiters.length);
-    for (let i = 0; i < loop_length; i++) {
-        value += (delimiters[i] === '_' ? ' ' : delimiters[i] ?? "");
-        value += values[i] ?? "";
-    }
-    if (item.antecedent) {
-        $link.find('.autocomplete-antecedent').html(value);
-    } else {
-        let $count = $link.find('a .post-count');
-        let html = value + $count.prop('outerHTML');
-        $link.find('a').html(html);
-    }
+    return html_sections.join("");
+}
+
+function HighlightGlobs(search, name) {
+    let regex = GlobRegex(search, true);
+    let capture_groups = GlobRegex(search, true, true);
+    let glob_match = name.match(regex);
+    if (!glob_match) return null;
+    let html_sections = glob_match.slice(1).map((match, i) => {
+        let label = match.replace(/_/g, "&nbsp;");
+        return (capture_groups[i] !== '(.*)' ? `<span class="iac-highlight-match iac-glob-match">${label}</span>` : label);
+    });
+    return html_sections.join("");
 }
 
 function CorrectUsageData() {
@@ -2253,9 +2403,10 @@ function RelatedTagsScroll(event) {
 function RebindRender() {
     $(AUTOCOMPLETE_REBIND_SELECTORS).each((i, entry) => {
         let render_set = $(entry).data('iac-render');
-        let autocomplete_item = $(entry).data('uiAutocomplete');
-        if (!render_set && autocomplete_item) {
-            autocomplete_item._renderItem = Danbooru.Autocomplete.render_item;
+        let autocomplete = $(entry).data('uiAutocomplete');
+        if (!render_set && autocomplete) {
+            autocomplete._renderItem = Danbooru.Autocomplete.render_item;
+            autocomplete._renderMenu = RenderMenuItem();
             $(entry).data('iac-render', true);
         }
     });
@@ -2336,12 +2487,17 @@ function RebindSingleTag() {
                 async source(request, respond) {
                     let results = await autocomplete.call(this, request.term);
                     respond(results);
-                }
+                },
+                select (event, ui) {
+                    InsertUserSelected('ac', this, ui.item);
+                },
             });
             $fields.addClass('iac-autocomplete');
             setTimeout(() => {
                 $fields.each((i, field) => {
-                    $(field).data('uiAutocomplete')._renderItem = Danbooru.Autocomplete.render_item;
+                    let autocomplete = $(field).data('uiAutocomplete');
+                    autocomplete._renderItem = Danbooru.Autocomplete.render_item;
+                    autocomplete._renderMenu = RenderMenuItem();
                 });
             }, JQUERY_DELAY);
         }
@@ -2374,7 +2530,7 @@ function DanbooruIntializeTagAutocomplete() {
             if (event.key === "Enter") {
                 event.stopImmediatePropagation();
             }
-            Danbooru.Autocomplete.insert_completion(this, ui.item.value);
+            Danbooru.Autocomplete.insert_completion(this, ui.item.name);
             return false;
         },
         async source(req, resp) {
@@ -2430,11 +2586,12 @@ function DanbooruIntializeTagAutocomplete() {
                     break;
             }
             resp(results);
-        }
+        },
     });
     $fields_multiple.each((i, entry) => {
         let autocomplete = $(entry).data('uiAutocomplete');
         autocomplete._renderItem = Danbooru.Autocomplete.render_item;
+        autocomplete._renderMenu = RenderMenuItem();
     });
     let $tag_input_fields = $("#upload_tag_string, #post_tag_string");
     if ($tag_input_fields.length) {
@@ -2467,28 +2624,30 @@ function InitializeAutocompleteIndexed(selector, keycode, multiple = false, wiki
         select (event, ui) {
             InsertUserSelected(keycode, this, ui.item);
             if (wiki) {
-                InsertCompletion(this, ui.item.value);
+                InsertCompletion(this, ui.item.name);
                 event.stopImmediatePropagation();
                 return false;
             } if (multiple) {
                 if (event.key === 'Enter') {
                     event.stopImmediatePropagation();
                 }
-                Danbooru.Autocomplete.insert_completion_old(this, ui.item.value);
+                Danbooru.Autocomplete.insert_completion_old(this, ui.item.name);
                 return false;
             }
-            ui.item.value = ui.item.value.trim();
-            return ui.item.value;
-        }
+            ui.item.name = ui.item.name.trim();
+            return ui.item.name;
+        },
     });
-    let alink_func = (SOURCE_CONFIG[type].render ? SOURCE_CONFIG[type].render : ($domobj, item) => $domobj.text(item.value));
+    let alink_func = (SOURCE_CONFIG[type].render ? SOURCE_CONFIG[type].render : ($domobj, item) => $domobj.text(item.name));
     setTimeout(() => {
         $fields.each((i, field) => {
+            let autocomplete = $(field).data('uiAutocomplete');
             if (wiki) {
-                $(field).data('uiAutocomplete')._renderItem = Danbooru.Autocomplete.render_item;
+                autocomplete._renderItem = Danbooru.Autocomplete.render_item;
             } else {
-                $(field).data('uiAutocomplete')._renderItem = RenderListItem(alink_func);
+                autocomplete._renderItem = RenderListItem(alink_func);
             }
+            autocomplete._renderMenu = RenderMenuItem();
         });
     }, JQUERY_DELAY);
     if (!JSPLib.utility.isNamespaceBound(selector, 'keydown', 'Autocomplete.tab')) {
@@ -2660,12 +2819,9 @@ function QueueRelatedTagColumnWidths() {
 
 //Main auxiliary functions
 
-async function NetworkSource(type, key, term, metatag, query_type, process = true) {
+async function NetworkSource(type, key, term, metatag, query_type, word_mode, process = true) {
     this.debug('log', "Querying", type, ':', term);
-    const CONFIG = (IAC.alternate_tag_wildcards && type === 'tag' && Boolean(term.match(/\*/)) ? SOURCE_CONFIG.tag2 : SOURCE_CONFIG[type]);
-    if (CONFIG === SOURCE_CONFIG.tag1) {
-        term = term + (IAC.word_start_matches && !term.startsWith('/') && !term.endsWith('*') ? '*' : "");
-    }
+    const CONFIG = SOURCE_CONFIG[type];
     let url_addons = $.extend({limit: IAC.source_results_returned}, CONFIG.data(term));
     let data = await JSPLib.danbooru.submitRequest(CONFIG.url, url_addons);
     if (!data || !Array.isArray(data)) {
@@ -2679,7 +2835,7 @@ async function NetworkSource(type, key, term, metatag, query_type, process = tru
         setTimeout(() => {FixExpirationCallback(key, save_data, save_data[0].value, type);}, CALLBACK_INTERVAL);
     }
     if (process) {
-        return ProcessSourceData(type, metatag, term, d, query_type);
+        return ProcessSourceData(type, metatag, term, d, query_type, key, word_mode);
     }
 }
 
@@ -2693,37 +2849,57 @@ function AnySourceIndexed(keycode, has_context = false) {
         if (term === "") {
             return [];
         }
+        var word_mode = false;
+        if (type === 'tag' && !term.startsWith('/') && !term.endsWith('*')) {
+            word_mode = term.length > 1 &&
+                        !(
+                             IAC.word_start_matches ||
+                             (SOURCE_CONFIG[type] === SOURCE_CONFIG.tag2) ||
+                             (IAC.alternate_tag_wildcards && Boolean(term.match(/\*/)))
+                         );
+            term += (!word_mode && !term.endsWith('*') ? '*' : "");
+        } else {
+            term += (term.endsWith('*') ? "" : '*');
+            term = (SOURCE_CONFIG[type].searchstart ? "" : "*") + term;
+        }
         var key = (keycode + '-' + term).toLowerCase();
+        let UID = IAC.query_UID[key] = JSPLib.utility.getUniqueID();
+        JSPLib.debug.debugTime('autocomplete-' + UID);
+        JSPLib.debug.debugTime('source-' + UID);
         var use_metatag = (JSPLib.validate.isString(prefix) ? prefix : "");
         var query_type = (has_context ? $(this.element).data('autocomplete') : null);
+        var final_data = null;
         if (!IAC.network_only_mode) {
             var max_expiration = MaximumExpirationTime(type);
             var cached = await JSPLib.storage.checkLocalDB(key, ValidateEntry, max_expiration);
-            if (cached) {
-                RecheckSourceData(type, key, term, cached);
-                return ProcessSourceData(type, use_metatag, term, cached.value, query_type);
+            if (ValidateCached(cached, type, term, word_mode)) {
+                RecheckSourceData(type, key, term, cached, word_mode);
+                final_data = ProcessSourceData(type, use_metatag, term, cached.value, query_type, key, word_mode);
             }
         }
-        return NetworkSource(type, key, term, use_metatag, query_type);
+        if (!final_data) {
+            final_data = NetworkSource(type, key, term, use_metatag, query_type, word_mode);
+        }
+        JSPLib.debug.debugTimeEnd('source-' + UID);
+        Object.assign(final_data, {UID, term, key});
+        return final_data;
     };
 }
 
-function RecheckSourceData(type, key, term, data) {
+function RecheckSourceData(type, key, term, data, word_mode) {
     if (IAC.recheck_data_interval > 0) {
         let recheck_time = data.expires - GetRecheckExpires();
         if (!JSPLib.utility.validateExpires(recheck_time)) {
             this.debug('log', "Rechecking", type, ':', term);
-            NetworkSource(type, key, term, null, null, false);
+            NetworkSource(type, key, term, null, null, word_mode, false);
         }
     }
 }
 
-function ProcessSourceData(type, metatag, term, data, query_type) {
+function ProcessSourceData(type, metatag, term, data, query_type, key, word_mode=false) {
     data.forEach((val) => {
-        if (SOURCE_CONFIG[type].fixupmetatag) {
-            FixupMetatag(val, metatag);
-        }
-        val.term = term;
+        FixupMetatag(val, metatag);
+        Object.assign(val, {term, key, type});
     });
     KeepSourceData(type, metatag, data);
     if (type === 'tag') {
@@ -2732,7 +2908,10 @@ function ProcessSourceData(type, metatag, term, data, query_type) {
         }
         if (IAC.metatag_source_enabled) {
             if (query_type !== 'tag') {
-                let add_data = MetatagData().filter((data) => data.value.startsWith(term));
+                let regex = new RegExp('^' + JSPLib.utility.regexpEscape(term).replace(/\\\*/g, '.*'));
+                let filter_data = MetatagData().filter((data) => data.name.match(regex));
+                let metatag_term = term + (term.endsWith('*') ? "" : '*');
+                let add_data = filter_data.map((item) => Object.assign({term: metatag_term}, item));
                 data.unshift(...add_data);
             }
         }
@@ -2741,10 +2920,10 @@ function ProcessSourceData(type, metatag, term, data, query_type) {
         }
     }
     if (IAC.usage_enabled) {
-        AddUserSelected(type, metatag, term, data, query_type);
+        AddUserSelected(type, metatag, term, data, query_type, word_mode, key);
     }
     if (IAC.is_bur && IAC.BUR_source_enabled) {
-        let add_data = BUR_DATA.filter((data) => (term.length === 1 || data.value.startsWith(term)));
+        let add_data = BUR_DATA.filter((data) => (term.length === 1 || data.name.startsWith(term)));
         data.unshift(...add_data);
         data.splice(IAC.source_results_returned);
     }
