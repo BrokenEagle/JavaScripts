@@ -33,7 +33,21 @@
 
 //Library constants
 
-////NONE
+const LIBRARY_MENU_CSS = `
+/* LIBRARY FIXES */
+#userscript-settings-menu .jsplib-settings-buttons input {
+    color: var(--button-primary-text-color);
+}
+#page #userscript-settings-menu .jsplib-settings-buttons .jsplib-commit:hover {
+    background-color: var(--green-5);
+}
+#page #userscript-settings-menu .jsplib-settings-buttons .jsplib-resetall:hover {
+    background-color: var(--red-5);
+}
+#userscript-settings-menu .jsplib-settings-buttons .jsplib-commit:hover,
+#userscript-settings-menu .jsplib-settings-buttons .jsplib-resetall:hover {
+    filter: brightness(1.25);
+}`;
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '14701';
@@ -338,6 +352,7 @@ const PROGRAM_CSS = `
 }
 .iac-tag-highlight {
     margin-top: -5px;
+    margin-bottom: 5px;
 }
 .iac-tag-highlight > div:before {
     content: "●";
@@ -3242,7 +3257,7 @@ function Main() {
         default_data: DEFAULT_VALUES,
         initialize_func: InitializeProgramValues,
         broadcast_func: BroadcastIAC,
-        menu_css: SETTINGS_MENU_CSS,
+        menu_css: SETTINGS_MENU_CSS + '\n' + LIBRARY_MENU_CSS,
     };
     if (!JSPLib.menu.preloadScript(IAC, RenderSettingsMenu, preload)) return;
     InstallQuickSearchBars();
