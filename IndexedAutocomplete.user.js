@@ -2988,6 +2988,9 @@ function SetupAutocompleteInitializations() {
         case 'pool-versions':
             RebindAnyAutocomplete('[data-autocomplete=pool]', 'pl');
             break;
+        case 'favorite-groups':
+            RebindAnyAutocomplete('[data-autocomplete=favorite-group]', 'fg');
+            break;
         case 'posts':
             if (IAC.action === 'index') {
                 RebindAnyAutocomplete('[data-autocomplete=saved-search-label]', 'ss', true);
