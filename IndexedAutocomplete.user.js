@@ -97,11 +97,6 @@ const RELATED_QUERY_TYPES = ['default', 'frequent', 'similar', 'like'];
 
 //Main settings
 const SETTINGS_CONFIG = {
-    prefix_check_enabled: { //May be removed since prefixes now begin with /
-        reset: true,
-        validate: JSPLib.validate.isBoolean,
-        hint: "Check the prefix/acronym of a tag for a match. Limited to prefixes of length 2-4."
-    },
     usage_multiplier: {
         reset: 0.9,
         parse: parseFloat,
@@ -3191,7 +3186,6 @@ function RenderSettingsMenu() {
     $('#iac-usage-settings').append(JSPLib.menu.renderTextinput('usage_multiplier'));
     $('#iac-usage-settings').append(JSPLib.menu.renderTextinput('usage_maximum'));
     $('#iac-usage-settings').append(JSPLib.menu.renderTextinput('usage_expires'));
-    //$('#iac-usage-settings').append(JSPLib.menu.renderCheckbox('prefix_check_enabled'));
     $('#iac-display-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", DISPLAY_SETTINGS_DETAILS));
     $('#iac-display-settings').append(JSPLib.menu.renderTextinput('source_results_returned', 5));
     $('#iac-display-settings').append(JSPLib.menu.renderCheckbox('source_highlight_enabled'));
