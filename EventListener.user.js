@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      22.7
+// @version      22.8
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -990,29 +990,30 @@ const VALIDATE_REGEX = XRegExp.build(
 
 function ValidateProgramData(key,entry) {
     var checkerror=[];
-    let match = XRegExp.exec(key, VALIDATE_REGEX) || {};
+    let match = XRegExp.exec(key, VALIDATE_REGEX);
+    let groups = match?.groups || {};
     switch (key) {
-        case match.groups.setting:
+        case groups.setting:
             checkerror = JSPLib.menu.validateUserSettings(entry);
             break;
-        case match.groups.bool:
+        case groups.bool:
             if (!JSPLib.validate.isBoolean(entry)) {
                 checkerror = ["Value is not a boolean."];
             }
             break;
-        case match.groups.time:
+        case groups.time:
             if (!Number.isInteger(entry)) {
                 checkerror = ["Value is not an integer."];
             } else if (entry < 0) {
                 checkerror = ["Value is not greater than or equal to zero."];
             }
             break;
-        case match.groups.id:
+        case groups.id:
             if (!JSPLib.validate.validateID(entry)) {
                 checkerror = ["Value is not a valid ID."];
             }
             break;
-        case match.groups.idlist:
+        case groups.idlist:
             if (!JSPLib.validate.validateIDList(entry)) {
                 checkerror = ["Value is not a valid ID list."];
             }
