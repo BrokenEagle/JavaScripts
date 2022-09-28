@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.26
+// @version      7.27
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -909,9 +909,6 @@ const PROGRAM_CSS = `
 .ntisas-main-tweet .ntisas-tweet-media,
 .ntisas-main-tweet .ntisas-time-line {
     margin-bottom: 10px;
-}
-.ntisas-main-tweet .ntisas-tweet-actions {
-    height: 35px;
 }
 .ntisas-footer-entries {
     font-size: 16px;
@@ -3873,7 +3870,7 @@ async function InitializeNoMatchesLinks(tweet_id,$obj) {
 function InitializeTweetIndicators(tweet) {
     $('.ntisas-indicators', tweet).append(TWEET_INDICATORS);
     let view_indicators = (JSPLib.debug.debug_console ? VIEW_BLOCK : "");
-    $('.ntisas-tweet-actions', tweet).after(JSPLib.utility.sprintf(INDICATOR_LINKS, view_indicators));
+    $('.ntisas-image-menu', tweet).after(JSPLib.utility.sprintf(INDICATOR_LINKS, view_indicators));
 }
 
 async function InitializeViewCount(tweet) {
@@ -5569,29 +5566,26 @@ function MarkupMediaType(tweet) {
                 MarkupMediaType(tweet);
             }
         }, TIMER_POLL_INTERVAL);
-    } else if ($('.ntisas-tweet-media [data-testid="tweetText"]', tweet).length) {
-        $('.ntisas-tweet-media', tweet).addClass('ntisas-tweet-text').removeClass('ntisas-tweet-media');
     } else {
-        let media_children = $('.ntisas-tweet-media', tweet).children();
+        let media_children = $('.ntisas-tweet-media', tweet).children().children();
         media_children.each((i,entry)=>{
             let $entry = $(entry);
             if ($entry.children().length === 0) {
                 $entry.addClass('ntisas-media-stub').attr('ntisas-media-type', 'stub');
             } else if ($('[role=blockquote]', entry).length) {
                 $entry.addClass('ntisas-tweet-quote').attr('ntisas-media-type', 'quote');
-            } else if ($('[data-testid="card.wrapper"]', entry).length || $entry.data('testid') === 'card.wrapper') {
+            } else if ($('[data-testid="card.wrapper"]', entry).length) {
                 $entry.addClass('ntisas-tweet-card').attr('ntisas-media-type', 'card');
-            } else if ($('video, [data-testid=playButton]', tweet).length || $('.ntisas-tweet-media [role=button]').toArray().some((entry)=>entry.innerText === 'Load video')) {
+            } else if ($('video, [data-testid=playButton]', tweet).length) {
                 $entry.addClass('ntisas-tweet-video').attr('ntisas-media-type', 'video');
-            } else if ($entry.find('div[role=link]').length === 1) {
+            } else if ($entry.find('div[role=link]').length === 1 || $entry.attr('role') === 'link') {
                 $entry.addClass('ntisas-tweet-quote2').attr('ntisas-media-type', 'quote2');
-            } else if ($entry.text().trim() !== "") {
-                $entry.addClass('ntisas-tweet-unknown').attr('ntisas-media-type', 'unknown');
+            } else if ($entry.text() === "Quote Tweet") {
+                $entry.addClass('ntisas-tweet-quote3').attr('ntisas-media-type', 'quote3');
             } else {
                 $entry.addClass('ntisas-tweet-image').attr('ntisas-media-type', 'image');
             }
         });
-        $('.ntisas-tweet-media', tweet).removeAttr('ntisas-media-type');
     }
 }
 
@@ -5721,16 +5715,29 @@ function MarkupMainTweet(tweet) {
     $(sub_body.children[1]).addClass('ntisas-tweet-text');
     $(sub_body.children[2]).addClass('ntisas-tweet-media');
     let has_media = Boolean($(sub_body.children[1]).children().length);
-    $(sub_body.children[3]).addClass('ntisas-time-line');
-    let childn4 = sub_body.children[4];
-    if ($('[href$="/retweets"]', childn4).length || $('[href$="/likes"]', childn4).length || $('[href$="/retweets/with_comments"]', childn4).length) {
-        $(childn4).addClass('ntisas-retweets-likes');
-        var action_child = sub_body.children[4];
-    } else {
-        action_child = childn4;
-    }
-    $(action_child).addClass('ntisas-tweet-actions');
-    $(action_child).before('<div ntisas-image-menu="parent"></div>');
+    var timechild, retweetchild, actionchild;
+    var index = 3;
+    var has_indicator;
+    do {
+        timechild = sub_body.children[index++];
+        has_indicator = timechild.querySelector('time') !== null;
+    } while (!has_indicator && index < sub_body.childElementCount);
+    $(timechild).addClass('ntisas-time-line');
+    do {
+        retweetchild = sub_body.children[index++];
+        let has_indicator = (retweetchild.querySelector('[href$="/retweets"]') !== null) ||
+                            (retweetchild.querySelector('[href$="/likes"]') !== null) ||
+                            (retweetchild.querySelector('[href$="/retweets/with_comments"]') !== null);
+    } while (!has_indicator && index < sub_body.childElementCount);
+    $(retweetchild).addClass('ntisas-retweets-likes');
+    do {
+        actionchild = sub_body.children[index++];
+        let has_indicator = (actionchild.querySelector('[data-testid="reply"]') !== null) ||
+                            (actionchild.querySelector('[data-testid="retweet"]') !== null) ||
+                            (actionchild.querySelector('[data-testid="like"]') !== null);
+    } while (!has_indicator && index < sub_body.childElementCount);
+    $(actionchild).addClass('ntisas-tweet-actions');
+    $(actionchild).after('<div ntisas-image-menu="parent"></div>');
     if (has_media) {
         CheckHiddenMedia(tweet);
     }
