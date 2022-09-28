@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      22.8
+// @version      22.9
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2462,7 +2462,10 @@ async function LoadHTMLType(type,idlist,isoverflow=false) {
     let type_addon = TYPEDICT[type].addons || {};
     for (let i = 0; i < displaylist.length; i += QUERY_LIMIT) {
         let querylist = displaylist.slice(i, i + QUERY_LIMIT);
-        let url_addons = JSPLib.utility.joinArgs(type_addon, {search: {id: querylist.join(','), order: 'custom'}, type: 'previous', limit: querylist.length});
+        let url_addons = JSPLib.utility.joinArgs(type_addon, {search: {id: querylist.join(',')}, type: 'previous', limit: querylist.length});
+        if (querylist.length > 1) {
+            url_addons.search.order = 'custom';
+        }
         let typehtml = await JSPLib.network.getNotify(`/${TYPEDICT[type].controller}`, {url_addons});
         if (typehtml) {
             let $typepage = $.parseHTML(typehtml);
