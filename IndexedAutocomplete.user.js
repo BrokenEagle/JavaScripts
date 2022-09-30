@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.12
+// @version      29.13
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -899,10 +899,11 @@ const BUR_KEYWORDS = ['alias', 'unalias', 'imply', 'unimply', 'rename', 'update'
 const BUR_DATA = BUR_KEYWORDS.map((tag) => ({
     type: 'tag',
     label: tag,
-    value: tag,
+    name: tag,
     post_count: 'BUR',
     source: 'bur',
-    category: BUR_TAG_CATEGORY
+    category: BUR_TAG_CATEGORY,
+    key: null,
 }));
 
 //Time constants
@@ -2947,7 +2948,7 @@ function ProcessSourceData(type, metatag, term, data, query_type, key, word_mode
         AddUserSelected(type, metatag, term, data, query_type, word_mode, key);
     }
     if (IAC.is_bur && IAC.BUR_source_enabled) {
-        let add_data = BUR_DATA.filter((data) => (term.length === 1 || data.name.startsWith(term)));
+        let add_data = BUR_DATA.filter((data) => (term.length === 2 || GetGlobMatches(data.name, term))).map((data) => Object.assign({term}, data));
         data.unshift(...add_data);
         data.splice(IAC.source_results_returned);
     }
