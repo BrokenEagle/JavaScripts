@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.13
+// @version      29.14
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -342,6 +342,40 @@ const METATAG_TAG_CATEGORY = 500;
 //CSS Constants
 
 const PROGRAM_CSS = `
+.iac-line-entry {
+    display: flex;
+    width: 100%;
+    white-space: nowrap;
+}
+.iac-line-entry a {
+    white-space: normal;
+}
+.iac-query > span:first-of-type,
+.iac-pool > span:first-of-type,
+.iac-favgroup > span:first-of-type,
+.iac-artist > span:first-of-type,
+.iac-forum-topic > span:first-of-type {
+    flex-basis: 90%;
+}
+.iac-query > span:last-of-type,
+.iac-pool > span:last-of-type,
+.iac-favgroup > span:last-of-type,
+.iac-artist > span:last-of-type,
+.iac-forum-topic > span:last-of-type {
+    flex-basis: 10%;
+    text-align: right;
+}
+.iac-wiki-page > span:first-of-type {
+    flex-basis: 85%;
+}
+.iac-wiki-page > span:last-of-type {
+    flex-basis: 15%;
+    text-align: right;
+}
+.iac-user > span,
+iac-search > span {
+    flex-basis: 100%;
+}
 .iac-user-choice .autocomplete-item {
     box-shadow: 0px 2px 0px #000;
     padding-bottom: 1px;
@@ -1071,11 +1105,11 @@ const SOURCE_CONFIG = {
         spacesallowed: true,
         render: ($domobj, item) => {
             let html = `
-<div style="display: flex; width: 100%;">
-    <span style="flex-basis: 90%;">
+<div class="iac-line-entry iac-pool">
+    <span>
         <a class="pool-category-${item.category} autocomplete-item">${item.label}</a>
     </span>
-    <span class="post-count" style="flex-basis: 10%; text-align: right">${item.post_count}</span>
+    <span class="post-count">${item.post_count}</span>
 </div>`;
             return $(html);
         },
@@ -1100,8 +1134,8 @@ const SOURCE_CONFIG = {
         spacesallowed: false,
         render: ($domobj, item) => {
             let html = `
-<div style="display: flex; width: 100%;">
-    <span style="flex-basis: 100%;">
+<div class="iac-line-entry iac-user">
+    <span>
         <a class="user-${item.level.toLowerCase()} autocomplete-item">${item.label}</a>
     </span>
 </div>`;
@@ -1127,8 +1161,8 @@ const SOURCE_CONFIG = {
         spacesallowed: true,
         render: ($domobj, item) => {
             let html = `
-<div style="display: flex; width: 100%;">
-    <span style="flex-basis: 90%;">
+<div class="iac-line-entry iac-favgroup">
+    <span>
         <a class="autocomplete-item">${item.label}</a>
     </span>
     <span class="post-count" style="flex-basis: 10%; text-align: right">${item.post_count}</span>
@@ -1153,8 +1187,8 @@ const SOURCE_CONFIG = {
         spacesallowed: false,
         render: ($domobj, item) => {
             let html = `
-<div style="display: flex; width: 100%;">
-    <span style="flex-basis: 100%;">
+<div class="iac-line-entry iac-search">
+    <span>
         <a class="autocomplete-item">${item.label}</a>
     </span>
 </div>`;
@@ -1184,11 +1218,11 @@ const SOURCE_CONFIG = {
         render: ($domobj, item) => {
             let count = (item.no_tag ? 'No tag' : item.post_count);
             let html = `
-<div style="display: flex; width: 100%;">
-    <span style="flex-basis: 85%;">
+<div class="iac-line-entry iac-wiki-page">
+    <span>
         <a class="tag-type-${item.category} autocomplete-item">${item.label}</a>
     </span>
-    <span class="post-count" style="flex-basis: 15%; text-align: right">${count}</span>
+    <span class="post-count">${count}</span>
 </div>`;
             return $(html);
         },
@@ -1215,11 +1249,11 @@ const SOURCE_CONFIG = {
         render: ($domobj, item) => {
             let count = (item.no_tag ? 'No tag' : item.post_count);
             let html = `
-<div style="display: flex; width: 100%;">
-    <span style="flex-basis: 90%;">
+<div class="iac-line-entry iac-artist">
+    <span>
         <a class="tag-type-1 autocomplete-item">${item.label}</a>
     </span>
-    <span class="post-count" style="flex-basis: 10%; text-align: right">${count}</span>
+    <span class="post-count">${count}</span>
 </div>`;
             return $(html);
         },
@@ -1244,11 +1278,11 @@ const SOURCE_CONFIG = {
         spacesallowed: true,
         render: ($domobj, item) => {
             let html = `
-<div style="display: flex; width: 100%;">
-    <span style="flex-basis: 90%;">
+<div class="iac-line-entry iac-forum-topic">
+    <span>
         <a class="forum-topic-category-${item.category} autocomplete-item">${item.label}</a>
     </span>
-    <span class="response-count" style="flex-basis: 10%; text-align: right">${item.response_count}</span>
+    <span class="response-count">${item.response_count}</span>
 </div>`;
             return $(html);
         },
@@ -1734,7 +1768,6 @@ function AutocompleteRenderItem(list, item) {
             post_text = JSPLib.utility.setPrecision(count / 1000, 2) + "k";
         }
     }
-    let post_info = `<span class="post-count">${post_text}</span>`;
     let url = '/posts?tags=' + encodeURIComponent(item.name);
     let link_classes = ['iac-autocomplete-link'];
     if (item.type === 'tag') {
@@ -1744,16 +1777,16 @@ function AutocompleteRenderItem(list, item) {
     } else if (item.type === 'pool') {
         link_classes.push('pool-category-' + item.category);
     }
-    let link = `
-<a href="${url}" class="${link_classes.join(' ')}" style="display: flex;">
-    <div class="iac-tag-info" style="flex-basis: 90%">${tag_info}</div>
-    <div class="iac-post-info" style="flex-basis: 10%; text-align: right;">${post_info}</div>
-</a>`;
+    let line_item = `
+<span class="iac-tag-info">
+    <a href="${url}" class="${link_classes.join(' ')}">${tag_info}</a>
+</span>
+<span class="post-count">${post_text}</span>`;
     let data_attributes = ["type", "antecedent", "value", "category", "post_count"];
     let data_items = ["type", "antecedent", "value", "category", "post_count"].map((attr) => `data-autocomplete-${attr.replace(/_/g, "-")}="${item[attr]}"`);
     let $list_item = $(`
 <li ${data_items.join(' ')}>
-    <div>${link}</div>
+    <div class="iac-line-entry iac-query">${line_item}</div>
 </li>`);
     $list_item.data("item.autocomplete", item);
     $list_item.find('a').on('click.iac', (event) => {event.preventDefault();});
