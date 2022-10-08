@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.14
+// @version      29.15
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2607,6 +2607,9 @@ function DanbooruIntializeTagAutocomplete() {
                 case "filetype":
                 case "disapproved":
                 case "embedded":
+                case "commentary":
+                case "is":
+                case "has":
                     results = Danbooru.Autocomplete.static_metatag_source(term, metatag);
                     break;
                 case "user":
