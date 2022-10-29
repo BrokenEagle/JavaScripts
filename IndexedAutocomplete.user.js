@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.15
+// @version      29.16
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -65,7 +65,7 @@ const PROGRAM_SCROLL = 'scroll.iac';
 const PROGRAM_NAME = 'IndexedAutocomplete';
 
 //Program data constants
-const PROGRAM_DATA_REGEX = /^(af|ref|ac|pl|us|fg|ss|ar|wp|ft|rt(gen|char|copy|art)?)-/; //Regex that matches the prefix of all program cache data
+const PROGRAM_DATA_REGEX = /^(af|ref|ac|pl|us|fg|ss|ar|wp|ft|rt(s|f)(gen|char|copy|art)?)-/; //Regex that matches the prefix of all program cache data
 const PROGRAM_DATA_KEY = {
     tag: 'ac',
     pool: 'pl',
