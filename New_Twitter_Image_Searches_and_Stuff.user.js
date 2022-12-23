@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.27
+// @version      7.28
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -922,6 +922,12 @@ const PROGRAM_CSS = `
 }
 .ntisas-stream-tweet .ntisas-footer-entries {
     margin-top: 10px;
+}
+.ntisas-stream-tweet .ntisas-footer-section {
+    margin-bottom: 0.5em;
+}
+.ntisas-stream-tweet .ntisas-link-menu {
+    font-size: 1.125em;
 }
 .ntisas-mark-artist,
 .ntisas-mark-artist:hover {
@@ -3870,7 +3876,7 @@ async function InitializeNoMatchesLinks(tweet_id,$obj) {
 function InitializeTweetIndicators(tweet) {
     $('.ntisas-indicators', tweet).append(TWEET_INDICATORS);
     let view_indicators = (JSPLib.debug.debug_console ? VIEW_BLOCK : "");
-    $('.ntisas-image-menu', tweet).after(JSPLib.utility.sprintf(INDICATOR_LINKS, view_indicators));
+    $('.ntisas-footer-section', tweet).append(JSPLib.utility.sprintf(INDICATOR_LINKS, view_indicators));
 }
 
 async function InitializeViewCount(tweet) {
@@ -4049,7 +4055,7 @@ function InitializeImageTweets($image_tweets) {
 }
 
 function InitializeImageStreamTweet($tweet) {
-    InitializeImageMenu($tweet, '.ntisas-tweet-actions', 'ntisas-timeline-menu');
+    InitializeImageMenu($tweet, '.ntisas-footer-section', 'ntisas-timeline-menu');
 }
 
 function InitializeImageMainTweet($tweet) {
@@ -5675,7 +5681,8 @@ function MarkupStreamTweet(tweet) {
             JSPLib.notice.error("Error marking up stream tweet! (check debug console for details)", false);
         }
     }
-$(tweet).append('<div class="ntisas-highlight-border ntisas-highlight-left"></div><div class="ntisas-highlight-border ntisas-highlight-right"></div><div class="ntisas-highlight-border ntisas-highlight-top"></div><div class="ntisas-highlight-border ntisas-highlight-bottom"></div>');
+    $('.ntisas-tweet-actions', tweet).after('<div class="ntisas-footer-section"></div>');
+    $(tweet).append('<div class="ntisas-highlight-border ntisas-highlight-left"></div><div class="ntisas-highlight-border ntisas-highlight-right"></div><div class="ntisas-highlight-border ntisas-highlight-top"></div><div class="ntisas-highlight-border ntisas-highlight-bottom"></div>');
 }
 
 function MarkupMainTweet(tweet) {
