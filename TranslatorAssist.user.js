@@ -65,7 +65,7 @@ const DEFAULT_VALUES = {
 
 //Available setting values
 const HTML_STYLE_TAGS = ['div', 'span'];
-const HTML_ONLY_TAGS = ['b', 'i', 'u', 's', 'tn', 'small', 'big', 'code', 'center', 'p'];
+const HTML_ONLY_TAGS = ['b', 'i', 'u', 's', 'tn', 'center', 'p', 'small', 'big', 'code'];
 const HTML_TAGS = JSPLib.utility.concat(HTML_STYLE_TAGS, HTML_ONLY_TAGS);
 const HTML_STYLES = ['color', 'font-size', 'font-family', 'font-weight', 'font-style', 'font-variant', 'text-align', 'text-decoration', 'line-height', 'letter-spacing', 'margin', 'padding', 'white-space', 'background-color', 'transform'];
 const OUTER_RUBY_STYLES = ['color', 'font-size', 'font-family', 'font-weight', 'font-style', 'font-variant', 'text-decoration', 'line-height', 'letter-spacing', 'padding', 'white-space', 'background-color'];
@@ -1393,7 +1393,8 @@ function RenderLoadItem(item) {
 
 function RenderHTMLBlockButtons() {
     let block_html = "";
-    TA.user_settings.available_html_tags.forEach((tag) => {
+    HTML_TAGS.forEach((tag) => {
+        if (!TA.user_settings.available_html_tags.includes(tag)) return;
         let button_class = (HTML_STYLE_TAGS.includes(tag) ? 'ta-html-style-tag' : 'ta-html-only-tag');
         block_html += `<button class="ta-apply-block-element ${button_class}" value="${tag}">${tag}</button>`;
     });
