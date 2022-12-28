@@ -3100,6 +3100,20 @@ function PollForNewNotations() {
     }
 }
 
+// Other functions
+
+function CheckEmbeddedFontSize() {
+    JSPLib.utility.recheckTimer({
+        check: () => JSPLib.utility.isNamespaceBound('#image', 'click', 'danbooru') && $('.image-container').is(':visible'),
+        exec: () => {
+            let font_size = Number(($('.image-container').get(0)?.style?.fontSize || '').match(/\d+/)[0]);
+            if (font_size === 0) {
+                Danbooru.Note.Box.scale_all();
+            }
+        }
+    }, 500);
+}
+
 // Side menu functions
 
 function ToggleSideMenu(open_menu, toggle_link = true) {
@@ -3251,6 +3265,9 @@ function Main() {
     $('#translate').on(PROGRAM_CLICK, ToggleSideNotice);
     if (TA.user_settings.check_last_noted_enabled) {
         CheckLastNoted();
+    }
+    if (TA.has_embedded) {
+        CheckEmbeddedFontSize();
     }
 }
 
