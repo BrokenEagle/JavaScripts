@@ -1145,8 +1145,8 @@ const LOAD_DIALOG_SETTINGS = {
     title: "Load Sessions",
     width: 500,
     height: 600,
-    modal: true,
-    draggable: false,
+    modal: false,
+    draggable: true,
     resizable: false,
     autoOpen: false,
     position: {my: 'center', at: 'center'},
@@ -1157,7 +1157,10 @@ const LOAD_DIALOG_SETTINGS = {
     buttons: [
         {
             'text': 'Save',
-            'click': SaveSessionInputs,
+            'click': SaveSession,
+        }, {
+            'text': 'Rename',
+            'click': RenameSession,
         }, {
             'text': 'Delete',
             'click': DeleteSessions,
@@ -1379,7 +1382,8 @@ function RenderLoadSessions(panel, sessions) {
 
 function RenderLoadItem(item) {
     let checkbox_key = 'ta-delete-' + item.key;
-    return `<li><label for="${checkbox_key}"><input id="${checkbox_key}" type="checkbox"></label><a href="javascript:void(0)" class="ta-load-session-item" data-name="${item.name}" data-key="${item.key}">${item.name}</a></li>`;
+    let escaped_name = JSPLib.utility.HTMLEscape(item.name);
+    return `<li><label for="${checkbox_key}"><input id="${checkbox_key}" type="checkbox"></label><a href="javascript:void(0)" class="ta-load-session-item" data-name="${escaped_name}" data-key="${item.key}">${escaped_name}</a></li>`;
 }
 
 function RenderHTMLBlockButtons() {
@@ -2912,29 +2916,70 @@ function LoadRubyStyles() {
 
 //// Load dialog handlers
 
-function SaveSessionInputs() {
-    let name = prompt("Enter a name for this session:");
-    if (!name) return;
+function SaveSession() {
+    var name, key, isnew;
     let panel = TA.active_panel;
+    let $dialog = TA.$load_dialog[panel];
+    let checked_sessions = $dialog.find('li').filter((i, entry) => $(entry).find('input').prop('checked'));
+    if (checked_sessions.length > 1) {
+        JSPLib.notice.error("Multiple sessions selected... select only 1 to edit, or none to create a new.");
+        return;
+    }
+    if (checked_sessions.length === 0) {
+        name = prompt("Enter a name for this session:");
+        if (!name) return;
+        name = JSPLib.utility.maxLengthString(name, 50);
+        key = JSPLib.utility.getUniqueID();
+        let session_list = JSPLib.storage.getStorageData('ta-load-session-' + panel, localStorage, []);
+        session_list.push({key, name});
+        JSPLib.storage.setStorageData('ta-load-session-' + panel, session_list, localStorage);
+        isnew = true;
+    } else {
+        ({key, name} = checked_sessions.find('a')[0].dataset);
+        isnew = false;
+    }
     let section_keys = LOAD_PANEL_KEYS[panel];
     let save_inputs = {};
     section_keys.forEach((key) => {
         save_inputs = Object.assign(save_inputs, GetInputs(key));
     });
-    let key = JSPLib.utility.getUniqueID();
-    let session_list = JSPLib.storage.getStorageData('ta-load-session-' + panel, localStorage, []);
-    let item = {key, name: JSPLib.utility.maxLengthString(name, 50)};
-    session_list.push(item);
-    JSPLib.storage.setStorageData('ta-load-session-' + panel, session_list, localStorage);
     JSPLib.storage.setStorageData('ta-session-' + key, save_inputs, localStorage);
-    let $load_item = $(RenderLoadItem(item));
-    $load_item.find('a').on(PROGRAM_CLICK, LoadSessionInput);
-    let $list = TA.$load_dialog[panel].find('.ta-load-sessions ul');
-    if ($list.length === 0) {
-        $list = $('<ul></ul>');
-        TA.$load_dialog[panel].find('.ta-load-sessions').html("").append($list);
+    if (isnew) {
+        let $load_item = $(RenderLoadItem({key, name}));
+        $load_item.find('a').on(PROGRAM_CLICK, LoadSessionInput);
+        let $list = TA.$load_dialog[panel].find('.ta-load-sessions ul');
+        if ($list.length === 0) {
+            $list = $('<ul></ul>');
+            TA.$load_dialog[panel].find('.ta-load-sessions').html("").append($list);
+        }
+        $list.append($load_item);
     }
-    $list.append($load_item);
+    JSPLib.notice.notice('Session saved.');
+}
+
+function RenameSession() {
+    let panel = TA.active_panel;
+    let $dialog = TA.$load_dialog[panel];
+    let checked_sessions = $dialog.find('li').filter((i, entry) => $(entry).find('input').prop('checked'));
+    if (checked_sessions.length === 0) {
+        JSPLib.notice.error("Must select at least 1 session to rename.");
+        return;
+    }
+    if (checked_sessions.length > 1) {
+        JSPLib.notice.error("Must select only 1 session to rename.");
+        return;
+    }
+    let $link = checked_sessions.find('a');
+    let key = Number($link[0].dataset.key);
+    let name = prompt("Enter a name for this session:");
+    if (!name) return;
+    let session_list = JSPLib.storage.getStorageData('ta-load-session-' + panel, localStorage, []);
+    let rename_item = session_list.find((item) => item.key === key);
+    rename_item.name = name;
+    JSPLib.storage.setStorageData('ta-load-session-' + panel, session_list, localStorage);
+    $link.attr('data-name', name);
+    $link.text(name);
+    JSPLib.notice.notice('Session renamed.');
 }
 
 function DeleteSessions() {
