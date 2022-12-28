@@ -67,11 +67,11 @@ const DEFAULT_VALUES = {
 const HTML_STYLE_TAGS = ['div', 'span'];
 const HTML_ONLY_TAGS = ['b', 'i', 'u', 's', 'tn', 'small', 'big', 'code', 'center', 'p'];
 const HTML_TAGS = JSPLib.utility.concat(HTML_STYLE_TAGS, HTML_ONLY_TAGS);
-const HTML_STYLES = ['color', 'font-size', 'font-family', 'font-weight', 'font-style', 'font-variant', 'text-align', 'text-decoration', 'line-height', 'letter-spacing', 'margin', 'padding', 'white-space', 'background-color'];
+const HTML_STYLES = ['color', 'font-size', 'font-family', 'font-weight', 'font-style', 'font-variant', 'text-align', 'text-decoration', 'line-height', 'letter-spacing', 'margin', 'padding', 'white-space', 'background-color', 'transform'];
 const OUTER_RUBY_STYLES = ['color', 'font-size', 'font-family', 'font-weight', 'font-style', 'font-variant', 'text-decoration', 'line-height', 'letter-spacing', 'padding', 'white-space', 'background-color'];
 const INNER_RUBY_STYLES = ['color', 'font-size', 'font-family', 'font-weight', 'font-style', 'font-variant', 'text-decoration', 'letter-spacing'];
 const RUBY_STYLES = OUTER_RUBY_STYLES;
-const EMBEDDED_STYLES = ['border-radius', 'transform', 'background-color', 'justify-content', 'align-items'];
+const EMBEDDED_STYLES = ['border-radius', 'rotate', 'background-color', 'justify-content', 'align-items'];
 
 //Main settings
 const SETTINGS_CONFIG = {
@@ -1219,9 +1219,15 @@ const STYLE_CONFIG = {
         finalize: FinalizeColor,
         label: 'letter-spacing: -1px;',
     },
+    rotate: {
+        parse (_, value) {
+            return (value !== "" ? ['transform', `rotate(${value})`] : ['transform', ""]);
+        },
+        use_parse: true,
+    }
 };
 
-STYLE_CONFIG['letter-height'] = STYLE_CONFIG['letter-spacing'] = STYLE_CONFIG['font-size'];
+STYLE_CONFIG['line-height'] = STYLE_CONFIG['letter-spacing'] = STYLE_CONFIG['font-size'];
 
 STYLE_CONFIG['border-radius'] = JSPLib.utility.dataCopy(STYLE_CONFIG.direction_styles);
 
@@ -1989,8 +1995,9 @@ function GetCSSStyles(overwrite, selector) {
         let style_name = input.dataset.name;
         let [parse_style_name, parse_value] = STYLE_CONFIG[style_name]?.parse?.(style_name, value) || [style_name, value];
         let normalized_value = STYLE_CONFIG[style_name]?.normalize?.(parse_value) || parse_value;
-        test_div.style.setProperty(style_name, normalized_value);
-        if (test_div.style.getPropertyValue(style_name) === normalized_value) {
+        let use_style_name = (STYLE_CONFIG[style_name]?.use_parse ? parse_style_name : style_name);
+        test_div.style.setProperty(use_style_name, normalized_value);
+        if (test_div.style.getPropertyValue(use_style_name) === normalized_value) {
             let final_value = STYLE_CONFIG[style_name]?.finalize?.(parse_value) || parse_value;
             add_styles[parse_style_name] = final_value;
         } else {
