@@ -362,6 +362,14 @@ button.ta-html-style-tag:hover {
     width: 2em;
     height: 2em;
 }
+#ta-constructs-text-shadow-subsection #ta-text-shadow-options {
+    margin-top: 1em;
+}
+#ta-constructs-text-shadow-subsection #ta-text-shadow-options label {
+    font-size: 1.35em;
+    font-weight: bold;
+    padding-right: 1em;
+}
 /****** Ruby subsection ******/
 #ta-constructs-ruby-subsection ruby {
     font-size: 1.5em;
@@ -666,6 +674,7 @@ const TEXT_SHADOW_SUBSECTION = `
         </div>
         <div id="ta-text-shadow-grid">%SHADOWGRID%</div>
     </div>
+    <div id="ta-text-shadow-options">%SHADOWOPTIONS%</div>
 </div>`;
 
 const RUBY_SUBSECTION = `
@@ -1264,6 +1273,7 @@ const INPUT_SECTIONS = {
     'embedded': '#ta-embedded-style-subsection input',
     'constructs': '#ta-text-shadow-attribs input',
     'text-shadow-grid': '#ta-text-shadow-grid input',
+    'text-shadow-options': '#ta-text-shadow-options input',
     'css-options': '#ta-menu-options input',
     'ruby-overall-style': '#ta-ruby-dialog-styles-overall input',
     'ruby-top-style': '#ta-ruby-dialog-styles-top input',
@@ -1306,6 +1316,7 @@ function RenderSideMenu() {
         JSPLib.utility.regexReplace(TEXT_SHADOW_SUBSECTION, {
             SHADOWCSS: RenderSectionTextInputs('text-shadow', TEXT_SHADOW_ATTRIBS, {}),
             SHADOWGRID: RenderTextShadowGrid(),
+            SHADOWOPTIONS: RenderSectionCheckboxes('text-shadow', ['append'], {})
         }) : "");
     let ruby_section = (TA.user_settings.ruby_enabled ? RUBY_SUBSECTION : "");
     let constructs_section = (TA.user_settings.text_shadow_enabled || TA.user_settings.ruby_enabled ? shadow_section + ruby_section + '<hr>' : "");
@@ -1397,7 +1408,7 @@ function RenderSectionCheckboxes(section_class, section_names, config) {
     section_names.forEach((name) => {
         let display_name = JSPLib.utility.displayCase(name);
         let input_name = section_class + '-' + JSPLib.utility.kebabCase(name);
-        let title = (config[name].title ? `title="${config[name].title}"` : "");
+        let title = (config[name]?.title ? `title="${config[name].title}"` : "");
         let checked = (TA.save_data[input_name] !== true ? "" : 'checked');
         html += `<div class="ta-${section_class} ta-checkbox" ${title}><label>${display_name}:</label><input type="checkbox" ${checked} name="${input_name}" id="ta-${input_name}"></div>`;
     });
@@ -2108,15 +2119,14 @@ function ParseDirectionStyles(style_dict) {
 
 //// CSS text shadow
 
-function BuildTextShadowStyle() {
+function BuildTextShadowStyle(append, style_dict) {
     let errors = [];
     let attribs = Object.assign(...$('#ta-text-shadow-attribs input').map((i, entry) => ({[entry.dataset.name.trim()]: entry.value})));
+    let initial_shadow = (append && style_dict['text-shadow']) || ""
     if (attribs.size === "") {
-        return "";
-    } 
-    if (!ValidateSize(attribs.size)) {
-        errors.push("Invalid size specified.");
+        return initial_shadow;
     }
+    if (!ValidateSize(attribs.size)) errors.push("Invalid size specified.");
     if ((attribs.color !== "") && !ValidateColor(attribs.color)) errors.push("Invalid color specified.");
     if ((attribs.blur !== "") && !ValidateSize(attribs.blur)) errors.push("Invalid blur specified.");
     if (errors.length) {
@@ -2133,7 +2143,7 @@ function BuildTextShadowStyle() {
         text_shadow += (attribs.color !== "" ? ' ' + attribs.color : "");
         return text_shadow;
     });
-    return text_shadows.join(', ');
+    return (initial_shadow ? initial_shadow + ', ' : "") + text_shadows.join(', ');
 }
 
 function TokenizeTextShadow(shadow) {
@@ -2337,7 +2347,8 @@ function ApplyTagStyles() {
     var add_styles = {};
     var invalid_styles = {};
     if (TA.mode === 'constructs') {
-        let text_shadow_style = BuildTextShadowStyle();
+        let append = $('#ta-text-shadow-append').get(0)?.checked;
+        let text_shadow_style = BuildTextShadowStyle(append, html_tag.style_dict);
         if (text_shadow_style === false) return;
         add_styles['text-shadow'] = text_shadow_style;
     } else {
