@@ -735,6 +735,7 @@ const CONTROLS_SECTION = `
     <button id="ta-next-note" title="Select next note">Next</button>
     <button id="ta-previous-note" title="Select previous note">Previous</button>
     <button id="ta-unselect-note" title="Unselect current note" style="letter-spacing: -1px;">Unselect</button>
+    <button id="ta-copy-note" title="Copy the current note">Copy</button>
 </div>`;
 
 const CODES_SUBSECTION = `
@@ -1243,7 +1244,9 @@ const LOAD_PANEL_KEYS = {
 
 //Library functions
 
-////NONE
+JSPLib.utility.clamp = function (value, low, high) {
+    return Math.max(low, Math.min(value, high));
+};
 
 // Helper functions
 
@@ -2600,23 +2603,31 @@ function PlacementControl(event) {
 function SaveNote() {
     let note = GetMovableNote();
     if (!note) return;
-    if (!note.is_new()) {
-        let params = {
-            x: note.x,
-            y: note.y,
-            width: note.w,
-            height: note.h
-        };
-        JSPLib.network.put(`/notes/${note.id}.json`, {data: {note: params }}).then(
-            () => {
-                note.box.$note_box.removeClass("unsaved");
-                JSPLib.notice.notice(`Note #${note.id} saved.`);
-            },
-            () => {JSPLib.notice.error(`Error saving note #${note.id}`);}
-        );
+    let params = {
+        x: note.x,
+        y: note.y,
+        width: note.w,
+        height: note.h,
+    };
+    var note_promise;
+    if (note.is_new()) {
+        // The body is only saveable this way for new notes; otherwise use the edit dialog.
+        params.body = note.original_body;
+        params.post_id = note.post_id;
+        note_promise = JSPLib.network.post(`/notes.json`, {data: {note: params }});
     } else {
-        JSPLib.notice.error("Save not available for new unsaved notes.");
+        note_promise = JSPLib.network.put(`/notes/${note.id}.json`, {data: {note: params }});
     }
+    note_promise.then(
+        (response) => {
+            if (note.is_new()) {
+                note.id = response.id;
+            }
+            note.box.$note_box.removeClass("unsaved");
+            JSPLib.notice.notice(`Note #${note.id} saved.`);
+        },
+        () => {JSPLib.notice.error(`Error saving note #${note.id}`);}
+    );
 }
 
 function ResetNote() {
@@ -2700,6 +2711,20 @@ function UnselectNote() {
     let note = GetMovableNote();
     if (!note) return;
     note.unselect();
+}
+
+function CopyNote() {
+    let note = GetMovableNote();
+    let copy_note = new Danbooru.Note({
+        // Randomly place note within random width/height distance
+        x: JSPLib.utility.clamp(2 * note.w * (Math.random() - 0.5) + note.x, 0, note.post_width - note.w),
+        y: JSPLib.utility.clamp(2 * note.h * (Math.random() - 0.5) + note.y, 0, note.post_height - note.h),
+        w: note.w,
+        h: note.h,
+        original_body: note.original_body,
+        sanitized_body: (TA.has_embedded ? note.box.$inner_border.html() : note.body.$note_body.html()),
+    });
+    copy_note.select();
 }
 
 //// Codes section handlers
@@ -3011,6 +3036,7 @@ function InitializeSideMenu() {
     $('#ta-next-note').on(PROGRAM_CLICK, NextNote);
     $('#ta-previous-note').on(PROGRAM_CLICK, PreviousNote);
     $('#ta-unselect-note').on(PROGRAM_CLICK, UnselectNote);
+    $('#ta-copy-note').on(PROGRAM_CLICK, CopyNote);
     $('#ta-section-codes button').on(PROGRAM_CLICK, InsertCharacter);
     $('#ta-side-menu-copy').on(PROGRAM_CLICK, CopyTagStyles);
     $('#ta-side-menu-clear').on(PROGRAM_CLICK, ClearTagStyles);
