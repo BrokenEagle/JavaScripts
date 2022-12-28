@@ -44,6 +44,7 @@ const PROGRAM_LOAD_OPTIONAL_SELECTORS = ['#c-posts #a-show .image-container', '#
 const PROGRAM_SHORTCUT = 'ta';
 const PROGRAM_CLICK = 'click.ta';
 const PROGRAM_KEYDOWN = 'keydown.ta';
+const PROGRAM_KEYUP = 'keyup.ta';
 const PROGRAM_NAME = 'TranslatorAssist';
 
 //Main program variable
@@ -591,8 +592,8 @@ const SIDE_MENU = `
                 <div class="ta-header ta-cursor-text">Actions:</div>
                 <div id="ta-main-actions-subsection" class="ta-subsection ta-cursor-initial">
                     <button id="ta-delete-block" title="Delete HTML tag">Delete</button>
-                    <button id="ta-undo-action" disabled title="Undo the last action">Undo</button>
-                    <button id="ta-redo-action" disabled title="Redo the last action">Redo</button>
+                    <button id="ta-undo-action" title="Undo the last action">Undo</button>
+                    <button id="ta-redo-action" title="Redo the last action">Redo</button>
                 </div>
                 <div class="ta-header ta-cursor-text">Process:</div>
                 <div id="ta-main-process-subsection" class="ta-subsection ta-cursor-initial">
@@ -1082,6 +1083,12 @@ const RUBY_DIALOG_SETTINGS = {
         }, {
             'text': 'Apply',
             'click': ApplyRubyTag,
+        }, {
+            'text': 'Undo',
+            'click': UndoAction,
+        }, {
+            'text': 'Redo',
+            'click': RedoAction,
         }, {
             'text': 'Close',
             'click' () {
@@ -2266,6 +2273,7 @@ function CopyTagStyles() {
 function ApplyTagStyles() {
     let text_area = GetActiveTextArea(false);
     if (!text_area) return;
+    SaveHTML(text_area);
     let html_tag = GetTag(text_area.value, text_area.selectionStart);
     if (!html_tag) return;
     let overwrite = $('#ta-css-style-overwrite').get(0)?.checked;
@@ -2305,6 +2313,7 @@ function LoadTagStyles() {
 function ApplyBlock(event) {
     let text_area = GetActiveTextArea(false);
     if (!text_area) return;
+    SaveHTML(text_area);
     if (IsInsideHTMLTag(text_area.value, text_area.selectionStart)) {
         ChangeBlockElement(text_area, event.currentTarget.value);
     } else {
@@ -2316,15 +2325,77 @@ function DeleteBlock() {
     let text_area = GetActiveTextArea(false);
     if (!text_area) return;
     if (IsInsideHTMLTag(text_area.value, text_area.selectionStart)) {
+        SaveHTML(text_area);
         DeleteBlockElement(text_area);
     } else {
         JSPLib.notice.error("No tag selected!");
     }
 }
 
+function SaveHTML(text_area) {
+    let $text_area = $(text_area);
+    let undo_actions = $text_area.data('undo_actions') || [];
+    let undo_index = $text_area.data('undo_index') || 0;
+    undo_actions = undo_actions.slice(0, undo_index);
+    undo_actions.push(text_area.value);
+    $text_area.data('undo_actions', undo_actions);
+    $text_area.data('undo_index', undo_actions.length);
+    $text_area.data('undo_saved', true);
+    JSPLib.debug.debuglog('SaveMarkup', {undo_actions, undo_index});
+}
+
+function UndoAction() {
+    let text_area = GetActiveTextArea(false);
+    if (!text_area) return;
+    let $text_area = $(text_area);
+    let {undo_actions = [], undo_index = 0, undo_saved} = $text_area.data();
+    if (undo_saved) {
+        undo_actions.push(text_area.value);
+        $text_area.data('undo_actions', undo_actions);
+    }
+    let undo_html = undo_actions.slice(undo_index - 1, undo_index)[0];
+    if (JSPLib.validate.isString(undo_html)) {
+        text_area.value = undo_html;
+    } else {
+        JSPLib.notice.notice("Beginning of actions buffer reached.");
+    }
+    let new_index = Math.max(0, undo_index - 1);
+    $text_area.data('undo_index', new_index);
+    $text_area.data('undo_saved', false);
+    JSPLib.debug.debuglog('UndoAction', {undo_actions, undo_index, new_index});
+    return Boolean(undo_html);
+}
+
+function RedoAction() {
+    let text_area = GetActiveTextArea(false);
+    if (!text_area) return;
+    let $text_area = $(text_area);
+    let {undo_actions = [], undo_index = 0} = $text_area.data();
+    let undo_html = undo_actions.slice(undo_index + 1, undo_index + 2)[0];
+    if (undo_html) {
+        text_area.value = undo_html;
+    } else {
+        JSPLib.notice.notice("End of actions buffer reached.");
+    }
+    let new_index = Math.min(undo_actions.length - 1, undo_index + 1);
+    $text_area.data('undo_index', new_index);
+    $text_area.data('undo_saved', false);
+    JSPLib.debug.debuglog('RedoAction', {undo_actions, undo_index, new_index});
+    return Boolean(undo_html);
+}
+
+function ClearActions(event) {
+    let $text_area = $(event.currentTarget);
+    $text_area.data('undo_actions', []);
+    $text_area.data('undo_index', 0);
+    $text_area.data('undo_saved', false);
+    JSPLib.debug.debuglog('Cleared actions.');
+}
+
 function NormalizeNote() {
     let text_area = GetActiveTextArea();
     if (!text_area) return;
+    SaveHTML(text_area);
     let html_text = text_area.value;
     let normalized_text = $('<div>' + html_text + '</div>').html();
     text_area.value = normalized_text;
@@ -2334,6 +2405,7 @@ function NormalizeNote() {
 async function SanitizeNote() {
     let text_area = GetActiveTextArea();
     if (!text_area) return;
+    SaveHTML(text_area);
     let data = await JSPLib.danbooru.submitRequest('note_previews', {body: text_area.value});
     text_area.value = data.body;
     text_area.focus();
@@ -2433,6 +2505,7 @@ function ToggleEmbeddedMode() {
 function AddEmbeddedElement() {
     let text_area = GetActiveTextArea(false);
     if (!text_area) return;
+    SaveHTML(text_area);
     let html_text = text_area.value;
     let html_tag = GetTag(html_text, text_area.selectionStart, false);
     if (html_tag) {
@@ -2456,6 +2529,7 @@ function AddEmbeddedElement() {
 function RemoveEmbeddedElement() {
     let text_area = GetActiveTextArea();
     if (!text_area) return;
+    SaveHTML(text_area);
     let html_text = text_area.value;
     let html_tag = GetTag(html_text, text_area.selectionStart);
     if (!html_tag) return;
@@ -2465,6 +2539,7 @@ function RemoveEmbeddedElement() {
 function SetEmbeddedLevel() {
     let text_area = GetActiveTextArea();
     if (!text_area) return;
+    SaveHTML(text_area);
     let html_text = text_area.value;
     let html_tag = GetTag(html_text, text_area.selectionStart);
     if (!html_tag) return;
@@ -2700,6 +2775,7 @@ function CopyRubyTag() {
 function ApplyRubyTag() {
     let text_area = GetActiveTextArea(false);
     if (!text_area) return;
+    SaveHTML(text_area);
     let ruby_tag = GetRubyTag(text_area.value, text_area.selectionStart);
     if (!ruby_tag && IsInsideHTMLTag(text_area.value, text_area.selectionStart)) {
         JSPLib.notice.error(`Invalid selection range at cursor start... cannot create a ruby tag inside another tag.`);
@@ -2916,6 +2992,9 @@ function InitializeSideMenu() {
     $('#ta-set-embedded-level').on(PROGRAM_CLICK, SetEmbeddedLevel);
     $('.ta-apply-block-element').on(PROGRAM_CLICK, ApplyBlock);
     $('#ta-delete-block').on(PROGRAM_CLICK, DeleteBlock);
+    $('#ta-undo-action').on(PROGRAM_CLICK, UndoAction);
+    $('#ta-redo-action').on(PROGRAM_CLICK, RedoAction);
+    $(document).on(PROGRAM_KEYUP, '.note-edit-dialog textarea', ClearActions);
     $('#ta-normalize-note').on(PROGRAM_CLICK, NormalizeNote);
     $('#ta-sanitize-note').on(PROGRAM_CLICK, SanitizeNote);
     $('#ta-validate-note').on(PROGRAM_CLICK, ValidateNote);
