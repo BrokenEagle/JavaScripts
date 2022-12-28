@@ -58,7 +58,6 @@ const DEFAULT_VALUES = {
     noter_detected: false,
     missed_poll: false,
     last_id: 0,
-    mode: 'main',
     save_data: null,
     shadow_grid: {},
     $load_dialog: {},
@@ -196,7 +195,6 @@ const PROGRAM_CSS = `
     font-size: 1.4em;
     font-weight: bold;
     margin-bottom: 0.5em;
-    display: inline-block;
 }
 .ta-subheader {
     font-size: 1.2em;
@@ -233,9 +231,9 @@ const PROGRAM_CSS = `
 /** Side menu **/
 #ta-side-menu {
     position: fixed;
-    top: clamp(1rem, 100vh - 52.5rem, 8rem);
-    left: 1em;
-    width: 20em;
+    top: clamp(1rem, 100vh - 54.5rem, 8rem);
+    left: 0.7em;
+    width: 20.6em;
     height: auto;
     z-index: 100;
     background: var(--body-background-color);
@@ -250,24 +248,47 @@ const PROGRAM_CSS = `
     font-weight: bold;
     text-decoration: underline;
     margin-bottom: 0.75em;
+    letter-spacing: -1px;
+    transform: scaleX(0.95);
+    margin-left: -0.4em;
+    margin-bottom: 4.5em;
 }
 #ta-side-menu #ta-side-menu-text {
+    position: absolute;
+    top: 3.3em;
     font-size: 0.85em;
-    margin-bottom: 1em;
     border: 1px dashed #DDD;
     padding: 0.35em;
     min-height: 5em;
+    line-height: 1.4em;
+    width: 23em;
 }
 #ta-side-menu #ta-embedded-status-text {
     font-weight: bold;
     font-variant: small-caps;
 }
-#ta-side-menu #ta-side-menu-close {
+#ta-side-menu .ta-control-button {
     position: absolute;
     top: 0.25em;
-    right: 0.25em;
     padding: 0.25em;
     font-weight: bold;
+    font-size: 1em;
+}
+#ta-side-menu #ta-side-menu-close {
+    right: 0.25em;
+}
+#ta-side-menu #ta-side-menu-reset {
+    right: 4em;
+}
+#ta-side-menu #ta-size-controls {
+    position: absolute;
+    top: 2.75em;
+    right: 0.5em;
+    padding: 0.25em 0.75em;
+    background: #f0f0f0;
+}
+#ta-side-menu #ta-size-controls img {
+    width: 1.5em;
 }
 #ta-side-menu #ta-side-menu-tabs {
     letter-spacing: -1px;
@@ -570,6 +591,14 @@ const EXPAND_LR_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height
 const EXPAND_TB_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="15" viewBox="0 0 22 16" transform="rotate(90)"><path d="M17 0v3h-5v4h5v3l5-5-5-5zM5 10V7h5V3H5V0L0 5l5 5z"></path></svg>';
 const CONTRACT_LR_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="15" viewBox="0 0 22 16"><path d="M22 3h-5V0l-5 5 5 5V7h5V3zM0 7h5v3l5-5-5-5v3H0v4z"/></svg>';
 const CONTRACT_TB_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="15" viewBox="0 0 22 16" transform="rotate(90)"><path d="M22 3h-5V0l-5 5 5 5V7h5V3zM0 7h5v3l5-5-5-5v3H0v4z"/></svg>';
+const PLUS_SIGN = `
+<svg xmlns="http://www.w3.org/2000/svg"  width="15" height="15" viewBox="-20 -40 240 240">
+    <path d="M75,0 V75 H0 V125 H75 V200 H125 V125 H200 V75 H125 V0 H75 z" fill="#080" />
+</svg>`;
+const MINUS_SIGN = `
+<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="-20 -40 240 240">
+    <path d="M 0,75 L 0,125 L 200,125 L 200,75 L 0,75 z" fill="#F00" />
+</svg>`;
 
 const SIDE_MENU = `
 <div id="ta-side-menu" style="display: none;">
@@ -615,7 +644,12 @@ const SIDE_MENU = `
             <button id="ta-side-menu-copy" title="Copy styles from HTML tag to inputs">Copy</button>
             <button id="ta-side-menu-apply" title="Apply styles from inputs to HTML tag">Apply</button>
         </div>
-        <button id="ta-side-menu-close" title="Close the side menu (Hotkey: alt+t)">Close</button>
+        <div id="ta-size-controls" class="ta-cursor-pointer">
+            <a data-add="1" title="Increase the size of the menu"><img src="data:image/svg+xml,${JSPLib.utility.fullEncodeURIComponent(PLUS_SIGN)}"></a>&nbsp;&nbsp;
+            <a data-add="-1" title="Decrease the size of the menu"><img src="data:image/svg+xml,${JSPLib.utility.fullEncodeURIComponent(MINUS_SIGN)}"></a>
+        </div>
+        <button id="ta-side-menu-reset" class="ta-control-button" title="Reset the side menu size/position (Hotkey: alt+r)">Reset</button>
+        <button id="ta-side-menu-close" class="ta-control-button" title="Close the side menu (Hotkey: alt+t)">Close</button>
     </div>
 </div>`;
 
@@ -749,9 +783,8 @@ const CODES_SUBSECTION = `
 <div id="ta-codes-space-subsection" class="ta-subsection ta-cursor-initial">%SPACECHARS%</div>`;
 
 const NOTICE_INFO = `
-<b>Last noted:</b> %LASTUPDATED%<br>
-<b>Updated by:</b> %LASTUPDATER%<br>
-<b>Total notes:</b> %TOTALNOTES%&emsp;
+<b>Last noted:</b> %LASTUPDATED%<br>&emsp;by %LASTUPDATER%<br>
+<b>Total notes:</b> %TOTALNOTES%&nbsp;&nbsp;
 <b>Embedded:</b> <span id="ta-embedded-status-text" style="color: %EMBEDDEDCOLOR%;">%EMBEDDEDSTATUS%</span>`;
 
 const MENU_OPTION = `
@@ -1856,11 +1889,14 @@ function SetInputs(key, load_data) {
     });
 }
 
-function SaveInputs() {
+function SaveMenuState() {
     for (let key in INPUT_SECTIONS) {
         TA.save_data = Object.assign(TA.save_data, GetInputs(key));
     }
     JSPLib.storage.setStorageData('ta-saved-inputs', TA.save_data, localStorage);
+    JSPLib.storage.setStorageData('ta-mode', TA.mode, localStorage);
+    let {left, top, fontSize} = $('#ta-side-menu').get(0).style;
+    JSPLib.storage.setStorageData('ta-position', {left, top, fontSize}, localStorage);
 }
 
 function ClearInputs(selector) {
@@ -2191,6 +2227,17 @@ function CloseSideMenu() {
     } else {
         TA.$close_notice_link.click();
     }
+}
+
+function ResetSideMenu() {
+    TA.$side_menu.css({top: '', left: '', fontSize: ''});
+}
+
+function ResizeSideMenu(event) {
+    let additive = $(event.currentTarget).data('add');
+    let font_size_str = window.getComputedStyle(TA.$side_menu[0]).fontSize;
+    let font_size = Number(font_size_str.match(/^\d+/)[0]);
+    TA.$side_menu[0].style.fontSize = JSPLib.utility.clamp(font_size + additive, 9, 18) + 'px';
 }
 
 function KeyboardMenuToggle() {
@@ -2978,7 +3025,7 @@ function ToggleSideMenu(open_menu, toggle_link = true) {
         if (toggle_link) {
             TA.$post_option.hide();
         }
-        $(window).on('beforeunload.ta', SaveInputs);
+        $(window).on('beforeunload.ta', SaveMenuState);
     } else {
         TA.$side_menu.hide();
         TA.$side_menu.draggable('destroy');
@@ -2986,7 +3033,7 @@ function ToggleSideMenu(open_menu, toggle_link = true) {
             TA.$post_option.show();
         }
         $(window).off('beforeunload.ta');
-        SaveInputs();
+        SaveMenuState();
     }
     TA.side_menu_open = open_menu;
 }
@@ -3041,15 +3088,27 @@ function InitializeSideMenu() {
     $('#ta-side-menu-copy').on(PROGRAM_CLICK, CopyTagStyles);
     $('#ta-side-menu-clear').on(PROGRAM_CLICK, ClearTagStyles);
     $('#ta-side-menu-apply').on(PROGRAM_CLICK, ApplyTagStyles);
+    $('#ta-size-controls > a').on(PROGRAM_CLICK , ResizeSideMenu);
+    $('#ta-side-menu-reset').on(PROGRAM_CLICK, ResetSideMenu);
     $('#ta-side-menu-close').on(PROGRAM_CLICK, CloseSideMenu);
     $('#ta-side-menu-load').on(PROGRAM_CLICK, LoadTagStyles);
     $('#ta-side-menu-open').on(PROGRAM_CLICK, OpenSideMenu);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+t', KeyboardMenuToggle);
+    $(document).on(PROGRAM_KEYDOWN, null, 'alt+r', ResetSideMenu);
     $(document).on('visibilitychange.ta', CheckMissedLastNoterPolls);
+    let positions = JSPLib.storage.getStorageData('ta-position', localStorage, {});
     TA.$side_menu = $('#ta-side-menu');
+    for (let key in positions) {
+        if (positions[key]) {
+            TA.$side_menu.css(key, positions[key]);
+        }
+    }
     TA.$text_box = $('#ta-side-menu-text');
     TA.$post_option = $('#post-option-translator-assist');
     TA.$close_notice_link = $('#close-notice-link');
+    if (TA.mode !== 'main') {
+        $(`.ta-menu-tab[data-value="${TA.mode}"]`).click();
+    }
     TA.starting_notes = JSPLib.utility.getObjectAttributes(Danbooru.Note.notes, 'id');
     TA.initialized = true;
     JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
@@ -3064,6 +3123,7 @@ function InitializeProgramValues() {
         user_id: Danbooru.CurrentUser.data('id'),
         has_embedded: JSPLib.utility.getMeta('post-has-embedded-notes') === 'true',
         last_noted: JSPLib.utility.toTimeStamp(document.body.dataset.postLastNotedAt),
+        mode: JSPLib.storage.getStorageData('ta-mode', localStorage, 'main'),
     });
     return true;
 }
