@@ -25,6 +25,7 @@
 // ==/UserScript==
 
 /* global $ JSPLib Danbooru */
+/* eslint-disable dot-notation */
 
 /****Global variables****/
 
