@@ -725,31 +725,31 @@ const CONTROLS_SECTION = `
 <div class="ta-header ta-cursor-text">Placement:</div>
 <div id="ta-controls-placement-subsection" style="display: flex;" class="ta-subsection ta-cursor-initial">
     <div id="ta-placement-controls">
-        <button class="ta-button-placement ta-button-svg" data-action="expand-width" title="Expand width">
+        <button class="ta-button-placement ta-button-svg" data-action="expand-width" title="Expand width (Hotkey: shift + right arrow)">
             <img style="top: 0.75em; left: 1em;" src="data:image/svg+xml,${JSPLib.utility.fullEncodeURIComponent(EXPAND_LR_SVG)}">
         </button>
-        <button class="ta-button-placement" data-action="move-up" title="Move up">
+        <button class="ta-button-placement" data-action="move-up" title="Move up (Hotkey: up arrow)">
             <div style="transform: rotate(270deg);">➜</div>
         </button>
-        <button class="ta-button-placement ta-button-svg" data-action="expand-height" title="Expand height">
+        <button class="ta-button-placement ta-button-svg" data-action="expand-height" title="Expand height (Hotkey: shift + down arrow)">
             <img style="top: 0.5em; left: 0.75em;" src="data:image/svg+xml,${JSPLib.utility.fullEncodeURIComponent(EXPAND_TB_SVG)}">
         </button>
-        <button class="ta-button-placement move-left" data-action="move-left" title="Move left">
+        <button class="ta-button-placement move-left" data-action="move-left" title="Move left (Hotkey: left arrow)">
             <div style="transform: rotate(180deg);">➜</div>
         </button>
         <button id="ta-get-placement" title="Get coordinate and size info">
             <div style="font-size: 1.5em;font-weight: bold; margin-left: -0.2em;">Get</div>
         </button>
-        <button class="ta-button-placement" data-action="move-right" title="Move right">
+        <button class="ta-button-placement" data-action="move-right" title="Move right (Hotkey: right arrow)">
             <div>➜</div>
         </button>
-        <button class="ta-button-placement ta-button-svg" data-action="contract-width" title="Contract width">
+        <button class="ta-button-placement ta-button-svg" data-action="contract-width" title="Contract width (Hotkey: shift + left arrow)">
             <img style="top: 0.75em; left: 1em;" src="data:image/svg+xml,${JSPLib.utility.fullEncodeURIComponent(CONTRACT_LR_SVG)}">
         </button>
-        <button class="ta-button-placement" data-action="move-down" title="Move down">
+        <button class="ta-button-placement" data-action="move-down" title="Move down (Hotkey: down arrow)">
             <div style="transform: rotate(90deg);">➜</div>
         </button>
-        <button class="ta-button-placement ta-button-svg" data-action="contract-height" title="Contract height">
+        <button class="ta-button-placement ta-button-svg" data-action="contract-height" title="Contract height (Hotkey: shift + up arrow)">
             <img style="top: 0.5em; left: 0.75em;" src="data:image/svg+xml,${JSPLib.utility.fullEncodeURIComponent(CONTRACT_TB_SVG)}">
         </button>
     </div>
