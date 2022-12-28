@@ -24,7 +24,8 @@
 // @connect      validator.nu
 // ==/UserScript==
 
-/* global $ JSPLib Danbooru */
+// eslint-disable-next-line no-redeclare
+/* global $ JSPLib Danbooru GM */
 /* eslint-disable dot-notation */
 
 /****Global variables****/
@@ -1560,10 +1561,11 @@ function QueryLastNotation() {
 }
 
 async function ValidateHTML(input_html) {
+    var data, resp;
     let send_html = HTML_DOC_HEADER + input_html + HTML_DOC_FOOTER;
     try {
         //Replace this with a JSPLib.network.post version
-        var resp = await GM.xmlHttpRequest({
+        resp = await GM.xmlHttpRequest({
             method: 'POST',
             url: 'https://validator.nu?out=json',
             headers: {'Content-Type': "text/html; charset=UTF-8"},
@@ -1575,7 +1577,7 @@ async function ValidateHTML(input_html) {
         return null;
     }
     try {
-        var data = JSON.parse(resp.response);
+        data = JSON.parse(resp.response);
     } catch(e) {
         JSPLib.notice.error("Unable to parse validation response!");
         JSPLib.debug.debugerror("Parse error:", e, resp.response);
@@ -1783,7 +1785,7 @@ function ValidateCSS(input_html) {
                 excerpt: styles[i],
                 index: style_index,
             };
-            let [attr,value,...misc] = styles[i].split(':');
+            let [attr, value, ...misc] = styles[i].split(':');
             if (misc.length) {
                 error_array.push(Object.assign({message: "Extra colons found."}, error));
                 continue;
@@ -2148,7 +2150,7 @@ function ParseDirectionStyles(style_dict) {
 function BuildTextShadowStyle(append, style_dict) {
     let errors = [];
     let attribs = Object.assign(...$('#ta-text-shadow-attribs input').map((i, entry) => ({[entry.dataset.name.trim()]: entry.value})));
-    let initial_shadow = (append && style_dict['text-shadow']) || ""
+    let initial_shadow = (append && style_dict['text-shadow']) || "";
     if (attribs.size === "") {
         return initial_shadow;
     }
@@ -2516,7 +2518,7 @@ async function ValidateNote() {
     let error_lines = [];
     if (html_errors.messages.length) {
         JSPLib.debug.debuglog("HTML errors:", html_errors);
-        error_lines = html_errors.messages.map((message,i) => RenderHTMLError(i, message, transform_html));
+        error_lines = html_errors.messages.map((message, i) => RenderHTMLError(i, message, transform_html));
     }
     let css_errors = ValidateCSS(text_area.innerHTML);
     if (css_errors.length) {
@@ -3187,7 +3189,7 @@ function InitializeSideMenu() {
     $('#ta-side-menu-copy').on(PROGRAM_CLICK, CopyTagStyles);
     $('#ta-side-menu-clear').on(PROGRAM_CLICK, ClearTagStyles);
     $('#ta-side-menu-apply').on(PROGRAM_CLICK, ApplyTagStyles);
-    $('#ta-size-controls > a').on(PROGRAM_CLICK , ResizeSideMenu);
+    $('#ta-size-controls > a').on(PROGRAM_CLICK, ResizeSideMenu);
     $('#ta-side-menu-reset').on(PROGRAM_CLICK, ResetSideMenu);
     $('#ta-side-menu-close').on(PROGRAM_CLICK, CloseSideMenu);
     $('#ta-side-menu-load').on(PROGRAM_CLICK, LoadTagStyles);
