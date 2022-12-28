@@ -102,6 +102,11 @@ const SETTINGS_CONFIG = {
         validate: (data) => (Number.isInteger(data) && data >= 0),
         hint: "Number of minutes to cache the query last noter data (greater than 0; setting to zero disables caching)."
     },
+    filter_last_noter_enabled: {
+        reset: true,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Filter out self edits when checking for the last noter."
+    },
     new_noter_check_enabled: {
         reset: true,
         validate: JSPLib.validate.isBoolean,
@@ -1508,14 +1513,14 @@ function RenderUserLink(user) {
 //Network functions
 
 function QueryNoteVersions(search_options, query_options) {
-    let send_options = {search: {post_id: TA.post_id, updater_id_not_eq: TA.user_id}, limit: 1};
+    let send_options = {search: {post_id: TA.post_id}, limit: 1};
     Object.assign(send_options.search, search_options);
     Object.assign(send_options, query_options);
     return JSPLib.danbooru.submitRequest('note_versions', send_options);
 }
 
 function QueryNewNotations() {
-    QueryNoteVersions({id_gt: TA.last_id}, {only: 'id,updated_at'}).then((data) => {
+    QueryNoteVersions({id_gt: TA.last_id, updater_id_not_eq: TA.user_id}, {only: 'id,updated_at'}).then((data) => {
         if (data.length > 0) {
             JSPLib.debug.debuglog("New note record:", data);
             alert("New noter detected: " + JSPLib.utility.timeAgo(data[0].updated_at));
@@ -1531,6 +1536,8 @@ function QueryLastNotation() {
     if (TA.user_settings.last_noter_cache_time > 0) {
         query_options.expires_in = TA.user_settings.last_noter_cache_time + 'min';
     }
+    let search_options = (TA.user_settings.filter_last_noter_enabled ? {updater_id_not_eq: TA.user_id} : {});
+    QueryNoteVersions(search_options, query_options).then((data) => {
         JSPLib.debug.debuglog("Last note record:", data);
         TA.last_noter_queried = true;
         let timeago_timestamp = (data.length ? JSPLib.utility.timeAgo(data[0].updated_at) : 'N/A');
@@ -3211,6 +3218,7 @@ function RenderSettingsMenu() {
     $('#ta-last-noted-settings').append(JSPLib.menu.renderCheckbox('check_last_noted_enabled'));
     $('#ta-last-noted-settings').append(JSPLib.menu.renderTextinput('last_noted_cutoff', 10));
     $('#ta-last-noted-settings').append(JSPLib.menu.renderCheckbox('query_last_noter_enabled'));
+    $('#ta-last-noted-settings').append(JSPLib.menu.renderCheckbox('filter_last_noter_enabled'));
     $('#ta-last-noted-settings').append(JSPLib.menu.renderTextinput('last_noter_cache_time', 10));
     $('#ta-last-noted-settings').append(JSPLib.menu.renderCheckbox('new_noter_check_enabled'));
     $('#ta-last-noted-settings').append(JSPLib.menu.renderTextinput('new_noter_check_interval', 10));
