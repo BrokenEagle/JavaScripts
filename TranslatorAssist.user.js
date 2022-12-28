@@ -1491,6 +1491,20 @@ function RenderCSSError(iteration, error) {
 </li>`;
 }
 
+function RenderUserLink(user) {
+    let user_name = JSPLib.utility.maxLengthString(user.name);
+    return `
+<a  class="user user-${user.level_string.toLowerCase()} ta-cursor-pointer"
+    data-user-id="${user.id}"
+    data-user-name="${user_name}"
+    data-user-level="${user.level}"
+    href="/users/${user.id}"
+    aria-expanded="false"
+    >
+        ${user_name}
+</a>`;
+}
+
 //Network functions
 
 function QueryNoteVersions(search_options, query_options) {
@@ -1513,20 +1527,19 @@ function QueryNewNotations() {
 }
 
 function QueryLastNotation() {
-    let query_options = {only: 'id,updated_at,updater[name]'};
+    let query_options = {only: 'id,updated_at,updater[id,name,level,level_string]'};
     if (TA.user_settings.last_noter_cache_time > 0) {
         query_options.expires_in = TA.user_settings.last_noter_cache_time + 'min';
     }
-    QueryNoteVersions({}, query_options).then((data) => {
         JSPLib.debug.debuglog("Last note record:", data);
         TA.last_noter_queried = true;
         let timeago_timestamp = (data.length ? JSPLib.utility.timeAgo(data[0].updated_at) : 'N/A');
-        let updater_name = data[0]?.updater?.name || 'N/A';
+        let last_updater = (data.length ? RenderUserLink(data[0].updater) : 'N/A');
         let total_notes = $('#notes > article').length;
         let [embedded_status, embedded_color] = (TA.has_embedded ? ['Enabled', 'green'] : ['Disabled', 'red']);
         let html = JSPLib.utility.regexReplace(NOTICE_INFO, {
             LASTUPDATED: timeago_timestamp,
-            LASTUPDATER: JSPLib.utility.maxLengthString(updater_name),
+            LASTUPDATER: last_updater,
             TOTALNOTES: total_notes,
             EMBEDDEDSTATUS: embedded_status,
             EMBEDDEDCOLOR: embedded_color,
