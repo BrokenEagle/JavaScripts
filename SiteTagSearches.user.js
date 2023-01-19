@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SiteTagSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.12
+// @version      4.13
 // @description  Presents additional site links for the wiki tag(s).
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -19,7 +19,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/storage.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/validate.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20230118-menu/lib/menu.js
 // ==/UserScript==
 
 /* global $ JSPLib */

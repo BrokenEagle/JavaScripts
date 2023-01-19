@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.16
+// @version      29.17
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -24,7 +24,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/network.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/danbooru.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20230118-menu/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru validate LZString */
@@ -842,9 +842,12 @@ const AUTOCOMPLETE_CAPITALIZATION = ['lowercase', 'uppercase', 'titlecase', 'pro
 //Danbooru constants
 
 const COUNT_METATAGS = [
-    'comment_count', 'deleted_comment_count', 'active_comment_count', 'note_count', 'deleted_note_count', 'active_note_count',
-    'flag_count', 'child_count', 'deleted_child_count', 'active_child_count', 'pool_count', 'deleted_pool_count', 'active_pool_count',
-    'series_pool_count', 'collection_pool_count', 'appeal_count', 'approval_count', 'replacement_count',
+    'comment_count', 'deleted_comment_count', 'active_comment_count',
+    'note_count', 'deleted_note_count', 'active_note_count',
+    'flag_count',
+    'child_count', 'deleted_child_count', 'active_child_count',
+    'pool_count', 'deleted_pool_count', 'active_pool_count', 'series_pool_count', 'collection_pool_count',
+    'appeal_count', 'approval_count', 'replacement_count',
 ];
 
 const COUNT_METATAG_SYNONYMS = COUNT_METATAGS.map((metatag) => {
@@ -866,6 +869,12 @@ const ALL_METATAGS = JSPLib.utility.multiConcat([
     'disapproved', 'parent', 'child', 'search', 'embedded', 'md5', 'width', 'height', 'mpixels', 'ratio',
     'score', 'favcount', 'filesize', 'date', 'age', 'order', 'limit', 'tagcount', 'pixiv_id', 'pixiv',
     'unaliased', 'exif', 'duration', 'random', 'is', 'has'
+    'user', 'approver', 'commenter', 'comm', 'noter', 'noteupdater', 'artcomm', 'commentaryupdater',
+    'flagger', 'appealer', 'upvote', 'downvote', 'fav', 'ordfav', 'favgroup', 'ordfavgroup', 'pool',
+    'ordpool', 'note', 'comment', 'commentary', 'id', 'rating', 'source', 'status', 'filetype',
+    'disapproved', 'parent', 'child', 'search', 'embedded', 'md5', 'width', 'height', 'mpixels', 'ratio',
+    'score', 'upvotes', 'downvotes', 'favcount', 'filesize', 'date', 'age', 'order', 'limit', 'tagcount', 'pixiv_id', 'pixiv',
+    'unaliased', 'exif', 'duration', 'random', 'is', 'has', 'ai',
 ], COUNT_METATAGS, COUNT_METATAG_SYNONYMS, CATEGORY_COUNT_METATAGS);
 
 const ORDER_METATAGS = JSPLib.utility.multiConcat([
@@ -899,7 +908,7 @@ CATEGORY_COUNT_METATAGS.flatMap((metatag) => [metatag, metatag + '_asc'])
 
 const POST_STATUSES = ['active', 'deleted', 'pending', 'flagged', 'appealed', 'banned', 'modqueue', 'unmoderated'];
 const POST_RATINGS = ['general', 'sensitive', 'questionable', 'explicit'];
-const FILE_TYPES = ['jpg', 'png', 'gif', 'swf', 'zip', 'webm', 'mp4'];
+const FILE_TYPES = ['jpg', 'png', 'gif', 'webp', 'avif', 'mp4', 'webm', 'swf', 'zip'];
 
 const STATIC_METATAGS = {
     is: JSPLib.utility.multiConcat(['parent', 'child', 'sfw', 'nsfw'], POST_STATUSES, FILE_TYPES, POST_RATINGS),
