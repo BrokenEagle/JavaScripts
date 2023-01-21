@@ -868,7 +868,7 @@ const ALL_METATAGS = JSPLib.utility.multiConcat([
     'ordpool', 'note', 'comment', 'commentary', 'id', 'rating', 'locked', 'source', 'status', 'filetype',
     'disapproved', 'parent', 'child', 'search', 'embedded', 'md5', 'width', 'height', 'mpixels', 'ratio',
     'score', 'favcount', 'filesize', 'date', 'age', 'order', 'limit', 'tagcount', 'pixiv_id', 'pixiv',
-    'unaliased', 'exif', 'duration', 'random', 'is', 'has'
+    'unaliased', 'exif', 'duration', 'random', 'is', 'has',
     'user', 'approver', 'commenter', 'comm', 'noter', 'noteupdater', 'artcomm', 'commentaryupdater',
     'flagger', 'appealer', 'upvote', 'downvote', 'fav', 'ordfav', 'favgroup', 'ordfavgroup', 'pool',
     'ordpool', 'note', 'comment', 'commentary', 'id', 'rating', 'source', 'status', 'filetype',
