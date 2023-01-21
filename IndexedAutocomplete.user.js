@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.17
+// @version      29.18
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -868,7 +868,7 @@ const ALL_METATAGS = JSPLib.utility.multiConcat([
     'ordpool', 'note', 'comment', 'commentary', 'id', 'rating', 'locked', 'source', 'status', 'filetype',
     'disapproved', 'parent', 'child', 'search', 'embedded', 'md5', 'width', 'height', 'mpixels', 'ratio',
     'score', 'favcount', 'filesize', 'date', 'age', 'order', 'limit', 'tagcount', 'pixiv_id', 'pixiv',
-    'unaliased', 'exif', 'duration', 'random', 'is', 'has'
+    'unaliased', 'exif', 'duration', 'random', 'is', 'has',
     'user', 'approver', 'commenter', 'comm', 'noter', 'noteupdater', 'artcomm', 'commentaryupdater',
     'flagger', 'appealer', 'upvote', 'downvote', 'fav', 'ordfav', 'favgroup', 'ordfavgroup', 'pool',
     'ordpool', 'note', 'comment', 'commentary', 'id', 'rating', 'source', 'status', 'filetype',
