@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.28
+// @version      7.29
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -5609,7 +5609,7 @@ function MarkupStreamTweet(tweet) {
     }
     //Not marking this with a a class since Twitter alters it
     let article = tweet.children[0].children[0];
-    let main_body = article.children[0].children[0].children[0];
+    let main_body = article.children[0].children[0];
     $(main_body).addClass('ntisas-main-body');
     let tweet_status = main_body.children[0];
     $(tweet_status).addClass('ntisas-tweet-status');
@@ -5630,8 +5630,7 @@ function MarkupStreamTweet(tweet) {
     $(tweet_right).addClass('ntisas-tweet-right');
     let profile_line = tweet_right.children[0];
     $(profile_line).addClass('ntisas-profile-line');
-    let sub_body = tweet_right.children[1];
-    $(sub_body).addClass('ntisas-sub-body');
+    let sub_body = tweet_right;
     let child_count = sub_body.childElementCount;
     let tweet_menu_index = child_count - 1;
     if (sub_body.children[tweet_menu_index].children[0].tagName.toUpperCase() === 'SVG') {
@@ -5649,16 +5648,16 @@ function MarkupStreamTweet(tweet) {
         tweet_menu_index -= 1;
     }
     let reply_line_count = 0;
-    let child1 = sub_body.children[0];
+    let child1 = sub_body.children[1];
     if (child1.children[0] && child1.children[0].tagName.toUpperCase() === 'DIV' && child1.innerText.match(/^Replying to/)) {
         $(child1).addClass('ntisas-reply-line');
         reply_line_count = 1;
     }
     var has_media = false;
-    if (tweet_menu_index === (2 + reply_line_count)) {
-        let tweet_text = sub_body.children[0 + reply_line_count];
+    if (tweet_menu_index === (3 + reply_line_count)) {
+        let tweet_text = sub_body.children[1 + reply_line_count];
         $(tweet_text).addClass('ntisas-tweet-text');
-        let tweet_image = sub_body.children[1 + reply_line_count];
+        let tweet_image = sub_body.children[2 + reply_line_count];
         if (tweet_image.childElementCount > 0) {
             $(tweet_image).addClass('ntisas-tweet-media');
             has_media = true;
@@ -5666,8 +5665,8 @@ function MarkupStreamTweet(tweet) {
             $(tweet_image).addClass('ntisas-empty-media');
             has_media = false;
         }
-    } else if (tweet_menu_index === (1 + reply_line_count)) {
-        let element = sub_body.children[0 + reply_line_count];
+    } else if (tweet_menu_index === (2 + reply_line_count)) {
+        let element = sub_body.children[1 + reply_line_count];
         has_media = !element.children[0].children[0] || element.children[0].children[0].tagName.toUpperCase() !== 'SPAN';
         let element_class = (has_media ? 'ntisas-tweet-media' : 'ntisas-tweet-text');
         $(element).addClass(element_class);
@@ -5694,7 +5693,7 @@ function MarkupMainTweet(tweet) {
     if (data_tweet) {
         $(tweet).attr('data-user-id', data_tweet.user_id_str);
     }
-    let main_body = tweet.children[0].children[0].children[0].children[0].children[0];
+    let main_body = tweet.children[0].children[0].children[0].children[0];
     $(main_body).addClass('ntisas-main-body');
     let tweet_status = main_body.children[0];
     $(tweet_status).addClass('ntisas-tweet-status');
