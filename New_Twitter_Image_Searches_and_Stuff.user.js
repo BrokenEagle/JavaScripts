@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.29
+// @version      7.30
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -6076,7 +6076,7 @@ function ProcessNewTweets() {
     $tweets.each((i,entry)=>{
         $(entry).addClass('ntisas-tweet').attr('viewed', 'false');
         if (IsTweetPage()) {
-            if ($('> div > article > div > div > div', entry).children().length > 2) {
+            if ($('> div > article > div > div', entry).children().length > 2) {
                 main_tweets.push(entry);
             }
         } else if ($('a > time', entry).length) {
