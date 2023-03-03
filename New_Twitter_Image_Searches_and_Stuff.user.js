@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.30
+// @version      8.0
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -151,7 +151,6 @@ const PROGRAM_DEFAULT_VALUES = {
 const COMMON_QUERY_SETTINGS = ['pick_image', 'confirm_save', 'auto_save'];
 const DEFAULT_QUERY_SETTINGS = ['pick_image', 'confirm_save'];
 const ALL_SCORE_LEVELS = ['excellent', 'good', 'aboveavg', 'fair', 'belowavg', 'poor'];
-const SCORE_LEVELS = ['good', 'aboveavg', 'fair', 'belowavg', 'poor'];
 const SUBDOMAINS = ['danbooru', 'kagamihara', 'saitou', 'shima'];
 const ALL_POSITIONS = ['above', 'below'];
 
@@ -325,18 +324,6 @@ const SETTINGS_CONFIG = {
         validate: JSPLib.validate.isBoolean,
         hint: "Displays extra information and thumbnails on IQDB results. <b>Note:</b> Only when the data is not auto-saved."
     },
-    score_levels_faded: {
-        allitems: SCORE_LEVELS,
-        reset: ['belowavg'],
-        validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'radio', SCORE_LEVELS),
-        hint: "Select the default score level cutoff (inclusive) where Tweets get faded automatically."
-    },
-    score_levels_hidden: {
-        allitems: SCORE_LEVELS,
-        reset: ['poor'],
-        validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'radio', SCORE_LEVELS),
-        hint: "Select the default score level cutoff (inclusive) where Tweets get hidden automatically."
-    },
     score_window_size: {
         reset: 40,
         parse: parseInt,
@@ -362,7 +349,7 @@ const SETTINGS_CONFIG = {
     },
 };
 
-const ALL_LIST_TYPES = ['highlight', 'iqdb', 'artist', 'tweet'];
+const ALL_LIST_TYPES = ['iqdb', 'artist', 'tweet'];
 const ALL_IMPORT_TYPES = ['program_data', 'tweet_database'];
 const CONTROL_CONFIG = {
     select_list: {
@@ -480,12 +467,6 @@ const PROGRAM_CSS = `
 .ntisas-poor .ntisas-highlight-border {
     background-color: black;
 }
-.ntisas-highlight.ntisas-hide article {
-    opacity: 0.0;
-}
-.ntisas-highlight.ntisas-hide article:hover {
-    opacity: 1.0;
-}
 .ntisas-show-views .ntisas-viewed .ntisas-tweet-left {
     border: 1px solid;
     border-radius: 25px;
@@ -539,14 +520,11 @@ const PROGRAM_CSS = `
 .ntisas-tweet .ntisas-merge-results:hover,
 #ntisas-current-records,
 #ntisas-error-messages,
-#ntisas-total-records,
-#ntisas-current-fade-level,
-#ntisas-current-hide-level {
+#ntisas-total-records {
     color: grey;
 }
 #ntisas-server-bypass,
 #ntisas-active-autoiqdb,
-#ntisas-unavailable-highlights,
 #ntisas-unavailable-autoiqdb {
     font-style: italic;
     letter-spacing: 1px;
@@ -554,44 +532,28 @@ const PROGRAM_CSS = `
 .ntisas-tweet .ntisas-check-url,
 .ntisas-tweet .ntisas-check-iqdb,
 .ntisas-tweet .ntisas-check-sauce,
-#ntisas-artist-toggle
 #ntisas-views-toggle,
 #ntisas-indicator-toggle {
     display: inline-block;
     min-width: 40px;
     text-align: center;
 }
-#ntisas-artist-toggle a,
 #ntisas-views-toggle a,
 #ntisas-iqdb-toggle a,
 #ntisas-indicator-toggle a {
     display: none;
 }
-#ntisas-current-fade-level,
-#ntisas-current-hide-level {
-    min-width: 5em;
-    display: inline-block;
-    text-align: center;
-}
-#ntisas-enable-highlights,
 #ntisas-enable-views,
 #ntisas-enable-autoiqdb,
 #ntisas-enable-indicators,
 #ntisas-disable-lockpage {
     color: green;
 }
-#ntisas-disable-highlights,
 #ntisas-disable-views,
 #ntisas-disable-autoiqdb,
 #ntisas-disable-indicators,
 #ntisas-enable-lockpage {
     color: red;
-}
-#ntisas-increase-fade-level:hover,
-#ntisas-increase-hide-level:hover,
-#ntisas-decrease-fade-level:hover,
-#ntisas-decrease-hide-level:hover {
-    text-decoration: none;
 }
 #ntisas-side-menu {
     font-size: 14px;
@@ -633,9 +595,7 @@ const PROGRAM_CSS = `
 }
 #ntisas-install,
 #ntisas-upgrade,
-#ntisas-current-records,
-#ntisas-hide-level-header,
-#ntisas-fade-level-header {
+#ntisas-current-records {
     letter-spacing: -1px;
 }
 #ntisas-menu-header {
@@ -1156,7 +1116,6 @@ const COLOR_CSS = `
 }
 #ntisas-server-bypass,
 #ntisas-active-autoiqdb,
-#ntisas-unavailable-highlights,
 #ntisas-unavailable-autoiqdb,
 #ntisas-tweet-stats-message {
     color: %TEXTMUTED%;
@@ -1189,11 +1148,7 @@ const COLOR_CSS = `
     border-color: %TEXTMUTED%;
     background-color: %TEXTFADED%;
 }
-#ntisas-menu-selection,
-#ntisas-increase-fade-level:hover,
-#ntisas-increase-hide-level:hover,
-#ntisas-decrease-fade-level:hover,
-#ntisas-decrease-hide-level:hover {
+#ntisas-menu-selection {
     background-color: %TEXTFADED%;
 }
 .ntisas-code {
@@ -1411,7 +1366,6 @@ const QUERY_SETTINGS_DETAILS = `
 
 const LIST_CONTROL_DETAILS = `
 <ul>
-    <li><b>Highlight:</b> No highlight list</li>
     <li><b>IQDB:</b> Auto-IQDB list</li>
     <li><b>Artist:</b> Tweet Indicators / Artist</li>
     <li><b>Tweet:</b> Tweet Indicators / Tweet</li>
@@ -1462,21 +1416,6 @@ const SIDE_MENU = `
         <div id="ntisas-menu-controls" data-selector="controls" style="display:none">
             <table>
                 <tbody>
-                <tr data-setting="score_highlights_enabled">
-                    <td><span>Artist highlights:</span></td>
-                    <td>%HIGHLIGHTS%</td>
-                    <td>(%HIGHLIGHTSHELP%)</td>
-                </tr>
-                <tr id="ntisas-fade-level-display">
-                    <td><span id="ntisas-fade-level-header">Current fade level:</span></td>
-                    <td>%CURRENTFADE%</td>
-                    <td>(%CURRENTFADEHELP%)</td>
-                </tr>
-                <tr id="ntisas-hide-level-display">
-                    <td><span id="ntisas-hide-level-header">Current hide level:</span></td>
-                    <td>%CURRENTHIDE%</td>
-                    <td>(%CURRENTHIDEHELP%)</td>
-                </tr>
                 <tr data-setting="display_tweet_views">
                     <td><span>View indicators:</span></td>
                     <td>%VIEWS%</td>
@@ -1571,33 +1510,6 @@ View[
     </div>
 ]`;
 
-const MINUS_SIGN = `
-<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="-20 -40 240 240">
-    <path d="M 0,75 L 0,125 L 200,125 L 200,75 L 0,75 z" fill="#F00" />
-</svg>`;
-
-const PLUS_SIGN = `
-<svg xmlns="http://www.w3.org/2000/svg"  width="15" height="15" viewBox="-20 -40 240 240">
-    <path d="M75,0 V75 H0 V125 H75 V200 H125 V125 H200 V75 H125 V0 H75 z" fill="#080" />
-</svg>`;
-
-const HIGHLIGHT_HTML = `
-<span id="ntisas-artist-toggle">
-    <a id="ntisas-enable-highlights" class="ntisas-expanded-link">Enable</a>
-    <a id="ntisas-disable-highlights" class="ntisas-expanded-link">Disable</a>
-    <span id="ntisas-unavailable-highlights">Unavailable</span>
-</span>`;
-
-const FADE_HIGHLIGHT_HTML = `
-<a id="ntisas-decrease-fade-level" class="ntisas-expanded-link">${MINUS_SIGN}</a>
-<span id="ntisas-current-fade-level">%s</span>
-<a id="ntisas-increase-fade-level" class="ntisas-expanded-link">${PLUS_SIGN}</a>`;
-
-const HIDE_HIGHLIGHT_HTML = `
-<a id="ntisas-decrease-hide-level" class="ntisas-expanded-link">${MINUS_SIGN}</a>
-<span id="ntisas-current-hide-level">%s</span>
-<a id="ntisas-increase-hide-level" class="ntisas-expanded-link">${PLUS_SIGN}</a>`;
-
 const VIEWS_HTML = `
 <span id="ntisas-views-toggle">
     <a id="ntisas-enable-views" class="ntisas-expanded-link">Show</a>
@@ -1672,10 +1584,7 @@ const UPDATE_RECORDS_HELP = "L-Click to update records to current.";
 const MUST_INSTALL_HELP = "The database must be installed before the script is fully functional.";
 const REFRESH_RECORDS_HELP = "L-Click to refresh record count.";
 const AVAILABLE_SAUCE_HELP = "Shows the number of API requests remaining.\nOnly shown after use of the Sauce link.\nResults are kept for only 1 hour.";
-const HIGHLIGHTS_HELP = "L-Click to toggle Tweet hiding/fading. (Shortcut: Alt+H)";
 const VIEWS_HELP = "L-Click to toggle borders on viewed Tweets. (Shortcut: Alt+V)";
-const FADE_HIGHLIGHT_HELP = "L-Click '-' to decrease fade level. (Shortcut: Alt+-)\nL-Click '+' to increase fade level. (Shortcut: Alt+=)";
-const HIDE_HIGHLIGHT_HELP = "L-Click '-' to decrease hide level. (Shortcut: Alt+[)\nL-Click '+' to increase hide level. (Shortcut: Alt+])";
 const AUTO_IQDB_HELP = "L-Click to toggle auto-IQDB click. (Shortcut: Alt+Q)";
 const INDICATOR_HELP = "L-Click to toggle display of Tweet mark/count controls. (Shortcut: Alt+I)";
 const LOCKPAGE_HELP = "L-Click to prevent navigating away from the page (does not prevent Twitter navigation).";
@@ -1934,7 +1843,6 @@ const PROFILE_FIELDS = 'id,level';
 
 //DOM constants
 
-const HIGHLIGHT_CONTROLS = ['enable', 'disable', 'unavailable'];
 const VIEW_CONTROLS = ['enable', 'disable'];
 const IQDB_CONTROLS = ['enable', 'disable', 'active', 'unavailable'];
 const INDICATOR_CONTROLS = ['enable', 'disable'];
@@ -1988,7 +1896,6 @@ const STREAMING_PAGES = ['home', 'main', 'likes', 'replies', 'media', 'list', 's
 const MEDIA_TYPES = ['images', 'media', 'videos'];
 
 const ALL_LISTS = {
-    highlight: 'no-highlight-list',
     iqdb: 'auto-iqdb-list',
     artist: 'artist-list',
     tweet: 'tweet-list'
@@ -2285,7 +2192,6 @@ function ValidateProgramData(key,entry) {
         case 'ntisas-artist-list':
         case 'ntisas-tweet-list':
         case 'ntisas-auto-iqdb-list':
-        case 'ntisas-no-highlight-list':
             return JSPLib.validate.validateArrayValues(key, entry, JSPLib.validate.basic_stringonly_validator);
         case 'ntisas-user-data':
             check = validate(entry, PROFILE_CONSTRAINTS);
@@ -2976,54 +2882,6 @@ function GetPageType() {
     }
 }
 
-function UpdateHighlightControls() {
-    if (!NTISAS.user_settings.score_highlights_enabled) {
-        return;
-    }
-    let [user_ident,all_idents] = GetUserIdent();
-    if (user_ident && IsMediaTimeline()) {
-        let no_highlight_list = GetList('no-highlight-list');
-        if (JSPLib.utility.arrayHasIntersection(no_highlight_list, all_idents)) {
-            NTISAS.artist_highlights_enabled = false;
-            DisplayControl('enable', HIGHLIGHT_CONTROLS, 'highlights');
-            $('#ntisas-fade-level-display').hide();
-            $('#ntisas-hide-level-display').hide();
-        } else {
-            NTISAS.artist_highlights_enabled = true;
-            DisplayControl('disable', HIGHLIGHT_CONTROLS, 'highlights');
-            $('#ntisas-fade-level-display').show();
-            $('#ntisas-hide-level-display').show();
-        }
-    } else {
-        NTISAS.artist_highlights_enabled = false;
-        DisplayControl('unavailable', HIGHLIGHT_CONTROLS, 'highlights');
-        $('#ntisas-fade-level-display').hide();
-        $('#ntisas-hide-level-display').hide();
-    }
-}
-
-function UpdateArtistHighlights() {
-    if (!NTISAS.artist_highlights_enabled) {
-        $('.ntisas-fade').removeClass('ntisas-fade');
-        $('.ntisas-hide').removeClass('ntisas-hide');
-        return;
-    }
-    let [user_ident,all_idents] = GetUserIdent();
-    if (user_ident) {
-        let no_highlight_list = GetList('no-highlight-list');
-        let fade_levels = SCORE_LEVELS.slice(NTISAS.fade_level);
-        let fade_selectors = JSPLib.utility.joinList(fade_levels, '.ntisas-', null, ',');
-        let hide_levels = SCORE_LEVELS.slice(NTISAS.hide_level);
-        let hide_selectors = JSPLib.utility.joinList(hide_levels, '.ntisas-', null, ',');
-        $('.ntisas-fade').removeClass('ntisas-fade');
-        $('.ntisas-hide').removeClass('ntisas-hide');
-        if (!JSPLib.utility.arrayHasIntersection(no_highlight_list, all_idents)) {
-            $(fade_selectors).addClass('ntisas-fade');
-            $(hide_selectors).addClass('ntisas-hide');
-        }
-    }
-}
-
 function UpdateViewControls() {
     let switch_type = (NTISAS.view_highlights ? 'disable' : 'enable');
     DisplayControl(switch_type, VIEW_CONTROLS, 'views');
@@ -3292,21 +3150,11 @@ function DownloadObject(export_obj, export_name, is_json) {
 
 function RenderSideMenu() {
     let current_message = (!CheckLocalData('ntisas-recent-timestamp') ? MUST_INSTALL_HELP : UPDATE_RECORDS_HELP);
-    let fade_level = JSPLib.utility.displayCase(NTISAS.user_settings.score_levels_faded[0]);
-    let hide_level = JSPLib.utility.displayCase(NTISAS.user_settings.score_levels_hidden[0]);
-    let current_fade_html = JSPLib.utility.sprintf(FADE_HIGHLIGHT_HTML, fade_level);
-    let current_hide_html = JSPLib.utility.sprintf(HIDE_HIGHLIGHT_HTML, hide_level);
     return JSPLib.utility.regexReplace(SIDE_MENU, {
         CURRENTRECORDS: RenderCurrentRecords(),
         CURRENTHELP: RenderHelp(current_message),
         RECORDSHELP: RenderHelp(REFRESH_RECORDS_HELP),
         SAUCEHELP: RenderHelp(AVAILABLE_SAUCE_HELP),
-        HIGHLIGHTS: HIGHLIGHT_HTML,
-        HIGHLIGHTSHELP: RenderHelp(HIGHLIGHTS_HELP),
-        CURRENTFADE: current_fade_html,
-        CURRENTFADEHELP: RenderHelp(FADE_HIGHLIGHT_HELP),
-        CURRENTHIDE: current_hide_html,
-        CURRENTHIDEHELP: RenderHelp(HIDE_HIGHLIGHT_HELP),
         VIEWS: VIEWS_HTML,
         VIEWSHELP: RenderHelp(VIEWS_HELP),
         AUTOCLICKIQDB: AUTO_IQDB_HTML,
@@ -3572,7 +3420,6 @@ function DarkenColorArray(array) {
 }
 
 function RenderListInfo() {
-    let no_highlight_list = GetList('no-highlight-list');
     let auto_iqdb_list = GetList('auto-iqdb-list');
     let artist_list = GetList('artist-list');
     let tweet_list = GetList('tweet-list');
@@ -3586,11 +3433,6 @@ function RenderListInfo() {
         </tr>
     </thead>
     <tbody>
-        <tr>
-            <th>Highlight</th>
-            <td>${no_highlight_list.length}</td>
-            <td>${JSON.stringify(no_highlight_list).length}</td>
-        </tr>
         <tr>
             <th>IQDB</th>
             <td>${auto_iqdb_list.length}</td>
@@ -4845,46 +4687,6 @@ function ToggleImageSize(event) {
     event.preventDefault();
 }
 
-function ToggleArtistHighlights() {
-    let [user_ident,all_idents] = GetUserIdent();
-    if (user_ident) {
-        let no_highlight_list = GetList('no-highlight-list');
-        if (JSPLib.utility.arrayHasIntersection(no_highlight_list, all_idents)) {
-            no_highlight_list = JSPLib.utility.arrayDifference(no_highlight_list, all_idents);
-        } else {
-            no_highlight_list = JSPLib.utility.arrayUnion(no_highlight_list, all_idents);
-        }
-        SaveList('no-highlight-list', no_highlight_list);
-        UpdateHighlightControls();
-        setTimeout(UpdateArtistHighlights, JQUERY_DELAY);
-        NTISAS.channel.postMessage({type: 'highlights', list: no_highlight_list});
-    }
-}
-
-function IncreaseFadeLevel() {
-    NTISAS.fade_level = Math.max(--NTISAS.fade_level, 0);
-    $('#ntisas-current-fade-level').html(JSPLib.utility.displayCase(SCORE_LEVELS[NTISAS.fade_level]));
-    setTimeout(UpdateArtistHighlights, JQUERY_DELAY);
-}
-
-function DecreaseFadeLevel() {
-    NTISAS.fade_level = Math.min(++NTISAS.fade_level, SCORE_LEVELS.length - 1);
-    $('#ntisas-current-fade-level').html(JSPLib.utility.displayCase(SCORE_LEVELS[NTISAS.fade_level]));
-    setTimeout(UpdateArtistHighlights, JQUERY_DELAY);
-}
-
-function IncreaseHideLevel() {
-    NTISAS.hide_level = Math.max(--NTISAS.hide_level, 0);
-    $('#ntisas-current-hide-level').html(JSPLib.utility.displayCase(SCORE_LEVELS[NTISAS.hide_level]));
-    setTimeout(UpdateArtistHighlights, JQUERY_DELAY);
-}
-
-function DecreaseHideLevel() {
-    NTISAS.hide_level = Math.min(++NTISAS.hide_level, SCORE_LEVELS.length - 1);
-    $('#ntisas-current-hide-level').html(JSPLib.utility.displayCase(SCORE_LEVELS[NTISAS.hide_level]));
-    setTimeout(UpdateArtistHighlights, JQUERY_DELAY);
-}
-
 function ToggleViewHighlights() {
     NTISAS.view_highlights = !NTISAS.view_highlights;
     $('[role=main]').toggleClass('ntisas-show-views');
@@ -5352,8 +5154,6 @@ function ResetLists() {
         selected_lists.forEach((list)=>{
             SaveList(ALL_LISTS[list], [], false);
         });
-        UpdateHighlightControls();
-        UpdateArtistHighlights();
         UpdateIQDBControls();
         UpdateTweetIndicators();
         JSPLib.notice.notice("Lists have been reset!");
@@ -5775,7 +5575,6 @@ function CheckHiddenMedia(tweet) {
 
 function RegularCheck() {
     if (NTISAS.update_on_found && NTISAS.user_id) {
-        UpdateHighlightControls();
         UpdateViewControls();
         UpdateIQDBControls();
         NTISAS.update_on_found = false;
@@ -5927,12 +5726,7 @@ function PageNavigation(pagetype) {
         if (!JSPLib.utility.isNamespaceBound('#ntisas-open-settings', 'click', PROGRAM_SHORTCUT)) {
             $('#ntisas-menu-selection a').on(PROGRAM_CLICK, SideMenuSelection);
             $('#ntisas-current-records').on(PROGRAM_CLICK, CurrentRecords);
-            $('#ntisas-artist-toggle a').on(PROGRAM_CLICK, ToggleArtistHighlights);
             $('#ntisas-views-toggle a').on(PROGRAM_CLICK, ToggleViewHighlights);
-            $('#ntisas-increase-fade-level').on(PROGRAM_CLICK, IncreaseFadeLevel);
-            $('#ntisas-decrease-fade-level').on(PROGRAM_CLICK, DecreaseFadeLevel);
-            $('#ntisas-increase-hide-level').on(PROGRAM_CLICK, IncreaseHideLevel);
-            $('#ntisas-decrease-hide-level').on(PROGRAM_CLICK, DecreaseHideLevel);
             $('#ntisas-iqdb-toggle a').on(PROGRAM_CLICK, ToggleAutoclickIQDB);
             $('#ntisas-indicator-toggle a').on(PROGRAM_CLICK, ToggleTweetIndicators);
             $('#ntisas-open-settings').on(PROGRAM_CLICK, OpenSettingsMenu);
@@ -5967,14 +5761,12 @@ function PageNavigation(pagetype) {
             UpdateProfileCallback();
         }
     }
-    UpdateHighlightControls();
     UpdateViewControls();
     UpdateIQDBControls();
     UpdateIndicatorControls();
     SetCheckPostvers();
     //Tweets are not available upon page load, so don't bother processing them
     if (NTISAS.prev_pagetype !== undefined) {
-        UpdateArtistHighlights();
         UpdateTweetIndicators();
     }
 }
@@ -6164,7 +5956,6 @@ function HighlightTweets() {
             $tweet.removeClass(JSPLib.utility.joinList(ALL_SCORE_LEVELS, 'ntisas-', null, ' ')).addClass(`ntisas-${level}`);
         }
     });
-    UpdateArtistHighlights();
     this.debug('log', "Excellent:", current_count.excellent, "Good:", current_count.good, "Above average:", current_count.aboveavg, "Fair:", current_count.fair, "Belowavg:", current_count.belowavg, "Poor:", current_count.poor);
 }
 
@@ -6223,11 +6014,6 @@ function BroadcastTISAS(ev) {
             InvalidateLocalData('ntisas-indicator-controls');
             UpdateIndicatorControls();
             UpdateTweetIndicators();
-            break;
-        case 'highlights':
-            NTISAS.lists['no-highlight-list'] = ev.data.list;
-            UpdateHighlightControls();
-            UpdateArtistHighlights();
             break;
         case 'autoiqdb':
             NTISAS.lists['auto-iqdb-list'] = ev.data.list;
@@ -6422,11 +6208,6 @@ function SetSauceAPIKey() {
     JSPLib.saucenao.api_key = NTISAS.user_settings.SauceNAO_API_key;
 }
 
-function SetHighlightLevels() {
-    NTISAS.fade_level = SCORE_LEVELS.indexOf(NTISAS.user_settings.score_levels_faded[0]);
-    NTISAS.hide_level = SCORE_LEVELS.indexOf(NTISAS.user_settings.score_levels_hidden[0]);
-}
-
 function GetMenuCloseButton() {
     return $('#new-twitter-image-searches-and-stuff').closest('.ntisas-dialog').find('.ntisas-dialog-close');
 }
@@ -6466,8 +6247,6 @@ function RenderSettingsMenu() {
     $('#ntisas-function-settings').append(JSPLib.menu.renderCheckbox('lock_page_enabled'));
     $('#ntisas-highlight-settings').append(JSPLib.menu.renderCheckbox('score_highlights_enabled'));
     $('#ntisas-highlight-settings').append(JSPLib.menu.renderTextinput('score_window_size', 5));
-    $('#ntisas-highlight-settings').append(JSPLib.menu.renderInputSelectors('score_levels_faded', 'radio'));
-    $('#ntisas-highlight-settings').append(JSPLib.menu.renderInputSelectors('score_levels_hidden', 'radio'));
     $("#ntisas-query-message").append(JSPLib.menu.renderExpandable("Additional setting details", QUERY_SETTINGS_DETAILS));
     $('#ntisas-query-settings').append(JSPLib.menu.renderInputSelectors('IQDB_settings', 'checkbox'));
     $('#ntisas-query-settings').append(JSPLib.menu.renderInputSelectors('sauce_settings', 'checkbox'));
@@ -6534,7 +6313,6 @@ async function Main() {
     if (!IsTISASInstalled()) {
         await CheckDatabaseInfo(true);
     }
-    SetHighlightLevels();
     SetQueryDomain();
     SetSauceAPIKey();
     await InstallUserProfileData();
@@ -6561,11 +6339,6 @@ async function Main() {
     $(window).on('focus.ntisas.check_views', CheckViews);
     $(document).on(PROGRAM_KEYDOWN, null, 'left', PhotoNavigation);
     $(document).on(PROGRAM_KEYDOWN, null, 'right', PhotoNavigation);
-    $(document).on(PROGRAM_KEYDOWN, null, 'alt+h', ToggleArtistHighlights);
-    $(document).on(PROGRAM_KEYDOWN, null, 'alt+=', IncreaseFadeLevel);
-    $(document).on(PROGRAM_KEYDOWN, null, 'alt+-', DecreaseFadeLevel);
-    $(document).on(PROGRAM_KEYDOWN, null, 'alt+]', IncreaseHideLevel);
-    $(document).on(PROGRAM_KEYDOWN, null, 'alt+[', DecreaseHideLevel);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+q', ToggleAutoclickIQDB);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+i', ToggleTweetIndicators);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+v', ToggleViewHighlights);
