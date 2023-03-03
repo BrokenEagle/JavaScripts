@@ -93,7 +93,6 @@ const LOCALSTORAGE_KEYS = [
     'ntisas-color-style',
     'ntisas-recent-timestamp',
     //Boolean
-    'ntisas-indicator-controls',
     'ntisas-purge-bad',
     'ntisas-overflow',
     //Last ID
@@ -119,8 +118,6 @@ const PROGRAM_RESET_KEYS = {
     tweet_faves: [],
     tweet_finish: {},
     page_stats: {},
-    counted_artists: [],
-    counted_tweets: [],
 };
 const PROGRAM_DEFAULT_VALUES = {
     lists: {},
@@ -309,11 +306,6 @@ const SETTINGS_CONFIG = {
         validate: JSPLib.validate.isBoolean,
         hint: "Displays controls in the side menu to allow page navigation to be locked."
     },
-    tweet_indicators_enabled: {
-        reset: false,
-        validate: JSPLib.validate.isBoolean,
-        hint: "Displays controls that allow temporary/permanent marking of a Tweet/Account."
-    },
     score_highlights_enabled: {
         reset: true,
         validate: JSPLib.validate.isBoolean,
@@ -349,7 +341,7 @@ const SETTINGS_CONFIG = {
     },
 };
 
-const ALL_LIST_TYPES = ['iqdb', 'artist', 'tweet'];
+const ALL_LIST_TYPES = ['iqdb'];
 const ALL_IMPORT_TYPES = ['program_data', 'tweet_database'];
 const CONTROL_CONFIG = {
     select_list: {
@@ -532,26 +524,22 @@ const PROGRAM_CSS = `
 .ntisas-tweet .ntisas-check-url,
 .ntisas-tweet .ntisas-check-iqdb,
 .ntisas-tweet .ntisas-check-sauce,
-#ntisas-views-toggle,
-#ntisas-indicator-toggle {
+#ntisas-views-toggle {
     display: inline-block;
     min-width: 40px;
     text-align: center;
 }
 #ntisas-views-toggle a,
-#ntisas-iqdb-toggle a,
-#ntisas-indicator-toggle a {
+#ntisas-iqdb-toggle a {
     display: none;
 }
 #ntisas-enable-views,
 #ntisas-enable-autoiqdb,
-#ntisas-enable-indicators,
 #ntisas-disable-lockpage {
     color: green;
 }
 #ntisas-disable-views,
 #ntisas-disable-autoiqdb,
-#ntisas-disable-indicators,
 #ntisas-enable-lockpage {
     color: red;
 }
@@ -889,32 +877,9 @@ const PROGRAM_CSS = `
 .ntisas-stream-tweet .ntisas-link-menu {
     font-size: 1.125em;
 }
-.ntisas-mark-artist,
-.ntisas-mark-artist:hover {
-    color: red;
-}
-.ntisas-mark-tweet,
-.ntisas-mark-tweet:hover {
-    color: orange;
-}
-.ntisas-count-artist,
-.ntisas-count-artist:hover {
-    color: blue;
-}
-.ntisas-count-tweet,
-.ntisas-count-tweet:hover {
-    color: green;
-}
 .ntisas-activated,
 .ntisas-activated:hover {
     color: unset;
-}
-#ntisas-indicator-counter {
-    position: absolute;
-    right: -3.75em;
-    font-size: 20px;
-    font-weight: bold;
-    font-family: ${FONT_FAMILY};
 }
 #ntisas-tweet-stats-table {
     margin: 0.5em;
@@ -1105,7 +1070,6 @@ const MENU_CSS = `
 const COLOR_CSS = `
 /*Program colors*/
 #ntisas-side-menu,
-#ntisas-indicator-counter,
 .ntisas-retweet-id,
 .ntisas-user-id,
 .ntisas-tweet-menu,
@@ -1367,8 +1331,6 @@ const QUERY_SETTINGS_DETAILS = `
 const LIST_CONTROL_DETAILS = `
 <ul>
     <li><b>IQDB:</b> Auto-IQDB list</li>
-    <li><b>Artist:</b> Tweet Indicators / Artist</li>
-    <li><b>Tweet:</b> Tweet Indicators / Tweet</li>
 </ul>`;
 
 const SIDE_MENU = `
@@ -1425,11 +1387,6 @@ const SIDE_MENU = `
                     <td><span>Autoclick IQDB:</span></td>
                     <td>%AUTOCLICKIQDB%</td>
                     <td>(%AUTOCLICKIQDBHELP%)</td>
-                </tr>
-                <tr data-setting="tweet_indicators_enabled">
-                    <td><span>Tweet indicators:</span></td>
-                    <td>%INDICATOR%</td>
-                    <td>(%INDICATORHELP%)</td>
                 </tr>
                 <tr data-setting="lock_page_enabled">
                     <td><span>Page navigation:</span></td>
@@ -1489,27 +1446,6 @@ const TWEET_STATISTICS = `
     </tbody>
 </table>`;
 
-const INDICATOR_LINKS = `
-<div class="ntisas-footer-entries ntisas-links">
-    Mark(
-        <a class="ntisas-mark-artist ntisas-expanded-link">Artist</a> |
-        <a class="ntisas-mark-tweet ntisas-expanded-link">Tweet</a>
-    )&emsp;
-    Count(
-        <a class="ntisas-count-artist ntisas-expanded-link">Artist</a> |
-        <a class="ntisas-count-tweet ntisas-expanded-link">Tweet</a>
-    )
-    %s
-</div>`;
-
-const VIEW_BLOCK = `
-&emsp;
-View[
-    <div class="ntisas-view-block">
-        <span class="ntisas-view-indicator">X</span>
-    </div>
-]`;
-
 const VIEWS_HTML = `
 <span id="ntisas-views-toggle">
     <a id="ntisas-enable-views" class="ntisas-expanded-link">Show</a>
@@ -1537,21 +1473,19 @@ const LOCKPAGE_HTML = `
     <a id="ntisas-disable-lockpage" class="ntisas-expanded-link" style="display:none">Unlock</a>
 </span>`;
 
-const INDICATOR_HTML = `
-<span id="ntisas-indicator-toggle">
-    <a id="ntisas-enable-indicators" class="ntisas-expanded-link">Show</a>
-    <a id="ntisas-disable-indicators" class="ntisas-expanded-link">Hide</a>
-</span>`;
-
 const MEDIA_LINKS_HTML = `
 <div class="ntisas-main-links">
     <a class="ntisas-media-link" href="/%SCREENNAME%/media">Media</a>
     <a class="ntisas-media-link" href="/%SCREENNAME%/likes">Likes</a>
 </div>`;
 
-const STATUS_MARKER = '<span class="ntisas-status-marker"><span class="ntisas-user-id"></span><span class="ntisas-retweet-id"></span><span class="ntisas-indicators"></span><span class="ntisas-view-info"></span></span>';
-const MAIN_COUNTER = '<span id="ntisas-indicator-counter">( <span class="ntisas-count-artist">0</span> , <span class="ntisas-count-tweet">0</span> )</span>';
-const TWEET_INDICATORS = '<span class="ntisas-mark-artist">Ⓐ</span><span class="ntisas-mark-tweet">Ⓣ</span><span class="ntisas-count-artist">ⓐ</span><span class="ntisas-count-tweet">ⓣ</span>';
+const STATUS_MARKER = `
+<span class="ntisas-status-marker">
+    <span class="ntisas-user-id"></span>
+    <span class="ntisas-retweet-id"></span>
+    <span class="ntisas-view-info"></span>
+</span>`;
+
 const LOAD_COUNTER = '<span id="ntisas-load-message">Loading ( <span id="ntisas-counter">...</span> )</span>';
 
 const PROFILE_USER_ID = '<b>User ID&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; - %s</b>';
@@ -1586,7 +1520,6 @@ const REFRESH_RECORDS_HELP = "L-Click to refresh record count.";
 const AVAILABLE_SAUCE_HELP = "Shows the number of API requests remaining.\nOnly shown after use of the Sauce link.\nResults are kept for only 1 hour.";
 const VIEWS_HELP = "L-Click to toggle borders on viewed Tweets. (Shortcut: Alt+V)";
 const AUTO_IQDB_HELP = "L-Click to toggle auto-IQDB click. (Shortcut: Alt+Q)";
-const INDICATOR_HELP = "L-Click to toggle display of Tweet mark/count controls. (Shortcut: Alt+I)";
 const LOCKPAGE_HELP = "L-Click to prevent navigating away from the page (does not prevent Twitter navigation).";
 const ERROR_MESSAGES_HELP = "L-Click to see full error messages.";
 const STATISTICS_HELP = 'L-Click any category heading to narrow down results.\nL-Click &quot;Total&quot; category to reset results.';
@@ -1845,9 +1778,6 @@ const PROFILE_FIELDS = 'id,level';
 
 const VIEW_CONTROLS = ['enable', 'disable'];
 const IQDB_CONTROLS = ['enable', 'disable', 'active', 'unavailable'];
-const INDICATOR_CONTROLS = ['enable', 'disable'];
-
-const ALL_INDICATOR_TYPES = ['mark-artist', 'mark-tweet', 'count-artist', 'count-tweet'];
 
 const BASE_DIALOG_WIDTH = 45;
 const BASE_QTIP_WIDTH = 10;
@@ -1897,8 +1827,6 @@ const MEDIA_TYPES = ['images', 'media', 'videos'];
 
 const ALL_LISTS = {
     iqdb: 'auto-iqdb-list',
-    artist: 'artist-list',
-    tweet: 'tweet-list'
 };
 
 const GOLD_LEVEL = 30;
@@ -2184,13 +2112,10 @@ function ValidateProgramData(key,entry) {
             break;
         case 'ntisas-overflow':
         case 'ntisas-purge-bad':
-        case 'ntisas-indicator-controls':
             if (!JSPLib.validate.isBoolean(entry)) {
                 checkerror = ["Value is not a boolean."];
             }
             break;
-        case 'ntisas-artist-list':
-        case 'ntisas-tweet-list':
         case 'ntisas-auto-iqdb-list':
             return JSPLib.validate.validateArrayValues(key, entry, JSPLib.validate.basic_stringonly_validator);
         case 'ntisas-user-data':
@@ -2917,71 +2842,6 @@ function DisplayControl(control,all_controls,type) {
     setTimeout(()=>{$(`#ntisas-${control}-${type}`).show();}, JQUERY_DELAY);
 }
 
-function UpdateIndicatorControls() {
-    if (!NTISAS.user_settings.tweet_indicators_enabled) {
-        return;
-    }
-    let indicators_enabled = GetLocalData('ntisas-indicator-controls', true);
-    if (indicators_enabled) {
-        DisplayControl('disable', INDICATOR_CONTROLS, 'indicators');
-        $('.ntisas-footer-entries').show();
-        $('#ntisas-indicator-counter').show();
-    } else {
-        DisplayControl('enable', INDICATOR_CONTROLS, 'indicators');
-        $('.ntisas-footer-entries').hide();
-        $('#ntisas-indicator-counter').hide();
-    }
-}
-
-function UpdateTweetIndicators() {
-    if (!NTISAS.user_settings.tweet_indicators_enabled) {
-        return;
-    }
-    let artist_list = GetList('artist-list');
-    let tweet_list = GetList('tweet-list');
-    $('.ntisas-tweet').each((i,entry)=>{ UpdateTweetIndicator(entry, artist_list, tweet_list); });
-    let indicators_enabled = GetLocalData('ntisas-indicator-controls', true);
-    if (indicators_enabled) {
-        $('.ntisas-footer-entries').show();
-    } else {
-        $('.ntisas-footer-entries').hide();
-    }
-}
-
-function UpdateTweetIndicator(tweet,artist_list,tweet_list) {
-    let $tweet = $(tweet);
-    let [tweet_id,,,user_ident,all_idents] = GetTweetInfo($tweet);
-    let active_indicators = [];
-    if (JSPLib.utility.arrayHasIntersection(artist_list, all_idents)) {
-        active_indicators.push('mark-artist');
-    }
-    if (tweet_list.includes(tweet_id)) {
-        active_indicators.push('mark-tweet');
-    }
-    if (NTISAS.counted_artists.includes(user_ident)) {
-        active_indicators.push('count-artist');
-    }
-    if (NTISAS.counted_tweets.includes(tweet_id)) {
-        active_indicators.push('count-tweet');
-    }
-    let shown_indicators = false;
-    ALL_INDICATOR_TYPES.forEach((type)=>{
-        if (active_indicators.includes(type)) {
-            $(`.ntisas-indicators .ntisas-${type}`, tweet).show();
-            $(`.ntisas-footer-entries .ntisas-${type}`, tweet).addClass('ntisas-activated');
-            shown_indicators = true;
-        } else {
-            $(`.ntisas-indicators .ntisas-${type}`, tweet).hide();
-            $(`.ntisas-footer-entries .ntisas-${type}`, tweet).removeClass('ntisas-activated');
-        }
-    });
-    if (shown_indicators) {
-        $('.ntisas-stream-tweet .ntisas-tweet-status', tweet).css('min-height', '1.5em');
-    } else {
-        $('.ntisas-stream-tweet .ntisas-tweet-status', tweet).css('min-height', '');
-    }
-}
-
 async function GetAllCurrentRecords() {
     let i = 0;
     while (true) {
@@ -3159,8 +3019,6 @@ function RenderSideMenu() {
         VIEWSHELP: RenderHelp(VIEWS_HELP),
         AUTOCLICKIQDB: AUTO_IQDB_HTML,
         AUTOCLICKIQDBHELP: RenderHelp(AUTO_IQDB_HELP),
-        INDICATOR: INDICATOR_HTML,
-        INDICATORHELP: RenderHelp(INDICATOR_HELP),
         LOCKPAGE: LOCKPAGE_HTML,
         LOCKPAGEHELP: RenderHelp(LOCKPAGE_HELP),
         ERRORMESSAGES: JSPLib.network.error_messages.length,
@@ -3421,8 +3279,6 @@ function DarkenColorArray(array) {
 
 function RenderListInfo() {
     let auto_iqdb_list = GetList('auto-iqdb-list');
-    let artist_list = GetList('artist-list');
-    let tweet_list = GetList('tweet-list');
     return `
 <table class="jsplib-striped">
     <thead>
@@ -3437,16 +3293,6 @@ function RenderListInfo() {
             <th>IQDB</th>
             <td>${auto_iqdb_list.length}</td>
             <td>${JSON.stringify(auto_iqdb_list).length}</td>
-        </tr>
-        <tr>
-            <th>Artist</th>
-            <td>${artist_list.length}</td>
-            <td>${JSON.stringify(artist_list).length}</td>
-        </tr>
-        <tr>
-            <th>Tweet</th>
-            <td>${tweet_list.length}</td>
-            <td>${JSON.stringify(tweet_list).length}</td>
         </tr>
     </tbody>
 </table>`;
@@ -3556,22 +3402,6 @@ function InitializeCurrentRecords() {
     $('#ntisas-current-records').replaceWith(RenderCurrentRecords());
     $('#ntisas-current-records').on(PROGRAM_CLICK, CurrentRecords);
     $('#ntisas-current-records-help a').attr('title', UPDATE_RECORDS_HELP);
-}
-
-function InitializeCounter() {
-    if (!NTISAS.user_settings.tweet_indicators_enabled) {
-        return;
-    }
-    if ($('#ntisas-indicator-counter').length) {
-        if (NTISAS.prev_pagetype !== 'tweet') {
-            $('#ntisas-indicator-counter').remove();
-            NTISAS.counted_artists = [];
-            NTISAS.counted_tweets = [];
-        } else {
-            return;
-        }
-    }
-    $('#ntisas-account-options h1').append(MAIN_COUNTER);
 }
 
 function InitializeImageMenu($tweets,append_selector,menu_class) {
@@ -3713,12 +3543,6 @@ async function InitializeNoMatchesLinks(tweet_id,$obj) {
     ]);
     let merge_results = NTISAS.merge_results.includes(tweet_id);
     $obj.html(RenderNomatchLinks(tweet_id, iqdb_results !== null && iqdb_results.value, sauce_results !== null && sauce_results.value, merge_results));
-}
-
-function InitializeTweetIndicators(tweet) {
-    $('.ntisas-indicators', tweet).append(TWEET_INDICATORS);
-    let view_indicators = (JSPLib.debug.debug_console ? VIEW_BLOCK : "");
-    $('.ntisas-footer-section', tweet).append(JSPLib.utility.sprintf(INDICATOR_LINKS, view_indicators));
 }
 
 async function InitializeViewCount(tweet) {
@@ -4385,12 +4209,7 @@ function ProcessTwitterGlobalObjects(data) {
 
 function ProcessTwitterData(data) {
     let checked_data = CheckGraphqlData(data);
-    let indicators_enabled = 'user_settings' in NTISAS && NTISAS.user_settings.tweet_indicators_enabled;
     let display_user_id = 'user_settings' in NTISAS && NTISAS.user_settings.display_user_id;
-    if (indicators_enabled) {
-        var artist_list = GetList('artist-list');
-        var tweet_list = GetList('tweet-list');
-    }
     let existing_keys = Object.keys(API_DATA.tweets);
     for (let i = 0; i < checked_data.length; i++) {
         let {type,id,item} = checked_data[i];
@@ -4403,9 +4222,6 @@ function ProcessTwitterData(data) {
                     $tweet.attr('data-user-id', item.user_id_str);
                     if (display_user_id) {
                         InitializeUserDisplay($tweet);
-                    }
-                    if (indicators_enabled) {
-                        UpdateTweetIndicator($tweet[0], artist_list, tweet_list);
                     }
                 }
                 break;
@@ -4706,14 +4522,6 @@ function ToggleAutoclickIQDB() {
         UpdateIQDBControls();
         NTISAS.channel.postMessage({type: 'autoiqdb', list: auto_iqdb_list});
     }
-}
-
-function ToggleTweetIndicators() {
-    let INDICATOR_CONTROLS = GetLocalData('ntisas-indicator-controls', true);
-    SetLocalData('ntisas-indicator-controls', !INDICATOR_CONTROLS);
-    UpdateIndicatorControls();
-    setTimeout(UpdateTweetIndicators, JQUERY_DELAY);
-    NTISAS.channel.postMessage({type: 'indicators'});
 }
 
 function InstallDatabase() {
@@ -5045,60 +4853,6 @@ function SelectMetric(event) {
     }
 }
 
-function MarkArtist(event) {
-    let [$link,$tweet,,,,,all_idents,] = GetEventPreload(event, 'ntisas-mark-artist');
-    let artist_list = GetList('artist-list');
-    if (JSPLib.utility.arrayHasIntersection(artist_list, all_idents)) {
-        artist_list = JSPLib.utility.arrayDifference(artist_list, all_idents);
-    } else {
-        artist_list = JSPLib.utility.arrayUnion(artist_list, all_idents);
-    }
-    SaveList('artist-list', artist_list);
-    $link.toggleClass('ntisas-activated');
-    $('.ntisas-indicators .ntisas-mark-artist', $tweet[0]).toggle();
-    setTimeout(UpdateTweetIndicators, JQUERY_DELAY);
-    NTISAS.channel.postMessage({type: 'indicators', artist_list: artist_list});
-}
-
-function MarkTweet(event) {
-    let [$link,$tweet,tweet_id,,,,,] = GetEventPreload(event, 'ntisas-mark-tweet');
-    let tweet_list = GetList('tweet-list');
-    if (tweet_list.includes(tweet_id)) {
-        tweet_list = JSPLib.utility.arrayDifference(tweet_list, [tweet_id]);
-    } else {
-        tweet_list = JSPLib.utility.arrayUnion(tweet_list, [tweet_id]);
-    }
-    SaveList('tweet-list', tweet_list);
-    $link.toggleClass('ntisas-activated');
-    $('.ntisas-indicators .ntisas-mark-tweet', $tweet[0]).toggle();
-    NTISAS.channel.postMessage({type: 'indicators', tweet_list: tweet_list});
-}
-
-function CountArtist(event) {
-    let [$link,$tweet,,,,user_ident,,] = GetEventPreload(event, 'ntisas-count-artist');
-    if (NTISAS.counted_artists.includes(user_ident)) {
-        NTISAS.counted_artists = JSPLib.utility.arrayDifference(NTISAS.counted_artists, [user_ident]);
-    } else {
-        NTISAS.counted_artists = JSPLib.utility.arrayUnion(NTISAS.counted_artists, [user_ident]);
-    }
-    $link.toggleClass('ntisas-activated');
-    $('.ntisas-indicators .ntisas-count-artist', $tweet[0]).toggle();
-    setTimeout(UpdateTweetIndicators, JQUERY_DELAY);
-    $('#ntisas-indicator-counter .ntisas-count-artist').html(NTISAS.counted_artists.length);
-}
-
-function CountTweet(event) {
-    let [$link,$tweet,tweet_id,,,,,] = GetEventPreload(event, 'ntisas-count-tweet');
-    if (NTISAS.counted_tweets.includes(tweet_id)) {
-        NTISAS.counted_tweets = JSPLib.utility.arrayDifference(NTISAS.counted_tweets, [tweet_id]);
-    } else {
-        NTISAS.counted_tweets = JSPLib.utility.arrayUnion(NTISAS.counted_tweets, [tweet_id]);
-    }
-    $link.toggleClass('ntisas-activated');
-    $('.ntisas-indicators .ntisas-count-tweet', $tweet[0]).toggle();
-    $('#ntisas-indicator-counter .ntisas-count-tweet').html(NTISAS.counted_tweets.length);
-}
-
 function DownloadOriginal(event) {
     const mime_types = {
         jpg: 'image/jpeg',
@@ -5155,7 +4909,6 @@ function ResetLists() {
             SaveList(ALL_LISTS[list], [], false);
         });
         UpdateIQDBControls();
-        UpdateTweetIndicators();
         JSPLib.notice.notice("Lists have been reset!");
     }
 }
@@ -5728,7 +5481,6 @@ function PageNavigation(pagetype) {
             $('#ntisas-current-records').on(PROGRAM_CLICK, CurrentRecords);
             $('#ntisas-views-toggle a').on(PROGRAM_CLICK, ToggleViewHighlights);
             $('#ntisas-iqdb-toggle a').on(PROGRAM_CLICK, ToggleAutoclickIQDB);
-            $('#ntisas-indicator-toggle a').on(PROGRAM_CLICK, ToggleTweetIndicators);
             $('#ntisas-open-settings').on(PROGRAM_CLICK, OpenSettingsMenu);
             //These will only get bound here on a rebind
             $('#ntisas-database-version').on(PROGRAM_CLICK, CurrentPostver);
@@ -5738,7 +5490,6 @@ function PageNavigation(pagetype) {
             $('#ntisas-error-messages').on(PROGRAM_CLICK, ErrorMessages);
             $('#ntisas-lockpage-toggle a').on(PROGRAM_CLICK, ToggleLock);
         }
-        InitializeCounter();
         if (!IsTweetPage() && (NTISAS.prev_pagetype !== 'tweet')) {
             let stat_key = NTISAS.page + NTISAS.page_key;
             NTISAS.page_stats[stat_key] = NTISAS.page_stats[stat_key] || [];
@@ -5763,12 +5514,7 @@ function PageNavigation(pagetype) {
     }
     UpdateViewControls();
     UpdateIQDBControls();
-    UpdateIndicatorControls();
     SetCheckPostvers();
-    //Tweets are not available upon page load, so don't bother processing them
-    if (NTISAS.prev_pagetype !== undefined) {
-        UpdateTweetIndicators();
-    }
 }
 
 function ProcessPhotoPopup() {
@@ -5890,12 +5636,6 @@ function ProcessNewTweets() {
             });
         }
     }
-    if (NTISAS.user_settings.tweet_indicators_enabled) {
-        $tweets.each((i,entry)=>{
-            InitializeTweetIndicators(entry);
-        });
-        UpdateTweetIndicators();
-    }
     if (NTISAS.user_settings.display_retweet_id && API_DATA.has_data && IsPageType(['main'])) {
         let $retweets = $tweets.filter('[data-retweet-id]');
         $retweets.each((i,entry)=>{
@@ -6004,17 +5744,6 @@ function BroadcastTISAS(ev) {
             InvalidateLocalData('ntisas-recent-timestamp');
             InitializeCurrentRecords();
             break;
-        case 'indicators':
-            if ('artist_list' in ev.data && 'artist-list' in NTISAS.lists && 'list' in NTISAS.lists['artist-list']) {
-                NTISAS.lists['artist-list'].list = ev.data.artist_list;
-            }
-            if ('tweet_list' in ev.data &&'tweet-list' in NTISAS.lists && 'list' in NTISAS.lists['tweet-list']) {
-                NTISAS.lists['tweet-list'].list = ev.data.tweet_list;
-            }
-            InvalidateLocalData('ntisas-indicator-controls');
-            UpdateIndicatorControls();
-            UpdateTweetIndicators();
-            break;
         case 'autoiqdb':
             NTISAS.lists['auto-iqdb-list'] = ev.data.list;
             UpdateIQDBControls();
@@ -6067,14 +5796,6 @@ function InitializeChangedSettings() {
             $('.ntisas-download-section', tweet).remove();
             if (NTISAS.user_settings.original_download_enabled) {
                 InitializeDownloadLinks($tweet);
-            }
-        }
-        if (JSPLib.menu.hasSettingChanged('tweet_indicators_enabled')) {
-            if (NTISAS.user_settings.tweet_indicators_enabled) {
-                InitializeTweetIndicators(tweet);
-            } else {
-                $('.ntisas-indicators', tweet).html("");
-                $('.ntisas-footer-entries', tweet).remove();
             }
         }
         if ($post_link.length && ((post_ids.length > 1 && JSPLib.menu.hasSettingChanged('custom_order_enabled')) || JSPLib.menu.hasSettingChanged('delete_all_reset') || JSPLib.menu.hasSettingChanged('merge_results_enabled'))) {
@@ -6132,13 +5853,6 @@ function InitializeChangedSettings() {
             }
         } else {
             $('.ntisas-upload').hide();
-        }
-    }
-    if (JSPLib.menu.hasSettingChanged('tweet_indicators_enabled')) {
-        if (NTISAS.user_settings.tweet_indicators_enabled) {
-            InitializeCounter();
-        } else {
-            $('#ntisas-indicator-counter').remove();
         }
     }
     if (JSPLib.menu.hasSettingChanged('lock_page_enabled')) {
@@ -6243,7 +5957,6 @@ function RenderSettingsMenu() {
     $('#ntisas-function-settings').append(JSPLib.menu.renderCheckbox('advanced_tooltips_enabled'));
     $('#ntisas-function-settings').append(JSPLib.menu.renderCheckbox('image_popout_enabled'));
     $('#ntisas-function-settings').append(JSPLib.menu.renderCheckbox('auto_unhide_tweets_enabled'));
-    $('#ntisas-function-settings').append(JSPLib.menu.renderCheckbox('tweet_indicators_enabled'));
     $('#ntisas-function-settings').append(JSPLib.menu.renderCheckbox('lock_page_enabled'));
     $('#ntisas-highlight-settings').append(JSPLib.menu.renderCheckbox('score_highlights_enabled'));
     $('#ntisas-highlight-settings').append(JSPLib.menu.renderTextinput('score_window_size', 5));
@@ -6329,10 +6042,6 @@ async function Main() {
     $(document).on(PROGRAM_CLICK, '.ntisas-post-preview a', SelectPreview);
     $(document).on(PROGRAM_CLICK, '.ntisas-download-original', DownloadOriginal);
     $(document).on(PROGRAM_CLICK, '.ntisas-download-all', DownloadAll);
-    $(document).on(PROGRAM_CLICK, '.ntisas-footer-entries .ntisas-mark-artist', MarkArtist);
-    $(document).on(PROGRAM_CLICK, '.ntisas-footer-entries .ntisas-mark-tweet', MarkTweet);
-    $(document).on(PROGRAM_CLICK, '.ntisas-footer-entries .ntisas-count-artist', CountArtist);
-    $(document).on(PROGRAM_CLICK, '.ntisas-footer-entries .ntisas-count-tweet', CountTweet);
     $(document).on(PROGRAM_CLICK, '.ntisas-metric', SelectMetric);
     $(document).on(PROGRAM_CLICK, '.ntisas-toggle-image-size', ToggleImageSize);
     $(document).on('scroll.ntisas.check_views', CheckViews);
@@ -6340,7 +6049,6 @@ async function Main() {
     $(document).on(PROGRAM_KEYDOWN, null, 'left', PhotoNavigation);
     $(document).on(PROGRAM_KEYDOWN, null, 'right', PhotoNavigation);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+q', ToggleAutoclickIQDB);
-    $(document).on(PROGRAM_KEYDOWN, null, 'alt+i', ToggleTweetIndicators);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+v', ToggleViewHighlights);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+m', OpenSettingsMenu);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+c', CloseSettingsMenu);
