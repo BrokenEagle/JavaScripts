@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      22.10
+// @version      22.11
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -40,7 +40,7 @@ const SERVER_USER_ID = 502584;
 
 //Variables for load.js
 const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery','window.Danbooru','Danbooru.CurrentUser'];
-const PROGRAM_LOAD_REQUIRED_SELECTORS = ['#nav', '#page'];
+const PROGRAM_LOAD_REQUIRED_SELECTORS = ['#nav', '#top'];
 
 //Program name constants
 const PROGRAM_SHORTCUT = 'el';
@@ -1777,7 +1777,7 @@ function RenderOpenItemContainer(type,itemid,columns) {
 //Initialize functions
 
 function InitializeNoticeBox(notice_html) {
-    $('#page').prepend(NOTICE_BOX);
+    $('#top').after(NOTICE_BOX);
     if (notice_html) {
         $("#el-event-notice").html(notice_html);
     }
