@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      22.11
+// @version      22.13
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -424,8 +424,9 @@ const POST_CSS = `
 }`;
 
 const COMMENT_CSS = `
-#el-event-notice #el-comment-section #el-comment-table .post-preview {
-    display: flex;
+#el-event-notice #el-comment-section #el-comment-table article.post-preview,
+#el-event-notice #el-commentary-section #el-commentary-table article.post-preview {
+    display: flex !important;
     flex-direction: row;
     margin-bottom: 1em;
     border-bottom: var(--dtext-blockquote-border);
@@ -1701,8 +1702,9 @@ function InsertThumbnails() {
 }
 
 function ProcessThumbnails() {
-    $('#el-event-notice .post-preview').each((i,thumb)=>{
+    $('#el-event-notice article.post-preview').each((i,thumb)=>{
         let $thumb = $(thumb);
+        $thumb.addClass('blacklisted');
         let post_id = String($thumb.data('id'));
         if (!(post_id in EL.thumbs)) {
             let thumb_copy = $thumb.clone();
