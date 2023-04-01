@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedRelatedTags
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2.0
+// @version      2.1
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1331,9 +1331,9 @@ FUNC.RelatedTagsScroll = function (event) {
 //Initialization functions
 
 FUNC.InitializeUserMediaTags = function (self) {
-    let recent_tags = $('.recent-related-tags-column .search-tag').map((i, entry) => [[entry.dataset.tagName, Number(entry.className.match(/tag-type-(\d)/)?.[1])]]).toArray();
-    let frequent_tags = $('.frequent-related-tags-column .search-tag').map((i, entry) => [[entry.dataset.tagName, Number(entry.className.match(/tag-type-(\d)/)?.[1])]]).toArray();
-    let ai_tags = $('.ai-tags-related-tags-column .search-tag').map((i, entry) => [[entry.dataset.tagName, Number(entry.className.match(/tag-type-(\d)/)?.[1])]]).toArray();
+    let recent_tags = $('.recent-related-tags-column [data-tag-name]').map((i, entry) => [[entry.dataset.tagName, Number(entry.className.match(/tag-type-(\d)/)?.[1])]]).toArray();
+    let frequent_tags = $('.frequent-related-tags-column [data-tag-name]').map((i, entry) => [[entry.dataset.tagName, Number(entry.className.match(/tag-type-(\d)/)?.[1])]]).toArray();
+    let ai_tags = $('.ai-tags-related-tags-column [data-tag-name]').map((i, entry) => [[entry.dataset.tagName, Number(entry.className.match(/tag-type-(\d)/)?.[1])]]).toArray();
     self.debuglog("Media tags:", {recent_tags, frequent_tags, ai_tags});
     $('#irt-frequent-recent-container').html(FUNC.RenderUserQueryColumns(recent_tags, frequent_tags, ai_tags));
     FUNC.UpdateSelected();
@@ -1341,7 +1341,7 @@ FUNC.InitializeUserMediaTags = function (self) {
 };
 
 FUNC.InitializeTranslatedTags = function (self) {
-    let translated_tags = $('.translated-tags-related-tags-column .search-tag').map((i, entry) => [[entry.dataset.tagName, Number(entry.className.match(/tag-type-(\d)/)?.[1])]]).toArray();
+    let translated_tags = $('.translated-tags-related-tags-column [data-tag-name]').map((i, entry) => [[entry.dataset.tagName, Number(entry.className.match(/tag-type-(\d)/)?.[1])]]).toArray();
     self.debuglog("Translated tags:", translated_tags);
     $('#irt-translated-tags-container').html(FUNC.RenderTranslatedColumn(translated_tags));
     FUNC.UpdateSelected();
@@ -1404,7 +1404,7 @@ FUNC.InitializeTagColumns = function (self) {
         let media_asset_id = $("#related-tags-container").attr("data-media-asset-id");
         JSPLib.network.get("/related_tag.js", {data: {user_tags: true, media_asset_id}});
     }
-    if ($('#related-tags-container .ai-tags-related-tags-column .simple-tag-list').html().trim() === "") {
+    if ($('#related-tags-container .ai-tags-related-tags-column .tag-list').html().trim() === "") {
         self.debuglog("User/Media tags not loaded yet... setting up mutation observer.");
         JSPLib.concurrency.setupMutationReplaceObserver('#related-tags-container', '.ai-tags-related-tags-column', () => {
             FUNC.InitializeUserMediaTags();
@@ -1523,7 +1523,7 @@ FUNC.SetupInitializations = function () {
     });
     // Or check if the tags have already been rendered
     JSPLib.utility.recheckTimer({
-        check: () => (IRT.inititialization_started || $('#related-tags-container .ai-tags-related-tags-column .simple-tag-list').html().trim() !== ""),
+        check: () => (IRT.inititialization_started || ($('#related-tags-container .ai-tags-related-tags-column .tag-list').html() || "").trim() !== ""),
         exec: () => FUNC.InitializeRelatedTagsSection(),
         fail: () => {
             $(document)
