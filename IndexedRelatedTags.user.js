@@ -1414,7 +1414,7 @@ FUNC.InitializeTagColumns = function (self) {
         let media_asset_id = $("#related-tags-container").attr("data-media-asset-id");
         JSPLib.network.get("/related_tag.js", {data: {user_tags: true, media_asset_id}});
     }
-    if ($('#related-tags-container .ai-tags-related-tags-column .tag-list').html().trim() === "") {
+    if (!$('#related-tags-container .ai-tags-related-tags-column').html()?.trim()) {
         self.debuglog("User/Media tags not loaded yet... setting up mutation observer.");
         JSPLib.concurrency.setupMutationReplaceObserver('#related-tags-container', '.ai-tags-related-tags-column', () => {
             FUNC.InitializeUserMediaTags();
@@ -1422,7 +1422,7 @@ FUNC.InitializeTagColumns = function (self) {
     } else {
         FUNC.InitializeUserMediaTags();
     }
-    if ($('#related-tags-container .translated-tags-related-tags-column').html().trim() === "") {
+    if (!$('#related-tags-container .translated-tags-related-tags-column').html()?.trim()) {
         self.debuglog("Translated tags not loaded yet... setting up mutation observer.");
         JSPLib.concurrency.setupMutationReplaceObserver('#related-tags-container', '.translated-tags-related-tags-column', () => {
             FUNC.InitializeTranslatedTags();
