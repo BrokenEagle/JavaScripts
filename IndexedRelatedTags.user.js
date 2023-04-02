@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedRelatedTags
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2.1
+// @version      2.2
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -616,6 +616,7 @@ const IRT_RELATED_TAGS_SECTION = `
 </div>`;
 
 //Time constants
+
 const PRUNE_EXPIRES = JSPLib.utility.one_day;
 
 //Expiration variables
@@ -623,6 +624,10 @@ const PRUNE_EXPIRES = JSPLib.utility.one_day;
 const TAGS_OVERLAP_EXPIRES = JSPLib.utility.one_month;
 const WIKI_PAGE_TAGS_EXPIRES = 2 * JSPLib.utility.one_week;
 const RELATED_TAG_EXPIRES = JSPLib.utility.one_week;
+
+//Network constants
+
+const DEFAULT_RELATED_TAGS_LIMIT = 25;
 
 //Validate constants
 
@@ -1180,15 +1185,12 @@ FUNC.WikiPageTagsQuery = async function (self, title) {
 
 FUNC.RelatedTagsQuery = async function(self, tag, category, query_type) {
     self.debuglog("Querying:", tag, category);
-    let url_addons = {search: {query: tag}};
+    let url_addons = {search: {query: tag}, limit: IRT.related_results_limit || Danbooru.RelatedTag.MAX_RELATED_TAGS};
     if (category in RELATED_QUERY_CATEGORIES) {
         url_addons.search.category = RELATED_QUERY_CATEGORIES[category];
     }
     if (['frequent', 'similar', 'like'].includes(query_type)) {
         url_addons.search.type = query_type;
-    }
-    if (IRT.related_results_limit > 0) {
-        url_addons.limit = IRT.related_results_limit;
     }
     let html = await JSPLib.network.get('/related_tag.html', {data: url_addons});
     let tagentry_array = $(html).find('tr[id]').toArray().map((row) => [$('a[href^="/posts"]', row).text(), $(row).data('category')]);
