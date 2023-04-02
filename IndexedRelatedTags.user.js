@@ -1193,7 +1193,15 @@ FUNC.RelatedTagsQuery = async function(self, tag, category, query_type) {
         url_addons.search.type = query_type;
     }
     let html = await JSPLib.network.get('/related_tag.html', {data: url_addons});
-    let tagentry_array = $(html).find('tr[id]').toArray().map((row) => [$('a[href^="/posts"]', row).text(), $(row).data('category')]);
+    let tagentry_array = $(html).find('tbody .name-column a[href^="/posts"]').toArray().map((link) => {
+        let name = link.innerText;
+        let category = Number(
+            link.className
+                .match(/tag-type-(\d)/)?.[1]
+                ?? NONEXISTENT_TAG_CATEGORY
+        );
+        return [name, category];
+    });
     let data = {
         query: tag,
         categories: (category ? [RELATED_QUERY_CATEGORIES[category]] : []),
