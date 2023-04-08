@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedRelatedTags
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2.2
+// @version      2.3
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -94,7 +94,7 @@ const PROGRAM_SCROLL = 'scroll.irt';
 const PROGRAM_NAME = 'IndexedRelatedTags';
 
 //Program data constants
-const PROGRAM_DATA_REGEX = /^(rt(s|f)(gen|char|copy|art)?)-/; //Regex that matches the prefix of all program cache data
+const PROGRAM_DATA_REGEX = /^(rt[fcjo](gen|char|copy|art)?)-/; //Regex that matches the prefix of all program cache data
 
 //Main program variables
 const IRT = {};
@@ -105,7 +105,7 @@ const LOCALSTORAGE_KEYS = [];
 const PROGRAM_RESET_KEYS = {};
 
 //Available setting values
-const RELATED_QUERY_TYPES = ['default', 'frequent', 'similar', 'like'];
+const RELATED_QUERY_ORDERS = ['frequency', 'cosine', 'jaccard', 'overlap'];
 const RELATED_QUERY_CATEGORIES = {
     general: 0,
     copyright: 3,
@@ -129,16 +129,16 @@ const SETTINGS_CONFIG = {
         validate: (data) => JSPLib.menu.validateNumber(data, true, 0, 50),
         hint: "Number of results to show (1 - 50) for the primary <b>Tags</b> column. Setting to 0 uses Danbooru's default limit."
     },
-    related_query_type_enabled: {
+    related_query_order_enabled: {
         reset: true,
         validate: JSPLib.validate.isBoolean,
-        hint: "Show controls that allow for alternate query types on related tags."
+        hint: "Show controls that allow for alternate query orders on related tags."
     },
-    related_query_type_default: {
-        allitems: RELATED_QUERY_TYPES,
-        reset: ['default'],
-        validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'radio', RELATED_QUERY_TYPES),
-        hint: "Select the default query type selected on the related tag controls."
+    related_query_order_default: {
+        allitems: RELATED_QUERY_ORDERS,
+        reset: ['frequency'],
+        validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'radio', RELATED_QUERY_ORDERS),
+        hint: "Select the default query order selected on the related tag controls."
     },
     expandable_related_section_enabled: {
         reset: true,
@@ -544,24 +544,16 @@ const SETTINGS_MENU_CSS = `
 
 const RELATED_TAG_SETTINGS_DETAILS = `
 <ul>
-    <li><b>Related query types:</b>
+    <li><b>Related query orders:</b>
         <ul>
-            <li><b>Default:</b> Uses the similar query type when no category is used, and frequent when a category is used.</li>
-            <li><b>Frequent:</b> Uses the frequency of tags that appear with the queried tag from a sample of 1000 posts.</li>
-            <li><b>Similar:</b> Applies a cosine similarity to the results which is the interelation of the frequency between all tags.
-                <ul>
-                    <li>I.e. it rates tags x and y, where tag x appears with high frequecy with tag y, and tag y appears with high frequency with tag x.</li>
-                </ul>
-            </li>
-            <li><b>Like:</b> Performs a wildcard search of the tag.
-                <ul>
-                    <li>E.g. searching <code>military</code> will use the wildcard search <code>*military*</code> to find all tags with "military" in them.</li>
-                </ul>
-            </li>
+            <li><b>Frequency:</b> Uses the frequency of tags that appear with the queried tag from a sample of 1000 posts.</li>
+            <li><b>Cosine:</b> The overall similarity of tags, regardless of their post count or overlap.</li>
+            <li><b>Jaccard:</b> The specific similarity of tags, taking into account the post count and overlap.</li>
+            <li><b>Overlap:</b> The number of posts tags have in common.</li>
         </ul>
     </li>
 </ul>
-<div style="font-size:80%"><b>Note:</b> Each related query type is stored separately, so results can be repeated with different values. The default query will save as either frequent or similar, depending on whether categories are used or not.</div>`;
+<div style="font-size:80%"><b>Note:</b> Each related query order is stored separately, so results can be repeated with different values.</div>`;
 
 const NETWORK_SETTINGS_DETAILS = `
 <ul>
@@ -850,7 +842,7 @@ FUNC.ValidateEntry = function (self, key, entry) {
     if (!JSPLib.validate.validateIsHash(key, entry)) {
         return false;
     }
-    if (key.match(/^rt[fsl](gen|char|copy|art)?-/)) {
+    if (key.match(/^rt[fcjo](gen|char|copy|art)?-/)) {
         return FUNC.ValidateRelatedtagEntry(key, entry);
     }
     if (key.match(/^tagov-/)) {
@@ -928,16 +920,8 @@ FUNC.ValidateProgramData = function (key, entry) {
 
 //Auxiliary functions
 
-FUNC.GetRelatedKeyModifer = function (category, query_type) {
-    let query_modifier = "";
-    if (['frequent', 'similar', 'like'].includes(query_type)) {
-        query_modifier = query_type[0];
-    } else if(category) {
-        query_modifier = 'f';
-    } else {
-        query_modifier = 's';
-    }
-    return 'rt' + query_modifier + (category ? JSPLib.danbooru.getShortName(category) : "");
+FUNC.GetRelatedKeyModifer = function (category, query_order) {
+    return 'rt' + query_order[0] + (category ? JSPLib.danbooru.getShortName(category) : "");
 };
 
 FUNC.FilterTagEntries = function (tagentries) {
@@ -1113,8 +1097,8 @@ ${html}
 
 FUNC.RenderRelatedQueryTypeControls = function () {
     let html = "";
-    RELATED_QUERY_TYPES.forEach((type) => {
-        let checked = (IRT.related_query_type_default[0] === type ? 'checked' : "");
+    RELATED_QUERY_ORDERS.forEach((type) => {
+        let checked = (IRT.related_query_order_default[0] === type ? 'checked' : "");
         let display_name = JSPLib.utility.displayCase(type);
         html += `
 <label for="related_query_type_${type}">${display_name}</label>
@@ -1183,14 +1167,11 @@ FUNC.WikiPageTagsQuery = async function (self, title) {
     return {value: {title, tags, other_wikis}, expires: JSPLib.utility.getExpires(WIKI_PAGE_TAGS_EXPIRES)};
 };
 
-FUNC.RelatedTagsQuery = async function(self, tag, category, query_type) {
+FUNC.RelatedTagsQuery = async function(self, tag, category, query_order) {
     self.debuglog("Querying:", tag, category);
-    let url_addons = {search: {query: tag}, limit: IRT.related_results_limit || Danbooru.RelatedTag.MAX_RELATED_TAGS};
+    let url_addons = {search: {query: tag, order: query_order}, limit: IRT.related_results_limit || Danbooru.RelatedTag.MAX_RELATED_TAGS};
     if (category in RELATED_QUERY_CATEGORIES) {
         url_addons.search.category = RELATED_QUERY_CATEGORIES[category];
-    }
-    if (['frequent', 'similar', 'like'].includes(query_type)) {
-        url_addons.search.type = query_type;
     }
     let html = await JSPLib.network.get('/related_tag.html', {data: url_addons});
     let tagentry_array = $(html).find('tbody .name-column a[href^="/posts"]').toArray().map((link) => {
@@ -1234,11 +1215,11 @@ FUNC.GetCachedData = async function (self, {name = "", args = [], keyfunc = (() 
     return cached.value;
 };
 
-FUNC.GetRelatedTags = function (tag, category, query_type) {
+FUNC.GetRelatedTags = function (tag, category, query_order) {
     return FUNC.GetCachedData({
         name: 'related tags',
-        args: [tag, category, query_type],
-        keyfunc: (tag, category, query_type) => (FUNC.GetRelatedKeyModifer(category, query_type) + '-' + tag),
+        args: [tag, category, query_order],
+        keyfunc: (tag, category, query_order) => (FUNC.GetRelatedKeyModifer(category, query_order) + '-' + tag),
         netfunc: FUNC.RelatedTagsQuery,
         expires: RELATED_TAG_EXPIRES,
     });
@@ -1285,8 +1266,8 @@ FUNC.RelatedTagsButton = async function (event) {
     event.preventDefault();
     let currenttag = Danbooru.RelatedTag.current_tag().trim().toLowerCase();
     let category = $(event.target).data('selector');
-    let query_type = JSPLib.menu.getCheckboxRadioSelected('.irt-program-checkbox');
-    let promise_array = [FUNC.GetRelatedTags(currenttag, category, query_type[0])];
+    let query_order = JSPLib.menu.getCheckboxRadioSelected('.irt-program-checkbox');
+    let promise_array = [FUNC.GetRelatedTags(currenttag, category, query_order[0])];
     if (IRT.related_statistics_enabled) {
         promise_array.push(FUNC.GetTagsOverlap(currenttag));
     } else {
@@ -1440,7 +1421,7 @@ FUNC.InitialiazeRelatedQueryControls = function () {
         $('#irt-wiki-page-controls .irt-wiki-checkbox').checkboxradio();
         $(window).on('beforeunload.irt', FUNC.SaveInputState);
     }
-    if (IRT.related_query_type_enabled) {
+    if (IRT.related_query_order_enabled) {
         $('#irt-related-tag-query-controls').append(FUNC.RenderRelatedQueryTypeControls());
         $('#irt-related-query-type .irt-program-checkbox').checkboxradio();
         $('#irt-related-query-type .ui-state-hover').removeClass('ui-state-hover');
@@ -1593,8 +1574,8 @@ FUNC.RenderSettingsMenu = function() {
     $('#irt-general-settings').append(JSPLib.menu.renderDomainSelectors());
     $('#irt-related-tag-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", RELATED_TAG_SETTINGS_DETAILS));
     $('#irt-related-tag-settings').append(JSPLib.menu.renderInputSelectors('related_query_categories', 'checkbox'));
-    $('#irt-related-tag-settings').append(JSPLib.menu.renderCheckbox('related_query_type_enabled'));
-    $('#irt-related-tag-settings').append(JSPLib.menu.renderInputSelectors('related_query_type_default', 'radio'));
+    $('#irt-related-tag-settings').append(JSPLib.menu.renderCheckbox('related_query_order_enabled'));
+    $('#irt-related-tag-settings').append(JSPLib.menu.renderInputSelectors('related_query_order_default', 'radio'));
     $('#irt-related-tag-settings').append(JSPLib.menu.renderTextinput('related_results_limit', 5));
     $('#irt-related-tag-settings').append(JSPLib.menu.renderCheckbox('expandable_related_section_enabled'));
     $('#irt-tag-statistic-settings').append(JSPLib.menu.renderCheckbox('related_statistics_enabled'));
