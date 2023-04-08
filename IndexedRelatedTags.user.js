@@ -1426,6 +1426,7 @@ FUNC.InitialiazeRelatedQueryControls = function () {
         $('#irt-related-query-type .irt-program-checkbox').checkboxradio();
         $('#irt-related-query-type .ui-state-hover').removeClass('ui-state-hover');
     }
+    $('#post_tag_string').css('max-width', '80rem');
     $('#post_tag_string').closest('.fixed-width-container').css('max-width', '80rem');
     JSPLib.utility.setCSSStyle(RELATED_QUERY_CONTROL_CSS, 'related_query');
 };
