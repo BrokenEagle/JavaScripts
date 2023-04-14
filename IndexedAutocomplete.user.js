@@ -346,6 +346,7 @@ iac-search > span {
     box-shadow: 0px 2px 0px #000;
     padding-bottom: 1px;
     line-height: 150%;
+    display: inline-block;
 }
 .iac-tag-alias a {
     font-style: italic;
