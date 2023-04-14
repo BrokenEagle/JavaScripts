@@ -1245,6 +1245,23 @@ JSPLib.menu.preloadScript = function (self, program_value, render_menu_func, {ru
     return true;
 };
 
+JSPLib.utility.getHTMLTree = function (domnode) {
+    var tree = [];
+    for (let checknode = domnode; checknode !== null; checknode = checknode.parentElement) {
+        let nodename = checknode.tagName.toLowerCase();
+        let id = (checknode.id !== "" ? "#" : "") + checknode.id;
+        let classlist = [...checknode.classList].map((entry) => (!entry.includes(':') ? '.' + entry : "")).join("");
+        let index = "";
+        if (checknode.parentElement !== null) {
+            let similar_elements = [...checknode.parentElement.children].filter((entry) => entry.tagName === checknode.tagName);
+            let similar_position = similar_elements.indexOf(checknode) + 1;
+            index = ":nth-of-type(" + similar_position + ")";
+        }
+        tree.push(nodename + id + classlist + index);
+    }
+    return tree.reverse().join(" > ");
+};
+
 JSPLib.debug.addModuleLogs('menu', ['preloadScript']);
 
 //Validate functions
