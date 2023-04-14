@@ -852,11 +852,7 @@ const AUTOCOMPLETE_DOMLIST = [
 const AUTOCOMPLETE_ALL_SELECTORS = AUTOCOMPLETE_DOMLIST.join(',');
 const AUTOCOMPLETE_USER_SELECTORS = AUTOCOMPLETE_USERLIST.join(',');
 const AUTOCOMPLETE_REBIND_SELECTORS = AUTOCOMPLETE_REBINDLIST.join(',');
-const AUTOCOMPLETE_MULTITAG_SELECTORS = ['tag-query', 'tag-edit'].map((ac_type)=>{
-    return ['nav', 'page'].map((id_select)=>{
-        return `#${id_select} [data-autocomplete=${ac_type}]`;
-    }).join(', ');
-}).join(', ');
+const AUTOCOMPLETE_MULTITAG_SELECTORS = ['tag-query', 'tag-edit'].map((ac_type) => ['nav', 'page'].map((id_select) => `#${id_select} [data-autocomplete=${ac_type}]`).join(', ')).join(', ');
 
 //Expiration variables
 
@@ -1396,9 +1392,8 @@ function ValidateCached(cached, type, term, word_mode) {
     if (type !== 'tag') return true;
     if (word_mode) {
         return cached.value.every((item) => GetWordMatches(item.antecedent || item.name, term, false));
-    } else {
-        return cached.value.every((item) => GetGlobMatches(item.antecedent || item.name, term, false));
     }
+    return cached.value.every((item) => GetGlobMatches(item.antecedent || item.name, term, false));
 }
 
 //Helper functions
@@ -1495,14 +1490,14 @@ function GlobRegex(search, use_capture, return_groups = false) {
     let key = search + '\xff' + use_capture;
     if (!(key in GlobRegex.regexes)) {
         const captureMap = (
-                               use_capture ?
-                               (val) => (val.slice(0, 2) === String.raw`\*` ? '(.*)' : `(${val})`) :
-                               (val) => (val.slice(0, 2) === String.raw`\*` ? '.*' : `${val}`)
-                           );
+            use_capture ?
+                (val) => (val.slice(0, 2) === String.raw`\*` ? '(.*)' : `(${val})`) :
+                (val) => (val.slice(0, 2) === String.raw`\*` ? '.*' : `${val}`)
+        );
         GlobRegex.capture_groups[key] = JSPLib.utility.findAll(search, /\*|[^*]+/g)
-                                           .filter((val) => val !== '')
-                                           .map((val) => JSPLib.utility.regexpEscape(val))
-                                           .map(captureMap);
+            .filter((val) => val !== '')
+            .map((val) => JSPLib.utility.regexpEscape(val))
+            .map(captureMap);
         GlobRegex.regexes[key] = new RegExp('^' + GlobRegex.capture_groups[key].join("") + '$', 'i');
     }
     return (return_groups ? GlobRegex.capture_groups[key] : GlobRegex.regexes[key]);
@@ -1515,8 +1510,8 @@ function WordRegex(search, use_capture, return_groups = false) {
     if (!(key in WordRegex.regexes)) {
         let bookend = (use_capture ? '(.*)' : '.*');
         let capture_groups = JSPLib.utility.findAll(search, ALL_DELIMTER_RG)
-            .filter((val)=>val !== '')
-            .map((word)=>{
+            .filter((val) => val !== '')
+            .map((word) => {
                 if (word.match(DELIMITER_GROUP_RG)) {
                     return (use_capture ? '(.*)' : '.*');
                 }
@@ -1593,7 +1588,7 @@ function AutocompleteRenderItem(list, item) {
     let url = '/posts?tags=' + encodeURIComponent(item.name);
     let link_classes = ['iac-autocomplete-link'];
     if (item.type === 'tag') {
-        link_classes.push('tag-type-' + item.category)
+        link_classes.push('tag-type-' + item.category);
     } else if (item.type === 'user') {
         link_classes.push('user-' + item.level.toLowerCase());
     } else if (item.type === 'pool') {
@@ -1604,7 +1599,6 @@ function AutocompleteRenderItem(list, item) {
     <a href="${url}" class="${link_classes.join(' ')}">${tag_info}</a>
 </span>
 <span class="post-count">${post_text}</span>`;
-    let data_attributes = ["type", "antecedent", "value", "category", "post_count"];
     let data_items = ["type", "antecedent", "value", "category", "post_count"].map((attr) => `data-autocomplete-${attr.replace(/_/g, "-")}="${item[attr]}"`);
     let $list_item = $(`
 <li ${data_items.join(' ')}>
@@ -1630,7 +1624,7 @@ function RenderMenuItem() {
         if (Number.isInteger(event_UID)) {
             JSPLib.debug.debugTime('renderitem-' + event_UID);
         }
-        items.forEach((item)=>{
+        items.forEach((item) => {
             this._renderItemData(ul, item);
         });
         if (Number.isInteger(event_UID)) {
@@ -1737,9 +1731,7 @@ function KeepSourceData(type, metatag, data) {
 function GetChoiceOrder(type, query, word_mode) {
     let queryterm = query.toLowerCase() + (type === 'metatag' && !query.endsWith('*') ? '*' : "");
     let regex = (word_mode ? WordRegex(queryterm, false) : GlobRegex(queryterm, false));
-    let available_choices = IAC.choice_order[type].filter((name) => {
-        return name.toLowerCase().match(regex);
-    });
+    let available_choices = IAC.choice_order[type].filter((name) => name.toLowerCase().match(regex));
     let sortable_choices = available_choices.filter((tag) => (IAC.choice_data[type][tag].use_count > 0));
     sortable_choices.sort((a, b) => IAC.choice_data[type][b].use_count - IAC.choice_data[type][a].use_count);
     return JSPLib.utility.arrayUnique(sortable_choices.concat(available_choices));
@@ -1985,7 +1977,7 @@ function HighlightSelected($link, list, item) {
             }
         }
     }
-    if (item.source == 'metatag') {
+    if (item.source === 'metatag') {
         $('a', $link).addClass('tag-type-' + item.category);
         $('.post-count', $link).text('metatag');
     }
@@ -2387,10 +2379,10 @@ function AnySourceIndexed(keycode, has_context = false) {
         if (type === 'tag' && !term.startsWith('/') && !term.endsWith('*')) {
             word_mode = term.length > 1 &&
                         !(
-                             IAC.word_start_matches ||
+                            IAC.word_start_matches ||
                              (SOURCE_CONFIG[type] === SOURCE_CONFIG.tag2) ||
                              (IAC.alternate_tag_wildcards && Boolean(term.match(/\*/)))
-                         );
+                        );
             term += (!word_mode && !term.endsWith('*') ? '*' : "");
         } else {
             term += (term.endsWith('*') ? "" : '*');
@@ -2430,7 +2422,7 @@ function RecheckSourceData(type, key, term, data, word_mode) {
     }
 }
 
-function ProcessSourceData(type, metatag, term, data, query_type, key, word_mode=false) {
+function ProcessSourceData(type, metatag, term, data, query_type, key, word_mode = false) {
     data.forEach((val) => {
         FixupMetatag(val, metatag);
         Object.assign(val, {term, key, type});
@@ -2641,7 +2633,6 @@ function InitializeProgramValues() {
     }
     Object.assign(IAC, {
         userid: Danbooru.CurrentUser.data('id'),
-        InitializeAutocompleteIndexed,
     });
     Object.assign(IAC, {
         choice_info: JSPLib.storage.getStorageData('iac-choice-info', localStorage, {}),
