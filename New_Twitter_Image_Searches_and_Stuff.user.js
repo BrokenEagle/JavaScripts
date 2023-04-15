@@ -3861,10 +3861,20 @@ function InitializeUploadlinks(install) {
 }
 
 function InitializeMediaLink($tweet) {
-    let screen_name = String($tweet.data('screen-name'));
-    let links_html = JSPLib.utility.regexReplace(MEDIA_LINKS_HTML, {SCREENNAME: screen_name});
-    $('.r-18u37iz.r-1mi0q7o .r-1wtj0ep').css('display', 'flex');
-    $('[data-testid=caret]', $tweet[0]).before(links_html);
+    if (NTISAS.user_settings.display_media_link && IsTweetPage()) {
+        let screen_name = String($tweet.data('screen-name'));
+        let links_html = JSPLib.utility.regexReplace(MEDIA_LINKS_HTML, {SCREENNAME: screen_name});
+        $('.r-18u37iz.r-1mi0q7o .r-1wtj0ep').css('display', 'flex');
+        JSPLib.utility.recheckTimer({
+            check: ()=>{
+                let $mark = $('[data-testid=caret]', $tweet[0]);
+                return Boolean($mark.length);
+            },
+            exec: ()=>{
+                $('[data-testid=caret]', $tweet[0]).before(links_html);
+            }
+        }, JSPLib.utility.one_second, JSPLib.utility.one_second * 10);
+    }
 }
 
 function InitializeRetweetDisplay(tweet) {
