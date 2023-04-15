@@ -377,7 +377,7 @@ const TWITTER_SPACING_CLASSES = [
     'r-1ag2gil', 'r-oyd9sg', //padding for side menu items
     'r-vpgt9t', 'r-jw8lkh', //padding for tweet button
 ];
-const TWITTER_SPACING_SELECTOR = JSPLib.utility.joinList(TWITTER_SPACING_CLASSES, '#ntisas-account-options .', null, ',');
+const TWITTER_SPACING_SELECTOR = JSPLib.utility.joinList(TWITTER_SPACING_CLASSES, '#ntisas-account-options.ntisas-activated .', null, ',');
 
 const PROGRAM_CSS = `
 :root {
@@ -928,17 +928,17 @@ ${TWITTER_SPACING_SELECTOR} {
     margin: -3px 0;
     padding: 0;
 }
-#ntisas-account-options {
+#ntisas-account-options.ntisas-activated {
     justify-content: normal;
 }
-#ntisas-account-options .r-1jayybb {
+#ntisas-account-options.ntisas-activated .r-1jayybb {
     min-height: 35px;
 }
-#ntisas-account-options [role=link] > div {
+#ntisas-account-options.ntisas-activated [role=link] > div {
     padding: 8px;
 }
 @media screen and (min-width: 1282px) {
-    #ntisas-account-options {
+    #ntisas-account-options.ntisas-activated {
         width: 325px;
         margin-left: -50px;
     }
@@ -1401,7 +1401,7 @@ const LIST_CONTROL_DETAILS = `
 </ul>`;
 
 const SIDE_MENU = `
-<div id="ntisas-side-menu" class="ntisas-links">
+<div id="ntisas-side-menu" class="ntisas-links" style="display: none;">
 <div id="ntisas-side-border">
     <div id="ntisas-menu-header">${PROGRAM_FULL_NAME}</div>
     <div id="ntisas-menu-selection">
@@ -2926,6 +2926,17 @@ function GetPageType() {
         default:
             this.debug('warn', "Regex error:", window.location.href, NTISAS.page_match);
             return 'default';
+    }
+}
+
+function UpdateSideMenu() {
+    let menu_shown = GetLocalData('ntisas-side-menu', true);
+    if (menu_shown) {
+        $('#ntisas-account-options').addClass('ntisas-activated');
+        $('#ntisas-side-menu').show();
+    } else {
+        $('#ntisas-account-options').removeClass('ntisas-activated');
+        $('#ntisas-side-menu').hide();
     }
 }
 
@@ -4689,6 +4700,17 @@ function ToggleImageSize(event) {
     event.preventDefault();
 }
 
+function ToggleSideMenu(event) {
+    console.log('ToggleSideMenu');
+    let menu_shown = GetLocalData('ntisas-side-menu', true);
+    SetLocalData('ntisas-side-menu', !menu_shown);
+    UpdateSideMenu();
+    NTISAS.channel.postMessage({type: 'sidemenu_ui'});
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    return false;
+}
+
 function ToggleDownloadSection() {
     let menu_shown = GetLocalData('ntisas-download-menu', true);
     SetLocalData('ntisas-download-menu', !menu_shown);
@@ -5718,6 +5740,7 @@ function PageNavigation(pagetype) {
             UpdateProfileCallback();
         }
     }
+    UpdateSideMenu();
     UpdateDownloadControls();
     UpdateViewControls();
     UpdateIQDBControls();
@@ -5964,6 +5987,9 @@ function BroadcastTISAS(ev) {
         case 'currentrecords':
             InvalidateLocalData('ntisas-recent-timestamp');
             InitializeCurrentRecords();
+            break;
+        case 'sidemenu_ui':
+            UpdateSideMenu();
             break;
         case 'view_highlights':
             UpdateViewHighlights();
@@ -6255,6 +6281,7 @@ async function Main() {
     SetQueryDomain();
     SetSauceAPIKey();
     await InstallUserProfileData();
+    $(document).on(PROGRAM_CLICK, '.ntisas-tweet-header a', ToggleSideMenu);
     $(document).on(PROGRAM_CLICK, '.ntisas-check-url', CheckURL);
     $(document).on(PROGRAM_CLICK, '.ntisas-check-iqdb', CheckIQDB);
     $(document).on(PROGRAM_CLICK, '.ntisas-check-sauce', CheckSauce);
