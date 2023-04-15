@@ -216,11 +216,6 @@ const SETTINGS_CONFIG = {
         validate: JSPLib.validate.isBoolean,
         hint: "Prompt the user on deleting results from the database."
     },
-    merge_results_enabled: {
-        reset: true,
-        validate: JSPLib.validate.isBoolean,
-        hint: "Displays a merge link that allows a new query merging the old results with the new."
-    },
     bypass_server_mode: {
         reset: false,
         validate: JSPLib.validate.isBoolean,
@@ -3109,12 +3104,8 @@ function RenderDownloadLinks($tweet,position,is_video) {
 }
 
 function RenderPostIDsLink(posts,classname) {
-    let mergelink = "";
-    let helpinfo = CONFIRM_DELETE_HELP;
-    if (NTISAS.user_settings.merge_results_enabled) {
-        mergelink = ' | <a class="ntisas-merge-results ntisas-expanded-link">Merge</a>';
-        helpinfo += '\n' + MERGE_RESULTS_HELP;
-    }
+    let mergelink = '<a class="ntisas-merge-results ntisas-expanded-link" data-replace="2">Merge</a>';
+    let helpinfo = CONFIRM_DELETE_HELP + '\n' + MERGE_RESULTS_HELP;
     let helplink = RenderHelp(helpinfo);
     let post_ids = JSPLib.utility.getObjectAttributes(posts, 'id');
     if (posts.length === 1) {
@@ -5833,7 +5824,7 @@ function InitializeChangedSettings() {
                 InitializeDownloadLinks($tweet);
             }
         }
-        if ($post_link.length && ((post_ids.length > 1 && JSPLib.menu.hasSettingChanged('custom_order_enabled')) || JSPLib.menu.hasSettingChanged('merge_results_enabled'))) {
+        if ($post_link.length && ((post_ids.length > 1 && JSPLib.menu.hasSettingChanged('custom_order_enabled')))) {
             $post_link.qtiptisas('destroy', true);
             InitializePostIDsLink(tweet_id, $post_link.parent(), tweet, post_ids);
         }
@@ -6004,7 +5995,6 @@ function RenderSettingsMenu() {
     $('#ntisas-query-settings').append(JSPLib.menu.renderTextinput('results_returned', 10));
     $('#ntisas-query-settings').append(JSPLib.menu.renderTextinput('SauceNAO_API_key', 80));
     $('#ntisas-database-settings').append(JSPLib.menu.renderCheckbox('confirm_delete_enabled'));
-    $('#ntisas-database-settings').append(JSPLib.menu.renderCheckbox('merge_results_enabled'));
     $('#ntisas-database-settings').append(JSPLib.menu.renderCheckbox('bypass_server_mode'));
     $('#ntisas-network-settings').append(JSPLib.menu.renderCheckbox('URL_wildcards_enabled'));
     $('#ntisas-network-settings').append(JSPLib.menu.renderCheckbox('custom_order_enabled'));
