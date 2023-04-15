@@ -1966,7 +1966,7 @@ const POST_CONSTRAINTS = {
         uploadername: JSPLib.validate.stringonly_constraints,
         score: JSPLib.validate.integer_constraints,
         favcount: JSPLib.validate.counting_constraints,
-        rating: JSPLib.validate.inclusion_constraints(['s', 'q', 'e']),
+        rating: JSPLib.validate.inclusion_constraints(['g', 's', 'q', 'e']),
         tags: JSPLib.validate.stringonly_constraints,
         created: JSPLib.validate.counting_constraints,
         thumbnail: JSPLib.validate.stringonly_constraints,
