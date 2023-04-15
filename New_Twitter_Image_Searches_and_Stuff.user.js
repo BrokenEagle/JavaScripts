@@ -2843,8 +2843,18 @@ function GetPageType() {
 }
 
 function UpdateViewControls() {
-    let switch_type = (NTISAS.view_highlights ? 'disable' : 'enable');
+    let show_highlights = GetLocalData('ntisas-view-highlights', true);
+    let switch_type = (show_highlights ? 'disable' : 'enable');
     DisplayControl(switch_type, VIEW_CONTROLS, 'views');
+}
+
+function UpdateViewHighlights() {
+    let show_highlights = GetLocalData('ntisas-view-highlights', true);
+    if (show_highlights) {
+        $('[role=main]').addClass('ntisas-show-views');
+    } else {
+        $('[role=main]').removeClass('ntisas-show-views');
+    }
 }
 
 function UpdateIQDBControls() {
@@ -4539,9 +4549,11 @@ function ToggleImageSize(event) {
 }
 
 function ToggleViewHighlights() {
-    NTISAS.view_highlights = !NTISAS.view_highlights;
-    $('[role=main]').toggleClass('ntisas-show-views');
+    let show_highlights = GetLocalData('ntisas-view-highlights', true);
+    SetLocalData('ntisas-view-highlights', !show_highlights);
+    UpdateViewHighlights();
     UpdateViewControls();
+    NTISAS.channel.postMessage({type: 'view_highlights'});
 }
 
 function ToggleAutoclickIQDB() {
@@ -5374,7 +5386,6 @@ function CheckHiddenMedia(tweet) {
 
 function RegularCheck() {
     if (NTISAS.update_on_found && NTISAS.user_id) {
-        UpdateViewControls();
         UpdateIQDBControls();
         NTISAS.update_on_found = false;
     } else if (NTISAS.update_profile.timer === false) {
@@ -5561,6 +5572,10 @@ function PageNavigation(pagetype) {
     UpdateViewControls();
     UpdateIQDBControls();
     SetCheckPostvers();
+    //Tweets are not available upon page load, so don't bother processing them
+    if (NTISAS.prev_pagetype !== undefined) {
+        UpdateViewHighlights();
+    }
 }
 
 function ProcessPhotoPopup() {
@@ -5677,6 +5692,7 @@ function ProcessNewTweets() {
                 InitializeViewCount(entry);
                 UpdateImageDict(entry);
             });
+            UpdateViewHighlights();
         }
     }
     if (NTISAS.user_settings.display_retweet_id && API_DATA.has_data && IsPageType(['main'])) {
@@ -5786,6 +5802,9 @@ function BroadcastTISAS(ev) {
         case 'currentrecords':
             InvalidateLocalData('ntisas-recent-timestamp');
             InitializeCurrentRecords();
+            break;
+        case 'view_highlights':
+            UpdateViewHighlights();
             break;
         case 'autoiqdb':
             NTISAS.lists['auto-iqdb-list'] = ev.data.list;
