@@ -148,7 +148,7 @@ const PROGRAM_DEFAULT_VALUES = {
 const COMMON_QUERY_SETTINGS = ['pick_image', 'confirm_save', 'auto_save'];
 const DEFAULT_QUERY_SETTINGS = ['pick_image', 'confirm_save'];
 const ALL_SCORE_LEVELS = ['excellent', 'good', 'aboveavg', 'fair', 'belowavg', 'poor'];
-const SUBDOMAINS = ['danbooru', 'kagamihara', 'saitou', 'shima'];
+const SUBDOMAINS = ['danbooru', 'kagamihara', 'saitou', 'shima', 'betabooru'];
 const ALL_POSITIONS = ['above', 'below'];
 
 //Main settings
