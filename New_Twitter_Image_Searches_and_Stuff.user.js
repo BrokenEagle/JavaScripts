@@ -2195,7 +2195,26 @@ function VaildateColorArray(array) {
 
 //Library functions
 
-////NONE
+JSPLib.utility.promiseState = function (promise) {
+    const pendingState = {status: 'pending'};
+    return Promise.race([promise, pendingState]).then(
+        (value) => (value === pendingState ? value : {status: 'resolved', value}),
+        (reason) => ({status: 'rejected', reason}),
+    );
+}
+
+JSPLib.utility.createStatusPromise = function () {
+    const ret = this.createPromise();
+    const timer = this.initializeInterval(() => {
+        this.promiseState(ret.promise).then((state)=>{
+            ret.status = state.status;
+            if (ret.status !== 'pending') {
+                clearInterval(timer);
+            }
+        });
+    }, 100);
+    return ret;
+}
 
 //Helper functions
 
@@ -3543,7 +3562,7 @@ async function InitializePostIDsLink(tweet_id, $link_container, tweet, post_ids)
             if (!tweet.ntisasDeferred) {
                 return "Error initializing images...";
             }
-            if (tweet.ntisasDeferred.state() !== 'resolved') {
+            if (tweet.ntisasDeferred.status !== 'resolved') {
                 return false;
             }
             let image_urls = GetImageLinks(tweet);
@@ -3827,14 +3846,14 @@ function QueueStorageRequest(type,key,value,database) {
             key,
             value,
             database,
-            promise: $.Deferred(),
+            deferred: JSPLib.utility.createPromise(),
             error: (JSPLib.debug.debug_console ? new Error() : null),
         };
         if (CACHE_STORAGE_TYPES.includes(type)) {
             JSPLib.debug.recordTime(key, 'Storage-queue');
         }
         QUEUED_STORAGE_REQUESTS.push(request);
-        CACHED_STORAGE_REQUESTS[queue_key] = request.promise;
+        CACHED_STORAGE_REQUESTS[queue_key] = request.deferred.promise;
         JSPLib.debug.debugExecute(()=>{
             SAVED_STORAGE_REQUESTS.push(request);
         });
@@ -3853,7 +3872,7 @@ function FulfillStorageRequests(keylist,data_items,requests) {
     keylist.forEach((key)=>{
         let data = (key in data_items ? data_items[key] : null);
         let request = requests.find((request) => (request.key === key));
-        request.promise.resolve(data);
+        request.deferred.resolve(data);
         request.data = data;
         JSPLib.debug.recordTimeEnd(key, 'Storage-queue');
     });
@@ -3872,7 +3891,7 @@ function IntervalStorageHandler() {
             let save_data = Object.assign(...save_requests.map((request) => ({[request.key]: request.value})));
             JSPLib.storage.batchSaveData(save_data, STORAGE_DATABASES[database]).then(()=>{
                 save_requests.forEach((request)=>{
-                    request.promise.resolve(null);
+                    request.deferred.resolve(null);
                     request.endtime = performance.now();
                 });
             });
@@ -3883,7 +3902,7 @@ function IntervalStorageHandler() {
             let remove_keys = remove_requests.map((request) => request.key);
             JSPLib.storage.batchRemoveData(remove_keys, STORAGE_DATABASES[database]).then(()=>{
                 remove_requests.forEach((request)=>{
-                    request.promise.resolve(null);
+                    request.deferred.resolve(null);
                     request.endtime = performance.now();
                 });
             });
@@ -3914,7 +3933,7 @@ function QueueNetworkRequest (type, item) {
         type,
         item,
         request_key,
-        promise: $.Deferred(),
+        deferred: JSPLib.utility.createPromise(),
         error: (JSPLib.debug.debug_console ? new Error() : null),
     };
     JSPLib.debug.recordTime(request_key, 'Network-queue');
@@ -3922,7 +3941,7 @@ function QueueNetworkRequest (type, item) {
     JSPLib.debug.debugExecute(()=>{
         SAVED_NETWORK_REQUESTS.push(request);
     });
-    return request.promise;
+    return request.deferred.promise;
 }
 
 function IntervalNetworkHandler () {
@@ -3938,7 +3957,7 @@ function IntervalNetworkHandler () {
             JSPLib.danbooru.submitRequest(type, params, {default_val: [], domain: NTISAS.domain}).then((data_items)=>{
                 requests.forEach((request)=>{
                     let request_data = data_items.filter((data) => request.item.includes(data[data_key]));
-                    request.promise.resolve(request_data);
+                    request.deferred.resolve(request_data);
                     request.data = request_data;
                     JSPLib.debug.recordTimeEnd(request.request_key, 'Network-queue');
                 });
@@ -5332,10 +5351,11 @@ function MarkupMainTweet(tweet) {
             JSPLib.notice.error("Error marking up main tweet! (check debug console for details)", false);
         }
     }
+    $('.ntisas-tweet-actions', tweet).after('<div class="ntisas-footer-section"></div>');
 }
 
 function CheckHiddenMedia(tweet) {
-    tweet.ntisasDeferred = $.Deferred();
+    tweet.ntisasDeferred = JSPLib.utility.createStatusPromise();
     if ($('.ntisas-tweet-media', tweet).text().match(/The following media includes potentially sensitive content|The Tweet author flagged this Tweet as showing sensitive content/)) {
         $('.ntisas-tweet-media', tweet).attr('ntisas-media-type', 'deferred');
         $('.ntisas-tweet-media', tweet).addClass('ntisas-hidden-media');
@@ -5615,10 +5635,7 @@ function ProcessTweetImages() {
                 $(entry.parentElement).on('mouseleave.ntisas', ImageLeave);
             }
         });
-        let tweet_deferred = $tweet.prop('ntisasDeferred');
-        if (tweet_deferred) {
-            tweet_deferred.resolve();
-        }
+        $tweet.prop('ntisasDeferred')?.resolve(null);
     }
     let total_unprocessed = Object.keys(unprocessed_tweets).length;
     if (total_unprocessed > 0) {
