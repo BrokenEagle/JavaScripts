@@ -4246,7 +4246,9 @@ function ProcessTwitterGlobalObjects(data) {
         Object.assign(API_DATA.users_id, data.globalObjects.users);
         for (let twitter_id in data.globalObjects.users) {
             let entry = data.globalObjects.users[twitter_id];
+            entry.id_str = String(twitter_id);
             API_DATA.users_name[entry.screen_name] = entry;
+            API_DATA.users_id[twitter_id] = entry;
         }
         API_DATA.has_data = true;
     }
@@ -4259,6 +4261,7 @@ function ProcessTwitterData(data) {
     for (let i = 0; i < checked_data.length; i++) {
         let {type,id,item} = checked_data[i];
         let $tweet = null;
+        item.id_str = String(id);
         switch(type) {
             case 'tweet':
                 API_DATA.tweets[id] = item;
@@ -4272,7 +4275,7 @@ function ProcessTwitterData(data) {
                 break;
             case 'user':
                 API_DATA.users_id[id] = item;
-                API_DATA.users_name[item.name] = item;
+                API_DATA.users_name[item.screen_name] = item;
                 //falls through
             default:
                 //do nothing
