@@ -4457,17 +4457,17 @@ async function PurgeBadTweets(purgelist) {
 
 //Event handlers
 
-function CheckViews(event) {
-    if (NTISAS.user_settings.display_tweet_views) {
-        $('.ntisas-tweet-image, .ntisas-tweet-video').closest('.ntisas-tweet').each((i,tweet)=>{
-            if (JSPLib.utility.isScrolledIntoView(tweet)) {
-                let tweet_id = String($(tweet).data('tweet-id'));
-                this.debug('logLevel', "Viewable tweet:", event.type, tweet_id, JSPLib.debug.DEBUG);
-                AddViewCount(tweet_id);
-                $(tweet).attr('viewed', 'true');
-            }
-        });
-    }
+function CheckViews(entries, observer) {
+    entries.forEach((entry)=>{
+        if (entry.isIntersecting) {
+            let $tweet = $(entry.target);
+            let tweet_id = $tweet.attr('data-tweet-id');
+            this.debug('logLevel', "Viewable tweet:", tweet_id, entry, JSPLib.debug.DEBUG);
+            AddViewCount(tweet_id);
+            $tweet.attr('viewed', 'true');
+            observer.unobserve(entry.target);
+        }
+    });
 }
 
 function PhotoNavigation() {
@@ -5691,6 +5691,14 @@ function ProcessNewTweets() {
             $image_tweets.each((i,entry)=>{
                 InitializeViewCount(entry);
                 UpdateImageDict(entry);
+                if (IsTweetPage()) {
+                    let tweet_id = $(entry).attr('data-tweet-id');
+                    this.debug('logLevel', "Viewable tweet:", tweet_id, JSPLib.utility.DEBUG);
+                    AddViewCount(tweet_id);
+                    $(entry).attr('viewed', 'true');
+                } else {
+                    NTISAS.intersection_observer.observe(entry);
+                }
             });
             UpdateViewHighlights();
         }
@@ -6080,6 +6088,7 @@ async function Main() {
     JSPLib.network.jQuerySetup();
     JSPLib.notice.installBanner(PROGRAM_SHORTCUT);
     Object.assign(NTISAS, {
+        intersection_observer: new IntersectionObserver(CheckViews, {threshold: 0.75}),
         channel: JSPLib.utility.createBroadcastChannel(PROGRAM_NAME, BroadcastTISAS),
         user_settings: JSPLib.menu.loadUserSettings(),
     }, PROGRAM_DEFAULT_VALUES, PROGRAM_RESET_KEYS);
@@ -6105,8 +6114,6 @@ async function Main() {
     $(document).on(PROGRAM_CLICK, '.ntisas-download-all', DownloadAll);
     $(document).on(PROGRAM_CLICK, '.ntisas-metric', SelectMetric);
     $(document).on(PROGRAM_CLICK, '.ntisas-toggle-image-size', ToggleImageSize);
-    $(document).on('scroll.ntisas.check_views', CheckViews);
-    $(window).on('focus.ntisas.check_views', CheckViews);
     $(document).on(PROGRAM_KEYDOWN, null, 'left', PhotoNavigation);
     $(document).on(PROGRAM_KEYDOWN, null, 'right', PhotoNavigation);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+q', ToggleAutoclickIQDB);
