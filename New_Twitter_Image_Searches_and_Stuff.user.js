@@ -216,11 +216,6 @@ const SETTINGS_CONFIG = {
         validate: JSPLib.validate.isBoolean,
         hint: "Prompt the user on deleting results from the database."
     },
-    delete_all_reset: {
-        reset: true,
-        validate: JSPLib.validate.isBoolean,
-        hint: "Whether to start out with <b>Delete all</b> enabled or not on the advanced tooltips."
-    },
     merge_results_enabled: {
         reset: true,
         validate: JSPLib.validate.isBoolean,
@@ -677,16 +672,6 @@ const PROGRAM_CSS = `
 .ntisas-confirm-image b {
     font-weight: bold;
 }
-.ntisas-delete-label {
-    font-size: 1em;
-    margin-top: 0.25em;
-    margin-right: 0.5em;
-    float: left;
-}
-.ntisas-delete-all {
-    display: block;
-    float: left;
-}
 .ntisas-post-preview {
     display: inline-block;
     width: ${BASE_PREVIEW_WIDTH}px;
@@ -716,8 +701,14 @@ const PROGRAM_CSS = `
 .ntisas-post-match .ntisas-image-container {
     border: solid green 5px;
 }
-.ntisas-post-select .ntisas-image-container {
+.ntisas-post-result .ntisas-image-container,
+.ntisas-similar-result .ntisas-image-container {
     border: solid black 5px;
+}
+.ntisas-post-result .ntisas-post-select .ntisas-image-container,
+.ntisas-similar-result .ntisas-post-select .ntisas-image-container,
+.ntisas-similar-result .ntisas-tweet-preview .ntisas-image-container {
+    border: solid transparent 5px;
 }
 .ntisas-confirm-image .ntisas-post-select .ntisas-image-container {
     border: solid blue 5px;
@@ -939,6 +930,27 @@ ${TWITTER_SPACING_SELECTOR} {
 }
 .ntisas-view-indicator {
     width: 2em;
+}
+.ntisas-similar-results .ntisas-select-controls {
+    right: 0;
+    top: -5px;
+}
+.ntisas-post-result .ntisas-select-controls {
+    left: 0;
+    top: 0;
+}
+.ntisas-confirm-image .ntisas-select-controls {
+    left: 0;
+    bottom: -2.5em;
+}
+.ui-dialog .ntisas-confirm-image.ui-dialog-content {
+    overflow: visible;
+}
+.ntisas-preview-tooltip .ntisas-select-controls a,
+.ntisas-dialog .ntisas-select-controls a {
+    color: dodgerblue;
+    font-weight: bold;
+    font-size: 14px;
 }`;
 
 const NOTICE_CSS = `
@@ -1445,6 +1457,15 @@ const TWEET_STATISTICS = `
     </tr>
     </tbody>
 </table>`;
+
+const SELECTION_CONTROLS = `
+<div style="position: absolute" class="ntisas-select-controls ntisas-links">
+    [
+        <a class="ntisas-expanded-link" data-type="all">all</a> |
+        <a class="ntisas-expanded-link" data-type="none">none</a> |
+        <a class="ntisas-expanded-link" data-type="invert">invert</a>
+    ]
+</div>`;
 
 const VIEWS_HTML = `
 <span id="ntisas-views-toggle">
@@ -3146,9 +3167,13 @@ function RenderSimilarContainer(header,iqdb_results,image_url,index) {
         let addons = RenderPreviewAddons(iqdb_result.post.source, null, iqdb_result.score, iqdb_result.post.ext, iqdb_result.post.size, iqdb_result.post.width, iqdb_result.post.height, is_user_upload);
         html += RenderPostPreview(iqdb_result.post, addons);
     });
+    let controls = (iqdb_results.length > 1 ? SELECTION_CONTROLS : "");
     return `
-<div class="ntisas-similar-result">
-    <h4>${header} (${RenderHelp(IQDB_SELECT_HELP)})</h4>
+<div class="ntisas-similar-result ntisas-selectable-results">
+    <div style="position: relative;">
+        <h4>${header} (${RenderHelp(IQDB_SELECT_HELP)})</h4>
+        ${controls}
+    </div>
     ${html}
 </div>`;
 }
@@ -3158,10 +3183,12 @@ function RenderConfirmContainer(image_urls) {
     image_urls.forEach((image,i)=>{
         html += RenderTwimgPreview(image, i, true);
     });
+    let controls = (image_urls.length > 1 ? `<div style="position: relative; display: block; width: 10em;">${SELECTION_CONTROLS}</div>` : "");
     return `
-<div class="ntisas-confirm-image">
+<div class="ntisas-confirm-image ntisas-selectable-results">
     <p style="font-size:12px">Selected images will be used for the query. Press <b>Submit</b> to execute query, or <b>Cancel</b> to go back.</p>
     ${html}
+    ${controls}
 </div>`;
 }
 
@@ -3172,15 +3199,13 @@ function RenderPostsContainer(all_posts) {
         let addons = RenderPreviewAddons(post.source, post.id, null, post.ext, post.size, post.width, post.height, is_user_upload);
         html += RenderPostPreview(post, addons);
     });
-    let delete_all_checked = (NTISAS.user_settings.delete_all_reset ? "checked" : "");
-    let width_addon = (all_posts.length > 10 ? 'style="width:850px"' : "");
+    let controls = (all_posts.length > 1 ? `<div style="position: relative; height: 1.5em; margin-top: 1em">${SELECTION_CONTROLS}</div>` : "");
+    let width_addon = (all_posts.length > 5 ? 'style="width:850px"' : "");
     return `
-<div class="ntisas-post-result ntisas-qtip-container" ${width_addon}>
+<div class="ntisas-post-result ntisas-qtip-container ntisas-selectable-results" ${width_addon}>
     <h4>Danbooru matches (${RenderHelp(POST_SELECT_HELP)})</h4>
-    <div class="ntisas-delete-label">Delete all</div>
-    <input ${delete_all_checked} type="checkbox" class="ntisas-delete-all">
-    <div style="clear:left"></div>
     ${html}
+    ${controls}
 </div>`;
 }
 
@@ -3189,7 +3214,7 @@ function RenderPostPreview(post,append_html="") {
     let [width,height] = JSPLib.utility.getPreviewDimensions(post.width, post.height, POST_PREVIEW_DIMENSION);
     let padding_height = POST_PREVIEW_DIMENSION - height;
     return `
-<article class="ntisas-post-preview" data-id="${post.id}" data-size="${post.size}">
+<article class="ntisas-post-preview ntisas-post-selectable ntisas-post-select" data-id="${post.id}" data-size="${post.size}">
     <div class="ntisas-image-container">
         <a target="_blank" href="https://danbooru.donmai.us/posts/${post.id}">
             <img width="${width}" height="${height}" style="padding-top:${padding_height}px" title="${GetLinkTitle(post)}">
@@ -3206,11 +3231,11 @@ function RenderTwimgPreview(image_url,index,selectable) {
     let selected_class = "";
     if (selectable) {
         image_html = `<a>${image_html}</a>`;
-        selected_class = 'ntisas-post-select';
+        selected_class = 'ntisas-post-select ntisas-post-selectable';
     }
     let append_html = RenderPreviewAddons('https://twitter.com', null, null, file_type);
     return `
-<article class="ntisas-post-preview ${selected_class}" data-id="${index}">
+<article class="ntisas-post-preview ntisas-tweet-preview ${selected_class}" data-id="${index}">
     <div class="ntisas-image-container">
         ${image_html}
     </div>
@@ -4730,9 +4755,7 @@ function ConfirmSave(event) {
         return;
     }
     let [$link,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event, 'ntisas-confirm-save');
-    let select_post_ids = GetSelectPostIDs(tweet_id, 'tweet_qtip');
-    let all_post_ids = NTISAS.similar_results[tweet_id];
-    let save_post_ids = JSPLib.utility.arrayDifference(all_post_ids, select_post_ids);
+    let save_post_ids = GetSelectPostIDs(tweet_id, 'tweet_qtip');
     if (NTISAS.merge_results.includes(tweet_id)) {
         let merge_ids = GetSessionTwitterData(tweet_id);
         save_post_ids = JSPLib.utility.arrayUnion(merge_ids, save_post_ids);
@@ -4746,15 +4769,8 @@ function ConfirmDelete(event) {
         return;
     }
     let [$link,$tweet,tweet_id,,,,,$replace] = GetEventPreload(event, 'ntisas-confirm-delete');
-    let delete_all = $('.ntisas-delete-all', NTISAS.tweet_qtip[tweet_id]).prop('checked');
-    let all_post_ids = GetSessionTwitterData(tweet_id);
-    if (delete_all) {
-        var select_post_ids = all_post_ids;
-    } else {
-        select_post_ids = GetSelectPostIDs(tweet_id, 'tweet_qtip');
-    }
-    let save_post_ids = JSPLib.utility.arrayDifference(all_post_ids, select_post_ids);
-    let message = JSPLib.utility.sprintf(CONFIRM_DELETE_PROMPT, select_post_ids);
+    let save_post_ids = GetSelectPostIDs(tweet_id, 'tweet_qtip');
+    let message = JSPLib.utility.sprintf(CONFIRM_DELETE_PROMPT, save_post_ids);
     PromptSavePostIDs($link, $tweet, tweet_id, $replace, message, save_post_ids);
     event.preventDefault();
 }
@@ -4792,6 +4808,25 @@ function SelectPreview(event) {
     }
     $(event.currentTarget).closest('.ntisas-post-preview').toggleClass('ntisas-post-select');
     event.preventDefault();
+}
+
+function SelectControls(event) {
+    let $container = $(event.target).closest('.ntisas-selectable-results');
+    let type = $(event.target).data('type');
+    let $post_previews = $container.find('.ntisas-post-preview.ntisas-post-selectable');
+    switch (type) {
+        case 'all':
+            $post_previews.addClass('ntisas-post-select');
+            break;
+        case 'none':
+            $post_previews.removeClass('ntisas-post-select');
+            break;
+        case 'invert':
+            $post_previews.toggleClass('ntisas-post-select');
+            // falls through
+        default:
+            // do nothing
+    }
 }
 
 function HelpInfo(event) {
@@ -5798,7 +5833,7 @@ function InitializeChangedSettings() {
                 InitializeDownloadLinks($tweet);
             }
         }
-        if ($post_link.length && ((post_ids.length > 1 && JSPLib.menu.hasSettingChanged('custom_order_enabled')) || JSPLib.menu.hasSettingChanged('delete_all_reset') || JSPLib.menu.hasSettingChanged('merge_results_enabled'))) {
+        if ($post_link.length && ((post_ids.length > 1 && JSPLib.menu.hasSettingChanged('custom_order_enabled')) || JSPLib.menu.hasSettingChanged('merge_results_enabled'))) {
             $post_link.qtiptisas('destroy', true);
             InitializePostIDsLink(tweet_id, $post_link.parent(), tweet, post_ids);
         }
@@ -5969,7 +6004,6 @@ function RenderSettingsMenu() {
     $('#ntisas-query-settings').append(JSPLib.menu.renderTextinput('results_returned', 10));
     $('#ntisas-query-settings').append(JSPLib.menu.renderTextinput('SauceNAO_API_key', 80));
     $('#ntisas-database-settings').append(JSPLib.menu.renderCheckbox('confirm_delete_enabled'));
-    $('#ntisas-database-settings').append(JSPLib.menu.renderCheckbox('delete_all_reset'));
     $('#ntisas-database-settings').append(JSPLib.menu.renderCheckbox('merge_results_enabled'));
     $('#ntisas-database-settings').append(JSPLib.menu.renderCheckbox('bypass_server_mode'));
     $('#ntisas-network-settings').append(JSPLib.menu.renderCheckbox('URL_wildcards_enabled'));
@@ -6040,6 +6074,7 @@ async function Main() {
     $(document).on(PROGRAM_CLICK, '.ntisas-cancel-merge', CancelMerge);
     $(document).on(PROGRAM_CLICK, '.ntisas-help-info', HelpInfo);
     $(document).on(PROGRAM_CLICK, '.ntisas-post-preview a', SelectPreview);
+    $(document).on(PROGRAM_CLICK, '.ntisas-select-controls a', SelectControls);
     $(document).on(PROGRAM_CLICK, '.ntisas-download-original', DownloadOriginal);
     $(document).on(PROGRAM_CLICK, '.ntisas-download-all', DownloadAll);
     $(document).on(PROGRAM_CLICK, '.ntisas-metric', SelectMetric);
@@ -6108,7 +6143,6 @@ JSPLib.menu.program_data_regex = PROGRAM_DATA_REGEX;
 JSPLib.menu.settings_callback = RemoteSettingsCallback;
 JSPLib.menu.settings_migrations = [
     {from: 'display_view_count', to: 'display_tweet_views'},
-    {from: 'delete_all_default', to: 'delete_all_reset'},
 ];
 JSPLib.menu.settings_config = SETTINGS_CONFIG;
 JSPLib.menu.control_config = CONTROL_CONFIG;
