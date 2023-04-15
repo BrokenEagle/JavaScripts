@@ -635,7 +635,7 @@ const PROGRAM_CSS = `
     max-width: none;
 }
 .ntisas-preview-tooltip .qtiptisas-content {
-    max-width: 850px;
+    max-width: 1000px;
     max-height: 500px;
     overflow-y: auto;
 }
@@ -1795,7 +1795,7 @@ const PROFILE_FIELDS = 'id,level';
 const VIEW_CONTROLS = ['enable', 'disable'];
 const IQDB_CONTROLS = ['enable', 'disable', 'active', 'unavailable'];
 
-const BASE_DIALOG_WIDTH = 45;
+const BASE_DIALOG_WIDTH = 60;
 const BASE_QTIP_WIDTH = 10;
 
 //Queue constants
@@ -3172,7 +3172,7 @@ function RenderAllSimilar(all_iqdb_results,image_urls,type) {
         let html = RenderSimilarContainer("Image " + (i + 1), iqdb_results, image_urls[i], i);
         image_results.push(html);
     });
-    let render_width = Math.min(((max_results + 1) * BASE_PREVIEW_WIDTH) + BASE_QTIP_WIDTH + 20, 850);
+    let render_width = Math.min(((max_results + 1) * BASE_PREVIEW_WIDTH) + BASE_QTIP_WIDTH + 20, 1000);
     return `
 <div class="ntisas-similar-results ntisas-qtip-container" data-type="${type}" style="width:${render_width}px">
     ${image_results.join(HORIZONTAL_RULE)}
