@@ -2631,7 +2631,7 @@ function GetTweetQuartile(tweetid) {
 }
 
 function GetImageLinks(tweet) {
-    let $obj = $('[data-image-url]', tweet).sort((entrya,entryb)=>($(entrya).data('image-num') - $(entryb).data('image-num')));
+    let $obj = $('[ntisas-media-type=image] [data-image-url], [ntisas-media-type=video] [data-image-url]', tweet).sort((entrya,entryb)=>($(entrya).data('image-num') - $(entryb).data('image-num')));
     return JSPLib.utility.getDOMAttributes($obj, 'image-url');
 }
 
