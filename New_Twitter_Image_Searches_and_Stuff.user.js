@@ -5175,7 +5175,7 @@ function UnhideTweets() {
 //Markup tweet functions
 
 function MarkupMediaType(tweet) {
-    if ($('[src*="/card_img/"], span > svg', tweet).length) {
+    if ($('.ntisas-tweet-media [src*="/card_img/"]', tweet).length) {
         $('.ntisas-tweet-media', tweet).addClass('ntisas-tweet-card').removeClass('ntisas-tweet-media');
     } else if ($('.ntisas-tweet-media [role=progressbar]', tweet).length) {
         this.debug('log', "Delaying media check for", $(tweet).data('tweet-id'));
