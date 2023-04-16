@@ -215,11 +215,6 @@ const SETTINGS_CONFIG = {
         validate: JSPLib.validate.isBoolean,
         hint: "Operates without information from the tweet server database. <b>Note:</b> Should only be used when the server is unreachable."
     },
-    autocheck_IQDB_enabled: {
-        reset: false,
-        validate: JSPLib.validate.isBoolean,
-        hint: "Will trigger the <b>IQDB</b> link if no results are found with the <b>URL</b> link."
-    },
     autoclick_IQDB_enabled: {
         reset: false,
         validate: JSPLib.validate.isBoolean,
@@ -4855,9 +4850,6 @@ function CheckURL(event) {
         }
         UpdatePostIDsLink(tweet_id, post_ids);
         NTISAS.channel.postMessage({type: 'postlink', tweet_id, post_ids});
-        if (data.length === 0 && NTISAS.user_settings.autocheck_IQDB_enabled) {
-            $('.ntisas-check-iqdb', $tweet[0]).click();
-        }
     });
 }
 
@@ -6216,7 +6208,6 @@ function RenderSettingsMenu() {
     $("#ntisas-query-message").append(JSPLib.menu.renderExpandable("Additional setting details", QUERY_SETTINGS_DETAILS));
     $('#ntisas-query-settings').append(JSPLib.menu.renderInputSelectors('IQDB_settings', 'checkbox'));
     $('#ntisas-query-settings').append(JSPLib.menu.renderInputSelectors('sauce_settings', 'checkbox'));
-    $('#ntisas-query-settings').append(JSPLib.menu.renderCheckbox('autocheck_IQDB_enabled'));
     $('#ntisas-query-settings').append(JSPLib.menu.renderCheckbox('autoclick_IQDB_enabled'));
     $('#ntisas-query-settings').append(JSPLib.menu.renderTextinput('similarity_cutoff', 10));
     $('#ntisas-query-settings').append(JSPLib.menu.renderTextinput('results_returned', 10));
