@@ -210,11 +210,6 @@ const SETTINGS_CONFIG = {
         validate: JSPLib.validate.isBoolean,
         hint: "Select whether to use the GraphQL endpoint instead of the API endpoint for network requests."
     },
-    confirm_delete_enabled: {
-        reset: true,
-        validate: JSPLib.validate.isBoolean,
-        hint: "Prompt the user on deleting results from the database."
-    },
     bypass_server_mode: {
         reset: false,
         validate: JSPLib.validate.isBoolean,
@@ -4970,9 +4965,6 @@ function ConfirmSave(event) {
 }
 
 function ConfirmDelete(event) {
-    if (!NTISAS.user_settings.confirm_delete_enabled) {
-        return;
-    }
     let [$link, $tweet, tweet_id,,,,, $replace] = GetEventPreload(event, 'ntisas-confirm-delete');
     let save_post_ids = GetSelectPostIDs(tweet_id, 'tweet_qtip');
     let message = JSPLib.utility.sprintf(CONFIRM_DELETE_PROMPT, save_post_ids);
@@ -5008,8 +5000,6 @@ function SelectPreview(event) {
         if (!IsQuerySettingEnabled('confirm_save', type)) {
             return;
         }
-    } else if ($container.hasClass('ntisas-post-result') && !NTISAS.user_settings.confirm_delete_enabled) {
-        return;
     }
     $(event.currentTarget).closest('.ntisas-post-preview').toggleClass('ntisas-post-select');
     event.preventDefault();
@@ -6231,7 +6221,6 @@ function RenderSettingsMenu() {
     $('#ntisas-query-settings').append(JSPLib.menu.renderTextinput('similarity_cutoff', 10));
     $('#ntisas-query-settings').append(JSPLib.menu.renderTextinput('results_returned', 10));
     $('#ntisas-query-settings').append(JSPLib.menu.renderTextinput('SauceNAO_API_key', 80));
-    $('#ntisas-database-settings').append(JSPLib.menu.renderCheckbox('confirm_delete_enabled'));
     $('#ntisas-database-settings').append(JSPLib.menu.renderCheckbox('bypass_server_mode'));
     $('#ntisas-network-settings').append(JSPLib.menu.renderCheckbox('URL_wildcards_enabled'));
     $('#ntisas-network-settings').append(JSPLib.menu.renderCheckbox('custom_order_enabled'));
