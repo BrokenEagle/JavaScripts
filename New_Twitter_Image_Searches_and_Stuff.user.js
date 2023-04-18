@@ -4958,8 +4958,10 @@ function ConfirmSave(event) {
 
 function ConfirmDelete(event) {
     let [$link, $tweet, tweet_id,,,,, $replace] = GetEventPreload(event, 'ntisas-confirm-delete');
+    let all_post_ids = GetSessionTwitterData(tweet_id);
     let save_post_ids = GetSelectPostIDs(tweet_id, 'tweet_qtip');
-    let message = JSPLib.utility.sprintf(CONFIRM_DELETE_PROMPT, save_post_ids);
+    let delete_post_ids = JSPLib.utility.arrayDifference(all_post_ids, save_post_ids);
+    let message = JSPLib.utility.sprintf(CONFIRM_DELETE_PROMPT, delete_post_ids);
     PromptSavePostIDs($link, $tweet, tweet_id, $replace, message, save_post_ids);
     event.preventDefault();
 }
