@@ -338,9 +338,6 @@ const program_css = `
     font-size: 1.25em;
     font-weight: bold;
 }
-[data-user-theme="dark"] #count-copyrights .ui-icon {
-    background-image: url(/packs/media/images/ui-icons_ffffff_256x240-bf27228a.png);
-}
 #count-copyrights-section {
     margin: 0.5em;
     display: none;
@@ -374,6 +371,27 @@ const program_css = `
 }
 #count-module .ui-checkboxradio-label:hover {
     filter: brightness(1.1);
+}
+#count-copyrights-header .cu-triangle {
+    position: relative;
+}
+#count-copyrights-header .cu-svg-caret {
+    position: absolute;
+}
+#count-copyrights-header .cu-svg-caret-right {
+    top: 2px;
+}
+#count-copyrights-header .cu-svg-caret-down {
+    top: 0;
+}
+#count-copyrights-header .cu-triangle-right .cu-svg-caret-down {
+    display: none;
+}
+#count-copyrights-header .cu-triangle-down .cu-svg-caret-right {
+    display: none;
+}
+.cu-svg-icon {
+    fill: var(--text-color);
 }
 #upload-counts {
     border-color: var(--grey-1);
@@ -411,6 +429,9 @@ body[data-current-user-theme="dark"] #count-table .cu-limited {
 
 //HTML constants
 
+const CARET_RIGHT = '<svg class="cu-svg-caret cu-svg-caret-right" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 512" width="20" height="20"><path class="cu-svg-icon" d="M246.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-128-128c-9.2-9.2-22.9-11.9-34.9-6.9s-19.8 16.6-19.8 29.6l0 256c0 12.9 7.8 24.6 19.8 29.6s25.7 2.2 34.9-6.9l128-128z"/></svg>';
+const CARET_DOWN = '<svg class="cu-svg-caret cu-svg-caret-down" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" height="20" width="20"><path class="cu-svg-icon" d="M137.4 374.6c12.5 12.5 32.8 12.5 45.3 0l128-128c9.2-9.2 11.9-22.9 6.9-34.9s-16.6-19.8-29.6-19.8L32 192c-12.9 0-24.6 7.8-29.6 19.8s-2.2 25.7 6.9 34.9l128 128z"/></svg>'
+
 const notice_box = `
 <div class="ui-corner-all" id="upload-counts">
     <div id="count-module">
@@ -420,7 +441,7 @@ const notice_box = `
         <div id="count-chart"></div>
         <div id="count-controls"></div>
         <div id="count-copyrights">
-            <div id="count-copyrights-header">Copyrights<a class="ui-icon ui-icon-triangle-1-e"></a><span id="count-copyrights-counter"></span></div>
+            <div id="count-copyrights-header">Copyrights<a class="cu-triangle cu-triangle-right">${CARET_RIGHT}${CARET_DOWN}</a><span id="count-copyrights-counter"></span></div>
             <div id="count-copyrights-section">
                 <div id="count-copyrights-controls"></div>
                 <div id="count-copyrights-list"></div>
@@ -1489,7 +1510,7 @@ function TooltipChange(event) {
 }
 
 function ToggleCopyrightsSection(event) {
-    $(event.target).toggleClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
+    $(event.target).closest('a').toggleClass("cu-triangle-right cu-triangle-down");
     $('#count-copyrights-section').slideToggle(100);
 }
 
