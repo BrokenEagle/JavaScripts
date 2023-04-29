@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.15
+// @version      16.16
 // @description  Gives up-to-date stats on uploads.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -167,14 +167,12 @@ const DEFAULT_VALUES = {
 //Style information
 const program_css = `
 #upload-counts {
-    border-color: var(--footer-border-color);
     border-style: dotted;
     border-width: 2px;
     max-width: 70em;
     margin-left: 2em;
 }
 #upload-counts.opened {
-    border-color: var(--divider-border-color);
     border-style: dashed;
     border-width: 5px;
 }
@@ -325,15 +323,6 @@ const program_css = `
 #count-header .cu-limited:hover {
     color: grey;
 }
-#count-table .cu-manual,
-#count-table .cu-limited {
-    background-color: lightcyan;
-    border-left: 1px solid #CCC;
-}
-[data-user-theme="dark"] #count-table .cu-manual,
-[data-user-theme="dark"] #count-table .cu-limited {
-    background-color: darkcyan;
-}
 #count-table .cu-uploads {
     background-color: var(--body-background-color);
     padding: 0 5px;
@@ -386,7 +375,39 @@ const program_css = `
 #count-module .ui-checkboxradio-label:hover {
     filter: brightness(1.1);
 }
-`;
+#upload-counts {
+    border-color: var(--grey-1);
+}
+#upload-counts.opened {
+    border-color: var(--grey-2);
+}
+#count-table .cu-manual,
+#count-table .cu-limited {
+    background-color: lightcyan;
+    border-left: 1px solid #CCC;
+}
+body[data-current-user-theme=dark] #upload-counts {
+    border-color: var(--grey-8);
+}
+body[data-current-user-theme=dark] #upload-counts.opened {
+    border-color: var(--grey-7);
+}
+body[data-current-user-theme="dark"] #count-table .cu-manual,
+body[data-current-user-theme="dark"] #count-table .cu-limited {
+    background-color: darkcyan;
+}
+@media (prefers-color-scheme: dark) {
+    body[data-current-user-theme=auto] #upload-counts {
+        border-color: var(--grey-8);
+    }
+    body[data-current-user-theme=auto] #upload-counts.opened {
+        border-color: var(--grey-7);
+    }
+    body[data-current-user-theme="auto"] #count-table .cu-manual,
+    body[data-current-user-theme="auto"] #count-table .cu-limited {
+        background-color: darkcyan;
+    }
+}`;
 
 //HTML constants
 
