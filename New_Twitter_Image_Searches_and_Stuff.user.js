@@ -3798,7 +3798,6 @@ function InitializeDownloadLinks($tweet) {
             if (is_video) {
                 let tweet_id = String($tweet.data('tweet-id'));
                 GetMaxVideoDownloadLink(tweet_id).then((video_url) => {
-                    console.warn('GetMaxVideoDownloadLink-1', tweet_id, video_url);
                     if (video_url !== null) {
                         SetVideoDownload($download_section, video_url);
                     }
@@ -4703,7 +4702,6 @@ function ToggleImageSize(event) {
 }
 
 function ToggleSideMenu(event) {
-    console.log('ToggleSideMenu');
     let menu_shown = GetLocalData('ntisas-side-menu', true);
     SetLocalData('ntisas-side-menu', !menu_shown);
     UpdateSideMenu();
