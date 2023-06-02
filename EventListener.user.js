@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      22.13
+// @version      22.14
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1456,8 +1456,10 @@ function UpdateMultiLink(typelist,subscribed,itemid) {
         let entry_typelist = new Set(entry.dataset.type.split(','));
         if (JSPLib.utility.isSuperSet(entry_typelist, new_subscribed)) {
             $(entry).removeClass('el-unsubscribed').addClass('el-subscribed');
+            $('a', entry).attr('title', 'subscribed');
         } else {
             $(entry).removeClass('el-subscribed').addClass('el-unsubscribed');
+            $('a', entry).attr('title', 'unsubscribed');
         }
     });
 }
@@ -1756,9 +1758,10 @@ function RenderSubscribeMultiLinks(name,typelist,itemid,event_type) {
     subscribe_func = subscribe_func || (event_type === 'user_events_enabled' ? GetList : null);
     let is_subscribed = typelist.every((type) => (subscribe_func(type).has(itemid)));
     let classname = (is_subscribed ? 'el-subscribed' : 'el-unsubscribed');
+    let title = (is_subscribed ? 'subscribed' : 'unsubscribed');
     let keyname = JSPLib.utility.kebabCase(name);
     let idname = 'el-' + keyname + '-link';
-    return `<span id="${idname}" data-type="${typelist}" class="el-multi-link ${classname}"><a href="javascript:void(0)">${name}</a></span>`;
+    return `<span id="${idname}" data-type="${typelist}" class="el-multi-link ${classname}"><a title="${title}" href="javascript:void(0)">${name}</a></span>`;
 }
 
 function RenderOpenItemLinks(type,itemid,showtext="Show",hidetext="Hide") {
