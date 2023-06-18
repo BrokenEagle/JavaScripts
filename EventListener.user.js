@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      22.14
+// @version      22.15
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -313,6 +313,9 @@ const DEFAULT_VALUES = {
 //CSS Constants
 
 const PROGRAM_CSS = `
+#dmail-notice {
+    display: none;
+}
 #el-event-notice {
     padding: 0.5em;
 }
@@ -2688,7 +2691,7 @@ function InitializeProgramValues() {
         return false;
     }
     Object.assign(EL, {
-        dmail_notice: $('#dmail-notice').hide(),
+        dmail_notice: $('#dmail-notice'),
         dmail_promise: JSPLib.utility.createPromise(),
     });
     //Only used on new installs
@@ -2840,6 +2843,7 @@ function Main() {
         }
     } else {
         this.debug('log',"Waiting...");
+        EL.dmail_promise.resolve(null);
     }
     $(document).on(PROGRAM_CLICK, '.el-subscribe-dual-links a', SubscribeDualLink);
     $(document).on(PROGRAM_CLICK, '#el-subscribe-events a', SubscribeMultiLink);
