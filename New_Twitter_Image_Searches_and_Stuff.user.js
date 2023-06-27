@@ -920,6 +920,9 @@ ${TWITTER_SPACING_SELECTOR} {
 #ntisas-account-options.ntisas-activated {
     justify-content: normal;
 }
+#ntisas-account-options.ntisas-activated > div:first-child {
+    flex: none;
+}
 #ntisas-account-options.ntisas-activated .r-1jayybb {
     min-height: 35px;
 }
