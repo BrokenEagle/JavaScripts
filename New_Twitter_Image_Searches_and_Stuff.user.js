@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      8.1
+// @version      8.2
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -4604,7 +4604,7 @@ async function PurgeBadTweets(purgelist) {
         let database_set = new Set(database_keylist);
         let delete_keys = JSPLib.utility.setIntersection(database_set, purge_set);
         this.debug('log', delete_keys);
-        await JSPLib.storage.batchRemoveData(delete_keys, JSPLib.storage.twitterstorage);
+        await JSPLib.storage.batchRemoveData([...delete_keys], JSPLib.storage.twitterstorage);
     }
 }
 
