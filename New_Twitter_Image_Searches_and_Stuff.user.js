@@ -5841,7 +5841,7 @@ function ProcessTweetImages() {
 
 function ProcessNewTweets() {
     //Use the article HTML element as a landmark for locating tweets
-    let $tweet_articles = $('div[data-testid=primaryColumn] div:not(.ntisas-tweet) > div > article');
+    let $tweet_articles = $('div[data-testid=primaryColumn] div:not(.ntisas-tweet) > div > article[data-testid=tweet]');
     //Get the highest delineation point between tweets that Twitter doesn't alter through events
     let $tweets = $tweet_articles.map((i, entry) => entry.parentElement.parentElement);
     if ($tweets.length === 0) {
