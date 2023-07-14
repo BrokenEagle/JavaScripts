@@ -5354,21 +5354,28 @@ function MarkupMediaType(tweet) {
         let media_children = $('.ntisas-tweet-media', tweet).children().children();
         media_children.each((i, entry) => {
             let $entry = $(entry);
+            let ret = false
             if ($entry.children().length === 0) {
                 $entry.addClass('ntisas-media-stub').attr('ntisas-media-type', 'stub');
+                ret = true;
             } else if ($('[role=blockquote]', entry).length) {
                 $entry.addClass('ntisas-tweet-quote').attr('ntisas-media-type', 'quote');
-            } else if ($('[data-testid="card.wrapper"]', entry).length) {
+            } else if ($entry.parent().data('testid') === 'card.wrapper') {
                 $entry.addClass('ntisas-tweet-card').attr('ntisas-media-type', 'card');
-            } else if ($('video, [data-testid=playButton]', tweet).length) {
-                $entry.addClass('ntisas-tweet-video').attr('ntisas-media-type', 'video');
             } else if ($entry.find('div[role=link]').length === 1 || $entry.attr('role') === 'link') {
                 $entry.addClass('ntisas-tweet-quote2').attr('ntisas-media-type', 'quote2');
             } else if ($entry.text() === "Quote Tweet") {
                 $entry.addClass('ntisas-tweet-quote3').attr('ntisas-media-type', 'quote3');
+            } else if ($entry.text() === "This Tweet is unavailable.") {
+                $entry.addClass('ntisas-tweet-quote4').attr('ntisas-media-type', 'quote4');
+            } else if ($('video, [data-testid=playButton]', tweet).length) {
+                $entry.addClass('ntisas-tweet-video').attr('ntisas-media-type', 'video');
+                ret = true;
             } else {
                 $entry.addClass('ntisas-tweet-image').attr('ntisas-media-type', 'image');
+                ret = true;
             }
+            return ret;
         });
     }
 }
