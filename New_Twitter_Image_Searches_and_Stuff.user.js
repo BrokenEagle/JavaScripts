@@ -448,6 +448,9 @@ const PROGRAM_CSS = `
 #ntisas-upgrade {
     color: #0073ff;
 }
+.ntisas-tweet .ntisas-no-sources {
+    letter-spacing: -1px;
+}
 .ntisas-tweet .ntisas-database-match,
 .ntisas-tweet .ntisas-database-match:hover,
 .ntisas-tweet .ntisas-database-match:focus,
@@ -3427,11 +3430,11 @@ function RenderPreviewAddons(source, id, score, file_ext, file_size, width, heig
 }
 
 function RenderNomatchLinks(tweet_id, no_iqdb_results, no_sauce_results, merge_results = false) {
-    let results_link = (!merge_results ? '<a class="ntisas-manual-add ntisas-database-no-match ntisas-expanded-link" data-replace="2" data-replace="2">no sources</a>' : '<a class="ntisas-cancel-merge ntisas-expanded-link" data-replace="2">Cancel</a>');
+    let results_link = (!merge_results ? '<a class="ntisas-manual-add ntisas-database-no-match ntisas-no-sources ntisas-expanded-link" data-replace="2">no sources</a>' : '<a class="ntisas-cancel-merge ntisas-expanded-link" data-replace="2">Cancel</a>');
     let no_url_results = NTISAS.no_url_results.includes(tweet_id);
-    let iqdb_link = (no_iqdb_results ? '<a class="ntisas-reset-results ntisas-database-no-match ntisas-expanded-link" data-type="iqdb" data-replace="2">no results</a>' : '<a class="ntisas-check-iqdb ntisas-expanded-link" data-replace="2">IQDB</a>');
-    let url_link = (no_url_results ? '<a class="ntisas-manual-add ntisas-database-no-match ntisas-expanded-link" data-replace="2">no sources</a>' : '<a class="ntisas-check-url ntisas-expanded-link" data-replace="2">URL</a>');
-    let sauce_link = (no_sauce_results ? '<a class="ntisas-reset-results ntisas-database-no-match ntisas-expanded-link" data-type="sauce" data-replace="2">no results</a>' : '<a class="ntisas-check-sauce ntisas-expanded-link" data-replace="2">Sauce</a>');
+    let iqdb_link = (no_iqdb_results ? '<a class="ntisas-reset-results ntisas-database-no-match ntisas-no-results ntisas-expanded-link" data-type="iqdb" data-replace="2">no results</a>' : '<a class="ntisas-check-iqdb ntisas-expanded-link" data-replace="2">IQDB</a>');
+    let url_link = (no_url_results ? '<a class="ntisas-manual-add ntisas-database-no-match ntisas-no-sources ntisas-expanded-link" data-replace="2">no sources</a>' : '<a class="ntisas-check-url ntisas-expanded-link" data-replace="2">URL</a>');
+    let sauce_link = (no_sauce_results ? '<a class="ntisas-reset-results ntisas-database-no-match ntisas-no-sources ntisas-expanded-link" data-type="sauce" data-replace="2">no results</a>' : '<a class="ntisas-check-sauce ntisas-expanded-link" data-replace="2">Sauce</a>');
     let help_info = GetNomatchHelp(no_url_results, no_iqdb_results, no_sauce_results);
     return `
 <span class="ntisas-query-button" style="border-radius: 25px 0 0 25px;">${results_link}</span>
