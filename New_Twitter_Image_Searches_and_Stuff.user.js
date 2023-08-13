@@ -3814,6 +3814,7 @@ function InitializeDownloadLinks($tweet) {
             }
         });
     } else {
+        $('.ntisas-download-header, .ntisas-download-section').css('display', 'none');
         p.resolve(null);
     }
     return p.promise;
@@ -6066,10 +6067,14 @@ function InitializeChangedSettings() {
                 $('.ntisas-media-link', tweet).remove();
             }
         }
-        if (IsTweetPage() && (JSPLib.menu.hasSettingChanged('original_download_enabled') || JSPLib.menu.hasSettingChanged('filename_prefix_format'))) {
-            $('.ntisas-download-section', tweet).remove();
+        if (JSPLib.menu.hasSettingChanged('original_download_enabled') || JSPLib.menu.hasSettingChanged('filename_prefix_format')) {
+            $('.ntisas-download-section', tweet).html("");
             if (NTISAS.user_settings.original_download_enabled) {
                 InitializeDownloadLinks($tweet);
+                UpdateDownloadControls();
+                UpdateDownloadSection();
+            } else {
+                $('.ntisas-download-header, .ntisas-download-section').css('display', 'none');
             }
         }
         if ($post_link.length && ((post_ids.length > 1 && JSPLib.menu.hasSettingChanged('custom_order_enabled')))) {
