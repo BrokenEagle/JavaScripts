@@ -4245,6 +4245,10 @@ function GetTweetAPI1_1(tweet_id) {
     return TwitterAPI1_1Request('statuses/show', {id: tweet_id, tweet_mode: 'extended', trim_user: true});
 }
 
+function GetTweetsAPI1_1(tweet_ids) {
+    return TwitterAPI1_1Request('statuses/lookup', {id: tweet_ids.join(','), tweet_mode: 'extended', trim_user: true});
+}
+
 function GetTweetGQL(tweet_id) {
     let data = Object.assign({
         focalTweetId: tweet_id,
@@ -6493,7 +6497,7 @@ JSPLib.load.load_when_hidden = false;
 
 //Export JSPLib
 JSPLib.load.exportData(PROGRAM_NAME, NTISAS, {other_data: {API_DATA, jQuery, XRegExp, SAVED_STORAGE_REQUESTS, SAVED_NETWORK_REQUESTS}, datalist: ['page']});
-JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [GetList, SaveList, GetData, SaveData], alwayslist: [GetAPIData]});
+JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [GetList, SaveList, GetData, SaveData, GetTweetAPI1_1, GetTweetGQL, GetTweetsAPI1_1], alwayslist: [GetAPIData]});
 
 /****Execution start****/
 
