@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      8.5
+// @version      8.6
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -131,6 +131,7 @@ const PROGRAM_DEFAULT_VALUES = {
     tweet_dialog: {},
     dialog_ancor: {},
     similar_results: {},
+    known_extensions: {},
     no_url_results: [],
     merge_results: [],
     recorded_views: [],
@@ -1699,22 +1700,65 @@ const TWEET_REGEX = XRegExp.tag('g')`^https://twitter\.com/[\w-]+/status/(\d+)$`
 const TWEET_URL_REGEX = XRegExp.tag('g')`^https://twitter\.com/[\w-]+/status/\d+`;
 const SOURCE_TWITTER_REGEX = XRegExp.tag('g')`^source:https://twitter\.com/[\w-]+/status/(\d+)$`;
 
-const IMAGE_REGEX = XRegExp.tag()`(https://pbs\.twimg\.com/media/[\w-]+\?format=(?:jpg|png|gif)&name=)(.+)`;
+const IMAGE_REGEX = XRegExp.tag()`(https://pbs\.twimg\.com/media/[\w-]+\?format=(?:jpg|png|gif|webp)&name=)(.+)`;
 const BANNER_REGEX = XRegExp.tag()`https://pbs\.twimg\.com/profile_banners/(\d+)/\d+/`;
 
-const HANDLED_IMAGES = [{
-    regex: XRegExp.tag()`^https://pbs\.twimg\.com/(media|tweet_video_thumb)/([^.?]+)`,
-    format: 'https://pbs.twimg.com/%s/%s.%s',
-    arguments: (match, extension) => [match[1], match[2], extension[0]],
-}, {
-    regex: XRegExp.tag()`^https://pbs\.twimg\.com/ext_tw_video_thumb/(\d+)/(\w+)/img/([^.?]+)`,
-    format: 'https://pbs.twimg.com/ext_tw_video_thumb/%s/%s/img/%s.jpg',
-    arguments: (match) => [match[1], match[2], match[3]],
-}, {
-    regex: XRegExp.tag()`^https://pbs\.twimg\.com/amplify_video_thumb/(\d+)/img/([^.?]+)`,
-    format: 'https://pbs.twimg.com/amplify_video_thumb/%s/img/%s.jpg',
-    arguments: (match) => [match[1], match[2]],
-}];
+const TWIMG_HOST_RG = XRegExp.tag('i')`^https?://pbs\.twimg\.com`;
+const TWITTER_IMAGE1 = XRegExp.tag('xi')`
+${TWIMG_HOST_RG}
+/
+(?<path>media|tweet_video_thumb)
+/
+(?<key>[^.]+)
+\.
+(?<ext>jpg|png|gif)
+(?::
+(?<size>[a-z0-9]+)
+)?
+$`;
+const TWITTER_IMAGE2 = XRegExp.tag('xi')`
+${TWIMG_HOST_RG}
+/
+(?<path>(?:ext_tw_video_thumb|amplify_video_thumb)/\d+(?:/\w+)?/img)
+/
+(?<key>[^.]+)
+\.
+(?<ext>jpg|png|gif)
+(?::
+(?<size>[a-z0-9]+)
+)?
+$`;
+const TWITTER_IMAGE3 = XRegExp.tag('xi')`
+${TWIMG_HOST_RG}
+/
+(?<path>media|tweet_video_thumb)
+/
+(?<key>[^.]+)
+\?format=
+(?<ext>jpg|png|gif|webp)
+(?:&name=
+(?<size>[a-z0-9]+)
+)?
+$`;
+const TWITTER_IMAGE4 = XRegExp.tag('xi')`
+${TWIMG_HOST_RG}
+/
+(?<path>(?:ext_tw_video_thumb|amplify_video_thumb)/\d+(?:/\w+)?/img)
+/
+(?<key>[^.]+)
+\?format=
+(?<ext>jpg|png|gif|webp)
+(?:&name=
+(?<size>[a-z0-9]+)
+)?
+$`;
+const HANDLED_IMAGES = [
+    TWITTER_IMAGE1,
+    TWITTER_IMAGE2,
+    TWITTER_IMAGE3,
+    TWITTER_IMAGE4,
+];
+
 const UNHANDLED_IMAGES = [
     XRegExp.tag()`^https://pbs\.twimg\.com/profile_images/`,
     XRegExp.tag()`^https://[^.]+\.twimg\.com/emoji/`,
@@ -2540,12 +2584,33 @@ function GetFileURLNameExt(file_url) {
     return [file_name, extension];
 }
 
-function GetNormalImageURL(image_url) {
-    let extension = JSPLib.utility.arrayIntersection(image_url.split(/\W+/), ['jpg', 'png', 'gif']);
+async function GetNormalImageURL(image_info) {
+    if (!(image_info.key in NTISAS.known_extensions)) {
+        if (image_info.ext === 'webp') {
+            for (let ext of ['jpg', 'png']) {
+                let image_url = `https://pbs.twimg.com/${image_info.path}/${image_info.key}.${ext}`;
+                let dimensions = await JSPLib.utility.getImageDimensions(image_url);
+                if (dimensions) {
+                    NTISAS.known_extensions[image_info.key] = ext;
+                    break;
+                }
+            }
+        } else {
+            NTISAS.known_extensions[image_info.key] = image_info.ext;
+        }
+    }
+    if (NTISAS.known_extensions[image_info.key]) {
+        let ext = NTISAS.known_extensions[image_info.key];
+        return `https://pbs.twimg.com/${image_info.path}/${image_info.key}.${ext}`;
+    }
+    return null;
+}
+
+function GetImageURLInfo(image_url) {
     for (let i = 0; i < HANDLED_IMAGES.length; i++) {
-        let match = image_url.match(HANDLED_IMAGES[i].regex);
-        if (match && extension.length !== 0) {
-            return JSPLib.utility.sprintf(HANDLED_IMAGES[i].format, ...HANDLED_IMAGES[i].arguments(match, extension));
+        let match = XRegExp.exec(image_url, HANDLED_IMAGES[i]);
+        if (match) {
+            return match.groups;
         }
     }
     for (let i = 0; i < UNHANDLED_IMAGES.length; i++) {
@@ -2712,9 +2777,19 @@ function GetTweetQuartile(tweetid) {
     return quartile;
 }
 
-function GetImageLinks(tweet) {
-    let $obj = $('[ntisas-media-type=image] [data-image-url], [ntisas-media-type=video] [data-image-url]', tweet).sort((entrya, entryb) => ($(entrya).data('image-num') - $(entryb).data('image-num')));
-    return JSPLib.utility.getDOMAttributes($obj, 'image-url');
+async function GetImageLinks(tweet) {
+    if (!tweet.ntisasImageUrls) {
+        let $obj = $('[ntisas-media-type=image] [ntisas-image], [ntisas-media-type=video] [ntisas-image]', tweet).sort((entrya, entryb) => (Number($(entrya).attr('ntisas-image')) - Number($(entryb).attr('ntisas-image'))));
+        tweet.ntisasImageUrls = [];
+        for (let i = 0; i < $obj.length; i++) {
+            let image_info = $($obj[i]).data();
+            let image_url = await GetNormalImageURL(image_info);
+            if (image_url) {
+                tweet.ntisasImageUrls.push(image_url);
+            }
+        }
+    }
+    return tweet.ntisasImageUrls;
 }
 
 function GetTweetStat(tweet, types) {
@@ -3025,7 +3100,7 @@ async function GetAllCurrentRecords() {
 async function PickImage(event, type, pick_func) {
     let similar_class = 'ntisas-check-' + type;
     let [$link, $tweet, tweet_id,,,,, $replace] = GetEventPreload(event, similar_class);
-    let all_image_urls = GetImageLinks($tweet[0]);
+    let all_image_urls = await GetImageLinks($tweet[0]);
     if (all_image_urls.length === 0) {
         this.debug('log', "Images not loaded yet.");
         JSPLib.notice.debugNoticeLevel("No images detected.", JSPLib.debug.DEBUG);
@@ -3213,7 +3288,7 @@ function RenderDatabaseVersion() {
     return `<a id="ntisas-database-version" class="ntisas-expanded-link" href="${url}" title="${timestring}">${NTISAS.server_info.post_version}</a>`;
 }
 
-function RenderDownloadLinks($tweet, is_video) {
+async function RenderDownloadLinks($tweet, is_video) {
     let [tweet_id, user_id, screen_name,, ] = GetTweetInfo($tweet);
     let date_string = GetDateString(Date.now());
     let time_string = GetTimeString(Date.now());
@@ -3224,7 +3299,7 @@ function RenderDownloadLinks($tweet, is_video) {
         DATE: date_string,
         TIME: time_string
     });
-    var image_links = GetImageLinks($tweet[0]);
+    var image_links = await GetImageLinks($tweet[0]);
     var hrefs = image_links.map((image) => (image + ':orig'));
     var html = "";
     for (let i = 0; i < image_links.length; i++) {
@@ -3717,8 +3792,11 @@ async function InitializePostIDsLink(tweet_id, $link_container, tweet, post_ids)
             if (tweet.ntisasDeferred.status !== 'resolved') {
                 return false;
             }
-            let image_urls = GetImageLinks(tweet);
-            return InitializePostsContainer(posts_data, image_urls);
+            if (!tweet.ntisasImageUrls) {
+                GetImageLinks(tweet);
+                return false;
+            }
+            return InitializePostsContainer(posts_data, tweet.ntisasImageUrls);
         });
     }
 }
@@ -3797,9 +3875,10 @@ function InitializeDownloadLinks($tweet) {
     let p = JSPLib.utility.createPromise();
     let tweet_deferred = $tweet.prop('ntisasDeferred');
     if (tweet_deferred && NTISAS.user_settings.original_download_enabled) {
-        tweet_deferred.promise.then(() => {
+        tweet_deferred.promise.then(async () => {
             let is_video = Boolean($('.ntisas-tweet-video', $tweet[0]).length);
-            let $download_section = $(RenderDownloadLinks($tweet, is_video));
+            let download_html = await RenderDownloadLinks($tweet, is_video);
+            let $download_section = $(download_html);
             $('.ntisas-download-section', $tweet[0]).append($download_section);
             if (is_video) {
                 let tweet_id = String($tweet.data('tweet-id'));
@@ -3820,7 +3899,7 @@ function InitializeDownloadLinks($tweet) {
     return p.promise;
 }
 
-function InitializeUploadlinks(install) {
+async function InitializeUploadlinks(install) {
     NTISAS.photo_index = NTISAS.page_match.groups.photo_index;
     let $photo_container = $('.ntisas-photo-container');
     let selected_photo = $(`li:nth-of-type(${NTISAS.photo_index}) img`, $photo_container[0]);
@@ -3831,11 +3910,12 @@ function InitializeUploadlinks(install) {
             return;
         }
     }
-    let image_url = GetNormalImageURL(selected_photo[0].src);
+    let image_info = GetImageURLInfo(selected_photo[0].src);
     let tweet_url = JSPLib.utility.findAll(window.location.href, TWEET_URL_REGEX)[0];
-    if (!image_url || !tweet_url) {
+    if (!image_info || !tweet_url) {
         return;
     }
+    let image_url = await GetNormalImageURL(image_info);
     let orig_image_url = image_url + ':orig';
     let url_addons = $.param({url: orig_image_url, ref: tweet_url});
     let upload_link = `${NTISAS.domain}/uploads/new?${url_addons}`;
@@ -4651,7 +4731,7 @@ function ImageEnter(event) {
     }
     let $overlay = $(event.currentTarget).addClass('ntisas-image-num');
     let $container = $overlay.children();
-    let image_num = $container.data('image-num');
+    let image_num = $container.attr('ntisas-image');
     let left = parseFloat($container.css('margin-left').match(/[\d+.]+/)[0]);
     let right = parseFloat($container.css('margin-right').match(/[\d+.]+/)[0]);
     let margin_top = parseFloat($container.css('margin-top').match(/[\d+.]+/)[0]);
@@ -5785,14 +5865,18 @@ function ProcessPhotoPopup() {
     }
 }
 
-function ProcessTweetImage(obj, image_url, unprocessed_tweets) {
+function ProcessTweetImage(obj, image_info, unprocessed_tweets) {
     let $obj = $(obj);
-    if (image_url) {
+    if (image_info) {
         let $tweet = $obj.closest('[ntisas-tweet]');
         let tweet_id = $tweet.data('tweet-id');
-        let image_urls = (IsTweetPage() ? GetImageLinks($tweet[0]) : []); // Only causes issues on the tweet page so far
-        if (!image_urls.includes(image_url)) {
-            $obj.parent().attr('data-image-url', image_url);
+        let image_keys = JSPLib.utility.getDOMAttributes($tweet.find('ntisas-key'), 'key');
+        if (!image_keys.includes(image_info.key)) {
+            let dom_attributes = Object.assign(
+                {'ntisas-image': ""},
+                ...Object.entries(image_info).map(([key, value]) => ({['data-' + key]: value})),
+            );
+            $obj.parent().attr(dom_attributes);
             if (!(tweet_id in unprocessed_tweets)) {
                 unprocessed_tweets[tweet_id] = $tweet;
             }
@@ -5803,7 +5887,7 @@ function ProcessTweetImage(obj, image_url, unprocessed_tweets) {
     } else {
         $obj.addClass('ntisas-unhandled-image');
         JSPLib.debug.debugExecute(() => {
-            if (JSPLib.validate.isBoolean(image_url)) {
+            if (JSPLib.validate.isBoolean(image_info)) {
                 JSPLib.notice.debugNoticeLevel("New unhandled image found (see debug console)", JSPLib.debug.INFO);
                 this.debug('warn', "Unhandled image", obj.src, $obj.closest('[ntisas-tweet]').data('tweet-id'));
             }
@@ -5812,31 +5896,31 @@ function ProcessTweetImage(obj, image_url, unprocessed_tweets) {
 }
 
 function ProcessTweetImages() {
-    let $unprocessed_images = $('.ntisas-tweet-media > div > div:not(.ntisas-tweet-quote):not(.ntisas-tweet-quote2) div:not([data-image-url]) > img:not(.ntisas-unhandled-image)');
+    let $unprocessed_images = $('.ntisas-tweet-media > div > div:not(.ntisas-tweet-quote):not(.ntisas-tweet-quote2) div:not([ntisas-image]) > img:not(.ntisas-unhandled-image)');
     if ($unprocessed_images.length) {
         this.debug('log', "Images found:", $unprocessed_images.length);
     }
     let unprocessed_tweets = {};
     $unprocessed_images.each((i, image) => {
-        let image_url = GetNormalImageURL(image.src);
-        ProcessTweetImage(image, image_url, unprocessed_tweets);
+        let image_info = GetImageURLInfo(image.src);
+        ProcessTweetImage(image, image_info, unprocessed_tweets);
     });
     //Only gets executed when videos are autoplay. Otherwise videos get found as images above.
-    let $unprocessed_videos = $('.ntisas-tweet-media > div:not(.ntisas-tweet-quote) div:not([data-image-url]) > video');
+    let $unprocessed_videos = $('.ntisas-tweet-media > div:not(.ntisas-tweet-quote) div:not([ntisas-image]) > video');
     if ($unprocessed_videos.length) {
         this.debug('log', "Videos found:", $unprocessed_videos.length);
     }
     $unprocessed_videos.each((i, video) => {
-        let image_url = video.poster;
-        ProcessTweetImage(video, image_url, unprocessed_tweets);
+        let image_info = GetImageURLInfo(video.poster);
+        ProcessTweetImage(video, image_info, unprocessed_tweets);
     });
     for (let tweet_id in unprocessed_tweets) {
         let $tweet = unprocessed_tweets[tweet_id];
         let is_main_tweet = $tweet.attr('ntisas-tweet') === 'main';
-        let $images = $tweet.find('[data-image-url]');
+        let $images = $tweet.find('[ntisas-image]');
         $images.each((i, entry) => {
             let image_num = i + 1;
-            $(entry).attr('data-image-num', image_num);
+            $(entry).attr('ntisas-image', image_num);
             if (is_main_tweet) {
                 $(entry.parentElement).on('mouseenter.ntisas', ImageEnter);
                 $(entry.parentElement).on('mouseleave.ntisas', ImageLeave);
@@ -6106,7 +6190,7 @@ function InitializeChangedSettings() {
         }
     }
     if (JSPLib.menu.hasSettingChanged('image_popout_enabled') && IsPageType(STREAMING_PAGES)) {
-        $('[ntisas-tweet=stream] [data-image-url] img').each((i, image) => {
+        $('[ntisas-tweet=stream] [ntisas-image] img').each((i, image) => {
             let $image = $(image);
             if (NTISAS.user_settings.image_popout_enabled) {
                 InitializeImageQtip($image);
