@@ -5448,7 +5448,7 @@ function MarkupMediaType(tweet) {
                 $entry.addClass('ntisas-tweet-card').attr('ntisas-media-type', 'card');
             } else if ($entry.find('div[role=link]').length === 1 || $entry.attr('role') === 'link') {
                 $entry.addClass('ntisas-tweet-quote2').attr('ntisas-media-type', 'quote2');
-            } else if ($entry.text() === "Quote Tweet") {
+            } else if ($entry.text() === "Quote Tweet" || $entry.text() === "Quote") {
                 $entry.addClass('ntisas-tweet-quote3').attr('ntisas-media-type', 'quote3');
             } else if ($entry.text() === "This Tweet is unavailable.") {
                 $entry.addClass('ntisas-tweet-quote4').attr('ntisas-media-type', 'quote4');
