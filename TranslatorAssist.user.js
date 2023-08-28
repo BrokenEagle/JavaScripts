@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.1
+// @version      6.2
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -17,6 +17,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/utility.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/validate.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/concurrency.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/network.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/danbooru.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/load.js
@@ -1298,6 +1299,8 @@ const LOAD_PANEL_KEYS = {
     constructs: ['constructs', 'text-shadow-grid'],
     ruby: ['ruby-overall-style', 'ruby-top-style', 'ruby-bottom-style'],
 };
+
+const CLEANUP_LAST_NOTED = JSPLib.utility.one_hour;
 
 /****Functions****/
 
@@ -3075,16 +3078,32 @@ function LoadControls(event) {
 
 // Last noted functions
 
+function CleanupLastNoted() {
+    console.log('CleanupLastNoted');
+    if (JSPLib.concurrency.checkTimeout('ta-cleanup-last-noted-timeout', CLEANUP_LAST_NOTED)) {
+        let last_noted_keys = Object.keys(localStorage).filter((key) => key.startsWith('ta-post-seen-'));
+        last_noted_keys.forEach((key) => {
+            let expires = Number(JSPLib.storage.getStorageData(key, localStorage));
+            if (!JSPLib.utility.validateExpires(expires)) {
+                JSPLib.storage.removeStorageData(key, localStorage);
+            }
+        });
+        JSPLib.concurrency.setRecheckTimeout('ta-cleanup-last-noted-timeout', CLEANUP_LAST_NOTED);
+    }
+}
+
+function SetLastNoted() {
+    JSPLib.storage.setStorageData(TA.seen_key, Date.now() + TA.last_noted_cutoff, localStorage);
+}
+
 function CheckLastNoted() {
-    let seen_key = 'ta-post-seen-' + TA.post_id;
-    let last_noted_cutoff = TA.user_settings.last_noted_cutoff * JSPLib.utility.one_minute;
-    if ((Date.now() - TA.last_noted) < last_noted_cutoff) {
-        let post_seen = JSPLib.storage.getStorageData(seen_key, sessionStorage, false);
-        if (!post_seen) {
+    if ((Date.now() - TA.last_noted) < TA.last_noted_cutoff) {
+        let seen_expires = JSPLib.storage.getStorageData(TA.seen_key, localStorage);
+        if (!JSPLib.utility.validateExpires(seen_expires)) {
             alert("Post was noted: " + JSPLib.utility.timeAgo(TA.last_noted));
         }
+        JSPLib.storage.setStorageData(TA.seen_key, TA.last_noted + TA.last_noted_cutoff, localStorage);
     }
-    JSPLib.storage.setStorageData(seen_key, true, sessionStorage);
 }
 
 function CheckMissedLastNoterPolls() {
@@ -3213,7 +3232,7 @@ function InitializeSideMenu() {
     TA.starting_notes = JSPLib.utility.getObjectAttributes(Danbooru.Note.notes, 'id');
     TA.initialized = true;
     JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
-    JSPLib.storage.setStorageData('ta-post-seen', true, sessionStorage);
+    Danbooru.Note.Edit.save = JSPLib.utility.hijackFunction(Danbooru.Note.Edit.save, SetLastNoted);
 }
 
 // Settings functions
@@ -3225,6 +3244,10 @@ function InitializeProgramValues() {
         has_embedded: JSPLib.utility.getMeta('post-has-embedded-notes') === 'true',
         last_noted: JSPLib.utility.toTimeStamp(document.body.dataset.postLastNotedAt),
         mode: JSPLib.storage.getStorageData('ta-mode', localStorage, 'main'),
+        last_noted_cutoff: TA.user_settings.last_noted_cutoff * JSPLib.utility.one_minute,
+    });
+    Object.assign(TA, {
+        seen_key: 'ta-post-seen-' + TA.post_id,
     });
     return true;
 }
@@ -3272,6 +3295,7 @@ function Main() {
     if (TA.has_embedded) {
         CheckEmbeddedFontSize();
     }
+    JSPLib.load.noncriticalTasks(CleanupLastNoted);
 }
 
 /****Initialization****/
