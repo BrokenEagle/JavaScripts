@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      8.6
+// @version      8.7
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -5501,48 +5501,34 @@ function MarkupStreamTweet(tweet) {
         $(tweet_left).addClass('ntisas-tweet-left');
         let tweet_right = tweet_body.children[1];
         $(tweet_right).addClass('ntisas-tweet-right');
-        let profile_line = tweet_right.children[0];
-        $(profile_line).addClass('ntisas-profile-line');
         let sub_body = tweet_right;
-        let child_count = sub_body.childElementCount;
-        let tweet_menu_index = child_count - 1;
-        if (sub_body.children[tweet_menu_index].children[0].tagName.toUpperCase() === 'SVG') {
-            let promoted_line = sub_body.children[child_count - 1];
-            $(promoted_line).addClass('ntisas-promoted-line');
-            tweet_menu_index = child_count - 2;
+        $(sub_body.children[0]).addClass('ntisas-profile-line');
+        var replychild, conversationchild, actionchild;
+        var has_indicator;
+        var index = 1;
+        var saved_index = index;
+        do {
+            replychild = sub_body.children[index++];
+            has_indicator = replychild.innerText.startsWith("Replying to \n@");
+        } while (!has_indicator && index < sub_body.childElementCount);
+        if (has_indicator) {
+            $(replychild).addClass('ntisas-reply');
+        } else {
+            index = saved_index;
         }
-        let tweet_menu = sub_body.children[tweet_menu_index];
-        $(tweet_menu).addClass('ntisas-tweet-actions');
-        $('[data-testid="reply"]', tweet_menu).parent().addClass('ntisas-reply');
-        $('[data-testid="retweet"]', tweet_menu).parent().addClass('ntisas-retweet');
-        $('[data-testid="like"]', tweet_menu).parent().addClass('ntisas-like');
-        $('[role="button"]:not([data-testid])', tweet_menu).parent().addClass('ntisas-share');
-        if ($(sub_body.children[tweet_menu_index - 1]).text().match(/People (?:\S+) (?:mentioned|follow) can reply/)) {
-            tweet_menu_index -= 1;
-        }
-        let reply_line_count = 0;
-        let child1 = sub_body.children[1];
-        if (child1.children[0] && child1.children[0].tagName.toUpperCase() === 'DIV' && child1.innerText.match(/^Replying to/)) {
-            $(child1).addClass('ntisas-reply-line');
-            reply_line_count = 1;
-        }
-        var has_media = false;
-        if (tweet_menu_index === (3 + reply_line_count)) {
-            let tweet_text = sub_body.children[1 + reply_line_count];
-            $(tweet_text).addClass('ntisas-tweet-text');
-            let tweet_image = sub_body.children[2 + reply_line_count];
-            if (tweet_image.childElementCount > 0) {
-                $(tweet_image).addClass('ntisas-tweet-media');
-                has_media = true;
-            } else {
-                $(tweet_image).addClass('ntisas-empty-media');
-                has_media = false;
-            }
-        } else if (tweet_menu_index === (2 + reply_line_count)) {
-            let element = sub_body.children[1 + reply_line_count];
-            has_media = !element.children[0].children[0] || element.children[0].children[0].tagName.toUpperCase() !== 'SPAN';
-            let element_class = (has_media ? 'ntisas-tweet-media' : 'ntisas-tweet-text');
-            $(element).addClass(element_class);
+        saved_index = index;
+        $(sub_body.children[index++]).addClass('ntisas-tweet-text');
+        let $media_child = $(sub_body.children[index++]);
+        $media_child.addClass('ntisas-tweet-media');
+        let has_media = Boolean($media_child.children().length);
+        do {
+            actionchild = sub_body.children[index++];
+            has_indicator = (actionchild.querySelector('[data-testid="reply"]') !== null) ||
+                            (actionchild.querySelector('[data-testid="retweet"]') !== null) ||
+                            (actionchild.querySelector('[data-testid="like"]') !== null);
+        } while (!has_indicator && index < sub_body.childElementCount);
+        if (has_indicator) {
+            $(actionchild).addClass('ntisas-tweet-actions');
         }
         if (has_media) {
             CheckHiddenMedia(tweet);
