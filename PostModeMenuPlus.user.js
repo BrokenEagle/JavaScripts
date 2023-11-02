@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://github.com/BrokenEagle
-// @version      7.1
+// @version      8.0
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -66,7 +66,7 @@ const PROGRAM_CHANGE = 'change.pmm';
 const PMM = {};
 
 //Available setting values
-const SUPPORTED_MODES = ['copy_ID', 'copy_short', 'copy_link', 'vote_up', 'vote_down', 'unvote', 'tag_script', 'favorite', 'unfavorite'];
+const SUPPORTED_MODES = ['edit', 'copy_ID', 'copy_short', 'copy_link', 'vote_up', 'vote_down', 'unvote', 'tag_script', 'favorite', 'unfavorite'];
 const SITE_MODES = ['view', 'edit', 'tag_script', 'favorite', 'unfavorite'];
 const ID_SEPARATORS = ['comma', 'colon', 'semicolon', 'space', 'return'];
 
@@ -564,7 +564,12 @@ function PostModeMenu(event) {
         let $link = $(event.currentTarget);
         let $article = $link.closest("article");
         let post_id = $article.data("id");
-        if (PMM.select_only) {
+        if (PMM.mode === 'edit') {
+            var $post = $("#post_" + post_id);
+            $("#quick-edit-form").attr("data-post-id", post_id);
+            $("#post_tag_string").val($post.data("tags") + " ").focus().selectEnd();
+            $('#quick-edit-div').dialog({width: 1000, height: 300});
+        } else if (PMM.select_only) {
             $article.toggleClass('pmm-selected');
             // eslint-disable-next-line dot-notation
             let toggle_func = (PMM.modified.has(post_id) ? PMM.modified.delete : PMM.modified.add);
