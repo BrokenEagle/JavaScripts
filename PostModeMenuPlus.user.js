@@ -381,6 +381,14 @@ function UpdateDraggerStatus() {
     }
 }
 
+function UpdateSelectControls() {
+    if (PMM.mode !== 'edit') {
+        $('#pmm-select-controls, #pmm-long-inputs').show();
+    } else {
+        $('#pmm-select-controls, #pmm-long-inputs').hide();
+    }
+}
+
 //Network functions
 
 async function VotePost(post_id, score) {
@@ -542,6 +550,7 @@ function InitializeSelectOnly() {
     $('#pmm-select-only').on(PROGRAM_CHANGE, ChangeSelectOnly);
     $('.pmm-select').on(PROGRAM_CLICK, BatchSelection);
     $('#pmm-apply-all').on(PROGRAM_CLICK, BatchApply);
+    UpdateSelectControls()
 }
 
 //Render functions
@@ -606,7 +615,7 @@ function ChangeModeMenu() {
     PMM.mode = $("#mode-box select").val();
     if (PMM.available_modes.has(PMM.mode)) {
         JSPLib.storage.setStorageData('pmm-mode', PMM.mode, localStorage);
-        $('#pmm-select-controls, #pmm-long-inputs').show();
+        UpdateSelectControls();
     } else {
         JSPLib.storage.removeStorageData('pmm-mode', localStorage);
         $('#pmm-select-controls, #pmm-long-inputs').hide();
