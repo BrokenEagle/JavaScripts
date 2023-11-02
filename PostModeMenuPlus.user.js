@@ -254,6 +254,15 @@ const APPLY_BUTTON = `
 
 // Other constants
 
+const EDIT_DIALOG_SETTINGS = {
+    title: "Post edit",
+    width: 1000,
+    height: 300,
+    modal: false,
+    resizable: true,
+    autoOpen: true,
+};
+
 const SEPARATOR_DICT = {
     comma: ',',
     colon: ':',
@@ -577,7 +586,7 @@ function PostModeMenu(event) {
             var $post = $("#post_" + post_id);
             $("#quick-edit-form").attr("data-post-id", post_id);
             $("#post_tag_string").val($post.data("tags") + " ").focus().selectEnd();
-            $('#quick-edit-div').dialog({width: 1000, height: 300});
+            $('#quick-edit-div').dialog(EDIT_DIALOG_SETTINGS);
         } else if (PMM.select_only) {
             $article.toggleClass('pmm-selected');
             // eslint-disable-next-line dot-notation
@@ -636,6 +645,10 @@ function ChangeSelectOnly(event) {
     $modify_controls.prop('disabled', !PMM.select_only);
     $('.pmm-selected').removeClass('pmm-selected');
     PMM.modified.clear();
+}
+
+function CloseEditDialog() {
+    $('#quick-edit-div').dialog('close');
 }
 
 function PostPreviewUpdated(event, post) {
@@ -756,6 +769,9 @@ function Main() {
     }
     if (PMM.user_settings.highlight_errors_enabled) {
         JSPLib.utility.setCSSStyle(JSPLib.danbooru.highlight_css, 'highlight');
+    }
+    if (PMM.available_modes.has('edit')) {
+        $('button[name=cancel]').off('click.danbooru').on('click.pmm', CloseEditDialog);
     }
     JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
 }
