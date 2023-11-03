@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://github.com/BrokenEagle
-// @version      8.0
+// @version      8.1
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -771,7 +771,7 @@ function Main() {
         JSPLib.utility.setCSSStyle(JSPLib.danbooru.highlight_css, 'highlight');
     }
     if (PMM.available_modes.has('edit')) {
-        $('button[name=cancel]').off('click.danbooru').on('click.pmm', CloseEditDialog);
+        $('#validate-tags, button[name=cancel]').off('click.danbooru').on('click.pmm', CloseEditDialog);
     }
     JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
 }
