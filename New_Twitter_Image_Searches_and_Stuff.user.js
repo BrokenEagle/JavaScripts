@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      8.8
+// @version      8.9
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -5628,7 +5628,7 @@ function MarkupMainTweet(tweet) {
 
 function CheckHiddenMedia(tweet) {
     tweet.ntisasDeferred = JSPLib.utility.createStatusPromise();
-    if ($('.ntisas-tweet-media', tweet).text().match(/The following media includes potentially sensitive content|The Tweet author flagged this Tweet as showing sensitive content/)) {
+    if ($('.ntisas-tweet-media', tweet).text().match(/The following media includes potentially sensitive content|The Tweet author flagged this Tweet as showing sensitive content|The post author flagged this post as showing sensitive content/)) {
         $('.ntisas-tweet-media', tweet).attr('ntisas-media-type', 'deferred');
         $('.ntisas-tweet-media', tweet).addClass('ntisas-hidden-media');
         $('.ntisas-tweet-media [role=button]', tweet).one(PROGRAM_CLICK, () => {
