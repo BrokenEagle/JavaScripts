@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedRelatedTags
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2.3
+// @version      2.4
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -138,7 +138,7 @@ const SETTINGS_CONFIG = {
         allitems: RELATED_QUERY_ORDERS,
         reset: ['frequency'],
         validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'radio', RELATED_QUERY_ORDERS),
-        hint: "Select the default query order selected on the related tag controls."
+        hint: "Select the default query order selected on the related tag controls. Will be the order used when the order controls are not available."
     },
     expandable_related_section_enabled: {
         reset: true,
@@ -607,6 +607,11 @@ const IRT_RELATED_TAGS_SECTION = `
     </div>
 </div>`;
 
+const WIKI_PAGE_BUTTON = `
+<div id="irt-wiki-page-controls" style="display: inline-flex; margin-bottom: 0.5em; margin-right: 1em;">
+    <button id="irt-wiki-page-query" class="irt-wiki-button" title="Query wiki pages only.">Wiki page</button>
+</div>`;
+
 //Time constants
 
 const PRUNE_EXPIRES = JSPLib.utility.one_day;
@@ -894,12 +899,6 @@ FUNC.ValidateWikiPageEntry = function (key, entry) {
 FUNC.ValidateProgramData = function (key, entry) {
     var checkerror = [];
     switch (key) {
-        case 'irt-include-wiki-pages':
-        case 'irt-other-wiki-pages':
-            if (!JSPLib.validate.isBoolean(entry)) {
-                checkerror = ["Value is not a boolean."];
-            }
-            break;
         case 'irt-user-settings':
             checkerror = JSPLib.menu.validateUserSettings(entry, SETTINGS_CONFIG);
             break;
@@ -947,31 +946,6 @@ FUNC.GetTagsEntryArray = function (wiki_page) {
         let dtext_link = (wiki_page.dtext_links || []).find((dtext_link) => dtext_link.link_target === link_target);
         return [link_target, dtext_link.linked_tag?.category ?? NONEXISTENT_TAG_CATEGORY];
     });
-};
-
-FUNC.SaveInputState = function () {
-    let include_wiki_pages = $('#irt-include-wiki-pages').prop('checked');
-    let other_wiki_pages = $('#irt-other-wiki-pages').prop('checked');
-    JSPLib.storage.setStorageData('irt-include-wiki-pages', include_wiki_pages, localStorage);
-    JSPLib.storage.setStorageData('irt-other-wiki-pages', other_wiki_pages, localStorage);
-    IRT.channel.postMessage({type: 'wiki_inputs', include_wiki_pages, other_wiki_pages});
-};
-
-FUNC.UpdateInputState = function (data) {
-    if (typeof document.onvisibilitychange === 'function') return;
-    function update(data) {
-        $('#irt-include-wiki-pages').prop('checked', data.include_wiki_pages);
-        $('#irt-other-wiki-pages').prop('checked', data.other_wiki_pages);
-        $('#irt-wiki-page-controls .irt-wiki-checkbox').checkboxradio('refresh');
-    }
-    if (!document.hidden) {
-        update(data);
-    } else {
-        document.onvisibilitychange = function () {
-            update(data);
-            document.onvisibilitychange = null;
-        };
-    }
 };
 
 //Render functions
@@ -1067,31 +1041,6 @@ FUNC.RenderRelatedQueryCategoryControls = function () {
     return `
 <div id="irt-related-query-category" style="display: inline-flex; margin-bottom: 0.5em; margin-right: 1em;">
     ${html}
-</div>`;
-};
-
-FUNC.RenderWikiPageControls = function () {
-    let html = "";
-    if (IRT.wiki_page_query_only_enabled) {
-        html += '<button id="irt-wiki-page-query" class="irt-wiki-button" title="Query wiki pages only.">Wiki page</button>';
-    } else {
-        html += '<span style="font-weight: bold; padding: 0 1em;">Wiki page</span>';
-    }
-    if (IRT.wiki_page_tags_enabled) {
-        let checked = JSPLib.storage.checkStorageData('irt-include-wiki-pages', FUNC.ValidateProgramData, localStorage, true) ? 'checked' : "";
-        html += `
-<label for="irt-include-wiki-pages" title="Will query wikis along with related tags.">Include</label>
-<input id="irt-include-wiki-pages" class="irt-wiki-checkbox" type="checkbox" name="irt_include_wiki_pages" ${checked}>`;
-        if (IRT.other_wikis_enabled) {
-            checked = JSPLib.storage.checkStorageData('irt-other-wiki-pages', FUNC.ValidateProgramData, localStorage, true) ? 'checked' : "";
-            html += `
-    <label for="irt-other-wiki-pages" title="Will query list_of wikis found in wiki.">Other</label>
-    <input id="irt-other-wiki-pages" class="irt-wiki-checkbox" type="checkbox" name="irt_other_wiki_pages" ${checked}>`;
-        }
-    }
-    return `
-<div id="irt-wiki-page-controls" style="display: inline-flex; margin-bottom: 0.5em; margin-right: 1em;">
-${html}
 </div>`;
 };
 
@@ -1248,7 +1197,7 @@ FUNC.GetWikiPageTags = function(tag) {
 FUNC.GetAllWikiPageTags = async function (tag) {
     let wiki_page = await FUNC.GetWikiPageTags(tag);
     var other_wikis;
-    if ($('#irt-other-wiki-pages').prop('checked')) {
+    if (IRT.other_wikis_enabled) {
         let promise_array = [];
         wiki_page.other_wikis.forEach((title) => {
             promise_array.push(FUNC.GetWikiPageTags(title));
@@ -1266,15 +1215,14 @@ FUNC.RelatedTagsButton = async function (event) {
     event.preventDefault();
     let currenttag = Danbooru.RelatedTag.current_tag().trim().toLowerCase();
     let category = $(event.target).data('selector');
-    let query_order = JSPLib.menu.getCheckboxRadioSelected('.irt-program-checkbox');
+    let query_order = (IRT.related_query_order_enabled ? JSPLib.menu.getCheckboxRadioSelected('.irt-program-checkbox') : IRT.related_query_order_default);
     let promise_array = [FUNC.GetRelatedTags(currenttag, category, query_order[0])];
     if (IRT.related_statistics_enabled) {
         promise_array.push(FUNC.GetTagsOverlap(currenttag));
     } else {
         promise_array.push(Promise.resolve(null));
     }
-    let include_wiki_pages = $('#irt-include-wiki-pages').prop('checked');
-    if (include_wiki_pages) {
+    if (IRT.wiki_page_tags_enabled) {
         promise_array.push(FUNC.GetAllWikiPageTags(currenttag));
     } else {
         promise_array.push(Promise.resolve(null));
@@ -1285,7 +1233,7 @@ FUNC.RelatedTagsButton = async function (event) {
     }
     $('#irt-related-tags-query-container').html(
         FUNC.RenderTagQueryColumn(related_tags, tags_overlap) +
-        (include_wiki_pages ? FUNC.RenderWikiTagQueryColumns(wiki_result.wiki_page, wiki_result.other_wikis) : "")
+        (IRT.wiki_page_tags_enabled ? FUNC.RenderWikiTagQueryColumns(wiki_result.wiki_page, wiki_result.other_wikis) : "")
     );
     FUNC.UpdateSelected();
     FUNC.QueueRelatedTagColumnWidths();
@@ -1416,10 +1364,8 @@ FUNC.InitializeTagColumns = function (self) {
 FUNC.InitialiazeRelatedQueryControls = function () {
     $('#post_tag_string, #upload_tag_string').parent().after('<div id="irt-related-tag-query-controls" style="display: flex; flex-wrap: wrap;"></div>');
     $('#irt-related-tag-query-controls').append(FUNC.RenderRelatedQueryCategoryControls());
-    if (IRT.wiki_page_query_only_enabled || IRT.wiki_page_tags_enabled) {
-        $('#irt-related-tag-query-controls').append(FUNC.RenderWikiPageControls());
-        $('#irt-wiki-page-controls .irt-wiki-checkbox').checkboxradio();
-        $(window).on('beforeunload.irt', FUNC.SaveInputState);
+    if (IRT.wiki_page_query_only_enabled) {
+        $('#irt-related-tag-query-controls').append(WIKI_PAGE_BUTTON);
     }
     if (IRT.related_query_order_enabled) {
         $('#irt-related-tag-query-controls').append(FUNC.RenderRelatedQueryTypeControls());
@@ -1535,17 +1481,6 @@ FUNC.CleanupTasks = function () {
 
 //Menu functions
 
-FUNC.BroadcastIRT = function (self, event) {
-    self.debuglog(`(${event.data.type})`);
-    switch (event.data.type) {
-        case 'wiki_inputs':
-            FUNC.UpdateInputState(event.data);
-            //falls through
-        default:
-            //do nothing
-    }
-};
-
 FUNC.OptionCacheDataKey = function (data_type, data_value) {
     IRT.related_category = $('#irt-control-related-tag-type').val();
     let modifier = FUNC.GetRelatedKeyModifer(IRT.related_category);
@@ -1583,9 +1518,9 @@ FUNC.RenderSettingsMenu = function() {
     $('#irt-tag-statistic-settings').append(JSPLib.menu.renderTextinput('random_post_batches', 5));
     $('#irt-tag-statistic-settings').append(JSPLib.menu.renderTextinput('random_posts_per_batch', 5));
     $('#irt-wiki-page-settings').append(JSPLib.menu.renderCheckbox('wiki_page_tags_enabled'));
-    $('#irt-wiki-page-settings').append(JSPLib.menu.renderCheckbox('wiki_page_query_only_enabled'));
     $('#irt-wiki-page-settings').append(JSPLib.menu.renderCheckbox('other_wikis_enabled'));
     $('#irt-wiki-page-settings').append(JSPLib.menu.renderCheckbox('unique_wiki_tags_enabled'));
+    $('#irt-wiki-page-settings').append(JSPLib.menu.renderCheckbox('wiki_page_query_only_enabled'));
     $('#irt-network-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", NETWORK_SETTINGS_DETAILS));
     $('#irt-network-settings').append(JSPLib.menu.renderTextinput('recheck_data_interval', 5));
     $('#irt-network-settings').append(JSPLib.menu.renderCheckbox('network_only_mode'));
@@ -1627,7 +1562,6 @@ FUNC.Main = function(self) {
         run_on_settings: true,
         default_data: DEFAULT_VALUES,
         initialize_func: FUNC.InitializeProgramValues,
-        broadcast_func: FUNC.BroadcastIRT,
         menu_css: SETTINGS_MENU_CSS + '\n' + LIBRARY_MENU_CSS,
     };
     if (!JSPLib.menu.preloadScript(IRT, FUNC.RenderSettingsMenu, preload)) return;
