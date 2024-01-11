@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedRelatedTags
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2.4
+// @version      2.5
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -9,8 +9,8 @@
 // @exclude      /^https?://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
 // @grant        none
 // @run-at       document-idle
-// @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/irt-initial/IndexedRelatedTags.user.js
-// @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/irt-initial/IndexedRelatedTags.user.js
+// @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/IndexedRelatedTags.user.js
+// @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/IndexedRelatedTags.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/module.js
