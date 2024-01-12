@@ -2343,6 +2343,34 @@ JSPLib.utility.createStatusPromise = function () {
     return ret;
 };
 
+JSPLib.concurrency.freeSemaphore = function (program_shortcut, name) {
+    let event_name = this._getSemaphoreName(program_shortcut, name, false);
+    let storage_name = this._getSemaphoreName(program_shortcut, name, true);
+    JSPLib._jQuery(JSPLib._window).off('beforeunload.' + event_name);
+    JSPLib.storage.setStorageData(storage_name, 0, localStorage);
+};
+
+JSPLib.concurrency.reserveSemaphore = function (self, program_shortcut, name) {
+    let display_name = (name ? `[${name}]` : '');
+    if (this.checkSemaphore(program_shortcut, name)) {
+        self.debug('logLevel', `Tab got the semaphore ${display_name}!`, JSPLib.debug.INFO);
+        //Guarantee that leaving/closing tab reverts the semaphore
+        let event_name = this._getSemaphoreName(program_shortcut, name, false);
+        let storage_name = this._getSemaphoreName(program_shortcut, name, true);
+        JSPLib._jQuery(JSPLib._window).on('beforeunload.' + event_name, () => {
+            JSPLib.storage.setStorageData(storage_name, 0, localStorage);
+        });
+        //Set semaphore with an expires in case the program crashes
+        let semaphore = JSPLib.utility.getExpires(this.process_semaphore_expires);
+        JSPLib.storage.setStorageData(storage_name, semaphore, localStorage);
+        return semaphore;
+    }
+    self.debug('logLevel', `Tab missed the semaphore ${display_name}!`, JSPLib.debug.WARNING);
+    return null;
+};
+
+JSPLib.debug.addModuleLogs('concurrency', ['reserveSemaphore']);
+
 //Helper functions
 
 ////Make setting all of these into a library function
