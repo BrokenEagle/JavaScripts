@@ -5526,9 +5526,12 @@ function MarkupStreamTweet(tweet) {
         }
         saved_index = index;
         $(sub_body.children[index++]).addClass('ntisas-tweet-text');
-        let $media_child = $(sub_body.children[index++]);
-        $media_child.addClass('ntisas-tweet-media');
-        let has_media = Boolean($media_child.children().length);
+        var has_media;
+        if (sub_body.childElementCount > (index + 1)) {
+            let $media_child = $(sub_body.children[index++]);
+            $media_child.addClass('ntisas-tweet-media');
+            has_media = Boolean($media_child.children().length);
+        }
         do {
             actionchild = sub_body.children[index++];
             has_indicator = (actionchild.querySelector('[data-testid="reply"]') !== null) ||
