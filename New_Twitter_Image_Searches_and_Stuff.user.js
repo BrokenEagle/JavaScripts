@@ -4634,6 +4634,14 @@ async function SaveDatabase(database, counter_selector) {
             payload = {};
         }
     }
+    if (i % 2000 > 0) {
+        // Final save
+        $(counter_selector).html('Final');
+        this.debug('log', "Saving batch #", batches);
+        JSPLib.debug.debugTime('database-save-' + batches);
+        await JSPLib.storage.twitterstorage.setItems(payload);
+        JSPLib.debug.debugTimeEnd('database-save-' + batches);
+    }
 }
 
 async function GetSavePackage(export_types) {
