@@ -5245,7 +5245,7 @@ function DownloadOriginal(event) {
             if (Number.isInteger(e)) {
                 error_text = 'HTTP ' + e;
             } else {
-                console.error("DownloadOriginal error:", e);
+                JSPLib.debug.debugerror("DownloadOriginal error:", e);
             }
             JSPLib.notice.error(`Error downloading image: ${error_text}`);
         }).always(() => {
