@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      8.9
+// @version      8.10
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -4668,7 +4668,14 @@ function InitializeDatabase() {
 async function CheckDatabaseInfo(initial) {
     if (!NTISAS.user_settings.bypass_server_mode && (initial || JSPLib.concurrency.checkTimeout('ntisas-database-recheck', DATABASE_RECHECK_EXPIRES))) {
         let database_info = await JSPLib.network.getNotify(DATABASE_INFO_URL, {custom_error: JSPLib.utility.sprintf(SERVER_ERROR, "database info"), xhr_options: {anonymous: true}});
-        if (database_info !== false) {
+        if (JSPLib.validate.isString(database_info)) {
+            try {
+                database_info = JSON.parse(database_info);
+            } catch (e) {
+                //do nothing
+            }
+        }
+        if (JSPLib.validate.isHash(database_info)) {
             SetLocalData('ntisas-remote-database', database_info);
         }
         JSPLib.concurrency.setRecheckTimeout('ntisas-database-recheck', DATABASE_RECHECK_EXPIRES);
