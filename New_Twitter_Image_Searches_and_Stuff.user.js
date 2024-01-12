@@ -4865,6 +4865,7 @@ function InstallDatabase() {
         LoadDatabase().then((data) => {
             if (data) {
                 JSPLib.storage.saveData('ntisas-database-info', NTISAS.server_info, JSPLib.storage.twitterstorage);
+                SetLocalData(`ntisas-postver-lastid`, NTISAS.server_info.post_version);
                 InitializeDatabase();
             }
         });
