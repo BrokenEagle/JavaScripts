@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedRelatedTags
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2.5
+// @version      2.6
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -94,7 +94,7 @@ const PROGRAM_SCROLL = 'scroll.irt';
 const PROGRAM_NAME = 'IndexedRelatedTags';
 
 //Program data constants
-const PROGRAM_DATA_REGEX = /^(rt[fcjo](gen|char|copy|art)?)-/; //Regex that matches the prefix of all program cache data
+const PROGRAM_DATA_REGEX = /^(rt[fcjo](gen|char|copy|art)?|wpt|tagov)-/; //Regex that matches the prefix of all program cache data
 
 //Main program variables
 const IRT = {};
@@ -197,8 +197,9 @@ const SETTINGS_CONFIG = {
 
 //Available config values
 const ALL_SOURCE_TYPES = ['indexed_db', 'local_storage'];
-const ALL_DATA_TYPES = ["", 'frequent', 'similar', 'like', 'custom'];
+const ALL_DATA_TYPES = ['related_tag', 'wiki_page', 'tag_overlap', 'custom'];
 const ALL_RELATED = ["", 'general', 'copyright', 'character', 'artist'];
+const ALL_ORDER = ['frequent', 'cosine', 'jaccard', 'overlap'];
 
 const CONTROL_CONFIG = {
     cache_info: {
@@ -217,13 +218,18 @@ const CONTROL_CONFIG = {
     },
     data_type: {
         allitems: ALL_DATA_TYPES,
-        value: 'tag',
+        value: 'related_tag',
         hint: "Select type of data. Use <b>Custom</b> for querying by keyname.",
     },
-    related_tag_type: {
+    tag_category: {
         allitems: ALL_RELATED,
         value: "",
-        hint: "Select type of related tag data. Blank selects uncategorized data.",
+        hint: "Select type of tag category. Blank selects uncategorized data.",
+    },
+    query_order: {
+        allitems: ALL_ORDER,
+        value: 'frequent',
+        hint: "Select type of query order.",
     },
     raw_data: {
         value: false,
@@ -808,6 +814,19 @@ JSPLib.menu.preloadScript = function (self, program_value, render_menu_func, {ru
         return initialize_func();
     }
     return true;
+};
+
+JSPLib.menu.cacheAutocomplete = function () {
+    let $control_data = JSPLib._jQuery(`#${this.program_shortcut}-control-data-name`);
+    $control_data.autocomplete({
+        minLength: 0,
+        delay: 0,
+        source: JSPLib.menu.cacheSource(),
+    }).off('keydown.Autocomplete.tab');
+    let autocomplete = $control_data.data('uiAutocomplete');
+    autocomplete._renderItem = function (menu, item) {
+        return JSPLib._jQuery("<li>").append(JSPLib._jQuery("<div>").text(item.label)).appendTo(menu);
+    };
 };
 
 JSPLib.concurrency.setupMutationReplaceObserver = function (self, $root_node, remove_selector, func, disconnect = true) {
@@ -1482,15 +1501,25 @@ FUNC.CleanupTasks = function () {
 //Menu functions
 
 FUNC.OptionCacheDataKey = function (data_type, data_value) {
-    IRT.related_category = $('#irt-control-related-tag-type').val();
-    let modifier = FUNC.GetRelatedKeyModifer(IRT.related_category);
-    return `${modifier}-${data_value}`;
+    if (data_type === 'related_tag') {
+        IRT.tag_category = $('#irt-control-tag-category').val();
+        IRT.query_order = $('#irt-control-query-order').val();
+        let modifier = FUNC.GetRelatedKeyModifer(IRT.related_category, IRT.query_order);
+        return `${modifier}-${data_value}`;
+    }
+    if (data_type === 'wiki_page') {
+        return `wpt-${data_value}`;
+    }
+    if (data_type === 'tag_overlap') {
+        return `tagov-${data_value}`;
+    }
 };
 
 FUNC.DataTypeChange = function () {
     let data_type = $('#irt-control-data-type').val();
     let action = (data_type === 'related_tag' ? 'show' : 'hide');
-    $('.irt-options[data-setting=related_tag_type]')[action]();
+    $('.irt-options[data-setting=tag_category]')[action]();
+    $('.irt-options[data-setting=query_order]')[action]();
 };
 
 FUNC.InitializeProgramValues = function(self) {
@@ -1534,7 +1563,8 @@ FUNC.RenderSettingsMenu = function() {
     $('#irt-cache-editor-controls').append(JSPLib.menu.renderKeyselect('data_source', true));
     $('#irt-cache-editor-controls').append(JSPLib.menu.renderDataSourceSections());
     $('#irt-section-indexed-db').append(JSPLib.menu.renderKeyselect('data_type', true));
-    $('#irt-section-indexed-db').append(JSPLib.menu.renderKeyselect('related_tag_type', true));
+    $('#irt-section-indexed-db').append(JSPLib.menu.renderKeyselect('tag_category', true));
+    $('#irt-section-indexed-db').append(JSPLib.menu.renderKeyselect('query_order', true));
     $('#irt-section-local-storage').append(JSPLib.menu.renderCheckbox('raw_data', true));
     $('#irt-cache-editor-controls').append(JSPLib.menu.renderTextinput('data_name', 20, true));
     JSPLib.menu.engageUI(true, true);
