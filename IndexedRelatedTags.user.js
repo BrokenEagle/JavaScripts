@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedRelatedTags
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2.6
+// @version      2.7
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -963,8 +963,8 @@ FUNC.GetTagsEntryArray = function (wiki_page) {
         .filter((str) => !str.match(/^(?:tag_group|pool_group|help|howto|about|template|disclaimer):|list_of_/));
     return wiki_link_targets.map((link_target) => {
         let dtext_link = (wiki_page.dtext_links || []).find((dtext_link) => dtext_link.link_target === link_target);
-        return [link_target, dtext_link.linked_tag?.category ?? NONEXISTENT_TAG_CATEGORY];
-    });
+        return dtext_link ? [link_target, dtext_link.linked_tag?.category ?? NONEXISTENT_TAG_CATEGORY] : null;
+    }).filter((tag_entry) => tag_entry !== null);
 };
 
 //Render functions
