@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      8.11
+// @version      8.12
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -34,6 +34,8 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/menu.js
 // @resource     jquery_ui_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/jquery_ui_custom.css
 // @resource     jquery_qtip_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.css
+// @grant        GM_getValue
+// @grant        GM_setValue
 // @grant        GM_getResourceText
 // @grant        GM.xmlHttpRequest
 // @connect      donmai.us
@@ -6540,9 +6542,14 @@ JSPLib.load.load_when_hidden = false;
 
 //Export JSPLib
 JSPLib.load.exportData(PROGRAM_NAME, NTISAS, {other_data: {API_DATA, jQuery, XRegExp, SAVED_STORAGE_REQUESTS, SAVED_NETWORK_REQUESTS}, datalist: ['page']});
-JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [GetList, SaveList, GetData, SaveData, GetTweetAPI1_1, GetTweetGQL, GetTweetsAPI1_1], alwayslist: [GetAPIData]});
+JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [GetList, SaveList, GetData, SaveData, GetTweetAPI1_1, GetTweetGQL, GetTweetsAPI1_1], alwayslist: [GetAPIData, GetImageLinks]});
 
 /****Execution start****/
 
-JSPLib.network.installXHRHook([TweetUserData]);
+var install_hook = GM_getValue('install_hook');
+if (install_hook === true) {
+    JSPLib.network.installXHRHook([TweetUserData]);
+} else if (!JSPLib.validate.isBoolean(install_hook)) {
+    GM_setValue('install_hook', true);
+}
 JSPLib.load.programInitialize(Main, {program_name: PROGRAM_NAME, required_selectors: PROGRAM_LOAD_REQUIRED_SELECTORS, max_retries: 100, timer_interval: 500});
