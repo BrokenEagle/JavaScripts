@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      22.15
+// @version      22.16
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1123,6 +1123,9 @@ function GetList(type) {
 }
 
 function SetList(type,remove_item,itemid) {
+    if (!IsEventEnabled(type, 'subscribe_events_enabled')) {
+        return;
+    }
     let typeset = GetList(type);
     if (remove_item) {
         typeset.delete(itemid);
@@ -1152,6 +1155,9 @@ function GetUserList(type) {
 }
 
 function SetUserList(type,remove_item,userid) {
+    if (!IsEventEnabled(type, 'user_events_enabled')) {
+        return;
+    }
     let typeset = GetUserList(type);
     if (remove_item) {
         typeset.delete(userid);
