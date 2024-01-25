@@ -4740,8 +4740,15 @@ function CheckPurgeBadTweets() {
 async function PurgeBadTweets(purgelist) {
     if (purgelist === undefined) {
         purgelist = await JSPLib.network.getNotify(SERVER_PURGELIST_URL, {custom_error: JSPLib.utility.sprintf(SERVER_ERROR, "purge list"), xhr_options: {anonymous: true}});
+        if (JSPLib.validate.isString(purgelist)) {
+            try {
+                purgelist = JSON.parse(purgelist);
+            } catch(e) {
+                JSPLib.debug.debugerror("Error parsing purge list:", e);
+            }
+        }
     }
-    if (purgelist !== false) {
+    if (Array.isArray(purgelist)) {
         let purge_keylist = purgelist.map((tweet_id) => ('tweet-' + tweet_id));
         let database_keylist = await JSPLib.storage.twitterstorage.keys();
         let purge_set = new Set(purge_keylist);
