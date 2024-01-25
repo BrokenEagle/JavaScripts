@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      8.12
+// @version      8.13
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -34,8 +34,6 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/menu.js
 // @resource     jquery_ui_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/jquery_ui_custom.css
 // @resource     jquery_qtip_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.css
-// @grant        GM_getValue
-// @grant        GM_setValue
 // @grant        GM_getResourceText
 // @grant        GM.xmlHttpRequest
 // @connect      donmai.us
@@ -6546,10 +6544,9 @@ JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [GetList, SaveList, GetData, S
 
 /****Execution start****/
 
-var install_hook = GM_getValue('install_hook');
-if (install_hook === true) {
+var hook_disabled = (GM_info?.scriptHandler === 'Tampermonkey' &&
+                     GM_info?.userAgentData.brands.some(brand => brand.brand === 'Firefox'));
+if (!hook_disabled) {
     JSPLib.network.installXHRHook([TweetUserData]);
-} else if (!JSPLib.validate.isBoolean(install_hook)) {
-    GM_setValue('install_hook', true);
 }
 JSPLib.load.programInitialize(Main, {program_name: PROGRAM_NAME, required_selectors: PROGRAM_LOAD_REQUIRED_SELECTORS, max_retries: 100, timer_interval: 500});
