@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedRelatedTags
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2.7
+// @version      2.8
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1632,10 +1632,8 @@ JSPLib.menu.settings_config = SETTINGS_CONFIG;
 JSPLib.menu.control_config = CONTROL_CONFIG;
 
 //Export JSPLib
-JSPLib.load.exportData(PROGRAM_NAME, IRT, {datalist: ['cached_data']});
+JSPLib.load.exportData(PROGRAM_NAME, IRT, {datalist: ['cached_data'], other_data: {FUNC}});
 
 /****Execution start****/
-
-window.FUNC = FUNC;
 
 JSPLib.load.programInitialize(FUNC.Main, {program_name: PROGRAM_NAME, required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, required_selectors: PROGRAM_LOAD_REQUIRED_SELECTORS});
