@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://github.com/BrokenEagle
-// @version      8.1
+// @version      8.2
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -391,7 +391,7 @@ function UpdateDraggerStatus() {
 }
 
 function UpdateSelectControls() {
-    if (PMM.mode !== 'edit') {
+    if (PMM.available_modes.has(PMM.mode) && PMM.mode !== 'edit') {
         $('#pmm-select-controls, #pmm-long-inputs').show();
     } else {
         $('#pmm-select-controls, #pmm-long-inputs').hide();
