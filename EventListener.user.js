@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      22.16
+// @version      23.0
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -107,6 +107,11 @@ const SETTINGS_CONFIG = {
         reset: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Will automatically close the DMail notice provided by Danbooru."
+    },
+    overflow_only_notice_enabled: {
+        reset: true,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Will display the event notice even no events are found but more can be queried."
     },
     filter_user_events: {
         reset: true,
@@ -2469,7 +2474,9 @@ async function LoadHTMLType(type,idlist,isoverflow=false) {
     }
     if (displaylist.length === 0) {
         $section.show();
-        $('#el-event-notice').show();
+        if (EL.user_settings.overflow_only_notice_enabled) {
+            $('#el-event-notice').show();
+        }
         return false;
     }
     EL.renderedlist[type] = JSPLib.utility.concat(EL.renderedlist[type], displaylist);
@@ -2525,7 +2532,7 @@ async function CheckAllEvents(promise_array) {
     ProcessThumbnails();
     if (hasevents) {
         FinalizeEventNotice(true);
-    } else if (EL.item_overflow) {
+    } else if (EL.item_overflow && EL.user_settings.overflow_only_notice_enabled) {
         //Don't save the notice when only overflow notice, since that prevents further network gets
         $("#el-event-controls").show();
         $("#el-loading-message").hide();
@@ -2724,6 +2731,7 @@ function RenderSettingsMenu() {
     $('#el-notice-settings').append(JSPLib.menu.renderCheckbox('autolock_notices'));
     $('#el-notice-settings').append(JSPLib.menu.renderCheckbox('mark_read_topics'));
     $('#el-notice-settings').append(JSPLib.menu.renderCheckbox('autoclose_dmail_notice'));
+    $('#el-notice-settings').append(JSPLib.menu.renderCheckbox('overflow_only_notice_enabled'));
     $('#el-filter-settings').append(JSPLib.menu.renderCheckbox('filter_user_events'));
     $('#el-filter-settings').append(JSPLib.menu.renderCheckbox('filter_untranslated_commentary'));
     $('#el-filter-settings').append(JSPLib.menu.renderCheckbox('filter_autofeedback'));
@@ -2828,7 +2836,7 @@ function Main() {
                     JSPLib.notice.notice("<b>EventListener:</b> Events are ready for viewing!", true);
                     $("#el-event-controls").show();
                     $("#el-loading-message").hide();
-                } else if (EL.item_overflow && EL.not_snoozed) {
+                } else if (EL.item_overflow && EL.not_snoozed && EL.user_settings.overflow_only_notice_enabled) {
                     JSPLib.notice.notice("<b>EventListener:</b> No events found, but more can be queried...", true);
                 } else {
                     JSPLib.concurrency.setRecheckTimeout('el-event-timeout', EL.timeout_expires);
