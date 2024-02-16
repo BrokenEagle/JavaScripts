@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://github.com/BrokenEagle
-// @version      8.2
+// @version      8.3
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -487,7 +487,10 @@ function TagscriptPost(post_id) {
 // Main execution functions
 
 function MenuFunctions(post_ids) {
-    const copyToClipboard = function (post_ids, prefix, suffix, separator) {
+    const copyToClipboard = function (post_ids, prefix, suffix, separator, afterspace) {
+        if (afterspace && !['\n', ' '].includes(separator)) {
+            separator += " ";
+        }
         let post_string = JSPLib.utility.joinList(post_ids, prefix, suffix, separator);
         Danbooru.Utility.copyToClipboard(post_string);
     };
@@ -496,11 +499,11 @@ function MenuFunctions(post_ids) {
     post_ids.forEach((post_id) => {
         switch (PMM.mode) {
             case 'copy-id':
-                return copyToClipboard(post_ids, "", "", PMM.id_separator);
+                return copyToClipboard(post_ids, "", "", PMM.id_separator, false);
             case 'copy-short':
-                return copyToClipboard(post_ids, " post #", "", PMM.id_separator);
+                return copyToClipboard(post_ids, "post #", "", PMM.id_separator, true);
             case 'copy-link':
-                return copyToClipboard(post_ids, " https://danbooru.donmai.us/posts/", " ", PMM.id_separator);
+                return copyToClipboard(post_ids, "https://danbooru.donmai.us/posts/", " ", PMM.id_separator, true);
             case 'vote-up':
             case 'vote-down':
                 VotePost(post_id, (PMM.mode === 'vote-up' ? 1 : (PMM.mode === 'vote-down' ? -1 : 0)));
