@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.19
+// @version      29.20
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1923,6 +1923,8 @@ function InsertCompletion(input, completion) {
     input.value = before_caret_text + after_caret_text;
     input.selectionStart = start;
     input.selectionEnd = end;
+    $(input).trigger("input");
+    $(() => $(input).autocomplete("instance").close());
 }
 
 function StaticMetatagSource(term, metatag) {
