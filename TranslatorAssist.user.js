@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.3
+// @version      6.4
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -513,7 +513,6 @@ button.ta-html-style-tag:hover {
 #ta-menu-controls button {
     font-size: 0.9em;
     padding: 0.25em 1em;
-    margin: 0.1em;
 }
 /** Ruby dialog **/
 #ta-ruby-dialog {
