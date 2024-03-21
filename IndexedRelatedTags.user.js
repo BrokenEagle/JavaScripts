@@ -183,6 +183,11 @@ const SETTINGS_CONFIG = {
         validate: JSPLib.validate.isBoolean,
         hint: "Include a button to add only checklist tags."
     },
+    query_unknown_tags_enabled: {
+        reset: false,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Do an additional query if any wiki page tags are not found with the initial query."
+    },
     other_wikis_enabled: {
         reset: true,
         validate: JSPLib.validate.isBoolean,
@@ -1204,6 +1209,23 @@ FUNC.WikiPageTagsQuery = async function (self, title) {
     };
     let wikis_with_links = await JSPLib.danbooru.submitRequest('wiki_pages', url_addons);
     let tags = (wikis_with_links.length ? FUNC.GetTagsEntryArray(wikis_with_links[0]) : []);
+    if (IRT.query_unknown_tags_enabled) {
+        let unknown_tag_names = tags.filter((tag) => tag[1] === NONEXISTENT_TAG_CATEGORY).map((tag) => tag[0]);
+        if (unknown_tag_names.length) {
+            let unknown_tags = await JSPLib.danbooru.submitRequest('tags', {search: {name_comma: unknown_tag_names.join(',')}, only: 'name,category', limit: unknown_tag_names.length});
+            if (unknown_tags.length) {
+                let unknown_tags_dict = Object.assign(...unknown_tags.map((tag) => ({[tag.name]: tag.category})));
+                tags = tags.map((tag) => {
+                    let category = unknown_tags_dict[tag[0]];
+                    if (tag[1] === NONEXISTENT_TAG_CATEGORY && Number.isInteger(category)) {
+                        return [tag[0], category];
+                    } else {
+                        return tag;
+                    }
+                });
+            }
+        }
+    }
     let other_wikis = (!title.startsWith('list_of_') ?
         (wikis_with_links?.[0]?.dtext_links || [])
             .filter((link) => (link.link_type === 'wiki_link' && link.link_target.startsWith('list_of_')))
@@ -1698,6 +1720,7 @@ FUNC.RenderSettingsMenu = function() {
     $('#irt-wiki-page-settings').append(JSPLib.menu.renderCheckbox('other_wikis_enabled'));
     $('#irt-wiki-page-settings').append(JSPLib.menu.renderCheckbox('unique_wiki_tags_enabled'));
     $('#irt-wiki-page-settings').append(JSPLib.menu.renderCheckbox('wiki_page_query_only_enabled'));
+    $('#irt-wiki-page-settings').append(JSPLib.menu.renderCheckbox('query_unknown_tags_enabled'));
     $('#irt-network-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", NETWORK_SETTINGS_DETAILS));
     $('#irt-network-settings').append(JSPLib.menu.renderTextinput('recheck_data_interval', 5));
     $('#irt-network-settings').append(JSPLib.menu.renderCheckbox('network_only_mode'));
