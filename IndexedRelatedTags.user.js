@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedRelatedTags
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      2.9
+// @version      3.0
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -267,6 +267,7 @@ const DEFAULT_VALUES = PROGRAM_RESET_KEYS;
 
 //Pre-CSS/HTML constants
 
+const DEPRECATED_TAG_CATEGORY = 200;
 const NONEXISTENT_TAG_CATEGORY = 300;
 const BUR_TAG_CATEGORY = 400;
 const METATAG_TAG_CATEGORY = 500;
@@ -351,7 +352,12 @@ irt-search > span {
 .tag-type-${NONEXISTENT_TAG_CATEGORY} a.search-tag:visited {
     color: skyblue;
 }
-.tag-type-${NONEXISTENT_TAG_CATEGORY} a.search-tag:hover {
+.tag-type-${DEPRECATED_TAG_CATEGORY} a.search-tag:link,
+.tag-type-${DEPRECATED_TAG_CATEGORY} a.search-tag:visited {
+    color: darkgrey;
+}
+.tag-type-${NONEXISTENT_TAG_CATEGORY} a.search-tag:hover,
+.tag-type-${DEPRECATED_TAG_CATEGORY} a.search-tag:hover {
     filter: brightness(1.25);
 }
 .irt-tag-bur > div:before,
@@ -963,7 +969,15 @@ FUNC.GetTagsEntryArray = function (wiki_page) {
         .filter((str) => !str.match(/^(?:tag_group|pool_group|help|howto|about|template|disclaimer):|list_of_/));
     return wiki_link_targets.map((link_target) => {
         let dtext_link = (wiki_page.dtext_links || []).find((dtext_link) => dtext_link.link_target === link_target);
-        return dtext_link ? [link_target, dtext_link.linked_tag?.category ?? NONEXISTENT_TAG_CATEGORY] : null;
+        if (dtext_link) {
+            if (dtext_link.linked_tag?.is_deprecated) {
+                return [link_target, DEPRECATED_TAG_CATEGORY];
+            } else if (dtext_link.linked_tag) {
+                return [link_target, dtext_link.linked_tag.category];
+            }
+            return [link_target, NONEXISTENT_TAG_CATEGORY];
+        }
+        return null;
     }).filter((tag_entry) => tag_entry !== null);
 };
 
@@ -1123,7 +1137,7 @@ FUNC.WikiPageTagsQuery = async function (self, title) {
     self.debuglog("Querying:", title, (IRT.other_wikis_enabled ? "with" : "without", "other wikis"));
     let url_addons = {
         search: {title},
-        only: 'body,tag,dtext_links[link_target,link_type,linked_tag[name,category]]'
+        only: 'body,tag,dtext_links[link_target,link_type,linked_tag[name,category,is_deprecated]]'
     };
     let wikis_with_links = await JSPLib.danbooru.submitRequest('wiki_pages', url_addons);
     let tags = (wikis_with_links.length ? FUNC.GetTagsEntryArray(wikis_with_links[0]) : []);
