@@ -18,6 +18,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/utility.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/validate.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/notice.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/concurrency.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/statistics.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/network.js
@@ -172,6 +173,16 @@ const SETTINGS_CONFIG = {
         validate: JSPLib.validate.isBoolean,
         hint: "Include a button to query only wiki page tags."
     },
+    checklist_tags_enabled: {
+        reset: false,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Include checklist tags when using one of the related tags buttons."
+    },
+    checklist_query_only_enabled: {
+        reset: false,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Include a button to add only checklist tags."
+    },
     other_wikis_enabled: {
         reset: true,
         validate: JSPLib.validate.isBoolean,
@@ -240,6 +251,11 @@ const CONTROL_CONFIG = {
         buttons: ['get', 'save', 'delete', 'list', 'refresh'],
         hint: "Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.<br><b>List</b> shows keys in their raw format, and <b>Refresh</b> checks the keys again.",
     },
+    tag_name: {
+        value: "",
+        buttons: ['view', 'save', 'populate'],
+        hint: "Click <b>View</b> to see the list of tags, and <b>Save</b> to commit the changes. <b>Populate</b> will query the current list of wiki page tags.",
+    },
 };
 
 const MENU_CONFIG = {
@@ -253,12 +269,18 @@ const MENU_CONFIG = {
         name: 'tag-statistic',
         message: "Shows much overlap there is between the tags in the related tag column and the query term. This does not include wiki page tags.",
     }, {
+        name: 'checklist',
+        message: "Allows frequent tags on a per-tag basis.",
+    }, {
         name: 'wiki-page',
         message: "Affects how the wiki pages get queried for tags.",
     }, {
         name: 'network',
     }],
-    controls: [],
+    controls: [{
+        name: 'checklist',
+        message: "View and edit frequent tags on a per-tag basis."
+    }],
 };
 
 // Default values
@@ -455,6 +477,15 @@ const RELATED_QUERY_CONTROL_CSS = `
     border-color: darkgreen;
     margin-right: 0.5em;
 }
+#irt-checklist-query {
+    color: white;
+    background-color: lightgreen;
+    margin-right: 0.5em;
+    font-weight: bold;
+    background-color: orange;
+    border-color: darkorange;
+    margin-right: 0.5em;
+}
 #irt-wiki-page-controls label {
     color: white;
     background-color: lightgreen;
@@ -550,6 +581,10 @@ const SETTINGS_MENU_CSS = `
 }
 #indexed-related-tags .irt-formula {
     font-family: mono;
+}
+#irt-checklist-frequent-tags textarea {
+    width: 40em;
+    height: 25em;
 }`;
 
 //HTML Constants
@@ -605,6 +640,12 @@ const PROGRAM_DATA_DETAILS = `
     </li>
 </ul>`;
 
+const CHECKLIST_TEXTAREA = `
+<div id="irt-checklist-frequent-tags">
+    <textarea data-autocomplete="tag-query"></textarea>
+</div>
+`;
+
 const IRT_SCROLL_WRAPPER = `
 <div id="irt-edit-scroll-wrapper">
     <div id="irt-edit-scroll-bar"></div>
@@ -622,6 +663,11 @@ const IRT_RELATED_TAGS_SECTION = `
 const WIKI_PAGE_BUTTON = `
 <div id="irt-wiki-page-controls" style="display: inline-flex; margin-bottom: 0.5em; margin-right: 1em;">
     <button id="irt-wiki-page-query" class="irt-wiki-button" title="Query wiki pages only.">Wiki page</button>
+</div>`;
+
+const CHECKLIST_BUTTON = `
+<div id="irt-checklist-controls" style="display: inline-flex; margin-bottom: 0.5em; margin-right: 1em;">
+    <button id="irt-checklist-query" class="irt-checklist-button" title="Query checklist only.">Checklist</button>
 </div>`;
 
 //Time constants
@@ -981,6 +1027,16 @@ FUNC.GetTagsEntryArray = function (wiki_page) {
     }).filter((tag_entry) => tag_entry !== null);
 };
 
+FUNC.GetChecklistTagsArray = function (tag_name) {
+    let tag_array = JSPLib.storage.getStorageData('irt-checklist-' + tag_name, localStorage, []);
+    let check = validate({tag_array}, {tag_array: JSPLib.validate.tagentryarray_constraints([0, 1, 3, 4, 5, DEPRECATED_TAG_CATEGORY, NONEXISTENT_TAG_CATEGORY])});
+    if (check) {
+        console.warn(`Validation error[${tag_name}]:`, check, tag_array);
+        return null;
+    }
+    return tag_array;
+};
+
 //Render functions
 
 FUNC.RenderTaglist = function (taglist, columnname, tags_overlap) {
@@ -1028,6 +1084,13 @@ FUNC.RenderTagQueryColumn = function (related_tags, tags_overlap) {
     let display_name = related_tags.query.replace(/_/g, ' ');
     let column_html = (!is_empty ? FUNC.RenderTaglist(related_tags.tags, display_name, tags_overlap) : "");
     return FUNC.RenderTagColumn('irt-general-related-tags-column', column_html, is_empty);
+};
+
+FUNC.RenderChecklistColumn = function (checklist_tags, tag_name) {
+    let is_empty = checklist_tags.length === 0;
+    let display_name = "Checklist: " + tag_name.replace(/_/g, ' ');
+    let column_html = (!is_empty ? FUNC.RenderTaglist(checklist_tags, display_name) : "");
+    return FUNC.RenderTagColumn('irt-checklist-related-tags-column', column_html, is_empty);
 };
 
 FUNC.RenderWikiTagQueryColumns = function (wiki_page, other_wikis) {
@@ -1264,8 +1327,13 @@ FUNC.RelatedTagsButton = async function (event) {
     if (!related_tags) {
         return;
     }
+    var tag_array;
+    if (IRT.checklist_tags_enabled) {
+        tag_array = FUNC.GetChecklistTagsArray(currenttag) ?? [];
+    }
     $('#irt-related-tags-query-container').html(
         FUNC.RenderTagQueryColumn(related_tags, tags_overlap) +
+        (IRT.checklist_tags_enabled ? FUNC.RenderChecklistColumn(tag_array, currenttag) : "") +
         (IRT.wiki_page_tags_enabled ? FUNC.RenderWikiTagQueryColumns(wiki_result.wiki_page, wiki_result.other_wikis) : "")
     );
     FUNC.UpdateSelected();
@@ -1279,6 +1347,19 @@ FUNC.WikiPageButton = async function (event) {
     $('#irt-related-tags-query-container').html(FUNC.RenderWikiTagQueryColumns(wiki_result.wiki_page, wiki_result.other_wikis));
     FUNC.UpdateSelected();
     FUNC.QueueRelatedTagColumnWidths();
+};
+
+FUNC.ChecklistButton = async function (event) {
+    event.preventDefault();
+    let currenttag = Danbooru.RelatedTag.current_tag().trim().toLowerCase();
+    let tag_array = FUNC.GetChecklistTagsArray(currenttag);
+    if (tag_array === null) {
+        JSPLib.notice.error("Corrupted data: See debug console for details.");
+    } else {
+        $('#irt-related-tags-query-container').html(FUNC.RenderChecklistColumn(tag_array, currenttag));
+        FUNC.UpdateSelected();
+        FUNC.QueueRelatedTagColumnWidths();
+    }
 };
 
 FUNC.RelatedTagsEnter = function () {
@@ -1298,6 +1379,53 @@ FUNC.RelatedTagsScroll = function (event) {
         current_left += 40;
     }
     $related_tags.prop('scrollLeft', current_left);
+};
+
+FUNC.ViewChecklistTag = function () {
+    let tag_name = $('#irt-control-tag-name').val().split(/\s+/)[0];
+    if (!tag_name) return;
+    let tag_array = FUNC.GetChecklistTagsArray(tag_name);
+    if (tag_array === null) {
+        JSPLib.notice.error("Corrupted data: See debug console for details.");
+    } else {
+        let tag_list = tag_array.map((entry) => entry[0]);
+        $('#irt-checklist-frequent-tags textarea').val(tag_list.join('\n'));
+    }
+};
+
+FUNC.SaveChecklistTag = function () {
+    let tag_name = $('#irt-control-tag-name').val().split(/\s+/)[0];
+    if (!tag_name) return;
+    let tag_list = $('#irt-checklist-frequent-tags textarea').val().split(/\s/).filter((name)=> name !== "");
+    if (tag_list.length > 0) {
+        JSPLib.danbooru.submitRequest('tags', {search: {name_comma: tag_list.join(',')}, only: 'name,category,is_deprecated', limit: tag_list.length}).then((data)=>{
+            let tag_array = tag_list.map((name) => {
+                let tag = data.find((item) => item.name === name);
+                if (!tag) {
+                    return [name, NONEXISTENT_TAG_CATEGORY];
+                } else if (tag.is_deprecated) {
+                    return [name, DEPRECATED_TAG_CATEGORY];
+                }
+                return [name, tag.category];
+            });
+            JSPLib.storage.setStorageData('irt-checklist-' + tag_name, tag_array, localStorage);
+            console.log({tag_array});
+        });
+    } else {
+        JSPLib.storage.removeStorageData('irt-checklist-' + tag_name, localStorage);
+    }
+    JSPLib.notice.notice("Checklist updated.");
+};
+
+FUNC.PopulateChecklistTag = function () {
+    let tag_name = $('#irt-control-tag-name').val().split(/\s+/)[0];
+    if (!tag_name) return;
+    JSPLib.notice.notice("Querying Danbooru...");
+    FUNC.WikiPageTagsQuery(tag_name).then((data) => {
+        console.log(data);
+        let tag_list = data.value.tags.map((entry) => entry[0]);
+        $('#irt-checklist-frequent-tags textarea').val(tag_list.join('\n'));
+    });
 };
 
 //Initialization functions
@@ -1361,6 +1489,7 @@ FUNC.InitializeRelatedTagsSection = function () {
     $(document).on(PROGRAM_CLICK, '.irt-related-tags a.search-tag', FUNC.ToggleTag);
     $(document).on(PROGRAM_CLICK, '.irt-related-button', FUNC.RelatedTagsButton);
     $(document).on(PROGRAM_CLICK, '.irt-wiki-button', FUNC.WikiPageButton);
+    $(document).on(PROGRAM_CLICK, '.irt-checklist-button', FUNC.ChecklistButton);
     $(document).on('input.irt', '#post_tag_string', FUNC.UpdateSelected);
     FUNC.InitialiazeRelatedQueryControls();
     $('.related-tags').before(IRT_RELATED_TAGS_SECTION);
@@ -1399,6 +1528,9 @@ FUNC.InitialiazeRelatedQueryControls = function () {
     $('#irt-related-tag-query-controls').append(FUNC.RenderRelatedQueryCategoryControls());
     if (IRT.wiki_page_query_only_enabled) {
         $('#irt-related-tag-query-controls').append(WIKI_PAGE_BUTTON);
+    }
+    if (IRT.checklist_query_only_enabled) {
+        $('#irt-related-tag-query-controls').append(CHECKLIST_BUTTON);
     }
     if (IRT.related_query_order_enabled) {
         $('#irt-related-tag-query-controls').append(FUNC.RenderRelatedQueryTypeControls());
@@ -1560,6 +1692,8 @@ FUNC.RenderSettingsMenu = function() {
     $('#irt-tag-statistic-settings').append(JSPLib.menu.renderCheckbox('related_statistics_enabled'));
     $('#irt-tag-statistic-settings').append(JSPLib.menu.renderTextinput('random_post_batches', 5));
     $('#irt-tag-statistic-settings').append(JSPLib.menu.renderTextinput('random_posts_per_batch', 5));
+    $('#irt-checklist-settings').append(JSPLib.menu.renderCheckbox('checklist_tags_enabled'));
+    $('#irt-checklist-settings').append(JSPLib.menu.renderCheckbox('checklist_query_only_enabled'));
     $('#irt-wiki-page-settings').append(JSPLib.menu.renderCheckbox('wiki_page_tags_enabled'));
     $('#irt-wiki-page-settings').append(JSPLib.menu.renderCheckbox('other_wikis_enabled'));
     $('#irt-wiki-page-settings').append(JSPLib.menu.renderCheckbox('unique_wiki_tags_enabled'));
@@ -1567,6 +1701,9 @@ FUNC.RenderSettingsMenu = function() {
     $('#irt-network-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", NETWORK_SETTINGS_DETAILS));
     $('#irt-network-settings').append(JSPLib.menu.renderTextinput('recheck_data_interval', 5));
     $('#irt-network-settings').append(JSPLib.menu.renderCheckbox('network_only_mode'));
+    $('#irt-checklist-controls').append(JSPLib.menu.renderTextinput('tag_name', 50, true));
+    $('#irt-control-tag-name').attr('data-autocomplete', 'tag-query');
+    $('#irt-checklist-controls').append(CHECKLIST_TEXTAREA);
     $('#irt-controls').append(JSPLib.menu.renderCacheControls());
     $('#irt-cache-controls-message').append(JSPLib.menu.renderExpandable("Cache Data details", CACHE_DATA_DETAILS));
     $('#irt-cache-controls').append(JSPLib.menu.renderLinkclick('cache_info', true));
@@ -1584,6 +1721,9 @@ FUNC.RenderSettingsMenu = function() {
     JSPLib.menu.engageUI(true, true);
     JSPLib.menu.saveUserSettingsClick();
     JSPLib.menu.resetUserSettingsClick(LOCALSTORAGE_KEYS);
+    $('#irt-tag-name-view').on(PROGRAM_CLICK, FUNC.ViewChecklistTag);
+    $('#irt-tag-name-save').on(PROGRAM_CLICK, FUNC.SaveChecklistTag);
+    $('#irt-tag-name-populate').on(PROGRAM_CLICK, FUNC.PopulateChecklistTag);
     JSPLib.menu.cacheInfoClick();
     JSPLib.menu.purgeCacheClick();
     JSPLib.menu.expandableClick();
