@@ -484,18 +484,10 @@ const RELATED_QUERY_CONTROL_CSS = `
 }
 #irt-checklist-query {
     color: white;
-    background-color: lightgreen;
-    margin-right: 0.5em;
     font-weight: bold;
     background-color: orange;
     border-color: darkorange;
     margin-right: 0.5em;
-}
-#irt-wiki-page-controls label {
-    color: white;
-    background-color: lightgreen;
-    margin-right: 0.5em;
-    font-weight: bold;
 }
 #irt-related-query-type label {
     color: black;
@@ -503,8 +495,6 @@ const RELATED_QUERY_CONTROL_CSS = `
     margin-right: 0.5em;
     font-weight: bold;
 }
-#irt-wiki-page-controls .ui-checkboxradio-radio-label.ui-checkboxradio-checked .ui-icon,
-#irt-wiki-page-controls .ui-checkboxradio-radio-label.ui-checkboxradio-checked:hover .ui-icon,
 #irt-related-query-type .ui-checkboxradio-radio-label.ui-checkboxradio-checked .ui-icon,
 #irt-related-query-type .ui-checkboxradio-radio-label.ui-checkboxradio-checked:hover .ui-icon {
     background-image: none;
@@ -513,22 +503,9 @@ const RELATED_QUERY_CONTROL_CSS = `
     border-width: 4px;
     border-style: solid;
 }
-#irt-wiki-page-controls .ui-state-active .ui-icon-background,
 #irt-related-query-type .ui-state-active .ui-icon-background {
     border: black;
     background-color: white;
-}
-#irt-wiki-page-controls .ui-visual-focus,
-#irt-wiki-page-controls .ui-state-active,
-#irt-wiki-page-controls .ui-widget-content .ui-state-active,
-#irt-wiki-page-controls .ui-button.ui-state-active:hover,
-#irt-wiki-page-controls .ui-button.ui-state-active:focus,
-#irt-wiki-page-controls .ui-button:focus,
-#irt-wiki-page-controls .ui-button:active {
-    border: 1px solid white;
-    background: lightgreen;
-    outline: none;
-    box-shadow: none;
 }
 #irt-related-query-type .ui-visual-focus,
 #irt-related-query-type .ui-state-active,
