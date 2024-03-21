@@ -131,7 +131,7 @@ const SETTINGS_CONFIG = {
         hint: "Number of results to show (1 - 50) for the primary <b>Tags</b> column. Setting to 0 uses Danbooru's default limit."
     },
     related_query_order_enabled: {
-        reset: true,
+        reset: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Show controls that allow for alternate query orders on related tags."
     },
@@ -169,7 +169,7 @@ const SETTINGS_CONFIG = {
         hint: "Include wiki page tags when using one of the related tags buttons."
     },
     wiki_page_query_only_enabled: {
-        reset: true,
+        reset: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Include a button to query only wiki page tags."
     },
