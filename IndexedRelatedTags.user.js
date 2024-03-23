@@ -256,6 +256,11 @@ const CONTROL_CONFIG = {
         buttons: ['get', 'save', 'delete', 'list', 'refresh'],
         hint: "Click <b>Get</b> to see the data, <b>Save</b> to edit it, and <b>Delete</b> to remove it.<br><b>List</b> shows keys in their raw format, and <b>Refresh</b> checks the keys again.",
     },
+    import_export: {
+        display: 'Import/Export',
+        value: false,
+        hint: "Once selected, all checklists can be exported by clicking <b>View</b>, or imported by clicking <b>Save</b>.",
+    },
     tag_name: {
         value: "",
         buttons: ['view', 'save', 'populate', 'list'],
@@ -1019,6 +1024,28 @@ FUNC.GetChecklistTagsArray = function (tag_name) {
     return tag_array;
 };
 
+FUNC.CreateTagArray = function (tag_list, tag_data) {
+    return tag_list.map((name) => {
+        let tag = tag_data.find((item) => item.name === name);
+        if (!tag) {
+            return [name, NONEXISTENT_TAG_CATEGORY];
+        } else if (tag.is_deprecated) {
+            return [name, DEPRECATED_TAG_CATEGORY];
+        }
+        return [name, tag.category];
+    });
+};
+
+FUNC.GetTagQueryParams = function (tag_list) {
+    return {
+        search: {
+            name_comma: tag_list.join(',')
+        },
+        only: 'name,category,is_deprecated',
+        limit: tag_list.length
+    };
+};
+
 //Render functions
 
 FUNC.RenderTaglist = function (taglist, columnname, tags_overlap) {
@@ -1381,39 +1408,88 @@ FUNC.RelatedTagsScroll = function (event) {
 };
 
 FUNC.ViewChecklistTag = function () {
-    let tag_name = $('#irt-control-tag-name').val().split(/\s+/)[0];
-    if (!tag_name) return;
-    let tag_array = FUNC.GetChecklistTagsArray(tag_name);
-    if (tag_array === null) {
-        JSPLib.notice.error("Corrupted data: See debug console for details.");
+    let import_export = $('#irt-enable-import-export').prop('checked');
+    if (import_export) {
+        let tag_list = Object.keys(localStorage)
+                             .filter((name) => name.startsWith('irt-checklist-'))
+                             .map((name) => name.replace('irt-checklist-', ""));
+        let tag_data = tag_list.map((tag_name) => {
+            let tag_array = FUNC.GetChecklistTagsArray(tag_name);
+            if (Array.isArray(tag_array)) {
+                return {[tag_name]: tag_array.map((item) => item[0])};
+            }
+            return null;
+            })
+            .filter((data) => data != null);
+        $('#irt-checklist-frequent-tags textarea').val(JSON.stringify(Object.assign({}, ...tag_data), null, 4));
     } else {
-        let tag_list = tag_array.map((entry) => entry[0]);
-        $('#irt-checklist-frequent-tags textarea').val(tag_list.join('\n'));
+        let tag_name = $('#irt-control-tag-name').val().split(/\s+/)[0];
+        if (!tag_name) return;
+        let tag_array = FUNC.GetChecklistTagsArray(tag_name);
+        if (tag_array === null) {
+            JSPLib.notice.error("Corrupted data: See debug console for details.");
+        } else {
+            let tag_list = tag_array.map((entry) => entry[0]);
+            $('#irt-checklist-frequent-tags textarea').val(tag_list.join('\n'));
+        }
     }
 };
 
-FUNC.SaveChecklistTag = function () {
-    let tag_name = $('#irt-control-tag-name').val().split(/\s+/)[0];
-    if (!tag_name) return;
-    let tag_list = $('#irt-checklist-frequent-tags textarea').val().split(/\s/).filter((name)=> name !== "");
-    if (tag_list.length > 0) {
-        JSPLib.danbooru.submitRequest('tags', {search: {name_comma: tag_list.join(',')}, only: 'name,category,is_deprecated', limit: tag_list.length}).then((data)=>{
-            let tag_array = tag_list.map((name) => {
-                let tag = data.find((item) => item.name === name);
-                if (!tag) {
-                    return [name, NONEXISTENT_TAG_CATEGORY];
-                } else if (tag.is_deprecated) {
-                    return [name, DEPRECATED_TAG_CATEGORY];
+FUNC.SaveChecklistTag = async function () {
+    let import_export = $('#irt-enable-import-export').prop('checked');
+    if (import_export) {
+        let text_input = $('#irt-checklist-frequent-tags textarea').val();
+        var data_input;
+        try {
+            data_input = JSON.parse(text_input);
+        } catch (e) {
+            data_input = null;
+            JSPLib.debug.debugerror("Error parsing data:", e);
+        }
+        if (JSPLib.validate.isHash(data_input)) {
+            let checklist_data = {};
+            let check_tags = [];
+            for (let key in data_input) {
+                let checklist = data_input[key];
+                if (!Array.isArray(checklist)) continue;
+                checklist = checklist.filter((item) => typeof item === "string");
+                if (checklist.length === 0) continue;
+                checklist_data[key] = checklist;
+                check_tags = JSPLib.utility.arrayUnion(check_tags, checklist);
+            }
+            if (check_tags.length > 0) {
+                JSPLib.notice.notice("Querying tags...");
+                let tag_data = [];
+                for (let i = 0; i < check_tags.length; i += 1000) {
+                    let query_tags = check_tags.slice(i, i + 1000);
+                    let tags = await JSPLib.danbooru.submitRequest('tags', FUNC.GetTagQueryParams(query_tags), {long_format: true});
+                    tag_data = JSPLib.utility.concat(tag_data, tags);
                 }
-                return [name, tag.category];
-            });
-            JSPLib.storage.setStorageData('irt-checklist-' + tag_name, tag_array, localStorage);
-            console.log({tag_array});
-        });
+                for (let tag_name in checklist_data) {
+                    let checklist = checklist_data[tag_name];
+                    let tag_array = FUNC.CreateTagArray(checklist, tag_data);
+                    JSPLib.storage.setStorageData('irt-checklist-' + tag_name, tag_array, localStorage);
+                }
+                JSPLib.notice.notice("Checklists imported.");
+            } else {
+                JSPLib.notice.error("No valid checklists found.");
+            }
+        } else {
+            JSPLib.notice.error("Error importing checklist.");
+        }
     } else {
-        JSPLib.storage.removeStorageData('irt-checklist-' + tag_name, localStorage);
+        let tag_name = $('#irt-control-tag-name').val().split(/\s+/)[0];
+        if (!tag_name) return;
+        let checklist = $('#irt-checklist-frequent-tags textarea').val().split(/\s/).filter((name)=> name !== "");
+        if (checklist.length > 0) {
+            let tag_data = await JSPLib.danbooru.submitRequest('tags', FUNC.GetTagQueryParams(checklist));
+            let tag_array = FUNC.CreateTagArray(checklist, tag_data);
+            JSPLib.storage.setStorageData('irt-checklist-' + tag_name, tag_array, localStorage);
+        } else {
+            JSPLib.storage.removeStorageData('irt-checklist-' + tag_name, localStorage);
+        }
+        JSPLib.notice.notice("Checklist updated.");
     }
-    JSPLib.notice.notice("Checklist updated.");
 };
 
 FUNC.PopulateChecklistTag = function () {
@@ -1708,6 +1784,7 @@ FUNC.RenderSettingsMenu = function() {
     $('#irt-network-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", NETWORK_SETTINGS_DETAILS));
     $('#irt-network-settings').append(JSPLib.menu.renderTextinput('recheck_data_interval', 5));
     $('#irt-network-settings').append(JSPLib.menu.renderCheckbox('network_only_mode'));
+    $('#irt-checklist-controls').append(JSPLib.menu.renderCheckbox('import_export', true));
     $('#irt-checklist-controls').append(JSPLib.menu.renderTextinput('tag_name', 50, true));
     $('#irt-control-tag-name').attr('data-autocomplete', 'tag-query');
     $('#irt-checklist-controls').append(CHECKLIST_TEXTAREA);
