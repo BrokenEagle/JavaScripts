@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedRelatedTags
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.0
+// @version      3.1
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -258,8 +258,8 @@ const CONTROL_CONFIG = {
     },
     tag_name: {
         value: "",
-        buttons: ['view', 'save', 'populate'],
-        hint: "Click <b>View</b> to see the list of tags, and <b>Save</b> to commit the changes. <b>Populate</b> will query the current list of wiki page tags.",
+        buttons: ['view', 'save', 'populate', 'list'],
+        hint: "Click <b>View</b> to see the list of tags, and <b>Save</b> to commit the changes. <b>Populate</b> will query the current list of wiki page tags. <b>List</b> will show all tags with checklists in alphabetical order.",
     },
 };
 
@@ -1421,10 +1421,17 @@ FUNC.PopulateChecklistTag = function () {
     if (!tag_name) return;
     JSPLib.notice.notice("Querying Danbooru...");
     FUNC.WikiPageTagsQuery(tag_name).then((data) => {
-        console.log(data);
         let tag_list = data.value.tags.map((entry) => entry[0]);
         $('#irt-checklist-frequent-tags textarea').val(tag_list.join('\n'));
     });
+};
+
+FUNC.ListChecklistTags = function () {
+    let tag_list = Object.keys(localStorage)
+                         .filter((name) => name.startsWith('irt-checklist-'))
+                         .map((name) => name.replace('irt-checklist-', ""))
+                         .sort();
+    $('#irt-checklist-frequent-tags textarea').val(tag_list.join('\n'));
 };
 
 //Initialization functions
@@ -1724,6 +1731,7 @@ FUNC.RenderSettingsMenu = function() {
     $('#irt-tag-name-view').on(PROGRAM_CLICK, FUNC.ViewChecklistTag);
     $('#irt-tag-name-save').on(PROGRAM_CLICK, FUNC.SaveChecklistTag);
     $('#irt-tag-name-populate').on(PROGRAM_CLICK, FUNC.PopulateChecklistTag);
+    $('#irt-tag-name-list').on(PROGRAM_CLICK, FUNC.ListChecklistTags);
     JSPLib.menu.cacheInfoClick();
     JSPLib.menu.purgeCacheClick();
     JSPLib.menu.expandableClick();
