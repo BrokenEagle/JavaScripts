@@ -1214,20 +1214,18 @@ FUNC.WikiPageTagsQuery = async function (self, title) {
     let wikis_with_links = await JSPLib.danbooru.submitRequest('wiki_pages', url_addons);
     let tags = (wikis_with_links.length ? FUNC.GetTagsEntryArray(wikis_with_links[0]) : []);
     if (IRT.query_unknown_tags_enabled) {
-        let unknown_tag_names = tags.filter((tag) => tag[1] === NONEXISTENT_TAG_CATEGORY).map((tag) => tag[0]);
-        if (unknown_tag_names.length) {
-            let unknown_tags = await JSPLib.danbooru.submitRequest('tags', {search: {name_comma: unknown_tag_names.join(',')}, only: 'name,category', limit: unknown_tag_names.length});
-            if (unknown_tags.length) {
-                let unknown_tags_dict = Object.assign(...unknown_tags.map((tag) => ({[tag.name]: tag.category})));
-                tags = tags.map((tag) => {
-                    let category = unknown_tags_dict[tag[0]];
-                    if (tag[1] === NONEXISTENT_TAG_CATEGORY && Number.isInteger(category)) {
-                        return [tag[0], category];
-                    } else {
-                        return tag;
-                    }
-                });
-            }
+        let tag_names = tags.filter((tag) => tag[1] === NONEXISTENT_TAG_CATEGORY).map((tag) => tag[0]);
+        if (tag_names.length) {
+            let tag_data = await JSPLib.danbooru.submitRequest('tags', FUNC.GetTagQueryParams(tag_names));
+            let tag_array = FUNC.CreateTagArray(tag_names, tag_data);
+            tags = tags.map((tag_entry) => {
+                let unknown_entry = tag_array.find((item) => item[0] === tag_entry[0]);
+                if (unknown_entry) {
+                    return unknown_entry;
+                } else {
+                    return tag_entry;
+                }
+            });
         }
     }
     let other_wikis = (!title.startsWith('list_of_') ?
