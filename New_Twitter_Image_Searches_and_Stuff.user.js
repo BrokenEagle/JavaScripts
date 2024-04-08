@@ -2,7 +2,7 @@
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
 // @version      9.0
-// @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
+// @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
 // @match        https://twitter.com/*
@@ -116,7 +116,6 @@ const LOCALSTORAGE_KEYS = [
 const PROGRAM_RESET_KEYS = {
     tweet_pos: [],
     tweet_faves: [],
-    tweet_finish: {},
     page_stats: {},
 };
 const PROGRAM_DEFAULT_VALUES = {
@@ -289,11 +288,6 @@ const SETTINGS_CONFIG = {
         validate: JSPLib.validate.isBoolean,
         hint: "Displays controls in the side menu to allow page navigation to be locked."
     },
-    score_highlights_enabled: {
-        reset: true,
-        validate: JSPLib.validate.isBoolean,
-        hint: `Adds colored borders and other stylings based upon the Tweet score (limited availability, see <a class="ntisas-forum-topic-link" target="_blank">topic #${DANBOORU_TOPIC_ID}</a> for details).`
-    },
     media_timeline_enabled: {
         reset: false,
         validate: JSPLib.validate.isBoolean,
@@ -303,12 +297,6 @@ const SETTINGS_CONFIG = {
         reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Displays extra information and thumbnails on IQDB results. <b>Note:</b> Only when the data is not auto-saved."
-    },
-    score_window_size: {
-        reset: 40,
-        parse: parseInt,
-        validate: (data) => Number.isInteger(data) && data >= 10,
-        hint: "Valid values: >= 10. The number of surrounding tweets to consider when calculating levels."
     },
     original_download_enabled: {
         reset: false,
@@ -391,58 +379,6 @@ const PROGRAM_CSS = `
    z-index: 1;
    padding: 8px;
    margin: -8px;
-}
-[ntisas-highlight] {
-    position: relative;
-}
-.ntisas-highlight-border {
-    display: none;
-    position: absolute;
-}
-[ntisas-highlight] .ntisas-highlight-border {
-    display: block;
-}
-.ntisas-highlight-left {
-    top: -4px;
-    left: 0;
-    width: 10px;
-    height: 100%;
-}
-.ntisas-highlight-right {
-    top: -4px;
-    right: 0;
-    width: 10px;
-    height: 100%;
-}
-.ntisas-highlight-top {
-    top: -6px;
-    left: 0;
-    width: 100%;
-    height: 10px;
-}
-.ntisas-highlight-bottom {
-    bottom: 4px;
-    left: 0;
-    width: 100%;
-    height: 10px;
-}
-[ntisas-highlight=excellent] .ntisas-highlight-border {
-    background-color: green;
-}
-[ntisas-highlight=good] .ntisas-highlight-border {
-    background-color: orange;
-}
-[ntisas-highlight=aboveavg] .ntisas-highlight-border {
-    background-color: green;
-}
-[ntisas-highlight=fair] .ntisas-highlight-border {
-    background-color: blue;
-}
-[ntisas-highlight=belowavg] .ntisas-highlight-border {
-    background-color: purple;
-}
-[ntisas-highlight=poor] .ntisas-highlight-border {
-    background-color: black;
 }
 .ntisas-show-views .ntisas-viewed .ntisas-tweet-left {
     border: 1px solid;
@@ -1419,7 +1355,6 @@ const NTISAS_MENU = `
         <ul id="ntisas-tabs">
             <li><a href="#ntisas-display-settings">Display</a></li>
             <li><a href="#ntisas-function-settings">Function</a></li>
-            <li><a href="#ntisas-highlight-settings">Highlight</a></li>
             <li><a href="#ntisas-query-settings">Query</a></li>
             <li><a href="#ntisas-database-settings">Database</a></li>
             <li><a href="#ntisas-network-settings">Network</a></li>
@@ -1435,11 +1370,6 @@ const NTISAS_MENU = `
         <div id="ntisas-function-settings" class="jsplib-settings-grouping">
             <div id="ntisas-function-message" class="prose">
                 <h4>Function settings</h4>
-            </div>
-        </div>
-        <div id="ntisas-highlight-settings" class="jsplib-settings-grouping">
-            <div id="ntisas-highlight-message" class="prose">
-                <h4>Highlight settings</h4>
             </div>
         </div>
         <div id="ntisas-query-settings" class="jsplib-settings-grouping">
@@ -2692,10 +2622,6 @@ function PageRegex() {
     return NTISAS.page_regex;
 }
 
-function DisplayHighlights() {
-    return NTISAS.user_settings.score_highlights_enabled && IsMediaTimeline();
-}
-
 function IsQuerySettingEnabled(setting, type) {
     let type_key = (type === 'iqdb' ? 'IQDB' : type) + '_settings';
     return NTISAS.user_settings[type_key].includes(setting);
@@ -2993,43 +2919,6 @@ function UpdateImageDict(tweet) {
             NTISAS.tweet_images[image.media_url_https] = image;
         });
     }
-}
-
-function GetTweetQuartile(tweetid) {
-    if (tweetid in NTISAS.tweet_finish) {
-        return NTISAS.tweet_finish[tweetid];
-    }
-    let windowsize = NTISAS.user_settings.score_window_size;
-    let pos = NTISAS.tweet_pos.indexOf(tweetid);
-    let fave = NTISAS.tweet_faves[pos];
-    let posmin = Math.max(0, pos - windowsize);
-    let posmax = Math.min(NTISAS.tweet_pos.length, pos + windowsize);
-    let subarray = NTISAS.tweet_faves.slice(posmin, posmax);
-    var quartilepos = Math.floor(subarray.length / 4);
-    var sortedfaves = subarray.sort((a, b) => (a - b));
-    var q1 = sortedfaves[quartilepos];
-    var q2 = sortedfaves[2 * quartilepos];
-    var q3 = sortedfaves[3 * quartilepos];
-    var min = Math.min(...sortedfaves);
-    var max = Math.max(...sortedfaves);
-    var outlierq1 = (q1 + min) / 2;
-    var outlierq3 = (q3 + max) / 2;
-    let quartile = 5;
-    if (fave >= outlierq3) {
-        quartile = 0;
-    } else if (fave >= q3) {
-        quartile = 1;
-    } else if (fave >= q2) {
-        quartile = 2;
-    } else if (fave >= q1) {
-        quartile = 3;
-    } else if (fave >= outlierq1) {
-        quartile = 4;
-    }
-    if ((posmax - posmin) >= (windowsize * 2)) {
-        NTISAS.tweet_finish[tweetid] = quartile;
-    }
-    return quartile;
 }
 
 async function GetImageLinks(tweet) {
@@ -6327,7 +6216,6 @@ function MarkupStreamTweet(tweet) {
         }
     }
     $('.ntisas-tweet-actions', tweet).after('<div class="ntisas-footer-section"></div>');
-    $(tweet).append('<div class="ntisas-highlight-border ntisas-highlight-left"></div><div class="ntisas-highlight-border ntisas-highlight-right"></div><div class="ntisas-highlight-border ntisas-highlight-top"></div><div class="ntisas-highlight-border ntisas-highlight-bottom"></div>');
 }
 
 function MarkupMainTweet(tweet) {
@@ -6529,11 +6417,6 @@ function RegularCheck() {
     if (!ProcessNewTweets()) {
         //Only process further if there are new tweets
         return;
-    }
-
-    //Additional processing on all tweets when new tweets get added
-    if (DisplayHighlights()) {
-        HighlightTweets();
     }
     if (!IsPageType(['tweet', 'web_tweet', 'other'])) {
         CollectTweetStats();
@@ -6879,36 +6762,6 @@ function AdjustColorScheme() {
     }
 }
 
-function HighlightTweets() {
-    var $tweets = $('[ntisas-tweet]:not([ntisas-highlight])');
-    $tweets.each((i, entry) => {
-        var $entry = $(entry);
-        $entry.attr('ntisas-highlight', "");
-        var tweetid = String($entry.data('tweet-id'));
-        if (NTISAS.tweet_pos.includes(tweetid)) {
-            return;
-        }
-        NTISAS.tweet_pos.push(tweetid);
-        var favorites = GetTweetStat(entry, ['like', 'unlike']);
-        NTISAS.tweet_faves.push(favorites);
-    });
-    this.debug('log', "Tweets:", NTISAS.tweet_pos);
-    this.debug('log', "Faves:", NTISAS.tweet_faves);
-    this.debug('log', "Finish:", NTISAS.tweet_finish);
-    var current_count = Object.assign(...ALL_SCORE_LEVELS.map((level) => ({[level]: 0})));
-    var visible_tweetids = JSPLib.utility.getDOMAttributes($('[ntisas-tweet]'), 'tweet-id', String);
-    NTISAS.tweet_pos.forEach((tweetid) => {
-        let quartile = GetTweetQuartile(tweetid);
-        let level = ALL_SCORE_LEVELS[quartile];
-        current_count[level]++;
-        if (visible_tweetids.includes(tweetid)) {
-            let $tweet = $(`[ntisas-tweet][data-tweet-id=${tweetid}]`);
-            $tweet.attr('ntisas-highlight', level);
-        }
-    });
-    this.debug('log', "Excellent:", current_count.excellent, "Good:", current_count.good, "Above average:", current_count.aboveavg, "Fair:", current_count.fair, "Belowavg:", current_count.belowavg, "Poor:", current_count.poor);
-}
-
 function CollectTweetStats() {
     let are_new = false;
     let tweets_collected = JSPLib.utility.getObjectAttributes(NTISAS.tweet_stats, 'tweetid');
@@ -7091,15 +6944,6 @@ function InitializeChangedSettings() {
         $('.ntisas-media-view-icon').remove();
         $('.ntisas-media-tweet').removeClass('ntisas-media-tweet');
     }
-    if (JSPLib.menu.hasSettingChanged('score_highlights_enabled') || JSPLib.menu.hasSettingChanged('score_window_size')) {
-        $('[ntisas-highlight]').attr('ntisas-highlight', null);
-        if (DisplayHighlights()) {
-            NTISAS.tweet_pos = [];
-            NTISAS.tweet_faves = [];
-            NTISAS.tweet_finish = {};
-            HighlightTweets();
-        }
-    }
     if (JSPLib.menu.hasSettingChanged('query_subdomain')) {
         let old_domain = NTISAS.domain;
         SetQueryDomain();
@@ -7188,8 +7032,6 @@ function RenderSettingsMenu() {
     $('#ntisas-function-settings').append(JSPLib.menu.renderCheckbox('image_popout_enabled'));
     $('#ntisas-function-settings').append(JSPLib.menu.renderCheckbox('auto_unhide_tweets_enabled'));
     $('#ntisas-function-settings').append(JSPLib.menu.renderCheckbox('lock_page_enabled'));
-    $('#ntisas-highlight-settings').append(JSPLib.menu.renderCheckbox('score_highlights_enabled'));
-    $('#ntisas-highlight-settings').append(JSPLib.menu.renderTextinput('score_window_size', 5));
     $("#ntisas-query-message").append(JSPLib.menu.renderExpandable("Additional setting details", QUERY_SETTINGS_DETAILS));
     $('#ntisas-query-settings').append(JSPLib.menu.renderInputSelectors('IQDB_settings', 'checkbox'));
     $('#ntisas-query-settings').append(JSPLib.menu.renderInputSelectors('sauce_settings', 'checkbox'));
@@ -7296,7 +7138,7 @@ async function Main() {
 /****Function decoration****/
 
 [
-    UnhideTweets, HighlightTweets, RegularCheck, ImportData, DownloadOriginal, PromptSavePostIDs,
+    UnhideTweets, RegularCheck, ImportData, DownloadOriginal, PromptSavePostIDs,
     CheckIQDB, CheckURL, PurgeBadTweets, CheckPurgeBadTweets, SaveDatabase, LoadDatabase, CheckPostvers,
     ReadFileAsync, ProcessPostvers, InitializeImageTweets, CorrectStringArray, ValidateEntry, BroadcastTISAS,
     PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages, InitializeUploadlinks, CheckSauce,
@@ -7304,7 +7146,7 @@ async function Main() {
     MarkupStreamTweet, MarkupMediaType, CheckViews, InitializeViewCount, ToggleImageSize, InitializeProfileTimeline,
     IntervalStorageHandler, GetImageAttributes, UpdateUserIDCallback, PreloadStorageData,
 ] = JSPLib.debug.addFunctionLogs([
-    UnhideTweets, HighlightTweets, RegularCheck, ImportData, DownloadOriginal, PromptSavePostIDs,
+    UnhideTweets, RegularCheck, ImportData, DownloadOriginal, PromptSavePostIDs,
     CheckIQDB, CheckURL, PurgeBadTweets, CheckPurgeBadTweets, SaveDatabase, LoadDatabase, CheckPostvers,
     ReadFileAsync, ProcessPostvers, InitializeImageTweets, CorrectStringArray, ValidateEntry, BroadcastTISAS,
     PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages, InitializeUploadlinks, CheckSauce,
