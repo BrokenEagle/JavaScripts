@@ -603,13 +603,15 @@ const PROGRAM_CSS = `
     display: none;
 }
 #ntisas-enable-downloads,
-#ntisas-enable-views,
+#ntisas-enable-view-highlights,
+#ntisas-enable-view-counts,
 #ntisas-enable-autoiqdb,
 #ntisas-disable-lockpage {
     color: green;
 }
 #ntisas-disable-downloads,
-#ntisas-disable-views,
+#ntisas-disable-view-highlights,
+#ntisas-disable-view-counts,
 #ntisas-disable-autoiqdb,
 #ntisas-enable-lockpage {
     color: red;
@@ -1544,8 +1546,13 @@ const SIDE_MENU = `
                 </tr>
                 <tr data-setting="display_tweet_views">
                     <td><span>View indicators:</span></td>
-                    <td>%VIEWS%</td>
-                    <td>(%VIEWSHELP%)</td>
+                    <td>%VIEW_HIGHLIGHTS%</td>
+                    <td>(%VIEW_HIGHLIGHTS_HELP%)</td>
+                </tr>
+                <tr data-setting="display_tweet_views">
+                    <td><span>Count views:</span></td>
+                    <td>%VIEW_COUNTS%</td>
+                    <td>(%VIEW_COUNTS_HELP%)</td>
                 </tr>
                 <tr data-setting="autoclick_IQDB_enabled">
                     <td><span>Autoclick IQDB:</span></td>
@@ -1656,10 +1663,16 @@ const DOWNLOADS_HTML = `
     <a id="ntisas-disable-downloads" class="ntisas-expanded-link">Hide</a>
 </span>`;
 
-const VIEWS_HTML = `
-<span id="ntisas-views-toggle">
-    <a id="ntisas-enable-views" class="ntisas-expanded-link">Show</a>
-    <a id="ntisas-disable-views" class="ntisas-expanded-link">Hide</a>
+const VIEW_HIGHLIGHTS_HTML = `
+<span id="ntisas-view-highlights-toggle">
+    <a id="ntisas-enable-view-highlights" class="ntisas-expanded-link">Show</a>
+    <a id="ntisas-disable-view-highlights" class="ntisas-expanded-link">Hide</a>
+</span>`;
+
+const VIEW_COUNTS_HTML = `
+<span id="ntisas-view-counts-toggle">
+    <a id="ntisas-enable-view-counts" class="ntisas-expanded-link">Enable</a>
+    <a id="ntisas-disable-view-counts" class="ntisas-expanded-link">Disable</a>
 </span>`;
 
 const PROFILE_TIMELINE_HTML = `
@@ -1733,7 +1746,8 @@ const MUST_INSTALL_HELP = "The database must be installed before the script is f
 const REFRESH_RECORDS_HELP = "L-Click to refresh record count.";
 const AVAILABLE_SAUCE_HELP = "Shows the number of API requests remaining.\nOnly shown after use of the Sauce link.\nResults are kept for only 1 hour.";
 const DOWNLOADS_HELP = "L-Click to hide/show the downloads section. (Shortcut: Alt+D)";
-const VIEWS_HELP = "L-Click to toggle borders on viewed Tweets. (Shortcut: Alt+V)";
+const VIEWS_HIGHLIGHTS_HELP = "L-Click to toggle borders on viewed Tweets. (Shortcut: Alt+V)";
+const VIEWS_COUNTS_HELP = "L-Click to toggle whether tweets are being counted as viewed.";
 const AUTO_IQDB_HELP = "L-Click to toggle auto-IQDB click. (Shortcut: Alt+Q)";
 const LOCKPAGE_HELP = "L-Click to prevent navigating away from the page (does not prevent Twitter navigation).";
 const ERROR_MESSAGES_HELP = "L-Click to see full error messages.";
@@ -2037,7 +2051,8 @@ const PROFILE_FIELDS = 'id,level';
 //DOM constants
 
 const DOWNLOAD_CONTROLS = ['enable', 'disable'];
-const VIEW_CONTROLS = ['enable', 'disable'];
+const VIEW_HIGHLIGHT_CONTROLS = ['enable', 'disable'];
+const VIEW_COUNT_CONTROLS = ['enable', 'disable'];
 const IQDB_CONTROLS = ['enable', 'disable', 'active', 'unavailable'];
 
 const BASE_DIALOG_WIDTH = 60;
@@ -2939,7 +2954,7 @@ function SetCheckPostvers() {
 }
 
 async function AddViewCount(tweet_id) {
-    if (!NTISAS.recorded_views.includes(tweet_id)) {
+    if (NTISAS.count_views && !NTISAS.recorded_views.includes(tweet_id)) {
         let views = await GetData('view-' + tweet_id, 'danbooru');
         let mapped_view = {
             count: (views ? views.value.count : 0) + 1,
@@ -3259,10 +3274,16 @@ function UpdateDownloadSection() {
     }
 }
 
-function UpdateViewControls() {
+function UpdateViewHighlightControls() {
     let show_highlights = GetLocalData('ntisas-view-highlights', true);
     let switch_type = (show_highlights ? 'disable' : 'enable');
-    DisplayControl(switch_type, VIEW_CONTROLS, 'views');
+    DisplayControl(switch_type, VIEW_HIGHLIGHT_CONTROLS, 'view-highlights');
+}
+
+function UpdateViewCountControls() {
+    let count_views = NTISAS.count_views = GetLocalData('ntisas-view-counts', true);
+    let switch_type = (count_views ? 'disable' : 'enable');
+    DisplayControl(switch_type, VIEW_COUNT_CONTROLS, 'view-counts');
 }
 
 function UpdateViewHighlights() {
@@ -3497,8 +3518,10 @@ function RenderSideMenu() {
         SAUCEHELP: RenderHelp(AVAILABLE_SAUCE_HELP),
         DOWNLOADS: DOWNLOADS_HTML,
         DOWNLOADSHELP: RenderHelp(DOWNLOADS_HELP),
-        VIEWS: VIEWS_HTML,
-        VIEWSHELP: RenderHelp(VIEWS_HELP),
+        VIEW_HIGHLIGHTS: VIEW_HIGHLIGHTS_HTML,
+        VIEW_HIGHLIGHTS_HELP: RenderHelp(VIEWS_HIGHLIGHTS_HELP),
+        VIEW_COUNTS: VIEW_COUNTS_HTML,
+        VIEW_COUNTS_HELP: RenderHelp(VIEWS_COUNTS_HELP),
         AUTOCLICKIQDB: AUTO_IQDB_HTML,
         AUTOCLICKIQDBHELP: RenderHelp(AUTO_IQDB_HELP),
         LOCKPAGE: LOCKPAGE_HTML,
@@ -5421,8 +5444,15 @@ function ToggleViewHighlights() {
     let show_highlights = GetLocalData('ntisas-view-highlights', true);
     SetLocalData('ntisas-view-highlights', !show_highlights);
     UpdateViewHighlights();
-    UpdateViewControls();
+    UpdateViewHighlightControls();
     NTISAS.channel.postMessage({type: 'view_highlights'});
+}
+
+function ToggleViewCounts() {
+    let count_views = GetLocalData('ntisas-view-counts', true);
+    SetLocalData('ntisas-view-counts', !count_views);
+    UpdateViewCountControls();
+    NTISAS.channel.postMessage({type: 'count_views'});
 }
 
 function ToggleAutoclickIQDB() {
@@ -6558,7 +6588,8 @@ function PageNavigation(pagetype) {
             $('#ntisas-menu-selection a').on(PROGRAM_CLICK, SideMenuSelection);
             $('#ntisas-current-records').on(PROGRAM_CLICK, CurrentRecords);
             $('#ntisas-downloads-toggle a').on(PROGRAM_CLICK, ToggleDownloadSection);
-            $('#ntisas-views-toggle a').on(PROGRAM_CLICK, ToggleViewHighlights);
+            $('#ntisas-view-highlights-toggle a').on(PROGRAM_CLICK, ToggleViewHighlights);
+            $('#ntisas-view-counts-toggle a').on(PROGRAM_CLICK, ToggleViewCounts);
             $('#ntisas-iqdb-toggle a').on(PROGRAM_CLICK, ToggleAutoclickIQDB);
             $('#ntisas-open-settings').on(PROGRAM_CLICK, OpenSettingsMenu);
             //These will only get bound here on a rebind
@@ -6593,7 +6624,8 @@ function PageNavigation(pagetype) {
     }
     UpdateSideMenu();
     UpdateDownloadControls();
-    UpdateViewControls();
+    UpdateViewHighlightControls();
+    UpdateViewCountControls();
     UpdateIQDBControls();
     SetCheckPostvers();
     //Tweets are not available upon page load, so don't bother processing them
