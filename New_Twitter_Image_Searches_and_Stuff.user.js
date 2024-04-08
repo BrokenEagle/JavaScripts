@@ -2753,6 +2753,8 @@ function GetFileURLNameExt(file_url) {
 async function GetNormalImageURL(image_info) {
     if (!(image_info.key in NTISAS.known_extensions)) {
         if (image_info.ext === 'webp') {
+            this.debug('log', "Checking webp image for extension:", image_info);
+            JSPLib.notice.debugNoticeLevel("Webp image detected.", JSPLib.debug.DEBUG);
             for (let ext of ['jpg', 'png']) {
                 let image_url = `https://pbs.twimg.com/${image_info.path}/${image_info.key}.${ext}`;
                 let dimensions = await JSPLib.utility.getImageDimensions(image_url);
@@ -7097,7 +7099,7 @@ async function Main() {
     CheckIQDB, CheckURL, PurgeBadTweets, CheckPurgeBadTweets, SaveDatabase, LoadDatabase, CheckPostvers,
     ReadFileAsync, ProcessPostvers, InitializeImageTweets, CorrectStringArray, ValidateEntry, BroadcastTISAS,
     PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages, InitializeUploadlinks, CheckSauce,
-    GetMaxVideoDownloadLink, GetPageType, CheckServerBadTweets, SavePostvers, PickImage, MarkupMainTweet,
+    GetNormalImageURL, GetPageType, CheckServerBadTweets, SavePostvers, PickImage, MarkupMainTweet,
     MarkupStreamTweet, MarkupMediaType, CheckViews, InitializeViewCount, ToggleImageSize, InitializeProfileTimeline,
     IntervalStorageHandler, GetImageAttributes, UpdateUserIDCallback, PreloadStorageData,
 ] = JSPLib.debug.addFunctionLogs([
@@ -7105,7 +7107,7 @@ async function Main() {
     CheckIQDB, CheckURL, PurgeBadTweets, CheckPurgeBadTweets, SaveDatabase, LoadDatabase, CheckPostvers,
     ReadFileAsync, ProcessPostvers, InitializeImageTweets, CorrectStringArray, ValidateEntry, BroadcastTISAS,
     PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages, InitializeUploadlinks, CheckSauce,
-    GetMaxVideoDownloadLink, GetPageType, CheckServerBadTweets, SavePostvers, PickImage, MarkupMainTweet,
+    GetNormalImageURL, GetPageType, CheckServerBadTweets, SavePostvers, PickImage, MarkupMainTweet,
     MarkupStreamTweet, MarkupMediaType, CheckViews, InitializeViewCount, ToggleImageSize, InitializeProfileTimeline,
     IntervalStorageHandler, GetImageAttributes, UpdateUserIDCallback, PreloadStorageData,
 ]);
