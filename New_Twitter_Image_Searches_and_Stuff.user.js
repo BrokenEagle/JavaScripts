@@ -2947,17 +2947,6 @@ function GetTweetStat(tweet, types) {
     return 0;
 }
 
-function SetVideoDownload($download_section, video_url) {
-    let [video_name, extension] = GetFileURLNameExt(video_url);
-    let download_filename = JSPLib.utility.regexReplace(NTISAS.filename_prefix, {
-        ORDER: 'video1',
-        IMG: video_name
-    }) + '.' + extension;
-    let $video_button = $download_section.parent().find('.ntisas-download-video');
-    $video_button.attr('href', video_url).attr('download', download_filename);
-    $video_button.parent().show();
-}
-
 function UpdatePostIDsLink(tweet_id, post_ids) {
     var $tweet;
     if (NTISAS.page === 'media') {
@@ -3463,7 +3452,7 @@ function RenderDatabaseVersion() {
     return `<a id="ntisas-database-version" class="ntisas-expanded-link" href="${url}" title="${timestring}">${NTISAS.server_info.post_version}</a>`;
 }
 
-async function RenderDownloadLinks($tweet, is_video, image_links) {
+async function RenderDownloadLinks($tweet, videos, image_links) {
     let [tweet_id, user_id, screen_name,, ] = GetTweetInfo($tweet);
     let date_string = GetDateString(Date.now());
     let time_string = GetTimeString(Date.now());
@@ -3480,16 +3469,18 @@ async function RenderDownloadLinks($tweet, is_video, image_links) {
     var hrefs = image_links.map((image) => (image + ':orig'));
     var html = "";
     for (let i = 0; i < image_links.length; i++) {
+        let is_video = videos[i];
         let image_num = i + 1;
         let [image_name, extension] = GetFileURLNameExt(image_links[i]);
-        let download_filename = JSPLib.utility.regexReplace(NTISAS.filename_prefix, {
-            ORDER: 'img' + String(image_num),
-            IMG: image_name
-        }) + '.' + extension;
-        html += `<span class="ntisas-download-button"><a class="ntisas-download-original ntisas-download-image ntisas-expanded-link" href="${hrefs[i]}" download="${download_filename}">Image #${image_num}</a></span>`;
-    }
-    if (is_video) {
-        html += '<span class="ntisas-download-button" style="display:none;"><a class="ntisas-download-original ntisas-download-video ntisas-expanded-link">Video #1</a></span>';
+        if (!is_video) {
+            let download_filename = JSPLib.utility.regexReplace(NTISAS.filename_prefix, {
+                ORDER: 'img' + String(image_num),
+                IMG: image_name
+            }) + '.' + extension;
+            html += `<span class="ntisas-download-button"><a class="ntisas-download-image ntisas-expanded-link" href="${hrefs[i]}" download="${download_filename}">Image #${image_num}</a></span>`;
+        } else {
+            html += `<span class="ntisas-download-button"><a class="ntisas-download-video ntisas-expanded-link" data-order="${i}" href="${hrefs[i]}">Video #${image_num}</a></span>`;
+        }
     }
     if (image_links.length > 1) {
         html += '<span class="ntisas-download-button"><a class="ntisas-download-all ntisas-expanded-link" href="javascript:void(0)">All images</a></span>';
@@ -4121,31 +4112,17 @@ function InitializeProfileTimeline() {
 }
 
 function InitializeDownloadLinks($tweet) {
-    let p = JSPLib.utility.createPromise();
     let tweet_deferred = $tweet.prop('ntisasDeferred');
     if (tweet_deferred && NTISAS.user_settings.original_download_enabled) {
         tweet_deferred.promise.then(async () => {
-            let is_video = Boolean($('.ntisas-tweet-video', $tweet[0]).length);
-            let download_html = await RenderDownloadLinks($tweet, is_video);
+            let videos = $tweet.find('[ntisas-media-type]').map((i, entry) => $(entry).attr('ntisas-media-type') === 'video').toArray();
+            let download_html = await RenderDownloadLinks($tweet, videos);
             let $download_section = $(download_html);
             $('.ntisas-download-section', $tweet[0]).append($download_section);
-            if (is_video) {
-                let tweet_id = String($tweet.data('tweet-id'));
-                GetMaxVideoDownloadLink(tweet_id).then((video_url) => {
-                    if (video_url !== null) {
-                        SetVideoDownload($download_section, video_url);
-                    }
-                    p.resolve(null);
-                });
-            } else {
-                p.resolve(null);
-            }
         });
     } else {
         $('.ntisas-download-header, .ntisas-download-section').css('display', 'none');
-        p.resolve(null);
     }
-    return p.promise;
 }
 
 async function InitializeUploadlinks(install) {
@@ -4243,11 +4220,11 @@ function InitializeImageTweets($image_tweets) {
             exec: () => {
                 Promise.all([
                     InitializeImageMenu($tweet, menu_class),
-                    InitializeDownloadLinks($tweet),
                 ]).then(() => {
                     p.resolve(null);
                 });
                 InitializeMediaLink($tweet);
+                InitializeDownloadLinks($tweet);
             },
             fail: () => {
                 p.reject(null);
@@ -4522,6 +4499,45 @@ async function TimelineHandler() {
 }
 
 //Network functions
+
+function DownloadURL(file_url, download_name, $tweet) {
+    const mime_types = {
+        jpg: 'image/jpeg',
+        png: 'image/png',
+        mp4: 'video/mp4',
+    };
+    let [, extension] = GetFileURLNameExt(file_url);
+    let mime_type = mime_types[extension];
+    if (mime_type) {
+        this.debug('log', "Saving", file_url, "as", download_name);
+        let $counter = $tweet.find('.ntisas-download-counter');
+        let counter = parseInt($counter.text());
+        $counter.text(counter + 1);
+        JSPLib.network.getData(file_url).then(
+            //Success
+            (blob) => {
+                let image_blob = blob.slice(0, blob.size, mime_type);
+                saveAs(image_blob, download_name);
+                this.debug('log', "Saved", extension, "file as", mime_type, "with size of", blob.size);
+            },
+            //Failure
+            (e) => {
+                let error_text = 'Check the debug console.';
+                if (Number.isInteger(e)) {
+                    error_text = 'HTTP ' + e;
+                } else {
+                    JSPLib.debug.debugerror("DownloadImage error:", e);
+                }
+                JSPLib.notice.error(`Error downloading image: ${error_text}`);
+            }
+        ).always(() => {
+            let counter = parseInt($counter.text());
+            $counter.text(counter - 1);
+        });
+    } else {
+        JSPLib.notice.error("Unknown mime type for extension:", extension);
+    }
+}
 
 function TwitterAPI1_1Request(endpoint, data) {
     let url_addons = $.param(data);
@@ -4887,43 +4903,6 @@ function SavePostvers(add_entries, rem_entries) {
             }
         });
     });
-}
-
-async function GetMaxVideoDownloadLink(tweet_id) {
-    let key = 'video-' + tweet_id;
-    let cached = await JSPLib.storage.checkLocalDB(key, ValidateEntry, VIDEO_EXPIRES);
-    var video_url, variants, data;
-    if (!cached) {
-        if (API_DATA.has_data && tweet_id in API_DATA.tweets) {
-            data = GetAPIData('tweets', tweet_id);
-        } else {
-            let tweet_func = (NTISAS.user_settings.use_graphql ? GetTweetGQL : GetTweetAPI1_1);
-            try {
-                data = await tweet_func(tweet_id);
-            } catch (e) {
-                this.debug('warn', "HTTP Error:", e.status, e);
-                data = null;
-            }
-        }
-        try {
-            variants = data.extended_entities.media[0].video_info.variants;
-        } catch (e) {
-            //Bad data was returned!
-            this.debug('log', "Bad data returned:", data);
-            variants = null;
-        }
-        if (variants) {
-            let max_bitrate = Math.max(...JSPLib.utility.getObjectAttributes(variants, 'bitrate').filter((num) => Number.isInteger(num)));
-            let max_video = variants.filter((variant) => (variant.bitrate === max_bitrate));
-            video_url = (max_video.length ? max_video[0].url.split('?')[0] : null);
-        } else {
-            video_url = null;
-        }
-        JSPLib.storage.saveData(key, {value: video_url, expires: JSPLib.utility.getExpires(VIDEO_EXPIRES)});
-        return video_url;
-    }
-    return cached.value;
-
 }
 
 async function InstallUserProfileData() {
@@ -5507,17 +5486,9 @@ function OpenMediaTweetMenu(event) {
                 }
             });
             if (NTISAS.user_settings.original_download_enabled) {
-                let is_video = $tweet.hasClass('ntisas-media-video');
-                RenderDownloadLinks($tweet, is_video, image_urls).then((download_html) => {
+                RenderDownloadLinks($tweet, videos, image_urls).then((download_html) => {
                     let $download_section = $(download_html);
                     $('.ntisas-download-section', $dialog[0]).append($download_section);
-                    if (is_video) {
-                        GetMaxVideoDownloadLink(tweet_id).then((video_url) => {
-                            if (video_url !== null) {
-                                SetVideoDownload($download_section, video_url);
-                            }
-                        });
-                    }
                     UpdateDownloadSection();
                 });
             } else {
@@ -5829,52 +5800,35 @@ function SelectMetric(event) {
     }
 }
 
-function DownloadOriginal(event) {
-    const mime_types = {
-        jpg: 'image/jpeg',
-        png: 'image/png',
-        mp4: 'video/mp4',
-    };
-    let [$link, $tweet,,,,,, ] = GetEventPreload(event, 'ntisas-download-original');
-    let image_link = $link.attr('href');
+function DownloadImage(event) {
+    let [$link, $tweet,,,,,, ] = GetEventPreload(event, 'ntisas-download-image');
+    let image_url = $link.attr('href');
     let download_name = $link.attr('download');
-    let [, extension] = GetFileURLNameExt(image_link);
-    let mime_type = mime_types[extension];
-    if (mime_type) {
-        this.debug('log', "Saving", image_link, "as", download_name);
-        let $counter = $tweet.find('.ntisas-download-counter');
-        let counter = parseInt($counter.text());
-        $counter.text(counter + 1);
-        JSPLib.network.getData(image_link).then(
-            //Success
-            (blob) => {
-                let image_blob = blob.slice(0, blob.size, mime_type);
-                saveAs(image_blob, download_name);
-                this.debug('log', "Saved", extension, "file as", mime_type, "with size of", blob.size);
-            },
-            //Failure
-            (e) => {
-                let error_text = 'Check the debug console.';
-                if (Number.isInteger(e)) {
-                    error_text = 'HTTP ' + e;
-                } else {
-                    JSPLib.debug.debugerror("DownloadOriginal error:", e);
-                }
-                JSPLib.notice.error(`Error downloading image: ${error_text}`);
-            }
-        ).always(() => {
-            let counter = parseInt($counter.text());
-            $counter.text(counter - 1);
-        });
-    } else {
-        JSPLib.notice.error("Unknown mime type for extension:", extension);
-    }
+    DownloadURL(image_url, download_name, $tweet);
     event.preventDefault();
+}
+
+async function DownloadVideo(event) {
+    event.preventDefault();
+    let [$link, $tweet, tweet_id,,,,, ] = GetEventPreload(event, 'ntisas-download-video');
+    let data = await GetTweetData(tweet_id);
+    if (data.length === 0) {
+        JSPLib.notice.error("No tweet data found through API.");
+        return;
+    }
+    let order = $link.data('order');
+    let video_url = 'https://video.twimg.com/' + data[order].partial_video;
+    let [video_name, extension] = GetFileURLNameExt(video_url);
+    let download_name = JSPLib.utility.regexReplace(NTISAS.filename_prefix, {
+        ORDER: 'video1',
+        IMG: video_name
+    }) + '.' + extension;
+    DownloadURL(video_url, download_name, $tweet);
 }
 
 function DownloadAll(event) {
     let [, $tweet,,,,,, ] = GetEventPreload(event, 'ntisas-download-all');
-    $('.ntisas-download-original', $tweet[0]).click();
+    $('.ntisas-download-image', $tweet[0]).click();
 }
 
 function ListInfo() {
@@ -7110,7 +7064,8 @@ async function Main() {
     $(document).on(PROGRAM_CLICK, '.ntisas-help-info', HelpInfo);
     $(document).on(PROGRAM_CLICK, '.ntisas-post-preview a', SelectPreview);
     $(document).on(PROGRAM_CLICK, '.ntisas-select-controls a', SelectControls);
-    $(document).on(PROGRAM_CLICK, '.ntisas-download-original', DownloadOriginal);
+    $(document).on(PROGRAM_CLICK, '.ntisas-download-image', DownloadImage);
+    $(document).on(PROGRAM_CLICK, '.ntisas-download-video', DownloadVideo);
     $(document).on(PROGRAM_CLICK, '.ntisas-download-all', DownloadAll);
     $(document).on(PROGRAM_CLICK, '.ntisas-metric', SelectMetric);
     $(document).on(PROGRAM_CLICK, '.ntisas-toggle-image-size', ToggleImageSize);
@@ -7138,7 +7093,7 @@ async function Main() {
 /****Function decoration****/
 
 [
-    UnhideTweets, RegularCheck, ImportData, DownloadOriginal, PromptSavePostIDs,
+    UnhideTweets, RegularCheck, ImportData, DownloadURL, PromptSavePostIDs,
     CheckIQDB, CheckURL, PurgeBadTweets, CheckPurgeBadTweets, SaveDatabase, LoadDatabase, CheckPostvers,
     ReadFileAsync, ProcessPostvers, InitializeImageTweets, CorrectStringArray, ValidateEntry, BroadcastTISAS,
     PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages, InitializeUploadlinks, CheckSauce,
@@ -7146,7 +7101,7 @@ async function Main() {
     MarkupStreamTweet, MarkupMediaType, CheckViews, InitializeViewCount, ToggleImageSize, InitializeProfileTimeline,
     IntervalStorageHandler, GetImageAttributes, UpdateUserIDCallback, PreloadStorageData,
 ] = JSPLib.debug.addFunctionLogs([
-    UnhideTweets, RegularCheck, ImportData, DownloadOriginal, PromptSavePostIDs,
+    UnhideTweets, RegularCheck, ImportData, DownloadURL, PromptSavePostIDs,
     CheckIQDB, CheckURL, PurgeBadTweets, CheckPurgeBadTweets, SaveDatabase, LoadDatabase, CheckPostvers,
     ReadFileAsync, ProcessPostvers, InitializeImageTweets, CorrectStringArray, ValidateEntry, BroadcastTISAS,
     PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages, InitializeUploadlinks, CheckSauce,
