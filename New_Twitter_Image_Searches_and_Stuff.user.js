@@ -228,11 +228,6 @@ const SETTINGS_CONFIG = {
         validate: JSPLib.validate.isBoolean,
         hint: "Automatically unhides sensitive Tweet content."
     },
-    display_retweet_id: {
-        reset: false,
-        validate: JSPLib.validate.isBoolean,
-        hint: "Displays the retweet ID next to the retweeter's name. <b>Note:</b> Only available with access to Twitter's API."
-    },
     display_tweet_views: {
         reset: false,
         validate: JSPLib.validate.isBoolean,
@@ -4183,11 +4178,6 @@ function InitializeMediaLink($tweet) {
     }
 }
 
-function InitializeRetweetDisplay(tweet) {
-    let retweet_id = String($(tweet).data('retweet-id'));
-    $('.ntisas-retweet-id', tweet).html(`[${retweet_id}]`);
-}
-
 function InitializeUserDisplay($tweets) {
     let $tweet = $tweets.filter('[ntisas-tweet=main]');
     if ($tweet.length) {
@@ -6644,12 +6634,6 @@ function ProcessNewTweets() {
             UpdateViewHighlights();
         }
     }
-    if (NTISAS.user_settings.display_retweet_id && API_DATA.has_data && IsPageType(['main'])) {
-        let $retweets = $tweets.filter('[data-retweet-id]');
-        $retweets.each((i, entry) => {
-            InitializeRetweetDisplay(entry);
-        });
-    }
     if (NTISAS.user_settings.display_user_id && API_DATA.has_data && IsTweetPage()) {
         InitializeUserDisplay($tweets);
     }
@@ -6798,13 +6782,6 @@ function InitializeChangedSettings() {
                 InitializePostIDsLink(tweet_id, $post_link.parent(), tweet, post_ids);
             } else {
                 $post_link.qtiptisas('destroy', true);
-            }
-        }
-        if ($tweet.filter('[data-retweet-id]').length && JSPLib.menu.hasSettingChanged('display_retweet_id')) {
-            if (NTISAS.user_settings.display_retweet_id) {
-                InitializeRetweetDisplay(tweet);
-            } else {
-                $('.ntisas-retweet-id', tweet).html("");
             }
         }
         if (JSPLib.menu.hasSettingChanged('display_tweet_views')) {
@@ -6976,7 +6953,6 @@ function RenderSettingsMenu() {
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_tweet_views'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_profile_views'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_user_id'));
-    $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_retweet_id'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_media_link'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_image_number'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_upload_link'));
