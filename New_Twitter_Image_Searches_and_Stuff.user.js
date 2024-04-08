@@ -3107,7 +3107,9 @@ function PromptSavePostIDs($link, $tweet, tweet_id, $replace, message, initial_p
         }
         UpdatePostIDsLink(tweet_id, confirm_post_ids);
         NTISAS.channel.postMessage({type: 'postlink', tweet_id, post_ids: confirm_post_ids});
+        return true;
     }
+    return false;
 }
 
 function GetSelectPostIDs(tweet_id, type) {
@@ -3396,6 +3398,7 @@ async function PickImage(event, type, pick_func) {
 }
 
 function ProcessSimilarData(type, tweet_id, $tweet, $replace, selected_image_urls, similar_data, autosave_func) {
+    SaveData(type + '-' + tweet_id, {value: true, expires: JSPLib.utility.getExpires(SIMILAR_EXPIRES)}, 'danbooru');
     let flat_data = similar_data.flat();
     if (flat_data.length > 0) {
         let max_score = Math.max(...JSPLib.utility.getObjectAttributes(flat_data, 'score'));
@@ -5808,7 +5811,9 @@ function ConfirmSave(event) {
         let merge_ids = GetSessionTwitterData(tweet_id);
         save_post_ids = JSPLib.utility.arrayUnion(merge_ids, save_post_ids);
     }
-    PromptSavePostIDs($link, $tweet, tweet_id, $replace, CONFIRM_SAVE_PROMPT, save_post_ids);
+    if (PromptSavePostIDs($link, $tweet, tweet_id, $replace, CONFIRM_SAVE_PROMPT, save_post_ids)) {
+        RemoveData(type + '-' + tweet_id, 'danbooru');
+    }
     event.preventDefault();
 }
 
