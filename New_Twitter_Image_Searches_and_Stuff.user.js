@@ -47,7 +47,7 @@
 // ==/UserScript==
 
 // eslint-disable-next-line no-redeclare
-/* global $ jQuery JSPLib validate localforage saveAs XRegExp GM_getResourceText BigInt */
+/* global $ jQuery JSPLib validate localforage saveAs XRegExp GM_getResourceText GM_info BigInt */
 
 /****Global variables****/
 
@@ -5234,7 +5234,8 @@ async function SaveDatabase(database, counter_selector) {
     let batches = Math.floor(database_keys.length / 2000);
     this.debug('log', "Database size:", database_keys.length);
     var payload = {};
-    for (var i = 0; i < database_keys.length; i++) {
+    var i;
+    for (i = 0; i < database_keys.length; i++) {
         let key = database_keys[i];
         let value = database[key];
         //Support keys both with and without a tweet- prefix
@@ -5686,7 +5687,7 @@ function PopupMediaTweetVideo(event) {
 }
 
 function CheckURL(event) {
-    let [$link, $tweet, tweet_id,, screen_name,,, ] = GetEventPreload(event, 'ntisas-check-url');
+    let [$link,, tweet_id,, screen_name,,, ] = GetEventPreload(event, 'ntisas-check-url');
     $link.removeClass('ntisas-check-url').html("loading…");
     let normal_url = `https://twitter.com/${screen_name}/status/${tweet_id}`;
     let wildcard_url = `https://twitter.com/*/status/${tweet_id}`;
@@ -5955,19 +5956,24 @@ function DownloadOriginal(event) {
         let $counter = $tweet.find('.ntisas-download-counter');
         let counter = parseInt($counter.text());
         $counter.text(counter + 1);
-        JSPLib.network.getData(image_link).then((blob) => {
-            let image_blob = blob.slice(0, blob.size, mime_type);
-            saveAs(image_blob, download_name);
-            this.debug('log', "Saved", extension, "file as", mime_type, "with size of", blob.size);
-        }).catch((e) => {
-            let error_text = 'Check the debug console.';
-            if (Number.isInteger(e)) {
-                error_text = 'HTTP ' + e;
-            } else {
-                JSPLib.debug.debugerror("DownloadOriginal error:", e);
+        JSPLib.network.getData(image_link).then(
+            //Success
+            (blob) => {
+                let image_blob = blob.slice(0, blob.size, mime_type);
+                saveAs(image_blob, download_name);
+                this.debug('log', "Saved", extension, "file as", mime_type, "with size of", blob.size);
+            },
+            //Failure
+            (e) => {
+                let error_text = 'Check the debug console.';
+                if (Number.isInteger(e)) {
+                    error_text = 'HTTP ' + e;
+                } else {
+                    JSPLib.debug.debugerror("DownloadOriginal error:", e);
+                }
+                JSPLib.notice.error(`Error downloading image: ${error_text}`);
             }
-            JSPLib.notice.error(`Error downloading image: ${error_text}`);
-        }).always(() => {
+        ).always(() => {
             let counter = parseInt($counter.text());
             $counter.text(counter - 1);
         });
@@ -6020,46 +6026,51 @@ function ImportData() {
     if (!NTISAS.import_is_running) {
         NTISAS.import_is_running = true;
         $('#ntisas-import-counter').text('reading');
-        ReadFileAsync('#ntisas-import-file', true).then(async (import_package) => {
-            JSPLib.notice.notice("Importing data...");
-            let errors = false;
-            function userOutput() {
-                if (errors) {
-                    JSPLib.notice.error("Error importing some data!");
-                } else {
-                    JSPLib.notice.notice("Finished importing data.");
+        ReadFileAsync('#ntisas-import-file', true).then(
+            //Success
+            async (import_package) => {
+                JSPLib.notice.notice("Importing data...");
+                let errors = false;
+                function userOutput() {
+                    if (errors) {
+                        JSPLib.notice.error("Error importing some data!");
+                    } else {
+                        JSPLib.notice.notice("Finished importing data.");
+                    }
+                    NTISAS.import_is_running = false;
                 }
+                if ('program_data' in import_package) {
+                    this.debug('log', "Program data:", import_package.program_data);
+                    Object.keys(import_package.program_data).forEach((key) => {
+                        if (ValidateProgramData(key, import_package.program_data[key])) {
+                            SetLocalData(key, import_package.program_data[key]);
+                        } else {
+                            errors = true;
+                        }
+                    });
+                }
+                if ('database_info' in import_package) {
+                    this.debug('log', "Database info:", import_package.database_info);
+                    await JSPLib.storage.saveData('ntisas-database-info', import_package.database_info, JSPLib.storage.twitterstorage);
+                }
+                if ('tweet_purgelist' in import_package) {
+                    this.debug('log', "Purgelist length:", Object.keys(import_package.tweet_purgelist).length);
+                    $('#ntisas-import-counter').text('purging');
+                    await PurgeBadTweets(import_package.tweet_purgelist);
+                }
+                if ('tweet_database' in import_package) {
+                    this.debug('log', "Database length:", Object.keys(import_package.tweet_database).length);
+                    await SaveDatabase(import_package.tweet_database, '#ntisas-import-counter');
+                }
+                userOutput();
+                await JSPLib.utility.sleep(JSPLib.utility.one_second * 2);
+                InitializeDatabase();
+            },
+            //Failure
+            () => {
                 NTISAS.import_is_running = false;
             }
-            if ('program_data' in import_package) {
-                this.debug('log', "Program data:", import_package.program_data);
-                Object.keys(import_package.program_data).forEach((key) => {
-                    if (ValidateProgramData(key, import_package.program_data[key])) {
-                        SetLocalData(key, import_package.program_data[key]);
-                    } else {
-                        errors = true;
-                    }
-                });
-            }
-            if ('database_info' in import_package) {
-                this.debug('log', "Database info:", import_package.database_info);
-                await JSPLib.storage.saveData('ntisas-database-info', import_package.database_info, JSPLib.storage.twitterstorage);
-            }
-            if ('tweet_purgelist' in import_package) {
-                this.debug('log', "Purgelist length:", Object.keys(import_package.tweet_purgelist).length);
-                $('#ntisas-import-counter').text('purging');
-                await PurgeBadTweets(import_package.tweet_purgelist);
-            }
-            if ('tweet_database' in import_package) {
-                this.debug('log', "Database length:", Object.keys(import_package.tweet_database).length);
-                await SaveDatabase(import_package.tweet_database, '#ntisas-import-counter');
-            }
-            userOutput();
-            await JSPLib.utility.sleep(JSPLib.utility.one_second * 2);
-            InitializeDatabase();
-        }).catch(() => {
-            NTISAS.import_is_running = false;
-        });
+        );
     }
 }
 
@@ -6215,7 +6226,7 @@ function MarkupMediaType(tweet) {
         let media_children = $('.ntisas-tweet-media', tweet).children().children();
         media_children.each((i, entry) => {
             let $entry = $(entry);
-            let ret = false
+            let ret = false;
             if ($entry.children().length === 0) {
                 $entry.addClass('ntisas-media-stub').attr('ntisas-media-type', 'stub');
                 ret = true;
@@ -6276,7 +6287,7 @@ function MarkupStreamTweet(tweet) {
         $(tweet_right).addClass('ntisas-tweet-right');
         let sub_body = tweet_right;
         $(sub_body.children[0]).addClass('ntisas-profile-line');
-        var replychild, conversationchild, actionchild;
+        var replychild, actionchild;
         var has_indicator;
         var index = 1;
         var saved_index = index;
@@ -6689,7 +6700,7 @@ function ProcessTweetImage(obj, image_info, unprocessed_tweets) {
             if (!(tweet_id in unprocessed_tweets)) {
                 unprocessed_tweets[tweet_id] = $tweet;
             }
-            if (NTISAS.user_settings.image_popout_enabled && $tweet.attr('ntisas-tweet') == 'stream') {
+            if (NTISAS.user_settings.image_popout_enabled && $tweet.attr('ntisas-tweet') === 'stream') {
                 InitializeImageQtip($obj);
             }
         }
@@ -7354,7 +7365,7 @@ JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [GetList, SaveList, GetData, S
 /****Execution start****/
 
 var hook_disabled = (GM_info?.scriptHandler === 'Tampermonkey' &&
-                     GM_info?.userAgentData.brands.some(brand => brand.brand === 'Firefox'));
+                     GM_info?.userAgentData.brands.some((brand) => brand.brand === 'Firefox'));
 if (!hook_disabled) {
     JSPLib.network.installXHRHook([TweetUserData]);
 }
