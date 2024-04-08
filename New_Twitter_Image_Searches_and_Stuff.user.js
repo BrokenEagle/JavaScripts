@@ -2561,6 +2561,25 @@ JSPLib.concurrency.reserveSemaphore = function (self, program_shortcut, name) {
     return null;
 };
 
+JSPLib.storage.getStorageData = function (key, storage, default_val = null) {
+    let storage_type = this._getStorageType(storage);
+    if (!(key in this.memory_storage[storage_type]) && key in storage) {
+        let record_key = this._getUID(key);
+        JSPLib.debug.recordTime(record_key, 'Storage');
+        let data = storage.getItem(key);
+        JSPLib.debug.recordTimeEnd(record_key, 'Storage');
+        try {
+            this.memory_storage[storage_type][key] = JSON.parse(data);
+        } catch (e) {
+            //swallow exception
+        }
+    }
+    if (this.memory_storage[storage_type][key] === undefined){
+        this.memory_storage[storage_type][key] = default_val;
+    }
+    return JSPLib.utility.dataCopy(this.memory_storage[storage_type][key]);
+};
+
 JSPLib.debug.addModuleLogs('concurrency', ['reserveSemaphore']);
 
 //Helper functions
