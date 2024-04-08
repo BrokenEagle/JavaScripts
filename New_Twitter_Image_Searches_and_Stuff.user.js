@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      8.13
+// @version      9.0
 // @description  Searches Danbooru database for tweet IDs, adds image search links, and highlights images based on Tweet favorites.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -47,7 +47,7 @@
 // ==/UserScript==
 
 // eslint-disable-next-line no-redeclare
-/* global $ jQuery JSPLib validate localforage saveAs XRegExp GM_getResourceText */
+/* global $ jQuery JSPLib validate localforage saveAs XRegExp GM_getResourceText BigInt */
 
 /****Global variables****/
 
@@ -82,7 +82,7 @@ JSPLib.storage.twitterstorage = localforage.createInstance({
 const NTISAS = {};
 
 //Program data constants
-const PROGRAM_DATA_REGEX = /^(post|view|iqdb|sauce|video|ntisas-available-sauce)-/; //Regex that matches the prefix of all program cache data
+const PROGRAM_DATA_REGEX = /^(post|view|iqdb|sauce|video|tweet|twuser|ntisas-available-sauce)-/; //Regex that matches the prefix of all program cache data
 
 //For factory reset !!!These need to be set!!!
 const LOCALSTORAGE_KEYS = [
@@ -128,8 +128,11 @@ const PROGRAM_DEFAULT_VALUES = {
     image_anchor: {},
     qtip_anchor: {},
     image_data: {},
+    timeline_tweets: {},
     tweet_dialog: {},
     dialog_ancor: {},
+    media_dialog: {},
+    media_dialog_anchor: {},
     similar_results: {},
     known_extensions: {},
     no_url_results: [],
@@ -290,6 +293,11 @@ const SETTINGS_CONFIG = {
         reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: `Adds colored borders and other stylings based upon the Tweet score (limited availability, see <a class="ntisas-forum-topic-link" target="_blank">topic #${DANBOORU_TOPIC_ID}</a> for details).`
+    },
+    media_timeline_enabled: {
+        reset: false,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Processes tweets on the grid media timeline (uses additional network calls)."
     },
     advanced_tooltips_enabled: {
         reset: true,
@@ -496,6 +504,87 @@ const PROGRAM_CSS = `
 #ntisas-total-records {
     color: grey;
 }
+.ntisas-media-tweet .ntisas-media-icon-container {
+    bottom: 10px;
+    right: 10px;
+    margin: -8px;
+    padding: 8px;
+    position: absolute;
+}
+.ntisas-media-tweet .ntisas-media-icon {
+    width: 35px;
+    height: 20px;
+    border-radius: 25px;
+    background-color: white;
+    border: 1px solid black;
+}
+.ntisas-media-tweet .ntisas-media-icon-section {
+    display: inline-block;
+    width: 50%;
+    height: 100%;
+    font-family: monospace;
+    font-weight: bold;
+    text-align: center;
+}
+.ntisas-media-tweet .ntisas-media-results {
+    border-radius: 25px 0 0 25px;
+    color: white;
+}
+.ntisas-media-tweet .ntisas-media-match {
+    background-color: green;
+}
+.ntisas-media-tweet .ntisas-media-nomatch {
+    background-color: grey;
+}
+.ntisas-media-tweet .ntisas-media-counter {
+    border-radius: 0 25px 25px 0;
+    background-color: white;
+    color: black;
+}
+.ntisas-media-menu .ntisas-media-images {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 20px;
+}
+.ntisas-media-menu .ntisas-media-images .ntisas-media-image,
+.ntisas-media-menu .ntisas-media-images .ntisas-media-video {
+    display: inline-block;
+    margin: 20px;
+    width: 240px;
+    height: 240px;
+    text-align: center;
+    box-shadow: 0 0 0 4px #fff, 0 0 0 6px #eee;
+}
+.ntisas-media-menu .ntisas-media-images .ntisas-media-video {
+    position: relative;
+}
+.ntisas-media-menu .ntisas-media-images .ntisas-video-icon {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+.ntisas-show-views .ntisas-media-tweet .ntisas-media-view-icon {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 15px;
+    height: 15px;
+    border-radius: 5px;
+    border: 1px solid rgba(0,0,0,0.5);
+    background-color: rgba(255,255,255,0.6);
+}
+.ntisas-popup-media-image,
+.ntisas-popup-media-video {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 80vw;
+    max-height: 80vh;
+    overflow: auto;
+    z-index: 2000;
+}
 #ntisas-server-bypass,
 #ntisas-active-autoiqdb,
 #ntisas-unavailable-autoiqdb {
@@ -617,7 +706,8 @@ const PROGRAM_CSS = `
 [ntisas-tweet=main] .ntisas-query-button {
     margin: 0 -7px;
 }
-[ntisas-tweet=stream] .ntisas-query-button {
+[ntisas-tweet=stream] .ntisas-query-button,
+[ntisas-tweet=media] .ntisas-query-button {
     margin: 0 -6px 0 -5px;
 }
 .ntisas-query-button a {
@@ -630,7 +720,8 @@ const PROGRAM_CSS = `
     letter-spacing: .01em;
     white-space: normal;
 }
-[ntisas-tweet=stream] .ntisas-download-section {
+[ntisas-tweet=stream] .ntisas-download-section,
+[ntisas-tweet=media] .ntisas-download-section {
     margin-top: 0.4em;
 }
 [ntisas-tweet=main] .ntisas-download-section {
@@ -778,7 +869,7 @@ const PROGRAM_CSS = `
 }
 .ntisas-help-info,
 .ntisas-help-info:hover {
-    color: hotpink;
+    color: hotpink !important;
 }
 .ntisas-main-links {
     margin: 0 0.5em;
@@ -791,6 +882,9 @@ const PROGRAM_CSS = `
     padding: 8px 16px;
     font-family: ${FONT_FAMILY};
     text-decoration: none;
+}
+.ntisas-media-icon:hover {
+    box-shadow: 0 0 0 2px;
 }
 [ntisas-tweet=main] .ntisas-tweet-status {
     display: inline-block;
@@ -851,7 +945,8 @@ const PROGRAM_CSS = `
 [ntisas-tweet=main] .ntisas-tweet-header {
     padding: 5px 6px;
 }
-[ntisas-tweet=stream] .ntisas-tweet-header {
+[ntisas-tweet=stream] .ntisas-tweet-header,
+[ntisas-tweet=media] .ntisas-tweet-header {
     padding: 4px 6px;
 }
 .ntisas-tweet-header {
@@ -890,7 +985,8 @@ const PROGRAM_CSS = `
 [ntisas-tweet=stream] .ntisas-footer-section {
     margin-bottom: 0.5em;
 }
-[ntisas-tweet=stream] .ntisas-link-menu {
+[ntisas-tweet=stream] .ntisas-link-menu,
+[ntisas-tweet=media] .ntisas-link-menu {
     font-size: 1.125em;
 }
 [ntisas-tweet=stream] .ntisas-tweet-controls {
@@ -1514,6 +1610,22 @@ const TWEET_STATISTICS = `
     </tbody>
 </table>`;
 
+const MEDIA_STATISTICS = `
+<table>
+    <tbody>
+    <tr>
+        <th data-key="total"><a class="ntisas-metric">Total</a></th>
+        <th data-key="single"><a class="ntisas-metric">Single</a></th>
+        <th data-key="multi"><a class="ntisas-metric">Multi</a></th>
+    </tr>
+    <tr>
+        <td data-key="total">%TOTALTWEETS%</td>
+        <td data-key="single">%SINGLETWEETS%</td>
+        <td data-key="multi">%MULTITWEETS%</td>
+    </tr>
+    </tbody>
+</table>`;
+
 const NTISAS_TWEET_MENU = `
 <div class="ntisas-tweet-controls">
     <div class="ntisas-tweet-image-menu" style="border: 2px solid black; display: flex;">
@@ -1583,6 +1695,10 @@ const STATUS_MARKER = `
     <span class="ntisas-retweet-id"></span>
     <span class="ntisas-view-info"></span>
 </span>`;
+
+const MEDIA_RESULTS_ICON = '<div class="ntisas-media-results ntisas-media-icon-section %s">%s</div>';
+const MEDIA_COUNTER_ICON = '<div class="ntisas-media-counter ntisas-media-icon-section">%s</div>';
+const MEDIA_VIDEO_ICON = '<div class="ntisas-video-icon"><svg viewBox="0 0 60 61" aria-hidden="true" class="r-uvuy5l r-cfp7ip"><g><circle cx="30" cy="30.4219" fill="#333333" opacity="0.6" r="30"></circle><path d="M22.2275 17.1971V43.6465L43.0304 30.4218L22.2275 17.1971Z" fill="white"></path></g></svg></div>';
 
 const LOAD_COUNTER = '<span id="ntisas-load-message">Loading ( <span id="ntisas-counter">...</span> )</span>';
 
@@ -1684,6 +1800,8 @@ const USER_EXPIRES = JSPLib.utility.one_month;
 const VIEW_EXPIRES = JSPLib.utility.one_month * 2;
 const SIMILAR_EXPIRES = JSPLib.utility.one_day;
 const VIDEO_EXPIRES = JSPLib.utility.one_week;
+const TWEET_EXPIRES = JSPLib.utility.one_week;
+const TWUSER_EXPIRES = JSPLib.utility.one_day;
 const LENGTH_RECHECK_EXPIRES = JSPLib.utility.one_hour;
 const USER_PROFILE_RECHECK_EXPIRES = JSPLib.utility.one_month;
 const DATABASE_RECHECK_EXPIRES = JSPLib.utility.one_day;
@@ -1963,6 +2081,14 @@ const NETWORK_REQUEST_DICT = {
     },
 };
 
+const TIMELINE_REQUESTS = [];
+const TIMELINE_VALS = {
+    user_ids: {},
+    lowest_available_tweet: {},
+    api_data: {},
+    cursor: {},
+};
+
 //Other constants
 
 const STREAMING_PAGES = ['home', 'main', 'likes', 'replies', 'media', 'list', 'search', 'hashtag', 'moments', 'topics'];
@@ -2042,6 +2168,23 @@ const CONFIRM_DIALOG_SETTINGS = {
     }
 };
 
+const MEDIA_DIALOG_SETTINGS = {
+    title: "Media menu",
+    modal: false,
+    resizable: false,
+    autoOpen: false,
+    width: 640,
+    classes: {
+        'ui-dialog': 'ntisas-dialog',
+        'ui-dialog-titlebar-close': 'ntisas-dialog-close'
+    },
+    buttons: {
+        'Close' () {
+            $(this).dialog('close');
+        }
+    }
+};
+
 const MENU_DIALOG_SETTINGS = {
     modal: true,
     resizable: false,
@@ -2113,6 +2256,15 @@ const USER_CONSTRAINTS = {
     }
 };
 
+const TWEET_CONSTRAINTS = {
+    entry: JSPLib.validate.arrayentry_constraints(),
+    values: {
+        partial_image: JSPLib.validate.stringonly_constraints,
+        partial_video: JSPLib.validate.stringnull_constraints,
+        partial_sample: JSPLib.validate.stringnull_constraints,
+    },
+};
+
 const VIEW_CONSTRAINTS = {
     entry: JSPLib.validate.hashentry_constraints,
     value: {
@@ -2164,13 +2316,13 @@ function ValidateEntry(key, entry) {
         return false;
     }
     if (key.match(/^post-/)) {
-        return ValidateTypeEntry(key, entry, POST_CONSTRAINTS);
+        return ValidateTypeEntry(key, entry, 'hash', POST_CONSTRAINTS);
     }
     if (key.match(/^user-\d+/)) {
-        return ValidateTypeEntry(key, entry, USER_CONSTRAINTS);
+        return ValidateTypeEntry(key, entry, 'hash', USER_CONSTRAINTS);
     }
     if (key.match(/^view-/) || key.match(/^((main|media|likes|replies)-stream|user)-view-/)) {
-        return ValidateTypeEntry(key, entry, VIEW_CONSTRAINTS);
+        return ValidateTypeEntry(key, entry, 'hash', VIEW_CONSTRAINTS);
     }
     if (key.match(/^(iqdb|sauce)-/)) {
         return JSPLib.validate.validateHashEntries(key, entry, SIMILAR_CONSTRAINTS);
@@ -2180,6 +2332,9 @@ function ValidateEntry(key, entry) {
     }
     if (key.match(/^twuser-/)) {
         return JSPLib.validate.validateHashEntries(key, entry, TWUSER_CONSTRAINTS);
+    }
+    if (key.match(/^tweet-/)) {
+        return ValidateTypeEntry(key, entry, 'array', TWEET_CONSTRAINTS);
     }
     if (key === 'ntisas-available-sauce') {
         return JSPLib.validate.validateHashEntries(key, entry, SAUCE_CONSTRAINTS);
@@ -2207,14 +2362,28 @@ function ValidateExpiration(key) {
     if (key.match(/^video-/)) {
         return VIDEO_EXPIRES;
     }
+    if (key.match(/^twuser-/)) {
+        return TWUSER_EXPIRES;
+    }
+    if (key.match(/^tweet-/)) {
+        return TWEET_EXPIRES;
+    }
     return 0;
 }
 
-function ValidateTypeEntry(key, entry, constraints) {
+function ValidateTypeEntry(key, entry, type, constraints) {
     if (!JSPLib.validate.validateHashEntries(key, entry, constraints.entry)) {
         return false;
     }
-    return JSPLib.validate.validateHashEntries(key + '.value', entry.value, constraints.value);
+    if (type === 'hash') {
+        return JSPLib.validate.validateHashEntries(key + '.value', entry.value, constraints.value);
+    }
+    for (let i = 0; i < entry.value.length; i++) {
+        if (!JSPLib.validate.validateHashEntries(`${key}.value[${i}]`, entry.value[i], constraints.values)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 function ValidateProgramData(key, entry) {
@@ -2341,6 +2510,14 @@ JSPLib.utility.createStatusPromise = function () {
         });
     }, 100);
     return ret;
+};
+
+JSPLib.utility.bigIntMax = function (...args) {
+    return args.reduce((max, comp) => (max > comp ? max : comp));
+};
+
+JSPLib.utility.bigIntMin = function (...args) {
+    return args.reduce((min, comp) => (min < comp ? min : comp));
 };
 
 JSPLib.concurrency.freeSemaphore = function (program_shortcut, name) {
@@ -2651,6 +2828,21 @@ function GetImageURLInfo(image_url) {
     return false;
 }
 
+function GetSingleImageInfo(tweet_id) {
+    GetSingleImageInfo.memoized ??= {};
+    if (!GetSingleImageInfo.memoized[tweet_id]) {
+        let image_url = $(`.ntisas-media-tweet[data-tweet-id=${tweet_id}] img`).attr('src');
+        if (JSPLib.validate.isString(image_url)) {
+            let image_info = GetImageURLInfo(image_url);
+            GetSingleImageInfo.memoized[tweet_id] = [{partial_image: image_info.path + '/' + image_info.key + '.' + image_info.ext}];
+        } else {
+            JSPLib.debug.debugwarn("Image URL not found:", tweet_id);
+            GetSingleImageInfo.memoized[tweet_id] = [];
+        }
+    }
+    return GetSingleImageInfo.memoized[tweet_id];
+}
+
 function GetNomatchHelp(no_url_results, no_iqdb_results, no_sauce_results) {
     let help_info = [NO_MATCH_HELP];
     if (no_iqdb_results || no_sauce_results) {
@@ -2844,12 +3036,17 @@ function SetVideoDownload($download_section, video_url) {
 }
 
 function UpdatePostIDsLink(tweet_id, post_ids) {
-    let $tweet = $(`[data-tweet-id=${tweet_id}]`);
+    var $tweet;
+    if (NTISAS.page === 'media') {
+        $tweet = $(`.ntisas-media-menu[data-tweet-id=${tweet_id}]`);
+    } else {
+        $tweet = $(`[ntisas-tweet][data-tweet-id=${tweet_id}]`);
+    }
     if ($tweet.length === 0) {
         return;
     }
-    let $link_container = $('.ntisas-link-menu', $tweet[0]);
-    let $link = $('.ntisas-database-match, .ntisas-confirm-save', $tweet[0]);
+    let $link_container = $tweet.find('.ntisas-link-menu');
+    let $link = $tweet.find('.ntisas-database-match, .ntisas-confirm-save');
     if ($link.length && NTISAS.user_settings.advanced_tooltips_enabled) {
         $link.qtiptisas('destroy', true);
     }
@@ -3208,7 +3405,7 @@ function GetEventPreload(event, classname) {
     let $link = $(event.target);
     let $tweet = $link.closest('[ntisas-tweet]');
     let [tweet_id, user_id, screen_name, user_ident, all_idents] = GetTweetInfo($tweet);
-    let $replace = $(`[data-tweet-id=${tweet_id}] .${classname}`);
+    let $replace = $tweet.find(`.${classname}`);
     let replace_level = $replace.data('replace') || 1;
     $replace = $(JSPLib.utility.getNthParent($replace.get(0), replace_level));
     return [$link, $tweet, tweet_id, user_id, screen_name, user_ident, all_idents, $replace];
@@ -3228,6 +3425,21 @@ function IsMediaTimeline() {
 
 function IsIQDBAutoclick() {
     return NTISAS.user_settings.autoclick_IQDB_enabled && ((NTISAS.artist_iqdb_enabled && IsMediaTimeline()) || IsTweetPage());
+}
+
+function GetLowestRequestedTweetID(account) {
+    let account_requests = TIMELINE_REQUESTS.filter((request) => request.account === account);
+    let tweet_ids = account_requests.map((request) => BigInt(request.tweet_id));
+    return JSPLib.utility.bigIntMin(...tweet_ids);
+}
+
+function GetMaxVideoURL(media_data, index) {
+    let variants = media_data.video_info.variants.filter((variant) => Number.isInteger(variant.bitrate));
+    if (index >= variants.length) {
+        return null;
+    }
+    let sorted_variants = variants.sort((a, b) => b.bitrate - a.bitrate);
+    return new URL(sorted_variants[index].url).pathname.slice(1);
 }
 
 //File functions
@@ -3317,7 +3529,7 @@ function RenderDatabaseVersion() {
     return `<a id="ntisas-database-version" class="ntisas-expanded-link" href="${url}" title="${timestring}">${NTISAS.server_info.post_version}</a>`;
 }
 
-async function RenderDownloadLinks($tweet, is_video) {
+async function RenderDownloadLinks($tweet, is_video, image_links) {
     let [tweet_id, user_id, screen_name,, ] = GetTweetInfo($tweet);
     let date_string = GetDateString(Date.now());
     let time_string = GetTimeString(Date.now());
@@ -3328,7 +3540,9 @@ async function RenderDownloadLinks($tweet, is_video) {
         DATE: date_string,
         TIME: time_string
     });
-    var image_links = await GetImageLinks($tweet[0]);
+    if (!image_links) {
+        image_links = await GetImageLinks($tweet[0]);
+    }
     var hrefs = image_links.map((image) => (image + ':orig'));
     var html = "";
     for (let i = 0; i < image_links.length; i++) {
@@ -3597,6 +3811,25 @@ function RenderListInfo() {
 </table>`;
 }
 
+function RenderMediaMenu(tweet_id, screen_name, image_urls, videos) {
+    let image_html = image_urls.map((url, i) => {
+        let media_type = (videos[i] ? 'video' : 'image');
+        let extpos = url.lastIndexOf('.');
+        let partial = url.slice(0, extpos);
+        let ext = url.slice(extpos + 1);
+        let image_url = `${partial}?format=${ext}&name=240x240`;
+        let video_icon = (videos[i] ? MEDIA_VIDEO_ICON : "");
+        return `<div class="ntisas-media-${media_type}" data-order="${i}" title="${media_type} #${i + 1}"><img src="${image_url}">${video_icon}</div>`;
+    }).join("");
+    return `
+<div class="ntisas-media-menu" ntisas-tweet="media" data-tweet-id="${tweet_id}" data-user-id="${NTISAS.user_id}" data-screen-name="${screen_name}">
+    <div class="ntisas-media-images">
+        ${image_html}
+    </div>
+    ${NTISAS_TWEET_MENU}
+</div>`;
+}
+
 //Initialize functions
 
 function CleanupTasks() {
@@ -3723,6 +3956,43 @@ async function InitializeImageMenu($tweets, menu_class) {
     await Promise.all(promise_array);
 }
 
+function InitializeMediaTweet(tweet_id, post_ids, tweet_dict_promise) {
+    let $tweet = $(`.ntisas-media-tweet[data-tweet-id=${tweet_id}]`);
+    let screen_name = $tweet.data('screen-name');
+    let $media_icon_container = $('<div class="ntisas-media-icon-container"><div class="ntisas-media-icon"></div></div>');
+    $tweet.append($media_icon_container[0]);
+    let $media_icon = $media_icon_container.children().eq(0);
+    if (post_ids !== null) {
+        $media_icon.append(JSPLib.utility.sprintf(MEDIA_RESULTS_ICON, 'ntisas-media-match', String(post_ids.length)));
+    } else {
+        $media_icon.append(JSPLib.utility.sprintf(MEDIA_RESULTS_ICON, 'ntisas-media-nomatch', '·'));
+    }
+    if ($tweet.hasClass('ntisas-multi-media')) {
+        tweet_dict_promise.then((tweet_dict) => {
+            $media_icon.append(JSPLib.utility.sprintf(MEDIA_COUNTER_ICON, String(tweet_dict[tweet_id].length)));
+        });
+    } else {
+        if (GetSingleImageInfo(tweet_id).length) {
+            $media_icon.append(JSPLib.utility.sprintf(MEDIA_COUNTER_ICON, '·'));
+        } else {
+            $media_icon.append(JSPLib.utility.sprintf(MEDIA_COUNTER_ICON, '0'));
+        }
+    }
+    $media_icon.on(PROGRAM_CLICK, OpenMediaTweetMenu);
+    if (NTISAS.user_settings.display_tweet_views) {
+        GetData('view-' + tweet_id, 'danbooru').then((views) => {
+            if (views && views.value.count > 0) {
+                let timeagostring = ((Date.now() - views.value.viewed) < VIEWCOUNT_RECENT_DURATION ? "recently" : TimeAgo(views.value.viewed));
+                let $view_icon = $(`<div class="ntisas-media-view-icon" title="Viewed ${timeagostring} [${views.value.count}]"></div>`);
+                $tweet.append($view_icon[0]);
+            }
+        });
+    }
+    if (NTISAS.user_settings.auto_unhide_tweets_enabled && $tweet.get(0).innerText.split('\n').some((text) => text.match(/^Warning:/))) {
+        $tweet.find('[role="button"]').click();
+    }
+}
+
 function InitializeQtip($obj, tweet_id, delayfunc) {
     const qtip_settings = Object.assign({}, PREVIEW_QTIP_SETTINGS, {
         content: {
@@ -3815,18 +4085,29 @@ async function InitializePostIDsLink(tweet_id, $link_container, tweet, post_ids)
     if (NTISAS.user_settings.advanced_tooltips_enabled) {
         let $link = $('.ntisas-database-match, .ntisas-confirm-save', tweet);
         InitializeQtip($link, tweet_id, () => {
-            if (!tweet.ntisasDeferred) {
-                return "Error initializing images...";
+            var image_urls;
+            if (Array.isArray(tweet.ntisasImageUrls)) {
+                image_urls = tweet.ntisasImageUrls;
             }
-            if (tweet.ntisasDeferred.status !== 'resolved') {
-                return false;
+            if (!image_urls) {
+                if (!tweet.ntisasDeferred) {
+                    return "Error initializing images...";
+                }
+                if (tweet.ntisasDeferred.status !== 'resolved') {
+                    return false;
+                }
+                if (!tweet.ntisasImageUrls) {
+                    GetImageLinks(tweet);
+                    return false;
+                }
             }
-            if (!tweet.ntisasImageUrls) {
-                GetImageLinks(tweet);
-                return false;
-            }
-            return InitializePostsContainer(posts_data, tweet.ntisasImageUrls);
+            return InitializePostsContainer(posts_data, image_urls);
         });
+    }
+    if (NTISAS.page === 'media') {
+        let $media_results = $(`.ntisas-media-tweet[data-tweet-id="${tweet_id}"] .ntisas-media-results`);
+        $media_results.text(post_ids.length);
+        $media_results.css('background-color', 'green');
     }
 }
 
@@ -3837,6 +4118,11 @@ async function InitializeNoMatchesLinks(tweet_id, $obj) {
     ]);
     let merge_results = NTISAS.merge_results.includes(tweet_id);
     $obj.html(RenderNomatchLinks(tweet_id, iqdb_results !== null && iqdb_results.value, sauce_results !== null && sauce_results.value, merge_results));
+    if (NTISAS.page === 'media') {
+        let $media_results = $(`.ntisas-media-tweet[data-tweet-id="${tweet_id}"] .ntisas-media-results`);
+        $media_results.text('·');
+        $media_results.css('background-color', 'grey');
+    }
 }
 
 async function InitializeViewCount(tweet) {
@@ -4242,6 +4528,65 @@ function IntervalNetworkHandler () {
     QUEUED_NETWORK_REQUESTS.length = 0;
 }
 
+function QueueTimelineRequest(tweet_id, account) {
+    QueueTimelineRequest.memoized ??= {};
+    QueueTimelineRequest.memoized[account] ??= {};
+    if (!QueueTimelineRequest.memoized[account][tweet_id]) {
+        const request = {
+            tweet_id,
+            account,
+            deferred: JSPLib.utility.createPromise(),
+        };
+        TIMELINE_REQUESTS.push(request);
+        setTimeout(() => {TimelineHandler();}, 1);
+        QueueTimelineRequest.memoized[account][tweet_id] = request.deferred.promise;
+    }
+    return QueueTimelineRequest.memoized[account][tweet_id];
+}
+
+async function TimelineHandler() {
+    if (TimelineHandler.is_busy) return;
+    TimelineHandler.is_busy = true;
+    let accounts = JSPLib.utility.arrayUnique(TIMELINE_REQUESTS.map((request) => request.account));
+    for (let i = 0; i < accounts.length; i++) {
+        let account = accounts[i];
+        if (!TIMELINE_VALS.user_ids[account]) {
+            TIMELINE_VALS.user_ids[account] = await GetUserRestID(account);
+        }
+        TIMELINE_VALS.cursor[account] ??= null;
+        TIMELINE_VALS.lowest_available_tweet[account] ??= Infinity;
+        let user_id = TIMELINE_VALS.user_ids[account];
+        let cursor = TIMELINE_VALS.cursor[account];
+        let lowest_available_id = TIMELINE_VALS.lowest_available_tweet[account];
+        let lowest_requested_id = GetLowestRequestedTweetID(account);
+        while (lowest_requested_id < lowest_available_id) {
+            let tweet_data = await GetMediaTimelineGQL(user_id, cursor);
+            cursor = tweet_data.cursors.bottom;
+            TIMELINE_VALS.api_data = Object.assign(TIMELINE_VALS.api_data, tweet_data.tweets);
+            let tweet_ids = Object.keys(tweet_data.tweets).map((tweet_id) => BigInt(tweet_id));
+            lowest_available_id = JSPLib.utility.bigIntMin(...tweet_ids);
+            lowest_requested_id = GetLowestRequestedTweetID(account);
+        }
+        TIMELINE_VALS.cursor[account] = cursor;
+        TIMELINE_VALS.lowest_available_tweet[account] = lowest_available_id;
+        let account_requests = TIMELINE_REQUESTS.filter((request) => request.account === account);
+        let remaining_requests = TIMELINE_REQUESTS.filter((request) => request.account !== account);
+        account_requests.forEach((request) => {
+            if (TIMELINE_VALS.api_data[request.tweet_id]) {
+                request.deferred.resolve(TIMELINE_VALS.api_data[request.tweet_id]);
+            } else {
+                request.deferred.resolve(null);
+            }
+        });
+        TIMELINE_REQUESTS.splice(0, TIMELINE_REQUESTS.length, ...remaining_requests);
+    }
+    TimelineHandler.is_busy = false;
+    //More requests may have arrived since processing finished, so ensure the function gets called again
+    if (TIMELINE_REQUESTS.length) {
+        setTimeout(() => {TimelineHandler();}, 1);
+    }
+}
+
 //Network functions
 
 function TwitterAPI1_1Request(endpoint, data) {
@@ -4256,8 +4601,15 @@ function TwitterAPI1_1Request(endpoint, data) {
     });
 }
 
-function TwitterGraphQLRequest(endpoint, data) {
-    let url_addons = $.param({'variables': JSON.stringify(data)});
+function TwitterGraphQLRequest(endpoint, variables, features) {
+    let addons = {};
+    if (variables) {
+        addons.variables = JSON.stringify(variables);
+    }
+    if (features) {
+        addons.features = JSON.stringify(features);
+    }
+    let url_addons = $.param(addons);
     let csrf_token = JSPLib.utility.readCookie('ct0');
     return $.ajax({
         method: 'GET',
@@ -4283,8 +4635,61 @@ function GetTweetGQL(tweet_id) {
         focalTweetId: tweet_id,
     }, TWEET_GRAPHQL_PARAMS);
     return TwitterGraphQLRequest('L1DeQfPt7n3LtTvrBqkJ2g/TweetDetail', data).then((data) => {
-        let found_items = CheckGraphqlData(data);
-        return found_items.find((item) => item.type === 'tweet' && item.id === tweet_id)?.item;
+        let api_data = CheckGraphqlData2(data);
+        return api_data.tweets[tweet_id] ?? null;
+    });
+}
+
+function GetUserIDGQL(screen_name) {
+    let data = {
+        screen_name,
+        'withHighlightedLabel': false,
+    };
+    return TwitterGraphQLRequest('Vf8si2dfZ1zmah8ePYPjDQ/UserByScreenNameWithoutResults', data).then((data) => {
+        let api_data = CheckGraphqlData2(data);
+        for (let user_id in api_data.users) {
+            if (api_data.users[user_id].screen_name === screen_name) {
+                return api_data.users[user_id]
+            }
+        }
+        return null;
+    });
+}
+
+function GetMediaTimelineGQL(user_id, cursor) {
+    let variables = {
+        userId: user_id,
+        includePromotedContent: false,
+        withSuperFollowsUserFields: true,
+        withDownvotePerspective: false,
+        withReactionsMetadata: false,
+        withReactionsPerspective: false,
+        withSuperFollowsTweetFields: true,
+        withClientEventToken: false,
+        withBirdwatchNotes: false,
+        withVoice: true,
+        withV2Timeline: true,
+        count: 20,
+    };
+    if (JSPLib.validate.isString(cursor)) {
+        variables.cursor = cursor;
+    }
+    let features = {
+        responsive_web_graphql_timeline_navigation_enabled: false,
+        unified_cards_ad_metadata_container_dynamic_card_content_query_enabled: false,
+        dont_mention_me_view_api_enabled: true,
+        responsive_web_uc_gql_enabled: true,
+        vibe_api_enabled: true,
+        responsive_web_edit_tweet_api_enabled: true,
+        graphql_is_translatable_rweb_tweet_is_translatable_enabled: false,
+        standardized_nudges_misinfo: true,
+        tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled: false,
+        interactive_text_enabled: true,
+        responsive_web_text_conversations_enabled: false,
+        responsive_web_enhance_cards_enabled: true,
+    };
+    return TwitterGraphQLRequest('_vFDgkWOKL_U64Y2VmnvJw/UserMedia', variables, features).then((data) => {
+        return CheckGraphqlData2(data);
     });
 }
 
@@ -4312,6 +4717,121 @@ async function GetPosts(post_ids) {
     }
     posts_data.sort((a, b) => (post_ids.indexOf(a.id) - post_ids.indexOf(b.id)));
     return posts_data;
+}
+
+function GetTweetData(tweet_id) {
+    GetTweetData.memoized ??= {};
+    if (!GetTweetData.memoized[tweet_id]) {
+        let p = JSPLib.utility.createPromise();
+        GetTweetData.memoized[tweet_id] = p.promise;
+        let data_key = 'tweet-' + tweet_id;
+        GetData(data_key, 'danbooru').then((storage_data) => {
+            if (!storage_data) {
+                let tweet_func = (NTISAS.user_settings.use_graphql ? GetTweetGQL : GetTweetAPI1_1);
+                tweet_func(tweet_id).then((network_data) => {
+                    let value = network_data.extended_entities.media.map((media) => {
+                        let image_info = GetImageURLInfo(media.media_url_https);
+                        let partial_image = image_info.path + '/' + image_info.key + '.' + image_info.ext;
+                        let partial_video = (media.video_info ? GetMaxVideoURL(media, 0) : null);
+                        let partial_sample = (media.video_info ? GetMaxVideoURL(media, 1) : null);
+                        return {partial_image, partial_video, partial_sample};
+                    });
+                    let expires = JSPLib.utility.getExpires(TWEET_EXPIRES);
+                    SaveData(data_key, {value, expires}, 'danbooru');
+                    p.resolve(value);
+                });
+            } else {
+                p.resolve(storage_data.value);
+            }
+        });
+    }
+    return GetTweetData.memoized[tweet_id];
+}
+
+function GetTweetsData(tweet_ids, account) {
+    GetTweetsData.memoized ??= {};
+    let key = [...tweet_ids].sort().join(',');
+    if (!GetTweetsData.memoized[key]) {
+        const p = JSPLib.utility.createPromise();
+        GetTweetsData.memoized[key] = p.promise;
+        let promise_array = tweet_ids.map((tweet_id) => GetData('tweet-' + tweet_id, 'danbooru'));
+        Promise.all(promise_array).then(async (storage_data) => {
+            let tweet_dict = {};
+            storage_data.forEach((data, i) => {
+                if (data) {
+                    let tweet_id = tweet_ids[i];
+                    tweet_dict[tweet_id] = data.value;
+                }
+            });
+            let query_tweet_ids = JSPLib.utility.arrayDifference(tweet_ids, Object.keys(tweet_dict));
+            if (query_tweet_ids.length) {
+                let tweet_func = (NTISAS.user_settings.use_graphql ? GetTweetsGQL : GetTweetsAPI1_1);
+                let network_data = await tweet_func(query_tweet_ids, account);
+                let network_tweet_ids = [];
+                let expires = JSPLib.utility.getExpires(TWEET_EXPIRES);
+                network_data.forEach((tweet_data) => {
+                    let tweet_id = tweet_data.id_str;
+                    let value = tweet_data.extended_entities.media.map((media) => {
+                        let image_info = GetImageURLInfo(media.media_url_https);
+                        let partial_image = image_info.path + '/' + image_info.key + '.' + image_info.ext;
+                        let partial_video = (media.video_info ? GetMaxVideoURL(media, 0) : null);
+                        let partial_sample = (media.video_info ? GetMaxVideoURL(media, 1) : null);
+                        return {partial_image, partial_video, partial_sample};
+                    });
+                    SaveData('tweet-' + tweet_id, {value, expires}, 'danbooru');
+                    tweet_dict[tweet_id] = value;
+                    network_tweet_ids.push(tweet_id);
+                });
+                let missing_tweet_ids = JSPLib.utility.arrayDifference(query_tweet_ids, network_tweet_ids);
+                expires = JSPLib.utility.getExpires(JSPLib.utility.one_day);
+                missing_tweet_ids.forEach((tweet_id) => {
+                    SaveData('tweet-' + tweet_id, {value: [], expires}, 'danbooru');
+                    tweet_dict[tweet_id] = [];
+                });
+            }
+            p.resolve(tweet_dict);
+        });
+    }
+    return GetTweetsData.memoized[key];
+}
+
+async function GetTweetsGQL(tweet_ids, account) {
+    let network_data = await Promise.all(tweet_ids.map((tweet_id) => QueueTimelineRequest(tweet_id, account)));
+    tweet_ids.forEach((tweet_id, i) => {
+        if (JSPLib.validate.isHash(network_data[i])) {
+            network_data[i].id_str = tweet_id;
+        }
+    });
+    return network_data.filter((data) => JSPLib.validate.isHash(data));
+}
+
+function GetUserRestID(account) {
+    GetUserRestID.memoized ??= {};
+    if (!GetUserRestID.memoized[account]) {
+        let p = JSPLib.utility.createPromise();
+        GetUserRestID.memoized[account] = p.promise;
+        if (NTISAS.account === account && JSPLib.validate.isString(NTISAS.user_id)) {
+            p.resolve(NTISAS.user_id);
+        } else {
+            GetData('twuser-' + account, 'danbooru').then((storage_data) => {
+                if (!storage_data) {
+                    GetUserIDGQL(account).then((twitter_data) => {
+                        if (JSPLib.validate.isHash(twitter_data)) {
+                            let expires = JSPLib.utility.getExpires(TWUSER_EXPIRES);
+                            let value = twitter_data.id;
+                            SaveData('twuser-' + account, {value, expires}, 'danbooru');
+                            p.resolve(value);
+                        } else {
+                            p.resolve(null);
+                        }
+                    });
+                } else {
+                    p.resolve(storage_data.value);
+                }
+            });
+        }
+    }
+    return GetUserRestID.memoized[account];
 }
 
 async function CheckPostvers() {
@@ -4572,6 +5092,33 @@ function CheckGraphqlData(data, savedata = []) {
                 }
             }
             CheckGraphqlData(data[i], savedata);
+        }
+    }
+    return savedata;
+}
+
+function CheckGraphqlData2(data, savedata) {
+    savedata ??= {tweets: {}, users: {}, cursors: {}};
+    for (let i in data) {
+        if (i === "quoted_status_result") continue;
+        if (typeof data[i] === "object" && data[i] !== null) {
+            if (('legacy' in data[i]) && ('rest_id' in data[i])) {
+                if ((i === "tweet" || i === "user")) {
+                    let key = i + 's';
+                    let item = data[i].legacy;
+                    item.id_str = data[i].rest_id;
+                    savedata[key][item.id_str] = item;
+                } else if ((i === 'result') && (data[i]?.__typename === 'Tweet' || data[i]?.__typename === 'User')) {
+                    let key = data[i].__typename.toLowerCase() + 's';
+                    let item = data[i].legacy;
+                    item.id_str = data[i].rest_id;
+                    savedata[key][item.id_str] = item;
+                }
+            }
+            CheckGraphqlData2(data[i], savedata);
+        } else if (data[i] === "TimelineTimelineCursor") {
+            let cursor_key = data.cursorType.toLowerCase();
+            savedata.cursors[cursor_key] = data.value;
         }
     }
     return savedata;
@@ -4976,6 +5523,116 @@ function QueryTotalRecords() {
     });
 }
 
+function OpenMediaTweetMenu(event) {
+    let $menu = $(event.target);
+    let $tweet = $menu.closest('.ntisas-media-tweet');
+    let tweet_id = $tweet.data('tweet-id');
+    if (!NTISAS.media_dialog[tweet_id]) {
+        let screen_name = $tweet.data('tweet-id');
+        NTISAS.media_dialog_anchor[tweet_id] = $menu;
+        var tweet_data;
+        if ($tweet.hasClass('ntisas-multi-media')) {
+            let session_data = JSPLib.storage.getIndexedSessionData('tweet-' + tweet_id, {value: []});
+            tweet_data = session_data.value;
+        } else {
+            tweet_data = GetSingleImageInfo(tweet_id);
+        }
+        let image_urls = tweet_data.map((data) => 'https://pbs.twimg.com/' + data.partial_image);
+        var video_promise;
+        if (($tweet.data('media-type') === 'video' || $tweet.data('text') === 'GIF') && $tweet.hasClass('ntisas-single-media')) {
+            video_promise = GetTweetData(tweet_id).then((data) => {
+                return data.map((data) => Boolean(data.partial_video));
+            });
+        } else {
+            video_promise = Promise.resolve(tweet_data.map((data) => Boolean(data.partial_video)));
+        }
+        video_promise.then((videos) => {
+            let $dialog = NTISAS.media_dialog[tweet_id] = $(RenderMediaMenu(tweet_id, screen_name, image_urls, videos));
+            $dialog.prop('ntisasImageUrls', image_urls);
+            $dialog.find('.ntisas-media-image').each((i, entry) => {
+                $(entry).on(PROGRAM_CLICK, PopupMediaTweetImage);
+            });
+            $dialog.find('.ntisas-media-video').each((i, entry) => {
+                $(entry).on(PROGRAM_CLICK, PopupMediaTweetVideo);
+            });
+            let $link_container = $('<div class="ntisas-link-menu ntisas-timeline-menu ntisas-links"><span style="font-weight:bold">Loading...</span></div>');
+            $dialog.find('.ntisas-image-section').append($link_container);
+            GetData('tweet-' + tweet_id, 'twitter').then((post_ids) => {
+                if (post_ids !== null) {
+                    InitializePostIDsLink(tweet_id, $link_container, $dialog[0], post_ids);
+                } else {
+                    InitializeNoMatchesLinks(tweet_id, $link_container);
+                }
+            });
+            if (NTISAS.user_settings.original_download_enabled) {
+                let is_video = $tweet.hasClass('ntisas-media-video');
+                RenderDownloadLinks($tweet, is_video, image_urls).then((download_html) => {
+                    let $download_section = $(download_html);
+                    $('.ntisas-download-section', $dialog[0]).append($download_section);
+                    if (is_video) {
+                        GetMaxVideoDownloadLink(tweet_id).then((video_url) => {
+                            if (video_url !== null) {
+                                SetVideoDownload($download_section, video_url);
+                            }
+                        });
+                    }
+                    UpdateDownloadSection();
+                });
+            } else {
+                $dialog.find('.ntisas-download-header, .ntisas-download-section').css('display', 'none');
+            }
+            $dialog.dialog(MEDIA_DIALOG_SETTINGS);
+            $dialog.dialog('open');
+        });
+        InitializeUIStyle();
+        if (NTISAS.user_settings.display_tweet_views) {
+            AddViewCount(tweet_id);
+        }
+    } else {
+        NTISAS.media_dialog[tweet_id].dialog('open');
+    }
+}
+
+function PopupMediaTweetImage(event) {
+    let $container = $(event.currentTarget);
+    let $image = $container.find('img');
+    let image_url = $image.attr('src');
+    let image_info = GetImageURLInfo(image_url);
+    let large_url = 'https://pbs.twimg.com/' + image_info.path + '/' + image_info.key + '?format=' + image_info.ext + '&name=medium';
+    let html = `
+<div class="ntisas-popup-media-image">
+    <img src="${large_url}">
+</div>`;
+    let $popup = $(html);
+    $popup.appendTo(document.body);
+    $popup.on('mouseleave.ntisas', () => {
+        $popup.remove();
+    });
+}
+
+function PopupMediaTweetVideo(event) {
+    let $container = $(event.currentTarget);
+    let $menu = $container.closest('.ntisas-media-menu');
+    let tweet_id = $menu.data('tweet-id');
+    let order = $container.data('order');
+    let tweet_data = JSPLib.storage.getIndexedSessionData('tweet-' + tweet_id, {value: []});
+    let image_data = tweet_data.value[order];
+    if (JSPLib.validate.isHash(image_data)) {
+        let video_url = 'https://video.twimg.com/' + (image_data.partial_sample || image_data.partial_video);
+        let html = `
+    <div class="ntisas-popup-media-video">
+        <video controls autoplay src="${video_url}">
+    </div>`;
+        let $popup = $(html);
+        $popup.appendTo(document.body);
+        setTimeout(() => {
+            $popup.on('mouseleave.ntisas', () => {
+                $popup.remove();
+            });
+        }, 500);
+    }
+}
+
 function CheckURL(event) {
     let [$link, $tweet, tweet_id,, screen_name,,, ] = GetEventPreload(event, 'ntisas-check-url');
     $link.removeClass('ntisas-check-url').html("loading…");
@@ -5193,6 +5850,7 @@ function ToggleLock() {
 }
 
 function SelectMetric(event) {
+    if (NTISAS.page === 'media') return;
     let type = $(event.target).parent().data('key');
     let filter1 = NTISAS.tweet_type1_filter;
     let filter2 = NTISAS.tweet_type2_filter;
@@ -5359,7 +6017,7 @@ function UpdateUserIDCallback() {
         return $obj.length && JSPLib.utility.safeMatch($obj.attr(field), regex, group);
     }
     function saveUserID() {
-        let expires = JSPLib.utility.getExpires(JSPLib.utility.one_day);
+        let expires = JSPLib.utility.getExpires(TWUSER_EXPIRES);
         JSPLib.storage.saveData('twuser-' + NTISAS.account, {value: NTISAS.user_id, expires});
     }
     function checkUserID() {
@@ -5689,6 +6347,36 @@ function MarkupMainTweet(tweet) {
     $('.ntisas-tweet-actions', tweet).after('<div class="ntisas-footer-section"></div>');
 }
 
+function MarkupMediaTweet(tweet) {
+    let $tweet = $(tweet);
+    $tweet.addClass('ntisas-media-tweet');
+    let $link = $tweet.find('a[role="link"]');
+    let [, screen_name,, tweet_id, media_type, ] = $link.get(0).pathname.split('/');
+    $tweet.attr('data-tweet-id', tweet_id);
+    $tweet.attr('data-screen-name', screen_name);
+    $tweet.attr('data-media-type', media_type);
+    $tweet.attr('data-text', tweet.innerText);
+    let $svg = $tweet.find('svg');
+    if ($svg.length > 0) {
+        $tweet.addClass('ntisas-multi-media');
+    } else {
+        $tweet.addClass('ntisas-single-media');
+    }
+    JSPLib.utility.recheckTimer({
+        check: () => JSPLib.validate.isString(NTISAS.user_id),
+        exec: () => {
+            $tweet.attr('data-user-id', NTISAS.user_id);
+        }
+    }, TIMER_POLL_INTERVAL, PROFILE_VIEWS_CALLBACK);
+    $tweet.find('[dir="ltr"]').each((i, entry) => {
+        if (entry.innerText.match(/GIF|\d+:\d{2}/)) {
+            $tweet.addClass('ntisas-media-video');
+            return false;
+        }
+    });
+    return tweet_id;
+}
+
 function CheckHiddenMedia(tweet) {
     tweet.ntisasDeferred = JSPLib.utility.createStatusPromise();
     if ($('.ntisas-tweet-media', tweet).text().match(/The following media includes potentially sensitive content|The Tweet author flagged this Tweet as showing sensitive content|The post author flagged this post as showing sensitive content/)) {
@@ -5758,6 +6446,17 @@ function RegularCheck() {
             NTISAS.image_anchor[image_url].qtiptisas('destroy', true);
             delete NTISAS.image_anchor[image_url];
         }
+    }
+    for (let tweet_id in NTISAS.media_dialog_anchor) {
+        if (!document.body.contains(NTISAS.media_dialog_anchor[tweet_id].get(0))) {
+            NTISAS.media_dialog[tweet_id].dialog('destroy').remove();
+            delete NTISAS.media_dialog[tweet_id];
+            delete NTISAS.media_dialog_anchor[tweet_id];
+        }
+    }
+    if (NTISAS.user_settings.media_timeline_enabled && NTISAS.page === 'media') {
+        ProcessMediaTweets();
+        return;
     }
     //Process any new images that have been loaded
     ProcessTweetImages();
@@ -6051,6 +6750,47 @@ function ProcessNewTweets() {
     return true;
 }
 
+function ProcessMediaTweets() {
+    let $tweet_list_items = $('div[data-testid=primaryColumn] div[data-testid="cellInnerDiv"] li[role="listitem"]:not(.ntisas-media-tweet)');
+    if ($tweet_list_items.length === 0) return;
+    NTISAS.timeline_tweets[NTISAS.account] ??= {total: new Set(), single: new Set(), multi: new Set()};
+    let timeline_tweets = NTISAS.timeline_tweets[NTISAS.account];
+    let tweet_ids = [];
+    let promise_array = [];
+    $tweet_list_items.each((i, tweet) => {
+        let tweet_id = MarkupMediaTweet(tweet);
+        promise_array.push(GetData('tweet-' + tweet_id, 'twitter'));
+        tweet_ids.push(tweet_id);
+        timeline_tweets.total.add(tweet_id);
+        if ($(tweet).hasClass('ntisas-multi-media')) {
+            timeline_tweets.multi.add(tweet_id);
+        } else {
+            timeline_tweets.single.add(tweet_id);
+        }
+    });
+    UpdateViewHighlights();
+    let table_html = JSPLib.utility.regexReplace(MEDIA_STATISTICS, {
+        TOTALTWEETS: timeline_tweets.total.size,
+        SINGLETWEETS: timeline_tweets.single.size,
+        MULTITWEETS: timeline_tweets.multi.size,
+    });
+    $('#ntisas-tweet-stats-table').html(table_html);
+    let multi_tweet_ids = $('.ntisas-media-tweet.ntisas-multi-media').map((i, entry) => entry.dataset.tweetId).toArray();
+    var tweet_dict_promise = GetTweetsData(multi_tweet_ids, NTISAS.account);
+    if (NTISAS.user_settings.use_graphql) {
+        let lowest_tweet_id = String(JSPLib.utility.bigIntMin(...tweet_ids.map((tweet_id) => BigInt(tweet_id))));
+        //Keep the timeline handler up-to-date with the media timeline no matter what, otherwise it takes forever to catch up.
+        QueueTimelineRequest(lowest_tweet_id, NTISAS.account);
+    }
+    Promise.all(promise_array).then((tweet_post_ids) => {
+        for (let i = 0; i < tweet_ids.length; i++) {
+            let tweet_id = tweet_ids[i];
+            let post_ids = tweet_post_ids[i];
+            InitializeMediaTweet(tweet_id, post_ids, tweet_dict_promise);
+        }
+    });
+}
+
 function AdjustColorScheme() {
     const compareColors = (result, val, key) => (String(NTISAS.colors[key]) !== String(val));
     let $tweet_button = $('[data-testid=SideNav_NewTweet_Button]');
@@ -6279,6 +7019,11 @@ function InitializeChangedSettings() {
             $(window).off('beforeunload.ntisas.lock_page');
         }
     }
+    if (JSPLib.menu.hasSettingChanged('media_timeline_enabled') && !NTISAS.user_settings.media_timeline_enabled) {
+        $('.ntisas-media-icon-container').remove();
+        $('.ntisas-media-view-icon').remove();
+        $('.ntisas-media-tweet').removeClass('ntisas-media-tweet');
+    }
     if (JSPLib.menu.hasSettingChanged('score_highlights_enabled') || JSPLib.menu.hasSettingChanged('score_window_size')) {
         $('[ntisas-highlight]').attr('ntisas-highlight', null);
         if (DisplayHighlights()) {
@@ -6371,6 +7116,7 @@ function RenderSettingsMenu() {
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_tweet_statistics'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_available_sauce'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_network_errors'));
+    $('#ntisas-function-settings').append(JSPLib.menu.renderCheckbox('media_timeline_enabled'));
     $('#ntisas-function-settings').append(JSPLib.menu.renderCheckbox('advanced_tooltips_enabled'));
     $('#ntisas-function-settings').append(JSPLib.menu.renderCheckbox('image_popout_enabled'));
     $('#ntisas-function-settings').append(JSPLib.menu.renderCheckbox('auto_unhide_tweets_enabled'));
