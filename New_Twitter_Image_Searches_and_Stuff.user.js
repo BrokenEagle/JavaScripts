@@ -47,7 +47,7 @@
 // ==/UserScript==
 
 // eslint-disable-next-line no-redeclare
-/* global $ jQuery JSPLib validate localforage saveAs XRegExp GM_getResourceText GM_info BigInt */
+/* global $ jQuery JSPLib validate localforage saveAs XRegExp GM_getResourceText BigInt */
 
 /****Global variables****/
 
@@ -68,9 +68,6 @@ const PROGRAM_NAME = 'NTISAS';
 const PROGRAM_SHORTCUT = 'ntisas';
 const PROGRAM_CLICK = 'click.ntisas';
 const PROGRAM_KEYDOWN = 'keydown.ntisas';
-
-//Variables for network.js
-const API_DATA = {tweets: {}, users_id: {}, users_name: {}, retweets: {}, has_data: false, raw_data: []};
 
 //Variables for storage.js
 JSPLib.storage.twitterstorage = localforage.createInstance({
@@ -121,7 +118,7 @@ const PROGRAM_RESET_KEYS = {
 const PROGRAM_DEFAULT_VALUES = {
     lists: {},
     update_profile: {},
-    tweet_images: {},
+    update_user_id: {},
     tweet_index: {},
     tweet_qtip: {},
     image_anchor: {},
@@ -2530,13 +2527,6 @@ function GetSessionTwitterData(tweet_id) {
     return JSPLib.storage.getIndexedSessionData('tweet-' + tweet_id, [], STORAGE_DATABASES.twitter);
 }
 
-function GetAPIData(key, id, value) {
-    if (API_DATA === undefined || !(key in API_DATA) || !(id in API_DATA[key])) {
-        return null;
-    }
-    return (value ? API_DATA[key][id][value] : API_DATA[key][id]);
-}
-
 function GetNumericTimestamp(timestamp) {
     return GetDateString(timestamp) + GetTimeString(timestamp);
 }
@@ -2593,7 +2583,7 @@ function IsTISASInstalled() {
 }
 
 function GetUserIdent() {
-    if (API_DATA.has_data) {
+    if (NTISAS.user_id) {
         return [NTISAS.user_id, [NTISAS.user_id, NTISAS.account]];
     }
     return [NTISAS.account, [NTISAS.account]];
@@ -2695,25 +2685,18 @@ async function GetTotalRecords(manual = false) {
 }
 
 function GetImageAttributes(image_url) {
-    let base_url = image_url.split(':orig')[0];
     NTISAS.image_data = NTISAS.image_data || {};
     return new Promise((resolve) => {
         if (image_url in NTISAS.image_data) {
             resolve(NTISAS.image_data[image_url]);
-        }
-        let size_promise = JSPLib.network.getDataSize(image_url);
-        let dimensions_promise;
-        if (base_url in NTISAS.tweet_images) {
-            this.debug('log', "Found image API data:", base_url, NTISAS.tweet_images[base_url]);
-            dimensions_promise = Promise.resolve(NTISAS.tweet_images[base_url].original_info);
         } else {
-            this.debug('warn', "Missing image API data:", base_url);
-            dimensions_promise = JSPLib.utility.getImageDimensions(image_url);
+            let size_promise = JSPLib.network.getDataSize(image_url);
+            let dimensions_promise = JSPLib.utility.getImageDimensions(image_url);
+            Promise.all([size_promise, dimensions_promise]).then(([size, dimensions]) => {
+                NTISAS.image_data[image_url] = Object.assign(dimensions, {size});
+                resolve(NTISAS.image_data[image_url]);
+            });
         }
-        Promise.all([size_promise, dimensions_promise]).then(([size, dimensions]) => {
-            NTISAS.image_data[image_url] = Object.assign(dimensions, {size});
-            resolve(NTISAS.image_data[image_url]);
-        });
     });
 }
 
@@ -2905,16 +2888,6 @@ async function AddViewCount(tweet_id) {
         let data_expires = JSPLib.utility.getExpires(VIEW_EXPIRES);
         SaveData('view-' + tweet_id, {value: mapped_view, expires: data_expires}, 'danbooru', false);
         NTISAS.recorded_views.push(tweet_id);
-    }
-}
-
-function UpdateImageDict(tweet) {
-    let $tweet = $(tweet);
-    let tweet_id = $tweet.data('tweet-id');
-    if ((tweet_id in API_DATA.tweets) && ('extended_entities' in API_DATA.tweets[tweet_id]) && ('media' in API_DATA.tweets[tweet_id].extended_entities)) {
-        API_DATA.tweets[tweet_id].extended_entities.media.forEach((image) => {
-            NTISAS.tweet_images[image.media_url_https] = image;
-        });
     }
 }
 
@@ -4577,7 +4550,7 @@ function GetTweetGQL(tweet_id) {
         focalTweetId: tweet_id,
     }, TWEET_GRAPHQL_PARAMS);
     return TwitterGraphQLRequest('L1DeQfPt7n3LtTvrBqkJ2g/TweetDetail', data).then((data) => {
-        let api_data = CheckGraphqlData2(data);
+        let api_data = CheckGraphqlData(data);
         return api_data.tweets[tweet_id] ?? null;
     });
 }
@@ -4588,7 +4561,7 @@ function GetUserIDGQL(screen_name) {
         'withHighlightedLabel': false,
     };
     return TwitterGraphQLRequest('Vf8si2dfZ1zmah8ePYPjDQ/UserByScreenNameWithoutResults', data).then((data) => {
-        let api_data = CheckGraphqlData2(data);
+        let api_data = CheckGraphqlData(data);
         for (let user_id in api_data.users) {
             if (api_data.users[user_id].screen_name === screen_name) {
                 return api_data.users[user_id]
@@ -4631,7 +4604,7 @@ function GetMediaTimelineGQL(user_id, cursor) {
         responsive_web_enhance_cards_enabled: true,
     };
     return TwitterGraphQLRequest('_vFDgkWOKL_U64Y2VmnvJw/UserMedia', variables, features).then((data) => {
-        return CheckGraphqlData2(data);
+        return CheckGraphqlData(data);
     });
 }
 
@@ -4909,100 +4882,7 @@ async function InstallUserProfileData() {
     }
 }
 
-function TweetUserData(data) {
-    if (typeof data === 'object' && 'globalObjects' in data) {
-        ProcessTwitterGlobalObjects(data);
-    } else if (typeof data === 'object' && 'data' in data) {
-        API_DATA.raw_data.push(data);
-        //Process in a separately in case there are errors
-        setTimeout(() => {ProcessTwitterData(data);}, 1);
-    }
-}
-
-function ProcessTwitterGlobalObjects(data) {
-    if ('tweets' in data.globalObjects) {
-        let existing_keys = Object.keys(API_DATA.tweets);
-        Object.assign(API_DATA.tweets, data.globalObjects.tweets);
-        for (let twitter_id in data.globalObjects.tweets) {
-            let entry = data.globalObjects.tweets[twitter_id];
-            if ('retweeted_status_id_str' in entry) {
-                let tweet_id = entry.retweeted_status_id_str;
-                API_DATA.retweets[tweet_id] = entry;
-            }
-        }
-        let current_keys = Object.keys(API_DATA.tweets);
-        let new_keys = JSPLib.utility.arrayDifference(current_keys, existing_keys);
-        if (new_keys.length) {
-            setTimeout(() => {PreloadStorageData(new_keys);}, 1);
-        }
-        API_DATA.has_data = true;
-    }
-    if ('users' in data.globalObjects) {
-        Object.assign(API_DATA.users_id, data.globalObjects.users);
-        for (let twitter_id in data.globalObjects.users) {
-            let entry = data.globalObjects.users[twitter_id];
-            entry.id_str = String(twitter_id);
-            API_DATA.users_name[entry.screen_name] = entry;
-            API_DATA.users_id[twitter_id] = entry;
-        }
-        API_DATA.has_data = true;
-    }
-}
-
-function ProcessTwitterData(data) {
-    let checked_data = CheckGraphqlData(data);
-    let display_user_id = 'user_settings' in NTISAS && NTISAS.user_settings.display_user_id;
-    let existing_keys = Object.keys(API_DATA.tweets);
-    for (let i = 0; i < checked_data.length; i++) {
-        let {type, id, item} = checked_data[i];
-        let $tweet = null;
-        item.id_str = String(id);
-        switch(type) {
-            case 'tweet':
-                API_DATA.tweets[id] = item;
-                $tweet = $(`[ntisas-tweet][data-tweet-id=${id}]`);
-                if ($tweet.length > 0 && $tweet.data('user-id') === undefined) {
-                    $tweet.attr('data-user-id', item.user_id_str);
-                    if (display_user_id) {
-                        InitializeUserDisplay($tweet);
-                    }
-                }
-                break;
-            case 'user':
-                API_DATA.users_id[id] = item;
-                API_DATA.users_name[item.screen_name] = item;
-                //falls through
-            default:
-                //do nothing
-        }
-    }
-    let current_keys = Object.keys(API_DATA.tweets);
-    let new_keys = JSPLib.utility.arrayDifference(current_keys, existing_keys);
-    if (new_keys.length) {
-        setTimeout(() => {PreloadStorageData(new_keys);}, 1);
-    }
-    if (checked_data.length) {
-        API_DATA.has_data = true;
-    }
-}
-
-function CheckGraphqlData(data, savedata = []) {
-    for (let i in data) {
-        if (typeof data[i] === "object" && data[i] !== null) {
-            if (('legacy' in data[i]) && ('rest_id' in data[i])) {
-                if ((i === "tweet" || i === "user")) {
-                    savedata.push({type: i, id: data[i].rest_id, item: data[i].legacy});
-                } else if ((i === 'result') && (data[i]?.__typename === 'Tweet' || data[i]?.__typename === 'User')) {
-                    savedata.push({type: data[i].__typename.toLowerCase(), id: data[i].rest_id, item: data[i].legacy});
-                }
-            }
-            CheckGraphqlData(data[i], savedata);
-        }
-    }
-    return savedata;
-}
-
-function CheckGraphqlData2(data, savedata) {
+function CheckGraphqlData(data, savedata) {
     savedata ??= {tweets: {}, users: {}, cursors: {}};
     for (let i in data) {
         if (i === "quoted_status_result") continue;
@@ -5020,7 +4900,7 @@ function CheckGraphqlData2(data, savedata) {
                     savedata[key][item.id_str] = item;
                 }
             }
-            CheckGraphqlData2(data[i], savedata);
+            CheckGraphqlData(data[i], savedata);
         } else if (data[i] === "TimelineTimelineCursor") {
             let cursor_key = data.cursorType.toLowerCase();
             savedata.cursors[cursor_key] = data.value;
@@ -6094,11 +5974,6 @@ function MarkupStreamTweet(tweet) {
         $(tweet).attr('ntisas-tweet', 'stream');
         $(tweet).attr('data-tweet-id', tweet_id);
         $(tweet).attr('data-screen-name', screen_name);
-        //Get API data if available
-        let data_tweet = GetAPIData('tweets', tweet_id);
-        if (data_tweet) {
-            $(tweet).attr('data-user-id', data_tweet.user_id_str);
-        }
         //Not marking this with a a class since Twitter alters it
         let article = tweet.children[0].children[0];
         let main_body = article.children[0].children[0];
@@ -6108,12 +5983,6 @@ function MarkupStreamTweet(tweet) {
         InitializeStatusBar(tweet_status, false);
         let is_retweet = Boolean($(tweet_status).text().match(/ Retweeted$/));
         $(tweet).attr('data-is-retweet', is_retweet);
-        if (is_retweet) {
-            let data_retweet = GetAPIData('retweets', tweet_id);
-            if (data_retweet) {
-                $(tweet).attr('data-retweet-id', data_retweet.id_str);
-            }
-        }
         let tweet_body = main_body.children[1];
         $(tweet_body).addClass('ntisas-tweet-body');
         let tweet_left = tweet_body.children[0];
@@ -6168,11 +6037,6 @@ function MarkupMainTweet(tweet) {
     try {
         $(tweet).attr('ntisas-tweet', 'main');
         $(tweet).attr('data-tweet-id', NTISAS.tweet_id);
-        //Get API data if available
-        let data_tweet = GetAPIData('tweets', NTISAS.tweet_id);
-        if (data_tweet) {
-            $(tweet).attr('data-user-id', data_tweet.user_id_str);
-        }
         let main_body = tweet.children[0].children[0].children[0].children[0];
         $(main_body).addClass('ntisas-main-body');
         let tweet_status = main_body.children[0];
@@ -6415,7 +6279,7 @@ function PageNavigation(pagetype) {
             params = JSPLib.utility.parseParams(NTISAS.page_match.groups.search_query);
             NTISAS.queries = ParseQueries(params.q);
             NTISAS.account = ('from' in NTISAS.queries ? NTISAS.queries.from : undefined);
-            NTISAS.user_id = NTISAS.account && GetAPIData('users_name', NTISAS.account, 'id_str');
+            NTISAS.user_id = undefined;
             break;
         case 'tweet':
         case 'web_tweet':
@@ -6621,7 +6485,6 @@ function ProcessNewTweets() {
         if (NTISAS.user_settings.display_tweet_views) {
             $image_tweets.each((i, entry) => {
                 InitializeViewCount(entry);
-                UpdateImageDict(entry);
                 if (IsTweetPage()) {
                     let tweet_id = $(entry).attr('data-tweet-id');
                     this.debug('logLevel', "Viewable tweet:", tweet_id, JSPLib.utility.DEBUG);
@@ -6633,9 +6496,6 @@ function ProcessNewTweets() {
             });
             UpdateViewHighlights();
         }
-    }
-    if (NTISAS.user_settings.display_user_id && API_DATA.has_data && IsTweetPage()) {
-        InitializeUserDisplay($tweets);
     }
     return true;
 }
@@ -7134,14 +6994,9 @@ JSPLib.notice.program_shortcut = PROGRAM_SHORTCUT;
 JSPLib.load.load_when_hidden = false;
 
 //Export JSPLib
-JSPLib.load.exportData(PROGRAM_NAME, NTISAS, {other_data: {API_DATA, jQuery, XRegExp, SAVED_STORAGE_REQUESTS, SAVED_NETWORK_REQUESTS}, datalist: ['page']});
-JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [GetList, SaveList, GetData, SaveData], alwayslist: [GetAPIData, GetImageLinks]});
+JSPLib.load.exportData(PROGRAM_NAME, NTISAS, {other_data: {jQuery, XRegExp, SAVED_STORAGE_REQUESTS, SAVED_NETWORK_REQUESTS}, datalist: ['page']});
+JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [GetList, SaveList, GetData, SaveData], alwayslist: [GetImageLinks]});
 
 /****Execution start****/
 
-var hook_disabled = (GM_info?.scriptHandler === 'Tampermonkey' &&
-                     GM_info?.userAgentData.brands.some((brand) => brand.brand === 'Firefox'));
-if (!hook_disabled) {
-    JSPLib.network.installXHRHook([TweetUserData]);
-}
 JSPLib.load.programInitialize(Main, {program_name: PROGRAM_NAME, required_selectors: PROGRAM_LOAD_REQUIRED_SELECTORS, max_retries: 100, timer_interval: 500});
