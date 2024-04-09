@@ -1744,6 +1744,7 @@ const DATABASE_RECHECK_EXPIRES = JSPLib.utility.one_day;
 const BADVER_RECHECK_EXPIRES = JSPLib.utility.one_day;
 const PRUNE_RECHECK_EXPIRES = JSPLib.utility.one_hour * 6;
 const PROFILE_VIEWS_CALLBACK = JSPLib.utility.one_second * 10;
+const USER_ID_CALLBACK = JSPLib.utility.one_second * 5;
 
 //Regex constants
 
@@ -5791,76 +5792,32 @@ function ImportData() {
 
 //Timer/callback functions
 
-function UpdateUserIDCallback() {
-    function getUserID(selector, field, regex, group) {
-        let $obj = $(selector);
-        return $obj.length && JSPLib.utility.safeMatch($obj.attr(field), regex, group);
+function UpdateUserIDCallback(account) {
+    if (NTISAS.update_user_id.timer) {
+        clearInterval(NTISAS.update_user_id.timer);
     }
-    function saveUserID() {
-        let expires = JSPLib.utility.getExpires(TWUSER_EXPIRES);
-        JSPLib.storage.saveData('twuser-' + NTISAS.account, {value: NTISAS.user_id, expires});
-    }
-    function checkUserID() {
-        //This will be true if the ID was found in storage
-        if (JSPLib.validate.isString(NTISAS.user_id)) {
-            JSPLib.notice.debugNoticeLevel("User ID storage path", JSPLib.debug.DEBUG);
-            return true;
-        }
-        let found_ID = true;
-        let user_id;
-        if (API_DATA.has_data && NTISAS.account && (NTISAS.account in API_DATA.users_name) && (user_id = GetAPIData('users_name', NTISAS.account, 'id_str'))) {
-            NTISAS.user_id = user_id;
-            JSPLib.notice.debugNoticeLevel("Primary user ID path", JSPLib.debug.DEBUG);
-        } else if (user_id = getUserID('[src*="/profile_banners/"]', 'src', BANNER_REGEX, 1)) {
-            NTISAS.user_id = user_id;
-            JSPLib.notice.debugNoticeLevel("Alternate user ID path #1", JSPLib.debug.DEBUG);
-        } else if (user_id = getUserID('[href^="/i/connect_people?user_id="]', 'href', /\d+/, 0)) {
-            NTISAS.user_id = user_id;
-            JSPLib.notice.debugNoticeLevel("Alternate user ID path #2", JSPLib.debug.DEBUG);
+    JSPLib.storage.checkLocalDB('twuser-' + NTISAS.account, ValidateEntry).then((storage_data) => {
+        if (!storage_data) {
+            NTISAS.update_user_id = JSPLib.utility.recheckTimer({
+                check: () => $('[src*="/profile_banners/"], [href^="/i/connect_people?user_id="]').length,
+                exec: () => {
+                    let $obj = $('[src*="/profile_banners/"]');
+                    if ($obj.length) {
+                        NTISAS.user_id = JSPLib.utility.safeMatch($obj.attr('src'), BANNER_REGEX, 1);
+                    } else {
+                        NTISAS.user_id = JSPLib.utility.safeMatch($('[href^="/i/connect_people?user_id="]').attr('href'), /\d+/, 0);
+                    }
+                    let expires = JSPLib.utility.getExpires(TWUSER_EXPIRES);
+                    JSPLib.storage.saveData('twuser-' + NTISAS.account, {value: NTISAS.user_id, expires});
+                },
+                fail: () => {
+                    JSPLib.notice.debugError("User ID not found!");
+                },
+            }, TIMER_POLL_INTERVAL, USER_ID_CALLBACK);
         } else {
-            found_ID = false;
+            NTISAS.user_id = storage_data.value;
         }
-        if (found_ID) {
-            saveUserID();
-        }
-        return found_ID;
-    }
-    NTISAS.user_id = undefined;
-    NTISAS.update_on_found = false;
-    if (NTISAS.update_user_timer) {
-        this.debug('log', "Overwrite existing execution request!");
-        clearInterval(NTISAS.update_user_timer);
-    }
-    let unique_id = UpdateUserIDCallback.unique_id = JSPLib.utility.getUniqueID();
-    if (!checkUserID()) {
-        JSPLib.storage.checkLocalDB('twuser-' + NTISAS.account, ValidateEntry).then((data) => {
-            //This will be true if the interval handler found the user ID
-            if (JSPLib.validate.isString(NTISAS.user_id)) {
-                this.debug('log', "Interval handler beat storage handler.");
-            } else if (data && (unique_id === UpdateUserIDCallback.unique_id)) {
-                this.debug('log', "Storage handler beat interval handler.");
-                NTISAS.user_id = data.value;
-            }
-        });
-        let interval_expires = JSPLib.utility.getExpires(JSPLib.utility.one_second * 5);
-        this.debug('log', "First execution did not find the user ID.");
-        NTISAS.update_on_found = true;
-        let timer = NTISAS.update_user_timer = setInterval(() => {
-            let found_ID = checkUserID();
-            if (found_ID) {
-                this.debug('log', "Found user ID on nth iteration.");
-                clearInterval(timer);
-                NTISAS.update_user_timer = null;
-            } else if (!JSPLib.utility.validateExpires(interval_expires)) {
-                JSPLib.notice.debugError("User ID not found!");
-                clearInterval(timer);
-                NTISAS.update_user_timer = null;
-            }
-            this.debug('logLevel', found_ID, NTISAS.user_id, JSPLib.debug.DEBUG);
-        }, TIMER_POLL_INTERVAL);
-    } else {
-        this.debug('log', "Found user ID on 1st iteration.");
-    }
+    });
 }
 
 function UpdateProfileCallback() {
