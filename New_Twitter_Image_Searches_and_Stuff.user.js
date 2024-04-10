@@ -2598,10 +2598,6 @@ function IsQuerySettingEnabled(setting, type) {
     return NTISAS.user_settings[type_key].includes(setting);
 }
 
-function MapPostData(posts) {
-    return posts.map(MapPost);
-}
-
 function MapPost(post) {
     return {
         id: post.id,
@@ -4621,7 +4617,7 @@ async function GetItems(item_ids, storage_key, network_key) {
 async function GetPosts(post_ids) {
     let [posts_data, network_posts] = await GetItems(post_ids, 'post', 'posts');
     if (network_posts.length) {
-        let mapped_posts = MapPostData(network_posts);
+        let mapped_posts = network_posts.map(MapPost);
         SavePosts(mapped_posts);
         SavePostUsers(mapped_posts);
         posts_data = posts_data.concat(mapped_posts);
@@ -5426,7 +5422,7 @@ function CheckURL(event) {
         if (data.length === 0) {
             NTISAS.no_url_results.push(tweet_id);
         } else {
-            let mapped_posts = MapPostData(data);
+            let mapped_posts = data.map(MapPost);
             SavePosts(mapped_posts);
             SavePostUsers(mapped_posts);
             post_ids = JSPLib.utility.arrayUnique(JSPLib.utility.getObjectAttributes(data, 'id'));
@@ -5455,7 +5451,7 @@ async function CheckIQDB(event) {
         this.debug('log', `Found ${flat_data.length} results.`);
         let post_data = JSPLib.utility.getObjectAttributes(flat_data, 'post');
         let unique_posts = RemoveDuplicates(post_data, 'id');
-        let mapped_posts = MapPostData(unique_posts);
+        let mapped_posts = unique_posts.map(MapPost);
         let uploader_ids = JSPLib.utility.arrayUnique(JSPLib.utility.getObjectAttributes(mapped_posts, 'uploaderid'));
         let [user_data, network_users] = await GetItems(uploader_ids, 'user', 'users');
         user_data = user_data.concat(network_users);
