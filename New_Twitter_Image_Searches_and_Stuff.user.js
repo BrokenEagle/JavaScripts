@@ -2550,21 +2550,6 @@ function ParseQueries(str) {
     }, {});
 }
 
-function TimeAgo(timestamp) {
-    let time_interval = Date.now() - timestamp;
-    if (time_interval < JSPLib.utility.one_hour) {
-        return JSPLib.utility.setPrecision(time_interval / JSPLib.utility.one_minute, 2) + " minutes ago";
-    } if (time_interval < JSPLib.utility.one_day) {
-        return JSPLib.utility.setPrecision(time_interval / JSPLib.utility.one_hour, 2) + " hours ago";
-    } if (time_interval < JSPLib.utility.one_month) {
-        return JSPLib.utility.setPrecision(time_interval / JSPLib.utility.one_day, 2) + " days ago";
-    } if (time_interval < JSPLib.utility.one_year) {
-        return JSPLib.utility.setPrecision(time_interval / JSPLib.utility.one_month, 2) + " months ago";
-    }
-    return JSPLib.utility.setPrecision(time_interval / JSPLib.utility.one_year, 2) + " years ago";
-
-}
-
 function GetPostVersionsExpiration() {
     return NTISAS.user_settings.recheck_interval * JSPLib.utility.one_minute;
 }
@@ -2645,14 +2630,14 @@ function MapSimilar(post, score) {
 
 function GetLinkTitle(post) {
     let tags = JSPLib.utility.HTMLEscape(post.tags);
-    let age = JSPLib.utility.HTMLEscape(`age:"${TimeAgo(post.created)}"`);
+    let age = JSPLib.utility.HTMLEscape(`age:"${JSPLib.utility.timeAgo(post.created)}"`);
     return `user:${post.uploadername} score:${post.score} favcount:${post.favcount} rating:${post.rating} ${age} ${tags}`;
 }
 
 function GetMultiLinkTitle(posts) {
     let title = [];
     posts.forEach((post) => {
-        let age = JSPLib.utility.HTMLEscape(`age:"${TimeAgo(post.created)}"`);
+        let age = JSPLib.utility.HTMLEscape(`age:"${JSPLib.utility.timeAgo(post.created)}"`);
         title.push(`post #${post.id} - user:${post.uploadername} score:${post.score} favcount:${post.favcount} rating:${post.rating} ${age}`);
     });
     return title.join('\n');
@@ -3409,7 +3394,7 @@ function RenderCurrentRecords() {
     let timestamp = CheckLocalData('ntisas-recent-timestamp');
     if (timestamp) {
         let timestring = new Date(timestamp).toLocaleString();
-        let timeagostring = ((Date.now() - timestamp) < GetPostVersionsExpiration() * 2 ? "Up to date" : TimeAgo(timestamp));
+        let timeagostring = ((Date.now() - timestamp) < GetPostVersionsExpiration() * 2 ? "Up to date" : JSPLib.utility.timeAgo(timestamp));
         record_html = `<a id="ntisas-current-records" class="ntisas-expanded-link" title="${timestring}">${timeagostring}</a>`;
     } else {
         record_html = '<span id="ntisas-current-records">Loading...</span>';
@@ -3878,7 +3863,7 @@ function InitializeMediaTweet(tweet_id, post_ids, tweet_dict_promise) {
     if (NTISAS.user_settings.display_tweet_views) {
         GetData('view-' + tweet_id, 'danbooru').then((views) => {
             if (views && views.value.count > 0) {
-                let timeagostring = ((Date.now() - views.value.viewed) < VIEWCOUNT_RECENT_DURATION ? "recently" : TimeAgo(views.value.viewed));
+                let timeagostring = ((Date.now() - views.value.viewed) < VIEWCOUNT_RECENT_DURATION ? "recently" : JSPLib.utility.timeAgo(views.value.viewed));
                 let $view_icon = $(`<div class="ntisas-media-view-icon" title="Viewed ${timeagostring} [${views.value.count}]"></div>`);
                 $tweet.append($view_icon[0]);
             }
@@ -4035,7 +4020,7 @@ async function InitializeViewCount(tweet) {
     let tweet_id = String($(tweet).data('tweet-id'));
     let views = await GetData('view-' + tweet_id, 'danbooru');
     if (views && views.value.count > 0) {
-        let timeagostring = ((Date.now() - views.value.viewed) < VIEWCOUNT_RECENT_DURATION ? "recently" : TimeAgo(views.value.viewed));
+        let timeagostring = ((Date.now() - views.value.viewed) < VIEWCOUNT_RECENT_DURATION ? "recently" : JSPLib.utility.timeAgo(views.value.viewed));
         $('.ntisas-view-info', tweet).append(`<span title="${views.value.count} views">[Viewed ${timeagostring}]</span>`);
         $(tweet).addClass('ntisas-viewed');
     }
@@ -4052,7 +4037,7 @@ function InitializeProfileViewCount(views, data_key, selector, format) {
     if (views && views.value.count > 0) {
         let date_string = new Date(views.value.viewed).toLocaleDateString();
         view_title = `${date_string} : ${views.value.count} views`;
-        view_time = ((Date.now() - views.value.viewed) < VIEWCOUNT_RECENT_DURATION ? "recently" : TimeAgo(views.value.viewed));
+        view_time = ((Date.now() - views.value.viewed) < VIEWCOUNT_RECENT_DURATION ? "recently" : JSPLib.utility.timeAgo(views.value.viewed));
     }
     let display_text = JSPLib.utility.sprintf(format, view_time);
     $(selector).html(`<span title="${view_title}">${display_text}</span>`);
