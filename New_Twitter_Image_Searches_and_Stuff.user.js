@@ -6916,9 +6916,6 @@ JSPLib.menu.program_data = NTISAS;
 JSPLib.menu.program_reset_data = PROGRAM_RESET_KEYS;
 JSPLib.menu.program_data_regex = PROGRAM_DATA_REGEX;
 JSPLib.menu.settings_callback = RemoteSettingsCallback;
-JSPLib.menu.settings_migrations = [
-    {from: 'display_view_count', to: 'display_tweet_views'},
-];
 JSPLib.menu.settings_config = SETTINGS_CONFIG;
 JSPLib.menu.control_config = CONTROL_CONFIG;
 
