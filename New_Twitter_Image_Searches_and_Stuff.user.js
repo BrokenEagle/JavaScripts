@@ -147,7 +147,6 @@ const PROGRAM_DEFAULT_VALUES = {
 //Settings constants
 const COMMON_QUERY_SETTINGS = ['pick_image', 'confirm_save', 'auto_save'];
 const DEFAULT_QUERY_SETTINGS = ['pick_image', 'confirm_save'];
-const ALL_SCORE_LEVELS = ['excellent', 'good', 'aboveavg', 'fair', 'belowavg', 'poor'];
 const SUBDOMAINS = ['danbooru', 'kagamihara', 'saitou', 'shima', 'betabooru'];
 
 //Main settings
@@ -3835,7 +3834,6 @@ async function InitializeImageMenu($tweets, menu_class) {
 
 function InitializeMediaTweet(tweet_id, post_ids, tweet_dict_promise) {
     let $tweet = $(`.ntisas-media-tweet[data-tweet-id=${tweet_id}]`);
-    let screen_name = $tweet.data('screen-name');
     let $media_icon_container = $('<div class="ntisas-media-icon-container"><div class="ntisas-media-icon"></div></div>');
     $tweet.append($media_icon_container[0]);
     let $media_icon = $media_icon_container.children().eq(0);
@@ -3877,7 +3875,7 @@ function InitializeQtip($obj, tweet_id, delayfunc) {
                 if (!qtip.tooltip[0].hasAttribute(PROGRAM_SHORTCUT)) {
                     if (delayfunc) {
                         var timer;
-                        timer = JSPLib.utility.initializeInterval(()=>{
+                        timer = JSPLib.utility.initializeInterval(() => {
                             let results = delayfunc();
                             if (results !== false) {
                                 qtip.set('content.text', results);
@@ -4556,7 +4554,7 @@ function GetUserIDGQL(screen_name) {
         let api_data = CheckGraphqlData(data);
         for (let user_id in api_data.users) {
             if (api_data.users[user_id].screen_name === screen_name) {
-                return api_data.users[user_id]
+                return api_data.users[user_id];
             }
         }
         return null;
@@ -4595,9 +4593,7 @@ function GetMediaTimelineGQL(user_id, cursor) {
         responsive_web_text_conversations_enabled: false,
         responsive_web_enhance_cards_enabled: true,
     };
-    return TwitterGraphQLRequest('_vFDgkWOKL_U64Y2VmnvJw/UserMedia', variables, features).then((data) => {
-        return CheckGraphqlData(data);
-    });
+    return TwitterGraphQLRequest('_vFDgkWOKL_U64Y2VmnvJw/UserMedia', variables, features).then((data) => CheckGraphqlData(data));
 }
 
 async function GetItems(item_ids, storage_key, network_key) {
@@ -5325,9 +5321,7 @@ function OpenMediaTweetMenu(event) {
         let image_urls = tweet_data.map((data) => 'https://pbs.twimg.com/' + data.partial_image);
         var video_promise;
         if (($tweet.data('media-type') === 'video' || $tweet.data('text') === 'GIF') && $tweet.hasClass('ntisas-single-media')) {
-            video_promise = GetTweetData(tweet_id).then((data) => {
-                return data.map((data) => Boolean(data.partial_video));
-            });
+            video_promise = GetTweetData(tweet_id).then((data) => data.map((data) => Boolean(data.partial_video)));
         } else {
             video_promise = Promise.resolve(tweet_data.map((data) => Boolean(data.partial_video)));
         }
@@ -5783,7 +5777,7 @@ function ImportData() {
 
 //Timer/callback functions
 
-function UpdateUserIDCallback(account) {
+function UpdateUserIDCallback() {
     if (NTISAS.update_user_id.timer) {
         clearInterval(NTISAS.update_user_id.timer);
     }
