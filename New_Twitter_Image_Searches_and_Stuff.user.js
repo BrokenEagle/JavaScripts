@@ -3895,11 +3895,21 @@ function InitializeQtip($obj, tweet_id, delayfunc) {
             text: (event, qtip) => {
                 if (!qtip.tooltip[0].hasAttribute(PROGRAM_SHORTCUT)) {
                     if (delayfunc) {
-                        let results = delayfunc();
-                        if (results === false) {
-                            return "Loading...";
-                        }
-                        NTISAS.tweet_qtip[tweet_id] = results;
+                        var timer;
+                        timer = JSPLib.utility.initializeInterval(()=>{
+                            let results = delayfunc();
+                            if (results !== false) {
+                                qtip.set('content.text', results);
+                                NTISAS.tweet_qtip[tweet_id] = results;
+                                if (Number.isInteger(timer)) {
+                                    clearInterval(timer);
+                                }
+                                qtip.tooltip.attr(PROGRAM_SHORTCUT, 'done');
+                            } else {
+                                return false;
+                            }
+                        }, 100);
+                        return '<div style="width: 200px; height: 200px;"><b>Loading...</b></div>';
                     }
                     qtip.tooltip.attr(PROGRAM_SHORTCUT, 'done');
                 }
