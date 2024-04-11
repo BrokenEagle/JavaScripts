@@ -16,7 +16,6 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-getitems@1.4.2/dist/localforage-getitems.min.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-setitems@1.4.0/dist/localforage-setitems.min.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
-// @require      https://cdn.jsdelivr.net/npm/xregexp@5.1.0/xregexp-all.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/module.js
@@ -47,7 +46,7 @@
 // ==/UserScript==
 
 // eslint-disable-next-line no-redeclare
-/* global $ jQuery JSPLib validate localforage saveAs XRegExp GM_getResourceText BigInt */
+/* global $ jQuery JSPLib validate localforage saveAs GM_getResourceText BigInt */
 
 /****Global variables****/
 
@@ -1747,19 +1746,33 @@ const USER_ID_CALLBACK = JSPLib.utility.one_second * 5;
 
 //Regex constants
 
+JSPLib.utility.verboseRegex = function (flags) {
+    return function (literals, ...args) {
+        let output = "";
+        for (let i = 0; i < literals.raw.length; i++) {
+            output += literals.raw[i];
+            if (i < args.length) {
+                output += args[i];
+            }
+        }
+        return RegExp(output.replace(/\s+/g, ""), flags);
+    };
+};
+
+const TWITTER_HOST = String.raw`^https?://twitter\.com`;
+const TWIMG_HOST_RG = String.raw`^https?://pbs\.twimg\.com`;
+
 var TWITTER_ACCOUNT = String.raw`[\w-]+`;
 var TWITTER_ID = String.raw`\d+`;
 var QUERY_END = String.raw`(?:\?|$)`;
 
-const TWEET_REGEX = XRegExp.tag('g')`^https://twitter\.com/[\w-]+/status/(\d+)$`;
-const TWEET_URL_REGEX = XRegExp.tag('g')`^https://twitter\.com/[\w-]+/status/\d+`;
-const SOURCE_TWITTER_REGEX = XRegExp.tag('g')`^source:https://twitter\.com/[\w-]+/status/(\d+)$`;
+const TWEET_REGEX = JSPLib.utility.verboseRegex('g')`^https://twitter\.com/[\w-]+/status/(\d+)$`;
+const TWEET_URL_REGEX = JSPLib.utility.verboseRegex('g')`^https://twitter\.com/[\w-]+/status/\d+`;
+const SOURCE_TWITTER_REGEX = JSPLib.utility.verboseRegex('g')`^source:https://twitter\.com/[\w-]+/status/(\d+)$`;
 
-const IMAGE_REGEX = XRegExp.tag()`(https://pbs\.twimg\.com/media/[\w-]+\?format=(?:jpg|png|gif|webp)&name=)(.+)`;
-const BANNER_REGEX = XRegExp.tag()`https://pbs\.twimg\.com/profile_banners/(\d+)/\d+/`;
+const BANNER_REGEX = JSPLib.utility.verboseRegex()`https://pbs\.twimg\.com/profile_banners/(\d+)/\d+/`;
 
-const TWIMG_HOST_RG = XRegExp.tag('i')`^https?://pbs\.twimg\.com`;
-const TWITTER_IMAGE1 = XRegExp.tag('xi')`
+const TWITTER_IMAGE1 = JSPLib.utility.verboseRegex('i')`
 ${TWIMG_HOST_RG}
 /
 (?<path>media|tweet_video_thumb)
@@ -1771,7 +1784,8 @@ ${TWIMG_HOST_RG}
 (?<size>[a-z0-9]+)
 )?
 $`;
-const TWITTER_IMAGE2 = XRegExp.tag('xi')`
+
+const TWITTER_IMAGE2 = JSPLib.utility.verboseRegex('i')`
 ${TWIMG_HOST_RG}
 /
 (?<path>(?:ext_tw_video_thumb|amplify_video_thumb)/\d+(?:/\w+)?/img)
@@ -1783,7 +1797,8 @@ ${TWIMG_HOST_RG}
 (?<size>[a-z0-9]+)
 )?
 $`;
-const TWITTER_IMAGE3 = XRegExp.tag('xi')`
+
+const TWITTER_IMAGE3 = JSPLib.utility.verboseRegex('i')`
 ${TWIMG_HOST_RG}
 /
 (?<path>media|tweet_video_thumb)
@@ -1795,7 +1810,8 @@ ${TWIMG_HOST_RG}
 (?<size>[a-z0-9]+)
 )?
 $`;
-const TWITTER_IMAGE4 = XRegExp.tag('xi')`
+
+const TWITTER_IMAGE4 = JSPLib.utility.verboseRegex('i')`
 ${TWIMG_HOST_RG}
 /
 (?<path>(?:ext_tw_video_thumb|amplify_video_thumb)/\d+(?:/\w+)?/img)
@@ -1807,6 +1823,7 @@ ${TWIMG_HOST_RG}
 (?<size>[a-z0-9]+)
 )?
 $`;
+
 const HANDLED_IMAGES = [
     TWITTER_IMAGE1,
     TWITTER_IMAGE2,
@@ -1815,129 +1832,144 @@ const HANDLED_IMAGES = [
 ];
 
 const UNHANDLED_IMAGES = [
-    XRegExp.tag()`^https://pbs\.twimg\.com/profile_images/`,
-    XRegExp.tag()`^https://[^.]+\.twimg\.com/emoji/`,
-    XRegExp.tag()`^https://pbs.twimg.com/ad_img/`,
-    XRegExp.tag()`^https://abs.twimg.com/hashflags/`,
-    XRegExp.tag()`^https://pbs.twimg.com/card_img/`,
+    JSPLib.utility.verboseRegex()`^https://pbs\.twimg\.com/profile_images/`,
+    JSPLib.utility.verboseRegex()`^https://[^.]+\.twimg\.com/emoji/`,
+    JSPLib.utility.verboseRegex()`^https://pbs.twimg.com/ad_img/`,
+    JSPLib.utility.verboseRegex()`^https://abs.twimg.com/hashflags/`,
+    JSPLib.utility.verboseRegex()`^https://pbs.twimg.com/card_img/`,
 ];
 
-var ALL_PAGE_REGEXES = {
-    main: {
-        format: ' {{no_match}} ({{main_account}}) {{end}} ',
-        subs: {
-            main_account: TWITTER_ACCOUNT,
-            no_match: '(?!search|home)',
-            end: QUERY_END,
-        }
-    },
-    media: {
-        format: ' ( {{media_account}} ) {{media}} {{end}} ',
-        subs: {
-            media_account: TWITTER_ACCOUNT,
-            media: '/media',
-            end: QUERY_END,
-        }
-    },
-    search: {
-        format: ' {{search}} ( {{search_query}} ) ',
-        subs: {
-            search: String.raw`search\?`,
-            search_query: String.raw`.*?\bq=.+`,
-        }
-    },
-    tweet: {
-        format: ' ( {{tweet_account}} ) {{status}} ( {{tweet_id}} ) {{end}} ',
-        subs: {
-            tweet_account: TWITTER_ACCOUNT,
-            tweet_id: TWITTER_ID,
-            status: '/status/',
-            end: QUERY_END,
-        }
-    },
-    web_tweet: {
-        format: ' {{status}} ( {{web_tweet_id}} ) {{end}} ',
-        subs: {
-            web: TWITTER_ACCOUNT,
-            web_tweet_id: TWITTER_ID,
-            status: 'i/web/status/',
-            end: QUERY_END,
-        }
-    },
-    hashtag: {
-        format: ' {{hashtag}} ( {{hashtag_hash}} ) {{end}} ',
-        subs: {
-            hashtag: 'hashtag/',
-            hashtag_hash: '.+?',
-            end: QUERY_END,
-        }
-    },
-    list: {
-        format: ' ( {{list_account}} ) {{list}} ( {{list_id}} ) {{end}} ',
-        subs: {
-            list_account: TWITTER_ACCOUNT,
-            list_id: String.raw`[\w-]+`,
-            list: '/lists/',
-            end: QUERY_END,
-        }
-    },
-    home: {
-        format: ' {{home}} {{end}} ',
-        subs: {
-            home: 'home',
-            end: QUERY_END,
-        }
-    },
-    likes: {
-        format: ' ( {{likes_account}} ) {{likes}} {{end}} ',
-        subs: {
-            likes_account: TWITTER_ACCOUNT,
-            likes: '/likes',
-            end: QUERY_END,
-        }
-    },
-    replies: {
-        format: ' ( {{replies_account}} ) {{replies}} {{end}} ',
-        subs: {
-            replies_account: TWITTER_ACCOUNT,
-            replies: '/with_replies',
-            end: QUERY_END,
-        }
-    },
-    photo: {
-        format: ' ( {{photo_account}} ) {{status}} ( {{photo_id}} ) {{type}} ( {{photo_index}} ) {{end}} ',
-        subs: {
-            photo_account: TWITTER_ACCOUNT,
-            photo_id: TWITTER_ID,
-            photo_index: String.raw`\d`,
-            type: '/(?:photo|video)/',
-            status: '/status/',
-            end: QUERY_END,
-        }
-    },
-    moments: {
-        format: ' {{moments}} ( {{moment_id}} ) {{end}} ',
-        subs: {
-            moment_id: TWITTER_ID,
-            moments: 'i/moments/',
-            end: QUERY_END,
-        }
-    },
-    topics: {
-        format: ' {{topics}} ( {{topic_id}} ) {{end}} ',
-        subs: {
-            topic_id: TWITTER_ID,
-            topics: 'i/topics/',
-            end: QUERY_END,
-        }
-    },
-    display: {
-        format: ' {{display}} {{end}} ',
-        subs: {
-            display: 'i/display',
-            end: QUERY_END,
-        }
-    },
+const MAIN_PAGE_REGEX = JSPLib.utility.verboseRegex('i')`
+${TWITTER_HOST}
+/
+(?!search|home)
+(?<account>${TWITTER_ACCOUNT})
+${QUERY_END}
+`;
+
+const MEDIA_PAGE_REGEX = JSPLib.utility.verboseRegex('i')`
+${TWITTER_HOST}
+/
+(?<account>${TWITTER_ACCOUNT})
+/media
+${QUERY_END}
+`;
+
+const LIKES_PAGE_REGEX = JSPLib.utility.verboseRegex('i')`
+${TWITTER_HOST}
+/
+(?<account>${TWITTER_ACCOUNT})
+/likes
+${QUERY_END}
+`;
+
+const REPLIES_PAGE_REGEX = JSPLib.utility.verboseRegex('i')`
+${TWITTER_HOST}
+/
+(?<account>${TWITTER_ACCOUNT})
+/with_replies
+${QUERY_END}
+`;
+
+const SEARCH_PAGE_REGEX = JSPLib.utility.verboseRegex('i')`
+${TWITTER_HOST}
+/
+search\?
+(?<query>.*?\bq=.+)
+`;
+
+const TWEET_PAGE_REGEX = JSPLib.utility.verboseRegex('i')`
+${TWITTER_HOST}
+/
+(?<account>${TWITTER_ACCOUNT})
+/status/
+(?<id>${TWITTER_ID})
+${QUERY_END}
+`;
+
+const WEB_TWEET_PAGE_REGEX = JSPLib.utility.verboseRegex('i')`
+${TWITTER_HOST}
+/
+i/web
+/status/
+(?<id>${TWITTER_ID})
+${QUERY_END}
+`;
+
+const PHOTO_PAGE_REGEX = JSPLib.utility.verboseRegex('i')`
+${TWITTER_HOST}
+/
+(?<account>${TWITTER_ACCOUNT})
+/status/
+(?<id>${TWITTER_ID})
+/
+(?<type>photo|video)
+/
+(?<index>\d)
+${QUERY_END}
+`;
+
+const HASHTAG_PAGE_REGEX = JSPLib.utility.verboseRegex('i')`
+${TWITTER_HOST}
+/
+hashtag/
+(?<hashtag>[^?]+)
+`;
+
+const LIST_PAGE_REGEX = JSPLib.utility.verboseRegex('i')`
+${TWITTER_HOST}
+/
+(?<account>${TWITTER_ACCOUNT})
+/lists/
+(?<id>${TWITTER_ID})
+${QUERY_END}
+`;
+
+const HOME_PAGE_REGEX = JSPLib.utility.verboseRegex('i')`
+${TWITTER_HOST}
+/
+home
+${QUERY_END}
+`;
+
+const EVENTS_PAGE_REGEX = JSPLib.utility.verboseRegex('i')`
+${TWITTER_HOST}
+/
+i/events/
+(?<id>${TWITTER_ID})
+${QUERY_END}
+`;
+
+const TOPICS_PAGE_REGEX = JSPLib.utility.verboseRegex('i')`
+${TWITTER_HOST}
+/
+i/topics/
+(?<id>${TWITTER_ID})
+${QUERY_END}
+`;
+
+const DISPLAY_PAGE_REGEX = JSPLib.utility.verboseRegex('i')`
+${TWITTER_HOST}
+/
+settings/display
+${QUERY_END}
+`;
+
+const PAGE_REGEXES = {
+    main: MAIN_PAGE_REGEX,
+    media: MEDIA_PAGE_REGEX,
+    likes: LIKES_PAGE_REGEX,
+    replies: REPLIES_PAGE_REGEX,
+    search: SEARCH_PAGE_REGEX,
+    tweet: TWEET_PAGE_REGEX,
+    web_tweet: WEB_TWEET_PAGE_REGEX,
+    photo: PHOTO_PAGE_REGEX,
+    hashtag: HASHTAG_PAGE_REGEX,
+    list: LIST_PAGE_REGEX,
+    home: HOME_PAGE_REGEX,
+    events: EVENTS_PAGE_REGEX,
+    topics: TOPICS_PAGE_REGEX,
+    display: DISPLAY_PAGE_REGEX,
 };
 
 //Network constants
@@ -2028,7 +2060,7 @@ const TIMELINE_VALS = {
 
 //Other constants
 
-const STREAMING_PAGES = ['home', 'main', 'likes', 'replies', 'media', 'list', 'search', 'hashtag', 'moments', 'topics'];
+const STREAMING_PAGES = ['home', 'main', 'likes', 'replies', 'media', 'list', 'search', 'hashtag', 'events', 'topics'];
 const MEDIA_TYPES = ['images', 'media', 'videos'];
 
 const ALL_LISTS = {
@@ -2575,23 +2607,6 @@ function GetUserIdent() {
 
 }
 
-function PageRegex() {
-    if (!NTISAS.page_regex) {
-        let built_regexes = Object.assign({}, ...Object.keys(ALL_PAGE_REGEXES).map((page) => {
-            //Match at beginning of string with Twitter URL
-            let regex = XRegExp.build(`^ https://twitter.com/ ` + ALL_PAGE_REGEXES[page].format, ALL_PAGE_REGEXES[page].subs, 'x');
-            //Add page named capturing group
-            return {[page]: XRegExp.build(' ( {{' + page + '}} ) ', {[page]: regex}, 'x')};
-        }));
-        //Combine all regexes
-        let all_format = Object.keys(built_regexes).map((page) => (' {{' + page + '}} ')).join('|');
-        let all_regex = XRegExp.build(all_format, built_regexes, 'x');
-        //Add overall capturing group...
-        NTISAS.page_regex = XRegExp.build(' ( {{site}} )', {site: all_regex}, 'x');
-    }
-    return NTISAS.page_regex;
-}
-
 function IsQuerySettingEnabled(setting, type) {
     let type_key = (type === 'iqdb' ? 'IQDB' : type) + '_settings';
     return NTISAS.user_settings[type_key].includes(setting);
@@ -2735,13 +2750,13 @@ async function GetNormalImageURL(image_info) {
 
 function GetImageURLInfo(image_url) {
     for (let i = 0; i < HANDLED_IMAGES.length; i++) {
-        let match = XRegExp.exec(image_url, HANDLED_IMAGES[i]);
+        let match = HANDLED_IMAGES[i].exec(image_url);
         if (match) {
             return match.groups;
         }
     }
     for (let i = 0; i < UNHANDLED_IMAGES.length; i++) {
-        let match = image_url.match(UNHANDLED_IMAGES[i]);
+        let match = UNHANDLED_IMAGES[i].exec(image_url);
         if (match) {
             return null;
         }
@@ -3050,43 +3065,14 @@ function ProcessPostvers(postvers) {
 }
 
 function GetPageType() {
-    NTISAS.page_match = XRegExp.exec(window.location.href.split('#')[0], PageRegex());
-    if (!NTISAS.page_match) {
-        return 'other';
+    let page_url = window.location.href.split('#')[0];
+    for (let key in PAGE_REGEXES) {
+        NTISAS.page_match = PAGE_REGEXES[key].exec(page_url);
+        if (NTISAS.page_match) {
+            return key;
+        }
     }
-    switch (NTISAS.page_match.groups.site) {
-        case NTISAS.page_match.groups.main:
-            return 'main';
-        case NTISAS.page_match.groups.media:
-            return 'media';
-        case NTISAS.page_match.groups.search:
-            return 'search';
-        case NTISAS.page_match.groups.tweet:
-            return 'tweet';
-        case NTISAS.page_match.groups.web_tweet:
-            return 'web_tweet';
-        case NTISAS.page_match.groups.hashtag:
-            return 'hashtag';
-        case NTISAS.page_match.groups.list:
-            return 'list';
-        case NTISAS.page_match.groups.home:
-            return 'home';
-        case NTISAS.page_match.groups.likes:
-            return 'likes';
-        case NTISAS.page_match.groups.replies:
-            return 'replies';
-        case NTISAS.page_match.groups.photo:
-            return 'photo';
-        case NTISAS.page_match.groups.topics:
-            return 'topics';
-        case NTISAS.page_match.groups.moments:
-            return 'moments';
-        case NTISAS.page_match.groups.display:
-            return 'display';
-        default:
-            this.debug('warn', "Regex error:", window.location.href, NTISAS.page_match);
-            return 'default';
-    }
+    return 'other';
 }
 
 function UpdateSideMenu() {
@@ -4086,7 +4072,7 @@ function InitializeDownloadLinks($tweet) {
 }
 
 async function InitializeUploadlinks(install) {
-    NTISAS.photo_index = NTISAS.page_match.groups.photo_index;
+    NTISAS.photo_index = NTISAS.page_match.groups.index;
     let $photo_container = $('.ntisas-photo-container');
     let selected_photo = $(`li:nth-of-type(${NTISAS.photo_index}) img`, $photo_container[0]);
     if (selected_photo.length === 0) {
@@ -4113,7 +4099,7 @@ async function InitializeUploadlinks(install) {
         $link = $('.ntisas-upload a');
         $link.attr('href', upload_link);
     }
-    let qtip_key = NTISAS.page_match.groups.photo_id + '-' + NTISAS.page_match.groups.photo_index;
+    let qtip_key = NTISAS.page_match.groups.id + '-' + NTISAS.page_match.groups.index;
     InitializeQtip($link, qtip_key, async () => {
         let extension = GetFileExtension(image_url).toUpperCase();
         let $container = await GetImageAttributes(orig_image_url).then(({size, width, height}) => {
@@ -5103,7 +5089,7 @@ function PhotoNavigation() {
         //Get the latest page regex match stored onto global variable
         let pagetype = GetPageType();
         if (pagetype === 'photo') {
-            if (NTISAS.page_match.groups.photo_index !== NTISAS.photo_index) {
+            if (NTISAS.page_match.groups.index !== NTISAS.photo_index) {
                 InitializeUploadlinks(false);
             }
         }
@@ -5142,12 +5128,12 @@ function ToggleImageSize(event) {
     let image = event.target;
     let $image = $(image);
     let image_url = $image.attr('src');
-    let match = image_url.match(IMAGE_REGEX);
-    if (match) {
+    let image_info = GetImageURLInfo(image_url);
+    if (image_info) {
         let orig_url = $image.parent().data('orig-size');
         let $image_anchor = NTISAS.image_anchor[orig_url];
         let showing_large = $image.data('showing-large') || false;
-        if (showing_large || match[2] === 'large') {
+        if (showing_large || image_info.size === 'large') {
             $image_anchor.qtiptisas('hide');
             $image_anchor.closest('a').get(0).click();
         } else {
@@ -5164,7 +5150,8 @@ function ToggleImageSize(event) {
                     top: new_y,
                 });
             };
-            $image.attr('src', match[1] + 'large');
+            let large_url = 'https://pbs.twimg.com/' + image_info.path + '/' + image_info.key + '?format=' + image_info.ext + '&name=medium';
+            $image.attr('src', large_url);
             $image.data('showing-large', true);
         }
     } else {
@@ -6180,15 +6167,17 @@ function RegularCheck() {
 
 function PageNavigation(pagetype) {
     //Use all non-URL matching groups as a page key to detect page changes
-    let page_key = JSPLib.utility.arrayUnique(
-        Object.values(NTISAS.page_match.groups).filter((val) => (JSPLib.validate.isString(val) && !val.startsWith('https:')))
-    ).join(',');
+    let page_key = NTISAS.page_match.groups ?
+        JSPLib.utility.arrayUnique(
+            Object.values(NTISAS.page_match.groups).filter((val) => (JSPLib.validate.isString(val) && !val.startsWith('https:')))
+        ).join(',') :
+        "";
     if (NTISAS.page === pagetype && NTISAS.page_key === page_key && (pagetype !== 'hashtag' || NTISAS.hashtag_search === window.location.search)) {
         return;
     }
     var params;
-    let account = NTISAS.page_match.groups[pagetype + '_account'];
-    let page_id = NTISAS.page_match.groups[pagetype + '_id'];
+    let account = NTISAS.page_match.groups?.account;
+    let page_id = NTISAS.page_match.groups?.id;
     NTISAS.prev_page = NTISAS.page;
     NTISAS.page = pagetype;
     NTISAS.page_key = page_key;
@@ -6207,18 +6196,18 @@ function PageNavigation(pagetype) {
         case 'home':
         case 'list':
         case 'topics':
-        case 'moments':
+        case 'events':
             this.debug('log', `Stream timeline [${NTISAS.page}]:`, page_id || "n/a");
             NTISAS.account = NTISAS.user_id = undefined;
             break;
         case 'hashtag':
-            this.debug('log', "Hashtag timeline:", NTISAS.page_match.groups.hashtag_hash);
+            this.debug('log', "Hashtag timeline:", NTISAS.page_match.groups.hashtag);
             NTISAS.account = NTISAS.user_id = undefined;
             NTISAS.hashtag_search = window.location.search;
             break;
         case 'search':
-            this.debug('log', "Search timeline:", NTISAS.page_match.groups.search_query);
-            params = JSPLib.utility.parseParams(NTISAS.page_match.groups.search_query);
+            this.debug('log', "Search timeline:", NTISAS.page_match.groups.query);
+            params = JSPLib.utility.parseParams(NTISAS.page_match.groups.query);
             NTISAS.queries = ParseQueries(params.q);
             NTISAS.account = ('from' in NTISAS.queries ? NTISAS.queries.from : undefined);
             NTISAS.user_id = undefined;
@@ -6933,7 +6922,7 @@ JSPLib.notice.program_shortcut = PROGRAM_SHORTCUT;
 JSPLib.load.load_when_hidden = false;
 
 //Export JSPLib
-JSPLib.load.exportData(PROGRAM_NAME, NTISAS, {other_data: {jQuery, XRegExp, SAVED_STORAGE_REQUESTS, SAVED_NETWORK_REQUESTS}, datalist: ['page']});
+JSPLib.load.exportData(PROGRAM_NAME, NTISAS, {other_data: {jQuery, SAVED_STORAGE_REQUESTS, SAVED_NETWORK_REQUESTS, PAGE_REGEXES}, datalist: ['page']});
 JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [GetList, SaveList, GetData, SaveData], alwayslist: [GetImageLinks]});
 
 /****Execution start****/
