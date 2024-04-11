@@ -6041,9 +6041,13 @@ function MarkupMainTweet(tweet) {
 
 function MarkupMediaTweet(tweet) {
     let $tweet = $(tweet);
-    $tweet.addClass('ntisas-media-tweet');
     let $link = $tweet.find('a[role="link"]');
+    if ($link.length === 0) {
+        $tweet.addClass('ntisas-blank-tweet');
+        return;
+    }
     let [, screen_name,, tweet_id, media_type, ] = $link.get(0).pathname.split('/');
+    $tweet.addClass('ntisas-media-tweet');
     $tweet.attr('data-tweet-id', tweet_id);
     $tweet.attr('data-screen-name', screen_name);
     $tweet.attr('data-media-type', media_type);
@@ -6432,7 +6436,7 @@ function ProcessNewTweets() {
 }
 
 function ProcessMediaTweets() {
-    let $tweet_list_items = $('div[data-testid=primaryColumn] div[data-testid="cellInnerDiv"] li[role="listitem"]:not(.ntisas-media-tweet)');
+    let $tweet_list_items = $('div[data-testid=primaryColumn] div[data-testid="cellInnerDiv"] li[role="listitem"]:not(.ntisas-media-tweet):not(.ntisas-blank-tweet)');
     if ($tweet_list_items.length === 0) return;
     NTISAS.timeline_tweets[NTISAS.account] ??= {total: new Set(), single: new Set(), multi: new Set()};
     let timeline_tweets = NTISAS.timeline_tweets[NTISAS.account];
@@ -6440,6 +6444,7 @@ function ProcessMediaTweets() {
     let promise_array = [];
     $tweet_list_items.each((i, tweet) => {
         let tweet_id = MarkupMediaTweet(tweet);
+        if (!JSPLib.validate.isString(tweet_id)) return;
         promise_array.push(GetData('tweet-' + tweet_id, 'twitter'));
         tweet_ids.push(tweet_id);
         timeline_tweets.total.add(tweet_id);
