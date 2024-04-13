@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9.0
+// @version      9.1
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2489,6 +2489,10 @@ JSPLib.utility.bigIntMin = function (...args) {
     return args.reduce((min, comp) => (min < comp ? min : comp));
 };
 
+JSPLib.utility.isDigit = function (input) {
+    return typeof input === 'string' && /^\d+$/.test(input);
+};
+
 JSPLib.concurrency.freeSemaphore = function (program_shortcut, name) {
     let event_name = this._getSemaphoreName(program_shortcut, name, false);
     let storage_name = this._getSemaphoreName(program_shortcut, name, true);
@@ -4398,12 +4402,17 @@ function QueueTimelineRequest(tweet_id, account) {
 
 async function TimelineHandler() {
     if (TimelineHandler.is_busy) return;
+    TimelineHandler.errors ??= 0;
     TimelineHandler.is_busy = true;
     let accounts = JSPLib.utility.arrayUnique(TIMELINE_REQUESTS.map((request) => request.account));
     for (let i = 0; i < accounts.length; i++) {
         let account = accounts[i];
         if (!TIMELINE_VALS.user_ids[account]) {
             TIMELINE_VALS.user_ids[account] = await GetUserRestID(account);
+        }
+        if (!JSPLib.utility.isDigit(TIMELINE_VALS.user_ids[account])) {
+            TimelineHandler.errors++;
+            continue;
         }
         TIMELINE_VALS.cursor[account] ??= null;
         TIMELINE_VALS.lowest_available_tweet[account] ??= Infinity;
@@ -4434,7 +4443,7 @@ async function TimelineHandler() {
     }
     TimelineHandler.is_busy = false;
     //More requests may have arrived since processing finished, so ensure the function gets called again
-    if (TIMELINE_REQUESTS.length) {
+    if (TIMELINE_REQUESTS.length && TimelineHandler.errors < 3) {
         setTimeout(() => {TimelineHandler();}, 1);
     }
 }
