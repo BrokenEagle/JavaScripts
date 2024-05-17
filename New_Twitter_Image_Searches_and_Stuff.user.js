@@ -234,6 +234,11 @@ const SETTINGS_CONFIG = {
         validate: JSPLib.validate.isBoolean,
         hint: "Displays the the number of times a user/timeline has been seen."
     },
+    self_tweet_highlights: {
+        reset: false,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Highlights self tweets on the main/replies/media timelines."
+    },
     display_user_id: {
         reset: false,
         validate: JSPLib.validate.isBoolean,
@@ -378,6 +383,9 @@ const PROGRAM_CSS = `
 }
 .ntisas-code {
     font-family: monospace;
+}
+.ntisas-self-tweet-highlights .ntisas-self-tweet .ntisas-profile-line a[href^="/"] {
+    background-color: yellow;
 }
 #ntisas-database-version,
 #ntisas-install,
@@ -5914,6 +5922,9 @@ function MarkupStreamTweet(tweet) {
         $(tweet).attr('ntisas-tweet', 'stream');
         $(tweet).attr('data-tweet-id', tweet_id);
         $(tweet).attr('data-screen-name', screen_name);
+        if (IsPageType(['main', 'likes', 'replies']) && screen_name === NTISAS.account) {
+            $(tweet).addClass('ntisas-self-tweet');
+        }
         //Not marking this with a a class since Twitter alters it
         let article = tweet.children[0].children[0];
         let main_body = article.children[0].children[0];
@@ -6294,6 +6305,11 @@ function PageNavigation(pagetype) {
         if (IsPageType(['main', 'media', 'likes', 'replies'])) {
             InitializeProfileTimeline();
             UpdateProfileCallback();
+            if (NTISAS.user_settings.self_tweet_highlights) {
+                $('[role=main]').addClass('ntisas-self-tweet-highlights');
+            } else {
+                $('[role=main]').removeClass('ntisas-self-tweet-highlights');
+            }
         }
     }
     UpdateSideMenu();
@@ -6643,6 +6659,13 @@ function InitializeChangedSettings() {
             $('.ntisas-profile-stream-view').html("");
         }
     }
+    if (JSPLib.menu.hasSettingChanged('self_tweet_highlights') && IsPageType(['main', 'likes', 'replies'])) {
+        if (NTISAS.user_settings.self_tweet_highlights) {
+            $('[role=main]').addClass('ntisas-self-tweet-highlights');
+        } else {
+            $('[role=main]').removeClass('ntisas-self-tweet-highlights');
+        }
+    }
     if (JSPLib.menu.hasSettingChanged('image_popout_enabled') && IsPageType(STREAMING_PAGES)) {
         $('[ntisas-tweet=stream] [ntisas-image] img').each((i, image) => {
             let $image = $(image);
@@ -6759,6 +6782,7 @@ function RenderSettingsMenu() {
     $('#new-twitter-image-searches-and-stuff').append(NTISAS_MENU);
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_tweet_views'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_profile_views'));
+    $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('self_tweet_highlights'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_user_id'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_media_link'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_image_number'));
