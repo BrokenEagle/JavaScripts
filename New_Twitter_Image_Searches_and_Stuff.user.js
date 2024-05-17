@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9.1
+// @version      9.2
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
 // @match        https://twitter.com/*
+// @match        https://x.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/New_Twitter_Image_Searches_and_Stuff.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/New_Twitter_Image_Searches_and_Stuff.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js
@@ -1759,16 +1760,16 @@ JSPLib.utility.verboseRegex = function (flags) {
     };
 };
 
-const TWITTER_HOST = String.raw`^https?://twitter\.com`;
+const TWITTER_HOST = String.raw`^https?://(?:twitter|x)\.com`;
 const TWIMG_HOST_RG = String.raw`^https?://pbs\.twimg\.com`;
 
 var TWITTER_ACCOUNT = String.raw`[\w-]+`;
 var TWITTER_ID = String.raw`\d+`;
 var QUERY_END = String.raw`(?:\?|$)`;
 
-const TWEET_REGEX = JSPLib.utility.verboseRegex('g')`^https://twitter\.com/[\w-]+/status/(\d+)$`;
-const TWEET_URL_REGEX = JSPLib.utility.verboseRegex('g')`^https://twitter\.com/[\w-]+/status/\d+`;
-const SOURCE_TWITTER_REGEX = JSPLib.utility.verboseRegex('g')`^source:https://twitter\.com/[\w-]+/status/(\d+)$`;
+const TWEET_REGEX = JSPLib.utility.verboseRegex('g')`^https://(?:twitter|x)\.com/[\w-]+/status/(\d+)$`;
+const TWEET_URL_REGEX = JSPLib.utility.verboseRegex('g')`^https://(?:twitter|x)\.com/[\w-]+/status/\d+`;
+const SOURCE_TWITTER_REGEX = JSPLib.utility.verboseRegex('g')`^source:https://(?:twitter|x)\.com/[\w-]+/status/(\d+)$`;
 
 const BANNER_REGEX = JSPLib.utility.verboseRegex()`https://pbs\.twimg\.com/profile_banners/(\d+)/\d+/`;
 
@@ -3588,7 +3589,7 @@ function RenderTwimgPreview(image_url, index, selectable) {
         image_html = `<a>${image_html}</a>`;
         selected_class = 'ntisas-post-select ntisas-post-selectable';
     }
-    let append_html = RenderPreviewAddons('https://twitter.com', null, null, file_type);
+    let append_html = RenderPreviewAddons('https://' + location.host, null, null, file_type);
     return `
 <article class="ntisas-post-preview ntisas-tweet-preview ${selected_class}" data-id="${index}">
     <div class="ntisas-image-container">
@@ -4513,7 +4514,7 @@ function TwitterGraphQLRequest(endpoint, variables, features) {
     let csrf_token = JSPLib.utility.readCookie('ct0');
     return $.ajax({
         method: 'GET',
-        url: `https://twitter.com/i/api/graphql/${endpoint}?${url_addons}`,
+        url: `https://${location.host}/i/api/graphql/${endpoint}?${url_addons}`,
         processData: false,
         beforeSend (request) {
             request.setRequestHeader('authorization', 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA');
@@ -4734,7 +4735,7 @@ function GetUserRestID(account) {
 
 async function CheckPostvers() {
     let postver_lastid = GetPostVersionsLastID('postver');
-    let url_addons = {search: {source_changed: true, source_regex: 'twitter\\.com'}, only: POSTVER_FIELDS};
+    let url_addons = {search: {source_changed: true, source_regex: '(twitter|x)\\.com'}, only: POSTVER_FIELDS};
     let query_params = {addons: url_addons, reverse: true, domain: NTISAS.domain, notify: true};
     if (postver_lastid) {
         query_params.page = postver_lastid;
@@ -5403,8 +5404,8 @@ function PopupMediaTweetVideo(event) {
 function CheckURL(event) {
     let [$link,, tweet_id,, screen_name,,, ] = GetEventPreload(event, 'ntisas-check-url');
     $link.removeClass('ntisas-check-url').html("loading…");
-    let normal_url = `https://twitter.com/${screen_name}/status/${tweet_id}`;
-    let wildcard_url = `https://twitter.com/*/status/${tweet_id}`;
+    let normal_url = `https://*.com/${screen_name}/status/${tweet_id}`;
+    let wildcard_url = `https://*.com/*/status/${tweet_id}`;
     let check_url = (NTISAS.user_settings.URL_wildcards_enabled ? wildcard_url : normal_url);
     this.debug('log', check_url);
     JSPLib.danbooru.submitRequest('posts', {tags: 'status:any source:' + check_url, only: POST_FIELDS}, {default_val: [], domain: NTISAS.domain, notify: true}).then((data) => {
