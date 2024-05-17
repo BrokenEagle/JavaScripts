@@ -5306,7 +5306,7 @@ function OpenMediaTweetMenu(event) {
     let $tweet = $menu.closest('.ntisas-media-tweet');
     let tweet_id = $tweet.data('tweet-id');
     if (!NTISAS.media_dialog[tweet_id]) {
-        let screen_name = $tweet.data('tweet-id');
+        let screen_name = $tweet.data('screen-name');
         NTISAS.media_dialog_anchor[tweet_id] = $menu;
         var tweet_data;
         if ($tweet.hasClass('ntisas-multi-media')) {
