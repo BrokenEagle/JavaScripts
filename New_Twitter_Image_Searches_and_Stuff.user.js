@@ -4412,6 +4412,7 @@ async function TimelineHandler() {
             TIMELINE_VALS.user_ids[account] = await GetUserRestID(account);
         }
         if (!JSPLib.utility.isDigit(TIMELINE_VALS.user_ids[account])) {
+            delete TIMELINE_VALS.user_ids[account];
             TimelineHandler.errors++;
             continue;
         }
@@ -4445,7 +4446,7 @@ async function TimelineHandler() {
     TimelineHandler.is_busy = false;
     //More requests may have arrived since processing finished, so ensure the function gets called again
     if (TIMELINE_REQUESTS.length && TimelineHandler.errors < 3) {
-        setTimeout(() => {TimelineHandler();}, 1);
+        setTimeout(() => {TimelineHandler();}, JSPLib.utility.one_second);
     }
 }
 
