@@ -350,9 +350,9 @@ const FONT_FAMILY = '\'Segoe UI\', Arial, sans-serif';
 const BASE_PREVIEW_WIDTH = 160;
 const POST_PREVIEW_DIMENSION = 150;
 const TWITTER_SPACING_CLASSES = [
-    'r-1vvnge1', //padding for Twitter icon
-    'r-1ag2gil', 'r-oyd9sg', //padding for side menu items
-    'r-vpgt9t', 'r-jw8lkh', //padding for tweet button
+    'r-1559e4e', //padding for Twitter icon
+    'r-cnw61z', //padding for side menu items
+    'r-12kyg2d', //padding for tweet button
 ];
 const TWITTER_SPACING_SELECTOR = JSPLib.utility.joinList(TWITTER_SPACING_CLASSES, '#ntisas-account-options.ntisas-activated .', null, ',');
 
