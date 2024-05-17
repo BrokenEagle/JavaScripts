@@ -5920,7 +5920,7 @@ function MarkupStreamTweet(tweet) {
         let tweet_status = main_body.children[0];
         $(tweet_status).addClass('ntisas-tweet-status');
         InitializeStatusBar(tweet_status, false);
-        let is_retweet = Boolean($(tweet_status).text().match(/ Retweeted$/));
+        let is_retweet = Boolean(tweet_status.innerText.match(/ reposted$/));
         $(tweet).attr('data-is-retweet', is_retweet);
         let tweet_body = main_body.children[1];
         $(tweet_body).addClass('ntisas-tweet-body');
