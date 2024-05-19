@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.4
+// @version      6.2
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -416,6 +416,7 @@ button.ta-html-style-tag:hover {
 #ta-embedded-block-subsection #ta-embedded-actions {
     margin-bottom: 1em;
     padding-left: 0.35em;
+    font-size: 0.9em;
 }
 #ta-embedded-block-subsection #ta-embedded-level {
     margin-bottom: 1em;
