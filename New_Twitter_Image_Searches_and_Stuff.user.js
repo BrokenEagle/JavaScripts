@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9.2
+// @version      9.3
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2780,13 +2780,12 @@ function GetImageURLInfo(image_url) {
 function GetSingleImageInfo(tweet_id) {
     GetSingleImageInfo.memoized ??= {};
     if (!GetSingleImageInfo.memoized[tweet_id]) {
-        let image_url = $(`.ntisas-media-tweet[data-tweet-id=${tweet_id}] img`).attr('src');
-        if (JSPLib.validate.isString(image_url)) {
-            let image_info = GetImageURLInfo(image_url);
+        let image = $(`.ntisas-media-tweet[data-tweet-id=${tweet_id}] img`).get(0);
+        if (image.complete && JSPLib.validate.isString(image.src)) {
+            let image_info = GetImageURLInfo(image.src);
             GetSingleImageInfo.memoized[tweet_id] = [{partial_image: image_info.path + '/' + image_info.key + '.' + image_info.ext}];
         } else {
-            JSPLib.debug.debugwarn("Image URL not found:", tweet_id);
-            GetSingleImageInfo.memoized[tweet_id] = [];
+            return [];
         }
     }
     return GetSingleImageInfo.memoized[tweet_id];
@@ -3849,6 +3848,15 @@ function InitializeMediaTweet(tweet_id, post_ids, tweet_dict_promise) {
         if (GetSingleImageInfo(tweet_id).length) {
             $media_icon.append(JSPLib.utility.sprintf(MEDIA_COUNTER_ICON, '·'));
         } else {
+            let image = $(`.ntisas-media-tweet[data-tweet-id=${tweet_id}] img`).get(0);
+            image.onload = function () {
+                JSPLib.debug.debuglog("Image loaded late:", tweet_id, image, image.src);
+                $tweet.find('.ntisas-media-counter').text('·');
+            };
+            image.onerror = function () {
+                JSPLib.debug.debugwarn("Image failed to load:", tweet_id, image);
+                $tweet.find('.ntisas-media-counter').text('X');
+            }
             $media_icon.append(JSPLib.utility.sprintf(MEDIA_COUNTER_ICON, '0'));
         }
     }
