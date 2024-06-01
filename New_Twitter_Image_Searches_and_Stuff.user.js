@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9.3
+// @version      9.4
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -3848,14 +3848,16 @@ function InitializeMediaTweet(tweet_id, post_ids, tweet_dict_promise) {
         if (GetSingleImageInfo(tweet_id).length) {
             $media_icon.append(JSPLib.utility.sprintf(MEDIA_COUNTER_ICON, '·'));
         } else {
-            let image = $(`.ntisas-media-tweet[data-tweet-id=${tweet_id}] img`).get(0);
-            image.onload = function () {
-                JSPLib.debug.debuglog("Image loaded late:", tweet_id, image, image.src);
-                $tweet.find('.ntisas-media-counter').text('·');
-            };
-            image.onerror = function () {
-                JSPLib.debug.debugwarn("Image failed to load:", tweet_id, image);
-                $tweet.find('.ntisas-media-counter').text('X');
+            let image = $tweet.find(`img`).get(0);
+            if (image) {
+                image.onload = function () {
+                    JSPLib.debug.debuglog("Image loaded late:", tweet_id, image, image.src);
+                    $tweet.find('.ntisas-media-counter').text('·');
+                };
+                image.onerror = function () {
+                    JSPLib.debug.debugwarn("Image failed to load:", tweet_id, image);
+                    $tweet.find('.ntisas-media-counter').text('X');
+                }
             }
             $media_icon.append(JSPLib.utility.sprintf(MEDIA_COUNTER_ICON, '0'));
         }
