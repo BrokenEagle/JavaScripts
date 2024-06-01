@@ -3872,7 +3872,7 @@ function InitializeMediaTweet(tweet_id, post_ids, tweet_dict_promise) {
             }
         });
     }
-    if (NTISAS.user_settings.auto_unhide_tweets_enabled && $tweet.get(0).innerText.split('\n').some((text) => text.match(/^Warning:/))) {
+    if (NTISAS.user_settings.auto_unhide_tweets_enabled && $tweet.get(0)?.innerText.split('\n').some((text) => text.match(/^Warning:/))) {
         $tweet.find('[role="button"]').click();
     }
 }
