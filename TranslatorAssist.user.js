@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.2
+// @version      6.3
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -12,16 +12,16 @@
 // @run-at       document-idle
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/TranslatorAssist.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/TranslatorAssist.user.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240223-menu/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/menu.js
 // @connect      validator.nu
 // ==/UserScript==
 
@@ -1366,7 +1366,7 @@ function RenderRubyDialog() {
 }
 
 function RenderLoadDialog(panel) {
-    let sessions = JSPLib.storage.getStorageData('ta-load-session-' + panel, localStorage, []);
+    let sessions = JSPLib.storage.getLocalData('ta-load-session-' + panel, {default_val: []});
     return JSPLib.utility.regexReplace(LOAD_DIALOG, {
         LOADNAME: panel,
         LOADSAVED: RenderLoadSessions(panel, sessions),
@@ -1385,7 +1385,7 @@ function RenderLoadSessions(panel, sessions) {
         }
     });
     if (updated_list.length !== sessions.length) {
-        JSPLib.storage.setStorageData('ta-load-session-' + panel, updated_list, localStorage);
+        JSPLib.storage.setLocalData('ta-load-session-' + panel, updated_list);
     }
     return (html === "" ? NO_SESSIONS : `<ul>${html}</ul>`);
 }
@@ -1941,10 +1941,10 @@ function SaveMenuState() {
     for (let key in INPUT_SECTIONS) {
         TA.save_data = Object.assign(TA.save_data, GetInputs(key));
     }
-    JSPLib.storage.setStorageData('ta-saved-inputs', TA.save_data, localStorage);
-    JSPLib.storage.setStorageData('ta-mode', TA.mode, localStorage);
+    JSPLib.storage.setLocalData('ta-saved-inputs', TA.save_data);
+    JSPLib.storage.setLocalData('ta-mode', TA.mode);
     let {left, top, fontSize} = $('#ta-side-menu').get(0).style;
-    JSPLib.storage.setStorageData('ta-position', {left, top, fontSize}, localStorage);
+    JSPLib.storage.setLocalData('ta-position', {left, top, fontSize});
 }
 
 function ClearInputs(selector) {
@@ -2957,9 +2957,9 @@ function SaveSession() {
         if (!name) return;
         name = JSPLib.utility.maxLengthString(name, 50);
         key = JSPLib.utility.getUniqueID();
-        let session_list = JSPLib.storage.getStorageData('ta-load-session-' + panel, localStorage, []);
+        let session_list = JSPLib.storage.getLocalData('ta-load-session-' + panel, {default_val: []});
         session_list.push({key, name});
-        JSPLib.storage.setStorageData('ta-load-session-' + panel, session_list, localStorage);
+        JSPLib.storage.setLocalData('ta-load-session-' + panel, session_list);
         isnew = true;
     } else {
         ({key, name} = checked_sessions.find('a')[0].dataset);
@@ -2970,7 +2970,7 @@ function SaveSession() {
     section_keys.forEach((key) => {
         save_inputs = Object.assign(save_inputs, GetInputs(key));
     });
-    JSPLib.storage.setStorageData('ta-session-' + key, save_inputs, localStorage);
+    JSPLib.storage.setLocalData('ta-session-' + key, save_inputs);
     if (isnew) {
         let $load_item = $(RenderLoadItem({key, name}));
         $load_item.find('a').on(PROGRAM_CLICK, LoadSessionInput);
@@ -3000,10 +3000,10 @@ function RenameSession() {
     let key = Number($link[0].dataset.key);
     let name = prompt("Enter a name for this session:");
     if (!name) return;
-    let session_list = JSPLib.storage.getStorageData('ta-load-session-' + panel, localStorage, []);
+    let session_list = JSPLib.storage.getLocalData('ta-load-session-' + panel, {default_val: []});
     let rename_item = session_list.find((item) => item.key === key);
     rename_item.name = name;
-    JSPLib.storage.setStorageData('ta-load-session-' + panel, session_list, localStorage);
+    JSPLib.storage.setLocalData('ta-load-session-' + panel, session_list);
     $link.attr('data-name', name);
     $link.text(name);
     JSPLib.notice.notice('Session renamed.');
@@ -3019,15 +3019,15 @@ function DeleteSessions() {
         let item = $link.data();
         if (input.checked) {
             $link.closest('li').addClass('ta-delete');
-            JSPLib.storage.removeStorageData('ta-session-' + item.key, localStorage);
+            JSPLib.storage.removeLocalData('ta-session-' + item.key);
         } else {
             update_items.push(item);
         }
     });
-    let session_list = JSPLib.storage.getStorageData('ta-load-session-' + panel, localStorage, []);
+    let session_list = JSPLib.storage.getLocalData('ta-load-session-' + panel, {default_val: []});
     if (update_items.length !== session_list.length) {
         $dialog.find('.ta-delete').remove();
-        JSPLib.storage.setStorageData('ta-load-session-' + panel, update_items, localStorage);
+        JSPLib.storage.setLocalData('ta-load-session-' + panel, update_items);
         JSPLib.notice.notice('Sessions deleted.');
         if (update_items.length === 0) {
             TA.$load_dialog[panel].find('.ta-load-sessions').html(NO_SESSIONS);
@@ -3040,13 +3040,13 @@ function DeleteSessions() {
 function LoadSessionInput(event) {
     let panel = TA.active_panel;
     let {key} = $(event.currentTarget).data();
-    let session_list = JSPLib.storage.getStorageData('ta-load-session-' + panel, localStorage);
+    let session_list = JSPLib.storage.getLocalData('ta-load-session-' + panel);
     let session_item = session_list.find((item) => item.key === key);
-    let load_inputs = JSPLib.storage.getStorageData('ta-session-' + key, localStorage);
+    let load_inputs = JSPLib.storage.getLocalData('ta-session-' + key);
     if (!load_inputs) {
         JSPLib.debug.debugerror('Missing session:', panel, key, session_item);
         session_list = session_list.filter((item) => item.key !== key);
-        JSPLib.storage.setStorageData('ta-load-session-' + panel, session_list, localStorage);
+        JSPLib.storage.setLocalData('ta-load-session-' + panel, session_list);
         $(event.currentTarget).closest('li').remove();
         return;
     }
@@ -3083,9 +3083,9 @@ function CleanupLastNoted() {
     if (JSPLib.concurrency.checkTimeout('ta-cleanup-last-noted-timeout', CLEANUP_LAST_NOTED)) {
         let last_noted_keys = Object.keys(localStorage).filter((key) => key.startsWith('ta-post-seen-'));
         last_noted_keys.forEach((key) => {
-            let expires = Number(JSPLib.storage.getStorageData(key, localStorage));
+            let expires = Number(JSPLib.storage.getLocalData(key));
             if (!JSPLib.utility.validateExpires(expires)) {
-                JSPLib.storage.removeStorageData(key, localStorage);
+                JSPLib.storage.removeLocalData(key);
             }
         });
         JSPLib.concurrency.setRecheckTimeout('ta-cleanup-last-noted-timeout', CLEANUP_LAST_NOTED);
@@ -3093,16 +3093,16 @@ function CleanupLastNoted() {
 }
 
 function SetLastNoted() {
-    JSPLib.storage.setStorageData(TA.seen_key, Date.now() + TA.last_noted_cutoff, localStorage);
+    JSPLib.storage.setLocalData(TA.seen_key, Date.now() + TA.last_noted_cutoff_mins);
 }
 
 function CheckLastNoted() {
-    if ((Date.now() - TA.last_noted) < TA.last_noted_cutoff) {
-        let seen_expires = JSPLib.storage.getStorageData(TA.seen_key, localStorage);
+    if ((Date.now() - TA.last_noted) < TA.last_noted_cutoff_mins) {
+        let seen_expires = JSPLib.storage.getLocalData(TA.seen_key);
         if (!JSPLib.utility.validateExpires(seen_expires)) {
             alert("Post was noted: " + JSPLib.utility.timeAgo(TA.last_noted));
         }
-        JSPLib.storage.setStorageData(TA.seen_key, TA.last_noted + TA.last_noted_cutoff, localStorage);
+        JSPLib.storage.setLocalData(TA.seen_key, TA.last_noted + TA.last_noted_cutoff_mins);
     }
 }
 
@@ -3159,7 +3159,7 @@ function ToggleSideMenu(open_menu, toggle_link = true) {
 }
 
 function InitializeSideMenu() {
-    TA.save_data = JSPLib.storage.getStorageData('ta-saved-inputs', localStorage, {});
+    TA.save_data = JSPLib.storage.getLocalData('ta-saved-inputs', {default_val: {}});
     $('#page').append(RenderSideMenu());
     if (TA.user_settings.text_shadow_enabled || TA.user_settings.ruby_enabled) {
         $('#ta-side-menu-tabs [data-value=constructs]').show();
@@ -3216,7 +3216,7 @@ function InitializeSideMenu() {
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+t', KeyboardMenuToggle);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+r', ResetSideMenu);
     $(document).on('visibilitychange.ta', CheckMissedLastNoterPolls);
-    let positions = JSPLib.storage.getStorageData('ta-position', localStorage, {});
+    let positions = JSPLib.storage.getLocalData('ta-position', {default_val: {}});
     TA.$side_menu = $('#ta-side-menu');
     for (let key in positions) {
         if (positions[key]) {
@@ -3243,8 +3243,8 @@ function InitializeProgramValues() {
         user_id: Danbooru.CurrentUser.data('id'),
         has_embedded: JSPLib.utility.getMeta('post-has-embedded-notes') === 'true',
         last_noted: JSPLib.utility.toTimeStamp(document.body.dataset.postLastNotedAt),
-        mode: JSPLib.storage.getStorageData('ta-mode', localStorage, 'main'),
-        last_noted_cutoff: TA.user_settings.last_noted_cutoff * JSPLib.utility.one_minute,
+        mode: JSPLib.storage.getLocalData('ta-mode', {default_val: 'main'}),
+        last_noted_cutoff_mins: TA.last_noted_cutoff * JSPLib.utility.one_minute,
     });
     Object.assign(TA, {
         seen_key: 'ta-post-seen-' + TA.post_id,
@@ -3301,8 +3301,8 @@ function Main() {
 /****Initialization****/
 
 //Variables for debug.js
-JSPLib.debug.debug_console = false;
-JSPLib.debug.level = JSPLib.debug.INFO;
+JSPLib.debug.debug_console = true;
+JSPLib.debug.level = JSPLib.debug.DEBUG;
 JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
 //Variables for menu.js

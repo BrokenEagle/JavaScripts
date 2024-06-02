@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://github.com/BrokenEagle
-// @version      8.4
+// @version      8.5
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -15,16 +15,16 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/PostModeMenuPlus.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/PostModeMenuPlus.user.js
 // @require      https://cdn.jsdelivr.net/npm/dragselect@2.3.1/dist/ds.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240223-menu/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/menu.js
 // ==/UserScript==
 
 /* global $ Danbooru JSPLib DragSelect */
@@ -383,15 +383,15 @@ function GetAllPreviews() {
 // Auxiliary functions
 
 function UpdateDraggerStatus() {
-    if (PMM.available_modes.has(PMM.mode) && PMM.dragger.stopped) {
+    if (PMM.available_mode_keys.has(PMM.mode) && PMM.dragger.stopped) {
         PMM.dragger.start();
-    } else if (!PMM.available_modes.has(PMM.mode) && !PMM.dragger.stopped) {
+    } else if (!PMM.available_mode_keys.has(PMM.mode) && !PMM.dragger.stopped) {
         PMM.dragger.stop();
     }
 }
 
 function UpdateSelectControls() {
-    if (PMM.available_modes.has(PMM.mode) && PMM.mode !== 'edit') {
+    if (PMM.available_mode_keys.has(PMM.mode) && PMM.mode !== 'edit') {
         $('#pmm-select-controls, #pmm-long-inputs').show();
     } else {
         $('#pmm-select-controls, #pmm-long-inputs').hide();
@@ -474,7 +474,7 @@ async function UnvotePost(post_id) {
 }
 
 function TagscriptPost(post_id) {
-    let current_script_id = JSPLib.storage.getStorageData("current_tag_script_id", localStorage);
+    let current_script_id = JSPLib.storage.getLocalData("current_tag_script_id");
     let tag_string = localStorage.getItem("tag-script-" + current_script_id);
     if (tag_string === undefined) {
         JSPLib.notice.error('No tag script set!');
@@ -499,11 +499,11 @@ function MenuFunctions(post_ids) {
     post_ids.forEach((post_id) => {
         switch (PMM.mode) {
             case 'copy-id':
-                return copyToClipboard(post_ids, "", "", PMM.id_separator, false);
+                return copyToClipboard(post_ids, "", "", PMM.id_separator_char, false);
             case 'copy-short':
-                return copyToClipboard(post_ids, "post #", "", PMM.id_separator, true);
+                return copyToClipboard(post_ids, "post #", "", PMM.id_separator_char, true);
             case 'copy-link':
-                return copyToClipboard(post_ids, "https://danbooru.donmai.us/posts/", " ", PMM.id_separator, true);
+                return copyToClipboard(post_ids, "https://danbooru.donmai.us/posts/", " ", PMM.id_separator_char, true);
             case 'vote-up':
             case 'vote-down':
                 VotePost(post_id, (PMM.mode === 'vote-up' ? 1 : (PMM.mode === 'vote-down' ? -1 : 0)));
@@ -524,18 +524,18 @@ function MenuFunctions(post_ids) {
 
 function InitializeModeMenu() {
     $("#mode-box select option[value=tag-script]").after(RenderPostModeMenuAddons());
-    if (PMM.user_settings.long_tagscript_enabled) {
+    if (PMM.long_tagscript_enabled) {
         $('#tag-script-field').addClass('pmm-long-focus').css('width', "");
     }
     $(".post-preview a.post-preview-link").on(PROGRAM_CLICK, PostModeMenu);
     $("#mode-box select").on(PROGRAM_CHANGE, ChangeModeMenu);
     $(document).on('danbooru:post-preview-updated.pmm', PostPreviewUpdated);
-    if (PMM.user_settings.drag_select_enabled) {
+    if (PMM.drag_select_enabled) {
         PMM.dragger.subscribe('callback', DragSelectCallback);
         UpdateDraggerStatus();
     }
     if (PMM.mode) {
-        let set_mode = (PMM.available_modes.has(PMM.mode) ? PMM.mode : 'view');
+        let set_mode = (PMM.available_mode_keys.has(PMM.mode) ? PMM.mode : 'view');
         setTimeout(() => {$("#mode-box select").val(set_mode);}, JSPLib.utility.one_second);
     }
 }
@@ -549,7 +549,7 @@ function InitializeSelectOnly() {
     $mode_select_container.append($mode_select);
     $mode_select_div.append($mode_select_container);
     let disabled = (PMM.select_only ? "" : 'disabled');
-    let shown = (PMM.available_modes.has(PMM.mode) ? 'block' : 'none');
+    let shown = (PMM.available_mode_keys.has(PMM.mode) ? 'block' : 'none');
     $mode_select_div.append(JSPLib.utility.regexReplace(SELECT_CONTROLS, {
         SHOWN: shown,
         DISABLED: disabled,
@@ -569,7 +569,7 @@ function InitializeSelectOnly() {
 
 function RenderPostModeMenuAddons() {
     let html = "";
-    PMM.user_settings.available_modes.forEach((mode) => {
+    PMM.available_modes.forEach((mode) => {
         if (SITE_MODES.includes(mode)) return;
         let key = JSPLib.utility.kebabCase(mode);
         let name = JSPLib.utility.displayCase(mode);
@@ -581,7 +581,7 @@ function RenderPostModeMenuAddons() {
 //Event handlers
 
 function PostModeMenu(event) {
-    if (PMM.available_modes.has(PMM.mode)) {
+    if (PMM.available_mode_keys.has(PMM.mode)) {
         let $link = $(event.currentTarget);
         let $article = $link.closest("article");
         let post_id = $article.data("id");
@@ -625,25 +625,25 @@ function BatchApply() {
 
 function ChangeModeMenu() {
     PMM.mode = $("#mode-box select").val();
-    if (PMM.available_modes.has(PMM.mode)) {
-        JSPLib.storage.setStorageData('pmm-mode', PMM.mode, localStorage);
+    if (PMM.available_mode_keys.has(PMM.mode)) {
+        JSPLib.storage.setLocalData('pmm-mode', PMM.mode);
         UpdateSelectControls();
     } else {
-        JSPLib.storage.removeStorageData('pmm-mode', localStorage);
+        JSPLib.storage.removeLocalData('pmm-mode');
         $('#pmm-select-controls, #pmm-long-inputs').hide();
     }
     if (!PMM.select_only) {
         $('.pmm-selected').removeClass('pmm-selected');
         PMM.modified.clear();
     }
-    if (PMM.user_settings.drag_select_enabled) {
+    if (PMM.drag_select_enabled) {
         UpdateDraggerStatus();
     }
 }
 
 function ChangeSelectOnly(event) {
     PMM.select_only = event.currentTarget.checked;
-    JSPLib.storage.setStorageData('pmm-select-only', PMM.select_only, localStorage);
+    JSPLib.storage.setLocalData('pmm-select-only', {default_val: PMM.select_only});
     let $modify_controls = $('#pmm-apply-all, .pmm-select');
     $modify_controls.prop('disabled', !PMM.select_only);
     $('.pmm-selected').removeClass('pmm-selected');
@@ -663,7 +663,7 @@ function PostPreviewUpdated(event, post) {
     if (Number.isInteger(PMM.init_timer)) {
         clearTimeout(PMM.init_timer);
     }
-    if (PMM.user_settings.drag_select_enabled) {
+    if (PMM.drag_select_enabled) {
         PMM.init_timer = setTimeout(() => {
             PMM.dragger.SelectableSet._initElements = [...document.querySelectorAll('.post-preview img')];
             PMM.dragger.SelectableSet.clear();
@@ -676,7 +676,7 @@ function PostPreviewUpdated(event, post) {
 
 function DragSelectCallback({items, event}) {
     // Only process drag select events when the primary (left) and only the primary mouse button is used.
-    if (!PMM.available_modes.has(PMM.mode) || (event.button !== 0 && event.buttons !== 0)) return;
+    if (!PMM.available_mode_keys.has(PMM.mode) || (event.button !== 0 && event.buttons !== 0)) return;
     JSPLib.debug.debuglog('DragSelectCallback', items, event);
     let click_coords = PMM.dragger.getInitialCursorPositionArea();
     let mouseup_coords = PMM.dragger.getCurrentCursorPositionArea();
@@ -716,14 +716,14 @@ function DragSelectCallback({items, event}) {
 
 function InitializeProgramValues() {
     Object.assign(PMM, {
-        mode: JSPLib.storage.getStorageData('pmm-mode', localStorage),
-        available_modes: new Set(PMM.user_settings.available_modes.map((mode) => JSPLib.utility.kebabCase(mode.toLocaleLowerCase()))),
-        id_separator: SEPARATOR_DICT[PMM.user_settings.id_separator[0]],
-        select_only: JSPLib.storage.getStorageData('pmm-select-only', localStorage, false),
+        mode: JSPLib.storage.getLocalData('pmm-mode'),
+        available_mode_keys: new Set(PMM.available_modes.map((mode) => JSPLib.utility.kebabCase(mode.toLocaleLowerCase()))),
+        id_separator_char: SEPARATOR_DICT[PMM.id_separator[0]],
+        select_only: JSPLib.storage.getLocalData('pmm-select-only', {default_val: false}),
         all_post_ids: new Set(JSPLib.utility.getDOMAttributes($('.post-preview'), 'id', parseInt)),
         $drag_area: document.querySelector('#posts'),
     });
-    if (PMM.user_settings.drag_select_enabled) {
+    if (PMM.drag_select_enabled) {
         PMM.dragger = new DragSelect({
             selectables: GetAllPreviews(),
             area: PMM.$drag_area,
@@ -731,8 +731,8 @@ function InitializeProgramValues() {
             immediateDrag: false
         });
     }
-    JSPLib.danbooru.max_network_requests = PMM.user_settings.maximum_concurrent_requests;
-    JSPLib.danbooru.highlight_post_enabled = PMM.user_settings.highlight_errors_enabled;
+    JSPLib.danbooru.max_network_requests = PMM.maximum_concurrent_requests;
+    JSPLib.danbooru.highlight_post_enabled = PMM.highlight_errors_enabled;
     return true;
 }
 
@@ -764,16 +764,16 @@ function Main() {
     };
     if (!JSPLib.menu.preloadScript(PMM, RenderSettingsMenu, preload)) return;
     InitializeModeMenu();
-    if (PMM.user_settings.select_only_enabled) {
+    if (PMM.select_only_enabled) {
         InitializeSelectOnly();
     }
-    if (PMM.user_settings.long_searchbar_enabled) {
+    if (PMM.long_searchbar_enabled) {
         JSPLib.utility.setCSSStyle(SEARCHBAR_CSS, 'searchbar');
     }
-    if (PMM.user_settings.highlight_errors_enabled) {
+    if (PMM.highlight_errors_enabled) {
         JSPLib.utility.setCSSStyle(JSPLib.danbooru.highlight_css, 'highlight');
     }
-    if (PMM.available_modes.has('edit')) {
+    if (PMM.available_mode_keys.has('edit')) {
         $('#validate-tags, button[name=cancel]').off('click.danbooru').on('click.pmm', CloseEditDialog);
     }
     JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
@@ -782,8 +782,8 @@ function Main() {
 /****Initialization****/
 
 //Variables for debug.js
-JSPLib.debug.debug_console = false;
-JSPLib.debug.level = JSPLib.debug.INFO;
+JSPLib.debug.debug_console = true;
+JSPLib.debug.level = JSPLib.debug.DEBUG;
 JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
 //Variables for menu.js
