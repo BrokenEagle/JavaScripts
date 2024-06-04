@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         TranslatorAssist
+// @name         TranslatorAssist (library16)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
 // @version      6.3
 // @description  Provide information and tools for help with translations.
@@ -12,16 +12,16 @@
 // @run-at       document-idle
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/TranslatorAssist.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/TranslatorAssist.user.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/3c8852bc8e006982b9376b0bb7d1a9f39fbc2f18/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/47f13363e07ff14518cf6e5411c971838aaa4153/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/47f13363e07ff14518cf6e5411c971838aaa4153/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/47f13363e07ff14518cf6e5411c971838aaa4153/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/47f13363e07ff14518cf6e5411c971838aaa4153/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/47f13363e07ff14518cf6e5411c971838aaa4153/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/47f13363e07ff14518cf6e5411c971838aaa4153/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/47f13363e07ff14518cf6e5411c971838aaa4153/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/47f13363e07ff14518cf6e5411c971838aaa4153/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/47f13363e07ff14518cf6e5411c971838aaa4153/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/47f13363e07ff14518cf6e5411c971838aaa4153/lib/menu.js
 // @connect      validator.nu
 // ==/UserScript==
 
@@ -3301,8 +3301,8 @@ function Main() {
 /****Initialization****/
 
 //Variables for debug.js
-JSPLib.debug.debug_console = true;
-JSPLib.debug.level = JSPLib.debug.DEBUG;
+JSPLib.debug.debug_console = false;
+JSPLib.debug.level = JSPLib.debug.INFO;
 JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
 //Variables for menu.js

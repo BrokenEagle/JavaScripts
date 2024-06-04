@@ -6938,7 +6938,7 @@ async function Main() {
 /****Initialization****/
 
 //Variables for debug.js
-JSPLib.debug.debug_console = false;
+JSPLib.debug.debug_console = true;
 JSPLib.debug.level = JSPLib.debug.INFO;
 JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
@@ -6973,7 +6973,7 @@ JSPLib.load.load_when_hidden = false;
 
 //Export JSPLib
 JSPLib.load.exportData(PROGRAM_NAME, NTISAS, {other_data: {jQuery, SAVED_STORAGE_REQUESTS, SAVED_NETWORK_REQUESTS, PAGE_REGEXES}, datalist: ['page']});
-JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [GetList, SaveList, GetData, SaveData], alwayslist: [GetImageLinks]});
+JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [GetList, SaveList, GetData, SaveData, GetUserRestID], alwayslist: [GetImageLinks]});
 
 /****Execution start****/
 
