@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9.4
+// @version      9.5
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -4736,7 +4736,7 @@ function GetUserRestID(account) {
                     GetUserIDGQL(account).then((twitter_data) => {
                         if (JSPLib.validate.isHash(twitter_data)) {
                             let expires = JSPLib.utility.getExpires(TWUSER_EXPIRES);
-                            let value = twitter_data.id;
+                            let value = twitter_data.id_str;
                             SaveData('twuser-' + account, {value, expires}, 'danbooru');
                             p.resolve(value);
                         } else {
