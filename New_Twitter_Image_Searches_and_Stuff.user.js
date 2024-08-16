@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9.6
+// @version      9.7
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -854,9 +854,7 @@ const PROGRAM_CSS = `
 .ntisas-profile-section {
     position: absolute;
     left: 31em;
-    background: white;
     height: 4em;
-    border: 1px solid #EEE;
     padding: 7px;
     top: -1em;
 }
@@ -1273,6 +1271,10 @@ const COLOR_CSS = `
 .ui-dialog.ntisas-dialog .ui-widget-content .ui-state-active:active,
 .ui-dialog.ntisas-dialog .ui-widget-content .ui-state-active:focus {
     box-shadow: 0 0 0 2px %BACKGROUNDCOLOR%, 0 0 0 4px %BASECOLOR%;
+}
+.ntisas-profile-section {
+    background: %BACKGROUNDCOLOR%;
+    border: 1px solid %TEXTFADED%;
 }
 #new-twitter-image-searches-and-stuff .ntisas-striped thead th {
     color: %TEXTSHADED%;
