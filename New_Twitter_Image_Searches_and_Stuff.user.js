@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9.5
+// @version      9.6
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -852,10 +852,13 @@ const PROGRAM_CSS = `
     letter-spacing: -1px;
 }
 .ntisas-profile-section {
-    display: flex;
-    flex-direction: column;
-    margin-left: 1em;
-    margin-top: auto;
+    position: absolute;
+    left: 31em;
+    background: white;
+    height: 4em;
+    border: 1px solid #EEE;
+    padding: 7px;
+    top: -1em;
 }
 .ntisas-profile-user-id,
 .ntisas-profile-user-view,
@@ -4070,10 +4073,7 @@ function InitializeProfileTimeline() {
         if ($('.ntisas-profile-section', name_line).length === 0) {
             let $name_line = $(name_line);
             $name_line.addClass('ntisas-timeline-profile-name');
-            let $entry = $name_line.children().first();
-            $entry.css('flex-direction', 'row');
-            $entry.find('>div').css('max-width', '60%');
-            $entry.append(PROFILE_TIMELINE_HTML);
+            $name_line.children().first().append(PROFILE_TIMELINE_HTML);
         }
     } else {
         this.debug('warn', "Unable to find profile attachment point!", $info);
