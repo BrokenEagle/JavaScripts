@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.17
+// @version      16.18
 // @description  Gives up-to-date stats on uploads.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -14,17 +14,17 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240223-menu/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru CanvasJS */
@@ -1244,7 +1244,7 @@ async function CheckPeriodUploads() {
         }
         let data_key = GetPeriodKey(period_info.longname[period]);
         let max_expires = period_info.uploadexpires[period];
-        let check_promise = JSPLib.storage.checkLocalDB(data_key,ValidateEntry,max_expires).then((check)=>{checkPeriod(data_key,period,check);});
+        let check_promise = JSPLib.storage.checkLocalDB(data_key, max_expires).then((check)=>{checkPeriod(data_key,period,check);});
         promise_array.push(check_promise);
     }
     return Promise.all(promise_array);
@@ -1312,7 +1312,7 @@ function TableMessage(message) {
 
 async function GetReverseTagImplication(tag) {
     var key = 'rti-' + tag;
-    var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry,rti_expiration);
+    var check = await JSPLib.storage.checkLocalDB(key, rti_expiration);
     if (!(check)) {
         this.debug('log',"Network:",key);
         let data = await JSPLib.danbooru.submitRequest('tag_implications', {search: {antecedent_name: tag}, only: id_field}, {default_val: [], key});
@@ -1325,7 +1325,7 @@ async function GetReverseTagImplication(tag) {
 async function GetCount(type,tag) {
     let max_expires = period_info.countexpires[type];
     var key = 'ct' + type + '-' + tag;
-    var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry,max_expires);
+    var check = await JSPLib.storage.checkLocalDB(key, max_expires);
     if (!(check)) {
         this.debug('log',"Network:",key);
         return JSPLib.danbooru.submitRequest('counts/posts',{tags: BuildTagParams(type,tag), skip_cache: true}, {default_val: {counts: {posts: 0}} ,key})
@@ -1339,15 +1339,15 @@ async function GetPeriodUploads(username,period,limited=false,domname=null) {
     let period_name = period_info.longname[period];
     let max_expires = period_info.uploadexpires[period];
     let key = GetPeriodKey(period_name);
-    var check = await JSPLib.storage.checkLocalDB(key,ValidateEntry,max_expires);
+    var check = await JSPLib.storage.checkLocalDB(key, max_expires);
     if (!(check)) {
         this.debug('log',`Network (${period_name} ${CU.counttype})`);
         let data = await JSPLib.danbooru.getPostsCountdown(BuildTagParams(period,`${CU.usertag}:${username}`),max_post_limit_query,post_fields,domname);
         let mapped_data = MapPostData(data);
         if (limited) {
             let indexed_posts = AssignPostIndexes(period,mapped_data,0);
-            mapped_data = Object.assign(...tooltip_metrics.map((metric) => ({[metric]: GetAllStatistics(mapped_data,metric)})));
-            mapped_data.chart_data = Object.assign(...chart_metrics.map((metric) => ({[metric]: GetPeriodAverages(indexed_posts,metric)})));
+            mapped_data = JSPLib.utility.mergeHashes(...tooltip_metrics.map((metric) => ({[metric]: GetAllStatistics(mapped_data,metric)})));
+            mapped_data.chart_data = JSPLib.utility.mergeHashes(...chart_metrics.map((metric) => ({[metric]: GetPeriodAverages(indexed_posts,metric)})));
             mapped_data.chart_data.uploads = GetPeriodPosts(indexed_posts);
             JSPLib.storage.saveData(key, {value: mapped_data, expires: JSPLib.utility.getExpires(max_expires)});
         } else {
@@ -1504,7 +1504,7 @@ function TooltipChange(event) {
     $(".cu-select-tooltip,.cu-tooltiptext").removeClass("cu-activetooltip");
     $(`.cu-select-tooltip[data-type="${CU.current_metric}"]`).addClass("cu-activetooltip");
     $(`.cu-tooltiptext[data-type="${CU.current_metric}"]`).addClass("cu-activetooltip");
-    JSPLib.storage.setStorageData('cu-current-metric',CU.current_metric,localStorage);
+    JSPLib.storage.setLocalData('cu-current-metric', CU.current_metric);
     $(".cu-hover .cu-uploads").off('mouseover.cu').on('mouseover.cu', TooltipHover);
     event.preventDefault();
 }
@@ -1587,7 +1587,7 @@ function ToggleNotice(event) {
         $("#count-chart").hide();
         CU.channel.postMessage({type: "hide"});
     }
-    JSPLib.storage.setStorageData('cu-hide-current-uploads', CU.hidden,localStorage);
+    JSPLib.storage.setLocalData('cu-hide-current-uploads', CU.hidden);
     event.preventDefault();
 }
 
@@ -1605,8 +1605,8 @@ function StashNotice(event) {
         $("#count-chart").hide();
         CU.channel.postMessage({type: "stash"});
     }
-    JSPLib.storage.setStorageData('cu-stash-current-uploads',CU.stashed,localStorage);
-    JSPLib.storage.setStorageData('cu-hide-current-uploads',CU.hidden,localStorage);
+    JSPLib.storage.setLocalData('cu-stash-current-uploads', CU.stashed);
+    JSPLib.storage.setLocalData('cu-hide-current-uploads', CU.hidden);
     event.preventDefault();
 }
 
@@ -1693,7 +1693,7 @@ async function ProcessUploads() {
     let previous_key = GetPeriodKey("previous");
     if (current_uploads.length) {
         let is_new_tab = JSPLib.storage.getIndexedSessionData(previous_key) === null;
-        let previous_uploads = await JSPLib.storage.checkLocalDB(previous_key,ValidateEntry) || {value: []};
+        let previous_uploads = await JSPLib.storage.checkLocalDB(previous_key, {default_val: []});
         previous_uploads = PostDecompressData(previous_uploads.value);
         let current_ids = JSPLib.utility.getObjectAttributes(current_uploads,'id');
         let previous_ids = JSPLib.utility.getObjectAttributes(previous_uploads,'id');
@@ -1731,12 +1731,12 @@ async function ProcessUploads() {
         await GetTagData(`${CU.usertag}:${CU.current_username}`);
     }
     CU.user_copytags[CU.usertag][CU.current_username] = {daily: user_copytags, manual: []};
-    JSPLib.storage.saveData(previous_key,{value: PreCompressData(current_uploads), expires: 0});
+    JSPLib.storage.saveData(previous_key, {value: PreCompressData(current_uploads), expires: 0});
     return current_uploads;
 }
 
 function CleanupTasks() {
-    JSPLib.storage.pruneEntries(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, prune_expires);
+    JSPLib.storage.pruneProgramCache(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, prune_expires);
 }
 
 //Cache functions
@@ -1807,9 +1807,9 @@ function InitializeProgramValues() {
         username: Danbooru.CurrentUser.data('name'),
         is_gold_user: Danbooru.CurrentUser.data('is-gold'),
         get IAC() {return JSPLib.load.getExport('IndexedAutocomplete') || Danbooru.IAC || {};},
-        current_metric: JSPLib.storage.checkStorageData('cu-current-metric',ValidateProgramData,localStorage,'score'),
-        hidden: Boolean(JSPLib.storage.checkStorageData('cu-hide-current-uploads',ValidateProgramData,localStorage,true)),
-        stashed: Boolean(JSPLib.storage.checkStorageData('cu-stash-current-uploads',ValidateProgramData,localStorage,false)),
+        current_metric: JSPLib.storage.checkLocalData('cu-current-metric', {default_val: 'score'}),
+        hidden: Boolean(JSPLib.storage.checkLocalData('cu-hide-current-uploads', {default_val: true})),
+        stashed: Boolean(JSPLib.storage.checkLocalData('cu-stash-current-uploads', {default_val: false})),
     });
     return true;
 }
@@ -1930,6 +1930,10 @@ JSPLib.network.counter_domname = "#loading-counter";
 
 //Export JSPLib
 JSPLib.load.exportData(PROGRAM_NAME, CU);
+
+//Variables for storage.js
+JSPLib.storage.indexedDBValidator = ValidateEntry;
+JSPLib.storage.localSessionValidator = ValidateProgramData;
 
 /****Execution start****/
 
