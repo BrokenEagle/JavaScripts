@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SiteTagSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.15
+// @version      4.16
 // @description  Presents additional site links for the wiki tag(s).
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -13,13 +13,13 @@
 // @run-at       document-idle
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SiteTagSearches.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SiteTagSearches.user.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240223-menu/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/menu.js
 // ==/UserScript==
 
 /* global $ JSPLib */
@@ -91,6 +91,7 @@ const PROGRAM_CSS = `
 }
 .wiki-other-name .sts-links li {
     list-style-type: none;
+    word-break: normal;
 }
 .sts-main-tagtext {
     display: inline-block;
