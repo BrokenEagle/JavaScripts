@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DTextStyler
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.6
+// @version      5.7
 // @description  Danbooru DText UI addon.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -12,14 +12,14 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/DTextStyler.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/DTextStyler.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240223-menu/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru Papa */
@@ -652,20 +652,20 @@ function RenderSectionControls(type, section_config, button_config, available_co
 }
 
 function RenderMarkupControls() {
-    if (DS.user_settings.available_dtext_markup.length === 0 && DS.user_settings.available_dtext_actions.length === 0) return;
+    if (DS.available_dtext_markup.length === 0 && DS.available_dtext_actions.length === 0) return;
     let header_html = "";
     let button_html = "";
-    if (DS.user_settings.available_dtext_markup.length) {
-        let [markup_header, markup_buttons] = RenderSectionControls('markup', MARKUP_SECTION_CONFIG, MARKUP_BUTTON_CONFIG, DS.user_settings.available_dtext_markup);
+    if (DS.available_dtext_markup.length) {
+        let [markup_header, markup_buttons] = RenderSectionControls('markup', MARKUP_SECTION_CONFIG, MARKUP_BUTTON_CONFIG, DS.available_dtext_markup);
         header_html += `<div>${markup_header}</div>`;
         button_html += `<div>${markup_buttons}</div>`;
     }
-    if (DS.user_settings.available_dtext_actions.length > 0) {
-        let [action_header, action_buttons] = RenderSectionControls('action', ACTION_SECTION_CONFIG, ACTION_BUTTON_CONFIG, DS.user_settings.available_dtext_actions);
+    if (DS.available_dtext_actions.length > 0) {
+        let [action_header, action_buttons] = RenderSectionControls('action', ACTION_SECTION_CONFIG, ACTION_BUTTON_CONFIG, DS.available_dtext_actions);
         header_html += `<div style="margin-left: 10px;">${action_header}</div>`;
         button_html += `<div style="margin-left: 10px;">${action_buttons}</div>`;
     }
-    let width = ((DS.user_settings.available_dtext_markup.length + DS.user_settings.available_dtext_actions.length) * 40) + 20;
+    let width = ((DS.available_dtext_markup.length + DS.available_dtext_actions.length) * 40) + 20;
     return JSPLib.utility.sprintf(MARKUP_CONTROLS, String(width), header_html, button_html);
 }
 
@@ -863,7 +863,7 @@ function InitializeButtons($button_container) {
 }
 
 function InitializeDtextPreviews() {
-    let containers = JSPLib.utility.multiConcat(...DS.user_settings.dtext_types_handled.map((type) => DTEXT_SELECTORS[type]));
+    let containers = JSPLib.utility.multiConcat(...DS.dtext_types_handled.map((type) => DTEXT_SELECTORS[type]));
     let final_selector = JSPLib.utility.joinList(containers, '.', ' .dtext-previewable textarea', ', ');
     $(final_selector).each((_i, textarea)=>{
         let $textarea = $(textarea);
@@ -898,7 +898,7 @@ function InitializeCommentaryDialog() {
         exec: ()=>{
             let buttons = DS.$add_commentary_dialog.dialog('option', 'buttons');
             buttons = Object.assign(DIALOG_CONFIG, buttons);
-            let dialog_width = Math.max((DS.user_settings.available_dtext_markup.length + DS.user_settings.available_dtext_actions.length) * 40 + 50, DS.$add_commentary_dialog.dialog('option', 'width'));
+            let dialog_width = Math.max((DS.available_dtext_markup.length + DS.available_dtext_actions.length) * 40 + 50, DS.$add_commentary_dialog.dialog('option', 'width'));
             DS.$add_commentary_dialog.dialog('option', 'buttons', buttons);
             DS.$add_commentary_dialog.dialog('option', 'width', dialog_width);
             DS.$add_commentary_dialog.on('dialogopen.ds', OpenDialog);
@@ -1008,13 +1008,13 @@ function Main() {
         menu_css: MENU_CSS,
     };
     if (!JSPLib.menu.preloadScript(DS, RenderSettingsMenu, preload)) return;
-    if (DS.user_settings.dtext_types_handled.length) {
+    if (DS.dtext_types_handled.length) {
         InitializeDtextPreviews();
     }
-    if (DS.user_settings.post_commentary_enabled && DS.controller === 'posts' && DS.action === 'show') {
+    if (DS.post_commentary_enabled && DS.controller === 'posts' && DS.action === 'show') {
         InitializeCommentaryDialog();
         JSPLib.utility.setCSSStyle(POST_CSS, 'post');
-    } else if (DS.user_settings.upload_commentary_enabled && ((DS.controller === 'uploads' && DS.action === 'show') || (DS.controller === 'upload-media-assets' && DS.action === 'show'))) {
+    } else if (DS.upload_commentary_enabled && ((DS.controller === 'uploads' && DS.action === 'show') || (DS.controller === 'upload-media-assets' && DS.action === 'show'))) {
         InitializeUploadCommentary();
         JSPLib.utility.setCSSStyle(UPLOAD_CSS, 'upload');
     }
