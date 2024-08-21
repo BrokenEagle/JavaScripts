@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SafelistPlus
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.20
+// @version      4.21
 // @description  Alternate Danbooru blacklist handler.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -12,13 +12,13 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SafelistPlus.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SafelistPlus.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240223-menu/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru validate */
@@ -684,8 +684,8 @@ class Safelist {
     resetButtons() {
         $(".safelist-validate", this.menu).show();
         $(".safelist-order", this.menu).show();
-        SL.user_settings.validate_mode_enabled && $(".safelist-validate", this.menu).removeAttr('disabled');
-        SL.user_settings.order_mode_enabled && $(".safelist-order", this.menu).removeAttr('disabled');
+        SL.validate_mode_enabled && $(".safelist-validate", this.menu).removeAttr('disabled');
+        SL.order_mode_enabled && $(".safelist-order", this.menu).removeAttr('disabled');
     }
 }
 
@@ -768,12 +768,10 @@ function CorrectLevelData() {
     }
 }
 
-///////////////////////////
 //Library functions
 
-////None
+////NONE
 
-/////////////////////
 //Helper functions
 
 function HasBlacklist() {
@@ -781,11 +779,11 @@ function HasBlacklist() {
 }
 
 function GetEnabledStorage() {
-    return (SL.user_settings.session_use_enabled ? sessionStorage : localStorage);
+    return (SL.session_use_enabled ? sessionStorage : localStorage);
 }
 
 function GetActiveStorage() {
-    return (SL.user_settings.session_level_enabled ? sessionStorage : localStorage);
+    return (SL.session_level_enabled ? sessionStorage : localStorage);
 }
 
 function CheckPriority() {
@@ -803,7 +801,6 @@ function GetNextLevel() {
     return ++GetNextLevel.level;
 }
 
-///////////////////////////
 //Auxiliary functions
 
 //Create the same structure that Danbooru uses for each custom list
@@ -847,7 +844,6 @@ function CalculateRenderedMenus() {
     return menu;
 }
 
-////////////////////
 //Render functions
 
 function RenderHelp(help_text) {
@@ -904,7 +900,6 @@ function RenderLevelMenu() {
 }
 
 
-///////////////////////////
 //Initialize functions
 
 function InitializeSafelistData() {
@@ -963,9 +958,9 @@ function InitializeSettingsMenu() {
     }
     InitializeSettingsDOMs();
     InitializeSettingEvents();
-    !SL.user_settings.write_mode_enabled && $(".safelist-push").attr('disabled', true).hide();
-    !SL.user_settings.validate_mode_enabled && $(".safelist-validate").attr('disabled', true);
-    !SL.user_settings.order_mode_enabled && $(".safelist-order").attr('disabled', true);
+    !SL.write_mode_enabled && $(".safelist-push").attr('disabled', true).hide();
+    !SL.validate_mode_enabled && $(".safelist-validate").attr('disabled', true);
+    !SL.order_mode_enabled && $(".safelist-order").attr('disabled', true);
 }
 
 function InitializeSettingsDOMs() {
@@ -1010,11 +1005,10 @@ function ResetAllSettings() {
     InitializeSettingsMenu();
 }
 
-///////////////////////////
 //Storage functions
 
 function LoadLevelData() {
-    SL.level_data = JSPLib.storage.getStorageData('sl-level-data', localStorage);
+    SL.level_data = JSPLib.storage.getLocalData('sl-level-data');
     if (!SL.level_data) {
         InitializeProgramData();
     } else {
@@ -1023,17 +1017,17 @@ function LoadLevelData() {
 }
 
 function SaveLevelData() {
-    JSPLib.storage.setStorageData('sl-level-data', SL.level_data, localStorage);
+    JSPLib.storage.setLocalData('sl-level-data', SL.level_data);
 }
 
 function LoadSessionData() {
-    SL.enable_safelist = JSPLib.storage.checkStorageData('sl-script-enabled', ValidateProgramData, GetEnabledStorage());
-    if (!SL.enable_safelist && SL.user_settings.session_use_enabled) {
-        SL.enable_safelist = JSPLib.storage.checkStorageData('sl-script-enabled', ValidateProgramData, localStorage, true);
+    SL.enable_safelist = JSPLib.storage.checkStorageData('sl-script-enabled', GetEnabledStorage());
+    if (!SL.enable_safelist && SL.session_use_enabled) {
+        SL.enable_safelist = JSPLib.storage.checkLocalData('sl-script-enabled', {default_val: true});
     }
-    SL.active_list = JSPLib.storage.checkStorageData('sl-active-list', ValidateProgramData, GetActiveStorage());
-    if (!SL.active_list && SL.user_settings.session_level_enabled) {
-        SL.active_list = JSPLib.storage.checkStorageData('sl-active-list', ValidateProgramData, localStorage);
+    SL.active_list = JSPLib.storage.checkStorageData('sl-active-list', GetEnabledStorage());
+    if (!SL.active_list && SL.session_level_enabled) {
+        SL.active_list = JSPLib.storage.checkLocalData('sl-active-list');
     }
 }
 
@@ -1058,7 +1052,6 @@ function SaveLevel(level) {
     }
 }
 
-///////////////////////////
 //DOM functions
 
 //Set the style for the active list in the side menu
@@ -1128,7 +1121,6 @@ function SafelistPosts() {
     return SafelistPosts.posts;
 }
 
-///////////////////////////
 //Calculate list functions
 
 //Asynchronous function that calculates inactive lists in the background
@@ -1251,7 +1243,6 @@ function SignalActiveList(restart=false) {
     }
 }
 
-////////////////////
 // Event functions
 
 function HelpInfo(event) {
@@ -1282,7 +1273,7 @@ function ToggleSafelist(event) {
     $(event.target).toggleClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
     $('#safelist').slideToggle(100);
     SL.is_shown = !SL.is_shown;
-    JSPLib.storage.setStorageData('sl-show-menu', SL.is_shown, localStorage);
+    JSPLib.storage.setLocalData('sl-show-menu', SL.is_shown);
     SL.channel.postMessage({type: "toggle", is_shown: SL.is_shown});
 }
 
@@ -1312,9 +1303,9 @@ function MenuAddButton() {
     let index = GetNextLevel().toString();
     let addlist = SL.level_data[index] = new Safelist(index);
     addlist.menu = $(addlist.renderedLevelSetting).insertBefore("#safelist-settings > hr");
-    !SL.user_settings.write_mode_enabled && $(".safelist-push", addlist.menu).attr('disabled', true).hide();
-    !SL.user_settings.validate_mode_enabled && $(".safelist-validate", addlist.menu).attr('disabled', true);
-    !SL.user_settings.order_mode_enabled && $(".safelist-order", addlist.menu).attr('disabled', true);
+    !SL.write_mode_enabled && $(".safelist-push", addlist.menu).attr('disabled', true).hide();
+    !SL.validate_mode_enabled && $(".safelist-validate", addlist.menu).attr('disabled', true);
+    !SL.order_mode_enabled && $(".safelist-order", addlist.menu).attr('disabled', true);
     addlist.initializeLevelMenuEvents();
 }
 
@@ -1395,7 +1386,6 @@ function PostPreviewUpdated(event,post) {
     }
 }
 
-////////////////////
 //Main execution functions
 
 function SetSideLevel(context) {
@@ -1482,13 +1472,12 @@ function ReloadSafelist(changed_settings,changed_menus) {
     RestartLists();
 }
 
-////////////////////
 //Settings functions
 
 function BroadcastSL(ev) {
     this.debug('log',`(${ev.data.type}):`, ev.data);
-    if (((ev.data.type === "level_change") && SL.user_settings.session_level_enabled) &&
-        ((ev.data.type === "status_change") && SL.user_settings.session_use_enabled)) {
+    if (((ev.data.type === "level_change") && SL.session_level_enabled) &&
+        ((ev.data.type === "status_change") && SL.session_use_enabled)) {
         return;
     }
     if ('level_data' in ev.data) {
@@ -1504,10 +1493,10 @@ function BroadcastSL(ev) {
         InitializeSettingsDOMs();
         SL.menu_items = CalculateRenderedMenus();
     }
-    if (('active_list' in ev.data) && !SL.user_settings.session_level_enabled) {
+    if (('active_list' in ev.data) && !SL.session_level_enabled) {
         SL.active_list = ev.data.active_list;
     }
-    if (('enable_safelist' in ev.data) && !SL.user_settings.session_use_enabled) {
+    if (('enable_safelist' in ev.data) && !SL.session_use_enabled) {
         SL.enable_safelist = ev.data.enable_safelist;
     }
     if (HasBlacklist()) {
@@ -1576,7 +1565,7 @@ function RemoteResetCallback() {
 function InitializeChangedSettings() {
     if (IsLevelMenu()) {
         if (JSPLib.menu.hasSettingChanged('write_mode_enabled')) {
-            if (SL.user_settings.write_mode_enabled) {
+            if (SL.write_mode_enabled) {
                 $(".safelist-push").removeAttr('disabled').show();
             } else {
                 $(".safelist-push").attr('disabled',true).hide();
@@ -1590,7 +1579,7 @@ function InitializeProgramValues() {
         userid: Danbooru.CurrentUser.data('id'),
         blacklist_box: $("#blacklist-box"),
         has_video: Boolean($(".image-container video").length),
-        is_shown: JSPLib.storage.checkStorageData('sl-show-menu', ValidateProgramData, localStorage, true),
+        is_shown: JSPLib.storage.checkLocalData('sl-show-menu', ValidateProgramData, {default_val: true}),
     });
     return true;
 }
@@ -1623,7 +1612,6 @@ function RenderSettingsMenu() {
     JSPLib.menu.cacheAutocomplete();
 }
 
-////////////////////
 //Main functions
 
 function Main() {
@@ -1706,6 +1694,9 @@ JSPLib.menu.control_config = CONTROL_CONFIG;
 
 //Export JSPLib
 JSPLib.load.exportData(PROGRAM_NAME, SL);
+
+//Variables for storage.js
+JSPLib.storage.localSessionValidator = ValidateProgramData;
 
 /****Execution start****/
 
