@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DisplayPostInfo
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      12.9
+// @version      12.10
 // @description  Display views, uploader, and other info to the user.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -10,25 +10,25 @@
 // @match        *://*.donmai.us/explore/posts/*
 // @match        *://*.donmai.us/settings
 // @exclude      /^https?://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
-// @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/DisplayPostInfo.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/DisplayPostInfo.user.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
+// @require      https://cdn.jsdelivr.net/npm/localforage-getitems@1.4.2/dist/localforage-getitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/core.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/md5.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240223-menu/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru CryptoJS */
@@ -241,10 +241,6 @@ const POST_STATISTICS_TABLE = `
             <td>%SCORE_AVERAGE% ± %SCORE_DEVIATION%</td>
         </tr>
         <tr>
-            <th>Favorites:</th>
-            <td>%FAVES_AVERAGE% ± %FAVES_DEVIATION%</td>
-        </tr>
-        <tr>
             <th>General:</th>
             <td>%GENERAL_PERCENTAGE%%</td>
         </tr>
@@ -304,12 +300,12 @@ const MAX_VIEWS_EXPIRATION = JSPLib.utility.one_day;
 
 //Other constants
 
-const USER_FIELDS = "id,name,level_string,can_upload_free,can_approve_posts";
+const USER_FIELDS = "id,name,level_string";
 const POSTVER_FIELDS = "id,version,updater_id,unchanged_tags,added_tags";
 
 //Data inclusion lists
 
-const ALL_LEVELS = ['Member', 'Gold', 'Platinum', 'Builder', 'Moderator', 'Admin'];
+const ALL_LEVELS = ['Restricted', 'Member', 'Gold', 'Platinum', 'Builder', 'Contributor', 'Approver', 'Moderator', 'Admin', 'Owner'];
 
 //Validate constants
 
@@ -323,8 +319,6 @@ const USER_CONSTRAINTS = {
     value: {
         name: JSPLib.validate.stringonly_constraints,
         level: JSPLib.validate.inclusion_constraints(ALL_LEVELS),
-        contributor: JSPLib.validate.boolean_constraints,
-        approver: JSPLib.validate.boolean_constraints
     }
 };
 
@@ -390,8 +384,6 @@ function BlankUser(user_id) {
     return {
         name: `user_${user_id}`,
         level: "Member",
-        contributor: false,
-        approver: false,
     };
 }
 
@@ -399,17 +391,35 @@ function MapUserData(user) {
     return {
         name: user.name,
         level: user.level_string,
-        contributor: user.can_upload_free,
-        approver: user.can_approve_posts
     };
+}
+
+function BlankUsers(user_ids) {
+    let mapped_users = {};
+    user_ids.forEach((user_id) => {
+        mapped_users[user_id] = BlankUser(user_id);
+    });
+    return mapped_users;
+}
+
+function MapUsersData(users) {
+    let mapped_users = {};
+    users.forEach((user) => {
+        mapped_users[user.id] = MapUserData(user);
+    });
+    return mapped_users;
+}
+
+function SaveMappedListData(mapped_data, expiration) {
+    for (let key in mapped_data) {
+        JSPLib.storage.saveData(`user-${key}`, {value: mapped_data[key], expires: JSPLib.utility.getExpires(expiration)});
+    }
 }
 
 function RenderUsername(user_id, user_data) {
     let user_name = JSPLib.utility.maxLengthString(user_data.name.replace(/_/g, ' '));
     let level_class = "user-" + user_data.level.toLowerCase();
-    let unlimited_class = (user_data.contributor ? " user-post-uploader" : "");
-    let approver_class = (user_data.approver ? " user-post-approver" : "");
-    return `<a class="dpi-username ${level_class}${unlimited_class}${approver_class} user" data-user-id="${user_id}" data-user-name="${user_name}" href="/users/${user_id}" aria-expanded="false">${user_name}</a>`;
+    return `<a class="dpi-username ${level_class} user" data-user-id="${user_id}" data-user-name="${user_name}" href="/users/${user_id}" aria-expanded="false">${user_name}</a>`;
 }
 
 function PopulateUserTags(current_tags, added_tags, user_tags, version_order, updater_id) {
@@ -417,13 +427,6 @@ function PopulateUserTags(current_tags, added_tags, user_tags, version_order, up
     user_tags[updater_id] = JSPLib.utility.concat(user_tags[updater_id], (added_tags));
     version_order.unshift(updater_id);
     current_tags.tags = JSPLib.utility.arrayDifference(current_tags.tags, added_tags);
-}
-
-function SaveMappedListData(mapped_data, expiration) {
-    mapped_data.forEach((user) => {
-        let user_id = Object.keys(user)[0];
-        JSPLib.storage.saveData(`user-${user_id}`, {value: user[user_id], expires: JSPLib.utility.getExpires(expiration)});
-    });
 }
 
 function LogarithmicExpiration(count, max_count, time_divisor, multiplier) {
@@ -445,7 +448,7 @@ function PostViewsExpiration(created_timestamp) {
         let day_slots = 29; //There are 29 days slots between 1 day and 30 days
         let hours_day = 24;
         return LogarithmicExpiration(day_interval, day_slots, hours_day, MAX_VIEWS_EXPIRATION);
-    } 
+    }
     return MAX_VIEWS_EXPIRATION;
 }
 
@@ -453,7 +456,7 @@ function PostViewsExpiration(created_timestamp) {
 
 async function GetUserData(user_id) {
     let user_key = `user-${user_id}`;
-    let data = await JSPLib.storage.checkLocalDB(user_key, ValidateEntry, USER_EXPIRATION);
+    let data = await JSPLib.storage.checkLocalDB(user_key, USER_EXPIRATION);
     var mapped_data;
     if (!data) {
         this.debug('log', "Querying:", user_id);
@@ -472,33 +475,28 @@ async function GetUserData(user_id) {
     return mapped_data;
 }
 
-async function GetUserListData(userid_list) {
-    var mapped_list_data = [];
-    let [found_users, missing_users] = await JSPLib.storage.batchStorageCheck(userid_list, ValidateEntry, USER_EXPIRATION, 'user');
-    if (missing_users.length) {
-        this.debug('log', "Missing users:", missing_users);
-        let user_list = await JSPLib.danbooru.submitRequest("users", {search: {id: missing_users.join(',')}, limit: missing_users.length, only: USER_FIELDS});
-        mapped_list_data = user_list.map((user) => ({[user.id]: MapUserData(user)}));
-        SaveMappedListData(mapped_list_data, USER_EXPIRATION);
-        if (user_list.length !== missing_users.length) {
-            let found_users = JSPLib.utility.getObjectAttributes(user_list, 'id');
-            let bad_users = JSPLib.utility.arrayDifference(missing_users, found_users);
-            this.debug('log', "Bad users:", bad_users);
-            let bad_data = bad_users.map((userid) => ({[userid]: BlankUser(userid)}));
-            SaveMappedListData(bad_data, BAD_USER_EXPIRATION);
-            mapped_list_data = JSPLib.utility.concat(mapped_list_data, bad_data);
+async function GetUsersData(user_ids) {
+    let user_keys = user_ids.map((user_id) => 'user-' + user_id);
+    let cached = await JSPLib.storage.batchCheckLocalDB(user_keys, USER_EXPIRATION);
+    let found_keys = JSPLib.utility.arrayIntersection(user_keys, Object.keys(cached));
+    let missing_keys = JSPLib.utility.arrayDifference(user_keys, Object.keys(cached));
+    if (missing_keys.length) {
+        this.debug('log', "Missing users:", missing_keys);
+        let missing_ids = missing_keys.map((key) => Number(key.replace('user-', "")));
+        let users = await JSPLib.danbooru.submitRequest("users", {search: {id: missing_ids.join(',')}, limit: missing_ids.length, only: USER_FIELDS});
+        let mapped_users = MapUsersData(users);
+        SaveMappedListData(mapped_users, USER_EXPIRATION);
+        cached = JSPLib.utility.mergeHashes(cached, mapped_users);
+        if (users.length !== missing_keys.length) {
+            let network_ids = JSPLib.utility.getObjectAttributes(users, 'id');
+            let bad_ids = JSPLib.utility.arrayDifference(missing_ids, network_ids);
+            this.debug('log', "Bad users:", bad_ids);
+            let bad_users = BlankUsers(bad_ids);
+            SaveMappedListData(bad_users, BAD_USER_EXPIRATION);
+            cached = JSPLib.utility.mergeHashes(cached, bad_users);
         }
     }
-    if (found_users.length) {
-        this.debug('log', "Found users:", found_users);
-        let found_data = found_users.map((userid) => {
-            //Just in case...
-            let default_val = {value: BlankUser(userid)};
-            return {[userid]: JSPLib.storage.getIndexedSessionData('user-' + userid, default_val).value};
-        });
-        mapped_list_data = JSPLib.utility.concat(mapped_list_data, found_data);
-    }
-    return Object.assign({}, ...mapped_list_data);
+    return cached;
 }
 
 //Main execution functions
@@ -510,7 +508,7 @@ async function DisplayPostViews() {
     let post_id = $('.image-container').data('id');
     let views_key = `pv-${post_id}`;
     this.debug('log', "Checking:", post_id);
-    let view_data = await JSPLib.storage.checkLocalDB(views_key, ValidateEntry, MAX_VIEWS_EXPIRATION);
+    let view_data = await JSPLib.storage.checkLocalDB(views_key, MAX_VIEWS_EXPIRATION);
     if (!view_data) {
         let post_timestamp = new Date($("#post-information time").attr("datetime")).getTime();
         let expiration_time = PostViewsExpiration(post_timestamp);
@@ -524,7 +522,7 @@ async function DisplayPostViews() {
         }
         //If the post was created within the hour, then only cache in session storage, else cache normally
         if (expiration_time === MIN_VIEWS_EXPIRATION) {
-            JSPLib.storage.setStorageData(views_key, {value: post_views, expires: JSPLib.utility.getExpires(expiration_time)}, sessionStorage);
+            JSPLib.storage.setSessionData(views_key, {value: post_views, expires: JSPLib.utility.getExpires(expiration_time)});
         } else {
             JSPLib.storage.saveData(views_key, {value: post_views, expires: JSPLib.utility.getExpires(expiration_time)});
         }
@@ -542,7 +540,7 @@ async function DisplayTopTagger() {
     let tag_string = $image.data('tags');
     let tag_hash = CryptoJS.MD5(tag_string).toString();
     let key_hash = `tt-${post_id}-${tag_hash}`;
-    let data = await JSPLib.storage.checkLocalDB(key_hash, ValidateEntry, TOP_TAGGER_EXPIRATION);
+    let data = await JSPLib.storage.checkLocalDB(key_hash, TOP_TAGGER_EXPIRATION);
     if (!data) {
         this.debug('log', "Cache miss:", key_hash);
         //Hashed so that it's mutable
@@ -650,7 +648,6 @@ function ProcessPostStatistics() {
     let $post_previews = $(".post-preview");
     let total_posts = $post_previews.length;
     let score_list = JSPLib.utility.getDOMAttributes($post_previews, 'score', Number);
-    let faves_list = JSPLib.utility.getDOMAttributes($post_previews, 'fav-count', Number);
     let general_count = $post_previews.filter("[data-rating=g]").length;
     let sensitive_count = $post_previews.filter("[data-rating=s]").length;
     let questionable_count = $post_previews.filter("[data-rating=q]").length;
@@ -658,8 +655,6 @@ function ProcessPostStatistics() {
     let statistics_html = JSPLib.utility.regexReplace(POST_STATISTICS_TABLE, {
         SCORE_AVERAGE: JSPLib.utility.setPrecision(JSPLib.statistics.average(score_list), 1) || 0,
         SCORE_DEVIATION: JSPLib.utility.setPrecision(JSPLib.statistics.standardDeviation(score_list), 1) || 0,
-        FAVES_AVERAGE: JSPLib.utility.setPrecision(JSPLib.statistics.average(faves_list), 1) || 0,
-        FAVES_DEVIATION: JSPLib.utility.setPrecision(JSPLib.statistics.standardDeviation(faves_list), 1) || 0,
         GENERAL_PERCENTAGE: Math.ceil(100 * (general_count / total_posts)) || 0,
         SENSITIVE_PERCENTAGE: Math.ceil(100 * (sensitive_count / total_posts)) || 0,
         QUESTIONABLE_PERCENTAGE: Math.ceil(100 * (questionable_count / total_posts)) || 0,
@@ -707,7 +702,7 @@ async function ProcessDomainStatistics() {
 ////OTHER
 
 function CleanupTasks() {
-    JSPLib.storage.pruneEntries(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, PRUNE_EXPIRES);
+    JSPLib.storage.pruneProgramCache(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, PRUNE_EXPIRES);
 }
 
 //Settings functions
@@ -721,7 +716,7 @@ function InitializeChangedSettings() {
     if (DPI.controller === 'posts' && DPI.action === 'show') {
         if (JSPLib.menu.hasSettingChanged('post_views_enabled')) {
             let $post_views = $("#dpi-post-views");
-            if (DPI.user_settings.post_views_enabled) {
+            if (DPI.post_views_enabled) {
                 if ($post_views.text() === "") {
                     DisplayPostViews();
                 } else {
@@ -733,7 +728,7 @@ function InitializeChangedSettings() {
         }
         if (JSPLib.menu.hasSettingChanged('top_tagger_enabled')) {
             let $top_tagger = $("#dpi-top-tagger");
-            if (DPI.user_settings.top_tagger_enabled) {
+            if (DPI.top_tagger_enabled) {
                 if ($top_tagger.text() === "") {
                     DisplayTopTagger();
                 } else {
@@ -746,7 +741,7 @@ function InitializeChangedSettings() {
     } else if (DPI.controller === 'posts' && DPI.action === 'index') {
         if (JSPLib.menu.hasSettingChanged('post_statistics_enabled')) {
             let $post_statistics = $("#dpi-post-statistics");
-            if (DPI.user_settings.post_statistics_enabled) {
+            if (DPI.post_statistics_enabled) {
                 if ($post_statistics.children().length === 0) {
                     ProcessPostStatistics();
                 } else {
@@ -758,7 +753,7 @@ function InitializeChangedSettings() {
         }
         if (JSPLib.menu.hasSettingChanged('domain_statistics_enabled')) {
             let $domain_statistics = $('#dpi-domain-statistics');
-            if (DPI.user_settings.domain_statistics_enabled) {
+            if (DPI.domain_statistics_enabled) {
                 if ($domain_statistics.children().length === 0) {
                     ProcessDomainStatistics();
                 } else {
@@ -770,7 +765,7 @@ function InitializeChangedSettings() {
         }
         if (JSPLib.menu.hasSettingChanged('tag_statistics_enabled')) {
             let $tag_statistics = $(".dpi-tag-statistic");
-            if (DPI.user_settings.tag_statistics_enabled) {
+            if (DPI.tag_statistics_enabled) {
                 if ($tag_statistics.length === 0) {
                     ProcessTagStatistics();
                 } else {
@@ -846,42 +841,39 @@ function Main() {
     if (DPI.controller === 'posts' && DPI.action === 'show') {
         $('#post-information #post-info-score').after(POST_VIEWS_LINE);
         $('#post-information #post-info-uploader').after(USER_NAMES_LINE);
-        if (DPI.user_settings.post_views_enabled) {
+        if (DPI.post_views_enabled) {
             DisplayPostViews();
         }
-        if (DPI.user_settings.top_tagger_enabled) {
+        if (DPI.top_tagger_enabled) {
             DisplayTopTagger();
         }
     } else if (DPI.controller === 'posts' && DPI.action === 'index') {
         $('#tag-box').after(POST_INDEX_STATISTICS);
-        if (DPI.user_settings.post_statistics_enabled) {
+        if (DPI.post_statistics_enabled) {
             ProcessPostStatistics();
         }
-        if (DPI.user_settings.domain_statistics_enabled) {
+        if (DPI.domain_statistics_enabled) {
             ProcessDomainStatistics();
         }
-        if (DPI.user_settings.tag_statistics_enabled) {
+        if (DPI.tag_statistics_enabled) {
             ProcessTagStatistics();
         }
         JSPLib.utility.setCSSStyle(POST_INDEX_CSS, 'program');
     }
-    if (DPI.user_settings.post_favorites_enabled) {
+    if (DPI.post_favorites_enabled) {
         DPI.favorites_promise = ProcessPostFavorites();
     }
-    if (!DPI.basic_tooltips && DPI.user_settings.advanced_post_tooltip) {
-        if (DPI.user_settings.post_favorites_enabled) {
-            Danbooru.PostTooltip.on_show = JSPLib.utility.hijackFunction(Danbooru.PostTooltip.on_show, RenderTooltip);
-        }
-        Danbooru.PostTooltip.SHOW_DELAY = DPI.user_settings.post_show_delay;
-        Danbooru.PostTooltip.HIDE_DELAY = DPI.user_settings.post_hide_delay;
+    if (!DPI.basic_tooltips && DPI.advanced_post_tooltip) {
+        Danbooru.PostTooltip.SHOW_DELAY = DPI.post_show_delay;
+        Danbooru.PostTooltip.HIDE_DELAY = DPI.post_hide_delay;
         if (document.body._tippy) {
             $(document).off("click.danbooru.postTooltip");
             document.body._tippy.destroy();
             Danbooru.PostTooltip.initialize();
         }
-    } else if (DPI.basic_tooltips && DPI.user_settings.basic_post_tooltip) {
+    } else if (DPI.basic_tooltips && DPI.basic_post_tooltip) {
         let all_uploaders = JSPLib.utility.arrayUnique(JSPLib.utility.getDOMAttributes($(".post-preview"), 'uploader-id'));
-        DPI.all_uploaders = GetUserListData(all_uploaders);
+        DPI.all_uploaders = GetUsersData(all_uploaders);
         UpdateThumbnailTitles();
     }
     JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
@@ -891,19 +883,19 @@ function Main() {
 /****Function decoration****/
 
 [
-    Main, GetUserData, DisplayPostViews, DisplayTopTagger, GetUserListData, ValidateEntry,
+    Main, GetUserData, DisplayPostViews, DisplayTopTagger, GetUsersData, ValidateEntry,
 ] = JSPLib.debug.addFunctionLogs([
-    Main, GetUserData, DisplayPostViews, DisplayTopTagger, GetUserListData, ValidateEntry,
+    Main, GetUserData, DisplayPostViews, DisplayTopTagger, GetUsersData, ValidateEntry,
 ]);
 
 [
     RenderSettingsMenu,
-    DisplayPostViews, DisplayTopTagger, GetUserListData,
+    DisplayPostViews, DisplayTopTagger, GetUsersData,
 ] = JSPLib.debug.addFunctionTimers([
     //Sync
     RenderSettingsMenu,
     //Async
-    DisplayPostViews, DisplayTopTagger, GetUserListData,
+    DisplayPostViews, DisplayTopTagger, GetUsersData,
 ]);
 
 /****Initialization****/
@@ -923,8 +915,13 @@ JSPLib.menu.settings_callback = RemoteSettingsCallback;
 JSPLib.menu.settings_config = SETTINGS_CONFIG;
 JSPLib.menu.control_config = CONTROL_CONFIG;
 
+//Variables for storage.js
+JSPLib.storage.indexedDBValidator = ValidateEntry;
+JSPLib.storage.localSessionValidator = ValidateProgramData;
+
 //Export JSPLib
 JSPLib.load.exportData(PROGRAM_NAME, DPI);
+JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [], alwayslist: [GetUsersData]});
 
 /****Execution start****/
 
