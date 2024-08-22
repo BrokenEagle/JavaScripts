@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://github.com/BrokenEagle
-// @version      8.4
+// @version      8.5
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -15,16 +15,16 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/PostModeMenuPlus.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/PostModeMenuPlus.user.js
 // @require      https://cdn.jsdelivr.net/npm/dragselect@2.3.1/dist/ds.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240223-menu/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/menu.js
 // ==/UserScript==
 
 /* global $ Danbooru JSPLib DragSelect */
@@ -33,21 +33,7 @@
 
 //Library variables
 
-JSPLib.danbooru.rate_limited = false;
-JSPLib.danbooru.min_rate_limit = 10;
-JSPLib.danbooru.pending_update_count = 0;
-JSPLib.danbooru.post_highlight_dict = {};
-JSPLib.danbooru.highlight_post_enabled = true;
-JSPLib.danbooru.highlight_css = `
-div.danbooru-post-highlight {
-    top: 0;
-    left: 0;
-    position: absolute;
-    background: repeating-linear-gradient( 45deg, #FF0000, rgba(0,0,0, 0) 5px,rgba(0,0,0, 0) 50px);
-    pointer-events: none;
-}`;
-/* Commented out for now since the property cannot be reconfigured. */
-//Object.defineProperty(JSPLib.danbooru, 'max_network_requests', {get: () => (this.rate_limited ? 1 : this._max_network_requests), set: (val) => (this._max_network_requests = val)});
+////NONE
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '21812';
@@ -275,100 +261,7 @@ const SEPARATOR_DICT = {
 
 //Library functions
 
-JSPLib.network.rateLimit = async function (self, module) {
-    while (JSPLib[module].num_network_requests >= JSPLib[module].max_network_requests) {
-        self.debug('logLevel', "Max simultaneous network requests exceeded! Sleeping...", JSPLib.debug.WARNING);
-        let rate_limit_wait = JSPLib[module].rate_limit_wait || this.rate_limit_wait;
-        await new Promise((resolve) => setTimeout(resolve, rate_limit_wait)); //Sleep
-    }
-};
-
-JSPLib.debug.addModuleLogs('network', ['rateLimit']);
-
-JSPLib.danbooru.showPendingUpdateNotice = function() {
-    if (this.pending_update_count === 0) {
-        JSPLib.notice.notice("Posts updated");
-    } else {
-        JSPLib.notice.notice(`Updating posts (${this.pending_update_count} pending)...`, true);
-    }
-};
-
-JSPLib.danbooru.updatePost = async function (post_id, mode, params) {
-    this.pending_update_count += 1;
-    this.showPendingUpdateNotice();
-    if (this.num_network_requests >= this.max_network_requests) {
-        await JSPLib.network.rateLimit('danbooru');
-    }
-    let url_params = new URLSearchParams(window.location.search);
-    let show_votes = url_params.get("show_votes");
-    let size = url_params.get("size");
-    this.num_network_requests += 1;
-    return JSPLib.network.put(`/posts/${post_id}.js`, {data: {mode, show_votes, size, ...params}})
-        .always((_data, _message, resp) => {
-            this.num_network_requests -= 1;
-            this.pending_update_count -= 1;
-            JSPLib.danbooru.checkAPIRateLimit(resp);
-        })
-        .then(
-            //Success
-            () => {
-                this.showPendingUpdateNotice();
-                JSPLib.danbooru.highlightPost(post_id, false);
-            },
-            //Failure
-            (error) => {
-                error = JSPLib.network.processError(error, "danbooru.updatePost");
-                let error_key = `updatePost-${post_id}-${mode}-${JSPLib._jQuery.param(params)}`;
-                JSPLib.network.logError(error_key, error);
-                JSPLib.network.notifyError(error);
-                JSPLib.danbooru.highlightPost(post_id, true);
-            }
-        );
-};
-
-JSPLib.danbooru.highlightPost = function (post_id, highlight_on) {
-    if (!JSPLib.danbooru.highlight_post_enabled) return;
-    if (highlight_on && !(post_id in JSPLib.danbooru.post_highlight_dict)) {
-        let $post = JSPLib._jQuery('#post_' + post_id);
-        let $highlight = JSPLib.danbooru.post_highlight_dict[post_id] = JSPLib._jQuery('<div class="danbooru-post-highlight"></div>');
-        $highlight.css({height: $post[0].offsetHeight, width: $post[0].offsetWidth});
-        $post.css('position', 'relative');
-        $post.append($highlight);
-    }
-    if (highlight_on) {
-        JSPLib.danbooru.post_highlight_dict[post_id].show();
-    } else {
-        JSPLib.danbooru.post_highlight_dict[post_id]?.hide();
-    }
-};
-
-JSPLib.danbooru.checkAPIRateLimit = function (resp) {
-    try {
-        var data = JSON.parse(resp.getResponseHeader('x-rate-limit'))
-    } catch (error) {
-        JSPLib.debug.debugerrorLevel('danbooru.checkAPIRateLimit', "Unable to get response rate limit.", JSPLib.debug.ERROR);
-        return;
-    }
-    if (!JSPLib.validate.isHash(data.limits)) return;
-    let current_limit = JSPLib.danbooru.current_limit = Math.min(...Object.values(data.limits));
-    let rate_limited = current_limit < this.min_rate_limit;
-    JSPLib.debug.debuglogLevel('danbooru.checkAPIRateLimit', current_limit, rate_limited, JSPLib.debug.DEBUG);
-    // Temporary (maybe)... will use getter/setter at the top of the script for the library release
-    if (rate_limited !== this.rate_limited) {
-        if (rate_limited) {
-            JSPLib.debug.debugwarnLevel('danbooru.checkAPIRateLimit', "Throttling connection.", JSPLib.debug.WARNING);
-            this._max_network_requests = this.max_network_requests;
-            this.max_network_requests = 1;
-            this._rate_limit_wait = this.rate_limit_wait;
-            this.rate_limit_wait = JSPLib.utility.one_second * 2;
-        } else {
-            JSPLib.debug.debugwarnLevel('danbooru.checkAPIRateLimit', "Releasing rate limit.", JSPLib.debug.INFO);
-            this.max_network_requests = this._max_network_requests;
-            this.rate_limit_wait = this._rate_limit_wait;
-        }
-        this.rate_limited = rate_limited;
-    }
-};
+////NONE
 
 // Helper functions
 
@@ -383,15 +276,15 @@ function GetAllPreviews() {
 // Auxiliary functions
 
 function UpdateDraggerStatus() {
-    if (PMM.available_modes.has(PMM.mode) && PMM.dragger.stopped) {
+    if (PMM.available_mode_keys.has(PMM.mode) && PMM.dragger.stopped) {
         PMM.dragger.start();
-    } else if (!PMM.available_modes.has(PMM.mode) && !PMM.dragger.stopped) {
+    } else if (!PMM.available_mode_keys.has(PMM.mode) && !PMM.dragger.stopped) {
         PMM.dragger.stop();
     }
 }
 
 function UpdateSelectControls() {
-    if (PMM.available_modes.has(PMM.mode) && PMM.mode !== 'edit') {
+    if (PMM.available_mode_keys.has(PMM.mode) && PMM.mode !== 'edit') {
         $('#pmm-select-controls, #pmm-long-inputs').show();
     } else {
         $('#pmm-select-controls, #pmm-long-inputs').hide();
@@ -474,7 +367,7 @@ async function UnvotePost(post_id) {
 }
 
 function TagscriptPost(post_id) {
-    let current_script_id = JSPLib.storage.getStorageData("current_tag_script_id", localStorage);
+    let current_script_id = JSPLib.storage.getLocalData("current_tag_script_id");
     let tag_string = localStorage.getItem("tag-script-" + current_script_id);
     if (tag_string === undefined) {
         JSPLib.notice.error('No tag script set!');
@@ -499,11 +392,11 @@ function MenuFunctions(post_ids) {
     post_ids.forEach((post_id) => {
         switch (PMM.mode) {
             case 'copy-id':
-                return copyToClipboard(post_ids, "", "", PMM.id_separator, false);
+                return copyToClipboard(post_ids, "", "", PMM.id_separator_char, false);
             case 'copy-short':
-                return copyToClipboard(post_ids, "post #", "", PMM.id_separator, true);
+                return copyToClipboard(post_ids, "post #", "", PMM.id_separator_char, true);
             case 'copy-link':
-                return copyToClipboard(post_ids, "https://danbooru.donmai.us/posts/", " ", PMM.id_separator, true);
+                return copyToClipboard(post_ids, "https://danbooru.donmai.us/posts/", " ", PMM.id_separator_char, true);
             case 'vote-up':
             case 'vote-down':
                 VotePost(post_id, (PMM.mode === 'vote-up' ? 1 : (PMM.mode === 'vote-down' ? -1 : 0)));
@@ -524,18 +417,18 @@ function MenuFunctions(post_ids) {
 
 function InitializeModeMenu() {
     $("#mode-box select option[value=tag-script]").after(RenderPostModeMenuAddons());
-    if (PMM.user_settings.long_tagscript_enabled) {
+    if (PMM.long_tagscript_enabled) {
         $('#tag-script-field').addClass('pmm-long-focus').css('width', "");
     }
     $(".post-preview a.post-preview-link").on(PROGRAM_CLICK, PostModeMenu);
     $("#mode-box select").on(PROGRAM_CHANGE, ChangeModeMenu);
     $(document).on('danbooru:post-preview-updated.pmm', PostPreviewUpdated);
-    if (PMM.user_settings.drag_select_enabled) {
+    if (PMM.drag_select_enabled) {
         PMM.dragger.subscribe('callback', DragSelectCallback);
         UpdateDraggerStatus();
     }
     if (PMM.mode) {
-        let set_mode = (PMM.available_modes.has(PMM.mode) ? PMM.mode : 'view');
+        let set_mode = (PMM.available_mode_keys.has(PMM.mode) ? PMM.mode : 'view');
         setTimeout(() => {$("#mode-box select").val(set_mode);}, JSPLib.utility.one_second);
     }
 }
@@ -549,7 +442,7 @@ function InitializeSelectOnly() {
     $mode_select_container.append($mode_select);
     $mode_select_div.append($mode_select_container);
     let disabled = (PMM.select_only ? "" : 'disabled');
-    let shown = (PMM.available_modes.has(PMM.mode) ? 'block' : 'none');
+    let shown = (PMM.available_mode_keys.has(PMM.mode) ? 'block' : 'none');
     $mode_select_div.append(JSPLib.utility.regexReplace(SELECT_CONTROLS, {
         SHOWN: shown,
         DISABLED: disabled,
@@ -569,7 +462,7 @@ function InitializeSelectOnly() {
 
 function RenderPostModeMenuAddons() {
     let html = "";
-    PMM.user_settings.available_modes.forEach((mode) => {
+    PMM.available_modes.forEach((mode) => {
         if (SITE_MODES.includes(mode)) return;
         let key = JSPLib.utility.kebabCase(mode);
         let name = JSPLib.utility.displayCase(mode);
@@ -581,7 +474,7 @@ function RenderPostModeMenuAddons() {
 //Event handlers
 
 function PostModeMenu(event) {
-    if (PMM.available_modes.has(PMM.mode)) {
+    if (PMM.available_mode_keys.has(PMM.mode)) {
         let $link = $(event.currentTarget);
         let $article = $link.closest("article");
         let post_id = $article.data("id");
@@ -625,25 +518,25 @@ function BatchApply() {
 
 function ChangeModeMenu() {
     PMM.mode = $("#mode-box select").val();
-    if (PMM.available_modes.has(PMM.mode)) {
-        JSPLib.storage.setStorageData('pmm-mode', PMM.mode, localStorage);
+    if (PMM.available_mode_keys.has(PMM.mode)) {
+        JSPLib.storage.setLocalData('pmm-mode', PMM.mode);
         UpdateSelectControls();
     } else {
-        JSPLib.storage.removeStorageData('pmm-mode', localStorage);
+        JSPLib.storage.removeLocalData('pmm-mode');
         $('#pmm-select-controls, #pmm-long-inputs').hide();
     }
     if (!PMM.select_only) {
         $('.pmm-selected').removeClass('pmm-selected');
         PMM.modified.clear();
     }
-    if (PMM.user_settings.drag_select_enabled) {
+    if (PMM.drag_select_enabled) {
         UpdateDraggerStatus();
     }
 }
 
 function ChangeSelectOnly(event) {
     PMM.select_only = event.currentTarget.checked;
-    JSPLib.storage.setStorageData('pmm-select-only', PMM.select_only, localStorage);
+    JSPLib.storage.setLocalData('pmm-select-only', PMM.select_only);
     let $modify_controls = $('#pmm-apply-all, .pmm-select');
     $modify_controls.prop('disabled', !PMM.select_only);
     $('.pmm-selected').removeClass('pmm-selected');
@@ -663,7 +556,7 @@ function PostPreviewUpdated(event, post) {
     if (Number.isInteger(PMM.init_timer)) {
         clearTimeout(PMM.init_timer);
     }
-    if (PMM.user_settings.drag_select_enabled) {
+    if (PMM.drag_select_enabled) {
         PMM.init_timer = setTimeout(() => {
             PMM.dragger.SelectableSet._initElements = [...document.querySelectorAll('.post-preview img')];
             PMM.dragger.SelectableSet.clear();
@@ -676,7 +569,7 @@ function PostPreviewUpdated(event, post) {
 
 function DragSelectCallback({items, event}) {
     // Only process drag select events when the primary (left) and only the primary mouse button is used.
-    if (!PMM.available_modes.has(PMM.mode) || (event.button !== 0 && event.buttons !== 0)) return;
+    if (!PMM.available_mode_keys.has(PMM.mode) || (event.button !== 0 && event.buttons !== 0)) return;
     JSPLib.debug.debuglog('DragSelectCallback', items, event);
     let click_coords = PMM.dragger.getInitialCursorPositionArea();
     let mouseup_coords = PMM.dragger.getCurrentCursorPositionArea();
@@ -716,14 +609,14 @@ function DragSelectCallback({items, event}) {
 
 function InitializeProgramValues() {
     Object.assign(PMM, {
-        mode: JSPLib.storage.getStorageData('pmm-mode', localStorage),
-        available_modes: new Set(PMM.user_settings.available_modes.map((mode) => JSPLib.utility.kebabCase(mode.toLocaleLowerCase()))),
-        id_separator: SEPARATOR_DICT[PMM.user_settings.id_separator[0]],
-        select_only: JSPLib.storage.getStorageData('pmm-select-only', localStorage, false),
+        mode: JSPLib.storage.getLocalData('pmm-mode'),
+        available_mode_keys: new Set(PMM.available_modes.map((mode) => JSPLib.utility.kebabCase(mode.toLocaleLowerCase()))),
+        id_separator_char: SEPARATOR_DICT[PMM.id_separator[0]],
+        select_only: JSPLib.storage.getLocalData('pmm-select-only', {default_val: false}),
         all_post_ids: new Set(JSPLib.utility.getDOMAttributes($('.post-preview'), 'id', parseInt)),
         $drag_area: document.querySelector('#posts'),
     });
-    if (PMM.user_settings.drag_select_enabled) {
+    if (PMM.drag_select_enabled) {
         PMM.dragger = new DragSelect({
             selectables: GetAllPreviews(),
             area: PMM.$drag_area,
@@ -731,8 +624,8 @@ function InitializeProgramValues() {
             immediateDrag: false
         });
     }
-    JSPLib.danbooru.max_network_requests = PMM.user_settings.maximum_concurrent_requests;
-    JSPLib.danbooru.highlight_post_enabled = PMM.user_settings.highlight_errors_enabled;
+    JSPLib.danbooru.max_network_requests = PMM.maximum_concurrent_requests;
+    JSPLib.danbooru.highlight_post_enabled = PMM.highlight_errors_enabled;
     return true;
 }
 
@@ -764,16 +657,16 @@ function Main() {
     };
     if (!JSPLib.menu.preloadScript(PMM, RenderSettingsMenu, preload)) return;
     InitializeModeMenu();
-    if (PMM.user_settings.select_only_enabled) {
+    if (PMM.select_only_enabled) {
         InitializeSelectOnly();
     }
-    if (PMM.user_settings.long_searchbar_enabled) {
+    if (PMM.long_searchbar_enabled) {
         JSPLib.utility.setCSSStyle(SEARCHBAR_CSS, 'searchbar');
     }
-    if (PMM.user_settings.highlight_errors_enabled) {
+    if (PMM.highlight_errors_enabled) {
         JSPLib.utility.setCSSStyle(JSPLib.danbooru.highlight_css, 'highlight');
     }
-    if (PMM.available_modes.has('edit')) {
+    if (PMM.available_mode_keys.has('edit')) {
         $('#validate-tags, button[name=cancel]').off('click.danbooru').on('click.pmm', CloseEditDialog);
     }
     JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
