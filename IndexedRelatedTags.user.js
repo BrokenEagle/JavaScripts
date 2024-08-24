@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedRelatedTags
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.1
+// @version      3.2
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -13,18 +13,18 @@
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/IndexedRelatedTags.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240223-menu/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru validate */
@@ -33,50 +33,7 @@
 
 //Library constants
 
-JSPLib.validate.tag_categories = [0, 1, 3, 4, 5];
-
-validate.validators.tagentryarray = function(value, options) {
-    if (options !== false) {
-        if (!validate.isArray(value)) {
-            return "is not an array";
-        }
-        let categories = (JSPLib.validate.checkOptions(options, 'categories') ? options.categories : JSPLib.validate.tag_categories);
-        for (let i = 0;i < value.length;i++) {
-            if (value[i].length !== 2) {
-                return "must have 2 entries in tag entry [" + i.toString() + "]";
-            }
-            if (!validate.isString(value[i][0])) {
-                return "must be a string [" + i.toString() + "][0]";
-            }
-            if (categories.indexOf(value[i][1]) < 0) {
-                return "must be a valid tag category [" + i.toString() + "][1]";
-            }
-        }
-    }
-};
-
-JSPLib.validate.tagentryarray_constraints = function(categories) {
-    let option = (Array.isArray(categories) ? {categories} : true);
-    return {
-        presence: true,
-        tagentryarray: option
-    };
-};
-
-const LIBRARY_MENU_CSS = `
-#userscript-settings-menu .jsplib-settings-buttons input {
-    color: white;
-}
-#page #userscript-settings-menu .jsplib-settings-buttons .jsplib-commit:hover {
-    background-color: var(--green-5);
-}
-#page #userscript-settings-menu .jsplib-settings-buttons .jsplib-resetall:hover {
-    background-color: var(--red-5);
-}
-#userscript-settings-menu .jsplib-settings-buttons .jsplib-commit:hover,
-#userscript-settings-menu .jsplib-settings-buttons .jsplib-resetall:hover {
-    filter: brightness(1.25);
-}`;
+////NONE
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = null;
@@ -706,198 +663,7 @@ const WIKI_PAGE_CONSTRAINTS = {
 
 //Library functions
 
-JSPLib.debug.debugSyncTimer = function (func, func_name, nameindex) {
-    let context = this;
-    return function(...args) {
-        var timer_name;
-        if (context.debug_console) {
-            timer_name = context._getFuncName(func_name, args, nameindex);
-            context.debugTime(timer_name);
-        }
-        let ret = func(...args);
-        if (context.debug_console) {
-            context.debugTimeEnd(timer_name);
-        }
-        return ret;
-    };
-};
-
-JSPLib.debug.debugAsyncTimer = function (func, func_name, nameindex) {
-    let context = this;
-    return async function(...args) {
-        var timer_name;
-        if (context.debug_console) {
-            timer_name = context._getFuncName(func_name, args, nameindex);
-            context.debugTime(timer_name);
-        }
-        let ret = await func(...args);
-        if (context.debug_console) {
-            context.debugTimeEnd(timer_name);
-        }
-        return ret;
-    };
-};
-
-JSPLib.debug._getFuncName = function (func_name, args, nameindex) {
-    let timer_name = func_name;
-    if (Number.isInteger(nameindex) && args[nameindex] !== undefined) {
-        timer_name += '.' + args[nameindex];
-    } else if (Array.isArray(nameindex)) {
-        for (let i = 0; i < nameindex.length; i++) {
-            let argindex = nameindex[i];
-            if (args[argindex] !== undefined) {
-                timer_name += '.' + args[argindex];
-            } else {
-                break;
-            }
-        }
-    }
-    return timer_name;
-};
-
-JSPLib.debug.addProgramTimers = function (program, {sync_funcs = [], async_funcs = []} = {}) {
-    let context = this;
-    const all_funcs = JSPLib.utility.concat(sync_funcs, async_funcs);
-    all_funcs.forEach((item) => {
-        var func_name, nameindex;
-        if (Array.isArray(item)) {
-            [func_name, ...nameindex] = item;
-            if (nameindex.length <= 1) {
-                nameindex = nameindex[0];
-            }
-        } else {
-            func_name = item;
-            nameindex = null;
-        }
-        const func = program[func_name];
-        if (sync_funcs.includes(item)) {
-            program[func_name] = context.debugSyncTimer(func, func_name, nameindex);
-        } else {
-            program[func_name] = context.debugAsyncTimer(func, func_name, nameindex);
-        }
-    });
-};
-
-JSPLib.debug.addProgramLogs = function (program, func_names) {
-    const context = this;
-    func_names.forEach((name) => {
-        const func = program[name];
-        if (func === undefined) return;
-        func.iteration = 1;
-        program[name] = function (...args) {
-            let self = {};
-            if (context.debug_console) {
-                let iteration = func.iteration++;
-                self = {
-                    debuglog (...args) {
-                        context.debuglog(`${name}[${iteration}] -`, ...args);
-                    },
-                    debugwarn (...args) {
-                        context.debugwarn(`${name}[${iteration}] -`, ...args);
-                    },
-                    debugerror (...args) {
-                        context.debugerror(`${name}[${iteration}] -`, ...args);
-                    },
-                    debuglogLevel (...args) {
-                        context.debuglogLevel(`${name}[${iteration}] -`, ...args);
-                    },
-                    debugwarnLevel (...args) {
-                        context.debugwarnLevel(`${name}[${iteration}] -`, ...args);
-                    },
-                    debugerrorLevel (...args) {
-                        context.debugerrorLevel(`${name}[${iteration}] -`, ...args);
-                    },
-                };
-            } else {
-                ['debuglog', 'debugwarn', 'debugerror', 'debuglogLevel', 'debugwarnLevel', 'debugerrorLevel'].forEach((debugfunc) => {
-                    self[debugfunc] = (() => {});
-                });
-            }
-            return func.apply(this, [self].concat(args));
-        };
-    });
-};
-
-JSPLib.utility.hashMerge = function (...hashes) {
-    if (hashes.length < 2) return;
-    let result = hashes[0];
-    for (let i = 1; i < hashes.length; i++) {
-        for (let k in hashes[i]) {
-            result[k] = hashes[i][k];
-        }
-    }
-    return result;
-};
-
-JSPLib.menu.preloadScript = function (self, program_value, render_menu_func, {run_on_settings = false, default_data = {}, reset_data = {}, initialize_func = null, broadcast_func = null, menu_css = null} = {}) {
-    program_value.user_settings = this.loadUserSettings();
-    for (let key in program_value.user_settings) {
-        Object.defineProperty(program_value, key, {get() {return program_value.user_settings[key];}});
-    }
-    if (this._isSettingMenu()) {
-        this.initializeSettingsMenu(render_menu_func, menu_css);
-        if (!run_on_settings) return false;
-    }
-    if (!this.isScriptEnabled()) {
-        self.debug('logLevel', "Script is disabled on", window.location.hostname, JSPLib.debug.INFO);
-        return false;
-    }
-    JSPLib.utility.hashMerge(program_value, {
-        controller: document.body.dataset.controller,
-        action: document.body.dataset.action,
-    }, JSPLib.utility.dataCopy(default_data), JSPLib.utility.dataCopy(reset_data));
-    if (typeof broadcast_func == 'function') {
-        program_value.channel = JSPLib.utility.createBroadcastChannel(this.program_name, broadcast_func);
-    }
-    if (typeof initialize_func == 'function') {
-        return initialize_func();
-    }
-    return true;
-};
-
-JSPLib.menu.cacheAutocomplete = function () {
-    let $control_data = JSPLib._jQuery(`#${this.program_shortcut}-control-data-name`);
-    $control_data.autocomplete({
-        minLength: 0,
-        delay: 0,
-        source: JSPLib.menu.cacheSource(),
-    }).off('keydown.Autocomplete.tab');
-    let autocomplete = $control_data.data('uiAutocomplete');
-    autocomplete._renderItem = function (menu, item) {
-        return JSPLib._jQuery("<li>").append(JSPLib._jQuery("<div>").text(item.label)).appendTo(menu);
-    };
-};
-
-JSPLib.concurrency.setupMutationReplaceObserver = function (self, $root_node, remove_selector, func, disconnect = true) {
-    if (typeof $root_node === 'string') {
-        $root_node = document.querySelector($root_node);
-    }
-    let [key, name] = this._getSelectorChecks(remove_selector);
-    new MutationObserver((mutations, observer) => {
-        for (let i = 0; i < mutations.length; i++) {
-            let mutation = mutations[i];
-            self.debug('logLevel', "Checking mutation:", mutation.type, mutation.removedNodes, JSPLib.debug.VERBOSE);
-            if (mutation.type === "childList" && mutation.removedNodes.length === 1) {
-                let node = mutation.removedNodes[0];
-                self.debug('logLevel', `Checking removed node: ${key} ${name} "${node[key]}"`, JSPLib.debug.DEBUG);
-                if ((key !== 'classname' && name === node[key]) || (node[key].split(' ').includes(name))) {
-                    self.debug('logLevel', `Validated remove: ${remove_selector} has been modified!`, JSPLib.debug.INFO);
-                    func(mutation);
-                    if (disconnect) {
-                        self.debug('logLevel', "Disconnecting observer.", JSPLib.debug.DEBUG);
-                        observer.disconnect();
-                        return;
-                    }
-                }
-            }
-        }
-    }).observe($root_node, {
-        childList: true,
-    });
-};
-
-JSPLib.debug.addModuleLogs('menu', ['preloadScript']);
-JSPLib.debug.addModuleLogs('concurrency', ['setupMutationReplaceObserver']);
+////NONE
 
 //Validate functions
 
@@ -1015,7 +781,7 @@ FUNC.GetTagsEntryArray = function (wiki_page) {
 };
 
 FUNC.GetChecklistTagsArray = function (tag_name) {
-    let tag_array = JSPLib.storage.getStorageData('irt-checklist-' + tag_name, localStorage, []);
+    let tag_array = JSPLib.storage.getLocalData('irt-checklist-' + tag_name, {default_val: []});
     let check = validate({tag_array}, {tag_array: JSPLib.validate.tagentryarray_constraints([0, 1, 3, 4, 5, DEPRECATED_TAG_CATEGORY, NONEXISTENT_TAG_CATEGORY])});
     if (check) {
         console.warn(`Validation error[${tag_name}]:`, check, tag_array);
@@ -1266,7 +1032,7 @@ FUNC.GetCachedData = async function (self, {name = "", args = [], keyfunc = (() 
     let key = keyfunc(...args);
     self.debuglog("Checking", name, ':', key);
     let cached = await (!IRT.network_only_mode ?
-        JSPLib.storage.checkLocalDB(key, FUNC.ValidateEntry, expires) :
+        JSPLib.storage.checkLocalDB(key, expires) :
         Promise.resolve(null));
     if (!cached) {
         cached = await netfunc(...args);
@@ -1419,7 +1185,7 @@ FUNC.ViewChecklistTag = function () {
             return null;
             })
             .filter((data) => data != null);
-        $('#irt-checklist-frequent-tags textarea').val(JSON.stringify(Object.assign({}, ...tag_data), null, 4));
+        $('#irt-checklist-frequent-tags textarea').val(JSON.stringify(JSPLib.utility.mergeHashes(...tag_data), null, 4));
     } else {
         let tag_name = $('#irt-control-tag-name').val().split(/\s+/)[0];
         if (!tag_name) return;
@@ -1466,7 +1232,7 @@ FUNC.SaveChecklistTag = async function () {
                 for (let tag_name in checklist_data) {
                     let checklist = checklist_data[tag_name];
                     let tag_array = FUNC.CreateTagArray(checklist, tag_data);
-                    JSPLib.storage.setStorageData('irt-checklist-' + tag_name, tag_array, localStorage);
+                    JSPLib.storage.setLocalData('irt-checklist-' + tag_name, tag_array);
                 }
                 JSPLib.notice.notice("Checklists imported.");
             } else {
@@ -1482,9 +1248,9 @@ FUNC.SaveChecklistTag = async function () {
         if (checklist.length > 0) {
             let tag_data = await JSPLib.danbooru.submitRequest('tags', FUNC.GetTagQueryParams(checklist));
             let tag_array = FUNC.CreateTagArray(checklist, tag_data);
-            JSPLib.storage.setStorageData('irt-checklist-' + tag_name, tag_array, localStorage);
+            JSPLib.storage.setLocalData('irt-checklist-' + tag_name, tag_array);
         } else {
-            JSPLib.storage.removeStorageData('irt-checklist-' + tag_name, localStorage);
+            JSPLib.storage.removeLocalData('irt-checklist-' + tag_name);
         }
         JSPLib.notice.notice("Checklist updated.");
     }
@@ -1721,7 +1487,7 @@ FUNC.SetupInitializations = function () {
 };
 
 FUNC.CleanupTasks = function () {
-    JSPLib.storage.pruneEntries(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, PRUNE_EXPIRES);
+    JSPLib.storage.pruneProgramCache(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, PRUNE_EXPIRES);
 };
 
 //Menu functions
@@ -1753,10 +1519,6 @@ FUNC.InitializeProgramValues = function(self) {
         self.debugwarn("No Indexed DB! Exiting...");
         return false;
     }
-    JSPLib.utility.hashMerge(IRT, {
-        userid: Danbooru.CurrentUser.data('id'),
-        max_random_posts: IRT.random_post_batches * IRT.random_posts_per_batch,
-    }, PROGRAM_RESET_KEYS);
     return true;
 };
 
@@ -1829,7 +1591,7 @@ FUNC.Main = function(self) {
         run_on_settings: true,
         default_data: DEFAULT_VALUES,
         initialize_func: FUNC.InitializeProgramValues,
-        menu_css: SETTINGS_MENU_CSS + '\n' + LIBRARY_MENU_CSS,
+        menu_css: SETTINGS_MENU_CSS,
     };
     if (!JSPLib.menu.preloadScript(IRT, FUNC.RenderSettingsMenu, preload)) return;
     FUNC.SetupInitializations();
@@ -1867,6 +1629,8 @@ JSPLib.menu.program_data_regex = PROGRAM_DATA_REGEX;
 JSPLib.menu.program_data_key = FUNC.OptionCacheDataKey;
 JSPLib.menu.settings_config = SETTINGS_CONFIG;
 JSPLib.menu.control_config = CONTROL_CONFIG;
+
+JSPLib.storage.indexedDBValidator = FUNC.ValidateEntry;
 
 //Export JSPLib
 JSPLib.load.exportData(PROGRAM_NAME, IRT, {datalist: ['cached_data'], other_data: {FUNC}});
