@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.7
+// @version      29.8
 // @description  Validates tag add/remove inputs on a post edit or upload, plus several other post validations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -10,23 +10,24 @@
 // @match        *://*.donmai.us/uploads/*
 // @match        *://*.donmai.us/settings
 // @exclude      /^https?://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
-// @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/ValidateTagInput.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/ValidateTagInput.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
+// @require      https://cdn.jsdelivr.net/npm/localforage-getitems@1.4.2/dist/localforage-getitems.js
+// @require      https://cdn.jsdelivr.net/npm/localforage-setitems@1.4.0/dist/localforage-setitems.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240223-menu/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ */
@@ -174,7 +175,6 @@ const MENU_CONFIG = {
 
 const DEFAULT_VALUES = {
     aliastags: [],
-    seenlist: [],
     implicationdict: {},
     implications_promise: null,
     validate_lines: [],
@@ -409,7 +409,7 @@ function GetAllRelations(tag, implicationdict) {
             tmp = tmp.concat(tmp2);
         }
         return tmp;
-    } 
+    }
     return [];
 }
 
@@ -441,66 +441,78 @@ function EnableUI(type) {
 
 //Queries aliases of added tags... can be called multiple times
 async function QueryTagAliases(taglist) {
-    let unseen_tags = JSPLib.utility.arrayDifference(taglist, VTI.seenlist);
-    let [cached_aliases, uncached_aliases] = await JSPLib.storage.batchStorageCheck(unseen_tags, ValidateEntry, RELATION_EXPIRATION, 'ta');
-    this.debug('log', "Cached aliases:", cached_aliases);
-    this.debug('log', "Uncached aliases:", uncached_aliases);
-    if (uncached_aliases.length) {
-        let options = {url_addons: {search: {antecedent_name_space: uncached_aliases.join(' '), status: 'active'}, only: RELATION_FIELDS}, long_format: true};
+    QueryTagAliases.seen_tags ??= [];
+    let unseen_tags = JSPLib.utility.arrayDifference(taglist, QueryTagAliases.seen_tags);
+    if (unseen_tags.length === 0) return;
+    let tag_keys = unseen_tags.map((tag) => 'ta-' + tag);
+    let cached = await JSPLib.storage.batchCheckLocalDB(tag_keys, ValidateEntry, RELATION_EXPIRATION);
+    let found_keys = JSPLib.utility.arrayIntersection(tag_keys, Object.keys(cached));
+    let missing_keys = JSPLib.utility.arrayDifference(tag_keys, Object.keys(cached));
+    this.debug('log', "Cached aliases:", found_keys);
+    this.debug('log', "Uncached aliases:", missing_keys);
+    if (missing_keys.length) {
+        let missing_aliases = missing_keys.map((key) => key.replace(/^ta-/, ""));
+        let options = {url_addons: {search: {antecedent_name_space: missing_aliases.join(' '), status: 'active'}, only: RELATION_FIELDS}, long_format: true};
         let all_aliases = await JSPLib.danbooru.getAllItems('tag_aliases', QUERY_LIMIT, options);
         let found_aliases = [];
+        let mapped_aliases = {};
         all_aliases.forEach((alias) => {
             found_aliases.push(alias.antecedent_name);
-            JSPLib.storage.saveData('ta-' + alias.antecedent_name, {value: [alias.consequent_name], expires: JSPLib.utility.getExpires(RELATION_EXPIRATION)});
+            mapped_aliases['ta-' + alias.antecedent_name] = {value: [alias.consequent_name], expires: JSPLib.utility.getExpires(RELATION_EXPIRATION)};
         });
-        let unfound_aliases = JSPLib.utility.arrayDifference(uncached_aliases, found_aliases);
+        let unfound_aliases = JSPLib.utility.arrayDifference(missing_aliases, found_aliases);
         unfound_aliases.forEach((tag) => {
-            JSPLib.storage.saveData('ta-' + tag, {value: [], expires: JSPLib.utility.getExpires(RELATION_EXPIRATION)});
+            mapped_aliases['ta-' + tag] = {value: [], expires: JSPLib.utility.getExpires(RELATION_EXPIRATION)};
         });
+        JSPLib.storage.batchSaveData(mapped_aliases);
         VTI.aliastags = JSPLib.utility.concat(VTI.aliastags, found_aliases);
         this.debug('log', "Found aliases:", found_aliases);
         this.debug('log', "Unfound aliases:", unfound_aliases);
     }
-    cached_aliases.forEach((tag) => {
-        let data = JSPLib.storage.getIndexedSessionData('ta-' + tag, {value: []}).value;
-        if (data.length) {
-            VTI.aliastags.push(tag);
+    for (let key in cached) {
+        if (cached[key].value.length) {
+            VTI.aliastags.push(key.replace(/^ta-/, ""))
         }
-    });
-    VTI.seenlist = JSPLib.utility.concat(VTI.seenlist, unseen_tags);
+    }
+    QueryTagAliases.seen_tags = JSPLib.utility.concat(QueryTagAliases.seen_tags, unseen_tags);
     this.debug('log', "Aliases:", VTI.aliastags);
 }
 
 //Queries implications of preexisting tags... called once per image
 async function QueryTagImplications(taglist) {
-    let [cached_implications, uncached_implications] = await JSPLib.storage.batchStorageCheck(taglist, ValidateEntry, RELATION_EXPIRATION, 'ti');
-    this.debug('log', "Cached implications:", cached_implications);
-    this.debug('log', "Uncached implications:", uncached_implications);
-    if (uncached_implications.length) {
-        let options = {url_addons: {search: {consequent_name_space: uncached_implications.join(' '), status: 'active'}, only: RELATION_FIELDS}, long_format: true};
+    let tag_keys = taglist.map((tag) => 'ti-' + tag);
+    let cached = await JSPLib.storage.batchCheckLocalDB(tag_keys, ValidateEntry, RELATION_EXPIRATION);
+    let found_keys = JSPLib.utility.arrayIntersection(tag_keys, Object.keys(cached));
+    let missing_keys = JSPLib.utility.arrayDifference(tag_keys, Object.keys(cached));
+    this.debug('log', "Cached implications:", found_keys);
+    this.debug('log', "Uncached implications:", missing_keys);
+    if (missing_keys.length) {
+        let missing_implications = missing_keys.map((key) => key.replace(/^ti-/, ""));
+        let options = {url_addons: {search: {consequent_name_space: missing_implications.join(' '), status: 'active'}, only: RELATION_FIELDS}, long_format: true};
         let all_implications = await JSPLib.danbooru.getAllItems('tag_implications', QUERY_LIMIT, options);
+        let network_data = {};
         all_implications.forEach((implication) => {
             let tag = implication.consequent_name;
-            VTI.implicationdict[tag] = VTI.implicationdict[tag] || [];
-            VTI.implicationdict[tag].push(implication.antecedent_name);
+            network_data[tag] = network_data[tag] || [];
+            network_data[tag].push(implication.antecedent_name);
         });
-        for (let tag in VTI.implicationdict) {
-            JSPLib.storage.saveData('ti-' + tag, {value: VTI.implicationdict[tag], expires: JSPLib.utility.getExpires(RELATION_EXPIRATION)});
+        let mapped_implications = {};
+        for (let tag in network_data) {
+            mapped_implications['ti-' + tag] = {value: network_data[tag], expires: JSPLib.utility.getExpires(RELATION_EXPIRATION)};
         }
-        let found_implications = Object.keys(VTI.implicationdict);
-        let unfound_implications = JSPLib.utility.arrayDifference(uncached_implications, found_implications);
+        let found_implications = Object.keys(network_data);
+        let unfound_implications = JSPLib.utility.arrayDifference(missing_implications, found_implications);
         unfound_implications.forEach((tag) => {
-            JSPLib.storage.saveData('ti-' + tag, {value: [], expires: JSPLib.utility.getExpires(RELATION_EXPIRATION)});
+            mapped_implications['ti-' + tag] = {value: [], expires: JSPLib.utility.getExpires(RELATION_EXPIRATION)};
         });
+        JSPLib.storage.batchSaveData(mapped_implications);
         this.debug('log', "Found implications:", found_implications);
         this.debug('log', "Unfound implications:", unfound_implications);
+        VTI.implicationdict = JSPLib.utility.mergeHashes(VTI.implicationdict, network_data);
     }
-    cached_implications.forEach((tag) => {
-        let data = JSPLib.storage.getIndexedSessionData('ti-' + tag).value;
-        if (data.length) {
-            VTI.implicationdict[tag] = data;
-        }
-    });
+    for (let key in cached) {
+        VTI.implicationdict[key.replace(/^ti-/, "")] = cached[key].value;
+    }
     this.debug('log', "Implications:", VTI.implicationdict);
 }
 
@@ -515,7 +527,7 @@ function PostModeMenu(event) {
         VTI.preedittags = $post.data("tags").split(' ');
         this.debug('log', "Preedit tags:", VTI.preedittags);
         //Wait until the edit box loads before querying implications
-        if (VTI.user_settings.implication_check_enabled) {
+        if (VTI.implication_check_enabled) {
             setTimeout(() => {
                 VTI.implications_promise = QueryTagImplications(VTI.preedittags);
                 VTI.implications_promise.then(() => {
@@ -551,7 +563,7 @@ async function ValidateTags() {
         DisableUI("submit");
         let statuses = await Promise.all([ValidateTagAdds(), ValidateTagRemoves(), ValidateUpload()]);
         if (statuses.every((item) => item)) {
-            if (VTI.user_settings.approval_check_enabled && $('#post_is_pending').prop('checked') && !confirm("Submit upload for approval?")) {
+            if (VTI.approval_check_enabled && $('#post_is_pending').prop('checked') && !confirm("Submit upload for approval?")) {
                 VTI.is_validate_ready = true;
                 EnableUI("submit");
                 return;
@@ -617,7 +629,7 @@ async function ValidateTagAdds() {
     let all_aliases = await JSPLib.danbooru.getAllItems('tags', QUERY_LIMIT, options);
     VTI.checktags = JSPLib.utility.getObjectAttributes(all_aliases, 'name');
     let nonexisttags = JSPLib.utility.arrayDifference(VTI.addedtags, VTI.checktags);
-    if (VTI.user_settings.alias_check_enabled) {
+    if (VTI.alias_check_enabled) {
         await QueryTagAliases(nonexisttags);
         nonexisttags = JSPLib.utility.arrayDifference(nonexisttags, VTI.aliastags);
     }
@@ -636,7 +648,7 @@ async function ValidateTagAdds() {
 }
 
 async function ValidateTagRemoves() {
-    if (!VTI.user_settings.implication_check_enabled || IsSkipValidate()) {
+    if (!VTI.implication_check_enabled || IsSkipValidate()) {
         this.debug('log', "Skipping!");
         $("#warning-bad-removes").hide();
         return true;
@@ -673,7 +685,7 @@ async function ValidateTagRemoves() {
 }
 
 function ValidateUpload() {
-    if (!VTI.user_settings.upload_check_enabled || !VTI.is_upload || IsSkipValidate()) {
+    if (!VTI.upload_check_enabled || !VTI.is_upload || IsSkipValidate()) {
         this.debug('log', "Skipping!");
         $("#warning-bad-upload").hide();
         return true;
@@ -725,22 +737,28 @@ async function ValidateArtist() {
         }
     } else {
         //Validate artists have entry
-        let [, uncached_artists] = await JSPLib.storage.batchStorageCheck(artist_names, ValidateEntry, ARTIST_EXPIRATION, 'are');
-        if (uncached_artists.length === 0) {
+        let artist_keys = artist_names.map((name) => 'are-' + name);
+        let cached = await JSPLib.storage.batchCheckLocalDB(artist_keys, ValidateEntry, ARTIST_EXPIRATION, 'are');
+        let found_keys = JSPLib.utility.arrayIntersection(artist_keys, Object.keys(cached));
+        let missing_keys = JSPLib.utility.arrayDifference(artist_keys, Object.keys(cached));
+        if (missing_keys.length === 0) {
             this.debug('log', "No missing artists. [cache hit]");
             return;
         }
-        let tag_resp = await JSPLib.danbooru.submitRequest('tags', {search: {name_space: uncached_artists.join(' '), has_artist: true}, only: TAG_FIELDS}, {default_val: []});
+        let missing_artists = missing_keys.map((key) => key.replace(/^are-/, ""));
+        let tag_resp = await JSPLib.danbooru.submitRequest('tags', {search: {name_space: missing_artists.join(' '), has_artist: true}, only: TAG_FIELDS}, {default_val: []});
+        let mapped_artists = {};
         tag_resp.forEach((entry) => {
-            JSPLib.storage.saveData('are-' + entry.name, {value: true, expires: JSPLib.utility.getExpires(ARTIST_EXPIRATION)});
+            mapped_artists['are-' + entry.name] = {value: true, expires: JSPLib.utility.getExpires(ARTIST_EXPIRATION)};
         });
+        JSPLib.storage.batchSaveData(mapped_artists);
         let found_artists = JSPLib.utility.getObjectAttributes(tag_resp, 'name');
-        let missing_artists = JSPLib.utility.arrayDifference(uncached_artists, found_artists);
-        if (missing_artists.length === 0) {
+        let unfound_artists = JSPLib.utility.arrayDifference(missing_artists, found_artists);
+        if (unfound_artists.length === 0) {
             this.debug('log', "No missing artists. [cache miss]");
             return;
         }
-        let artist_lines = missing_artists.map((artist) => {
+        let artist_lines = unfound_artists.map((artist) => {
             let new_artist_addons = $.param({artist: {source: source_url, name: artist}});
             return `
             Artist <a href="/artists/show_or_new?name=${artist}">${artist}</a> requires an artist entry.
@@ -767,11 +785,11 @@ function ValidateCopyright() {
 
 function ValidateGeneral() {
     let general_tags_length = $(".general-tag-list .tag-type-0 .wiki-link").length;
-    if (general_tags_length < VTI.user_settings.general_minimum_threshold) {
+    if (general_tags_length < VTI.general_minimum_threshold) {
         VTI.validate_lines.push("Posts must have at least 10 general tags. Please add some more tags. " + HOW_TO_TAG);
-    } else if (VTI.user_settings.general_low_threshold && general_tags_length < VTI.user_settings.general_low_threshold) {
+    } else if (VTI.general_low_threshold && general_tags_length < VTI.general_low_threshold) {
         VTI.validate_lines.push("The post has a low amount of general tags. Consider adding more. " + HOW_TO_TAG);
-    } else if (VTI.user_settings.general_moderate_threshold && general_tags_length < VTI.user_settings.general_moderate_threshold) {
+    } else if (VTI.general_moderate_threshold && general_tags_length < VTI.general_moderate_threshold) {
         VTI.validate_lines.push("The post has a moderate amount of general tags, but could potentially need more. " + HOW_TO_TAG);
     } else {
         this.debug('log', "Has enough tags.");
@@ -781,7 +799,7 @@ function ValidateGeneral() {
 }
 
 function CleanupTasks() {
-    JSPLib.storage.pruneEntries(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, PRUNE_EXPIRES);
+    JSPLib.storage.pruneProgramCache(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, PRUNE_EXPIRES);
 }
 
 //Settings functions
@@ -791,15 +809,15 @@ function InitializeProgramValues() {
         is_upload: (VTI.action === 'show' && (VTI.controller === 'uploads' || VTI.controller === 'upload-media-assets')),
         is_post_show: (VTI.controller === 'posts' && VTI.action === 'show'),
         is_post_index: (VTI.controller === 'posts' && VTI.action === 'index'),
-        was_upload: JSPLib.storage.getStorageData('vti-was-upload', sessionStorage, false),
+        was_upload: JSPLib.storage.getSessionData('vti-was-upload', {default_val: false}),
     });
     Object.assign(VTI, {
         preedittags: (VTI.is_post_show ? $(".image-container").data('tags').split(' ') : [] ),
     });
     if (VTI.is_upload) {
-        JSPLib.storage.setStorageData('vti-was-upload', true, sessionStorage);
+        JSPLib.storage.setSessionData('vti-was-upload', true);
     } else {
-        JSPLib.storage.setStorageData('vti-was-upload', false, sessionStorage);
+        JSPLib.storage.setSessionData('vti-was-upload', false);
     }
     return true;
 }
@@ -869,29 +887,32 @@ function Main() {
     }
     if (VTI.is_post_show) {
         this.debug('log', "Preedit tags:", VTI.preedittags);
-        if (VTI.user_settings.implication_check_enabled) {
-            VTI.implications_promise = QueryTagImplications(VTI.preedittags);
-            VTI.implications_promise.then(() => {
-                this.debug('log', "Adding auto implications");
-                GetAutoImplications();
+        if (VTI.implication_check_enabled) {
+            $(document).on('danbooru:open-post-edit-tab.vti danbooru:open-post-edit-dialog.vti', () => {
+                VTI.implications_promise = QueryTagImplications(VTI.preedittags);
+                VTI.implications_promise.then(() => {
+                    this.debug('log', "Adding auto implications");
+                    GetAutoImplications();
+                });
+                $(document).off('danbooru:open-post-edit-tab.vti danbooru:open-post-edit-dialog.vti');
             });
         }
         let post_id = parseInt(JSPLib.utility.getMeta('post-id'));
-        let seen_post_list = JSPLib.storage.getStorageData('vti-seen-postlist', sessionStorage, []);
-        if (!VTI.was_upload && (!VTI.user_settings.single_session_warning || !seen_post_list.includes(post_id))) {
-            if (VTI.user_settings.artist_check_enabled) {
+        let seen_post_list = JSPLib.storage.getSessionData('vti-seen-postlist', {default_val: []});
+        if (!VTI.was_upload && (!VTI.single_session_warning || !seen_post_list.includes(post_id))) {
+            if (VTI.artist_check_enabled) {
                 ValidateArtist();
             }
-            if (VTI.user_settings.copyright_check_enabled) {
+            if (VTI.copyright_check_enabled) {
                 ValidateCopyright();
             }
-            if (VTI.user_settings.general_check_enabled) {
+            if (VTI.general_check_enabled) {
                 ValidateGeneral();
             }
         } else {
             this.debug('log', "Already pre-validated post.");
         }
-        JSPLib.storage.setStorageData('vti-seen-postlist', JSPLib.utility.arrayUnique(seen_post_list.concat(post_id)), sessionStorage);
+        JSPLib.storage.setSessionData('vti-seen-postlist', JSPLib.utility.arrayUnique(seen_post_list.concat(post_id)));
     } else if (VTI.is_upload) {
         let $pending_input = $('.post_is_pending').detach();
         $("#check-tags").after($pending_input);
