@@ -55,6 +55,7 @@ const PROGRAM_DATA_REGEX = /^(ti|ta|are)-/; //Regex that matches the prefix of a
 const PROGRAM_DATA_KEY = {
     tag_alias: 'ta',
     tag_implication: 'ti',
+    tag_deprecation: 'td',
     artist_entry: 'are'
 };
 
@@ -72,6 +73,11 @@ const SETTINGS_CONFIG = {
         reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Turns off querying implications for tag remove validation."
+    },
+    deprecation_check_enabled: {
+        reset: true,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Turns off querying tags for deprecations."
     },
     upload_check_enabled: {
         reset: false,
@@ -94,7 +100,7 @@ const SETTINGS_CONFIG = {
         hint: 'Checks for the existence of any copyright tag or the <a href="/wiki_pages/show_or_new?title=copyright_request">copyright request</a> tag.'
     },
     general_check_enabled: {
-        reset: true,
+        reset: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Performs a general tag count with up to three warning thresholds."
     },
@@ -174,6 +180,7 @@ const MENU_CONFIG = {
 // Default values
 
 const DEFAULT_VALUES = {
+    deprecated_tags: [],
     aliastags: [],
     implicationdict: {},
     implications_promise: null,
@@ -212,6 +219,7 @@ const INPUT_VALIDATOR = `
 const WARNING_MESSAGES = `
 <div id="warning-bad-upload" class="notice notice-error" style="padding:0.5em;display:none"></div>
 <div id="warning-new-tags" class="notice notice-error" style="padding:0.5em;display:none"></div>
+<div id="warning-deprecated-tags" class="notice notice-error" style="padding:0.5em;display:none"></div>
 <div id="warning-bad-removes" class="notice notice-info" style="padding:0.5em;display:none"></div>`;
 
 const HOW_TO_TAG = `Read <a href="/wiki_pages/howto:tag">howto:tag</a> for how to tag.`;
@@ -277,6 +285,7 @@ const TIMER_POLL_INTERVAL = 100;
 //Expiration time is one month
 const PRUNE_EXPIRES = JSPLib.utility.one_day;
 const RELATION_EXPIRATION = JSPLib.utility.one_month;
+const TAG_EXPIRATION = JSPLib.utility.one_year;
 const ARTIST_EXPIRATION = JSPLib.utility.one_month;
 
 //Tag regexes
@@ -293,7 +302,7 @@ const QUERY_LIMIT = 100;
 
 //Other constants
 
-const TAG_FIELDS = "id,name";
+const TAG_FIELDS = "id,name,is_deprecated";
 const RELATION_FIELDS = "id,antecedent_name,consequent_name";
 
 //Validate constants
@@ -516,6 +525,44 @@ async function QueryTagImplications(taglist) {
     this.debug('log', "Implications:", VTI.implicationdict);
 }
 
+//Queries deprecations of all tags... can be called multiple times
+async function QueryTagDeprecations(taglist) {
+    QueryTagDeprecations.seen_tags ??= [];
+    let unseen_tags = JSPLib.utility.arrayDifference(taglist, QueryTagDeprecations.seen_tags);
+    if (unseen_tags.length === 0) return;
+    let tag_keys = unseen_tags.map((tag) => 'td-' + tag);
+    let cached = await JSPLib.storage.batchCheckLocalDB(tag_keys, ValidateEntry, TAG_EXPIRATION);
+    let found_keys = JSPLib.utility.arrayIntersection(tag_keys, Object.keys(cached));
+    let missing_keys = JSPLib.utility.arrayDifference(tag_keys, Object.keys(cached));
+    this.debug('log', "Cached tags:", found_keys);
+    this.debug('log', "Uncached tags:", missing_keys);
+    if (missing_keys.length) {
+        let missing_tags = missing_keys.map((key) => key.replace(/^td-/, ""));
+        let options = {url_addons: {search: {name_space: missing_tags.join(' '), hide_empty: 'yes'}, only: TAG_FIELDS}, long_format: true};
+        let all_tags = await JSPLib.danbooru.getAllItems('tags', QUERY_LIMIT, options);
+        let found_deprecations = [];
+        let mapped_deprecations = {};
+        all_tags.forEach((tag) => {
+            if (tag.is_deprecated) {
+                mapped_deprecations['td-' + tag.name] = {value: tag.is_deprecated, expires: JSPLib.utility.getExpires(TAG_EXPIRATION)};
+                found_deprecations.push(tag.name);
+            } else {
+                mapped_deprecations['td-' + tag.name] = {value: tag.is_deprecated, expires: JSPLib.utility.getExpires(JSPLib.utility.one_week)};
+            }
+        });
+        JSPLib.storage.batchSaveData(mapped_deprecations);
+        VTI.deprecated_tags = JSPLib.utility.concat(VTI.deprecated_tags, found_deprecations);
+        this.debug('log', "Found tags:", found_deprecations);
+    }
+    for (let key in cached) {
+        if (cached[key].value) {
+            VTI.deprecated_tags.push(key.replace(/^td-/, ""))
+        }
+    }
+    QueryTagDeprecations.seen_tags = JSPLib.utility.concat(QueryTagDeprecations.seen_tags, unseen_tags);
+    this.debug('log', "Deprecated tags:", VTI.deprecated_tags);
+}
+
 //Event handlers
 
 function PostModeMenu(event) {
@@ -545,10 +592,11 @@ async function CheckTags() {
     if (VTI.is_check_ready) {
         VTI.is_check_ready = false;
         DisableUI("check");
-        let statuses = (await Promise.all([ValidateTagAdds(), ValidateTagRemoves(), ValidateUpload()]));
+        let statuses = await Promise.all([ValidateTagAdds(), ValidateTagRemoves(), ValidateTagDeprecations(), ValidateUpload()]);
         if (statuses.every((item) => item)) {
             JSPLib.notice.notice("Tags good to submit!");
         } else {
+
             JSPLib.notice.error("Tag validation failed!");
         }
         EnableUI("check");
@@ -561,7 +609,7 @@ async function ValidateTags() {
     if (VTI.is_validate_ready) {
         VTI.is_validate_ready = false;
         DisableUI("submit");
-        let statuses = await Promise.all([ValidateTagAdds(), ValidateTagRemoves(), ValidateUpload()]);
+        let statuses = await Promise.all([ValidateTagAdds(), ValidateTagRemoves(), ValidateTagDeprecations(), ValidateUpload()]);
         if (statuses.every((item) => item)) {
             if (VTI.approval_check_enabled && $('#post_is_pending').prop('checked') && !confirm("Submit upload for approval?")) {
                 VTI.is_validate_ready = true;
@@ -681,6 +729,29 @@ async function ValidateTagRemoves() {
     }
     this.debug('log', "Free and clear to submit!");
     $("#warning-bad-removes").hide();
+    return true;
+}
+
+async function ValidateTagDeprecations() {
+    if (!VTI.deprecation_check_enabled || IsSkipValidate()) {
+        this.debug('log', "Skipping!");
+        $("#warning-bad-removes").hide();
+        return true;
+    }
+    let postedit_tags = GetCurrentTags();
+    let current_tags = JSPLib.utility.filterRegex(postedit_tags, NEGATIVE_REGEX, true);
+    this.debug('log', "Current tags:", current_tags);
+    await QueryTagDeprecations(current_tags);
+    let deprecated_tags = JSPLib.utility.arrayIntersection(current_tags, VTI.deprecated_tags);
+    if (deprecated_tags.length > 0) {
+        this.debug('log', "Deprecated tags:", deprecated_tags);
+        $("#validation-input").show();
+        $("#warning-deprecated-tags").show();
+        $("#warning-deprecated-tags")[0].innerHTML = '<strong>Warning</strong>: The following tags are deprecated:  ' + deprecated_tags.join(', ');
+        return false;
+    }
+    this.debug('log', "Free and clear to submit!");
+    $("#warning-deprecated-tags").hide();
     return true;
 }
 
@@ -929,23 +1000,27 @@ function Main() {
 
 [
     Main, ValidateEntry, PostModeMenu, ValidateTags, GetAutoImplications,
-    QueryTagAliases, QueryTagImplications, ValidateTagAdds, ValidateTagRemoves, ValidateUpload,
+    QueryTagAliases, QueryTagImplications, QueryTagDeprecations,
+    ValidateTagAdds, ValidateTagRemoves, ValidateTagDeprecations, ValidateUpload,
     ValidateArtist, ValidateCopyright, ValidateGeneral,
 ] = JSPLib.debug.addFunctionLogs([
     Main, ValidateEntry, PostModeMenu, ValidateTags, GetAutoImplications,
-    QueryTagAliases, QueryTagImplications, ValidateTagAdds, ValidateTagRemoves, ValidateUpload,
+    QueryTagAliases, QueryTagImplications, QueryTagDeprecations,
+    ValidateTagAdds, ValidateTagRemoves, ValidateTagDeprecations, ValidateUpload,
     ValidateArtist, ValidateCopyright, ValidateGeneral,
 ]);
 
 [
     RenderSettingsMenu,
-    QueryTagAliases, QueryTagImplications, ValidateTagAdds, ValidateTagRemoves, ValidateArtist,
+    QueryTagAliases, QueryTagImplications, QueryTagDeprecations,
+    ValidateTagAdds, ValidateTagRemoves, ValidateArtist,
     ValidateTags, CheckTags,
 ] = JSPLib.debug.addFunctionTimers([
     //Sync
     RenderSettingsMenu,
     //Async
-    QueryTagAliases, QueryTagImplications, ValidateTagAdds, ValidateTagRemoves, ValidateArtist,
+    QueryTagAliases, QueryTagImplications, QueryTagDeprecations,
+    ValidateTagAdds, ValidateTagRemoves, ValidateArtist,
     ValidateTags, CheckTags,
 ]);
 
