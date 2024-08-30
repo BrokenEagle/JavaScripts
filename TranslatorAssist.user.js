@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.2
+// @version      6.3
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -12,16 +12,16 @@
 // @run-at       document-idle
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/TranslatorAssist.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/TranslatorAssist.user.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240223-menu/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/menu.js
 // @connect      validator.nu
 // ==/UserScript==
 
@@ -1325,19 +1325,19 @@ function ShowStyleErrors(style_errors) {
 // Render functions
 
 function RenderSideMenu() {
-    let shadow_section = (TA.user_settings.text_shadow_enabled ?
+    let shadow_section = (TA.text_shadow_enabled ?
         JSPLib.utility.regexReplace(TEXT_SHADOW_SUBSECTION, {
             SHADOWCSS: RenderSectionTextInputs('text-shadow', TEXT_SHADOW_ATTRIBS, {}),
             SHADOWGRID: RenderTextShadowGrid(),
             SHADOWOPTIONS: RenderSectionCheckboxes('text-shadow', ['append'], {})
         }) : "");
-    let ruby_section = (TA.user_settings.ruby_enabled ? RUBY_SUBSECTION : "");
-    let constructs_section = (TA.user_settings.text_shadow_enabled || TA.user_settings.ruby_enabled ? shadow_section + ruby_section + '<hr>' : "");
-    let embedded_section = (TA.user_settings.embedded_enabled ?
+    let ruby_section = (TA.ruby_enabled ? RUBY_SUBSECTION : "");
+    let constructs_section = (TA.text_shadow_enabled || TA.ruby_enabled ? shadow_section + ruby_section + '<hr>' : "");
+    let embedded_section = (TA.embedded_enabled ?
         JSPLib.utility.regexReplace(EMBEDDED_SECTION, {
-            EMBEDDEDCSS: RenderSectionTextInputs('embedded-style', TA.user_settings.available_embedded_styles, STYLE_CONFIG),
+            EMBEDDEDCSS: RenderSectionTextInputs('embedded-style', TA.available_embedded_styles, STYLE_CONFIG),
         }) : "");
-    let codes_section = (TA.user_settings.codes_enabled ?
+    let codes_section = (TA.codes_enabled ?
         JSPLib.utility.regexReplace(CODES_SUBSECTION, {
             HTMLCHARS: RenderCharButtons(HTML_CHARS),
             SPECIALCHARS: RenderCharButtons(SPECIAL_CHARS),
@@ -1346,7 +1346,7 @@ function RenderSideMenu() {
         }) : "");
     let html = JSPLib.utility.regexReplace(SIDE_MENU, {
         BLOCKHTML: RenderHTMLBlockButtons(),
-        BLOCKCSS: RenderSectionTextInputs('block-style', TA.user_settings.available_css_styles, STYLE_CONFIG),
+        BLOCKCSS: RenderSectionTextInputs('block-style', TA.available_css_styles, STYLE_CONFIG),
         CONSTRUCTSTAB: constructs_section,
         EMBEDDEDTAB: embedded_section,
         CONTROLSTAB: CONTROLS_SECTION,
@@ -1357,16 +1357,16 @@ function RenderSideMenu() {
 }
 
 function RenderRubyDialog() {
-    let available_inner_styles = JSPLib.utility.arrayIntersection(INNER_RUBY_STYLES, TA.user_settings.available_ruby_styles);
+    let available_inner_styles = JSPLib.utility.arrayIntersection(INNER_RUBY_STYLES, TA.available_ruby_styles);
     return JSPLib.utility.regexReplace(RUBY_DIALOG, {
-        RUBYSTYLEOVERALL: RenderSectionTextInputs('ruby-overall-style', TA.user_settings.available_ruby_styles, STYLE_CONFIG),
+        RUBYSTYLEOVERALL: RenderSectionTextInputs('ruby-overall-style', TA.available_ruby_styles, STYLE_CONFIG),
         RUBYSTYLETOP: RenderSectionTextInputs('ruby-top-style', available_inner_styles, STYLE_CONFIG),
         RUBYSTYLEBOTTOM: RenderSectionTextInputs('ruby-bottom-style', available_inner_styles, STYLE_CONFIG),
     });
 }
 
 function RenderLoadDialog(panel) {
-    let sessions = JSPLib.storage.getStorageData('ta-load-session-' + panel, localStorage, []);
+    let sessions = JSPLib.storage.getLocalData('ta-load-session-' + panel, {default_val: []});
     return JSPLib.utility.regexReplace(LOAD_DIALOG, {
         LOADNAME: panel,
         LOADSAVED: RenderLoadSessions(panel, sessions),
@@ -1385,7 +1385,7 @@ function RenderLoadSessions(panel, sessions) {
         }
     });
     if (updated_list.length !== sessions.length) {
-        JSPLib.storage.setStorageData('ta-load-session-' + panel, updated_list, localStorage);
+        JSPLib.storage.setLocalData('ta-load-session-' + panel, updated_list);
     }
     return (html === "" ? NO_SESSIONS : `<ul>${html}</ul>`);
 }
@@ -1399,7 +1399,7 @@ function RenderLoadItem(item) {
 function RenderHTMLBlockButtons() {
     let block_html = "";
     HTML_TAGS.forEach((tag) => {
-        if (!TA.user_settings.available_html_tags.includes(tag)) return;
+        if (!TA.available_html_tags.includes(tag)) return;
         let button_class = (HTML_STYLE_TAGS.includes(tag) ? 'ta-html-style-tag' : 'ta-html-only-tag');
         block_html += `<button class="ta-apply-block-element ${button_class}" value="${tag}">${tag}</button>`;
     });
@@ -1519,9 +1519,11 @@ function RenderUserLink(user) {
 //Network functions
 
 function QueryNoteVersions(search_options, query_options) {
-    let send_options = {search: {post_id: TA.post_id}, limit: 1};
-    Object.assign(send_options.search, search_options);
-    Object.assign(send_options, query_options);
+    let send_options = JSPLib.utility.mergeHashes(
+        {search: {post_id: TA.post_id}, limit: 1},
+        {search: search_options},
+        query_options
+        );
     return JSPLib.danbooru.submitRequest('note_versions', send_options);
 }
 
@@ -1539,10 +1541,10 @@ function QueryNewNotations() {
 
 function QueryLastNotation() {
     let query_options = {only: 'id,updated_at,updater[id,name,level,level_string]'};
-    if (TA.user_settings.last_noter_cache_time > 0) {
-        query_options.expires_in = TA.user_settings.last_noter_cache_time + 'min';
+    if (TA.last_noter_cache_time > 0) {
+        query_options.expires_in = TA.last_noter_cache_time + 'min';
     }
-    let search_options = (TA.user_settings.filter_last_noter_enabled ? {updater_id_not_eq: TA.user_id} : {});
+    let search_options = (TA.filter_last_noter_enabled ? {updater_id_not_eq: TA.user_id} : {});
     QueryNoteVersions(search_options, query_options).then((data) => {
         JSPLib.debug.debuglog("Last note record:", data);
         TA.last_noter_queried = true;
@@ -1620,11 +1622,11 @@ function BuildHTMLTag(tag_name, attrib_dict, style_dict, blank_style = false) {
 function ParseTagAttributes(html_tag) {
     let attrib_items = JSPLib.utility.findAll(html_tag, /\w+="[^"]+"/g);
     let attrib_pairs = attrib_items.map((attrib) => JSPLib.utility.findAll(attrib, /(\w+)="([^"]+)"/g).filter((_item, i) => (i % 3)));
-    let attrib_dict = Object.assign({}, ...attrib_pairs.map((attrib_pair) => ({[attrib_pair[0]]: attrib_pair[1]})));
+    let attrib_dict = JSPLib.utility.mergeHashes(...attrib_pairs.map((attrib_pair) => ({[attrib_pair[0]]: attrib_pair[1]})));
     var style_dict;
     if ('style' in attrib_dict) {
         let style_pairs = attrib_dict.style.split(';').filter((style) => (!style.match(/^\s*$/))).map((style) => (style.split(':').map((str) => str.trim())));
-        style_dict = Object.assign({}, ...style_pairs.map((style) => ({[style[0]]: style[1]})));
+        style_dict = JSPLib.utility.mergeHashes(...style_pairs.map((style) => ({[style[0]]: style[1]})));
     } else {
         style_dict = {};
     }
@@ -1718,21 +1720,28 @@ function GetHTMLTag(html_text, cursor) {
     html_tag.inner_html = html_text.slice(html_tag.open_tag_end, html_tag.close_tag_start);
     html_tag.full_tag = html_text.slice(html_tag.open_tag_start, html_tag.close_tag_end);
     html_tag.tag_name = html_tag.open_tag.match(/<(\w+)/)[1];
-    Object.assign(html_tag, ParseTagAttributes(html_tag.open_tag));
+    let {style_dict, attrib_dict} = ParseTagAttributes(html_tag.open_tag);
+    html_tag.style_dict = style_dict;
+    html_tag.attrib_dict = attrib_dict;
     JSPLib.debug.debuglog("GetHTMLTag", html_tag);
     return html_tag;
 }
 
 function GetEmbeddedTag(html_text) {
     let html_tags = TokenizeHTML(html_text);
-    let embedded_tag = html_tags.find((html_tag) => {
+    let embedded_tag = null;
+    for (let i = 0; i < html_tags.length; i++) {
+        let html_tag = html_tags[i];
         html_tag.open_tag = html_text.slice(html_tag.open_tag_start, html_tag.open_tag_end);
-        if (!html_tag.open_tag.match(/ class="[^"]+"/)) return;
-        Object.assign(html_tag, ParseTagAttributes(html_tag.open_tag));
-        if (html_tag.attrib_dict["class"].split(' ').includes('note-box-attributes')) return html_tag;
-    });
+        if (!html_tag.open_tag.match(/ class="[^"]+"/)) continue;
+        html_tag = JSPLib.utility.mergeHashes(html_tag, ParseTagAttributes(html_tag.open_tag));
+        if (html_tag.attrib_dict["class"].split(' ').includes('note-box-attributes')) {
+            embedded_tag = html_tag;
+            break;
+        }
+    }
     if (!embedded_tag) return;
-    embedded_tag.close_tag = html_text.slice(embedded_tag.close_tag_start, embedded_tag.open_tag_end);
+    embedded_tag.close_tag = html_text.slice(embedded_tag.close_tag_start, embedded_tag.close_tag_end);
     embedded_tag.inner_html = html_text.slice(embedded_tag.open_tag_end, embedded_tag.close_tag_start);
     embedded_tag.full_tag = html_text.slice(embedded_tag.open_tag_start, embedded_tag.close_tag_end);
     embedded_tag.tag_name = embedded_tag.open_tag.match(/<(\w+)/)[1];
@@ -1750,7 +1759,7 @@ function GetRubyTag(html_text, cursor) {
         html_tag.close_tag = html_text.slice(html_tag.close_tag_start, html_tag.open_tag_end);
         html_tag.inner_html = html_text.slice(html_tag.open_tag_end, html_tag.close_tag_start);
         html_tag.full_tag = html_text.slice(html_tag.open_tag_start, html_tag.close_tag_end);
-        Object.assign(html_tag, ParseTagAttributes(html_tag.open_tag));
+        html_tag = JSPLib.utility.mergeHashes(html_tag, ParseTagAttributes(html_tag.open_tag));
         return html_tag;
     });
     if (!overall_ruby_tag) return;
@@ -1768,7 +1777,7 @@ function GetRubyTag(html_text, cursor) {
         next_inner_tag.close_tag = html_text.slice(next_inner_tag.close_tag_start, next_inner_tag.open_tag_end);
         next_inner_tag.inner_html = html_text.slice(next_inner_tag.open_tag_end, next_inner_tag.close_tag_start);
         next_inner_tag.full_tag = html_text.slice(next_inner_tag.open_tag_start, next_inner_tag.close_tag_end);
-        Object.assign(next_inner_tag, ParseTagAttributes(next_inner_tag.open_tag));
+        next_inner_tag = JSPLib.utility.mergeHashes(next_inner_tag, ParseTagAttributes(next_inner_tag.open_tag));
         base_inner_tags.push(next_inner_tag);
     }
     let top_ruby_tags = base_inner_tags.filter((html_tag) => (html_tag.tag_name === 'rt'));
@@ -1790,28 +1799,28 @@ function ValidateCSS(input_html) {
             };
             let [attr, value, ...misc] = styles[i].split(':');
             if (misc.length) {
-                error_array.push(Object.assign({message: "Extra colons found."}, error));
+                error_array.push(JSPLib.utility.mergeHashes({message: "Extra colons found."}, error));
                 continue;
             }
             attr = attr.trim();
             if (value === undefined) {
                 if (attr.length === 0) {
                     error.excerpt += ';';
-                    error_array.push(Object.assign({message: "Extra-semi colon found."}, error));
+                    error_array.push(JSPLib.utility.mergeHashes({message: "Extra-semi colon found."}, error));
                 } else {
-                    error_array.push(Object.assign({message: "No colons found."}, error));
+                    error_array.push(JSPLib.utility.mergeHashes({message: "No colons found."}, error));
                 }
                 continue;
             }
             if (!valid_styles.includes(attr)) {
-                error_array.push(Object.assign({message: "Invalid style attribute: " + attr}, error));
+                error_array.push(JSPLib.utility.mergeHashes({message: "Invalid style attribute: " + attr}, error));
                 continue;
             }
             let attr_key = JSPLib.utility.camelCase(attr);
             value = value.replace(/\s*!important\s*$/, "").trim();
             $validator[0].style[attr_key] = value;
             if ($validator[0].style[attr_key] === "") {
-                error_array.push(Object.assign({message: "Invalid style value: " + value}, error));
+                error_array.push(JSPLib.utility.mergeHashes({message: "Invalid style value: " + value}, error));
             }
         }
     }
@@ -1939,12 +1948,12 @@ function SetInputs(key, load_data) {
 
 function SaveMenuState() {
     for (let key in INPUT_SECTIONS) {
-        TA.save_data = Object.assign(TA.save_data, GetInputs(key));
+        TA.save_data = JSPLib.utility.mergeHashes(TA.save_data, GetInputs(key));
     }
-    JSPLib.storage.setStorageData('ta-saved-inputs', TA.save_data, localStorage);
-    JSPLib.storage.setStorageData('ta-mode', TA.mode, localStorage);
+    JSPLib.storage.setLocalData('ta-saved-inputs', TA.save_data);
+    JSPLib.storage.setLocalData('ta-mode', TA.mode);
     let {left, top, fontSize} = $('#ta-side-menu').get(0).style;
-    JSPLib.storage.setStorageData('ta-position', {left, top, fontSize}, localStorage);
+    JSPLib.storage.setLocalData('ta-position', {left, top, fontSize});
 }
 
 function ClearInputs(selector) {
@@ -2152,7 +2161,7 @@ function ParseDirectionStyles(style_dict) {
 
 function BuildTextShadowStyle(append, style_dict) {
     let errors = [];
-    let attribs = Object.assign(...$('#ta-text-shadow-attribs input').map((i, entry) => ({[entry.dataset.name.trim()]: entry.value})));
+    let attribs = JSPLib.utility.mergeHashes(...$('#ta-text-shadow-attribs input').map((i, entry) => ({[entry.dataset.name.trim()]: entry.value})));
     let initial_shadow = (append && style_dict['text-shadow']) || "";
     if (attribs.size === "") {
         return initial_shadow;
@@ -2269,7 +2278,7 @@ function OpenSideMenu() {
 
 function CloseSideMenu() {
     ToggleSideMenu(false);
-    if (!TA.close_notice_shown && TA.user_settings.close_notice_enabled) {
+    if (!TA.close_notice_shown && TA.close_notice_enabled) {
         JSPLib.notice.notice("The Translator Assist menu can be reopened by clicking <u>Translator Assist</u> in the <b>Post options</b> menu (Alt+T).");
         TA.close_notice_shown = true;
     } else {
@@ -2319,20 +2328,20 @@ function ToggleSideNotice() {
         InitializeSideMenu();
     }
     if(!$("body").hasClass("mode-translation")) {
-        if (!TA.last_noter_queried && TA.user_settings.query_last_noter_enabled) {
+        if (!TA.last_noter_queried && TA.query_last_noter_enabled) {
             QueryLastNotation();
         } else {
             ToggleSideMenu(true, false);
         }
-        if (TA.user_settings.new_noter_check_enabled) {
-            let interval_period = TA.user_settings.new_noter_check_interval * JSPLib.utility.one_minute;
+        if (TA.new_noter_check_enabled) {
+            let interval_period = TA.new_noter_check_interval * JSPLib.utility.one_minute;
             TA.poll_timer = setInterval(() => {PollForNewNotations();}, interval_period);
         }
     } else {
         if (TA.side_menu_open) {
             ToggleSideMenu(false, false);
         }
-        if (TA.user_settings.new_noter_check_enabled) {
+        if (TA.new_noter_check_enabled) {
             clearInterval(TA.poll_timer);
         }
     }
@@ -2957,9 +2966,9 @@ function SaveSession() {
         if (!name) return;
         name = JSPLib.utility.maxLengthString(name, 50);
         key = JSPLib.utility.getUniqueID();
-        let session_list = JSPLib.storage.getStorageData('ta-load-session-' + panel, localStorage, []);
+        let session_list = JSPLib.storage.getLocalData('ta-load-session-' + panel, {default_val: []});
         session_list.push({key, name});
-        JSPLib.storage.setStorageData('ta-load-session-' + panel, session_list, localStorage);
+        JSPLib.storage.setLocalData('ta-load-session-' + panel, session_list);
         isnew = true;
     } else {
         ({key, name} = checked_sessions.find('a')[0].dataset);
@@ -2968,9 +2977,9 @@ function SaveSession() {
     let section_keys = LOAD_PANEL_KEYS[panel];
     let save_inputs = {};
     section_keys.forEach((key) => {
-        save_inputs = Object.assign(save_inputs, GetInputs(key));
+        save_inputs = JSPLib.utility.mergeHashes(save_inputs, GetInputs(key));
     });
-    JSPLib.storage.setStorageData('ta-session-' + key, save_inputs, localStorage);
+    JSPLib.storage.setLocalData('ta-session-' + key, save_inputs);
     if (isnew) {
         let $load_item = $(RenderLoadItem({key, name}));
         $load_item.find('a').on(PROGRAM_CLICK, LoadSessionInput);
@@ -3000,10 +3009,10 @@ function RenameSession() {
     let key = Number($link[0].dataset.key);
     let name = prompt("Enter a name for this session:");
     if (!name) return;
-    let session_list = JSPLib.storage.getStorageData('ta-load-session-' + panel, localStorage, []);
+    let session_list = JSPLib.storage.getLocalData('ta-load-session-' + panel, {default_val: []});
     let rename_item = session_list.find((item) => item.key === key);
     rename_item.name = name;
-    JSPLib.storage.setStorageData('ta-load-session-' + panel, session_list, localStorage);
+    JSPLib.storage.setLocalData('ta-load-session-' + panel, session_list);
     $link.attr('data-name', name);
     $link.text(name);
     JSPLib.notice.notice('Session renamed.');
@@ -3019,15 +3028,15 @@ function DeleteSessions() {
         let item = $link.data();
         if (input.checked) {
             $link.closest('li').addClass('ta-delete');
-            JSPLib.storage.removeStorageData('ta-session-' + item.key, localStorage);
+            JSPLib.storage.removeLocalData('ta-session-' + item.key);
         } else {
             update_items.push(item);
         }
     });
-    let session_list = JSPLib.storage.getStorageData('ta-load-session-' + panel, localStorage, []);
+    let session_list = JSPLib.storage.getLocalData('ta-load-session-' + panel, {default_val: []});
     if (update_items.length !== session_list.length) {
         $dialog.find('.ta-delete').remove();
-        JSPLib.storage.setStorageData('ta-load-session-' + panel, update_items, localStorage);
+        JSPLib.storage.setLocalData('ta-load-session-' + panel, update_items);
         JSPLib.notice.notice('Sessions deleted.');
         if (update_items.length === 0) {
             TA.$load_dialog[panel].find('.ta-load-sessions').html(NO_SESSIONS);
@@ -3040,13 +3049,13 @@ function DeleteSessions() {
 function LoadSessionInput(event) {
     let panel = TA.active_panel;
     let {key} = $(event.currentTarget).data();
-    let session_list = JSPLib.storage.getStorageData('ta-load-session-' + panel, localStorage);
+    let session_list = JSPLib.storage.getLocalData('ta-load-session-' + panel);
     let session_item = session_list.find((item) => item.key === key);
-    let load_inputs = JSPLib.storage.getStorageData('ta-session-' + key, localStorage);
+    let load_inputs = JSPLib.storage.getLocalData('ta-session-' + key);
     if (!load_inputs) {
         JSPLib.debug.debugerror('Missing session:', panel, key, session_item);
         session_list = session_list.filter((item) => item.key !== key);
-        JSPLib.storage.setStorageData('ta-load-session-' + panel, session_list, localStorage);
+        JSPLib.storage.setLocalData('ta-load-session-' + panel, session_list);
         $(event.currentTarget).closest('li').remove();
         return;
     }
@@ -3079,13 +3088,12 @@ function LoadControls(event) {
 // Last noted functions
 
 function CleanupLastNoted() {
-    console.log('CleanupLastNoted');
     if (JSPLib.concurrency.checkTimeout('ta-cleanup-last-noted-timeout', CLEANUP_LAST_NOTED)) {
         let last_noted_keys = Object.keys(localStorage).filter((key) => key.startsWith('ta-post-seen-'));
         last_noted_keys.forEach((key) => {
-            let expires = Number(JSPLib.storage.getStorageData(key, localStorage));
+            let expires = Number(JSPLib.storage.getLocalData(key));
             if (!JSPLib.utility.validateExpires(expires)) {
-                JSPLib.storage.removeStorageData(key, localStorage);
+                JSPLib.storage.removeLocalData(key);
             }
         });
         JSPLib.concurrency.setRecheckTimeout('ta-cleanup-last-noted-timeout', CLEANUP_LAST_NOTED);
@@ -3093,16 +3101,16 @@ function CleanupLastNoted() {
 }
 
 function SetLastNoted() {
-    JSPLib.storage.setStorageData(TA.seen_key, Date.now() + TA.last_noted_cutoff, localStorage);
+    JSPLib.storage.setLocalData(TA.seen_key, Date.now() + TA.last_noted_cutoff_mins);
 }
 
 function CheckLastNoted() {
-    if ((Date.now() - TA.last_noted) < TA.last_noted_cutoff) {
-        let seen_expires = JSPLib.storage.getStorageData(TA.seen_key, localStorage);
+    if ((Date.now() - TA.last_noted) < TA.last_noted_cutoff_mins) {
+        let seen_expires = JSPLib.storage.getLocalData(TA.seen_key);
         if (!JSPLib.utility.validateExpires(seen_expires)) {
             alert("Post was noted: " + JSPLib.utility.timeAgo(TA.last_noted));
         }
-        JSPLib.storage.setStorageData(TA.seen_key, TA.last_noted + TA.last_noted_cutoff, localStorage);
+        JSPLib.storage.setLocalData(TA.seen_key, TA.last_noted + TA.last_noted_cutoff_mins);
     }
 }
 
@@ -3159,21 +3167,21 @@ function ToggleSideMenu(open_menu, toggle_link = true) {
 }
 
 function InitializeSideMenu() {
-    TA.save_data = JSPLib.storage.getStorageData('ta-saved-inputs', localStorage, {});
+    TA.save_data = JSPLib.storage.getLocalData('ta-saved-inputs', {default_val: {}});
     $('#page').append(RenderSideMenu());
-    if (TA.user_settings.text_shadow_enabled || TA.user_settings.ruby_enabled) {
+    if (TA.text_shadow_enabled || TA.ruby_enabled) {
         $('#ta-side-menu-tabs [data-value=constructs]').show();
     }
-    if (TA.user_settings.embedded_enabled) {
+    if (TA.embedded_enabled) {
         $('#ta-side-menu-tabs [data-value=embedded]').show();
         if (TA.has_embedded) {
             $('#ta-side-embedded-sections').show();
         }
     }
-    if (TA.user_settings.controls_enabled) {
+    if (TA.controls_enabled) {
         $('#ta-side-menu-tabs [data-value=controls]').show();
     }
-    if (TA.user_settings.codes_enabled) {
+    if (TA.codes_enabled) {
         $('#ta-side-menu-tabs [data-value=codes]').show();
     }
     $('#post-option-add-note').after(MENU_OPTION);
@@ -3216,7 +3224,7 @@ function InitializeSideMenu() {
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+t', KeyboardMenuToggle);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+r', ResetSideMenu);
     $(document).on('visibilitychange.ta', CheckMissedLastNoterPolls);
-    let positions = JSPLib.storage.getStorageData('ta-position', localStorage, {});
+    let positions = JSPLib.storage.getLocalData('ta-position', {default_val: {}});
     TA.$side_menu = $('#ta-side-menu');
     for (let key in positions) {
         if (positions[key]) {
@@ -3243,8 +3251,8 @@ function InitializeProgramValues() {
         user_id: Danbooru.CurrentUser.data('id'),
         has_embedded: JSPLib.utility.getMeta('post-has-embedded-notes') === 'true',
         last_noted: JSPLib.utility.toTimeStamp(document.body.dataset.postLastNotedAt),
-        mode: JSPLib.storage.getStorageData('ta-mode', localStorage, 'main'),
-        last_noted_cutoff: TA.user_settings.last_noted_cutoff * JSPLib.utility.one_minute,
+        mode: JSPLib.storage.getLocalData('ta-mode', {default_val: 'main'}),
+        last_noted_cutoff_mins: TA.last_noted_cutoff * JSPLib.utility.one_minute,
     });
     Object.assign(TA, {
         seen_key: 'ta-post-seen-' + TA.post_id,
@@ -3289,7 +3297,7 @@ function Main() {
     };
     if (!JSPLib.menu.preloadScript(TA, RenderSettingsMenu, preload)) return;
     $('#translate').on(PROGRAM_CLICK, ToggleSideNotice);
-    if (TA.user_settings.check_last_noted_enabled) {
+    if (TA.check_last_noted_enabled) {
         CheckLastNoted();
     }
     if (TA.has_embedded) {
