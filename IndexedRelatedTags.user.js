@@ -1622,6 +1622,7 @@ JSPLib.menu.program_data_key = FUNC.OptionCacheDataKey;
 JSPLib.menu.settings_config = SETTINGS_CONFIG;
 JSPLib.menu.control_config = CONTROL_CONFIG;
 
+//Variables for storage.js
 JSPLib.storage.indexedDBValidator = FUNC.ValidateEntry;
 
 //Export JSPLib
