@@ -7,24 +7,23 @@
 // @author       BrokenEagle
 // @match        *://*.donmai.us/*
 // @exclude      /^https?://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
-// @grant        none
 // @run-at       document-idle
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/IndexedAutocomplete.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/IndexedAutocomplete.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240223-menu/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru validate */
@@ -33,21 +32,7 @@
 
 //Library constants
 
-const LIBRARY_MENU_CSS = `
-/* LIBRARY FIXES */
-#userscript-settings-menu .jsplib-settings-buttons input {
-    color: var(--button-primary-text-color);
-}
-#page #userscript-settings-menu .jsplib-settings-buttons .jsplib-commit:hover {
-    background-color: var(--green-5);
-}
-#page #userscript-settings-menu .jsplib-settings-buttons .jsplib-resetall:hover {
-    background-color: var(--red-5);
-}
-#userscript-settings-menu .jsplib-settings-buttons .jsplib-commit:hover,
-#userscript-settings-menu .jsplib-settings-buttons .jsplib-resetall:hover {
-    filter: brightness(1.25);
-}`;
+////NONE
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '14701';
@@ -1220,50 +1205,7 @@ const USAGE_CONSTRAINTS = {
 
 //Library functions
 
-JSPLib.menu.preloadScript = function (self, program_value, render_menu_func, {run_on_settings = false, default_data = {}, reset_data = {}, initialize_func = null, broadcast_func = null, menu_css = null} = {}) {
-    program_value.user_settings = this.loadUserSettings();
-    for (let key in program_value.user_settings) {
-        Object.defineProperty(program_value, key, {get() {return program_value.user_settings[key];}});
-    }
-    if (this._isSettingMenu()) {
-        this.initializeSettingsMenu(render_menu_func, menu_css);
-        if (!run_on_settings) return false;
-    }
-    if (!this.isScriptEnabled()) {
-        self.debug('logLevel', "Script is disabled on", window.location.hostname, JSPLib.debug.INFO);
-        return false;
-    }
-    Object.assign(program_value, {
-        controller: document.body.dataset.controller,
-        action: document.body.dataset.action,
-    }, JSPLib.utility.dataCopy(default_data), JSPLib.utility.dataCopy(reset_data));
-    if (typeof broadcast_func == 'function') {
-        program_value.channel = JSPLib.utility.createBroadcastChannel(this.program_name, broadcast_func);
-    }
-    if (typeof initialize_func == 'function') {
-        return initialize_func();
-    }
-    return true;
-};
-
-JSPLib.utility.getHTMLTree = function (domnode) {
-    var tree = [];
-    for (let checknode = domnode; checknode !== null; checknode = checknode.parentElement) {
-        let nodename = checknode.tagName.toLowerCase();
-        let id = (checknode.id !== "" ? "#" : "") + checknode.id;
-        let classlist = [...checknode.classList].map((entry) => (!entry.includes(':') ? '.' + entry : "")).join("");
-        let index = "";
-        if (checknode.parentElement !== null) {
-            let similar_elements = [...checknode.parentElement.children].filter((entry) => entry.tagName === checknode.tagName);
-            let similar_position = similar_elements.indexOf(checknode) + 1;
-            index = ":nth-of-type(" + similar_position + ")";
-        }
-        tree.push(nodename + id + classlist + index);
-    }
-    return tree.reverse().join(" > ");
-};
-
-JSPLib.debug.addModuleLogs('menu', ['preloadScript']);
+////NONE
 
 //Validate functions
 
@@ -2063,7 +2005,7 @@ function PruneUsageData() {
 
 function StoreUsageData(name, key = "", save = true) {
     if (save) {
-        JSPLib.storage.setStorageData('iac-choice-info', {choice_order: IAC.choice_order, choice_data: IAC.choice_data}, localStorage);
+        JSPLib.storage.setLocalData('iac-choice-info', {choice_order: IAC.choice_order, choice_data: IAC.choice_data});
     }
     IAC.channel.postMessage({type: 'reload', name, key, choice_order: IAC.choice_order, choice_data: IAC.choice_data});
 }
@@ -2311,9 +2253,9 @@ function InitializeAutocompleteIndexed(selector, keycode, multiple = false, wiki
 }
 
 function InitializeTextAreaAutocomplete() {
-    IAC.ac_source = JSPLib.storage.getStorageData('iac-ac-source', localStorage, 0);
-    IAC.ac_mode = JSPLib.storage.getStorageData('iac-ac-mode', localStorage, 0);
-    IAC.ac_caps = JSPLib.storage.getStorageData('iac-ac-caps', localStorage, 0);
+    IAC.ac_source = JSPLib.storage.getLocalData('iac-ac-source', {default_val: 0});
+    IAC.ac_mode = JSPLib.storage.getLocalData('iac-ac-mode', {default_val: 0});
+    IAC.ac_caps = JSPLib.storage.getLocalData('iac-ac-caps', {default_val: 0});
     $('textarea:not([data-autocomplete]), input[type=text]:not([data-autocomplete])').on(PROGRAM_KEYDOWN, null, 'alt+a', (event) => {
         let $input = $(event.currentTarget);
         let type = AUTOCOMPLETE_SOURCE[IAC.ac_source];
@@ -2327,15 +2269,15 @@ function InitializeTextAreaAutocomplete() {
         if (event.originalEvent.key === '1') {
             IAC.ac_source = (IAC.ac_source + 1) % AUTOCOMPLETE_SOURCE.length;
             JSPLib.notice.notice(RenderAutocompleteNotice('source', AUTOCOMPLETE_SOURCE, IAC.ac_source));
-            JSPLib.storage.setStorageData('iac-ac-source', IAC.ac_source, localStorage);
+            JSPLib.storage.setLocalData('iac-ac-source', IAC.ac_source);
         } else if (event.originalEvent.key === '2') {
             IAC.ac_mode = (IAC.ac_mode + 1) % AUTOCOMPLETE_MODE.length;
             JSPLib.notice.notice(RenderAutocompleteNotice('mode', AUTOCOMPLETE_MODE, IAC.ac_mode));
-            JSPLib.storage.setStorageData('iac-ac-mode', IAC.ac_mode, localStorage);
+            JSPLib.storage.setLocalData('iac-ac-mode', IAC.ac_mode);
         } else if (event.originalEvent.key === '3') {
             IAC.ac_caps = (IAC.ac_caps + 1) % AUTOCOMPLETE_CAPITALIZATION.length;
             JSPLib.notice.notice(RenderAutocompleteNotice('capitalization', AUTOCOMPLETE_CAPITALIZATION, IAC.ac_caps));
-            JSPLib.storage.setStorageData('iac-ac-caps', IAC.ac_caps, localStorage);
+            JSPLib.storage.setLocalData('iac-ac-caps', IAC.ac_caps);
         }
         IAC.channel.postMessage({type: 'text_autocomplete', source: IAC.ac_source, mode: IAC.ac_mode, caps: IAC.ac_caps});
     });
@@ -2417,7 +2359,7 @@ function AnySourceIndexed(keycode, has_context = false) {
         var final_data = null;
         if (!IAC.network_only_mode) {
             var max_expiration = MaximumExpirationTime(type);
-            var cached = await JSPLib.storage.checkLocalDB(key, ValidateEntry, max_expiration);
+            var cached = await JSPLib.storage.checkLocalDB(key, max_expiration);
             if (ValidateCached(cached, type, term, word_mode)) {
                 RecheckSourceData(type, key, term, cached, word_mode);
                 final_data = ProcessSourceData(type, use_metatag, term, cached.value, query_type, key, word_mode);
@@ -2586,7 +2528,7 @@ function SetupAutocompleteInitializations() {
 
 function CleanupTasks() {
     PruneUsageData();
-    JSPLib.storage.pruneEntries(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, PRUNE_EXPIRES);
+    JSPLib.storage.pruneProgramCache(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, PRUNE_EXPIRES);
 }
 
 //Cache functions
@@ -2655,7 +2597,7 @@ function InitializeProgramValues() {
         userid: Danbooru.CurrentUser.data('id'),
     });
     Object.assign(IAC, {
-        choice_info: JSPLib.storage.getStorageData('iac-choice-info', localStorage, {}),
+        choice_info: JSPLib.storage.getLocalData('iac-choice-info', {default_val: {}}),
         is_bur: GetIsBur(),
         prefixes: JSON.parse(JSPLib.utility.getMeta('autocomplete-tag-prefixes')),
     }, PROGRAM_RESET_KEYS);
@@ -2741,7 +2683,7 @@ function Main() {
         default_data: DEFAULT_VALUES,
         initialize_func: InitializeProgramValues,
         broadcast_func: BroadcastIAC,
-        menu_css: SETTINGS_MENU_CSS + '\n' + LIBRARY_MENU_CSS,
+        menu_css: SETTINGS_MENU_CSS,
     };
     if (!JSPLib.menu.preloadScript(IAC, RenderSettingsMenu, preload)) return;
     InstallQuickSearchBars();
@@ -2791,6 +2733,9 @@ JSPLib.menu.settings_callback = RemoteSettingsCallback;
 JSPLib.menu.reset_callback = RemoteSettingsCallback;
 JSPLib.menu.settings_config = SETTINGS_CONFIG;
 JSPLib.menu.control_config = CONTROL_CONFIG;
+
+//Variables for storage.js
+JSPLib.storage.indexedDBValidator = ValidateEntry;
 
 //Export JSPLib
 JSPLib.load.exportData(PROGRAM_NAME, IAC, {other_data: TERM_REGEX, datalist: ['cached_data']});
