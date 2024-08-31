@@ -480,7 +480,7 @@ async function QueryTagAliases(taglist) {
     }
     for (let key in cached) {
         if (cached[key].value.length) {
-            VTI.aliastags.push(key.replace(/^ta-/, ""))
+            VTI.aliastags.push(key.replace(/^ta-/, ""));
         }
     }
     QueryTagAliases.seen_tags = JSPLib.utility.concat(QueryTagAliases.seen_tags, unseen_tags);
@@ -556,7 +556,7 @@ async function QueryTagDeprecations(taglist) {
     }
     for (let key in cached) {
         if (cached[key].value) {
-            VTI.deprecated_tags.push(key.replace(/^td-/, ""))
+            VTI.deprecated_tags.push(key.replace(/^td-/, ""));
         }
     }
     QueryTagDeprecations.seen_tags = JSPLib.utility.concat(QueryTagDeprecations.seen_tags, unseen_tags);
@@ -810,7 +810,6 @@ async function ValidateArtist() {
         //Validate artists have entry
         let artist_keys = artist_names.map((name) => 'are-' + name);
         let cached = await JSPLib.storage.batchCheckLocalDB(artist_keys, ARTIST_EXPIRATION, 'are');
-        let found_keys = JSPLib.utility.arrayIntersection(artist_keys, Object.keys(cached));
         let missing_keys = JSPLib.utility.arrayDifference(artist_keys, Object.keys(cached));
         if (missing_keys.length === 0) {
             this.debug('log', "No missing artists. [cache hit]");
