@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedRelatedTags
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.2
+// @version      3.3
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -624,10 +624,6 @@ const TAGS_OVERLAP_EXPIRES = JSPLib.utility.one_month;
 const WIKI_PAGE_TAGS_EXPIRES = 2 * JSPLib.utility.one_week;
 const RELATED_TAG_EXPIRES = JSPLib.utility.one_week;
 
-//Network constants
-
-const DEFAULT_RELATED_TAGS_LIMIT = 25;
-
 //Validate constants
 
 const RELATEDTAG_CONSTRAINTS = {
@@ -771,7 +767,8 @@ FUNC.GetTagsEntryArray = function (wiki_page) {
         if (dtext_link) {
             if (dtext_link.linked_tag?.is_deprecated) {
                 return [link_target, DEPRECATED_TAG_CATEGORY];
-            } else if (dtext_link.linked_tag) {
+            }
+            if (dtext_link.linked_tag) {
                 return [link_target, dtext_link.linked_tag.category];
             }
             return [link_target, NONEXISTENT_TAG_CATEGORY];
@@ -795,7 +792,8 @@ FUNC.CreateTagArray = function (tag_list, tag_data) {
         let tag = tag_data.find((item) => item.name === name);
         if (!tag) {
             return [name, NONEXISTENT_TAG_CATEGORY];
-        } else if (tag.is_deprecated) {
+        }
+        if (tag.is_deprecated) {
             return [name, DEPRECATED_TAG_CATEGORY];
         }
         return [name, tag.category];
@@ -984,14 +982,7 @@ FUNC.WikiPageTagsQuery = async function (self, title) {
         if (tag_names.length) {
             let tag_data = await JSPLib.danbooru.submitRequest('tags', FUNC.GetTagQueryParams(tag_names));
             let tag_array = FUNC.CreateTagArray(tag_names, tag_data);
-            tags = tags.map((tag_entry) => {
-                let unknown_entry = tag_array.find((item) => item[0] === tag_entry[0]);
-                if (unknown_entry) {
-                    return unknown_entry;
-                } else {
-                    return tag_entry;
-                }
-            });
+            tags = tags.map((tag_entry) => (tag_array.find((item) => item[0] === tag_entry[0]) ?? tag_entry));
         }
     }
     let other_wikis = (!title.startsWith('list_of_') ?
@@ -1174,17 +1165,17 @@ FUNC.RelatedTagsScroll = function (event) {
 FUNC.ViewChecklistTag = function () {
     let import_export = $('#irt-enable-import-export').prop('checked');
     if (import_export) {
-        let tag_list = Object.keys(localStorage)
-                             .filter((name) => name.startsWith('irt-checklist-'))
-                             .map((name) => name.replace('irt-checklist-', ""));
+        let tag_list =
+            Object.keys(localStorage)
+                .filter((name) => name.startsWith('irt-checklist-'))
+                .map((name) => name.replace('irt-checklist-', ""));
         let tag_data = tag_list.map((tag_name) => {
             let tag_array = FUNC.GetChecklistTagsArray(tag_name);
             if (Array.isArray(tag_array)) {
                 return {[tag_name]: tag_array.map((item) => item[0])};
             }
             return null;
-            })
-            .filter((data) => data != null);
+        }).filter((data) => data != null);
         $('#irt-checklist-frequent-tags textarea').val(JSON.stringify(JSPLib.utility.mergeHashes(...tag_data), null, 4));
     } else {
         let tag_name = $('#irt-control-tag-name').val().split(/\s+/)[0];
@@ -1244,7 +1235,7 @@ FUNC.SaveChecklistTag = async function () {
     } else {
         let tag_name = $('#irt-control-tag-name').val().split(/\s+/)[0];
         if (!tag_name) return;
-        let checklist = $('#irt-checklist-frequent-tags textarea').val().split(/\s/).filter((name)=> name !== "");
+        let checklist = $('#irt-checklist-frequent-tags textarea').val().split(/\s/).filter((name) => (name !== ""));
         if (checklist.length > 0) {
             let tag_data = await JSPLib.danbooru.submitRequest('tags', FUNC.GetTagQueryParams(checklist));
             let tag_array = FUNC.CreateTagArray(checklist, tag_data);
@@ -1267,10 +1258,11 @@ FUNC.PopulateChecklistTag = function () {
 };
 
 FUNC.ListChecklistTags = function () {
-    let tag_list = Object.keys(localStorage)
-                         .filter((name) => name.startsWith('irt-checklist-'))
-                         .map((name) => name.replace('irt-checklist-', ""))
-                         .sort();
+    let tag_list =
+        Object.keys(localStorage)
+            .filter((name) => name.startsWith('irt-checklist-'))
+            .map((name) => name.replace('irt-checklist-', ""))
+            .sort();
     $('#irt-checklist-frequent-tags textarea').val(tag_list.join('\n'));
 };
 
