@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.18
+// @version      16.19
 // @description  Gives up-to-date stats on uploads.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -39,8 +39,8 @@
 const DANBOORU_TOPIC_ID = '15169';
 
 //Variables for load.js
-const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery','window.Danbooru','Danbooru.CurrentUser'];
-const PROGRAM_LOAD_REQUIRED_SELECTORS = ["#top","#page-footer"];
+const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.CurrentUser'];
+const PROGRAM_LOAD_REQUIRED_SELECTORS = ["#top", "#page-footer"];
 
 //Program name constants
 const PROGRAM_SHORTCUT = 'cu';
@@ -61,14 +61,14 @@ const LOCALSTORAGE_KEYS = [
 ];
 const PROGRAM_RESET_KEYS = {
     checked_usernames: {},
-    checked_users: {user:{}, approver: {}},
-    user_copytags: {user:{}, approver: {}},
-    period_available: {user:{}, approver: {}},
+    checked_users: {user: {}, approver: {}},
+    user_copytags: {user: {}, approver: {}},
+    period_available: {user: {}, approver: {}},
     reverse_implications: {},
 };
 
 //Available setting values
-const period_selectors = ['daily','weekly','monthly','yearly','alltime'];
+const period_selectors = ['daily', 'weekly', 'monthly', 'yearly', 'alltime'];
 
 //Main settings
 const SETTINGS_CONFIG = {
@@ -85,7 +85,7 @@ const SETTINGS_CONFIG = {
     periods_shown: {
         allitems: period_selectors,
         reset: period_selectors,
-        validate: (data) => (JSPLib.menu.validateCheckboxRadio(data,'checkbox',period_selectors) && data.includes('daily')),
+        validate: (data) => (JSPLib.menu.validateCheckboxRadio(data, 'checkbox', period_selectors) && data.includes('daily')),
         hint: "Select which periods to process and show."
     },
     copyrights_threshold: {
@@ -147,7 +147,7 @@ const MENU_CONFIG = {
     topic_id: DANBOORU_TOPIC_ID,
     settings: [{
         name: 'general',
-    },{
+    }, {
         name: 'display',
     }],
     controls: [],
@@ -430,7 +430,7 @@ body[data-current-user-theme="dark"] #count-table .cu-limited {
 //HTML constants
 
 const CARET_RIGHT = '<svg class="cu-svg-caret cu-svg-caret-right" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 512" width="20" height="20"><path class="cu-svg-icon" d="M246.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-128-128c-9.2-9.2-22.9-11.9-34.9-6.9s-19.8 16.6-19.8 29.6l0 256c0 12.9 7.8 24.6 19.8 29.6s25.7 2.2 34.9-6.9l128-128z"/></svg>';
-const CARET_DOWN = '<svg class="cu-svg-caret cu-svg-caret-down" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" height="20" width="20"><path class="cu-svg-icon" d="M137.4 374.6c12.5 12.5 32.8 12.5 45.3 0l128-128c9.2-9.2 11.9-22.9 6.9-34.9s-16.6-19.8-29.6-19.8L32 192c-12.9 0-24.6 7.8-29.6 19.8s-2.2 25.7 6.9 34.9l128 128z"/></svg>'
+const CARET_DOWN = '<svg class="cu-svg-caret cu-svg-caret-down" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" height="20" width="20"><path class="cu-svg-icon" d="M137.4 374.6c12.5 12.5 32.8 12.5 45.3 0l128-128c9.2-9.2 11.9-22.9 6.9-34.9s-16.6-19.8-29.6-19.8L32 192c-12.9 0-24.6 7.8-29.6 19.8s-2.2 25.7 6.9 34.9l128 128z"/></svg>';
 
 const notice_box = `
 <div class="ui-corner-all" id="upload-counts">
@@ -516,10 +516,10 @@ const PROGRAM_DATA_DETAILS = `
 </ul>`;
 
 //Time periods
-const timevalues = ['d','w','mo','y','at'];
-const manual_periods = ['w','mo'];
-const limited_periods = ['y','at'];
-const copyright_periods = ['d','w','mo'];
+const timevalues = ['d', 'w', 'mo', 'y', 'at'];
+const manual_periods = ['w', 'mo'];
+const limited_periods = ['y', 'at'];
+const copyright_periods = ['d', 'w', 'mo'];
 
 //Period constants
 const period_info = {
@@ -581,7 +581,6 @@ const longname_key = {
 
 //Time constants
 const prune_expires = JSPLib.utility.one_day;
-const noncritical_recheck = JSPLib.utility.one_minute;
 const rti_expiration = JSPLib.utility.one_month;
 const JQUERY_DELAY = 1; //For jQuery updates that should not be done synchronously
 
@@ -589,8 +588,8 @@ const JQUERY_DELAY = 1; //For jQuery updates that should not be done synchronous
 const max_post_limit_query = 100;
 
 //Metrics used by statistics functions
-const tooltip_metrics = ['score','upscore','downscore','favcount','tagcount','gentags','week','day'];
-const chart_metrics = ['score','upscore','downscore','favcount','tagcount','gentags'];
+const tooltip_metrics = ['score', 'upscore', 'downscore', 'favcount', 'tagcount', 'gentags', 'week', 'day'];
+const chart_metrics = ['score', 'upscore', 'downscore', 'favcount', 'tagcount', 'gentags'];
 
 //Feedback messages
 const empty_uploads_message_owner = 'Feed me more uploads!';
@@ -670,30 +669,33 @@ function BuildValidator(validation_key) {
     };
 }
 
-function ValidateEntry(key,entry) {
-    if (!JSPLib.validate.validateIsHash(key,entry)) {
+function ValidateEntry(key, entry) {
+    if (!JSPLib.validate.validateIsHash(key, entry)) {
         return false;
     }
     if (key.match(/^ct(d|w|mo|y|at)?-/)) {
         return JSPLib.validate.validateHashEntries(key, entry, BuildValidator('countentry'));
-    } else if (key.match(/^rti-/)) {
+    }
+    if (key.match(/^rti-/)) {
         return JSPLib.validate.validateHashEntries(key, entry, BuildValidator('implicationentry'));
-    } else if (key.match(/^(daily|weekly|monthly|previous)-(uploads|approvals)-/)) {
+    }
+    if (key.match(/^(daily|weekly|monthly|previous)-(uploads|approvals)-/)) {
         if (!JSPLib.validate.validateHashEntries(key, entry, BuildValidator('postentries'))) {
             return false;
         }
         return ValidatePostentries(key + '.value', entry.value);
-    } else if (key.match(/^(yearly|alltime)-(uploads|approvals)-/)) {
+    }
+    if (key.match(/^(yearly|alltime)-(uploads|approvals)-/)) {
         if (!JSPLib.validate.validateHashEntries(key, entry, BuildValidator('statentries'))) {
             return false;
         }
-        return ValidateStatEntries(key + '.value',entry.value);
+        return ValidateStatEntries(key + '.value', entry.value);
     }
-    this.debug('log',"Bad key!");
+    this.debug('log', "Bad key!");
     return false;
 }
 
-function ValidatePostentries(key,postentries) {
+function ValidatePostentries(key, postentries) {
     for (let i = 0;i < postentries.length;i++){
         let value_key = key + `[${i}]`;
         if (!JSPLib.validate.validateIsArray(value_key, postentries[i], {is: validation_constraints.postentry.length})) {
@@ -707,7 +709,7 @@ function ValidatePostentries(key,postentries) {
     return true;
 }
 
-function ValidateStatEntries(key,statentries) {
+function ValidateStatEntries(key, statentries) {
     if (!JSPLib.validate.validateHashEntries(key, statentries, validation_constraints.postmetric)) {
         return false;
     }
@@ -725,7 +727,7 @@ function ValidateStatEntries(key,statentries) {
     return ValidateChartEntries(key + '.chart_data', statentries.chart_data);
 }
 
-function ValidateChartEntries(key,chartentries) {
+function ValidateChartEntries(key, chartentries) {
     if (!JSPLib.validate.validateHashEntries(key, chartentries, validation_constraints.chartentry)) {
         return false;
     }
@@ -739,7 +741,7 @@ function ValidateChartEntries(key,chartentries) {
     return true;
 }
 
-function ValidateProgramData(key,entry) {
+function ValidateProgramData(key, entry) {
     var checkerror = [];
     switch (key) {
         case 'cu-user-settings':
@@ -765,7 +767,7 @@ function ValidateProgramData(key,entry) {
             checkerror = ["Not a valid program data key."];
     }
     if (checkerror.length) {
-        JSPLib.validate.outputValidateError(key,checkerror);
+        JSPLib.validate.outputValidateError(key, checkerror);
         return false;
     }
     return true;
@@ -777,27 +779,27 @@ function ValidateProgramData(key,entry) {
 
 //Table functions
 
-function AddTable(input,inner_args="") {
+function AddTable(input, inner_args = "") {
     return `<table ${inner_args}>\r\n` + input + '</table>\r\n';
 }
 
-function AddTableHead(input,inner_args="") {
+function AddTableHead(input, inner_args = "") {
     return `<thead ${inner_args}>\r\n` + input + '</thead>\r\n';
 }
 
-function AddTableBody(input,inner_args="") {
+function AddTableBody(input, inner_args = "") {
     return `<tbody ${inner_args}>\r\n` + input + '</tbody>\r\n';
 }
 
-function AddTableRow(input,inner_args="") {
+function AddTableRow(input, inner_args = "") {
     return `<tr ${inner_args}>\r\n` + input + '</tr>\r\n';
 }
 
-function AddTableHeader(input,inner_args="") {
+function AddTableHeader(input, inner_args = "") {
     return `<th ${inner_args}>` + input + '</th>\r\n';
 }
 
-function AddTableData(input,inner_args="") {
+function AddTableData(input, inner_args = "") {
     return `<td ${inner_args}>` + input + '</td>\r\n';
 }
 
@@ -809,16 +811,16 @@ function RenderHeader() {
     var tabletext = AddTableHeader('Name');
     let click_periods = manual_periods.concat(limited_periods);
     let times_shown = GetShownPeriodKeys();
-    times_shown.forEach((period)=>{
+    times_shown.forEach((period) => {
         let header = period_info.header[period];
         if (click_periods.includes(period)) {
             let is_available = CU.period_available[CU.usertag][CU.current_username][period];
             let link_class = (manual_periods.includes(period) ? 'cu-manual' : 'cu-limited');
             let header_class = (!is_available ? 'cu-process' : '');
             let counter_html = (!is_available ? '<span class="cu-display" style="display:none">&nbsp;(<span class="cu-counter">...</span>)</span>' : '');
-            tabletext += AddTableHeader(`<a class="${link_class}">${header}</a>${counter_html}`,`class="cu-period-header ${header_class}" data-period="${period}"`);
+            tabletext += AddTableHeader(`<a class="${link_class}">${header}</a>${counter_html}`, `class="cu-period-header ${header_class}" data-period="${period}"`);
         } else {
-            tabletext += AddTableHeader(header,`class="cu-period-header" data-period="${period}"`);
+            tabletext += AddTableHeader(header, `class="cu-period-header" data-period="${period}"`);
         }
     });
     return AddTableHead(AddTableRow(tabletext));
@@ -838,8 +840,8 @@ function RenderBody() {
 }
 
 function RenderRow(key) {
-    var rowtag = (key === ''? `${CU.usertag}:` + CU.display_username : key);
-    var rowtext = (key === ''? CU.display_username : key).replace(/_/g,' ');
+    var rowtag = (key === '' ? `${CU.usertag}:` + CU.display_username : key);
+    var rowtext = (key === '' ? CU.display_username : key).replace(/_/g, ' ');
     rowtext = JSPLib.utility.maxLengthString(rowtext);
     var rowaddon = (key === '' ? `class="user-${CU.level_string.toLowerCase()} with-style"` : 'class="tag-type-3"');
     var tabletext = AddTableData(JSPLib.danbooru.postSearchLink(rowtag, rowtext, rowaddon));
@@ -847,7 +849,7 @@ function RenderRow(key) {
     let click_periods = manual_periods.concat(limited_periods);
     for (let i = 0;i < times_shown.length; i++) {
         let period = times_shown[i];
-        let data_text = GetTableValue(key,period);
+        let data_text = GetTableValue(key, period);
         let is_limited = limited_periods.includes(period);
         let class_name = (!is_limited ? 'cu-hover' : '');
         if (click_periods.includes(period) && key === '') {
@@ -855,46 +857,47 @@ function RenderRow(key) {
         }
         let rowdata = `class="${class_name}" data-period="${period}"`;
         let is_available = CU.period_available[CU.usertag][CU.current_username][period];
-        if (is_available && is_limited && key == '') {
-            tabletext += AddTableData(RenderTooltipData(data_text,times_shown[i],true),rowdata);
+        if (is_available && is_limited && key === '') {
+            tabletext += AddTableData(RenderTooltipData(data_text, times_shown[i], true), rowdata);
         } else if (is_available && !is_limited) {
-            tabletext += AddTableData(RenderTooltipData(data_text,times_shown[i]),rowdata);
+            tabletext += AddTableData(RenderTooltipData(data_text, times_shown[i]), rowdata);
         } else {
-            tabletext += AddTableData(`<span class="cu-uploads">${data_text}</span>`,rowdata);
+            tabletext += AddTableData(`<span class="cu-uploads">${data_text}</span>`, rowdata);
         }
     }
-    return AddTableRow(tabletext,`data-key="${key}"`);
+    return AddTableRow(tabletext, `data-key="${key}"`);
 }
 
-function RenderOrderMessage(period,sorttype) {
+function RenderOrderMessage(period, sorttype) {
     let header = period_info.header[period];
     switch (sorttype) {
-        case 0:
-            return `Copyrights ordered by user postcount; ${header} period; H -> L`;
         case 1:
             return `Copyrights ordered by user postcount; ${header} period; L -> H`;
         case 2:
             return `Copyrights ordered by site postcount; ${header} period; H -> L`;
         case 3:
             return `Copyrights ordered by site postcount; ${header} period; L -> H`;
+        case 0:
+        default:
+            return `Copyrights ordered by user postcount; ${header} period; H -> L`;
     }
 }
 
 //Get the data and validate it without checking the expires
-function GetCountData(key,default_val=null) {
+function GetCountData(key, default_val = null) {
     let count_data = JSPLib.storage.getIndexedSessionData(key);
-    if (!ValidateEntry(key,count_data)) {
+    if (!ValidateEntry(key, count_data)) {
         return default_val;
     }
     return count_data.value;
 }
 
-function GetTableValue(key,type) {
-    if (key == '') {
-        return GetCountData('ct' + type + `-${CU.usertag}:` + CU.current_username,"N/A");
+function GetTableValue(key, type) {
+    if (key === '') {
+        return GetCountData('ct' + type + `-${CU.usertag}:` + CU.current_username, "N/A");
     }
-    var useruploads = GetCountData('ct' + type + `-${CU.usertag}:` + CU.current_username + ' ' + key,"N/A");
-    var alluploads = GetCountData('ct' + type + '-' + key,"N/A");
+    var useruploads = GetCountData('ct' + type + `-${CU.usertag}:` + CU.current_username + ' ' + key, "N/A");
+    var alluploads = GetCountData('ct' + type + '-' + key, "N/A");
     return `(${useruploads}/${alluploads})`;
 }
 
@@ -902,7 +905,7 @@ function GetTableValue(key,type) {
 
 function RenderCopyrights(period) {
     let copytags = CU.user_copytags[CU.usertag][CU.current_username][period].sort();
-    return copytags.map((copyright)=>{
+    return copytags.map((copyright) => {
         let tag_text = JSPLib.utility.maxLengthString(copyright);
         let taglink = JSPLib.danbooru.postSearchLink(copyright, tag_text, 'class="tag-type-3"');
         let active = CU.active_copytags.includes(copyright) ? ' class="cu-active-copyright"' : '';
@@ -911,7 +914,7 @@ function RenderCopyrights(period) {
 }
 
 function RenderCopyrightControls() {
-    return copyright_periods.map((period)=>{
+    return copyright_periods.map((period) => {
         let period_name = period_info.longname[period];
         return `<span class="cu-select-period" data-type="${period}"><a href="#">${JSPLib.utility.titleizeString(period_name)}</a></span>`;
     }).join(' ') + '<span class="cu-select-period" data-type="manual"><a href="#">Manual</a></span>';
@@ -919,20 +922,20 @@ function RenderCopyrightControls() {
 
 //Render Tooltips
 
-function RenderTooltipData(text,period,limited=false) {
-    let tooltip_html = RenderAllToolPopups(period,limited);
+function RenderTooltipData(text, period, limited = false) {
+    let tooltip_html = RenderAllToolPopups(period, limited);
     return `
 <div class="cu-tooltip" data-period="${period}"><span class="cu-uploads">${text}</span>${tooltip_html}
 </div>
 `;
 }
 
-function RenderAllToolPopups(period,limited) {
-    return tooltip_metrics.map((metric) => RenderToolpopup(metric,period,limited)).join('');
+function RenderAllToolPopups(period, limited) {
+    return tooltip_metrics.map((metric) => RenderToolpopup(metric, period, limited)).join('');
 }
 
-function RenderToolpopup(metric,period,limited) {
-    let inner_text = (limited ? RenderStatistics('',metric,period,true) : '');
+function RenderToolpopup(metric, period, limited) {
+    let inner_text = (limited ? RenderStatistics('', metric, period, true) : '');
     return `
     <span class="cu-tooltiptext" data-type="${metric}">${inner_text}</span>`;
 }
@@ -946,7 +949,7 @@ function RenderToolcontrol(metric) {
 <span class="cu-select-tooltip" data-type="${metric}"><a href="#">${JSPLib.utility.titleizeString(metric)}</a></span>`;
 }
 
-function RenderStatistics(key,attribute,period,limited=false) {
+function RenderStatistics(key, attribute, period, limited = false) {
     let period_key = GetPeriodKey(period_info.longname[period]);
     let data = JSPLib.storage.getIndexedSessionData(period_key);
     if (!data) {
@@ -962,20 +965,21 @@ function RenderStatistics(key,attribute,period,limited=false) {
         if (uploads.length === 0) {
             return "No data!";
         }
-        stat = GetAllStatistics(uploads,attribute);
+        stat = GetAllStatistics(uploads, attribute);
     } else {
         stat = stat[attribute];
     }
-    return RenderAllStats(stat,attribute);
+    return RenderAllStats(stat, attribute);
 }
 
-function RenderAllStats(stat,attribute) {
-    if (attribute === 'week') {
-        return RenderWeeklist(stat);
-    } else if (attribute === 'day') {
-        return RenderDaylist(stat);
-    } else {
-        return RenderStatlist(stat);
+function RenderAllStats(stat, attribute) {
+    switch (attribute) {
+        case 'week':
+            return RenderWeeklist(stat);
+        case 'day':
+            return RenderDaylist(stat);
+        default:
+            return RenderStatlist(stat);
     }
 }
 
@@ -1015,44 +1019,45 @@ function RenderStatlist(stat) {
 </ul>`;
 }
 
-function GetAllStatistics(posts,attribute) {
-    if (attribute === 'week') {
-        return GetWeekStatistics(posts);
-    } else if (attribute === 'day') {
-        return GetDayStatistics(posts);
-    } else {
-        return GetPostStatistics(posts,attribute);
+function GetAllStatistics(posts, attribute) {
+    switch (attribute) {
+        case 'week':
+            return GetWeekStatistics(posts);
+        case 'day':
+            return GetDayStatistics(posts);
+        default:
+            return GetPostStatistics(posts, attribute);
     }
 }
 
 function GetWeekStatistics(posts) {
     let week_days = new Array(7).fill(0);
-    posts.forEach((upload)=>{
+    posts.forEach((upload) => {
         let timeindex = new Date(upload.created).getUTCDay();
         week_days[timeindex] += 1;
     });
-    let week_stats = week_days.map((day)=>{
+    let week_stats = week_days.map((day) => {
         let percent = (100 * day / posts.length);
-        return (percent === 0 || percent === 100 ? percent : JSPLib.utility.setPrecision(percent,1));
+        return (percent === 0 || percent === 100 ? percent : JSPLib.utility.setPrecision(percent, 1));
     });
     return week_stats;
 }
 
 function GetDayStatistics(posts) {
     let day_hours = new Array(6).fill(0);
-    posts.forEach((upload)=>{
+    posts.forEach((upload) => {
         let timeindex = Math.floor(new Date(upload.created).getUTCHours() / 4);
         day_hours[timeindex] += 1;
     });
-    let day_stats = day_hours.map((day)=>{
+    let day_stats = day_hours.map((day) => {
         let percent = (100 * day / posts.length);
-        return (percent === 0 || percent === 100 ? percent : JSPLib.utility.setPrecision(percent,1));
+        return (percent === 0 || percent === 100 ? percent : JSPLib.utility.setPrecision(percent, 1));
     });
     return day_stats;
 }
 
-function GetPostStatistics(posts,attribute) {
-    let data = JSPLib.utility.getObjectAttributes(posts,attribute);
+function GetPostStatistics(posts, attribute) {
+    let data = JSPLib.utility.getObjectAttributes(posts, attribute);
     let data_max = Math.max(...data);
     let data_average = JSPLib.statistics.average(data);
     let data_stddev = JSPLib.statistics.standardDeviation(data);
@@ -1061,21 +1066,21 @@ function GetPostStatistics(posts,attribute) {
     let data_adjusted = JSPLib.statistics.average(data_outliers);
     return {
         max: data_max,
-        average: JSPLib.utility.setPrecision(data_average,2),
-        stddev: JSPLib.utility.setPrecision(data_stddev,2),
+        average: JSPLib.utility.setPrecision(data_average, 2),
+        stddev: JSPLib.utility.setPrecision(data_stddev, 2),
         outlier: data_removed,
-        adjusted: JSPLib.utility.setPrecision(data_adjusted,2)
+        adjusted: JSPLib.utility.setPrecision(data_adjusted, 2)
     };
 }
 
-function AssignPostIndexes(period,posts,time_offset) {
+function AssignPostIndexes(period, posts, time_offset) {
     let points = period_info.points[period];
     //Have to do it this way to avoid getting the same object
     let periods = JSPLib.utility.arrayFill(points, "[]");
-    posts.forEach((post)=>{
-        let index = Math.floor((Date.now() - post.created - time_offset)/(period_info.divisor[period]));
-        index = (points ? Math.min(points-1,index) : index);
-        index = Math.max(0,index);
+    posts.forEach((post) => {
+        let index = Math.floor((Date.now() - post.created - time_offset) / (period_info.divisor[period]));
+        index = (points ? Math.min(points - 1, index) : index);
+        index = Math.max(0, index);
         if (index >= periods.length) {
             periods = periods.concat(JSPLib.utility.arrayFill(index + 1 - periods.length, "[]"));
         }
@@ -1084,13 +1089,13 @@ function AssignPostIndexes(period,posts,time_offset) {
     return periods;
 }
 
-function GetPeriodAverages(indexed_posts,metric) {
+function GetPeriodAverages(indexed_posts, metric) {
     let period_averages = [];
     for (let index in indexed_posts) {
         if (!indexed_posts[index].length) continue;
         let data_point = {
             x: parseInt(index),
-            y: JSPLib.utility.setPrecision(JSPLib.statistics.average(JSPLib.utility.getObjectAttributes(indexed_posts[index],metric)),2)
+            y: JSPLib.utility.setPrecision(JSPLib.statistics.average(JSPLib.utility.getObjectAttributes(indexed_posts[index], metric)), 2)
         };
         period_averages.push(data_point);
     }
@@ -1115,24 +1120,18 @@ function GetPeriodPosts(indexed_posts) {
 //Returns a sorted key array from highest to lowest using the length of the array in each value
 function SortDict(dict) {
     var items = Object.keys(dict).map((key) => [key, dict[key].length]);
-    items.sort((first, second)=>{
-        if (first[1] !== second[1]) {
-            return second[1] - first[1];
-        } else {
-            return first[0].localeCompare(second[0]);
-        }
-    });
+    items.sort((first, second) => (first[1] !== second[1] ? second[1] - first[1] : first[0].localeCompare(second[0])));
     return items.map((entry) => entry[0]);
 }
 
-function BuildTagParams(type,tag) {
+function BuildTagParams(type, tag) {
     return (type === 'at' ? '' : ('age:..1' + type + ' ')) + tag;
 }
 
 function GetCopyrightCount(posts) {
     let copyright_count = {};
-    posts.forEach((post)=>{
-        post.copyrights.split(' ').forEach((tag)=>{
+    posts.forEach((post) => {
+        post.copyrights.split(' ').forEach((tag) => {
             copyright_count[tag] = copyright_count[tag] || [];
             copyright_count[tag] = copyright_count[tag].concat([post.id]);
         });
@@ -1147,9 +1146,9 @@ function GetCopyrightCount(posts) {
     return copyright_count;
 }
 
-function CompareCopyrightCounts(dict1,dict2) {
+function CompareCopyrightCounts(dict1, dict2) {
     let difference = [];
-    JSPLib.utility.arrayUnion(Object.keys(dict1), Object.keys(dict2)).forEach((key)=>{
+    JSPLib.utility.arrayUnion(Object.keys(dict1), Object.keys(dict2)).forEach((key) => {
         if (!JSPLib.utility.arrayEquals(dict1[key], dict2[key])) {
             difference.push(key);
         }
@@ -1170,17 +1169,17 @@ function CheckCopyrightVelocity(tag) {
 }
 
 async function MergeCopyrightTags(user_copytags) {
-    let query_implications = JSPLib.utility.arrayDifference(user_copytags,Object.keys(CU.reverse_implications));
+    let query_implications = JSPLib.utility.arrayDifference(user_copytags, Object.keys(CU.reverse_implications));
     let promise_array = query_implications.map((key) => GetReverseTagImplication(key));
     let reverse_implications = await Promise.all(promise_array);
-    query_implications.forEach((key,i)=>{
+    query_implications.forEach((key, i) => {
         CU.reverse_implications[key] = reverse_implications[i];
     });
     return user_copytags.filter((value) => (CU.reverse_implications[value] === 0));
 }
 
 function IsMissingTag(tag) {
-    return GetShownPeriodKeys().reduce((total,period) => (total || !GetCountData(`ct${period}-${tag}`)), false);
+    return GetShownPeriodKeys().reduce((total, period) => (total || !GetCountData(`ct${period}-${tag}`)), false);
 }
 
 function MapPostData(posts) {
@@ -1220,16 +1219,16 @@ function PostDecompressData(posts) {
 }
 
 function GetTagData(tag) {
-    return Promise.all(CU.user_settings.periods_shown.map((period) => GetCount(longname_key[period],tag)));
+    return Promise.all(CU.user_settings.periods_shown.map((period) => GetCount(longname_key[period], tag)));
 }
 
 function GetPeriodKey(period_name) {
     return `${period_name}-${CU.counttype}-${CU.current_username}`;
 }
 
-async function CheckPeriodUploads() {
+function CheckPeriodUploads() {
     let promise_array = [];
-    const checkPeriod = (key,period,check)=>{
+    const checkPeriod = (key, period, check) => {
         CU.period_available[CU.usertag][CU.current_username][period] = Boolean(check);
         if (!check) {
             JSPLib.storage.removeIndexedSessionData(key);
@@ -1244,7 +1243,7 @@ async function CheckPeriodUploads() {
         }
         let data_key = GetPeriodKey(period_info.longname[period]);
         let max_expires = period_info.uploadexpires[period];
-        let check_promise = JSPLib.storage.checkLocalDB(data_key, max_expires).then((check)=>{checkPeriod(data_key,period,check);});
+        let check_promise = JSPLib.storage.checkLocalDB(data_key, max_expires).then((check) => {checkPeriod(data_key, period, check);});
         promise_array.push(check_promise);
     }
     return Promise.all(promise_array);
@@ -1277,29 +1276,31 @@ function InitializeControls() {
         $('.cu-program-checkbox').checkboxradio();
         $("#count-controls").html(RenderAllTooltipControls());
         $("#count-copyrights-controls").html(RenderCopyrightControls());
-        $(".cu-select-tooltip").on(PROGRAM_CLICK,TooltipChange);
-        $(".cu-select-period a").on(PROGRAM_CLICK,CopyrightPeriod);
-        $("#count-copyrights-header a").on(PROGRAM_CLICK,ToggleCopyrightsSection);
-        $("#count_submit_user_id").on(PROGRAM_CLICK,CheckUser);
-        $("#count_refresh_user_id").on(PROGRAM_CLICK,RefreshUser);
-        $("#count_add_copyright").on(PROGRAM_CLICK,AddCopyright);
+        $(".cu-select-tooltip").on(PROGRAM_CLICK, TooltipChange);
+        $(".cu-select-period a").on(PROGRAM_CLICK, CopyrightPeriod);
+        $("#count-copyrights-header a").on(PROGRAM_CLICK, ToggleCopyrightsSection);
+        $("#count_submit_user_id").on(PROGRAM_CLICK, CheckUser);
+        $("#count_refresh_user_id").on(PROGRAM_CLICK, RefreshUser);
+        $("#count_add_copyright").on(PROGRAM_CLICK, AddCopyright);
         CU.controls_initialized = true;
-        setTimeout(()=>{CU.IAC.InitializeAutocompleteIndexed && CU.IAC.InitializeAutocompleteIndexed("#count_query_user_id",'us');}, 1000);
+        setTimeout(() => {CU.IAC.InitializeAutocompleteIndexed?.("#count_query_user_id", 'us');}, 1000);
     }
 }
 
 function InitializeTable() {
-    $("#count-header").html(AddTable(RenderHeader(),'class="striped"'));
-    $("#count-table").html(AddTable(RenderBody(),'class="striped"'));
-    $("#count-order").html(RenderOrderMessage("d",0));
-    $("#count-header .cu-process").on(PROGRAM_CLICK,GetPeriod);
-    $("#count-header th").on(PROGRAM_CLICK,SortTable);
+    $("#count-header").html(AddTable(RenderHeader(), 'class="striped"'));
+    $("#count-table").html(AddTable(RenderBody(), 'class="striped"'));
+    $("#count-order").html(RenderOrderMessage("d", 0));
+    $("#count-header .cu-process").on(PROGRAM_CLICK, GetPeriod);
+    $("#count-header th").on(PROGRAM_CLICK, SortTable);
     $("#count-table .cu-manual,#count-table .cu-limited").on(PROGRAM_CLICK, RenderChart);
     $("#count-controls,#count-copyrights,#count-header").show();
     $(`.cu-select-tooltip[data-type="${CU.current_metric}"] a`).click();
     CU.sorttype = 0;
     CU.sortperiod = "d";
-    CU.copyright_period && $(`.cu-select-period[data-type="${CU.copyright_period}"] a`).click();
+    if (CU.copyright_period) {
+        $(`.cu-select-period[data-type="${CU.copyright_period}"] a`).click();
+    }
     CU.shown_copytags = JSPLib.utility.dataCopy(CU.active_copytags);
 }
 
@@ -1314,7 +1315,7 @@ async function GetReverseTagImplication(tag) {
     var key = 'rti-' + tag;
     var check = await JSPLib.storage.checkLocalDB(key, rti_expiration);
     if (!(check)) {
-        this.debug('log',"Network:",key);
+        this.debug('log', "Network:", key);
         let data = await JSPLib.danbooru.submitRequest('tag_implications', {search: {antecedent_name: tag}, only: id_field}, {default_val: [], key});
         JSPLib.storage.saveData(key, {value: data.length, expires: JSPLib.utility.getExpires(rti_expiration)});
         return data.length;
@@ -1322,45 +1323,40 @@ async function GetReverseTagImplication(tag) {
     return check.value;
 }
 
-async function GetCount(type,tag) {
+async function GetCount(type, tag) {
     let max_expires = period_info.countexpires[type];
     var key = 'ct' + type + '-' + tag;
     var check = await JSPLib.storage.checkLocalDB(key, max_expires);
     if (!(check)) {
-        this.debug('log',"Network:",key);
-        return JSPLib.danbooru.submitRequest('counts/posts',{tags: BuildTagParams(type,tag), skip_cache: true}, {default_val: {counts: {posts: 0}} ,key})
-        .then(data=>{
-            JSPLib.storage.saveData(key, {value: data.counts.posts, expires: JSPLib.utility.getExpires(max_expires)});
-        });
+        this.debug('log', "Network:", key);
+        return JSPLib.danbooru.submitRequest('counts/posts', {tags: BuildTagParams(type, tag), skip_cache: true}, {default_val: {counts: {posts: 0}}, key})
+            .then((data) => {
+                JSPLib.storage.saveData(key, {value: data.counts.posts, expires: JSPLib.utility.getExpires(max_expires)});
+            });
     }
 }
 
-async function GetPeriodUploads(username,period,limited=false,domname=null) {
+async function GetPeriodUploads(username, period, limited = false, domname = null) {
     let period_name = period_info.longname[period];
     let max_expires = period_info.uploadexpires[period];
     let key = GetPeriodKey(period_name);
     var check = await JSPLib.storage.checkLocalDB(key, max_expires);
     if (!(check)) {
-        this.debug('log',`Network (${period_name} ${CU.counttype})`);
-        let data = await JSPLib.danbooru.getPostsCountdown(BuildTagParams(period,`${CU.usertag}:${username}`),max_post_limit_query,post_fields,domname);
+        this.debug('log', `Network (${period_name} ${CU.counttype})`);
+        let data = await JSPLib.danbooru.getPostsCountdown(BuildTagParams(period, `${CU.usertag}:${username}`), max_post_limit_query, post_fields, domname);
         let mapped_data = MapPostData(data);
         if (limited) {
-            let indexed_posts = AssignPostIndexes(period,mapped_data,0);
-            mapped_data = JSPLib.utility.mergeHashes(...tooltip_metrics.map((metric) => ({[metric]: GetAllStatistics(mapped_data,metric)})));
-            mapped_data.chart_data = JSPLib.utility.mergeHashes(...chart_metrics.map((metric) => ({[metric]: GetPeriodAverages(indexed_posts,metric)})));
+            let indexed_posts = AssignPostIndexes(period, mapped_data, 0);
+            mapped_data = JSPLib.utility.mergeHashes(...tooltip_metrics.map((metric) => ({[metric]: GetAllStatistics(mapped_data, metric)})));
+            mapped_data.chart_data = JSPLib.utility.mergeHashes(...chart_metrics.map((metric) => ({[metric]: GetPeriodAverages(indexed_posts, metric)})));
             mapped_data.chart_data.uploads = GetPeriodPosts(indexed_posts);
             JSPLib.storage.saveData(key, {value: mapped_data, expires: JSPLib.utility.getExpires(max_expires)});
         } else {
             JSPLib.storage.saveData(key, {value: PreCompressData(mapped_data), expires: JSPLib.utility.getExpires(max_expires)});
         }
         return mapped_data;
-    } else {
-        if (limited) {
-            return check.value;
-        } else {
-            return PostDecompressData(check.value);
-        }
     }
+    return (limited ? check.value : PostDecompressData(check.value));
 }
 
 //Event handlers
@@ -1370,17 +1366,17 @@ async function GetPeriod(event) {
     let is_limited = $(event.target).hasClass("cu-limited");
     let period = header.dataset.period;
     $(`#count-header th[data-period=${period}] .cu-display`).show();
-    await GetPeriodUploads(CU.current_username,period,is_limited,`#count-header th[data-period=${period}] .cu-counter`);
+    await GetPeriodUploads(CU.current_username, period, is_limited, `#count-header th[data-period=${period}] .cu-counter`);
     CU.period_available[CU.usertag][CU.current_username][period] = true;
     let column = header.cellIndex;
     let $cells = $(`#count-table td:nth-of-type(${column + 1})`);
     if (is_limited) {
-        let value = $(".cu-uploads",$cells[0]).html();
-        $($cells[0]).html(RenderTooltipData(value,period,true));
+        let value = $(".cu-uploads", $cells[0]).html();
+        $($cells[0]).html(RenderTooltipData(value, period, true));
     } else {
-        $cells.each((i,cell)=>{
-            let value = $(".cu-uploads",cell).html();
-            $(cell).html(RenderTooltipData(value,period));
+        $cells.each((i, cell) => {
+            let value = $(".cu-uploads", cell).html();
+            $(cell).html(RenderTooltipData(value, period));
         });
         $(`.cu-select-tooltip[data-type="${CU.current_metric}"] a`).click();
     }
@@ -1400,33 +1396,34 @@ function SortTable(event) {
         CU.sortperiod = period;
     }
     let rows = [];
-    $("#count-table tr").each((i,row)=>{
+    $("#count-table tr").each((i, row) => {
         if (i === 0) {
             return;
         }
-        let data = $(`td:nth-of-type(${column}) .cu-uploads`,row).html();
-        let posts = data.match(/\((\d+)\/(\d+)\)/).slice(1,3).map(Number);
+        let data = $(`td:nth-of-type(${column}) .cu-uploads`, row).html();
+        let posts = data.match(/\((\d+)\/(\d+)\)/).slice(1, 3).map(Number);
         rows.push({
             domobj: $(row).detach(),
-            posts: posts
+            posts
         });
     });
-    rows.sort((a,b)=>{
+    rows.sort((a, b) => {
         switch (CU.sorttype) {
-            case 0:
-                return a.posts[0] - b.posts[0];
             case 1:
                 return b.posts[1] - a.posts[1];
             case 2:
                 return a.posts[1] - b.posts[1];
             case 3:
                 return b.posts[0] - a.posts[0];
+            case 0:
+            default:
+                return a.posts[0] - b.posts[0];
         }
-    }).forEach((row)=>{
+    }).forEach((row) => {
         $("#count-table tbody").append(row.domobj);
     });
     CU.sorttype = (CU.sorttype + 1) % 4;
-    $("#count-order").html(RenderOrderMessage(period,CU.sorttype));
+    $("#count-order").html(RenderOrderMessage(period, CU.sorttype));
 }
 
 function RenderChart(event) {
@@ -1447,12 +1444,13 @@ function RenderChart(event) {
         JSPLib.notice.notice(`${period_info.header[period]} period not populated! Click the period header to activate the chart.`);
         return;
     }
+    var period_averages, period_uploads;
     if (!is_limited) {
         let time_offset = Date.now() - (data.expires - period_info.uploadexpires[period]);
         let posts = PostDecompressData(data.value);
-        let indexed_posts = AssignPostIndexes(period,posts,time_offset);
-        var period_averages = GetPeriodAverages(indexed_posts,CU.current_metric);
-        var period_uploads = GetPeriodPosts(indexed_posts);
+        let indexed_posts = AssignPostIndexes(period, posts, time_offset);
+        period_averages = GetPeriodAverages(indexed_posts, CU.current_metric);
+        period_uploads = GetPeriodPosts(indexed_posts);
     } else {
         period_averages = data.value.chart_data[CU.current_metric];
         period_uploads = data.value.chart_data.uploads;
@@ -1460,7 +1458,7 @@ function RenderChart(event) {
     let metric_display = JSPLib.utility.displayCase(CU.current_metric);
     let type_display = JSPLib.utility.displayCase(CU.counttype);
     let chart_data = {
-        title:{
+        title: {
             text: `${JSPLib.utility.displayCase(longname)} ${CU.counttype} - Average post ${CU.current_metric}`
         },
         axisX: {
@@ -1471,7 +1469,7 @@ function RenderChart(event) {
         axisY: {
             title: `${metric_display}`
         },
-        axisY2:{
+        axisY2: {
             title: `${type_display}`,
         },
         legend: {
@@ -1494,9 +1492,9 @@ function RenderChart(event) {
     };
     //This needs to be shown now so that the chart function renders to the right size
     $("#count-chart").show();
-    var chart = new CanvasJS.Chart("count-chart",chart_data);
+    var chart = new CanvasJS.Chart("count-chart", chart_data);
     chart.render();
-    $(".canvasjs-chart-credit").css('top',"400px");
+    $(".canvasjs-chart-credit").css('top', "400px");
 }
 
 function TooltipChange(event) {
@@ -1521,7 +1519,7 @@ function ToggleCopyrightTag(event) {
     if ($container.hasClass("cu-active-copyright")) {
         CU.active_copytags.push(copyright);
     } else {
-        CU.active_copytags.splice(CU.active_copytags.indexOf(copyright),1);
+        CU.active_copytags.splice(CU.active_copytags.indexOf(copyright), 1);
     }
     event.preventDefault();
 }
@@ -1534,7 +1532,7 @@ async function CopyrightPeriod(event) {
     if (short_period === 'manual') {
         $("#count-copyrights-manual").show();
         $('#count-copyrights-list').html(RenderCopyrights('manual'));
-        $("#count-copyrights-list a").off(PROGRAM_CLICK).on(PROGRAM_CLICK,ToggleCopyrightTag);
+        $("#count-copyrights-list a").off(PROGRAM_CLICK).on(PROGRAM_CLICK, ToggleCopyrightTag);
     } else {
         $("#count-copyrights-manual").hide();
         let current_period = period_info.longname[short_period];
@@ -1556,7 +1554,7 @@ async function CopyrightPeriod(event) {
                 $('#count-copyrights-list').html(`<div id="empty-statistics">${copyright_no_uploads}</div>`);
             } else {
                 $('#count-copyrights-list').html(RenderCopyrights(current_period));
-                $("#count-copyrights-list a").off(PROGRAM_CLICK).on(PROGRAM_CLICK,ToggleCopyrightTag);
+                $("#count-copyrights-list a").off(PROGRAM_CLICK).on(PROGRAM_CLICK, ToggleCopyrightTag);
             }
         } else {
             $('#count-copyrights-list').html(`<div id="empty-statistics">${copyright_no_statistics}</div>`);
@@ -1583,7 +1581,9 @@ function ToggleNotice(event) {
         CU.hidden = true;
         $('#upload-counts').removeClass('opened');
         $('.cu-program-checkbox').prop('checked', false);
-        CU.controls_initialized && $('.cu-program-checkbox').checkboxradio("refresh");
+        if (CU.controls_initialized) {
+            $('.cu-program-checkbox').checkboxradio("refresh");
+        }
         $("#count-chart").hide();
         CU.channel.postMessage({type: "hide"});
     }
@@ -1601,7 +1601,9 @@ function StashNotice(event) {
         CU.hidden = true;
         $('#upload-counts,#upload-counts-restore').removeClass('opened').addClass('stashed');
         $('.cu-program-checkbox').prop('checked', false);
-        CU.controls_initialized && $('.cu-program-checkbox').checkboxradio("refresh");
+        if (CU.controls_initialized) {
+            $('.cu-program-checkbox').checkboxradio("refresh");
+        }
         $("#count-chart").hide();
         CU.channel.postMessage({type: "stash"});
     }
@@ -1612,9 +1614,9 @@ function StashNotice(event) {
 
 async function RefreshUser() {
     $("#count-copyrights-counter").html(copyright_counter);
-    let diff_tags = JSPLib.utility.arrayDifference(CU.active_copytags,CU.shown_copytags);
+    let diff_tags = JSPLib.utility.arrayDifference(CU.active_copytags, CU.shown_copytags);
     let promise_array = [];
-    diff_tags.forEach((val)=>{
+    diff_tags.forEach((val) => {
         promise_array.push(GetTagData(`${CU.usertag}:${CU.current_username} ${val}`));
         promise_array.push(GetTagData(val));
     });
@@ -1667,17 +1669,17 @@ async function AddCopyright() {
     CU.active_copytags.push(tag);
     CU.active_copytags = JSPLib.utility.arrayUnique(CU.active_copytags);
     $('#count-copyrights-list').html(RenderCopyrights('manual'));
-    $("#count-copyrights-list a").off(PROGRAM_CLICK).on(PROGRAM_CLICK,ToggleCopyrightTag);
+    $("#count-copyrights-list a").off(PROGRAM_CLICK).on(PROGRAM_CLICK, ToggleCopyrightTag);
 }
 
 function TooltipHover(event) {
     let container = event.target.parentElement;
-    let $tooltip_text = $(".cu-activetooltip",container);
+    let $tooltip_text = $(".cu-activetooltip", container);
     let tooltip_key = $(container.parentElement.parentElement).data('key');
     let tooltip_period = $(container).data('period');
-    let tooltip_metric = $(".cu-activetooltip",container).data('type');
+    let tooltip_metric = $(".cu-activetooltip", container).data('type');
     $tooltip_text.html("Loading!");
-    $tooltip_text.html(RenderStatistics(tooltip_key,tooltip_metric,tooltip_period));
+    $tooltip_text.html(RenderStatistics(tooltip_key, tooltip_metric, tooltip_period));
     $(event.target).off();
 }
 
@@ -1688,15 +1690,15 @@ async function ProcessUploads() {
     var current_uploads = [];
     var user_copytags = [];
     if (CU.current_username !== "Anonymous") {
-        current_uploads = await GetPeriodUploads(CU.current_username,'d');
+        current_uploads = await GetPeriodUploads(CU.current_username, 'd');
     }
     let previous_key = GetPeriodKey("previous");
     if (current_uploads.length) {
         let is_new_tab = JSPLib.storage.getIndexedSessionData(previous_key) === null;
         let previous_uploads = await JSPLib.storage.checkLocalDB(previous_key, {default_val: []});
         previous_uploads = PostDecompressData(previous_uploads.value);
-        let current_ids = JSPLib.utility.getObjectAttributes(current_uploads,'id');
-        let previous_ids = JSPLib.utility.getObjectAttributes(previous_uploads,'id');
+        let current_ids = JSPLib.utility.getObjectAttributes(current_uploads, 'id');
+        let previous_ids = JSPLib.utility.getObjectAttributes(previous_uploads, 'id');
         if (is_new_tab || !JSPLib.utility.arrayEquals(current_ids, previous_ids) || IsMissingTag(`${CU.usertag}:${CU.current_username}`)) {
             promise_array.push(GetTagData(`${CU.usertag}:${CU.current_username}`));
         }
@@ -1708,12 +1710,12 @@ async function ProcessUploads() {
                 user_copytags = await MergeCopyrightTags(user_copytags);
             }
             if (CU.user_settings.copyrights_threshold) {
-                user_copytags = user_copytags.slice(0,CU.user_settings.copyrights_threshold);
+                user_copytags = user_copytags.slice(0, CU.user_settings.copyrights_threshold);
             }
-            let copyright_symdiff = CompareCopyrightCounts(curr_copyright_count,prev_copyright_count);
-            let copyright_changed = (is_new_tab ? user_copytags : JSPLib.utility.arrayIntersection(user_copytags,copyright_symdiff));
-            let copyright_nochange = (is_new_tab ? [] : JSPLib.utility.arrayDifference(user_copytags,copyright_changed));
-            copyright_nochange.forEach((val)=>{
+            let copyright_symdiff = CompareCopyrightCounts(curr_copyright_count, prev_copyright_count);
+            let copyright_changed = (is_new_tab ? user_copytags : JSPLib.utility.arrayIntersection(user_copytags, copyright_symdiff));
+            let copyright_nochange = (is_new_tab ? [] : JSPLib.utility.arrayDifference(user_copytags, copyright_changed));
+            copyright_nochange.forEach((val) => {
                 if (CheckCopyrightVelocity(val) || IsMissingTag(val)) {
                     promise_array.push(GetTagData(val));
                 }
@@ -1721,7 +1723,7 @@ async function ProcessUploads() {
                     promise_array.push(GetTagData(`${CU.usertag}:${CU.current_username} ${val}`));
                 }
             });
-            copyright_changed.forEach((val)=>{
+            copyright_changed.forEach((val) => {
                 promise_array.push(GetTagData(`${CU.usertag}:${CU.current_username} ${val}`));
                 promise_array.push(GetTagData(val));
             });
@@ -1741,27 +1743,26 @@ function CleanupTasks() {
 
 //Cache functions
 
-function OptionCacheDataKey(data_type,data_value) {
+function OptionCacheDataKey(data_type, data_value) {
     CU.data_period = $("#cu-control-data-period").val();
     if (data_type === "reverse_implication") {
         return 'rti-' + data_value;
     }
     if (data_type === "count") {
-        if (CU.data_period == "previous") {
+        if (CU.data_period === "previous") {
             CU.data_value = "";
             return "";
         }
         let shortkey = (CU.data_period !== "" ? longname_key[CU.data_period] : "");
         return `ct${shortkey}-${data_value}`;
-    } else {
-        return `${CU.data_period}-${data_type}-${data_value}`;
     }
+    return `${CU.data_period}-${data_type}-${data_value}`;
 }
 
 //Settings functions
 
 function BroadcastCU(ev) {
-    this.debug('log',`(${ev.data.type}):`,ev.data);
+    this.debug('log', `(${ev.data.type}):`, ev.data);
     switch (ev.data.type) {
         case "hide":
             CU.hidden = true;
@@ -1881,9 +1882,9 @@ function Main() {
     if (CU.hidden === false) {
         //Set to opposite so that click can be used and sets it back
         CU.hidden = true;
-        setTimeout(()=>{$("#toggle-count-notice").click();}, JQUERY_DELAY);
+        setTimeout(() => {$("#toggle-count-notice").click();}, JQUERY_DELAY);
     }
-    JSPLib.utility.setCSSStyle(program_css,'program');
+    JSPLib.utility.setCSSStyle(program_css, 'program');
     JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
     JSPLib.load.noncriticalTasks(CleanupTasks);
 }
@@ -1891,21 +1892,21 @@ function Main() {
 /****Function decoration****/
 
 [
-    Main,BroadcastCU,GetPeriodUploads,GetCount,GetReverseTagImplication,ValidateEntry,
+    Main, BroadcastCU, GetPeriodUploads, GetCount, GetReverseTagImplication, ValidateEntry,
 ] = JSPLib.debug.addFunctionLogs([
-    Main,BroadcastCU,GetPeriodUploads,GetCount,GetReverseTagImplication,ValidateEntry,
+    Main, BroadcastCU, GetPeriodUploads, GetCount, GetReverseTagImplication, ValidateEntry,
 ]);
 
 [
-    RenderSettingsMenu,InitializeTable,InitializeControls,TooltipHover,RenderChart,
-    GetPeriod,CheckPeriodUploads,GetPeriodUploads,RefreshUser,CheckUser,AddCopyright,CopyrightPeriod,
-    MergeCopyrightTags,ProcessUploads,PopulateTable,
+    RenderSettingsMenu, InitializeTable, InitializeControls, TooltipHover, RenderChart,
+    GetPeriod, CheckPeriodUploads, GetPeriodUploads, RefreshUser, CheckUser, AddCopyright, CopyrightPeriod,
+    MergeCopyrightTags, ProcessUploads, PopulateTable,
 ] = JSPLib.debug.addFunctionTimers([
     //Sync
-    RenderSettingsMenu,InitializeTable,InitializeControls,TooltipHover,RenderChart,
+    RenderSettingsMenu, InitializeTable, InitializeControls, TooltipHover, RenderChart,
     //Async
-    GetPeriod,CheckPeriodUploads,GetPeriodUploads,RefreshUser,CheckUser,AddCopyright,CopyrightPeriod,
-    MergeCopyrightTags,ProcessUploads,PopulateTable
+    GetPeriod, CheckPeriodUploads, GetPeriodUploads, RefreshUser, CheckUser, AddCopyright, CopyrightPeriod,
+    MergeCopyrightTags, ProcessUploads, PopulateTable
 ]);
 
 /****Initialization****/
