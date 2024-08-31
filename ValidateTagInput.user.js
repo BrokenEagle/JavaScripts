@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.8
+// @version      29.9
 // @description  Validates tag add/remove inputs on a post edit or upload, plus several other post validations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -454,7 +454,7 @@ async function QueryTagAliases(taglist) {
     let unseen_tags = JSPLib.utility.arrayDifference(taglist, QueryTagAliases.seen_tags);
     if (unseen_tags.length === 0) return;
     let tag_keys = unseen_tags.map((tag) => 'ta-' + tag);
-    let cached = await JSPLib.storage.batchCheckLocalDB(tag_keys, ValidateEntry, RELATION_EXPIRATION);
+    let cached = await JSPLib.storage.batchCheckLocalDB(tag_keys, RELATION_EXPIRATION);
     let found_keys = JSPLib.utility.arrayIntersection(tag_keys, Object.keys(cached));
     let missing_keys = JSPLib.utility.arrayDifference(tag_keys, Object.keys(cached));
     this.debug('log', "Cached aliases:", found_keys);
@@ -490,7 +490,7 @@ async function QueryTagAliases(taglist) {
 //Queries implications of preexisting tags... called once per image
 async function QueryTagImplications(taglist) {
     let tag_keys = taglist.map((tag) => 'ti-' + tag);
-    let cached = await JSPLib.storage.batchCheckLocalDB(tag_keys, ValidateEntry, RELATION_EXPIRATION);
+    let cached = await JSPLib.storage.batchCheckLocalDB(tag_keys, RELATION_EXPIRATION);
     let found_keys = JSPLib.utility.arrayIntersection(tag_keys, Object.keys(cached));
     let missing_keys = JSPLib.utility.arrayDifference(tag_keys, Object.keys(cached));
     this.debug('log', "Cached implications:", found_keys);
@@ -531,7 +531,7 @@ async function QueryTagDeprecations(taglist) {
     let unseen_tags = JSPLib.utility.arrayDifference(taglist, QueryTagDeprecations.seen_tags);
     if (unseen_tags.length === 0) return;
     let tag_keys = unseen_tags.map((tag) => 'td-' + tag);
-    let cached = await JSPLib.storage.batchCheckLocalDB(tag_keys, ValidateEntry, TAG_EXPIRATION);
+    let cached = await JSPLib.storage.batchCheckLocalDB(tag_keys, TAG_EXPIRATION);
     let found_keys = JSPLib.utility.arrayIntersection(tag_keys, Object.keys(cached));
     let missing_keys = JSPLib.utility.arrayDifference(tag_keys, Object.keys(cached));
     this.debug('log', "Cached tags:", found_keys);
@@ -809,7 +809,7 @@ async function ValidateArtist() {
     } else {
         //Validate artists have entry
         let artist_keys = artist_names.map((name) => 'are-' + name);
-        let cached = await JSPLib.storage.batchCheckLocalDB(artist_keys, ValidateEntry, ARTIST_EXPIRATION, 'are');
+        let cached = await JSPLib.storage.batchCheckLocalDB(artist_keys, ARTIST_EXPIRATION, 'are');
         let found_keys = JSPLib.utility.arrayIntersection(artist_keys, Object.keys(cached));
         let missing_keys = JSPLib.utility.arrayDifference(artist_keys, Object.keys(cached));
         if (missing_keys.length === 0) {
@@ -1039,6 +1039,9 @@ JSPLib.menu.program_data_regex = PROGRAM_DATA_REGEX;
 JSPLib.menu.program_data_key = PROGRAM_DATA_KEY;
 JSPLib.menu.settings_config = SETTINGS_CONFIG;
 JSPLib.menu.control_config = CONTROL_CONFIG;
+
+//Variables for storage.js
+JSPLib.storage.indexedDBValidator = ValidateEntry;
 
 //Export JSPLib
 JSPLib.load.exportData(PROGRAM_NAME, VTI);
