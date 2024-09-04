@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      23.1
+// @version      23.2
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -13,17 +13,17 @@
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/EventListener.user.js
 // @require      https://cdn.jsdelivr.net/npm/xregexp@5.1.0/xregexp-all.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240223-menu/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru XRegExp LZString */
@@ -151,7 +151,7 @@ const SETTINGS_CONFIG = {
     },
     filter_users: {
         reset: "",
-        parse: (input)=>(JSPLib.utility.arrayUnique(input.split(/\s*,\s*/).map(Number).filter((num) => (num !== 0)))),
+        parse: (input)=>(JSPLib.utility.arrayUnique(input.split(/\s*,\s*/).map(Number).filter(JSPLib.validate.validateID))),
         validate: (input)=>(JSPLib.validate.validateIDList(input)),
         hint: 'Enter a list of users to filter (comma separated).'
     },
@@ -845,7 +845,7 @@ const TYPEDICT = {
         controller: 'post_versions',
         get addons() {
             let addons = {search: {is_new: false}};
-            if (EL.user_settings.filter_BUR_edits) {
+            if (EL.filter_BUR_edits) {
                 addons.search.updater_id_not_eq = SERVER_USER_ID;
             }
             return addons;
@@ -941,7 +941,7 @@ const TYPEDICT = {
     mod_action: {
         controller: 'mod_actions',
         get addons() {
-            return {search: {category: EL.user_settings.subscribed_mod_actions.join(',')}};
+            return {search: {category: EL.subscribed_mod_actions.join(',')}};
         },
         only: 'id,category',
         filter: (array) => (array.filter((val) => (IsCategorySubscribed(val.category)))),
@@ -1063,7 +1063,7 @@ function CorrectList(type,typelist) {
 
 async function SetRecentDanbooruID(type,qualifier) {
     let type_addon = TYPEDICT[type].addons || {};
-    let url_addons = JSPLib.utility.joinArgs(type_addon, {only: ID_FIELD, limit: 1});
+    let url_addons = JSPLib.utility.mergeHashes(type_addon, {only: ID_FIELD, limit: 1});
     let jsonitem = await JSPLib.danbooru.submitRequest(TYPEDICT[type].controller, url_addons, {default_val: []});
     if (jsonitem.length) {
         SaveLastID(type, JSPLib.danbooru.getNextPageID(jsonitem, true), qualifier);
@@ -1089,7 +1089,7 @@ function AreAllEventsEnabled(event_list,event_type) {
 }
 
 function IsCategorySubscribed(type) {
-    return EL.user_settings.subscribed_mod_actions.includes(type);
+    return EL.subscribed_mod_actions.includes(type);
 }
 
 function GetTypeQuery(type) {
@@ -1117,10 +1117,10 @@ function GetList(type) {
     if (EL.subscribeset[type]) {
         return EL.subscribeset[type];
     }
-    EL.subscribeset[type] = JSPLib.storage.getStorageData(`el-${type}list`, localStorage, []);
+    EL.subscribeset[type] = JSPLib.storage.getLocalData(`el-${type}list`, {default_val: []});
     if (CorrectList(type, EL.subscribeset)) {
         setTimeout(()=>{
-            JSPLib.storage.setStorageData(`el-${type}list`, EL.subscribeset[type], localStorage);
+            JSPLib.storage.setLocalData(`el-${type}list`, EL.subscribeset[type]);
         }, NONSYNCHRONOUS_DELAY);
     }
     EL.subscribeset[type] = new Set(EL.subscribeset[type]);
@@ -1137,7 +1137,7 @@ function SetList(type,remove_item,itemid) {
     } else {
         typeset.add(itemid);
     }
-    JSPLib.storage.setStorageData(`el-${type}list`, [...typeset], localStorage);
+    JSPLib.storage.setLocalData(`el-${type}list`, [...typeset]);
     EL.channel.postMessage({type: 'subscribe', eventtype: type, was_subscribed: remove_item, itemid: itemid, eventset: typeset});
     EL.subscribeset[type] = typeset;
 }
@@ -1149,10 +1149,10 @@ function GetUserList(type) {
     if (EL.userset[type]) {
         return EL.userset[type];
     }
-    EL.userset[type] = JSPLib.storage.getStorageData(`el-us-${type}list`, localStorage, []);
+    EL.userset[type] = JSPLib.storage.getLocalData(`el-us-${type}list`, {default_val: []});
     if (CorrectList(type, EL.userset)) {
         setTimeout(()=>{
-            JSPLib.storage.setStorageData(`el-us-${type}list`, EL.userset, localStorage);
+            JSPLib.storage.setLocalData(`el-us-${type}list`, EL.userset);
         }, NONSYNCHRONOUS_DELAY);
     }
     EL.userset[type] = new Set(EL.userset[type]);
@@ -1169,7 +1169,7 @@ function SetUserList(type,remove_item,userid) {
     } else {
         typeset.add(userid);
     }
-    JSPLib.storage.setStorageData(`el-us-${type}list`, [...typeset], localStorage);
+    JSPLib.storage.setLocalData(`el-us-${type}list`, [...typeset]);
     EL.channel.postMessage({type: 'subscribe_user', eventtype: type, was_subscribed: remove_item, userid: userid, eventset: typeset});
     EL.userset[type] = typeset;
 }
@@ -1198,14 +1198,14 @@ function FilterData(array,subscribe_set,user_set) {
 }
 
 function IsShownData(val,subscribe_set,user_set) {
-    if ((EL.user_settings.filter_user_events && this.user && (val[this.user] === EL.userid)) || EL.user_settings.filter_users.includes(val[this.user])) {
+    if ((EL.filter_user_events && this.user && (val[this.user] === EL.userid)) || EL.filter_users.includes(val[this.user])) {
         return false;
     }
     if (user_set && this.user && user_set.has(val[this.user])) {
         return true;
     }
     if (subscribe_set && this.item) {
-        let is_creator_event = EL.user_settings.show_creator_events && this.creator && JSPLib.utility.getNestedAttribute(val, this.creator) === EL.userid;
+        let is_creator_event = EL.show_creator_events && this.creator && JSPLib.utility.getNestedAttribute(val, this.creator) === EL.userid;
         if (!is_creator_event && !subscribe_set.has(val[this.item])) {
             return false;
         }
@@ -1217,17 +1217,17 @@ function IsShownData(val,subscribe_set,user_set) {
 }
 
 function IsShownCommentary(val) {
-    if (!EL.user_settings.filter_untranslated_commentary) {
+    if (!EL.filter_untranslated_commentary) {
         return true;
     }
     return (Boolean(val.translated_title) || Boolean(val.translated_description));
 }
 
 function IsShownPostEdit(val) {
-    if (EL.user_settings.filter_BUR_edits && val.updater_id === SERVER_USER_ID) {
+    if (EL.filter_BUR_edits && val.updater_id === SERVER_USER_ID) {
         return false;
     }
-    if (EL.user_settings.filter_post_edits === "") {
+    if (EL.filter_post_edits === "") {
         return true;
     }
     let changed_tags = new Set(JSPLib.utility.concat(val.added_tags, val.removed_tags));
@@ -1235,7 +1235,7 @@ function IsShownPostEdit(val) {
 }
 
 function IsShownFeedback(val) {
-    if (!EL.user_settings.filter_autofeedback) {
+    if (!EL.filter_autofeedback) {
         return true;
     }
     return (val.body.match(/^Banned forever:/) === null)
@@ -1245,7 +1245,7 @@ function IsShownFeedback(val) {
 }
 
 function IsShownBan(val) {
-    if (!EL.user_settings.filter_autobans) {
+    if (!EL.filter_autobans) {
         return true;
     }
     return val.banner_id !== SERVER_USER_ID;
@@ -1288,18 +1288,18 @@ function SaveLastID(type,lastid,qualifier='') {
     }
     qualifier += (qualifier.length > 0 ? '-' : '');
     let key = `el-${qualifier}${type}lastid`;
-    let previousid = JSPLib.storage.checkStorageData(key, ValidateProgramData, localStorage, 1);
+    let previousid = JSPLib.storage.checkLocalData(key, {default_val: 1});
     lastid = Math.max(previousid, lastid);
-    JSPLib.storage.setStorageData(key, lastid, localStorage);
+    JSPLib.storage.setLocalData(key, lastid);
     this.debug('log',`Set last ${qualifier}${type} ID:`, lastid);
 }
 
 function WasOverflow() {
-    return JSPLib.storage.checkStorageData('el-overflow', ValidateProgramData, localStorage, false);
+    return JSPLib.storage.checkLocalData('el-overflow', {default_val: false});
 }
 
 function SetLastSeenTime() {
-    JSPLib.storage.setStorageData('el-last-seen', Date.now(), localStorage);
+    JSPLib.storage.setLocalData('el-last-seen', Date.now());
 }
 
 function CalculateOverflow(recalculate=false) {
@@ -1308,7 +1308,7 @@ function CalculateOverflow(recalculate=false) {
         EL.any_overflow = false;
         let enabled_events = JSPLib.utility.arrayIntersection(ALL_SUBSCRIBES, EL.all_subscribe_events);
         enabled_events.forEach((type)=>{
-            EL.all_overflows[type] = (EL.all_overflows[type] === undefined ? JSPLib.storage.checkStorageData(`el-${type}overflow`, ValidateProgramData, localStorage, false): EL.all_overflows[type]);
+            EL.all_overflows[type] = (EL.all_overflows[type] === undefined ? JSPLib.storage.checkLocalData(`el-${type}overflow`, {default_val: false}): EL.all_overflows[type]);
             EL.any_overflow = EL.any_overflow || EL.all_overflows[type];
         });
     }
@@ -1327,7 +1327,7 @@ function ProcessEvent(inputtype, optype) {
         return false;
     }
     if (optype === 'all_subscribe_events'
-            && !(JSPLib.menu.isSettingEnabled('subscribe_events_enabled', inputtype) && (EL.user_settings.show_creator_events || CheckList(inputtype)))
+            && !(JSPLib.menu.isSettingEnabled('subscribe_events_enabled', inputtype) && (EL.show_creator_events || CheckList(inputtype)))
             && !(JSPLib.menu.isSettingEnabled('user_events_enabled', inputtype) && CheckUserList(inputtype))) {
         this.debug('log',"Soft disable:", inputtype, optype);
         return false;
@@ -1351,7 +1351,7 @@ function ProcessEvent(inputtype, optype) {
 }
 
 function CheckAbsence() {
-    let last_seen = JSPLib.storage.getStorageData('el-last-seen', localStorage, 0);
+    let last_seen = JSPLib.storage.getLocalData('el-last-seen', {default_val: 0});
     let time_absent = Date.now() - last_seen;
     if (last_seen === 0 || (time_absent < JSPLib.utility.one_day)) {
         return true;
@@ -1375,7 +1375,7 @@ async function AddForumPost(forumid,rowelement) {
     $('td', $outerblock).append($forum_post);
     let $rowelement = $(rowelement);
     $rowelement.after($outerblock);
-    if (EL.user_settings.mark_read_topics) {
+    if (EL.mark_read_topics) {
         let topic_id = $rowelement.data('topic-id');
         if (!EL.marked_topic.includes(topic_id)) {
             ReadForumTopic(topic_id);
@@ -1501,7 +1501,7 @@ function ToggleSubscribeLinks() {
         }
         if (IsAnyEventEnabled(ALL_POST_EVENTS, 'subscribe_events_enabled')) {
             $('#el-subscribe-events').show();
-            let enabled_post_events = JSPLib.utility.arrayIntersection(ALL_POST_EVENTS, EL.user_settings.subscribe_events_enabled);
+            let enabled_post_events = JSPLib.utility.arrayIntersection(ALL_POST_EVENTS, EL.subscribe_events_enabled);
             $('#el-all-link').attr('data-type', enabled_post_events);
         } else {
             $('#el-subscribe-events').hide();
@@ -1525,7 +1525,7 @@ function ToggleUserLinks() {
         }
         if (IsAnyEventEnabled(USER_EVENTS, 'user_events_enabled')) {
             $('#el-subscribe-events').show();
-            let enabled_user_events = JSPLib.utility.arrayIntersection(USER_EVENTS, EL.user_settings.user_events_enabled);
+            let enabled_user_events = JSPLib.utility.arrayIntersection(USER_EVENTS, EL.user_events_enabled);
             $('#el-all-link').attr('data-type', enabled_user_events);
         } else {
             $('#el-subscribe-events').hide();
@@ -1910,7 +1910,7 @@ function InitializeUserShowMenu() {
     let linkhtml = RenderSubscribeMultiLinks("Translations", ALL_TRANSLATE_EVENTS, userid, 'user_events_enabled');
     $('#el-add-links', $menu_obj).append(`<span class="el-user-translated-container ${shownclass}">${linkhtml} | </span>`);
     //The All link is always shown when the outer menu is shown, so no need to individually hide it
-    let enabled_user_events = JSPLib.utility.arrayIntersection(USER_EVENTS, EL.user_settings.user_events_enabled);
+    let enabled_user_events = JSPLib.utility.arrayIntersection(USER_EVENTS, EL.user_events_enabled);
     linkhtml = RenderSubscribeMultiLinks("All", enabled_user_events, userid, 'user_events_enabled');
     $('#el-add-links', $menu_obj).append(`<span class="el-user-all-container">${linkhtml}</span>`);
     $('#nav').append($menu_obj);
@@ -1929,7 +1929,7 @@ function InitializePostShowMenu() {
     let linkhtml = RenderSubscribeMultiLinks("Translations", ALL_TRANSLATE_EVENTS, postid, 'subscribe_events_enabled');
     $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-translated-container ${shownclass}">${linkhtml} | </span>`);
     //The All link is always shown when the outer menu is shown, so no need to individually hide it
-    let enabled_post_events = JSPLib.utility.arrayIntersection(ALL_POST_EVENTS, EL.user_settings.subscribe_events_enabled);
+    let enabled_post_events = JSPLib.utility.arrayIntersection(ALL_POST_EVENTS, EL.subscribe_events_enabled);
     linkhtml = RenderSubscribeMultiLinks("All", enabled_post_events, postid, 'subscribe_events_enabled');
     $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-all-container">${linkhtml}</span>`);
     $('#nav').append($menu_obj);
@@ -2110,9 +2110,9 @@ function ReloadEventNotice() {
     let promise_array = [];
     ALL_EVENTS.forEach((type)=>{
         let savedlist = JSPLib.utility.multiConcat(
-            JSPLib.storage.getStorageData(`el-saved${type}list`, localStorage, []),
-            JSPLib.storage.getStorageData(`el-ot-saved${type}list`, localStorage, []),
-            JSPLib.storage.getStorageData(`el-pq-saved${type}list`, localStorage, []),
+            JSPLib.storage.getLocalData(`el-saved${type}list`, {default_val: []}),
+            JSPLib.storage.getLocalData(`el-ot-saved${type}list`, {default_val: []}),
+            JSPLib.storage.getLocalData(`el-pq-saved${type}list`, {default_val: []}),
         );
         let is_overflow = CheckOverflow(type);
         if (savedlist.length || is_overflow) {
@@ -2142,7 +2142,7 @@ function UpdateAll() {
 
 function ResetAll() {
     LASTID_KEYS.forEach((key)=>{
-        JSPLib.storage.removeStorageData(key, localStorage);
+        JSPLib.storage.removeLocalData(key);
     });
     $("#el-dismiss-notice").hide();
     ProcessAllEvents(()=>{
@@ -2167,11 +2167,11 @@ function LoadMore(event) {
         SetRecentDanbooruID(type).then(()=>{
             JSPLib.notice.notice("Event position has been reset!");
             $notice.hide();
-            JSPLib.storage.setStorageData(`el-${type}overflow`, false, localStorage);
-            JSPLib.storage.removeStorageData(`el-saved${type}lastid`, localStorage);
-            JSPLib.storage.removeStorageData(`el-saved${type}list`, localStorage);
+            JSPLib.storage.setLocalData(`el-${type}overflow`, false);
+            JSPLib.storage.removeLocal(`el-saved${type}lastid`);
+            JSPLib.storage.removeLocalData(`el-saved${type}list`);
             CalculateOverflow(true);
-            JSPLib.storage.setStorageData('el-overflow', EL.any_overflow, localStorage);
+            JSPLib.storage.setLocalData('el-overflow', EL.any_overflow);
         });
         return;
     }
@@ -2191,7 +2191,7 @@ function LoadMore(event) {
         $('#el-event-controls').show();
         FinalizeEventNotice();
         CalculateOverflow(true);
-        JSPLib.storage.setStorageData('el-overflow', EL.any_overflow, localStorage);
+        JSPLib.storage.setLocalData('el-overflow', EL.any_overflow);
     });
 }
 
@@ -2264,7 +2264,7 @@ async function PostEventPopulateControl() {
             }
             EL.subscribeset[eventtype] = typeset;
             setTimeout(()=>{
-                JSPLib.storage.setStorageData(`el-${eventtype}list`, [...EL.subscribeset[eventtype]], localStorage);
+                JSPLib.storage.LocalData(`el-${eventtype}list`, [...EL.subscribeset[eventtype]]);
             }, NONSYNCHRONOUS_DELAY);
             EL.channel.postMessage({type: 'reload', eventtype: eventtype, was_subscribed: was_subscribed, new_subscribed: new_subscribed, eventset: EL.subscribeset[eventtype]});
         });
@@ -2302,7 +2302,7 @@ function OpenItemClick(type,htmlfunc,otherfunc) {
 //Callback functions
 
 function SubscribeMultiLinkCallback() {
-    EL.user_settings.autosubscribe_enabled.forEach((type)=>{
+    EL.autosubscribe_enabled.forEach((type)=>{
         $(`#el-subscribe-events .el-unsubscribed[data-type="${type}"] a`).click();
     });
 }
@@ -2324,7 +2324,7 @@ function RebindMenuAutocomplete() {
 
 async function CheckPostQueryType(type) {
     let lastidkey = `el-pq-${type}lastid`;
-    let typelastid = JSPLib.storage.checkStorageData(lastidkey, ValidateProgramData, localStorage, 0);
+    let typelastid = JSPLib.storage.checkLocalData(lastidkey, {default_val: 0});
     if (typelastid) {
         let savedlistkey = `el-pq-saved${type}list`;
         let savedlastidkey = `el-pq-saved${type}lastid`;
@@ -2335,7 +2335,7 @@ async function CheckPostQueryType(type) {
         if (post_query.replace(/[\s-*~]+/g, '').length > 0) {
             query_addon = (TYPEDICT[type].customquery ? TYPEDICT[type].customquery(post_query) : {search: {post_tags_match: post_query}});
         }
-        let url_addons = JSPLib.utility.joinArgs(type_addon, query_addon, {only: TYPEDICT[type].only});
+        let url_addons = JSPLib.utility.mergeHashes(type_addon, query_addon, {only: TYPEDICT[type].only});
         let batches = (EL.no_limit ? null : 1);
         let jsontype = await JSPLib.danbooru.getAllItems(TYPEDICT[type].controller, QUERY_LIMIT, {url_addons, batches, page: typelastid, reverse: true});
         let filtertype = TYPEDICT[type].filter(jsontype);
@@ -2344,8 +2344,8 @@ async function CheckPostQueryType(type) {
             this.debug('log',`Found ${TYPEDICT[type].plural}!`, lastusertype);
             let idlist = JSPLib.utility.getObjectAttributes(filtertype, 'id');
             await LoadHTMLType(type, idlist);
-            JSPLib.storage.setStorageData(savedlastidkey, lastusertype, localStorage);
-            JSPLib.storage.setStorageData(savedlistkey, idlist, localStorage);
+            JSPLib.storage.setLocalData(savedlastidkey, lastusertype);
+            JSPLib.storage.setLocalData(savedlistkey, idlist);
             return true;
         } else {
             this.debug('log',`No ${TYPEDICT[type].plural}!`);
@@ -2362,8 +2362,8 @@ async function CheckPostQueryType(type) {
 async function CheckSubscribeType(type,domname=null) {
     let lastidkey = `el-${type}lastid`;
     let savedlastidkey = `el-saved${type}lastid`;
-    let savedlastid = JSPLib.storage.getStorageData(savedlastidkey, localStorage);
-    let typelastid = savedlastid || JSPLib.storage.checkStorageData(lastidkey, ValidateProgramData, localStorage, 0);
+    let savedlastid = JSPLib.storage.getLocalData(savedlastidkey);
+    let typelastid = savedlastid || JSPLib.storage.checkLocalData(lastidkey, {default_val: 0});
     if (typelastid) {
         let subscribe_set = GetList(type);
         let user_set = GetUserList(type);
@@ -2372,10 +2372,10 @@ async function CheckSubscribeType(type,domname=null) {
         let isoverflow = false;
         let type_addon = TYPEDICT[type].addons || {};
         let only_attribs = TYPEDICT[type].only;
-        if (EL.user_settings.show_creator_events) {
+        if (EL.show_creator_events) {
             only_attribs += (TYPEDICT[type].includes ? ',' + TYPEDICT[type].includes : "");
         }
-        let url_addons = JSPLib.utility.joinArgs(type_addon, {only: only_attribs});
+        let url_addons = JSPLib.utility.mergeHashes(type_addon, {only: only_attribs});
         let batches = TYPEDICT[type].limit;
         let batch_limit = TYPEDICT[type].limit * QUERY_LIMIT;
         if (EL.no_limit) {
@@ -2385,10 +2385,10 @@ async function CheckSubscribeType(type,domname=null) {
         let jsontype = await JSPLib.danbooru.getAllItems(TYPEDICT[type].controller, QUERY_LIMIT, {url_addons, batches, page: typelastid, reverse: true, domname});
         if (jsontype.length === batch_limit) {
             this.debug('log',`${batch_limit} ${type} items; overflow detected!`);
-            JSPLib.storage.setStorageData(overflowkey, true, localStorage);
+            JSPLib.storage.setLocalData(overflowkey, true);
             EL.item_overflow = isoverflow = EL.all_overflows[type] = true;
         } else {
-            JSPLib.storage.setStorageData(overflowkey, false, localStorage);
+            JSPLib.storage.setLocalData(overflowkey, false);
             EL.all_overflows[type] = false;
         }
         let filtertype = TYPEDICT[type].filter(jsontype, subscribe_set, user_set);
@@ -2396,7 +2396,7 @@ async function CheckSubscribeType(type,domname=null) {
         if (filtertype.length || savedlastid) {
             let rendered_added = false;
             let idlist = JSPLib.utility.getObjectAttributes(filtertype, 'id');
-            let previouslist = JSPLib.storage.getStorageData(savedlistkey, localStorage, []);
+            let previouslist = JSPLib.storage.getLocalData(savedlistkey, {default_val: []});
             idlist = JSPLib.utility.concat(previouslist, idlist);
             if (EL.not_snoozed) {
                 this.debug('log',`Displaying ${TYPEDICT[type].plural}:`, idlist.length, lastusertype);
@@ -2404,8 +2404,8 @@ async function CheckSubscribeType(type,domname=null) {
             } else {
                 this.debug('log',`Available ${TYPEDICT[type].plural}:`, idlist.length, filtertype.length, lastusertype);
             }
-            JSPLib.storage.setStorageData(savedlastidkey, lastusertype, localStorage);
-            JSPLib.storage.setStorageData(savedlistkey, idlist, localStorage);
+            JSPLib.storage.setLocalData(savedlastidkey, lastusertype);
+            JSPLib.storage.setLocalData(savedlistkey, idlist);
             return rendered_added;
         } else {
             this.debug('log',`No ${TYPEDICT[type].plural}:`, lastusertype);
@@ -2422,12 +2422,12 @@ async function CheckSubscribeType(type,domname=null) {
 
 async function CheckOtherType(type) {
     let lastidkey = `el-ot-${type}lastid`;
-    let typelastid = JSPLib.storage.checkStorageData(lastidkey, ValidateProgramData, localStorage, 0);
+    let typelastid = JSPLib.storage.checkLocalData(lastidkey, {default_val: 0});
     if (typelastid) {
         let savedlistkey = `el-ot-saved${type}list`;
         let savedlastidkey = `el-ot-saved${type}lastid`;
         let type_addon = TYPEDICT[type].addons || {};
-        let url_addons = JSPLib.utility.joinArgs(type_addon, {only: TYPEDICT[type].only});
+        let url_addons = JSPLib.utility.mergeHashes(type_addon, {only: TYPEDICT[type].only});
         let batches = (EL.no_limit ? null : 1);
         let jsontype = await JSPLib.danbooru.getAllItems(TYPEDICT[type].controller, QUERY_LIMIT, {url_addons, batches, page: typelastid, reverse: true});
         let filtertype = TYPEDICT[type].filter(jsontype);
@@ -2436,8 +2436,8 @@ async function CheckOtherType(type) {
             this.debug('log',`Found ${TYPEDICT[type].plural}!`, lastusertype);
             let idlist = JSPLib.utility.getObjectAttributes(filtertype, 'id');
             await LoadHTMLType(type, idlist);
-            JSPLib.storage.setStorageData(savedlistkey, idlist, localStorage);
-            JSPLib.storage.setStorageData(savedlastidkey, lastusertype, localStorage);
+            JSPLib.storage.setLocalData(savedlistkey, idlist);
+            JSPLib.storage.setLocalData(savedlastidkey, lastusertype);
             return true;
         } else {
             this.debug('log',`No ${TYPEDICT[type].plural}!`);
@@ -2474,7 +2474,7 @@ async function LoadHTMLType(type,idlist,isoverflow=false) {
     }
     if (displaylist.length === 0) {
         $section.show();
-        if (EL.user_settings.overflow_only_notice_enabled) {
+        if (EL.overflow_only_notice_enabled) {
             $('#el-event-notice').show();
         }
         return false;
@@ -2483,7 +2483,7 @@ async function LoadHTMLType(type,idlist,isoverflow=false) {
     let type_addon = TYPEDICT[type].addons || {};
     for (let i = 0; i < displaylist.length; i += QUERY_LIMIT) {
         let querylist = displaylist.slice(i, i + QUERY_LIMIT);
-        let url_addons = JSPLib.utility.joinArgs(type_addon, {search: {id: querylist.join(',')}, type: 'previous', limit: querylist.length});
+        let url_addons = JSPLib.utility.mergeHashes(type_addon, {search: {id: querylist.join(',')}, type: 'previous', limit: querylist.length});
         if (querylist.length > 1) {
             url_addons.search.order = 'custom';
         }
@@ -2520,7 +2520,7 @@ function FinalizeEventNotice(initial=false) {
         }
         if (AnyRenderedEvents()) {
             localStorage['el-saved-notice'] = LZString.compressToUTF16($("#el-event-notice").html());
-            JSPLib.storage.setStorageData('el-rendered-list', EL.renderedlist, localStorage);
+            JSPLib.storage.setLocalData('el-rendered-list', EL.renderedlist);
             JSPLib.concurrency.setRecheckTimeout('el-saved-timeout', EL.timeout_expires);
         }
     });
@@ -2532,15 +2532,15 @@ async function CheckAllEvents(promise_array) {
     ProcessThumbnails();
     if (hasevents) {
         FinalizeEventNotice(true);
-    } else if (EL.item_overflow && EL.user_settings.overflow_only_notice_enabled) {
+    } else if (EL.item_overflow && EL.overflow_only_notice_enabled) {
         //Don't save the notice when only overflow notice, since that prevents further network gets
         $("#el-event-controls").show();
         $("#el-loading-message").hide();
     } else {
-        JSPLib.storage.removeStorageData('el-rendered-list', localStorage);
-        JSPLib.storage.removeStorageData('el-saved-notice', localStorage);
+        JSPLib.storage.removeLocalData('el-rendered-list');
+        JSPLib.storage.removeLocalData('el-saved-notice');
     }
-    JSPLib.storage.setStorageData('el-overflow', EL.item_overflow, localStorage);
+    JSPLib.storage.setLocalData('el-overflow', EL.item_overflow);
     EL.dmail_promise.resolve(null);
     return hasevents;
 }
@@ -2566,51 +2566,51 @@ function MarkAllAsRead() {
     Object.keys(localStorage).forEach((key)=>{
         let match = key.match(/el-(ot|pq)?-?saved(\S+)list/);
         if (match) {
-            JSPLib.storage.removeStorageData(key, localStorage);
+            JSPLib.storage.removeLocalData(key);
             return;
         }
         match = key.match(/el-(ot|pq)?-?saved(\S+)lastid/);
         if (!match) {
             return;
         }
-        let savedlastid = JSPLib.storage.getStorageData(key, localStorage, null);
-        JSPLib.storage.removeStorageData(key, localStorage);
+        let savedlastid = JSPLib.storage.getLocalData(key, {default_val: null});
+        JSPLib.storage.removeLocalData(key);
         if (!JSPLib.validate.validateID(savedlastid)) {
             this.debug('log',key, "is not a valid ID!", savedlastid);
             return;
         }
         SaveLastID(match[2], savedlastid, match[1]);
     });
-    JSPLib.storage.removeStorageData('el-rendered-list', localStorage);
-    JSPLib.storage.removeStorageData('el-saved-notice', localStorage);
+    JSPLib.storage.removeLocalData('el-rendered-list');
+    JSPLib.storage.removeLocalData('el-saved-notice');
     SetLastSeenTime();
     EL.dmail_promise.resolve(null);
 }
 
 function EventStatusCheck() {
-    let disabled_events = JSPLib.utility.arrayDifference(POST_QUERY_EVENTS, EL.user_settings.post_query_events_enabled);
+    let disabled_events = JSPLib.utility.arrayDifference(POST_QUERY_EVENTS, EL.post_query_events_enabled);
     disabled_events.forEach((type)=>{
         //Delete every associated value but the list
-        JSPLib.storage.removeStorageData(`el-pq-${type}lastid`, localStorage);
-        JSPLib.storage.removeStorageData(`el-pq-saved${type}lastid`, localStorage);
+        JSPLib.storage.removeLocalData(`el-pq-${type}lastid`);
+        JSPLib.storage.removeLocalData(`el-pq-saved${type}lastid`);
     });
     disabled_events = JSPLib.utility.arrayDifference(ALL_SUBSCRIBES, EL.all_subscribe_events);
-    EL.user_settings.subscribe_events_enabled.forEach((inputtype)=>{
-        if (!EL.user_settings.show_creator_events && !CheckList(inputtype) && !CheckUserList(inputtype)) {
+    EL.subscribe_events_enabled.forEach((inputtype)=>{
+        if (!EL.show_creator_events && !CheckList(inputtype) && !CheckUserList(inputtype)) {
             disabled_events.push(inputtype);
         }
     });
     disabled_events.forEach((type)=>{
         //Delete every associated value but the list
-        JSPLib.storage.removeStorageData(`el-${type}lastid`, localStorage);
-        JSPLib.storage.removeStorageData(`el-saved${type}lastid`, localStorage);
-        JSPLib.storage.removeStorageData(`el-${type}overflow`, localStorage);
+        JSPLib.storage.removeLocalData(`el-${type}lastid`);
+        JSPLib.storage.removeLocalData(`el-saved${type}lastid`);
+        JSPLib.storage.removeLocalData(`el-${type}overflow`);
     });
-    disabled_events = JSPLib.utility.arrayDifference(OTHER_EVENTS, EL.user_settings.other_events_enabled);
+    disabled_events = JSPLib.utility.arrayDifference(OTHER_EVENTS, EL.other_events_enabled);
     disabled_events.forEach((type)=>{
         //Delete every associated value but the list
-        JSPLib.storage.removeStorageData(`el-ot-${type}lastid`, localStorage);
-        JSPLib.storage.removeStorageData(`el-ot-saved${type}lastid`, localStorage);
+        JSPLib.storage.removeLocalData(`el-ot-${type}lastid`);
+        JSPLib.storage.removeLocalData(`el-ot-saved${type}lastid`);
     });
 }
 
@@ -2660,12 +2660,12 @@ function InitializeChangedSettings() {
     if (EL.user_settings.flag_query === "###INITIALIZE###" || EL.user_settings.appeal_query === "###INITIALIZE###") {
         EL.user_settings.flag_query = EL.user_settings.appeal_query = 'user:' + EL.username;
         JSPLib.menu.updateUserSettings();
-        JSPLib.storage.setStorageData('el-user-settings', EL.user_settings, localStorage);
+        JSPLib.storage.setLocalData('el-user-settings', EL.user_settings);
     }
 }
 
 function InitializeAllSubscribes() {
-    EL.all_subscribe_events = JSPLib.utility.arrayUnion(EL.user_settings.subscribe_events_enabled, EL.user_settings.user_events_enabled);
+    EL.all_subscribe_events = JSPLib.utility.arrayUnion(EL.subscribe_events_enabled, EL.user_events_enabled);
 }
 
 function LocalResetCallback() {
@@ -2684,11 +2684,11 @@ function RemoteResetCallback() {
 }
 
 function GetRecheckExpires() {
-    return EL.user_settings.recheck_interval * JSPLib.utility.one_minute;
+    return EL.recheck_interval * JSPLib.utility.one_minute;
 }
 
 function GetPostFilterTags() {
-    return new Set(EL.user_settings.filter_post_edits.trim().split(/\s+/));
+    return new Set(EL.filter_post_edits.trim().split(/\s+/));
 }
 
 function InitializeProgramValues() {
@@ -2712,14 +2712,14 @@ function InitializeProgramValues() {
     InitializeAllSubscribes();
     Object.assign(EL, {
         timeout_expires: GetRecheckExpires(),
-        locked_notice: EL.user_settings.autolock_notices,
+        locked_notice: EL.autolock_notices,
         post_filter_tags: GetPostFilterTags(),
         recheck: JSPLib.concurrency.checkTimeout('el-event-timeout', EL.timeout_expires),
         get not_snoozed () {
             return EL.recheck || (EL.hide_dmail_notice && Boolean(this.dmail_notice.length));
         },
         get hide_dmail_notice () {
-            return EL.user_settings.autoclose_dmail_notice && IsEventEnabled('dmail', 'other_events_enabled');
+            return EL.autoclose_dmail_notice && IsEventEnabled('dmail', 'other_events_enabled');
         },
     });
     return true;
@@ -2801,7 +2801,7 @@ function Main() {
     JSPLib.notice.installBanner(PROGRAM_SHORTCUT);
     EventStatusCheck();
     if (!document.hidden && localStorage['el-saved-notice'] !== undefined && !JSPLib.concurrency.checkTimeout('el-saved-timeout', EL.timeout_expires)) {
-        EL.renderedlist = JSPLib.storage.getStorageData('el-rendered-list', localStorage, {}); //Add a validation check to this
+        EL.renderedlist = JSPLib.storage.getLocalData('el-rendered-list', {default_val: {}}); //Add a validation check to this
         let notice_html = LZString.decompressFromUTF16(localStorage['el-saved-notice']);
         InitializeNoticeBox(notice_html);
         for (let type in TYPEDICT) {
@@ -2836,7 +2836,7 @@ function Main() {
                     JSPLib.notice.notice("<b>EventListener:</b> Events are ready for viewing!", true);
                     $("#el-event-controls").show();
                     $("#el-loading-message").hide();
-                } else if (EL.item_overflow && EL.not_snoozed && EL.user_settings.overflow_only_notice_enabled) {
+                } else if (EL.item_overflow && EL.not_snoozed && EL.overflow_only_notice_enabled) {
                     JSPLib.notice.notice("<b>EventListener:</b> No events found, but more can be queried...", true);
                 } else {
                     JSPLib.concurrency.setRecheckTimeout('el-event-timeout', EL.timeout_expires);
@@ -2951,6 +2951,9 @@ JSPLib.menu.control_config = CONTROL_CONFIG;
 //Export JSPLib
 JSPLib.load.exportData(PROGRAM_NAME, EL);
 JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [GetList,SetList]});
+
+//Variables for storage.js
+JSPLib.storage.localSessionValidator = ValidateProgramData;
 
 /****Execution start****/
 
