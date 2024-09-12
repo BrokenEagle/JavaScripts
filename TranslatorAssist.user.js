@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.3
+// @version      6.4
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1621,12 +1621,15 @@ function BuildHTMLTag(tag_name, attrib_dict, style_dict, blank_style = false) {
 
 function ParseTagAttributes(html_tag) {
     let attrib_items = JSPLib.utility.findAll(html_tag, /\w+="[^"]+"/g);
+    if (attrib_items.length === 0) return {attrib_dict: {}, style_dict: {}};
     let attrib_pairs = attrib_items.map((attrib) => JSPLib.utility.findAll(attrib, /(\w+)="([^"]+)"/g).filter((_item, i) => (i % 3)));
     let attrib_dict = JSPLib.utility.mergeHashes(...attrib_pairs.map((attrib_pair) => ({[attrib_pair[0]]: attrib_pair[1]})));
     var style_dict;
     if ('style' in attrib_dict) {
-        let style_pairs = attrib_dict.style.split(';').filter((style) => (!style.match(/^\s*$/))).map((style) => (style.split(':').map((str) => str.trim())));
-        style_dict = JSPLib.utility.mergeHashes(...style_pairs.map((style) => ({[style[0]]: style[1]})));
+        let style_pairs = attrib_dict.style
+            .split(';').filter((style) => (!style.match(/^\s*$/) && (style.match(/:/g)?.length === 1)))
+            .map((style) => (style.split(':').map((str) => str.trim())));
+        style_dict = (style_pairs.length > 0 ? JSPLib.utility.mergeHashes(...style_pairs.map((style) => ({[style[0]]: style[1]}))) : {});
     } else {
         style_dict = {};
     }
