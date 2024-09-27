@@ -1661,6 +1661,7 @@ const MERGE_RESULTS_HELP = "Merge: L-click, perform another query and merge with
 const IQDB_SELECT_HELP = "Select posts that aren't valid IQDB matches.\nClick the colored postlink when finished to confirm.";
 const POST_SELECT_HELP = "Select posts for deletion by clicking the thumbnail.\nLeaving the Delete all checkbox on will select all posts.\nUnsetting that checkbox allows adding posts to the current set.\nClick the colored postlink when finished to delete/add posts.";
 
+const DATABASE_IS_INSTALLING_HELP = "The database is currently installing 1 batch periodically.";
 const INSTALL_DATABASE_HELP = `Click to visit topic #${DANBOORU_TOPIC_ID} for manual install file.`;
 const DATABASE_VERSION_HELP = "Click to open new tab to userscript details page.";
 const UPDATE_RECORDS_HELP = "L-Click to update records to current.";
@@ -1718,6 +1719,7 @@ const BADVER_RECHECK_EXPIRES = JSPLib.utility.one_day;
 const PRUNE_RECHECK_EXPIRES = JSPLib.utility.one_hour * 6;
 const PROFILE_VIEWS_CALLBACK = JSPLib.utility.one_second * 10;
 const USER_ID_CALLBACK = JSPLib.utility.one_second * 5;
+const DATABASE_BATCHSAVE_INTERVAL = JSPLib.utility.one_second * 15;
 
 //Regex constants
 
@@ -3173,6 +3175,10 @@ function GetMaxVideoURL(media_data, index) {
     return new URL(sorted_variants[index].url).pathname.slice(1);
 }
 
+function GetForumTopicLink() {
+    return `${NTISAS.domain}/forum_topics/${DANBOORU_TOPIC_ID}`;
+}
+
 //File functions
 
 function ReadFileAsync(fileselector, is_json) {
@@ -3256,10 +3262,18 @@ function RenderCurrentRecords() {
     return record_html;
 }
 
-function RenderDatabaseVersion() {
-    let timestring = new Date(NTISAS.server_info.timestamp).toLocaleString();
-    let url = `${NTISAS.domain}/post_versions?page=b${NTISAS.server_info.post_version + 1}`;
-    return `<a id="ntisas-database-version" class="ntisas-expanded-link" href="${url}" title="${timestring}">${NTISAS.server_info.post_version}</a>`;
+function RenderDatabaseVersion(database_info) {
+    let datestring = GetDateString(database_info.timestamp);
+    let title = "Checked until: " + new Date(database_info.timestamp).toLocaleString();
+    title += "\nLast post version: " + database_info.post_version;
+    if (database_info.max_post_id) {
+        title += "\nLast post id: " + database_info.max_post_id;
+    }
+    if (database_info.max_tweet_id) {
+        title += "\nLast tweet id: " + database_info.max_tweet_id;
+    }
+    let url = GetForumTopicLink();
+    return `<a id="ntisas-database-version" title="${title}" href="${url}" target="_blank">${datestring}</a>`;
 }
 
 async function RenderDownloadLinks($tweet, videos, image_links) {
@@ -3636,7 +3650,7 @@ function InitializeDatabaseLink() {
             database_help = RenderHelp(DATABASE_VERSION_HELP);
         } else {
             NTISAS.database_info = null;
-            let url = `${NTISAS.domain}/forum_topics/${DANBOORU_TOPIC_ID}`;
+            let url = GetForumTopicLink();
             database_html = `<a id="ntisas-install" class="ntisas-expanded-link" href="${url}">Install Database</a>`;
             database_help = RenderHelp(INSTALL_DATABASE_HELP);
             $('#ntisas-current-records').html(INSTALL_MENU_TEXT);
@@ -4826,6 +4840,50 @@ async function SaveDatabase(database, counter_selector) {
     }
 }
 
+function SaveDatabaseBatch() {
+    let num_batches = JSPLib.storage.getLocalData('ntisas-database-numbatches');
+    let batch_index = JSPLib.storage.getLocalData('ntisas-database-batchindex');
+    if (Number.isInteger(num_batches) || Number.isInteger(batch_index)) {
+        let display_index = batch_index + 1;
+        JSPLib.debug.debuglog(`SaveDatabaseBatch: batch #${display_index} of ${num_batches}`);
+        $('#ntisas-database-link').html(`<span id="ntisas-batch-index" title="Total batches: ${num_batches}">Saving&thinsp;(&thinsp;${display_index}&thinsp;)</span>`);
+        if (!SaveDatabaseBatch.is_help_installed) {
+            $('#ntisas-database-help').html(RenderHelp(DATABASE_IS_INSTALLING_HELP));
+            SaveDatabaseBatch.is_help_installed = true;
+        }
+        JSPLib.storage.twitterstorage.getItem('database-batch-' + batch_index).then(async (database_batch) => {
+            if (JSPLib.validate.isHash(database_batch)) {
+                JSPLib.debug.debugTime('SaveDatabaseBatch-' + display_index);
+                let keylist = Object.keys(database_batch).map((key) => 'tweet-' + key);
+                let payload = await JSPLib.storage.batchRetrieveData(keylist, {database: JSPLib.storage.twitterstorage});
+                for (let tweet_id in database_batch) {
+                    if (Array.isArray(payload['tweet-' + tweet_id])) {
+                        payload['tweet-' + tweet_id] = JSPLib.utility.arrayUnion(payload['tweet-' + tweet_id], database_batch[tweet_id]);
+                    } else {
+                        payload['tweet-' + tweet_id] = database_batch[tweet_id];
+                    }
+                }
+                await JSPLib.storage.twitterstorage.setItems(payload);
+                await JSPLib.storage.twitterstorage.removeItem('database-batch-' + batch_index);
+                batch_index++;
+                if (batch_index === num_batches) {
+                    JSPLib.storage.removeLocalData('ntisas-database-numbatches');
+                    JSPLib.storage.removeLocalData('ntisas-database-batchindex');
+                    $('#ntisas-database-link').html(RenderDatabaseVersion(NTISAS.database_info));
+                    $('#ntisas-database-help').html(RenderHelp(DATABASE_VERSION_HELP));
+                    SaveDatabaseBatch.is_help_installed = false;
+                } else {
+                    JSPLib.storage.setLocalData('ntisas-database-batchindex', batch_index);
+                }
+                JSPLib.debug.debugTimeEnd('SaveDatabaseBatch-' + display_index);
+            }
+        });
+    } else if (Number.isInteger(NTISAS.database_interval)) {
+        clearInterval(NTISAS.database_interval);
+        NTISAS.database_interval = null;
+    }
+}
+
 async function GetSavePackage(export_types) {
     let save_package = Object.assign(...export_types.map((type) => ({[type]: {}})));
     if (export_types.includes('program_data')) {
@@ -5474,14 +5532,6 @@ function ImportData() {
             async (import_package) => {
                 JSPLib.notice.notice("Importing data...");
                 let errors = false;
-                function userOutput() {
-                    if (errors) {
-                        JSPLib.notice.error("Error importing some data!");
-                    } else {
-                        JSPLib.notice.notice("Finished importing data.");
-                    }
-                    NTISAS.import_is_running = false;
-                }
                 if ('program_data' in import_package) {
                     this.debug('log', "Program data:", import_package.program_data);
                     Object.keys(import_package.program_data).forEach((key) => {
@@ -5493,25 +5543,45 @@ function ImportData() {
                     });
                 }
                 if ('database_info' in import_package) {
+                    //Add a way to overwrite the current last_id and timestamp values (settings menu)
                     this.debug('log', "Database info:", import_package.database_info);
                     await JSPLib.storage.saveData('ntisas-database-info', import_package.database_info, {database: JSPLib.storage.twitterstorage});
+                    NTISAS.database_info = import_package.database_info;
+                    $('#ntisas-database-link').html(RenderDatabaseVersion(NTISAS.database_info));
                 }
-                if ('tweet_purgelist' in import_package) {
-                    this.debug('log', "Purgelist length:", Object.keys(import_package.tweet_purgelist).length);
-                    $('#ntisas-import-counter').text('purging');
-                    await PurgeBadTweets(import_package.tweet_purgelist);
+                if ('database_batches' in import_package) {
+                    this.debug('log', "Database batches length:", import_package.database_batches.length);
+                    if (Number.isInteger(NTISAS.database_interval)) {
+                        clearInterval(NTISAS.database_interval);
+                        NTISAS.database_interval = null;
+                    }
+                    JSPLib.storage.setLocalData('ntisas-database-numbatches', import_package.database_batches.length);
+                    JSPLib.storage.setLocalData('ntisas-database-batchindex', 0);
+                    for (let i = 0; i < import_package.database_batches.length; i++) {
+                        this.debug('log', `"Saving batch #${i} of ${import_package.database_batches.length}`);
+                        $('#ntisas-import-counter').text(import_package.database_batches.length - i);
+                        await JSPLib.storage.twitterstorage.setItem('database-batch-' + i, import_package.database_batches[i]);
+                        await JSPLib.utility.sleep(100);
+                    }
+                    $('#ntisas-import-counter').text(0);
                 }
                 if ('tweet_database' in import_package) {
                     this.debug('log', "Database length:", Object.keys(import_package.tweet_database).length);
                     await SaveDatabase(import_package.tweet_database, '#ntisas-import-counter');
                 }
-                userOutput();
+                if (errors) {
+                    JSPLib.notice.error("Error importing some data!");
+                } else {
+                    JSPLib.notice.notice("Finished importing data.");
+                }
+                NTISAS.import_is_running = false;
                 await JSPLib.utility.sleep(JSPLib.utility.one_second * 2);
                 InitializeDatabase();
             },
             //Failure
             () => {
                 NTISAS.import_is_running = false;
+                $('#ntisas-import-counter').text('failed');
             }
         );
     }
@@ -6618,6 +6688,9 @@ async function Main() {
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+1 alt+2 alt+3', SideMenuHotkeys);
     setInterval(IntervalStorageHandler, QUEUE_POLL_INTERVAL);
     setInterval(IntervalNetworkHandler, QUEUE_POLL_INTERVAL);
+    if (Number.isInteger(JSPLib.storage.getLocalData('ntisas-database-numbatches')) && Number.isInteger(JSPLib.storage.getLocalData('ntisas-database-batchindex'))) {
+        NTISAS.database_interval = setInterval(SaveDatabaseBatch, DATABASE_BATCHSAVE_INTERVAL);
+    }
     JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
     JSPLib.utility.setCSSStyle(GM_getResourceText('jquery_qtip_css'), 'qtip');
     JSPLib.utility.setCSSStyle(NOTICE_CSS, 'notice');
