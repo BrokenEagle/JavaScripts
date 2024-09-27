@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.0
+// @version      10.1
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -921,7 +921,6 @@ const PROGRAM_CSS = `
 [ntisas-tweet=stream] .ntisas-tweet-controls {
     margin-top: 0.5em;
     margin-left: -4em;
-    background-color: white;
 }
 .ntisas-activated,
 .ntisas-activated:hover {
@@ -1147,6 +1146,12 @@ const COLOR_CSS = `
 .ntisas-download-section,
 .ntisas-footer-entries {
     color: %TEXTCOLOR%;
+}
+[ntisas-tweet=stream] .ntisas-tweet-controls {
+    background-color: %BACKGROUNDCOLOR%;
+}
+.ntisas-tweet-image-menu {
+    border-color: %TEXTCOLOR%;
 }
 #ntisas-server-bypass,
 #ntisas-active-autoiqdb,
