@@ -139,6 +139,7 @@ const PROGRAM_DEFAULT_VALUES = {
     page_locked: false,
     import_is_running: false,
     update_user_timer: null,
+    seen_tweet: new Set(),
 };
 
 //Settings constants
@@ -4937,6 +4938,21 @@ function CheckViews(entries, observer) {
     });
 }
 
+function SeenTweet(entries, observer) {
+    entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+            let $tweet = $(entry.target);
+            let tweet_id = $tweet.attr('data-tweet-id');
+            let is_duplicate = NTISAS.seen_tweet.has(tweet_id);
+            NTISAS.seen_tweet.add(tweet_id);
+            if (is_duplicate && $tweet.attr('ntisas-tweet') === 'stream') {
+                $tweet.find('.ntisas-tweet-status').before('<div style="color: red; font-family: monospace; font-weight: bold; border: 1px solid red; padding: 2px; border-radius: 5px;">already seen</div>');
+            }
+            observer.unobserve(entry.target);
+        }
+    });
+}
+
 function PhotoNavigation() {
     if (!NTISAS.photo_navigation) {
         return;
@@ -6259,6 +6275,7 @@ function ProcessNewTweets() {
                     $(entry).attr('viewed', 'true');
                 } else {
                     NTISAS.intersection_observer.observe(entry);
+                    NTISAS.seen_observer.observe(entry);
                 }
             });
             UpdateViewHighlights();
@@ -6652,6 +6669,7 @@ async function Main() {
     JSPLib.notice.installBanner(PROGRAM_SHORTCUT);
     Object.assign(NTISAS, {
         intersection_observer: new IntersectionObserver(CheckViews, {threshold: 0.75}),
+        seen_observer: new IntersectionObserver(SeenTweet, {threshold: 0.10}),
         channel: JSPLib.utility.createBroadcastChannel(PROGRAM_NAME, BroadcastTISAS),
         user_settings: JSPLib.menu.loadUserSettings(),
     }, PROGRAM_DEFAULT_VALUES, PROGRAM_RESET_KEYS);
