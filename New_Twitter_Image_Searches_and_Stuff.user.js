@@ -2538,7 +2538,7 @@ function GetCustomQuery() {
 
 function GetPostVersionsLastID(type) {
     //Get the program last ID if it exists
-    let postver_lastid = JSPLib.storage.checkLocalData(`ntisas-${type}-lastid`, {default_val: NTISAS.database_info && NTISAS.database_info.post_version});
+    let postver_lastid = JSPLib.storage.checkLocalData(`ntisas-${type}-lastid`, {default_val: NTISAS.database_info?.post_version});
     if (!NTISAS.database_info) {
         return postver_lastid;
     }
@@ -2647,7 +2647,7 @@ function GetSingleImageInfo(tweet_id) {
     GetSingleImageInfo.memoized ??= {};
     if (!GetSingleImageInfo.memoized[tweet_id]) {
         let image = $(`.ntisas-media-tweet[data-tweet-id=${tweet_id}] img`).get(0);
-        if (image.complete && JSPLib.validate.isString(image.src)) {
+        if (image?.complete && JSPLib.validate.isString(image.src)) {
             let image_info = GetImageURLInfo(image.src);
             GetSingleImageInfo.memoized[tweet_id] = [{partial_image: image_info.path + '/' + image_info.key + '.' + image_info.ext}];
         } else {
@@ -6380,14 +6380,14 @@ function BroadcastTISAS(ev) {
     switch (ev.data.type) {
         case 'postlink':
             if (ev.data.post_ids.length) {
-                JSPLib.storage.setStorageData('tweet-' + ev.data.tweet_id, ev.data.post_ids, sessionStorage);
+                JSPLib.storage.setSessionData('tweet-' + ev.data.tweet_id, ev.data.post_ids);
             } else {
-                sessionStorage.removeItem('tweet-' + ev.data.tweet_id);
+                JSPLib.storage.removeSessionData('tweet-' + ev.data.tweet_id);
             }
             UpdatePostIDsLink(ev.data.tweet_id, ev.data.post_ids);
             break;
         case 'database':
-            sessionStorage.removeItem('ntisas-database-info');
+            JSPLib.storage.removeSessionData('ntisas-database-info');
             $(window).one('focus.ntisas.reload', () => {window.location.reload();});
             break;
         case 'currentrecords':
