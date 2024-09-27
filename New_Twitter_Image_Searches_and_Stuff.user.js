@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      9.10
+// @version      10.0
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -19,19 +19,19 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20220515/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/saucenao.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/menu.js
 // @resource     jquery_ui_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/jquery_ui_custom.css
 // @resource     jquery_qtip_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.css
 // @grant        GM_getResourceText
@@ -2455,7 +2455,7 @@ function CorrectStringArray(name, stringlist) {
     }
     let correctlist = stringlist.filter(JSPLib.validate.isString);
     if (stringlist.length !== correctlist.length) {
-        SetLocalData('ntisas-' + name, correctlist);
+        JSPLib.storage.setLocalData('ntisas-' + name, correctlist);
         JSPLib.debug.debugExecute(() => {
             let bad_values = JSPLib.utility.arrayDifference(stringlist, correctlist);
             this.debug('log', "Bad values found:", name, bad_values);
@@ -2475,107 +2475,12 @@ function VaildateColorArray(array) {
 
 //Library functions
 
-JSPLib.utility.promiseState = function (promise) {
-    const pendingState = {status: 'pending'};
-    return Promise.race([promise, pendingState]).then(
-        (value) => (value === pendingState ? value : {status: 'resolved', value}),
-        (reason) => ({status: 'rejected', reason}),
-    );
-};
-
-JSPLib.utility.createStatusPromise = function () {
-    const ret = this.createPromise();
-    const timer = this.initializeInterval(() => {
-        this.promiseState(ret.promise).then((state) => {
-            ret.status = state.status;
-            if (ret.status !== 'pending') {
-                clearInterval(timer);
-            }
-        });
-    }, 100);
-    return ret;
-};
-
-JSPLib.utility.bigIntMax = function (...args) {
-    return args.reduce((max, comp) => (max > comp ? max : comp));
-};
-
-JSPLib.utility.bigIntMin = function (...args) {
-    return args.reduce((min, comp) => (min < comp ? min : comp));
-};
-
-JSPLib.utility.isDigit = function (input) {
-    return typeof input === 'string' && /^\d+$/.test(input);
-};
-
-JSPLib.concurrency.freeSemaphore = function (program_shortcut, name) {
-    let event_name = this._getSemaphoreName(program_shortcut, name, false);
-    let storage_name = this._getSemaphoreName(program_shortcut, name, true);
-    JSPLib._jQuery(JSPLib._window).off('beforeunload.' + event_name);
-    JSPLib.storage.setStorageData(storage_name, 0, localStorage);
-};
-
-JSPLib.concurrency.reserveSemaphore = function (self, program_shortcut, name) {
-    let display_name = (name ? `[${name}]` : '');
-    if (this.checkSemaphore(program_shortcut, name)) {
-        self.debug('logLevel', `Tab got the semaphore ${display_name}!`, JSPLib.debug.INFO);
-        //Guarantee that leaving/closing tab reverts the semaphore
-        let event_name = this._getSemaphoreName(program_shortcut, name, false);
-        let storage_name = this._getSemaphoreName(program_shortcut, name, true);
-        JSPLib._jQuery(JSPLib._window).on('beforeunload.' + event_name, () => {
-            JSPLib.storage.setStorageData(storage_name, 0, localStorage);
-        });
-        //Set semaphore with an expires in case the program crashes
-        let semaphore = JSPLib.utility.getExpires(this.process_semaphore_expires);
-        JSPLib.storage.setStorageData(storage_name, semaphore, localStorage);
-        return semaphore;
-    }
-    self.debug('logLevel', `Tab missed the semaphore ${display_name}!`, JSPLib.debug.WARNING);
-    return null;
-};
-
-JSPLib.storage.getStorageData = function (key, storage, default_val = null) {
-    let storage_type = this._getStorageType(storage);
-    if (!(key in this.memory_storage[storage_type]) && key in storage) {
-        let record_key = this._getUID(key);
-        JSPLib.debug.recordTime(record_key, 'Storage');
-        let data = storage.getItem(key);
-        JSPLib.debug.recordTimeEnd(record_key, 'Storage');
-        try {
-            this.memory_storage[storage_type][key] = JSON.parse(data);
-        } catch (e) {
-            //swallow exception
-        }
-    }
-    if (this.memory_storage[storage_type][key] === undefined){
-        this.memory_storage[storage_type][key] = default_val;
-    }
-    return JSPLib.utility.dataCopy(this.memory_storage[storage_type][key]);
-};
-
-JSPLib.debug.addModuleLogs('concurrency', ['reserveSemaphore']);
+////NONE
 
 //Helper functions
 
-////Make setting all of these into a library function
-function GetLocalData(key, default_val) {
-    return JSPLib.storage.getStorageData(key, localStorage, default_val);
-}
-
-function CheckLocalData(key, default_val) {
-    return JSPLib.storage.checkStorageData(key, ValidateProgramData, localStorage, default_val);
-}
-
-function SetLocalData(key, data) {
-    JSPLib.storage.setStorageData(key, data, localStorage);
-}
-
-function InvalidateLocalData(key) {
-    JSPLib.storage.invalidateStorageData(key, localStorage);
-}
-
 function GetSessionTwitterData(tweet_id) {
-    return JSPLib.storage.getIndexedSessionData('tweet-' + tweet_id, [], STORAGE_DATABASES.twitter);
+    return JSPLib.storage.getIndexedSessionData('tweet-' + tweet_id, {default_val: [], database: STORAGE_DATABASES.twitter});
 }
 
 function GetNumericTimestamp(timestamp) {
@@ -2605,12 +2510,12 @@ function GetPostVersionsExpiration() {
 }
 
 function WasOverflow() {
-    return CheckLocalData('ntisas-overflow', false);
+    return JSPLib.storage.checkLocalData('ntisas-overflow', {default_val: false});
 }
 
 //This needs its own separate validation because it should not be exported
 function GetRemoteDatabase() {
-    let data = GetLocalData('ntisas-remote-database');
+    let data = JSPLib.storage.getLocalData('ntisas-remote-database');
     return (JSPLib.validate.validateHashEntries('ntisas-remote-database', data, DATABASE_CONSTRAINTS) ? data : null);
 }
 
@@ -2678,14 +2583,14 @@ function GetCustomQuery() {
 
 function GetPostVersionsLastID(type) {
     //Get the program last ID if it exists
-    let postver_lastid = CheckLocalData(`ntisas-${type}-lastid`, NTISAS.database_info && NTISAS.database_info.post_version);
+    let postver_lastid = JSPLib.storage.checkLocalData(`ntisas-${type}-lastid`, {default_val: NTISAS.database_info && NTISAS.database_info.post_version});
     if (NTISAS.user_settings.bypass_server_mode && !NTISAS.database_info) {
         return postver_lastid;
     }
     //Select the largest of the program lastid and the database lastid
     let max_postver_lastid = Math.max(postver_lastid, NTISAS.database_info.post_version);
     if (postver_lastid !== max_postver_lastid) {
-        SetLocalData(`ntisas-${type}-lastid`, max_postver_lastid);
+        JSPLib.storage.setLocalData(`ntisas-${type}-lastid`, max_postver_lastid);
     }
     return max_postver_lastid;
 }
@@ -2693,10 +2598,10 @@ function GetPostVersionsLastID(type) {
 async function GetTotalRecords(manual = false) {
     if (manual || JSPLib.concurrency.checkTimeout('ntisas-length-recheck', LENGTH_RECHECK_EXPIRES)) {
         let database_length = await JSPLib.storage.twitterstorage.length();
-        SetLocalData('ntisas-database-length', database_length);
+        JSPLib.storage.setLocalData('ntisas-database-length', database_length);
         JSPLib.concurrency.setRecheckTimeout('ntisas-length-recheck', LENGTH_RECHECK_EXPIRES);
     }
-    return GetLocalData('ntisas-database-length', 0);
+    return JSPLib.storage.getLocalData('ntisas-database-length', {default_val: 0});
 }
 
 function GetImageAttributes(image_url) {
@@ -2829,7 +2734,7 @@ function LogarithmicExpiration(count, max_count, time_divisor, multiplier) {
 function GetList(name) {
     NTISAS.lists[name] = NTISAS.lists[name] || {};
     if (!('list' in NTISAS.lists[name])) {
-        NTISAS.lists[name].list = GetLocalData('ntisas-' + name, []);
+        NTISAS.lists[name].list = JSPLib.storage.getLocalData('ntisas-' + name, {default_val: []});
         NTISAS.lists[name].list = CorrectStringArray(name, NTISAS.lists[name].list);
     }
     return NTISAS.lists[name].list;
@@ -2839,10 +2744,10 @@ function SaveList(name, list, delay = true) {
     NTISAS.lists[name].list = list;
     if (delay) {
         setTimeout(() => {
-            SetLocalData('ntisas-' + name, list);
+            JSPLib.storage.setLocalData('ntisas-' + name, list);
         }, STORAGE_DELAY);
     } else {
-        SetLocalData('ntisas-' + name, list);
+        JSPLib.storage.setLocalData('ntisas-' + name, list);
     }
 }
 
@@ -3094,7 +2999,7 @@ function GetPageType() {
 }
 
 function UpdateSideMenu() {
-    let menu_shown = GetLocalData('ntisas-side-menu', true);
+    let menu_shown = JSPLib.storage.getLocalData('ntisas-side-menu', {default_val: true});
     if (menu_shown) {
         $('#ntisas-account-options').addClass('ntisas-activated');
         $('#ntisas-side-menu').show();
@@ -3108,7 +3013,7 @@ function UpdateDownloadControls() {
     if (!NTISAS.user_settings.original_download_enabled) {
         return;
     }
-    let downloads_enabled = GetLocalData('ntisas-download-menu', true);
+    let downloads_enabled = JSPLib.storage.getLocalData('ntisas-download-menu', {default_val: true});
     if (downloads_enabled) {
         DisplayControl('disable', DOWNLOAD_CONTROLS, 'downloads');
     } else {
@@ -3120,7 +3025,7 @@ function UpdateDownloadSection() {
     if (!NTISAS.user_settings.original_download_enabled) {
         return;
     }
-    let downloads_enabled = GetLocalData('ntisas-download-menu', true);
+    let downloads_enabled = JSPLib.storage.getLocalData('ntisas-download-menu', {default_val: true});
     if (downloads_enabled) {
         $('.ntisas-download-header, .ntisas-download-stub, .ntisas-download-section').show();
     } else {
@@ -3129,19 +3034,19 @@ function UpdateDownloadSection() {
 }
 
 function UpdateViewHighlightControls() {
-    let show_highlights = GetLocalData('ntisas-view-highlights', true);
+    let show_highlights = JSPLib.storage.getLocalData('ntisas-view-highlights', {default_val: true});
     let switch_type = (show_highlights ? 'disable' : 'enable');
     DisplayControl(switch_type, VIEW_HIGHLIGHT_CONTROLS, 'view-highlights');
 }
 
 function UpdateViewCountControls() {
-    let count_views = NTISAS.count_views = GetLocalData('ntisas-view-counts', true);
+    let count_views = NTISAS.count_views = JSPLib.storage.getLocalData('ntisas-view-counts', {default_val: true});
     let switch_type = (count_views ? 'disable' : 'enable');
     DisplayControl(switch_type, VIEW_COUNT_CONTROLS, 'view-counts');
 }
 
 function UpdateViewHighlights() {
-    let show_highlights = GetLocalData('ntisas-view-highlights', true);
+    let show_highlights = JSPLib.storage.getLocalData('ntisas-view-highlights', {default_val: true});
     if (show_highlights) {
         $('[role=main]').addClass('ntisas-show-views');
     } else {
@@ -3365,7 +3270,7 @@ function DownloadObject(export_obj, export_name, is_json) {
 //Render functions
 
 function RenderSideMenu() {
-    let current_message = (!CheckLocalData('ntisas-recent-timestamp') ? MUST_INSTALL_HELP : UPDATE_RECORDS_HELP);
+    let current_message = (!JSPLib.storage.checkLocalData('ntisas-recent-timestamp') ? MUST_INSTALL_HELP : UPDATE_RECORDS_HELP);
     return JSPLib.utility.regexReplace(SIDE_MENU, {
         CURRENTRECORDS: RenderCurrentRecords(),
         CURRENTHELP: RenderHelp(current_message),
@@ -3390,7 +3295,7 @@ function RenderSideMenu() {
 
 function RenderCurrentRecords() {
     var record_html = "";
-    let timestamp = CheckLocalData('ntisas-recent-timestamp');
+    let timestamp = JSPLib.storage.checkLocalData('ntisas-recent-timestamp');
     if (timestamp) {
         let timestring = new Date(timestamp).toLocaleString();
         let timeagostring = ((Date.now() - timestamp) < GetPostVersionsExpiration() * 2 ? "Up to date" : JSPLib.utility.timeAgo(timestamp));
@@ -3721,7 +3626,7 @@ function CleanupTasks() {
 
 function InitializeColorScheme() {
     if (!JSPLib.utility.hasStyle('color')) {
-        let color_data = CheckLocalData('ntisas-color-style');
+        let color_data = JSPLib.storage.checkLocalData('ntisas-color-style');
         if (color_data) {
             let color_style = RenderColorStyle(color_data);
             JSPLib.utility.setCSSStyle(color_style, 'color');
@@ -3764,10 +3669,10 @@ function InitializeSideMenu() {
             $(entry).hide();
         }
     });
-    let selected_menu = JSPLib.storage.checkStorageData('ntisas-side-selection', ValidateProgramData, localStorage, 'info');
+    let selected_menu = JSPLib.storage.checkLocalData('ntisas-side-selection', {default_val: 'info'});
     $(`#ntisas-menu-selection a[data-selector=${selected_menu}]`).addClass('ntisas-selected');
     $(`#ntisas-content div[data-selector=${selected_menu}]`).show();
-    JSPLib.storage.checkLocalDB('ntisas-available-sauce', ValidateEntry, SAUCE_EXPIRES).then((data) => {
+    JSPLib.storage.checkLocalDB('ntisas-available-sauce', SAUCE_EXPIRES).then((data) => {
         if (data) {
             $('#ntisas-available-sauce').text(data.value);
         }
@@ -3788,7 +3693,7 @@ function InitializeDatabaseLink() {
     }
     let database_timestring = new Date(NTISAS.server_info.timestamp).toLocaleString();
     //Add some validation to the following, and move it out of the RenderSideMenu function
-    JSPLib.storage.retrieveData('ntisas-database-info', false, JSPLib.storage.twitterstorage).then((database_info) => {
+    JSPLib.storage.retrieveData('ntisas-database-info', {bypass_cache: true, database: JSPLib.storage.twitterstorage}).then((database_info) => {
         if (!JSPLib.validate.isHash(database_info)) {
             database_html = `<a id="ntisas-install" class="ntisas-expanded-link" title="${database_timestring}">Install Database</a>`;
             database_help = RenderHelp(INSTALL_DATABASE_HELP);
@@ -4327,7 +4232,7 @@ function IntervalStorageHandler() {
         if (save_requests.length) {
             this.debug('logLevel', "Save requests:", save_requests, JSPLib.debug.DEBUG);
             let save_data = Object.assign(...save_requests.map((request) => ({[request.key]: request.value})));
-            JSPLib.storage.batchSaveData(save_data, STORAGE_DATABASES[database]).then(() => {
+            JSPLib.storage.batchSaveData(save_data, {database: STORAGE_DATABASES[database]}).then(() => {
                 save_requests.forEach((request) => {
                     request.deferred.resolve(null);
                     request.endtime = performance.now();
@@ -4338,7 +4243,7 @@ function IntervalStorageHandler() {
         if (remove_requests.length) {
             this.debug('logLevel', "Remove requests:", remove_requests, JSPLib.debug.DEBUG);
             let remove_keys = remove_requests.map((request) => request.key);
-            JSPLib.storage.batchRemoveData(remove_keys, STORAGE_DATABASES[database]).then(() => {
+            JSPLib.storage.batchRemoveData(remove_keys, {database: STORAGE_DATABASES[database]}).then(() => {
                 remove_requests.forEach((request) => {
                     request.deferred.resolve(null);
                     request.endtime = performance.now();
@@ -4349,7 +4254,7 @@ function IntervalStorageHandler() {
         if (check_requests.length) {
             this.debug('logLevel', "Check requests:", check_requests, JSPLib.debug.DEBUG);
             let check_keys = check_requests.map((request) => request.key);
-            JSPLib.storage.batchCheckLocalDB(check_keys, ValidateEntry, ValidateExpiration, STORAGE_DATABASES[database]).then((check_data) => {
+            JSPLib.storage.batchCheckLocalDB(check_keys, ValidateExpiration, {database: STORAGE_DATABASES[database]}).then((check_data) => {
                 FulfillStorageRequests(check_keys, check_data, check_requests);
             });
         }
@@ -4357,7 +4262,7 @@ function IntervalStorageHandler() {
         if (noncheck_requests.length) {
             this.debug('logLevel', "Noncheck requests:", noncheck_requests, JSPLib.debug.DEBUG);
             let noncheck_keys = noncheck_requests.map((request) => request.key);
-            JSPLib.storage.batchRetrieveData(noncheck_keys, STORAGE_DATABASES[database]).then((noncheck_data) => {
+            JSPLib.storage.batchRetrieveData(noncheck_keys, {database: STORAGE_DATABASES[database]}).then((noncheck_data) => {
                 FulfillStorageRequests(noncheck_keys, noncheck_data, noncheck_requests);
             });
         }
@@ -4765,10 +4670,10 @@ async function CheckPostvers() {
     let post_versions = await JSPLib.danbooru.getAllItems('post_versions', QUERY_LIMIT, {page: postver_lastid, batches: QUERY_BATCH_NUM, url_addons, reverse: true, domain: NTISAS.domain, notify: true});
     if (post_versions.length === QUERY_BATCH_SIZE) {
         this.debug('log', "Overflow detected!");
-        SetLocalData('ntisas-overflow', true);
+        JSPLib.storage.setLocalData('ntisas-overflow', true);
     } else {
         this.debug('log', "No overflow:", post_versions.length, QUERY_BATCH_SIZE);
-        SetLocalData('ntisas-overflow', false);
+        JSPLib.storage.setLocalData('ntisas-overflow', false);
     }
     if (post_versions.length) {
         let [add_entries, rem_entries] = ProcessPostvers(post_versions);
@@ -4777,11 +4682,11 @@ async function CheckPostvers() {
         let lastid = JSPLib.danbooru.getNextPageID(post_versions, true);
         //Since the post version last ID is critical, an extra sanity check has been added
         if (JSPLib.validate.validateID(lastid)) {
-            SetLocalData('ntisas-postver-lastid', lastid);
+            JSPLib.storage.setLocalData('ntisas-postver-lastid', lastid);
             let all_timestamps = JSPLib.utility.getObjectAttributes(post_versions, 'updated_at');
             let normal_timestamps = all_timestamps.map((timestamp) => (new Date(timestamp).getTime()));
             let most_recent_timestamp = Math.max(...normal_timestamps);
-            SetLocalData('ntisas-recent-timestamp', most_recent_timestamp);
+            JSPLib.storage.setLocalData('ntisas-recent-timestamp', most_recent_timestamp);
             InitializeCurrentRecords();
             NTISAS.channel.postMessage({type: 'currentrecords'});
         }
@@ -4808,7 +4713,7 @@ async function CheckServerBadTweets() {
             let lastid = JSPLib.danbooru.getNextPageID(post_versions, true);
             //Since the post version last ID is critical, an extra sanity check has been added
             if (JSPLib.validate.validateID(lastid)) {
-                SetLocalData('ntisas-badver-lastid', lastid);
+                JSPLib.storage.setLocalData('ntisas-badver-lastid', lastid);
                 InitializeCurrentRecords();
                 NTISAS.channel.postMessage({type: 'currentrecords'});
             }
@@ -4822,7 +4727,7 @@ function SavePostvers(add_entries, rem_entries) {
     combined_keys.forEach((tweet_id) => {
         let tweet_key = 'tweet-' + tweet_id;
         let post_ids = add_entries[tweet_id];
-        JSPLib.storage.retrieveData(tweet_key, false, JSPLib.storage.twitterstorage).then((data) => {
+        JSPLib.storage.retrieveData(tweet_key, {bypass_cache: true, database: JSPLib.storage.twitterstorage}).then((data) => {
             if (JSPLib.validate.validateIDList(data)) {
                 this.debug('logLevel', "Tweet adds/rems - existing IDs:", tweet_key, data, JSPLib.debug.DEBUG);
                 post_ids = JSPLib.utility.arrayUnique(JSPLib.utility.arrayDifference(JSPLib.utility.arrayUnion(data, add_entries[tweet_id]), rem_entries[tweet_id]));
@@ -4839,7 +4744,7 @@ function SavePostvers(add_entries, rem_entries) {
     single_adds.forEach((tweet_id) => {
         let tweet_key = 'tweet-' + tweet_id;
         let post_ids = add_entries[tweet_id];
-        JSPLib.storage.retrieveData(tweet_key, false, JSPLib.storage.twitterstorage).then((data) => {
+        JSPLib.storage.retrieveData(tweet_key, {bypass_cache: true, database: JSPLib.storage.twitterstorage}).then((data) => {
             if (JSPLib.validate.validateIDList(data)) {
                 this.debug('log', "Tweet adds - existing IDs:", tweet_key, data);
                 post_ids = JSPLib.utility.arrayUnion(data, post_ids);
@@ -4856,7 +4761,7 @@ function SavePostvers(add_entries, rem_entries) {
     single_rems.forEach((tweet_id) => {
         let tweet_key = 'tweet-' + tweet_id;
         let post_ids = [];
-        JSPLib.storage.retrieveData(tweet_key, false, JSPLib.storage.twitterstorage).then((data) => {
+        JSPLib.storage.retrieveData(tweet_key, {bypass_cache: true, database: JSPLib.storage.twitterstorage}).then((data) => {
             if (data !== null && JSPLib.validate.validateIDList(data)) {
                 this.debug('log', "Tweet removes - existing IDs:", tweet_key, data);
                 post_ids = JSPLib.utility.arrayUnique(JSPLib.utility.arrayDifference(data, rem_entries[tweet_id]));
@@ -4877,13 +4782,13 @@ function SavePostvers(add_entries, rem_entries) {
 }
 
 async function InstallUserProfileData() {
-    NTISAS.user_data = CheckLocalData('ntisas-user-data');
+    NTISAS.user_data = JSPLib.storage.checkLocalData('ntisas-user-data');
     if (!NTISAS.user_data || JSPLib.concurrency.checkTimeout('ntisas-user-profile-recheck', USER_PROFILE_RECHECK_EXPIRES)) {
         NTISAS.user_data = await JSPLib.danbooru.submitRequest('profile', {only: PROFILE_FIELDS}, {default_val: {}, domain: NTISAS.domain});
         if (!NTISAS.user_data.id || !NTISAS.user_data.level) {
             NTISAS.user_data = {id: 2, level: GOLD_LEVEL};
         }
-        SetLocalData('ntisas-user-data', NTISAS.user_data);
+        JSPLib.storage.setLocalData('ntisas-user-data', NTISAS.user_data);
         JSPLib.concurrency.setRecheckTimeout('ntisas-user-profile-recheck', USER_PROFILE_RECHECK_EXPIRES);
     }
 }
@@ -5016,7 +4921,7 @@ async function GetSavePackage(export_types) {
     if (export_types.includes('program_data')) {
         Object.keys(localStorage).forEach((key) => {
             if (key.match(/^ntisas-/)) {
-                let temp_data = CheckLocalData(key);
+                let temp_data = JSPLib.storage.checkLocalData(key);
                 if (temp_data !== null) {
                     save_package.program_data[key] = temp_data;
                 }
@@ -5060,17 +4965,17 @@ async function CheckDatabaseInfo(initial) {
             }
         }
         if (JSPLib.validate.isHash(database_info)) {
-            SetLocalData('ntisas-remote-database', database_info);
+            JSPLib.storage.setLocalData('ntisas-remote-database', database_info);
         }
         JSPLib.concurrency.setRecheckTimeout('ntisas-database-recheck', DATABASE_RECHECK_EXPIRES);
     }
 }
 
 function CheckPurgeBadTweets() {
-    if (!NTISAS.user_settings.bypass_server_mode && GetLocalData('ntisas-purge-bad', false) && JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'purgebad')) {
+    if (!NTISAS.user_settings.bypass_server_mode && JSPLib.storage.getLocalData('ntisas-purge-bad', false) && JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'purgebad')) {
         PurgeBadTweets().then(() => {
             this.debug('log', "All bad Tweets purged!");
-            SetLocalData('ntisas-purge-bad', false);
+            JSPLib.storage.setLocalData('ntisas-purge-bad', false);
             JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT, 'purgebad');
         });
     }
@@ -5193,8 +5098,8 @@ function ToggleImageSize(event) {
 }
 
 function ToggleSideMenu(event) {
-    let menu_shown = GetLocalData('ntisas-side-menu', true);
-    SetLocalData('ntisas-side-menu', !menu_shown);
+    let menu_shown = JSPLib.storage.getLocalData('ntisas-side-menu', {default_val: true});
+    JSPLib.storage.setLocalData('ntisas-side-menu', !menu_shown);
     UpdateSideMenu();
     NTISAS.channel.postMessage({type: 'sidemenu_ui'});
     event.preventDefault();
@@ -5203,24 +5108,24 @@ function ToggleSideMenu(event) {
 }
 
 function ToggleDownloadSection() {
-    let menu_shown = GetLocalData('ntisas-download-menu', true);
-    SetLocalData('ntisas-download-menu', !menu_shown);
+    let menu_shown = JSPLib.storage.getLocalData('ntisas-download-menu', {default_val: true});
+    JSPLib.storage.setLocalData('ntisas-download-menu', !menu_shown);
     UpdateDownloadControls();
     UpdateDownloadSection();
     NTISAS.channel.postMessage({type: 'download_ui'});
 }
 
 function ToggleViewHighlights() {
-    let show_highlights = GetLocalData('ntisas-view-highlights', true);
-    SetLocalData('ntisas-view-highlights', !show_highlights);
+    let show_highlights = JSPLib.storage.getLocalData('ntisas-view-highlights', {default_val: true});
+    JSPLib.storage.setLocalData('ntisas-view-highlights', !show_highlights);
     UpdateViewHighlights();
     UpdateViewHighlightControls();
     NTISAS.channel.postMessage({type: 'view_highlights'});
 }
 
 function ToggleViewCounts() {
-    let count_views = GetLocalData('ntisas-view-counts', true);
-    SetLocalData('ntisas-view-counts', !count_views);
+    let count_views = JSPLib.storage.getLocalData('ntisas-view-counts', {default_val: true});
+    JSPLib.storage.setLocalData('ntisas-view-counts', !count_views);
     UpdateViewCountControls();
     NTISAS.channel.postMessage({type: 'count_views'});
 }
@@ -5246,8 +5151,8 @@ function InstallDatabase() {
         $('#ntisas-database-link').html(LOAD_COUNTER);
         LoadDatabase().then((data) => {
             if (data) {
-                JSPLib.storage.saveData('ntisas-database-info', NTISAS.server_info, JSPLib.storage.twitterstorage);
-                SetLocalData(`ntisas-postver-lastid`, NTISAS.server_info.post_version);
+                JSPLib.storage.saveData('ntisas-database-info', NTISAS.server_info, {database: JSPLib.storage.twitterstorage});
+                JSPLib.storage.setLocalData(`ntisas-postver-lastid`, NTISAS.server_info.post_version);
                 InitializeDatabase();
             }
         });
@@ -5261,8 +5166,8 @@ function UpgradeDatabase() {
         $('#ntisas-database-link').html(LOAD_COUNTER);
         LoadDatabase().then((data) => {
             if (data) {
-                JSPLib.storage.saveData('ntisas-database-info', NTISAS.server_info, JSPLib.storage.twitterstorage);
-                SetLocalData('ntisas-purge-bad', true);
+                JSPLib.storage.saveData('ntisas-database-info', NTISAS.server_info, {database: JSPLib.storage.twitterstorage});
+                JSPLib.storage.setLocalData('ntisas-purge-bad', true);
                 InitializeDatabase();
             }
         });
@@ -5276,7 +5181,7 @@ function SideMenuSelection(event) {
     $(`#ntisas-menu-selection a[data-selector=${selected_menu}]`).addClass('ntisas-selected');
     $('#ntisas-content > div').hide();
     $(`#ntisas-content div[data-selector=${selected_menu}]`).show();
-    JSPLib.storage.setStorageData('ntisas-side-selection', selected_menu, localStorage);
+    JSPLib.storage.setLocalData('ntisas-side-selection', selected_menu);
 }
 
 function SideMenuHotkeys(event) {
@@ -5306,8 +5211,8 @@ function CurrentPostver() {
     if (confirm(CURRENT_POSTVER_CONFIRM)) {
         JSPLib.danbooru.submitRequest('post_versions', {limit: 1}, {domain: NTISAS.domain, notify: true}).then((data) => {
             if (Array.isArray(data) && data.length > 0) {
-                SetLocalData('ntisas-postver-lastid', data[0].id);
-                SetLocalData('ntisas-recent-timestamp', new Date(data[0].updated_at).getTime());
+                JSPLib.storage.setLocalData('ntisas-postver-lastid', data[0].id);
+                JSPLib.storage.setLocalData('ntisas-recent-timestamp', new Date(data[0].updated_at).getTime());
                 JSPLib.notice.notice("Finished updating record position!");
                 InitializeCurrentRecords();
                 NTISAS.channel.postMessage({type: 'currentrecords'});
@@ -5332,7 +5237,7 @@ function OpenMediaTweetMenu(event) {
         NTISAS.media_dialog_anchor[tweet_id] = $menu;
         var tweet_data;
         if ($tweet.hasClass('ntisas-multi-media')) {
-            let session_data = JSPLib.storage.getIndexedSessionData('tweet-' + tweet_id, {value: []});
+            let session_data = JSPLib.storage.getIndexedSessionData('tweet-' + tweet_id, {default_val: []});
             tweet_data = session_data.value;
         } else {
             tweet_data = GetSingleImageInfo(tweet_id);
@@ -5405,7 +5310,7 @@ function PopupMediaTweetVideo(event) {
     let $menu = $container.closest('.ntisas-media-menu');
     let tweet_id = $menu.data('tweet-id');
     let order = $container.data('order');
-    let tweet_data = JSPLib.storage.getIndexedSessionData('tweet-' + tweet_id, {value: []});
+    let tweet_data = JSPLib.storage.getIndexedSessionData('tweet-' + tweet_id, {default_val: []});
     let image_data = tweet_data.value[order];
     if (JSPLib.validate.isHash(image_data)) {
         let video_url = 'https://video.twimg.com/' + (image_data.partial_sample || image_data.partial_video);
@@ -5763,7 +5668,7 @@ function ImportData() {
                     this.debug('log', "Program data:", import_package.program_data);
                     Object.keys(import_package.program_data).forEach((key) => {
                         if (ValidateProgramData(key, import_package.program_data[key])) {
-                            SetLocalData(key, import_package.program_data[key]);
+                            JSPLib.storage.setLocalData(key, import_package.program_data[key]);
                         } else {
                             errors = true;
                         }
@@ -5771,7 +5676,7 @@ function ImportData() {
                 }
                 if ('database_info' in import_package) {
                     this.debug('log', "Database info:", import_package.database_info);
-                    await JSPLib.storage.saveData('ntisas-database-info', import_package.database_info, JSPLib.storage.twitterstorage);
+                    await JSPLib.storage.saveData('ntisas-database-info', import_package.database_info, {database: JSPLib.storage.twitterstorage});
                 }
                 if ('tweet_purgelist' in import_package) {
                     this.debug('log', "Purgelist length:", Object.keys(import_package.tweet_purgelist).length);
@@ -5800,7 +5705,7 @@ function UpdateUserIDCallback() {
     if (NTISAS.update_user_id.timer) {
         clearInterval(NTISAS.update_user_id.timer);
     }
-    JSPLib.storage.checkLocalDB('twuser-' + NTISAS.account, ValidateEntry).then((storage_data) => {
+    JSPLib.storage.checkLocalDB('twuser-' + NTISAS.account).then((storage_data) => {
         if (!storage_data) {
             NTISAS.update_user_id = JSPLib.utility.recheckTimer({
                 check: () => $('[src*="/profile_banners/"], [href^="/i/connect_people?user_id="]').length,
@@ -6535,7 +6440,7 @@ function AdjustColorScheme() {
             NTISAS.colors = new_colors;
             let color_style = RenderColorStyle(NTISAS.colors);
             JSPLib.utility.setCSSStyle(color_style, 'color');
-            SetLocalData('ntisas-color-style', NTISAS.colors);
+            JSPLib.storage.setLocalData('ntisas-color-style', NTISAS.colors);
         }
     }
 }
@@ -6582,7 +6487,7 @@ function BroadcastTISAS(ev) {
             $(window).one('focus.ntisas.reload', () => {window.location.reload();});
             break;
         case 'currentrecords':
-            InvalidateLocalData('ntisas-recent-timestamp');
+            JSPLib.storage.invalidateLocalData('ntisas-recent-timestamp');
             InitializeCurrentRecords();
             break;
         case 'sidemenu_ui':
@@ -6958,6 +6863,8 @@ JSPLib.menu.settings_config = SETTINGS_CONFIG;
 JSPLib.menu.control_config = CONTROL_CONFIG;
 
 //Variables for storage.js
+JSPLib.storage.localSessionValidator = ValidateProgramData;
+JSPLib.storage.indexedDBValidator = ValidateEntry;
 JSPLib.storage.prune_limit = 2000;
 
 //Variables for validate.js
