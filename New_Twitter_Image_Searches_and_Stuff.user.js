@@ -921,6 +921,7 @@ const PROGRAM_CSS = `
 [ntisas-tweet=stream] .ntisas-tweet-controls {
     margin-top: 0.5em;
     margin-left: -4em;
+    background-color: white;
 }
 .ntisas-activated,
 .ntisas-activated:hover {
