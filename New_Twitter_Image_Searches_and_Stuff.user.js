@@ -1639,8 +1639,6 @@ const MEDIA_RESULTS_ICON = '<div class="ntisas-media-results ntisas-media-icon-s
 const MEDIA_COUNTER_ICON = '<div class="ntisas-media-counter ntisas-media-icon-section">%s</div>';
 const MEDIA_VIDEO_ICON = '<div class="ntisas-video-icon"><svg viewBox="0 0 60 61" aria-hidden="true" class="r-uvuy5l r-cfp7ip"><g><circle cx="30" cy="30.4219" fill="#333333" opacity="0.6" r="30"></circle><path d="M22.2275 17.1971V43.6465L43.0304 30.4218L22.2275 17.1971Z" fill="white"></path></g></svg></div>';
 
-const LOAD_COUNTER = '<span id="ntisas-load-message">Loading ( <span id="ntisas-counter">...</span> )</span>';
-
 const PROFILE_USER_ID = '<b>User ID&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; - %s</b>';
 const PROFILE_USER_VIEW = 'Viewed user&nbsp;&nbsp; - %s';
 const PROFILE_STREAM_VIEW = 'Viewed stream - %s';
@@ -1716,7 +1714,6 @@ const TWEET_EXPIRES = JSPLib.utility.one_week;
 const TWUSER_EXPIRES = JSPLib.utility.one_day;
 const LENGTH_RECHECK_EXPIRES = JSPLib.utility.one_hour;
 const USER_PROFILE_RECHECK_EXPIRES = JSPLib.utility.one_month;
-const DATABASE_RECHECK_EXPIRES = JSPLib.utility.one_day;
 const BADVER_RECHECK_EXPIRES = JSPLib.utility.one_day;
 const PRUNE_RECHECK_EXPIRES = JSPLib.utility.one_hour * 6;
 const PROFILE_VIEWS_CALLBACK = JSPLib.utility.one_second * 10;
@@ -2251,11 +2248,6 @@ const COLOR_CONSTRAINTS = {
 const PROFILE_CONSTRAINTS = {
     id: JSPLib.validate.id_constraints,
     level: JSPLib.validate.id_constraints,
-};
-
-const DATABASE_CONSTRAINTS = {
-    post_version: JSPLib.validate.id_constraints,
-    timestamp: JSPLib.validate.timestamp_constraints,
 };
 
 /****Functions****/
@@ -3716,7 +3708,7 @@ function InitializeMediaTweet(tweet_id, post_ids, tweet_dict_promise) {
                 image.onerror = function () {
                     JSPLib.debug.debugwarn("Image failed to load:", tweet_id, image);
                     $tweet.find('.ntisas-media-counter').text('X');
-                }
+                };
             }
             $media_icon.append(JSPLib.utility.sprintf(MEDIA_COUNTER_ICON, '0'));
         }
