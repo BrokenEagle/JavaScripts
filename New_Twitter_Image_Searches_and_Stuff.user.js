@@ -39,8 +39,6 @@
 // @connect      saucenao.com
 // @connect      twimg.com
 // @connect      api.twitter.com
-// @connect      google.com
-// @connect      googleusercontent.com
 // @run-at       document-body
 // @noframes
 // ==/UserScript==
@@ -207,11 +205,6 @@ const SETTINGS_CONFIG = {
         reset: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Select whether to use the GraphQL endpoint instead of the API endpoint for network requests."
-    },
-    bypass_server_mode: {
-        reset: false,
-        validate: JSPLib.validate.isBoolean,
-        hint: "Operates without information from the tweet server database. <b>Note:</b> Should only be used when the server is unreachable."
     },
     autoclick_IQDB_enabled: {
         reset: false,
@@ -387,8 +380,7 @@ const PROGRAM_CSS = `
     background-color: yellow;
 }
 #ntisas-database-version,
-#ntisas-install,
-#ntisas-upgrade {
+#ntisas-install {
     color: #0073ff;
 }
 [ntisas-tweet] .ntisas-no-sources {
@@ -584,12 +576,10 @@ const PROGRAM_CSS = `
 #ntisas-menu-controls td:nth-of-type(2) {
     width: 115px;
 }
-#ntisas-version-header,
-#ntisas-database-version {
+#ntisas-version-header {
     letter-spacing: -0.5px;
 }
 #ntisas-install,
-#ntisas-upgrade,
 #ntisas-current-records {
     letter-spacing: -1px;
 }
@@ -1671,10 +1661,8 @@ const MERGE_RESULTS_HELP = "Merge: L-click, perform another query and merge with
 const IQDB_SELECT_HELP = "Select posts that aren't valid IQDB matches.\nClick the colored postlink when finished to confirm.";
 const POST_SELECT_HELP = "Select posts for deletion by clicking the thumbnail.\nLeaving the Delete all checkbox on will select all posts.\nUnsetting that checkbox allows adding posts to the current set.\nClick the colored postlink when finished to delete/add posts.";
 
-const INSTALL_DATABASE_HELP = "L-Click to install database.";
-const UPGRADE_DATABASE_HELP = "L-Click to upgrade database.";
-const MANUAL_INSTALL_HELP = `Visit topic #${DANBOORU_TOPIC_ID} for manual install file.\n(see settings menu for link).`;
-const DATABASE_VERSION_HELP = "L-Click to set record position to latest on Danbooru.\nR-Click to open page to Danbooru records.";
+const INSTALL_DATABASE_HELP = `Click to visit topic #${DANBOORU_TOPIC_ID} for manual install file.`;
+const DATABASE_VERSION_HELP = "Click to open new tab to userscript details page.";
 const UPDATE_RECORDS_HELP = "L-Click to update records to current.";
 const MUST_INSTALL_HELP = "The database must be installed before the script is fully functional.";
 const REFRESH_RECORDS_HELP = "L-Click to refresh record count.";
@@ -1689,31 +1677,10 @@ const STATISTICS_HELP = 'L-Click any category heading to narrow down results.\nL
 
 const INSTALL_MENU_TEXT = "Must install DB!";
 
-const SERVER_ERROR = "Failed to connect to remote server to get latest %s!";
-
-const INSTALL_CONFIRM = JSPLib.utility.trim`
-This will install the database (%s, %s).
-This can take a couple of minutes.
-
-Click OK when ready.`;
-
-const UPGRADE_CONFIRM = JSPLib.utility.trim`
-This will upgrade the database to (%s, %s).
-Old database is at (%s, %s).
-This can take a couple of minutes.
-
-Click OK when ready.`;
-
 const CURRENT_RECORDS_CONFIRM = JSPLib.utility.trim`
 This will keep querying Danbooru until the records are current.
 Depending on the current position, this could take several minutes.
 Moving focus away from the page will halt the process.
-
-Continue?`;
-
-const CURRENT_POSTVER_CONFIRM = JSPLib.utility.trim`
-This will query Danbooru for the latest record position to use.
-This may potentially cause change records to be missed.
 
 Continue?`;
 
@@ -1723,12 +1690,6 @@ const CONFIRM_DELETE_PROMPT = JSPLib.utility.trim`
 The following posts will be deleted: %s
 
 Save the following post IDs? (separate by comma, empty to delete)`;
-
-//Database constants
-
-const SERVER_DATABASE_URL = 'https://drive.google.com/uc?export=download&id=16YapNscZ0W-tZaRelYF2kDtR31idUd_p';
-const SERVER_PURGELIST_URL = 'https://drive.google.com/uc?export=download&id=1uFixlRryOGUzhfvU6nbrkNRAQC4VvO10';
-const DATABASE_INFO_URL = 'https://drive.google.com/uc?export=download&id=1evAJM-K6QpHg52997PbXf-bptImLgHDs';
 
 //Time constants
 
@@ -2512,16 +2473,6 @@ function WasOverflow() {
     return JSPLib.storage.checkLocalData('ntisas-overflow', {default_val: false});
 }
 
-//This needs its own separate validation because it should not be exported
-function GetRemoteDatabase() {
-    let data = JSPLib.storage.getLocalData('ntisas-remote-database');
-    return (JSPLib.validate.validateHashEntries('ntisas-remote-database', data, DATABASE_CONSTRAINTS) ? data : null);
-}
-
-function IsTISASInstalled() {
-    return GetRemoteDatabase() !== null;
-}
-
 function GetUserIdent() {
     if (NTISAS.user_id) {
         return [NTISAS.user_id, [NTISAS.user_id, NTISAS.account]];
@@ -2583,7 +2534,7 @@ function GetCustomQuery() {
 function GetPostVersionsLastID(type) {
     //Get the program last ID if it exists
     let postver_lastid = JSPLib.storage.checkLocalData(`ntisas-${type}-lastid`, {default_val: NTISAS.database_info && NTISAS.database_info.post_version});
-    if (NTISAS.user_settings.bypass_server_mode && !NTISAS.database_info) {
+    if (!NTISAS.database_info) {
         return postver_lastid;
     }
     //Select the largest of the program lastid and the database lastid
@@ -2789,7 +2740,7 @@ function SetCheckPostvers() {
     if (JSPLib.concurrency.checkTimeout('ntisas-timeout', GetPostVersionsExpiration()) || WasOverflow()) {
         clearTimeout(CheckPostvers.timeout);
         CheckPostvers.timeout = setTimeout(() => {
-            if ((NTISAS.database_info || NTISAS.user_settings.bypass_server_mode) && JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'postvers')) {
+            if (NTISAS.database_info && JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'postvers')) {
                 CheckPostvers();
             }
         }, POST_VERSIONS_CALLBACK);
@@ -3617,10 +3568,7 @@ function RenderMediaMenu(tweet_id, screen_name, image_urls, videos) {
 //Initialize functions
 
 function CleanupTasks() {
-    CheckDatabaseInfo();
-    CheckServerBadTweets();
-    CheckPurgeBadTweets();
-    JSPLib.storage.pruneEntries(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, PRUNE_RECHECK_EXPIRES);
+    JSPLib.storage.pruneProgramCache(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, PRUNE_RECHECK_EXPIRES);
 }
 
 function InitializeColorScheme() {
@@ -3679,38 +3627,22 @@ function InitializeSideMenu() {
 }
 
 function InitializeDatabaseLink() {
-    var database_html = "";
-    var database_help = "";
-    if (NTISAS.user_settings.bypass_server_mode) {
-        $('#ntisas-database-link').html('<span id="ntisas-server-bypass">Server Bypass</span>');
-        $('#ntisas-database-help').html(RenderHelp(MANUAL_INSTALL_HELP));
-        return;
-    }
-    NTISAS.server_info = GetRemoteDatabase();
-    if (NTISAS.server_info === null) {
-        return;
-    }
-    let database_timestring = new Date(NTISAS.server_info.timestamp).toLocaleString();
     //Add some validation to the following, and move it out of the RenderSideMenu function
     JSPLib.storage.retrieveData('ntisas-database-info', {bypass_cache: true, database: JSPLib.storage.twitterstorage}).then((database_info) => {
-        if (!JSPLib.validate.isHash(database_info)) {
-            database_html = `<a id="ntisas-install" class="ntisas-expanded-link" title="${database_timestring}">Install Database</a>`;
-            database_help = RenderHelp(INSTALL_DATABASE_HELP);
-            $('#ntisas-current-records').html(INSTALL_MENU_TEXT);
-        } else if (database_info.post_version === NTISAS.server_info.post_version && database_info.timestamp === NTISAS.server_info.timestamp) {
+        var database_html, database_help;
+        if (JSPLib.validate.isHash(database_info)) {
             NTISAS.database_info = database_info;
-            database_html = RenderDatabaseVersion();
+            database_html = RenderDatabaseVersion(database_info);
             database_help = RenderHelp(DATABASE_VERSION_HELP);
         } else {
-            NTISAS.database_info = database_info;
-            database_html = `<a id="ntisas-upgrade" class="ntisas-expanded-link" title="${database_timestring}">Upgrade Database</a>`;
-            database_help = RenderHelp(UPGRADE_DATABASE_HELP);
+            NTISAS.database_info = null;
+            let url = `${NTISAS.domain}/forum_topics/${DANBOORU_TOPIC_ID}`;
+            database_html = `<a id="ntisas-install" class="ntisas-expanded-link" href="${url}">Install Database</a>`;
+            database_help = RenderHelp(INSTALL_DATABASE_HELP);
+            $('#ntisas-current-records').html(INSTALL_MENU_TEXT);
         }
         $('#ntisas-database-link').html(database_html);
         $('#ntisas-database-help').html(database_help);
-        $('#ntisas-database-version').on(PROGRAM_CLICK, CurrentPostver);
-        $('#ntisas-install').on(PROGRAM_CLICK, InstallDatabase);
-        $('#ntisas-upgrade').on(PROGRAM_CLICK, UpgradeDatabase);
     });
 }
 
@@ -4858,27 +4790,6 @@ function RemoveData(key, database) {
     return QueueStorageRequest('remove', key, null, database);
 }
 
-async function LoadDatabase() {
-    this.debug('log', "starting tweet load");
-    JSPLib.debug.debugTime('database-network');
-    var tweet_data = await JSPLib.network.getNotify(SERVER_DATABASE_URL, {custom_error: JSPLib.utility.sprintf(SERVER_ERROR, "tweet database"), xhr_options: {anonymous: true}});
-    JSPLib.debug.debugTimeEnd('database-network');
-    if (JSPLib.validate.isString(tweet_data)) {
-        JSPLib.debug.debugTime('database-parse');
-        try {
-            tweet_data = JSON.parse(tweet_data);
-        } catch(e) {
-            JSPLib.debug.debugerror("Error parsing tweet database:", e);
-        }
-        JSPLib.debug.debugTimeEnd('database-parse');
-    }
-    if (JSPLib.validate.isHash(tweet_data)) {
-        await SaveDatabase(tweet_data, '#ntisas-counter');
-        return true;
-    }
-    return false;
-}
-
 async function SaveDatabase(database, counter_selector) {
     var database_keys = Object.keys(database);
     let batches = Math.floor(database_keys.length / 2000);
@@ -4951,55 +4862,6 @@ function InitializeDatabase() {
     JSPLib.notice.notice("NTISAS will momentarily refresh the page to finish initializing the database.");
     //It's just easier to reload the page on database updates
     JSPLib.utility.refreshPage(PAGE_REFRESH_TIMEOUT);
-}
-
-async function CheckDatabaseInfo(initial) {
-    if (!NTISAS.user_settings.bypass_server_mode && (initial || JSPLib.concurrency.checkTimeout('ntisas-database-recheck', DATABASE_RECHECK_EXPIRES))) {
-        let database_info = await JSPLib.network.getNotify(DATABASE_INFO_URL, {custom_error: JSPLib.utility.sprintf(SERVER_ERROR, "database info"), xhr_options: {anonymous: true}});
-        if (JSPLib.validate.isString(database_info)) {
-            try {
-                database_info = JSON.parse(database_info);
-            } catch (e) {
-                //do nothing
-            }
-        }
-        if (JSPLib.validate.isHash(database_info)) {
-            JSPLib.storage.setLocalData('ntisas-remote-database', database_info);
-        }
-        JSPLib.concurrency.setRecheckTimeout('ntisas-database-recheck', DATABASE_RECHECK_EXPIRES);
-    }
-}
-
-function CheckPurgeBadTweets() {
-    if (!NTISAS.user_settings.bypass_server_mode && JSPLib.storage.getLocalData('ntisas-purge-bad', false) && JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'purgebad')) {
-        PurgeBadTweets().then(() => {
-            this.debug('log', "All bad Tweets purged!");
-            JSPLib.storage.setLocalData('ntisas-purge-bad', false);
-            JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT, 'purgebad');
-        });
-    }
-}
-
-async function PurgeBadTweets(purgelist) {
-    if (purgelist === undefined) {
-        purgelist = await JSPLib.network.getNotify(SERVER_PURGELIST_URL, {custom_error: JSPLib.utility.sprintf(SERVER_ERROR, "purge list"), xhr_options: {anonymous: true}});
-        if (JSPLib.validate.isString(purgelist)) {
-            try {
-                purgelist = JSON.parse(purgelist);
-            } catch(e) {
-                JSPLib.debug.debugerror("Error parsing purge list:", e);
-            }
-        }
-    }
-    if (Array.isArray(purgelist)) {
-        let purge_keylist = purgelist.map((tweet_id) => ('tweet-' + tweet_id));
-        let database_keylist = await JSPLib.storage.twitterstorage.keys();
-        let purge_set = new Set(purge_keylist);
-        let database_set = new Set(database_keylist);
-        let delete_keys = JSPLib.utility.setIntersection(database_set, purge_set);
-        this.debug('log', delete_keys);
-        await JSPLib.storage.batchRemoveData([...delete_keys], JSPLib.storage.twitterstorage);
-    }
 }
 
 //Event handlers
@@ -5144,35 +5006,6 @@ function ToggleAutoclickIQDB() {
     }
 }
 
-function InstallDatabase() {
-    let message = JSPLib.utility.sprintf(INSTALL_CONFIRM, NTISAS.server_info.post_version, new Date(NTISAS.server_info.timestamp).toLocaleString());
-    if (confirm(message)) {
-        $('#ntisas-database-link').html(LOAD_COUNTER);
-        LoadDatabase().then((data) => {
-            if (data) {
-                JSPLib.storage.saveData('ntisas-database-info', NTISAS.server_info, {database: JSPLib.storage.twitterstorage});
-                JSPLib.storage.setLocalData(`ntisas-postver-lastid`, NTISAS.server_info.post_version);
-                InitializeDatabase();
-            }
-        });
-    }
-}
-
-function UpgradeDatabase() {
-    let message = JSPLib.utility.sprintf(UPGRADE_CONFIRM, NTISAS.server_info.post_version, new Date(NTISAS.server_info.timestamp).toLocaleString(),
-        NTISAS.database_info.post_version, new Date(NTISAS.database_info.timestamp).toLocaleString());
-    if (confirm(message)) {
-        $('#ntisas-database-link').html(LOAD_COUNTER);
-        LoadDatabase().then((data) => {
-            if (data) {
-                JSPLib.storage.saveData('ntisas-database-info', NTISAS.server_info, {database: JSPLib.storage.twitterstorage});
-                JSPLib.storage.setLocalData('ntisas-purge-bad', true);
-                InitializeDatabase();
-            }
-        });
-    }
-}
-
 function SideMenuSelection(event) {
     let $link = $(event.target);
     let selected_menu = $link.data('selector');
@@ -5203,20 +5036,6 @@ function CurrentRecords() {
             JSPLib.notice.notice("Already up to date!");
         }
         CurrentRecords.is_running = false;
-    }
-}
-
-function CurrentPostver() {
-    if (confirm(CURRENT_POSTVER_CONFIRM)) {
-        JSPLib.danbooru.submitRequest('post_versions', {limit: 1}, {domain: NTISAS.domain, notify: true}).then((data) => {
-            if (Array.isArray(data) && data.length > 0) {
-                JSPLib.storage.setLocalData('ntisas-postver-lastid', data[0].id);
-                JSPLib.storage.setLocalData('ntisas-recent-timestamp', new Date(data[0].updated_at).getTime());
-                JSPLib.notice.notice("Finished updating record position!");
-                InitializeCurrentRecords();
-                NTISAS.channel.postMessage({type: 'currentrecords'});
-            }
-        });
     }
 }
 
@@ -6195,9 +6014,6 @@ function PageNavigation(pagetype) {
             $('#ntisas-iqdb-toggle a').on(PROGRAM_CLICK, ToggleAutoclickIQDB);
             $('#ntisas-open-settings').on(PROGRAM_CLICK, OpenSettingsMenu);
             //These will only get bound here on a rebind
-            $('#ntisas-database-version').on(PROGRAM_CLICK, CurrentPostver);
-            $('#ntisas-install').on(PROGRAM_CLICK, InstallDatabase);
-            $('#ntisas-upgrade').on(PROGRAM_CLICK, UpgradeDatabase);
             $('#ntisas-total-records').on(PROGRAM_CLICK, QueryTotalRecords);
             $('#ntisas-error-messages').on(PROGRAM_CLICK, ErrorMessages);
             $('#ntisas-lockpage-toggle a').on(PROGRAM_CLICK, ToggleLock);
@@ -6636,9 +6452,6 @@ function InitializeChangedSettings() {
     if (JSPLib.menu.hasSettingChanged('SauceNAO_API_key')) {
         SetSauceAPIKey();
     }
-    if (JSPLib.menu.hasSettingChanged('bypass_server_mode')) {
-        InitializeDatabaseLink();
-    }
     InitializeSideMenu();
 }
 
@@ -6721,7 +6534,6 @@ function RenderSettingsMenu() {
     $('#ntisas-query-settings').append(JSPLib.menu.renderTextinput('similarity_cutoff', 10));
     $('#ntisas-query-settings').append(JSPLib.menu.renderTextinput('results_returned', 10));
     $('#ntisas-query-settings').append(JSPLib.menu.renderTextinput('SauceNAO_API_key', 80));
-    $('#ntisas-database-settings').append(JSPLib.menu.renderCheckbox('bypass_server_mode'));
     $('#ntisas-network-settings').append(JSPLib.menu.renderCheckbox('URL_wildcards_enabled'));
     $('#ntisas-network-settings').append(JSPLib.menu.renderCheckbox('custom_order_enabled'));
     $('#ntisas-network-settings').append(JSPLib.menu.renderTextinput('recheck_interval', 5));
@@ -6773,9 +6585,6 @@ async function Main() {
         channel: JSPLib.utility.createBroadcastChannel(PROGRAM_NAME, BroadcastTISAS),
         user_settings: JSPLib.menu.loadUserSettings(),
     }, PROGRAM_DEFAULT_VALUES, PROGRAM_RESET_KEYS);
-    if (!IsTISASInstalled()) {
-        await CheckDatabaseInfo(true);
-    }
     SetQueryDomain();
     SetSauceAPIKey();
     await InstallUserProfileData();
@@ -6822,7 +6631,7 @@ async function Main() {
 
 [
     UnhideTweets, RegularCheck, ImportData, DownloadURL, PromptSavePostIDs,
-    CheckIQDB, CheckURL, PurgeBadTweets, CheckPurgeBadTweets, SaveDatabase, LoadDatabase, CheckPostvers,
+    CheckIQDB, CheckURL, SaveDatabase, CheckPostvers,
     ReadFileAsync, ProcessPostvers, InitializeImageTweets, CorrectStringArray, ValidateEntry, BroadcastTISAS,
     PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages, InitializeUploadlinks, CheckSauce,
     GetNormalImageURL, GetPageType, CheckServerBadTweets, SavePostvers, PickImage, MarkupMainTweet,
@@ -6830,7 +6639,7 @@ async function Main() {
     IntervalStorageHandler, GetImageAttributes, UpdateUserIDCallback, PreloadStorageData,
 ] = JSPLib.debug.addFunctionLogs([
     UnhideTweets, RegularCheck, ImportData, DownloadURL, PromptSavePostIDs,
-    CheckIQDB, CheckURL, PurgeBadTweets, CheckPurgeBadTweets, SaveDatabase, LoadDatabase, CheckPostvers,
+    CheckIQDB, CheckURL, SaveDatabase, CheckPostvers,
     ReadFileAsync, ProcessPostvers, InitializeImageTweets, CorrectStringArray, ValidateEntry, BroadcastTISAS,
     PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages, InitializeUploadlinks, CheckSauce,
     GetNormalImageURL, GetPageType, CheckServerBadTweets, SavePostvers, PickImage, MarkupMainTweet,
@@ -6839,9 +6648,9 @@ async function Main() {
 ]);
 
 [
-    RenderSettingsMenu, PurgeBadTweets, SaveDatabase, GetSavePackage, CheckPostvers,
+    RenderSettingsMenu, SaveDatabase, GetSavePackage, CheckPostvers,
 ] = JSPLib.debug.addFunctionTimers([
-    RenderSettingsMenu, PurgeBadTweets, SaveDatabase, GetSavePackage, CheckPostvers,
+    RenderSettingsMenu, SaveDatabase, GetSavePackage, CheckPostvers,
 ]);
 
 /****Initialization****/
