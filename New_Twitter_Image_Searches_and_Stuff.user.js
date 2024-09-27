@@ -5,7 +5,6 @@
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
-// @match        https://twitter.com/*
 // @match        https://x.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/New_Twitter_Image_Searches_and_Stuff.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/New_Twitter_Image_Searches_and_Stuff.user.js
