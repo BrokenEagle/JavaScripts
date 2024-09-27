@@ -4299,6 +4299,10 @@ async function TimelineHandler() {
         while (lowest_requested_id < lowest_available_id) {
             let tweet_data = await GetMediaTimelineGQL(user_id, cursor);
             cursor = tweet_data.cursors.bottom;
+            if (Object.keys(tweet_data.tweets).length === 0) {
+                JSPLib.debug.debugwarn("TimelineHandler - No found tweets:", tweet_data);
+                return;
+            }
             TIMELINE_VALS.api_data = Object.assign(TIMELINE_VALS.api_data, tweet_data.tweets);
             let tweet_ids = Object.keys(tweet_data.tweets).map((tweet_id) => BigInt(tweet_id));
             lowest_available_id = JSPLib.utility.bigIntMin(...tweet_ids);
