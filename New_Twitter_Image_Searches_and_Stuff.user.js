@@ -5003,39 +5003,45 @@ function ImageLeave(event) {
 }
 
 function ToggleImageSize(event) {
-    let image = event.target;
-    let $image = $(image);
-    let image_url = $image.attr('src');
-    let image_info = GetImageURLInfo(image_url);
-    if (image_info) {
-        let orig_url = $image.parent().data('orig-size');
-        let $image_anchor = NTISAS.image_anchor[orig_url];
-        let showing_large = $image.data('showing-large') || false;
-        if (showing_large || image_info.size === 'large') {
-            $image_anchor.qtiptisas('hide');
-            $image_anchor.closest('a').get(0).click();
+    try {
+        let image = event.target;
+        let $image = $(image);
+        let image_url = $image.attr('src');
+        let image_info = GetImageURLInfo(image_url);
+        if (image_info) {
+            let orig_url = $image.parent().data('orig-size');
+            let $image_anchor = NTISAS.image_anchor[orig_url];
+            let showing_large = $image.data('showing-large') || false;
+            if (showing_large || image_info.size === 'large') {
+                $image_anchor.qtiptisas('hide');
+                $image_anchor.closest('a').get(0).click();
+            } else {
+                let qtip_API = $image_anchor.qtiptisas('api');
+                let current_x = parseFloat(qtip_API.tooltip.css('left'));
+                let current_y = parseFloat(qtip_API.tooltip.css('top'));
+                let current_width = image.width;
+                let current_height = image.height;
+                image.onload = () => {
+                    let new_x = current_x - ((image.width - current_width) / 2);
+                    let new_y = current_y - ((image.height - current_height) / 2);
+                    qtip_API.tooltip.css({
+                        left: new_x,
+                        top: new_y,
+                    });
+                };
+                let large_url = 'https://pbs.twimg.com/' + image_info.path + '/' + image_info.key + '?format=' + image_info.ext + '&name=medium';
+                $image.attr('src', large_url);
+                $image.data('showing-large', true);
+            }
         } else {
-            let qtip_API = $image_anchor.qtiptisas('api');
-            let current_x = parseFloat(qtip_API.tooltip.css('left'));
-            let current_y = parseFloat(qtip_API.tooltip.css('top'));
-            let current_width = image.width;
-            let current_height = image.height;
-            image.onload = () => {
-                let new_x = current_x - ((image.width - current_width) / 2);
-                let new_y = current_y - ((image.height - current_height) / 2);
-                qtip_API.tooltip.css({
-                    left: new_x,
-                    top: new_y,
-                });
-            };
-            let large_url = 'https://pbs.twimg.com/' + image_info.path + '/' + image_info.key + '?format=' + image_info.ext + '&name=medium';
-            $image.attr('src', large_url);
-            $image.data('showing-large', true);
+            this.debug('warn', "No match!", image_url);
         }
-    } else {
-        this.debug('warn', "No match!", image_url);
+    } catch (e) {
+        JSPLib.notice.error("ToggleImage: Error");
+        console.log("ToggleImage error:", e);
+    } finally {
+        event.preventDefault();
     }
-    event.preventDefault();
 }
 
 function ToggleSideMenu(event) {
