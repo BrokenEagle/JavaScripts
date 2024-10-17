@@ -219,7 +219,8 @@ const SEARCHBAR_CSS = `
 }`;
 
 const MENU_CSS = `
-.jsplib-selectors.pmm-selectors[data-setting="available_modes"] label {
+.jsplib-selectors.pmm-selectors[data-setting="available_modes"] label,
+.jsplib-selectors.pmm-selectors[data-setting="id_separator"] label {
     width: 120px;
 }`;
 
