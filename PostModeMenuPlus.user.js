@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://github.com/BrokenEagle
-// @version      8.5
+// @version      8.6
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -81,6 +81,11 @@ const SETTINGS_CONFIG = {
         reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Turns on being able to select posts before applying the desired function."
+    },
+    safe_tag_script_enabled: {
+        reset: false,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Unsets the tag script mode when navigating to a new page."
     },
     long_searchbar_enabled: {
         reset: false,
@@ -616,6 +621,11 @@ function InitializeProgramValues() {
         all_post_ids: new Set(JSPLib.utility.getDOMAttributes($('.post-preview'), 'id', parseInt)),
         $drag_area: document.querySelector('#posts'),
     });
+    if (PMM.safe_tag_script_enabled && PMM.mode === 'tag-script') {
+        JSPLib.storage.removeLocalData('mode', 'view');
+        JSPLib.storage.removeLocalData('pmm-mode', 'view');
+        PMM.mode = 'view';
+    }
     if (PMM.drag_select_enabled) {
         PMM.dragger = new DragSelect({
             selectables: GetAllPreviews(),
@@ -634,6 +644,7 @@ function RenderSettingsMenu() {
     $('#pmm-general-settings').append(JSPLib.menu.renderDomainSelectors());
     $('#pmm-mode-settings').append(JSPLib.menu.renderInputSelectors('available_modes', 'checkbox'));
     $('#pmm-mode-settings').append(JSPLib.menu.renderInputSelectors('id_separator', 'radio'));
+    $('#pmm-mode-settings').append(JSPLib.menu.renderCheckbox('safe_tag_script_enabled'));
     $("#pmm-network-settings").append(JSPLib.menu.renderTextinput('maximum_concurrent_requests', 10));
     $('#pmm-network-settings').append(JSPLib.menu.renderCheckbox('highlight_errors_enabled'));
     $('#pmm-select-settings').append(JSPLib.menu.renderCheckbox('select_only_enabled'));
