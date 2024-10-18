@@ -1,11 +1,13 @@
 // ==UserScript==
-// @name         New Pixiv Image Searches and Stuff (ALPHA)
+// @name         New Pixiv Image Searches and Stuff
 // @version      0.13
 // @description  Searches Danbooru database for artwork IDs, adds image search links.
 // @match        *://www.pixiv.net/*
-// @require      https://cdnjs.cloudflare.com/ajax/libs/core-js/3.11.0/minified.js
+// @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/New_Pixiv_Image_Searches_and_Stuff.user.js
+// @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/New_Pixiv_Image_Searches_and_Stuff.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.9.0/localforage.min.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-getitems@1.4.2/dist/localforage-getitems.min.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-setitems@1.4.0/dist/localforage-setitems.min.js
@@ -719,7 +721,42 @@ const SAUCE_EXPIRES = JSPLib.utility.one_hour;
 
 const GOLD_LEVEL = 30;
 
-//Validation constants
+//Classes
+
+class Artwork {
+    constructor(data) {
+        Object.assign(this, data);
+    }
+
+    get danbooru_ids() {
+        return JSPLib.utility.getObjectAttributes(this.danbooru, 'id');
+    }
+
+    get post_ids() {
+        return JSPLib.utility.concat(this.danbooru_ids, this.local).sort();
+    }
+
+    image_expired(image_url) {
+        let image_info = GetImageURLInfo(image_url);
+        let matching_sources = this.danbooru.filter((source) => source.order === image_info.order);
+        if (matching_sources.length > 0) {
+            let matching_dates = JSPLib.utility.getObjectAttributes(matching_sources, 'date');
+            return !matching_dates.includes(image_info.date);
+        }
+        return false;
+    }
+
+    is_expired(image_url) {
+        let image_info = GetImageURLInfo(image_url);
+        let expired = {};
+        this.danbooru.forEach((source) => {
+            expired[source.order] ||= source.date === image_info.date;
+        });
+        return !Object.values(expired).every((val) => val);
+    }
+}
+
+//Validate constants
 
 const POST_CONSTRAINTS = {
     entry: JSPLib.validate.hashentry_constraints,
@@ -782,6 +819,46 @@ const PROFILE_CONSTRAINTS = {
     level: JSPLib.validate.id_constraints,
 };
 
+const ARTWORK_CONSTRAINTS = {
+    entry: {
+        id: JSPLib.validate.id_constraints,
+        danbooru: JSPLib.validate.array_constraints(),
+        local: JSPLib.validate.array_constraints(),
+        queried: JSPLib.validate.integer_constraints,
+    },
+    danbooru: {
+        id: JSPLib.validate.id_constraints,
+        order: JSPLib.validate.integer_constraints,
+        date: JSPLib.validate.stringonly_constraints,
+    },
+    local: JSPLib.validate.basic_number_validator,
+};
+
+const ILLUST_CONSTRAINTS = {
+    id: JSPLib.validate.id_constraints,
+    date: JSPLib.validate.stringonly_constraints,
+    is_ai: JSPLib.validate.boolean_constraints,
+};
+
+const PAGE_CONSTRAINTS = {
+    entry: {
+        id: JSPLib.validate.id_constraints,
+        date: JSPLib.validate.stringonly_constraints,
+        page: JSPLib.validate.array_constraints(),
+    },
+    page: {
+        urls: JSPLib.validate.hash_constraints,
+        height: JSPLib.validate.integer_constraints,
+        width: JSPLib.validate.integer_constraints,
+    },
+    urls: {
+        thumb_mini: JSPLib.validate.stringonly_constraints,
+        small: JSPLib.validate.stringonly_constraints,
+        regular: JSPLib.validate.stringonly_constraints,
+        original: JSPLib.validate.stringonly_constraints,
+    },
+};
+
 /****FUNCTIONS****/
 
 //Library functions
@@ -808,7 +885,16 @@ JSPLib.menu.preloadProgram = function (program_value, {default_data = {}, reset_
     return true;
 };
 
-//Validation functions
+JSPLib.validate.validateHashArrayEntries = function (key, data, constraints) {
+    for (let i = 0; i < data.length; i++) {
+        if (!JSPLib.validate.validateHashEntries(`${key}[${i}]`, data[i], constraints)) {
+            return false;
+        }
+    }
+    return true;
+};
+
+//Validate functions
 
 function ValidateEntry() {
     return true;
@@ -822,10 +908,31 @@ function ValidateProgramData() {
     return true;
 }
 
+function ValidatePixivData(key, data) {
+    if (!JSPLib.validate.validateIsHash(key, data)) {
+        return false;
+    }
+    if (key.match(/^artwork-/)) {
+        return JSPLib.validate.validateHashEntries(key, data, ARTWORK_CONSTRAINTS.entry)
+            && JSPLib.validate.validateArrayValues(key + '.local', data.local, ARTWORK_CONSTRAINTS.local)
+            && JSPLib.validate.validateHashArrayEntries(key + '.danbooru', data.danbooru, ARTWORK_CONSTRAINTS.danbooru);
+    }
+    if (key.match(/^illust-/)) {
+        return JSPLib.validate.validateHashEntries(key, data, ILLUST_CONSTRAINTS);
+    }
+    if (key.match(/^page-/)) {
+        return JSPLib.validate.validateHashEntries(key, data, PAGE_CONSTRAINTS.entry)
+            && JSPLib.validate.validateHashArrayEntries(key + '.page', data.page, PAGE_CONSTRAINTS.page)
+            && data.page.every((page, i) => JSPLib.validate.validateHashEntries(key + `.page[${i}].urls`, page.urls, PAGE_CONSTRAINTS.urls));
+    }
+    this.debug('log', "Bad key!");
+    return false;
+}
+
 //Helper functions
 
-function GetSessionPixivData(artwork_id) {
-    return JSPLib.storage.getIndexedSessionData('artwork-' + artwork_id, {default_val: [], database: STORAGE_DATABASES.pixiv});
+function GetSessionArtwork(artwork_id) {
+    return new Artwork(JSPLib.storage.getIndexedSessionData('artwork-' + artwork_id, {default_val: {}, database: STORAGE_DATABASES.pixiv}));
 }
 
 function JSONNotice(data) {
@@ -975,29 +1082,24 @@ function LoadHTMLData() {
 
 function MapArtwork(artwork_id, mapped_posts) {
     let artwork_posts = mapped_posts.filter((post) => post.pixivid === artwork_id);
-    let post_ids = JSPLib.utility.getObjectAttributes(artwork_posts, 'id');
-    let post_sources = JSPLib.utility.getObjectAttributes(artwork_posts, 'source');
+    let posts_info = MapSourceUrls(mapped_posts);
     return {
         id: artwork_id,
-        posts: post_ids,
-        sources: post_sources,
+        danbooru: posts_info,
+        local: [],
         queried: Date.now(),
-    }
+    };
 }
 
-function MergeArtwork(original, merge) {
-    let original_posts = original.posts || [];
-    let merge_posts = merge.posts || [];
-    original.posts = JSPLib.utility.arrayUnion(original_posts, merge_posts);
-    if (original.posts.length === 0) {
-        delete original.posts;
-    }
-    original.sources = merge.sources;
-    if (!original.sources || original.sources.length === 0) {
-        delete original.sources;
-    }
-    original.queried = merge.queried;
-    return original;
+function MapSourceUrls(mapped_posts) {
+    return mapped_posts.map((post) => {
+        let image_info = GetImageURLInfo(post.source);
+        return {
+            id: post.id,
+            date: image_info.date,
+            order: image_info.order,
+        };
+    });
 }
 
 function GetImageURLInfo(image_url) {
@@ -1067,8 +1169,10 @@ function SetRotatingIcon($link) {
     }, 100);
 }
 
-function PromptSavePostIDs($link, $artwork, artwork_id, $replace, message, initial_post_ids, preview) {
-    let prompt_string = prompt(message, initial_post_ids.join(', '));
+function PromptSavePostIDs($link, $artwork, artwork_id, $replace, message, save_post_ids, preview) {
+    let artwork = GetSessionArtwork(artwork_id);
+    save_post_ids = JSPLib.utility.arrayDifference(save_post_ids, artwork.danbooru_ids);
+    let prompt_string = prompt(message, save_post_ids.join(', '));
     if (prompt_string !== null) {
         let confirm_post_ids = JSPLib.utility.arrayUnique(
             prompt_string.split(',')
@@ -1076,14 +1180,9 @@ function PromptSavePostIDs($link, $artwork, artwork_id, $replace, message, initi
                 .filter((num) => JSPLib.validate.validateID(num))
         );
         JSPLib.debug.debuglog('log', "Confirmed IDs:", confirm_post_ids);
-        if (confirm_post_ids.length === 0) {
-            RemoveData('artwork-' + artwork_id, 'pixiv');
-        } else {
-            let artwork = GetSessionPixivData(artwork_id);
-            artwork.posts = JSPLib.utility.arrayUnion(artwork.posts || [], confirm_post_ids);
-            SaveData('artwork-' + artwork_id, artwork, 'pixiv');
-        }
-        UpdatePostIDsLink(artwork_id, confirm_post_ids);
+        artwork.local = confirm_post_ids;
+        SaveData('artwork-' + artwork.id, artwork, 'pixiv');
+        UpdatePostIDsLink(artwork);
     }
 }
 
@@ -1156,11 +1255,9 @@ function RenderSimilarIDsLink(post_ids, similar_data, level, type, preview) {
     ${text}
 </a>`;
     return `
-(
 <span class="npisas-query-button" style="border-radius: 25px 0 0 25px; min-width: 8em;">${idlink}</span>
 |
 <span class="npisas-query-button" style="border-radius: 0 25px 25px 0; min-width: 2em;">${helplink}</span>
-)
 `;
 }
 
@@ -1225,10 +1322,10 @@ async function InitializeImageMainMenu($artworks,append_selector,menu_class) {
     let $container = $(`<div style="display: flex;"><div class="npisas-link-menu ${menu_class} npisas-links"></div></div>`);
     let $link_container = $container.find('.' + menu_class);
     $(append_selector, artwork).append($container);
-    let artwork_data = await GetArtworks([artwork_id]);
+    let artworks = await GetArtworks([artwork_id]);
     let {image_url} = GetArtworkInfo($artworks);
-    if (artwork_data[0]?.posts) {
-        InitializePostIDsLink(artwork_id, $link_container, artwork, artwork_data[0].posts, false, image_url);
+    if (artworks[0].post_ids) {
+        InitializePostIDsLink(artworks[0], $link_container, false, image_url);
     } else {
         InitializeNoMatchesLinks(artwork_id, $link_container, image_url, false);
     }
@@ -1251,43 +1348,20 @@ async function InitializePreviewArtwork(artwork) {
     $container.find('.npisas-upload-artwork').attr('href', 'https://danbooru.donmai.us/uploads/new?url=' + encodeURIComponent('https://www.pixiv.net/artworks/' + artwork_id));
     let $link_container = $container.find('.npisas-preview-menu');
     $artwork.find('.npisas-artwork-menu').append($container);
-    GetArtworks([artwork_id]).then(([data]) => {
+    GetArtworks([artwork_id]).then(([artwork]) => {
         let {image_url, image_count} = GetArtworkInfo($artwork);
-        if (data.posts) {
-            InitializePostIDsLink(artwork_id, $link_container, artwork, data.posts, true, image_url, image_count);
+        if (artwork.post_ids.length) {
+            InitializePostIDsLink(artwork, $link_container, true, image_url);
         } else {
             InitializeNoMatchesLinks(artwork_id, $link_container, image_url, true);
         }
     });
 }
 
-async function InitializePostIDsLink(artwork_id, $link_container, artwork, post_ids, preview, image_url, image_count) {
-    let posts_data = await GetPosts(post_ids);
-    let image_info = GetImageURLInfo(image_url);
-    let database_match = true;
-    if (image_info) {
-        let current_date = image_info.date
-        let image_dict = {};
-        posts_data.forEach((post) => {
-            let post_info = GetImageURLInfo(post.source);
-            if (post_info) {
-                image_dict[post_info.order] ??= [];
-                image_dict[post_info.order].push(post_info.date);
-            } else {
-                JSPLib.notice.debugNotice("Found non-matching image from Danbooru.");
-                JSPLib.debug.debugwarn("Non-matching image:", post, post.source);
-            }
-        });
-        for (let order in image_dict) {
-            if (image_count && Number(order) >= image_count) break;
-            if (!image_dict[order].includes(current_date)) {
-                database_match = false;
-                break;
-            }
-        }
-        console.log('InitializePostIDsLink-1', artwork_id, image_dict, database_match);
-    }
-    let link_class = database_match ? 'npisas-database-match' : 'npisas-database-mismatch';
+async function InitializePostIDsLink(artwork, $link_container, preview, image_url, expanded=false) {
+    let posts_data = await GetPosts(artwork.post_ids);
+    let is_expired = expanded ? artwork.image_expired(image_url) : artwork.is_expired(image_url);
+    let link_class = !is_expired ? 'npisas-database-match' : 'npisas-database-mismatch';
     $link_container.html(RenderPostIDsLink(posts_data, link_class, preview));
 }
 
@@ -1309,18 +1383,18 @@ function InitializeUIStyle() {
 
 //Update functions
 
-function UpdatePostIDsLink(artwork_id, post_ids) {
-    let $artwork = $(`[data-artwork-id=${artwork_id}]`);
+function UpdatePostIDsLink(artwork) {
+    let $artwork = $(`[data-artwork-id=${artwork.id}]`);
     if ($artwork.length === 0) {
         return;
     }
     let $link_container = $('.npisas-link-menu', $artwork[0]);
     let preview = $artwork.attr('npisas-artwork') === 'preview';
     let {image_url} = GetArtworkInfo($artwork);
-    if (post_ids.length === 0) {
-        InitializeNoMatchesLinks(artwork_id, $link_container, image_url, preview);
+    if (artwork.post_ids.length === 0) {
+        InitializeNoMatchesLinks(artwork.id, $link_container, image_url, preview);
     } else {
-        InitializePostIDsLink(artwork_id, $link_container, $artwork[0], post_ids, preview, image_url);
+        InitializePostIDsLink(artwork, $link_container, preview, image_url);
     }
 }
 
@@ -1480,8 +1554,8 @@ function CheckExpandedImages() {
         if ($unprocessed_images.length === 0) {
             return;
         }
-        let artwork = NPISAS.artwork_data[NPISAS.artwork_id];
-        let post_ids = (artwork && artwork.posts) || [];
+        let artwork = GetSessionArtwork(NPISAS.artwork_id);
+        let post_ids = (artwork?.post_ids) || [];
         let artwork_posts = post_ids.map((post_id) => NPISAS.post_data[post_id]);
         $unprocessed_images.each((_,image)=>{
             let $image = $(image);
@@ -1493,7 +1567,6 @@ function CheckExpandedImages() {
                 let post_info = GetImageURLInfo(normalized_url);
                 if (post_info) {
                     let post_key = post_info.id + '-' + post_info.order;
-                    console.log(NPISAS.artwork_id, post.id, image_key, post_key);
                     return post_key === image_key;
                 }
                  return false;
@@ -1610,9 +1683,14 @@ function FulfillStorageRequests(keylist,data_items,requests) {
 
 //////General
 
-function GetData(key, database) {
+async function GetData(key, database) {
     let type = (database === 'danbooru' ? 'check' : 'get');
-    return QueueStorageRequest(type, key, null, database);
+    let data = await QueueStorageRequest(type, key, null, database);
+    if (database === 'pixiv' && !ValidatePixivData(key, data)) {
+        JSPLib.debug.debuglog("GetData - DB Miss", key);
+        return null;
+    }
+    return data;
 }
 
 function SaveData(key, value, database, invalidate = true) {
@@ -1654,6 +1732,15 @@ function SavePostUsers(mapped_posts) {
 function SaveArtworks(mapped_artworks) {
     mapped_artworks.forEach((artwork) => {
         SaveData('artwork-' + artwork.id, artwork, 'pixiv');
+    });
+}
+
+function MergeArtworks(mapped_artworks, expired_artworks) {
+    mapped_artworks.forEach((artwork) => {
+        let merge = expired_artworks.find((expired) => expired.id === artwork.id);
+        if (merge) {
+            artwork.local = merge.local;
+        }
     });
 }
 
@@ -1747,52 +1834,40 @@ async function GetPosts(post_ids) {
 async function GetArtworks(artwork_ids) {
     let storage_data = await Promise.all(artwork_ids.map((id) => GetData('artwork-' + id, 'pixiv')));
     storage_data = storage_data.filter((data) => data !== null);
-    let nonfound_ids = JSPLib.utility.arrayDifference(artwork_ids, JSPLib.utility.getObjectAttributes(storage_data, 'id'));
-    let artworks_data = [], expired_artworks = [];
-    storage_data.forEach((artwork) => {
+    let storage_ids = JSPLib.utility.getObjectAttributes(storage_data, 'id');
+    let missing_ids = JSPLib.utility.arrayDifference(artwork_ids, storage_ids);
+    let expired_artworks = storage_data.filter((artwork) => {
         let expires = Math.round(artwork.queried + (JSPLib.utility.one_minute * 5));
-        if(JSPLib.utility.validateExpires(expires)) {
-            artworks_data.push(artwork);
-        } else {
-            expired_artworks.push(artwork);
-        }
+        return !JSPLib.utility.validateExpires(expires);
     });
     let expired_ids = JSPLib.utility.getObjectAttributes(expired_artworks, 'id');
-    let lookup_ids = JSPLib.utility.arrayUnion(nonfound_ids, expired_ids);
-    if (lookup_ids.length) {
-        let network_posts = await QueueNetworkRequest('artworks', lookup_ids);
+    let artworks_data = storage_data.filter((artwork) => !expired_ids.includes(artwork.id));
+    let query_ids = JSPLib.utility.arrayUnion(missing_ids, expired_ids);
+    if (query_ids.length) {
+        let network_posts = await QueueNetworkRequest('artworks', query_ids);
         let found_ids = [];
         if (network_posts.length) {
             let mapped_posts = network_posts.map(MapPost)
             SavePosts(mapped_posts);
             SavePostUsers(mapped_posts);
-            let artwork_ids = JSPLib.utility.arrayUnique(JSPLib.utility.getObjectAttributes(mapped_posts, 'pixivid'));
-            let mapped_artworks = artwork_ids.map((artwork_id) => MapArtwork(artwork_id, mapped_posts));
-            let merged_artworks = JSPLib.utility.dataCopy(expired_artworks);
-            mapped_artworks.forEach((merge) => {
-                let original = merged_artworks.find((artwork) => artwork.id === merge.id);
-                if (original) {
-                    MergeArtwork(original, merge);
-                } else {
-                    merged_artworks.push(merge);
-                }
-            });
-            SaveArtworks(merged_artworks);
-            artworks_data = JSPLib.utility.concat(artworks_data, merged_artworks);
-            found_ids = JSPLib.utility.getObjectAttributes(merged_artworks, 'id');
+            let artwork_ids = JSPLib.utility.getObjectAttributes(mapped_posts, 'pixivid');
+            artwork_ids = JSPLib.utility.arrayUnique(artwork_ids);
+            let network_artworks = artwork_ids.map((artwork_id) => MapArtwork(artwork_id, mapped_posts));
+            MergeArtworks(network_artworks, expired_artworks);
+            SaveArtworks(network_artworks);
+            artworks_data = JSPLib.utility.concat(artworks_data, network_artworks);
+            found_ids = JSPLib.utility.getObjectAttributes(network_artworks, 'id');
         }
-        let missing_ids = JSPLib.utility.arrayDifference(lookup_ids, found_ids);
-        if (missing_ids.length) {
-            let notfound_artworks = missing_ids.map((artwork_id) => ({id: artwork_id, queried: Date.now()}));
+        let notfound_ids = JSPLib.utility.arrayDifference(query_ids, found_ids);
+        if (notfound_ids.length) {
+            let notfound_artworks = notfound_ids.map((artwork_id) => ({id: artwork_id, danbooru: [], local: [], queried: Date.now()}));
+            MergeArtworks(notfound_artworks, expired_artworks);
             SaveArtworks(notfound_artworks);
             artworks_data = JSPLib.utility.concat(artworks_data, notfound_artworks);
         }
     }
-    artworks_data.sort((a,b) => (artwork_ids.indexOf(a.id) - artwork_ids.indexOf(b.id)));
-    artworks_data.forEach((artwork)=>{
-        NPISAS.artwork_data[artwork.id] = artwork;
-    });
-    return artworks_data;
+    return artworks_data.sort((a,b) => (artwork_ids.indexOf(a.id) - artwork_ids.indexOf(b.id)))
+                                .map((data) => new Artwork(data));
 }
 
 ////Pixiv
@@ -1812,7 +1887,7 @@ async function GetIllusts(images_info) {
         });
         let query_ids = JSPLib.utility.arrayDifference(missing_ids, storage_ids);
         if (query_ids.length) {
-            let network_data = await JSPLib.network.getJSON('/ajax/user/1/illusts', {ids: query_ids});
+            let network_data = await JSPLib.network.getJSON('/ajax/user/1/illusts', {data: {ids: query_ids}});
             if (!network_data.error) {
                 for (let i = 0; i < query_ids.length; i++) {
                     let artwork_id = query_ids[i];
@@ -1831,13 +1906,13 @@ async function GetIllustUrls(artwork_id, image_url) {
     GetIllustUrls.pages ??= {};
     if (!GetIllustUrls.pages[artwork_id]) {
         let image_info = GetImageURLInfo(image_url);
-        let storage_data = await GetData('pages-' + artwork_id, 'pixiv');
+        let storage_data = await GetData('page-' + artwork_id, 'pixiv');
         if (!storage_data || storage_data.date != image_info.date) {
             let network_data = await JSPLib.network.getJSON(`/ajax/illust/${artwork_id}/pages`);
             if (!network_data.body.error) {
                 let image_info = GetImageURLInfo(network_data.body[0].urls.original);
-                GetIllustUrls.pages[artwork_id] = JSPLib.utility.mergeHashes({id: image_info.id, date: image_info.date, urls: network_data.body});
-                SaveData('pages-' + artwork_id, GetIllustUrls.pages[artwork_id], 'pixiv');
+                GetIllustUrls.pages[artwork_id] = JSPLib.utility.mergeHashes({id: image_info.id, date: image_info.date, page: network_data.body});
+                SaveData('page-' + artwork_id, GetIllustUrls.pages[artwork_id], 'pixiv');
             } else {
                 GetIllustUrls.pages[artwork_id] = {};
             }
@@ -1868,18 +1943,14 @@ async function CheckURL(event) {
         SavePostUsers(mapped_posts);
         let mapped_artwork = MapArtwork(artwork_id, mapped_posts);
         GetData('artwork-' + artwork_id, 'pixiv').then((artwork)=>{
-            if (artwork) {
-                artwork = MergeArtwork(artwork, mapped_artwork);
-            } else {
-                artwork = mapped_artwork;
-            }
-            SaveArtworks([artwork]);
-            update_promise.resolve(artwork.posts);
+            mapped_artwork.local = artwork.local;
+            SaveArtworks([mapped_artwork]);
+            update_promise.resolve(mapped_artwork);
         });
     }
-    update_promise.promise.then((post_ids)=>{
+    update_promise.promise.then((artwork)=>{
         clearInterval(timer);
-        UpdatePostIDsLink(artwork_id, post_ids);
+        UpdatePostIDsLink(artwork);
     });
 }
 
@@ -1963,7 +2034,7 @@ function ManualAdd(event) {
 
 function ConfirmDelete(event) {
     let {$link, $artwork, artwork_id, preview, $replace} = GetEventPreload(event, 'npisas-confirm-delete');
-    let all_post_ids = GetSessionPixivData(artwork_id);
+    let all_post_ids = GetSessionArtwork(artwork_id);
     let message = JSPLib.utility.sprintf(CONFIRM_DELETE_PROMPT, all_post_ids);
     PromptSavePostIDs($link, $artwork, artwork_id, $replace, message, [], preview);
     event.preventDefault();
@@ -1973,8 +2044,8 @@ function ConfirmSave(event) {
     let {$link, $artwork, artwork_id, preview, $replace} = GetEventPreload(event, 'npisas-confirm-save');
     let save_post_ids = NPISAS.similar_results[artwork_id];
     if (NPISAS.merge_results.includes(artwork_id)) {
-        let artwork = GetSessionPixivData(artwork_id);
-        save_post_ids = JSPLib.utility.arrayUnion(artwork.posts, save_post_ids);
+        let artwork = GetSessionArtwork(artwork_id);
+        save_post_ids = JSPLib.utility.arrayUnion(artwork.local, save_post_ids);
     }
     PromptSavePostIDs($link, $artwork, artwork_id, $replace, CONFIRM_SAVE_PROMPT, save_post_ids, preview);
     event.preventDefault();
@@ -1996,8 +2067,8 @@ function MergeResults(event) {
 function CancelMerge(event) {
     let {$artwork, artwork_id, preview, image_url, $replace} = GetEventPreload(event, 'npisas-cancel-merge');
     NPISAS.merge_results = JSPLib.utility.arrayDifference(NPISAS.merge_results, [artwork_id]);
-    let artwork = GetSessionPixivData(artwork_id);
-    InitializePostIDsLink(artwork_id, $replace, $artwork[0], artwork.posts, preview, image_url);
+    let artwork = GetSessionArtwork(artwork_id);
+    InitializePostIDsLink(artwork, $replace, preview, image_url);
 }
 
 function HelpInfo(event) {
@@ -2024,7 +2095,7 @@ function ShowPreviews(event) {
             //PREBOORU-end
             let $images = $('<div style="display: flex; flex-wrap: wrap; overflow-y: auto; max-height: 65vh; overscroll-behavior: contain;"></div>');
             $menu.append($images);
-            page_data.urls.forEach((url_data)=>{
+            page_data.page.forEach((url_data)=>{
                 let $img_container = $('<div style="padding: 5px; height: 300px; width: 300px; text-align: center;"></div>');
                 let $img = url_data.width > url_data.height ? $(`<img style="width: 300px; height: auto;" src=${url_data.urls.small}>`) : $(`<img style="width: auto; height: 300px;" src=${url_data.urls.small}>`);
                 $img_container.on(PROGRAM_CLICK, (event) => {
@@ -2245,7 +2316,7 @@ JSPLib.notice.program_shortcut = PROGRAM_SHORTCUT;
 
 //Export JSPLib
 JSPLib.load.exportData(PROGRAM_NAME, NPISAS, {other_data: {jQuery, API_DATA, SAVED_STORAGE_REQUESTS, SAVED_NETWORK_REQUESTS, HANDLED_IMAGES, PAGE_REGEXES}});
-JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [GetPosts, GetItems, GetArtworks, GetIllustUrls, GetImageURLInfo, GetPageType, GetIllusts]});
+JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [GetPosts, GetItems, GetArtworks, GetIllustUrls, GetImageURLInfo, GetPageType, GetIllusts, ValidatePixivData]});
 
 /****Execution start****/
 
