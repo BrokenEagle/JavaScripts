@@ -221,6 +221,33 @@ const PROGRAM_CSS = `
     min-width: 1.5em;
     margin-right: 0;
 }
+.npisas-micro-menu .npisas-query-button {
+    min-width: 1em;
+    margin: 0 -5px;
+}
+.npisas-fullsize-menu .npisas-query-button {
+    min-width: 4em;
+    margin: 0 -5px;
+}
+.npisas-fullsize-menu  .npisas-query-results,
+.npisas-fullsize-menu  .npisas-query-postid {
+    border-radius: 25px 0 0 25px;
+    margin-left: 0;
+}
+.npisas-fullsize-menu  .npisas-query-results {
+    min-width: 7em;
+}
+.npisas-fullsize-menu .npisas-query-postid {
+    min-width: 10em;
+}
+.npisas-fullsize-menu .npisas-query-idlink {
+    border-radius: 25px 0 0 25px;
+}
+.npisas-fullsize-menu .npisas-query-help {
+    border-radius: 0 25px 25px 0;
+    min-width: 3m;
+    margin-right: 0;
+}
 .npisas-horizontal-rule {
     border-top: 1px solid grey;
     margin: 10px;
@@ -256,10 +283,8 @@ const PROGRAM_CSS = `
 }
 .npisas-artwork-header {
     font-size: 1.4em;
-    display: inline-block;
+    display: flex;
     font-weight: bold;
-    padding: 6px 1.8em 6px 6px;
-    border-right: 1px solid grey;
 }
 .npisas-artwork-image-menu-links {
     font-weight: bold;
@@ -418,12 +443,16 @@ const PROGRAM_CSS = `
 //HTML constants
 
 const MAIN_ARTWORK_MENU = `
-<div class="npisas-artwork-controls">
-    <div class="npisas-artwork-image-menu" style="border: 2px solid black;">
-        <div class="npisas-artwork-header">NPISAS</div>
-        <div class="npisas-artwork-image-menu-links npisas-links">
+<div class="npisas-main-menu npisas-fullsize-menu" style="border: 2px solid black; height: 40px; display: flex; align-items: center;">
+        <div class="npisas-artwork-header" style="height: 100%; border-right: 1px solid black;">
+            <div style="display: flex; align-items: center; padding: 6px 0.8em;">
+                NPISAS
+            </div>
         </div>
-    </div>
+        <div class="npisas-artwork-menu-separator"></div>
+        <div class="npisas-link-menu npisas-artwork-menu npisas-links" style="margin: 5px; font-weight: bold;">
+            <span style="vertical-align: center;">( Loading... )</span>
+        </div>
 </div>
 `;
 
@@ -440,7 +469,8 @@ const MICRO_MAIN_MENU_HTML = `
         <a class="npisas-upload-artwork npisas-expanded-link" target="_blank">Upload</a>
     </div>
     )
-</div>`;
+</div>
+`;
 
 //Message constants
 
@@ -709,6 +739,24 @@ const PREVIEW_DIALOG_SETTINGS = {
     }
 };
 
+const MENU_DIALOG_SETTINGS = {
+    title: "New Pixiv Image Searches and Stuff",
+    modal: true,
+    resizable: false,
+    autoOpen: false,
+    width: 600,
+    height: 600,
+    classes: {
+        'ui-dialog': 'npisas-dialog',
+        'ui-dialog-titlebar-close': 'npisas-dialog-close'
+    },
+    buttons: {
+        'Close' () {
+            $(this).dialog('close');
+        }
+    }
+};
+
 //Time constants
 
 const USER_EXPIRES = JSPLib.utility.one_month;
@@ -758,73 +806,13 @@ class Artwork {
 
 //Validate constants
 
-const POST_CONSTRAINTS = {
-    entry: JSPLib.validate.hashentry_constraints,
-    value: {
-        id: JSPLib.validate.id_constraints,
-        uploaderid: JSPLib.validate.id_constraints,
-        uploadername: JSPLib.validate.stringonly_constraints,
-        score: JSPLib.validate.integer_constraints,
-        favcount: JSPLib.validate.counting_constraints,
-        rating: JSPLib.validate.inclusion_constraints(['s', 'q', 'e']),
-        tags: JSPLib.validate.stringonly_constraints,
-        created: JSPLib.validate.counting_constraints,
-        thumbnail: JSPLib.validate.stringonly_constraints,
-        source: JSPLib.validate.stringonly_constraints,
-        ext: JSPLib.validate.inclusion_constraints(['jpg', 'png', 'gif', 'mp4', 'webm']),
-        size: JSPLib.validate.counting_constraints,
-        width: JSPLib.validate.counting_constraints,
-        height: JSPLib.validate.counting_constraints
-    }
-};
-
-const USER_CONSTRAINTS = {
-    entry: JSPLib.validate.hashentry_constraints,
-    value: {
-        id: JSPLib.validate.id_constraints,
-        name: JSPLib.validate.stringonly_constraints,
-    }
-};
-
-const VIEW_CONSTRAINTS = {
-    entry: JSPLib.validate.hashentry_constraints,
-    value: {
-        count: JSPLib.validate.counting_constraints,
-        viewed: JSPLib.validate.counting_constraints,
-    },
-};
-
-const SIMILAR_CONSTRAINTS = {
-    expires: JSPLib.validate.expires_constraints,
-    value: JSPLib.validate.boolean_constraints
-};
-
-const VIDEO_CONSTRAINTS = {
-    expires: JSPLib.validate.expires_constraints,
-    value: JSPLib.validate.stringnull_constraints
-};
-
-const TWUSER_CONSTRAINTS = {
-    expires: JSPLib.validate.expires_constraints,
-    value: JSPLib.validate.stringonly_constraints,
-};
-
-const SAUCE_CONSTRAINTS = {
-    expires: JSPLib.validate.expires_constraints,
-    value: JSPLib.validate.integer_constraints
-};
-
-const PROFILE_CONSTRAINTS = {
-    id: JSPLib.validate.id_constraints,
-    level: JSPLib.validate.id_constraints,
-};
-
 const ARTWORK_CONSTRAINTS = {
-    entry: {
+    entry: JSPLib.validate.hashentry_constraints,
+    value: {
         id: JSPLib.validate.id_constraints,
         danbooru: JSPLib.validate.array_constraints(),
         local: JSPLib.validate.array_constraints(),
-        queried: JSPLib.validate.integer_constraints,
+        expires: {expires: {allowNull: true}},
     },
     danbooru: {
         id: JSPLib.validate.id_constraints,
@@ -835,13 +823,17 @@ const ARTWORK_CONSTRAINTS = {
 };
 
 const ILLUST_CONSTRAINTS = {
-    id: JSPLib.validate.id_constraints,
-    date: JSPLib.validate.stringonly_constraints,
-    is_ai: JSPLib.validate.boolean_constraints,
+    entry: JSPLib.validate.hashentry_constraints,
+    value: {
+        id: JSPLib.validate.id_constraints,
+        date: JSPLib.validate.stringonly_constraints,
+        is_ai: JSPLib.validate.boolean_constraints,
+    }
 };
 
 const PAGE_CONSTRAINTS = {
-    entry: {
+    entry: JSPLib.validate.hashentry_constraints,
+    value: {
         id: JSPLib.validate.id_constraints,
         date: JSPLib.validate.stringonly_constraints,
         page: JSPLib.validate.array_constraints(),
@@ -894,10 +886,61 @@ JSPLib.validate.validateHashArrayEntries = function (key, data, constraints) {
     return true;
 };
 
+validate.validators.expires = function(value, options) {
+    if (options !== false) {
+        var message = "";
+        //Can't use presence validator so must catch it here
+        if (value === undefined) {
+            return "can't be missing";
+        }
+        if (!Number.isInteger(value)) {
+            message = "is not an integer";
+            if (JSPLib.validate.checkOptions(options, 'allowNull')) {
+                if (options.allowNull !== true || value === null) {
+                    return;
+                }
+                message += " or null";
+            }
+        } else if (value < 0) {
+            message = "is not greater than or equal to zero";
+        }
+        return message;
+    }
+};
+
+JSPLib.storage.batchCheckLocalDB = async function (self, keylist, expiration, {validator = JSPLib.storage.indexedDBValidator, database = JSPLib.storage.danboorustorage} = {}) {
+    var cached = await this.batchRetrieveData(keylist, {database});
+    for (let key in cached) {
+        let max_expires = 0;
+        if (Number.isInteger(expiration)) {
+            max_expires = expiration;
+        } else if (typeof expiration === 'function') {
+            max_expires = expiration(key, cached[key]);
+        }
+        self.debug('logLevel', "Checking DB", key, JSPLib.debug.VERBOSE);
+        if (!validator?.(key, cached[key]) || this.hasDataExpired(key, cached[key], max_expires)) {
+            self.debug('logLevel', "DB Miss", key, JSPLib.debug.DEBUG);
+            delete cached[key];
+        } else {
+            self.debug('logLevel', "DB Hit", key, JSPLib.debug.VERBOSE);
+        }
+    }
+    return cached;
+};
+
+JSPLib.debug.addModuleLogs('storage', ['batchCheckLocalDB']);
+
 //Validate functions
 
-function ValidateEntry() {
-    return true;
+function ValidateEntry(key, data) {
+    if (key.match(/^(?:post|user|iqdb|sauce)-/)) {
+        return true;
+    }
+    if (key.match(/^(?:artwork|illust|page)-/)) {
+        return ValidatePixivData(key, data)
+    }
+    JSPLib.debug.debuglog("ValidateEntry - Bad key!");
+    return false;
 }
 
 function ValidateExpiration() {
@@ -912,27 +955,35 @@ function ValidatePixivData(key, data) {
     if (!JSPLib.validate.validateIsHash(key, data)) {
         return false;
     }
+    if (!JSPLib.validate.validateHashEntries(key, data, JSPLib.validate.hashentry_constraints)) {
+        return false;
+    }
+    let value_key = key + '.value';
+    let value = data.value;
     if (key.match(/^artwork-/)) {
-        return JSPLib.validate.validateHashEntries(key, data, ARTWORK_CONSTRAINTS.entry)
-            && JSPLib.validate.validateArrayValues(key + '.local', data.local, ARTWORK_CONSTRAINTS.local)
-            && JSPLib.validate.validateHashArrayEntries(key + '.danbooru', data.danbooru, ARTWORK_CONSTRAINTS.danbooru);
+        return JSPLib.validate.validateHashEntries(value_key, value, ARTWORK_CONSTRAINTS.value)
+            && JSPLib.validate.validateArrayValues(value_key + '.local', value.local, ARTWORK_CONSTRAINTS.local)
+            && JSPLib.validate.validateHashArrayEntries(value_key + '.danbooru', value.danbooru, ARTWORK_CONSTRAINTS.danbooru);
     }
     if (key.match(/^illust-/)) {
-        return JSPLib.validate.validateHashEntries(key, data, ILLUST_CONSTRAINTS);
+        return JSPLib.validate.validateHashEntries(value_key, value, ILLUST_CONSTRAINTS.value);
     }
     if (key.match(/^page-/)) {
-        return JSPLib.validate.validateHashEntries(key, data, PAGE_CONSTRAINTS.entry)
-            && JSPLib.validate.validateHashArrayEntries(key + '.page', data.page, PAGE_CONSTRAINTS.page)
-            && data.page.every((page, i) => JSPLib.validate.validateHashEntries(key + `.page[${i}].urls`, page.urls, PAGE_CONSTRAINTS.urls));
+        return JSPLib.validate.validateHashEntries(value_key, value, PAGE_CONSTRAINTS.value)
+            && JSPLib.validate.validateHashArrayEntries(value_key + '.page', value.page, PAGE_CONSTRAINTS.page)
+            && value.page.every((page, i) => JSPLib.validate.validateHashEntries(value_key + `.page[${i}].urls`, page.urls, PAGE_CONSTRAINTS.urls));
     }
-    this.debug('log', "Bad key!");
-    return false;
 }
 
 //Helper functions
 
+function GetSessionArtworkData(artwork_id) {
+    return JSPLib.storage.getIndexedSessionData('artwork-' + artwork_id, {database: STORAGE_DATABASES.pixiv});
+}
+
 function GetSessionArtwork(artwork_id) {
-    return new Artwork(JSPLib.storage.getIndexedSessionData('artwork-' + artwork_id, {default_val: {}, database: STORAGE_DATABASES.pixiv}));
+    let storage_data = GetSessionArtworkData(artwork_id);
+    return new Artwork(storage_data.value);
 }
 
 function JSONNotice(data) {
@@ -1084,10 +1135,25 @@ function MapArtwork(artwork_id, mapped_posts) {
     let artwork_posts = mapped_posts.filter((post) => post.pixivid === artwork_id);
     let posts_info = MapSourceUrls(mapped_posts);
     return {
-        id: artwork_id,
-        danbooru: posts_info,
-        local: [],
-        queried: Date.now(),
+        value: {
+            id: artwork_id,
+            danbooru: posts_info,
+            local: [],
+            expires: null,
+        },
+        expires: JSPLib.utility.getExpires(JSPLib.utility.one_hour),
+    };
+}
+
+function NullArtwork(artwork_id) {
+    return {
+        value: {
+            id: artwork_id,
+            danbooru: [],
+            local: [],
+            expires: null,
+        },
+        expires: JSPLib.utility.getExpires(JSPLib.utility.one_hour),
     };
 }
 
@@ -1174,14 +1240,22 @@ function PromptSavePostIDs($link, $artwork, artwork_id, $replace, message, save_
     save_post_ids = JSPLib.utility.arrayDifference(save_post_ids, artwork.danbooru_ids);
     let prompt_string = prompt(message, save_post_ids.join(', '));
     if (prompt_string !== null) {
+        let save_data = GetSessionArtworkData(artwork_id);
         let confirm_post_ids = JSPLib.utility.arrayUnique(
             prompt_string.split(',')
                 .map(Number)
                 .filter((num) => JSPLib.validate.validateID(num))
         );
         JSPLib.debug.debuglog('log', "Confirmed IDs:", confirm_post_ids);
-        artwork.local = confirm_post_ids;
-        SaveData('artwork-' + artwork.id, artwork, 'pixiv');
+        artwork.local = save_data.value.local = confirm_post_ids;
+        if (confirm_post_ids.length) {
+            save_data.value.expires ??= save_data.expires;
+            save_data.expires = 0;
+        } else {
+            save_data.expires ||= artwork.danbooru.length ? JSPLib.utility.one_day : JSPLib.utility.one_hour;
+            save_data.value.expires = null;
+        }
+        SaveData('artwork-' + artwork.id, save_data, 'pixiv');
         UpdatePostIDsLink(artwork);
     }
 }
@@ -1278,7 +1352,7 @@ function RenderNomatchLinks(pixiv_id, no_iqdb_results, no_sauce_results, merge_r
     let iqdb_text = preview ? 'I' : 'IQDB';
     let iqdb_link = no_iqdb_results ?
                     `<a class="npisas-reset-results npisas-database-no-match npisas-expanded-link npisas-check-link" data-type="iqdb" data-replace="2">${no_iqdb_text}</a>` :
-                    `<a class="npisas-check-iqdb npisas-expanded-link npisas-check-link" href="https://danbooru.donmai.us/iqdb_queries?url=${encoded_image_path}" title="Query Danbooru using image" data-replace="2">${iqdb_text}</a>`;
+                    `<a class="npisas-check-iqdb npisas-expanded-link npisas-check-link" href="${NPISAS.domain}/iqdb_queries?url=${encoded_image_path}" title="Query Danbooru using image" data-replace="2">${iqdb_text}</a>`;
     let no_sauce_text = preview ? '⛔' : 'no results';
     let sauce_text = preview ? 'S' : 'Sauce';
     let sauce_link = no_sauce_results ?
@@ -1316,46 +1390,39 @@ function RenderHelp(help_text) {
 
 //Initialize functions
 
-async function InitializeImageMainMenu($artworks,append_selector,menu_class) {
-    let artwork = $artworks.get(0)
-    let artwork_id = JSPLib.utility.getDOMAttributes($artworks, 'artwork-id', Number)[0];
-    let $container = $(`<div style="display: flex;"><div class="npisas-link-menu ${menu_class} npisas-links"></div></div>`);
-    let $link_container = $container.find('.' + menu_class);
-    $(append_selector, artwork).append($container);
-    let artworks = await GetArtworks([artwork_id]);
-    let {image_url} = GetArtworkInfo($artworks);
-    if (artworks[0].post_ids) {
-        InitializePostIDsLink(artworks[0], $link_container, false, image_url);
+async function InitializeMainArtwork(container) {
+    let $artwork = $(container);
+    let $button = $('.pixiv-show-all-button', container);
+    let $button_container = $('.pixiv-buttons-container', container);
+    let $artwork_controls = $('.pixiv-artwork-controls', container);
+    $artwork_controls.before(`<div class="npisas-controls-container" style="width: 36em; height: 110px; position: relative; z-index: 100;">${MAIN_ARTWORK_MENU}</div>`);
+    AdjustArtworkControls();
+    let $link_container = $artwork.find('.npisas-artwork-menu');
+    let artwork_id = Number($artwork.data('artwork-id'));
+    let {image_url} = GetArtworkInfo($artwork);
+    let artwork = await GetArtwork(artwork_id);
+    if (artwork.post_ids.length) {
+        InitializePostIDsLink(artwork, $link_container, false, image_url);
     } else {
         InitializeNoMatchesLinks(artwork_id, $link_container, image_url, false);
     }
 }
 
-function InitializeMainArtwork(artwork) {
-    let $button = $('.pixiv-show-all-button', artwork);
-    let $button_container = $('.pixiv-buttons-container', artwork);
-    let $artwork_controls = $('.pixiv-artwork-controls', artwork);
-    let menu_html = JSPLib.utility.regexReplace(MAIN_ARTWORK_MENU, {BOOKMARK_MENU_HELP: RenderHelp(BOOKMARK_MENU_HELP)});
-    $artwork_controls.before(`<div class="npisas-controls-container" style="width: 36em; height: 110px; position: relative; z-index: 100;">${menu_html}</div>`);
-    AdjustArtworkControls();
-    InitializeImageMainMenu($(artwork), '.npisas-artwork-image-menu-links', 'npisas-artwork-menu');
-}
-
-async function InitializePreviewArtwork(artwork) {
-    const $artwork = $(artwork);
+async function InitializePreviewArtwork(container) {
+    const $artwork = $(container);
     let artwork_id = Number($artwork.data('artwork-id'));
     let $container = $(MICRO_MAIN_MENU_HTML);
-    $container.find('.npisas-upload-artwork').attr('href', 'https://danbooru.donmai.us/uploads/new?url=' + encodeURIComponent('https://www.pixiv.net/artworks/' + artwork_id));
+    let encoded_url = encodeURIComponent('https://www.pixiv.net/artworks/' + artwork_id);
+    $container.find('.npisas-upload-artwork').attr('href', `${NPISAS.domain}/uploads/new?url=${encoded_url}`);
     let $link_container = $container.find('.npisas-preview-menu');
-    $artwork.find('.npisas-artwork-menu').append($container);
-    GetArtworks([artwork_id]).then(([artwork]) => {
-        let {image_url, image_count} = GetArtworkInfo($artwork);
-        if (artwork.post_ids.length) {
-            InitializePostIDsLink(artwork, $link_container, true, image_url);
-        } else {
-            InitializeNoMatchesLinks(artwork_id, $link_container, image_url, true);
-        }
-    });
+    $artwork.find('.npisas-artwork-controls').append($container);
+    let artwork = await GetArtwork(artwork_id);
+    let {image_url, image_count} = GetArtworkInfo($artwork);
+    if (artwork.post_ids.length) {
+        InitializePostIDsLink(artwork, $link_container, true, image_url);
+    } else {
+        InitializeNoMatchesLinks(artwork_id, $link_container, image_url, true);
+    }
 }
 
 async function InitializePostIDsLink(artwork, $link_container, preview, image_url, expanded=false) {
@@ -1428,6 +1495,31 @@ function PageNavigation(pagetype) {
             break;
         default:
             //Do nothing
+    }
+    if ($('.npisas-settings-menu-link').length === 0 && !NPISAS.initializing_menu) {
+        NPISAS.initializing_menu = true;
+        JSPLib.utility.recheckTimer({
+            check: () => $('button[title="Menu"]').length,
+            exec: () => {
+                JSPLib.debug.debuglog("PageNavigation: Installing menu.");
+                let $menu = $('button[title="Menu"]').parent();
+                $menu.append('<div style="font-weight: bold; font-size: 1.8em;"><a class="npisas-menu-link">NPISAS</a></div>');
+                let $link = $menu.find('.npisas-menu-link');
+                $link.on(PROGRAM_CLICK, (event) => {
+                    if (!NPISAS.menu_dialog) {
+                    InitializeUIStyle();
+                        NPISAS.menu_dialog = $('<div></div>');
+                        NPISAS.menu_dialog.dialog(Object.assign({
+                            position: {'my': 'left top', 'at': 'left bottom', 'of': $link.get(0)}
+                        }, MENU_DIALOG_SETTINGS));
+                    }
+                    NPISAS.menu_dialog.dialog('open');
+                });
+            },
+            always: () => {
+                NPISAS.initializing_menu = false;
+            },
+        }, JSPLib.utility.one_second, JSPLib.utility.one_second * 10);
     }
 }
 
@@ -1526,7 +1618,7 @@ function MarkupPreviewArtwork(artwork) {
             }
         }
     }
-    $artwork.append('<div class="npisas-artwork-menu" style="border: 1px #888 solid; padding: 5px; margin: 5px -5px; font-weight: bold; border-radius: 5px;"></div>');
+    $artwork.append('<div class="npisas-artwork-controls" style="border: 1px #888 solid; padding: 5px; margin: 5px -5px; font-weight: bold; border-radius: 5px;"></div>');
     return artwork_id;
 }
 
@@ -1572,14 +1664,14 @@ function CheckExpandedImages() {
                  return false;
             });
             if (posts.length === 1) {
-                let post_url = NPISAS.domain + '/posts/' + posts[0].id;
+                let post_url = `${NPISAS.domain}/posts/${posts[0].id}`;
                 let title = GetLinkTitle(posts[0]);
                 let text = 'post #' + posts[0].id;
                 let match_class = (NormalizeSource(posts[0].source) === NormalizeSource(image_url) ? 'npisas-database-match' : 'npisas-database-mismatch');
                 var html = `<a class="${match_class} npisas-expanded-link" href="${post_url}" title="${title}" target="_blank">${text}</a>`;
             } else if (posts.length > 1) {
                 let matching_post = posts.find((post) => post.source == image_url);
-                let post_url = NPISAS.domain + '/posts?tags=status%3Aany+id%3A' + post_ids.join(',');
+                let post_url = `${NPISAS.domain}/posts?tags=status%3Aany+id%3A${post_ids.join(',')}`;
                 let title = GetMultiLinkTitle(posts);
                 let text = post_ids.length + ' sources';
                 let match_class = (matching_post ? 'npisas-database-match' : 'npisas-database-mismatch');
@@ -1684,12 +1776,8 @@ function FulfillStorageRequests(keylist,data_items,requests) {
 //////General
 
 async function GetData(key, database) {
-    let type = (database === 'danbooru' ? 'check' : 'get');
-    let data = await QueueStorageRequest(type, key, null, database);
-    if (database === 'pixiv' && !ValidatePixivData(key, data)) {
-        JSPLib.debug.debuglog("GetData - DB Miss", key);
-        return null;
-    }
+    //let type = (database === 'danbooru' || database? 'check' : 'get');
+    let data = await QueueStorageRequest('check', key, null, database);
     return data;
 }
 
@@ -1729,19 +1817,12 @@ function SavePostUsers(mapped_posts) {
     SaveUsers(unique_users);
 }
 
-function SaveArtworks(mapped_artworks) {
-    mapped_artworks.forEach((artwork) => {
-        SaveData('artwork-' + artwork.id, artwork, 'pixiv');
-    });
-}
-
-function MergeArtworks(mapped_artworks, expired_artworks) {
-    mapped_artworks.forEach((artwork) => {
-        let merge = expired_artworks.find((expired) => expired.id === artwork.id);
-        if (merge) {
-            artwork.local = merge.local;
-        }
-    });
+function MergeArtwork(artwork, merge, duration) {
+    if (merge.value.local.length) {
+        artwork.value.local = merge.value.local;
+        artwork.value.expires = JSPLib.utility.getExpires(duration);
+        artwork.expires = 0;
+    }
 }
 
 ////Helpers
@@ -1831,43 +1912,30 @@ async function GetPosts(post_ids) {
     return posts_data;
 }
 
-async function GetArtworks(artwork_ids) {
-    let storage_data = await Promise.all(artwork_ids.map((id) => GetData('artwork-' + id, 'pixiv')));
-    storage_data = storage_data.filter((data) => data !== null);
-    let storage_ids = JSPLib.utility.getObjectAttributes(storage_data, 'id');
-    let missing_ids = JSPLib.utility.arrayDifference(artwork_ids, storage_ids);
-    let expired_artworks = storage_data.filter((artwork) => {
-        let expires = Math.round(artwork.queried + (JSPLib.utility.one_minute * 5));
-        return !JSPLib.utility.validateExpires(expires);
-    });
-    let expired_ids = JSPLib.utility.getObjectAttributes(expired_artworks, 'id');
-    let artworks_data = storage_data.filter((artwork) => !expired_ids.includes(artwork.id));
-    let query_ids = JSPLib.utility.arrayUnion(missing_ids, expired_ids);
-    if (query_ids.length) {
-        let network_posts = await QueueNetworkRequest('artworks', query_ids);
-        let found_ids = [];
+async function GetArtwork(artwork_id) {
+    GetArtwork.artworks ??= {};
+    let storage_data = await GetData('artwork-' + artwork_id, 'pixiv');
+    if (!storage_data || (storage_data.expires === 0 && !JSPLib.utility.validateExpires(storage_data.value.expires))) {
+        let network_posts = await QueueNetworkRequest('artworks', [artwork_id]);
+        var duration;
         if (network_posts.length) {
             let mapped_posts = network_posts.map(MapPost)
             SavePosts(mapped_posts);
             SavePostUsers(mapped_posts);
-            let artwork_ids = JSPLib.utility.getObjectAttributes(mapped_posts, 'pixivid');
-            artwork_ids = JSPLib.utility.arrayUnique(artwork_ids);
-            let network_artworks = artwork_ids.map((artwork_id) => MapArtwork(artwork_id, mapped_posts));
-            MergeArtworks(network_artworks, expired_artworks);
-            SaveArtworks(network_artworks);
-            artworks_data = JSPLib.utility.concat(artworks_data, network_artworks);
-            found_ids = JSPLib.utility.getObjectAttributes(network_artworks, 'id');
+            GetArtwork.artworks[artwork_id] = MapArtwork(artwork_id, mapped_posts);
+            duration = JSPLib.utility.one_day;
+        } else {
+            GetArtwork.artworks[artwork_id] = NullArtwork(artwork_id);
+            duration = JSPLib.utility.one_hour;
         }
-        let notfound_ids = JSPLib.utility.arrayDifference(query_ids, found_ids);
-        if (notfound_ids.length) {
-            let notfound_artworks = notfound_ids.map((artwork_id) => ({id: artwork_id, danbooru: [], local: [], queried: Date.now()}));
-            MergeArtworks(notfound_artworks, expired_artworks);
-            SaveArtworks(notfound_artworks);
-            artworks_data = JSPLib.utility.concat(artworks_data, notfound_artworks);
+        if (storage_data) {
+            MergeArtwork(GetArtwork.artworks[artwork_id], storage_data, duration);
         }
+        SaveData('artwork-' + artwork_id, GetArtwork.artworks[artwork_id], 'pixiv');
+    } else {
+        GetArtwork.artworks[artwork_id] = storage_data;
     }
-    return artworks_data.sort((a,b) => (artwork_ids.indexOf(a.id) - artwork_ids.indexOf(b.id)))
-                                .map((data) => new Artwork(data));
+    return new Artwork(GetArtwork.artworks[artwork_id].value);
 }
 
 ////Pixiv
@@ -1879,9 +1947,9 @@ async function GetIllusts(images_info) {
     if (missing_ids.length) {
         let storage_data = await Promise.all(missing_ids.map((artwork_id) => GetData('illust-' + artwork_id, 'pixiv')));
         let storage_ids = storage_data.filter((data) => data !== null).map((data) => {
-            let current_info = images_info.find((info) => info.id === data.id);
-            if (current_info.date === data.date) {
-                GetIllusts.illusts[data.id] = data;
+            let current_info = images_info.find((info) => info.id === data.value.id);
+            if (current_info.date === data.value.date) {
+                GetIllusts.illusts[data.value.id] = data;
                 return current_info.id;
             }
         });
@@ -1893,13 +1961,13 @@ async function GetIllusts(images_info) {
                     let artwork_id = query_ids[i];
                     let artwork_info = images_info.find((info) => info.id === artwork_id);
                     let is_ai = network_data.body[artwork_id]?.aiType === 2
-                    GetIllusts.illusts[artwork_id] = {id: artwork_id, date: artwork_info.date, is_ai};
+                    GetIllusts.illusts[artwork_id] = {value: {id: artwork_id, date: artwork_info.date, is_ai}, expires: JSPLib.utility.getExpires(JSPLib.utility.one_month)};
                     SaveData('illust-' + artwork_id, GetIllusts.illusts[artwork_id], 'pixiv');
                 }
             }
         }
     }
-    return JSPLib.utility.mergeHashes(...artwork_ids.map((artwork_id) => ({[artwork_id]: GetIllusts.illusts[artwork_id] ?? {}})));
+    return JSPLib.utility.mergeHashes(...artwork_ids.map((artwork_id) => ({[artwork_id]: GetIllusts.illusts[artwork_id].value ?? {}})));
 }
 
 async function GetIllustUrls(artwork_id, image_url) {
@@ -1907,11 +1975,11 @@ async function GetIllustUrls(artwork_id, image_url) {
     if (!GetIllustUrls.pages[artwork_id]) {
         let image_info = GetImageURLInfo(image_url);
         let storage_data = await GetData('page-' + artwork_id, 'pixiv');
-        if (!storage_data || storage_data.date != image_info.date) {
+        if (!storage_data || storage_data.value.date != image_info.date) {
             let network_data = await JSPLib.network.getJSON(`/ajax/illust/${artwork_id}/pages`);
             if (!network_data.body.error) {
                 let image_info = GetImageURLInfo(network_data.body[0].urls.original);
-                GetIllustUrls.pages[artwork_id] = JSPLib.utility.mergeHashes({id: image_info.id, date: image_info.date, page: network_data.body});
+                GetIllustUrls.pages[artwork_id] = {value: {id: image_info.id, date: image_info.date, page: network_data.body}, expires: JSPLib.utility.getExpires(JSPLib.utility.one_week)};
                 SaveData('page-' + artwork_id, GetIllustUrls.pages[artwork_id], 'pixiv');
             } else {
                 GetIllustUrls.pages[artwork_id] = {};
@@ -1920,7 +1988,7 @@ async function GetIllustUrls(artwork_id, image_url) {
             GetIllustUrls.pages[artwork_id] = storage_data;
         }
     }
-    return GetIllustUrls.pages[artwork_id];
+    return GetIllustUrls.pages[artwork_id].value;
 };
 
 //Event handlers
@@ -1932,26 +2000,23 @@ async function CheckURL(event) {
     let {$link, artwork_id} = GetEventPreload(event, 'npisas-check-url');
     let timer = SetRotatingIcon($link);
     let data = await JSPLib.danbooru.submitRequest('posts', {tags: 'status:any pixiv_id:' + artwork_id, only: POST_FIELDS}, {default_val: [], domain: NPISAS.domain, notify: true});
-    let post_ids = [];
-    let update_promise = JSPLib.utility.createPromise();
+    let storage_artwork = GetSessionArtworkData(artwork_id);
+    var mapped_artwork, duration;
     if (data.length === 0) {
         NPISAS.no_url_results.push(artwork_id);
-        update_promise.resolve([]);
+        mapped_artwork = NullArtwork(artwork_id);
+        duration = JSPLib.utility.one_hour;
     } else {
         let mapped_posts = data.map(MapPost)
         SavePosts(mapped_posts);
         SavePostUsers(mapped_posts);
-        let mapped_artwork = MapArtwork(artwork_id, mapped_posts);
-        GetData('artwork-' + artwork_id, 'pixiv').then((artwork)=>{
-            mapped_artwork.local = artwork.local;
-            SaveArtworks([mapped_artwork]);
-            update_promise.resolve(mapped_artwork);
-        });
+        mapped_artwork = MapArtwork(artwork_id, mapped_posts);
+        duration = JSPLib.utility.one_day;
     }
-    update_promise.promise.then((artwork)=>{
-        clearInterval(timer);
-        UpdatePostIDsLink(artwork);
-    });
+    MergeArtwork(mapped_artwork, storage_artwork, duration);
+    SaveData('artwork-' + artwork_id, mapped_artwork, 'pixiv');
+    clearInterval(timer);
+    UpdatePostIDsLink(mapped_artwork);
 }
 
 async function CheckIQDB(event) {
@@ -2277,6 +2342,10 @@ function Main() {
     setInterval(IntervalNetworkHandler, 500);
     JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
     JSPLib.utility.initializeInterval(RegularCheck, JSPLib.utility.one_second);
+    let $menu = $('button[title="Menu"]').parent();
+    if ($menu.length) {
+        $menu.append('<div style="font-weight: bold; font-size: 1.5em;"><a class="npisas-settings-menu-link">NPISAS Settings</a></div>');
+    }
 }
 
 /****Initialization****/
@@ -2316,7 +2385,7 @@ JSPLib.notice.program_shortcut = PROGRAM_SHORTCUT;
 
 //Export JSPLib
 JSPLib.load.exportData(PROGRAM_NAME, NPISAS, {other_data: {jQuery, API_DATA, SAVED_STORAGE_REQUESTS, SAVED_NETWORK_REQUESTS, HANDLED_IMAGES, PAGE_REGEXES}});
-JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [GetPosts, GetItems, GetArtworks, GetIllustUrls, GetImageURLInfo, GetPageType, GetIllusts, ValidatePixivData]});
+JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [GetPosts, GetItems, GetArtwork, GetIllustUrls, GetImageURLInfo, GetPageType, GetIllusts, ValidatePixivData]});
 
 /****Execution start****/
 
