@@ -10,7 +10,7 @@
  * Plugins: tips modal viewport svg imagemap ie6
  * Styles: core basic css3
  */
-.qtiptisas{
+.qtipjsp{
 	position: absolute;
 	left: -28000px;
 	top: -28000px;
@@ -28,7 +28,7 @@
 	padding: 0;
 }
 
-	.qtiptisas-content{
+	.qtipjsp-content{
 		position: relative;
 		padding: 5px 9px;
 		overflow: hidden;
@@ -37,7 +37,7 @@
 		word-wrap: break-word;
 	}
 
-	.qtiptisas-titlebar{
+	.qtipjsp-titlebar{
 		position: relative;
 		padding: 5px 35px 5px 10px;
 		overflow: hidden;
@@ -46,13 +46,13 @@
 		font-weight: bold;
 	}
 
-	.qtiptisas-titlebar + .qtiptisas-content{ border-top-width: 0 !important; }
+	.qtipjsp-titlebar + .qtipjsp-content{ border-top-width: 0 !important; }
 
 	/* Default close button class */
-	.qtiptisas-close{
+	.qtipjsp-close{
 		position: absolute;
 		right: -9px; top: -9px;
-		z-index: 11; /* Overlap .qtiptisas-tip */
+		z-index: 11; /* Overlap .qtipjsp-tip */
 
 		cursor: pointer;
 		outline: medium none;
@@ -60,28 +60,28 @@
 		border: 1px solid transparent;
 	}
 
-		.qtiptisas-titlebar .qtiptisas-close{
+		.qtipjsp-titlebar .qtipjsp-close{
 			right: 4px; top: 50%;
 			margin-top: -9px;
 		}
 
-		* html .qtiptisas-titlebar .qtiptisas-close{ top: 16px; } /* IE fix */
+		* html .qtipjsp-titlebar .qtipjsp-close{ top: 16px; } /* IE fix */
 
-		.qtiptisas-titlebar .ui-icon,
-		.qtiptisas-icon .ui-icon{
+		.qtipjsp-titlebar .ui-icon,
+		.qtipjsp-icon .ui-icon{
 			display: block;
 			text-indent: -1000em;
 			direction: ltr;
 		}
 
-		.qtiptisas-icon, .qtiptisas-icon .ui-icon{
+		.qtipjsp-icon, .qtipjsp-icon .ui-icon{
 			-moz-border-radius: 3px;
 			-webkit-border-radius: 3px;
 			border-radius: 3px;
 			text-decoration: none;
 		}
 
-			.qtiptisas-icon .ui-icon{
+			.qtipjsp-icon .ui-icon{
 				width: 18px;
 				height: 14px;
 
@@ -95,162 +95,162 @@
 			}
 
 /* Applied to 'focused' tooltips e.g. most recently displayed/interacted with */
-.qtiptisas-focus{}
+.qtipjsp-focus{}
 
 /* Applied on hover of tooltips i.e. added/removed on mouseenter/mouseleave respectively */
-.qtiptisas-hover{}
+.qtipjsp-hover{}
 
 /* Default tooltip style */
-.qtiptisas-default{
+.qtipjsp-default{
 	border: 1px solid #F1D031;
 
 	background-color: #FFFFA3;
 	color: #555;
 }
 
-	.qtiptisas-default .qtiptisas-titlebar{
+	.qtipjsp-default .qtipjsp-titlebar{
 		background-color: #FFEF93;
 	}
 
-	.qtiptisas-default .qtiptisas-icon{
+	.qtipjsp-default .qtipjsp-icon{
 		border-color: #CCC;
 		background: #F1F1F1;
 		color: #777;
 	}
 
-	.qtiptisas-default .qtiptisas-titlebar .qtiptisas-close{
+	.qtipjsp-default .qtipjsp-titlebar .qtipjsp-close{
 		border-color: #AAA;
 		color: #111;
 	}
 
 
 /*! Light tooltip style */
-.qtiptisas-light{
+.qtipjsp-light{
 	background-color: white;
 	border-color: #E2E2E2;
 	color: #454545;
 }
 
-	.qtiptisas-light .qtiptisas-titlebar{
+	.qtipjsp-light .qtipjsp-titlebar{
 		background-color: #f1f1f1;
 	}
 
 
 /*! Dark tooltip style */
-.qtiptisas-dark{
+.qtipjsp-dark{
 	background-color: #505050;
 	border-color: #303030;
 	color: #f3f3f3;
 }
 
-	.qtiptisas-dark .qtiptisas-titlebar{
+	.qtipjsp-dark .qtipjsp-titlebar{
 		background-color: #404040;
 	}
 
-	.qtiptisas-dark .qtiptisas-icon{
+	.qtipjsp-dark .qtipjsp-icon{
 		border-color: #444;
 	}
 
-	.qtiptisas-dark .qtiptisas-titlebar .ui-state-hover{
+	.qtipjsp-dark .qtipjsp-titlebar .ui-state-hover{
 		border-color: #303030;
 	}
 
 
 /*! Cream tooltip style */
-.qtiptisas-cream{
+.qtipjsp-cream{
 	background-color: #FBF7AA;
 	border-color: #F9E98E;
 	color: #A27D35;
 }
 
-	.qtiptisas-cream .qtiptisas-titlebar{
+	.qtipjsp-cream .qtipjsp-titlebar{
 		background-color: #F0DE7D;
 	}
 
-	.qtiptisas-cream .qtiptisas-close .qtiptisas-icon{
+	.qtipjsp-cream .qtipjsp-close .qtipjsp-icon{
 		background-position: -82px 0;
 	}
 
 
 /*! Red tooltip style */
-.qtiptisas-red{
+.qtipjsp-red{
 	background-color: #F78B83;
 	border-color: #D95252;
 	color: #912323;
 }
 
-	.qtiptisas-red .qtiptisas-titlebar{
+	.qtipjsp-red .qtipjsp-titlebar{
 		background-color: #F06D65;
 	}
 
-	.qtiptisas-red .qtiptisas-close .qtiptisas-icon{
+	.qtipjsp-red .qtipjsp-close .qtipjsp-icon{
 		background-position: -102px 0;
 	}
 
-	.qtiptisas-red .qtiptisas-icon{
+	.qtipjsp-red .qtipjsp-icon{
 		border-color: #D95252;
 	}
 
-	.qtiptisas-red .qtiptisas-titlebar .ui-state-hover{
+	.qtipjsp-red .qtipjsp-titlebar .ui-state-hover{
 		border-color: #D95252;
 	}
 
 
 /*! Green tooltip style */
-.qtiptisas-green{
+.qtipjsp-green{
 	background-color: #CAED9E;
 	border-color: #90D93F;
 	color: #3F6219;
 }
 
-	.qtiptisas-green .qtiptisas-titlebar{
+	.qtipjsp-green .qtipjsp-titlebar{
 		background-color: #B0DE78;
 	}
 
-	.qtiptisas-green .qtiptisas-close .qtiptisas-icon{
+	.qtipjsp-green .qtipjsp-close .qtipjsp-icon{
 		background-position: -42px 0;
 	}
 
 
 /*! Blue tooltip style */
-.qtiptisas-blue{
+.qtipjsp-blue{
 	background-color: #E5F6FE;
 	border-color: #ADD9ED;
 	color: #5E99BD;
 }
 
-	.qtiptisas-blue .qtiptisas-titlebar{
+	.qtipjsp-blue .qtipjsp-titlebar{
 		background-color: #D0E9F5;
 	}
 
-	.qtiptisas-blue .qtiptisas-close .qtiptisas-icon{
+	.qtipjsp-blue .qtipjsp-close .qtipjsp-icon{
 		background-position: -2px 0;
 	}
 
 
-.qtiptisas-shadow{
+.qtipjsp-shadow{
 	-webkit-box-shadow: 1px 1px 3px 1px rgba(0, 0, 0, 0.15);
 	-moz-box-shadow: 1px 1px 3px 1px rgba(0, 0, 0, 0.15);
 	box-shadow: 1px 1px 3px 1px rgba(0, 0, 0, 0.15);
 }
 
 /* Add rounded corners to your tooltips in: FF3+, Chrome 2+, Opera 10.6+, IE9+, Safari 2+ */
-.qtiptisas-rounded,
-.qtiptisas-tipsy,
-.qtiptisas-bootstrap{
+.qtipjsp-rounded,
+.qtipjsp-tipsy,
+.qtipjsp-bootstrap{
 	-moz-border-radius: 5px;
 	-webkit-border-radius: 5px;
 	border-radius: 5px;
 }
 
-.qtiptisas-rounded .qtiptisas-titlebar{
+.qtipjsp-rounded .qtipjsp-titlebar{
 	-moz-border-radius: 4px 4px 0 0;
 	-webkit-border-radius: 4px 4px 0 0;
 	border-radius: 4px 4px 0 0;
 }
 
 /* Youtube tooltip style */
-.qtiptisas-youtube{
+.qtipjsp-youtube{
 	-moz-border-radius: 2px;
 	-webkit-border-radius: 2px;
 	border-radius: 2px;
@@ -270,12 +270,12 @@
 	background-image: -o-linear-gradient(top,#4A4A4A 0,black 100%);
 }
 
-	.qtiptisas-youtube .qtiptisas-titlebar{
+	.qtipjsp-youtube .qtipjsp-titlebar{
 		background-color: #4A4A4A;
 		background-color: rgba(0,0,0,0);
 	}
 
-	.qtiptisas-youtube .qtiptisas-content{
+	.qtipjsp-youtube .qtipjsp-content{
 		padding: .75em;
 		font: 12px arial,sans-serif;
 
@@ -283,17 +283,17 @@
 		-ms-filter: "progid:DXImageTransform.Microsoft.Gradient(GradientType=0,StartColorStr=#4a4a4a,EndColorStr=#000000);";
 	}
 
-	.qtiptisas-youtube .qtiptisas-icon{
+	.qtipjsp-youtube .qtipjsp-icon{
 		border-color: #222;
 	}
 
-	.qtiptisas-youtube .qtiptisas-titlebar .ui-state-hover{
+	.qtipjsp-youtube .qtipjsp-titlebar .ui-state-hover{
 		border-color: #303030;
 	}
 
 
 /* jQuery TOOLS Tooltip style */
-.qtiptisas-jtools{
+.qtipjsp-jtools{
 	background: #232323;
 	background: rgba(0, 0, 0, 0.7);
 	background-image: -webkit-gradient(linear, left top, left bottom, from(#717171), to(#232323));
@@ -315,34 +315,34 @@
 }
 
 	/* IE Specific */
-	.qtiptisas-jtools .qtiptisas-titlebar{
+	.qtipjsp-jtools .qtipjsp-titlebar{
 		background-color: transparent;
 		filter:progid:DXImageTransform.Microsoft.gradient(startColorstr=#717171,endColorstr=#4A4A4A);
 		-ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorstr=#717171,endColorstr=#4A4A4A)";
 	}
-	.qtiptisas-jtools .qtiptisas-content{
+	.qtipjsp-jtools .qtipjsp-content{
 		filter:progid:DXImageTransform.Microsoft.gradient(startColorstr=#4A4A4A,endColorstr=#232323);
 		-ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorstr=#4A4A4A,endColorstr=#232323)";
 	}
 
-	.qtiptisas-jtools .qtiptisas-titlebar,
-	.qtiptisas-jtools .qtiptisas-content{
+	.qtipjsp-jtools .qtipjsp-titlebar,
+	.qtipjsp-jtools .qtipjsp-content{
 		background: transparent;
 		color: white;
 		border: 0 dashed transparent;
 	}
 
-	.qtiptisas-jtools .qtiptisas-icon{
+	.qtipjsp-jtools .qtipjsp-icon{
 		border-color: #555;
 	}
 
-	.qtiptisas-jtools .qtiptisas-titlebar .ui-state-hover{
+	.qtipjsp-jtools .qtipjsp-titlebar .ui-state-hover{
 		border-color: #333;
 	}
 
 
 /* Cluetip style */
-.qtiptisas-cluetip{
+.qtipjsp-cluetip{
 	-webkit-box-shadow: 4px 4px 5px rgba(0, 0, 0, 0.4);
 	-moz-box-shadow: 4px 4px 5px rgba(0, 0, 0, 0.4);
 	box-shadow: 4px 4px 5px rgba(0, 0, 0, 0.4);
@@ -352,24 +352,24 @@
 	border: 0 dashed transparent;
 }
 
-	.qtiptisas-cluetip .qtiptisas-titlebar{
+	.qtipjsp-cluetip .qtipjsp-titlebar{
 		background-color: #87876A;
 		color: white;
 		border: 0 dashed transparent;
 	}
 
-	.qtiptisas-cluetip .qtiptisas-icon{
+	.qtipjsp-cluetip .qtipjsp-icon{
 		border-color: #808064;
 	}
 
-	.qtiptisas-cluetip .qtiptisas-titlebar .ui-state-hover{
+	.qtipjsp-cluetip .qtipjsp-titlebar .ui-state-hover{
 		border-color: #696952;
 		color: #696952;
 	}
 
 
 /* Tipsy style */
-.qtiptisas-tipsy{
+.qtipjsp-tipsy{
 	background: black;
 	background: rgba(0, 0, 0, .87);
 
@@ -383,27 +383,27 @@
 	text-shadow: 0 1px black;
 }
 
-	.qtiptisas-tipsy .qtiptisas-titlebar{
+	.qtipjsp-tipsy .qtipjsp-titlebar{
 		padding: 6px 35px 0 10px;
 		background-color: transparent;
 	}
 
-	.qtiptisas-tipsy .qtiptisas-content{
+	.qtipjsp-tipsy .qtipjsp-content{
 		padding: 6px 10px;
 	}
 
-	.qtiptisas-tipsy .qtiptisas-icon{
+	.qtipjsp-tipsy .qtipjsp-icon{
 		border-color: #222;
 		text-shadow: none;
 	}
 
-	.qtiptisas-tipsy .qtiptisas-titlebar .ui-state-hover{
+	.qtipjsp-tipsy .qtipjsp-titlebar .ui-state-hover{
 		border-color: #303030;
 	}
 
 
 /* Tipped style */
-.qtiptisas-tipped{
+.qtipjsp-tipped{
 	border: 3px solid #959FA9;
 
 	-moz-border-radius: 3px;
@@ -417,7 +417,7 @@
 	font-family: serif;
 }
 
-	.qtiptisas-tipped .qtiptisas-titlebar{
+	.qtipjsp-tipped .qtipjsp-titlebar{
 		border-bottom-width: 0;
 
 		color: white;
@@ -431,12 +431,12 @@
 		-ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorstr=#3A79B8,endColorstr=#2E629D)";
 	}
 
-	.qtiptisas-tipped .qtiptisas-icon{
+	.qtipjsp-tipped .qtipjsp-icon{
 		border: 2px solid #285589;
 		background: #285589;
 	}
 
-		.qtiptisas-tipped .qtiptisas-icon .ui-icon{
+		.qtipjsp-tipped .qtipjsp-icon .ui-icon{
 			background-color: #FBFBFB;
 			color: #555;
 		}
@@ -448,7 +448,7 @@
  * Tested with IE 8, IE 9, Chrome 18, Firefox 9, Opera 11.
  * Does not work with IE 7.
  */
-.qtiptisas-bootstrap{
+.qtipjsp-bootstrap{
 	/** Taken from Bootstrap body */
 	font-size: 14px;
 	line-height: 20px;
@@ -470,7 +470,7 @@
 	background-clip: padding-box;
 }
 
-	.qtiptisas-bootstrap .qtiptisas-titlebar{
+	.qtipjsp-bootstrap .qtipjsp-titlebar{
 		/** Taken from Bootstrap .popover-title */
 		padding: 8px 14px;
 		margin: 0;
@@ -484,10 +484,10 @@
 		border-radius: 5px 5px 0 0;
 	}
 
-		.qtiptisas-bootstrap .qtiptisas-titlebar .qtiptisas-close{
+		.qtipjsp-bootstrap .qtipjsp-titlebar .qtipjsp-close{
 			/**
-			 * Overrides qtiptisas2:
-			 * .qtiptisas-titlebar .qtiptisas-close{
+			 * Overrides qtipjsp2:
+			 * .qtipjsp-titlebar .qtipjsp-close{
 			 *   [...]
 			 *   right: 4px;
 			 *   top: 50%;
@@ -500,15 +500,15 @@
 			border-style: none;
 		}
 
-	.qtiptisas-bootstrap .qtiptisas-content{
+	.qtipjsp-bootstrap .qtipjsp-content{
 		/** Taken from Bootstrap .popover-content */
 		padding: 9px 14px;
 	}
 
-	.qtiptisas-bootstrap .qtiptisas-icon{
+	.qtipjsp-bootstrap .qtipjsp-icon{
 		/**
-		 * Overrides qtiptisas2:
-		 * .qtiptisas-default .qtiptisas-icon {
+		 * Overrides qtipjsp2:
+		 * .qtipjsp-default .qtipjsp-icon {
 		 *   border-color: #CCC;
 		 *   background: #F1F1F1;
 		 *   color: #777;
@@ -517,10 +517,10 @@
 		background: transparent;
 	}
 
-		.qtiptisas-bootstrap .qtiptisas-icon .ui-icon{
+		.qtipjsp-bootstrap .qtipjsp-icon .ui-icon{
 			/**
-			 * Overrides qtiptisas2:
-			 * .qtiptisas-icon .ui-icon{
+			 * Overrides qtipjsp2:
+			 * .qtipjsp-icon .ui-icon{
 			 *   width: 18px;
 			 *   height: 14px;
 			 * }
@@ -539,7 +539,7 @@
 			filter: alpha(opacity=20);
 		}
 
-		.qtiptisas-bootstrap .qtiptisas-icon .ui-icon:hover{
+		.qtipjsp-bootstrap .qtipjsp-icon .ui-icon:hover{
 			/* Taken from Bootstrap .close:hover */
 			color: #000000;
 			text-decoration: none;
@@ -550,14 +550,14 @@
 
 
 /* IE9 fix - removes all filters */
-.qtiptisas:not(.ie9haxors) div.qtiptisas-content,
-.qtiptisas:not(.ie9haxors) div.qtiptisas-titlebar{
+.qtipjsp:not(.ie9haxors) div.qtipjsp-content,
+.qtipjsp:not(.ie9haxors) div.qtipjsp-titlebar{
 	filter: none;
 	-ms-filter: none;
 }
 
 
-.qtiptisas .qtiptisas-tip{
+.qtipjsp .qtipjsp-tip{
 	margin: 0 auto;
 	overflow: hidden;
 	z-index: 10;
@@ -566,13 +566,13 @@
 
 	/* Opera bug #357 - Incorrect tip position
 	https://github.com/Craga89/qtip2/issues/367 */
-	x:-o-prefocus, .qtiptisas .qtiptisas-tip{
+	x:-o-prefocus, .qtipjsp .qtipjsp-tip{
 		visibility: hidden;
 	}
 
-	.qtiptisas .qtiptisas-tip,
-	.qtiptisas .qtiptisas-tip .qtiptisas-vml,
-	.qtiptisas .qtiptisas-tip canvas{
+	.qtipjsp .qtipjsp-tip,
+	.qtipjsp .qtipjsp-tip .qtipjsp-vml,
+	.qtipjsp .qtipjsp-tip canvas{
 		position: absolute;
 
 		color: #123456;
@@ -580,26 +580,26 @@
 		border: 0 dashed transparent;
 	}
 
-	.qtiptisas .qtiptisas-tip canvas{ top: 0; left: 0; }
+	.qtipjsp .qtipjsp-tip canvas{ top: 0; left: 0; }
 
-	.qtiptisas .qtiptisas-tip .qtiptisas-vml{
+	.qtipjsp .qtipjsp-tip .qtipjsp-vml{
 		behavior: url(#default#VML);
 		display: inline-block;
 		visibility: visible;
 	}
 
 
-#qtiptisas-overlay{
+#qtipjsp-overlay{
 	position: fixed;
 	left: 0; top: 0;
 	width: 100%; height: 100%;
 }
 
 	/* Applied to modals with show.modal.blur set to true */
-	#qtiptisas-overlay.blurs{ cursor: pointer; }
+	#qtipjsp-overlay.blurs{ cursor: pointer; }
 
 	/* Change opacity of overlay here */
-	#qtiptisas-overlay div{
+	#qtipjsp-overlay div{
 		position: absolute;
 		left: 0; top: 0;
 		width: 100%; height: 100%;
@@ -612,6 +612,6 @@
 	}
 
 
-.qtiptisasmodal-ie6fix{
+.qtipjspmodal-ie6fix{
 	position: absolute !important;
 }

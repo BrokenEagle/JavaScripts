@@ -1,5 +1,5 @@
 /*
- * qTip2 - Pretty powerful tooltips - v3.0.3 (modified for TISAS)
+ * qTip2 - Pretty powerful tooltips - v3.0.3 (modified for JSP)
  * http://qtip2.com
  *
  * Copyright (c) 2016 
@@ -21,7 +21,7 @@
 	if(typeof define === 'function' && define.amd) {
 		define(['jquery'], factory);
 	}
-	else if(jQuery && !jQuery.fn.qtiptisas) {
+	else if(jQuery && !jQuery.fn.qtipjsp) {
 		factory(jQuery);
 	}
 }
@@ -50,11 +50,11 @@ FLIPINVERT = 'flipinvert',
 SHIFT = 'shift',
 
 // Shortcut vars
-QTIPTISAS, PROTOTYPE, CORNER, CHECKS,
+QTIPJSP, PROTOTYPE, CORNER, CHECKS,
 PLUGINS = {},
-NAMESPACE = 'qtiptisas',
-ATTR_HAS = 'data-hasqtiptisas',
-ATTR_ID = 'data-qtiptisas-id',
+NAMESPACE = 'qtipjsp',
+ATTR_HAS = 'data-hasqtipjsp',
+ATTR_ID = 'data-qtipjsp-id',
 WIDGET = ['ui-widget', 'ui-tooltip'],
 SELECTOR = '.'+NAMESPACE,
 INACTIVE_EVENTS = 'click dblclick mousedown mouseup mousemove mouseleave mouseenter'.split(' '),
@@ -65,7 +65,7 @@ CLASS_FOCUS = NAMESPACE + '-focus',
 CLASS_HOVER = NAMESPACE + '-hover',
 CLASS_DISABLED = NAMESPACE+'-disabled',
 
-replaceSuffix = '_replacedByqTipTisas',
+replaceSuffix = '_replacedByqTipJsp',
 oldtitle = 'oldtitle',
 trackingBound,
 
@@ -97,7 +97,7 @@ BROWSER = {
 		.replace('undefined', '3_2').replace('_', '.').replace('_', '')
 	) || FALSE
 };
-;function QTipTisas(target, options, id, attr) {
+;function QTipJsp(target, options, id, attr) {
 	// Elements and ID
 	this.id = id;
 	this.target = target;
@@ -124,7 +124,7 @@ BROWSER = {
 	this.rendered = this.destroyed = this.disabled = this.waiting =
 		this.hiddenDuringWait = this.positioning = this.triggering = FALSE;
 }
-PROTOTYPE = QTipTisas.prototype;
+PROTOTYPE = QTipJsp.prototype;
 
 PROTOTYPE._when = function(deferreds) {
 	return $.when.apply($, deferreds);
@@ -233,7 +233,7 @@ PROTOTYPE.render = function(show) {
 	});
 
 	// Expose API
-	QTIPTISAS.api[this.id] = this;
+	QTIPJSP.api[this.id] = this;
 
 	return this;
 };
@@ -279,7 +279,7 @@ PROTOTYPE.destroy = function(immediate) {
 			target.attr('title', title).removeAttr(oldtitle);
 		}
 
-		// Remove qTipTisas events associated with this API
+		// Remove qTipJsp events associated with this API
 		this._unassignEvents();
 
 		// Remove ID from used id objects, and delete object references
@@ -288,7 +288,7 @@ PROTOTYPE.destroy = function(immediate) {
 			this.plugins = this.mouse = NULL;
 
 		// Delete epoxsed API object
-		delete QTIPTISAS.api[this.id];
+		delete QTIPJSP.api[this.id];
 	}
 
 	// If an immediate destroy is needed
@@ -403,7 +403,7 @@ CHECKS = PROTOTYPE.checks = {
 	builtin: {
 		// Core checks
 		'^id$': function(obj, o, v, prev) {
-			var id = v === TRUE ? QTIPTISAS.nextid : v,
+			var id = v === TRUE ? QTIPJSP.nextid : v,
 				newId = NAMESPACE + '-' + id;
 
 			if(id !== FALSE && id.length > 0 && !$('#'+newId).length) {
@@ -681,10 +681,10 @@ PROTOTYPE._createTitle = function()
 	.insertBefore(elements.content)
 
 	// Button-specific events
-	.delegate('.qtiptisas-close', 'mousedown keydown mouseup keyup mouseout', function(event) {
+	.delegate('.qtipjsp-close', 'mousedown keydown mouseup keyup mouseout', function(event) {
 		$(this).toggleClass('ui-state-active ui-state-focus', event.type.substr(-4) === 'down');
 	})
-	.delegate('.qtiptisas-close', 'mouseover mouseout', function(event){
+	.delegate('.qtipjsp-close', 'mouseover mouseout', function(event){
 		$(this).toggleClass('ui-state-hover', event.type === 'mouseover');
 	});
 
@@ -914,7 +914,7 @@ PROTOTYPE.reposition = function(event, effect) {
 	return this;
 };
 
-// Custom (more correct for qTipTisas!) offset calculator
+// Custom (more correct for qTipJsp!) offset calculator
 PROTOTYPE.reposition.offset = function(elem, pos, container) {
 	if(!container[0]) { return pos; }
 
@@ -1073,7 +1073,7 @@ PROTOTYPE.toggle = function(state, event) {
 		// Hide other tooltips if tooltip is solo
 		if(!!opts.solo) {
 			(typeof opts.solo === 'string' ? $(opts.solo) : $(SELECTOR, opts.solo))
-				.not(tooltip).not(opts.target).qtiptisas('hide', new $.Event('tooltipsolo'));
+				.not(tooltip).not(opts.target).qtipjsp('hide', new $.Event('tooltipsolo'));
 		}
 	}
 	else {
@@ -1083,7 +1083,7 @@ PROTOTYPE.toggle = function(state, event) {
 		// Remove cached origin on hide
 		delete cache.origin;
 
-		// Remove mouse tracking event if not needed (all tracking qTipTisass are hidden)
+		// Remove mouse tracking event if not needed (all tracking qTipJsps are hidden)
 		if(trackingBound && !$(SELECTOR+'[tracking="true"]:visible', opts.solo).not(tooltip).length) {
 			$(document).unbind('mousemove.'+NAMESPACE);
 			trackingBound = FALSE;
@@ -1108,7 +1108,7 @@ PROTOTYPE.toggle = function(state, event) {
 			}
 
 			// If set, hide tooltip when inactive for delay period
-			this.options.show.target.trigger('qtiptisas-'+this.id+'-inactive');
+			this.options.show.target.trigger('qtipjsp-'+this.id+'-inactive');
 		}
 		else {
 			// Reset CSS states
@@ -1144,7 +1144,7 @@ PROTOTYPE.toggle = function(state, event) {
 	else { tooltip.fadeTo(90, state ? 1 : 0, after); }
 
 	// If inactive hide method is set, active it
-	if(state) { opts.target.trigger('qtiptisas-'+this.id+'-inactive'); }
+	if(state) { opts.target.trigger('qtipjsp-'+this.id+'-inactive'); }
 
 	return this;
 };
@@ -1155,10 +1155,10 @@ PROTOTYPE.hide = function(event) { return this.toggle(FALSE, event); };
 ;PROTOTYPE.focus = function(event) {
 	if(!this.rendered || this.destroyed) { return this; }
 
-	var qtiptisass = $(SELECTOR),
+	var qtipjsps = $(SELECTOR),
 		tooltip = this.tooltip,
 		curIndex = parseInt(tooltip[0].style.zIndex, 10),
-		newIndex = QTIPTISAS.zindex + qtiptisass.length;
+		newIndex = QTIPJSP.zindex + qtipjsps.length;
 
 	// Only update the z-index if it has changed and tooltip is not already focused
 	if(!tooltip.hasClass(CLASS_FOCUS)) {
@@ -1167,14 +1167,14 @@ PROTOTYPE.hide = function(event) { return this.toggle(FALSE, event); };
 			// Only update z-index's if they've changed
 			if(curIndex !== newIndex) {
 				// Reduce our z-index's and keep them properly ordered
-				qtiptisass.each(function() {
+				qtipjsps.each(function() {
 					if(this.style.zIndex > curIndex) {
 						this.style.zIndex = this.style.zIndex - 1;
 					}
 				});
 
 				// Fire blur event for focused tooltip
-				qtiptisass.filter('.' + CLASS_FOCUS).qtiptisas('blur', event);
+				qtipjsps.filter('.' + CLASS_FOCUS).qtipjsp('blur', event);
 			}
 
 			// Set the new z-index
@@ -1237,7 +1237,7 @@ PROTOTYPE.enable = function() { return this.disable(FALSE); };
 	}
 	else {
 		elements.button = $('<a />', {
-			'class': 'qtiptisas-close ' + (this.options.style.widget ? '' : NAMESPACE+'-icon'),
+			'class': 'qtipjsp-close ' + (this.options.style.widget ? '' : NAMESPACE+'-icon'),
 			'title': close,
 			'aria-label': close
 		})
@@ -1281,7 +1281,7 @@ PROTOTYPE._setWidget = function()
 		disabled = tooltip.hasClass(CLASS_DISABLED);
 
 	tooltip.removeClass(CLASS_DISABLED);
-	CLASS_DISABLED = on ? 'ui-state-disabled' : 'qtiptisas-disabled';
+	CLASS_DISABLED = on ? 'ui-state-disabled' : 'qtipjsp-disabled';
 	tooltip.toggleClass(CLASS_DISABLED, disabled);
 
 	tooltip.toggleClass('ui-helper-reset '+createWidgetClass(), on).toggleClass(CLASS_DEFAULT, this.options.style.def && !on);
@@ -1400,7 +1400,7 @@ function delegate(selector, events, method) {
 	$(document.body).delegate(selector,
 		(events.split ? events : events.join('.'+NAMESPACE + ' ')) + '.'+NAMESPACE,
 		function() {
-			var api = QTIPTISAS.api[ $.attr(this, ATTR_ID) ];
+			var api = QTIPJSP.api[ $.attr(this, ATTR_ID) ];
 			api && !api.disabled && method.apply(api, arguments);
 		}
 	);
@@ -1460,8 +1460,8 @@ PROTOTYPE._assignInitialEvents = function(event) {
 		showEvents = options.show.event ? $.trim('' + options.show.event).split(' ') : [],
 		hideEvents = options.hide.event ? $.trim('' + options.hide.event).split(' ') : [];
 
-	// Catch remove/removeqtiptisas events on target element to destroy redundant tooltips
-	this._bind(this.elements.target, ['remove', 'removeqtiptisas'], function() {
+	// Catch remove/removeqtipjsp events on target element to destroy redundant tooltips
+	this._bind(this.elements.target, ['remove', 'removeqtipjsp'], function() {
 		this.destroy(true);
 	}, 'destroy');
 
@@ -1575,10 +1575,10 @@ PROTOTYPE._assignEvents = function() {
 	// Check if the tooltip hides when inactive
 	if('number' === typeof options.hide.inactive) {
 		// Bind inactive method to show target(s) as a custom event
-		this._bind(showTarget, 'qtiptisas-'+this.id+'-inactive', inactiveMethod, 'inactive');
+		this._bind(showTarget, 'qtipjsp-'+this.id+'-inactive', inactiveMethod, 'inactive');
 
 		// Define events which reset the 'inactive' event handler
-		this._bind(hideTarget.add(tooltip), QTIPTISAS.inactiveEvents, inactiveMethod);
+		this._bind(hideTarget.add(tooltip), QTIPJSP.inactiveEvents, inactiveMethod);
 	}
 
 	// Filter and bind events
@@ -1716,8 +1716,8 @@ function init(elem, id, opts) {
 	// If metadata type if HTML5, grab 'name' from the object instead, or use the regular data object otherwise
 	metadata5 = opts.metadata.type === 'html5' && metadata ? metadata[opts.metadata.name] : NULL,
 
-	// Grab data from metadata.name (or data-qtiptisasopts as fallback) using .data() method,
-	html5 = elem.data(opts.metadata.name || 'qtiptisasopts');
+	// Grab data from metadata.name (or data-qtipjspopts as fallback) using .data() method,
+	html5 = elem.data(opts.metadata.name || 'qtipjspopts');
 
 	// If we don't get an object returned attempt to parse it manualyl without parseJSON
 	/* eslint-disable no-empty */
@@ -1726,7 +1726,7 @@ function init(elem, id, opts) {
 	/* eslint-enable no-empty */
 
 	// Merge in and sanitize metadata
-	config = $.extend(TRUE, {}, QTIPTISAS.defaults, opts,
+	config = $.extend(TRUE, {}, QTIPJSP.defaults, opts,
 		typeof html5 === 'object' ? sanitizeOptions(html5) : NULL,
 		sanitizeOptions(metadata5 || metadata));
 
@@ -1763,14 +1763,14 @@ function init(elem, id, opts) {
 	// Destroy previous tooltip if overwrite is enabled, or skip element if not
 	if(elem.data(NAMESPACE)) {
 		if(config.overwrite) {
-			elem.qtiptisas('destroy', true);
+			elem.qtipjsp('destroy', true);
 		}
 		else if(config.overwrite === FALSE) {
 			return FALSE;
 		}
 	}
 
-	// Add has-qtiptisas attribute
+	// Add has-qtipjsp attribute
 	elem.attr(ATTR_HAS, id);
 
 	// Remove title attribute and store it if present
@@ -1780,14 +1780,14 @@ function init(elem, id, opts) {
 	}
 
 	// Initialize the tooltip and add API reference
-	obj = new QTipTisas(elem, config, id, !!attr);
+	obj = new QTipJsp(elem, config, id, !!attr);
 	elem.data(NAMESPACE, obj);
 
 	return obj;
 }
 
 // jQuery $.fn extension method
-QTIPTISAS = $.fn.qtiptisas = function(options, notation, newValue)
+QTIPJSP = $.fn.qtipjsp = function(options, notation, newValue)
 {
 	var command = ('' + options).toLowerCase(), // Parse command
 		returned = NULL,
@@ -1829,7 +1829,7 @@ QTIPTISAS = $.fn.qtiptisas = function(options, notation, newValue)
 		return returned !== NULL ? returned : this;
 	}
 
-	// No API commands. validate provided options and setup qTipTisass
+	// No API commands. validate provided options and setup qTipJsps
 	else if('object' === typeof options || !arguments.length) {
 		// Sanitize options first
 		opts = sanitizeOptions($.extend(TRUE, {}, options));
@@ -1839,12 +1839,12 @@ QTIPTISAS = $.fn.qtiptisas = function(options, notation, newValue)
 
 			// Find next available ID, or use custom ID if provided
 			id = $.isArray(opts.id) ? opts.id[i] : opts.id;
-			id = !id || id === FALSE || id.length < 1 || QTIPTISAS.api[id] ? QTIPTISAS.nextid++ : id;
+			id = !id || id === FALSE || id.length < 1 || QTIPJSP.api[id] ? QTIPJSP.nextid++ : id;
 
-			// Initialize the qTipTisas and re-grab newly sanitized options
+			// Initialize the qTipJsp and re-grab newly sanitized options
 			api = init($(this), id, opts);
 			if(api === FALSE) { return TRUE; }
-			else { QTIPTISAS.api[id] = api; }
+			else { QTIPJSP.api[id] = api; }
 
 			// Initialize plugins
 			$.each(PLUGINS, function() {
@@ -1858,24 +1858,24 @@ QTIPTISAS = $.fn.qtiptisas = function(options, notation, newValue)
 };
 
 // Expose class
-$.qtiptisas = QTipTisas;
+$.qtipjsp = QTipJsp;
 
 // Populated in render method
-QTIPTISAS.api = {};
+QTIPJSP.api = {};
 ;$.each({
-	/* Allow other plugins to successfully retrieve the title of an element with a qTipTisas applied */
+	/* Allow other plugins to successfully retrieve the title of an element with a qTipJsp applied */
 	attr: function(attr, val) {
 		if(this.length) {
 			var self = this[0],
 				title = 'title',
-				api = $.data(self, 'qtiptisas');
+				api = $.data(self, 'qtipjsp');
 
 			if(attr === title && api && api.options && 'object' === typeof api && 'object' === typeof api.options && api.options.suppress) {
 				if(arguments.length < 2) {
 					return $.attr(self, oldtitle);
 				}
 
-				// If qTipTisas is rendered and title was originally used as content, update it
+				// If qTipJsp is rendered and title was originally used as content, update it
 				if(api && api.options.content.attr === title && api.cache.attr) {
 					api.set('content.text', val);
 				}
@@ -1912,7 +1912,7 @@ QTIPTISAS.api = {};
 	};
 });
 
-/* Fire off 'removeqtiptisas' handler in $.cleanData if jQuery UI not present (it already does similar).
+/* Fire off 'removeqtipjsp' handler in $.cleanData if jQuery UI not present (it already does similar).
  * This snippet is taken directly from jQuery UI source code found here:
  *     http://code.jquery.com/ui/jquery-ui-git.js
  */
@@ -1922,7 +1922,7 @@ if(!$.ui) {
 		for(var i = 0, elem; (elem = $( elems[i] )).length; i++) {
 			if(elem.attr(ATTR_HAS)) {
 				/* eslint-disable no-empty */
-				try { elem.triggerHandler('removeqtiptisas'); }
+				try { elem.triggerHandler('removeqtipjsp'); }
 				catch( e ) {}
 				/* eslint-enable no-empty */
 			}
@@ -1930,20 +1930,20 @@ if(!$.ui) {
 		$['cleanData'+replaceSuffix].apply(this, arguments);
 	};
 }
-;// qTipTisas version
-QTIPTISAS.version = '3.0.3';
+;// qTipJsp version
+QTIPJSP.version = '3.0.3';
 
-// Base ID for all qTipTisass
-QTIPTISAS.nextid = 0;
+// Base ID for all qTipJsps
+QTIPJSP.nextid = 0;
 
 // Inactive events array
-QTIPTISAS.inactiveEvents = INACTIVE_EVENTS;
+QTIPJSP.inactiveEvents = INACTIVE_EVENTS;
 
-// Base z-index for all qTipTisass
-QTIPTISAS.zindex = 15000;
+// Base z-index for all qTipJsps
+QTIPJSP.zindex = 15000;
 
 // Define configuration defaults
-QTIPTISAS.defaults = {
+QTIPJSP.defaults = {
 	prerender: FALSE,
 	id: FALSE,
 	overwrite: TRUE,
@@ -2066,7 +2066,7 @@ function intCss(elem, prop) {
 // VML creation (for IE only)
 if(!HASCANVAS) {
 	createVML = function(tag, props, style) {
-		return '<qtiptisasvml:'+tag+' xmlns="urn:schemas-microsoft.com:vml" class="qtiptisas-vml" '+(props||'')+
+		return '<qtipjspvml:'+tag+' xmlns="urn:schemas-microsoft.com:vml" class="qtipjsp-vml" '+(props||'')+
 			' style="behavior: url(#default#VML); '+(style||'')+ '" />';
 	};
 }
@@ -2083,23 +2083,23 @@ else {
 }
 
 
-function Tip(qtiptisas, options) {
+function Tip(qtipjsp, options) {
 	this._ns = 'tip';
 	this.options = options;
 	this.offset = options.offset;
 	this.size = [ options.width, options.height ];
 
 	// Initialize
-	this.qtiptisas = qtiptisas;
-	this.init(qtiptisas);
+	this.qtipjsp = qtipjsp;
+	this.init(qtipjsp);
 }
 
 $.extend(Tip.prototype, {
-	init: function(qtiptisas) {
+	init: function(qtipjsp) {
 		var context, tip;
 
 		// Create tip element and prepend to the tooltip
-		tip = this.element = qtiptisas.elements.tip = $('<div />', { 'class': NAMESPACE+'-tip' }).prependTo(qtiptisas.tooltip);
+		tip = this.element = qtipjsp.elements.tip = $('<div />', { 'class': NAMESPACE+'-tip' }).prependTo(qtipjsp.tooltip);
 
 		// Create tip drawing element(s)
 		if(HASCANVAS) {
@@ -2116,11 +2116,11 @@ $.extend(Tip.prototype, {
 			this.element.html(context + context);
 
 			// Prevent mousing down on the tip since it causes problems with .live() handling in IE due to VML
-			qtiptisas._bind( $('*', tip).add(tip), ['click', 'mousedown'], function(event) { event.stopPropagation(); }, this._ns);
+			qtipjsp._bind( $('*', tip).add(tip), ['click', 'mousedown'], function(event) { event.stopPropagation(); }, this._ns);
 		}
 
 		// Bind update events
-		qtiptisas._bind(qtiptisas.tooltip, 'tooltipmove', this.reposition, this._ns, this);
+		qtipjsp._bind(qtipjsp.tooltip, 'tooltipmove', this.reposition, this._ns, this);
 
 		// Create it
 		this.create();
@@ -2136,14 +2136,14 @@ $.extend(Tip.prototype, {
 	},
 
 	_useTitle: function(corner) {
-		var titlebar = this.qtiptisas.elements.titlebar;
+		var titlebar = this.qtipjsp.elements.titlebar;
 		return titlebar && (
 			corner.y === TOP || corner.y === CENTER && this.element.position().top + this.size[1] / 2 + this.options.offset < titlebar.outerHeight(TRUE)
 		);
 	},
 
 	_parseCorner: function(corner) {
-		var my = this.qtiptisas.options.position.my;
+		var my = this.qtipjsp.options.position.my;
 
 		// Detect corner and mimic properties
 		if(corner === FALSE || my === FALSE) {
@@ -2161,7 +2161,7 @@ $.extend(Tip.prototype, {
 	},
 
 	_parseWidth: function(corner, side, use) {
-		var elements = this.qtiptisas.elements,
+		var elements = this.qtipjsp.elements,
 			prop = BORDER + camel(side) + 'Width';
 
 		return (use ? intCss(use, prop) : 
@@ -2172,7 +2172,7 @@ $.extend(Tip.prototype, {
 	},
 
 	_parseRadius: function(corner) {
-		var elements = this.qtiptisas.elements,
+		var elements = this.qtipjsp.elements,
 			prop = BORDER + camel(corner.y) + camel(corner.x) + 'Radius';
 
 		return BROWSER.ie < 9 ? 0 :
@@ -2186,7 +2186,7 @@ $.extend(Tip.prototype, {
 	},
 
 	_parseColours: function(corner) {
-		var elements = this.qtiptisas.elements,
+		var elements = this.qtipjsp.elements,
 			tip = this.element.css('cssText', ''),
 			borderSide = BORDER + camel(corner[ corner.precedance ]) + camel(COLOR),
 			colorElem = this._useTitle(corner) && elements.titlebar || elements.content,
@@ -2277,7 +2277,7 @@ $.extend(Tip.prototype, {
 		this.enabled = !!this.corner && this.corner.abbrev() !== 'c';
 		if(this.enabled) {
 			// Cache it
-			this.qtiptisas.cache.corner = c.clone();
+			this.qtipjsp.cache.corner = c.clone();
 
 			// Create it
 			this.update();
@@ -2292,7 +2292,7 @@ $.extend(Tip.prototype, {
 	update: function(corner, position) {
 		if(!this.enabled) { return this; }
 
-		var elements = this.qtiptisas.elements,
+		var elements = this.qtipjsp.elements,
 			tip = this.element,
 			inner = tip.children(),
 			options = this.options,
@@ -2303,7 +2303,7 @@ $.extend(Tip.prototype, {
 			coords, bigCoords, translate, newSize, border;
 
 		// Re-determine tip if not already set
-		if(!corner) { corner = this.qtiptisas.cache.corner || this.corner; }
+		if(!corner) { corner = this.qtipjsp.cache.corner || this.corner; }
 
 		// Use corner property if we detect an invalid mimic value
 		if(mimic === FALSE) { mimic = corner; }
@@ -2451,7 +2451,7 @@ $.extend(Tip.prototype, {
 		if(!this.enabled) { return FALSE; }
 
 		var self = this,
-			elements = this.qtiptisas.elements,
+			elements = this.qtipjsp.elements,
 			tip = this.element,
 			userOffset = this.options.offset,
 			position = {},
@@ -2587,11 +2587,11 @@ $.extend(Tip.prototype, {
 
 	destroy: function() {
 		// Unbind events
-		this.qtiptisas._unbind(this.qtiptisas.tooltip, this._ns);
+		this.qtipjsp._unbind(this.qtipjsp.tooltip, this._ns);
 
 		// Remove the tip element(s)
-		if(this.qtiptisas.elements.tip) {
-			this.qtiptisas.elements.tip.find('*')
+		if(this.qtipjsp.elements.tip) {
+			this.qtipjsp.elements.tip.find('*')
 				.remove().end().remove();
 		}
 	}
@@ -2620,7 +2620,7 @@ CHECKS.tip = {
 		this.create();
 
 		// Reposition the tooltip
-		this.qtiptisas.reposition();
+		this.qtipjsp.reposition();
 	},
 	'^style.tip.(height|width)$': function(obj) {
 		// Re-set dimensions and redraw the tip
@@ -2628,15 +2628,15 @@ CHECKS.tip = {
 		this.update();
 
 		// Reposition the tooltip
-		this.qtiptisas.reposition();
+		this.qtipjsp.reposition();
 	},
 	'^content.title|style.(classes|widget)$': function() {
 		this.update();
 	}
 };
 
-// Extend original qTipTisas defaults
-$.extend(TRUE, QTIPTISAS.defaults, {
+// Extend original qTipJsp defaults
+$.extend(TRUE, QTIPJSP.defaults, {
 	style: {
 		tip: {
 			corner: TRUE,
@@ -2649,7 +2649,7 @@ $.extend(TRUE, QTIPTISAS.defaults, {
 	}
 });
 ;var MODAL, OVERLAY,
-	MODALCLASS = 'qtiptisas-modal',
+	MODALCLASS = 'qtipjsp-modal',
 	MODALSELECTOR = '.'+MODALCLASS;
 
 OVERLAY = function()
@@ -2722,7 +2722,7 @@ OVERLAY = function()
 		init: function() {
 			// Create document overlay
 			elem = self.elem = $('<div />', {
-				id: 'qtiptisas-overlay',
+				id: 'qtipjsp-overlay',
 				html: '<div></div>',
 				mousedown: function() { return FALSE; }
 			})
@@ -2838,25 +2838,25 @@ function Modal(api, options) {
 	this.options = options;
 	this._ns = '-modal';
 
-	this.qtiptisas = api;
+	this.qtipjsp = api;
 	this.init(api);
 }
 
 $.extend(Modal.prototype, {
-	init: function(qtiptisas) {
-		var tooltip = qtiptisas.tooltip;
+	init: function(qtipjsp) {
+		var tooltip = qtipjsp.tooltip;
 
 		// If modal is disabled... return
 		if(!this.options.on) { return this; }
 
 		// Set overlay reference
-		qtiptisas.elements.overlay = OVERLAY.elem;
+		qtipjsp.elements.overlay = OVERLAY.elem;
 
 		// Add unique attribute so we can grab modal tooltips easily via a SELECTOR, and set z-index
-		tooltip.addClass(MODALCLASS).css('z-index', QTIPTISAS.modal_zindex + $(MODALSELECTOR).length);
+		tooltip.addClass(MODALCLASS).css('z-index', QTIPJSP.modal_zindex + $(MODALSELECTOR).length);
 
 		// Apply our show/hide/focus modal events
-		qtiptisas._bind(tooltip, ['tooltipshow', 'tooltiphide'], function(event, api, duration) {
+		qtipjsp._bind(tooltip, ['tooltipshow', 'tooltiphide'], function(event, api, duration) {
 			var oEvent = event.originalEvent;
 
 			// Make sure mouseout doesn't trigger a hide when showing the modal and mousing onto backdrop
@@ -2874,28 +2874,28 @@ $.extend(Modal.prototype, {
 		}, this._ns, this);
 
 		// Adjust modal z-index on tooltip focus
-		qtiptisas._bind(tooltip, 'tooltipfocus', function(event, api) {
+		qtipjsp._bind(tooltip, 'tooltipfocus', function(event, api) {
 			// If focus was cancelled before it reached us, don't do anything
 			if(event.isDefaultPrevented() || event.target !== tooltip[0]) { return; }
 
-			var qtiptisass = $(MODALSELECTOR),
+			var qtipjsps = $(MODALSELECTOR),
 
-			// Keep the modal's lower than other, regular qtiptisass
-			newIndex = QTIPTISAS.modal_zindex + qtiptisass.length,
+			// Keep the modal's lower than other, regular qtipjsps
+			newIndex = QTIPJSP.modal_zindex + qtipjsps.length,
 			curIndex = parseInt(tooltip[0].style.zIndex, 10);
 
 			// Set overlay z-index
 			OVERLAY.elem[0].style.zIndex = newIndex - 1;
 
 			// Reduce modal z-index's and keep them properly ordered
-			qtiptisass.each(function() {
+			qtipjsps.each(function() {
 				if(this.style.zIndex > curIndex) {
 					this.style.zIndex -= 1;
 				}
 			});
 
 			// Fire blur event for focused tooltip
-			qtiptisass.filter('.' + CLASS_FOCUS).qtiptisas('blur', event.originalEvent);
+			qtipjsps.filter('.' + CLASS_FOCUS).qtipjsp('blur', event.originalEvent);
 
 			// Set the new z-index
 			tooltip.addClass(CLASS_FOCUS)[0].style.zIndex = newIndex;
@@ -2911,9 +2911,9 @@ $.extend(Modal.prototype, {
 		}, this._ns, this);
 
 		// Focus any other visible modals when this one hides
-		qtiptisas._bind(tooltip, 'tooltiphide', function(event) {
+		qtipjsp._bind(tooltip, 'tooltiphide', function(event) {
 			if(event.target === tooltip[0]) {
-				$(MODALSELECTOR).filter(':visible').not(tooltip).last().qtiptisas('focus', event);
+				$(MODALSELECTOR).filter(':visible').not(tooltip).last().qtipjsp('focus', event);
 			}
 		}, this._ns, this);
 	},
@@ -2923,19 +2923,19 @@ $.extend(Modal.prototype, {
 		if(event && event.isDefaultPrevented()) { return this; }
 
 		// Toggle it
-		OVERLAY.toggle(this.qtiptisas, !!state, duration);
+		OVERLAY.toggle(this.qtipjsp, !!state, duration);
 	},
 
 	destroy: function() {
 		// Remove modal class
-		this.qtiptisas.tooltip.removeClass(MODALCLASS);
+		this.qtipjsp.tooltip.removeClass(MODALCLASS);
 
 		// Remove bound events
-		this.qtiptisas._unbind(this.qtiptisas.tooltip, this._ns);
+		this.qtipjsp._unbind(this.qtipjsp.tooltip, this._ns);
 
 		// Delete element reference
-		OVERLAY.toggle(this.qtiptisas, FALSE);
-		delete this.qtiptisas.elements.overlay;
+		OVERLAY.toggle(this.qtipjsp, FALSE);
+		delete this.qtipjsp.elements.overlay;
 	}
 });
 
@@ -2952,9 +2952,9 @@ MODAL.sanitize = function(opts) {
 	}
 };
 
-// Base z-index for all modal tooltips (use qTipTisas core z-index as a base)
+// Base z-index for all modal tooltips (use qTipJsp core z-index as a base)
 /* eslint-disable camelcase */
-QTIPTISAS.modal_zindex = QTIPTISAS.zindex - 200;
+QTIPJSP.modal_zindex = QTIPJSP.zindex - 200;
 /* eslint-enable camelcase */
 
 // Plugin needs to be initialized on render
@@ -2968,14 +2968,14 @@ CHECKS.modal = {
 		this.init();
 
 		// Show the modal if not visible already and tooltip is visible
-		this.qtiptisas.elems.overlay.toggle(
-			this.qtiptisas.tooltip[0].offsetWidth > 0
+		this.qtipjsp.elems.overlay.toggle(
+			this.qtipjsp.tooltip[0].offsetWidth > 0
 		);
 	}
 };
 
 // Extend original api defaults
-$.extend(TRUE, QTIPTISAS.defaults, {
+$.extend(TRUE, QTIPJSP.defaults, {
 	show: {
 		modal: {
 			on: FALSE,
@@ -3349,32 +3349,32 @@ $.extend(TRUE, QTIPTISAS.defaults, {
  * BGIFrame adaption (http://plugins.jquery.com/project/bgiframe)
  * Special thanks to Brandon Aaron
  */
-BGIFRAME = '<iframe class="qtiptisas-bgiframe" frameborder="0" tabindex="-1" src="javascript:\'\';" ' +
+BGIFRAME = '<iframe class="qtipjsp-bgiframe" frameborder="0" tabindex="-1" src="javascript:\'\';" ' +
 	' style="display:block; position:absolute; z-index:-1; filter:alpha(opacity=0); ' +
 		'-ms-filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=0)";"></iframe>';
 
 function Ie6(api) {
 	this._ns = 'ie6';
 
-	this.qtiptisas = api;
+	this.qtipjsp = api;
 	this.init(api);
 }
 
 $.extend(Ie6.prototype, {
 	_scroll : function() {
-		var overlay = this.qtiptisas.elements.overlay;
+		var overlay = this.qtipjsp.elements.overlay;
 		overlay && (overlay[0].style.top = $(window).scrollTop() + 'px');
 	},
 
-	init: function(qtiptisas) {
-		var tooltip = qtiptisas.tooltip;
+	init: function(qtipjsp) {
+		var tooltip = qtipjsp.tooltip;
 
 		// Create the BGIFrame element if needed
 		if($('select, object').length < 1) {
-			this.bgiframe = qtiptisas.elements.bgiframe = $(BGIFRAME).appendTo(tooltip);
+			this.bgiframe = qtipjsp.elements.bgiframe = $(BGIFRAME).appendTo(tooltip);
 
 			// Update BGIFrame on tooltip move
-			qtiptisas._bind(tooltip, 'tooltipmove', this.adjustBGIFrame, this._ns, this);
+			qtipjsp._bind(tooltip, 'tooltipmove', this.adjustBGIFrame, this._ns, this);
 		}
 
 		// redraw() container for width/height calculations
@@ -3382,9 +3382,9 @@ $.extend(Ie6.prototype, {
 			.appendTo(document.body);
 
 		// Fixup modal plugin if present too
-		if( qtiptisas.elements.overlay && qtiptisas.elements.overlay.addClass('qtiptisasmodal-ie6fix') ) {
-			qtiptisas._bind(window, ['scroll', 'resize'], this._scroll, this._ns, this);
-			qtiptisas._bind(tooltip, ['tooltipshow'], this._scroll, this._ns, this);
+		if( qtipjsp.elements.overlay && qtipjsp.elements.overlay.addClass('qtipjspmodal-ie6fix') ) {
+			qtipjsp._bind(window, ['scroll', 'resize'], this._scroll, this._ns, this);
+			qtipjsp._bind(tooltip, ['tooltipshow'], this._scroll, this._ns, this);
 		}
 
 		// Set dimensions
@@ -3392,13 +3392,13 @@ $.extend(Ie6.prototype, {
 	},
 
 	adjustBGIFrame: function() {
-		var tooltip = this.qtiptisas.tooltip,
+		var tooltip = this.qtipjsp.tooltip,
 			dimensions = {
 				height: tooltip.outerHeight(FALSE),
 				width: tooltip.outerWidth(FALSE)
 			},
-			plugin = this.qtiptisas.plugins.tip,
-			tip = this.qtiptisas.elements.tip,
+			plugin = this.qtipjsp.plugins.tip,
+			tip = this.qtipjsp.elements.tip,
 			tipAdjust, offset;
 
 		// Adjust border offset
@@ -3417,15 +3417,15 @@ $.extend(Ie6.prototype, {
 
 	// Max/min width simulator function
 	redraw: function() {
-		if(this.qtiptisas.rendered < 1 || this.drawing) { return this; }
+		if(this.qtipjsp.rendered < 1 || this.drawing) { return this; }
 
-		var tooltip = this.qtiptisas.tooltip,
-			style = this.qtiptisas.options.style,
-			container = this.qtiptisas.options.position.container,
+		var tooltip = this.qtipjsp.tooltip,
+			style = this.qtipjsp.options.style,
+			container = this.qtipjsp.options.position.container,
 			perc, width, max, min;
 
 		// Set drawing flag
-		this.qtiptisas.drawing = 1;
+		this.qtipjsp.drawing = 1;
 
 		// If tooltip has a set height/width, just set it... like a boss!
 		if(style.height) { tooltip.css(HEIGHT, style.height); }
@@ -3467,7 +3467,7 @@ $.extend(Ie6.prototype, {
 		this.bgiframe && this.bgiframe.remove();
 
 		// Remove bound events
-		this.qtiptisas._unbind([window, this.qtiptisas.tooltip], this._ns);
+		this.qtipjsp._unbind([window, this.qtipjsp.tooltip], this._ns);
 	}
 });
 
