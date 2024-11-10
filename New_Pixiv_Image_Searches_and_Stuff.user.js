@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         New Pixiv Image Searches and Stuff
-// @version      1.0
+// @version      1.1
 // @description  Searches Danbooru database for artwork IDs, adds image search links.
 // @match        *://www.pixiv.net/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/npisas/New_Pixiv_Image_Searches_and_Stuff.user.js
@@ -654,7 +654,6 @@ const NTISAS_MENU = `
             <li><a href="#npisas-function-settings">Function</a></li>
             <li><a href="#npisas-query-settings">Query</a></li>
             <li><a href="#npisas-network-settings">Network</a></li>
-            <li><a href="#npisas-cache-controls">Cache</a></li>
         </ul>
         <div id="npisas-display-settings" class="jsplib-settings-grouping">
             <div id="npisas-display-message" class="prose">
@@ -674,11 +673,6 @@ const NTISAS_MENU = `
         <div id="npisas-network-settings" class="jsplib-settings-grouping">
             <div id="npisas-network-message" class="prose">
                 <h4>Network settings</h4>
-            </div>
-        </div>
-        <div id="npisas-cache-controls" class="jsplib-settings-grouping">
-            <div id="npisas-cache-message" class="prose">
-                <h4>Cache controls</h4>
             </div>
         </div>
     </div>
