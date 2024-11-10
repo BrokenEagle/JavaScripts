@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.1
+// @version      10.2
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1357,11 +1357,11 @@ const NTISAS_MENU = `
             <li><a href="#ntisas-display-settings">Display</a></li>
             <li><a href="#ntisas-function-settings">Function</a></li>
             <li><a href="#ntisas-query-settings">Query</a></li>
-            <li><a href="#ntisas-database-settings">Database</a></li>
             <li><a href="#ntisas-network-settings">Network</a></li>
             <li><a href="#ntisas-download-settings">Download</a></li>
             <li><a href="#ntisas-list-controls">List</a></li>
             <li><a href="#ntisas-cache-controls">Cache</a></li>
+            <li><a href="#ntisas-database-controls">Database</a></li>
         </ul>
         <div id="ntisas-display-settings" class="jsplib-settings-grouping">
             <div id="ntisas-display-message" class="prose">
@@ -1376,11 +1376,6 @@ const NTISAS_MENU = `
         <div id="ntisas-query-settings" class="jsplib-settings-grouping">
             <div id="ntisas-query-message" class="prose">
                 <h4>Query settings</h4>
-            </div>
-        </div>
-        <div id="ntisas-database-settings" class="jsplib-settings-grouping">
-            <div id="ntisas-database-message" class="prose">
-                <h4>Database settings</h4>
             </div>
         </div>
         <div id="ntisas-network-settings" class="jsplib-settings-grouping">
@@ -1402,6 +1397,11 @@ const NTISAS_MENU = `
         <div id="ntisas-cache-controls" class="jsplib-settings-grouping">
             <div id="ntisas-cache-message" class="prose">
                 <h4>Cache controls</h4>
+            </div>
+        </div>
+        <div id="ntisas-database-controls" class="jsplib-settings-grouping">
+            <div id="ntisas-database-message" class="prose">
+                <h4>Database controls</h4>
             </div>
         </div>
     </div>
@@ -6642,14 +6642,14 @@ function RenderSettingsMenu() {
     $('#ntisas-list-controls').append(JSPLib.menu.renderLinkclick('reset_list', true));
     $('#ntisas-list-controls').append(JSPLib.menu.renderLinkclick('list_info', true));
     $("#ntisas-list-controls").append(LIST_INFO_TABLE);
-    $('#ntisas-cache-controls').append(IMPORT_FILE_INPUT);
-    $('#ntisas-cache-controls').append(JSPLib.menu.renderLinkclick('import_data', true));
-    $('#ntisas-cache-controls').append(JSPLib.menu.renderInputSelectors('export_types', 'checkbox', true));
-    $('#ntisas-cache-controls').append(JSPLib.menu.renderLinkclick('export_data', true));
+    $('#ntisas-database-controls').append(IMPORT_FILE_INPUT);
+    $('#ntisas-database-controls').append(JSPLib.menu.renderLinkclick('import_data', true));
+    $('#ntisas-database-controls').append(JSPLib.menu.renderInputSelectors('export_types', 'checkbox', true));
+    $('#ntisas-database-controls').append(JSPLib.menu.renderLinkclick('export_data', true));
+    $('#ntisas-database-controls').append(IMPORT_ERROR_DISPLAY);
     $('#ntisas-cache-controls').append(JSPLib.menu.renderLinkclick('cache_info', true));
     $('#ntisas-cache-controls').append(JSPLib.menu.renderCacheInfoTable());
     $('#ntisas-cache-controls').append(JSPLib.menu.renderLinkclick('purge_cache', true));
-    $('#ntisas-cache-controls').append(IMPORT_ERROR_DISPLAY);
     //Engage jQuery UI
     JSPLib.menu.engageUI(true);
     $('#ntisas-settings').tabs();
