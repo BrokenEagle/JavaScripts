@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      23.2
+// @version      23.3
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -467,10 +467,12 @@ const FORUM_CSS = `
 }`;
 
 const WIKI_CSS = `
+#el-event-notice #el-wiki-section li.added,
 #el-event-notice #el-wiki-section ins {
     background: #cfc;
     text-decoration: none;
 }
+#el-event-notice #el-wiki-section li.removed,
 #el-event-notice #el-wiki-section del {
     background: #fcc;
     text-decoration: none;
