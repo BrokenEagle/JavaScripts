@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.2
+// @version      10.3
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -69,6 +69,10 @@ const PROGRAM_KEYDOWN = 'keydown.ntisas';
 //Variables for storage.js
 JSPLib.storage.twitterstorage = localforage.createInstance({
     name: 'Twitter storage',
+    driver: [localforage.INDEXEDDB]
+});
+JSPLib.storage.localforage = localforage.createInstance({
+    name: 'localforage',
     driver: [localforage.INDEXEDDB]
 });
 
@@ -2041,6 +2045,53 @@ const TIMELINE_VALS = {
 };
 
 //Other constants
+
+const TWITTER_COLORS = {
+    light_normal: {
+        blue500: "#1D9BF0",
+        green500: "#00BA7C",
+        magenta500: "#F91880",
+        orange500: "#FF7A00",
+        plum500: "#C936CC",
+        purple500: "#7856FF",
+        red500: "#F4212E",
+        teal500: "#00AFB6",
+        yellow500: "#FFD400",
+    },
+    light_contrast: {
+        blue500: "#003886",
+        green500: "#00613D",
+        magenta500: "#890A46",
+        orange500: "#892B00",
+        plum500: "#520B53",
+        purple500: "#5234B7",
+        red500: "#AE1425",
+        teal500: "#005A5F",
+        yellow500: "#6F3E00"
+    },
+    dark_normal: {
+        blue500: "#1D9BF0",
+        green500: "#00BA7C",
+        magenta500: "#F91880",
+        orange500: "#FF7A00",
+        plum500: "#C936CC",
+        purple500: "#7856FF",
+        red500: "#F4212E",
+        teal500: "#00AFB6",
+        yellow500: "#FFD400",
+    },
+    dark_contrast: {
+        blue500: "#6BC9FB",
+        green500: "#61D6A3",
+        magenta500: "#FB70B0",
+        orange500: "#FFAD61",
+        plum500: "#DF82E0",
+        purple500: "#AC97FF",
+        red500: "#F87580",
+        teal500: "#3CD6DD",
+        yellow500: "#FFEB6B"
+    },
+};
 
 const STREAMING_PAGES = ['home', 'main', 'likes', 'replies', 'media', 'list', 'search', 'hashtag', 'events', 'topics'];
 const MEDIA_TYPES = ['images', 'media', 'videos'];
@@ -6337,23 +6388,27 @@ function ProcessMediaTweets() {
 
 function AdjustColorScheme() {
     const compareColors = (result, val, key) => (String(NTISAS.colors[key]) !== String(val));
-    let $tweet_button = $('[data-testid=SideNav_NewTweet_Button]');
     let $home_button = $('[data-testid=AppTabBar_More_Menu] > div > div').filter((i, entry) => entry.children[0].tagName === 'SPAN');
-    if ($tweet_button.length && $home_button.length && document.body.style['background-color']) {
-        NTISAS.colors_checked = true;
-        let new_colors = {
-            base_color: getComputedStyle($tweet_button[0]).backgroundColor.match(/\d+/g),
-            text_color: getComputedStyle($home_button[0]).color.match(/\d+/g),
-            background_color: document.body.style['background-color'].match(/\d+/g)
-        };
-        if (!NTISAS.colors || JSPLib.utility.objectReduce(new_colors, compareColors, false)) {
-            NTISAS.old_colors = NTISAS.colors;
-            NTISAS.colors = new_colors;
-            let color_style = RenderColorStyle(NTISAS.colors);
-            JSPLib.utility.setCSSStyle(color_style, 'color');
-            JSPLib.storage.setLocalData('ntisas-color-style', NTISAS.colors);
+    JSPLib.storage.localforage.getItem('device:rweb.settings').then((settings)=>{
+        if (JSPLib.validate.isHash(settings) && $home_button.length && document.body.style['background-color']) {
+            NTISAS.colors_checked = true;
+            let text_color = getComputedStyle($home_button[0]).color.match(/\d+/g);
+            let background_color = document.body.style['background-color'].match(/\d+/g);
+            let light_mode = (background_color.reduce((total, x) => total + Number(x), 0) / 3) > 128;
+            let contrast = settings.local.highContrastEnabled;
+            let color_scheme = (light_mode ? 'light' : 'dark') + '_' + (contrast ? 'contrast' : 'normal');
+            let color_hex = TWITTER_COLORS[color_scheme][settings.local.themeColor];
+            let base_color = [color_hex.slice(1,3), color_hex.slice(3,5), color_hex.slice(5,7)].map((hex) => String(Number('0x' + hex)));
+            let new_colors = {base_color, text_color, background_color};
+            if (!NTISAS.colors || JSPLib.utility.objectReduce(new_colors, compareColors, false)) {
+                NTISAS.old_colors = NTISAS.colors;
+                NTISAS.colors = new_colors;
+                let color_style = RenderColorStyle(NTISAS.colors);
+                JSPLib.utility.setCSSStyle(color_style, 'color');
+                JSPLib.storage.setLocalData('ntisas-color-style', NTISAS.colors);
+            }
         }
-    }
+    });
 }
 
 function CollectTweetStats() {
