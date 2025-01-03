@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         New Pixiv Image Searches and Stuff
-// @version      1.2
+// @version      1.3
 // @description  Searches Danbooru database for artwork IDs, adds image search links.
 // @match        *://www.pixiv.net/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/npisas/New_Pixiv_Image_Searches_and_Stuff.user.js
@@ -1943,7 +1943,7 @@ function RenderIllustInfo(illust_data) {
     let tags_html = illust_data.tags.map((tag_data) => {
         let prepend = tag_data.deletable ? 'X' : 'O';
         let translation = tag_data.translation ? `<small>(${tag_data.translation})</small>` : "";
-        return `<li>[${prepend}] <a href="/tags/${tag_data.name}/artworks">${tag_data.name}</a> ${translation}</li>`;
+        return `<li>[${prepend}] <a href="/tags/${encodeURIComponent(tag_data.name)}/artworks">${tag_data.name}</a> ${translation}</li>`;
     }).join("");
     return JSPLib.utility.regexReplace(ILLUST_INFO_HTML, {
         ARTWORK_ID: illust_data.id,
