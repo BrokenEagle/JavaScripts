@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.22
+// @version      29.23
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -11,6 +11,7 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/IndexedAutocomplete.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/IndexedAutocomplete.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
+// @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.9
+// @version      29.10
 // @description  Validates tag add/remove inputs on a post edit or upload, plus several other post validations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -14,8 +14,9 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/ValidateTagInput.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/ValidateTagInput.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
-// @require      https://cdn.jsdelivr.net/npm/localforage-getitems@1.4.2/dist/localforage-getitems.js
-// @require      https://cdn.jsdelivr.net/npm/localforage-setitems@1.4.0/dist/localforage-setitems.js
+// @require      https://cdn.jsdelivr.net/npm/localforage-getitems@1.4.2/dist/localforage-getitems.min.js
+// @require      https://cdn.jsdelivr.net/npm/localforage-setitems@1.4.0/dist/localforage-setitems.min.js
+// @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/debug.js

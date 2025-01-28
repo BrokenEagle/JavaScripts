@@ -12,6 +12,7 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/CurrentUploads.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/CurrentUploads.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
+// @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js

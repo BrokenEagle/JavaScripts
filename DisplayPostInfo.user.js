@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DisplayPostInfo
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      12.10
+// @version      12.11
 // @description  Display views, uploader, and other info to the user.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -15,6 +15,7 @@
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/DisplayPostInfo.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.5.2/localforage.min.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-getitems@1.4.2/dist/localforage-getitems.min.js
+// @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/core.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/md5.min.js
