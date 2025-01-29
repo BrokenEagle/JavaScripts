@@ -5,14 +5,16 @@
 // @description  Validates tag add/remove inputs on a post edit or upload, plus several other post validations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
-// @match        *://*.donmai.us/
-// @match        *://*.donmai.us/posts*
-// @match        *://*.donmai.us/uploads/*
-// @match        *://*.donmai.us/settings
-// @exclude      /^https?://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
+// @match        https://aibooru.online/
+// @match        https://aibooru.online/posts*
+// @match        https://aibooru.online/uploads/*
+// @match        https://aibooru.online/settings
+// @exclude      /^https?://aibooru\.online/.*\.(xml|json|atom)(\?|$)/
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/ValidateTagInput.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/ValidateTagInput.user.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-getitems@1.4.2/dist/localforage-getitems.min.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-setitems@1.4.0/dist/localforage-setitems.min.js
