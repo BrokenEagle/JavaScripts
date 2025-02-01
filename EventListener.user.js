@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      23.3
+// @version      24.0
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -52,8 +52,8 @@ const EL = {};
 
 //Event types
 const POST_QUERY_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'flag', 'appeal'];
-const SUBSCRIBE_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'flag', 'appeal', 'forum', 'wiki', 'pool'];
-const USER_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'appeal', 'forum', 'wiki', 'pool'];
+const SUBSCRIBE_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'flag', 'appeal', 'forum', 'wiki', 'pool', 'artist'];
+const USER_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'appeal', 'forum', 'wiki', 'pool', 'artist'];
 const ALL_SUBSCRIBES = JSPLib.utility.arrayUnion(SUBSCRIBE_EVENTS, USER_EVENTS);
 const OTHER_EVENTS = ['dmail', 'ban', 'feedback', 'mod_action'];
 const ALL_EVENTS = JSPLib.utility.arrayUnique(JSPLib.utility.multiConcat(POST_QUERY_EVENTS, SUBSCRIBE_EVENTS, OTHER_EVENTS));
@@ -582,6 +582,7 @@ const NOTICE_BOX = `
     <div id="el-note-section" style="display:none"></div>
     <div id="el-commentary-section" style="display:none"></div>
     <div id="el-wiki-section" style="display:none"></div>
+    <div id="el-artist-section" style="display:none"></div>
     <div id="el-pool-section" style="display:none"></div>
     <div id="el-approval-section" style="display:none"></div>
     <div id="el-post-section" style="display:none"></div>
@@ -897,6 +898,19 @@ const TYPEDICT = {
         useritem: false,
         open: () => {OpenItemClick('wiki', AddWiki);},
         subscribe: InitializeWikiIndexLinks,
+    },
+    artist: {
+        controller: 'artist_versions',
+        user: 'updater_id',
+        item: 'artist_id',
+        only: 'id,updater_id,artist_id',
+        limit: 10,
+        filter: FilterData,
+        insert: InsertEvents,
+        plural: 'artists',
+        display: "Artists",
+        useritem: false,
+        multiinsert: false,
     },
     pool: {
         controller: 'pool_versions',
@@ -1999,6 +2013,16 @@ function InitializeWikiIndexLinks(container, render = true) {
     });
 }
 
+//#C-ARTISTS #A-SHOW
+function InitializeArtistShowMenu() {
+    let artistid = $('body').data('artist-id');
+    let $menu_obj = $.parseHTML(RenderMultilinkMenu(artistid, ['artist'], 'subscribe_events_enabled'));
+    let linkhtml = RenderSubscribeMultiLinks("Artist", ['artist'], artistid, 'subscribe_events_enabled');
+    let shownclass = (IsEventEnabled('artist', 'subscribe_events_enabled') ? "" : 'el-event-hidden');
+    $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-artist-container ${shownclass}">${linkhtml}</span>`);
+    $('#nav').append($menu_obj);
+}
+
 //#C-POOLS #A-SHOW
 function InitializePoolShowMenu() {
     let poolid = $('body').data('pool-id');
@@ -2888,6 +2912,8 @@ function Main() {
         } else if (EL.action === 'index') {
             InitializeWikiIndexLinks($main_section);
         }
+    } else if (EL.controller === 'artists' && EL.action === 'show') {
+        InitializeArtistShowMenu();
     } else if (['pools', 'pool-versions'].includes(EL.controller)) {
         if (EL.action === 'show') {
             InitializePoolShowMenu();
