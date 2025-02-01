@@ -102,6 +102,11 @@ const SETTINGS_CONFIG = {
         validate: JSPLib.validate.isBoolean,
         hint: "Reading a forum post from the notice will mark the topic as read."
     },
+    mark_read_dmail: {
+        reset: true,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Reading a dmail from the notice will mark the dmail as read."
+    },
     autoclose_dmail_notice: {
         reset: false,
         validate: JSPLib.validate.isBoolean,
@@ -1391,6 +1396,9 @@ async function AddDmail(dmailid, rowelement) {
     let $outerblock = $.parseHTML(RenderOpenItemContainer('dmail', dmailid, 5));
     $('td', $outerblock).append($('.dmail', $dmail));
     $(rowelement).after($outerblock);
+    if (EL.mark_read_dmail) {
+        ReadDmail(dmailid);
+    }
 }
 
 async function AddWiki(wikiverid, rowelement) {
@@ -1574,6 +1582,10 @@ function InitializeThumb(thumb, query_string = "") {
 }
 
 //Misc functions
+
+function ReadDmail(dmailid) {
+    return JSPLib.network.put(`/dmails/${dmailid}.json`, {data: {dmail: {is_read: true}}});
+}
 
 function ReadForumTopic(topicid) {
     $.ajax({
@@ -2526,6 +2538,7 @@ function RenderSettingsMenu() {
     $('#event-listener').append(JSPLib.menu.renderMenuFramework(MENU_CONFIG));
     $('#el-general-settings').append(JSPLib.menu.renderDomainSelectors());
     $('#el-notice-settings').append(JSPLib.menu.renderCheckbox('autolock_notices'));
+    $('#el-notice-settings').append(JSPLib.menu.renderCheckbox('mark_read_dmail'));
     $('#el-notice-settings').append(JSPLib.menu.renderCheckbox('mark_read_topics'));
     $('#el-notice-settings').append(JSPLib.menu.renderCheckbox('autoclose_dmail_notice'));
     $('#el-notice-settings').append(JSPLib.menu.renderCheckbox('overflow_only_notice_enabled'));
