@@ -81,7 +81,6 @@ const POST_QUERY_ENABLE_EVENTS = ['flag', 'appeal'];
 const SUBSCRIBE_ENABLE_EVENTS = ['comment', 'note', 'commentary', 'forum'];
 const USER_ENABLE_EVENTS = [];
 const OTHER_ENABLE_EVENTS = ['dmail'];
-const AUTOSUBSCRIBE_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'flag', 'appeal'];
 const MODACTION_EVENTS = [
     'user_delete', 'user_ban', 'user_unban', 'user_name_change', 'user_level_change', 'user_approval_privilege', 'user_upload_privilege', 'user_feedback_update',
     'user_feedback_delete', 'post_delete', 'post_undelete', 'post_ban', 'post_unban', 'post_permanent_delete', 'post_move_favorites', 'post_regenerate', 'post_regenerate_iqdb',
@@ -184,12 +183,6 @@ const SETTINGS_CONFIG = {
         reset: OTHER_ENABLE_EVENTS,
         validate: (data) => (JSPLib.menu.validateCheckboxRadio(data, 'checkbox', OTHER_EVENTS)),
         hint: "Select to enable event type."
-    },
-    autosubscribe_enabled: {
-        allitems: AUTOSUBSCRIBE_EVENTS,
-        reset: [],
-        validate: (data) => (JSPLib.menu.validateCheckboxRadio(data, 'checkbox', AUTOSUBSCRIBE_EVENTS)),
-        hint: "Select to autosubscribe event type."
     },
     subscribed_mod_actions: {
         allitems: MODACTION_EVENTS,
@@ -2123,13 +2116,6 @@ function OpenItemClick(type, htmlfunc, otherfunc) {
         }
     });
 }
-//Callback functions
-
-function SubscribeMultiLinkCallback() {
-    EL.autosubscribe_enabled.forEach((type) => {
-        $(`#el-subscribe-events .el-unsubscribed[data-type="${type}"] a`).click();
-    });
-}
 
 //Rebind functions
 
@@ -2560,7 +2546,6 @@ function RenderSettingsMenu() {
     $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput('appeal_query', 80));
     $('#el-subscribe-event-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", SUBSCRIBE_EVENT_SETTINGS_DETAILS));
     $('#el-subscribe-event-settings').append(JSPLib.menu.renderInputSelectors('subscribe_events_enabled', 'checkbox'));
-    $('#el-subscribe-event-settings').append(JSPLib.menu.renderInputSelectors('autosubscribe_enabled', 'checkbox'));
     $('#el-subscribe-event-settings').append(JSPLib.menu.renderCheckbox('show_creator_events'));
     $('#el-user-event-settings').append(JSPLib.menu.renderInputSelectors('user_events_enabled', 'checkbox'));
     $('#el-other-event-settings-message').append(JSPLib.menu.renderExpandable("Event exceptions", OTHER_EVENT_SETTINGS_DETAILS));
@@ -2672,9 +2657,6 @@ function Main() {
     $(document).on(PROGRAM_CLICK, '.el-overflow-notice a', LoadMore);
     if (EL.controller === 'posts' && EL.action === 'show') {
         InitializePostShowMenu();
-        if ($(`.image-container[data-uploader-id="${EL.userid}"]`).length) {
-            SubscribeMultiLinkCallback();
-        }
     } else if (EL.controller === 'forum-topics' && EL.action === 'show') {
         InitializeTopicShowMenu();
     } else if (['wiki-pages', 'wiki-page-versions'].includes(EL.controller)) {
