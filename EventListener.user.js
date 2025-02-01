@@ -2431,6 +2431,7 @@ function BroadcastEL(ev) {
             if (!EL.locked_notice) {
                 $('#el-event-notice').hide();
             }
+            JSPLib.notice.closeNotice();
             break;
         case 'subscribe':
             EL.subscribeset[ev.data.eventtype] = ev.data.eventset;
