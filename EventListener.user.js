@@ -1487,7 +1487,7 @@ function UpdateMultiLink(typelist, subscribed, itemid) {
     let new_subscribed = (subscribed ?
         JSPLib.utility.setDifference(current_subscribed, typeset) :
         JSPLib.utility.setUnion(current_subscribed, typeset));
-    $(`#el-subscribe-events[data-id="${itemid}"] span:not(.el-event-hidden) > .el-multi-link`).each((i, entry) => {
+    $(`#el-subscribe-events[data-id="${itemid}"] .el-multi-link`).each((i, entry) => {
         let entry_typelist = new Set(entry.dataset.type.split(','));
         if (JSPLib.utility.isSuperSet(entry_typelist, new_subscribed)) {
             $(entry).removeClass('el-unsubscribed').addClass('el-subscribed');
@@ -1504,54 +1504,6 @@ function UpdateDualLink(type, subscribed, itemid) {
     let hide = (subscribed ? 'unsubscribe' : 'subscribe');
     JSPLib.utility.fullHide(`.el-subscribe-dual-links[data-type="${type}"][data-id="${itemid}"] .el-${hide}`);
     JSPLib.utility.clearHide(`.el-subscribe-dual-links[data-type="${type}"][data-id="${itemid}"] .el-${show}`);
-}
-
-function ToggleSubscribeLinks() {
-    SUBSCRIBE_EVENTS.forEach((type) => {
-        if (IsEventEnabled(type, 'subscribe_events_enabled')) {
-            $(`.el-subscribe-${type}-container`).removeClass('el-event-hidden');
-        } else {
-            $(`.el-subscribe-${type}-container`).addClass('el-event-hidden');
-        }
-    });
-    if (EL.controller === 'posts' && EL.action === 'show') {
-        if (AreAllEventsEnabled(ALL_TRANSLATE_EVENTS, 'subscribe_events_enabled')) {
-            $('.el-subscribe-translated-container').removeClass('el-event-hidden');
-        } else {
-            $('.el-subscribe-translated-container').addClass('el-event-hidden');
-        }
-        if (IsAnyEventEnabled(ALL_POST_EVENTS, 'subscribe_events_enabled')) {
-            $('#el-subscribe-events').show();
-            let enabled_post_events = JSPLib.utility.arrayIntersection(ALL_POST_EVENTS, EL.subscribe_events_enabled);
-            $('#el-all-link').attr('data-type', enabled_post_events);
-        } else {
-            $('#el-subscribe-events').hide();
-        }
-    }
-}
-
-function ToggleUserLinks() {
-    USER_EVENTS.forEach((type) => {
-        if (IsEventEnabled(type, 'user_events_enabled')) {
-            $(`.el-user-${type}-container`).removeClass('el-event-hidden');
-        } else {
-            $(`.el-user-${type}-container`).addClass('el-event-hidden');
-        }
-    });
-    if (EL.controller === 'users' && EL.action === 'show') {
-        if (AreAllEventsEnabled(ALL_TRANSLATE_EVENTS, 'user_events_enabled')) {
-            $('.el-user-translated-container').removeClass('el-event-hidden');
-        } else {
-            $('.el-user-translated-container').addClass('el-event-hidden');
-        }
-        if (IsAnyEventEnabled(USER_EVENTS, 'user_events_enabled')) {
-            $('#el-subscribe-events').show();
-            let enabled_user_events = JSPLib.utility.arrayIntersection(USER_EVENTS, EL.user_events_enabled);
-            $('#el-all-link').attr('data-type', enabled_user_events);
-        } else {
-            $('#el-subscribe-events').hide();
-        }
-    }
 }
 
 //Insert and process HTML onto page for various types
@@ -1763,10 +1715,9 @@ function AdjustRowspan(rowelement, openitem) {
 
 //Render functions
 
-function RenderMultilinkMenu(itemid, all_types, event_type) {
-    let shown = (all_types.length === 0 || IsAnyEventEnabled(all_types, event_type) ? "" : 'style="display:none"');
+function RenderMultilinkMenu(itemid, event_type) {
     return `
-<div id="el-subscribe-events" data-id="${itemid}" data-type="${event_type}" ${shown}>
+<div id="el-subscribe-events" data-id="${itemid}" data-type="${event_type}">
     Subscribe (<span id="el-add-links"></span>)
 </div>`;
 }
@@ -1920,49 +1871,59 @@ function AdjustColumnWidths(table) {
 //#C-USERS #A-SHOW
 
 function InitializeUserShowMenu() {
+    if (!IsAnyEventEnabled(USER_EVENTS, 'user_events_enabled')) return;
     let userid = $(document.body).data('user-id');
-    let $menu_obj = $.parseHTML(RenderMultilinkMenu(userid, USER_EVENTS, 'user_events_enabled'));
+    let $menu_obj = $.parseHTML(RenderMultilinkMenu(userid, 'user_events_enabled'));
+    let menu_links = [];
     USER_EVENTS.forEach((type) => {
+        if (!IsEventEnabled(type, 'user_events_enabled')) return;
         let linkhtml = RenderSubscribeMultiLinks(TYPEDICT[type].display, [type], userid, 'user_events_enabled');
-        let shownclass = (IsEventEnabled(type, 'user_events_enabled') ? "" : 'el-event-hidden');
-        $('#el-add-links', $menu_obj).append(`<span class="el-user-${type}-container ${shownclass}">${linkhtml} | </span>`);
+        menu_links.push(`<span class="el-user-${type}-container">${linkhtml}</span>`);
     });
-    let shownclass = (AreAllEventsEnabled(ALL_TRANSLATE_EVENTS, 'user_events_enabled') ? "" : ' el-event-hidden');
-    let linkhtml = RenderSubscribeMultiLinks("Translations", ALL_TRANSLATE_EVENTS, userid, 'user_events_enabled');
-    $('#el-add-links', $menu_obj).append(`<span class="el-user-translated-container ${shownclass}">${linkhtml} | </span>`);
-    //The All link is always shown when the outer menu is shown, so no need to individually hide it
+    if (AreAllEventsEnabled(ALL_TRANSLATE_EVENTS, 'user_events_enabled')) {
+        let linkhtml = RenderSubscribeMultiLinks("Translations", ALL_TRANSLATE_EVENTS, userid, 'user_events_enabled');
+        menu_links.push(`<span class="el-user-translated-container">${linkhtml}</span>`);
+    }
     let enabled_user_events = JSPLib.utility.arrayIntersection(USER_EVENTS, EL.user_events_enabled);
-    linkhtml = RenderSubscribeMultiLinks("All", enabled_user_events, userid, 'user_events_enabled');
-    $('#el-add-links', $menu_obj).append(`<span class="el-user-all-container">${linkhtml}</span>`);
+    if (enabled_user_events.length > 1) {
+        let linkhtml = RenderSubscribeMultiLinks("All", enabled_user_events, userid, 'user_events_enabled');
+        menu_links.push(`<span class="el-user-all-container">${linkhtml}</span>`);
+    }
+    $('#el-add-links', $menu_obj).append(menu_links.join(' | '));
     $('#nav').append($menu_obj);
 }
 
 //#C-POSTS #A-SHOW
 function InitializePostShowMenu() {
+    if (!IsAnyEventEnabled(ALL_POST_EVENTS, 'subscribe_events_enabled')) return;
     let postid = $('.image-container').data('id');
-    let $menu_obj = $.parseHTML(RenderMultilinkMenu(postid, ALL_POST_EVENTS, 'subscribe_events_enabled'));
+    let $menu_obj = $.parseHTML(RenderMultilinkMenu(postid, 'subscribe_events_enabled'));
+    let menu_links = [];
     ALL_POST_EVENTS.forEach((type) => {
+        if (!IsEventEnabled(type, 'subscribe_events_enabled')) return;
         let linkhtml = RenderSubscribeMultiLinks(TYPEDICT[type].display, [type], postid, 'subscribe_events_enabled');
-        let shownclass = (IsEventEnabled(type, 'subscribe_events_enabled') ? "" : 'el-event-hidden');
-        $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-${type}-container ${shownclass}">${linkhtml} | </span>`);
+        menu_links.push(`<span class="el-subscribe-${type}-container">${linkhtml}</span>`);
     });
-    let shownclass = (AreAllEventsEnabled(ALL_TRANSLATE_EVENTS, 'subscribe_events_enabled') ? "" : ' el-event-hidden');
-    let linkhtml = RenderSubscribeMultiLinks("Translations", ALL_TRANSLATE_EVENTS, postid, 'subscribe_events_enabled');
-    $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-translated-container ${shownclass}">${linkhtml} | </span>`);
-    //The All link is always shown when the outer menu is shown, so no need to individually hide it
+    if (AreAllEventsEnabled(ALL_TRANSLATE_EVENTS, 'subscribe_events_enabled')) {
+        let linkhtml = RenderSubscribeMultiLinks("Translations", ALL_TRANSLATE_EVENTS, postid, 'subscribe_events_enabled');
+        menu_links.push(`<span class="el-subscribe-translated-container">${linkhtml}</span>`);
+    }
     let enabled_post_events = JSPLib.utility.arrayIntersection(ALL_POST_EVENTS, EL.subscribe_events_enabled);
-    linkhtml = RenderSubscribeMultiLinks("All", enabled_post_events, postid, 'subscribe_events_enabled');
-    $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-all-container">${linkhtml}</span>`);
+    if (enabled_post_events.length > 1) {
+        let linkhtml = RenderSubscribeMultiLinks("All", enabled_post_events, postid, 'subscribe_events_enabled');
+        menu_links.push(`<span class="el-subscribe-all-container">${linkhtml}</span>`);
+    }
+    $('#el-add-links', $menu_obj).append(menu_links.join(' | '));
     $('#nav').append($menu_obj);
 }
 
 //#C-FORUM-TOPICS #A-SHOW
 function InitializeTopicShowMenu() {
+    if (!IsEventEnabled('forum', 'subscribe_events_enabled')) return;
     let topicid = $('body').data('forum-topic-id');
-    let $menu_obj = $.parseHTML(RenderMultilinkMenu(topicid, ['forum'], 'subscribe_events_enabled'));
+    let $menu_obj = $.parseHTML(RenderMultilinkMenu(topicid, 'subscribe_events_enabled'));
     let linkhtml = RenderSubscribeMultiLinks("Topic", ['forum'], topicid, 'subscribe_events_enabled');
-    let shownclass = (IsEventEnabled('forum', 'subscribe_events_enabled') ? "" : 'el-event-hidden');
-    $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-forum-container ${shownclass}">${linkhtml}</span>`);
+    $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-forum-container">${linkhtml}</span>`);
     $('#nav').append($menu_obj);
 }
 
@@ -1986,12 +1947,12 @@ function InitializeTopicIndexLinks(container, render = true) {
 
 //#C-WIKI-PAGES #A-SHOW / #C-WIKI-PAGE-VERSIONS #A-SHOW
 function InitializeWikiShowMenu() {
+    if (!IsEventEnabled('wiki', 'subscribe_events_enabled')) return;
     let data_selector = (EL.controller === 'wiki-pages' ? 'wiki-page-id' : 'wiki-page-version-wiki-page-id');
     let wikiid = $('body').data(data_selector);
-    let $menu_obj = $.parseHTML(RenderMultilinkMenu(wikiid, ['wiki'], 'subscribe_events_enabled'));
+    let $menu_obj = $.parseHTML(RenderMultilinkMenu(wikiid, 'subscribe_events_enabled'));
     let linkhtml = RenderSubscribeMultiLinks("Wiki", ['wiki'], wikiid, 'subscribe_events_enabled');
-    let shownclass = (IsEventEnabled('wiki', 'subscribe_events_enabled') ? "" : 'el-event-hidden');
-    $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-wiki-container ${shownclass}">${linkhtml}</span>`);
+    $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-wiki-container">${linkhtml}</span>`);
     $('#nav').append($menu_obj);
 }
 
@@ -2015,21 +1976,21 @@ function InitializeWikiIndexLinks(container, render = true) {
 
 //#C-ARTISTS #A-SHOW
 function InitializeArtistShowMenu() {
+    if (!IsEventEnabled('artist', 'subscribe_events_enabled')) return;
     let artistid = $('body').data('artist-id');
-    let $menu_obj = $.parseHTML(RenderMultilinkMenu(artistid, ['artist'], 'subscribe_events_enabled'));
+    let $menu_obj = $.parseHTML(RenderMultilinkMenu(artistid, 'subscribe_events_enabled'));
     let linkhtml = RenderSubscribeMultiLinks("Artist", ['artist'], artistid, 'subscribe_events_enabled');
-    let shownclass = (IsEventEnabled('artist', 'subscribe_events_enabled') ? "" : 'el-event-hidden');
-    $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-artist-container ${shownclass}">${linkhtml}</span>`);
+    $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-artist-container">${linkhtml}</span>`);
     $('#nav').append($menu_obj);
 }
 
 //#C-POOLS #A-SHOW
 function InitializePoolShowMenu() {
+    if (!IsEventEnabled('pool', 'subscribe_events_enabled')) return;
     let poolid = $('body').data('pool-id');
-    let $menu_obj = $.parseHTML(RenderMultilinkMenu(poolid, ['pool'], 'subscribe_events_enabled'));
+    let $menu_obj = $.parseHTML(RenderMultilinkMenu(poolid, 'subscribe_events_enabled'));
     let linkhtml = RenderSubscribeMultiLinks("Pool", ['pool'], poolid, 'subscribe_events_enabled');
-    let shownclass = (IsEventEnabled('pool', 'subscribe_events_enabled') ? "" : 'el-event-hidden');
-    $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-pool-container ${shownclass}">${linkhtml}</span>`);
+    $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-pool-container">${linkhtml}</span>`);
     $('#nav').append($menu_obj);
 }
 
@@ -2699,13 +2660,10 @@ function InitializeAllSubscribes() {
 
 function LocalResetCallback() {
     InitializeChangedSettings();
-    InitializeAllSubscribes();
 }
 
 function RemoteSettingsCallback() {
-    InitializeAllSubscribes();
-    ToggleSubscribeLinks();
-    ToggleUserLinks();
+    JSPLib.utility.fullHide('#el-event-notice, #el-subscribe-events, .el-subscribe-dual-links');
 }
 
 function RemoteResetCallback() {
