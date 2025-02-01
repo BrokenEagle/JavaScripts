@@ -519,6 +519,15 @@ const POOL_CSS = `
     opacity: 0.25;
 }`;
 
+const DMAIL_CSS = `
+tr.el-unread {
+    font-weight: bold;
+}
+tr.el-deleted,
+tr.el-deleted a {
+    text-decoration: line-through;
+}`;
+
 const FEEDBACK_CSS = `
 #el-event-notice #el-feedback-section .feedback-category-positive {
     background: var(--success-background-color);
@@ -760,6 +769,13 @@ const TYPEDICT = {
         plural: 'mail',
         useritem: true,
         open: () => {OpenItemClick('dmail', AddDmail);},
+        process: () => {
+            $(document).on(PROGRAM_CLICK, '.el-dmail-read', MarkDmailRead);
+            $(document).on(PROGRAM_CLICK, '.el-dmail-unread', MarkDmailUnread);
+            $(document).on(PROGRAM_CLICK, '.el-dmail-delete', MarkDmailDeleted);
+            $(document).on(PROGRAM_CLICK, '.el-dmail-undelete', MarkDmailUndeleted);
+            JSPLib.utility.setCSSStyle(DMAIL_CSS, 'dmail');
+        },
     },
     comment: {
         controller: 'comments',
@@ -1488,7 +1504,15 @@ function InsertEvents($event_page, type) {
 function InsertDmails($dmail_page, type) {
     DecodeProtectedEmail($dmail_page);
     let $dmail_table = $('.striped', $dmail_page);
-    $('tr[data-is-read="false"]', $dmail_table).css('font-weight', 'bold');
+    $('tr[data-is-read="false"]', $dmail_table).addClass('el-unread');
+    $('tr[data-is-delted="true"]', $dmail_table).addClass('el-deleted');
+    $('tbody tr', $dmail_table).each((i, row) => {
+        let dmailid = $(row).data('id');
+        $('a[data-params="dmail[is_read]=true"]', row).replaceWith(`<a class="el-dmail-read" data-id="${dmailid}" href="javascript:void(0)">Read</a>`);
+        $('a[data-params="dmail[is_read]=false"]', row).replaceWith(`<a class="el-dmail-unread" data-id="${dmailid}" href="javascript:void(0)">Unread</a>`);
+        $('a[data-params="dmail[is_deleted]=true"]', row).replaceWith(`<a class="el-dmail-delete" data-id="${dmailid}" href="javascript:void(0)">Delete</a>`);
+        $('a[data-params="dmail[is_deleted]=false"]', row).replaceWith(`<a class="el-dmail-undelete" data-id="${dmailid}" href="javascript:void(0)">Undelete</a>`);
+    });
     let $dmail_div = InitializeTypeDiv(type, $dmail_table);
     InitializeOpenDmailLinks($dmail_div[0]);
 }
@@ -1585,6 +1609,18 @@ function InitializeThumb(thumb, query_string = "") {
 
 function ReadDmail(dmailid) {
     return JSPLib.network.put(`/dmails/${dmailid}.json`, {data: {dmail: {is_read: true}}});
+}
+
+function UnreadDmail(dmailid) {
+    return JSPLib.network.put(`/dmails/${dmailid}.json`, {data: {dmail: {is_read: false}}});
+}
+
+function DeleteDmail(dmailid) {
+    return JSPLib.network.put(`/dmails/${dmailid}.json`, {data: {dmail: {is_deleted: true}}});
+}
+
+function UndeleteDmail(dmailid) {
+    JSPLib.network.put(`/dmails/${dmailid}.json`, {data: {dmail: {is_deleted: false}}});
 }
 
 function ReadForumTopic(topicid) {
@@ -1913,6 +1949,64 @@ function InitializePoolShowMenu() {
 }
 
 //Event handlers
+
+function MarkDmailRead(event) {
+    let dmailid = $(event.currentTarget).data('id');
+    let $link = $(event.currentTarget);
+    ReadDmail(dmailid).then(
+        () => {
+            $link.closest('tr').removeClass('el-unread');
+            $link.toggleClass('el-dmail-read el-dmail-unread').text('Unread');
+            JSPLib.notice.notice("Dmail updated.");
+        },
+        () => {
+            JSPLib.notice.error('Unable to mark dmail as read.');
+        });
+}
+
+function MarkDmailUnread(event) {
+    let dmailid = $(event.currentTarget).data('id');
+    let $link = $(event.currentTarget);
+    UnreadDmail(dmailid).then(
+        () => {
+            $link.closest('tr').addClass('el-unread');
+            $link.toggleClass('el-dmail-unread el-dmail-read').text('Read');
+            JSPLib.notice.notice("Dmail updated.");
+        },
+        () => {
+            JSPLib.notice.error('Unable to mark dmail as unread.');
+        });
+}
+
+function MarkDmailDeleted(event) {
+    let dmailid = $(event.currentTarget).data('id');
+    if (confirm("Are you sure you want to delete this dmail?")) {
+        let $link = $(event.currentTarget);
+        DeleteDmail(dmailid).then(
+            () => {
+                $link.closest('tr').addClass('el-deleted');
+                $link.toggleClass('el-dmail-delete el-dmail-undelete').text('Undelete');
+                JSPLib.notice.notice("Dmail deleted.");
+            },
+            () => {
+                JSPLib.notice.error('Unable to delete dmail.');
+            });
+    }
+}
+
+function MarkDmailUndeleted(event) {
+    let dmailid = $(event.currentTarget).data('id');
+    let $link = $(event.currentTarget);
+    UndeleteDmail(dmailid).then(
+        () => {
+            $link.closest('tr').removeClass('el-deleted');
+            $(event.currentTarget).toggleClass('el-dmail-undelete el-dmail-delete').text('Delete');
+            JSPLib.notice.notice("Dmail undeleted.");
+        },
+        () => {
+            JSPLib.notice.error('Unable to undelete dmail.');
+        });
+}
 
 function HideEventNotice(settimeout = true) {
     $('#el-close-notice-link').click();
