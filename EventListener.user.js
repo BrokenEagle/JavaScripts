@@ -324,14 +324,6 @@ const PROGRAM_CSS = `
 #el-event-notice {
     padding: 0.5em;
 }
-#page #c-comments #a-index .preview {
-    height: 170px;
-    display: flex;
-    flex-direction: column;
-}
-#c-comments #a-index #p-index-by-comment .preview {
-    margin-right: 0;
-}
 .el-post-thumbnail article.post-preview {
     width: 160px;
 }
@@ -381,9 +373,6 @@ const PROGRAM_CSS = `
 #el-lock-event-notice:not(.el-locked):hover ,
 #el-read-event-notice:not(.el-read):hover {
     filter: brightness(1.5);
-}
-.el-event-hidden {
-    display: none;
 }
 .el-overflow-notice {
     border-top: 1px solid #DDD;
@@ -726,10 +715,6 @@ const MAX_SNOOZE_DURATION = JSPLib.utility.one_hour;
 const QUERY_LIMIT = 100; //The max number of items to grab with each network call
 const ID_FIELD = 'id';
 
-//Regex constants
-
-const POOLS_REGEX = XRegExp.tag()`/pools/(\d+)`;
-
 //Other constants
 
 const ALL_POST_EVENTS = ['post', 'approval', 'comment', 'note', 'commentary'];
@@ -793,7 +778,6 @@ const TYPEDICT = {
         display: "Comments",
         includes: 'post[uploader_id]',
         useritem: false,
-        subscribe: InitializeCommentIndexLinks,
     },
     forum: {
         controller: 'forum_posts',
@@ -810,7 +794,6 @@ const TYPEDICT = {
         includes: 'topic[creator_id]',
         useritem: false,
         open: () => {OpenItemClick('forum', AddForumPost);},
-        subscribe: InitializeTopicIndexLinks,
     },
     note: {
         controller: 'note_versions',
@@ -826,7 +809,6 @@ const TYPEDICT = {
         includes: 'post[uploader_id]',
         useritem: false,
         open: () => {OpenItemClick('note', AddRenderedNote, AdjustRowspan);},
-        subscribe: (table) => {InitializePostNoteIndexLinks('note', table, false);},
     },
     commentary: {
         controller: 'artist_commentary_versions',
@@ -867,7 +849,6 @@ const TYPEDICT = {
         includes: 'post[uploader_id]',
         useritem: false,
         customquery: PostCustomQuery,
-        subscribe: (table) => {InitializePostNoteIndexLinks('post', table, false);},
     },
     approval: {
         controller: 'post_approvals',
@@ -897,7 +878,6 @@ const TYPEDICT = {
         display: "Wikis",
         useritem: false,
         open: () => {OpenItemClick('wiki', AddWiki);},
-        subscribe: InitializeWikiIndexLinks,
     },
     artist: {
         controller: 'artist_versions',
@@ -928,7 +908,6 @@ const TYPEDICT = {
             OpenItemClick('pooldiff', AddPoolDiff);
             OpenItemClick('poolposts', AddPoolPosts);
         },
-        subscribe: InitializePoolIndexLinks,
     },
     feedback: {
         controller: 'user_feedbacks',
@@ -1110,10 +1089,6 @@ function IsCategorySubscribed(type) {
 
 function GetTypeQuery(type) {
     return EL.user_settings[type + '_query'];
-}
-
-function GetTableType(container) {
-    return $('.striped tbody tr', container).attr('id').replace(/-\d+$/, '');
 }
 
 function HideDmailNotice() {
@@ -1499,13 +1474,6 @@ function UpdateMultiLink(typelist, subscribed, itemid) {
     });
 }
 
-function UpdateDualLink(type, subscribed, itemid) {
-    let show = (subscribed ? 'subscribe' : 'unsubscribe');
-    let hide = (subscribed ? 'unsubscribe' : 'subscribe');
-    JSPLib.utility.fullHide(`.el-subscribe-dual-links[data-type="${type}"][data-id="${itemid}"] .el-${hide}`);
-    JSPLib.utility.clearHide(`.el-subscribe-dual-links[data-type="${type}"][data-id="${itemid}"] .el-${show}`);
-}
-
 //Insert and process HTML onto page for various types
 
 function InsertEvents($event_page, type) {
@@ -1528,15 +1496,13 @@ function InsertComments($comment_page) {
     DecodeProtectedEmail($comment_page);
     let $comment_section = $('.list-of-comments', $comment_page);
     $comment_section.find('> form').remove();
-    let $comment_div = InitializeTypeDiv('comment', $comment_section);
-    InitializeCommentIndexLinks($comment_div);
+    InitializeTypeDiv('comment', $comment_section);
 }
 
 function InsertForums($forum_page) {
     DecodeProtectedEmail($forum_page);
     let $forum_table = $('.striped', $forum_page);
     let $forum_div = InitializeTypeDiv('forum', $forum_table);
-    InitializeTopicIndexLinks($forum_div[0]);
     InitializeOpenForumLinks($forum_div[0]);
 }
 
@@ -1547,7 +1513,6 @@ function InsertNotes($note_page) {
     AdjustColumnWidths($note_table[0]);
     let $note_div = InitializeTypeDiv('note', $note_table);
     AddThumbnailStubs($note_div[0]);
-    InitializePostNoteIndexLinks('note', $note_div[0]);
     InitializeOpenNoteLinks($note_div[0]);
 }
 
@@ -1565,14 +1530,12 @@ function InsertPosts($post_page) {
     AdjustColumnWidths($post_table[0]);
     let $post_div = InitializeTypeDiv('post', $post_table);
     AddThumbnailStubs($post_div[0]);
-    InitializePostNoteIndexLinks('post', $post_div[0]);
 }
 
 function InsertWikis($wiki_page) {
     DecodeProtectedEmail($wiki_page);
     let $wiki_table = $('.striped', $wiki_page);
     let $wiki_div = InitializeTypeDiv('wiki', $wiki_table);
-    InitializeWikiIndexLinks($wiki_div[0]);
     InitializeOpenWikiLinks($wiki_div[0]);
 }
 
@@ -1585,7 +1548,6 @@ function InsertPools($pool_page) {
         entry.innerText = short_pool_title;
     });
     let $pool_div = InitializeTypeDiv('pool', $pool_table);
-    InitializePoolIndexLinks($pool_div[0]);
     InitializeOpenPoolLinks($pool_div[0]);
 }
 
@@ -1720,18 +1682,6 @@ function RenderMultilinkMenu(itemid, event_type) {
 <div id="el-subscribe-events" data-id="${itemid}" data-type="${event_type}">
     Subscribe (<span id="el-add-links"></span>)
 </div>`;
-}
-
-function RenderSubscribeDualLinks(type, itemid, tag, separator, ender, right = false) {
-    let typeset = GetList(type);
-    let subscribe = (typeset.has(itemid) ? 'style="display:none !important"' : 'style');
-    let unsubscribe = (typeset.has(itemid) ? 'style' : 'style="display:none !important"');
-    let spacer = (right ? "&nbsp;&nbsp;" : "");
-    return `
-<${tag} class="el-subscribe-dual-links"  data-type="${type}" data-id="${itemid}">
-    <${tag} class="el-subscribe" ${subscribe}><a class="el-monospace-link" href="javascript:void(0)">${spacer}Subscribe${separator}${ender}</a></${tag}>
-    <${tag} class="el-unsubscribe" ${unsubscribe}"><a class="el-monospace-link" href="javascript:void(0)">Unsubscribe${separator}${ender}</a></${tag}>
-</${tag}>`;
 }
 
 function RenderSubscribeMultiLinks(name, typelist, itemid, event_type) {
@@ -1869,7 +1819,6 @@ function AdjustColumnWidths(table) {
 }
 
 //#C-USERS #A-SHOW
-
 function InitializeUserShowMenu() {
     if (!IsAnyEventEnabled(USER_EVENTS, 'user_events_enabled')) return;
     let userid = $(document.body).data('user-id');
@@ -1927,24 +1876,6 @@ function InitializeTopicShowMenu() {
     $('#nav').append($menu_obj);
 }
 
-//#C-FORUM-TOPICS #A-INDEX / #C-FORUM-POSTS #A-INDEX / EVENT-NOTICE
-function InitializeTopicIndexLinks(container, render = true) {
-    let type = GetTableType(container);
-    let typeset = GetList('forum');
-    $('.striped tbody tr', container).each((i, row) => {
-        let data_selector = (type === 'forum-topic' ? 'id' : 'topic-id');
-        let topicid = $(row).data(data_selector);
-        if (render) {
-            let linkhtml = RenderSubscribeDualLinks('forum', topicid, 'span', "", "", true);
-            let shownclass = (IsEventEnabled('forum', 'subscribe_events_enabled') ? "" : 'el-event-hidden');
-            $(".title-column, .topic-column", row).prepend(`<span class="el-subscribe-forum-container ${shownclass}">${linkhtml}&nbsp|&nbsp</span>`);
-        } else {
-            let subscribed = !typeset.has(topicid);
-            UpdateDualLink('forum', subscribed, topicid);
-        }
-    });
-}
-
 //#C-WIKI-PAGES #A-SHOW / #C-WIKI-PAGE-VERSIONS #A-SHOW
 function InitializeWikiShowMenu() {
     if (!IsEventEnabled('wiki', 'subscribe_events_enabled')) return;
@@ -1954,24 +1885,6 @@ function InitializeWikiShowMenu() {
     let linkhtml = RenderSubscribeMultiLinks("Wiki", ['wiki'], wikiid, 'subscribe_events_enabled');
     $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-wiki-container">${linkhtml}</span>`);
     $('#nav').append($menu_obj);
-}
-
-//#C-WIKI-PAGES #A-INDEX / #C-WIKI-PAGE-VERSIONS #A-INDEX / EVENT-NOTICE
-function InitializeWikiIndexLinks(container, render = true) {
-    let type = GetTableType(container);
-    let typeset = GetList('wiki');
-    $('.striped tbody tr', container).each((i, row) => {
-        let data_selector = (type === 'wiki-page' ? 'id' : 'wiki-page-id');
-        let wikiid = $(row).data(data_selector);
-        if (render) {
-            let linkhtml = RenderSubscribeDualLinks('wiki', wikiid, 'span', "", "", true);
-            let shownclass = (IsEventEnabled('wiki', 'subscribe_events_enabled') ? "" : 'el-event-hidden');
-            $(' .title-column', row).prepend(`<span class="el-subscribe-wiki-container ${shownclass}">${linkhtml}&nbsp|&nbsp</span>`);
-        } else {
-            let subscribed = !typeset.has(wikiid);
-            UpdateDualLink('wiki', subscribed, wikiid);
-        }
-    });
 }
 
 //#C-ARTISTS #A-SHOW
@@ -1992,75 +1905,6 @@ function InitializePoolShowMenu() {
     let linkhtml = RenderSubscribeMultiLinks("Pool", ['pool'], poolid, 'subscribe_events_enabled');
     $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-pool-container">${linkhtml}</span>`);
     $('#nav').append($menu_obj);
-}
-
-//#C-POOLS #A-INDEX / #C-POOL-VERSIONS #A-INDEX / EVENT-NOTICE
-function InitializePoolIndexLinks(container, render = true) {
-    let type = GetTableType(container);
-    let typeset = GetList('pool');
-    $('.striped tbody tr', container).each((i, row) => {
-        let data_selector = (type === 'pool' ? 'id' : 'pool-id');
-        let poolid = $(row).data(data_selector);
-        if (render) {
-            let linkhtml = RenderSubscribeDualLinks('pool', poolid, 'span', "", "", true);
-            let shownclass = (IsEventEnabled('pool', 'subscribe_events_enabled') ? "" : 'el-event-hidden');
-            $('.name-column, .pool-column', row).prepend(`<span class="el-subscribe-pool-container ${shownclass}">${linkhtml}&nbsp|&nbsp</span>`);
-        } else {
-            let subscribed = !typeset.has(poolid);
-            UpdateDualLink('pool', subscribed, poolid);
-        }
-    });
-}
-
-//#C-POOLS #A-GALLERY
-function InitializePoolGalleryLinks() {
-    $('#c-pools #a-gallery .post-preview > a').each((i, entry) => {
-        let match = entry.href.match(POOLS_REGEX);
-        if (!match) {
-            return;
-        }
-        let poolid = parseInt(match[1]);
-        let linkhtml = RenderSubscribeDualLinks('pool', poolid, 'div', " ", 'pool');
-        let shownclass = (IsEventEnabled('pool', 'subscribe_events_enabled') ? "" : 'el-event-hidden');
-        $(entry).before(`<div class="el-subscribe-pool-container ${shownclass}">${linkhtml}</div>`);
-    });
-}
-//EVENT NOTICE
-function InitializePostNoteIndexLinks(type, table, render = true) {
-    let typeset = GetList(type);
-    let seenlist = [];
-    $('.striped tr[id]', table).each((i, row) => {
-        let postid = $(row).data('post-id');
-        //Since posts and notes are aggragated by post, only process the first row for each post ID
-        if (seenlist.includes(postid)) {
-            return;
-        }
-        seenlist.push(postid);
-        if (render) {
-            let linkhtml = RenderSubscribeDualLinks(type, postid, 'span', " ", type, true);
-            $('td:first-of-type', row).prepend(`<div style="text-align:center">${linkhtml}</div>`);
-        } else {
-            let subscribed = !typeset.has(postid);
-            UpdateDualLink(type, subscribed, postid);
-        }
-    });
-}
-
-//#C-COMMENTS #A-INDEX / EVENT-NOTICE
-function InitializeCommentIndexLinks($obj, render = true) {
-    let typeset = GetList('comment');
-    $('.post-preview', $obj).each((i, entry) => {
-        var postid = $(entry).data('id');
-        if (render) {
-            var linkhtml = RenderSubscribeDualLinks('comment', postid, 'div', " ", 'comments');
-            let shownclass = (IsEventEnabled('comment', 'subscribe_events_enabled') ? "" : 'el-event-hidden');
-            let $subscribe = $.parseHTML(`<div class="el-subscribe-comment-container ${shownclass}">${linkhtml}</div>`);
-            $('.preview', entry).append($subscribe);
-        } else {
-            let subscribed = !typeset.has(postid);
-            UpdateDualLink('comment', subscribed, postid);
-        }
-    });
 }
 
 //Event handlers
@@ -2202,21 +2046,8 @@ function SubscribeMultiLink(event) {
                 SetUserList(type, subscribed, itemid);
             }
         }, NONSYNCHRONOUS_DELAY);
-        UpdateDualLink(type, subscribed, itemid);
     });
     UpdateMultiLink(typelist, subscribed, itemid);
-}
-
-function SubscribeDualLink(event) {
-    let $container = $(JSPLib.utility.getNthParent(event.target, 2));
-    let type = $container.data('type');
-    let itemid = $container.data('id');
-    let subscribed = GetList(type).has(itemid);
-    setTimeout(() => {
-        SetList(type, subscribed, itemid);
-    }, NONSYNCHRONOUS_DELAY);
-    UpdateDualLink(type, subscribed, itemid);
-    UpdateMultiLink([type], subscribed, itemid);
 }
 
 async function PostEventPopulateControl() {
@@ -2607,7 +2438,7 @@ function EventStatusCheck() {
 //Settings functions
 
 function BroadcastEL(ev) {
-    var menuid, linkid;
+    var menuid;
     this.debug('log', `(${ev.data.type}):`, ev.data);
     switch (ev.data.type) {
         case 'hide':
@@ -2618,7 +2449,6 @@ function BroadcastEL(ev) {
         case 'subscribe':
             EL.subscribeset[ev.data.eventtype] = ev.data.eventset;
             UpdateMultiLink([ev.data.eventtype], ev.data.was_subscribed, ev.data.itemid);
-            UpdateDualLink(ev.data.eventtype, ev.data.was_subscribed, ev.data.itemid);
             break;
         case 'subscribe_user':
             EL.userset[ev.data.eventtype] = ev.data.eventset;
@@ -2632,14 +2462,6 @@ function BroadcastEL(ev) {
             } else if (ev.data.new_subscribed.has(menuid)) {
                 UpdateMultiLink([ev.data.eventtype], false, menuid);
             }
-            $(`.el-subscribe-${ev.data.eventtype}[data-id]`).each((i, entry) => {
-                linkid = $(entry).data('id');
-                if (ev.data.was_subscribed.has(linkid)) {
-                    UpdateDualLink(ev.data.eventtype, true, linkid);
-                } else if (ev.data.new_subscribed.has(linkid)) {
-                    UpdateDualLink(ev.data.eventtype, false, linkid);
-                }
-            });
             //falls through
         default:
             //do nothing
@@ -2663,11 +2485,11 @@ function LocalResetCallback() {
 }
 
 function RemoteSettingsCallback() {
-    JSPLib.utility.fullHide('#el-event-notice, #el-subscribe-events, .el-subscribe-dual-links');
+    JSPLib.utility.fullHide('#el-event-notice, #el-subscribe-events');
 }
 
 function RemoteResetCallback() {
-    JSPLib.utility.fullHide('#el-event-notice, #el-subscribe-events, .el-subscribe-dual-links');
+    JSPLib.utility.fullHide('#el-event-notice, #el-subscribe-events');
 }
 
 function GetRecheckExpires() {
@@ -2796,7 +2618,6 @@ function Main() {
             let $section = $(`#el-${type}-section`);
             if($section.children().length) {
                 TYPEDICT[type].open?.($section);
-                TYPEDICT[type].subscribe?.($section, false);
                 TYPEDICT[type].process?.();
             }
         }
@@ -2847,43 +2668,23 @@ function Main() {
         this.debug('log', "Waiting...");
         EL.dmail_promise.resolve(null);
     }
-    $(document).on(PROGRAM_CLICK, '.el-subscribe-dual-links a', SubscribeDualLink);
     $(document).on(PROGRAM_CLICK, '#el-subscribe-events a', SubscribeMultiLink);
     $(document).on(PROGRAM_CLICK, '.el-overflow-notice a', LoadMore);
-    let $main_section = $('#c-' + EL.controller);
     if (EL.controller === 'posts' && EL.action === 'show') {
         InitializePostShowMenu();
         if ($(`.image-container[data-uploader-id="${EL.userid}"]`).length) {
             SubscribeMultiLinkCallback();
         }
-    } else if (EL.controller === 'comments' && EL.action === 'index') {
-        InitializeCommentIndexLinks($main_section);
-    } else if (['forum-topics', 'forum-posts'].includes(EL.controller)) {
-        if (EL.action === 'show') {
-            InitializeTopicShowMenu();
-        } else if (EL.action === 'index') {
-            InitializeTopicIndexLinks($main_section);
-        }
+    } else if (EL.controller === 'forum-topics' && EL.action === 'show') {
+        InitializeTopicShowMenu();
     } else if (['wiki-pages', 'wiki-page-versions'].includes(EL.controller)) {
-        if (EL.action === 'show') {
-            InitializeWikiShowMenu();
-        } else if (EL.action === 'index') {
-            InitializeWikiIndexLinks($main_section);
-        }
+        InitializeWikiShowMenu();
     } else if (EL.controller === 'artists' && EL.action === 'show') {
         InitializeArtistShowMenu();
-    } else if (['pools', 'pool-versions'].includes(EL.controller)) {
-        if (EL.action === 'show') {
-            InitializePoolShowMenu();
-        } else if (EL.action === 'index') {
-            InitializePoolIndexLinks($main_section);
-        } else if (EL.action === 'gallery') {
-            InitializePoolGalleryLinks();
-        }
-    } else if (EL.controller === 'users') {
-        if (EL.action === 'show') {
-            InitializeUserShowMenu();
-        }
+    } else if (EL.controller === 'pool' && EL.action === 'show') {
+        InitializePoolShowMenu();
+    } else if (EL.controller === 'users' && EL.action === 'show') {
+        InitializeUserShowMenu();
     }
     if (EL.hide_dmail_notice) {
         if (EL.events_checked) HideDmailNotice();
