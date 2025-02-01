@@ -1454,7 +1454,7 @@ async function AddPoolPosts(poolverid, rowelement) {
     if (missing_posts.length) {
         let thumbnails = await JSPLib.network.getNotify(`/posts`, {url_addons: {tags: 'id:' + missing_posts.join(',') + ' status:any'}});
         let $thumbnails = $.parseHTML(thumbnails);
-        $('.post-preview', $thumbnails).each((i, thumb) => {InitializeThumb(thumb);});
+        $('.post-preview', $thumbnails).each((_, thumb) => {InitializeThumb(thumb);});
     }
     let $outerblock = $.parseHTML(RenderOpenItemContainer('poolposts', poolverid, 7));
     $('td', $outerblock).append(`<div class="el-add-pool-posts" style="display:none"></div><div class="el-rem-pool-posts" style="display:none"></div>`);
@@ -1475,11 +1475,11 @@ async function AddPoolPosts(poolverid, rowelement) {
 
 function UpdateMultiLink(typelist, subscribed, itemid) {
     let typeset = new Set(typelist);
-    let current_subscribed = new Set($('#el-subscribe-events .el-subscribed').map((i, entry) => entry.dataset.type.split(',')));
+    let current_subscribed = new Set($('#el-subscribe-events .el-subscribed').map((_, entry) => entry.dataset.type.split(',')));
     let new_subscribed = (subscribed ?
         JSPLib.utility.setDifference(current_subscribed, typeset) :
         JSPLib.utility.setUnion(current_subscribed, typeset));
-    $(`#el-subscribe-events[data-id="${itemid}"] .el-multi-link`).each((i, entry) => {
+    $(`#el-subscribe-events[data-id="${itemid}"] .el-multi-link`).each((_, entry) => {
         let entry_typelist = new Set(entry.dataset.type.split(','));
         if (JSPLib.utility.isSuperSet(entry_typelist, new_subscribed)) {
             $(entry).removeClass('el-unsubscribed').addClass('el-subscribed');
@@ -1506,7 +1506,7 @@ function InsertDmails($dmail_page, type) {
     let $dmail_table = $('.striped', $dmail_page);
     $('tr[data-is-read="false"]', $dmail_table).addClass('el-unread');
     $('tr[data-is-delted="true"]', $dmail_table).addClass('el-deleted');
-    $('tbody tr', $dmail_table).each((i, row) => {
+    $('tbody tr', $dmail_table).each((_, row) => {
         let dmailid = $(row).data('id');
         $('a[data-params="dmail[is_read]=true"]', row).replaceWith(`<a class="el-dmail-read" data-id="${dmailid}" href="javascript:void(0)">Read</a>`);
         $('a[data-params="dmail[is_read]=false"]', row).replaceWith(`<a class="el-dmail-unread" data-id="${dmailid}" href="javascript:void(0)">Unread</a>`);
@@ -1544,7 +1544,7 @@ function InsertNotes($note_page) {
 function InsertPosts($post_page) {
     let $post_table = $('.striped', $post_page);
     $('.post-version-select-column', $post_table[0]).remove();
-    $('tbody tr', $post_table[0]).each((i, row) => {
+    $('tbody tr', $post_table[0]).each((_, row) => {
         let post_id = $(row).data('post-id');
         let $preview = $('td.post-column .post-preview', row).detach();
         if ($preview.length) {
@@ -1567,7 +1567,7 @@ function InsertWikis($wiki_page) {
 function InsertPools($pool_page) {
     DecodeProtectedEmail($pool_page);
     let $pool_table = $('.striped', $pool_page);
-    $('.pool-category-collection, .pool-category-series', $pool_table[0]).each((i, entry) => {
+    $('.pool-category-collection, .pool-category-series', $pool_table[0]).each((_, entry) => {
         let short_pool_title = JSPLib.utility.maxLengthString(entry.innerText, 50);
         $(entry).attr('title', entry.innerText);
         entry.innerText = short_pool_title;
@@ -1634,7 +1634,7 @@ function ReadForumTopic(topicid) {
 }
 
 function DecodeProtectedEmail(obj) {
-    $('[data-cfemail]', obj).each((i, entry) => {
+    $('[data-cfemail]', obj).each((_, entry) => {
         let encoded_email = $(entry).data('cfemail');
         let percent_decode = "";
         let xorkey = '0x' + encoded_email.substr(0, 2) | 0;
@@ -1649,7 +1649,7 @@ function AddThumbnailStubs(dompage) {
     $('.striped thead tr', dompage).prepend('<th>Thumb</th>');
     var row_save = {};
     var post_ids = new Set();
-    $('.striped tr[id]', dompage).each((i, row) => {
+    $('.striped tr[id]', dompage).each((_, row) => {
         let $row = $(row);
         let postid = $row.data('post-id');
         post_ids.add(postid);
@@ -1675,14 +1675,14 @@ async function GetThumbnails() {
         let url_addons = {tags: `id:${post_ids} status:any limit:${post_ids.length}`};
         let html = await JSPLib.network.getNotify('/posts', {url_addons});
         let $posts = $.parseHTML(html);
-        $('.post-preview', $posts).each((i, thumb) => {
+        $('.post-preview', $posts).each((_, thumb) => {
             InitializeThumb(thumb);
         });
     }
 }
 
 function InsertThumbnails() {
-    $('#el-event-notice .el-post-thumbnail').each((i, marker) => {
+    $('#el-event-notice .el-post-thumbnail').each((_, marker) => {
         if ($('.post-preview', marker).length) {
             return;
         }
@@ -1694,7 +1694,7 @@ function InsertThumbnails() {
 }
 
 function ProcessThumbnails() {
-    $('#el-event-notice article.post-preview').each((i, thumb) => {
+    $('#el-event-notice article.post-preview').each((_, thumb) => {
         let $thumb = $(thumb);
         $thumb.addClass('blacklisted');
         let post_id = String($thumb.data('id'));
@@ -1775,7 +1775,7 @@ function InitializeNoticeBox(notice_html) {
 }
 
 function InitializeOpenForumLinks(table) {
-    $('.striped tbody tr', table).each((i, row) => {
+    $('.striped tbody tr', table).each((_, row) => {
         let forumid = $(row).data('id');
         let link_html = RenderOpenItemLinks('forum', forumid);
         $('.forum-post-excerpt', row).prepend(link_html + '&nbsp;|&nbsp;');
@@ -1784,7 +1784,7 @@ function InitializeOpenForumLinks(table) {
 }
 
 function InitializeOpenNoteLinks(table) {
-    $('.striped tr[id]', table).each((i, row) => {
+    $('.striped tr[id]', table).each((_, row) => {
         let noteid = $(row).data('id');
         let link_html = RenderOpenItemLinks('note', noteid, "Render note", "Hide note");
         $('.body-column', row).append(`<p style="text-align:center">${link_html}</p>`);
@@ -1793,7 +1793,7 @@ function InitializeOpenNoteLinks(table) {
 }
 
 function InitializeOpenDmailLinks(table) {
-    $('.striped tbody tr', table).each((i, row) => {
+    $('.striped tbody tr', table).each((_, row) => {
         let dmailid = $(row).data('id');
         let link_html = RenderOpenItemLinks('dmail', dmailid);
         $('.subject-column', row).prepend(link_html + '&nbsp;|&nbsp;');
@@ -1803,7 +1803,7 @@ function InitializeOpenDmailLinks(table) {
 
 function InitializeOpenWikiLinks(table) {
     $('.striped thead .diff-column').attr('width', '5%');
-    $('.striped tbody tr', table).each((i, row) => {
+    $('.striped tbody tr', table).each((_, row) => {
         let $column = $('.diff-column', row);
         let $diff_link = $('a', $column[0]);
         if ($diff_link.length) {
@@ -1818,11 +1818,11 @@ function InitializeOpenWikiLinks(table) {
 }
 
 function InitializeOpenPoolLinks(table) {
-    $('.striped tbody tr', table).each((i, row) => {
+    $('.striped tbody tr', table).each((_, row) => {
         let poolverid = $(row).data('id');
         let $post_changes = $('.post-changes-column', row);
-        let add_posts = $('.diff-list ins a[href^="/posts"]', $post_changes[0]).map((i, entry) => entry.innerText).toArray();
-        let rem_posts = $('.diff-list del a[href^="/posts"]', $post_changes[0]).map((i, entry) => entry.innerText).toArray();
+        let add_posts = $('.diff-list ins a[href^="/posts"]', $post_changes[0]).map((_, entry) => entry.innerText).toArray();
+        let rem_posts = $('.diff-list del a[href^="/posts"]', $post_changes[0]).map((_, entry) => entry.innerText).toArray();
         let $post_count = $('.post-count-column', row);
         if (add_posts.length || rem_posts.length) {
             let link_html = RenderOpenItemLinks('poolposts', poolverid, 'Show posts', 'Hide posts');
@@ -1845,12 +1845,12 @@ function InitializeOpenPoolLinks(table) {
 }
 
 function AdjustColumnWidths(table) {
-    let width_dict = Object.assign({}, ...$("thead th", table).map((i, entry) => {
+    let width_dict = Object.assign({}, ...$("thead th", table).map((_, entry) => {
         let classname = JSPLib.utility.findAll(entry.className, /\S+column/g)[0];
         let width = $(entry).attr('width');
         return {[classname]: width};
     }));
-    $('tbody td', table).each((i, entry) => {
+    $('tbody td', table).each((_, entry) => {
         let classname = JSPLib.utility.findAll(entry.className, /\S+column/g)[0];
         if (!classname || !(classname in width_dict)) {
             return;
@@ -2717,7 +2717,7 @@ function Main() {
         $("#el-event-notice").show();
         let any_blacklisted = document.querySelector("#el-event-notice .blacklisted");
         if (any_blacklisted) {
-            new MutationObserver((mutations, observer) => {
+            new MutationObserver((_, observer) => {
                 $('#el-event-notice .blacklisted-active').removeClass('blacklisted-active');
                 observer.disconnect();
             }).observe(any_blacklisted, {
