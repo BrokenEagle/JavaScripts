@@ -115,7 +115,7 @@ const SETTINGS_CONFIG = {
     overflow_only_notice_enabled: {
         reset: true,
         validate: JSPLib.validate.isBoolean,
-        hint: "Will display the event notice even no events are found but more can be queried."
+        hint: "Will display the event notice even when no events are found but more can be queried."
     },
     filter_user_events: {
         reset: true,
@@ -157,7 +157,7 @@ const SETTINGS_CONFIG = {
         reset: "",
         parse: (input) => (JSPLib.utility.arrayUnique(input.split(/\s*,\s*/).map(Number).filter(JSPLib.validate.validateID))),
         validate: (input) => (JSPLib.validate.validateIDList(input)),
-        hint: 'Enter a list of users to filter (comma separated).'
+        hint: 'Enter a list of user IDs to filter (comma separated).'
     },
     recheck_interval: {
         reset: 5,
