@@ -11,7 +11,6 @@
 // @run-at       document-idle
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/EventListener.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/EventListener.user.js
-// @require      https://cdn.jsdelivr.net/npm/xregexp@5.1.0/xregexp-all.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/debug.js
@@ -26,7 +25,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/menu.js
 // ==/UserScript==
 
-/* global JSPLib $ Danbooru XRegExp LZString */
+/* global JSPLib $ Danbooru LZString */
 
 /****Global variables****/
 
@@ -966,41 +965,36 @@ const TYPEDICT = {
 const TYPE_GROUPING = '(?:' + ALL_EVENTS.join('|') + ')';
 const SUBSCRIBE_GROUPING = '(?:' + ALL_SUBSCRIBES.join('|') + ')';
 
-const ALL_VALIDATE_REGEXES = {
-    setting: 'el-user-settings',
-    bool: [
-        `el-${SUBSCRIBE_GROUPING}overflow`,
-        'el-overflow',
-    ],
-    time: [
+const BOOL_SETTING_REGEX = RegExp([
+    `el-${SUBSCRIBE_GROUPING}overflow`,
+    'el-overflow',
+    ].join('|')
+)
+const TIME_SETTING_REGEX = RegExp([
         'el-last-seen',
         'el-process-semaphore',
         'el-event-timeout',
         'el-saved-timeout',
-    ],
-    id: [
+    ].join('|')
+)
+const ID_SETTING_REGEX = RegExp([
         `el-(?:pq-|ot-)?${TYPE_GROUPING}lastid`,
         `el-(?:pq-|ot-)?saved${TYPE_GROUPING}lastid`,
-    ],
-    idlist: [
+    ].join('|')
+)
+const ID_LIST_SETTING_REGEX = RegExp([
         `el-(?:us-)?${SUBSCRIBE_GROUPING}list`,
         `el-(?:pq-|ot-|us-)?saved${TYPE_GROUPING}list`,
-    ],
-};
+    ].join('|')
+)
 
-const VALIDATE_REGEX = XRegExp.build(
-    Object.keys(ALL_VALIDATE_REGEXES).map((type) => ` ({{${type}}}) `).join('|'),
-    Object.assign({}, ...Object.keys(ALL_VALIDATE_REGEXES).map((type) => {
-        let format = "";
-        if (typeof ALL_VALIDATE_REGEXES[type] === "string") {
-            format = ALL_VALIDATE_REGEXES[type];
-        }
-        if (Array.isArray(ALL_VALIDATE_REGEXES[type])) {
-            format = ALL_VALIDATE_REGEXES[type].join('|');
-        }
-        return {[type]: format};
-    })),
-    'x');
+const VALIDATE_REGEXES = {
+    setting: /el-user-settings/,
+    bool: BOOL_SETTING_REGEX,
+    time: TIME_SETTING_REGEX,
+    id: ID_SETTING_REGEX,
+    idlist: ID_LIST_SETTING_REGEX,
+};
 
 /****Functions****/
 
@@ -1008,30 +1002,29 @@ const VALIDATE_REGEX = XRegExp.build(
 
 function ValidateProgramData(key, entry) {
     var checkerror = [];
-    let match = XRegExp.exec(key, VALIDATE_REGEX);
-    let groups = match?.groups || {};
-    switch (key) {
-        case groups.setting:
+    let validate_type = GetValidateType(key);
+    switch (validate_type) {
+        case 'setting':
             checkerror = JSPLib.menu.validateUserSettings(entry);
             break;
-        case groups.bool:
+        case 'bool':
             if (!JSPLib.validate.isBoolean(entry)) {
                 checkerror = ["Value is not a boolean."];
             }
             break;
-        case groups.time:
+        case 'time':
             if (!Number.isInteger(entry)) {
                 checkerror = ["Value is not an integer."];
             } else if (entry < 0) {
                 checkerror = ["Value is not greater than or equal to zero."];
             }
             break;
-        case groups.id:
+        case 'id':
             if (!JSPLib.validate.validateID(entry)) {
                 checkerror = ["Value is not a valid ID."];
             }
             break;
-        case groups.idlist:
+        case 'idlist':
             if (!JSPLib.validate.validateIDList(entry)) {
                 checkerror = ["Value is not a valid ID list."];
             }
@@ -1044,6 +1037,16 @@ function ValidateProgramData(key, entry) {
         return false;
     }
     return true;
+}
+
+function GetValidateType(key) {
+    for (let validate_type in VALIDATE_REGEXES) {
+        let match = VALIDATE_REGEXES[validate_type].exec(key);
+        if (match) {
+            return validate_type;
+        }
+    }
+    return 'other';
 }
 
 function CorrectList(type, typelist) {
