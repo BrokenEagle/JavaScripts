@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.5
+// @version      10.6
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -3328,7 +3328,7 @@ function RenderDatabaseVersion(database_info) {
 }
 
 async function RenderDownloadLinks($tweet, videos, image_links) {
-    let [tweet_id,,,,] = GetTweetInfo($tweet);
+    let [tweet_id,,screen_name,,] = GetTweetInfo($tweet);
     if (!image_links) {
         image_links = await GetImageLinks($tweet[0]);
     }
@@ -3341,6 +3341,7 @@ async function RenderDownloadLinks($tweet, videos, image_links) {
         if (!is_video) {
             let download_filename = JSPLib.utility.regexReplace(NTISAS.user_settings.filename_prefix_format, {
                 TWEETID: tweet_id,
+                USERACCOUNT: screen_name,
                 ORDER: 'img' + String(image_num),
                 IMG: image_name
             }) + '.' + extension;
@@ -5542,7 +5543,7 @@ function DownloadImage(event) {
 
 async function DownloadVideo(event) {
     event.preventDefault();
-    let [$link, $tweet, tweet_id,,,,, ] = GetEventPreload(event, 'ntisas-download-video');
+    let [$link, $tweet, tweet_id,, screen_name,,, ] = GetEventPreload(event, 'ntisas-download-video');
     let data = await GetTweetData(tweet_id);
     if (data.length === 0) {
         JSPLib.notice.error("No tweet data found through API.");
@@ -5557,6 +5558,7 @@ async function DownloadVideo(event) {
         DATE: date_string,
         TIME: time_string,
         TWEETID: tweet_id,
+        USERACCOUNT: screen_name,
         ORDER: 'video' + order,
         IMG: video_name,
     }) + '.' + extension;
