@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.4
+// @version      10.5
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -300,7 +300,7 @@ const SETTINGS_CONFIG = {
         reset: "%TWEETID%--%IMG%",
         parse: String,
         validate: JSPLib.validate.isString,
-        hint: "Prefix to add to original image downloads. Available format keywords include:<br><span class=\"ntisas-code\">%TWEETID%, %USERID%, %USERACCOUNT%, %IMG%, %DATE%, %TIME%, %ORDER%</span>."
+        hint: "Prefix to add to original image downloads. Available format keywords include:<br><span class=\"ntisas-code\">%TWEETID%, %USERACCOUNT%, %IMG%, %DATE%, %TIME%, %ORDER%</span>."
     },
 };
 
@@ -3328,16 +3328,7 @@ function RenderDatabaseVersion(database_info) {
 }
 
 async function RenderDownloadLinks($tweet, videos, image_links) {
-    let [tweet_id, user_id, screen_name,, ] = GetTweetInfo($tweet);
-    let date_string = GetDateString(Date.now());
-    let time_string = GetTimeString(Date.now());
-    NTISAS.filename_prefix = JSPLib.utility.regexReplace(NTISAS.user_settings.filename_prefix_format, {
-        TWEETID: tweet_id,
-        USERID: user_id,
-        USERACCOUNT: screen_name,
-        DATE: date_string,
-        TIME: time_string
-    });
+    let [tweet_id,,,,] = GetTweetInfo($tweet);
     if (!image_links) {
         image_links = await GetImageLinks($tweet[0]);
     }
@@ -3348,7 +3339,8 @@ async function RenderDownloadLinks($tweet, videos, image_links) {
         let image_num = i + 1;
         let [image_name, extension] = GetFileURLNameExt(image_links[i]);
         if (!is_video) {
-            let download_filename = JSPLib.utility.regexReplace(NTISAS.filename_prefix, {
+            let download_filename = JSPLib.utility.regexReplace(NTISAS.user_settings.filename_prefix_format, {
+                TWEETID: tweet_id,
                 ORDER: 'img' + String(image_num),
                 IMG: image_name
             }) + '.' + extension;
@@ -5538,6 +5530,12 @@ function DownloadImage(event) {
     let [$link, $tweet,,,,,, ] = GetEventPreload(event, 'ntisas-download-image');
     let image_url = $link.attr('href');
     let download_name = $link.attr('download');
+    let date_string = GetDateString(Date.now());
+    let time_string = GetTimeString(Date.now());
+    download_name = JSPLib.utility.regexReplace(download_name, {
+        DATE: date_string,
+        TIME: time_string,
+    });
     DownloadURL(image_url, download_name, $tweet);
     event.preventDefault();
 }
@@ -5553,9 +5551,14 @@ async function DownloadVideo(event) {
     let order = $link.data('order');
     let video_url = 'https://video.twimg.com/' + data[order].partial_video;
     let [video_name, extension] = GetFileURLNameExt(video_url);
-    let download_name = JSPLib.utility.regexReplace(NTISAS.filename_prefix, {
-        ORDER: 'video1',
-        IMG: video_name
+    let date_string = GetDateString(Date.now());
+    let time_string = GetTimeString(Date.now());
+    let download_name = JSPLib.utility.regexReplace(NTISAS.user_settings.filename_prefix_format, {
+        DATE: date_string,
+        TIME: time_string,
+        TWEETID: tweet_id,
+        ORDER: 'video' + order,
+        IMG: video_name,
     }) + '.' + extension;
     DownloadURL(video_url, download_name, $tweet);
 }
