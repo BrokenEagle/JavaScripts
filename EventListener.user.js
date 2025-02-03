@@ -423,7 +423,7 @@ const COMMENT_CSS = `
     display: flex !important;
     flex-direction: row;
     margin-bottom: 1em;
-    border-bottom: var(--dtext-blockquote-border);
+    border-bottom: 1px solid var(--dtext-blockquote-border-color);
     min-height: 14em;
 }
 #el-event-notice #el-comment-section #el-comment-table .preview {
@@ -492,7 +492,7 @@ const POOL_CSS = `
 #el-event-notice #el-pool-section .el-full-item[data-type="poolposts"] .post-preview {
     margin: 5px;
     padding: 5px;
-    border: var(--dtext-blockquote-border);
+    border: 1px solid var(--dtext-blockquote-border-color);
 }
 #el-event-notice #el-pool-section .el-full-item[data-type="poolposts"] .post-preview-150 {
     width: 155px;
@@ -550,9 +550,9 @@ const MENU_CSS = `
 #el-search-query-display {
     margin: 0.5em;
     font-size: 150%;
-    border: var(--dtext-blockquote-border);
+    border: 1px solid var(--dtext-blockquote-border-color);
     padding: 0.5em;
-    width: 7.5em;
+    width: 8.5em;
 }
 #event-listener .jsplib-settings-grouping:not(#el-general-settings) .jsplib-selectors label,
 #event-listener #el-subscribe-controls .jsplib-selectors label {
