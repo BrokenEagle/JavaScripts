@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      24.0
+// @version      24.1
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2190,7 +2190,7 @@ async function PostEventPopulateControl() {
             }
             EL.subscribeset[eventtype] = typeset;
             setTimeout(() => {
-                JSPLib.storage.LocalData(`el-${eventtype}list`, [...EL.subscribeset[eventtype]]);
+                JSPLib.storage.setLocalData(`el-${eventtype}list`, [...EL.subscribeset[eventtype]]);
             }, NONSYNCHRONOUS_DELAY);
             EL.channel.postMessage({type: 'reload', eventtype, was_subscribed, new_subscribed, eventset: EL.subscribeset[eventtype]});
         });
