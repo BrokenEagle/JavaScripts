@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      24.1
+// @version      24.2
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -641,16 +641,6 @@ const EXCESSIVE_NOTICE = `
 
 const DISMISS_NOTICE = `
 <div id="el-dismiss-notice"><button type="button" class="ui-button ui-corner-all ui-widget">Dismiss</button></div>`;
-
-const SUBSCRIBE_EVENT_SETTINGS_DETAILS = `
-<ul>
-    <li><b>Autosubscribe enabled:</b>
-        <ul>
-            <li>Which events on a user's own uploads will be automatically subscribed.</li>
-            <li>Events will only be subscribed on the post page for that upload.</li>
-        </ul>
-    </li>
-</ul>`;
 
 const POST_QUERY_EVENT_SETTINGS_DETAILS = `
 <ul>
@@ -2655,7 +2645,6 @@ function RenderSettingsMenu() {
     $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput('approval_query', 80));
     $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput('flag_query', 80));
     $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput('appeal_query', 80));
-    $('#el-subscribe-event-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", SUBSCRIBE_EVENT_SETTINGS_DETAILS));
     $('#el-subscribe-event-settings').append(JSPLib.menu.renderInputSelectors('subscribe_events_enabled', 'checkbox'));
     $('#el-subscribe-event-settings').append(JSPLib.menu.renderCheckbox('show_creator_events'));
     $('#el-user-event-settings').append(JSPLib.menu.renderInputSelectors('user_events_enabled', 'checkbox'));
