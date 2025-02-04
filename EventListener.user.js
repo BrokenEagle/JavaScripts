@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      24.2
+// @version      24.3
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2759,11 +2759,11 @@ function Main() {
         InitializePostShowMenu();
     } else if (EL.controller === 'forum-topics' && EL.action === 'show') {
         InitializeTopicShowMenu();
-    } else if (['wiki-pages', 'wiki-page-versions'].includes(EL.controller)) {
+    } else if (['wiki-pages', 'wiki-page-versions'].includes(EL.controller) && EL.action === 'show') {
         InitializeWikiShowMenu();
     } else if (EL.controller === 'artists' && EL.action === 'show') {
         InitializeArtistShowMenu();
-    } else if (EL.controller === 'pool' && EL.action === 'show') {
+    } else if (EL.controller === 'pools' && EL.action === 'show') {
         InitializePoolShowMenu();
     } else if (EL.controller === 'users' && EL.action === 'show') {
         InitializeUserShowMenu();
