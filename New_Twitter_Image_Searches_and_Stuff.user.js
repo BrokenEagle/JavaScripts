@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.6
+// @version      10.7
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -5899,9 +5899,10 @@ function MarkupMainTweet(tweet) {
         let sub_body = main_body.children[2];
         $(sub_body).addClass('ntisas-sub-body');
         $(sub_body.children[0]).addClass('ntisas-tweet-text');
+        let mediachild = sub_body.children[1];
+        $(mediachild).addClass('ntisas-tweet-media');
         $(sub_body.children[1]).addClass('ntisas-stub');
-        $(sub_body.children[2]).addClass('ntisas-tweet-media');
-        let has_media = Boolean($(sub_body.children[2]).children().length);
+        let has_media = Boolean($(mediachild).children().length);
         var timechild, retweetchild, actionchild;
         var index = 3;
         var has_indicator;
