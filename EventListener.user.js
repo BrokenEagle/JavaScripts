@@ -31,7 +31,14 @@
 
 //Library constants
 
-////NONE
+const JSPLIB_MENU_CSS = `
+/*Temporary fix until the menu module can be updated.*/
+#userscript-settings-menu #event-listener .jsplib-expandable-content {
+    border-top: 1px solid var(--default-border-color);
+}
+#userscript-settings-menu .jsplib-expandable-content {
+    border: 1px solid var(--default-border-color);
+}`;
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '14747';
@@ -421,27 +428,9 @@ const POST_CSS = `
 }`;
 
 const COMMENT_CSS = `
-#el-event-notice #el-comment-section #el-comment-table article.post-preview,
-#el-event-notice #el-commentary-section #el-commentary-table article.post-preview {
-    display: flex !important;
-    flex-direction: row;
-    margin-bottom: 1em;
-    border-bottom: 1px solid var(--dtext-blockquote-border-color);
-    min-height: 14em;
-}
-#el-event-notice #el-comment-section #el-comment-table .preview {
-    flex-direction: column;
-    display: flex;
-    width: 154px;
-    height: 170px;
-    text-align: center;
-    margin-right: 0;
-}
-#el-event-notice #el-comment-section #el-comment-table .comment {
-    padding: 1em;
-    margin-top: 0;
-    word-wrap: break-word;
-    display: flex;
+#el-event-notice #el-comment-section #el-comment-table .list-of-comments > .post {
+    border-top: 1px solid var(--dtext-blockquote-border-color);
+    padding-top: 1em;
 }`;
 
 const FORUM_CSS = `
@@ -2756,7 +2745,7 @@ function Main() {
         default_data: DEFAULT_VALUES,
         initialize_func: InitializeProgramValues,
         broadcast_func: BroadcastEL,
-        menu_css: MENU_CSS,
+        menu_css: MENU_CSS + JSPLIB_MENU_CSS,
     };
     if (!JSPLib.menu.preloadScript(EL, RenderSettingsMenu, preload)) return;
     JSPLib.notice.installBanner(PROGRAM_SHORTCUT);
