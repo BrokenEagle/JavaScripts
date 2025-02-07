@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      24.3
+// @version      24.4
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -124,7 +124,7 @@ const SETTINGS_CONFIG = {
     show_creator_events: {
         reset: false,
         validate: JSPLib.validate.isBoolean,
-        hint: "Show subscribe events regardless of subscribe status when creator is the user."
+        hint: "Show subscribe events regardless of subscribe status on the item's page when the creator is the user.<br>&emsp;<i>(See <b>Additional setting details</b> for more clarifying info)</i>."
     },
     filter_untranslated_commentary: {
         reset: true,
@@ -314,6 +314,9 @@ const DEFAULT_VALUES = {
 
 //CSS Constants
 
+const SUBSCRIBED_COLOR = 'mediumseagreen';
+const UNSUBSCRIBED_COLOR = 'darkorange';
+
 const PROGRAM_CSS = `
 #dmail-notice {
     display: none;
@@ -344,7 +347,7 @@ const PROGRAM_CSS = `
 }
 #el-subscribe-events .el-subscribed a,
 #subnav-unsubscribe-link {
-    color: mediumseagreen;
+    color: ${SUBSCRIBED_COLOR};
 }
 #el-subscribe-events .el-subscribed a:hover,
 #subnav-unsubscribe-link:hover {
@@ -352,7 +355,7 @@ const PROGRAM_CSS = `
 }
 #el-subscribe-events .el-unsubscribed a,
 #subnav-subscribe-link {
-    color: darkorange;
+    color: ${UNSUBSCRIBED_COLOR};
 }
 #el-subscribe-events .el-unsubscribed a:hover,
 #subnav-subscribe-link:hover {
@@ -641,6 +644,68 @@ const EXCESSIVE_NOTICE = `
 
 const DISMISS_NOTICE = `
 <div id="el-dismiss-notice"><button type="button" class="ui-button ui-corner-all ui-widget">Dismiss</button></div>`;
+
+const SUBSCRIBE_EVENT_SETTINGS_DETAILS = `
+<p>
+When the <code>show_creator_events</code> setting is enabled, it will automatically show events for items (post, forum_topic) where the user is the creator, but only if
+those events are also enabled under the <code>subscribe_events_enabled</code> setting. Meaning, events for that event type will be shown to the user whether they are
+<span style="color: ${SUBSCRIBED_COLOR}; font-weight: bold;">SUBSCRIBED</span> or <span style="color: ${UNSUBSCRIBED_COLOR}; font-weight: bold;">UNSUBSCRIBED</span>
+to an individual item (post, forum_topic) on the item's page.
+</p>
+<p>
+The following is the list of event types and the relation the user needs to have to an item to be automatically subscribed to that item when that event type is enabled.
+</p>
+<table class="striped">
+	<thead>
+		<tr>
+			<th>Event type</th>
+            <th>Item type</th>
+			<th>User relation</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td>note</td>
+            <td>post</td>
+			<td>uploader</td>
+		</tr>
+		<tr>
+			<td>commentary</td>
+            <td>post</td>
+			<td>uploader</td>
+		</tr>
+		<tr>
+			<td>comment</td>
+            <td>post</td>
+			<td>uploader</td>
+		</tr>
+		<tr>
+			<td>post (edit)</td>
+            <td>post</td>
+			<td>uploader</td>
+		</tr>
+		<tr>
+			<td>flag</td>
+            <td>post</td>
+			<td>uploader</td>
+		</tr>
+		<tr>
+			<td>appeal</td>
+            <td>post</td>
+			<td>uploader</td>
+		</tr>
+		<tr>
+			<td>approval</td>
+            <td>post</td>
+			<td>uploader</td>
+		</tr>
+		<tr>
+			<td>forum topic</td>
+            <td>forum_topic</td>
+			<td>forum topic OP</td>
+		</tr>
+	</tbody>
+</table>`;
 
 const POST_QUERY_EVENT_SETTINGS_DETAILS = `
 <ul>
@@ -2645,6 +2710,7 @@ function RenderSettingsMenu() {
     $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput('approval_query', 80));
     $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput('flag_query', 80));
     $('#el-post-query-event-settings').append(JSPLib.menu.renderTextinput('appeal_query', 80));
+    $('#el-subscribe-event-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", SUBSCRIBE_EVENT_SETTINGS_DETAILS));
     $('#el-subscribe-event-settings').append(JSPLib.menu.renderInputSelectors('subscribe_events_enabled', 'checkbox'));
     $('#el-subscribe-event-settings').append(JSPLib.menu.renderCheckbox('show_creator_events'));
     $('#el-user-event-settings').append(JSPLib.menu.renderInputSelectors('user_events_enabled', 'checkbox'));
