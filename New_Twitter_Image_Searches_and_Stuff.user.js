@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.8
+// @version      10.9
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -3357,18 +3357,17 @@ async function RenderDownloadLinks($tweet, image_links) {
     return html;
 }
 
-function RenderPostIDsLink(posts, classname) {
+function RenderPostIDsLink(post_ids, posts, classname) {
     let mergelink = '<a class="ntisas-merge-results ntisas-expanded-link" data-replace="2">Merge</a>';
     let helpinfo = CONFIRM_DELETE_HELP + '\n' + MERGE_RESULTS_HELP;
     let helplink = RenderHelp(helpinfo);
-    let post_ids = JSPLib.utility.getObjectAttributes(posts, 'id');
     var title, href, text;
     if (posts.length === 1) {
-        title = GetLinkTitle(posts[0]);
+        title = (posts.length > 0 ? GetLinkTitle(posts[0]) : "");
         href = `${NTISAS.domain}/posts/${post_ids[0]}`;
         text = 'post #' + post_ids[0];
     } else {
-        title = GetMultiLinkTitle(posts);
+        title = (posts.length > 0 ? GetMultiLinkTitle(posts) : "");
         href = `${NTISAS.domain}/posts?tags=status%3Aany+id%3A${post_ids.join(',')}${GetCustomQuery()}`;
         text = post_ids.length + ' sources';
     }
@@ -3876,7 +3875,7 @@ function InitializePostsContainer(all_posts, image_urls) {
 
 async function InitializePostIDsLink(tweet_id, $link_container, tweet, post_ids) {
     let posts_data = await GetPosts(post_ids);
-    $link_container.html(RenderPostIDsLink(posts_data, 'ntisas-database-match'));
+    $link_container.html(RenderPostIDsLink(post_ids, posts_data, 'ntisas-database-match'));
     if (NTISAS.user_settings.advanced_tooltips_enabled) {
         let $link = $('.ntisas-database-match, .ntisas-confirm-save', tweet);
         InitializeQtip($link, tweet_id, () => {
