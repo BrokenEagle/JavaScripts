@@ -6736,6 +6736,7 @@ function RenderSettingsMenu() {
 
 async function Main() {
     JSPLib.network.jQuerySetup();
+    jQuery.ajaxSetup({timeout: JSPLib.utility.one_second * 10});
     JSPLib.notice.installBanner(PROGRAM_SHORTCUT);
     Object.assign(NTISAS, {
         intersection_observer: new IntersectionObserver(CheckViews, {threshold: 0.75}),
