@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.9
+// @version      10.10
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -3332,7 +3332,7 @@ async function RenderDownloadLinks($tweet, image_links) {
     if (!image_links) {
         image_links = await GetImageLinks($tweet[0]);
     }
-    let videos = $tweet.find('[ntisas-image]').map((i, entry) => ['tweet_video_thumb', 'ext_tw_video_thumb', 'amplify_video_thumb'].includes($(entry).data('path'))).toArray();
+    let videos = $tweet.find('[ntisas-image]').map((i, entry) => Boolean(/^tweet_video_thumb|^ext_tw_video_thumb|^amplify_video_thumb/.exec($(entry).data('path')))).toArray();
     var hrefs = image_links.map((image) => (image + ':orig'));
     var html = "";
     for (let i = 0; i < image_links.length; i++) {
