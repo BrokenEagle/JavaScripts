@@ -3327,18 +3327,20 @@ function RenderDatabaseVersion(database_info) {
     return `<a id="ntisas-database-version" title="${title}" href="${url}" target="_blank">${datestring}</a>`;
 }
 
-async function RenderDownloadLinks($tweet, image_links) {
+async function RenderDownloadLinks($tweet, {image_urls = null, videos = null} = {}) {
     let [tweet_id,,screen_name,,] = GetTweetInfo($tweet);
-    if (!image_links) {
-        image_links = await GetImageLinks($tweet[0]);
+    if (!image_urls) {
+        image_urls = await GetImageLinks($tweet[0]);
     }
-    let videos = $tweet.find('[ntisas-image]').map((i, entry) => Boolean(/^tweet_video_thumb|^ext_tw_video_thumb|^amplify_video_thumb/.exec($(entry).data('path')))).toArray();
-    var hrefs = image_links.map((image) => (image + ':orig'));
+    if (!videos) {
+        videos = $tweet.find('[ntisas-image]').map((i, entry) => Boolean(/^tweet_video_thumb|^ext_tw_video_thumb|^amplify_video_thumb/.exec($(entry).data('path')))).toArray();
+    }
+    var hrefs = image_urls.map((image) => (image + ':orig'));
     var html = "";
-    for (let i = 0; i < image_links.length; i++) {
+    for (let i = 0; i < image_urls.length; i++) {
         let is_video = videos[i];
         let image_num = i + 1;
-        let [image_name, extension] = GetFileURLNameExt(image_links[i]);
+        let [image_name, extension] = GetFileURLNameExt(image_urls[i]);
         if (!is_video) {
             let download_filename = JSPLib.utility.regexReplace(NTISAS.user_settings.filename_prefix_format, {
                 TWEETID: tweet_id,
@@ -3351,7 +3353,7 @@ async function RenderDownloadLinks($tweet, image_links) {
             html += `<span class="ntisas-download-button"><a class="ntisas-download-video ntisas-expanded-link" data-order="${i}" href="${hrefs[i]}">Video #${image_num}</a></span>`;
         }
     }
-    if (image_links.length > 1) {
+    if (image_urls.length > 1) {
         html += '<span class="ntisas-download-button"><a class="ntisas-download-all ntisas-expanded-link" href="javascript:void(0)">All media</a></span>';
     }
     return html;
@@ -5212,7 +5214,7 @@ function OpenMediaTweetMenu(event) {
                 }
             });
             if (NTISAS.user_settings.original_download_enabled) {
-                RenderDownloadLinks($tweet, image_urls).then((download_html) => {
+                RenderDownloadLinks($tweet, {image_urls, videos}).then((download_html) => {
                     let $download_section = $(download_html);
                     $('.ntisas-download-section', $dialog[0]).append($download_section);
                     UpdateDownloadSection();
