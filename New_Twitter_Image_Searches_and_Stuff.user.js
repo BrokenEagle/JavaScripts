@@ -3410,7 +3410,7 @@ function RenderPostIDsLink(post_ids, posts, classname) {
     let helpinfo = CONFIRM_DELETE_HELP + '\n' + MERGE_RESULTS_HELP;
     let helplink = RenderHelp(helpinfo);
     var title, href, text;
-    if (posts.length === 1) {
+    if (post_ids.length === 1) {
         title = (posts.length > 0 ? GetLinkTitle(posts[0]) : "");
         href = `${NTISAS.domain}/posts/${post_ids[0]}`;
         text = 'post #' + post_ids[0];
