@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.10
+// @version      10.11
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2488,7 +2488,53 @@ function VaildateColorArray(array) {
 
 //Library functions
 
-////NONE
+JSPLib.network.processError = function (self, error, funcname) {
+    var ret = null;
+    if (typeof error === "object") {
+        if ('status' in error && 'responseText' in error) {
+            ret = error
+        } else if ('statusText' in error) {
+            ret = {status: -1, responseText: error.statusText};
+        }
+    }
+    ret ??= {status: -999, responseText: "Bad error!"};
+    self.debug('errorLevel', funcname, "error:", ret.status, '\r\n', ret.responseText, JSPLib.debug.ERROR);
+    return ret;
+};
+
+JSPLib.network.notifyError = function (error, custom_error = "") {
+    const HEADER = '<span style="font-size:16px;line-height:24px;font-weight:bold;font-family:sans-serif">%s</span>';
+    let message = error.responseText;
+    var notice_html;
+    if (error.status > 0) {
+        if (message.match(/<\/html>/i)) {
+            message = (this._http_error_messages[error.status] ? this._http_error_messages[error.status] + "&nbsp;-&nbsp;" : "") + "&lt;HTML response&gt;";
+        } else {
+            try {
+                let parse_message = JSON.parse(message);
+                if (JSPLib.validate.isHash(parse_message)) {
+                    if ('reason' in parse_message) {
+                        message = parse_message.reason;
+                    } else if ('message' in parse_message) {
+                        message = parse_message.message;
+                    }
+                }
+            } catch (exception) {
+                //Swallow
+            }
+        }
+        notice_html = JSPLib.utility.sprintf(HEADER, `HTTP ${error.status}:`);
+    } else {
+        notice_html = JSPLib.utility.sprintf(HEADER, "Network error:");
+    }
+    notice_html += ' ' + message
+    if (custom_error.length) {
+        notice_html += '<br>' + custom_error;
+    }
+    JSPLib.notice.error(notice_html);
+};
+
+JSPLib.debug.addModuleLogs('network', ['processError']);
 
 //Helper functions
 
