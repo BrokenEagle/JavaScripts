@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DisplayPostInfo
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      12.11
+// @version      12.12
 // @description  Display views, uploader, and other info to the user.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -869,7 +869,7 @@ function Main() {
         Danbooru.PostTooltip.HIDE_DELAY = DPI.post_hide_delay;
         if (document.body._tippy) {
             $(document).off("click.danbooru.postTooltip");
-            document.body._tippy.destroy();
+            Danbooru.PostTooltip.instance[0].destroy();
             Danbooru.PostTooltip.initialize();
         }
     } else if (DPI.basic_tooltips && DPI.basic_post_tooltip) {
