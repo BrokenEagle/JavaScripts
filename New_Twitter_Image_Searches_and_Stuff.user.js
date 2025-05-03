@@ -4461,7 +4461,7 @@ function DownloadURL(file_url, download_name, $tweet) {
         let $counter = $tweet.find('.ntisas-download-counter');
         let counter = parseInt($counter.text());
         $counter.text(counter + 1);
-        JSPLib.network.getData(file_url).then(
+        JSPLib.network.getData(file_url, {ajax_options: {timeout: 0}}).then(
             //Success
             (blob) => {
                 let image_blob = blob.slice(0, blob.size, mime_type);
