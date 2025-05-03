@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.11
+// @version      10.12
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1978,6 +1978,36 @@ const TWEET_GRAPHQL_PARAMS = {
     __fs_interactive_text_enabled: true,
     __fs_responsive_web_uc_gql_enabled: false,
     __fs_responsive_web_edit_tweet_api_enabled: false
+};
+
+const TWEET_RESTID_GQL_PARAMS = {
+    withCommunity: false,
+    includePromotedContent: false,
+    withVoice: false,
+};
+
+const TWEET_RESTID_GQL_FEATURES = {
+    responsive_web_graphql_exclude_directive_enabled: true,
+    verified_phone_label_enabled: false,
+    creator_subscriptions_tweet_preview_api_enabled: true,
+    responsive_web_graphql_timeline_navigation_enabled: true,
+    responsive_web_graphql_skip_user_profile_image_extensions_enabled: false,
+    c9s_tweet_anatomy_moderator_badge_enabled: true,
+    tweetypie_unmention_optimization_enabled: true,
+    responsive_web_edit_tweet_api_enabled: true,
+    graphql_is_translatable_rweb_tweet_is_translatable_enabled: true,
+    view_counts_everywhere_api_enabled: true,
+    longform_notetweets_consumption_enabled: true,
+    responsive_web_twitter_article_tweet_consumption_enabled: true,
+    tweet_awards_web_tipping_enabled: false,
+    freedom_of_speech_not_reach_fetch_enabled: true,
+    standardized_nudges_misinfo: true,
+    tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled: true,
+    rweb_video_timestamps_enabled: true,
+    longform_notetweets_rich_text_read_enabled: true,
+    longform_notetweets_inline_media_enabled: true,
+    responsive_web_media_download_video_enabled: true,
+    responsive_web_enhance_cards_enabled: false,
 };
 
 const QUERY_LIMIT = 100;
@@ -4508,6 +4538,16 @@ function GetTweetGQL(tweet_id) {
     });
 }
 
+function GetTweetGQL_alt(tweet_id) {
+    let data = Object.assign({
+        tweetId: tweet_id,
+    }, TWEET_RESTID_GQL_PARAMS);
+    return TwitterGraphQLRequest('MWY3AO9_I3rcP_L2A4FR4A/TweetResultByRestId', data, TWEET_RESTID_GQL_FEATURES, null).then((data) => {
+        let api_data = CheckGraphqlData(data);
+        return api_data.tweets[tweet_id] ?? null;
+    });
+}
+
 function GetUserIDGQL(screen_name) {
     let data = {
         screen_name,
@@ -4593,7 +4633,7 @@ function GetTweetData(tweet_id) {
         let data_key = 'tweet-' + tweet_id;
         GetData(data_key, 'danbooru').then((storage_data) => {
             if (!storage_data) {
-                let tweet_func = (NTISAS.user_settings.use_graphql ? GetTweetGQL : GetTweetAPI1_1);
+                let tweet_func = (NTISAS.user_settings.use_graphql ? GetTweetGQL_alt : GetTweetAPI1_1);
                 tweet_func(tweet_id).then((network_data) => {
                     let value = network_data.extended_entities.media.map((media) => {
                         let image_info = GetImageURLInfo(media.media_url_https);
