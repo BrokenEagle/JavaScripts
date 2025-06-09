@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.4
+// @version      6.6
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -3139,7 +3139,7 @@ function CheckEmbeddedFontSize() {
     JSPLib.utility.recheckTimer({
         check: () => JSPLib.utility.isNamespaceBound('#image', 'click', 'danbooru') && $('.image-container').is(':visible'),
         exec: () => {
-            let font_size = Number(($('.image-container').get(0)?.style?.fontSize || '').match(/\d+/)[0]);
+            let font_size = Number(($('.image-container').get(0)?.style.getPropertyValue('--note-font-size') || '').match(/\d+/)[0]);
             if (font_size === 0) {
                 Danbooru.Note.Box.scale_all();
             }
@@ -3243,7 +3243,6 @@ function InitializeSideMenu() {
     TA.starting_notes = JSPLib.utility.getObjectAttributes(Danbooru.Note.notes, 'id');
     TA.initialized = true;
     JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
-    Danbooru.Note.Edit.save = JSPLib.utility.hijackFunction(Danbooru.Note.Edit.save, SetLastNoted);
 }
 
 // Settings functions
@@ -3302,6 +3301,7 @@ function Main() {
     $('#translate').on(PROGRAM_CLICK, ToggleSideNotice);
     if (TA.check_last_noted_enabled) {
         CheckLastNoted();
+        Danbooru.Note.Edit.save = JSPLib.utility.hijackFunction(Danbooru.Note.Edit.save, SetLastNoted);
     }
     if (TA.has_embedded) {
         CheckEmbeddedFontSize();
