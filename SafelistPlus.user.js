@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SafelistPlus
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.21
+// @version      4.22
 // @description  Alternate Danbooru blacklist handler.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -33,7 +33,7 @@
 const DANBOORU_TOPIC_ID = '14221';
 
 //Variables for load.js
-const program_load_required_variables = ['window.jQuery', 'window.Danbooru', 'Danbooru.Blacklist', 'Danbooru.CurrentUser'];
+const program_load_required_variables = ['window.jQuery', 'window.Danbooru', 'Danbooru.CurrentUser'];
 const program_load_required_selectors = ["#page"];
 
 //Program name constants
@@ -801,7 +801,53 @@ function GetNextLevel() {
     return ++GetNextLevel.level;
 }
 
+function SplitWords(string) {
+    return string?.match(/\S+/g) || [];
+}
+
 //Auxiliary functions
+
+function PostMatch(post, entry) {
+    if (entry.disabled) return false;
+    var $post = $(post);
+    var score = parseInt($post.attr("data-score"));
+    var score_test = entry.min_score === null || score < entry.min_score;
+    var tags = new Set([
+        ...SplitWords($post.attr("data-tags")),
+        ...SplitWords($post.attr("data-flags")).map(s => `status:${s}`),
+        `rating:${$post.attr("data-rating")}`,
+        `uploaderid:${$post.attr("data-uploader-id")}`,
+    ]);
+    return (entry.require.isSubsetOf(tags) && score_test)
+    && (entry.optional.size === 0 || !entry.optional.isDisjointFrom(tags))
+    && entry.exclude.isDisjointFrom(tags);
+}
+
+function ParseEntry(string) {
+    var entry = {
+        tags: string,
+        require: new Set(),
+        exclude: new Set(),
+        optional: new Set(),
+        disabled: false,
+        hits: 0,
+        min_score: null,
+    };
+    let tags = SplitWords(string);
+    tags.forEach(function(tag) {
+        if (tag.charAt(0) === '-') {
+            entry.exclude.add(tag.slice(1));
+        } else if (tag.charAt(0) === '~') {
+            entry.optional.add(tag.slice(1));
+        } else if (tag.match(/^score:<.+/)) {
+            var score = tag.match(/^score:<(.+)/)[1];
+            entry.min_score = parseInt(score);
+        } else {
+            entry.require.add(tag);
+        }
+    });
+    return entry;
+}
 
 //Create the same structure that Danbooru uses for each custom list
 function CreateEntryArray(){
@@ -814,7 +860,7 @@ function CreateEntryArray(){
                 if (val.list[i] === "") {
                     continue;
                 }
-                var entry = Danbooru.Blacklist.parse_entry(val.list[i]);
+                var entry = ParseEntry(val.list[i]);
                 array.push(entry);
             }
             custom_entries[level] = array;
@@ -1159,7 +1205,7 @@ function CalculatePassiveLists(deadline) {
         //Restart the FOR loop where we left off
         for (let i=SL.passive_background_work.start_id;i < SL.$safelist_posts.length;i++) {
             for (let j=0;j<SL.custom_entries[index].length;j++){
-                if (Danbooru.Blacklist.post_match(SL.$safelist_posts[i], SL.custom_entries[index][j])) {
+                if (PostMatch(SL.$safelist_posts[i], SL.custom_entries[index][j])) {
                     SL.passive_background_work.update_array.push(SL.$safelist_posts[i]);
                     //Bail early on any entry match
                     break;
@@ -1204,7 +1250,7 @@ function CalculateActiveList() {
     let iteration_time = performance.now();
     for (let i = SL.active_background_work.start_id; i < SL.$safelist_posts.length; i++) {
         for (let j = 0; j < SL.custom_entries[level].length; j++){
-            if (Danbooru.Blacklist.post_match(SL.$safelist_posts[i], SL.custom_entries[level][j])) {
+            if (PostMatch(SL.$safelist_posts[i], SL.custom_entries[level][j])) {
                 SL.active_background_work.update_array.push(SL.$safelist_posts[i]);
                 //Bail early on any entry match
                 break;
@@ -1370,7 +1416,7 @@ function PostPreviewUpdated(event,post) {
         }
         SL.post_lists[level] = SL.post_lists[level].filter((entry) => ($(entry).data('id') !== post.id));
         for (let j = 0; j < SL.custom_entries[level].length; j++){
-            if (Danbooru.Blacklist.post_match($post, SL.custom_entries[level][j])) {
+            if (PostMatch($post, SL.custom_entries[level][j])) {
                 SL.post_lists[level].push($post);
                 //Bail early on any entry match
                 break;
