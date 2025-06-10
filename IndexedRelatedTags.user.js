@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedRelatedTags
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.5
+// @version      3.6
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1304,7 +1304,7 @@ FUNC.ToggleTag = function (event) {
     const $field = $('#post_tag_string');
     const tag = $(event.target).closest('li').find('a').attr('data-tag-name');
     if (Danbooru.RelatedTag.current_tags().includes(tag)) {
-        const escaped_tag = Danbooru.Utility.regexp_escape(tag);
+        const escaped_tag = RegExp.escape(tag);
         $field.val($field.val().replace(new RegExp('(^|\\s)' + escaped_tag + '($|\\s)', 'gi'), '$1$2'));
     } else {
         $field.val($field.val() + ' ' + tag);
