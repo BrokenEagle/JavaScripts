@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.6
+// @version      6.7
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -3137,11 +3137,12 @@ function PollForNewNotations() {
 
 function CheckEmbeddedFontSize() {
     JSPLib.utility.recheckTimer({
-        check: () => JSPLib.utility.isNamespaceBound('#image', 'click', 'danbooru') && $('.image-container').is(':visible'),
+        check: () => JSPLib.utility.isNamespaceBound('#image', 'click', 'danbooru') && $('.note-container').is(':visible'),
         exec: () => {
             let font_size = Number(($('.image-container').get(0)?.style.getPropertyValue('--note-font-size') || '').match(/\d+/)[0]);
             if (font_size === 0) {
                 Danbooru.Note.Box.scale_all();
+                [...Danbooru.Note.notes].forEach(note => note.box.copy_style_attributes());
             }
         }
     }, 500);
