@@ -71,6 +71,10 @@ JSPLib.storage.twitterstorage = localforage.createInstance({
     name: 'Twitter storage',
     driver: [localforage.INDEXEDDB]
 });
+JSPLib.storage.batchstorage = localforage.createInstance({
+    name: 'Batch storage',
+    driver: [localforage.INDEXEDDB]
+});
 JSPLib.storage.localforage = localforage.createInstance({
     name: 'localforage',
     driver: [localforage.INDEXEDDB]
@@ -2634,10 +2638,11 @@ function MapPost(post) {
     };
 }
 
-function MapSimilar(post, score) {
+function MapSimilar(post_id, post, score) {
     return {
         score,
-        post
+        post,
+        post_id,
     };
 }
 
@@ -3227,7 +3232,7 @@ function ProcessSimilarData(type, tweet_id, $tweet, $replace, selected_image_url
         } else if (max_score > 85.0) {
             level = 'fair';
         }
-        let similar_post_ids = JSPLib.utility.arrayUnique(JSPLib.utility.getNestedObjectAttributes(flat_data, ['post', 'id']));
+        let similar_post_ids = JSPLib.utility.arrayUnique(JSPLib.utility.getObjectAttributes(flat_data, 'post_id'));
         if (IsQuerySettingEnabled('auto_save', type) || ((typeof autosave_func === 'function') && autosave_func())) {
             if (NTISAS.merge_results.includes(tweet_id)) {
                 let merge_ids = GetSessionTwitterData(tweet_id);
@@ -3239,7 +3244,8 @@ function ProcessSimilarData(type, tweet_id, $tweet, $replace, selected_image_url
         } else {
             $replace.html(RenderSimilarIDsLink(similar_post_ids, flat_data, level, type));
             NTISAS.similar_results[tweet_id] = similar_post_ids;
-            if (NTISAS.user_settings.advanced_tooltips_enabled) {
+            let valid_posts = JSPLib.utility.getObjectAttributes(flat_data, 'post').filter((post) => JSPLib.validate.isHash(post));
+            if (NTISAS.user_settings.advanced_tooltips_enabled && valid_posts.length) {
                 let $postlink = $('.ntisas-confirm-save', $tweet[0]);
                 InitializeQtip($postlink, tweet_id);
                 //Some elements are delayed in rendering, so render ahead of time
@@ -3472,13 +3478,17 @@ function RenderSimilarIDsLink(post_ids, similar_data, level, type) {
     let helplink = RenderHelp(CONFIRM_IQDB_HELP);
     var title, href, text;
     if (similar_data.length === 1) {
-        title = GetLinkTitle(similar_data[0].post);
+        title = (JSPLib.validate.isHash(similar_data[0].post) ? GetLinkTitle(similar_data[0].post) : "");
         href = `${NTISAS.domain}/posts/${post_ids[0]}`;
         text = 'post #' + post_ids[0];
     } else {
-        let all_posts = JSPLib.utility.getObjectAttributes(similar_data, 'post');
-        let unique_posts = RemoveDuplicates(all_posts, 'id');
-        title = GetMultiLinkTitle(unique_posts);
+        let all_posts = JSPLib.utility.getObjectAttributes(similar_data, 'post').filter((post) => JSPLib.validate.isHash(post));
+        if (all_posts.length) {
+            let unique_posts = RemoveDuplicates(all_posts, 'id');
+            title = GetMultiLinkTitle(unique_posts);
+        } else {
+            title = "";
+        }
         href = `${NTISAS.domain}/posts?tags=status%3Aany+id%3A${post_ids.join(',')}${GetCustomQuery()}`;
         text = post_ids.length + ' sources';
     }
@@ -4975,6 +4985,17 @@ async function SaveDatabase(database, counter_selector) {
     }
 }
 
+async function InitializeSaveDatabaseBatches() {
+    let keylist = await JSPLib.storage.batchstorage.keys();
+    let batch_keys = keylist.filter((key) => /database-batch-\d+/.exec(key));
+    if (batch_keys.length > 0) {
+        let batch_indices = batch_keys.map((key) => Number(/\d+$/.exec(key)[0]));
+        JSPLib.storage.setLocalData('ntisas-database-batchindex', Math.min(...batch_indices));
+        JSPLib.storage.setLocalData('ntisas-database-numbatches', Math.max(...batch_indices) + 1);
+        NTISAS.database_interval = setInterval(SaveDatabaseBatch, DATABASE_BATCHSAVE_INTERVAL);
+    }
+}
+
 function SaveDatabaseBatch() {
     let num_batches = JSPLib.storage.getLocalData('ntisas-database-numbatches');
     let batch_index = JSPLib.storage.getLocalData('ntisas-database-batchindex');
@@ -4986,34 +5007,39 @@ function SaveDatabaseBatch() {
             $('#ntisas-database-help').html(RenderHelp(DATABASE_IS_INSTALLING_HELP));
             SaveDatabaseBatch.is_help_installed = true;
         }
-        JSPLib.storage.twitterstorage.getItem('database-batch-' + batch_index).then(async (database_batch) => {
+        if (++batch_index === num_batches) {
+            JSPLib.storage.removeLocalData('ntisas-database-numbatches');
+            JSPLib.storage.removeLocalData('ntisas-database-batchindex');
+        } else {
+            JSPLib.storage.setLocalData('ntisas-database-batchindex', batch_index);
+        }
+        JSPLib.storage.batchstorage.getItem('database-batch-' + batch_index).then((database_batch) => {
             if (JSPLib.validate.isHash(database_batch)) {
-                JSPLib.debug.debugTime('SaveDatabaseBatch-' + display_index);
-                let keylist = Object.keys(database_batch).map((key) => 'tweet-' + key);
-                let payload = await JSPLib.storage.batchRetrieveData(keylist, {database: JSPLib.storage.twitterstorage});
-                for (let tweet_id in database_batch) {
-                    if (Array.isArray(payload['tweet-' + tweet_id])) {
-                        payload['tweet-' + tweet_id] = JSPLib.utility.arrayUnion(payload['tweet-' + tweet_id], database_batch[tweet_id]);
-                    } else {
-                        payload['tweet-' + tweet_id] = database_batch[tweet_id];
+                 (async () =>{
+                    JSPLib.debug.debugTime('SaveDatabaseBatch-' + display_index);
+                    let keylist = Object.keys(database_batch).map((key) => 'tweet-' + key);
+                    let payload = await JSPLib.storage.batchRetrieveData(keylist, {database: JSPLib.storage.twitterstorage});
+                    for (let tweet_id in database_batch) {
+                        if (Array.isArray(payload['tweet-' + tweet_id])) {
+                            payload['tweet-' + tweet_id] = JSPLib.utility.arrayUnion(payload['tweet-' + tweet_id], database_batch[tweet_id]);
+                        } else {
+                            payload['tweet-' + tweet_id] = database_batch[tweet_id];
+                        }
                     }
-                }
-                await JSPLib.storage.twitterstorage.setItems(payload);
-                await JSPLib.storage.twitterstorage.removeItem('database-batch-' + batch_index);
-                batch_index++;
-                if (batch_index === num_batches) {
-                    JSPLib.storage.removeLocalData('ntisas-database-numbatches');
-                    JSPLib.storage.removeLocalData('ntisas-database-batchindex');
-                    $('#ntisas-database-link').html(RenderDatabaseVersion(NTISAS.database_info));
-                    $('#ntisas-database-help').html(RenderHelp(DATABASE_VERSION_HELP));
-                    SaveDatabaseBatch.is_help_installed = false;
-                } else {
-                    JSPLib.storage.setLocalData('ntisas-database-batchindex', batch_index);
-                }
-                JSPLib.debug.debugTimeEnd('SaveDatabaseBatch-' + display_index);
+                    await JSPLib.storage.twitterstorage.setItems(payload);
+                    await JSPLib.storage.batchstorage.removeItem('database-batch-' + batch_index);
+                    JSPLib.debug.debugTimeEnd('SaveDatabaseBatch-' + display_index);
+                })();
+            } else {
+                JSPLib.debug.debuglog(`SaveDatabaseBatch: batch #${display_index} not found... skipping.`);
             }
         });
     } else if (Number.isInteger(NTISAS.database_interval)) {
+        if (SaveDatabaseBatch.is_help_installed) {
+            $('#ntisas-database-link').html(RenderDatabaseVersion(NTISAS.database_info));
+            $('#ntisas-database-help').html(RenderHelp(DATABASE_VERSION_HELP));
+            SaveDatabaseBatch.is_help_installed = false;
+        }
         clearInterval(NTISAS.database_interval);
         NTISAS.database_interval = null;
     }
@@ -5419,7 +5445,7 @@ async function CheckIQDB(event) {
                 let score = result.score;
                 let post_id = result.post.id;
                 let post = mapped_posts.find((post) => (post.id === post_id));
-                return MapSimilar(post, score);
+                return MapSimilar(post_id, post, score);
             });
         });
     } else {
@@ -5456,7 +5482,7 @@ async function CheckSauce(event) {
                 let score = parseFloat(result.header.similarity);
                 let post_id = result.data.danbooru_id;
                 let post = posts_data.find((post) => (post.id === post_id));
-                return MapSimilar(post, score);
+                return MapSimilar(post_id, post, score);
             });
         });
     } else {
@@ -5728,7 +5754,7 @@ function ImportData() {
                     for (let i = 0; i < import_package.database_batches.length; i++) {
                         this.debug('log', `"Saving batch #${i} of ${import_package.database_batches.length}`);
                         $('#ntisas-import-counter').text(import_package.database_batches.length - i);
-                        await JSPLib.storage.twitterstorage.setItem('database-batch-' + i, import_package.database_batches[i]);
+                        await JSPLib.storage.batchstorage.setItem('database-batch-' + i, import_package.database_batches[i]);
                         await JSPLib.utility.sleep(100);
                     }
                     $('#ntisas-import-counter').text(0);
@@ -6865,9 +6891,7 @@ async function Main() {
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+1 alt+2 alt+3', SideMenuHotkeys);
     setInterval(IntervalStorageHandler, QUEUE_POLL_INTERVAL);
     setInterval(IntervalNetworkHandler, QUEUE_POLL_INTERVAL);
-    if (Number.isInteger(JSPLib.storage.getLocalData('ntisas-database-numbatches')) && Number.isInteger(JSPLib.storage.getLocalData('ntisas-database-batchindex'))) {
-        NTISAS.database_interval = setInterval(SaveDatabaseBatch, DATABASE_BATCHSAVE_INTERVAL);
-    }
+    InitializeSaveDatabaseBatches();
     JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
     JSPLib.utility.setCSSStyle(GM_getResourceText('jquery_qtip_css'), 'qtip');
     JSPLib.utility.setCSSStyle(NOTICE_CSS, 'notice');
@@ -6906,7 +6930,7 @@ async function Main() {
 /****Initialization****/
 
 //Variables for debug.js
-JSPLib.debug.debug_console = false;
+JSPLib.debug.debug_console = true;
 JSPLib.debug.level = JSPLib.debug.INFO;
 JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
@@ -6943,7 +6967,7 @@ JSPLib.load.load_when_hidden = false;
 
 //Export JSPLib
 JSPLib.load.exportData(PROGRAM_NAME, NTISAS, {other_data: {jQuery, SAVED_STORAGE_REQUESTS, SAVED_NETWORK_REQUESTS, PAGE_REGEXES}, datalist: ['page']});
-JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [GetList, SaveList, GetData, SaveData], alwayslist: [GetImageLinks]});
+JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [GetList, SaveList, GetData, SaveData, GetTweetGQL_alt], alwayslist: [GetImageLinks]});
 
 /****Execution start****/
 
