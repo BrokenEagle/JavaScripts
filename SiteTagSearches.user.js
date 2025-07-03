@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SiteTagSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.16
+// @version      4.17
 // @description  Presents additional site links for the wiki tag(s).
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -75,9 +75,10 @@ const PROGRAM_CSS = `
 .sts-links {
     position: absolute;
     background-color: var(--body-background-color);
-    border: var(--footer-border);
+    border: 1px solid var(--post-tooltip-border-color);
     display: none;
     z-index: 1;
+    padding-left: 1em;
 }
 .sts-source-links {
     right: 0;
@@ -101,10 +102,30 @@ const PROGRAM_CSS = `
     display: inline-block;
     min-width: 4.25em;
 }
+.sts-main-tag,
+.sts-other-tag {
+    border: 1px solid var(--default-border-color);
+    padding: 2px 5px;
+}
+/*FIXES*/
 #wiki-page-body,
 #excerpt .prose {
     min-height: 15em;
-}`
+}
+.ui-icon {
+    display: inline-block;
+    height: 16px;
+    width: 16px;
+}
+.ui-icon-triangle-1-e {
+    background-position: -36px -14px;
+}
+.ui-icon-triangle-1-w {
+    background-position: -100px -14px;
+}
+.ui-icon-triangle-1-s {
+    background-position: -66px -14px;
+}`;
 
 const MENU_CSS = `
 .sts-selectors.jsplib-selectors label {
