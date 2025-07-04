@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      24.4
+// @version      24.5
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1629,14 +1629,14 @@ function InitializeTypeDiv(type, $type_page) {
         $('thead', $type_page[0]).hide();
     }
     let $type_div = $('<div></div>').append($type_page);
-    $('.post-preview', $type_div).addClass('blacklisted');
+    $('.post-preview', $type_div).addClass('blacklist-initialized');
     $type_table.append($type_div);
     return $type_div;
 }
 
 function InitializeThumb(thumb, query_string = "") {
     let $thumb = $(thumb);
-    $thumb.addClass('blacklisted');
+    $thumb.addClass('blacklist-initialized');
     $thumb.find('.post-preview-score').remove();
     let postid = String($thumb.data('id'));
     let $link = $('a', thumb);
@@ -1743,7 +1743,7 @@ function InsertThumbnails() {
 function ProcessThumbnails() {
     $('#el-event-notice article.post-preview').each((_, thumb) => {
         let $thumb = $(thumb);
-        $thumb.addClass('blacklisted');
+        $thumb.addClass('blacklist-initialized');
         let post_id = String($thumb.data('id'));
         if (!(post_id in EL.thumbs)) {
             let thumb_copy = $thumb.clone();
@@ -2762,7 +2762,7 @@ function Main() {
             }
         }
         $("#el-event-notice").show();
-        let any_blacklisted = document.querySelector("#el-event-notice .blacklisted");
+        let any_blacklisted = document.querySelector("#el-event-notice .blacklist-initialized");
         if (any_blacklisted) {
             new MutationObserver((_, observer) => {
                 $('#el-event-notice .blacklisted-active').removeClass('blacklisted-active');
