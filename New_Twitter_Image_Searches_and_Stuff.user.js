@@ -1749,7 +1749,7 @@ const TWIMG_HOST_RG = String.raw`^https?://pbs\.twimg\.com`;
 
 var TWITTER_ACCOUNT = String.raw`[\w-]+`;
 var TWITTER_ID = String.raw`\d+`;
-var QUERY_END = String.raw`(?:\?|$)`;
+var QUERY_END = String.raw`(?:\?|$|/$)`;
 
 const TWEET_REGEX = JSPLib.utility.verboseRegex('g')`^https://(?:twitter|x)\.com/[\w-]+/status/(\d+)$`;
 const TWEET_URL_REGEX = JSPLib.utility.verboseRegex('g')`^https://(?:twitter|x)\.com/[\w-]+/status/\d+`;
