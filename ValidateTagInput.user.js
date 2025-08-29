@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.10
+// @version      29.11
 // @description  Validates tag add/remove inputs on a post edit or upload, plus several other post validations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -741,9 +741,10 @@ async function ValidateTagDeprecations() {
     }
     let postedit_tags = GetCurrentTags();
     let current_tags = JSPLib.utility.filterRegex(postedit_tags, NEGATIVE_REGEX, true);
-    this.debug('log', "Current tags:", current_tags);
-    await QueryTagDeprecations(current_tags);
-    let deprecated_tags = JSPLib.utility.arrayIntersection(current_tags, VTI.deprecated_tags);
+    let query_tags = JSPLib.utility.arrayDifference(current_tags, GetNegativetags(postedit_tags));
+    this.debug('log', "Query tags:", query_tags);
+    await QueryTagDeprecations(query_tags);
+    let deprecated_tags = JSPLib.utility.arrayIntersection(query_tags, VTI.deprecated_tags);
     if (deprecated_tags.length > 0) {
         this.debug('log', "Deprecated tags:", deprecated_tags);
         $("#validation-input").show();
