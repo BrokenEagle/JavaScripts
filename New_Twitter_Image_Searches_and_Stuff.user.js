@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.13
+// @version      10.14
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1744,16 +1744,16 @@ JSPLib.utility.verboseRegex = function (flags) {
     };
 };
 
-const TWITTER_HOST = String.raw`^https?://(?:twitter|x)\.com`;
+const TWITTER_HOST = String.raw`^https://(?:\w+\.)?(?:twitter|x)\.com`;
 const TWIMG_HOST_RG = String.raw`^https?://pbs\.twimg\.com`;
 
-var TWITTER_ACCOUNT = String.raw`[\w-]+`;
-var TWITTER_ID = String.raw`\d+`;
-var QUERY_END = String.raw`(?:\?|$|/$)`;
+const TWITTER_ACCOUNT = String.raw`[\w_-]+`;
+const TWITTER_ID = String.raw`\d+`;
+const QUERY_END = String.raw`(?:\?|$|/$)`;
 
-const TWEET_REGEX = JSPLib.utility.verboseRegex('g')`^https://(?:twitter|x)\.com/[\w-]+/status/(\d+)$`;
-const TWEET_URL_REGEX = JSPLib.utility.verboseRegex('g')`^https://(?:twitter|x)\.com/[\w-]+/status/\d+`;
-const SOURCE_TWITTER_REGEX = JSPLib.utility.verboseRegex('g')`^source:https://(?:twitter|x)\.com/[\w-]+/status/(\d+)$`;
+const TWEET_REGEX = JSPLib.utility.verboseRegex('g')`${TWITTER_HOST}/(?:i/web|${TWITTER_ACCOUNT})/status/(${TWITTER_ID})(?:/photo/\d+|/video/\d+)?${QUERY_END}`;
+const TWEET_URL_REGEX = JSPLib.utility.verboseRegex('g')`${TWITTER_HOST}/(${TWITTER_ACCOUNT})/status/${TWITTER_ID}`;
+const SOURCE_TWITTER_REGEX = JSPLib.utility.verboseRegex('g')`^source:${TWEET_REGEX.source.slice(1)}`;
 
 const BANNER_REGEX = JSPLib.utility.verboseRegex()`https://pbs\.twimg\.com/profile_banners/(\d+)/\d+/`;
 
@@ -2015,7 +2015,7 @@ const QUERY_BATCH_NUM = 5;
 const QUERY_BATCH_SIZE = QUERY_LIMIT * QUERY_BATCH_NUM;
 
 const POST_FIELDS = 'id,uploader_id,score,fav_count,rating,tag_string,created_at,preview_file_url,source,file_ext,file_size,image_width,image_height,uploader[name]';
-const POSTVER_FIELDS = 'id,updated_at,post_id,version,source,source_changed,added_tags,removed_tags';
+const POSTVER_FIELDS = 'id,updated_at,post_id,version,source,source_changed,added_tags,removed_tags,unchanged_tags';
 const PROFILE_FIELDS = 'id,level';
 
 //DOM constants
@@ -2990,6 +2990,7 @@ function RemoveHashKeyValue(hash, key, value) {
 function ProcessPostvers(postvers) {
     postvers.sort((a, b) => (a.id - b.id));
     var account_swaps = 0;
+    var link_modifies = 0;
     var inactive_posts = 0;
     var reversed_posts = 0;
     var add_entries = {};
@@ -3001,18 +3002,25 @@ function ProcessPostvers(postvers) {
                 if (tweet_id) {
                     add_entries[tweet_id] = add_entries[tweet_id] || [];
                     add_entries[tweet_id] = JSPLib.utility.arrayUnion(add_entries[tweet_id], [postver.post_id]);
+                } else {
+                    this.debug('warn', "Unfound new post:", postver.source, postver);
                 }
             } else {
                 let tweet_id = {};
-                let twitter_add = postver.added_tags.find((tag) => SOURCE_TWITTER_REGEX.test(tag)) || "";
+                const source_regex = new RegExp(SOURCE_TWITTER_REGEX.source);
+                let twitter_add = postver.added_tags.find((tag) => source_regex.test(tag)) || "";
                 tweet_id.add = JSPLib.utility.findAll(twitter_add, SOURCE_TWITTER_REGEX)[1];
-                let twitter_rem = postver.removed_tags.find((tag) => SOURCE_TWITTER_REGEX.test(tag)) || "";
+                let twitter_rem = postver.removed_tags.find((tag) => source_regex.test(tag)) || "";
                 tweet_id.rem = JSPLib.utility.findAll(twitter_rem, SOURCE_TWITTER_REGEX)[1];
+                var link_modify = false;
                 if (tweet_id.add && tweet_id.rem) {
                     if (tweet_id.add === tweet_id.rem) {
                         tweet_id.add = tweet_id.rem = undefined;
-                        account_swaps++;
+                        link_modify = true;
+                        link_modifies++;
+                        this.debug('log', "Link modify detected", twitter_rem, "->", twitter_add);
                     } else {
+                        account_swaps++;
                         this.debug('log', "ID swap detected", tweet_id.rem, "->", tweet_id.add);
                     }
                 }
@@ -3029,6 +3037,9 @@ function ProcessPostvers(postvers) {
                     if (RemoveHashKeyValue(add_entries, tweet_id.rem, postver.post_id)) {
                         this.debug('log', "Source add reversal detected", tweet_id.rem);
                     }
+                }
+                if (!tweet_id.add && !tweet_id.rem && !link_modify) {
+                    this.debug('warn', "Unfound edit post:", postver.added_tags, postver.removed_tags, twitter_add, twitter_rem, postver);
                 }
             }
         }
@@ -3056,6 +3067,9 @@ function ProcessPostvers(postvers) {
     });
     if (account_swaps > 0) {
         this.debug('log', "Account swaps detected:", account_swaps);
+    }
+    if (link_modifies > 0) {
+        this.debug('log', "Link modifies detected:", link_modifies);
     }
     if (inactive_posts > 0) {
         this.debug('log', "Inactive tweets detected:", inactive_posts);
