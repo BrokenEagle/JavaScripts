@@ -2662,7 +2662,9 @@ function GetCustomQuery() {
 
 function GetPostVersionsLastID(type) {
     //Get the program last ID if it exists
-    let postver_lastid = JSPLib.storage.checkLocalData(`ntisas-${type}-lastid`, {default_val: NTISAS.database_info?.post_version});
+    const storage_key = `ntisas-${type}-lastid`;
+    JSPLib.storage.invalidateLocalData(storage_key);
+    let postver_lastid = JSPLib.storage.checkLocalData(storage_key, {default_val: NTISAS.database_info?.post_version});
     if (!NTISAS.database_info) {
         return postver_lastid;
     }
