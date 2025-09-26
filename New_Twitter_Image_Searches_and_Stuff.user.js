@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.14
+// @version      10.15
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -3720,6 +3720,7 @@ function RenderMediaMenu(tweet_id, screen_name, image_urls, videos) {
 //Initialize functions
 
 function CleanupTasks() {
+    CheckServerBadTweets();
     JSPLib.storage.pruneProgramCache(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, PRUNE_RECHECK_EXPIRES);
 }
 
