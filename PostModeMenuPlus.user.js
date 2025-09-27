@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://github.com/BrokenEagle
-// @version      8.6
+// @version      8.7
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -39,7 +39,7 @@
 const DANBOORU_TOPIC_ID = '21812';
 
 //Variables for load.js
-const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.Utility'];
+const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.Utility', 'Danbooru.CurrentUser'];
 const PROGRAM_LOAD_OPTIONAL_SELECTORS = ['#c-posts #a-index #mode-box', '#c-users #a-edit'];
 
 //Program name constants
@@ -130,6 +130,7 @@ const MENU_CONFIG = {
 const DEFAULT_VALUES = {
     init_timer: null,
     modified: new Set(),
+    post_votes: {},
 };
 
 // CSS constants
@@ -263,6 +264,8 @@ const SEPARATOR_DICT = {
     return: '\n',
 };
 
+const POST_VOTE_FIELDS = 'id,post_id';
+
 /****Functions****/
 
 //Library functions
@@ -330,6 +333,9 @@ async function VotePost(post_id, score) {
 }
 
 async function UnvotePost(post_id) {
+    await PMM.post_vote_promise;
+    if (!(post_id in PMM.post_votes)) return;
+    let vote_id = PMM.post_votes[post_id];
     JSPLib.danbooru.pending_update_count += 1;
     JSPLib.danbooru.showPendingUpdateNotice();
     if (JSPLib.danbooru.num_network_requests >= JSPLib.danbooru.max_network_requests) {
@@ -345,7 +351,7 @@ async function UnvotePost(post_id) {
     }
     JSPLib.danbooru.num_network_requests += 1;
     // eslint-disable-next-line dot-notation
-    JSPLib.network.delete(`/posts/${post_id}/votes.json`)
+    JSPLib.network.delete(`/post_votes/${vote_id}.json`)
         .always((_data, _message, resp) => {
             JSPLib.danbooru.pending_update_count -= 1;
             JSPLib.danbooru.num_network_requests -= 1;
@@ -383,6 +389,16 @@ function TagscriptPost(post_id) {
     }
 }
 
+async function UpdatePostVotes(post_ids) {
+    let p = JSPLib.utility.createPromise();
+    PMM.post_vote_promise = p.promise;
+    let post_votes = await JSPLib.danbooru.submitRequest('post_votes', {search: {post_id: post_ids.join(','), user_id: Danbooru.CurrentUser.data('id')}, limit: post_ids.length, only: POST_VOTE_FIELDS});
+    post_votes.forEach((vote) => {
+        PMM.post_votes[vote.post_id] = vote.id;
+    });
+    p.resolve(null);
+}
+
 // Main execution functions
 
 function MenuFunctions(post_ids) {
@@ -395,6 +411,9 @@ function MenuFunctions(post_ids) {
     };
     var prefix;
     var post_string;
+    if (PMM.mode === 'unvote') {
+        UpdatePostVotes(post_ids);
+    }
     post_ids.forEach((post_id) => {
         switch (PMM.mode) {
             case 'copy-id':
