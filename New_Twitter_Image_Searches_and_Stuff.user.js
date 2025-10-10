@@ -80,7 +80,7 @@ JSPLib.storage.localforage = localforage.createInstance({
 const NTISAS = {};
 
 //Program data constants
-const PROGRAM_DATA_REGEX = /^(post|view|iqdb|sauce|video|tweet|twuser|ntisas-available-sauce)-/; //Regex that matches the prefix of all program cache data
+const PROGRAM_DATA_REGEX = /^(post|view|iqdb|sauce|video|tweet|twuser|twimg|ntisas-available-sauce)-/; //Regex that matches the prefix of all program cache data
 
 //For factory reset !!!These need to be set!!!
 const LOCALSTORAGE_KEYS = [
@@ -2297,6 +2297,15 @@ const TWEET_CONSTRAINTS = {
     },
 };
 
+const TWIMG_CONSTRAINTS = {
+    entry: JSPLib.validate.hashentry_constraints,
+    value: {
+        size: JSPLib.validate.counting_constraints,
+        width: JSPLib.validate.counting_constraints,
+        height: JSPLib.validate.counting_constraints,
+    }
+};
+
 const VIEW_CONSTRAINTS = {
     entry: JSPLib.validate.hashentry_constraints,
     value: {
@@ -2362,6 +2371,9 @@ function ValidateEntry(key, entry) {
     }
     if (key.match(/^tweet-/)) {
         return ValidateTypeEntry(key, entry, 'array', TWEET_CONSTRAINTS);
+    }
+    if (key.match(/^twimg-/)) {
+        return ValidateTypeEntry(key, entry, 'hash', TWIMG_CONSTRAINTS);
     }
     if (key === 'ntisas-available-sauce') {
         return JSPLib.validate.validateHashEntries(key, entry, SAUCE_CONSTRAINTS);
@@ -2685,20 +2697,22 @@ async function GetTotalRecords(manual = false) {
     return JSPLib.storage.getLocalData('ntisas-database-length', {default_val: 0});
 }
 
-function GetImageAttributes(image_url) {
-    NTISAS.image_data = NTISAS.image_data || {};
-    return new Promise((resolve) => {
-        if (image_url in NTISAS.image_data) {
-            resolve(NTISAS.image_data[image_url]);
-        } else {
+async function GetImageAttributes(image_url) {
+    GetImageAttributes.memoized ??= {};
+    if (!(image_url in GetImageAttributes.memoized)) {
+        let storage_key = 'twimg-' + image_url;
+        let storage_data = await JSPLib.storage.checkLocalDB(storage_key, JSPLib.utility.one_day);
+        if (!storage_data) {
             let size_promise = JSPLib.network.getDataSize(image_url);
             let dimensions_promise = JSPLib.utility.getImageDimensions(image_url);
-            Promise.all([size_promise, dimensions_promise]).then(([size, dimensions]) => {
-                NTISAS.image_data[image_url] = Object.assign(dimensions, {size});
-                resolve(NTISAS.image_data[image_url]);
-            });
+            let [size, dimensions] = await Promise.all([size_promise, dimensions_promise]);
+            GetImageAttributes.memoized[image_url] = Object.assign(dimensions, {size});
+            JSPLib.storage.saveData(storage_key, {value: GetImageAttributes.memoized[image_url], expires: JSPLib.utility.getExpires(JSPLib.utility.one_day)});
+        } else {
+            GetImageAttributes.memoized[image_url] = storage_data.value;
         }
-    });
+    }
+    return GetImageAttributes.memoized[image_url];
 }
 
 function ReadableBytes(bytes) {
@@ -6906,7 +6920,7 @@ async function Main() {
     PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages, InitializeUploadlinks, CheckSauce,
     GetNormalImageURL, GetPageType, CheckServerBadTweets, SavePostvers, PickImage, MarkupMainTweet,
     MarkupStreamTweet, MarkupMediaType, CheckViews, InitializeViewCount, ToggleImageSize, InitializeProfileTimeline,
-    IntervalStorageHandler, GetImageAttributes, UpdateUserIDCallback, PreloadStorageData,
+    IntervalStorageHandler, UpdateUserIDCallback, PreloadStorageData,
 ] = JSPLib.debug.addFunctionLogs([
     UnhideTweets, RegularCheck, ImportData, DownloadURL, PromptSavePostIDs,
     CheckIQDB, CheckURL, SaveDatabase, CheckPostvers,
@@ -6914,7 +6928,7 @@ async function Main() {
     PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages, InitializeUploadlinks, CheckSauce,
     GetNormalImageURL, GetPageType, CheckServerBadTweets, SavePostvers, PickImage, MarkupMainTweet,
     MarkupStreamTweet, MarkupMediaType, CheckViews, InitializeViewCount, ToggleImageSize, InitializeProfileTimeline,
-    IntervalStorageHandler, GetImageAttributes, UpdateUserIDCallback, PreloadStorageData,
+    IntervalStorageHandler, UpdateUserIDCallback, PreloadStorageData,
 ]);
 
 [
@@ -6963,7 +6977,7 @@ JSPLib.load.load_when_hidden = false;
 
 //Export JSPLib
 JSPLib.load.exportData(PROGRAM_NAME, NTISAS, {other_data: {jQuery, SAVED_STORAGE_REQUESTS, SAVED_NETWORK_REQUESTS, PAGE_REGEXES}, datalist: ['page']});
-JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [GetList, SaveList, GetData, SaveData], alwayslist: [GetImageLinks]});
+JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [GetList, SaveList, GetData, SaveData], alwayslist: [GetImageLinks, GetImageAttributes]});
 
 /****Execution start****/
 
