@@ -3214,7 +3214,7 @@ async function GetAllCurrentRecords() {
 
 async function PickImage(event, type, pick_func) {
     let similar_class = 'ntisas-check-' + type;
-    let [$link, $tweet, tweet_id,,,,, $replace] = GetEventPreload(event, similar_class);
+    let {$link, $tweet, tweet_id, $replace} = GetEventPreload(event, similar_class);
     let all_image_urls = await GetImageLinks($tweet[0]);
     if (all_image_urls.length === 0) {
         this.debug('log', "Images not loaded yet.");
@@ -3241,7 +3241,7 @@ async function PickImage(event, type, pick_func) {
     }
     this.debug('log', "Selected:", selected_image_urls);
     $link.removeClass(similar_class).html("loading…");
-    return [$link, $tweet, tweet_id, $replace, selected_image_urls];
+    return {$link, $tweet, tweet_id, $replace, selected_image_urls};
 }
 
 function ProcessSimilarData(type, tweet_id, $tweet, $replace, selected_image_urls, similar_data, autosave_func) {
@@ -3288,17 +3288,17 @@ function GetTweetInfo($tweet) {
     let screen_name = String($tweet.data('screen-name'));
     let user_ident = user_id || screen_name;
     let all_idents = JSPLib.utility.arrayUnique([user_ident, screen_name]);
-    return [tweet_id, user_id, screen_name, user_ident, all_idents];
+    return {tweet_id, user_id, screen_name, user_ident, all_idents};
 }
 
 function GetEventPreload(event, classname) {
     let $link = $(event.target);
     let $tweet = $link.closest('[ntisas-tweet]');
-    let [tweet_id, user_id, screen_name, user_ident, all_idents] = GetTweetInfo($tweet);
+    let {tweet_id, user_id, screen_name, user_ident, all_idents} = GetTweetInfo($tweet);
     let $replace = $tweet.find(`.${classname}`);
     let replace_level = $replace.data('replace') || 1;
     $replace = $(JSPLib.utility.getNthParent($replace.get(0), replace_level));
-    return [$link, $tweet, tweet_id, user_id, screen_name, user_ident, all_idents, $replace];
+    return {$link, $tweet, tweet_id, user_id, screen_name, user_ident, all_idents, $replace};
 }
 
 function IsPageType(types) {
@@ -3434,7 +3434,7 @@ function RenderDatabaseVersion(database_info) {
 }
 
 async function RenderDownloadLinks($tweet, {image_urls = null, videos = null} = {}) {
-    let [tweet_id,,screen_name,,] = GetTweetInfo($tweet);
+    let {tweet_id, screen_name} = GetTweetInfo($tweet);
     if (!image_urls) {
         image_urls = await GetImageLinks($tweet[0]);
     }
@@ -5395,7 +5395,7 @@ function PopupMediaTweetVideo(event) {
 }
 
 function CheckURL(event) {
-    let [$link,, tweet_id,, screen_name,,, ] = GetEventPreload(event, 'ntisas-check-url');
+    let {$link, tweet_id, screen_name} = GetEventPreload(event, 'ntisas-check-url');
     $link.removeClass('ntisas-check-url').html("loading…");
     let normal_url = `https://*.com/${screen_name}/status/${tweet_id}`;
     let wildcard_url = `https://*.com/*/status/${tweet_id}`;
@@ -5426,7 +5426,7 @@ async function CheckIQDB(event) {
     if (!pick) {
         return;
     }
-    let [, $tweet, tweet_id, $replace, selected_image_urls] = pick;
+    let {$tweet, tweet_id, $replace, selected_image_urls} = pick;
     let promise_array = selected_image_urls.map((image_url) => JSPLib.danbooru.submitRequest('iqdb_queries', {url: image_url, similarity: NTISAS.user_settings.similarity_cutoff, limit: NTISAS.user_settings.results_returned}, {default_val: [], domain: NTISAS.domain, notify: true}));
     let all_iqdb_results = await Promise.all(promise_array);
     let flat_data = all_iqdb_results.flat();
@@ -5471,7 +5471,7 @@ async function CheckSauce(event) {
     if (!pick) {
         return;
     }
-    let [, $tweet, tweet_id, $replace, selected_image_urls] = pick;
+    let {$tweet, tweet_id, $replace, selected_image_urls} = pick;
     let promise_array = selected_image_urls.map((image_url) => JSPLib.saucenao.getSauce(image_url, JSPLib.saucenao.getDBIndex('danbooru'), NTISAS.user_settings.results_returned));
     let all_data = await Promise.all(promise_array);
     let good_data = all_data.filter((data) => JSPLib.saucenao.checkSauce(data));
@@ -5505,7 +5505,7 @@ async function CheckSauce(event) {
 }
 
 function ManualAdd(event) {
-    let [$link, $tweet, tweet_id,,,,, $replace] = GetEventPreload(event, 'ntisas-manual-add');
+    let {$link, $tweet, tweet_id, $replace} = GetEventPreload(event, 'ntisas-manual-add');
     PromptSavePostIDs($link, $tweet, tweet_id, $replace, MANUAL_ADD_PROMPT, []);
 }
 
@@ -5514,7 +5514,7 @@ function ConfirmSave(event) {
     if (!IsQuerySettingEnabled('confirm_save', type)) {
         return;
     }
-    let [$link, $tweet, tweet_id,,,,, $replace] = GetEventPreload(event, 'ntisas-confirm-save');
+    let {$link, $tweet, tweet_id, $replace} = GetEventPreload(event, 'ntisas-confirm-save');
     let save_post_ids = GetSelectPostIDs(tweet_id, 'tweet_qtip');
     if (NTISAS.merge_results.includes(tweet_id)) {
         let merge_ids = GetSessionTwitterData(tweet_id);
@@ -5527,7 +5527,7 @@ function ConfirmSave(event) {
 }
 
 function ConfirmDelete(event) {
-    let [$link, $tweet, tweet_id,,,,, $replace] = GetEventPreload(event, 'ntisas-confirm-delete');
+    let {$link, $tweet, tweet_id, $replace} = GetEventPreload(event, 'ntisas-confirm-delete');
     let all_post_ids = GetSessionTwitterData(tweet_id);
     let save_post_ids = GetSelectPostIDs(tweet_id, 'tweet_qtip');
     let delete_post_ids = JSPLib.utility.arrayDifference(all_post_ids, save_post_ids);
@@ -5537,21 +5537,21 @@ function ConfirmDelete(event) {
 }
 
 function ResetResults(event) {
-    let [$link,, tweet_id,,,,, $replace] = GetEventPreload(event, 'ntisas-reset-results');
+    let {$tweet, tweet_id, $replace} = GetEventPreload(event, 'ntisas-reset-results');
     let type = $link.data('type');
     RemoveData(type + '-' + tweet_id, 'danbooru');
     InitializeNoMatchesLinks(tweet_id, $replace);
 }
 
 function MergeResults(event) {
-    let [, $tweet, tweet_id,,,,, $replace] = GetEventPreload(event, 'ntisas-merge-results');
+    let {$tweet, tweet_id, $replace} = GetEventPreload(event, 'ntisas-merge-results');
     NTISAS.merge_results = JSPLib.utility.arrayUnion(NTISAS.merge_results, [tweet_id]);
     $('.ntisas-database-match', $tweet[0]).qtiptisas('destroy', true);
     InitializeNoMatchesLinks(tweet_id, $replace, true);
 }
 
 function CancelMerge(event) {
-    let [, $tweet, tweet_id,,,,, $replace] = GetEventPreload(event, 'ntisas-cancel-merge');
+    let {$tweet, tweet_id, $replace} = GetEventPreload(event, 'ntisas-cancel-merge');
     NTISAS.merge_results = JSPLib.utility.arrayDifference(NTISAS.merge_results, [tweet_id]);
     let post_ids = GetSessionTwitterData(tweet_id);
     InitializePostIDsLink(tweet_id, $replace, $tweet[0], post_ids);
@@ -5649,7 +5649,7 @@ function SelectMetric(event) {
 }
 
 function DownloadImage(event) {
-    let [$link, $tweet,,,,,, ] = GetEventPreload(event, 'ntisas-download-image');
+    let {$link, $tweet} = GetEventPreload(event, 'ntisas-download-image');
     let image_url = $link.attr('href');
     let download_name = $link.attr('download');
     let date_string = GetDateString(Date.now());
@@ -5664,7 +5664,7 @@ function DownloadImage(event) {
 
 async function DownloadVideo(event) {
     event.preventDefault();
-    let [$link, $tweet, tweet_id,, screen_name,,, ] = GetEventPreload(event, 'ntisas-download-video');
+    let {$link, $tweet, tweet_id, screen_name} = GetEventPreload(event, 'ntisas-download-video');
     let data = await GetTweetData(tweet_id);
     if (data.length === 0) {
         JSPLib.notice.error("No tweet data found through API.");
@@ -5687,7 +5687,7 @@ async function DownloadVideo(event) {
 }
 
 function DownloadAll(event) {
-    let [, $tweet,,,,,, ] = GetEventPreload(event, 'ntisas-download-all');
+    let {$tweet} = GetEventPreload(event, 'ntisas-download-all');
     $('.ntisas-download-image', $tweet[0]).click();
 }
 
