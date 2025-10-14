@@ -5024,30 +5024,34 @@ function GetTweetData(tweet_id) {
 
 function GetTweetsData(tweet_ids, account) {
     GetTweetsData.memoized ??= {};
-    let key = [...tweet_ids].sort().join(',');
-    if (!GetTweetsData.memoized[key]) {
-        const p = JSPLib.utility.createPromise();
-        GetTweetsData.memoized[key] = p.promise;
-        let promise_array = tweet_ids.map((tweet_id) => GetData('tweet-' + tweet_id, 'danbooru'));
+    const promise_dict = {};
+    let unchecked_tweet_ids = JSPLib.utility.arrayDifference(tweet_ids, Object.keys(GetTweetsData.memoized));
+    if (unchecked_tweet_ids.length) {
+        unchecked_tweet_ids.forEach((tweet_id)=>{
+            promise_dict[tweet_id] = JSPLib.utility.createPromise();
+            GetTweetsData.memoized[tweet_id] = promise_dict[tweet_id].promise;
+        });
+        let promise_array = unchecked_tweet_ids.map((tweet_id) => GetData('tweet-' + tweet_id, 'danbooru'));
         Promise.all(promise_array).then(async (storage_data) => {
-            let tweet_dict = {};
+            let storage_tweet_ids = [];
             storage_data.forEach((data, i) => {
                 if (data) {
-                    let tweet_id = tweet_ids[i];
-                    tweet_dict[tweet_id] = data.value;
+                    let tweet_id = unchecked_tweet_ids[i];
+                    promise_dict[tweet_id].resolve(data.value);
+                    storage_tweet_ids.push(tweet_id);
                 }
             });
-            let query_tweet_ids = JSPLib.utility.arrayDifference(tweet_ids, Object.keys(tweet_dict));
+            let query_tweet_ids = JSPLib.utility.arrayDifference(unchecked_tweet_ids, storage_tweet_ids);
             if (query_tweet_ids.length) {
                 var network_data;
                 try {
-                    network_data = await GetTweetsGQL(tweet_ids);
+                    network_data = await GetTweetsGQL(query_tweet_ids);
                 } catch (response) {
                     HandleTwitterErrorResponse(response, false);
                 }
                 if (!network_data) {
                     try {
-                        network_data = await GetTweetsGQL_alt(tweet_ids, account);
+                        network_data = await GetTweetsGQL_alt(query_tweet_ids, account);
                     } catch (response) {
                         HandleTwitterErrorResponse(response, true);
                     }
@@ -5065,23 +5069,32 @@ function GetTweetsData(tweet_ids, account) {
                             return {partial_image, partial_video, partial_sample};
                         });
                         SaveData('tweet-' + tweet_id, {value, expires}, 'danbooru');
-                        tweet_dict[tweet_id] = value;
+                        promise_dict[tweet_id].resolve(value);
                         network_tweet_ids.push(tweet_id);
                     });
                     let missing_tweet_ids = JSPLib.utility.arrayDifference(query_tweet_ids, network_tweet_ids);
                     expires = JSPLib.utility.getExpires(JSPLib.utility.one_day);
                     missing_tweet_ids.forEach((tweet_id) => {
                         SaveData('tweet-' + tweet_id, {value: [], expires}, 'danbooru');
-                        tweet_dict[tweet_id] = [];
+                        promise_dict[tweet_id].resolve([]);
                     });
                 } else {
-                    p.reject(null);
+                    for (let tweet_id in query_tweet_ids) {
+                        promise_dict[tweet_id].resolve([]);
+                    }
                 }
             }
-            p.resolve(tweet_dict);
         });
     }
-    return GetTweetsData.memoized[key];
+    return new Promise(async (resolve) => {
+        let all_data = await Promise.all(tweet_ids.map((tweet_id) => GetTweetsData.memoized[tweet_id]));
+        let tweet_dict = {};
+        for (let i = 0; i < tweet_ids.length; i++) {
+            let tweet_id = tweet_ids[i];
+            tweet_dict[tweet_id] = all_data[i];
+        }
+        resolve(tweet_dict);
+    });
 }
 
 function GetUserRestID(account) {
@@ -6772,7 +6785,9 @@ function ProcessMediaTweets() {
         MULTITWEETS: timeline_tweets.multi.size,
     });
     $('#ntisas-tweet-stats-table').html(table_html);
-    let multi_tweet_ids = $('.ntisas-media-tweet.ntisas-multi-media').map((i, entry) => entry.dataset.tweetId).toArray();
+    let $multi_media_tweets = $('.ntisas-media-tweet.ntisas-multi-media:not(.ntisas-media-checked)');
+    let multi_tweet_ids = $multi_media_tweets.map((i, entry) => entry.dataset.tweetId).toArray();
+    $multi_media_tweets.addClass('ntisas-media-checked');
     var tweet_dict_promise = GetTweetsData(multi_tweet_ids, NTISAS.account);
     Promise.all(promise_array).then((tweet_post_ids) => {
         for (let i = 0; i < tweet_ids.length; i++) {
