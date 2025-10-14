@@ -132,8 +132,6 @@ const PROGRAM_DEFAULT_VALUES = {
     similar_results: {},
     known_extensions: {},
     recorded_views: [],
-    photo_index: null,
-    photo_navigation: false,
     artist_iqdb_enabled: false,
     opened_menu: false,
     colors_checked: false,
@@ -244,11 +242,6 @@ const SETTINGS_CONFIG = {
         validate: JSPLib.validate.isBoolean,
         hint: "Displays the image number used by <b>Download Originals</b>."
     },
-    display_upload_link: {
-        reset: true,
-        validate: JSPLib.validate.isBoolean,
-        hint: "Displays an <b>Upload</b> link to Danbooru in the enlarged image view."
-    },
     display_tweet_statistics: {
         reset: true,
         validate: JSPLib.validate.isBoolean,
@@ -344,6 +337,7 @@ const CONTROL_CONFIG = {
 const FONT_FAMILY = '\'Segoe UI\', Arial, sans-serif';
 const BASE_PREVIEW_WIDTH = 160;
 const POST_PREVIEW_DIMENSION = 150;
+const TWEET_PREVIEW_DIMENSION = 300;
 const TWITTER_SPACING_CLASSES = [
     'r-1559e4e', //padding for Twitter icon
     'r-cnw61z', //padding for side menu items
@@ -398,6 +392,8 @@ const PROGRAM_CSS = `
 [ntisas-tweet] .ntisas-control-search:hover,
 [ntisas-tweet] .ntisas-control-confirm,
 [ntisas-tweet] .ntisas-control-confirm:hover,
+[ntisas-tweet] .ntisas-control-upload,
+[ntisas-tweet] .ntisas-control-upload:hover,
 #ntisas-current-records,
 #ntisas-error-messages,
 #ntisas-total-records {
@@ -492,6 +488,7 @@ const PROGRAM_CSS = `
 }
 [ntisas-tweet] .ntisas-control-search,
 [ntisas-tweet] .ntisas-control-confirm,
+[ntisas-tweet] .ntisas-control-upload,
 #ntisas-views-toggle {
     display: inline-block;
     text-align: center;
@@ -696,10 +693,37 @@ const PROGRAM_CSS = `
     text-align: center;
     font-family: ${FONT_FAMILY};
 }
+.ntisas-post-preview .ntisas-image-container {
+    height: ${POST_PREVIEW_DIMENSION}px;
+    width: ${POST_PREVIEW_DIMENSION}px;
+    margin: 0 auto 5px;
+}
 .ntisas-post-preview img {
     max-width: ${POST_PREVIEW_DIMENSION}px;
     max-height: ${POST_PREVIEW_DIMENSION}px;
     overflow: hidden;
+}
+.ntisas-illust-preview {
+    display: inline-block;
+    width: ${TWEET_PREVIEW_DIMENSION + 10}px;
+    text-align: center;
+    font-family: ${FONT_FAMILY};
+    margin-bottom: 1em;
+}
+.ntisas-illust-preview .ntisas-image-container {
+    height: ${TWEET_PREVIEW_DIMENSION}px;
+    width: ${TWEET_PREVIEW_DIMENSION}px;
+    margin: 0 auto 5px;
+}
+.ntisas-illust-preview img {
+    max-width: ${TWEET_PREVIEW_DIMENSION}px;
+    max-height: ${TWEET_PREVIEW_DIMENSION}px;
+    overflow: hidden;
+}
+.ntisas-illust-preview .ntisas-desc {
+    font-size: 1.05em;
+    line-height: 100%;
+    letter-spacing: 1px;
 }
 .ntisas-post-upload::before {
     content: "";
@@ -710,10 +734,6 @@ const PROGRAM_CSS = `
     width: 1em;
     height: 1em;
     padding-right: 0.5em;
-}
-.ntisas-image-container {
-    height: ${POST_PREVIEW_DIMENSION}px;
-    width: ${POST_PREVIEW_DIMENSION}px;
 }
 .ntisas-post-result .ntisas-post-select.ntisas-post-match .ntisas-image-container,
 .ntisas-similar-result .ntisas-post-select.ntisas-post-match .ntisas-image-container {
@@ -745,6 +765,28 @@ const PROGRAM_CSS = `
 .ntisas-desc-size {
     letter-spacing: -1px;
 }
+.ntisas-preview-section {
+    display: flex;
+    flex-wrap: wrap;
+    max-height: 75vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.ntisas-preview-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-height: 80vh;
+    overflow-y: auto;
+    z-index: 2000;
+    overscroll-behavior: contain;
+    background: white;
+}
+.ntisas-preview-popup img {
+    max-width: 80vw;
+    height: auto;
+}
 .ntisas-timeline-menu {
     font-size: 13px;
     letter-spacing: -1px;
@@ -755,21 +797,6 @@ const PROGRAM_CSS = `
 .ntisas-tweet-menu {
     font-weight: bold;
     font-family: ${FONT_FAMILY};
-}
-.ntisas-upload {
-    font-size: 20px;
-    font-weight: bold;
-    width: 50px;
-    margin-left: 50px;
-    padding-top: 10px;
-    font-family: ${FONT_FAMILY};
-}
-.ntisas-upload a {
-    color: rgba(255,255,255,0.8);
-    text-decoration: none;
-}
-.ntisas-upload a:hover {
-    text-decoration: underline;
 }
 .ntisas-help-info,
 .ntisas-help-info:hover {
@@ -1037,13 +1064,16 @@ ${TWITTER_SPACING_SELECTOR} {
 .ntisas-similar-header-help {
     margin-top: 1em;
 }
-.ntisas-search-dialog .ntisas-desc-title span {
+.ntisas-search-dialog .ntisas-desc-title span,
+.ntisas-upload-dialog .ntisas-desc-title span {
     font-weight: bold;
 }
 .ntisas-search-dialog .ntisas-desc-title a {
     color: dodgerblue;
 }
-`;
+.ntisas-upload-dialog .ntisas-desc-title a {
+    color: orange;
+}`;
 
 const NOTICE_CSS = `
 div#ntisas-notice.ui-state-highlight {
@@ -1544,6 +1574,11 @@ const SIDE_MENU = `
                     <td>%DOWNLOADS%</td>
                     <td>(%DOWNLOADSHELP%)</td>
                 </tr>
+                <tr>
+                    <td><span>Confirm upload:</span></td>
+                    <td>%CONFIRM_UPLOAD%</td>
+                    <td>(%CONFIRM_UPLOAD_HELP%)</td>
+                </tr>
                 <tr data-setting="display_tweet_views">
                     <td><span>View indicators:</span></td>
                     <td>%VIEW_HIGHLIGHTS%</td>
@@ -1636,6 +1671,7 @@ const MEDIA_STATISTICS = `
 const NTISAS_TWEET_MENU_HELP = `
 results: L-click, manual add posts; R-click, open posts on Danbooru
 Search: L-click, network similarity query; R-click, network URL query
+Upload: L-click, menu for individual uploads; R-click, upload tweet
 `.trim();
 
 const NTISAS_TWEET_MENU = `
@@ -1651,6 +1687,9 @@ const NTISAS_TWEET_MENU = `
                     <span class="ntisas-query-button ntisas-menu-results">loading</span>
                     <span class="ntisas-query-button ntisas-menu-search">
                         <a class="ntisas-control-search ntisas-expanded-link">Search</a>
+                    </span>
+                    <span class="ntisas-query-button ntisas-menu-upload">
+                        <a class="ntisas-control-upload ntisas-expanded-link" target="_blank">Upload</a>
                     </span>
                     <span class="ntisas-query-button ntisas-menu-help">
                         <a class="ntisas-help-info ntisas-expanded-link" title="${NTISAS_TWEET_MENU_HELP}">&nbsp;?&nbsp;</a>
@@ -1694,6 +1733,12 @@ const DOWNLOADS_HTML = `
 <span id="ntisas-downloads-toggle">
     <a id="ntisas-enable-downloads" class="ntisas-expanded-link">Show</a>
     <a id="ntisas-disable-downloads" class="ntisas-expanded-link">Hide</a>
+</span>`;
+
+const CONFIRM_UPLOAD_HTML = `
+<span id="ntisas-confirm-upload-toggle">
+    <a id="ntisas-yes-confirm-upload" class="ntisas-expanded-link">Yes</a>
+    <a id="ntisas-no-confirm-upload" class="ntisas-expanded-link">No</a>
 </span>`;
 
 const VIEW_HIGHLIGHTS_HTML = `
@@ -1769,6 +1814,7 @@ const REFRESH_RECORDS_HELP = "L-Click to refresh record count.";
 const AVAILABLE_SAUCE_HELP = "Shows the number of API requests remaining.\nOnly shown after use of the Sauce link.\nResults are kept for only 1 hour.";
 const SIMILAR_SOURCE_HELP = "L-Click to switch the source for the similar search. (Shortcut: Alt+S)";
 const DOWNLOADS_HELP = "L-Click to hide/show the downloads section. (Shortcut: Alt+D)";
+const CONFIRM_UPLOAD_HELP = "L-click to turn on/off confirmation for uploading the full tweet, when done from the tweet menu.";
 const VIEWS_HIGHLIGHTS_HELP = "L-Click to toggle borders on viewed Tweets. (Shortcut: Alt+V)";
 const VIEWS_COUNTS_HELP = "L-Click to toggle whether tweets are being counted as viewed.";
 const AUTO_IQDB_HELP = "L-Click to toggle auto-IQDB click. (Shortcut: Alt+Q)";
@@ -2179,6 +2225,7 @@ const PROFILE_FIELDS = 'id,level';
 
 const SIMILAR_SOURCE_CONTROLS = ['danbooru', 'saucenao'];
 const DOWNLOAD_CONTROLS = ['enable', 'disable'];
+const CONFIRM_UPLOAD_CONTROLS = ['yes', 'no'];
 const VIEW_HIGHLIGHT_CONTROLS = ['enable', 'disable'];
 const VIEW_COUNT_CONTROLS = ['enable', 'disable'];
 const IQDB_CONTROLS = ['enable', 'disable', 'active', 'unavailable'];
@@ -3079,6 +3126,12 @@ async function GetImageLinks(tweet) {
     return tweet.ntisasImageUrls;
 }
 
+async function GetMediaLinksData($tweet) {
+    let image_urls = await GetImageLinks($tweet[0]);
+    let videos = $tweet.find('[ntisas-image]').map((i, entry) => Boolean(/^tweet_video_thumb|^ext_tw_video_thumb|^amplify_video_thumb/.exec($(entry).data('path')))).toArray();
+    return {image_urls, videos};
+}
+
 function GetTweetStat(tweet, types) {
     for (let i = 0; i < types.length; i++) {
         let label = $(`[data-testid=${types[i]}]`, tweet).attr('aria-label');
@@ -3321,6 +3374,15 @@ function UpdateDownloadSection() {
     }
 }
 
+function UpdateConfirmUploadControls() {
+    NTISAS.confirm_upload = JSPLib.storage.getLocalData('ntisas-confirm-upload', {default_val: false});
+    if (NTISAS.confirm_upload) {
+        DisplayControl('yes', CONFIRM_UPLOAD_CONTROLS, 'confirm-upload');
+    } else {
+        DisplayControl('no', CONFIRM_UPLOAD_CONTROLS, 'confirm-upload');
+    }
+}
+
 function UpdateViewHighlightControls() {
     let show_highlights = JSPLib.storage.getLocalData('ntisas-view-highlights', {default_val: true});
     let switch_type = (show_highlights ? 'disable' : 'enable');
@@ -3496,6 +3558,8 @@ function RenderSideMenu() {
     return JSPLib.utility.regexReplace(SIDE_MENU, {
         SIMILAR_SOURCE: SIMILAR_SOURCE_HTML,
         SIMILAR_SOURCE_HELP: RenderHelp(SIMILAR_SOURCE_HELP),
+        CONFIRM_UPLOAD: CONFIRM_UPLOAD_HTML,
+        CONFIRM_UPLOAD_HELP: RenderHelp(CONFIRM_UPLOAD_HELP),
         CURRENTRECORDS: RenderCurrentRecords(),
         CURRENTHELP: RenderHelp(current_message),
         RECORDSHELP: RenderHelp(REFRESH_RECORDS_HELP),
@@ -3599,6 +3663,21 @@ function RenderPostIDsLink(post_ids, posts, classname) {
 </a>`;
 }
 
+function RenderUploadLink(upload_url) {
+    return `
+<span class="ntisas-links">
+    (
+    <a
+        class="ntisas-expanded-link"
+        href="${upload_url}"
+        target="_blank"
+        >
+        upload
+    </a>
+    )
+</span>`;
+}
+
 function RenderSearchDialog(tweet_id, image_urls) {
     let html = "";
     image_urls.forEach((image_url, i) => {
@@ -3661,6 +3740,31 @@ function RenderSimilarContainer(image_result, index) {
 </div>`;
 }
 
+function RenderUploadDialog(tweet_id, screen_name, image_urls, videos) {
+    let html = "";
+    let encoded_tweet_url = encodeURIComponent(`https://twitter.com/${screen_name}/status/${tweet_id}`);
+    image_urls.forEach((image_url, i) => {
+        let is_video = videos[i];
+        var upload_html;
+        if (!is_video) {
+            let encoded_image_url = encodeURIComponent(image_url);
+            let upload_url = `${NTISAS.domain}/uploads/new?url=${encoded_image_url}&ref=${encoded_tweet_url}`;
+            upload_html = RenderUploadLink(upload_url);
+        } else {
+            upload_html = 'loading...';
+        }
+        html += RenderTwimgPreview(image_url, i, 'preview', upload_html, is_video);
+    });
+    let upload_url = `${NTISAS.domain}/uploads/new?url=${encoded_tweet_url}`;
+    return `
+<div class="ntisas-upload-dialog" data-tweet-id="${tweet_id}">
+    <div class="ntisas-preview-section">
+        ${html}
+    </div>
+    <a class="ntisas-upload-all" href="${upload_url}" target="_blank" style="display: none;"></a>
+</div>`
+}
+
 function RenderPostsContainer(all_posts) {
     let html = "";
     all_posts.forEach((post) => {
@@ -3697,7 +3801,7 @@ function RenderPostPreview(post, append_html = "") {
 </article>`;
 }
 
-function RenderTwimgPreview(image_url, index, type, title) {
+function RenderTwimgPreview(image_url, index, type, title, is_video=false) {
     let ext = GetFileExtension(image_url, ':');
     let thumb_url = GetThumbUrl(image_url, ':', 'jpg', '360x360');
     var image_html, selected_class;
@@ -3707,6 +3811,10 @@ function RenderTwimgPreview(image_url, index, type, title) {
     } else if (type === 'selectable') {
         image_html = `<a><img width="${POST_PREVIEW_DIMENSION}" height="${POST_PREVIEW_DIMENSION}" src="${thumb_url}"></a>`;
         selected_class = 'ntisas-post-preview ntisas-post-select ntisas-post-selectable';
+    } else if (type === 'preview') {
+        let orig_media_url = (is_video ? '#' : image_url + ':orig');
+        image_html = `<a href="${orig_media_url}" data-url="${image_url}"><img width="${TWEET_PREVIEW_DIMENSION}" height="${TWEET_PREVIEW_DIMENSION}" src="${thumb_url}"></a>`;
+        selected_class = 'ntisas-illust-preview';
     }
     let append_html = RenderPreviewAddons(title, 'https://' + location.host, ext);
     return `
@@ -3884,7 +3992,9 @@ async function InitializeImageMenu($tweets, menu_class) {
         let p = JSPLib.utility.createPromise();
         promise_array.push(p.promise);
         let $tweet = $(tweet);
-        let tweet_id = String($tweet.data('tweet-id'));
+        let {tweet_id, screen_name} = GetTweetInfo($tweet);
+        let encoded_url = encodeURIComponent(`https://twitter.com/${screen_name}/status/${tweet_id}`);
+        $tweet.find('.ntisas-control-upload').attr('href', `${NTISAS.domain}/uploads/new?url=${encoded_url}`);
         $tweet.find('.ntisas-link-menu').addClass(menu_class);
         GetData('tweet-' + tweet_id, 'twitter').then((post_ids) => {
             if (post_ids !== null) {
@@ -4071,6 +4181,46 @@ function InitializeConfirmDialog(tweet_id, similar_results, posts) {
     UpdateMenuResults(tweet_id, '<a class="ntisas-control-confirm ntisas-expanded-link">Confirm</a>', false);
 }
 
+async function InitializeUploadDialog(tweet_id, screen_name, image_urls, videos) {
+    NTISAS.upload_dialog ??= {};
+    if (!NTISAS.upload_dialog[tweet_id]) {
+        InitializeUIStyle();
+        let $dialog = $(RenderUploadDialog(tweet_id, screen_name, image_urls, videos));
+        $('article', $dialog[0]).each((i, article) => {
+            InitializeTwitterImage(article, image_urls, TWEET_PREVIEW_DIMENSION);
+        });
+        if (videos.some((status) => status)) {
+            GetTweetData(tweet_id).then((tweet_data)=>{
+                tweet_data.forEach((url_data, i) => {
+                    let is_video = videos[i];
+                    if (!is_video) return;
+                    let video_url = 'https://video.twimg.com/' + url_data.partial_video;
+                    let encoded_video_url = encodeURIComponent(video_url);
+                    let encoded_tweet_url = encodeURIComponent(`https://twitter.com/${screen_name}/status/${tweet_id}`);
+                    let upload_url = `${NTISAS.domain}/uploads/new?url=${encoded_video_url}&ref=${encoded_tweet_url}`;
+                    let upload_html = RenderUploadLink(upload_url);
+                    let $tweet_preview = $dialog.find(`.ntisas-tweet-preview[data-id="${i}"]`);
+                    $tweet_preview.find('.ntisas-image-container a').attr('href', video_url);
+                    $tweet_preview.find('.ntisas-desc-title').html(upload_html);
+                });
+            });
+        }
+        $dialog.find('.ntisas-image-container a').on(PROGRAM_CLICK, PopupTweetLargeImage);
+        let dialog_settings = Object.assign({}, CONFIRM_DIALOG_SETTINGS, {
+            title: "Upload Menu",
+            buttons: {
+                'Upload All': UploadAllSubmit,
+                Close: CloseDialog,
+            },
+            width: 675,
+        });
+        $dialog.dialog(dialog_settings);
+        NTISAS.upload_dialog[tweet_id] = $dialog;
+    }
+    NTISAS.upload_dialog[tweet_id].dialog('open');
+    NTISAS.dialog_tweet[tweet_id] ??= GetTweet(tweet_id);
+}
+
 async function InitializePostIDsLink(tweet_id, tweet, post_ids) {
     let posts_data = await GetPosts(post_ids);
     UpdateMenuResults(tweet_id, RenderPostIDsLink(post_ids, posts_data, 'ntisas-database-match'), false);
@@ -4181,45 +4331,6 @@ function InitializeDownloadLinks($tweet) {
     } else {
         $('.ntisas-download-header, .ntisas-download-section').css('display', 'none');
     }
-}
-
-async function InitializeUploadlinks(install) {
-    NTISAS.photo_index = NTISAS.page_match.groups.index;
-    let $photo_container = $('.ntisas-photo-container');
-    let selected_photo = $(`li:nth-of-type(${NTISAS.photo_index}) img`, $photo_container[0]);
-    if (selected_photo.length === 0) {
-        selected_photo = $('img', $photo_container[0]);
-        if (selected_photo.length === 0) {
-            this.debug('log', "No popup images found!");
-            return;
-        }
-    }
-    let image_info = GetImageURLInfo(selected_photo[0].src);
-    let tweet_url = JSPLib.utility.findAll(window.location.href, TWEET_URL_REGEX)[0];
-    if (!image_info || !tweet_url) {
-        return;
-    }
-    let image_url = await GetNormalImageURL(image_info);
-    let orig_image_url = image_url + ':orig';
-    let url_addons = $.param({url: orig_image_url, ref: tweet_url});
-    let upload_link = `${NTISAS.domain}/uploads/new?${url_addons}`;
-    var $link;
-    if (install) {
-        $link = $(`<div class="ntisas-upload"><a target="_blank" href="${upload_link}">Upload</a></div>`);
-        $('.ntisas-photo-menu').append($link);
-    } else {
-        $link = $('.ntisas-upload a');
-        $link.attr('href', upload_link);
-    }
-    let qtip_key = NTISAS.page_match.groups.id + '-' + NTISAS.page_match.groups.index;
-    InitializeQtip($link, qtip_key, async () => {
-        let extension = GetFileExtension(image_url).toUpperCase();
-        let $container = await GetImageAttributes(orig_image_url).then(({size, width, height}) => {
-            let size_text = (size > 0 ? ReadableBytes(size) : 'Unavailable');
-            return `<span class="ntisas-code">${size_text} : ${extension} : (${width} x ${height})</span>`;
-        });
-        return $container;
-    });
 }
 
 function InitializeMediaLink($tweet) {
@@ -5350,21 +5461,6 @@ function SeenTweet(entries, observer) {
     });
 }
 
-function PhotoNavigation() {
-    if (!NTISAS.photo_navigation) {
-        return;
-    }
-    setTimeout(() => {
-        //Get the latest page regex match stored onto global variable
-        let pagetype = GetPageType();
-        if (pagetype === 'photo') {
-            if (NTISAS.page_match.groups.index !== NTISAS.photo_index) {
-                InitializeUploadlinks(false);
-            }
-        }
-    }, TWITTER_DELAY);
-}
-
 function ImageEnter(event) {
     if (!NTISAS.user_settings.display_image_number) {
         return;
@@ -5458,6 +5554,12 @@ function ToggleDownloadSection() {
     UpdateDownloadControls();
     UpdateDownloadSection();
     NTISAS.channel.postMessage({type: 'download_ui'});
+}
+
+function ToggleConfirmUpload() {
+    JSPLib.storage.setLocalData('ntisas-confirm-upload', !NTISAS.confirm_upload);
+    UpdateConfirmUploadControls();
+    NTISAS.channel.postMessage({type: 'confirm_upload'});
 }
 
 function ToggleViewHighlights() {
@@ -5560,6 +5662,8 @@ function OpenMediaTweetMenu(event) {
             $dialog.find('.ntisas-media-video').each((i, entry) => {
                 $(entry).on(PROGRAM_CLICK, PopupMediaTweetVideo);
             });
+            let encoded_url = encodeURIComponent(`https://twitter.com/${screen_name}/status/${tweet_id}`);
+            $dialog.find('.ntisas-control-upload').attr('href', `${NTISAS.domain}/uploads/new?url=${encoded_url}`);
             $dialog.find('.ntisas-link-menu').addClass('ntisas-timeline-menu');
             GetData('tweet-' + tweet_id, 'twitter').then((post_ids) => {
                 if (post_ids !== null) {
@@ -5587,6 +5691,24 @@ function OpenMediaTweetMenu(event) {
     } else {
         NTISAS.media_dialog[tweet_id].dialog('open');
     }
+}
+
+function PopupTweetLargeImage(event) {
+    let $container = $(event.currentTarget);
+    let image_url = $container.data('url');
+    let original = image_url + ':orig';
+    let regular = image_url + ':large';
+    let html = `
+        <div class="ntisas-preview-popup">
+            <a href="${original}"><img src="${regular}"></a>
+        </div>`;
+    let $popup = $(html);
+    $popup.appendTo(document.body);
+    $popup.on('mouseleave.ntisas', () => {
+        $popup.remove();
+    });
+    $popup.find('a').get(0).onclick = (() => false);
+    event.preventDefault();
 }
 
 function PopupMediaTweetImage(event) {
@@ -5682,6 +5804,27 @@ function ConfirmSubmit(event) {
     CloseDialog(event);
     $dialog.dialog('destroy').remove();
     delete NTISAS.confirm_dialog[tweet_id];
+}
+
+function UploadMenu(event) {
+    let {$tweet, tweet_id, screen_name} = GetEventPreload(event);
+    GetMediaLinksData($tweet).then(({image_urls, videos})=>{
+        if (image_urls.length > 1) {
+            InitializeUploadDialog(tweet_id, screen_name, image_urls, videos);
+        } else if (image_urls.length === 1) {
+            if (!NTISAS.confirm_upload || confirm("Upload tweet?")) {
+                $tweet.find('.ntisas-control-upload').clone().get(0).click();
+            }
+        } else {
+            JSPLib.notice.error(`Unable to find any images to upload for tweet #${tweet_id}.`);
+        }
+    });
+    event.preventDefault();
+}
+
+function UploadAllSubmit(event) {
+    let {$dialog} = GetDialogPreload(event);
+    $dialog.find('.ntisas-upload-all').get(0).click();
 }
 
 function CloseDialog(event) {
@@ -6285,13 +6428,6 @@ function RegularCheck() {
     if (pagetype === "other") {
         return;
     }
-    //Process only photo popups when in that mode
-    if (pagetype === 'photo') {
-        NTISAS.photo_navigation = true;
-        ProcessPhotoPopup();
-        return;
-    }
-    NTISAS.photo_navigation = false;
 
     //Process events on a page change
     PageNavigation(pagetype);
@@ -6314,6 +6450,7 @@ function RegularCheck() {
         if (!document.body.contains(NTISAS.dialog_tweet[tweet_id].get(0))) {
             DestroyDialog('search_dialog', tweet_id);
             DestroyDialog('confirm_dialog', tweet_id);
+            DestroyDialog('upload_dialog', tweet_id);
             delete NTISAS.dialog_tweet[tweet_id];
         }
     }
@@ -6432,6 +6569,7 @@ function PageNavigation(pagetype) {
             $('#ntisas-current-records').on(PROGRAM_CLICK, CurrentRecords);
             $('#ntisas-similar-toggle a').on(PROGRAM_CLICK, ToggleSimilarSource);
             $('#ntisas-downloads-toggle a').on(PROGRAM_CLICK, ToggleDownloadSection);
+            $('#ntisas-confirm-upload-toggle a').on(PROGRAM_CLICK, ToggleConfirmUpload);
             $('#ntisas-view-highlights-toggle a').on(PROGRAM_CLICK, ToggleViewHighlights);
             $('#ntisas-view-counts-toggle a').on(PROGRAM_CLICK, ToggleViewCounts);
             $('#ntisas-iqdb-toggle a').on(PROGRAM_CLICK, ToggleAutoclickIQDB);
@@ -6473,6 +6611,7 @@ function PageNavigation(pagetype) {
     UpdateSideMenu();
     UpdateSimilarControls();
     UpdateDownloadControls();
+    UpdateConfirmUploadControls();
     UpdateViewHighlightControls();
     UpdateViewCountControls();
     UpdateIQDBControls();
@@ -6481,21 +6620,6 @@ function PageNavigation(pagetype) {
     if (NTISAS.prev_pagetype !== undefined) {
         UpdateDownloadSection();
         UpdateViewHighlights();
-    }
-}
-
-function ProcessPhotoPopup() {
-    let $photo_container = $('[aria-labelledby="modal-header"] > div > div:first-of-type');
-    if ($photo_container.length) {
-        let $photo_menu = $('[role=group]:not(.ntisas-photo-menu)', $photo_container[0]);
-        if ($photo_menu.length) {
-            $photo_container.addClass('ntisas-photo-container');
-            $photo_menu.addClass('ntisas-photo-menu');
-            $('.ntisas-photo-container [aria-label=Next], .ntisas-photo-container [aria-label=Previous]').on(PROGRAM_CLICK, PhotoNavigation);
-            if (NTISAS.user_settings.display_upload_link) {
-                InitializeUploadlinks(true);
-            }
-        }
     }
 }
 
@@ -6743,6 +6867,10 @@ function BroadcastTISAS(ev) {
             JSPLib.storage.invalidateLocalData('ntisas-similar-source');
             UpdateSimilarControls();
             break;
+        case 'confirm_upload':
+            JSPLib.storage.invalidateLocalData('ntisas-confirm-upload');
+            UpdateConfirmUploadControls();
+            break
         case 'autoiqdb':
             NTISAS.lists['auto-iqdb-list'] = ev.data.list;
             UpdateIQDBControls();
@@ -6843,21 +6971,6 @@ function InitializeChangedSettings() {
     if (JSPLib.menu.hasSettingChanged('display_tweet_statistics') && NTISAS.user_settings.display_tweet_statistics && !IsPageType(['tweet', 'web_tweet', 'other'])) {
         CollectTweetStats();
     }
-    if (JSPLib.menu.hasSettingChanged('display_upload_link')) {
-        if (NTISAS.user_settings.display_upload_link) {
-            let $upload_link = $('.ntisas-upload');
-            let install = true;
-            if ($upload_link.length) {
-                $('.ntisas-upload').show();
-                install = false;
-            }
-            if (NTISAS.page === "photo") {
-                InitializeUploadlinks(install);
-            }
-        } else {
-            $('.ntisas-upload').hide();
-        }
-    }
     if (JSPLib.menu.hasSettingChanged('lock_page_enabled')) {
         if (NTISAS.user_settings.lock_page_enabled && NTISAS.page_locked) {
             $(window).on('beforeunload.ntisas.lock_page', () => "");
@@ -6946,7 +7059,6 @@ function RenderSettingsMenu() {
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_user_id'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_media_link'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_image_number'));
-    $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_upload_link'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_tweet_statistics'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_available_sauce'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_network_errors'));
@@ -7021,6 +7133,7 @@ async function Main() {
     $(document).on(PROGRAM_CLICK, '.ntisas-control-search', SearchMenu);
     $(document).on(PROGRAM_RCLICK, '.ntisas-control-search', SearchControl);
     $(document).on(PROGRAM_CLICK, '.ntisas-control-confirm', ConfirmControl);
+    $(document).on(PROGRAM_CLICK, '.ntisas-control-upload', UploadMenu);
     $(document).on(PROGRAM_CLICK, '.ntisas-manual-add', ManualAdd);
     $(document).on(PROGRAM_CLICK, '.ntisas-help-info', HelpInfo);
     $(document).on(PROGRAM_CLICK, '.ntisas-image-container a', SelectPreview);
@@ -7030,8 +7143,6 @@ async function Main() {
     $(document).on(PROGRAM_CLICK, '.ntisas-download-all', DownloadAll);
     $(document).on(PROGRAM_CLICK, '.ntisas-metric', SelectMetric);
     $(document).on(PROGRAM_CLICK, '.ntisas-toggle-image-size', ToggleImageSize);
-    $(document).on(PROGRAM_KEYDOWN, null, 'left', PhotoNavigation);
-    $(document).on(PROGRAM_KEYDOWN, null, 'right', PhotoNavigation);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+s', ToggleSimilarSource);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+q', ToggleAutoclickIQDB);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+d', ToggleDownloadSection);
@@ -7061,7 +7172,7 @@ async function Main() {
     UnhideTweets, RegularCheck, ImportData, DownloadURL, PromptSavePostIDs,
     SaveDatabase, CheckPostvers,
     ReadFileAsync, ProcessPostvers, InitializeImageTweets, CorrectStringArray, ValidateEntry, BroadcastTISAS,
-    PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages, InitializeUploadlinks,
+    PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages,
     GetNormalImageURL, GetPageType, CheckServerBadTweets, SavePostvers, MarkupMainTweet,
     MarkupStreamTweet, MarkupMediaType, CheckViews, InitializeViewCount, ToggleImageSize, InitializeProfileTimeline,
     IntervalStorageHandler, UpdateUserIDCallback, PreloadStorageData,
@@ -7069,7 +7180,7 @@ async function Main() {
     UnhideTweets, RegularCheck, ImportData, DownloadURL, PromptSavePostIDs,
     SaveDatabase, CheckPostvers,
     ReadFileAsync, ProcessPostvers, InitializeImageTweets, CorrectStringArray, ValidateEntry, BroadcastTISAS,
-    PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages, InitializeUploadlinks,
+    PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages,
     GetNormalImageURL, GetPageType, CheckServerBadTweets, SavePostvers, MarkupMainTweet,
     MarkupStreamTweet, MarkupMediaType, CheckViews, InitializeViewCount, ToggleImageSize, InitializeProfileTimeline,
     IntervalStorageHandler, UpdateUserIDCallback, PreloadStorageData,
