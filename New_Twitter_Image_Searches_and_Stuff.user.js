@@ -38,7 +38,6 @@
 // @connect      donmai.us
 // @connect      saucenao.com
 // @connect      twimg.com
-// @connect      api.twitter.com
 // @run-at       document-body
 // @noframes
 // ==/UserScript==
@@ -204,12 +203,6 @@ const SETTINGS_CONFIG = {
         reset: ['danbooru'],
         validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'radio', SUBDOMAINS),
         hint: "Select which subdomain of Danbooru to query from. <b>Note:</b> The chosen subdomain must be logged into or the script will fail to work."
-    },
-    use_graphql: {
-        display: "Use GraphQL",
-        reset: false,
-        validate: JSPLib.validate.isBoolean,
-        hint: "Select whether to use the GraphQL endpoint instead of the API endpoint for network requests."
     },
     autoclick_IQDB_enabled: {
         reset: false,
@@ -2091,6 +2084,87 @@ const TWEET_RESTID_GQL_FEATURES = {
     longform_notetweets_inline_media_enabled: true,
     responsive_web_media_download_video_enabled: true,
     responsive_web_enhance_cards_enabled: false,
+};
+
+const TWEET_RESTIDS_GQL_FEATURES = {
+    creator_subscriptions_tweet_preview_api_enabled: false,
+    premium_content_api_read_enabled: false,
+    communities_web_enable_tweet_community_results_fetch: false,
+    c9s_tweet_anatomy_moderator_badge_enabled: false,
+    responsive_web_grok_analyze_button_fetch_trends_enabled: false,
+    responsive_web_grok_analyze_post_followups_enabled: false,
+    responsive_web_jetfuel_frame: false,
+    responsive_web_grok_share_attachment_enabled: false,
+    articles_preview_enabled: false,
+    responsive_web_edit_tweet_api_enabled: false,
+    graphql_is_translatable_rweb_tweet_is_translatable_enabled: false,
+    view_counts_everywhere_api_enabled: false,
+    longform_notetweets_consumption_enabled: false,
+    responsive_web_twitter_article_tweet_consumption_enabled: false,
+    tweet_awards_web_tipping_enabled: false,
+    responsive_web_grok_show_grok_translated_post: false,
+    responsive_web_grok_analysis_button_from_backend: false,
+    creator_subscriptions_quote_tweet_preview_enabled: false,
+    freedom_of_speech_not_reach_fetch_enabled: false,
+    standardized_nudges_misinfo: false,
+    tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled: false,
+    longform_notetweets_rich_text_read_enabled: false,
+    longform_notetweets_inline_media_enabled: false,
+    payments_enabled: false,
+    profile_label_improvements_pcf_label_in_post_enabled: false,
+    responsive_web_profile_redirect_enabled: false,
+    rweb_tipjar_consumption_enabled: false,
+    verified_phone_label_enabled: false,
+    responsive_web_grok_image_annotation_enabled: false,
+    responsive_web_grok_imagine_annotation_enabled: false,
+    responsive_web_grok_community_note_auto_translation_is_enabled: false,
+    responsive_web_graphql_skip_user_profile_image_extensions_enabled: false,
+    responsive_web_graphql_timeline_navigation_enabled: false,
+    responsive_web_enhance_cards_enabled: false,
+};
+
+const TWEET_RESTIDS_GQL_DATA = {
+    includePromotedContent: false,
+    withBirdwatchNotes: false,
+    withVoice: false,
+    withCommunity: false,
+};
+
+const TWEET_RESTIDS_GQL_FIELDS = {
+    withArticleRichContentState: false,
+    withArticlePlainText: false,
+    withGrokAnalyze: false,
+    withDisallowedReplyControls: false,
+    withAuxiliaryUserLabels: false,
+};
+
+const MEDIA_TIMELINE_DATA = {
+    includePromotedContent: false,
+    withSuperFollowsUserFields: true,
+    withDownvotePerspective: false,
+    withReactionsMetadata: false,
+    withReactionsPerspective: false,
+    withSuperFollowsTweetFields: true,
+    withClientEventToken: false,
+    withBirdwatchNotes: false,
+    withVoice: true,
+    withV2Timeline: true,
+    count: 20,
+};
+
+const MEDIA_TIMELINE_FEATURES = {
+    responsive_web_graphql_timeline_navigation_enabled: false,
+    unified_cards_ad_metadata_container_dynamic_card_content_query_enabled: false,
+    dont_mention_me_view_api_enabled: true,
+    responsive_web_uc_gql_enabled: true,
+    vibe_api_enabled: true,
+    responsive_web_edit_tweet_api_enabled: true,
+    graphql_is_translatable_rweb_tweet_is_translatable_enabled: false,
+    standardized_nudges_misinfo: true,
+    tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled: false,
+    interactive_text_enabled: true,
+    responsive_web_text_conversations_enabled: false,
+    responsive_web_enhance_cards_enabled: true,
 };
 
 const QUERY_LIMIT = 100;
@@ -4666,18 +4740,6 @@ function DownloadURL(file_url, download_name, $tweet) {
     }
 }
 
-function TwitterAPI1_1Request(endpoint, data) {
-    let url_addons = $.param(data);
-    return $.ajax({
-        method: 'GET',
-        url: `https://api.twitter.com/1.1/${endpoint}.json?${url_addons}`,
-        processData: false,
-        beforeSend (request) {
-            request.setRequestHeader('authorization', 'Bearer AAAAAAAAAAAAAAAAAAAAALVzYQAAAAAAIItU1SgTX8I%2B7Q3Cl3mqvuZiAAc%3D0AtbuGPnZgRlOHbTIk3JudxSGqXxgfkwpMG367Rtyw6GGLwO6N');
-        },
-    });
-}
-
 function TwitterGraphQLRequest(endpoint, variables, features) {
     let addons = {};
     if (variables) {
@@ -4697,14 +4759,6 @@ function TwitterGraphQLRequest(endpoint, variables, features) {
             request.setRequestHeader('x-csrf-token', csrf_token);
         },
     });
-}
-
-function GetTweetAPI1_1(tweet_id) {
-    return TwitterAPI1_1Request('statuses/show', {id: tweet_id, tweet_mode: 'extended', trim_user: true});
-}
-
-function GetTweetsAPI1_1(tweet_ids) {
-    return TwitterAPI1_1Request('statuses/lookup', {id: tweet_ids.join(','), tweet_mode: 'extended', trim_user: true});
 }
 
 function GetTweetGQL(tweet_id) {
@@ -4727,6 +4781,24 @@ function GetTweetGQL_alt(tweet_id) {
     });
 }
 
+function GetTweetsGQL(tweet_ids) {
+    let data = Object.assign({tweetIds: tweet_ids}, TWEET_RESTIDS_GQL_DATA);
+    return TwitterGraphQLRequest('qvJxlsU8dkDfEh59g_RNXg/TweetResultsByRestIds', data, TWEET_RESTIDS_GQL_FEATURES, TWEET_RESTIDS_GQL_FIELDS).then((data) => {
+        let api_data = CheckGraphqlData(data);
+        return Object.values(api_data.tweets);
+    });
+}
+
+async function GetTweetsGQL_alt(tweet_ids, account) {
+    let network_data = await Promise.all(tweet_ids.map((tweet_id) => QueueTimelineRequest(tweet_id, account)));
+    tweet_ids.forEach((tweet_id, i) => {
+        if (JSPLib.validate.isHash(network_data[i])) {
+            network_data[i].id_str = tweet_id;
+        }
+    });
+    return network_data.filter((data) => JSPLib.validate.isHash(data));
+}
+
 function GetUserIDGQL(screen_name) {
     let data = {
         screen_name,
@@ -4744,38 +4816,30 @@ function GetUserIDGQL(screen_name) {
 }
 
 function GetMediaTimelineGQL(user_id, cursor) {
-    let variables = {
-        userId: user_id,
-        includePromotedContent: false,
-        withSuperFollowsUserFields: true,
-        withDownvotePerspective: false,
-        withReactionsMetadata: false,
-        withReactionsPerspective: false,
-        withSuperFollowsTweetFields: true,
-        withClientEventToken: false,
-        withBirdwatchNotes: false,
-        withVoice: true,
-        withV2Timeline: true,
-        count: 20,
-    };
+    let data = Object.assign({userId: user_id}, MEDIA_TIMELINE_DATA);
     if (JSPLib.validate.isString(cursor)) {
-        variables.cursor = cursor;
+        data.cursor = cursor;
     }
-    let features = {
-        responsive_web_graphql_timeline_navigation_enabled: false,
-        unified_cards_ad_metadata_container_dynamic_card_content_query_enabled: false,
-        dont_mention_me_view_api_enabled: true,
-        responsive_web_uc_gql_enabled: true,
-        vibe_api_enabled: true,
-        responsive_web_edit_tweet_api_enabled: true,
-        graphql_is_translatable_rweb_tweet_is_translatable_enabled: false,
-        standardized_nudges_misinfo: true,
-        tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled: false,
-        interactive_text_enabled: true,
-        responsive_web_text_conversations_enabled: false,
-        responsive_web_enhance_cards_enabled: true,
-    };
-    return TwitterGraphQLRequest('_vFDgkWOKL_U64Y2VmnvJw/UserMedia', variables, features).then((data) => CheckGraphqlData(data));
+
+    return TwitterGraphQLRequest('_vFDgkWOKL_U64Y2VmnvJw/UserMedia', data, MEDIA_TIMELINE_FEATURES).then((data) => CheckGraphqlData(data));
+}
+
+function HandleTwitterErrorResponse(response, notice) {
+    var message, html;
+    if (JSPLib.validate.isHash(response.responseJSON)) {
+        message = JSON.stringify(response.responseJSON, null, 2);
+        html = '<pre>' + message + '</pre>';
+    } else if (typeof response.responseText === 'string') {
+        message = html = response.responseText;
+    } else {
+        message = html = 'Unknown error';
+    }
+    let error_code = Number.isInteger(response.status) ? response.status : 'unknown';
+    if (notice) {
+        JSPLib.notice.error(`HTTP ${error_code}:<br>${html}`);
+    } else {
+        console.error(`HTTP ${error_code}:\n${message}`);
+    }
 }
 
 async function GetItems(item_ids, storage_key, network_key) {
@@ -4810,10 +4874,22 @@ function GetTweetData(tweet_id) {
         let p = JSPLib.utility.createPromise();
         GetTweetData.memoized[tweet_id] = p.promise;
         let data_key = 'tweet-' + tweet_id;
-        GetData(data_key, 'danbooru').then((storage_data) => {
+        GetData(data_key, 'danbooru').then(async (storage_data) => {
             if (!storage_data) {
-                let tweet_func = (NTISAS.user_settings.use_graphql ? GetTweetGQL_alt : GetTweetAPI1_1);
-                tweet_func(tweet_id).then((network_data) => {
+                var network_data;
+                try {
+                    network_data = await GetTweetGQL(tweet_id);
+                } catch (response) {
+                    HandleTwitterErrorResponse(response, false);
+                }
+                if (!network_data) {
+                    try {
+                        network_data = await GetTweetGQL_alt(tweet_id);
+                    } catch (response) {
+                        HandleTwitterErrorResponse(response, true);
+                    }
+                }
+                if (JSPLib.validate.isHash(network_data)) {
                     let value = network_data.extended_entities.media.map((media) => {
                         let image_info = GetImageURLInfo(media.media_url_https);
                         let partial_image = image_info.path + '/' + image_info.key + '.' + image_info.ext;
@@ -4824,7 +4900,9 @@ function GetTweetData(tweet_id) {
                     let expires = JSPLib.utility.getExpires(TWEET_EXPIRES);
                     SaveData(data_key, {value, expires}, 'danbooru');
                     p.resolve(value);
-                });
+                } else {
+                    p.reject(null);
+                }
             } else {
                 p.resolve(storage_data.value);
             }
@@ -4850,44 +4928,49 @@ function GetTweetsData(tweet_ids, account) {
             });
             let query_tweet_ids = JSPLib.utility.arrayDifference(tweet_ids, Object.keys(tweet_dict));
             if (query_tweet_ids.length) {
-                let tweet_func = (NTISAS.user_settings.use_graphql ? GetTweetsGQL : GetTweetsAPI1_1);
-                let network_data = await tweet_func(query_tweet_ids, account);
-                let network_tweet_ids = [];
-                let expires = JSPLib.utility.getExpires(TWEET_EXPIRES);
-                network_data.forEach((tweet_data) => {
-                    let tweet_id = tweet_data.id_str;
-                    let value = tweet_data.extended_entities.media.map((media) => {
-                        let image_info = GetImageURLInfo(media.media_url_https);
-                        let partial_image = image_info.path + '/' + image_info.key + '.' + image_info.ext;
-                        let partial_video = (media.video_info ? GetMaxVideoURL(media, 0) : null);
-                        let partial_sample = (media.video_info ? GetMaxVideoURL(media, 1) : null);
-                        return {partial_image, partial_video, partial_sample};
+                var network_data;
+                try {
+                    network_data = await GetTweetsGQL(tweet_ids);
+                } catch (response) {
+                    HandleTwitterErrorResponse(response, false);
+                }
+                if (!network_data) {
+                    try {
+                        network_data = await GetTweetsGQL_alt(tweet_ids, account);
+                    } catch (response) {
+                        HandleTwitterErrorResponse(response, true);
+                    }
+                }
+                if (Array.isArray(network_data)) {
+                    let network_tweet_ids = [];
+                    let expires = JSPLib.utility.getExpires(TWEET_EXPIRES);
+                    network_data.forEach((tweet_data) => {
+                        let tweet_id = tweet_data.id_str;
+                        let value = tweet_data.extended_entities.media.map((media) => {
+                            let image_info = GetImageURLInfo(media.media_url_https);
+                            let partial_image = image_info.path + '/' + image_info.key + '.' + image_info.ext;
+                            let partial_video = (media.video_info ? GetMaxVideoURL(media, 0) : null);
+                            let partial_sample = (media.video_info ? GetMaxVideoURL(media, 1) : null);
+                            return {partial_image, partial_video, partial_sample};
+                        });
+                        SaveData('tweet-' + tweet_id, {value, expires}, 'danbooru');
+                        tweet_dict[tweet_id] = value;
+                        network_tweet_ids.push(tweet_id);
                     });
-                    SaveData('tweet-' + tweet_id, {value, expires}, 'danbooru');
-                    tweet_dict[tweet_id] = value;
-                    network_tweet_ids.push(tweet_id);
-                });
-                let missing_tweet_ids = JSPLib.utility.arrayDifference(query_tweet_ids, network_tweet_ids);
-                expires = JSPLib.utility.getExpires(JSPLib.utility.one_day);
-                missing_tweet_ids.forEach((tweet_id) => {
-                    SaveData('tweet-' + tweet_id, {value: [], expires}, 'danbooru');
-                    tweet_dict[tweet_id] = [];
-                });
+                    let missing_tweet_ids = JSPLib.utility.arrayDifference(query_tweet_ids, network_tweet_ids);
+                    expires = JSPLib.utility.getExpires(JSPLib.utility.one_day);
+                    missing_tweet_ids.forEach((tweet_id) => {
+                        SaveData('tweet-' + tweet_id, {value: [], expires}, 'danbooru');
+                        tweet_dict[tweet_id] = [];
+                    });
+                } else {
+                    p.reject(null);
+                }
             }
             p.resolve(tweet_dict);
         });
     }
     return GetTweetsData.memoized[key];
-}
-
-async function GetTweetsGQL(tweet_ids, account) {
-    let network_data = await Promise.all(tweet_ids.map((tweet_id) => QueueTimelineRequest(tweet_id, account)));
-    tweet_ids.forEach((tweet_id, i) => {
-        if (JSPLib.validate.isHash(network_data[i])) {
-            network_data[i].id_str = tweet_id;
-        }
-    });
-    return network_data.filter((data) => JSPLib.validate.isHash(data));
 }
 
 function GetUserRestID(account) {
@@ -6567,11 +6650,6 @@ function ProcessMediaTweets() {
     $('#ntisas-tweet-stats-table').html(table_html);
     let multi_tweet_ids = $('.ntisas-media-tweet.ntisas-multi-media').map((i, entry) => entry.dataset.tweetId).toArray();
     var tweet_dict_promise = GetTweetsData(multi_tweet_ids, NTISAS.account);
-    if (NTISAS.user_settings.use_graphql) {
-        let lowest_tweet_id = String(JSPLib.utility.bigIntMin(...tweet_ids.map((tweet_id) => BigInt(tweet_id))));
-        //Keep the timeline handler up-to-date with the media timeline no matter what, otherwise it takes forever to catch up.
-        QueueTimelineRequest(lowest_tweet_id, NTISAS.account);
-    }
     Promise.all(promise_array).then((tweet_post_ids) => {
         for (let i = 0; i < tweet_ids.length; i++) {
             let tweet_id = tweet_ids[i];
@@ -6888,7 +6966,6 @@ function RenderSettingsMenu() {
     $('#ntisas-network-settings').append(JSPLib.menu.renderCheckbox('custom_order_enabled'));
     $('#ntisas-network-settings').append(JSPLib.menu.renderTextinput('recheck_interval', 5));
     $('#ntisas-network-settings').append(JSPLib.menu.renderInputSelectors('query_subdomain', 'radio'));
-    $('#ntisas-network-settings').append(JSPLib.menu.renderCheckbox('use_graphql'));
     $('#ntisas-download-settings').append(JSPLib.menu.renderCheckbox('original_download_enabled'));
     $('#ntisas-download-settings').append(JSPLib.menu.renderTextinput('filename_prefix_format', 80));
     $("#ntisas-list-message").append(JSPLib.menu.renderExpandable("Additional control details", LIST_CONTROL_DETAILS));
