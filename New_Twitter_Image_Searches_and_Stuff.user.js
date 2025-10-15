@@ -142,6 +142,7 @@ const PROGRAM_DEFAULT_VALUES = {
     no_confirm: new Set(),
     search_running: new Set(),
     download_running: new Set(),
+    storage_data: {danbooru: {}, twitter: {}},
 };
 
 //Settings constants
@@ -5335,18 +5336,25 @@ function PreloadStorageData(tweet_ids) {
 
 function GetData(key, database) {
     let type = (database === 'danbooru' ? 'check' : 'get');
-    return QueueStorageRequest(type, key, null, database);
+    if (!(key in NTISAS.storage_data[database])) {
+        NTISAS.storage_data[database][key] = QueueStorageRequest(type, key, null, database);
+    }
+    return NTISAS.storage_data[database][key];
 }
 
 function SaveData(key, value, database, invalidate = true) {
     if (invalidate) {
         InvalidateCache(key, database);
+        NTISAS.storage_data[database][key] = Promise.resolve(value);
+    } else {
+        NTISAS.storage_data[database][key] ??= Promise.resolve(value);
     }
     return QueueStorageRequest('save', key, value, database);
 }
 
 function RemoveData(key, database) {
     InvalidateCache(key, database);
+    delete NTISAS.storage_data[database][key];
     return QueueStorageRequest('remove', key, null, database);
 }
 
