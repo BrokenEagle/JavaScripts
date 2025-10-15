@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      10.15
+// @version      10.16
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -5005,7 +5005,7 @@ function SaveDatabaseBatch() {
             SaveDatabaseBatch.is_help_installed = true;
         }
         JSPLib.storage.setLocalData('ntisas-database-batchindex', batch_index + 1);
-        JSPLib.storage.batchstorage.getItem('database-batch-' + batch_index).then((database_batch) => {
+        JSPLib.storage.twitterstorage.getItem('database-batch-' + batch_index).then((database_batch) => {
             if (JSPLib.validate.isHash(database_batch)) {
                 (async () =>{
                     JSPLib.debug.debugTime('SaveDatabaseBatch-' + display_index);
@@ -5019,7 +5019,7 @@ function SaveDatabaseBatch() {
                         }
                     }
                     await JSPLib.storage.twitterstorage.setItems(payload);
-                    await JSPLib.storage.batchstorage.removeItem('database-batch-' + batch_index);
+                    await JSPLib.storage.twitterstorage.removeItem('database-batch-' + batch_index);
                     JSPLib.debug.debugTimeEnd('SaveDatabaseBatch-' + display_index);
                 })();
             } else {
