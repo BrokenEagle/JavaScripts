@@ -335,12 +335,6 @@ const FONT_FAMILY = '\'Segoe UI\', Arial, sans-serif';
 const BASE_PREVIEW_WIDTH = 160;
 const POST_PREVIEW_DIMENSION = 150;
 const TWEET_PREVIEW_DIMENSION = 300;
-const TWITTER_SPACING_CLASSES = [
-    'r-1559e4e', //padding for Twitter icon
-    'r-cnw61z', //padding for side menu items
-    'r-12kyg2d', //padding for tweet button
-];
-const TWITTER_SPACING_SELECTOR = JSPLib.utility.joinList(TWITTER_SPACING_CLASSES, '#ntisas-account-options.ntisas-activated .', null, ',');
 
 const PROGRAM_CSS = `
 :root {
@@ -513,11 +507,14 @@ const PROGRAM_CSS = `
     color: red;
 }
 #ntisas-side-menu {
+    position: fixed;
+    top: 1.5em;
+    left: 1.5em;
+    width: 300px;
+    height: auto;
     font-size: 14px;
-    margin-top: 10px;
-    width: 285px;
-    height: 475px;
     font-family: ${FONT_FAMILY};
+    z-index: 100;
 }
 #ntisas-side-border {
     border: solid lightgrey 1px;
@@ -554,14 +551,14 @@ const PROGRAM_CSS = `
     letter-spacing: -1px;
 }
 #ntisas-menu-header {
-    margin: 8px -10px 0;
     padding: 2px;
     font-size: 18px;
     font-weight: bold;
-    line-height: 1;
     letter-spacing: -1px;
-    transform: scaleX(0.9);
-    text-decoration: underline;
+    text-align: center;
+    cursor: move;
+    border-bottom: solid lightgrey 1px;
+    cursor: move;
 }
 #ntisas-stats-header {
     margin: 8px;
@@ -901,10 +898,6 @@ const PROGRAM_CSS = `
     margin-top: 0.5em;
     margin-left: -4em;
 }
-.ntisas-activated,
-.ntisas-activated:hover {
-    color: unset;
-}
 #ntisas-tweet-stats-table {
     margin: 0.5em;
 }
@@ -920,28 +913,6 @@ const PROGRAM_CSS = `
 #ntisas-tweet-stats-table td {
     color: grey;
     border: 1px solid;
-}
-${TWITTER_SPACING_SELECTOR} {
-    margin: -3px 0;
-    padding: 0;
-}
-#ntisas-account-options.ntisas-activated {
-    justify-content: normal;
-}
-#ntisas-account-options.ntisas-activated > div:first-child {
-    flex: none;
-}
-#ntisas-account-options.ntisas-activated .r-1jayybb {
-    min-height: 35px;
-}
-#ntisas-account-options.ntisas-activated [role=link] > div {
-    padding: 8px;
-}
-@media screen and (min-width: 1282px) {
-    #ntisas-account-options.ntisas-activated {
-        width: 325px;
-        margin-left: -50px;
-    }
 }
 .ntisas-dialog-container,
 .ntisas-qtip-container {
@@ -1055,6 +1026,13 @@ ${TWITTER_SPACING_SELECTOR} {
 }
 .ntisas-download-dialog .ntisas-desc-title a.ntisas-active {
     color: green;
+}
+/*FIXES TO ORGANIZE*/
+#ntisas-side-menu input[type=button] {
+    border-radius: 3px;
+    padding: 0.25em 1em;
+    cursor: pointer;
+    border: 1px solid;
 }`;
 
 const NOTICE_CSS = `
@@ -1193,6 +1171,7 @@ const COLOR_CSS = `
 .ntisas-footer-entries {
     color: %TEXTCOLOR%;
 }
+#ntisas-side-menu,
 [ntisas-tweet=stream] .ntisas-tweet-controls {
     background-color: %BACKGROUNDCOLOR%;
 }
@@ -1364,6 +1343,12 @@ const COLOR_CSS = `
     color: %TEXTCOLOR%;
     background-color: %BACKGROUNDCOLOR%;
     border: 1px solid %TEXTSHADED%;
+}
+/*FIXES TO ORGANIZE*/
+#ntisas-side-menu input[type=button] {
+    color: %TEXTCOLOR%;
+    background-color: %BACKGROUNDCOLOR%;
+    border-color: %TEXTSHADED%;
 }`;
 
 const IMAGE_NUMBER_CSS = `
@@ -2302,6 +2287,7 @@ const TWITTER_COLORS = {
 };
 
 const STREAMING_PAGES = ['home', 'main', 'likes', 'replies', 'media', 'list', 'search', 'hashtag', 'events', 'topics'];
+const SHOWN_MENU_PAGES = JSPLib.utility.concat(STREAMING_PAGES, ['tweet', 'web_tweet']);
 const MEDIA_TYPES = ['images', 'media', 'videos'];
 
 const ALL_LISTS = {
@@ -3292,8 +3278,8 @@ function ProcessPostvers(postvers) {
     return [add_entries, rem_entries];
 }
 
-function GetPageType() {
-    let page_url = window.location.href.split('#')[0];
+function GetPageType(page_url) {
+    page_url = page_url.split('#')[0];
     for (let key in PAGE_REGEXES) {
         NTISAS.page_match = PAGE_REGEXES[key].exec(page_url);
         if (NTISAS.page_match) {
@@ -3303,14 +3289,38 @@ function GetPageType() {
     return 'other';
 }
 
-function UpdateSideMenu() {
+function UpdateSideMenu(page_type, update_visibility) {
     let menu_shown = JSPLib.storage.getLocalData('ntisas-side-menu', {default_val: true});
+    let $side_menu = $('#ntisas-side-menu');
     if (menu_shown) {
-        $('#ntisas-account-options').addClass('ntisas-activated');
-        $('#ntisas-side-menu').show();
+        if (!NTISAS.side_menu_draggable) {
+            $side_menu.draggable({handle : '#ntisas-menu-header'});
+            NTISAS.side_menu_draggable = true;
+            $(window).on('beforeunload.ntisas.update-position', SaveMenuPosition);
+        }
     } else {
-        $('#ntisas-account-options').removeClass('ntisas-activated');
-        $('#ntisas-side-menu').hide();
+        if (NTISAS.side_menu_draggable) {
+            $side_menu.draggable('destroy');
+            NTISAS.side_menu_draggable = false;
+            $(window).off('beforeunload.ntisas.update-position');
+            JSPLib.storage.removeLocalData('ntisas-menu-position');
+            $side_menu.css({top: "", left: ""});
+        }
+    }
+    if (update_visibility || !UpdateSideMenu.initialized) {
+        if (menu_shown && SHOWN_MENU_PAGES.includes(page_type)) {
+            $side_menu.show();
+        } else {
+            $side_menu.hide();
+        }
+        UpdateSideMenu.initialized = true;
+    }
+}
+
+function SaveMenuPosition() {
+    let {left, top} = $('#ntisas-side-menu').get(0).style;
+    if (left !== "" && top !== "") {
+        JSPLib.storage.setLocalData('ntisas-menu-position', {left, top});
     }
 }
 
@@ -3908,7 +3918,8 @@ function InitializeStatusBar(tweet_status, is_main_tweet) {
 }
 
 function InitializeSideMenu() {
-    $('#ntisas-side-menu [data-setting]').each((i, entry) => {
+    let $side_menu = $('#ntisas-side-menu');
+    $side_menu.find('[data-setting]').each((i, entry) => {
         let setting = $(entry).data('setting');
         if (NTISAS.user_settings[setting]) {
             $(entry).show();
@@ -3917,8 +3928,12 @@ function InitializeSideMenu() {
         }
     });
     let selected_menu = JSPLib.storage.checkLocalData('ntisas-side-selection', {default_val: 'info'});
-    $(`#ntisas-menu-selection a[data-selector=${selected_menu}]`).addClass('ntisas-selected');
-    $(`#ntisas-content div[data-selector=${selected_menu}]`).show();
+    $side_menu.find(`#ntisas-menu-selection a[data-selector=${selected_menu}]`).addClass('ntisas-selected');
+    $side_menu.find(`#ntisas-content div[data-selector=${selected_menu}]`).show();
+    let positions = JSPLib.storage.getLocalData('ntisas-menu-position');
+    if (JSPLib.validate.isHash(positions)) {
+        $side_menu.css(positions);
+    }
     JSPLib.storage.checkLocalDB('ntisas-available-sauce', SAUCE_EXPIRES).then((data) => {
         if (data) {
             $('#ntisas-available-sauce').text(data.value);
@@ -5509,6 +5524,11 @@ function SeenTweet(entries, observer) {
     });
 }
 
+function MenuNavigation(event) {
+    let page_type = GetPageType(event.originalEvent.destination.url);
+    UpdateSideMenu(page_type, true);
+}
+
 function ImageEnter(event) {
     if (!NTISAS.user_settings.display_image_number) {
         return;
@@ -5582,7 +5602,7 @@ function ToggleImageSize(event) {
 function ToggleSideMenu(event) {
     let menu_shown = JSPLib.storage.getLocalData('ntisas-side-menu', {default_val: true});
     JSPLib.storage.setLocalData('ntisas-side-menu', !menu_shown);
-    UpdateSideMenu();
+    UpdateSideMenu(NTISAS.page, true);
     NTISAS.channel.postMessage({type: 'sidemenu_ui'});
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -6459,7 +6479,7 @@ function RegularCheck() {
 
     //Get current page and previous page info
     NTISAS.prev_pagetype = NTISAS.page;
-    let pagetype = GetPageType();
+    let pagetype = GetPageType(window.location.href);
     if (pagetype === "other") {
         return;
     }
@@ -6584,13 +6604,8 @@ function PageNavigation(pagetype) {
     //Only render pages with attachment points
     if (IsPageType(STREAMING_PAGES) || IsTweetPage()) {
         if ($('#ntisas-side-menu').length === 0) {
-            let $account_options = $('header[role=banner] > div > div > div');
-            let child_count = $account_options[0].childElementCount;
-            if (child_count > 1) {
-                $account_options.children().last().css('margin', '0');
-            }
-            $account_options.append(RenderSideMenu());
-            $account_options.attr('id', 'ntisas-account-options'); //Marking this for the CSS
+            $(document.body).append(RenderSideMenu());
+            $(window.navigation).off('navigate.ntisas').on('navigate.ntisas', MenuNavigation);
             InitializeSideMenu();
             InitializeDatabaseLink();
             GetTotalRecords().then((total) => {
@@ -6643,7 +6658,7 @@ function PageNavigation(pagetype) {
             }
         }
     }
-    UpdateSideMenu();
+    UpdateSideMenu(NTISAS.page, false);
     UpdateSimilarControls();
     UpdateConfirmUploadControls();
     UpdateConfirmDownloadControls();
@@ -6887,7 +6902,8 @@ function BroadcastTISAS(ev) {
             InitializeCurrentRecords();
             break;
         case 'sidemenu_ui':
-            UpdateSideMenu();
+            JSPLib.storage.invalidateLocalData('ntisas-side-menu');
+            UpdateSideMenu(NTISAS.page, true);
             break;
         case 'view_highlights':
             UpdateViewHighlights();
@@ -7172,6 +7188,7 @@ async function Main() {
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+c', CloseSettingsMenu);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+s', SaveSettingsMenu);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+r', ResetSettingsMenu);
+    $(document).on(PROGRAM_KEYDOWN, null, 'alt+0', ToggleSideMenu);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+1 alt+2 alt+3', SideMenuHotkeys);
     setInterval(IntervalStorageHandler, QUEUE_POLL_INTERVAL);
     setInterval(IntervalNetworkHandler, QUEUE_POLL_INTERVAL);
