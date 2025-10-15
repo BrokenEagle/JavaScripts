@@ -790,10 +790,16 @@ const PROGRAM_CSS = `
     display: inline-block;
     height: 34px;
 }
+.ntisas-status-marker {
+    margin-left: 4px;
+}
 .ntisas-tweet-status > .ntisas-status-marker {
     margin-left: 3.75em;
     display: flex;
     padding-top: 2px;
+}
+.ntisas-tweet-status > .ntisas-status-marker > span {
+    margin-right: 2px;
 }
 .ntisas-retweet-marker {
     max-width: 120px;
@@ -808,7 +814,18 @@ const PROGRAM_CSS = `
 .ntisas-retweet-id {
     font-size: 12px;
 }
-.ntisas-view-info,
+.ntisas-already-seen,
+.ntisas-view-info {
+    font-size: 12px;
+    font-family: monospace;
+    font-weight: bold;
+    border: 1px solid;
+    padding: 2px;
+    border-radius: 5px;
+}
+.ntisas-view-info {
+    letter-spacing: -1px;
+}
 .ntisas-profile-section {
     font-size: 12px;
     font-family: monospace;
@@ -1189,11 +1206,13 @@ const COLOR_CSS = `
     border-color: %TEXTFADED%;
 }
 .ntisas-media-link,
+.ntisas-already-seen,
 #ntisas-tweet-stats-table th a,
 #ntisas-menu-selection a.ntisas-selected {
     color: %BASECOLOR%;
 }
 .ntisas-media-link,
+.ntisas-already-seen,
 #ntisas-tweet-stats-table th a {
     border-color: %BASECOLOR%;
 }
@@ -1245,6 +1264,7 @@ const COLOR_CSS = `
 .jsplib-block-tooltip {
     color: %TEXTSHADED%;
 }
+.ntisas-view-info,
 .ntisas-tweet-header {
     border-color: %TEXTSHADED%;
 }
@@ -1742,7 +1762,8 @@ const STATUS_MARKER = `
 <span class="ntisas-status-marker">
     <span class="ntisas-user-id"></span>
     <span class="ntisas-retweet-id"></span>
-    <span class="ntisas-view-info"></span>
+    <span class="ntisas-already-seen" style="display: none;">already seen</span>
+    <span class="ntisas-view-info" style="display: none;"></span>
 </span>`;
 
 const MEDIA_RESULTS_ICON = '<div class="ntisas-media-results ntisas-media-icon-section %s">%s</div>';
@@ -4284,7 +4305,8 @@ async function InitializeViewCount(tweet) {
     let views = await GetData('view-' + tweet_id, 'danbooru');
     if (views && views.value.count > 0) {
         let timeagostring = ((Date.now() - views.value.viewed) < VIEWCOUNT_RECENT_DURATION ? "recently" : JSPLib.utility.timeAgo(views.value.viewed));
-        $('.ntisas-view-info', tweet).append(`<span title="${views.value.count} views">[Viewed ${timeagostring}]</span>`);
+        $('.ntisas-view-info', tweet).append(`<span title="${views.value.count} views">Viewed ${timeagostring}</span>`);
+        $('.ntisas-view-info', tweet).show();
         $(tweet).addClass('ntisas-viewed');
     }
     if (!document.hidden && JSPLib.utility.isScrolledIntoView(tweet)) {
@@ -5517,7 +5539,7 @@ function SeenTweet(entries, observer) {
             let is_duplicate = NTISAS.seen_tweet.has(tweet_id);
             NTISAS.seen_tweet.add(tweet_id);
             if (is_duplicate && $tweet.attr('ntisas-tweet') === 'stream') {
-                $tweet.find('.ntisas-tweet-status').before('<div style="color: red; font-family: monospace; font-weight: bold; border: 1px solid red; padding: 2px; border-radius: 5px;">already seen</div>');
+                $tweet.find('.ntisas-already-seen').show();
             }
             observer.unobserve(entry.target);
         }
