@@ -84,7 +84,7 @@ JSPLib.storage.localforage = localforage.createInstance({
 const NTISAS = {};
 
 //Program data constants
-const PROGRAM_DATA_REGEX = /^(post|view|video|tweet|twuser|twimg|ntisas-available-sauce)-/; //Regex that matches the prefix of all program cache data
+const PROGRAM_DATA_REGEX = /^(post|user|view|video|tweet|twuser|twimg|ntisas-available-sauce)-/; //Regex that matches the prefix of all program cache data
 
 //For factory reset !!!These need to be set!!!
 const LOCALSTORAGE_KEYS = [
