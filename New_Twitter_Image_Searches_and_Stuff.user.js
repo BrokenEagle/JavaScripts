@@ -407,6 +407,7 @@ const PROGRAM_CSS = `
     position: absolute;
 }
 .ntisas-media-tweet .ntisas-media-icon {
+    display: flex;
     width: 35px;
     height: 20px;
     border-radius: 25px;
@@ -414,12 +415,13 @@ const PROGRAM_CSS = `
     border: 1px solid black;
 }
 .ntisas-media-tweet .ntisas-media-icon-section {
-    display: inline-block;
+    display: flex;
     width: 50%;
     height: 100%;
     font-family: monospace;
     font-weight: bold;
-    text-align: center;
+    justify-content: center;
+    align-items: center;
 }
 .ntisas-media-tweet .ntisas-media-results {
     border-radius: 25px 0 0 25px;
@@ -605,7 +607,7 @@ const PROGRAM_CSS = `
 }
 [ntisas-tweet=stream] .ntisas-query-button,
 [ntisas-tweet=media] .ntisas-query-button {
-    margin: 0 -3px 0 -2px;
+    margin: 0 -2px;
 }
 .ntisas-query-button a {
     min-width: 100%;
@@ -834,13 +836,11 @@ const PROGRAM_CSS = `
     font-size: 12px;
     font-family: monospace;
     letter-spacing: -1px;
-}
-.ntisas-profile-section {
     position: absolute;
     left: 30.25em;
-    height: 4em;
+    height: 8em;
     padding: 7px;
-    width: 17em;
+    width: 18em;
     top: -1em;
 }
 .ntisas-profile-user-id,
@@ -884,11 +884,13 @@ const PROGRAM_CSS = `
     padding: 4px 6px;
 }
 .ntisas-tweet-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 4em;
-    font-family: ${FONT_FAMILY};
+    font-family: 'Segoe UI', Arial, sans-serif;
     font-size: 1.4em;
     font-weight: bold;
-    text-align: center;
     border-right: 1px solid;
 }
 .ntisas-tweet-header a {
