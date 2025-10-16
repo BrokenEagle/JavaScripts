@@ -1969,6 +1969,16 @@ search\?
 (?<query>.*?\bq=.+)
 `;
 
+const QUOTES_PAGE_REGEX = JSPLib.utility.verboseRegex('i')`
+${TWITTER_HOST}
+/
+(?<account>${TWITTER_ACCOUNT})
+/status/
+(?<id>${TWITTER_ID})
+/quotes
+${QUERY_END}
+`;
+
 const TWEET_PAGE_REGEX = JSPLib.utility.verboseRegex('i')`
 ${TWITTER_HOST}
 /
@@ -2052,6 +2062,7 @@ const PAGE_REGEXES = {
     likes: LIKES_PAGE_REGEX,
     replies: REPLIES_PAGE_REGEX,
     search: SEARCH_PAGE_REGEX,
+    quotes: QUOTES_PAGE_REGEX,
     tweet: TWEET_PAGE_REGEX,
     web_tweet: WEB_TWEET_PAGE_REGEX,
     photo: PHOTO_PAGE_REGEX,
@@ -2311,7 +2322,7 @@ const TWITTER_COLORS = {
     },
 };
 
-const STREAMING_PAGES = ['home', 'main', 'likes', 'replies', 'media', 'list', 'search', 'hashtag', 'events', 'topics'];
+const STREAMING_PAGES = ['home', 'main', 'likes', 'replies', 'quotes', 'media', 'list', 'search', 'hashtag', 'events', 'topics'];
 const SHOWN_MENU_PAGES = JSPLib.utility.concat(STREAMING_PAGES, ['tweet', 'web_tweet']);
 const MEDIA_TYPES = ['images', 'media', 'videos'];
 
