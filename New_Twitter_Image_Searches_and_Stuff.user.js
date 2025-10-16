@@ -5215,24 +5215,6 @@ function CheckGraphqlData(data, savedata) {
     return savedata;
 }
 
-function PreloadStorageData(tweet_ids) {
-    this.debug('log', "Tweet IDs:", tweet_ids);
-    let promise_array = tweet_ids.map((tweet_id) => [
-        GetData('tweet-' + tweet_id, 'twitter'),
-        (NTISAS.user_settings && NTISAS.user_settings.display_tweet_views ? GetData('view-' + tweet_id, 'danbooru') : null),
-    ]).flat().filter((promise) => (promise !== null));
-    Promise.all(promise_array).then((data_items) => {
-        this.debug('logLevel', "Data:", data_items, JSPLib.debug.DEBUG);
-        let post_ids = JSPLib.utility.arrayUnique(data_items.filter((data) => (Array.isArray(data))).flat());
-        this.debug('log', "Query post IDs:", post_ids);
-        if (post_ids.length) {
-            GetPosts(post_ids).then((post_data) => {
-                this.debug('logLevel', "Query post data:", post_data, JSPLib.debug.INFO);
-            });
-        }
-    });
-}
-
 //Database functions
 
 function GetData(key, database) {
@@ -7053,7 +7035,7 @@ async function Main() {
     PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages,
     GetNormalImageURL, GetPageType, CheckServerBadTweets, SavePostvers, MarkupMainTweet,
     MarkupStreamTweet, MarkupMediaType, CheckViews, InitializeViewCount, ToggleImageSize, InitializeProfileTimeline,
-    IntervalStorageHandler, UpdateUserIDCallback, PreloadStorageData,
+    IntervalStorageHandler, UpdateUserIDCallback,
 ] = JSPLib.debug.addFunctionLogs([
     UnhideTweets, RegularCheck, ImportData, DownloadMediaFile, PromptSavePostIDs,
     SaveDatabase, CheckPostvers,
@@ -7061,7 +7043,7 @@ async function Main() {
     PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages,
     GetNormalImageURL, GetPageType, CheckServerBadTweets, SavePostvers, MarkupMainTweet,
     MarkupStreamTweet, MarkupMediaType, CheckViews, InitializeViewCount, ToggleImageSize, InitializeProfileTimeline,
-    IntervalStorageHandler, UpdateUserIDCallback, PreloadStorageData,
+    IntervalStorageHandler, UpdateUserIDCallback,
 ]);
 
 [
