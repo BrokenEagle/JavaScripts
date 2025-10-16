@@ -6962,6 +6962,7 @@ function BroadcastTISAS(ev) {
             UpdateSideMenu(NTISAS.page, true);
             break;
         case 'view_highlights':
+            JSPLib.storage.invalidateLocalData('ntisas-view-highlights');
             UpdateViewHighlights();
             break;
         case 'similar_source':
