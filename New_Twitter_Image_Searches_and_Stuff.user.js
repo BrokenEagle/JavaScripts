@@ -6309,10 +6309,14 @@ function MarkupMediaType(tweet) {
                 $entry.addClass('ntisas-tweet-quote3').attr('ntisas-media-type', 'quote3');
             } else if ($entry.text() === "This Tweet is unavailable.") {
                 $entry.addClass('ntisas-tweet-quote4').attr('ntisas-media-type', 'quote4');
-            } else if ($('video, [data-testid=playButton]', tweet).length) {
+            } else if ($entry.find('img[src^="https://pbs.twimg.com/profile_images/"]').length > 0) {
+                $entry.addClass('ntisas-tweet-quote4').attr('ntisas-media-type', 'quote5');
+            } else if ($('video, [data-testid=playButton]', entry).length) {
                 $entry.addClass('ntisas-tweet-video').attr('ntisas-media-type', 'video');
                 ret = true;
-            } else {
+            } else if (entry.tagName === 'BUTTON') {
+                $entry.addClass('ntisas-tweet-button').attr('ntisas-media-type', 'button');
+           } else {
                 $entry.addClass('ntisas-tweet-image').attr('ntisas-media-type', 'image');
                 ret = true;
             }
