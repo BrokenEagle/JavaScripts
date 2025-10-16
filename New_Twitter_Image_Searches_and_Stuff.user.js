@@ -208,11 +208,6 @@ const SETTINGS_CONFIG = {
         validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'radio', SUBDOMAINS),
         hint: "Select which subdomain of Danbooru to query from. <b>Note:</b> The chosen subdomain must be logged into or the script will fail to work."
     },
-    autoclick_IQDB_enabled: {
-        reset: false,
-        validate: JSPLib.validate.isBoolean,
-        hint: `Will automatically trigger the <b>IQDB</b> links (limited availability, see <a class="ntisas-forum-topic-link" target="_blank">topic #${DANBOORU_TOPIC_ID}</a> for details). <b>Note:</b> Any results are saved automatically.`
-    },
     auto_unhide_tweets_enabled: {
         reset: false,
         validate: JSPLib.validate.isBoolean,
@@ -291,22 +286,8 @@ const SETTINGS_CONFIG = {
     },
 };
 
-const ALL_LIST_TYPES = ['iqdb'];
 const ALL_IMPORT_TYPES = ['program_data', 'tweet_database'];
 const CONTROL_CONFIG = {
-    select_list: {
-        allitems: ALL_LIST_TYPES,
-        value: [],
-        hint: "Select which lists to affect.",
-    },
-    reset_list: {
-        value: "Click to reset",
-        hint: "Resets the selected lists to a blank state.",
-    },
-    list_info: {
-        value: "Click to populate",
-        hint: "Displays the current sizes for all lists.",
-    },
     import_data: {
         display: `Import data (<span id="${PROGRAM_SHORTCUT}-import-counter">...</span>)`,
         value: "Click to import",
@@ -482,9 +463,7 @@ const PROGRAM_CSS = `
     overflow: auto;
     z-index: 2000;
 }
-#ntisas-server-bypass,
-#ntisas-active-autoiqdb,
-#ntisas-unavailable-autoiqdb {
+#ntisas-server-bypass {
     font-style: italic;
     letter-spacing: 1px;
 }
@@ -502,13 +481,11 @@ const PROGRAM_CSS = `
 }
 #ntisas-enable-view-highlights,
 #ntisas-enable-view-counts,
-#ntisas-enable-autoiqdb,
 #ntisas-disable-lockpage {
     color: green;
 }
 #ntisas-disable-view-highlights,
 #ntisas-disable-view-counts,
-#ntisas-disable-autoiqdb,
 #ntisas-enable-lockpage {
     color: red;
 }
@@ -1202,8 +1179,6 @@ const COLOR_CSS = `
     border-color: %TEXTCOLOR%;
 }
 #ntisas-server-bypass,
-#ntisas-active-autoiqdb,
-#ntisas-unavailable-autoiqdb,
 #ntisas-tweet-stats-message {
     color: %TEXTMUTED%;
 }
@@ -1402,8 +1377,6 @@ const SETTINGS_MENU = `<div id="new-twitter-image-searches-and-stuff" title="${P
 
 const IMPORT_FILE_INPUT = '<div class="jsplib-menu-item"><h4>Import file</h4><input size="50" type="file" name="ntisas-import-file" id="ntisas-import-file"></div>';
 
-const LIST_INFO_TABLE = '<div id="ntisas-list-info-table" style="display:none"></div>';
-
 const IMPORT_ERROR_DISPLAY = '<div id="ntisas-import-data-errors" style="display:none"></div>';
 
 const NTISAS_MENU = `
@@ -1438,7 +1411,6 @@ const NTISAS_MENU = `
             <li><a href="#ntisas-query-settings">Query</a></li>
             <li><a href="#ntisas-network-settings">Network</a></li>
             <li><a href="#ntisas-download-settings">Download</a></li>
-            <li><a href="#ntisas-list-controls">List</a></li>
             <li><a href="#ntisas-cache-controls">Cache</a></li>
             <li><a href="#ntisas-database-controls">Database</a></li>
         </ul>
@@ -1467,12 +1439,6 @@ const NTISAS_MENU = `
                 <h4>Download settings</h4>
             </div>
         </div>
-        <div id="ntisas-list-controls" class="jsplib-settings-grouping">
-            <div id="ntisas-list-message" class="prose">
-                <h4>List controls</h4>
-                    <p>Alter lists used to control various aspects of NTISAS.&emsp;<b>Note:</b> Factory Reset does not affect the lists.</p>
-            </div>
-        </div>
         <div id="ntisas-cache-controls" class="jsplib-settings-grouping">
             <div id="ntisas-cache-message" class="prose">
                 <h4>Cache controls</h4>
@@ -1498,11 +1464,6 @@ const QUERY_SETTINGS_DETAILS = `
     <li><b>Auto save:</b> Automatically saves any matches from the results.</li>
 </ul>
 <p><b>Note:</b> Sauce may be limited. Check <a href="http://saucenao.com" target="_blank">SauceNAO</a> for details.`;
-
-const LIST_CONTROL_DETAILS = `
-<ul>
-    <li><b>IQDB:</b> Auto-IQDB list</li>
-</ul>`;
 
 const SIDE_MENU = `
 <div id="ntisas-side-menu" class="ntisas-links" style="display: none;">
@@ -1573,11 +1534,6 @@ const SIDE_MENU = `
                     <td><span>Count views:</span></td>
                     <td>%VIEW_COUNTS%</td>
                     <td>(%VIEW_COUNTS_HELP%)</td>
-                </tr>
-                <tr data-setting="autoclick_IQDB_enabled">
-                    <td><span>Autoclick IQDB:</span></td>
-                    <td>%AUTOCLICKIQDB%</td>
-                    <td>(%AUTOCLICKIQDBHELP%)</td>
                 </tr>
                 <tr data-setting="lock_page_enabled">
                     <td><span>Page navigation:</span></td>
@@ -1744,14 +1700,6 @@ const PROFILE_TIMELINE_HTML = `
     <div class="ntisas-profile-stream-view"></div>
 </div>`;
 
-const AUTO_IQDB_HTML = `
-<span id="ntisas-iqdb-toggle">
-    <a id="ntisas-enable-autoiqdb" class="ntisas-expanded-link">Enable</a>
-    <a id="ntisas-disable-autoiqdb" class="ntisas-expanded-link">Disable</a>
-    <span id="ntisas-active-autoiqdb">Active</span>
-    <span id="ntisas-unavailable-autoiqdb">Unavailable</span>
-</span>`;
-
 const LOCKPAGE_HTML = `
 <span id="ntisas-lockpage-toggle">
     <a id="ntisas-enable-lockpage" class="ntisas-expanded-link">Lock</a>
@@ -1802,7 +1750,6 @@ const CONFIRM_UPLOAD_HELP = "L-click to turn on/off confirmation for uploading t
 const CONFIRM_DOWNLOAD_HELP = "L-click to turn on/off confirmation for downloading all media, when done from the tweet menu.";
 const VIEWS_HIGHLIGHTS_HELP = "L-Click to toggle borders on viewed Tweets. (Shortcut: Alt+V)";
 const VIEWS_COUNTS_HELP = "L-Click to toggle whether tweets are being counted as viewed.";
-const AUTO_IQDB_HELP = "L-Click to toggle auto-IQDB click. (Shortcut: Alt+Q)";
 const LOCKPAGE_HELP = "L-Click to prevent navigating away from the page (does not prevent Twitter navigation).";
 const ERROR_MESSAGES_HELP = "L-Click to see full error messages.";
 const STATISTICS_HELP = 'L-Click any category heading to narrow down results.\nL-Click &quot;Total&quot; category to reset results.';
@@ -1824,7 +1771,6 @@ Save the following post IDs? (separate by comma, empty to delete)`;
 
 //Time constants
 
-const STORAGE_DELAY = 1; //Don't save lists synchronously since large lists delay UI response
 const JQUERY_DELAY = 1; //For jQuery updates that should not be done synchronously
 const TWITTER_DELAY = 100; //Give twitter handler some time to change the page
 const TIMER_POLL_INTERVAL = 100;
@@ -2226,7 +2172,6 @@ const CONFIRM_UPLOAD_CONTROLS = ['yes', 'no'];
 const CONFIRM_DOWNLOAD_CONTROLS = ['yes', 'no'];
 const VIEW_HIGHLIGHT_CONTROLS = ['enable', 'disable'];
 const VIEW_COUNT_CONTROLS = ['enable', 'disable'];
-const IQDB_CONTROLS = ['enable', 'disable', 'active', 'unavailable'];
 
 const BASE_DIALOG_WIDTH = 60;
 const BASE_QTIP_WIDTH = 10;
@@ -2328,11 +2273,6 @@ const TWITTER_COLORS = {
 
 const STREAMING_PAGES = ['home', 'main', 'likes', 'replies', 'quotes', 'media', 'list', 'search', 'hashtag', 'events', 'topics'];
 const SHOWN_MENU_PAGES = JSPLib.utility.concat(STREAMING_PAGES, ['tweet', 'web_tweet']);
-const MEDIA_TYPES = ['images', 'media', 'videos'];
-
-const ALL_LISTS = {
-    iqdb: 'auto-iqdb-list',
-};
 
 const GOLD_LEVEL = 30;
 
@@ -2643,8 +2583,6 @@ function ValidateProgramData(key, entry) {
                 checkerror = ["Value is not a boolean."];
             }
             break;
-        case 'ntisas-auto-iqdb-list':
-            return JSPLib.validate.validateArrayValues(key, entry, JSPLib.validate.basic_stringonly_validator);
         case 'ntisas-user-data':
             check = validate(entry, PROFILE_CONSTRAINTS);
             if (check) {
@@ -2677,22 +2615,6 @@ function ValidateProgramData(key, entry) {
         return false;
     }
     return true;
-}
-
-function CorrectStringArray(name, stringlist) {
-    if (!Array.isArray(stringlist)) {
-        this.debug('log', "Value is not an array.");
-        return [];
-    }
-    let correctlist = stringlist.filter(JSPLib.validate.isString);
-    if (stringlist.length !== correctlist.length) {
-        JSPLib.storage.setLocalData('ntisas-' + name, correctlist);
-        JSPLib.debug.debugExecute(() => {
-            let bad_values = JSPLib.utility.arrayDifference(stringlist, correctlist);
-            this.debug('log', "Bad values found:", name, bad_values);
-        });
-    }
-    return correctlist;
 }
 
 function VaildateColorArray(array) {
@@ -2836,14 +2758,6 @@ function GetPostVersionsExpiration() {
 
 function WasOverflow() {
     return JSPLib.storage.checkLocalData('ntisas-overflow', {default_val: false});
-}
-
-function GetUserIdent() {
-    if (NTISAS.user_id) {
-        return [NTISAS.user_id, [NTISAS.user_id, NTISAS.account]];
-    }
-    return [NTISAS.account, [NTISAS.account]];
-
 }
 
 function IsQuerySettingEnabled(setting, type) {
@@ -3030,26 +2944,6 @@ function LogarithmicExpiration(count, max_count, time_divisor, multiplier) {
 }
 
 //Auxiliary functions
-
-function GetList(name) {
-    NTISAS.lists[name] ??= {};
-    if (!('list' in NTISAS.lists[name])) {
-        NTISAS.lists[name].list = JSPLib.storage.getLocalData('ntisas-' + name, {default_val: []});
-        NTISAS.lists[name].list = CorrectStringArray(name, NTISAS.lists[name].list);
-    }
-    return NTISAS.lists[name].list;
-}
-
-function SaveList(name, list, delay = true) {
-    NTISAS.lists[name].list = list;
-    if (delay) {
-        setTimeout(() => {
-            JSPLib.storage.setLocalData('ntisas-' + name, list);
-        }, STORAGE_DELAY);
-    } else {
-        JSPLib.storage.setLocalData('ntisas-' + name, list);
-    }
-}
 
 function SavePosts(mapped_posts) {
     mapped_posts.forEach((mapped_post) => {
@@ -3411,30 +3305,6 @@ function UpdateViewHighlights() {
     }
 }
 
-function UpdateIQDBControls() {
-    if (!NTISAS.user_settings.autoclick_IQDB_enabled) {
-        return;
-    }
-    let [user_ident, all_idents] = GetUserIdent();
-    if (user_ident && IsMediaTimeline()) {
-        let auto_iqdb_list = GetList('auto-iqdb-list');
-        if (JSPLib.utility.arrayHasIntersection(auto_iqdb_list, all_idents)) {
-            NTISAS.artist_iqdb_enabled = true;
-            DisplayControl('disable', IQDB_CONTROLS, 'autoiqdb');
-        } else {
-            NTISAS.artist_iqdb_enabled = false;
-            DisplayControl('enable', IQDB_CONTROLS, 'autoiqdb');
-        }
-    } else if (IsTweetPage()) {
-        NTISAS.artist_iqdb_enabled = false;
-        DisplayControl('active', IQDB_CONTROLS, 'autoiqdb');
-    } else {
-        NTISAS.artist_iqdb_enabled = false;
-        $('#ntisas-unavailable-autoiqdb').show();
-        DisplayControl('unavailable', IQDB_CONTROLS, 'autoiqdb');
-    }
-}
-
 function DisplayControl(control, all_controls, type) {
     let all_selectors = JSPLib.utility.joinList(all_controls, '#ntisas-', '-' + type, ',');
     $(all_selectors).hide();
@@ -3488,14 +3358,6 @@ function IsPageType(types) {
 
 function IsTweetPage() {
     return IsPageType(['tweet', 'web_tweet']);
-}
-
-function IsMediaTimeline() {
-    return (NTISAS.page === 'media') || (NTISAS.page === 'search' && NTISAS.account && MEDIA_TYPES.includes(NTISAS.queries.filter));
-}
-
-function IsIQDBAutoclick() {
-    return NTISAS.user_settings.autoclick_IQDB_enabled && ((NTISAS.artist_iqdb_enabled && IsMediaTimeline()) || IsTweetPage());
 }
 
 function GetLowestRequestedTweetID(account) {
@@ -3580,8 +3442,6 @@ function RenderSideMenu() {
         VIEW_HIGHLIGHTS_HELP: RenderHelp(VIEWS_HIGHLIGHTS_HELP),
         VIEW_COUNTS: VIEW_COUNTS_HTML,
         VIEW_COUNTS_HELP: RenderHelp(VIEWS_COUNTS_HELP),
-        AUTOCLICKIQDB: AUTO_IQDB_HTML,
-        AUTOCLICKIQDBHELP: RenderHelp(AUTO_IQDB_HELP),
         LOCKPAGE: LOCKPAGE_HTML,
         LOCKPAGEHELP: RenderHelp(LOCKPAGE_HELP),
         ERRORMESSAGES: JSPLib.network.error_messages.length,
@@ -3871,27 +3731,6 @@ function RenderColorStyle(color_data) {
 
 function DarkenColorArray(array) {
     return array.map((val) => Math.max(Number(val) - 50, 0).toString());
-}
-
-function RenderListInfo() {
-    let auto_iqdb_list = GetList('auto-iqdb-list');
-    return `
-<table class="jsplib-striped">
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Items</th>
-            <th>Size</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <th>IQDB</th>
-            <td>${auto_iqdb_list.length}</td>
-            <td>${JSON.stringify(auto_iqdb_list).length}</td>
-        </tr>
-    </tbody>
-</table>`;
 }
 
 function RenderMediaMenu(tweet_id, screen_name, image_urls, videos) {
@@ -4759,7 +4598,7 @@ async function CheckSimilar(tweet_id, image_urls) {
         let all_posts = JSPLib.utility.getObjectAttributes(all_results, 'post');
         let unique_posts = RemoveDuplicates(all_posts, 'id');
         let post_ids = JSPLib.utility.getObjectAttributes(unique_posts, 'id');
-        if (IsQuerySettingEnabled('auto_save', NTISAS.similar_source) || IsIQDBAutoclick()) {
+        if (IsQuerySettingEnabled('auto_save', NTISAS.similar_source)) {
             let save_ids = SaveTweetData(tweet_id, post_ids);
             UpdatePostIDsLink(tweet_id, save_ids);
         } else if (IsQuerySettingEnabled('confirm_save', NTISAS.similar_source)) {
@@ -5698,21 +5537,6 @@ function ToggleViewCounts() {
     NTISAS.channel.postMessage({type: 'count_views'});
 }
 
-function ToggleAutoclickIQDB() {
-    let [user_ident, all_idents] = GetUserIdent();
-    if (user_ident) {
-        let auto_iqdb_list = GetList('auto-iqdb-list');
-        if (JSPLib.utility.arrayHasIntersection(auto_iqdb_list, all_idents)) {
-            auto_iqdb_list = JSPLib.utility.arrayDifference(auto_iqdb_list, all_idents);
-        } else {
-            auto_iqdb_list = JSPLib.utility.arrayUnion(auto_iqdb_list, all_idents);
-        }
-        SaveList('auto-iqdb-list', auto_iqdb_list);
-        UpdateIQDBControls();
-        NTISAS.channel.postMessage({type: 'autoiqdb', list: auto_iqdb_list});
-    }
-}
-
 function SideMenuSelection(event) {
     let $link = $(event.target);
     let selected_menu = $link.data('selector');
@@ -6092,23 +5916,6 @@ function SelectMetric(event) {
     }
 }
 
-function ListInfo() {
-    $('#ntisas-list-info-table').html(RenderListInfo()).show();
-}
-
-function ResetLists() {
-    let selected_lists = JSPLib.menu.getCheckboxRadioSelected('[data-setting="select_list"] [data-selector]');
-    if (selected_lists.length === 0) {
-        JSPLib.notice.notice("Must select at least one list!");
-    } else {
-        selected_lists.forEach((list) => {
-            SaveList(ALL_LISTS[list], [], false);
-        });
-        UpdateIQDBControls();
-        JSPLib.notice.notice("Lists have been reset!");
-    }
-}
-
 function ExportData() {
     let export_types = JSPLib.menu.getCheckboxRadioSelected('[data-setting="export_types"] [data-selector]');
     if (export_types.length === 0) {
@@ -6258,19 +6065,6 @@ function UpdateProfileCallback() {
 }
 
 //Event execute functions
-
-function AutoclickIQDB() {
-    if (NTISAS.artist_iqdb_enabled && IsMediaTimeline()) {
-        $('.ntisas-check-iqdb').each((i, entry) => {
-            let tweet = $(entry).closest('[ntisas-tweet]').get(0);
-            if (JSPLib.utility.isScrolledIntoView(tweet, 0.25)) {
-                $(entry).click();
-            }
-        });
-    } else if (IsTweetPage()) {
-        $(`[ntisas-tweet=main][data-tweet-id=${NTISAS.tweet_id}] .ntisas-check-iqdb`).click();
-    }
-}
 
 function UnhideTweets() {
     let $hidden_tweets = $('.ntisas-hidden-media [role=button]');
@@ -6529,7 +6323,6 @@ function CheckHiddenMedia(tweet) {
 
 function RegularCheck() {
     if (NTISAS.update_on_found && NTISAS.user_id) {
-        UpdateIQDBControls();
         NTISAS.update_on_found = false;
     } else if (NTISAS.update_profile.timer === false) {
         this.debug('warn', "Failed to find user ID!!");
@@ -6548,9 +6341,6 @@ function RegularCheck() {
     //Process events at each interval
     if (!NTISAS.colors_checked || window.location.pathname === '/i/display') {
         AdjustColorScheme();
-    }
-    if (NTISAS.user_settings.autoclick_IQDB_enabled) {
-        AutoclickIQDB();
     }
     for (let tweet_id in NTISAS.qtip_anchor) {
         if (!document.body.contains(NTISAS.qtip_anchor[tweet_id].get(0))) {
@@ -6680,7 +6470,6 @@ function PageNavigation(pagetype) {
             $('#ntisas-confirm-download-toggle a').on(PROGRAM_CLICK, ToggleConfirmDownload);
             $('#ntisas-view-highlights-toggle a').on(PROGRAM_CLICK, ToggleViewHighlights);
             $('#ntisas-view-counts-toggle a').on(PROGRAM_CLICK, ToggleViewCounts);
-            $('#ntisas-iqdb-toggle a').on(PROGRAM_CLICK, ToggleAutoclickIQDB);
             $('#ntisas-open-settings').on(PROGRAM_CLICK, OpenSettingsMenu);
             //These will only get bound here on a rebind
             $('#ntisas-total-records').on(PROGRAM_CLICK, QueryTotalRecords);
@@ -6722,7 +6511,6 @@ function PageNavigation(pagetype) {
     UpdateConfirmDownloadControls();
     UpdateViewHighlightControls();
     UpdateViewCountControls();
-    UpdateIQDBControls();
     SetCheckPostvers();
     //Tweets are not available upon page load, so don't bother processing them
     if (NTISAS.prev_pagetype !== undefined) {
@@ -6978,10 +6766,6 @@ function BroadcastTISAS(ev) {
         case 'confirm_download':
             JSPLib.storage.invalidateLocalData('ntisas-confirm-download');
             UpdateConfirmDownloadControls();
-            break
-        case 'autoiqdb':
-            NTISAS.lists['auto-iqdb-list'] = ev.data.list;
-            UpdateIQDBControls();
             // falls through
         default:
             //do nothing
@@ -7168,7 +6952,6 @@ function RenderSettingsMenu() {
     $("#ntisas-query-message").append(JSPLib.menu.renderExpandable("Additional setting details", QUERY_SETTINGS_DETAILS));
     $('#ntisas-query-settings').append(JSPLib.menu.renderInputSelectors('IQDB_settings', 'checkbox'));
     $('#ntisas-query-settings').append(JSPLib.menu.renderInputSelectors('sauce_settings', 'checkbox'));
-    $('#ntisas-query-settings').append(JSPLib.menu.renderCheckbox('autoclick_IQDB_enabled'));
     $('#ntisas-query-settings').append(JSPLib.menu.renderTextinput('similarity_cutoff', 10));
     $('#ntisas-query-settings').append(JSPLib.menu.renderTextinput('results_returned', 10));
     $('#ntisas-query-settings').append(JSPLib.menu.renderTextinput('SauceNAO_API_key', 80));
@@ -7177,11 +6960,6 @@ function RenderSettingsMenu() {
     $('#ntisas-network-settings').append(JSPLib.menu.renderTextinput('recheck_interval', 5));
     $('#ntisas-network-settings').append(JSPLib.menu.renderInputSelectors('query_subdomain', 'radio'));
     $('#ntisas-download-settings').append(JSPLib.menu.renderTextinput('filename_prefix_format', 80));
-    $("#ntisas-list-message").append(JSPLib.menu.renderExpandable("Additional control details", LIST_CONTROL_DETAILS));
-    $('#ntisas-list-controls').append(JSPLib.menu.renderInputSelectors('select_list', 'checkbox', true));
-    $('#ntisas-list-controls').append(JSPLib.menu.renderLinkclick('reset_list', true));
-    $('#ntisas-list-controls').append(JSPLib.menu.renderLinkclick('list_info', true));
-    $("#ntisas-list-controls").append(LIST_INFO_TABLE);
     $('#ntisas-database-controls').append(IMPORT_FILE_INPUT);
     $('#ntisas-database-controls').append(JSPLib.menu.renderLinkclick('import_data', true));
     $('#ntisas-database-controls').append(JSPLib.menu.renderInputSelectors('export_types', 'checkbox', true));
@@ -7196,8 +6974,6 @@ function RenderSettingsMenu() {
     //Set event handlers
     JSPLib.menu.saveUserSettingsClick(InitializeChangedSettings);
     JSPLib.menu.resetUserSettingsClick(LOCALSTORAGE_KEYS, InitializeChangedSettings);
-    $('#ntisas-control-reset-list').on(PROGRAM_CLICK, ResetLists);
-    $('#ntisas-control-list-info').on(PROGRAM_CLICK, ListInfo);
     $('#ntisas-control-import-data').on(PROGRAM_CLICK, ImportData);
     $('#ntisas-control-export-data').on(PROGRAM_CLICK, ExportData);
     JSPLib.menu.cacheInfoClick();
@@ -7241,7 +7017,6 @@ async function Main() {
     $(document).on(PROGRAM_CLICK, '.ntisas-metric', SelectMetric);
     $(document).on(PROGRAM_CLICK, '.ntisas-toggle-image-size', ToggleImageSize);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+s', ToggleSimilarSource);
-    $(document).on(PROGRAM_KEYDOWN, null, 'alt+q', ToggleAutoclickIQDB);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+v', ToggleViewHighlights);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+m', OpenSettingsMenu);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+c', CloseSettingsMenu);
@@ -7266,7 +7041,7 @@ async function Main() {
 [
     UnhideTweets, RegularCheck, ImportData, DownloadMediaFile, PromptSavePostIDs,
     SaveDatabase, CheckPostvers,
-    ReadFileAsync, ProcessPostvers, InitializeImageTweets, CorrectStringArray, ValidateEntry, BroadcastTISAS,
+    ReadFileAsync, ProcessPostvers, InitializeImageTweets, ValidateEntry, BroadcastTISAS,
     PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages,
     GetNormalImageURL, GetPageType, CheckServerBadTweets, SavePostvers, MarkupMainTweet,
     MarkupStreamTweet, MarkupMediaType, CheckViews, InitializeViewCount, ToggleImageSize, InitializeProfileTimeline,
@@ -7274,7 +7049,7 @@ async function Main() {
 ] = JSPLib.debug.addFunctionLogs([
     UnhideTweets, RegularCheck, ImportData, DownloadMediaFile, PromptSavePostIDs,
     SaveDatabase, CheckPostvers,
-    ReadFileAsync, ProcessPostvers, InitializeImageTweets, CorrectStringArray, ValidateEntry, BroadcastTISAS,
+    ReadFileAsync, ProcessPostvers, InitializeImageTweets, ValidateEntry, BroadcastTISAS,
     PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages,
     GetNormalImageURL, GetPageType, CheckServerBadTweets, SavePostvers, MarkupMainTweet,
     MarkupStreamTweet, MarkupMediaType, CheckViews, InitializeViewCount, ToggleImageSize, InitializeProfileTimeline,
@@ -7327,7 +7102,7 @@ JSPLib.load.load_when_hidden = false;
 
 //Export JSPLib
 JSPLib.load.exportData(PROGRAM_NAME, NTISAS, {other_data: {jQuery, SAVED_STORAGE_REQUESTS, SAVED_NETWORK_REQUESTS, PAGE_REGEXES}, datalist: ['page']});
-JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [GetList, SaveList, GetData, SaveData], alwayslist: [GetImageLinks, GetImageAttributes]});
+JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [GetData, SaveData], alwayslist: [GetImageLinks, GetImageAttributes]});
 
 /****Execution start****/
 
