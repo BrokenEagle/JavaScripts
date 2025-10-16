@@ -2470,6 +2470,7 @@ const PROFILE_CONSTRAINTS = {
 /****Functions****/
 
 function ValidateEntry(key, entry) {
+    let printer = JSPLib.debug.getFunctionPrint('ValidateEntry');
     if (!JSPLib.validate.validateIsHash(key, entry)) {
         return false;
     }
@@ -2497,7 +2498,7 @@ function ValidateEntry(key, entry) {
     if (key === 'ntisas-available-sauce') {
         return JSPLib.validate.validateHashEntries(key, entry, SAUCE_CONSTRAINTS);
     }
-    this.debug('warn', "Bad key!");
+    printer.debugwarn("Bad key!");
     return false;
 }
 
@@ -2632,6 +2633,27 @@ JSPLib.menu.setupUserSettings = function (program_value) {
     for (let key in program_value.user_settings) {
         Object.defineProperty(program_value, key, {get() {return program_value.user_settings[key];}});
     }
+};
+
+JSPLib.debug.getFunctionPrint = function (func_name) {
+    let printer = {};
+    if (this.debug_console) {
+        let context = this;
+        context._func_iteration ??= {};
+        context._func_iteration[func_name] ??= 0;
+        context._func_iteration[func_name]++;
+        ['debuglog', 'debugwarn', 'debugerror', 'debuglogLevel', 'debugwarnLevel', 'debugerrorLevel'].forEach((debugfunc) => {
+            printer[debugfunc] = function (...args) {
+                let iteration = context._func_iteration[func_name];
+                context[debugfunc](`${func_name}[${iteration}] -`, ...args);
+            };
+        });
+    } else {
+        ['debuglog', 'debugwarn', 'debugerror', 'debuglogLevel', 'debugwarnLevel', 'debugerrorLevel'].forEach((debugfunc) => {
+            printer[debugfunc] = (()=>{});
+        });
+    }
+    return printer;
 };
 
 JSPLib.storage.getStorageData = function (key, storage, {default_val = null} = {}) {
@@ -2886,9 +2908,10 @@ function GetFileURLNameExt(file_url) {
 }
 
 async function GetNormalImageURL(image_info) {
+    let printer = JSPLib.debug.getFunctionPrint('GetNormalImageURL');
     if (!(image_info.key in NTISAS.known_extensions)) {
         if (image_info.ext === 'webp') {
-            this.debug('log', "Checking webp image for extension:", image_info);
+            printer.debuglog("Checking webp image for extension:", image_info);
             JSPLib.notice.debugNoticeLevel("Webp image detected.", JSPLib.debug.DEBUG);
             for (let ext of ['jpg', 'png']) {
                 let image_url = `https://pbs.twimg.com/${image_info.path}/${image_info.key}.${ext}`;
@@ -3076,6 +3099,7 @@ function UpdatePostIDsLink(tweet_id, post_ids) {
 }
 
 function PromptSavePostIDs(tweet_id, message, initial_post_ids) {
+    let printer = JSPLib.debug.getFunctionPrint('PromptSavePostIDs');
     let prompt_string = prompt(message, initial_post_ids.join(', '));
     if (prompt_string !== null) {
         let confirm_post_ids = JSPLib.utility.arrayUnique(
@@ -3083,7 +3107,7 @@ function PromptSavePostIDs(tweet_id, message, initial_post_ids) {
                 .map(Number)
                 .filter((num) => JSPLib.validate.validateID(num))
         );
-        this.debug('log', "Confirmed IDs:", confirm_post_ids);
+        printer.debuglog("Confirmed IDs:", confirm_post_ids);
         if (confirm_post_ids.length === 0) {
             RemoveData('tweet-' + tweet_id, 'twitter');
         } else {
@@ -3126,6 +3150,7 @@ function RemoveHashKeyValue(hash, key, value) {
 }
 
 function ProcessPostvers(postvers) {
+    let printer = JSPLib.debug.getFunctionPrint('ProcessPostvers');
     postvers.sort((a, b) => (a.id - b.id));
     var account_swaps = 0;
     var link_modifies = 0;
@@ -3141,7 +3166,7 @@ function ProcessPostvers(postvers) {
                     add_entries[tweet_id] ??= [];
                     add_entries[tweet_id] = JSPLib.utility.arrayUnion(add_entries[tweet_id], [postver.post_id]);
                 } else {
-                    this.debug('warn', "Unfound new post:", postver.source, postver);
+                    printer.debugwarn("Unfound new post:", postver.source, postver);
                 }
             } else {
                 let tweet_id = {};
@@ -3155,28 +3180,28 @@ function ProcessPostvers(postvers) {
                         tweet_id.add = tweet_id.rem = undefined;
                         link_modify = true;
                         link_modifies++;
-                        this.debug('log', "Link modify detected", twitter_rem, "->", twitter_add);
+                        printer.debuglog("Link modify detected", twitter_rem, "->", twitter_add);
                     } else {
                         account_swaps++;
-                        this.debug('log', "ID swap detected", tweet_id.rem, "->", tweet_id.add);
+                        printer.debuglog("ID swap detected", tweet_id.rem, "->", tweet_id.add);
                     }
                 }
                 if (tweet_id.add) {
                     add_entries[tweet_id.add] = add_entries[tweet_id.add] || [];
                     add_entries[tweet_id.add] = JSPLib.utility.arrayUnion(add_entries[tweet_id.add], [postver.post_id]);
                     if (RemoveHashKeyValue(rem_entries, tweet_id.add[0], postver.post_id)) {
-                        this.debug('log', "Source delete reversal detected", tweet_id.add);
+                        printer.debuglog("Source delete reversal detected", tweet_id.add);
                     }
                 }
                 if (tweet_id.rem) {
                     rem_entries[tweet_id.rem] = rem_entries[tweet_id.rem] || [];
                     JSPLib.utility.arrayUnion(rem_entries[tweet_id.rem], [postver.post_id]);
                     if (RemoveHashKeyValue(add_entries, tweet_id.rem, postver.post_id)) {
-                        this.debug('log', "Source add reversal detected", tweet_id.rem);
+                        printer.debuglog("Source add reversal detected", tweet_id.rem);
                     }
                 }
                 if (!tweet_id.add && !tweet_id.rem && !link_modify) {
-                    this.debug('warn', "Unfound edit post:", postver.added_tags, postver.removed_tags, twitter_add, twitter_rem, postver);
+                    printer.debugwarn("Unfound edit post:", postver.added_tags, postver.removed_tags, twitter_add, twitter_rem, postver);
                 }
             }
         }
@@ -3184,35 +3209,35 @@ function ProcessPostvers(postvers) {
             let tweet_id = JSPLib.utility.findAll(postver.source, TWEET_REGEXG)[1];
             if (tweet_id) {
                 if (postver.removed_tags.includes('bad_twitter_id')) {
-                    this.debug('log', "Activated tweet:", tweet_id);
+                    printer.debuglog("Activated tweet:", tweet_id);
                     add_entries[tweet_id] ??= [];
                     add_entries[tweet_id] = JSPLib.utility.arrayUnion(add_entries[tweet_id], [postver.post_id]);
                     reversed_posts++;
                     if (RemoveHashKeyValue(rem_entries, tweet_id, postver.post_id)) {
-                        this.debug('log', "Tweet remove reversal detected", tweet_id);
+                        printer.debuglog("Tweet remove reversal detected", tweet_id);
                     }
                 } else if (postver.added_tags.includes('bad_twitter_id')) {
                     rem_entries[tweet_id] ??= [];
                     rem_entries[tweet_id] = JSPLib.utility.arrayUnion(rem_entries[tweet_id], [postver.post_id]);
                     inactive_posts++;
                     if (RemoveHashKeyValue(add_entries, tweet_id, postver.post_id)) {
-                        this.debug('log', "Tweet add reversal detected", tweet_id);
+                        printer.debuglog("Tweet add reversal detected", tweet_id);
                     }
                 }
             }
         }
     });
     if (account_swaps > 0) {
-        this.debug('log', "Account swaps detected:", account_swaps);
+        printer.debuglog("Account swaps detected:", account_swaps);
     }
     if (link_modifies > 0) {
-        this.debug('log', "Link modifies detected:", link_modifies);
+        printer.debuglog("Link modifies detected:", link_modifies);
     }
     if (inactive_posts > 0) {
-        this.debug('log', "Inactive tweets detected:", inactive_posts);
+        printer.debuglog("Inactive tweets detected:", inactive_posts);
     }
     if (reversed_posts > 0) {
-        this.debug('log', "Activated tweets detected:", reversed_posts);
+        printer.debuglog("Activated tweets detected:", reversed_posts);
     }
     return [add_entries, rem_entries];
 }
@@ -3388,7 +3413,7 @@ function GetForumTopicLink() {
 //File functions
 
 function ReadFileAsync(fileselector, is_json) {
-    const context = this;
+    let printer = JSPLib.debug.getFunctionPrint('ReadFileAsync');
     return new Promise((resolve, reject) => {
         let files = $(fileselector).prop('files');
         if (!files.length) {
@@ -3400,7 +3425,7 @@ function ReadFileAsync(fileselector, is_json) {
         var reader = new FileReader();
         reader.onloadend = function(event) {
             if (event.target.readyState === FileReader.DONE) {
-                context.debug('log', "File loaded:", file.size);
+                printer.debuglog("File loaded:", file.size);
                 let data = event.target.result;
                 if (is_json) {
                     try {
@@ -4164,6 +4189,7 @@ function InitializeNoMatchesLinks(tweet_id) {
 }
 
 async function InitializeViewCount(tweet) {
+    let printer = JSPLib.debug.getFunctionPrint('ToggleImageSize');
     let tweet_id = String($(tweet).data('tweet-id'));
     let views = await GetData('view-' + tweet_id, 'danbooru');
     if (views && views.value.count > 0) {
@@ -4173,7 +4199,7 @@ async function InitializeViewCount(tweet) {
         $(tweet).addClass('ntisas-viewed');
     }
     if (!document.hidden && JSPLib.utility.isScrolledIntoView(tweet)) {
-        this.debug('logLevel', "Viewable tweet:", tweet_id, JSPLib.utility.DEBUG);
+        printer.debuglogLevel("Viewable tweet:", tweet_id, JSPLib.utility.DEBUG);
         AddViewCount(tweet_id);
         $(tweet).attr('viewed', 'true');
     }
@@ -4201,6 +4227,7 @@ function InitializeProfileViewCount(views, data_key, selector, format) {
 }
 
 function InitializeProfileTimeline() {
+    let printer = JSPLib.debug.getFunctionPrint('ToggleImageSize');
     let $info = $('[href$="/photo"],[href^="/i/spaces"]');
     while ($info.find('[href$="/following"]').length === 0) {
         $info = $info.parent();
@@ -4218,7 +4245,7 @@ function InitializeProfileTimeline() {
             $name_line.children().first().append(PROFILE_TIMELINE_HTML);
         }
     } else {
-        this.debug('warn', "Unable to find profile attachment point!", $info);
+        printer.debugwarn("Unable to find profile attachment point!", $info);
     }
 }
 
@@ -4250,6 +4277,7 @@ function InitializeUserDisplay($tweets) {
 }
 
 function InitializeImageTweets($image_tweets) {
+    let printer = JSPLib.debug.getFunctionPrint('InitializeImageTweets');
     const [menu_class, $process_tweets] = IsPageType(STREAMING_PAGES) ? ['ntisas-timeline-menu', $image_tweets] :
         IsTweetPage() ? ['ntisas-tweet-menu', $image_tweets.filter(`[data-tweet-id=${NTISAS.tweet_id}]`)] :
             [null, []];
@@ -4259,7 +4287,7 @@ function InitializeImageTweets($image_tweets) {
     JSPLib.debug.debugTime(timername);
     const promise_array = [];
     const tweet_ids = JSPLib.utility.arrayUnique(JSPLib.utility.getDOMAttributes($process_tweets, 'tweet-id', String));
-    this.debug('log', `[${uniqueid}]`, "Check Tweets:", tweet_ids);
+    printer.debuglog(`[${uniqueid}]`, "Check Tweets:", tweet_ids);
     $process_tweets.each((i, tweet) => {
         const p = JSPLib.utility.createPromise();
         promise_array.push(p.promise);
@@ -4412,15 +4440,16 @@ function FulfillStorageRequests(keylist, data_items, requests) {
 }
 
 function IntervalStorageHandler() {
+    let printer = JSPLib.debug.getFunctionPrint('IntervalStorageHandler');
     if (QUEUED_STORAGE_REQUESTS.length === 0) {
         return;
     }
-    this.debug('logLevel', () => ["Queued requests:", JSPLib.utility.dataCopy(QUEUED_STORAGE_REQUESTS)], JSPLib.debug.VERBOSE);
+    printer.debuglogLevel(() => ["Queued requests:", JSPLib.utility.dataCopy(QUEUED_STORAGE_REQUESTS)], JSPLib.debug.VERBOSE);
     for (let database in STORAGE_DATABASES) {
         let requests = QUEUED_STORAGE_REQUESTS.filter((request) => (request.database === database));
         let save_requests = requests.filter((request) => (request.type === 'save'));
         if (save_requests.length) {
-            this.debug('logLevel', "Save requests:", save_requests, JSPLib.debug.DEBUG);
+            printer.debuglogLevel("Save requests:", save_requests, JSPLib.debug.DEBUG);
             let save_data = Object.assign(...save_requests.map((request) => ({[request.key]: request.value})));
             JSPLib.storage.batchSaveData(save_data, {database: STORAGE_DATABASES[database]}).then(() => {
                 save_requests.forEach((request) => {
@@ -4431,7 +4460,7 @@ function IntervalStorageHandler() {
         }
         let remove_requests = requests.filter((request) => (request.type === 'remove'));
         if (remove_requests.length) {
-            this.debug('logLevel', "Remove requests:", remove_requests, JSPLib.debug.DEBUG);
+            printer.debuglogLevel("Remove requests:", remove_requests, JSPLib.debug.DEBUG);
             let remove_keys = remove_requests.map((request) => request.key);
             JSPLib.storage.batchRemoveData(remove_keys, {database: STORAGE_DATABASES[database]}).then(() => {
                 remove_requests.forEach((request) => {
@@ -4442,7 +4471,7 @@ function IntervalStorageHandler() {
         }
         let check_requests = requests.filter((request) => (request.type === 'check'));
         if (check_requests.length) {
-            this.debug('logLevel', "Check requests:", check_requests, JSPLib.debug.DEBUG);
+            printer.debuglogLevel("Check requests:", check_requests, JSPLib.debug.DEBUG);
             let check_keys = check_requests.map((request) => request.key);
             JSPLib.storage.batchCheckLocalDB(check_keys, ValidateExpiration, {database: STORAGE_DATABASES[database]}).then((check_data) => {
                 FulfillStorageRequests(check_keys, check_data, check_requests);
@@ -4450,7 +4479,7 @@ function IntervalStorageHandler() {
         }
         let noncheck_requests = requests.filter((request) => (request.type === 'get'));
         if (noncheck_requests.length) {
-            this.debug('logLevel', "Noncheck requests:", noncheck_requests, JSPLib.debug.DEBUG);
+            printer.debuglogLevel("Noncheck requests:", noncheck_requests, JSPLib.debug.DEBUG);
             let noncheck_keys = noncheck_requests.map((request) => request.key);
             JSPLib.storage.batchRetrieveData(noncheck_keys, {database: STORAGE_DATABASES[database]}).then((noncheck_data) => {
                 FulfillStorageRequests(noncheck_keys, noncheck_data, noncheck_requests);
@@ -4730,6 +4759,7 @@ function DownloadAllTweet($tweet) {
 }
 
 function DownloadMediaFile(file_url, tweet_id, screen_name, order) {
+    let printer = JSPLib.debug.getFunctionPrint('DownloadMediaFile');
     const mime_types = {
         jpg: 'image/jpeg',
         png: 'image/png',
@@ -4751,13 +4781,13 @@ function DownloadMediaFile(file_url, tweet_id, screen_name, order) {
     file_url += (extension !== 'mp4' ? ':orig' : "");
     let mime_type = mime_types[extension];
     if (mime_type) {
-        this.debug('log', "Saving", file_url, "as", download_name);
+        printer.debuglog("Saving", file_url, "as", download_name);
         JSPLib.network.getData(file_url, {ajax_options: {timeout: 0}}).then(
             //Success
             (blob) => {
                 let image_blob = blob.slice(0, blob.size, mime_type);
                 saveAs(image_blob, download_name);
-                this.debug('log', "Saved", extension, "file as", mime_type, "with size of", blob.size);
+                printer.debuglog("Saved", extension, "file as", mime_type, "with size of", blob.size);
                 p.resolve(true);
             },
             //Failure
@@ -5055,6 +5085,7 @@ function GetUserRestID(account) {
 }
 
 async function CheckPostvers() {
+    let printer = JSPLib.debug.getFunctionPrint('CheckPostvers');
     let postver_lastid = GetPostVersionsLastID('postver');
     let url_addons = {search: {source_changed: true, source_regex: '(twitter|x)\\.com'}, only: POSTVER_FIELDS};
     let query_params = {addons: url_addons, reverse: true, domain: NTISAS.domain, notify: true};
@@ -5063,15 +5094,15 @@ async function CheckPostvers() {
     }
     let post_versions = await JSPLib.danbooru.getAllItems('post_versions', QUERY_LIMIT, {page: postver_lastid, batches: QUERY_BATCH_NUM, url_addons, reverse: true, domain: NTISAS.domain, notify: true});
     if (post_versions.length === QUERY_BATCH_SIZE) {
-        this.debug('log', "Overflow detected!");
+        printer.debuglog("Overflow detected!");
         JSPLib.storage.setLocalData('ntisas-overflow', true);
     } else {
-        this.debug('log', "No overflow:", post_versions.length, QUERY_BATCH_SIZE);
+        printer.debuglog("No overflow:", post_versions.length, QUERY_BATCH_SIZE);
         JSPLib.storage.setLocalData('ntisas-overflow', false);
     }
     if (post_versions.length) {
         let [add_entries, rem_entries] = ProcessPostvers(post_versions);
-        this.debug('log', "Process:", add_entries, rem_entries);
+        printer.debuglog("Process:", add_entries, rem_entries);
         SavePostvers(add_entries, rem_entries);
         let lastid = JSPLib.danbooru.getNextPageID(post_versions, true);
         //Since the post version last ID is critical, an extra sanity check has been added
@@ -5090,19 +5121,20 @@ async function CheckPostvers() {
 }
 
 async function CheckServerBadTweets() {
+    let printer = JSPLib.debug.getFunctionPrint('CheckServerBadTweets');
     if (NTISAS.database_info && JSPLib.concurrency.checkTimeout('ntisas-badver-recheck', BADVER_RECHECK_EXPIRES) && JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'badvers')) {
         let postver_lastid = GetPostVersionsLastID('badver');
         let url_addons = {search: {changed_tags: 'bad_twitter_id'}, only: POSTVER_FIELDS};
         let post_versions = await JSPLib.danbooru.getAllItems('post_versions', QUERY_LIMIT, {page: postver_lastid, url_addons, batches: QUERY_BATCH_NUM, reverse: true, domain: NTISAS.domain, notify: true});
         if (post_versions.length === QUERY_BATCH_SIZE) {
-            this.debug('log', "Overflow detected!");
+            printer.debuglog("Overflow detected!");
         } else {
-            this.debug('log', "No overflow:", post_versions.length, QUERY_BATCH_SIZE);
+            printer.debuglog("No overflow:", post_versions.length, QUERY_BATCH_SIZE);
             JSPLib.concurrency.setRecheckTimeout('ntisas-badver-recheck', BADVER_RECHECK_EXPIRES);
         }
         if (post_versions.length) {
             let [add_entries, rem_entries] = ProcessPostvers(post_versions);
-            this.debug('log', "Process:", add_entries, rem_entries);
+            printer.debuglog("Process:", add_entries, rem_entries);
             SavePostvers(add_entries, rem_entries);
             let lastid = JSPLib.danbooru.getNextPageID(post_versions, true);
             //Since the post version last ID is critical, an extra sanity check has been added
@@ -5117,17 +5149,18 @@ async function CheckServerBadTweets() {
 }
 
 function SavePostvers(add_entries, rem_entries) {
+    let printer = JSPLib.debug.getFunctionPrint('SavePostvers');
     let combined_keys = JSPLib.utility.arrayIntersection(Object.keys(add_entries), Object.keys(rem_entries));
     combined_keys.forEach((tweet_id) => {
         let tweet_key = 'tweet-' + tweet_id;
         let post_ids = add_entries[tweet_id];
         JSPLib.storage.retrieveData(tweet_key, {bypass_cache: true, database: JSPLib.storage.twitterstorage}).then((data) => {
             if (JSPLib.validate.validateIDList(data)) {
-                this.debug('logLevel', "Tweet adds/rems - existing IDs:", tweet_key, data, JSPLib.debug.DEBUG);
+                printer.debuglogLevel("Tweet adds/rems - existing IDs:", tweet_key, data, JSPLib.debug.DEBUG);
                 post_ids = JSPLib.utility.arrayUnique(JSPLib.utility.arrayDifference(JSPLib.utility.arrayUnion(data, add_entries[tweet_id]), rem_entries[tweet_id]));
             }
             if (data === null || JSPLib.utility.arraySymmetricDifference(post_ids, data)) {
-                this.debug('logLevel', "Tweet adds/rems - saving:", tweet_key, post_ids, JSPLib.debug.DEBUG);
+                printer.debuglogLevel("Tweet adds/rems - saving:", tweet_key, post_ids, JSPLib.debug.DEBUG);
                 SaveData(tweet_key, post_ids, 'twitter');
                 UpdatePostIDsLink(tweet_id, post_ids);
                 NTISAS.channel.postMessage({type: 'postlink', tweet_id, post_ids});
@@ -5140,11 +5173,11 @@ function SavePostvers(add_entries, rem_entries) {
         let post_ids = add_entries[tweet_id];
         JSPLib.storage.retrieveData(tweet_key, {bypass_cache: true, database: JSPLib.storage.twitterstorage}).then((data) => {
             if (JSPLib.validate.validateIDList(data)) {
-                this.debug('log', "Tweet adds - existing IDs:", tweet_key, data);
+                printer.debuglog("Tweet adds - existing IDs:", tweet_key, data);
                 post_ids = JSPLib.utility.arrayUnion(data, post_ids);
             }
             if (data === null || post_ids.length > data.length) {
-                this.debug('log', "Tweet adds - saving:", tweet_key, post_ids);
+                printer.debuglog("Tweet adds - saving:", tweet_key, post_ids);
                 SaveData(tweet_key, post_ids, 'twitter');
                 UpdatePostIDsLink(tweet_id, post_ids);
                 NTISAS.channel.postMessage({type: 'postlink', tweet_id, post_ids});
@@ -5157,14 +5190,14 @@ function SavePostvers(add_entries, rem_entries) {
         let post_ids = [];
         JSPLib.storage.retrieveData(tweet_key, {bypass_cache: true, database: JSPLib.storage.twitterstorage}).then((data) => {
             if (data !== null && JSPLib.validate.validateIDList(data)) {
-                this.debug('log', "Tweet removes - existing IDs:", tweet_key, data);
+                printer.debuglog("Tweet removes - existing IDs:", tweet_key, data);
                 post_ids = JSPLib.utility.arrayUnique(JSPLib.utility.arrayDifference(data, rem_entries[tweet_id]));
             }
             if (post_ids.length) {
-                this.debug('log', "Tweet removes - saving:", tweet_key, post_ids);
+                printer.debuglog("Tweet removes - saving:", tweet_key, post_ids);
                 SaveData(tweet_key, post_ids, 'twitter');
             } else {
-                this.debug('log', "Tweet removes - deleting:", tweet_key);
+                printer.debuglog("Tweet removes - deleting:", tweet_key);
                 RemoveData(tweet_key, 'twitter');
             }
             if (data !== null) {
@@ -5241,9 +5274,10 @@ function RemoveData(key, database) {
 }
 
 async function SaveDatabase(database, counter_selector) {
+    let printer = JSPLib.debug.getFunctionPrint('SaveDatabase');
     var database_keys = Object.keys(database);
     let batches = Math.floor(database_keys.length / 2000);
-    this.debug('log', "Database size:", database_keys.length);
+    printer.debuglog("Database size:", database_keys.length);
     var payload = {};
     var i;
     for (i = 0; i < database_keys.length; i++) {
@@ -5257,7 +5291,7 @@ async function SaveDatabase(database, counter_selector) {
         payload['tweet-' + key] = value;
         if (i !== 0 && (i % 2000 === 0)) {
             $(counter_selector).html(--batches);
-            this.debug('log', "Saving batch #", batches);
+            printer.debuglog("Saving batch #", batches);
             JSPLib.debug.debugTime('database-save-' + batches);
             await JSPLib.storage.twitterstorage.setItems(payload);
             JSPLib.debug.debugTimeEnd('database-save-' + batches);
@@ -5269,7 +5303,7 @@ async function SaveDatabase(database, counter_selector) {
     if (i % 2000 > 0) {
         // Final save
         $(counter_selector).html('Final');
-        this.debug('log', "Saving batch #", batches);
+        printer.debuglog("Saving batch #", batches);
         JSPLib.debug.debugTime('database-save-' + batches);
         await JSPLib.storage.twitterstorage.setItems(payload);
         JSPLib.debug.debugTimeEnd('database-save-' + batches);
@@ -5379,11 +5413,12 @@ function InitializeDatabase() {
 //Event handlers
 
 function CheckViews(entries, observer) {
+    let printer = JSPLib.debug.getFunctionPrint('CheckViews');
     entries.forEach((entry) => {
         if (entry.isIntersecting) {
             let $tweet = $(entry.target);
             let tweet_id = $tweet.attr('data-tweet-id');
-            this.debug('logLevel', "Viewable tweet:", tweet_id, entry, JSPLib.debug.DEBUG);
+            printer.debuglogLevel("Viewable tweet:", tweet_id, entry, JSPLib.debug.DEBUG);
             AddViewCount(tweet_id);
             $tweet.attr('viewed', 'true');
             observer.unobserve(entry.target);
@@ -5440,6 +5475,7 @@ function ImageLeave(event) {
 }
 
 function ToggleImageSize(event) {
+    let printer = JSPLib.debug.getFunctionPrint('ToggleImageSize');
     try {
         let image = event.target;
         let $image = $(image);
@@ -5471,7 +5507,7 @@ function ToggleImageSize(event) {
                 $image.data('showing-large', true);
             }
         } else {
-            this.debug('warn', "No match!", image_url);
+            printer.debugwarn("No match!", image_url);
         }
     } catch (e) {
         JSPLib.notice.error("ToggleImage: Error");
@@ -5922,6 +5958,7 @@ function ExportData() {
 }
 
 function ImportData() {
+    let printer = JSPLib.debug.getFunctionPrint('ImportData');
     if (!NTISAS.import_is_running) {
         NTISAS.import_is_running = true;
         $('#ntisas-import-counter').text('reading');
@@ -5931,7 +5968,7 @@ function ImportData() {
                 JSPLib.notice.notice("Importing data...");
                 let errors = false;
                 if ('program_data' in import_package) {
-                    this.debug('log', "Program data:", import_package.program_data);
+                    printer.debuglog("Program data:", import_package.program_data);
                     Object.keys(import_package.program_data).forEach((key) => {
                         if (ValidateProgramData(key, import_package.program_data[key])) {
                             JSPLib.storage.setLocalData(key, import_package.program_data[key]);
@@ -5942,19 +5979,19 @@ function ImportData() {
                 }
                 if ('database_info' in import_package) {
                     //Add a way to overwrite the current last_id and timestamp values (settings menu)
-                    this.debug('log', "Database info:", import_package.database_info);
+                    printer.debuglog("Database info:", import_package.database_info);
                     await JSPLib.storage.saveData('ntisas-database-info', import_package.database_info, {database: JSPLib.storage.twitterstorage});
                     NTISAS.database_info = import_package.database_info;
                     $('#ntisas-database-link').html(RenderDatabaseVersion(NTISAS.database_info));
                 }
                 if ('database_batches' in import_package) {
-                    this.debug('log', "Database batches length:", import_package.database_batches.length);
+                    printer.debuglog("Database batches length:", import_package.database_batches.length);
                     if (Number.isInteger(NTISAS.database_interval)) {
                         clearInterval(NTISAS.database_interval);
                         NTISAS.database_interval = null;
                     }
                     for (let i = 0; i < import_package.database_batches.length; i++) {
-                        this.debug('log', `"Saving batch #${i + 1} of ${import_package.database_batches.length}`);
+                        printer.debuglog(`"Saving batch #${i + 1} of ${import_package.database_batches.length}`);
                         $('#ntisas-import-counter').text(import_package.database_batches.length - i);
                         await JSPLib.storage.batchstorage.setItem('database-batch-' + i, import_package.database_batches[i]);
                         await JSPLib.utility.sleep(100);
@@ -5963,7 +6000,7 @@ function ImportData() {
                     $('#ntisas-import-counter').text(0);
                 }
                 if ('tweet_database' in import_package) {
-                    this.debug('log', "Database length:", Object.keys(import_package.tweet_database).length);
+                    printer.debuglog("Database length:", Object.keys(import_package.tweet_database).length);
                     await SaveDatabase(import_package.tweet_database, '#ntisas-import-counter');
                 }
                 if (errors) {
@@ -6055,9 +6092,10 @@ function UpdateProfileCallback() {
 //Event execute functions
 
 function UnhideTweets() {
+    let printer = JSPLib.debug.getFunctionPrint('UnhideTweets');
     let $hidden_tweets = $('.ntisas-hidden-media [role=button]');
     if ($hidden_tweets.length) {
-        this.debug('log', "Found hidden tweets:", $hidden_tweets.length);
+        printer.debuglog("Found hidden tweets:", $hidden_tweets.length);
         $hidden_tweets.click();
     }
 }
@@ -6065,10 +6103,11 @@ function UnhideTweets() {
 //Markup tweet functions
 
 function MarkupMediaType(tweet) {
+    let printer = JSPLib.debug.getFunctionPrint('MarkupMediaType');
     if ($('.ntisas-tweet-media [src*="/card_img/"]', tweet).length) {
         $('.ntisas-tweet-media', tweet).addClass('ntisas-tweet-card').removeClass('ntisas-tweet-media');
     } else if ($('.ntisas-tweet-media [role=progressbar]', tweet).length) {
-        this.debug('log', "Delaying media check for", $(tweet).data('tweet-id'));
+        printer.debuglog("Delaying media check for", $(tweet).data('tweet-id'));
         let timer = setInterval(() => {
             if ($('.ntisas-tweet-media [role=progressbar]', tweet).length === 0) {
                 clearInterval(timer);
@@ -6110,6 +6149,7 @@ function MarkupMediaType(tweet) {
 }
 
 function MarkupStreamTweet(tweet) {
+    let printer = JSPLib.debug.getFunctionPrint('MarkupStreamTweet');
     try {
         let status_link = $('time', tweet).parent();
         let [, screen_name,, tweet_id] = status_link[0].pathname.split('/');
@@ -6170,7 +6210,7 @@ function MarkupStreamTweet(tweet) {
             CheckHiddenMedia(tweet);
         }
     } catch (e) {
-        this.debug('error', e, tweet);
+        printer.debugerror(e, tweet);
         if (JSPLib.debug.debug_console) {
             JSPLib.notice.error("Error marking up stream tweet! (check debug console for details)", false);
         }
@@ -6179,6 +6219,7 @@ function MarkupStreamTweet(tweet) {
 }
 
 function MarkupMainTweet(tweet) {
+    let printer = JSPLib.debug.getFunctionPrint('MarkupMainTweet');
     try {
         $(tweet).attr('ntisas-tweet', 'main');
         $(tweet).attr('data-tweet-id', NTISAS.tweet_id);
@@ -6249,7 +6290,7 @@ function MarkupMainTweet(tweet) {
             CheckHiddenMedia(tweet);
         }
     } catch (e) {
-        this.debug('error', e, tweet);
+        printer.debugerror(e, tweet);
         if (JSPLib.debug.debug_console) {
             JSPLib.notice.error("Error marking up main tweet! (check debug console for details)", false);
         }
@@ -6310,10 +6351,11 @@ function CheckHiddenMedia(tweet) {
 //Main execution functions
 
 function RegularCheck() {
+    let printer = JSPLib.debug.getFunctionPrint('RegularCheck');
     if (NTISAS.update_on_found && NTISAS.user_id) {
         NTISAS.update_on_found = false;
     } else if (NTISAS.update_profile.timer === false) {
-        this.debug('warn', "Failed to find user ID!!");
+        printer.debugwarn("Failed to find user ID!!");
     }
 
     //Get current page and previous page info
@@ -6378,6 +6420,7 @@ function RegularCheck() {
 }
 
 function PageNavigation(pagetype) {
+    let printer = JSPLib.debug.getFunctionPrint('PageNavigation');
     //Use all non-URL matching groups as a page key to detect page changes
     let page_key = NTISAS.page_match.groups ?
         JSPLib.utility.arrayUnique(
@@ -6398,7 +6441,7 @@ function PageNavigation(pagetype) {
         case 'media':
         case 'likes':
         case 'replies':
-            this.debug('log', `User timeline [${NTISAS.page}]:`, account);
+            printer.debuglog(`User timeline [${NTISAS.page}]:`, account);
             NTISAS.account = account;
             UpdateUserIDCallback();
             if (NTISAS.account === 'following' || NTISAS.account === 'lists') {
@@ -6409,16 +6452,16 @@ function PageNavigation(pagetype) {
         case 'list':
         case 'topics':
         case 'events':
-            this.debug('log', `Stream timeline [${NTISAS.page}]:`, page_id ?? "n/a");
+            printer.debuglog(`Stream timeline [${NTISAS.page}]:`, page_id ?? "n/a");
             NTISAS.account = NTISAS.user_id = undefined;
             break;
         case 'hashtag':
-            this.debug('log', "Hashtag timeline:", NTISAS.page_match.groups.hashtag);
+            printer.debuglog("Hashtag timeline:", NTISAS.page_match.groups.hashtag);
             NTISAS.account = NTISAS.user_id = undefined;
             NTISAS.hashtag_search = window.location.search;
             break;
         case 'search':
-            this.debug('log', "Search timeline:", NTISAS.page_match.groups.query);
+            printer.debuglog("Search timeline:", NTISAS.page_match.groups.query);
             params = JSPLib.utility.parseParams(NTISAS.page_match.groups.query);
             NTISAS.queries = ParseQueries(params.q);
             NTISAS.account = ('from' in NTISAS.queries ? NTISAS.queries.from : undefined);
@@ -6426,13 +6469,13 @@ function PageNavigation(pagetype) {
             break;
         case 'tweet':
         case 'web_tweet':
-            this.debug('log', "Tweet ID:", page_id);
+            printer.debuglog("Tweet ID:", page_id);
             NTISAS.screen_name = account;
             NTISAS.tweet_id = page_id;
             NTISAS.account = NTISAS.user_id = undefined;
             break;
         case 'display':
-            this.debug('log', "Twitter display settings");
+            printer.debuglog("Twitter display settings");
             return;
         default:
             //Do nothing
@@ -6507,6 +6550,7 @@ function PageNavigation(pagetype) {
 }
 
 function ProcessTweetImage(obj, image_info, unprocessed_tweets) {
+    let printer = JSPLib.debug.getFunctionPrint('ProcessTweetImage');
     let $obj = $(obj);
     if (image_info) {
         let $tweet = $obj.closest('[ntisas-tweet]');
@@ -6530,16 +6574,17 @@ function ProcessTweetImage(obj, image_info, unprocessed_tweets) {
         JSPLib.debug.debugExecute(() => {
             if (JSPLib.validate.isBoolean(image_info)) {
                 JSPLib.notice.debugNoticeLevel("New unhandled image found (see debug console)", JSPLib.debug.INFO);
-                this.debug('warn', "Unhandled image", obj.src, $obj.closest('[ntisas-tweet]').data('tweet-id'));
+                printer.debugwarn("Unhandled image", obj.src, $obj.closest('[ntisas-tweet]').data('tweet-id'));
             }
         });
     }
 }
 
 function ProcessTweetImages() {
+    let printer = JSPLib.debug.getFunctionPrint('ProcessTweetImages');
     let $unprocessed_images = $('.ntisas-tweet-media > div > div:not(.ntisas-tweet-quote):not(.ntisas-tweet-quote2) div:not([ntisas-image]) > img:not(.ntisas-unhandled-image)');
     if ($unprocessed_images.length) {
-        this.debug('log', "Images found:", $unprocessed_images.length);
+        printer.debuglog("Images found:", $unprocessed_images.length);
     }
     let unprocessed_tweets = {};
     $unprocessed_images.each((i, image) => {
@@ -6549,7 +6594,7 @@ function ProcessTweetImages() {
     //Only gets executed when videos are autoplay. Otherwise videos get found as images above.
     let $unprocessed_videos = $('.ntisas-tweet-media > div:not(.ntisas-tweet-quote) div:not([ntisas-image]) > video');
     if ($unprocessed_videos.length) {
-        this.debug('log', "Videos found:", $unprocessed_videos.length);
+        printer.debuglog("Videos found:", $unprocessed_videos.length);
     }
     $unprocessed_videos.each((i, video) => {
         let image_info = GetImageURLInfo(video.poster);
@@ -6571,11 +6616,12 @@ function ProcessTweetImages() {
     }
     let total_unprocessed = Object.keys(unprocessed_tweets).length;
     if (total_unprocessed > 0) {
-        this.debug('log', "Tweets updated:", total_unprocessed);
+        printer.debuglog("Tweets updated:", total_unprocessed);
     }
 }
 
 function ProcessNewTweets() {
+    let printer = JSPLib.debug.getFunctionPrint('ProcessNewTweets');
     //Use the article HTML element as a landmark for locating tweets
     let $tweet_articles = $('div[data-testid=primaryColumn] div:not([ntisas-tweet]) > div > article[data-testid=tweet]');
     //Get the highest delineation point between tweets that Twitter doesn't alter through events
@@ -6584,7 +6630,7 @@ function ProcessNewTweets() {
         return false;
     }
     NTISAS.uniqueid = JSPLib.utility.getUniqueID();
-    this.debug('log', NTISAS.uniqueid);
+    printer.debuglog(NTISAS.uniqueid);
     let main_tweets = [];
     $tweets.each((i, entry) => {
         $(entry).attr({
@@ -6603,7 +6649,7 @@ function ProcessNewTweets() {
         MarkupMainTweet(main_tweets[0]);
     }
     let $image_tweets = $tweets.filter((i, entry) => $('[ntisas-media-type=image], [ntisas-media-type=video], [ntisas-media-type=deferred]', entry).length);
-    this.debug('log', `[${NTISAS.uniqueid}]`, "New:", $tweets.length, "Image:", $image_tweets.length);
+    printer.debuglog(`[${NTISAS.uniqueid}]`, "New:", $tweets.length, "Image:", $image_tweets.length);
     //Initialize tweets with images
     if ($image_tweets.length) {
         InitializeImageTweets($image_tweets);
@@ -6612,7 +6658,7 @@ function ProcessNewTweets() {
                 InitializeViewCount(entry);
                 if (IsTweetPage()) {
                     let tweet_id = $(entry).attr('data-tweet-id');
-                    this.debug('logLevel', "Viewable tweet:", tweet_id, JSPLib.utility.DEBUG);
+                    printer.debuglogLevel("Viewable tweet:", tweet_id, JSPLib.utility.DEBUG);
                     AddViewCount(tweet_id);
                     $(entry).attr('viewed', 'true');
                 } else {
@@ -6717,7 +6763,8 @@ function CollectTweetStats() {
 //Settings functions
 
 function BroadcastTISAS(ev) {
-    this.debug('log', `(${ev.data.type}):`, ev.data);
+    let printer = JSPLib.debug.getFunctionPrint('BroadcastTISAS');
+    printer.debuglog(`(${ev.data.type}):`, ev.data);
     switch (ev.data.type) {
         case 'postlink':
             if (ev.data.post_ids.length) {
@@ -7026,24 +7073,6 @@ async function Main() {
 }
 
 /****Function decoration****/
-
-[
-    UnhideTweets, RegularCheck, ImportData, DownloadMediaFile, PromptSavePostIDs,
-    SaveDatabase, CheckPostvers,
-    ReadFileAsync, ProcessPostvers, InitializeImageTweets, ValidateEntry, BroadcastTISAS,
-    PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages,
-    GetNormalImageURL, GetPageType, CheckServerBadTweets, SavePostvers, MarkupMainTweet,
-    MarkupStreamTweet, MarkupMediaType, CheckViews, InitializeViewCount, ToggleImageSize, InitializeProfileTimeline,
-    IntervalStorageHandler, UpdateUserIDCallback,
-] = JSPLib.debug.addFunctionLogs([
-    UnhideTweets, RegularCheck, ImportData, DownloadMediaFile, PromptSavePostIDs,
-    SaveDatabase, CheckPostvers,
-    ReadFileAsync, ProcessPostvers, InitializeImageTweets, ValidateEntry, BroadcastTISAS,
-    PageNavigation, ProcessNewTweets, ProcessTweetImage, ProcessTweetImages,
-    GetNormalImageURL, GetPageType, CheckServerBadTweets, SavePostvers, MarkupMainTweet,
-    MarkupStreamTweet, MarkupMediaType, CheckViews, InitializeViewCount, ToggleImageSize, InitializeProfileTimeline,
-    IntervalStorageHandler, UpdateUserIDCallback,
-]);
 
 [
     RenderSettingsMenu, SaveDatabase, GetSavePackage, CheckPostvers,
