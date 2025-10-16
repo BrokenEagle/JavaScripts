@@ -1856,9 +1856,10 @@ const TWITTER_ACCOUNT = String.raw`[\w_-]+`;
 const TWITTER_ID = String.raw`\d+`;
 const QUERY_END = String.raw`(?:\?|$|/$)`;
 
-const TWEET_REGEX = JSPLib.utility.verboseRegex('g')`${TWITTER_HOST}/(?:i/web|${TWITTER_ACCOUNT})/status/(${TWITTER_ID})(?:/photo/\d+|/video/\d+)?${QUERY_END}`;
-const TWEET_URL_REGEX = JSPLib.utility.verboseRegex('g')`${TWITTER_HOST}/(${TWITTER_ACCOUNT})/status/${TWITTER_ID}`;
-const SOURCE_TWITTER_REGEX = JSPLib.utility.verboseRegex('g')`^source:${TWEET_REGEX.source.slice(1)}`;
+const TWEET_REGEX = JSPLib.utility.verboseRegex()`${TWITTER_HOST}/(?:i/web|${TWITTER_ACCOUNT})/status/(${TWITTER_ID})(?:/photo/\d+|/video/\d+)?${QUERY_END}`;
+const SOURCE_TWITTER_REGEX = JSPLib.utility.verboseRegex()`^source:${TWEET_REGEX.source.slice(1)}`;
+const TWEET_REGEXG = new RegExp(TWEET_REGEX.source, 'g');
+const SOURCE_TWITTER_REGEXG = new RegExp(SOURCE_TWITTER_REGEX.source, 'g');
 
 const BANNER_REGEX = JSPLib.utility.verboseRegex()`https://pbs\.twimg\.com/profile_banners/(\d+)/\d+/`;
 
@@ -3232,7 +3233,7 @@ function ProcessPostvers(postvers) {
     postvers.forEach((postver) => {
         if (postver.source_changed) {
             if (postver.version === 1) {
-                let tweet_id = JSPLib.utility.findAll(postver.source, TWEET_REGEX)[1];
+                let tweet_id = JSPLib.utility.findAll(postver.source, TWEET_REGEXG)[1];
                 if (tweet_id) {
                     add_entries[tweet_id] = add_entries[tweet_id] || [];
                     add_entries[tweet_id] = JSPLib.utility.arrayUnion(add_entries[tweet_id], [postver.post_id]);
@@ -3241,11 +3242,10 @@ function ProcessPostvers(postvers) {
                 }
             } else {
                 let tweet_id = {};
-                const source_regex = new RegExp(SOURCE_TWITTER_REGEX.source);
-                let twitter_add = postver.added_tags.find((tag) => source_regex.test(tag)) || "";
-                tweet_id.add = JSPLib.utility.findAll(twitter_add, SOURCE_TWITTER_REGEX)[1];
-                let twitter_rem = postver.removed_tags.find((tag) => source_regex.test(tag)) || "";
-                tweet_id.rem = JSPLib.utility.findAll(twitter_rem, SOURCE_TWITTER_REGEX)[1];
+                let twitter_add = postver.added_tags.find((tag) => SOURCE_TWITTER_REGEX.test(tag)) ?? "";
+                tweet_id.add = JSPLib.utility.findAll(twitter_add, SOURCE_TWITTER_REGEXG)[1];
+                let twitter_rem = postver.removed_tags.find((tag) => SOURCE_TWITTER_REGEX.test(tag)) ?? "";
+                tweet_id.rem = JSPLib.utility.findAll(twitter_rem, SOURCE_TWITTER_REGEXG)[1];
                 var link_modify = false;
                 if (tweet_id.add && tweet_id.rem) {
                     if (tweet_id.add === tweet_id.rem) {
@@ -3278,7 +3278,7 @@ function ProcessPostvers(postvers) {
             }
         }
         if (postver.added_tags.includes('bad_twitter_id') || postver.removed_tags.includes('bad_twitter_id')) {
-            let tweet_id = JSPLib.utility.findAll(postver.source, TWEET_REGEX)[1];
+            let tweet_id = JSPLib.utility.findAll(postver.source, TWEET_REGEXG)[1];
             if (tweet_id) {
                 if (postver.removed_tags.includes('bad_twitter_id')) {
                     this.debug('log', "Activated tweet:", tweet_id);
