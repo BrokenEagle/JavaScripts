@@ -71,6 +71,10 @@ JSPLib.storage.twitterstorage = localforage.createInstance({
     name: 'Twitter storage',
     driver: [localforage.INDEXEDDB]
 });
+JSPLib.storage.batchstorage = localforage.createInstance({
+    name: 'Batch storage',
+    driver: [localforage.INDEXEDDB]
+});
 JSPLib.storage.localforage = localforage.createInstance({
     name: 'localforage',
     driver: [localforage.INDEXEDDB]
@@ -5431,6 +5435,21 @@ async function SaveDatabase(database, counter_selector) {
     }
 }
 
+async function InitializeSaveDatabaseBatches() {
+    let import_pending = JSPLib.storage.getLocalData('ntisas-import-pending');
+    if (!import_pending) return;
+    let keylist = await JSPLib.storage.batchstorage.keys();
+    let batch_keys = keylist.filter((key) => /database-batch-\d+/.exec(key));
+    if (batch_keys.length > 0) {
+        let batch_indices = batch_keys.map((key) => Number(/\d+$/.exec(key)[0]));
+        JSPLib.storage.setLocalData('ntisas-database-batchindex', Math.min(...batch_indices));
+        JSPLib.storage.setLocalData('ntisas-database-numbatches', Math.max(...batch_indices) + 1);
+        NTISAS.database_interval = setInterval(SaveDatabaseBatch, DATABASE_BATCHSAVE_INTERVAL);
+    } else {
+        JSPLib.storage.setLocalData('ntisas-import-pending', false);
+    }
+}
+
 function SaveDatabaseBatch() {
     let num_batches = JSPLib.storage.getLocalData('ntisas-database-numbatches');
     JSPLib.storage.invalidateLocalData('ntisas-database-batchindex');
@@ -5444,7 +5463,7 @@ function SaveDatabaseBatch() {
             SaveDatabaseBatch.is_help_installed = true;
         }
         JSPLib.storage.setLocalData('ntisas-database-batchindex', batch_index + 1);
-        JSPLib.storage.twitterstorage.getItem('database-batch-' + batch_index).then((database_batch) => {
+        JSPLib.storage.batchstorage.getItem('database-batch-' + batch_index).then((database_batch) => {
             if (JSPLib.validate.isHash(database_batch)) {
                 (async () =>{
                     JSPLib.debug.debugTime('SaveDatabaseBatch-' + display_index);
@@ -5458,7 +5477,7 @@ function SaveDatabaseBatch() {
                         }
                     }
                     await JSPLib.storage.twitterstorage.setItems(payload);
-                    await JSPLib.storage.twitterstorage.removeItem('database-batch-' + batch_index);
+                    await JSPLib.storage.batchstorage.removeItem('database-batch-' + batch_index);
                     JSPLib.debug.debugTimeEnd('SaveDatabaseBatch-' + display_index);
                 })();
             } else {
@@ -6125,14 +6144,13 @@ function ImportData() {
                         clearInterval(NTISAS.database_interval);
                         NTISAS.database_interval = null;
                     }
-                    JSPLib.storage.setLocalData('ntisas-database-numbatches', import_package.database_batches.length);
-                    JSPLib.storage.setLocalData('ntisas-database-batchindex', 0);
                     for (let i = 0; i < import_package.database_batches.length; i++) {
-                        this.debug('log', `"Saving batch #${i} of ${import_package.database_batches.length}`);
+                        this.debug('log', `"Saving batch #${i + 1} of ${import_package.database_batches.length}`);
                         $('#ntisas-import-counter').text(import_package.database_batches.length - i);
-                        await JSPLib.storage.twitterstorage.setItem('database-batch-' + i, import_package.database_batches[i]);
+                        await JSPLib.storage.batchstorage.setItem('database-batch-' + i, import_package.database_batches[i]);
                         await JSPLib.utility.sleep(100);
                     }
+                    JSPLib.storage.setLocalData('ntisas-import-pending', true);
                     $('#ntisas-import-counter').text(0);
                 }
                 if ('tweet_database' in import_package) {
@@ -7214,9 +7232,7 @@ async function Main() {
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+1 alt+2 alt+3', SideMenuHotkeys);
     setInterval(IntervalStorageHandler, QUEUE_POLL_INTERVAL);
     setInterval(IntervalNetworkHandler, QUEUE_POLL_INTERVAL);
-    if (Number.isInteger(JSPLib.storage.getLocalData('ntisas-database-numbatches')) && Number.isInteger(JSPLib.storage.getLocalData('ntisas-database-batchindex'))) {
-        NTISAS.database_interval = setInterval(SaveDatabaseBatch, DATABASE_BATCHSAVE_INTERVAL);
-    }
+    InitializeSaveDatabaseBatches();
     JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
     JSPLib.utility.setCSSStyle(GM_getResourceText('jquery_qtip_css'), 'qtip');
     JSPLib.utility.setCSSStyle(NOTICE_CSS, 'notice');
