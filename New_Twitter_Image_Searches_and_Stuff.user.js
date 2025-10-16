@@ -2650,7 +2650,7 @@ JSPLib.debug.getFunctionPrint = function (func_name) {
         });
     } else {
         ['debuglog', 'debugwarn', 'debugerror', 'debuglogLevel', 'debugwarnLevel', 'debugerrorLevel'].forEach((debugfunc) => {
-            printer[debugfunc] = (()=>{});
+            printer[debugfunc] = (() => {});
         });
     }
     return printer;
@@ -2691,7 +2691,7 @@ JSPLib.network.processError = function (self, error, funcname) {
     var ret = null;
     if (typeof error === "object") {
         if ('status' in error && 'responseText' in error) {
-            ret = error
+            ret = error;
         } else if ('statusText' in error) {
             ret = {status: -1, responseText: error.statusText};
         }
@@ -2726,7 +2726,7 @@ JSPLib.network.notifyError = function (error, custom_error = "") {
     } else {
         notice_html = JSPLib.utility.sprintf(HEADER, "Network error:");
     }
-    notice_html += ' ' + message
+    notice_html += ' ' + message;
     if (custom_error.length) {
         notice_html += '<br>' + custom_error;
     }
@@ -3050,7 +3050,7 @@ async function GetImageLinks(tweet) {
 
 async function GetMediaLinksData($tweet) {
     let image_urls = await GetImageLinks($tweet[0]);
-    let videos = $tweet.find('[ntisas-image]').map((i, entry) => Boolean(/^tweet_video_thumb|^ext_tw_video_thumb|^amplify_video_thumb/.exec($(entry).data('path')))).toArray();
+    let videos = $tweet.find('[ntisas-image]').map((_, entry) => Boolean(/^tweet_video_thumb|^ext_tw_video_thumb|^amplify_video_thumb/.exec($(entry).data('path')))).toArray();
     return {image_urls, videos};
 }
 
@@ -3258,7 +3258,7 @@ function UpdateSideMenu(page_type, update_visibility) {
     let $side_menu = $('#ntisas-side-menu');
     if (menu_shown) {
         if (!NTISAS.side_menu_draggable) {
-            $side_menu.draggable({handle : '#ntisas-menu-header'});
+            $side_menu.draggable({handle: '#ntisas-menu-header'});
             NTISAS.side_menu_draggable = true;
             $(window).on('beforeunload.ntisas.update-position', SaveMenuPosition);
         }
@@ -3379,7 +3379,7 @@ function GetDialogPreload(event) {
     let $dialog = $link.closest('.ntisas-dialog').find('.ui-dialog-content');
     let tweet_id = String($dialog.data('tweet-id'));
     let screen_name = $dialog.data('screen-name');
-    screen_name = (screen_name ? String(screen_name): null);
+    screen_name = (screen_name ? String(screen_name) : null);
     return {$link, $dialog, tweet_id, screen_name};
 }
 
@@ -3646,7 +3646,7 @@ function RenderUploadDialog(tweet_id, screen_name, image_urls, videos) {
         ${html}
     </div>
     <a class="ntisas-upload-all" href="${upload_url}" target="_blank" style="display: none;"></a>
-</div>`
+</div>`;
 }
 
 function RenderDownloadDialog(tweet_id, screen_name, image_urls, videos) {
@@ -3668,7 +3668,7 @@ function RenderDownloadDialog(tweet_id, screen_name, image_urls, videos) {
             ${html}
         </div>
     </div>
-</div>`
+</div>`;
 }
 
 function RenderPostsContainer(all_posts) {
@@ -3707,7 +3707,7 @@ function RenderPostPreview(post, append_html = "") {
 </article>`;
 }
 
-function RenderTwimgPreview(image_url, index, type, title, is_video=false) {
+function RenderTwimgPreview(image_url, index, type, title, is_video = false) {
     let ext = GetFileExtension(image_url, ':');
     let thumb_url = GetThumbUrl(image_url, ':', 'jpg', '360x360');
     var image_html, selected_class;
@@ -3828,7 +3828,7 @@ function InitializeStatusBar(tweet_status, is_main_tweet) {
 
 function InitializeSideMenu() {
     let $side_menu = $('#ntisas-side-menu');
-    $side_menu.find('[data-setting]').each((i, entry) => {
+    $side_menu.find('[data-setting]').each((_, entry) => {
         let setting = $(entry).data('setting');
         if (NTISAS.user_settings[setting]) {
             $(entry).show();
@@ -3878,7 +3878,7 @@ function InitializeCurrentRecords() {
 
 async function InitializeImageMenu($tweets, menu_class) {
     let promise_array = [];
-    $tweets.each((i, tweet) => {
+    $tweets.each((_, tweet) => {
         let p = JSPLib.utility.createPromise();
         promise_array.push(p.promise);
         let $tweet = $(tweet);
@@ -3948,7 +3948,7 @@ function InitializeMediaTweet(tweet_id, post_ids, tweet_dict_promise) {
 function InitializeQtip($obj, tweet_id, delayfunc) {
     const qtip_settings = Object.assign({}, PREVIEW_QTIP_SETTINGS, {
         content: {
-            text: (event, qtip) => {
+            text: (_, qtip) => {
                 if (!qtip.tooltip[0].hasAttribute(PROGRAM_SHORTCUT)) {
                     if (delayfunc) {
                         var timer;
@@ -4020,7 +4020,7 @@ function InitializeSearchDialog(tweet_id, image_urls) {
     if (!NTISAS.search_dialog[tweet_id]) {
         InitializeUIStyle();
         let $dialog = $(RenderSearchDialog(tweet_id, image_urls));
-        $('article', $dialog[0]).each((i, article) => {
+        $('article', $dialog[0]).each((_, article) => {
             InitializeTwitterImage(article, image_urls, POST_PREVIEW_DIMENSION);
         });
         let dialog_settings = Object.assign({}, CONFIRM_DIALOG_SETTINGS, {
@@ -4048,7 +4048,7 @@ function InitializeConfirmDialog(tweet_id, similar_results, posts) {
     let $dialog = $(RenderConfirmDialog(tweet_id, similar_results));
     SetThumbnailWait($dialog[0], posts);
     let image_urls = JSPLib.utility.getObjectAttributes(similar_results, 'image_url');
-    $('article:first-of-type', $dialog[0]).each((i, article) => {
+    $('article:first-of-type', $dialog[0]).each((_, article) => {
         InitializeTwitterImage(article, image_urls, POST_PREVIEW_DIMENSION).then(({size}) => {
             $(article).closest('.ntisas-similar-result').find(`[data-size=${size}]`).addClass('ntisas-post-match');
         });
@@ -4071,16 +4071,16 @@ function InitializeConfirmDialog(tweet_id, similar_results, posts) {
     UpdateMenuResults(tweet_id, '<a class="ntisas-control-confirm ntisas-expanded-link">Confirm</a>', false);
 }
 
-async function InitializeUploadDialog(tweet_id, screen_name, image_urls, videos) {
+function InitializeUploadDialog(tweet_id, screen_name, image_urls, videos) {
     NTISAS.upload_dialog ??= {};
     if (!NTISAS.upload_dialog[tweet_id]) {
         InitializeUIStyle();
         let $dialog = $(RenderUploadDialog(tweet_id, screen_name, image_urls, videos));
-        $('article', $dialog[0]).each((i, article) => {
+        $('article', $dialog[0]).each((_, article) => {
             InitializeTwitterImage(article, image_urls, TWEET_PREVIEW_DIMENSION);
         });
         if (videos.some((status) => status)) {
-            GetTweetData(tweet_id).then((tweet_data)=>{
+            GetTweetData(tweet_id).then((tweet_data) => {
                 tweet_data.forEach((url_data, i) => {
                     let is_video = videos[i];
                     if (!is_video) return;
@@ -4111,16 +4111,16 @@ async function InitializeUploadDialog(tweet_id, screen_name, image_urls, videos)
     NTISAS.dialog_tweet[tweet_id] ??= GetTweet(tweet_id);
 }
 
-async function InitializeDownloadDialog(tweet_id, screen_name, image_urls, videos) {
+function InitializeDownloadDialog(tweet_id, screen_name, image_urls, videos) {
     NTISAS.download_dialog ??= {};
     if (!NTISAS.download_dialog[tweet_id]) {
         InitializeUIStyle();
         let $dialog = $(RenderDownloadDialog(tweet_id, screen_name, image_urls, videos));
-        $('article', $dialog[0]).each((i, article) => {
+        $('article', $dialog[0]).each((_, article) => {
             InitializeTwitterImage(article, image_urls, TWEET_PREVIEW_DIMENSION);
         });
         if (videos.some((status) => status)) {
-            GetTweetData(tweet_id).then((tweet_data)=>{
+            GetTweetData(tweet_id).then((tweet_data) => {
                 tweet_data.forEach((url_data, i) => {
                     let is_video = videos[i];
                     if (!is_video) return;
@@ -4288,7 +4288,7 @@ function InitializeImageTweets($image_tweets) {
     const promise_array = [];
     const tweet_ids = JSPLib.utility.arrayUnique(JSPLib.utility.getDOMAttributes($process_tweets, 'tweet-id', String));
     printer.debuglog(`[${uniqueid}]`, "Check Tweets:", tweet_ids);
-    $process_tweets.each((i, tweet) => {
+    $process_tweets.each((_, tweet) => {
         const p = JSPLib.utility.createPromise();
         promise_array.push(p.promise);
         $('.ntisas-footer-section', tweet).append(NTISAS_TWEET_MENU);
@@ -4734,23 +4734,19 @@ function DownloadAllTweet($tweet) {
     if (NTISAS.download_running.has(tweet_id)) return;
     NTISAS.download_running.add(tweet_id);
     $tweet.find('.ntisas-menu-download').addClass('ntisas-menu-active');
-    GetMediaLinksData($tweet).then(async ({image_urls, videos})=>{
+    GetMediaLinksData($tweet).then(async ({image_urls, videos}) => {
         var media_urls;
         if (videos.some((is_video) => is_video)) {
             let tweet_data = await GetTweetData(tweet_id);
-            media_urls = image_urls.map((image_url, i)=>{
+            media_urls = image_urls.map((image_url, i) => {
                 let is_video = videos[i];
-                if (is_video) {
-                    return 'https://video.twimg.com/' + tweet_data[i].partial_video;
-                } else {
-                    return image_url + ':orig';
-                }
+                return (is_video ? 'https://video.twimg.com/' + tweet_data[i].partial_video : image_url + ':orig');
             });
         } else {
             media_urls = image_urls;
         }
         let promise_array = media_urls.map((media_url, i) => DownloadMediaFile(media_url, tweet_id, screen_name, i));
-        Promise.all(promise_array).then(()=>{
+        Promise.all(promise_array).then(() => {
             $tweet.find('.ntisas-menu-download').removeClass('ntisas-menu-active');
             // eslint-disable-next-line
             NTISAS.download_running.delete(tweet_id);
@@ -4985,7 +4981,7 @@ function GetTweetsData(tweet_ids, account) {
     const promise_dict = {};
     let unchecked_tweet_ids = JSPLib.utility.arrayDifference(tweet_ids, Object.keys(GetTweetsData.memoized));
     if (unchecked_tweet_ids.length) {
-        unchecked_tweet_ids.forEach((tweet_id)=>{
+        unchecked_tweet_ids.forEach((tweet_id) => {
             promise_dict[tweet_id] = JSPLib.utility.createPromise();
             GetTweetsData.memoized[tweet_id] = promise_dict[tweet_id].promise;
         });
@@ -5044,15 +5040,16 @@ function GetTweetsData(tweet_ids, account) {
             }
         });
     }
-    return new Promise(async (resolve) => {
-        let all_data = await Promise.all(tweet_ids.map((tweet_id) => GetTweetsData.memoized[tweet_id]));
+    let p = JSPLib.utility.createPromise();
+    Promise.all(tweet_ids.map((tweet_id) => GetTweetsData.memoized[tweet_id])).then((all_data) => {
         let tweet_dict = {};
         for (let i = 0; i < tweet_ids.length; i++) {
             let tweet_id = tweet_ids[i];
             tweet_dict[tweet_id] = all_data[i];
         }
-        resolve(tweet_dict);
+        p.resolve(tweet_dict);
     });
+    return p.promise;
 }
 
 function GetUserRestID(account) {
@@ -5340,7 +5337,7 @@ function SaveDatabaseBatch() {
         JSPLib.storage.setLocalData('ntisas-database-batchindex', batch_index + 1);
         JSPLib.storage.batchstorage.getItem('database-batch-' + batch_index).then((database_batch) => {
             if (JSPLib.validate.isHash(database_batch)) {
-                (async () =>{
+                (async () => {
                     JSPLib.debug.debugTime('SaveDatabaseBatch-' + display_index);
                     let keylist = Object.keys(database_batch).map((key) => 'tweet-' + key);
                     let payload = await JSPLib.storage.batchRetrieveData(keylist, {database: JSPLib.storage.twitterstorage});
@@ -5625,10 +5622,10 @@ function OpenMediaTweetMenu(event) {
         video_promise.then((videos) => {
             let $dialog = NTISAS.media_dialog[tweet_id] = $(RenderMediaMenu(tweet_id, screen_name, image_urls, videos));
             $dialog.prop('ntisasImageUrls', image_urls);
-            $dialog.find('.ntisas-media-image').each((i, entry) => {
+            $dialog.find('.ntisas-media-image').each((_, entry) => {
                 $(entry).on(PROGRAM_CLICK, PopupMediaTweetImage);
             });
-            $dialog.find('.ntisas-media-video').each((i, entry) => {
+            $dialog.find('.ntisas-media-video').each((_, entry) => {
                 $(entry).on(PROGRAM_CLICK, PopupMediaTweetVideo);
             });
             let encoded_url = encodeURIComponent(`https://twitter.com/${screen_name}/status/${tweet_id}`);
@@ -5713,7 +5710,7 @@ function PopupMediaTweetVideo(event) {
 
 function SearchMenu(event) {
     let {tweet_id, $tweet} = GetEventPreload(event);
-    GetImageLinks($tweet[0]).then((image_urls)=>{
+    GetImageLinks($tweet[0]).then((image_urls) => {
         if (image_urls.length > 0) {
             if (image_urls.length > 1 && IsQuerySettingEnabled('pick_image', NTISAS.similar_source)) {
                 InitializeSearchDialog(tweet_id, image_urls);
@@ -5731,7 +5728,7 @@ function SearchControl(event) {
     if (NTISAS.search_running.has(tweet_id)) return;
     NTISAS.search_running.add(tweet_id);
     UpdateMenuResults(tweet_id, 'loading...', true);
-    CheckURL(tweet_id, screen_name).then((post_ids)=>{
+    CheckURL(tweet_id, screen_name).then((post_ids) => {
         let save_ids = SaveTweetData(tweet_id, post_ids);
         UpdatePostIDsLink(tweet_id, save_ids);
         // eslint-disable-next-line
@@ -5768,7 +5765,7 @@ function ConfirmSubmit(event) {
 
 function UploadMenu(event) {
     let {$tweet, tweet_id, screen_name} = GetEventPreload(event);
-    GetMediaLinksData($tweet).then(({image_urls, videos})=>{
+    GetMediaLinksData($tweet).then(({image_urls, videos}) => {
         if (image_urls.length > 1) {
             InitializeUploadDialog(tweet_id, screen_name, image_urls, videos);
         } else if (image_urls.length === 1) {
@@ -5789,7 +5786,7 @@ function UploadAllSubmit(event) {
 
 function DownloadMenu(event) {
     let {$tweet, tweet_id, screen_name} = GetEventPreload(event);
-    GetMediaLinksData($tweet).then(({image_urls, videos})=>{
+    GetMediaLinksData($tweet).then(({image_urls, videos}) => {
         if (image_urls.length > 1) {
             InitializeDownloadDialog(tweet_id, screen_name, image_urls, videos);
         } else if (image_urls.length === 1) {
@@ -5816,7 +5813,7 @@ function DownloadLink(event) {
     let media_url = $link.data('url');
     let order = $link.data('order');
     $link.removeClass('ntisas-active').text('loading...');
-    DownloadMediaFile(media_url, tweet_id, screen_name, order).then(async ()=>{
+    DownloadMediaFile(media_url, tweet_id, screen_name, order).then(() => {
         $link.addClass('ntisas-active').text('download');
     });
 }
@@ -6116,7 +6113,7 @@ function MarkupMediaType(tweet) {
         }, TIMER_POLL_INTERVAL);
     } else {
         let media_children = $('.ntisas-tweet-media', tweet).children().children();
-        media_children.each((i, entry) => {
+        media_children.each((_, entry) => {
             let $entry = $(entry);
             let ret = false;
             if ($entry.children().length === 0) {
@@ -6139,7 +6136,7 @@ function MarkupMediaType(tweet) {
                 ret = true;
             } else if (entry.tagName === 'BUTTON') {
                 $entry.addClass('ntisas-tweet-button').attr('ntisas-media-type', 'button');
-           } else {
+            } else {
                 $entry.addClass('ntisas-tweet-image').attr('ntisas-media-type', 'image');
                 ret = true;
             }
@@ -6323,7 +6320,7 @@ function MarkupMediaTweet(tweet) {
             $tweet.attr('data-user-id', NTISAS.user_id);
         }
     }, TIMER_POLL_INTERVAL, PROFILE_VIEWS_CALLBACK);
-    $tweet.find('[dir="ltr"]').each((i, entry) => {
+    $tweet.find('[dir="ltr"]').each((_, entry) => {
         if (entry.innerText.match(/GIF|\d+:\d{2}/)) {
             $tweet.addClass('ntisas-media-video');
             return false;
@@ -6587,7 +6584,7 @@ function ProcessTweetImages() {
         printer.debuglog("Images found:", $unprocessed_images.length);
     }
     let unprocessed_tweets = {};
-    $unprocessed_images.each((i, image) => {
+    $unprocessed_images.each((_, image) => {
         let image_info = GetImageURLInfo(image.src);
         ProcessTweetImage(image, image_info, unprocessed_tweets);
     });
@@ -6596,7 +6593,7 @@ function ProcessTweetImages() {
     if ($unprocessed_videos.length) {
         printer.debuglog("Videos found:", $unprocessed_videos.length);
     }
-    $unprocessed_videos.each((i, video) => {
+    $unprocessed_videos.each((_, video) => {
         let image_info = GetImageURLInfo(video.poster);
         ProcessTweetImage(video, image_info, unprocessed_tweets);
     });
@@ -6625,14 +6622,14 @@ function ProcessNewTweets() {
     //Use the article HTML element as a landmark for locating tweets
     let $tweet_articles = $('div[data-testid=primaryColumn] div:not([ntisas-tweet]) > div > article[data-testid=tweet]');
     //Get the highest delineation point between tweets that Twitter doesn't alter through events
-    let $tweets = $tweet_articles.map((i, entry) => entry.parentElement.parentElement);
+    let $tweets = $tweet_articles.map((_, entry) => entry.parentElement.parentElement);
     if ($tweets.length === 0) {
         return false;
     }
     NTISAS.uniqueid = JSPLib.utility.getUniqueID();
     printer.debuglog(NTISAS.uniqueid);
     let main_tweets = [];
-    $tweets.each((i, entry) => {
+    $tweets.each((_, entry) => {
         $(entry).attr({
             viewed: false,
             'ntisas-tweet': "",
@@ -6648,13 +6645,13 @@ function ProcessNewTweets() {
     if (IsTweetPage() && main_tweets.length > 0) {
         MarkupMainTweet(main_tweets[0]);
     }
-    let $image_tweets = $tweets.filter((i, entry) => $('[ntisas-media-type=image], [ntisas-media-type=video], [ntisas-media-type=deferred]', entry).length);
+    let $image_tweets = $tweets.filter((_, entry) => $('[ntisas-media-type=image], [ntisas-media-type=video], [ntisas-media-type=deferred]', entry).length);
     printer.debuglog(`[${NTISAS.uniqueid}]`, "New:", $tweets.length, "Image:", $image_tweets.length);
     //Initialize tweets with images
     if ($image_tweets.length) {
         InitializeImageTweets($image_tweets);
         if (NTISAS.display_tweet_views) {
-            $image_tweets.each((i, entry) => {
+            $image_tweets.each((_, entry) => {
                 InitializeViewCount(entry);
                 if (IsTweetPage()) {
                     let tweet_id = $(entry).attr('data-tweet-id');
@@ -6679,7 +6676,7 @@ function ProcessMediaTweets() {
     let timeline_tweets = NTISAS.timeline_tweets[NTISAS.account];
     let tweet_ids = [];
     let promise_array = [];
-    $tweet_list_items.each((i, tweet) => {
+    $tweet_list_items.each((_, tweet) => {
         let tweet_id = MarkupMediaTweet(tweet);
         if (!JSPLib.validate.isString(tweet_id)) return;
         promise_array.push(GetData('tweet-' + tweet_id, 'twitter'));
@@ -6699,7 +6696,7 @@ function ProcessMediaTweets() {
     });
     $('#ntisas-tweet-stats-table').html(table_html);
     let $multi_media_tweets = $('.ntisas-media-tweet.ntisas-multi-media:not(.ntisas-media-checked)');
-    let multi_tweet_ids = $multi_media_tweets.map((i, entry) => entry.dataset.tweetId).toArray();
+    let multi_tweet_ids = $multi_media_tweets.map((_, entry) => entry.dataset.tweetId).toArray();
     $multi_media_tweets.addClass('ntisas-media-checked');
     var tweet_dict_promise = GetTweetsData(multi_tweet_ids, NTISAS.account);
     Promise.all(promise_array).then((tweet_post_ids) => {
@@ -6712,9 +6709,9 @@ function ProcessMediaTweets() {
 }
 
 function AdjustColorScheme() {
-    const compareColors = (result, val, key) => (String(NTISAS.colors[key]) !== String(val));
-    let $home_button = $('[data-testid=AppTabBar_More_Menu] > div > div').filter((i, entry) => entry.children[0].tagName === 'SPAN');
-    JSPLib.storage.localforage.getItem('device:rweb.settings').then((settings)=>{
+    const compareColors = (result, val, key) => (result || String(NTISAS.colors[key]) !== String(val));
+    let $home_button = $('[data-testid=AppTabBar_More_Menu] > div > div').filter((_, entry) => entry.children[0].tagName === 'SPAN');
+    JSPLib.storage.localforage.getItem('device:rweb.settings').then((settings) => {
         if (JSPLib.validate.isHash(settings) && $home_button.length && document.body.style['background-color']) {
             NTISAS.colors_checked = true;
             let text_color = getComputedStyle($home_button[0]).color.match(/\d+/g);
@@ -6723,7 +6720,7 @@ function AdjustColorScheme() {
             let contrast = settings.local.highContrastEnabled;
             let color_scheme = (light_mode ? 'light' : 'dark') + '_' + (contrast ? 'contrast' : 'normal');
             let color_hex = TWITTER_COLORS[color_scheme][settings.local.themeColor];
-            let base_color = [color_hex.slice(1,3), color_hex.slice(3,5), color_hex.slice(5,7)].map((hex) => String(Number('0x' + hex)));
+            let base_color = [color_hex.slice(1, 3), color_hex.slice(3, 5), color_hex.slice(5, 7)].map((hex) => String(Number('0x' + hex)));
             let new_colors = {base_color, text_color, background_color};
             if (!NTISAS.colors || JSPLib.utility.objectReduce(new_colors, compareColors, false)) {
                 NTISAS.old_colors = NTISAS.colors;
@@ -6739,7 +6736,7 @@ function AdjustColorScheme() {
 function CollectTweetStats() {
     let are_new = false;
     let tweets_collected = JSPLib.utility.getObjectAttributes(NTISAS.tweet_stats, 'tweetid');
-    $('[ntisas-tweet]').each((i, entry) => {
+    $('[ntisas-tweet]').each((_, entry) => {
         let tweet_id = String($(entry).data('tweet-id'));
         if (tweets_collected.includes(tweet_id)) {
             return;
@@ -6797,7 +6794,7 @@ function BroadcastTISAS(ev) {
         case 'confirm_upload':
             JSPLib.storage.invalidateLocalData('ntisas-confirm-upload');
             UpdateConfirmUploadControls();
-            break
+            break;
         case 'confirm_download':
             JSPLib.storage.invalidateLocalData('ntisas-confirm-download');
             UpdateConfirmDownloadControls();
@@ -6813,7 +6810,7 @@ function RemoteSettingsCallback() {
 
 function InitializeChangedSettings() {
     let $processed_tweets = $('[ntisas-tweet]');
-    $processed_tweets.each((i, tweet) => {
+    $processed_tweets.each((_, tweet) => {
         let $tweet = $(tweet);
         let tweet_id = String($tweet.data('tweet-id'));
         let $post_link = $('.ntisas-database-match', tweet);
@@ -6875,7 +6872,7 @@ function InitializeChangedSettings() {
         }
     }
     if (JSPLib.menu.hasSettingChanged('image_popout_enabled') && IsPageType(STREAMING_PAGES)) {
-        $('[ntisas-tweet=stream] [ntisas-image] img').each((i, image) => {
+        $('[ntisas-tweet=stream] [ntisas-image] img').each((_, image) => {
             let $image = $(image);
             if (NTISAS.image_popout_enabled) {
                 InitializeImageQtip($image);
@@ -6903,7 +6900,7 @@ function InitializeChangedSettings() {
     if (JSPLib.menu.hasSettingChanged('query_subdomain')) {
         let old_domain = NTISAS.domain;
         SetQueryDomain();
-        $(`[href^="${old_domain}"]`).each((i, entry) => {
+        $(`[href^="${old_domain}"]`).each((_, entry) => {
             entry.href = NTISAS.domain + entry.pathname + entry.search;
         });
     }
@@ -6953,7 +6950,7 @@ function GetMenuCloseButton() {
 }
 
 function InitializeDialogButtons() {
-    $('.ntisas-dialog .ui-dialog-buttonset .ui-button').each((i, entry) => {
+    $('.ntisas-dialog .ui-dialog-buttonset .ui-button').each((_, entry) => {
         let key = entry.innerText;
         for (let attribute in MENU_DIALOG_BUTTONS[key]) {
             $(entry).attr(attribute, MENU_DIALOG_BUTTONS[key][attribute]);
