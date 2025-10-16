@@ -3030,7 +3030,7 @@ function LogarithmicExpiration(count, max_count, time_divisor, multiplier) {
 //Auxiliary functions
 
 function GetList(name) {
-    NTISAS.lists[name] = NTISAS.lists[name] || {};
+    NTISAS.lists[name] ??= {};
     if (!('list' in NTISAS.lists[name])) {
         NTISAS.lists[name].list = JSPLib.storage.getLocalData('ntisas-' + name, {default_val: []});
         NTISAS.lists[name].list = CorrectStringArray(name, NTISAS.lists[name].list);
@@ -3236,7 +3236,7 @@ function ProcessPostvers(postvers) {
             if (postver.version === 1) {
                 let tweet_id = JSPLib.utility.findAll(postver.source, TWEET_REGEXG)[1];
                 if (tweet_id) {
-                    add_entries[tweet_id] = add_entries[tweet_id] || [];
+                    add_entries[tweet_id] ??= [];
                     add_entries[tweet_id] = JSPLib.utility.arrayUnion(add_entries[tweet_id], [postver.post_id]);
                 } else {
                     this.debug('warn', "Unfound new post:", postver.source, postver);
@@ -3283,14 +3283,14 @@ function ProcessPostvers(postvers) {
             if (tweet_id) {
                 if (postver.removed_tags.includes('bad_twitter_id')) {
                     this.debug('log', "Activated tweet:", tweet_id);
-                    add_entries[tweet_id] = add_entries[tweet_id] || [];
+                    add_entries[tweet_id] ??= [];
                     add_entries[tweet_id] = JSPLib.utility.arrayUnion(add_entries[tweet_id], [postver.post_id]);
                     reversed_posts++;
                     if (RemoveHashKeyValue(rem_entries, tweet_id, postver.post_id)) {
                         this.debug('log', "Tweet remove reversal detected", tweet_id);
                     }
                 } else if (postver.added_tags.includes('bad_twitter_id')) {
-                    rem_entries[tweet_id] = rem_entries[tweet_id] || [];
+                    rem_entries[tweet_id] ??= [];
                     rem_entries[tweet_id] = JSPLib.utility.arrayUnion(rem_entries[tweet_id], [postver.post_id]);
                     inactive_posts++;
                     if (RemoveHashKeyValue(add_entries, tweet_id, postver.post_id)) {
@@ -4097,7 +4097,7 @@ function InitializeQtip($obj, tweet_id, delayfunc) {
                     }
                     qtip.tooltip.attr(PROGRAM_SHORTCUT, 'done');
                 }
-                return NTISAS.tweet_qtip[tweet_id] || "Loading...";
+                return NTISAS.tweet_qtip[tweet_id] ?? "Loading...";
             }
         }
     });
@@ -4395,7 +4395,7 @@ function InitializeMediaLink($tweet) {
 function InitializeUserDisplay($tweets) {
     let $tweet = $tweets.filter('[ntisas-tweet=main]');
     if ($tweet.length) {
-        let user_id = String($tweet.data('user-id') || "");
+        let user_id = String($tweet.data('user-id') ?? "");
         if (user_id) {
             $('.ntisas-user-id', $tweet[0]).html(`<b>User</b> [${user_id}]`);
         }
@@ -5619,7 +5619,7 @@ function ToggleImageSize(event) {
         if (image_info) {
             let orig_url = $image.parent().data('orig-size');
             let $image_anchor = NTISAS.image_anchor[orig_url];
-            let showing_large = $image.data('showing-large') || false;
+            let showing_large = $image.data('showing-large') ?? false;
             if (showing_large || image_info.size === 'large') {
                 $image_anchor.qtiptisas('hide');
                 $image_anchor.closest('a').get(0).click();
@@ -5846,7 +5846,7 @@ function PopupMediaTweetVideo(event) {
     let tweet_data = JSPLib.storage.getIndexedSessionData('tweet-' + tweet_id, {default_val: []});
     let image_data = tweet_data.value[order];
     if (JSPLib.validate.isHash(image_data)) {
-        let video_url = 'https://video.twimg.com/' + (image_data.partial_sample || image_data.partial_video);
+        let video_url = 'https://video.twimg.com/' + (image_data.partial_sample ?? image_data.partial_video);
         let html = `
     <div class="ntisas-popup-media-video">
         <video controls autoplay src="${video_url}">
@@ -6244,7 +6244,7 @@ function UpdateProfileCallback() {
                 let stream_promise1 = GetData(stream_key1, 'danbooru');
                 let stream_promise2 = GetData(stream_key2, 'danbooru');
                 Promise.all([stream_promise1, stream_promise2]).then(([views1, views2]) => {
-                    let views = views1 || views2;
+                    let views = views1 ?? views2;
                     InitializeProfileViewCount(views, stream_key2, '.ntisas-profile-stream-view', PROFILE_STREAM_VIEW);
                     if (views1) {
                         RemoveData(stream_key1, 'danbooru');
@@ -6408,7 +6408,7 @@ function MarkupMainTweet(tweet) {
         if (NTISAS.page === "tweet") {
             $(tweet).attr('data-screen-name', NTISAS.screen_name);
         } else if (NTISAS.page === "web_tweet") {
-            let screen_name = ($('[role=link]', profile_line).attr('href') || "").slice(1);
+            let screen_name = ($('[role=link]', profile_line).attr('href') ?? "").slice(1);
             $(tweet).attr('data-screen-name', screen_name);
         }
         let child2 = main_body.children[2];
@@ -6629,7 +6629,7 @@ function PageNavigation(pagetype) {
         case 'list':
         case 'topics':
         case 'events':
-            this.debug('log', `Stream timeline [${NTISAS.page}]:`, page_id || "n/a");
+            this.debug('log', `Stream timeline [${NTISAS.page}]:`, page_id ?? "n/a");
             NTISAS.account = NTISAS.user_id = undefined;
             break;
         case 'hashtag':
@@ -6687,7 +6687,7 @@ function PageNavigation(pagetype) {
         }
         if (!IsTweetPage() && (NTISAS.prev_pagetype !== 'tweet')) {
             let stat_key = NTISAS.page + NTISAS.page_key;
-            NTISAS.page_stats[stat_key] = NTISAS.page_stats[stat_key] || [];
+            NTISAS.page_stats[stat_key] ??= [];
             NTISAS.tweet_stats = NTISAS.page_stats[stat_key];
             NTISAS.tweet_type1_filter = 'total';
             NTISAS.tweet_type2_filter = 'total';
