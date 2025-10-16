@@ -3011,10 +3011,10 @@ function PostExpiration(created_timestamp) {
 
 function SetCheckPostvers() {
     if (JSPLib.concurrency.checkTimeout('ntisas-timeout', GetPostVersionsExpiration()) || WasOverflow()) {
-        clearTimeout(CheckPostvers.timeout);
-        CheckPostvers.timeout = setTimeout(() => {
+        clearTimeout(NTISAS.postvers_timeout);
+        NTISAS.postvers_timeout = setTimeout(() => {
             if (NTISAS.database_info && JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'postvers')) {
-                CheckPostvers();
+                CheckPostvers_T();
             }
         }, POST_VERSIONS_CALLBACK);
     }
@@ -3349,10 +3349,10 @@ async function GetAllCurrentRecords() {
             //Main exit condition
             break;
         }
-        clearTimeout(CheckPostvers.timeout);
+        clearTimeout(NTISAS.postvers_timeout);
         if (JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'postvers')) {
             JSPLib.notice.notice(`Querying Danbooru...[${i}]`, false, false);
-            await CheckPostvers();
+            await CheckPostvers_T();
         } else {
             JSPLib.notice.notice(`Waiting on other tasks to finish...[${i}]`, false, false);
             await JSPLib.utility.sleep(POST_VERSIONS_CALLBACK);
@@ -5947,7 +5947,7 @@ function ExportData() {
     } else if (!ExportData.is_running) {
         ExportData.is_running = true;
         JSPLib.notice.notice("Exporting data!");
-        GetSavePackage(export_types).then((save_package) => {
+        GetSavePackage_T(export_types).then((save_package) => {
             let export_addon = export_types.map((type) => `[${type}]`).join('-');
             let time_addon = GetNumericTimestamp(Date.now());
             let filename = `NTISAS-${export_addon}-${time_addon}.json`;
@@ -6001,7 +6001,7 @@ function ImportData() {
                 }
                 if ('tweet_database' in import_package) {
                     printer.debuglog("Database length:", Object.keys(import_package.tweet_database).length);
-                    await SaveDatabase(import_package.tweet_database, '#ntisas-import-counter');
+                    await SaveDatabase_T(import_package.tweet_database, '#ntisas-import-counter');
                 }
                 if (errors) {
                     JSPLib.notice.error("Error importing some data!");
@@ -6916,7 +6916,7 @@ function InitializeChangedSettings() {
 function OpenSettingsMenu() {
     if (!NTISAS.opened_menu) {
         if ($('#new-twitter-image-searches-and-stuff').length === 0) {
-            RenderSettingsMenu();
+            RenderSettingsMenu_T();
         }
         $('#new-twitter-image-searches-and-stuff').dialog('open');
     }
@@ -7074,8 +7074,8 @@ async function Main() {
 
 /****Function decoration****/
 
-[
-    RenderSettingsMenu, SaveDatabase, GetSavePackage, CheckPostvers,
+const [
+    RenderSettingsMenu_T, SaveDatabase_T, GetSavePackage_T, CheckPostvers_T,
 ] = JSPLib.debug.addFunctionTimers([
     RenderSettingsMenu, SaveDatabase, GetSavePackage, CheckPostvers,
 ]);
