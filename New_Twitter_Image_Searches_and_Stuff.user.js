@@ -1925,10 +1925,11 @@ const HANDLED_IMAGES = [
 const UNHANDLED_IMAGES = [
     JSPLib.utility.verboseRegex()`^https://pbs\.twimg\.com/profile_images/`,
     JSPLib.utility.verboseRegex()`^https://[^.]+\.twimg\.com/emoji/`,
-    JSPLib.utility.verboseRegex()`^https://pbs.twimg.com/ad_img/`,
-    JSPLib.utility.verboseRegex()`^https://abs.twimg.com/hashflags/`,
-    JSPLib.utility.verboseRegex()`^https://pbs.twimg.com/card_img/`,
-    JSPLib.utility.verboseRegex()`^https://abs.twimg.com/sticky/`,
+    JSPLib.utility.verboseRegex()`^https://pbs\.twimg\.com/ad_img/`,
+    JSPLib.utility.verboseRegex()`^https://abs\.twimg\.com/hashflags/`,
+    JSPLib.utility.verboseRegex()`^https://pbs\.twimg\.com/card_img/`,
+    JSPLib.utility.verboseRegex()`^https://abs\.twimg\.com/sticky/`,
+    JSPLib.utility.verboseRegex()`^https://abs\.twimg\.com/responsive-web/`,
 ];
 
 const MAIN_PAGE_REGEX = JSPLib.utility.verboseRegex('i')`
