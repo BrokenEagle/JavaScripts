@@ -1106,6 +1106,12 @@ const MENU_CSS = `
 #ntisas-available-hotkeys-title {
     font-size: 125%;
     padding-left: 0.5em;
+}
+/**FIXES**/
+.jsplib-checkbox > div {
+    display: inline-block;
+    text-indent: -1.7em;
+    margin-left: 2em;
 }`;
 
 const COLOR_CSS = `
