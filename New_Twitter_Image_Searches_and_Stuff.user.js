@@ -322,8 +322,12 @@ const POST_PREVIEW_DIMENSION = 150;
 const TWEET_PREVIEW_DIMENSION = 300;
 
 const PROGRAM_CSS = `
+/**General*/
 :root {
     --menu-height: 200px;
+}
+.ntisas-code {
+    font-family: monospace;
 }
 .ntisas-narrow-text {
     letter-spacing: -1px;
@@ -332,6 +336,18 @@ const PROGRAM_CSS = `
     border-top: 1px solid grey;
     margin: 10px;
 }
+.ntisas-vr {
+    display: inline-block;
+    border-left: 1px solid #DDD;
+    height: 200px;
+}
+.ntisas-links a {
+    cursor: pointer;
+    text-decoration: none;
+}
+.ntisas-links a:hover {
+    text-decoration: underline;
+}
 .ntisas-expanded-link {
    display: inline-block;
    position: relative;
@@ -339,144 +355,11 @@ const PROGRAM_CSS = `
    padding: 8px;
    margin: -8px;
 }
-.ntisas-show-views .ntisas-viewed .ntisas-tweet-left {
-    border: 1px solid;
-    border-radius: 25px;
-    height: calc(100% - var(--menu-height));
+.ntisas-help-info,
+.ntisas-help-info:hover {
+    color: hotpink !important;
 }
-.ntisas-code {
-    font-family: monospace;
-}
-.ntisas-self-tweet-highlights .ntisas-self-tweet .ntisas-profile-line a[href^="/"] {
-    background-color: yellow;
-}
-#ntisas-database-version,
-#ntisas-install {
-    color: #0073ff;
-}
-[ntisas-tweet] [data-has-posts=true],
-[ntisas-tweet] [data-has-posts=true]:hover,
-[ntisas-tweet] [data-has-posts=true]:focus {
-    color: green;
-}
-[ntisas-tweet] [data-has-posts=false],
-[ntisas-tweet] [data-has-posts=false]:hover,
-[ntisas-tweet] [data-has-posts=false]:focus {
-    color: red;
-}
-[ntisas-tweet] .ntisas-control-search,
-[ntisas-tweet] .ntisas-control-search:hover,
-[ntisas-tweet] .ntisas-control-confirm,
-[ntisas-tweet] .ntisas-control-confirm:hover,
-[ntisas-tweet] .ntisas-control-upload,
-[ntisas-tweet] .ntisas-control-upload:hover,
-[ntisas-tweet] .ntisas-control-download,
-[ntisas-tweet] .ntisas-control-download:hover,
-#ntisas-current-records,
-#ntisas-error-messages,
-#ntisas-total-records {
-    color: grey;
-}
-.ntisas-media-tweet .ntisas-media-icon-container {
-    bottom: 10px;
-    right: 10px;
-    margin: -8px;
-    padding: 8px;
-    position: absolute;
-}
-.ntisas-media-tweet .ntisas-media-icon {
-    display: flex;
-    width: 35px;
-    height: 20px;
-    border-radius: 25px;
-    background-color: white;
-    border: 1px solid black;
-}
-.ntisas-media-tweet .ntisas-media-icon-section {
-    display: flex;
-    width: 50%;
-    height: 100%;
-    font-family: monospace;
-    font-weight: bold;
-    justify-content: center;
-    align-items: center;
-}
-.ntisas-media-tweet .ntisas-media-results {
-    border-radius: 25px 0 0 25px;
-    color: white;
-}
-.ntisas-media-tweet .ntisas-media-match {
-    background-color: green;
-}
-.ntisas-media-tweet .ntisas-media-nomatch {
-    background-color: grey;
-}
-.ntisas-media-tweet .ntisas-media-counter {
-    border-radius: 0 25px 25px 0;
-    background-color: white;
-    color: black;
-}
-.ntisas-media-menu .ntisas-media-images {
-    display: flex;
-    flex-wrap: wrap;
-    margin: 15px;
-}
-.ntisas-media-menu .ntisas-media-images .ntisas-media-image,
-.ntisas-media-menu .ntisas-media-images .ntisas-media-video {
-    display: inline-block;
-    margin: 20px;
-    width: 240px;
-    height: 240px;
-    text-align: center;
-    box-shadow: 0 0 0 4px #fff, 0 0 0 6px #eee;
-}
-.ntisas-media-menu .ntisas-media-images .ntisas-media-video {
-    position: relative;
-}
-.ntisas-media-menu .ntisas-media-images .ntisas-video-icon {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-}
-.ntisas-show-views .ntisas-media-tweet .ntisas-media-view-icon {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    width: 15px;
-    height: 15px;
-    border-radius: 5px;
-    border: 1px solid rgba(0,0,0,0.5);
-    background-color: rgba(255,255,255,0.6);
-}
-.ntisas-popup-media-image,
-.ntisas-popup-media-video {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    max-width: 80vw;
-    max-height: 80vh;
-    overflow: auto;
-    z-index: 2000;
-}
-[ntisas-tweet] .ntisas-control-search,
-[ntisas-tweet] .ntisas-control-confirm,
-[ntisas-tweet] .ntisas-control-upload,
-[ntisas-tweet] .ntisas-control-download {
-    display: inline-block;
-    text-align: center;
-}
-#ntisas-enable-view-highlights,
-#ntisas-enable-view-counts,
-#ntisas-disable-lockpage {
-    color: green;
-}
-#ntisas-disable-view-highlights,
-#ntisas-disable-view-counts,
-#ntisas-enable-lockpage {
-    color: red;
-}
+/**Side menu**/
 #ntisas-side-menu {
     position: fixed;
     top: 1.5em;
@@ -489,6 +372,16 @@ const PROGRAM_CSS = `
 }
 #ntisas-side-border {
     border: solid lightgrey 1px;
+}
+#ntisas-menu-header {
+    padding: 2px;
+    font-size: 18px;
+    font-weight: bold;
+    letter-spacing: -1px;
+    text-align: center;
+    cursor: move;
+    border-bottom: solid lightgrey 1px;
+    cursor: move;
 }
 #ntisas-menu-selection {
     font-weight: bold;
@@ -514,16 +407,6 @@ const PROGRAM_CSS = `
 #ntisas-menu-controls td:nth-of-type(2) {
     width: 115px;
 }
-#ntisas-menu-header {
-    padding: 2px;
-    font-size: 18px;
-    font-weight: bold;
-    letter-spacing: -1px;
-    text-align: center;
-    cursor: move;
-    border-bottom: solid lightgrey 1px;
-    cursor: move;
-}
 #ntisas-stats-header {
     margin: 8px;
     font-size: 18px;
@@ -538,27 +421,226 @@ const PROGRAM_CSS = `
     font-weight: bold;
     padding: 0 0.5em 0.5em;
 }
+#ntisas-tweet-stats-table {
+    margin: 0.5em;
+}
+#ntisas-tweet-stats-table table {
+    width: 95%;
+    text-align: center;
+}
+#ntisas-tweet-stats-table th a {
+    padding: 1px 5px;
+    border-radius: 10px;
+    border: solid 1px;
+}
+#ntisas-tweet-stats-table td {
+    color: grey;
+    border: 1px solid;
+}
 #ntisas-open-settings {
     margin: 0.5em;
 }
-#ntisas-open-settings input {
+#ntisas-open-settings input[type=button] {
     font-weight: bold;
     width: 19.5em;
+    border-radius: 3px;
+    padding: 0.25em 1em;
+    cursor: pointer;
+    border: 1px solid;
 }
-.ntisas-image-section {
+#ntisas-database-version,
+#ntisas-install {
+    color: #0073ff;
+}
+#ntisas-current-records,
+#ntisas-error-messages,
+#ntisas-total-records {
+    color: grey;
+}
+#ntisas-enable-view-highlights,
+#ntisas-enable-view-counts,
+#ntisas-disable-lockpage {
+    color: green;
+}
+#ntisas-disable-view-highlights,
+#ntisas-disable-view-counts,
+#ntisas-enable-lockpage {
+    color: red;
+}
+/**Timeline header**/
+.ntisas-profile-section {
+    font-size: 12px;
+    font-family: monospace;
+    letter-spacing: -1px;
+    position: absolute;
+    left: 30.25em;
+    height: 8em;
+    padding: 7px;
+    width: 18em;
+    top: -1em;
+    border: 1px solid;
+}
+.ntisas-profile-user-id,
+.ntisas-profile-user-view,
+.ntisas-profile-stream-view {
+    display: flex;
+    border-bottom: 1px solid #CCC;
+}
+.ntisas-profile-user-view {
+    border-bottom: 1px solid #CCC;
+}
+/**Tweet**/
+[ntisas-tweet] .ntisas-retweet-marker {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+    white-space: nowrap;
+}
+[ntisas-tweet] .ntisas-status-marker {
+    margin-left: 4px;
+}
+[ntisas-tweet] .ntisas-tweet-status > .ntisas-status-marker {
+    margin-left: 3.75em;
+    display: flex;
+    padding-top: 2px;
+}
+[ntisas-tweet] .ntisas-tweet-status > .ntisas-status-marker > span {
+    margin-right: 2px;
+}
+[ntisas-tweet] .ntisas-already-seen,
+[ntisas-tweet] .ntisas-view-info {
+    font-size: 12px;
+    font-family: monospace;
+    font-weight: bold;
+    border: 1px solid;
+    padding: 2px;
+    border-radius: 5px;
+}
+.ntisas-self-tweet-highlights [ntisas-tweet].ntisas-self-tweet .ntisas-profile-line a[href^="/"] {
+    background-color: yellow;
+}
+.ntisas-show-views [ntisas-tweet].ntisas-viewed .ntisas-tweet-left {
+    border: 1px solid;
+    border-radius: 25px;
+    height: calc(100% - var(--menu-height));
+}
+[ntisas-tweet=main] .ntisas-tweet-status {
+    display: inline-block;
+    height: 34px;
+}
+[ntisas-tweet=stream] .ntisas-footer-section {
+    margin-bottom: 0.5em;
+}
+[ntisas-tweet=main] .ntisas-tweet-media,
+[ntisas-tweet=main] .ntisas-time-line {
+    margin-bottom: 10px;
+}
+/**Tweet menu**/
+.ntisas-tweet-image-menu {
+    display: flex;
+    border: 2px solid;
+}
+.ntisas-tweet-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 4em;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 1.4em;
+    font-weight: bold;
+    border-right: 1px solid;
+}
+.ntisas-tweet-header a {
+    padding: 8px 12px;
+    margin: -8px -12px;
+}
+[ntisas-tweet] .ntisas-image-section {
     margin-top: 0.2em;
     min-height: 2.2em;
     padding-left: 0.5em;
 }
-[ntisas-tweet=main] .ntisas-image-section {
-    font-size: 1.1em;
+[ntisas-tweet] .ntisas-query-button a {
+    min-width: 100%;
 }
-.ntisas-query-button {
+[ntisas-tweet] [data-has-posts=true],
+[ntisas-tweet] [data-has-posts=true]:hover,
+[ntisas-tweet] [data-has-posts=true]:focus {
+    color: green;
+}
+[ntisas-tweet] [data-has-posts=false],
+[ntisas-tweet] [data-has-posts=false]:hover,
+[ntisas-tweet] [data-has-posts=false]:focus {
+    color: red;
+}
+[ntisas-tweet] .ntisas-control-search,
+[ntisas-tweet] .ntisas-control-search:hover,
+[ntisas-tweet] .ntisas-control-confirm,
+[ntisas-tweet] .ntisas-control-confirm:hover,
+[ntisas-tweet] .ntisas-control-upload,
+[ntisas-tweet] .ntisas-control-upload:hover,
+[ntisas-tweet] .ntisas-control-download,
+[ntisas-tweet] .ntisas-control-download:hover {
+    color: grey;
+}
+[ntisas-tweet] .ntisas-control-search,
+[ntisas-tweet] .ntisas-control-confirm,
+[ntisas-tweet] .ntisas-control-upload,
+[ntisas-tweet] .ntisas-control-download {
+    display: inline-block;
+    text-align: center;
+}
+[ntisas-tweet] .ntisas-query-button {
     display: inline-block;
     text-align: center;
     min-width: 5em;
     border: 1px solid;
     padding: 4px;
+}
+[ntisas-tweet] .ntisas-query-button.ntisas-menu-active a,
+[ntisas-tweet] .ntisas-query-button.ntisas-menu-active a:hover {
+    color: white;
+}
+[ntisas-tweet] .ntisas-menu-results {
+    border-radius: 25px 0 0 25px;
+    min-width: 8em;
+}
+[ntisas-tweet] .ntisas-menu-help {
+    border-radius: 0 25px 25px 0;
+    min-width: 2em;
+}
+[ntisas-tweet=stream] .ntisas-tweet-controls {
+    margin-top: 0.5em;
+    margin-left: -4em;
+}
+[ntisas-tweet=main] .ntisas-tweet-image-menu {
+    height: 2.6em;
+}
+[ntisas-tweet=stream] .ntisas-tweet-image-menu,
+[ntisas-tweet=media] .ntisas-tweet-image-menu {
+    height: 2.5em;
+}
+[ntisas-tweet=main] .ntisas-tweet-header {
+    padding: 5px 6px;
+}
+[ntisas-tweet=stream] .ntisas-tweet-header,
+[ntisas-tweet=media] .ntisas-tweet-header {
+    padding: 4px 6px;
+}
+[ntisas-tweet=main] .ntisas-image-section {
+    font-size: 1.1em;
+}
+[ntisas-tweet=main] .ntisas-link-menu {
+    font-weight: bold;
+    font-family: ${FONT_FAMILY};
+}
+[ntisas-tweet=stream] .ntisas-link-menu,
+[ntisas-tweet=media] .ntisas-link-menu {
+    font-size: 1.125em;
+    letter-spacing: -1px;
+    font-weight: bold;
+    min-width: 250px;
+    font-family: ${FONT_FAMILY};
 }
 [ntisas-tweet=main] .ntisas-query-button {
     margin: 0 -3px;
@@ -567,40 +649,128 @@ const PROGRAM_CSS = `
 [ntisas-tweet=media] .ntisas-query-button {
     margin: 0 -2px;
 }
-.ntisas-query-button a {
-    min-width: 100%;
+/**Media tweet**/
+.ntisas-media-tweet .ntisas-media-icon-container {
+    bottom: 10px;
+    right: 10px;
+    margin: -8px;
+    padding: 8px;
+    position: absolute;
 }
-.ntisas-query-button.ntisas-menu-active a,
-.ntisas-query-button.ntisas-menu-active a:hover {
+.ntisas-media-tweet .ntisas-media-icon {
+    display: flex;
+    width: 35px;
+    height: 20px;
+    border-radius: 25px;
+    background-color: white;
+    border: 1px solid black;
+}
+.ntisas-media-tweet .ntisas-media-icon:hover {
+    box-shadow: 0 0 0 2px;
+}
+.ntisas-media-tweet .ntisas-media-icon-section {
+    display: flex;
+    width: 50%;
+    height: 100%;
+    font-family: monospace;
+    font-weight: bold;
+    justify-content: center;
+    align-items: center;
+}
+.ntisas-media-tweet .ntisas-media-results {
+    border-radius: 25px 0 0 25px;
     color: white;
 }
-.ntisas-menu-results {
-    border-radius: 25px 0 0 25px;
-    min-width: 8em;
+.ntisas-media-tweet .ntisas-media-match {
+    background-color: green;
 }
-.ntisas-menu-help {
+.ntisas-media-tweet .ntisas-media-nomatch {
+    background-color: grey;
+}
+.ntisas-media-tweet .ntisas-media-counter {
     border-radius: 0 25px 25px 0;
-    min-width: 2em;
+    background-color: white;
+    color: black;
 }
-.ntisas-links a {
-    cursor: pointer;
-    text-decoration: none;
+.ntisas-show-views .ntisas-media-tweet .ntisas-media-view-icon {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 15px;
+    height: 15px;
+    border-radius: 5px;
+    border: 1px solid rgba(0,0,0,0.5);
+    background-color: rgba(255,255,255,0.6);
 }
-.ntisas-links a:hover {
-    text-decoration: underline;
+/**Media menu**/
+.ntisas-media-menu .ntisas-media-images {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 15px;
 }
-.qtiptisas.ntisas-preview-tooltip,
-.qtiptisas.ntisas-image-tooltip {
+.ntisas-media-menu .ntisas-media-images .ntisas-media-image,
+.ntisas-media-menu .ntisas-media-images .ntisas-media-video {
+    display: inline-block;
+    margin: 20px;
+    width: 240px;
+    height: 240px;
+    text-align: center;
+    box-shadow: 0 0 0 4px #fff, 0 0 0 6px #eee;
+}
+.ntisas-media-menu .ntisas-media-images .ntisas-media-video {
+    position: relative;
+}
+.ntisas-media-menu .ntisas-media-images .ntisas-video-icon {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+/**Qtips**/
+.qtiptisas.qtiptisas-twitter {
     max-width: none;
 }
-.ntisas-preview-tooltip .qtiptisas-content {
-    max-width: 1000px;
-    max-height: 500px;
-    overflow-y: auto;
+.ntisas-qtip-container {
+    font-size: 15px;
+    font-family: ${FONT_FAMILY};
+    line-height: normal;
 }
+/**Media popups**/
 .ntisas-image-tooltip .qtiptisas-content,
 .ntisas-image-tooltip .qtiptisas-content img {
     max-width: 900px;
+}
+.ntisas-popup-media-image,
+.ntisas-popup-media-video {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 80vw;
+    max-height: 80vh;
+    overflow: auto;
+    z-index: 2000;
+}
+.ntisas-preview-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-height: 80vh;
+    overflow-y: auto;
+    z-index: 2000;
+    overscroll-behavior: contain;
+    background: white;
+}
+.ntisas-preview-popup img {
+    max-width: 80vw;
+    height: auto;
+}
+/**Post result popup**/
+.ntisas-preview-tooltip .qtiptisas-content {
+    max-height: 500px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
 .ntisas-post-result h4 {
     margin-top: 0;
@@ -608,15 +778,106 @@ const PROGRAM_CSS = `
     font-size: 16px;
     font-weight: bold;
 }
-.ntisas-vr {
+.ntisas-post-result .ntisas-image-container {
+    border: solid black 5px;
+}
+.ntisas-post-result .ntisas-post-select .ntisas-image-container {
+    border: solid transparent 5px;
+}
+.ntisas-post-result .ntisas-post-select.ntisas-post-match .ntisas-image-container {
+    border: solid green 5px;
+}
+/**Dialogs**/
+.ui-dialog.ntisas-dialog {
+    z-index: 1010;
+}
+.ui-dialog .ntisas-dialog-close.ui-dialog-titlebar-close {
+    font-size: 0;
+    margin-right: 5px;
+}
+.ui-dialog .ntisas-dialog-close.ui-dialog-titlebar-close .ui-icon-closethick {
+    margin: -8px;
+}
+.ntisas-dialog-container {
+    font-size: 15px;
+    font-family: ${FONT_FAMILY};
+    line-height: normal;
+}
+.ntisas-preview-section {
+    display: flex;
+    flex-wrap: wrap;
+    max-height: 75vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+/**Search dialog**/
+.ntisas-confirm-image .ntisas-image-container {
+    border: solid transparent 5px;
+}
+.ntisas-confirm-image .ntisas-post-select .ntisas-image-container {
+    border: solid blue 5px;
+}
+.ntisas-search-dialog .ntisas-desc-title a {
+    color: dodgerblue;
+}
+/**Confirm dialog**/
+.ntisas-similar-container {
+    max-height: 75vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.ntisas-similar-result {
+    position: relative;
+}
+.ntisas-similar-header {
+    font-weight: bold;
     display: inline-block;
-    border-left: 1px solid #DDD;
+    border: 1px solid;
+    border-radius: 5px;
+    height: 90%; padding: 5px;
+    vertical-align: top;
+}
+.ntisas-similar-header-text {
+    writing-mode: vertical-lr;
+    text-orientation: upright;
+}
+.ntisas-similar-header-help {
+    margin-top: 1em;
+}
+.ntisas-similar-result .ntisas-post-select.ntisas-post-match .ntisas-image-container {
+    border: solid green 5px;
+}
+.ntisas-similar-result .ntisas-image-container {
+    border: solid black 5px;
+}
+.ntisas-similar-result .ntisas-post-select .ntisas-image-container,
+.ntisas-similar-result .ntisas-tweet-preview .ntisas-image-container {
+    border: solid transparent 5px;
+}
+.ntisas-no-results {
+    font-style: italic;
+    display: inline-block;
     height: 200px;
+    width: 160px;
+    position: relative;
 }
-.ntisas-confirm-image > p {
-    font-weight: 12px;
-    padding: 6px;
+.ntisas-no-results > span {
+    position: absolute;
+    top: 2em;
+    left: 2em;
 }
+/**Upload dialog**/
+.ntisas-upload-dialog .ntisas-desc-title a {
+    color: orange;
+}
+/**Download dialog**/
+.ntisas-download-dialog .ntisas-desc-title a {
+    min-width: 5.5em;
+}
+.ntisas-download-dialog .ntisas-desc-title a.ntisas-active {
+    color: green;
+}
+/**Post preview**/
 .ntisas-post-preview {
     display: inline-block;
     width: ${BASE_PREVIEW_WIDTH}px;
@@ -633,6 +894,17 @@ const PROGRAM_CSS = `
     max-height: ${POST_PREVIEW_DIMENSION}px;
     overflow: hidden;
 }
+.ntisas-post-upload::before {
+    content: "";
+    display: inline-block;
+    background-image: url(data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22iso-8859-1%22%3F%3E%0D%0A%3Csvg%20version%3D%221.1%22%20id%3D%22Capa_1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%20x%3D%220px%22%20y%3D%220px%22%0D%0A%09%20width%3D%2215%22%20height%3D%2215%22%20viewBox%3D%220%200%2053.867%2053.867%22%20style%3D%22enable-background%3Anew%200%200%2053.867%2053.867%3B%22%20xml%3Aspace%3D%22preserve%22%3E%0D%0A%3Cpolygon%20style%3D%22fill%3A%23EFCE4A%3B%22%20points%3D%2226.934%2C1.318%2035.256%2C18.182%2053.867%2C20.887%2040.4%2C34.013%2043.579%2C52.549%2026.934%2C43.798%20%0D%0A%0910.288%2C52.549%2013.467%2C34.013%200%2C20.887%2018.611%2C18.182%20%22%2F%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3C%2Fsvg%3E);
+    background-repeat: no-repeat;
+    background-size: 1em;
+    width: 1em;
+    height: 1em;
+    padding-right: 0.5em;
+}
+/**Tweet preview**/
 .ntisas-illust-preview {
     display: inline-block;
     width: ${TWEET_PREVIEW_DIMENSION + 10}px;
@@ -655,303 +927,43 @@ const PROGRAM_CSS = `
     line-height: 100%;
     letter-spacing: 1px;
 }
-.ntisas-post-upload::before {
-    content: "";
-    display: inline-block;
-    background-image: url(data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22iso-8859-1%22%3F%3E%0D%0A%3Csvg%20version%3D%221.1%22%20id%3D%22Capa_1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%20x%3D%220px%22%20y%3D%220px%22%0D%0A%09%20width%3D%2215%22%20height%3D%2215%22%20viewBox%3D%220%200%2053.867%2053.867%22%20style%3D%22enable-background%3Anew%200%200%2053.867%2053.867%3B%22%20xml%3Aspace%3D%22preserve%22%3E%0D%0A%3Cpolygon%20style%3D%22fill%3A%23EFCE4A%3B%22%20points%3D%2226.934%2C1.318%2035.256%2C18.182%2053.867%2C20.887%2040.4%2C34.013%2043.579%2C52.549%2026.934%2C43.798%20%0D%0A%0910.288%2C52.549%2013.467%2C34.013%200%2C20.887%2018.611%2C18.182%20%22%2F%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3Cg%3E%0D%0A%3C%2Fg%3E%0D%0A%3C%2Fsvg%3E);
-    background-repeat: no-repeat;
-    background-size: 1em;
-    width: 1em;
-    height: 1em;
-    padding-right: 0.5em;
-}
-.ntisas-post-result .ntisas-post-select.ntisas-post-match .ntisas-image-container,
-.ntisas-similar-result .ntisas-post-select.ntisas-post-match .ntisas-image-container {
-    border: solid green 5px;
-}
-.ntisas-post-result .ntisas-image-container,
-.ntisas-similar-result .ntisas-image-container {
-    border: solid black 5px;
-}
-.ntisas-post-result .ntisas-post-select .ntisas-image-container,
-.ntisas-similar-result .ntisas-post-select .ntisas-image-container,
-.ntisas-similar-result .ntisas-tweet-preview .ntisas-image-container,
-.ntisas-confirm-image .ntisas-image-container {
-    border: solid transparent 5px;
-}
-.ntisas-confirm-image .ntisas-post-select .ntisas-image-container {
-    border: solid blue 5px;
-}
+/**Preview descriptions**/
 .ntisas-desc {
     font-size:12px;
     margin-bottom: 2px;
     margin-top: 0;
+}
+.ntisas-desc-title {
+    font-weight: bold;
 }
 .ntisas-desc-info {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.ntisas-preview-section {
-    display: flex;
-    flex-wrap: wrap;
-    max-height: 75vh;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-}
-.ntisas-preview-popup {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    max-height: 80vh;
-    overflow-y: auto;
-    z-index: 2000;
-    overscroll-behavior: contain;
-    background: white;
-}
-.ntisas-preview-popup img {
-    max-width: 80vw;
-    height: auto;
-}
-[ntisas-tweet=stream] .ntisas-link-menu,
-[ntisas-tweet=media] .ntisas-link-menu {
-    font-size: 13px;
-    letter-spacing: -1px;
-    font-weight: bold;
-    min-width: 250px;
-    font-family: ${FONT_FAMILY};
-}
-[ntisas-tweet=main] .ntisas-link-menu {
-    font-weight: bold;
-    font-family: ${FONT_FAMILY};
-}
-.ntisas-help-info,
-.ntisas-help-info:hover {
-    color: hotpink !important;
-}
-.ntisas-media-icon:hover {
-    box-shadow: 0 0 0 2px;
-}
-[ntisas-tweet=main] .ntisas-tweet-status {
-    display: inline-block;
-    height: 34px;
-}
-.ntisas-status-marker {
-    margin-left: 4px;
-}
-.ntisas-tweet-status > .ntisas-status-marker {
-    margin-left: 3.75em;
-    display: flex;
-    padding-top: 2px;
-}
-.ntisas-tweet-status > .ntisas-status-marker > span {
-    margin-right: 2px;
-}
-.ntisas-retweet-marker {
-    max-width: 120px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: inline-block;
-    white-space: nowrap;
-}
-.ntisas-already-seen,
-.ntisas-view-info {
-    font-size: 12px;
-    font-family: monospace;
-    font-weight: bold;
-    border: 1px solid;
-    padding: 2px;
-    border-radius: 5px;
-}
-.ntisas-profile-section {
-    font-size: 12px;
-    font-family: monospace;
-    letter-spacing: -1px;
-    position: absolute;
-    left: 30.25em;
-    height: 8em;
-    padding: 7px;
-    width: 18em;
-    top: -1em;
-}
-.ntisas-profile-user-id,
-.ntisas-profile-user-view,
-.ntisas-profile-stream-view {
-    display: flex;
-    border-bottom: 1px solid #CCC;
-}
-.ntisas-profile-user-view {
-    border-bottom: 1px solid #CCC;
-}
-[ntisas-tweet=main] .ntisas-tweet-media,
-[ntisas-tweet=main] .ntisas-time-line {
-    margin-bottom: 10px;
-}
-[ntisas-tweet=main] .ntisas-tweet-image-menu {
-    height: 2.6em;
-}
-[ntisas-tweet=stream] .ntisas-tweet-image-menu,
-[ntisas-tweet=media] .ntisas-tweet-image-menu {
-    height: 2.5em;
-}
-.ntisas-tweet-image-menu {
-    display: flex;
-    border: 2px solid;
-}
-[ntisas-tweet=main] .ntisas-tweet-header {
-    padding: 5px 6px;
-}
-[ntisas-tweet=stream] .ntisas-tweet-header,
-[ntisas-tweet=media] .ntisas-tweet-header {
-    padding: 4px 6px;
-}
-.ntisas-tweet-header {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 4em;
-    font-family: 'Segoe UI', Arial, sans-serif;
-    font-size: 1.4em;
-    font-weight: bold;
-    border-right: 1px solid;
-}
-.ntisas-tweet-header a {
-    padding: 8px 12px;
-    margin: -8px -12px;
-}
-[ntisas-tweet=stream] .ntisas-footer-section {
-    margin-bottom: 0.5em;
-}
-[ntisas-tweet=stream] .ntisas-link-menu,
-[ntisas-tweet=media] .ntisas-link-menu {
-    font-size: 1.125em;
-}
-[ntisas-tweet=stream] .ntisas-tweet-controls {
-    margin-top: 0.5em;
-    margin-left: -4em;
-}
-#ntisas-tweet-stats-table {
-    margin: 0.5em;
-}
-#ntisas-tweet-stats-table table {
-    width: 95%;
-    text-align: center;
-}
-#ntisas-tweet-stats-table th a {
-    padding: 1px 5px;
-    border-radius: 10px;
-    border: solid 1px;
-}
-#ntisas-tweet-stats-table td {
-    color: grey;
-    border: 1px solid;
-}
-.ntisas-dialog-container,
-.ntisas-qtip-container {
-    font-size: 15px;
-    font-family: ${FONT_FAMILY};
-    line-height: normal;
-}
-.ui-dialog.ntisas-dialog {
-    z-index: 1010;
-}
-.ui-dialog .ntisas-dialog-close.ui-dialog-titlebar-close {
-    font-size: 0;
-    margin-right: 5px;
-}
-.ui-dialog .ntisas-dialog-close.ui-dialog-titlebar-close .ui-icon-closethick {
-    margin: -8px;
-}
-.ui-dialog .ntisas-confirm-image.ui-dialog-content {
-    overflow: visible;
-}
-.ntisas-qtip-container .ntisas-select-controls,
-.ntisas-dialog .ntisas-select-controls {
+/**Select controls**/
+.ntisas-select-controls {
     position: absolute;
     right: 5px;
     top: 3em;
     width: 4em;
     text-align: center;
 }
-.ntisas-qtip-container .ntisas-select-controls div,
-.ntisas-dialog .ntisas-select-controls div {
+.ntisas-select-controls div {
     padding: 5px;
     border: 2px solid;
 }
-.ntisas-qtip-container .ntisas-select-controls div:first-of-type,
-.ntisas-dialog .ntisas-select-controls div:first-of-type {
+.ntisas-select-controls div:first-of-type {
     border-bottom: 1px solid;
     border-radius: 5px 5px 0 0;
 }
-.ntisas-qtip-container .ntisas-select-controls div:last-of-type,
-.ntisas-dialog .ntisas-select-controls div:last-of-type {
+.ntisas-select-controls div:last-of-type {
     border-top: 1px solid;
     border-radius: 0 0 5px 5px;
 }
-.ntisas-qtip-container .ntisas-select-controls a,
-.ntisas-dialog .ntisas-select-controls a {
+.ntisas-select-controls > div > a {
     font-weight: bold;
     font-size: 14px;
-}
-.ntisas-similar-container {
-    max-height: 75vh;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-}
-.ntisas-no-results {
-    font-style: italic;
-    display: inline-block;
-    height: 200px;
-    width: 160px;
-    position: relative;
-}
-.ntisas-no-results > span {
-    position: absolute;
-    top: 2em;
-    left: 2em;
-}
-.ntisas-similar-result {
-    position: relative;
-}
-.ntisas-similar-header {
-    font-weight: bold;
-    display: inline-block;
-    border: 1px solid;
-    border-radius: 5px;
-    height: 90%; padding: 5px;
-    vertical-align: top;
-}
-.ntisas-similar-header-text {
-    writing-mode: vertical-lr;
-    text-orientation: upright;
-}
-.ntisas-similar-header-help {
-    margin-top: 1em;
-}
-.ntisas-search-dialog .ntisas-desc-title span,
-.ntisas-upload-dialog .ntisas-desc-title span,
-.ntisas-download-dialog .ntisas-desc-title span {
-    font-weight: bold;
-}
-.ntisas-search-dialog .ntisas-desc-title a {
-    color: dodgerblue;
-}
-.ntisas-upload-dialog .ntisas-desc-title a {
-    color: orange;
-}
-.ntisas-download-dialog .ntisas-desc-title a {
-    min-width: 5.5em;
-}
-.ntisas-download-dialog .ntisas-desc-title a.ntisas-active {
-    color: green;
-}
-/*FIXES TO ORGANIZE*/
-#ntisas-side-menu input[type=button] {
-    border-radius: 3px;
-    padding: 0.25em 1em;
-    cursor: pointer;
-    border: 1px solid;
 }`;
 
 const NOTICE_CSS = `
@@ -975,6 +987,23 @@ div#ntisas-notice {
 }
 #ntisas-close-notice-link {
     bottom: 0;
+}`;
+
+const IMAGE_NUMBER_CSS = `
+.ntisas-image-num > div:before {
+    content: '%s';
+    margin-top: %spx;
+    margin-left: %spx;
+    position: absolute;
+    background: rgba(0,0,0,0.3);
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    text-align: center;
+    font-size: 500%;
+    line-height: 200%;
+    font-family: arial;
+    color: rgba(255,255,255,0.6);
 }`;
 
 const MENU_CSS = `
@@ -1080,79 +1109,83 @@ const MENU_CSS = `
 }`;
 
 const COLOR_CSS = `
-/*Program colors*/
-#ntisas-side-menu,
-[ntisas-tweet] .ntisas-link-menu {
-    color: %TEXTCOLOR%;
+/**General**/
+.ntisas-code {
+    background-color: %TEXTFADED%;
 }
-#ntisas-side-menu,
-[ntisas-tweet=stream] .ntisas-tweet-controls {
+/**Side menu**/
+#ntisas-side-menu {
+    color: %TEXTCOLOR%;
     background-color: %BACKGROUNDCOLOR%;
 }
-.ntisas-tweet-image-menu {
-    border-color: %TEXTCOLOR%;
-}
-#ntisas-tweet-stats-message {
-    color: %TEXTMUTED%;
-}
-[ntisas-tweet] .ntisas-link-menu {
-    border-color: %TEXTFADED%;
-}
-.ntisas-already-seen,
-#ntisas-tweet-stats-table th a,
-#ntisas-menu-selection a.ntisas-selected {
-    color: %BASECOLOR%;
-}
-.ntisas-already-seen,
-#ntisas-tweet-stats-table th a {
-    border-color: %BASECOLOR%;
-}
-.ntisas-tweet-header,
-#ntisas-menu-header,
-#ntisas-tweet-stats-table th a:hover {
+#ntisas-menu-header {
     background-color: %BASEFAINT%;
-}
-.ntisas-tweet-header:hover {
-    background-color: %BASECOLOR%;
-}
-.ntisas-show-views .ntisas-viewed .ntisas-tweet-left {
-    border-color: %TEXTMUTED%;
-    background-color: %TEXTFADED%;
 }
 #ntisas-menu-selection {
     background-color: %TEXTFADED%;
 }
-.ntisas-code {
-    background-color: %TEXTFADED%;
-}
-/*Dialogs*/
-.ui-dialog.ntisas-dialog,
-.ui-dialog.ntisas-dialog .ui-widget-content,
-.ui-dialog.ntisas-dialog .ui-state-default {
-    color: %TEXTCOLOR%;
-    background: %BACKGROUNDCOLOR%;
-}
-.ui-dialog.ntisas-dialog,
-.ui-dialog.ntisas-dialog .ui-tabs,
-.ui-dialog.ntisas-dialog .ui-state-default {
-    border: 1px solid %TEXTSHADED%;
-}
-.ui-dialog.ntisas-dialog .ui-tabs-nav,
-.ui-dialog.ntisas-dialog .ui-dialog-titlebar,
-.ui-dialog.ntisas-dialog .ui-dialog-buttonpane {
-    border: 1px solid %TEXTFADED%;
-}
-.ntisas-view-info,
-.ntisas-profile-section,
-#ntisas-menu-selection a,
-#ntisas-available-sauce,
-.jsplib-inline-tooltip,
-.jsplib-block-tooltip {
+#ntisas-menu-selection a {
     color: %TEXTSHADED%;
 }
-.ntisas-view-info,
-.ntisas-tweet-header {
+#ntisas-menu-selection a.ntisas-selected {
+    color: %BASECOLOR%;
+}
+#ntisas-available-sauce {
+    color: %TEXTSHADED%;
+}
+#ntisas-tweet-stats-message {
+    color: %TEXTMUTED%;
+}
+#ntisas-tweet-stats-table th a {
+    color: %BASECOLOR%;
+}
+#ntisas-tweet-stats-table th a {
+    border-color: %BASECOLOR%;
+}
+#ntisas-tweet-stats-table th a:hover {
+    background-color: %BASEFAINT%;
+}
+#ntisas-open-settings input[type=button] {
+    color: %TEXTCOLOR%;
+    background-color: %BACKGROUNDCOLOR%;
     border-color: %TEXTSHADED%;
+}
+/**Timeline header**/
+.ntisas-profile-section {
+    color: %TEXTSHADED%;
+    background-color: %BACKGROUNDCOLOR%;
+    border-color: %TEXTFADED%;
+}
+/**Tweet**/
+.ntisas-already-seen {
+    color: %BASECOLOR%;
+    border-color: %BASECOLOR%;
+}
+.ntisas-view-info {
+    color: %TEXTSHADED%;
+    border-color: %TEXTSHADED%;
+}
+.ntisas-show-views [ntisas-tweet].ntisas-viewed .ntisas-tweet-left {
+    border-color: %TEXTMUTED%;
+    background-color: %TEXTFADED%;
+}
+/**Tweet menu**/
+.ntisas-tweet-header {
+    background-color: %BASEFAINT%;
+    border-color: %TEXTSHADED%;
+}
+.ntisas-tweet-header:hover {
+    background-color: %BASECOLOR%;
+}
+[ntisas-tweet=stream] .ntisas-tweet-controls {
+    background-color: %BACKGROUNDCOLOR%;
+}
+[ntisas-tweet] .ntisas-tweet-image-menu {
+    border-color: %TEXTCOLOR%;
+}
+[ntisas-tweet] .ntisas-link-menu {
+    color: %TEXTCOLOR%;
+    border-color: %TEXTFADED%;
 }
 .ntisas-query-button {
     background-color: %BACKGROUNDCOLOR%;
@@ -1168,8 +1201,28 @@ const COLOR_CSS = `
 .ntisas-query-button.ntisas-menu-active:hover {
     background-color: %BASESHADED%;
 }
-#new-twitter-image-searches-and-stuff a {
-    color: %BASECOLOR%;
+/**Qtips**/
+.qtiptisas.qtiptisas-twitter {
+    color: %TEXTCOLOR%;
+    background-color: %BACKGROUNDCOLOR%;
+    border: 1px solid %TEXTSHADED%;
+}
+/**Dialogs**/
+.ui-dialog.ntisas-dialog,
+.ui-dialog.ntisas-dialog .ui-widget-content,
+.ui-dialog.ntisas-dialog .ui-state-default {
+    color: %TEXTCOLOR%;
+    background: %BACKGROUNDCOLOR%;
+}
+.ui-dialog.ntisas-dialog,
+.ui-dialog.ntisas-dialog .ui-tabs,
+.ui-dialog.ntisas-dialog .ui-state-default {
+    border: 1px solid %TEXTSHADED%;
+}
+.ui-dialog.ntisas-dialog .ui-tabs-nav,
+.ui-dialog.ntisas-dialog .ui-dialog-titlebar,
+.ui-dialog.ntisas-dialog .ui-dialog-buttonpane {
+    border: 1px solid %TEXTFADED%;
 }
 .ui-dialog.ntisas-dialog .ui-state-active .ui-icon-background {
     border: 4px solid %BASEDARKER%;
@@ -1188,7 +1241,6 @@ const COLOR_CSS = `
     background-color: %BASESHADED%;
     border: 1px solid %BASECOLOR%;
 }
-
 .ui-dialog.ntisas-dialog .ui-widget-content .ui-state-active,
 .ui-dialog.ntisas-dialog .ui-widget-content .ui-state-active:focus {
     color: %BACKGROUNDCOLOR%;
@@ -1200,15 +1252,34 @@ const COLOR_CSS = `
 .ui-dialog.ntisas-dialog .ui-widget-content .ui-state-active:focus {
     box-shadow: 0 0 0 2px %BACKGROUNDCOLOR%, 0 0 0 4px %BASECOLOR%;
 }
-.ntisas-profile-section {
-    background: %BACKGROUNDCOLOR%;
-    border: 1px solid %TEXTFADED%;
+/**Confirm dialog**/
+.ntisas-similar-header {
+    color: %TEXTCOLOR%;
+    border-color: %BASESHADED%;
+    background-color: %BASEFAINT%;
+}
+/**Select controls**/
+.ntisas-select-controls div {
+    border-color: %TEXTMUTED%;
+    background-color: %TEXTFADED%;
+}
+.ntisas-select-controls div:first-of-type {
+    border-bottom-color: %TEXTMUTED%;
+}
+.ntisas-select-controls div:last-of-type {
+    border-top-color: %TEXTMUTED%;
+}
+.ntisas-select-controls > div > a {
+    color: %BASECOLOR%;
+}`;
+
+const MENU_COLOR_CSS = `
+/**Settings menu**/
+#new-twitter-image-searches-and-stuff a {
+    color: %BASECOLOR%;
 }
 #new-twitter-image-searches-and-stuff .ntisas-striped thead th {
     color: %TEXTSHADED%;
-}
-#ntisas-available-hotkeys-title {
-    color: %BASESHADED%;
 }
 #new-twitter-image-searches-and-stuff .ntisas-striped thead tr {
     border-bottom: 2px solid %TEXTSHADED%;
@@ -1222,56 +1293,12 @@ const COLOR_CSS = `
 #new-twitter-image-searches-and-stuff .jsplib-expandable-content {
     border-top: 1px solid %TEXTMUTED%;
 }
-.ntisas-qtip-container .ntisas-select-controls div,
-.ntisas-dialog .ntisas-select-controls div {
-    border-color: %TEXTMUTED%;
-    background-color: %TEXTFADED%;
+#ntisas-available-hotkeys-title {
+    color: %BASESHADED%;
 }
-.ntisas-qtip-container .ntisas-select-controls div:first-of-type,
-.ntisas-dialog .ntisas-select-controls div:first-of-type {
-    border-bottom-color: %TEXTMUTED%;
-}
-.ntisas-qtip-container .ntisas-select-controls div:last-of-type,
-.ntisas-dialog .ntisas-select-controls div:last-of-type {
-    border-top-color: %TEXTMUTED%;
-}
-.ntisas-qtip-container .ntisas-select-controls a,
-.ntisas-dialog .ntisas-select-controls a {
-    color: %BASECOLOR%;
-}
-.ntisas-similar-header {
-    color: %TEXTCOLOR%;
-    border-color: %BASESHADED%;
-    background-color: %BASEFAINT%;
-}
-/*qTips*/
-.qtiptisas.qtiptisas-twitter {
-    color: %TEXTCOLOR%;
-    background-color: %BACKGROUNDCOLOR%;
-    border: 1px solid %TEXTSHADED%;
-}
-/*FIXES TO ORGANIZE*/
-#ntisas-side-menu input[type=button] {
-    color: %TEXTCOLOR%;
-    background-color: %BACKGROUNDCOLOR%;
-    border-color: %TEXTSHADED%;
-}`;
-
-const IMAGE_NUMBER_CSS = `
-.ntisas-image-num > div:before {
-    content: '%s';
-    margin-top: %spx;
-    margin-left: %spx;
-    position: absolute;
-    background: rgba(0,0,0,0.3);
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    text-align: center;
-    font-size: 500%;
-    line-height: 200%;
-    font-family: arial;
-    color: rgba(255,255,255,0.6);
+.jsplib-inline-tooltip,
+.jsplib-block-tooltip {
+    color: %TEXTSHADED%;
 }`;
 
 //HTML constants
@@ -3538,7 +3565,7 @@ function RenderUploadDialog(tweet_id, screen_name, image_urls, videos) {
     });
     let upload_url = `${NTISAS.domain}/uploads/new?url=${encoded_tweet_url}`;
     return `
-<div class="ntisas-upload-dialog" data-tweet-id="${tweet_id}">
+<div class="ntisas-upload-dialog ntisas-dialog-container" data-tweet-id="${tweet_id}">
     <div class="ntisas-preview-section">
         ${html}
     </div>
@@ -3559,7 +3586,7 @@ function RenderDownloadDialog(tweet_id, screen_name, image_urls, videos) {
         html += RenderTwimgPreview(image_url, i, 'preview', download_html, is_video);
     });
     return `
-<div class="ntisas-download-dialog" data-tweet-id="${tweet_id}" data-screen-name="${screen_name}">
+<div class="ntisas-download-dialog ntisas-dialog-container" data-tweet-id="${tweet_id}" data-screen-name="${screen_name}">
     <div class="ntisas-illust-previews">
         <div class="ntisas-preview-section">
             ${html}
@@ -3577,13 +3604,12 @@ function RenderPostsContainer(all_posts) {
     });
     let controls = (all_posts.length > 1 ? SELECTION_CONTROLS : "");
     let controls_width = (all_posts.length > 1 ? 60 : 0);
-    let container_width = all_posts.length * BASE_PREVIEW_WIDTH + BASE_QTIP_WIDTH + controls_width;
-    let posts_width_addon = (all_posts.length > 5 ? 'style="width:850px"' : "");
+    let container_width = Math.min(all_posts.length, 5) * (BASE_PREVIEW_WIDTH + 5) + BASE_QTIP_WIDTH + controls_width;
     return `
 <div class="ntisas-post-result ntisas-qtip-container ntisas-selectable-results">
     <h4>Danbooru matches (${RenderHelp(POST_SELECT_HELP)})</h4>
     <div style="position: relative; display: flex; width: ${container_width}px;">
-        <div ${posts_width_addon}>${html}</div>
+        <div>${html}</div>
         ${controls}
     </div>
 </div>`;
@@ -3643,8 +3669,8 @@ function RenderHelp(help_text) {
     return `<a class="ntisas-help-info ntisas-expanded-link" title="${help_text}">&nbsp;?&nbsp;</a>`;
 }
 
-function RenderColorStyle(color_data) {
-    return JSPLib.utility.regexReplace(COLOR_CSS, {
+function RenderColorStyle(css, color_data) {
+    return JSPLib.utility.regexReplace(css, {
         BASECOLOR: JSPLib.utility.sprintf('rgb(%s, %s, %s)', ...color_data.base_color),
         BASEFAINT: JSPLib.utility.sprintf('rgb(%s, %s, %s, 0.1)', ...color_data.base_color),
         BASESHADED: JSPLib.utility.sprintf('rgb(%s, %s, %s, 0.5)', ...color_data.base_color),
@@ -3691,7 +3717,7 @@ function InitializeColorScheme() {
     if (!JSPLib.utility.hasStyle('color')) {
         let color_data = JSPLib.storage.checkLocalData('ntisas-color-style');
         if (color_data) {
-            let color_style = RenderColorStyle(color_data);
+            let color_style = RenderColorStyle(COLOR_CSS, color_data);
             JSPLib.utility.setCSSStyle(color_style, 'color');
             NTISAS.colors = color_style;
         }
@@ -6595,7 +6621,7 @@ function AdjustColorScheme() {
             if (!NTISAS.colors || JSPLib.utility.objectReduce(new_colors, compareColors, false)) {
                 NTISAS.old_colors = NTISAS.colors;
                 NTISAS.colors = new_colors;
-                let color_style = RenderColorStyle(NTISAS.colors);
+                let color_style = RenderColorStyle(COLOR_CSS, NTISAS.colors);
                 JSPLib.utility.setCSSStyle(color_style, 'color');
                 JSPLib.storage.setLocalData('ntisas-color-style', NTISAS.colors);
             }
@@ -6883,6 +6909,13 @@ function RenderSettingsMenu() {
     //Add CSS stylings
     JSPLib.utility.setCSSStyle(JSPLib.menu.settings_css, 'menu_settings');
     JSPLib.utility.setCSSStyle(MENU_CSS, 'menu');
+    JSPLib.utility.recheckTimer({
+        check: () => JSPLib.validate.isHash(NTISAS.colors),
+        exec: () => {
+            let color_style = RenderColorStyle(MENU_COLOR_CSS, NTISAS.colors);
+            JSPLib.utility.setCSSStyle(color_style, 'menu_color');
+        }
+    }, TIMER_POLL_INTERVAL);
     InitializeUIStyle();
 }
 
