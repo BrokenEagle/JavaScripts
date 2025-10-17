@@ -714,14 +714,15 @@ const PROGRAM_CSS = `
     max-width: 80vw;
     height: auto;
 }
-.ntisas-timeline-menu {
+[ntisas-tweet=stream] .ntisas-link-menu,
+[ntisas-tweet=media] .ntisas-link-menu {
     font-size: 13px;
     letter-spacing: -1px;
     font-weight: bold;
     min-width: 250px;
     font-family: ${FONT_FAMILY};
 }
-.ntisas-tweet-menu {
+[ntisas-tweet=main] .ntisas-link-menu {
     font-weight: bold;
     font-family: ${FONT_FAMILY};
 }
@@ -1081,8 +1082,7 @@ const MENU_CSS = `
 const COLOR_CSS = `
 /*Program colors*/
 #ntisas-side-menu,
-.ntisas-tweet-menu,
-.ntisas-timeline-menu {
+[ntisas-tweet] .ntisas-link-menu {
     color: %TEXTCOLOR%;
 }
 #ntisas-side-menu,
@@ -1095,7 +1095,7 @@ const COLOR_CSS = `
 #ntisas-tweet-stats-message {
     color: %TEXTMUTED%;
 }
-[ntisas-tweet=main] .ntisas-tweet-menu {
+[ntisas-tweet] .ntisas-link-menu {
     border-color: %TEXTFADED%;
 }
 .ntisas-already-seen,
@@ -3773,7 +3773,7 @@ function InitializeCurrentRecords() {
     $('#ntisas-current-records-help a').attr('title', UPDATE_RECORDS_HELP);
 }
 
-async function InitializeImageMenu($tweets, menu_class) {
+async function InitializeImageMenu($tweets) {
     let promise_array = [];
     $tweets.each((_, tweet) => {
         let p = JSPLib.utility.createPromise();
@@ -3782,7 +3782,6 @@ async function InitializeImageMenu($tweets, menu_class) {
         let {tweet_id, screen_name} = GetTweetInfo($tweet);
         let encoded_url = encodeURIComponent(`https://twitter.com/${screen_name}/status/${tweet_id}`);
         $tweet.find('.ntisas-control-upload').attr('href', `${NTISAS.domain}/uploads/new?url=${encoded_url}`);
-        $tweet.find('.ntisas-link-menu').addClass(menu_class);
         GetData('tweet-' + tweet_id, 'twitter').then((post_ids) => {
             if (post_ids !== null) {
                 InitializePostIDsLink(tweet_id, tweet, post_ids);
@@ -4148,9 +4147,14 @@ function InitializeProfileTimeline() {
 
 function InitializeImageTweets($image_tweets) {
     let printer = JSPLib.debug.getFunctionPrint('InitializeImageTweets');
-    const [menu_class, $process_tweets] = IsPageType(STREAMING_PAGES) ? ['ntisas-timeline-menu', $image_tweets] :
-        IsTweetPage() ? ['ntisas-tweet-menu', $image_tweets.filter(`[data-tweet-id=${NTISAS.tweet_id}]`)] :
-            [null, []];
+    var $process_tweets;
+    if(IsPageType(STREAMING_PAGES)) {
+        $process_tweets = $image_tweets;
+    } else if(IsTweetPage()) {
+        $process_tweets = $image_tweets.filter(`[data-tweet-id=${NTISAS.tweet_id}]`);
+    } else {
+        $process_tweets = [];
+    }
     if ($process_tweets.length === 0) return;
     const uniqueid = NTISAS.uniqueid;
     const timername = `InitializeImageTweets-${uniqueid}`;
@@ -4170,7 +4174,7 @@ function InitializeImageTweets($image_tweets) {
                        $('[ntisas-media-type=image], [ntisas-media-type=video]', tweet).length,
             exec: () => {
                 Promise.all([
-                    InitializeImageMenu($tweet, menu_class),
+                    InitializeImageMenu($tweet),
                 ]).then(() => {
                     p.resolve(null);
                 });
@@ -5492,7 +5496,6 @@ function OpenMediaTweetMenu(event) {
             });
             let encoded_url = encodeURIComponent(`https://twitter.com/${screen_name}/status/${tweet_id}`);
             $dialog.find('.ntisas-control-upload').attr('href', `${NTISAS.domain}/uploads/new?url=${encoded_url}`);
-            $dialog.find('.ntisas-link-menu').addClass('ntisas-timeline-menu');
             GetData('tweet-' + tweet_id, 'twitter').then((post_ids) => {
                 if (post_ids !== null) {
                     InitializePostIDsLink(tweet_id, $dialog[0], post_ids);
