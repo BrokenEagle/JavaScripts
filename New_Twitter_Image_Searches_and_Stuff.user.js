@@ -4820,15 +4820,14 @@ function TwitterGraphQLRequest(endpoint, variables, features) {
     }
     let url_addons = $.param(addons);
     let csrf_token = JSPLib.utility.readCookie('ct0');
-    return $.ajax({
-        method: 'GET',
-        url: `https://${location.host}/i/api/graphql/${endpoint}?${url_addons}`,
+    const ajax_options = {
         processData: false,
         beforeSend (request) {
             request.setRequestHeader('authorization', 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA');
             request.setRequestHeader('x-csrf-token', csrf_token);
         },
-    });
+    };
+    return JSPLib.network.get(`https://${location.host}/i/api/graphql/${endpoint}?${url_addons}`, {ajax_options});
 }
 
 function GetTweetGQL(tweet_id) {
