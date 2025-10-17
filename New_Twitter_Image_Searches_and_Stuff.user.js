@@ -273,6 +273,11 @@ const SETTINGS_CONFIG = {
         validate: JSPLib.validate.isBoolean,
         hint: "Processes tweets on the grid media timeline (uses additional network calls)."
     },
+    use_alternate_tweets_API: {
+        reset: false,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Uses an alternate API endpoint (media timline) to query multiple tweets. <b>Note:</b> This endpoint retrieves more tweets than needed, which will count towards the tweets viewed limit."
+    },
     advanced_tooltips_enabled: {
         reset: true,
         validate: JSPLib.validate.isBoolean,
@@ -4854,7 +4859,7 @@ function GetTweetsGQL(tweet_ids) {
     });
 }
 
-async function GetTweetsGQL_alt(tweet_ids, account) {
+async function GetMediaTweetsGQL(tweet_ids, account) {
     let network_data = await Promise.all(tweet_ids.map((tweet_id) => QueueTimelineRequest(tweet_id, account)));
     tweet_ids.forEach((tweet_id, i) => {
         if (JSPLib.validate.isHash(network_data[i])) {
@@ -4998,17 +5003,11 @@ function GetTweetsData(tweet_ids, account) {
             let query_tweet_ids = JSPLib.utility.arrayDifference(unchecked_tweet_ids, storage_tweet_ids);
             if (query_tweet_ids.length) {
                 var network_data;
+                var tweet_func = (NTISAS.use_media_timeline_endpoint ? GetMediaTweetsGQL : GetTweetsGQL);
                 try {
-                    network_data = await GetTweetsGQL(query_tweet_ids);
+                    network_data = await tweet_func(query_tweet_ids, account);
                 } catch (response) {
                     HandleTwitterErrorResponse(response, false);
-                }
-                if (!network_data) {
-                    try {
-                        network_data = await GetTweetsGQL_alt(query_tweet_ids, account);
-                    } catch (response) {
-                        HandleTwitterErrorResponse(response, true);
-                    }
                 }
                 if (Array.isArray(network_data)) {
                     let network_tweet_ids = [];
@@ -6699,6 +6698,11 @@ function ProcessMediaTweets() {
     let multi_tweet_ids = $multi_media_tweets.map((_, entry) => entry.dataset.tweetId).toArray();
     $multi_media_tweets.addClass('ntisas-media-checked');
     var tweet_dict_promise = GetTweetsData(multi_tweet_ids, NTISAS.account);
+    if (NTISAS.use_media_timeline_endpoint) {
+        let lowest_tweet_id = String(JSPLib.utility.bigIntMin(...tweet_ids.map((tweet_id) => BigInt(tweet_id))));
+        //Keep the timeline handler up-to-date with the media timeline no matter what, otherwise it takes forever to catch up.
+        QueueTimelineRequest(lowest_tweet_id, NTISAS.account);
+    }
     Promise.all(promise_array).then((tweet_post_ids) => {
         for (let i = 0; i < tweet_ids.length; i++) {
             let tweet_id = tweet_ids[i];
@@ -6907,6 +6911,9 @@ function InitializeChangedSettings() {
     if (JSPLib.menu.hasSettingChanged('SauceNAO_API_key')) {
         SetSauceAPIKey();
     }
+    if (JSPLib.menu.hasSettingChanged('use_alternate_tweets_API')) {
+        JSPLib.notice.notice("Changing the API endpoint requires a page refresh.", true);
+    }
     InitializeSideMenu();
 }
 
@@ -6943,6 +6950,10 @@ function SetQueryDomain() {
 
 function SetSauceAPIKey() {
     JSPLib.saucenao.api_key = NTISAS.SauceNAO_API_key;
+}
+
+function SetGraphQLEndpoints() {
+    NTISAS.use_media_timeline_endpoint = NTISAS.use_alternate_tweets_API;
 }
 
 function GetMenuCloseButton() {
@@ -6991,6 +7002,7 @@ function RenderSettingsMenu() {
     $('#ntisas-network-settings').append(JSPLib.menu.renderCheckbox('custom_order_enabled'));
     $('#ntisas-network-settings').append(JSPLib.menu.renderTextinput('recheck_interval', 5));
     $('#ntisas-network-settings').append(JSPLib.menu.renderInputSelectors('query_subdomain', 'radio'));
+    $('#ntisas-network-settings').append(JSPLib.menu.renderCheckbox('use_alternate_tweets_API'));
     $('#ntisas-download-settings').append(JSPLib.menu.renderTextinput('filename_prefix_format', 80));
     $('#ntisas-database-controls').append(IMPORT_FILE_INPUT);
     $('#ntisas-database-controls').append(JSPLib.menu.renderLinkclick('import_data', true));
@@ -7034,6 +7046,7 @@ async function Main() {
     JSPLib.menu.setupUserSettings(NTISAS);
     SetQueryDomain();
     SetSauceAPIKey();
+    SetGraphQLEndpoints();
     await InstallUserProfileData();
     $(document).on(PROGRAM_CLICK, '.ntisas-tweet-header a', ToggleSideMenu);
     $(document).on(PROGRAM_CLICK, '.ntisas-control-search', SearchMenu);
