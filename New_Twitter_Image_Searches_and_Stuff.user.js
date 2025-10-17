@@ -514,13 +514,6 @@ const PROGRAM_CSS = `
 #ntisas-menu-controls td:nth-of-type(2) {
     width: 115px;
 }
-#ntisas-version-header {
-    letter-spacing: -0.5px;
-}
-#ntisas-install,
-#ntisas-current-records {
-    letter-spacing: -1px;
-}
 #ntisas-menu-header {
     padding: 2px;
     font-size: 18px;
@@ -699,9 +692,6 @@ const PROGRAM_CSS = `
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.ntisas-desc-size {
-    letter-spacing: -1px;
-}
 .ntisas-preview-section {
     display: flex;
     flex-wrap: wrap;
@@ -772,9 +762,6 @@ const PROGRAM_CSS = `
     border: 1px solid;
     padding: 2px;
     border-radius: 5px;
-}
-.ntisas-view-info {
-    letter-spacing: -1px;
 }
 .ntisas-profile-section {
     font-size: 12px;
@@ -1398,7 +1385,7 @@ const SIDE_MENU = `
             <table>
                 <tbody>
                 <tr>
-                    <td><span id="ntisas-version-header">Database version:</span></td>
+                    <td><span id="ntisas-version-header" class="ntisas-narrow-text">Database version:</span></td>
                     <td><span id="ntisas-database-link"></span></td>
                     <td>(<span id="ntisas-database-help"></span>)</td>
                 </tr>
@@ -1627,7 +1614,7 @@ const LOCKPAGE_HTML = `
 const STATUS_MARKER = `
 <span class="ntisas-status-marker">
     <span class="ntisas-already-seen" style="display: none;">already seen</span>
-    <span class="ntisas-view-info" style="display: none;"></span>
+    <span class="ntisas-view-info ntisas-narrow-text" style="display: none;"></span>
 </span>`;
 
 const MEDIA_RESULTS_ICON = '<div class="ntisas-media-results ntisas-media-icon-section %s">%s</div>';
@@ -3398,7 +3385,7 @@ function RenderCurrentRecords() {
     if (timestamp) {
         let timestring = new Date(timestamp).toLocaleString();
         let timeagostring = ((Date.now() - timestamp) < GetPostVersionsExpiration() * 2 ? "Up to date" : JSPLib.utility.timeAgo(timestamp));
-        record_html = `<a id="ntisas-current-records" class="ntisas-expanded-link" title="${timestring}">${timeagostring}</a>`;
+        record_html = `<a id="ntisas-current-records" class="ntisas-expanded-link ntisas-narrow-text" title="${timestring}">${timeagostring}</a>`;
     } else {
         record_html = '<span id="ntisas-current-records">Loading...</span>';
     }
@@ -3649,7 +3636,7 @@ function RenderPreviewAddons(title, source, ext, {size, width, height, is_user_u
     return `
 <p class="ntisas-desc ntisas-desc-title"><span ${uploader_addon}>${title}</span></p>
 <p class="ntisas-desc ntisas-desc-info">${ext.toUpperCase()} @ <span title="${domain}">${domain}</span></p>
-<p class="ntisas-desc ntisas-desc-size">${size_text}</p>`;
+<p class="ntisas-desc ntisas-desc-size ntisas-narrow-text">${size_text}</p>`;
 }
 
 function RenderHelp(help_text) {
@@ -3771,7 +3758,7 @@ function InitializeDatabaseLink() {
         } else {
             NTISAS.database_info = null;
             let url = GetForumTopicLink();
-            database_html = `<a id="ntisas-install" class="ntisas-expanded-link" href="${url}">Install Database</a>`;
+            database_html = `<a id="ntisas-install" class="ntisas-expanded-link ntisas-narrow-text" href="${url}">Install Database</a>`;
             database_help = RenderHelp(INSTALL_DATABASE_HELP);
             $('#ntisas-current-records').html(INSTALL_MENU_TEXT);
         }
