@@ -354,9 +354,6 @@ const PROGRAM_CSS = `
 #ntisas-install {
     color: #0073ff;
 }
-[ntisas-tweet] .ntisas-no-sources {
-    letter-spacing: -1px;
-}
 [ntisas-tweet] [data-has-posts=true],
 [ntisas-tweet] [data-has-posts=true]:hover,
 [ntisas-tweet] [data-has-posts=true]:focus {
@@ -463,21 +460,12 @@ const PROGRAM_CSS = `
     overflow: auto;
     z-index: 2000;
 }
-#ntisas-server-bypass {
-    font-style: italic;
-    letter-spacing: 1px;
-}
 [ntisas-tweet] .ntisas-control-search,
 [ntisas-tweet] .ntisas-control-confirm,
 [ntisas-tweet] .ntisas-control-upload,
-[ntisas-tweet] .ntisas-control-download,
-#ntisas-views-toggle {
+[ntisas-tweet] .ntisas-control-download {
     display: inline-block;
     text-align: center;
-}
-#ntisas-views-toggle a,
-#ntisas-iqdb-toggle a {
-    display: none;
 }
 #ntisas-enable-view-highlights,
 #ntisas-enable-view-counts,
@@ -636,9 +624,6 @@ const PROGRAM_CSS = `
     font-weight: 12px;
     padding: 6px;
 }
-.ntisas-confirm-image b {
-    font-weight: bold;
-}
 .ntisas-post-preview {
     display: inline-block;
     width: ${BASE_PREVIEW_WIDTH}px;
@@ -754,9 +739,6 @@ const PROGRAM_CSS = `
 .ntisas-help-info:hover {
     color: hotpink !important;
 }
-.ntisas-main-links {
-    margin: 0 0.5em;
-}
 .ntisas-media-icon:hover {
     box-shadow: 0 0 0 2px;
 }
@@ -781,12 +763,6 @@ const PROGRAM_CSS = `
     text-overflow: ellipsis;
     display: inline-block;
     white-space: nowrap;
-}
-[ntisas-tweet=stream] .ntisas-tweet-actions .r-n6v787 {
-    font-size: 10px;
-}
-.ntisas-retweet-id {
-    font-size: 12px;
 }
 .ntisas-already-seen,
 .ntisas-view-info {
@@ -819,15 +795,6 @@ const PROGRAM_CSS = `
 }
 .ntisas-profile-user-view {
     border-bottom: 1px solid #CCC;
-}
-.ntisas-user-id {
-    font-size: 12px;
-}
-.ntisas-indicators {
-    font-family: 'MS Gothic', 'Meiryo UI';
-    font-size: 16px;
-    font-weight: bold;
-    margin: 0 5px;
 }
 [ntisas-tweet=main] .ntisas-tweet-media,
 [ntisas-tweet=main] .ntisas-time-line {
@@ -864,19 +831,6 @@ const PROGRAM_CSS = `
 .ntisas-tweet-header a {
     padding: 8px 12px;
     margin: -8px -12px;
-}
-.ntisas-footer-entries {
-    font-size: 16px;
-    font-weight: bold;
-    font-family: ${FONT_FAMILY};
-}
-[ntisas-tweet=main] .ntisas-footer-entries {
-    border-top-width: 1px;
-    border-top-style: solid;
-    padding: 5px 0 20px;
-}
-[ntisas-tweet=stream] .ntisas-footer-entries {
-    margin-top: 10px;
 }
 [ntisas-tweet=stream] .ntisas-footer-section {
     margin-bottom: 0.5em;
@@ -920,20 +874,6 @@ const PROGRAM_CSS = `
 }
 .ui-dialog .ntisas-dialog-close.ui-dialog-titlebar-close .ui-icon-closethick {
     margin: -8px;
-}
-[viewed="false"] .ntisas-view-indicator {
-    display: none;
-}
-[viewed="true"] .ntisas-view-indicator {
-    display: true;
-}
-.ntisas-view-block {
-    display: inline-block;
-    width: 1.5em;
-    text-align: center;
-}
-.ntisas-view-indicator {
-    width: 2em;
 }
 .ui-dialog .ntisas-confirm-image.ui-dialog-content {
     overflow: visible;
@@ -1047,8 +987,7 @@ div#ntisas-notice {
 }
 #ntisas-close-notice-link {
     bottom: 0;
-}
-`;
+}`;
 
 const MENU_CSS = `
 #new-twitter-image-searches-and-stuff {
@@ -1155,11 +1094,8 @@ const MENU_CSS = `
 const COLOR_CSS = `
 /*Program colors*/
 #ntisas-side-menu,
-.ntisas-retweet-id,
-.ntisas-user-id,
 .ntisas-tweet-menu,
-.ntisas-timeline-menu,
-.ntisas-footer-entries {
+.ntisas-timeline-menu {
     color: %TEXTCOLOR%;
 }
 #ntisas-side-menu,
@@ -1169,12 +1105,10 @@ const COLOR_CSS = `
 .ntisas-tweet-image-menu {
     border-color: %TEXTCOLOR%;
 }
-#ntisas-server-bypass,
 #ntisas-tweet-stats-message {
     color: %TEXTMUTED%;
 }
-[ntisas-tweet=main] .ntisas-tweet-menu,
-[ntisas-tweet=main] .ntisas-footer-entries {
+[ntisas-tweet=main] .ntisas-tweet-menu {
     border-color: %TEXTFADED%;
 }
 .ntisas-already-seen,
@@ -1692,8 +1626,6 @@ const LOCKPAGE_HTML = `
 
 const STATUS_MARKER = `
 <span class="ntisas-status-marker">
-    <span class="ntisas-user-id"></span>
-    <span class="ntisas-retweet-id"></span>
     <span class="ntisas-already-seen" style="display: none;">already seen</span>
     <span class="ntisas-view-info" style="display: none;"></span>
 </span>`;
