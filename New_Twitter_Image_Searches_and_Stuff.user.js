@@ -233,11 +233,6 @@ const SETTINGS_CONFIG = {
         validate: JSPLib.validate.isBoolean,
         hint: "Displays the user ID above the username on the Tweet view. <b>Note:</b> Only available with access to Twitter's API."
     },
-    display_media_link: {
-        reset: true,
-        validate: JSPLib.validate.isBoolean,
-        hint: "Displays a link to the media/likes timeline in the tweet view."
-    },
     display_image_number: {
         reset: true,
         validate: JSPLib.validate.isBoolean,
@@ -762,15 +757,6 @@ const PROGRAM_CSS = `
 .ntisas-main-links {
     margin: 0 0.5em;
 }
-.ntisas-media-link {
-    font-size: 14px;
-    font-weight: bold;
-    border: 1px solid;
-    border-radius: 20px;
-    padding: 8px 16px;
-    font-family: ${FONT_FAMILY};
-    text-decoration: none;
-}
 .ntisas-media-icon:hover {
     box-shadow: 0 0 0 2px;
 }
@@ -1191,29 +1177,22 @@ const COLOR_CSS = `
 [ntisas-tweet=main] .ntisas-footer-entries {
     border-color: %TEXTFADED%;
 }
-.ntisas-media-link,
 .ntisas-already-seen,
 #ntisas-tweet-stats-table th a,
 #ntisas-menu-selection a.ntisas-selected {
     color: %BASECOLOR%;
 }
-.ntisas-media-link,
 .ntisas-already-seen,
 #ntisas-tweet-stats-table th a {
     border-color: %BASECOLOR%;
 }
 .ntisas-tweet-header,
 #ntisas-menu-header,
-.ntisas-media-link:hover,
 #ntisas-tweet-stats-table th a:hover {
     background-color: %BASEFAINT%;
 }
 .ntisas-tweet-header:hover {
     background-color: %BASECOLOR%;
-}
-.ntisas-media-link:active,
-.ntisas-media-link:focus {
-    box-shadow: 0 0 0 2px %BACKGROUNDCOLOR%, 0 0 0 4px %BASECOLOR%;
 }
 .ntisas-show-views .ntisas-viewed .ntisas-tweet-left {
     border-color: %TEXTMUTED%;
@@ -1710,12 +1689,6 @@ const LOCKPAGE_HTML = `
     <a id="ntisas-enable-lockpage" class="ntisas-expanded-link">Lock</a>
     <a id="ntisas-disable-lockpage" class="ntisas-expanded-link" style="display:none">Unlock</a>
 </span>`;
-
-const MEDIA_LINKS_HTML = `
-<div class="ntisas-main-links">
-    <a class="ntisas-media-link" href="/%SCREENNAME%/media">Media</a>
-    <a class="ntisas-media-link" href="/%SCREENNAME%/likes">Likes</a>
-</div>`;
 
 const STATUS_MARKER = `
 <span class="ntisas-status-marker">
@@ -4254,33 +4227,6 @@ function InitializeProfileTimeline() {
     }
 }
 
-function InitializeMediaLink($tweet) {
-    if (NTISAS.display_media_link && IsTweetPage()) {
-        let screen_name = String($tweet.data('screen-name'));
-        let links_html = JSPLib.utility.regexReplace(MEDIA_LINKS_HTML, {SCREENNAME: screen_name});
-        $('.r-18u37iz.r-1mi0q7o .r-1wtj0ep').css('display', 'flex');
-        JSPLib.utility.recheckTimer({
-            check: () => {
-                let $mark = $('[data-testid=caret]', $tweet[0]);
-                return Boolean($mark.length);
-            },
-            exec: () => {
-                $('[data-testid=caret]', $tweet[0]).before(links_html);
-            }
-        }, JSPLib.utility.one_second, JSPLib.utility.one_second * 10);
-    }
-}
-
-function InitializeUserDisplay($tweets) {
-    let $tweet = $tweets.filter('[ntisas-tweet=main]');
-    if ($tweet.length) {
-        let user_id = String($tweet.data('user-id') ?? "");
-        if (user_id) {
-            $('.ntisas-user-id', $tweet[0]).html(`<b>User</b> [${user_id}]`);
-        }
-    }
-}
-
 function InitializeImageTweets($image_tweets) {
     let printer = JSPLib.debug.getFunctionPrint('InitializeImageTweets');
     const [menu_class, $process_tweets] = IsPageType(STREAMING_PAGES) ? ['ntisas-timeline-menu', $image_tweets] :
@@ -4309,7 +4255,6 @@ function InitializeImageTweets($image_tweets) {
                 ]).then(() => {
                     p.resolve(null);
                 });
-                InitializeMediaLink($tweet);
             },
             fail: () => {
                 p.reject(null);
@@ -6832,13 +6777,6 @@ function InitializeChangedSettings() {
                 $(".ntisas-view-info", tweet).html("");
             }
         }
-        if (IsTweetPage() && JSPLib.menu.hasSettingChanged('display_media_link')) {
-            if (NTISAS.display_media_link) {
-                InitializeMediaLink($tweet);
-            } else {
-                $('.ntisas-media-link', tweet).remove();
-            }
-        }
         if ($post_link.length && ((post_ids.length > 1 && JSPLib.menu.hasSettingChanged('custom_order_enabled')))) {
             $post_link.qtiptisas('destroy', true);
             InitializePostIDsLink(tweet_id, tweet, post_ids);
@@ -6846,13 +6784,10 @@ function InitializeChangedSettings() {
     });
     let called_profile_callback = false;
     if (JSPLib.menu.hasSettingChanged('display_user_id')) {
-        if (NTISAS.display_user_id && IsTweetPage()) {
-            InitializeUserDisplay($processed_tweets);
-        } else if (NTISAS.display_user_id && IsPageType(['main', 'media', 'likes', 'replies'])) {
+        if (NTISAS.display_user_id && IsPageType(['main', 'media', 'likes', 'replies'])) {
             UpdateProfileCallback();
             called_profile_callback = true;
         } else if (!NTISAS.display_user_id) {
-            $('.ntisas-user-id').html("");
             $('.ntisas-profile-user-id').html("");
         }
     }
@@ -6981,7 +6916,6 @@ function RenderSettingsMenu() {
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_profile_views'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('self_tweet_highlights'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_user_id'));
-    $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_media_link'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_image_number'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_tweet_statistics'));
     $('#ntisas-display-settings').append(JSPLib.menu.renderCheckbox('display_available_sauce'));
