@@ -452,19 +452,24 @@ const PROGRAM_CSS = `
 #ntisas-install {
     color: #0073ff;
 }
+#ntisas-similar-toggle a,
 #ntisas-current-records,
 #ntisas-error-messages,
 #ntisas-total-records {
     color: grey;
 }
-#ntisas-enable-view-highlights,
-#ntisas-enable-view-counts,
-#ntisas-disable-lockpage {
+#ntisas-yes-confirm-upload,
+#ntisas-yes-confirm-download,
+#ntisas-enabled-view-highlights,
+#ntisas-enabled-view-counts,
+#ntisas-disabled-lockpage {
     color: green;
 }
-#ntisas-disable-view-highlights,
-#ntisas-disable-view-counts,
-#ntisas-enable-lockpage {
+#ntisas-no-confirm-upload,
+#ntisas-no-confirm-download,
+#ntisas-disabled-view-highlights,
+#ntisas-disabled-view-counts,
+#ntisas-enabled-lockpage {
     color: red;
 }
 /**Timeline header**/
@@ -1639,14 +1644,14 @@ const CONFIRM_DOWNLOAD_HTML = `
 
 const VIEW_HIGHLIGHTS_HTML = `
 <span id="ntisas-view-highlights-toggle">
-    <a id="ntisas-enable-view-highlights" class="ntisas-expanded-link">Show</a>
-    <a id="ntisas-disable-view-highlights" class="ntisas-expanded-link">Hide</a>
+    <a id="ntisas-enabled-view-highlights" class="ntisas-expanded-link">Shown</a>
+    <a id="ntisas-disabled-view-highlights" class="ntisas-expanded-link">Hidden</a>
 </span>`;
 
 const VIEW_COUNTS_HTML = `
 <span id="ntisas-view-counts-toggle">
-    <a id="ntisas-enable-view-counts" class="ntisas-expanded-link">Enable</a>
-    <a id="ntisas-disable-view-counts" class="ntisas-expanded-link">Disable</a>
+    <a id="ntisas-enabled-view-counts" class="ntisas-expanded-link">Enabled</a>
+    <a id="ntisas-disabled-view-counts" class="ntisas-expanded-link">Disabled</a>
 </span>`;
 
 const PROFILE_TIMELINE_HTML = `
@@ -1658,8 +1663,8 @@ const PROFILE_TIMELINE_HTML = `
 
 const LOCKPAGE_HTML = `
 <span id="ntisas-lockpage-toggle">
-    <a id="ntisas-enable-lockpage" class="ntisas-expanded-link">Lock</a>
-    <a id="ntisas-disable-lockpage" class="ntisas-expanded-link" style="display:none">Unlock</a>
+    <a id="ntisas-disabled-lockpage" class="ntisas-expanded-link">Unlocked</a>
+    <a id="ntisas-enabled-lockpage" class="ntisas-expanded-link" style="display:none">Locked</a>
 </span>`;
 
 const STATUS_MARKER = `
@@ -1696,7 +1701,7 @@ const AVAILABLE_SAUCE_HELP = "Shows the number of API requests remaining.\nOnly 
 const SIMILAR_SOURCE_HELP = "L-Click to switch the source for the similar search. (Shortcut: Alt+S)";
 const CONFIRM_UPLOAD_HELP = "L-click to turn on/off confirmation for uploading the full tweet, when done from the tweet menu.";
 const CONFIRM_DOWNLOAD_HELP = "L-click to turn on/off confirmation for downloading all media, when done from the tweet menu.";
-const VIEWS_HIGHLIGHTS_HELP = "L-Click to toggle borders on viewed Tweets. (Shortcut: Alt+V)";
+const VIEWS_HIGHLIGHTS_HELP = "L-Click to toggle visualizations on viewed/seen Tweets. (Shortcut: Alt+V)";
 const VIEWS_COUNTS_HELP = "L-Click to toggle whether tweets are being counted as viewed.";
 const LOCKPAGE_HELP = "L-Click to prevent navigating away from the page (does not prevent Twitter navigation).";
 const ERROR_MESSAGES_HELP = "L-Click to see full error messages.";
@@ -2118,8 +2123,8 @@ const PROFILE_FIELDS = 'id,level';
 const SIMILAR_SOURCE_CONTROLS = ['danbooru', 'saucenao'];
 const CONFIRM_UPLOAD_CONTROLS = ['yes', 'no'];
 const CONFIRM_DOWNLOAD_CONTROLS = ['yes', 'no'];
-const VIEW_HIGHLIGHT_CONTROLS = ['enable', 'disable'];
-const VIEW_COUNT_CONTROLS = ['enable', 'disable'];
+const VIEW_HIGHLIGHT_CONTROLS = ['enabled', 'disabled'];
+const VIEW_COUNT_CONTROLS = ['enabled', 'disabled'];
 
 const BASE_DIALOG_WIDTH = 60;
 const BASE_QTIP_WIDTH = 10;
@@ -3265,13 +3270,13 @@ function UpdateConfirmDownloadControls() {
 
 function UpdateViewHighlightControls() {
     let show_highlights = JSPLib.storage.getLocalData('ntisas-view-highlights', {default_val: true});
-    let switch_type = (show_highlights ? 'disable' : 'enable');
+    let switch_type = (show_highlights ? 'enabled' : 'disabled');
     DisplayControl(switch_type, VIEW_HIGHLIGHT_CONTROLS, 'view-highlights');
 }
 
 function UpdateViewCountControls() {
     let count_views = NTISAS.count_views = JSPLib.storage.getLocalData('ntisas-view-counts', {default_val: true});
-    let switch_type = (count_views ? 'disable' : 'enable');
+    let switch_type = (count_views ? 'enabled' : 'disabled');
     DisplayControl(switch_type, VIEW_COUNT_CONTROLS, 'view-counts');
 }
 
@@ -5813,7 +5818,7 @@ function ToggleLock() {
     } else {
         $(window).on('beforeunload.ntisas.lock_page', () => "");
     }
-    $('#ntisas-enable-lockpage, #ntisas-disable-lockpage').toggle();
+    $('#ntisas-enabled-lockpage, #ntisas-disabled-lockpage').toggle();
     NTISAS.page_locked = !NTISAS.page_locked;
 }
 
