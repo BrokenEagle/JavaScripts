@@ -2727,10 +2727,6 @@ function GetMultiLinkTitle(posts) {
     return title.join('\n');
 }
 
-function GetCustomQuery() {
-    return (NTISAS.custom_order_enabled && (NTISAS.user_data.level >= GOLD_LEVEL) ? '+order%3Acustom' : '');
-}
-
 function GetPostVersionsLastID(type) {
     //Get the program last ID if it exists
     const storage_key = `ntisas-${type}-lastid`;
@@ -2780,13 +2776,6 @@ function ReadableBytes(bytes) {
     return JSPLib.utility.setPrecision((bytes / Math.pow(1024, i)), 2) + ' ' + sizes[i];
 }
 
-function GetFileExtension(url, splitter = ' ') {
-    let parser = new URL(url);
-    let pathname = parser.pathname.split(splitter)[0];
-    let extpos = pathname.lastIndexOf('.');
-    return pathname.slice(extpos + 1);
-}
-
 function GetThumbUrl(url, splitter, ext, size) {
     let parser = new URL(url);
     let pathname = parser.pathname.split(splitter)[0];
@@ -2794,12 +2783,13 @@ function GetThumbUrl(url, splitter, ext, size) {
     return parser.origin + pathname.slice(0, extpos) + `?format=${ext}&name=${size}`;
 }
 
-function GetFileURLNameExt(file_url) {
-    let path_index = file_url.lastIndexOf('/');
-    let file_ident = file_url.slice(path_index + 1);
-    let [file_name, extension] = file_ident.split('.');
+function GetFileURLAttributes(file_url) {
+    let parser = new URL(file_url);
+    let file_index = parser.pathname.lastIndexOf('/');
+    let file_ident = parser.pathname.slice(file_index + 1);
+    let [name, extension] = file_ident.split('.');
     extension = extension.split(/\W+/)[0];
-    return [file_name, extension];
+    return {name, extension};
 }
 
 async function GetNormalImageURL(image_info) {
@@ -2867,6 +2857,10 @@ function LogarithmicExpiration(count, max_count, time_divisor, multiplier) {
     return Math.round(Math.log10(time_exponent + (10 - time_exponent) * (count / max_count)) * multiplier);
 }
 
+function DarkenColorArray(array, amount) {
+    return array.map((val) => Math.max(Number(val) - amount, 0).toString());
+}
+
 //Auxiliary functions
 
 function SavePosts(mapped_posts) {
@@ -2901,7 +2895,6 @@ function PostExpiration(created_timestamp) {
         return LogarithmicExpiration(day_interval, day_slots, days_month, MAX_POST_EXPIRES);
     }
     return MAX_POST_EXPIRES;
-
 }
 
 function SetCheckPostvers() {
@@ -2920,7 +2913,7 @@ async function AddViewCount(tweet_id) {
         let views = await GetData('view-' + tweet_id, 'danbooru');
         let mapped_view = {
             count: (views ? views.value.count : 0) + 1,
-            viewed: Date.now()
+            viewed: Date.now(),
         };
         let data_expires = JSPLib.utility.getExpires(VIEW_EXPIRES);
         SaveData('view-' + tweet_id, {value: mapped_view, expires: data_expires}, 'danbooru', false);
@@ -3013,14 +3006,6 @@ function PromptSavePostIDs(tweet_id, message, initial_post_ids) {
         return true;
     }
     return false;
-}
-
-function GetSelectPostIDs(tweet_id, type) {
-    if (!NTISAS[type][tweet_id]) {
-        return [];
-    }
-    let $select_previews = $('.ntisas-post-select', NTISAS[type][tweet_id][0]);
-    return JSPLib.utility.getDOMAttributes($select_previews, 'id', Number);
 }
 
 function SetThumbnailWait(container, all_posts) {
@@ -3176,38 +3161,28 @@ function UpdateSideMenu(page_type, update_visibility) {
     }
 }
 
-function SaveMenuPosition() {
-    let {left, top} = $('#ntisas-side-menu').get(0).style;
-    if (left !== "" && top !== "") {
-        JSPLib.storage.setLocalData('ntisas-menu-position', {left, top});
-    }
+function DisplayControl(control, all_controls, type) {
+    let all_selectors = JSPLib.utility.joinList(all_controls, '#ntisas-', '-' + type, ',');
+    $(all_selectors).hide();
+    setTimeout(() => {$(`#ntisas-${control}-${type}`).show();}, JQUERY_DELAY);
 }
 
 function UpdateSimilarControls() {
     NTISAS.similar_source = JSPLib.storage.getLocalData('ntisas-similar-source', {default_val: 'danbooru'});
-    if (NTISAS.similar_source === 'danbooru') {
-        DisplayControl('danbooru', SIMILAR_SOURCE_CONTROLS, 'similar-source');
-    } else {
-        DisplayControl('saucenao', SIMILAR_SOURCE_CONTROLS, 'similar-source');
-    }
+    let switch_type = NTISAS.similar_source ?? 'danbooru';
+    DisplayControl(switch_type, SIMILAR_SOURCE_CONTROLS, 'similar-source');
 }
 
 function UpdateConfirmUploadControls() {
     NTISAS.confirm_upload = JSPLib.storage.getLocalData('ntisas-confirm-upload', {default_val: false});
-    if (NTISAS.confirm_upload) {
-        DisplayControl('yes', CONFIRM_UPLOAD_CONTROLS, 'confirm-upload');
-    } else {
-        DisplayControl('no', CONFIRM_UPLOAD_CONTROLS, 'confirm-upload');
-    }
+    let switch_type = (NTISAS.confirm_upload ? 'yes' : 'no');
+    DisplayControl(switch_type, CONFIRM_UPLOAD_CONTROLS, 'confirm-upload');
 }
 
 function UpdateConfirmDownloadControls() {
     NTISAS.confirm_download = JSPLib.storage.getLocalData('ntisas-confirm-download', {default_val: false});
-    if (NTISAS.confirm_download) {
-        DisplayControl('yes', CONFIRM_DOWNLOAD_CONTROLS, 'confirm-download');
-    } else {
-        DisplayControl('no', CONFIRM_DOWNLOAD_CONTROLS, 'confirm-download');
-    }
+    let switch_type = (NTISAS.confirm_download ? 'yes' : 'no');
+    DisplayControl(switch_type, CONFIRM_DOWNLOAD_CONTROLS, 'confirm-download');
 }
 
 function UpdateViewHighlightControls() {
@@ -3224,17 +3199,8 @@ function UpdateViewCountControls() {
 
 function UpdateViewHighlights() {
     let show_highlights = JSPLib.storage.getLocalData('ntisas-view-highlights', {default_val: true});
-    if (show_highlights) {
-        $('[role=main]').addClass('ntisas-show-views');
-    } else {
-        $('[role=main]').removeClass('ntisas-show-views');
-    }
-}
-
-function DisplayControl(control, all_controls, type) {
-    let all_selectors = JSPLib.utility.joinList(all_controls, '#ntisas-', '-' + type, ',');
-    $(all_selectors).hide();
-    setTimeout(() => {$(`#ntisas-${control}-${type}`).show();}, JQUERY_DELAY);
+    let jquery_action = (show_highlights ? 'addClass' : 'removeClass');
+    $('[role=main]')[jquery_action]('ntisas-show-views');
 }
 
 async function GetAllCurrentRecords() {
@@ -3412,7 +3378,8 @@ function RenderPostIDsLink(post_ids, posts, classname) {
         text = 'post #' + post_ids[0];
     } else {
         title = (posts.length > 0 ? GetMultiLinkTitle(posts) : "");
-        href = `${NTISAS.domain}/posts?tags=status%3Aany+id%3A${post_ids.join(',')}${GetCustomQuery()}`;
+        let query = (NTISAS.custom_order_enabled && (NTISAS.user_data.level >= GOLD_LEVEL) ? '+order%3Acustom' : '');
+        href = `${NTISAS.domain}/posts?tags=status%3Aany+id%3A${post_ids.join(',')}${query}`;
         text = post_ids.length + ' sources';
     }
     return `
@@ -3590,11 +3557,12 @@ function RenderPostsContainer(all_posts) {
 function RenderPostPreview(post, append_html = "") {
     let [width, height] = JSPLib.utility.getPreviewDimensions(post.width, post.height, POST_PREVIEW_DIMENSION);
     let padding_height = POST_PREVIEW_DIMENSION - height;
+    let title = GetLinkTitle(post);
     return `
 <article class="ntisas-post-preview ntisas-post-selectable ntisas-post-select" data-id="${post.id}" data-size="${post.size}">
     <div class="ntisas-image-container">
         <a target="_blank" href="https://danbooru.donmai.us/posts/${post.id}">
-            <img width="${width}" height="${height}" style="padding-top:${padding_height}px" title="${GetLinkTitle(post)}">
+            <img width="${width}" height="${height}" style="padding-top:${padding_height}px" title="${title}">
         </a>
     </div>
     ${append_html}
@@ -3602,7 +3570,7 @@ function RenderPostPreview(post, append_html = "") {
 }
 
 function RenderTwimgPreview(image_url, index, type, title, is_video = false) {
-    let ext = GetFileExtension(image_url, ':');
+    let {extension} = GetFileURLAttributes(image_url);
     let thumb_url = GetThumbUrl(image_url, ':', 'jpg', '360x360');
     var image_html, selected_class;
     if (type === 'normal') {
@@ -3616,7 +3584,7 @@ function RenderTwimgPreview(image_url, index, type, title, is_video = false) {
         image_html = `<a href="${orig_media_url}" data-url="${image_url}"><img width="${TWEET_PREVIEW_DIMENSION}" height="${TWEET_PREVIEW_DIMENSION}" src="${thumb_url}"></a>`;
         selected_class = 'ntisas-illust-preview';
     }
-    let append_html = RenderPreviewAddons(title, 'https://' + location.host, ext);
+    let append_html = RenderPreviewAddons(title, 'https://' + location.host, extension);
     return `
 <article class="ntisas-tweet-preview ${selected_class}" data-id="${index}" data-url="${image_url}">
     <div class="ntisas-image-container">
@@ -3645,17 +3613,13 @@ function RenderColorStyle(css, color_data) {
         BASECOLOR: JSPLib.utility.sprintf('rgb(%s, %s, %s)', ...color_data.base_color),
         BASEFAINT: JSPLib.utility.sprintf('rgb(%s, %s, %s, 0.1)', ...color_data.base_color),
         BASESHADED: JSPLib.utility.sprintf('rgb(%s, %s, %s, 0.5)', ...color_data.base_color),
-        BASEDARKER: JSPLib.utility.sprintf('rgb(%s, %s, %s)', ...DarkenColorArray(color_data.base_color)),
+        BASEDARKER: JSPLib.utility.sprintf('rgb(%s, %s, %s)', ...DarkenColorArray(color_data.base_color, 50)),
         TEXTCOLOR: JSPLib.utility.sprintf('rgb(%s, %s, %s)', ...color_data.text_color),
         TEXTFADED: JSPLib.utility.sprintf('rgb(%s, %s, %s, 0.1)', ...color_data.text_color),
         TEXTMUTED: JSPLib.utility.sprintf('rgb(%s, %s, %s, 0.2)', ...color_data.text_color),
         TEXTSHADED: JSPLib.utility.sprintf('rgb(%s, %s, %s, 0.5)', ...color_data.text_color),
         BACKGROUNDCOLOR: JSPLib.utility.sprintf('rgb(%s, %s, %s)', ...color_data.background_color)
     });
-}
-
-function DarkenColorArray(array) {
-    return array.map((val) => Math.max(Number(val) - 50, 0).toString());
 }
 
 function RenderMediaMenu(tweet_id, screen_name, image_urls, videos) {
@@ -4179,7 +4143,6 @@ function InitializeImageTweets($image_tweets) {
             fail: () => {
                 p.reject(null);
             },
-
         }, TWITTER_DELAY, JSPLib.utility.one_second * 10);
     });
     Promise.all(promise_array).then(() => {
@@ -4632,7 +4595,7 @@ function DownloadMediaFile(file_url, tweet_id, screen_name, order) {
         mp4: 'video/mp4',
     };
     let p = JSPLib.utility.createPromise();
-    let [media_name, extension] = GetFileURLNameExt(file_url);
+    let {name, extension} = GetFileURLAttributes(file_url);
     let date_string = GetDateString(Date.now());
     let time_string = GetTimeString(Date.now());
     let media_type = (extension === 'mp4' ? 'video' : 'image');
@@ -4642,7 +4605,7 @@ function DownloadMediaFile(file_url, tweet_id, screen_name, order) {
         TWEETID: tweet_id,
         USERACCOUNT: screen_name,
         ORDER: media_type + (order + 1),
-        IMG: media_name,
+        IMG: name,
     }) + '.' + extension;
     file_url += (extension !== 'mp4' ? ':orig' : "");
     let mime_type = mime_types[extension];
@@ -4754,7 +4717,6 @@ function GetMediaTimelineGQL(user_id, cursor) {
     if (JSPLib.validate.isString(cursor)) {
         data.cursor = cursor;
     }
-
     return TwitterGraphQLRequest('_vFDgkWOKL_U64Y2VmnvJw/UserMedia', data, MEDIA_TIMELINE_FEATURES).then((data) => CheckGraphqlData(data));
 }
 
@@ -5307,6 +5269,13 @@ function MenuNavigation(event) {
     UpdateSideMenu(page_type, true);
 }
 
+function SaveMenuPosition() {
+    let {left, top} = $('#ntisas-side-menu').get(0).style;
+    if (left !== "" && top !== "") {
+        JSPLib.storage.setLocalData('ntisas-menu-position', {left, top});
+    }
+}
+
 function ImageEnter(event) {
     if (!NTISAS.display_image_number) {
         return;
@@ -5712,7 +5681,12 @@ function ManualAdd(event) {
         var message, save_post_ids;
         if ($link.data('has-posts')) {
             let all_post_ids = GetSessionTwitterData(tweet_id);
-            save_post_ids = GetSelectPostIDs(tweet_id, 'tweet_qtip');
+            if (!NTISAS.tweet_qtip[tweet_id]) {
+                save_post_ids = [];
+            } else {
+                let $select_previews = $('.ntisas-post-select', NTISAS.tweet_qtip[tweet_id][0]);
+                save_post_ids = JSPLib.utility.getDOMAttributes($select_previews, 'id', Number);
+            }
             let delete_post_ids = JSPLib.utility.arrayDifference(all_post_ids, save_post_ids);
             message = JSPLib.utility.sprintf(CONFIRM_DELETE_PROMPT, delete_post_ids);
         } else {
