@@ -138,7 +138,6 @@ const PROGRAM_DEFAULT_VALUES = {
 //Settings constants
 const COMMON_QUERY_SETTINGS = ['pick_image', 'confirm_save', 'auto_save'];
 const DEFAULT_QUERY_SETTINGS = ['pick_image', 'confirm_save'];
-const SUBDOMAINS = ['danbooru', 'kagamihara', 'saitou', 'shima', 'betabooru'];
 
 //Main settings
 const SETTINGS_CONFIG = {
@@ -189,9 +188,9 @@ const SETTINGS_CONFIG = {
         hint: "Multi-post results will use <span class=\"ntisas-code\">order:custom</span>, showing results with Twitter's order. <b>Note:</b> This will break the tag limit for non-Gold+."
     },
     query_subdomain: {
-        allitems: SUBDOMAINS,
+        allitems: JSPLib.menu.domains,
         reset: ['danbooru'],
-        validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'radio', SUBDOMAINS),
+        validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'radio', JSPLib.menu.domains),
         hint: "Select which subdomain of Danbooru to query from. <b>Note:</b> The chosen subdomain must be logged into or the script will fail to work."
     },
     auto_unhide_tweets_enabled: {
@@ -207,7 +206,7 @@ const SETTINGS_CONFIG = {
     display_profile_views: {
         reset: false,
         validate: JSPLib.validate.isBoolean,
-        hint: "Displays the the number of times a user/timeline has been seen."
+        hint: "Displays the the last visit occurrence to a user and their timelines."
     },
     self_tweet_highlights: {
         reset: false,
@@ -217,12 +216,12 @@ const SETTINGS_CONFIG = {
     display_user_id: {
         reset: false,
         validate: JSPLib.validate.isBoolean,
-        hint: "Displays the user ID above the username on the Tweet view. <b>Note:</b> Only available with access to Twitter's API."
+        hint: "Displays the user ID on the main/replies/media timelines."
     },
     display_image_number: {
         reset: true,
         validate: JSPLib.validate.isBoolean,
-        hint: "Displays the image number used by <b>Download Originals</b>."
+        hint: "Displays the image number as ordered by Twitter (tweet view only)."
     },
     display_tweet_statistics: {
         reset: true,
