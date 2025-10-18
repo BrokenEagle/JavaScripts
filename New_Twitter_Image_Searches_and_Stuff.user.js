@@ -84,64 +84,50 @@ JSPLib.storage.localforage = localforage.createInstance({
 const NTISAS = {};
 
 //Program data constants
-const PROGRAM_DATA_REGEX = /^(post|user|view|video|tweet|twuser|twimg|ntisas-available-sauce)-/; //Regex that matches the prefix of all program cache data
+const PROGRAM_DATA_REGEX = /^(post|user|view|tweet|twuser|twimg|ntisas-available-sauce)-/; //Regex that matches the prefix of all program cache data
 
 //For factory reset !!!These need to be set!!!
 const LOCALSTORAGE_KEYS = [
     'ntisas-side-selection',
     'ntisas-database-length',
-    'ntisas-remote-database',
     'ntisas-user-data',
     'ntisas-color-style',
     'ntisas-recent-timestamp',
     //Boolean
-    'ntisas-purge-bad',
     'ntisas-overflow',
     //Last ID
     'ntisas-postver-lastid',
     'ntisas-badver-lastid',
     //Timeouts
     'ntisas-timeout',
-    'ntisas-database-recheck',
     'ntisas-length-recheck',
     'ntisas-badver-recheck',
     'ntisas-user-profile-recheck',
     'ntisas-prune-expires',
     //Semaphore
-    'ntisas-process-semaphore-checkuser',
-    'ntisas-process-semaphore-purgebad',
     'ntisas-process-semaphore-badvers',
     'ntisas-process-semaphore-records',
-    'ntisas-process-semaphore-checkpost',
     'ntisas-process-semaphore-postvers',
 ];
 const PROGRAM_RESET_KEYS = {
-    tweet_pos: [],
-    tweet_faves: [],
     page_stats: {},
 };
 const PROGRAM_DEFAULT_VALUES = {
-    lists: {},
     update_profile: {},
     update_user_id: {},
-    tweet_index: {},
     tweet_qtip: {},
     image_anchor: {},
     qtip_anchor: {},
     dialog_tweet: {},
-    image_data: {},
     timeline_tweets: {},
     media_dialog: {},
     media_dialog_anchor: {},
-    similar_results: {},
     known_extensions: {},
     recorded_views: [],
-    artist_iqdb_enabled: false,
     opened_menu: false,
     colors_checked: false,
     page_locked: false,
     import_is_running: false,
-    update_user_timer: null,
     seen_tweet: new Set(),
     no_confirm: new Set(),
     search_running: new Set(),
@@ -1737,7 +1723,6 @@ const MIN_POST_EXPIRES = JSPLib.utility.one_day;
 const MAX_POST_EXPIRES = JSPLib.utility.one_month;
 const USER_EXPIRES = JSPLib.utility.one_month;
 const VIEW_EXPIRES = JSPLib.utility.one_month * 2;
-const VIDEO_EXPIRES = JSPLib.utility.one_week;
 const TWEET_EXPIRES = JSPLib.utility.one_week;
 const TWUSER_EXPIRES = JSPLib.utility.one_day;
 const LENGTH_RECHECK_EXPIRES = JSPLib.utility.one_hour;
@@ -2394,11 +2379,6 @@ const VIEW_CONSTRAINTS = {
     },
 };
 
-const VIDEO_CONSTRAINTS = {
-    expires: JSPLib.validate.expires_constraints,
-    value: JSPLib.validate.stringnull_constraints
-};
-
 const TWUSER_CONSTRAINTS = {
     expires: JSPLib.validate.expires_constraints,
     value: JSPLib.validate.stringonly_constraints,
@@ -2436,9 +2416,6 @@ function ValidateEntry(key, entry) {
     if (key.match(/^view-/) || key.match(/^((main|media|likes|replies)-stream|user)-view-/)) {
         return ValidateTypeEntry(key, entry, 'hash', VIEW_CONSTRAINTS);
     }
-    if (key.match(/^video-/)) {
-        return JSPLib.validate.validateHashEntries(key, entry, VIDEO_CONSTRAINTS);
-    }
     if (key.match(/^twuser-/)) {
         return JSPLib.validate.validateHashEntries(key, entry, TWUSER_CONSTRAINTS);
     }
@@ -2467,9 +2444,6 @@ function ValidateExpiration(key) {
     }
     if (key.match(/^((main|media|likes|replies)-stream|user)-view-/)) {
         return JSPLib.utility.one_year;
-    }
-    if (key.match(/^video-/)) {
-        return VIDEO_EXPIRES;
     }
     if (key.match(/^twuser-/)) {
         return TWUSER_EXPIRES;
@@ -2507,16 +2481,12 @@ function ValidateProgramData(key, entry) {
             }
             break;
         case 'ntisas-timeout':
-        case 'ntisas-database-recheck':
         case 'ntisas-badver-recheck':
         case 'ntisas-length-recheck':
         case 'ntisas-user-profile-recheck':
         case 'ntisas-recent-timestamp':
-        case 'ntisas-process-semaphore-checkuser':
-        case 'ntisas-process-semaphore-purgebad':
         case 'ntisas-process-semaphore-badvers':
         case 'ntisas-process-semaphore-records':
-        case 'ntisas-process-semaphore-checkpost':
         case 'ntisas-process-semaphore-postvers':
         case 'ntisas-prune-expires':
             if (!Number.isInteger(entry)) {
@@ -2532,7 +2502,6 @@ function ValidateProgramData(key, entry) {
             }
             break;
         case 'ntisas-overflow':
-        case 'ntisas-purge-bad':
             if (!JSPLib.validate.isBoolean(entry)) {
                 checkerror = ["Value is not a boolean."];
             }
