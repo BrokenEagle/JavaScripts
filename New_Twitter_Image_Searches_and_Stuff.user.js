@@ -2254,7 +2254,7 @@ const IMAGE_QTIP_SETTINGS = {
     }
 };
 
-const CONFIRM_DIALOG_SETTINGS = {
+const GENERAL_DIALOG_SETTINGS = {
     modal: true,
     resizable: false,
     autoOpen: false,
@@ -2264,33 +2264,9 @@ const CONFIRM_DIALOG_SETTINGS = {
     },
 };
 
-const MEDIA_DIALOG_SETTINGS = {
-    title: "Media menu",
-    modal: false,
-    resizable: false,
-    autoOpen: false,
-    width: 620,
-    classes: {
-        'ui-dialog': 'ntisas-dialog',
-        'ui-dialog-titlebar-close': 'ntisas-dialog-close'
-    },
-    buttons: {
-        'Close' () {
-            $(this).dialog('close');
-        }
-    }
-};
-
-const MENU_DIALOG_SETTINGS = {
-    modal: true,
-    resizable: false,
-    autoOpen: false,
+const MENU_DIALOG_SETTINGS = Object.assign({
     width: 1000,
     height: 800,
-    classes: {
-        'ui-dialog': 'ntisas-dialog',
-        'ui-dialog-titlebar-close': 'ntisas-dialog-close'
-    },
     open: () => {
         NTISAS.opened_menu = true;
     },
@@ -2299,16 +2275,14 @@ const MENU_DIALOG_SETTINGS = {
     },
     buttons: {
         //Save and reset are bound separately
-        'Save': (() => {}),
+        Save: (() => {}),
         'Factory reset': (() => {}),
-        'Close' () {
-            $(this).dialog('close');
-        }
+        Close: CloseDialog,
     }
-};
+}, GENERAL_DIALOG_SETTINGS);
 
 const MENU_DIALOG_BUTTONS = {
-    'Save': {
+    Save: {
         id: 'ntisas-commit',
         title: SAVE_HELP
     },
@@ -2316,7 +2290,7 @@ const MENU_DIALOG_BUTTONS = {
         id: 'ntisas-resetall',
         title: RESET_HELP
     },
-    'Close': {
+    Close: {
         id: null,
         title: CLOSE_HELP
     }
@@ -3942,7 +3916,7 @@ function InitializeSearchDialog(tweet_id, image_urls) {
         $('article', $dialog[0]).each((_, article) => {
             InitializeTwitterImage(article, image_urls, POST_PREVIEW_DIMENSION);
         });
-        let dialog_settings = Object.assign({}, CONFIRM_DIALOG_SETTINGS, {
+        let dialog_settings = Object.assign({}, GENERAL_DIALOG_SETTINGS, {
             title: "Search Menu",
             buttons: {
                 Submit: SearchSubmit,
@@ -3975,7 +3949,7 @@ function InitializeConfirmDialog(tweet_id, similar_results, posts) {
     let max_results = Math.max(...similar_results.map((result) => result.results.length));
     let base_width = max_results > 1 ? 180 : 120;
     let render_width = Math.min(((max_results + 1) * BASE_PREVIEW_WIDTH) + base_width, 1200);
-    let dialog_settings = Object.assign({}, CONFIRM_DIALOG_SETTINGS, {
+    let dialog_settings = Object.assign({}, GENERAL_DIALOG_SETTINGS, {
         title: "Confirm Menu",
         buttons: {
             Submit: ConfirmSubmit,
@@ -4015,7 +3989,7 @@ function InitializeUploadDialog(tweet_id, screen_name, image_urls, videos) {
             });
         }
         $dialog.find('.ntisas-image-container a').on(PROGRAM_CLICK, PopupTweetLargeImage);
-        let dialog_settings = Object.assign({}, CONFIRM_DIALOG_SETTINGS, {
+        let dialog_settings = Object.assign({}, GENERAL_DIALOG_SETTINGS, {
             title: "Upload Menu",
             buttons: {
                 'Upload All': UploadAllSubmit,
@@ -4052,7 +4026,7 @@ function InitializeDownloadDialog(tweet_id, screen_name, image_urls, videos) {
             });
         }
         $dialog.find('.ntisas-image-container a').on(PROGRAM_CLICK, PopupTweetLargeImage);
-        let dialog_settings = Object.assign({}, CONFIRM_DIALOG_SETTINGS, {
+        let dialog_settings = Object.assign({}, GENERAL_DIALOG_SETTINGS, {
             title: "Download Menu",
             buttons: {
                 'Download All': DownloadAllSubmit,
@@ -5527,7 +5501,15 @@ function OpenMediaTweetMenu(event) {
                     InitializeNoMatchesLinks(tweet_id);
                 }
             });
-            $dialog.dialog(MEDIA_DIALOG_SETTINGS);
+            let dialog_settings = Object.assign({}, GENERAL_DIALOG_SETTINGS, {
+                title: "Media menu",
+                modal: false,
+                width: 620,
+                buttons: {
+                    Close: CloseDialog,
+                },
+            });
+            $dialog.dialog(dialog_settings);
             $dialog.dialog('open');
         });
         InitializeUIStyle();
