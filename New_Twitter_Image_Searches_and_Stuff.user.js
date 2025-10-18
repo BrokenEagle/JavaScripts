@@ -520,10 +520,21 @@ const PROGRAM_CSS = `
 .ntisas-self-tweet-highlights [ntisas-tweet].ntisas-self-tweet .ntisas-profile-line a[href^="/"] {
     background-color: yellow;
 }
-.ntisas-show-views [ntisas-tweet].ntisas-viewed .ntisas-tweet-left {
-    border: 1px solid;
+[ntisas-tweet] .ntisas-tweet-left {
+    border: 1px solid transparent;
     border-radius: 25px;
+}
+.ntisas-show-views [ntisas-tweet].ntisas-viewed .ntisas-tweet-left,
+.ntisas-show-views [ntisas-tweet].ntisas-seen .ntisas-tweet-left {
     height: calc(100% - var(--menu-height));
+}
+.ntisas-show-views [ntisas-tweet].ntisas-seen .ntisas-seen-indicator {
+    position: absolute;
+    bottom: 3px;
+    width: 80%;
+    border: 1px solid;
+    aspect-ratio: 1/1;
+    border-radius: 25px;
 }
 [ntisas-tweet=main] .ntisas-tweet-status {
     display: inline-block;
@@ -1163,7 +1174,7 @@ const COLOR_CSS = `
     border-color: %TEXTFADED%;
 }
 /**Tweet**/
-.ntisas-already-seen {
+[ntisas-tweet].ntisas-seen .ntisas-already-seen {
     color: %BASECOLOR%;
     border-color: %BASECOLOR%;
 }
@@ -1174,6 +1185,13 @@ const COLOR_CSS = `
 .ntisas-show-views [ntisas-tweet].ntisas-viewed .ntisas-tweet-left {
     border-color: %TEXTMUTED%;
     background-color: %TEXTFADED%;
+}
+.ntisas-show-views [ntisas-tweet].ntisas-seen:not(.ntisas-viewed) .ntisas-tweet-left {
+    border-color: %BASEDARKER%;
+}
+.ntisas-show-views [ntisas-tweet].ntisas-seen .ntisas-seen-indicator {
+    border-color: %BASEDARKER%;
+    background-color: %BASECOLOR%;
 }
 /**Tweet menu**/
 .ntisas-tweet-header {
@@ -5330,6 +5348,7 @@ function SeenTweet(entries, observer) {
             NTISAS.seen_tweet.add(tweet_id);
             if (is_duplicate && $tweet.attr('ntisas-tweet') === 'stream') {
                 $tweet.find('.ntisas-already-seen').show();
+                $tweet.addClass('ntisas-seen');
             }
             observer.unobserve(entry.target);
         }
@@ -6066,6 +6085,7 @@ function MarkupStreamTweet(tweet) {
         $(tweet_body).addClass('ntisas-tweet-body');
         let tweet_left = tweet_body.children[0];
         $(tweet_left).addClass('ntisas-tweet-left');
+        $(tweet_left).append('<div class="ntisas-seen-indicator"></div>');
         let tweet_right = tweet_body.children[1];
         $(tweet_right).addClass('ntisas-tweet-right');
         let sub_body = tweet_right;
