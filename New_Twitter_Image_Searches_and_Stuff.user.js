@@ -1578,7 +1578,7 @@ const NTISAS_TWEET_MENU = `
         <div>
             <div class="ntisas-image-section ntisas-links">
                 <div class="ntisas-link-menu ntisas-links">
-                    <span class="ntisas-query-button ntisas-menu-results">loading</span>
+                    <span class="ntisas-query-button ntisas-menu-results">loading...</span>
                     <span class="ntisas-query-button ntisas-menu-search">
                         <a class="ntisas-control-search ntisas-expanded-link">Search</a>
                     </span>
