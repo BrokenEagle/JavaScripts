@@ -559,7 +559,7 @@ const PROGRAM_CSS = `
 [ntisas-tweet] .ntisas-image-section {
     margin-top: 0.2em;
     min-height: 2.2em;
-    padding-left: 0.5em;
+    white-space: nowrap;
 }
 [ntisas-tweet] .ntisas-query-button a {
     min-width: 100%;
@@ -609,6 +609,15 @@ const PROGRAM_CSS = `
 [ntisas-tweet] .ntisas-menu-help {
     border-radius: 0 25px 25px 0;
     min-width: 2em;
+}
+[ntisas-tweet=main] .ntisas-image-section {
+    padding-left: 0.4em;
+}
+[ntisas-tweet=stream] .ntisas-image-section {
+    padding-left: 0.3em;
+}
+[ntisas-tweet=media] .ntisas-image-section {
+    padding-left: 0.75em;
 }
 [ntisas-tweet=stream] .ntisas-tweet-controls {
     margin-top: 0.5em;
