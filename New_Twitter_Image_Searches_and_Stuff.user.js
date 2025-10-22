@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      11.1
+// @version      11.2
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -318,12 +318,12 @@ const PROGRAM_CSS = `
     letter-spacing: -1px;
 }
 .ntisas-horizontal-rule {
-    border-top: 1px solid grey;
+    border-top: 1px solid;
     margin: 10px;
 }
-.ntisas-vr {
+.ntisas-vertical-rule {
     display: inline-block;
-    border-left: 1px solid #DDD;
+    border-left: 1px solid;
     height: 200px;
 }
 .ntisas-links a {
@@ -356,7 +356,7 @@ const PROGRAM_CSS = `
     z-index: 100;
 }
 #ntisas-side-border {
-    border: solid lightgrey 1px;
+    border: 1px solid;
 }
 #ntisas-menu-header {
     padding: 2px;
@@ -365,8 +365,7 @@ const PROGRAM_CSS = `
     letter-spacing: -1px;
     text-align: center;
     cursor: move;
-    border-bottom: solid lightgrey 1px;
-    cursor: move;
+    border-bottom: solid 1px;
 }
 #ntisas-menu-selection {
     font-weight: bold;
@@ -398,7 +397,7 @@ const PROGRAM_CSS = `
     font-weight: bold;
     line-height: 0.9;
 }
-#ntisas-stats-header span {
+#ntisas-stats-header span:nth-of-type(1) {
     text-decoration: underline;
 }
 #ntisas-tweet-stats-message {
@@ -413,6 +412,12 @@ const PROGRAM_CSS = `
     width: 95%;
     text-align: center;
 }
+#ntisas-tweet-stats-table tr:nth-of-type(1) th {
+    padding-bottom: 5px;
+}
+#ntisas-tweet-stats-table tr:nth-of-type(3) th {
+    padding: 5px 0;
+}
 #ntisas-tweet-stats-table th a {
     padding: 1px 5px;
     border-radius: 10px;
@@ -424,6 +429,7 @@ const PROGRAM_CSS = `
 }
 #ntisas-open-settings {
     margin: 0.5em;
+    text-align: center;
 }
 #ntisas-open-settings input[type=button] {
     font-weight: bold;
@@ -463,8 +469,8 @@ const PROGRAM_CSS = `
     font-family: monospace;
     letter-spacing: -1px;
     position: absolute;
-    left: 30.25em;
-    height: 8em;
+    left: 29.25em;
+    height: 4em;
     padding: 7px;
     width: 18em;
     top: -1em;
@@ -474,9 +480,6 @@ const PROGRAM_CSS = `
 .ntisas-profile-user-view,
 .ntisas-profile-stream-view {
     display: flex;
-    border-bottom: 1px solid #CCC;
-}
-.ntisas-profile-user-view {
     border-bottom: 1px solid #CCC;
 }
 /**Tweet**/
@@ -507,8 +510,8 @@ const PROGRAM_CSS = `
     padding: 2px;
     border-radius: 5px;
 }
-.ntisas-self-tweet-highlights [ntisas-tweet].ntisas-self-tweet .ntisas-profile-line a[href^="/"] {
-    background-color: yellow;
+.ntisas-self-tweet-highlights [ntisas-tweet].ntisas-self-tweet .ntisas-display-name {
+    background-color: rgba(255,255,0,0.5);
 }
 [ntisas-tweet] .ntisas-tweet-left {
     border: 1px solid transparent;
@@ -538,11 +541,11 @@ const PROGRAM_CSS = `
     margin-bottom: 10px;
 }
 /**Tweet menu**/
-.ntisas-tweet-image-menu {
+[ntisas-tweet] .ntisas-tweet-image-menu {
     display: flex;
     border: 2px solid;
 }
-.ntisas-tweet-header {
+[ntisas-tweet] .ntisas-tweet-header {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -552,7 +555,7 @@ const PROGRAM_CSS = `
     font-weight: bold;
     border-right: 1px solid;
 }
-.ntisas-tweet-header a {
+[ntisas-tweet] .ntisas-tweet-header a {
     padding: 8px 12px;
     margin: -8px -12px;
 }
@@ -725,7 +728,6 @@ const PROGRAM_CSS = `
     width: 240px;
     height: 240px;
     text-align: center;
-    box-shadow: 0 0 0 4px #fff, 0 0 0 6px #eee;
 }
 .ntisas-media-menu .ntisas-media-images .ntisas-media-video {
     position: relative;
@@ -789,16 +791,16 @@ const PROGRAM_CSS = `
     font-weight: bold;
 }
 .ntisas-post-result .ntisas-image-container {
-    border: solid black 5px;
+    border: solid 5px;
 }
 .ntisas-post-result .ntisas-post-select .ntisas-image-container {
-    border: solid transparent 5px;
+    border: solid 5px transparent;
 }
 .ntisas-post-result .ntisas-post-select.ntisas-post-match .ntisas-image-container {
-    border: solid green 5px;
+    border: solid 5px rgba(0,128,0,0.75);
 }
 /**Dialogs**/
-.ui-dialog.ntisas-dialog {
+.ui-dialog.ui-dialog-twitter.ntisas-dialog {
     z-index: 1010;
 }
 .ui-dialog .ntisas-dialog-close.ui-dialog-titlebar-close {
@@ -822,10 +824,10 @@ const PROGRAM_CSS = `
 }
 /**Search dialog**/
 .ntisas-confirm-image .ntisas-image-container {
-    border: solid transparent 5px;
+    border: solid 5px transparent;
 }
 .ntisas-confirm-image .ntisas-post-select .ntisas-image-container {
-    border: solid blue 5px;
+    border: solid 5px rgba(0,0,255,0.75);
 }
 .ntisas-search-dialog .ntisas-desc-title a {
     color: dodgerblue;
@@ -855,14 +857,14 @@ const PROGRAM_CSS = `
     margin-top: 1em;
 }
 .ntisas-similar-result .ntisas-post-select.ntisas-post-match .ntisas-image-container {
-    border: solid green 5px;
+    border: solid 5px rgba(0,128,0,0.75);
 }
 .ntisas-similar-result .ntisas-image-container {
-    border: solid black 5px;
+    border: solid 5px;
 }
 .ntisas-similar-result .ntisas-post-select .ntisas-image-container,
 .ntisas-similar-result .ntisas-tweet-preview .ntisas-image-container {
-    border: solid transparent 5px;
+    border: solid 5px transparent;
 }
 .ntisas-no-results {
     font-style: italic;
@@ -1129,13 +1131,27 @@ const COLOR_CSS = `
 .ntisas-code {
     background-color: %TEXTFADED%;
 }
+.ntisas-horizontal-rule {
+    border-top-color: %TEXTSHADED%;
+    margin: 10px;
+}
+.ntisas-vertical-rule {
+    display: inline-block;
+    border-left-color: %TEXTSHADED%;
+    height: 200px;
+}
 /**Side menu**/
 #ntisas-side-menu {
     color: %TEXTCOLOR%;
     background-color: %BACKGROUNDCOLOR%;
+    border-bottom-color: %TEXTSHADED%;
+}
+#ntisas-side-border {
+    border-color: %TEXTMUTED%;
 }
 #ntisas-menu-header {
     background-color: %BASEFAINT%;
+    border-bottom-color: %TEXTMUTED%;
 }
 #ntisas-menu-selection {
     background-color: %TEXTFADED%;
@@ -1146,11 +1162,21 @@ const COLOR_CSS = `
 #ntisas-menu-selection a.ntisas-selected {
     color: %BASECOLOR%;
 }
+#ntisas-menu-info td:nth-of-type(3),
+#ntisas-menu-controls td:nth-of-type(3) {
+    color: %TEXTSHADED%;
+}
 #ntisas-available-sauce {
+    color: %TEXTSHADED%;
+}
+#ntisas-stats-header span:nth-of-type(2) {
     color: %TEXTSHADED%;
 }
 #ntisas-tweet-stats-message {
     color: %TEXTMUTED%;
+}
+#ntisas-tweet-stats-table th {
+    color: %TEXTSHADED%;
 }
 #ntisas-tweet-stats-table th a {
     color: %BASECOLOR%;
@@ -1193,36 +1219,44 @@ const COLOR_CSS = `
     background-color: %BASECOLOR%;
 }
 /**Tweet menu**/
-.ntisas-tweet-header {
+[ntisas-tweet] .ntisas-tweet-header {
     background-color: %BASEFAINT%;
-    border-color: %TEXTSHADED%;
+    border-right-color: %TEXTMUTED%;
 }
-.ntisas-tweet-header:hover {
+[ntisas-tweet] .ntisas-tweet-header:hover {
     background-color: %BASECOLOR%;
+}
+[ntisas-tweet] .ntisas-tweet-header a {
+    color: %TEXTCOLOR%;
 }
 [ntisas-tweet=stream] .ntisas-tweet-controls {
     background-color: %BACKGROUNDCOLOR%;
 }
 [ntisas-tweet] .ntisas-tweet-image-menu {
-    border-color: %TEXTCOLOR%;
+    border-color: %TEXTMUTED%;
 }
 [ntisas-tweet] .ntisas-link-menu {
     color: %TEXTCOLOR%;
     border-color: %TEXTFADED%;
 }
-.ntisas-query-button {
+[ntisas-tweet] .ntisas-query-button {
     background-color: %BACKGROUNDCOLOR%;
     border-color: %TEXTSHADED%;
 }
-.ntisas-query-button:hover {
+[ntisas-tweet] .ntisas-query-button:hover {
     background-color: %TEXTFADED%;
 }
-.ntisas-query-button.ntisas-menu-active {
+[ntisas-tweet] .ntisas-query-button.ntisas-menu-active {
     background-color: %BASECOLOR%;
     border-color: %BASEDARKER%;
 }
-.ntisas-query-button.ntisas-menu-active:hover {
+[ntisas-tweet] .ntisas-query-button.ntisas-menu-active:hover {
     background-color: %BASESHADED%;
+}
+/**Media menu**/
+.ntisas-media-menu .ntisas-media-images .ntisas-media-image,
+.ntisas-media-menu .ntisas-media-images .ntisas-media-video {
+    box-shadow: 0 0 0 4px %BACKGROUNDCOLOR%, 0 0 0 6px %TEXTFADED%;
 }
 /**Qtips**/
 .qtiptisas.qtiptisas-twitter {
@@ -1230,49 +1264,53 @@ const COLOR_CSS = `
     background-color: %BACKGROUNDCOLOR%;
     border: 1px solid %TEXTSHADED%;
 }
+/**Post result popup**/
+.ntisas-post-result .ntisas-image-container {
+    border-color: %TEXTCOLOR%;
+}
 /**Dialogs**/
-.ui-dialog.ntisas-dialog,
-.ui-dialog.ntisas-dialog .ui-widget-content,
-.ui-dialog.ntisas-dialog .ui-state-default {
+.ui-dialog.ui-dialog-twitter.ntisas-dialog,
+.ui-dialog.ui-dialog-twitter.ntisas-dialog .ui-widget-content,
+.ui-dialog.ui-dialog-twitter.ntisas-dialog .ui-state-default {
     color: %TEXTCOLOR%;
     background: %BACKGROUNDCOLOR%;
 }
-.ui-dialog.ntisas-dialog,
-.ui-dialog.ntisas-dialog .ui-tabs,
-.ui-dialog.ntisas-dialog .ui-state-default {
+.ui-dialog.ui-dialog-twitter.ntisas-dialog,
+.ui-dialog.ui-dialog-twitter.ntisas-dialog .ui-tabs,
+.ui-dialog.ui-dialog-twitter.ntisas-dialog .ui-state-default {
     border: 1px solid %TEXTSHADED%;
 }
-.ui-dialog.ntisas-dialog .ui-tabs-nav,
-.ui-dialog.ntisas-dialog .ui-dialog-titlebar,
-.ui-dialog.ntisas-dialog .ui-dialog-buttonpane {
+.ui-dialog.ui-dialog-twitter.ntisas-dialog .ui-tabs-nav,
+.ui-dialog.ui-dialog-twitter.ntisas-dialog .ui-dialog-titlebar,
+.ui-dialog.ui-dialog-twitter.ntisas-dialog .ui-dialog-buttonpane {
     border: 1px solid %TEXTFADED%;
 }
-.ui-dialog.ntisas-dialog .ui-state-active .ui-icon-background {
+.ui-dialog.ui-dialog-twitter.ntisas-dialog .ui-state-active .ui-icon-background {
     border: 4px solid %BASEDARKER%;
 }
-.ui-dialog.ntisas-dialog .ui-widget-header {
+.ui-dialog.ui-dialog-twitter.ntisas-dialog .ui-widget-header {
     color: %TEXTCOLOR%;
     background-color: %BASESHADED%;
 }
-.ui-dialog.ntisas-dialog .ui-button {
+.ui-dialog.ui-dialog-twitter.ntisas-dialog .ui-button {
     color: %TEXTCOLOR%;
     background-color: %BASEFAINT%;
     border: 1px solid %BASESHADED%;
 }
-.ui-dialog.ntisas-dialog .ui-button:hover,
-.ui-dialog.ntisas-dialog .ui-tab:hover {
+.ui-dialog.ui-dialog-twitter.ntisas-dialog .ui-button:hover,
+.ui-dialog.ui-dialog-twitter.ntisas-dialog .ui-tab:hover {
     background-color: %BASESHADED%;
     border: 1px solid %BASECOLOR%;
 }
-.ui-dialog.ntisas-dialog .ui-widget-content .ui-state-active,
-.ui-dialog.ntisas-dialog .ui-widget-content .ui-state-active:focus {
+.ui-dialog.ui-dialog-twitter.ntisas-dialog .ui-widget-content .ui-state-active,
+.ui-dialog.ui-dialog-twitter.ntisas-dialog .ui-widget-content .ui-state-active:focus {
     color: %BACKGROUNDCOLOR%;
     background-color: %BASECOLOR%;
     border: 1px solid %BASEDARKER%;
 }
-.ui-dialog.ntisas-dialog .ui-button:hover,
-.ui-dialog.ntisas-dialog .ui-widget-content .ui-state-active:active,
-.ui-dialog.ntisas-dialog .ui-widget-content .ui-state-active:focus {
+.ui-dialog.ui-dialog-twitter.ntisas-dialog .ui-button:hover,
+.ui-dialog.ui-dialog-twitter.ntisas-dialog .ui-widget-content .ui-state-active:active,
+.ui-dialog.ui-dialog-twitter.ntisas-dialog .ui-widget-content .ui-state-active:focus {
     box-shadow: 0 0 0 2px %BACKGROUNDCOLOR%, 0 0 0 4px %BASECOLOR%;
 }
 /**Confirm dialog**/
@@ -1280,6 +1318,12 @@ const COLOR_CSS = `
     color: %TEXTCOLOR%;
     border-color: %BASESHADED%;
     background-color: %BASEFAINT%;
+}
+.ntisas-similar-header-help {
+    color: %TEXTSHADED%;
+}
+.ntisas-similar-result .ntisas-image-container {
+    border-color: %TEXTCOLOR%;
 }
 /**Select controls**/
 .ntisas-select-controls div {
@@ -1500,7 +1544,7 @@ const SIDE_MENU = `
         </div>
         <div id="ntisas-menu-statistics" data-selector="statistics" style="display:none">
             <div data-setting="display_tweet_statistics">
-                <div id="ntisas-stats-header"><span>Tweet Statistics</span> (%STATISTICSHELP%)</div>
+                <div id="ntisas-stats-header"><span>Tweet Statistics</span> <span>(%STATISTICSHELP%)</span></div>
                 <div id="ntisas-tweet-stats-table"></div>
                 <div id="ntisas-tweet-stats-message">Unavailable on Tweet view.</div>
             </div>
@@ -1682,8 +1726,8 @@ const RESET_HELP = "L-Click to reset settings to default. (Shortcut: Alt+R)";
 const SETTINGS_HELP = "L-Click to open settings menu. (Shortcut: Alt+M)";
 const CLOSE_HELP = "L-Click to close. (Shortcut: Alt+C)";
 
-const IQDB_SELECT_HELP = "Unselect posts (black border) that aren't valid matches.\nMatches with a green border are a size match.";
-const POST_SELECT_HELP = "Select posts for deletion by clicking the thumbnail.\nLeaving the Delete all checkbox on will select all posts.\nUnsetting that checkbox allows adding posts to the current set.\nClick the colored postlink when finished to delete/add posts.";
+const IQDB_SELECT_HELP = "Unselect posts (black/white border) that aren't valid matches.\nMatches with a green border are a size match.";
+const POST_SELECT_HELP = "Select posts for deletion by clicking the thumbnail (black/white border).\nClick the colored postlink when finished to delete/add posts.";
 
 const DATABASE_IS_INSTALLING_HELP = "The database is currently installing 1 batch periodically.";
 const INSTALL_DATABASE_HELP = `Click to visit topic #${DANBOORU_TOPIC_ID} for manual install file.`;
@@ -2268,7 +2312,7 @@ const GENERAL_DIALOG_SETTINGS = {
     resizable: false,
     autoOpen: false,
     classes: {
-        'ui-dialog': 'ntisas-dialog',
+        'ui-dialog': 'ntisas-dialog ui-dialog-twitter',
         'ui-dialog-titlebar-close': 'ntisas-dialog-close'
     },
 };
@@ -3772,7 +3816,7 @@ function RenderConfirmDialog(tweet_id, similar_results) {
 
 function RenderSimilarContainer(image_result, index) {
     var html = RenderTwimgPreview(image_result.image_url, index, 'normal', 'Original image');
-    html += `<div class="ntisas-vr"></div>`;
+    html += `<div class="ntisas-vertical-rule"></div>`;
     if (image_result.results.length > 0) {
         image_result.results.forEach((iqdb_result) => {
             let post = iqdb_result.post;
@@ -3903,13 +3947,13 @@ function RenderHelp(help_text) {
 function RenderColorStyle(css, color_data) {
     return JSPLib.utility.regexReplace(css, {
         BASECOLOR: JSPLib.utility.sprintf('rgb(%s, %s, %s)', ...color_data.base_color),
-        BASEFAINT: JSPLib.utility.sprintf('rgb(%s, %s, %s, 0.1)', ...color_data.base_color),
-        BASESHADED: JSPLib.utility.sprintf('rgb(%s, %s, %s, 0.5)', ...color_data.base_color),
+        BASEFAINT: JSPLib.utility.sprintf('rgba(%s, %s, %s, 0.2)', ...color_data.base_color),
+        BASESHADED: JSPLib.utility.sprintf('rgba(%s, %s, %s, 0.5)', ...color_data.base_color),
         BASEDARKER: JSPLib.utility.sprintf('rgb(%s, %s, %s)', ...DarkenColorArray(color_data.base_color, 50)),
         TEXTCOLOR: JSPLib.utility.sprintf('rgb(%s, %s, %s)', ...color_data.text_color),
-        TEXTFADED: JSPLib.utility.sprintf('rgb(%s, %s, %s, 0.1)', ...color_data.text_color),
-        TEXTMUTED: JSPLib.utility.sprintf('rgb(%s, %s, %s, 0.2)', ...color_data.text_color),
-        TEXTSHADED: JSPLib.utility.sprintf('rgb(%s, %s, %s, 0.5)', ...color_data.text_color),
+        TEXTFADED: JSPLib.utility.sprintf('rgba(%s, %s, %s, 0.1)', ...color_data.text_color),
+        TEXTMUTED: JSPLib.utility.sprintf('rgba(%s, %s, %s, 0.2)', ...color_data.text_color),
+        TEXTSHADED: JSPLib.utility.sprintf('rgba(%s, %s, %s, 0.5)', ...color_data.text_color),
         BACKGROUNDCOLOR: JSPLib.utility.sprintf('rgb(%s, %s, %s)', ...color_data.background_color)
     });
 }
@@ -6161,6 +6205,8 @@ function MarkupStreamTweet(tweet) {
         $(tweet_right).addClass('ntisas-tweet-right');
         let sub_body = tweet_right;
         $(sub_body.children[0]).addClass('ntisas-profile-line');
+        let profile_links = $('a', sub_body.children[0]);
+        $(profile_links[0]).addClass('ntisas-display-name');
         var replychild, actionchild;
         var has_indicator;
         var index = 1;
