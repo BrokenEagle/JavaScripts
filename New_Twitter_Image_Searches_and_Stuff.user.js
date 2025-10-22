@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      11.0
+// @version      11.1
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -3021,15 +3021,16 @@ function UpdateSideMenu(page_type, update_visibility) {
     let $side_menu = $('#ntisas-side-menu');
     if (menu_shown) {
         if (!NTISAS.side_menu_draggable) {
-            $side_menu.draggable({handle: '#ntisas-menu-header'});
+            $side_menu.draggable({
+                handle: '#ntisas-menu-header',
+                stop: SaveMenuPosition,
+            });
             NTISAS.side_menu_draggable = true;
-            $(window).on('beforeunload.ntisas.update-position', SaveMenuPosition);
         }
     } else {
         if (NTISAS.side_menu_draggable) {
             $side_menu.draggable('destroy');
             NTISAS.side_menu_draggable = false;
-            $(window).off('beforeunload.ntisas.update-position');
             JSPLib.storage.removeLocalData('ntisas-menu-position');
             $side_menu.css({top: "", left: ""});
         }
@@ -5488,6 +5489,7 @@ function SaveMenuPosition() {
     let {left, top} = $('#ntisas-side-menu').get(0).style;
     if (left !== "" && top !== "") {
         JSPLib.storage.setLocalData('ntisas-menu-position', {left, top});
+        NTISAS.channel.postMessage({type: 'sidemenu_position', left, top});
     }
 }
 
@@ -6643,6 +6645,9 @@ function BroadcastTISAS(ev) {
         case 'sidemenu_ui':
             JSPLib.storage.invalidateLocalData('ntisas-side-menu');
             UpdateSideMenu(NTISAS.page, true);
+            break;
+        case 'sidemenu_position':
+            $('#ntisas-side-menu').css({left: ev.data.left, top: ev.data.top});
             break;
         case 'view_highlights':
             JSPLib.storage.invalidateLocalData('ntisas-view-highlights');
