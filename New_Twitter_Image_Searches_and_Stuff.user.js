@@ -1736,7 +1736,7 @@ const UPDATE_RECORDS_HELP = "L-Click to update records to current.";
 const MUST_INSTALL_HELP = "The database must be installed before the script is fully functional.";
 const REFRESH_RECORDS_HELP = "L-Click to refresh record count.";
 const AVAILABLE_SAUCE_HELP = "Shows the number of API requests remaining.\nOnly shown after use of the Sauce link.\nResults are kept for only 1 hour.";
-const SIMILAR_SOURCE_HELP = "L-Click to switch the source for the similar search. (Shortcut: Alt+S)";
+const SIMILAR_SOURCE_HELP = "L-Click to switch the source for the similar search. (Shortcut: Alt+Q)";
 const CONFIRM_UPLOAD_HELP = "L-click to turn on/off confirmation for uploading the full tweet, when done from the tweet menu.";
 const CONFIRM_DOWNLOAD_HELP = "L-click to turn on/off confirmation for downloading all media, when done from the tweet menu.";
 const VIEWS_HIGHLIGHTS_HELP = "L-Click to toggle visualizations on viewed/seen Tweets. (Shortcut: Alt+V)";
@@ -6986,7 +6986,7 @@ async function Main() {
     $(document).on(PROGRAM_CLICK, '.ntisas-select-controls a', SelectControls);
     $(document).on(PROGRAM_CLICK, '.ntisas-metric', SelectMetric);
     $(document).on(PROGRAM_CLICK, '.ntisas-toggle-image-size', ToggleImageSize);
-    $(document).on(PROGRAM_KEYDOWN, null, 'alt+s', ToggleSimilarSource);
+    $(document).on(PROGRAM_KEYDOWN, null, 'alt+q', ToggleSimilarSource);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+v', ToggleViewHighlights);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+m', OpenSettingsMenu);
     $(document).on(PROGRAM_KEYDOWN, null, 'alt+c', CloseSettingsMenu);
