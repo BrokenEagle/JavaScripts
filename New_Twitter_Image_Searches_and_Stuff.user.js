@@ -3089,6 +3089,14 @@ function UpdateSideMenu(page_type, update_visibility) {
     }
 }
 
+function UpdateSideMenuSelection() {
+    let selected_menu = JSPLib.storage.getLocalData('ntisas-side-selection');
+    $('#ntisas-menu-selection > a').removeClass('ntisas-selected');
+    $(`#ntisas-menu-selection a[data-selector=${selected_menu}]`).addClass('ntisas-selected');
+    $('#ntisas-content > div').hide();
+    $(`#ntisas-content div[data-selector=${selected_menu}]`).show();
+}
+
 function DisplayControl(control, all_controls, type) {
     let all_selectors = JSPLib.utility.joinList(all_controls, '#ntisas-', '-' + type, ',');
     $(all_selectors).hide();
@@ -5618,6 +5626,18 @@ function ToggleSideMenu(event) {
     return false;
 }
 
+function SideMenuSelection(event) {
+    let $link = $(event.target);
+    let selected_menu = $link.data('selector');
+    JSPLib.storage.setLocalData('ntisas-side-selection', selected_menu);
+    UpdateSideMenuSelection();
+    NTISAS.channel.postMessage({type: 'sidemenu_selection'});
+}
+
+function SideMenuHotkeys(event) {
+    $(`#ntisas-menu-selection a:nth-of-type(${event.originalEvent.key})`).click();
+}
+
 function ToggleSimilarSource() {
     let similar_source = (NTISAS.similar_source === 'danbooru' ? 'saucenao' : 'danbooru');
     JSPLib.storage.setLocalData('ntisas-similar-source', similar_source);
@@ -5650,20 +5670,6 @@ function ToggleViewCounts() {
     JSPLib.storage.setLocalData('ntisas-view-counts', !count_views);
     UpdateViewCountControls();
     NTISAS.channel.postMessage({type: 'count_views'});
-}
-
-function SideMenuSelection(event) {
-    let $link = $(event.target);
-    let selected_menu = $link.data('selector');
-    $('#ntisas-menu-selection > a').removeClass('ntisas-selected');
-    $(`#ntisas-menu-selection a[data-selector=${selected_menu}]`).addClass('ntisas-selected');
-    $('#ntisas-content > div').hide();
-    $(`#ntisas-content div[data-selector=${selected_menu}]`).show();
-    JSPLib.storage.setLocalData('ntisas-side-selection', selected_menu);
-}
-
-function SideMenuHotkeys(event) {
-    $(`#ntisas-menu-selection a:nth-of-type(${event.originalEvent.key})`).click();
 }
 
 function CurrentRecords() {
@@ -6691,6 +6697,10 @@ function BroadcastTISAS(ev) {
         case 'sidemenu_ui':
             JSPLib.storage.invalidateLocalData('ntisas-side-menu');
             UpdateSideMenu(NTISAS.page, true);
+            break;
+        case 'sidemenu_selection':
+            JSPLib.storage.invalidateLocalData('ntisas-side-selection');
+            UpdateSideMenuSelection();
             break;
         case 'sidemenu_position':
             $('#ntisas-side-menu').css({left: ev.data.left, top: ev.data.top});
