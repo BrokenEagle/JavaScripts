@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      11.2
+// @version      11.3
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -3941,7 +3941,7 @@ function RenderTwimgPreview(image_url, index, type, title, is_video = false) {
 function RenderPreviewAddons(title, source, ext, {size, width, height, is_user_upload = false} = {}) {
     let uploader_addon = (is_user_upload ? 'class="ntisas-post-upload"' : "");
     let domain = (source.match(/^https?:\/\//) ? JSPLib.utility.getDomainName(source, 2) : "NON-WEB");
-    let size_text = (Number.isInteger(size) && Number.isInteger(width) && Number.isInteger(height) ? `${ReadableBytes(size)} (${width} x ${height})` : "");
+    let size_text = (Number.isInteger(size) && Number.isInteger(width) && Number.isInteger(height) ? `${ReadableBytes(size)} (${width} x ${height})` : "loading...");
     return `
 <p class="ntisas-desc ntisas-desc-title"><span ${uploader_addon}>${title}</span></p>
 <p class="ntisas-desc ntisas-desc-info">${ext.toUpperCase()} @ <span title="${domain}">${domain}</span></p>
