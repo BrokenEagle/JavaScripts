@@ -3054,7 +3054,12 @@ async function GetImageLinks(tweet) {
 
 async function GetMediaLinksData($tweet) {
     let image_urls = await GetImageLinks($tweet[0]);
-    let videos = $tweet.find('[ntisas-image]').map((_, entry) => Boolean(/^tweet_video_thumb|^ext_tw_video_thumb|^amplify_video_thumb/.exec($(entry).data('path')))).toArray();
+    var videos;
+    if (NTISAS.page === 'media') {
+        videos = $tweet.find('.ntisas-media-images > div').map((_, entry) => entry.classList.contains('ntisas-media-video')).toArray();
+    } else {
+        videos = $tweet.find('[ntisas-image]').map((_, entry) => Boolean(/^tweet_video_thumb|^ext_tw_video_thumb|^amplify_video_thumb/.exec($(entry).data('path')))).toArray();
+    }
     return {image_urls, videos};
 }
 
