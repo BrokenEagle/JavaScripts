@@ -8,8 +8,8 @@
 // @match        https://x.com/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/New_Twitter_Image_Searches_and_Stuff.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/New_Twitter_Image_Searches_and_Stuff.user.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.14.1/jquery-ui.min.js
 // @require      https://cdn.jsdelivr.net/npm/jquery-hotkeys@0.2.2/jquery-hotkeys.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
@@ -5533,6 +5533,7 @@ function SeenTweet(entries, observer) {
 }
 
 function MenuNavigation(event) {
+    if (event.originalEvent.destination.url.startsWith('blob:')) return;
     let page_type = GetPageType(event.originalEvent.destination.url);
     UpdateSideMenu(page_type, true);
 }
