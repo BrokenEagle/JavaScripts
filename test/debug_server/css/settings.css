@@ -1,3 +1,6 @@
+#userscript-menu-link {
+    padding: 0.25rem;
+}
 .ui-tabs {
     position: inherit;
 }
@@ -67,16 +70,17 @@
 .jsplib-console {
     width: 100%;
     min-width: 100em;
+    margin-top: 1em;
 }
 .jsplib-prose {
     line-height: 1.4em;
     word-break: break-word;
 }
-.jsplib-console hr,
-.jsplib-expandable {
+div.jsplib-console hr,
+div.jsplib-expandable.jsplib-prose {
     width: 90%;
     margin-left: 0;
-    margin-bottom: 1em;
+    margin-bottom: 1.5em;
 }
 .jsplib-expandable-header {
     padding: .4em;
@@ -123,6 +127,7 @@
 .jsplib-striped td, .jsplib-striped th {
     padding: 4px 20px;
 }
+/***FIXES***/
 /*Fix for not using href on links*/
 #userscript-settings-menu a {
     cursor: pointer;
@@ -130,4 +135,13 @@
 /*Fix for setting the border with the color CSS*/
 #userscript-settings-menu #userscript-settings-tabs .ui-state-active {
     border-bottom-width: 0;
+}
+/*Fix for autocomplete on settings page*/
+ul.ui-menu .ui-state-focus,
+ul.ui-menu .ui-state-active {
+    margin: 0;
+}
+/*Fix for margins removed between prose sections*/
+#userscript-settings-menu div.prose > *:last-child:not(.jsplib-expandable) {
+    margin-bottom: 0.5em;
 }
