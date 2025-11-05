@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      11.4
+// @version      11.5
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -18,19 +18,19 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/saucenao.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/menu.js
 // @resource     jquery_ui_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/jquery_ui_custom.css
 // @resource     jquery_qtip_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.css
 // @grant        GM_getResourceText
@@ -45,11 +45,11 @@
 // eslint-disable-next-line no-redeclare
 /* global $ jQuery JSPLib validate localforage saveAs GM_getResourceText BigInt */
 
-/****Global variables****/
-
-//Library constants
+/****Library updates****/
 
 ////NONE
+
+/****Global variables****/
 
 //Exterior script variables
 
@@ -113,8 +113,6 @@ const PROGRAM_RESET_KEYS = {
     page_stats: {},
 };
 const PROGRAM_DEFAULT_VALUES = {
-    update_profile: {},
-    update_user_id: {},
     tweet_qtip: {},
     image_anchor: {},
     qtip_anchor: {},
@@ -2381,7 +2379,7 @@ const USER_CONSTRAINTS = {
 
 const TWEET_CONSTRAINTS = {
     entry: JSPLib.validate.arrayentry_constraints(),
-    values: {
+    value: {
         partial_image: JSPLib.validate.stringonly_constraints,
         partial_video: JSPLib.validate.stringnull_constraints,
         partial_sample: JSPLib.validate.stringnull_constraints,
@@ -2487,12 +2485,7 @@ function ValidateTypeEntry(key, entry, type, constraints) {
     if (type === 'hash') {
         return JSPLib.validate.validateHashEntries(key + '.value', entry.value, constraints.value);
     }
-    for (let i = 0; i < entry.value.length; i++) {
-        if (!JSPLib.validate.validateHashEntries(`${key}.value[${i}]`, entry.value[i], constraints.values)) {
-            return false;
-        }
-    }
-    return true;
+    return JSPLib.validate.validateHashArrayEntries(key + '.value', entry.value, constraints.value)
 }
 
 function ValidateProgramData(key, entry) {
@@ -2575,114 +2568,6 @@ function VaildateColorArray(array) {
     });
 }
 
-//Library functions
-
-JSPLib.menu.setupUserSettings = function (program_value) {
-    for (let key in program_value.user_settings) {
-        Object.defineProperty(program_value, key, {get() {return program_value.user_settings[key];}});
-    }
-};
-
-JSPLib.debug.getFunctionPrint = function (func_name) {
-    let printer = {};
-    if (this.debug_console) {
-        let context = this;
-        context._func_iteration ??= {};
-        context._func_iteration[func_name] ??= 0;
-        context._func_iteration[func_name]++;
-        ['debuglog', 'debugwarn', 'debugerror', 'debuglogLevel', 'debugwarnLevel', 'debugerrorLevel'].forEach((debugfunc) => {
-            printer[debugfunc] = function (...args) {
-                let iteration = context._func_iteration[func_name];
-                context[debugfunc](`${func_name}[${iteration}] -`, ...args);
-            };
-        });
-    } else {
-        ['debuglog', 'debugwarn', 'debugerror', 'debuglogLevel', 'debugwarnLevel', 'debugerrorLevel'].forEach((debugfunc) => {
-            printer[debugfunc] = (() => {});
-        });
-    }
-    return printer;
-};
-
-JSPLib.storage.getStorageData = function (key, storage, {default_val = null} = {}) {
-    let storage_type = this._getStorageType(storage);
-    var return_val;
-    if (key in this.memory_storage[storage_type]) {
-        return_val = this.memory_storage[storage_type][key];
-    } else if (key in storage) {
-        let record_key = this._getUID(key);
-        JSPLib.debug.recordTime(record_key, 'Storage');
-        let data = storage.getItem(key);
-        JSPLib.debug.recordTimeEnd(record_key, 'Storage');
-        try {
-            return_val = this.memory_storage[storage_type][key] = JSON.parse(data);
-        } catch (e) {
-            //swallow exception
-        }
-    }
-    if (return_val === undefined){
-        return_val = default_val;
-    }
-    return JSPLib.utility.dataCopy(return_val);
-};
-
-JSPLib.storage.batchRemoveData = function (keylist, {database = JSPLib.storage.danboorustorage} = {}) {
-    keylist.forEach((key) => {
-        this.removeIndexedSessionData(key, {database});
-    });
-    let session_keylist = keylist.map((key) => this._getSessionKey(key, database));
-    this._channel.postMessage({type: 'remove_session_data', from: JSPLib.UID.value, keys: session_keylist});
-    return database.removeItems(keylist);
-};
-
-JSPLib.network.processError = function (self, error, funcname) {
-    var ret = null;
-    if (typeof error === "object") {
-        if ('status' in error && 'responseText' in error) {
-            ret = error;
-        } else if ('statusText' in error) {
-            ret = {status: -1, responseText: error.statusText};
-        }
-    }
-    ret ??= {status: -999, responseText: "Bad error!"};
-    self.debug('errorLevel', funcname, "error:", ret.status, '\r\n', ret.responseText, JSPLib.debug.ERROR);
-    return ret;
-};
-
-JSPLib.network.notifyError = function (error, custom_error = "") {
-    const HEADER = '<span style="font-size:16px;line-height:24px;font-weight:bold;font-family:sans-serif">%s</span>';
-    let message = error.responseText;
-    var notice_html;
-    if (error.status > 0) {
-        if (message.match(/<\/html>/i)) {
-            message = (this._http_error_messages[error.status] ? this._http_error_messages[error.status] + "&nbsp;-&nbsp;" : "") + "&lt;HTML response&gt;";
-        } else {
-            try {
-                let parse_message = JSON.parse(message);
-                if (JSPLib.validate.isHash(parse_message)) {
-                    if ('reason' in parse_message) {
-                        message = parse_message.reason;
-                    } else if ('message' in parse_message) {
-                        message = parse_message.message;
-                    }
-                }
-            } catch (exception) {
-                //Swallow
-            }
-        }
-        notice_html = JSPLib.utility.sprintf(HEADER, `HTTP ${error.status}:`);
-    } else {
-        notice_html = JSPLib.utility.sprintf(HEADER, "Network error:");
-    }
-    notice_html += ' ' + message;
-    if (custom_error.length) {
-        notice_html += '<br>' + custom_error;
-    }
-    JSPLib.notice.error(notice_html);
-};
-
-JSPLib.debug.addModuleLogs('network', ['processError']);
-
 //String functions
 
 function GetDateString(timestamp) {
@@ -2697,12 +2582,6 @@ function GetTimeString(timestamp) {
 
 function GetDateTimeString(timestamp) {
     return GetDateString(timestamp) + GetTimeString(timestamp);
-}
-
-function ReadableBytes(bytes) {
-    var i = Math.floor(Math.log(bytes) / Math.log(1024)),
-        sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-    return JSPLib.utility.setPrecision((bytes / Math.pow(1024, i)), 2) + ' ' + sizes[i];
 }
 
 function GetLinkTitle(post) {
@@ -2918,8 +2797,8 @@ function DestroyDialog(key, tweet_id) {
 }
 
 function UpdateUserIDCallback() {
-    if (NTISAS.update_user_id.timer) {
-        clearInterval(NTISAS.update_user_id.timer);
+    if (NTISAS.update_user_id?.timer) {
+        clearInterval(NTISAS.update_user_id?.timer);
     }
     JSPLib.storage.checkLocalDB('twuser-' + NTISAS.account).then((storage_data) => {
         if (!storage_data) {
@@ -2946,8 +2825,8 @@ function UpdateUserIDCallback() {
 }
 
 function UpdateProfileCallback() {
-    if (NTISAS.update_profile.timer) {
-        clearInterval(NTISAS.update_profile.timer);
+    if (NTISAS.update_profile?.timer) {
+        clearInterval(NTISAS.update_profile?.timer);
     }
     if (NTISAS.display_user_id) {
         $('.ntisas-profile-user-id').html(JSPLib.utility.sprintf(PROFILE_USER_ID, ''));
@@ -3946,7 +3825,7 @@ function RenderTwimgPreview(image_url, index, type, title, is_video = false) {
 function RenderPreviewAddons(title, source, ext, {size, width, height, is_user_upload = false} = {}) {
     let uploader_addon = (is_user_upload ? 'class="ntisas-post-upload"' : "");
     let domain = (source.match(/^https?:\/\//) ? JSPLib.utility.getDomainName(source, 2) : "NON-WEB");
-    let size_text = (Number.isInteger(size) && Number.isInteger(width) && Number.isInteger(height) ? `${ReadableBytes(size)} (${width} x ${height})` : "loading...");
+    let size_text = (Number.isInteger(size) && Number.isInteger(width) && Number.isInteger(height) ? `${JSPLib.utility.readableBytes(size)} (${width} x ${height})` : "loading...");
     return `
 <p class="ntisas-desc ntisas-desc-title"><span ${uploader_addon}>${title}</span></p>
 <p class="ntisas-desc ntisas-desc-info">${ext.toUpperCase()} @ <span title="${domain}">${domain}</span></p>
@@ -4206,7 +4085,7 @@ function InitializeTwitterImage(article, image_urls, preview_dimensions) {
         image.width = preview_width;
         image.height = preview_height;
         image.style.paddingTop = `${preview_dimensions - preview_height}px`;
-        let size_text = (size > 0 ? ReadableBytes(size) : 'Unavailable');
+        let size_text = (size > 0 ? JSPLib.utility.readableBytes(size) : 'Unavailable');
         $('.ntisas-desc-size', article).html(`${size_text} (${width} x ${height})`);
     });
     return image_promise;
@@ -6397,7 +6276,7 @@ function RegularCheck() {
     let printer = JSPLib.debug.getFunctionPrint('RegularCheck');
     if (NTISAS.update_on_found && NTISAS.user_id) {
         NTISAS.update_on_found = false;
-    } else if (NTISAS.update_profile.timer === false) {
+    } else if (NTISAS.update_profile?.timer === false) {
         printer.debugwarn("Failed to find user ID!!");
     }
 
@@ -6680,8 +6559,8 @@ function CollectTweetStats() {
 
 //Settings functions
 
-function BroadcastTISAS(ev) {
-    let printer = JSPLib.debug.getFunctionPrint('BroadcastTISAS');
+function BroadcastNTISAS(ev) {
+    let printer = JSPLib.debug.getFunctionPrint('BroadcastNTISAS');
     printer.debuglog(`(${ev.data.type}):`, ev.data);
     switch (ev.data.type) {
         case 'postlink':
@@ -6894,6 +6773,16 @@ function InitializeDialogButtons() {
     GetMenuCloseButton().attr('title', CLOSE_HELP);
 }
 
+function InitializeProgramValues() {
+    Object.assign(NTISAS, {
+        intersection_observer: new IntersectionObserver(CheckViews, {threshold: 0.75}),
+        seen_observer: new IntersectionObserver(SeenTweet, {threshold: 0.10}),
+    });
+    SetQueryDomain();
+    SetSauceAPIKey();
+    SetGraphQLEndpoints();
+}
+
 //Only render the settings menu on demand
 function RenderSettingsMenu() {
     //Create the dialog
@@ -6966,17 +6855,15 @@ function RenderSettingsMenu() {
 async function Main() {
     JSPLib.network.jQuerySetup();
     jQuery.ajaxSetup({timeout: JSPLib.utility.one_second * 10});
-    JSPLib.notice.installBanner(PROGRAM_SHORTCUT);
-    Object.assign(NTISAS, {
-        intersection_observer: new IntersectionObserver(CheckViews, {threshold: 0.75}),
-        seen_observer: new IntersectionObserver(SeenTweet, {threshold: 0.10}),
-        channel: JSPLib.utility.createBroadcastChannel(PROGRAM_NAME, BroadcastTISAS),
-        user_settings: JSPLib.menu.loadUserSettings(),
-    }, PROGRAM_DEFAULT_VALUES, PROGRAM_RESET_KEYS);
-    JSPLib.menu.setupUserSettings(NTISAS);
-    SetQueryDomain();
-    SetSauceAPIKey();
-    SetGraphQLEndpoints();
+    JSPLib.menu.preloadScript(NTISAS, {
+        danbooru_userscript: false,
+        default_data: PROGRAM_DEFAULT_VALUES,
+        reset_data: PROGRAM_RESET_KEYS,
+        initialize_func: InitializeProgramValues,
+        broadcast_func: BroadcastNTISAS,
+        program_css: PROGRAM_CSS,
+        menu_css: MENU_CSS,
+    });
     await InitializelUserProfileData();
     $(document).on(PROGRAM_CLICK, '.ntisas-tweet-header a', ToggleSideMenu);
     $(document).on(PROGRAM_CLICK, '.ntisas-control-search', SearchMenu);
@@ -7003,10 +6890,10 @@ async function Main() {
     setInterval(IntervalStorageHandler, QUEUE_POLL_INTERVAL);
     setInterval(IntervalNetworkHandler, QUEUE_POLL_INTERVAL);
     InitializeSaveDatabaseBatches();
-    JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
-    JSPLib.utility.setCSSStyle(GM_getResourceText('jquery_qtip_css'), 'qtip');
-    JSPLib.utility.setCSSStyle(NOTICE_CSS, 'notice');
     InitializeColorScheme();
+    JSPLib.notice.installBanner(PROGRAM_SHORTCUT);
+    JSPLib.utility.setCSSStyle(NOTICE_CSS, 'notice');
+    JSPLib.utility.setCSSStyle(GM_getResourceText('jquery_qtip_css'), 'qtip');
     JSPLib.utility.initializeInterval(RegularCheck, PROGRAM_RECHECK_INTERVAL);
     JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
     JSPLib.load.noncriticalTasks(InitializeCleanupTasks);

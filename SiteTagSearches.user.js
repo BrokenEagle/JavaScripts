@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SiteTagSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.17
+// @version      4.18
 // @description  Presents additional site links for the wiki tag(s).
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -13,22 +13,22 @@
 // @run-at       document-idle
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SiteTagSearches.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SiteTagSearches.user.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/menu.js
 // ==/UserScript==
 
 /* global $ JSPLib */
 
-/****Global variables****/
-
-//Library constants
+/****Library updates****/
 
 ////NONE
+
+/****Global variables****/
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '14958';
@@ -199,10 +199,6 @@ const SITE_CONFIG = {
 
 /***Functions***/
 
-//Library functions
-
-////NONE
-
 //Helper functions
 
 function GetWikiName() {
@@ -309,13 +305,14 @@ function RenderSettingsMenu() {
 //Main function
 
 function Main() {
-    JSPLib.debug.debuglog("Initialize start:", JSPLib.utility.getProgramTime());
     const preload = {
         run_on_settings: false,
         initialize_func: InitializeProgramValues,
+        render_menu_func: RenderSettingsMenu,
+        program_css: PROGRAM_CSS,
         menu_css: MENU_CSS,
     };
-    if (!JSPLib.menu.preloadScript(STS, RenderSettingsMenu, preload)) return;
+    if (!JSPLib.menu.preloadScript(STS, preload)) return;
     let $wiki_other_names = $('.wiki-other-name');
     if ($wiki_other_names.length) {
         let $wiki_container = $wiki_other_names.parent();
@@ -329,7 +326,6 @@ function Main() {
     }
     $('.sts-collapsible-source-links').on(PROGRAM_CLICK, SiteLinkToggle('source', 'e'));
     $('.sts-collapsible-booru-links').on(PROGRAM_CLICK, SiteLinkToggle('booru', 'w'));
-    JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
 }
 
 /****Function decoration****/

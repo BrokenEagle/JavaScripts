@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.11
+// @version      29.12
 // @description  Validates tag add/remove inputs on a post edit or upload, plus several other post validations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -18,26 +18,26 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-setitems@1.4.0/dist/localforage-setitems.min.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ */
 
-/****Global variables****/
-
-//Library constants
+/****Library updates****/
 
 ////NONE
+
+/****Global variables****/
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '14474';
@@ -362,10 +362,6 @@ function ValidateProgramData(key, entry) {
     }
     return true;
 }
-
-//Library functions
-
-////NONE
 
 //Helper functions
 
@@ -941,13 +937,14 @@ function RenderSettingsMenu() {
 //Main program
 
 function Main() {
-    this.debug('log', "Initialize start:", JSPLib.utility.getProgramTime());
     const preload = {
         run_on_settings: false,
         default_data: DEFAULT_VALUES,
         initialize_func: InitializeProgramValues,
+        render_menu_func: RenderSettingsMenu,
+        program_css: PROGRAM_CSS,
     };
-    if (!JSPLib.menu.preloadScript(VTI, RenderSettingsMenu, preload)) return;
+    if (!JSPLib.menu.preloadScript(VTI, preload)) return;
     $("#form [name=commit],#quick-edit-form [name=commit]").after(SUBMIT_BUTTON).hide();
     if (VTI.is_post_index) {
         $(".post-preview a").on(PROGRAM_CLICK, PostModeMenu);
@@ -992,7 +989,6 @@ function Main() {
     $("#validate-tags").on(PROGRAM_CLICK, ValidateTags);
     $("#check-tags").on(PROGRAM_CLICK, CheckTags);
     RebindHotkey();
-    JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
     JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
     JSPLib.load.noncriticalTasks(CleanupTasks);
 }

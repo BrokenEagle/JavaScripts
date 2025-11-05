@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      24.5
+// @version      24.6
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -12,33 +12,26 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/EventListener.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/EventListener.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru LZString */
 
+/****Library updates****/
+
+////NONE
+
 /****Global variables****/
-
-//Library constants
-
-const JSPLIB_MENU_CSS = `
-/*Temporary fix until the menu module can be updated.*/
-#userscript-settings-menu #event-listener .jsplib-expandable-content {
-    border-top: 1px solid var(--default-border-color);
-}
-#userscript-settings-menu .jsplib-expandable-content {
-    border: 1px solid var(--default-border-color);
-}`;
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '14747';
@@ -1110,10 +1103,6 @@ function CorrectList(type, typelist) {
     }
     return false;
 }
-
-//Library functions
-
-////NONE
 
 //Helper functions
 
@@ -2739,15 +2728,16 @@ function RenderSettingsMenu() {
 //Main program
 
 function Main() {
-    this.debug('log', "Initialize start:", JSPLib.utility.getProgramTime());
     const preload = {
         run_on_settings: true,
         default_data: DEFAULT_VALUES,
         initialize_func: InitializeProgramValues,
         broadcast_func: BroadcastEL,
-        menu_css: MENU_CSS + JSPLIB_MENU_CSS,
+        render_menu_func: RenderSettingsMenu,
+        program_css: PROGRAM_CSS,
+        menu_css: MENU_CSS,
     };
-    if (!JSPLib.menu.preloadScript(EL, RenderSettingsMenu, preload)) return;
+    if (!JSPLib.menu.preloadScript(EL, preload)) return;
     JSPLib.notice.installBanner(PROGRAM_SHORTCUT);
     EventStatusCheck();
     if (!document.hidden && localStorage['el-saved-notice'] !== undefined && !JSPLib.concurrency.checkTimeout('el-saved-timeout', EL.timeout_expires)) {
@@ -2830,7 +2820,6 @@ function Main() {
             EL.dmail_notice.show();
         });
     }
-    JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
 }
 
 /****Function decoration****/

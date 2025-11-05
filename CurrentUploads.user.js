@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.20
+// @version      16.21
 // @description  Gives up-to-date stats on uploads.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -14,26 +14,26 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru CanvasJS */
 
-/****Global variables****/
-
-//Library constants
+/****Library updates****/
 
 ////NONE
+
+/****Global variables****/
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '15169';
@@ -165,7 +165,7 @@ const DEFAULT_VALUES = {
 //CSS Constants
 
 //Style information
-const program_css = `
+const PROGRAM_CSS = `
 #upload-counts {
     border-style: dotted;
     border-width: 2px;
@@ -772,10 +772,6 @@ function ValidateProgramData(key, entry) {
     }
     return true;
 }
-
-//Library functions
-
-////NONE
 
 //Table functions
 
@@ -1857,15 +1853,16 @@ function RenderSettingsMenu() {
 //Main program
 
 function Main() {
-    this.debug('log', "Initialize start:", JSPLib.utility.getProgramTime());
     const preload = {
         run_on_settings: true,
         default_data: DEFAULT_VALUES,
         reset_data: PROGRAM_RESET_KEYS,
         initialize_func: InitializeProgramValues,
         broadcast_func: BroadcastCU,
+        render_menu_func: RenderSettingsMenu,
+        program_css: PROGRAM_CSS,
     };
-    if (!JSPLib.menu.preloadScript(CU, RenderSettingsMenu, preload)) return;
+    if (!JSPLib.menu.preloadScript(CU, preload)) return;
 
     var $notice_box = $(notice_box);
     var $footer_notice = $(unstash_notice);
@@ -1884,7 +1881,6 @@ function Main() {
         CU.hidden = true;
         setTimeout(() => {$("#toggle-count-notice").click();}, JQUERY_DELAY);
     }
-    JSPLib.utility.setCSSStyle(program_css, 'program');
     JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
     JSPLib.load.noncriticalTasks(CleanupTasks);
 }
@@ -1892,9 +1888,9 @@ function Main() {
 /****Function decoration****/
 
 [
-    Main, BroadcastCU, GetPeriodUploads, GetCount, GetReverseTagImplication, ValidateEntry,
+    BroadcastCU, GetPeriodUploads, GetCount, GetReverseTagImplication, ValidateEntry,
 ] = JSPLib.debug.addFunctionLogs([
-    Main, BroadcastCU, GetPeriodUploads, GetCount, GetReverseTagImplication, ValidateEntry,
+    BroadcastCU, GetPeriodUploads, GetCount, GetReverseTagImplication, ValidateEntry,
 ]);
 
 [

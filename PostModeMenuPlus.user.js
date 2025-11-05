@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://github.com/BrokenEagle
-// @version      8.7
+// @version      8.8
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -15,25 +15,25 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/PostModeMenuPlus.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/PostModeMenuPlus.user.js
 // @require      https://cdn.jsdelivr.net/npm/dragselect@2.3.1/dist/ds.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/menu.js
 // ==/UserScript==
 
 /* global $ Danbooru JSPLib DragSelect */
 
-/****Global variables****/
-
-//Library variables
+/****Library updates****/
 
 ////NONE
+
+/****Global variables****/
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '21812';
@@ -267,10 +267,6 @@ const SEPARATOR_DICT = {
 const POST_VOTE_FIELDS = 'id,post_id';
 
 /****Functions****/
-
-//Library functions
-
-////NONE
 
 // Helper functions
 
@@ -679,14 +675,15 @@ function RenderSettingsMenu() {
 //Main function
 
 function Main() {
-    JSPLib.debug.debuglog("Initialize start:", JSPLib.utility.getProgramTime());
     const preload = {
         run_on_settings: false,
         default_data: DEFAULT_VALUES,
         initialize_func: InitializeProgramValues,
+        render_menu_func: RenderSettingsMenu,
+        program_css: PROGRAM_CSS,
         menu_css: MENU_CSS,
     };
-    if (!JSPLib.menu.preloadScript(PMM, RenderSettingsMenu, preload)) return;
+    if (!JSPLib.menu.preloadScript(PMM, preload)) return;
     InitializeModeMenu();
     if (PMM.select_only_enabled) {
         InitializeSelectOnly();
@@ -700,7 +697,6 @@ function Main() {
     if (PMM.available_mode_keys.has('edit')) {
         $('#validate-tags, button[name=cancel]').off('click.danbooru').on('click.pmm', CloseEditDialog);
     }
-    JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
 }
 
 /****Initialization****/

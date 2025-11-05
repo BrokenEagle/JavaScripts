@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DisplayPostInfo
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      12.12
+// @version      12.13
 // @description  Display views, uploader, and other info to the user.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -19,26 +19,26 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/core.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/md5.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru CryptoJS */
 
-/****Global variables****/
-
-//Library constants
+/****Library updates****/
 
 ////NONE
+
+/****Global variables****/
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '15926';
@@ -374,10 +374,6 @@ function ValidateProgramData(key, entry) {
     }
     return true;
 }
-
-//Library functions
-
-////NONE
 
 //Auxiliary functions
 
@@ -832,13 +828,13 @@ function RenderSettingsMenu() {
 //Main program
 
 function Main() {
-    this.debug('log', "Initialize start:", JSPLib.utility.getProgramTime());
     const preload = {
         run_on_settings: false,
         default_data: DEFAULT_VALUES,
         initialize_func: InitializeProgramValues,
+        render_menu_func: RenderSettingsMenu,
     };
-    if (!JSPLib.menu.preloadScript(DPI, RenderSettingsMenu, preload)) return;
+    if (!JSPLib.menu.preloadScript(DPI, preload)) return;
     if (DPI.controller === 'posts' && DPI.action === 'show') {
         $('#post-information #post-info-score').after(POST_VIEWS_LINE);
         $('#post-information #post-info-uploader').after(USER_NAMES_LINE);
@@ -884,9 +880,9 @@ function Main() {
 /****Function decoration****/
 
 [
-    Main, GetUserData, DisplayPostViews, DisplayTopTagger, GetUsersData, ValidateEntry,
+    GetUserData, DisplayPostViews, DisplayTopTagger, GetUsersData, ValidateEntry,
 ] = JSPLib.debug.addFunctionLogs([
-    Main, GetUserData, DisplayPostViews, DisplayTopTagger, GetUsersData, ValidateEntry,
+    GetUserData, DisplayPostViews, DisplayTopTagger, GetUsersData, ValidateEntry,
 ]);
 
 [

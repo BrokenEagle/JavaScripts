@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DTextStyler
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.7
+// @version      5.8
 // @description  Danbooru DText UI addon.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -12,23 +12,23 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/DTextStyler.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/DTextStyler.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru Papa */
 
-/****Global variables****/
-
-// Library constants
+/****Library updates****/
 
 ////NONE
+
+/****Global variables****/
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '14229';
@@ -479,10 +479,6 @@ const DTEXT_SELECTORS = {
 };
 
 /****Functions****/
-
-//Library functions
-
-////NONE
 
 //Auxiliary functions
 
@@ -1000,14 +996,15 @@ function RenderSettingsMenu() {
 //Main program
 
 function Main() {
-    JSPLib.debug.debuglog("Initialize start:", JSPLib.utility.getProgramTime());
     const preload = {
         run_on_settings: false,
         default_data: DEFAULT_VALUES,
         initialize_func: InitializeProgramValues,
+        render_menu_func: RenderSettingsMenu,
+        program_css: PROGRAM_CSS,
         menu_css: MENU_CSS,
     };
-    if (!JSPLib.menu.preloadScript(DS, RenderSettingsMenu, preload)) return;
+    if (!JSPLib.menu.preloadScript(DS, preload)) return;
     if (DS.dtext_types_handled.length) {
         InitializeDtextPreviews();
     }
@@ -1021,7 +1018,6 @@ function Main() {
     $('.dtext-markup').on(PROGRAM_CLICK, DtextMarkup);
     $('.dtext-action').on(PROGRAM_CLICK, DtextAction);
     JSPLib.utility.blockActiveElementSwitch('.dtext-markup, .dtext-action');
-    JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
 }
 
 /****Initialization****/

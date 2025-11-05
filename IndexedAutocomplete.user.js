@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.23
+// @version      29.24
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -14,26 +14,26 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru validate */
 
-/****Global variables****/
-
-//Library constants
+/****Library updates****/
 
 ////NONE
+
+/****Global variables****/
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '14701';
@@ -1203,10 +1203,6 @@ const USAGE_CONSTRAINTS = {
 };
 
 /****Functions****/
-
-//Library functions
-
-////NONE
 
 //Validate functions
 
@@ -2678,22 +2674,22 @@ function RenderSettingsMenu() {
 //Main program
 
 function Main() {
-    this.debug('log', "Initialize start:", JSPLib.utility.getProgramTime());
     const preload = {
         run_on_settings: true,
         default_data: DEFAULT_VALUES,
         initialize_func: InitializeProgramValues,
         broadcast_func: BroadcastIAC,
+        render_menu_func: RenderSettingsMenu,
+        program_css: PROGRAM_CSS,
         menu_css: SETTINGS_MENU_CSS,
     };
-    if (!JSPLib.menu.preloadScript(IAC, RenderSettingsMenu, preload)) return;
+    if (!JSPLib.menu.preloadScript(IAC, preload)) return;
     InstallQuickSearchBars();
     JSPLib.load.setProgramGetter(IAC, 'RTC', 'RecentTagsCalc');
     CorrectUsageData();
     SetupAutocompleteBindings();
     SetupAutocompleteInitializations();
     SetTagAutocompleteSource();
-    JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
     JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
     JSPLib.load.noncriticalTasks(CleanupTasks);
 }
@@ -2701,11 +2697,11 @@ function Main() {
 /****Function decoration****/
 
 [
-    Main, BroadcastIAC, NetworkSource, PruneUsageData, CorrectUsageData, InsertUserSelected,
+    BroadcastIAC, NetworkSource, PruneUsageData, CorrectUsageData, InsertUserSelected,
     FixExpirationCallback, ValidateEntry,
     RecheckSourceData, InitializeProgramValues,
 ] = JSPLib.debug.addFunctionLogs([
-    Main, BroadcastIAC, NetworkSource, PruneUsageData, CorrectUsageData, InsertUserSelected,
+    BroadcastIAC, NetworkSource, PruneUsageData, CorrectUsageData, InsertUserSelected,
     FixExpirationCallback, ValidateEntry,
     RecheckSourceData, InitializeProgramValues,
 ]);

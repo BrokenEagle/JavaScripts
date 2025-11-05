@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.7
+// @version      6.8
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -12,16 +12,16 @@
 // @run-at       document-idle
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/TranslatorAssist.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/TranslatorAssist.user.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/menu.js
 // @connect      validator.nu
 // ==/UserScript==
 
@@ -29,11 +29,11 @@
 /* global $ JSPLib Danbooru GM */
 /* eslint-disable dot-notation */
 
-/****Global variables****/
-
-//Library constants
+/****Library updates****/
 
 ////NONE
+
+/****Global variables****/
 
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '20687';
@@ -1303,12 +1303,6 @@ const LOAD_PANEL_KEYS = {
 const CLEANUP_LAST_NOTED = JSPLib.utility.one_hour;
 
 /****Functions****/
-
-//Library functions
-
-JSPLib.utility.clamp = function (value, low, high) {
-    return Math.max(low, Math.min(value, high));
-};
 
 // Helper functions
 
@@ -3243,7 +3237,6 @@ function InitializeSideMenu() {
     }
     TA.starting_notes = JSPLib.utility.getObjectAttributes(Danbooru.Note.notes, 'id');
     TA.initialized = true;
-    JSPLib.utility.setCSSStyle(PROGRAM_CSS, 'program');
 }
 
 // Settings functions
@@ -3291,14 +3284,15 @@ function RenderSettingsMenu() {
 // Main function
 
 function Main() {
-    JSPLib.debug.debuglog("Initialize start:", JSPLib.utility.getProgramTime());
     const preload = {
         run_on_settings: false,
         default_data: DEFAULT_VALUES,
         initialize_func: InitializeProgramValues,
+        render_menu_func: RenderSettingsMenu,
+        program_css: PROGRAM_CSS,
         menu_css: MENU_CSS,
     };
-    if (!JSPLib.menu.preloadScript(TA, RenderSettingsMenu, preload)) return;
+    if (!JSPLib.menu.preloadScript(TA, preload)) return;
     $('#translate').on(PROGRAM_CLICK, ToggleSideNotice);
     if (TA.check_last_noted_enabled) {
         CheckLastNoted();
