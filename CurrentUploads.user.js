@@ -1250,17 +1250,17 @@ async function PopulateTable() {
     //Prevent function from being reentrant while processing uploads
     PopulateTable.is_started = true;
     var post_data = [];
-    InitializeControls();
+    InitializeControls_T();
     if (CU.checked_users[CU.usertag][CU.current_username] === undefined) {
         TableMessage(`<div id="empty-uploads">Loading data... (<span id="loading-counter">...</span>)</div>`);
-        post_data = await ProcessUploads(CU.current_username);
+        post_data = await ProcessUploads_T(CU.current_username);
         CU.checked_users[CU.usertag][CU.current_username] = post_data.length;
     }
     let is_override = $("#count_override_select")[0].checked;
     if (is_override || CU.checked_users[CU.usertag][CU.current_username]) {
         CU.active_copytags = JSPLib.utility.dataCopy(CU.user_copytags[CU.usertag][CU.current_username].daily);
-        await CheckPeriodUploads(CU.current_username);
-        InitializeTable();
+        await CheckPeriodUploads_T(CU.current_username);
+        InitializeTable_T();
     } else {
         TableMessage(`<div id="empty-uploads">${CU.empty_uploads_message}</div>`);
     }
@@ -1274,11 +1274,11 @@ function InitializeControls() {
         $("#count-controls").html(RenderAllTooltipControls());
         $("#count-copyrights-controls").html(RenderCopyrightControls());
         $(".cu-select-tooltip").on(PROGRAM_CLICK, TooltipChange);
-        $(".cu-select-period a").on(PROGRAM_CLICK, CopyrightPeriod);
+        $(".cu-select-period a").on(PROGRAM_CLICK, CopyrightPeriod_T);
         $("#count-copyrights-header a").on(PROGRAM_CLICK, ToggleCopyrightsSection);
-        $("#count_submit_user_id").on(PROGRAM_CLICK, CheckUser);
-        $("#count_refresh_user_id").on(PROGRAM_CLICK, RefreshUser);
-        $("#count_add_copyright").on(PROGRAM_CLICK, AddCopyright);
+        $("#count_submit_user_id").on(PROGRAM_CLICK, CheckUser_T);
+        $("#count_refresh_user_id").on(PROGRAM_CLICK, RefreshUser_T);
+        $("#count_add_copyright").on(PROGRAM_CLICK, AddCopyright_T);
         CU.controls_initialized = true;
         setTimeout(() => {CU.IAC.InitializeAutocompleteIndexed?.("#count_query_user_id", 'us');}, 1000);
     }
@@ -1288,9 +1288,9 @@ function InitializeTable() {
     $("#count-header").html(AddTable(RenderHeader(), 'class="striped"'));
     $("#count-table").html(AddTable(RenderBody(), 'class="striped"'));
     $("#count-order").html(RenderOrderMessage("d", 0));
-    $("#count-header .cu-process").on(PROGRAM_CLICK, GetPeriod);
+    $("#count-header .cu-process").on(PROGRAM_CLICK, GetPeriod_T);
     $("#count-header th").on(PROGRAM_CLICK, SortTable);
-    $("#count-table .cu-manual,#count-table .cu-limited").on(PROGRAM_CLICK, RenderChart);
+    $("#count-table .cu-manual,#count-table .cu-limited").on(PROGRAM_CLICK, RenderChart_T);
     $("#count-controls,#count-copyrights,#count-header").show();
     $(`.cu-select-tooltip[data-type="${CU.current_metric}"] a`).click();
     CU.sorttype = 0;
@@ -1366,7 +1366,7 @@ async function GetPeriod(event) {
     let is_limited = $(event.target).hasClass("cu-limited");
     let period = header.dataset.period;
     $(`#count-header th[data-period=${period}] .cu-display`).show();
-    await GetPeriodUploads(CU.current_username, period, is_limited, `#count-header th[data-period=${period}] .cu-counter`);
+    await GetPeriodUploads_T(CU.current_username, period, is_limited, `#count-header th[data-period=${period}] .cu-counter`);
     CU.period_available[CU.usertag][CU.current_username][period] = true;
     let column = header.cellIndex;
     let $cells = $(`#count-table td:nth-of-type(${column + 1})`);
@@ -1503,7 +1503,7 @@ function TooltipChange(event) {
     $(`.cu-select-tooltip[data-type="${CU.current_metric}"]`).addClass("cu-activetooltip");
     $(`.cu-tooltiptext[data-type="${CU.current_metric}"]`).addClass("cu-activetooltip");
     JSPLib.storage.setLocalData('cu-current-metric', CU.current_metric);
-    $(".cu-hover .cu-uploads").off('mouseover.cu').on('mouseover.cu', TooltipHover);
+    $(".cu-hover .cu-uploads").off('mouseover.cu').on('mouseover.cu', TooltipHover_T);
     event.preventDefault();
 }
 
@@ -1545,7 +1545,7 @@ async function CopyrightPeriod(event) {
                 let user_copytags = SortDict(copyright_count);
                 if (CU.user_settings.copyrights_merge) {
                     $("#count-copyrights-counter").html(copyright_counter);
-                    user_copytags = await MergeCopyrightTags(user_copytags);
+                    user_copytags = await MergeCopyrightTags_T(user_copytags);
                     $("#count-copyrights-counter").html('');
                 }
                 CU.user_copytags[CU.usertag][CU.current_username][current_period] = user_copytags;
@@ -1574,7 +1574,7 @@ function ToggleNotice(event) {
             CU.current_username = CU.username.toLowerCase();
             CU.level_string = (CU.username === "Anonymous" ? 'Member' : Danbooru.CurrentUser.data('level-string'));
             CU.usertag = 'user';
-            PopulateTable();
+            PopulateTable_T();
         }
         CU.channel.postMessage({type: "show"});
     } else {
@@ -1622,7 +1622,7 @@ async function RefreshUser() {
     });
     await Promise.all(promise_array);
     $("#count-copyrights-counter").html('');
-    InitializeTable();
+    InitializeTable_T();
 }
 
 async function CheckUser() {
@@ -1648,7 +1648,7 @@ async function CheckUser() {
             CU.empty_uploads_message = is_approvals ? empty_approvals_message_other : empty_uploads_message_other;
             CU.usertag = is_approvals ? 'approver' : 'user';
             CU.counttype = is_approvals ? 'approvals' : 'uploads';
-            PopulateTable();
+            PopulateTable_T();
         } else {
             TableMessage(`<div id="empty-uploads">User doesn't exist!</div>`);
         }
@@ -1690,7 +1690,7 @@ async function ProcessUploads() {
     var current_uploads = [];
     var user_copytags = [];
     if (CU.current_username !== "Anonymous") {
-        current_uploads = await GetPeriodUploads(CU.current_username, 'd');
+        current_uploads = await GetPeriodUploads_T(CU.current_username, 'd');
     }
     let previous_key = GetPeriodKey("previous");
     if (current_uploads.length) {
@@ -1707,7 +1707,7 @@ async function ProcessUploads() {
             let prev_copyright_count = GetCopyrightCount(previous_uploads);
             user_copytags = SortDict(curr_copyright_count);
             if (CU.user_settings.copyrights_merge) {
-                user_copytags = await MergeCopyrightTags(user_copytags);
+                user_copytags = await MergeCopyrightTags_T(user_copytags);
             }
             if (CU.user_settings.copyrights_threshold) {
                 user_copytags = user_copytags.slice(0, CU.user_settings.copyrights_threshold);
@@ -1864,7 +1864,7 @@ function Main() {
         reset_data: PROGRAM_RESET_KEYS,
         initialize_func: InitializeProgramValues,
         broadcast_func: BroadcastCU,
-        render_menu_func: RenderSettingsMenu,
+        render_menu_func: RenderSettingsMenu_T,
         program_css: PROGRAM_CSS,
     };
     if (!JSPLib.menu.preloadScript(CU, preload)) return;
@@ -1892,16 +1892,16 @@ function Main() {
 
 /****Function decoration****/
 
-[
-    RenderSettingsMenu, InitializeTable, InitializeControls, TooltipHover, RenderChart,
-    GetPeriod, CheckPeriodUploads, GetPeriodUploads, RefreshUser, CheckUser, AddCopyright, CopyrightPeriod,
-    MergeCopyrightTags, ProcessUploads, PopulateTable,
+const [
+    RenderSettingsMenu_T, InitializeTable_T, InitializeControls_T, TooltipHover_T, RenderChart_T,
+    GetPeriod_T, CheckPeriodUploads_T, GetPeriodUploads_T, RefreshUser_T, CheckUser_T, AddCopyright_T,
+    CopyrightPeriod_T, MergeCopyrightTags_T, ProcessUploads_T, PopulateTable_T,
 ] = JSPLib.debug.addFunctionTimers([
     //Sync
     RenderSettingsMenu, InitializeTable, InitializeControls, TooltipHover, RenderChart,
     //Async
-    GetPeriod, CheckPeriodUploads, GetPeriodUploads, RefreshUser, CheckUser, AddCopyright, CopyrightPeriod,
-    MergeCopyrightTags, ProcessUploads, PopulateTable
+    GetPeriod, CheckPeriodUploads, GetPeriodUploads, RefreshUser, CheckUser, AddCopyright,
+    CopyrightPeriod, MergeCopyrightTags, ProcessUploads, PopulateTable,
 ]);
 
 /****Initialization****/
