@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.21
+// @version      16.22
 // @description  Gives up-to-date stats on uploads.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -670,6 +670,7 @@ function BuildValidator(validation_key) {
 }
 
 function ValidateEntry(key, entry) {
+    let printer = JSPLib.debug.getFunctionPrint('ValidateEntry');
     if (!JSPLib.validate.validateIsHash(key, entry)) {
         return false;
     }
@@ -691,7 +692,7 @@ function ValidateEntry(key, entry) {
         }
         return ValidateStatEntries(key + '.value', entry.value);
     }
-    this.debug('log', "Bad key!");
+    printer.debuglog("Bad key!");
     return false;
 }
 
@@ -1308,10 +1309,11 @@ function TableMessage(message) {
 //Network functions
 
 async function GetReverseTagImplication(tag) {
+    let printer = JSPLib.debug.getFunctionPrint('GetReverseTagImplication');
     var key = 'rti-' + tag;
     var check = await JSPLib.storage.checkLocalDB(key, rti_expiration);
     if (!(check)) {
-        this.debug('log', "Network:", key);
+        printer.debuglog("Network:", key);
         let data = await JSPLib.danbooru.submitRequest('tag_implications', {search: {antecedent_name: tag}, only: id_field}, {default_val: [], key});
         JSPLib.storage.saveData(key, {value: data.length, expires: JSPLib.utility.getExpires(rti_expiration)});
         return data.length;
@@ -1320,11 +1322,12 @@ async function GetReverseTagImplication(tag) {
 }
 
 async function GetCount(type, tag) {
+    let printer = JSPLib.debug.getFunctionPrint('GetCount');
     let max_expires = period_info.countexpires[type];
     var key = 'ct' + type + '-' + tag;
     var check = await JSPLib.storage.checkLocalDB(key, max_expires);
     if (!(check)) {
-        this.debug('log', "Network:", key);
+        printer.debuglog("Network:", key);
         return JSPLib.danbooru.submitRequest('counts/posts', {tags: BuildTagParams(type, tag), skip_cache: true}, {default_val: {counts: {posts: 0}}, key})
             .then((data) => {
                 JSPLib.storage.saveData(key, {value: data.counts.posts, expires: JSPLib.utility.getExpires(max_expires)});
@@ -1333,12 +1336,13 @@ async function GetCount(type, tag) {
 }
 
 async function GetPeriodUploads(username, period, limited = false, domname = null) {
+    let printer = JSPLib.debug.getFunctionPrint('GetPeriodUploads');
     let period_name = period_info.longname[period];
     let max_expires = period_info.uploadexpires[period];
     let key = GetPeriodKey(period_name);
     var check = await JSPLib.storage.checkLocalDB(key, max_expires);
     if (!(check)) {
-        this.debug('log', `Network (${period_name} ${CU.counttype})`);
+        printer.debuglog(`Network (${period_name} ${CU.counttype})`);
         let data = await JSPLib.danbooru.getPostsCountdown(BuildTagParams(period, `${CU.usertag}:${username}`), max_post_limit_query, post_fields, domname);
         let mapped_data = MapPostData(data);
         if (limited) {
@@ -1758,7 +1762,8 @@ function OptionCacheDataKey(data_type, data_value) {
 //Settings functions
 
 function BroadcastCU(ev) {
-    this.debug('log', `(${ev.data.type}):`, ev.data);
+    let printer = JSPLib.debug.getFunctionPrint('BroadcastCU');
+    printer.debuglog(`(${ev.data.type}):`, ev.data);
     switch (ev.data.type) {
         case "hide":
             CU.hidden = true;
@@ -1886,12 +1891,6 @@ function Main() {
 }
 
 /****Function decoration****/
-
-[
-    BroadcastCU, GetPeriodUploads, GetCount, GetReverseTagImplication, ValidateEntry,
-] = JSPLib.debug.addFunctionLogs([
-    BroadcastCU, GetPeriodUploads, GetCount, GetReverseTagImplication, ValidateEntry,
-]);
 
 [
     RenderSettingsMenu, InitializeTable, InitializeControls, TooltipHover, RenderChart,
