@@ -126,6 +126,11 @@ const SETTINGS_CONFIG = {
         validate: JSPLib.validate.isBoolean,
         hint: "Show subscribe events regardless of subscribe status on the item's page when the creator is the user.<br>&emsp;<i>(See <b>Additional setting details</b> for more clarifying info)</i>."
     },
+    show_parent_events: {
+        reset: false,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Show post events when a subscribed post is parented by another post."
+    },
     filter_untranslated_commentary: {
         reset: true,
         validate: JSPLib.validate.isBoolean,
@@ -888,7 +893,7 @@ const TYPEDICT = {
         user: 'updater_id',
         creator: ['post', 'uploader_id'],
         item: 'post_id',
-        only: 'id,updater_id,post_id,added_tags,removed_tags',
+        only: 'id,updater_id,post_id,added_tags,removed_tags,parent_changed,unchanged_tags',
         limit: 2,
         filter: FilterData,
         other_filter: IsShownPostEdit,
@@ -896,7 +901,7 @@ const TYPEDICT = {
         process: () => {JSPLib.utility.setCSSStyle(POST_CSS, 'post');},
         plural: 'edits',
         display: "Edits",
-        includes: 'post[uploader_id]',
+        includes: 'post[uploader_id,parent_id]',
         useritem: false,
         customquery: PostCustomQuery,
     },
@@ -1264,6 +1269,16 @@ function IsShownData(val, subscribe_set, user_set) {
         printer.debuglogLevel('creator_event', this.controller, val, JSPLib.debug.DEBUG);
         return true;
     }
+    if (EL.show_parent_events && this.controller === 'post_versions') {
+        if (EL.show_creator_events && val.post.parent?.uploader_id === EL.userid) {
+            printer.debuglogLevel('creator_parent_event', this.controller, val, JSPLib.debug.DEBUG);
+            return true;
+        }
+        if (subscribe_set.has(val.post.parent?.id)) {
+            printer.debuglogLevel('subscribe_parent_event', this.controller, val, JSPLib.debug.DEBUG);
+            return true;
+        }
+    }
     return false;
 }
 
@@ -1412,6 +1427,31 @@ function CheckAbsence() {
     }
     EL.days_absent = JSPLib.utility.setPrecision(time_absent / JSPLib.utility.one_day, 2);
     return false;
+}
+
+async function AddParentInclude(versions) {
+    let parent_ids = versions.map((version) => {
+        if (!version.parent_changed) return null;
+        let changed_tags = JSPLib.utility.concat(version.added_tags, version.removed_tags);
+        let parent_tag = changed_tags.find((tag) => (/parent:\d+/.test(tag)));
+        if (!parent_tag) return null;
+        return Number(parent_tag.slice(7));
+    });
+    parent_ids = parent_ids.filter((id) => id !== null);
+    if (parent_ids.length > 0) {
+        let parent_posts = await JSPLib.danbooru.submitRequest('posts', {tags: `id:${parent_ids.join(',')} status:any`, limit: parent_ids.length, only: 'id,uploader_id'});
+        for (let i = 0; i < versions.length; i++) {
+            let version = versions[i];
+            if (version.parent_changed) {
+                let parent_id = version.post.parent_id;
+                let parent_post = parent_posts.find((post) => post.id === parent_id);
+                if (parent_post) {
+                    version.post.parent = parent_post;
+                }
+            }
+        }
+    }
+    return versions;
 }
 
 //Table row functions
@@ -2350,6 +2390,9 @@ async function CheckSubscribeType(type, domname = null) {
             JSPLib.storage.setLocalData(overflowkey, false);
             EL.all_overflows[type] = false;
         }
+        if (EL.show_parent_events && type === 'post') {
+            jsontype = await AddParentInclude(jsontype);
+        }
         let filtertype = TYPEDICT[type].filter(jsontype, subscribe_set, user_set);
         let lastusertype = (jsontype.length ? JSPLib.danbooru.getNextPageID(jsontype, true) : typelastid);
         if (filtertype.length || savedlastid) {
@@ -2699,6 +2742,7 @@ function RenderSettingsMenu() {
     $('#el-subscribe-event-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", SUBSCRIBE_EVENT_SETTINGS_DETAILS));
     $('#el-subscribe-event-settings').append(JSPLib.menu.renderInputSelectors('subscribe_events_enabled', 'checkbox'));
     $('#el-subscribe-event-settings').append(JSPLib.menu.renderCheckbox('show_creator_events'));
+    $('#el-subscribe-event-settings').append(JSPLib.menu.renderCheckbox('show_parent_events'));
     $('#el-user-event-settings').append(JSPLib.menu.renderInputSelectors('user_events_enabled', 'checkbox'));
     $('#el-other-event-settings-message').append(JSPLib.menu.renderExpandable("Event exceptions", OTHER_EVENT_SETTINGS_DETAILS));
     $('#el-other-event-settings').append(JSPLib.menu.renderInputSelectors('other_events_enabled', 'checkbox'));
