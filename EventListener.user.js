@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      24.6
+// @version      24.7
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1241,22 +1241,30 @@ function FilterData(array, subscribe_set, user_set) {
 }
 
 function IsShownData(val, subscribe_set, user_set) {
+    let printer = JSPLib.debug.getFunctionPrint('IsShownData');
     if ((EL.filter_user_events && this.user && (val[this.user] === EL.userid)) || EL.filter_users.includes(val[this.user])) {
         return false;
-    }
-    if (user_set && this.user && user_set.has(val[this.user])) {
-        return true;
-    }
-    if (subscribe_set && this.item) {
-        let is_creator_event = EL.show_creator_events && this.creator && JSPLib.utility.getNestedAttribute(val, this.creator) === EL.userid;
-        if (!is_creator_event && !subscribe_set.has(val[this.item])) {
-            return false;
-        }
     }
     if (this.other_filter && !this.other_filter(val)) {
         return false;
     }
-    return true;
+    if (!subscribe_set || !user_set) {
+        printer.debuglogLevel('post_query-other', this.controller, val, JSPLib.debug.DEBUG);
+        return true;
+    }
+    if (user_set.size && user_set.has(val[this.user])) {
+        printer.debuglogLevel('user_set', this.controller, val, JSPLib.debug.DEBUG);
+        return true;
+    }
+    if (subscribe_set.size && subscribe_set.has(val[this.item])) {
+        printer.debuglogLevel('subscribe_set', this.controller, val, JSPLib.debug.DEBUG);
+        return true;
+    }
+    if (EL.show_creator_events && this.creator && JSPLib.utility.getNestedAttribute(val, this.creator) === EL.userid) {
+        printer.debuglogLevel('creator_event', this.controller, val, JSPLib.debug.DEBUG);
+        return true;
+    }
+    return false;
 }
 
 function IsShownCommentary(val) {
