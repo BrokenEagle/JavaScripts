@@ -311,10 +311,12 @@ const PROGRAM_CSS = `
 }
 #ta-side-menu #ta-size-controls {
     position: absolute;
+    height: 2.25em;
     top: 2.75em;
     right: 0.5em;
     padding: 0.25em 0.75em;
     background: #f0f0f0;
+    display: flex;
 }
 #ta-side-menu #ta-size-controls img {
     width: 1.5em;
