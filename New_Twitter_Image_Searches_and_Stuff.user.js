@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      11.5
+// @version      11.6
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -307,7 +307,7 @@ const TWEET_PREVIEW_DIMENSION = 300;
 const PROGRAM_CSS = `
 /**General*/
 :root {
-    --menu-height: 200px;
+    --menu-height: 100px;
 }
 .ntisas-code {
     font-family: monospace;
@@ -518,6 +518,7 @@ const PROGRAM_CSS = `
 .ntisas-show-views [ntisas-tweet].ntisas-viewed .ntisas-tweet-left,
 .ntisas-show-views [ntisas-tweet].ntisas-seen .ntisas-tweet-left {
     height: calc(100% - var(--menu-height));
+    position: relative;
 }
 .ntisas-show-views [ntisas-tweet].ntisas-seen .ntisas-seen-indicator {
     position: absolute;
