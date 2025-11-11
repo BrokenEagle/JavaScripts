@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.8
+// @version      6.9
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -31,7 +31,28 @@
 
 /****Library updates****/
 
-////NONE
+JSPLib.utility.timeAgo = function (time_value, {precision = 2, compare_time = null, recent_duration = null} = {}) {
+    let timestamp = Number(time_value) || this.toTimeStamp(time_value);
+    if (!this.isTimestamp(timestamp)) return "N/A";
+    compare_time ??= Date.now();
+    let time_interval = compare_time - timestamp;
+    if (this.isTimestamp(recent_duration) && time_interval < recent_duration) {
+        return "recently";
+    }
+    if (time_interval < JSPLib.utility.one_hour) {
+        return this.setPrecision(time_interval / JSPLib.utility.one_minute, precision) + " minutes ago";
+    }
+    if (time_interval < JSPLib.utility.one_day) {
+        return this.setPrecision(time_interval / JSPLib.utility.one_hour, precision) + " hours ago";
+    }
+    if (time_interval < JSPLib.utility.one_month) {
+        return this.setPrecision(time_interval / JSPLib.utility.one_day, precision) + " days ago";
+    }
+    if (time_interval < JSPLib.utility.one_year) {
+        return this.setPrecision(time_interval / JSPLib.utility.one_month, precision) + " months ago";
+    }
+    return this.setPrecision(time_interval / JSPLib.utility.one_year, precision) + " years ago";
+};
 
 /****Global variables****/
 
