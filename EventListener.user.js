@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      24.7
+// @version      24.8
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1437,9 +1437,14 @@ async function AddParentInclude(versions) {
         if (!parent_tag) return null;
         return Number(parent_tag.slice(7));
     });
-    parent_ids = parent_ids.filter((id) => id !== null);
+    parent_ids = JSPLib.utility.arrayUnique(parent_ids.filter((id) => id !== null));
     if (parent_ids.length > 0) {
-        let parent_posts = await JSPLib.danbooru.submitRequest('posts', {tags: `id:${parent_ids.join(',')} status:any`, limit: parent_ids.length, only: 'id,uploader_id'});
+        let url_addons = {
+            tags: `id:${parent_ids.join(',')} status:any`,
+            limit: parent_ids.length,
+            only: 'id,uploader_id',
+        }
+        let parent_posts = await JSPLib.danbooru.getAllItems('posts', 200, {url_addons, long_format: true});
         for (let i = 0; i < versions.length; i++) {
             let version = versions[i];
             if (version.parent_changed) {
