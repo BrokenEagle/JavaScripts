@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      24.8
+// @version      25.0
 // @description  Informs users of new events (flags,appeals,dmails,comments,forums,notes,commentaries,post edits,wikis,pools,bans,feedbacks,mod actions)
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -29,7 +29,41 @@
 
 /****Library updates****/
 
-////NONE
+JSPLib.utility.toTimeStamp = function (time_value) {
+    while (typeof time_value === 'string') {
+        var tmp;
+        try {
+            tmp = JSON.parse(time_value);
+        } catch(e) {
+            break;
+        }
+        time_value = tmp;
+    }
+    return (typeof time_value === 'string' ? new Date(time_value).getTime() : time_value);
+};
+
+JSPLib.utility.timeAgo = function (time_value, {precision = 2, compare_time = null, recent_duration = null} = {}) {
+    let timestamp = this.toTimeStamp(time_value);
+    if (!this.isTimestamp(timestamp)) return "N/A";
+    compare_time ??= Date.now();
+    let time_interval = compare_time - timestamp;
+    if (this.isTimestamp(recent_duration) && time_interval < recent_duration) {
+        return "recently";
+    }
+    if (time_interval < JSPLib.utility.one_hour) {
+        return this.setPrecision(time_interval / JSPLib.utility.one_minute, precision) + " minutes ago";
+    }
+    if (time_interval < JSPLib.utility.one_day) {
+        return this.setPrecision(time_interval / JSPLib.utility.one_hour, precision) + " hours ago";
+    }
+    if (time_interval < JSPLib.utility.one_month) {
+        return this.setPrecision(time_interval / JSPLib.utility.one_day, precision) + " days ago";
+    }
+    if (time_interval < JSPLib.utility.one_year) {
+        return this.setPrecision(time_interval / JSPLib.utility.one_month, precision) + " months ago";
+    }
+    return this.setPrecision(time_interval / JSPLib.utility.one_year, precision) + " years ago";
+};
 
 /****Global variables****/
 
@@ -315,6 +349,7 @@ const DEFAULT_VALUES = {
     events_checked: false,
     post_ids: new Set(),
     thumbs: {},
+    pages: {},
 };
 
 //CSS Constants
@@ -323,6 +358,41 @@ const SUBSCRIBED_COLOR = 'mediumseagreen';
 const UNSUBSCRIBED_COLOR = 'darkorange';
 
 const PROGRAM_CSS = `
+.el-more {
+    color: blue;
+    font-weight: bold;
+}
+.el-none {
+    color: red;
+}
+.el-event-header {
+    padding: 8px;
+    background-color: #EEE;
+    border: 1px solid #DDD;
+    font-weight: bold;
+    font-size: 20px;
+    margin-right: 2px;
+}
+.el-event-header a {
+    cursor: pointer;
+}
+.el-event-header[data-type="close"] a {
+    color: var(--red-5);
+}
+.el-event-header[data-type="close"] a:hover {
+    color: var(--red-3);
+}
+.el-event-header.el-header-active {
+    background-color: var(--blue-4);
+    border-color: var(--blue-6);
+}
+.el-event-header.el-header-active:hover {
+    background-color: var(--blue-3);
+}
+.el-event-header.el-header-active a {
+    color: white;
+}
+.el-event-header.el-header-active a:hover
 #dmail-notice {
     display: none;
 }
@@ -750,6 +820,11 @@ const PROGRAM_DATA_DETAILS = `
 </ul>
 <p><b>Note:</b> The raw format of all data keys begins with "el-". which is unused by the cache editor controls.</p>`;
 
+let EVENTS_NAV_HTML = '<a id="el-nav-events" class="py-1.5 px-3" style="cursor: pointer;">Events(<span id="el-events-total">...</span>)</a>'
+
+const MORE_HTML = '<span class="el-more">more</span>';
+const NONE_HTML = '<span class="el-none">none</span>';
+
 //Time constants
 
 const TIMER_POLL_INTERVAL = 100; //Polling interval for checking program status
@@ -776,8 +851,10 @@ const TYPEDICT = {
         user: 'creator_id',
         creator: ['post', 'uploader_id'],
         item: 'post_id',
-        only: 'id,creator_id,post_id',
+        only: 'id,created_at,creator_id,post_id',
         filter: FilterData,
+        find_events: FindEvents,
+        insert_events: InsertTableEvents,
         insert: InsertEvents,
         plural: 'flags',
         display: "Flags",
@@ -790,8 +867,10 @@ const TYPEDICT = {
         user: 'creator_id',
         creator: ['post', 'uploader_id'],
         item: 'post_id',
-        only: 'id,creator_id,post_id',
+        only: 'id,created_at,creator_id,post_id',
         filter: FilterData,
+        find_events: FindEvents,
+        insert_events: InsertTableEvents,
         insert: InsertEvents,
         plural: 'appeals',
         display: "Appeals",
@@ -802,11 +881,15 @@ const TYPEDICT = {
     dmail: {
         controller: 'dmails',
         addons: {search: {is_deleted: false}},
-        only: 'id,from_id',
+        only: 'id,created_at,from_id',
         user: 'from_id',
         filter: FilterData,
+        find_events: FindEvents,
+        insert_events: InsertTableEvents,
         other_filter: (val) => (!val.is_read),
         insert: InsertDmails,
+        insert_events: InsertTableEvents,
+        insert_postprocess: InsertDmailPostprocess,
         plural: 'mail',
         useritem: true,
         open: () => {OpenItemClick('dmail', AddDmail);},
@@ -824,9 +907,11 @@ const TYPEDICT = {
         user: 'creator_id',
         creator: ['post', 'uploader_id'],
         item: 'post_id',
-        only: 'id,creator_id,post_id',
+        only: 'id,created_at,creator_id,post_id',
         limit: 10,
         filter: FilterData,
+        find_events: FindEvents,
+        insert_events: InsertCommentEvents,
         insert: InsertComments,
         process: () => {JSPLib.utility.setCSSStyle(COMMENT_CSS, 'comment');},
         plural: 'comments',
@@ -839,9 +924,12 @@ const TYPEDICT = {
         user: 'creator_id',
         creator: ['topic', 'creator_id'],
         item: 'topic_id',
-        only: 'id,creator_id,topic_id',
+        only: 'id,created_at,creator_id,topic_id',
         limit: 10,
         filter: FilterData,
+        find_events: FindEvents,
+        insert_events: InsertTableEvents,
+        insert_postprocess: InsertForumPostprocess,
         insert: InsertForums,
         process: () => {JSPLib.utility.setCSSStyle(FORUM_CSS, 'forum');},
         plural: 'forums',
@@ -855,9 +943,13 @@ const TYPEDICT = {
         user: 'updater_id',
         creator: ['post', 'uploader_id'],
         item: 'post_id',
-        only: 'id,updater_id,post_id',
+        only: 'id,created_at,updater_id,post_id',
         limit: 10,
         filter: FilterData,
+        find_events: FindEvents,
+        insert_events: InsertTableEvents,
+        //insert_postprocess: InsertNotePostprocess,
+        add_thumbnail: true,
         insert: InsertNotes,
         plural: 'notes',
         display: "Notes",
@@ -870,9 +962,15 @@ const TYPEDICT = {
         user: 'updater_id',
         creator: ['post', 'uploader_id'],
         item: 'post_id',
-        only: 'id,updater_id,post_id,translated_title,translated_description',
+        only: 'id,created_at,updater_id,post_id,translated_title,translated_description',
         limit: 10,
         filter: FilterData,
+        find_events: FindEvents,
+        insert_events: InsertTableEvents,
+        column_widths: {
+            'original-column': '35%',
+            'translated-column': '35%',
+        },
         other_filter: IsShownCommentary,
         insert: InsertEvents,
         plural: 'commentaries',
@@ -893,9 +991,11 @@ const TYPEDICT = {
         user: 'updater_id',
         creator: ['post', 'uploader_id'],
         item: 'post_id',
-        only: 'id,updater_id,post_id,added_tags,removed_tags,parent_changed,unchanged_tags',
+        only: 'id,created_at,updater_id,post_id,added_tags,removed_tags,parent_changed,unchanged_tags',
         limit: 2,
         filter: FilterData,
+        find_events: FindEvents,
+        insert_events: InsertTableEvents,
         other_filter: IsShownPostEdit,
         insert: InsertPosts,
         process: () => {JSPLib.utility.setCSSStyle(POST_CSS, 'post');},
@@ -910,9 +1010,11 @@ const TYPEDICT = {
         user: 'user_id',
         creator: ['post', 'uploader_id'],
         item: 'post_id',
-        only: 'id,user_id,post_id',
+        only: 'id,created_at,user_id,post_id',
         limit: 10,
         filter: FilterData,
+        find_events: FindEvents,
+        insert_events: InsertTableEvents,
         insert: InsertEvents,
         plural: 'approvals',
         display: "Approval",
@@ -924,9 +1026,15 @@ const TYPEDICT = {
         controller: 'wiki_page_versions',
         user: 'updater_id',
         item: 'wiki_page_id',
-        only: 'id,updater_id,wiki_page_id',
+        only: 'id,created_at,updater_id,wiki_page_id',
         limit: 10,
         filter: FilterData,
+        find_events: FindEvents,
+        insert_events: InsertTableEvents,
+        insert_postprocess: InsertWikiPostprocess,
+        column_widths: {
+            'diff-column': '5%',
+        },
         insert: InsertWikis,
         process: () => {JSPLib.utility.setCSSStyle(WIKI_CSS, 'wiki');},
         plural: 'wikis',
@@ -938,9 +1046,11 @@ const TYPEDICT = {
         controller: 'artist_versions',
         user: 'updater_id',
         item: 'artist_id',
-        only: 'id,updater_id,artist_id',
+        only: 'id,created_at,updater_id,artist_id',
         limit: 10,
         filter: FilterData,
+        find_events: FindEvents,
+        insert_events: InsertTableEvents,
         insert: InsertEvents,
         plural: 'artists',
         display: "Artists",
@@ -951,9 +1061,12 @@ const TYPEDICT = {
         controller: 'pool_versions',
         user: 'updater_id',
         item: 'pool_id',
-        only: 'id,updater_id,pool_id',
+        only: 'id,created_at,updater_id,pool_id',
         limit: 2,
         filter: FilterData,
+        find_events: FindEvents,
+        insert_events: InsertTableEvents,
+        insert_postprocess: InsertPoolPostprocess,
         insert: InsertPools,
         process: () => {JSPLib.utility.setCSSStyle(POOL_CSS, 'pool');},
         plural: 'pools',
@@ -967,8 +1080,10 @@ const TYPEDICT = {
     feedback: {
         controller: 'user_feedbacks',
         user: 'creator_id',
-        only: 'id,creator_id,body',
+        only: 'id,created_at,creator_id,body',
         filter: FilterData,
+        find_events: FindEvents,
+        insert_events: InsertTableEvents,
         other_filter: IsShownFeedback,
         insert: InsertEvents,
         process: () => {JSPLib.utility.setCSSStyle(FEEDBACK_CSS, 'feedback');},
@@ -979,8 +1094,10 @@ const TYPEDICT = {
     ban: {
         controller: 'bans',
         user: 'banner_id',
-        only: 'id,banner_id',
+        only: 'id,created_at,banner_id',
         filter: FilterData,
+        find_events: FindEvents,
+        insert_events: InsertTableEvents,
         other_filter: IsShownBan,
         insert: InsertEvents,
         process: () => {JSPLib.utility.setCSSStyle(BAN_CSS, 'ban');},
@@ -993,7 +1110,9 @@ const TYPEDICT = {
         get addons() {
             return {search: {category: EL.subscribed_mod_actions.join(',')}};
         },
-        only: 'id,category',
+        only: 'id,created_at,category',
+        find_events: FindCategoryEvents,
+        insert_events: InsertTableEvents,
         filter: (array) => (array.filter((val) => (IsCategorySubscribed(val.category)))),
         insert: InsertEvents,
         plural: 'mod actions',
@@ -1010,25 +1129,25 @@ const SUBSCRIBE_GROUPING = '(?:' + ALL_SUBSCRIBES.join('|') + ')';
 const BOOL_SETTING_REGEX = RegExp([
     `el-${SUBSCRIBE_GROUPING}overflow`,
     'el-overflow',
-    ].join('|')
-)
+].join('|')
+                                 )
 const TIME_SETTING_REGEX = RegExp([
-        'el-last-seen',
-        'el-process-semaphore',
-        'el-event-timeout',
-        'el-saved-timeout',
-    ].join('|')
-)
+    'el-last-seen',
+    'el-process-semaphore',
+    'el-event-timeout',
+    'el-saved-timeout',
+].join('|')
+                                 )
 const ID_SETTING_REGEX = RegExp([
-        `el-(?:pq-|ot-)?${TYPE_GROUPING}lastid`,
-        `el-(?:pq-|ot-)?saved${TYPE_GROUPING}lastid`,
-    ].join('|')
-)
+    `el-(?:pq-|ot-)?${TYPE_GROUPING}lastid`,
+    `el-(?:pq-|ot-)?saved${TYPE_GROUPING}lastid`,
+].join('|')
+                               )
 const ID_LIST_SETTING_REGEX = RegExp([
-        `el-(?:us-)?${SUBSCRIBE_GROUPING}list`,
-        `el-(?:pq-|ot-|us-)?saved${TYPE_GROUPING}list`,
-    ].join('|')
-)
+    `el-(?:us-)?${SUBSCRIBE_GROUPING}list`,
+    `el-(?:pq-|ot-|us-)?saved${TYPE_GROUPING}list`,
+].join('|')
+                                    )
 
 const VALIDATE_REGEXES = {
     setting: /el-user-settings/,
@@ -1110,6 +1229,329 @@ function CorrectList(type, typelist) {
 }
 
 //Helper functions
+
+function UpdateHomeText(type, source, classname, text) {
+    if (source) {
+        $(`.el-home-section[data-type=${type}] ${classname}[data-source="${source}"] span`).html(text);
+    } else {
+        $(`.el-home-section[data-type=${type}] ${classname} span`).html(text);
+    }
+}
+
+function SaveFoundEvents(type, source, found_events, all_data) {
+    let storage_key = `el-${type}-saved-events`;
+    let saved_events = JSPLib.storage.getLocalData(storage_key, {default_val: []});
+    let updated_events = [];
+    var last_found_event;
+    found_events.forEach((event) => {
+        let saved_event = saved_events.find((ev) => ev.id === event.id);
+        if (saved_event) {
+            event.match = JSPLib.utility.arrayUnion(event.match, saved_event.match);
+        }
+        updated_events.push(event);
+        if (!last_found_event || event.id > last_found_event.id) {
+            last_found_event = event;
+        }
+    });
+    saved_events.forEach((event) => {
+        let found_event = found_events.find((ev) => ev.id === event.id);
+        if (!found_event) {
+            updated_events.push(event);
+        }
+    });
+    updated_events.sort((eva, evb) => evb.id - eva.id);
+    JSPLib.storage.setLocalData(storage_key, updated_events);
+    UpdateHomeText(type, null, '.el-available-events', updated_events.length);
+    let last_record = all_data.find((item) => item.id === last_found_event.id);
+    let last_timestamp = JSPLib.utility.toTimeStamp(last_record.created_at);
+    JSPLib.storage.setLocalData(`el-${type}-${source}-last-seen`, last_timestamp);
+    let time_ago = JSPLib.utility.timeAgo(last_timestamp);
+    UpdateHomeText(type, source, '.el-last-seen', time_ago);
+    UpdateEventsCounter();
+    if (saved_events.length === 0) {
+        let {header, body} = RenderEventsSection(type);
+        $('.el-event-header[data-type="close"]').before(header);
+        $('#el-body').append(body);
+    }
+}
+
+function SaveLastChecked(type, source) {
+    let last_checked = Date.now();
+    JSPLib.storage.setLocalData(`el-${type}-${source}-last-checked`, last_checked);
+    let time_ago = JSPLib.utility.timeAgo(last_checked);
+    UpdateHomeText(type, source, '.el-last-checked', time_ago);
+}
+
+function OverflowCheck(type, source, network_data, batch_limit) {
+    if (network_data.length === batch_limit) {
+        JSPLib.debug.debuglog('OverflowCheck', `${batch_limit} ${type} items; overflow detected!`);
+        JSPLib.storage.setLocalData(`el-${type}-${source}-overflow`, true);
+        EL.all_overflows[type] = true;
+    } else {
+        JSPLib.storage.setLocalData(`el-${type}-${source}-overflow`, false);
+        EL.all_overflows[type] = false;
+    }
+    let pages_checked = (EL.all_overflows[type] ? MORE_HTML : NONE_HTML);
+    UpdateHomeText(type, source, '.el-pages-left', pages_checked);
+    return EL.all_overflows[type];
+}
+
+function RenderPaginator(total_events, page) {
+    if (total_events < 20) return "";
+    let max_page = Math.floor((total_events - 1) / 20) + 1;
+    let prev_html = (page > 1 ? '<a class="el-paginator-prev" style="cursor: pointer;">&ltprev&gt</a>': "&ltprev&gt");
+    let next_html = (page < max_page ? '<a class="el-paginator-next" style="cursor: pointer;">&ltnext&gt</a>': "&ltnext&gt");
+    return `
+${prev_html}
+|
+${next_html}
+`;
+}
+
+function UpdatePage(type, page) {
+    let events = JSPLib.storage.getLocalData(`el-${type}-saved-events`);
+    let {page_min, page_max} = GetPageValues(page);
+    let paginator_html = RenderPaginator(events.length, page);
+    let $body_header = $(`.el-event-body[data-type="${type}"] .el-body-header`);
+    let first_event = JSPLib.utility.padNumber(page_min, 3);
+    let last_event = JSPLib.utility.padNumber(Math.min(page_max, events.length), 3);
+    $body_header.find('.el-paginator').html(paginator_html);
+    $body_header.find('.el-first-event').text(first_event);
+    $body_header.find('.el-last-event').text(last_event);
+    TYPEDICT[type].insert_events(page, type);
+}
+
+async function LoadHTMLEvents(type) {
+    let $body = $(`.el-event-body[data-type=${type}]`);
+    if ($body.children().length === 0) {
+        let events = JSPLib.storage.getLocalData(`el-${type}-saved-events`);
+        let {page_min, page_max} = GetPageValues(1);
+        let first_event = JSPLib.utility.padNumber(1, 3);
+        let last_event = JSPLib.utility.padNumber(Math.min(page_max, events.length), 3);
+        let total_events = JSPLib.utility.padNumber(events.length, 3);
+        let paginator_html = RenderPaginator(events.length, 1);
+        let mark_page_html = (events.length > 20 ? '| <a class="el-mark-page" title="Mark all items on page as read." style="cursor: pointer;">page</a>' : "");
+        let body_html = `
+<div class="el-body-header" style="margin-bottom: 1em; font-size: 16px;">
+    <div style="margin-bottom: 1em;">Showing events <span class="el-first-event" style="font-family: monospace;">${first_event}</span> - <span class="el-last-event" style="font-family: monospace;">${last_event}</span> of <span class="el-total-events" style="font-family: monospace;">${total_events}</span>.&emsp;<span class="el-paginator">${paginator_html}</span></div>
+    <div style="font-weight: bold;">
+        Select [ <a class="el-select-all" title="Select all on current page." style="cursor: pointer;">all</a> | <a class="el-select-none" title="Select none on current page." style="cursor: pointer;">none</a> | <a class="el-select-invert" title="Invert selection on current page." style="cursor: pointer;">invert</a> ]&emsp;
+        Mark Read [ <a class="el-mark-selected" title="Mark all selected items on page as read." style="cursor: pointer;">selected</a> ${mark_page_html} | <a class="el-mark-all" title="Mark all items across all pages as read." style="cursor: pointer;">all</a> ]
+    </div>
+</div>
+<div class="el-body-section" data-page="1"></div>`;
+        $body.append(body_html);
+        TYPEDICT[type].insert_events(1, type);
+    }
+}
+
+function GetPageValues(page) {
+    let page_min = ((page - 1) * 20) + 1;
+    let page_max = page * 20;
+    return {page_min, page_max};
+}
+
+async function GetHTMLPage(type, page, events) {
+    let {page_min, page_max} = GetPageValues(page);
+    let query_ids = JSPLib.utility.getObjectAttributes(events.slice(page_min - 1, page_max), 'id');
+    let type_addon = TYPEDICT[type].addons ?? {};
+    let url_addons = JSPLib.utility.mergeHashes(type_addon, {search: {id: query_ids.join(','), order: 'custom'}, type: 'previous', limit: query_ids.length});
+    let type_html = await JSPLib.network.getNotify(`/${TYPEDICT[type].controller}`, {url_addons});
+    return $.parseHTML(type_html);
+}
+
+function PopupRenderedNote() {
+
+}
+
+function InsertForumPostprocess($table) {
+    $table.find('tbody tr').each((_, row) => {
+        let $row = $(row);
+        let forum_id = $row.data('id');
+        let link_html = RenderOpenItemLinks('forum', forum_id);
+        $row.find('.forum-post-excerpt').prepend(link_html + '&nbsp;|&nbsp;');
+    });
+    OpenEventClick('forum', $table, AddForumPostRow);
+}
+
+function InsertNotePostprocess($table) {
+    $table.find('tbody tr').each((_, row) => {
+        let $row = $(row);
+        let note_id = $row.data('id');
+        let link_html = RenderOpenItemLinks('note', note_id, "Render note", "Hide note");
+        $row.find('.body-column').append(`<p style="text-align:center">${link_html}</p>`);
+    });
+    OpenItemClick('note', PopupRenderedNote);
+}
+
+function InsertDmailPostprocess($table) {
+    $table.find('tbody tr').each((_, row) => {
+        let $row = $(row);
+        let dmail_id = $(row).data('id');
+        let link_html = RenderOpenItemLinks('dmail', dmail_id);
+        $row.find('.subject-column').prepend(link_html + '&nbsp;|&nbsp;');
+    });
+    OpenItemClick('dmail', AddDmail);
+}
+
+function InsertPoolPostprocess($table) {
+    $table.find('tbody tr').each((_, row) => {
+        let $row = $(row);
+        let pool_version_id = $row.data('id');
+        let $post_changes = $row.find('.post-changes-column');
+        let add_posts = $post_changes.find('.diff-list ins a[href^="/posts"]').map((_, entry) => entry.innerText).toArray();
+        let rem_posts = $post_changes.find('.diff-list del a[href^="/posts"]').map((_, entry) => entry.innerText).toArray();
+        let $post_count = $row.find('.post-count-column');
+        if (add_posts.length || rem_posts.length) {
+            let link_html = RenderOpenItemLinks('poolposts', pool_version_id, 'Show posts', 'Hide posts');
+            $post_count.prepend(link_html, '&nbsp;|&nbsp;');
+            $post_count.attr('data-add-posts', add_posts);
+            $post_count.attr('data-rem-posts', rem_posts);
+        } else {
+            $post_count.prepend('<span style="font-family:monospace">&nbsp;&nbsp;No posts&nbsp;|&nbsp;</span>');
+        }
+        let $desc_changed_link = $row.find('.diff-column a[href$="/diff"]');
+        if ($desc_changed_link.length !== 0) {
+            let link_html = RenderOpenItemLinks('pooldiff', pool_version_id, 'Show diff', 'Hide diff');
+            $desc_changed_link.replaceWith(link_html);
+        } else {
+            $row.find('.diff-column').html('<span style="font-family:monospace">&nbsp;&nbsp;No diff</span>');
+        }
+    });
+    OpenItemClick('pooldiff', AddPoolDiff);
+    OpenItemClick('poolposts', AddPoolPosts);
+}
+
+function InsertWikiPostprocess($table) {
+    $table.find('tbody tr').each((_, row) => {
+        let $row = $(row);
+        let $column = $row.find('.diff-column');
+        let $diff_link = $column.find('a');
+        if ($diff_link.length) {
+            let wiki_version_id = $row.data('id');
+            let link_html = RenderOpenItemLinks('wiki', wiki_version_id, "Show diff", "Hide diff");
+            $diff_link.replaceWith(`${link_html}`);
+        } else {
+            $column.html('&nbsp&nbspNo diff');
+        }
+    });
+    OpenEventClick('wiki', $table, AddWikiDiffRow);
+}
+
+function UpdatePostPreviews($obj) {
+    $obj.find('.post-preview').each((_, entry) => {
+        entry.style.setProperty('display', 'block', 'important');
+        entry.style.setProperty('visibility', 'visible', 'important');
+        entry.style.setProperty('text-align', 'center');
+        entry.style.setProperty('width', '225px');
+    });
+}
+
+function AppendFloatingHeader($container, $table) {
+    // Must wait until the table is attached to the dom before measuring the header, otherwise the height/width will be null.
+    // Additionally, must wait for any asynchronously added post previews, since those affect the column widths.
+    let header_html = "";
+    $table.find('thead th').each((_, th) => {
+        let {width, height} = getComputedStyle(th);
+        header_html += `<div class="el-floating-cell" style="padding: 4px 6px; width: ${width}; height: ${height}">${th.innerText}</div>`;
+    });
+    let header_width = getComputedStyle($table.find('thead').get(0)).width;
+    let $header = $(`<div class="el-floating-header" style="width: ${header_width}; display: flex; background: var(--body-background-color); position: absolute; top: 0; font-weight: bold; border-bottom: 2px solid var(--table-header-border-color); z-index: 10;">${header_html}</div>`);
+    $container.append($header);
+}
+
+async function InsertTableEvents(page, type) {
+    EL.pages[type] ??= {};
+    let $body_section = $(`.el-event-body[data-type="${type}"] .el-body-section`);
+    if (!EL.pages[type][page]) {
+        $body_section.html('<span style="font-size: 24px; font-weight: bold;">Loading...</span>');
+        let events = JSPLib.storage.getLocalData(`el-${type}-saved-events`);
+        let $page = await GetHTMLPage(type, page, events);
+        let $table = $('table.striped', $page);
+        let table_header = (TYPEDICT[type].add_thumbnail ? '<th width="2%"></th><th width="8%">Found with</th><th width="1%">Preview</th>' : '<th width="2%"></th><th width="8%">Found with</th>');
+        $table.find('thead tr').prepend(table_header);
+        let post_ids = new Set();
+        $table.find('tbody tr').each((_, row) => {
+            let $row = $(row);
+            let id = $row.data('id');
+            let event = events.find((ev) => ev.id === id);
+            let match_html = event.match.map((m) => m.replace('-', ' ')).join('<br>&ensp;');
+            let row_addon = `<td class="el-mark-read"><input type="checkbox"></td><td class="el-found-with" style="color: orange;">${match_html}</td>`;
+            if (TYPEDICT[type].add_thumbnail) {
+                let post_id = $row.data('post-id');
+                post_ids.add(post_id);
+                row_addon += '<td class="el-post-preview"></td>';
+            }
+            $row.prepend(row_addon);
+        });
+        let $container = $('<div class="el-table-container" style="position: relative;"></div>');
+        if (post_ids.size) {
+            GetEventThumbnails([...post_ids]).then((thumbnails) => {
+                thumbnails.forEach((entry) => {
+                    let $entry = $(entry)
+                    let post_id = $entry.data('id');
+                    $table.find(`tr[data-post-id="${post_id}"] .el-post-preview`).append($entry.clone());
+                });
+                UpdatePostPreviews($table);
+                AppendFloatingHeader($container, $table);
+            });
+        }
+        if (TYPEDICT[type].column_widths) {
+            for (let classname in TYPEDICT[type].column_widths) {
+                $table.find(`thead th.${classname}`).attr('width', TYPEDICT[type].column_widths[classname]);
+            }
+        }
+        let $pane = $('<div class="el-table-pane" style="height: 80vh; overflow-y: auto;"></div>');
+        $pane.append($table.detach());
+        $container.append($pane);
+        TYPEDICT[type].insert_postprocess?.($table);
+        EL.pages[type][page] = $container;
+        $body_section.empty().append($container);
+        if (post_ids.size === 0) {
+            UpdatePostPreviews($table);
+            AppendFloatingHeader($container, $table);
+        }
+        EL.resize_observer.observe($pane.get(0));
+    } else {
+        $body_section.empty().append(EL.pages[type][page]);
+    }
+    $body_section.data('page', page);
+}
+
+async function InsertCommentEvents(page) {
+    EL.pages.comment ??= {};
+    let $body_section = $('.el-event-body[data-type="comment"] .el-body-section');
+    if (!EL.pages.comment[page]) {
+        $body_section.html('<span style="font-size: 24px; font-weight: bold;">Loading...</span>');
+        let events = JSPLib.storage.getLocalData('el-comment-saved-events');
+        let $page = await GetHTMLPage('comment', page, events);
+        let $section = $('.list-of-comments', $page);
+        $section.find('article.comment').each((_, entry) => {
+            let $entry = $(entry);
+            let id = $entry.data('id');
+            let event = events.find((ev) => ev.id === id);
+            let match_html = event.match.map((m) => m.replace('-', ' ')).join('<br>&ensp;');
+            $entry.closest('div.post').prepend(`<div class="el-mark-read" style="width: 2em;"><input type="checkbox"></div><div class="el-found-with" style="color: orange; width: 10em; padding-left: 0.5em;">${match_html}</div>`);
+        });
+        $section.children().slice(0, -1).css({
+            'border-bottom': '1px solid lightgrey',
+            'padding-bottom': '10px',
+        });
+        $section.css({
+            'height': '75vh',
+            'overflow-y': 'auto',
+        });
+        let $container = $('<div><div style="display: flex; font-weight: bold; gap: 1rem;"><div style="width: 2em; text-decoration: underline;"></div><div style="width: 10em; text-decoration: underline"><span style="font-size: 18px;">Found with</span></div><div style="padding-left: 1em; text-decoration: underline;"><span style="font-size: 18px;">Comments</span></div></div></div>');
+        $container.append($section);
+        $section.find('.post-preview').each((_, entry) => {
+            entry.style.setProperty('display', 'flex', 'important');
+            entry.style.setProperty('visibility', 'visible', 'important');
+        });
+        EL.pages.comment[page] = $container;
+    }
+    $body_section.empty().append(EL.pages.comment[page]);
+    $body_section.data('page', page);
+}
 
 async function SetRecentDanbooruID(type, qualifier) {
     let type_addon = TYPEDICT[type].addons || {};
@@ -1241,6 +1683,72 @@ function CheckUserList(type) {
 
 //Auxiliary functions
 
+function FindEvents(array, source, subscribe_set, user_set) {
+    let printer = JSPLib.debug.getFunctionPrint('FindData');
+    let found_events = [];
+    for (let i = 0; i < array.length; i++) {
+        let val = array[i];
+        if (!Number.isInteger(val.id)) {
+            continue;
+        }
+        if ((EL.filter_user_events && this.user && (val[this.user] === EL.userid)) || EL.filter_users.includes(val[this.user])) {
+            continue
+        }
+        if (this.other_filter && !this.other_filter(val)) {
+            continue
+        }
+        let item = {
+            id: array[i].id,
+            match: [],
+        };
+        if (source === 'subscribe') {
+            if (user_set.size && user_set.has(val[this.user])) {
+                printer.debuglogLevel('user_set', this.controller, val, JSPLib.debug.DEBUG);
+                item.match.push('user');
+            }
+            if (subscribe_set.size && subscribe_set.has(val[this.item])) {
+                printer.debuglogLevel('subscribe_set', this.controller, val, JSPLib.debug.DEBUG);
+                item.match.push('subscribe');
+            }
+            if (EL.show_creator_events && this.creator && JSPLib.utility.getNestedAttribute(val, this.creator) === EL.userid) {
+                printer.debuglogLevel('creator_event', this.controller, val, JSPLib.debug.DEBUG);
+                item.match.push('creator');
+            }
+            if (EL.show_parent_events && this.controller === 'post_versions') {
+                if (EL.show_creator_events && val.post.parent?.uploader_id === EL.userid) {
+                    printer.debuglogLevel('creator_parent_event', this.controller, val, JSPLib.debug.DEBUG);
+                    item.match.push('creator');
+                }
+                if (subscribe_set.has(val.post.parent?.id)) {
+                    printer.debuglogLevel('subscribe_parent_event', this.controller, val, JSPLib.debug.DEBUG);
+                    item.match.push('subscribe');
+                }
+            }
+        } else {
+            printer.debuglogLevel('post_query-other', this.controller, val, JSPLib.debug.DEBUG);
+            let match = (source === 'post-query' ? source : 'any');
+            item.match.push(match);
+        }
+        if (item.match.length) {
+            found_events.push(item);
+        }
+    }
+    return found_events;
+}
+
+function FindCategoryEvents(array) {
+    let found_events = [];
+    for (let i = 0; i < array.length; i ++) {
+        if(EL.subscribed_mod_actions.includes(array[i].category)) {
+            found_events.push({
+                id: array[i].id,
+                match: ['category'],
+            });
+        }
+    }
+    return found_events;
+}
+
 function FilterData(array, subscribe_set, user_set) {
     return array.filter((val) => IsShownData.call(this, val, subscribe_set, user_set));
 }
@@ -1305,9 +1813,9 @@ function IsShownFeedback(val) {
         return true;
     }
     return (val.body.match(/^Banned forever:/) === null)
-        && (val.body.match(/^Banned \d+ (days?|weeks|months?|years?):/) === null)
-        && (val.body.match(/^You have been (promoted|demoted) to a \S+ level account from \S+\./) === null)
-        && (val.body.match(/\bYou (gained|lost) the ability to (approve posts|upload posts without limit|give user feedback|flag posts)\./) === null);
+    && (val.body.match(/^Banned \d+ (days?|weeks|months?|years?):/) === null)
+    && (val.body.match(/^You have been (promoted|demoted) to a \S+ level account from \S+\./) === null)
+    && (val.body.match(/\bYou (gained|lost) the ability to (approve posts|upload posts without limit|give user feedback|flag posts)\./) === null);
 }
 
 function IsShownBan(val) {
@@ -1393,8 +1901,8 @@ function ProcessEvent(inputtype, optype) {
         return false;
     }
     if (optype === 'all_subscribe_events'
-            && !(JSPLib.menu.isSettingEnabled('subscribe_events_enabled', inputtype) && (EL.show_creator_events || CheckList(inputtype)))
-            && !(JSPLib.menu.isSettingEnabled('user_events_enabled', inputtype) && CheckUserList(inputtype))) {
+        && !(JSPLib.menu.isSettingEnabled('subscribe_events_enabled', inputtype) && (EL.show_creator_events || CheckList(inputtype)))
+        && !(JSPLib.menu.isSettingEnabled('user_events_enabled', inputtype) && CheckUserList(inputtype))) {
         this.debug('log', "Soft disable:", inputtype, optype);
         return false;
     }
@@ -1463,6 +1971,18 @@ async function AddParentInclude(versions) {
 
 //Get single instance of various types and insert into table row
 
+async function AddForumPostRow(forum_id, $row) {
+    let forum_page = await JSPLib.network.getNotify(`/forum_posts/${forum_id}`);
+    if (!forum_page) {
+        return;
+    }
+    let $forum_page = $.parseHTML(forum_page);
+    let $forum_post = $(`#forum_post_${forum_id}`, $forum_page);
+    let $outerblock = $(RenderOpenItemContainer('forum', forum_id, 6));
+    $outerblock.find('td').append($forum_post);
+    $row.after($outerblock);
+}
+
 async function AddForumPost(forumid, rowelement) {
     let forum_page = await JSPLib.network.getNotify(`/forum_posts/${forumid}`);
     if (!forum_page) {
@@ -1504,6 +2024,18 @@ async function AddDmail(dmailid, rowelement) {
     if (EL.mark_read_dmail) {
         ReadDmail(dmailid);
     }
+}
+
+async function AddWikiDiffRow(wiki_version_id, $row) {
+    let wiki_diff_page = await JSPLib.network.getNotify('/wiki_page_versions/diff', {url_addons: {thispage: wiki_version_id, type: 'previous'}});
+    if (!wiki_diff_page) {
+        return;
+    }
+    let $wiki_diff_page = $.parseHTML(wiki_diff_page);
+    let $outerblock = $(RenderOpenItemContainer('wiki', wiki_version_id, 6));
+    $outerblock.find('td').append($('#a-diff #content', $wiki_diff_page));
+    $outerblock.find('.fixed-width-container').removeClass('.fixed-width-container');
+    $row.after($outerblock);
 }
 
 async function AddWiki(wikiverid, rowelement) {
@@ -1566,8 +2098,8 @@ function UpdateMultiLink(typelist, subscribed, itemid) {
     let typeset = new Set(typelist);
     let current_subscribed = new Set($('#el-subscribe-events .el-subscribed').map((_, entry) => entry.dataset.type.split(',')));
     let new_subscribed = (subscribed ?
-        JSPLib.utility.setDifference(current_subscribed, typeset) :
-        JSPLib.utility.setUnion(current_subscribed, typeset));
+                          JSPLib.utility.setDifference(current_subscribed, typeset) :
+                          JSPLib.utility.setUnion(current_subscribed, typeset));
     $(`#el-subscribe-events[data-id="${itemid}"] .el-multi-link`).each((_, entry) => {
         let entry_typelist = new Set(entry.dataset.type.split(','));
         if (JSPLib.utility.isSuperSet(entry_typelist, new_subscribed)) {
@@ -1756,6 +2288,18 @@ function AddThumbnailStubs(dompage) {
     EL.post_ids = JSPLib.utility.setUnion(EL.post_ids, post_ids);
 }
 
+async function GetEventThumbnails(post_ids) {
+    let thumbnails = [];
+    for (let i = 0; i < post_ids.length; i += QUERY_LIMIT) {
+        let query_ids = post_ids.slice(i, i + QUERY_LIMIT);
+        let url_addons = {tags: `id:${query_ids} status:any limit:${query_ids.length}`, size: 225, show_votes: false};
+        let html = await JSPLib.network.getNotify('/posts', {url_addons});
+        let $posts = $.parseHTML(html);
+        thumbnails = JSPLib.utility.concat(thumbnails, [...$('.post-preview', $posts)]);
+    }
+    return thumbnails;
+}
+
 async function GetThumbnails() {
     let found_post_ids = new Set(Object.keys(EL.thumbs).map(Number));
     let missing_post_ids = [...JSPLib.utility.setDifference(EL.post_ids, found_post_ids)];
@@ -1806,6 +2350,115 @@ function AdjustRowspan(rowelement, openitem) {
 }
 
 //Render functions
+
+function AnyEventEnabled(type) {
+    return EL.post_query_events_enabled.includes(type) || EL.all_subscribe_events.includes(type) || EL.other_events_enabled.includes(type);
+}
+
+function RenderSectionTimestamps(type, source) {
+    let last_seen = JSPLib.storage.getLocalData(`el-${type}-${source}-last-seen`);
+    let last_checked = JSPLib.storage.getLocalData(`el-${type}-${source}-last-checked`);
+    let seen_ago = JSPLib.utility.timeAgo(last_seen);
+    let checked_ago = JSPLib.utility.timeAgo(last_checked);
+    return `
+<li class="el-last-seen" data-source="${source}"><b>Last seen:</b> <span>${seen_ago}</span></li>
+<li class="el-last-checked" data-source="${source}"><b>Last checked:</b> <span>${checked_ago}</span></li>`;
+}
+
+function RenderSubsection(type, source) {
+    let html = "";
+    let overflow = JSPLib.storage.getLocalData(`el-${type}-${source}-overflow`, {default_val: false});
+    html += RenderSectionTimestamps(type, source);
+    let pages_text = (overflow ? MORE_HTML : NONE_HTML);
+    html += `
+<li class="el-pages-left" data-source="${source}"><b>Pages left:</b> (&thinsp;<span>${pages_text}</span>&thinsp;)</li>
+<li class="el-check-more" data-source="${source}">
+    <a style="cursor: pointer; font-weight: bold; color: green;">Check more</a>
+</li>
+<li class="el-check-all" data-source="${source}">
+    <a style="cursor: pointer; font-weight: bold; color: green;">Check all</a>
+</li>`;
+    return html;
+}
+
+function RenderHomeBody() {
+    let body_html = "";
+    ALL_EVENTS.forEach((type) => {
+        if (!AnyEventEnabled(type)) return;
+        let available_events = JSPLib.storage.getLocalData(`el-${type}-saved-events`, {default_val: []});
+        let section_html = `<li class="el-available-events"><b>Available:</b> <span>${available_events.length}</span></li>`;
+        if (EL.all_subscribe_events.includes(type)) {
+            let subsection_html = RenderSubsection(type, 'subscribe');
+            if (EL.post_query_events_enabled.includes(type)) {
+                section_html += `
+<li><u>Subscribe</u>
+    <ul>${subsection_html}</ul>
+</li>`;
+            } else {
+                section_html += subsection_html;
+            }
+        }
+        if (EL.post_query_events_enabled.includes(type)) {
+            let subsection_html = RenderSubsection(type, 'post-query');
+            if (EL.all_subscribe_events.includes(type)) {
+                section_html += `
+<li><u>Post query</u>
+    <ul>${subsection_html}</ul>
+</li>`;
+            } else {
+                section_html += subsection_html;
+            }
+        }
+        if (EL.other_events_enabled.includes(type)) {
+            section_html += RenderSubsection(type, 'other');
+        }
+        let title = JSPLib.utility.properCase(type);
+        body_html += `
+<div class="el-home-section prose" data-type="${type}" style="width: 25em; padding: 2em;">
+    <h4>${title}</h4>
+    <ul>${section_html}</ul>
+</div>`;
+    });
+    return body_html;
+}
+
+function UpdateEventsCounter() {
+    let events_total = 0;
+    ALL_EVENTS.forEach((type) => {
+        if (!AnyEventEnabled(type)) return;
+        let events = JSPLib.storage.getLocalData(`el-${type}-saved-events`, {default_val: []});
+        events_total += events.length;
+    });
+    $('#el-events-total').text(events_total);
+}
+
+function RenderEventsSection(type) {
+    let title = JSPLib.utility.properCase(type);
+    let header = `<div class="el-event-header" data-type="${type}"><a>${title}</a></div>`;
+    let body = `<div class="el-event-body" data-type="${type}" style="margin: 1em;"></div>`;
+    return {header, body};
+}
+
+function RenderEventsPage() {
+    let home_body = RenderHomeBody();
+    let header_html = '<div class="el-event-header el-header-active" data-type="home"><a>Home</a></div>';
+    let body_html = `<div class="el-event-body" data-type="home" style="display: flex; flex-wrap: wrap;">${home_body}</div>`;
+    ALL_EVENTS.forEach((type) => {
+        if (!AnyEventEnabled(type)) return;
+        let available_events = JSPLib.storage.getLocalData(`el-${type}-saved-events`, {default_val: []});
+        if (available_events.length) {
+            let {header, body} = RenderEventsSection(type);
+            header_html += header;
+            body_html += body;
+        }
+    });
+    header_html += '<div class="el-event-header" data-type="close"><a>Close</a></div>';
+    return `
+<div id="el-page" style="margin-left: 2.5em; margin-top: 2em; display: none;">
+    <div id="el-header" style="display: flex;">${header_html}</div>
+    <div id="el-body" style="min-height: 50em;">${body_html}</div>
+</div>`;
+}
 
 function RenderMultilinkMenu(itemid, event_type) {
     return `
@@ -2287,6 +2940,29 @@ async function PostEventPopulateControl() {
 
 //Event setup functions
 
+function OpenEventClick(type, $table, func) {
+    console.log(type, $table.find('.el-show-hide-links a'));
+    $table.find('.el-show-hide-links a').off(PROGRAM_CLICK).on(PROGRAM_CLICK, (event) => {
+        EL.openlist[type] ??= [];
+        let $row = $(event.currentTarget).closest('tr');
+        let item_id = $row.data('id');
+        let is_open = $(event.currentTarget.parentElement).data('action') === 'show';
+        if (is_open && !EL.openlist[type].includes(item_id)) {
+            func(item_id, $row);
+            EL.openlist[type].push(item_id);
+        }
+        let hide = (is_open ? 'show' : 'hide');
+        let show = (is_open ? 'hide' : 'show');
+        JSPLib.utility.fullHide(`.el-show-hide-links[data-type="${type}"][data-id="${item_id}"] [data-action="${hide}"]`);
+        JSPLib.utility.clearHide(`.el-show-hide-links[data-type="${type}"][data-id="${item_id}"] [data-action="${show}"]`);
+        if (is_open) {
+            $(`.el-full-item[data-type="${type}"][data-id="${item_id}"]`).show();
+        } else {
+            $(`.el-full-item[data-type="${type}"][data-id="${item_id}"]`).hide();
+        }
+    });
+}
+
 function OpenItemClick(type, htmlfunc, otherfunc) {
     $(`.el-show-hide-links[data-type="${type}"] a`).off(PROGRAM_CLICK).on(PROGRAM_CLICK, (event) => {
         EL.openlist[type] = EL.openlist[type] || [];
@@ -2343,6 +3019,14 @@ async function CheckPostQueryType(type) {
         let url_addons = JSPLib.utility.mergeHashes(type_addon, query_addon, {only: TYPEDICT[type].only});
         let batches = (EL.no_limit ? null : 1);
         let jsontype = await JSPLib.danbooru.getAllItems(TYPEDICT[type].controller, QUERY_LIMIT, {url_addons, batches, page: typelastid, reverse: true});
+        SaveLastChecked(type, 'post-query');
+        JSPLib.storage.setLocalData(`el-${type}-post-query-last-checked`, Date.now());
+        let batch_limit = (!EL.no_limit ? QUERY_LIMIT : Infinity);
+        OverflowCheck(type, 'other', jsontype, batch_limit);
+        let found_events = TYPEDICT[type].find_events(jsontype, 'post-query');
+        if (found_events.length) {
+            SaveFoundEvents(type, 'post-query', found_events, jsontype);
+        }
         let filtertype = TYPEDICT[type].filter(jsontype);
         let lastusertype = (jsontype.length ? JSPLib.danbooru.getNextPageID(jsontype, true) : null);
         if (filtertype.length) {
@@ -2373,7 +3057,6 @@ async function CheckSubscribeType(type, domname = null) {
         let user_set = GetUserList(type);
         let savedlistkey = `el-saved${type}list`;
         let overflowkey = `el-${type}overflow`;
-        let isoverflow = false;
         let type_addon = TYPEDICT[type].addons || {};
         let only_attribs = TYPEDICT[type].only;
         if (EL.show_creator_events) {
@@ -2387,16 +3070,14 @@ async function CheckSubscribeType(type, domname = null) {
             batch_limit = Infinity;
         }
         let jsontype = await JSPLib.danbooru.getAllItems(TYPEDICT[type].controller, QUERY_LIMIT, {url_addons, batches, page: typelastid, reverse: true, domname});
-        if (jsontype.length === batch_limit) {
-            this.debug('log', `${batch_limit} ${type} items; overflow detected!`);
-            JSPLib.storage.setLocalData(overflowkey, true);
-            EL.item_overflow = isoverflow = EL.all_overflows[type] = true;
-        } else {
-            JSPLib.storage.setLocalData(overflowkey, false);
-            EL.all_overflows[type] = false;
-        }
+        SaveLastChecked(type, 'subscribe');
+        let isoverflow = OverflowCheck(type, 'subscribe', jsontype, batch_limit);
         if (EL.show_parent_events && type === 'post') {
             jsontype = await AddParentInclude(jsontype);
+        }
+        let found_events = TYPEDICT[type].find_events(jsontype, 'subscribe', subscribe_set, user_set);
+        if (found_events.length) {
+            SaveFoundEvents(type, 'subscribe', found_events, jsontype);
         }
         let filtertype = TYPEDICT[type].filter(jsontype, subscribe_set, user_set);
         let lastusertype = (jsontype.length ? JSPLib.danbooru.getNextPageID(jsontype, true) : typelastid);
@@ -2436,6 +3117,13 @@ async function CheckOtherType(type) {
         let url_addons = JSPLib.utility.mergeHashes(type_addon, {only: TYPEDICT[type].only});
         let batches = (EL.no_limit ? null : 1);
         let jsontype = await JSPLib.danbooru.getAllItems(TYPEDICT[type].controller, QUERY_LIMIT, {url_addons, batches, page: typelastid, reverse: true});
+        SaveLastChecked(type, 'other');
+        let batch_limit = (!EL.no_limit ? QUERY_LIMIT : Infinity);
+        OverflowCheck(type, 'other', jsontype, batch_limit);
+        let found_events = TYPEDICT[type].find_events(jsontype, 'other');
+        if (found_events.length) {
+            SaveFoundEvents(type, 'other', found_events, jsontype);
+        }
         let filtertype = TYPEDICT[type].filter(jsontype);
         let lastusertype = (jsontype.length ? JSPLib.danbooru.getNextPageID(jsontype, true) : null);
         if (filtertype.length) {
@@ -2857,6 +3545,119 @@ function Main() {
     }
     $(document).on(PROGRAM_CLICK, '#el-subscribe-events a', SubscribeMultiLink);
     $(document).on(PROGRAM_CLICK, '.el-overflow-notice a', LoadMore);
+    $(document).on(PROGRAM_CLICK, '.el-check-more', (event) => {
+        let $link = $(event.currentTarget);
+        let source = $link.data('source');
+        let $container = $link.closest('.el-home-section');
+        let type = $container.data('type');
+        console.log("Check more", type, source);
+    });
+    $(document).on(PROGRAM_CLICK, '.el-check-all', (event) => {
+        let $link = $(event.currentTarget);
+        let source = $link.data('source');
+        let $container = $link.closest('.el-home-section');
+        let type = $container.data('type');
+        console.log("Check all", type, source);
+    });
+    $(document).on(PROGRAM_CLICK, '.el-event-header a', (event) => {
+        let type = $(event.currentTarget).parent().data('type');
+        if (type !== 'close') {
+            $('.el-event-body').hide();
+            $(`.el-event-body[data-type="${type}"]`).show();
+            $('.el-event-header').removeClass('el-header-active');
+            $(`.el-event-header[data-type="${type}"]`).addClass('el-header-active');
+            if (type !== 'home') {
+                LoadHTMLEvents(type);
+            }
+        } else {
+            $('#el-page').hide();
+            $('#top').show();
+            $('#page').show();
+            $('#page-footer').show();
+        }
+    });
+    $(document).on(PROGRAM_CLICK, '.el-paginator-prev', (event) => {
+        let $body = $(event.currentTarget).closest('.el-event-body');
+        let type = $body.data('type');
+        let page = $body.find('.el-body-section').data('page') - 1;
+        UpdatePage(type, page);
+    });
+    $(document).on(PROGRAM_CLICK, '.el-paginator-next', (event) => {
+        let $body = $(event.currentTarget).closest('.el-event-body');
+        let type = $body.data('type');
+        let page = $body.find('.el-body-section').data('page') + 1;
+        UpdatePage(type, page);
+    });
+    $(document).on(PROGRAM_CLICK, '.el-select-all', (event) => {
+        $(event.currentTarget).closest('.el-event-body').find('.el-mark-read input').prop('checked', true);
+    });
+    $(document).on(PROGRAM_CLICK, '.el-select-none', (event) => {
+        $(event.currentTarget).closest('.el-event-body').find('.el-mark-read input').prop('checked', false);
+    });
+    $(document).on(PROGRAM_CLICK, '.el-select-invert', (event) => {
+        $(event.currentTarget).closest('.el-event-body').find('.el-mark-read input').each((_, input) => {
+            input.checked = !input.checked;
+        });
+    });
+    $(document).on(PROGRAM_CLICK, '.el-mark-selected', (event) => {
+        let $event_body = $(event.currentTarget).closest('.el-event-body');
+        let selected_ids = [];
+        let type = $event_body.data('type');
+        if (type === 'comment') {
+            $event_body.find('.post').each((_, entry) => {
+                let $entry = $(entry);
+                if ($entry.find('.el-mark-read input').prop('checked')) {
+                    let item_id = $entry.find('.comment').data('id');
+                    selected_ids.push(item_id);
+                }
+            });
+            selected_ids.forEach((id) => {
+                $event_body.find(`.comment[data-id="${id}"]`).closest('.post').detach();
+            });
+        } else {
+            $event_body.find('tbody tr').each((_, row) => {
+                let $row = $(row);
+                if ($row.find('.el-mark-read input').prop('checked')) {
+                    let item_id = $row.data('id');
+                    selected_ids.push(item_id);
+                }
+            });
+            selected_ids.forEach((id) => {
+                $event_body.find(`tbody tr[data-id="${id}"]`).detach();
+            });
+        }
+        console.log(type, selected_ids);
+        if (selected_ids.length) {
+            let events = JSPLib.storage.getLocalData(`el-${type}-saved-events`);
+        }
+    });
+    $(document).on(PROGRAM_CLICK, '.el-mark-page', (event) => {
+        let $event_body = $(event.currentTarget).closest('.el-event-body');
+        let type = $event_body.data('type');
+        var selected_ids;
+        if (type === 'comment') {
+            let selected_ids = JSPLib.utility.getDOMAttributes($event_body.find('.comment'), 'id', Number);
+            $event_body.find('.post').detach();
+        } else {
+            let selected_ids = JSPLib.utility.getDOMAttributes($event_body.find('tbody tr'), 'id', Number);
+            $event_body.find('tbody tr').detach();
+        }
+
+        console.log(type, selected_ids);
+        let events = JSPLib.storage.getLocalData(`el-${type}-saved-events`);
+    });
+    $(document).on(PROGRAM_CLICK, '.el-mark-all', (event) => {
+        let $event_body = $(event.currentTarget).closest('.el-event-body');
+        let type = $event_body.data('type');
+        if (type === 'comment') {
+            $event_body.find('.post').detach();
+        } else {
+            $event_body.find('tbody tr').detach();
+        }
+        $event_body.find('.el-paginator').detach();
+        let events = JSPLib.storage.getLocalData(`el-${type}-saved-events`);
+        console.log(type, JSPLib.utility.getObjectAttributes(events, 'id'));
+    });
     if (EL.controller === 'posts' && EL.action === 'show') {
         InitializePostShowMenu();
     } else if (EL.controller === 'forum-topics' && EL.action === 'show') {
@@ -2877,6 +3678,22 @@ function Main() {
             EL.dmail_notice.show();
         });
     }
+    $('#nav-more').before(EVENTS_NAV_HTML);
+    $('#page').after(RenderEventsPage());
+    UpdateEventsCounter();
+    $('#el-nav-events').on(PROGRAM_CLICK, () => {
+        $('#page-footer').hide();
+        $('#page').hide();
+        $('#top').hide();
+        $('#el-page').show();
+    });
+    EL.resize_observer = new ResizeObserver(function (entries) {
+        let $header = $(entries[0].target).find('thead');
+        let $floating = $(entries[0].target).closest('.el-body-section').find('.el-floating-header');
+        let width = getComputedStyle($header.get(0)).width;
+        console.log("Width change:", $floating.css('width'), '->', width);
+        $floating.css('width', width);
+    });
 }
 
 /****Function decoration****/
@@ -2909,7 +3726,7 @@ function Main() {
 /****Initialization****/
 
 //Variables for debug.js
-JSPLib.debug.debug_console = false;
+JSPLib.debug.debug_console = true;
 JSPLib.debug.level = JSPLib.debug.INFO;
 JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
