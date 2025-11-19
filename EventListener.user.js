@@ -143,6 +143,25 @@ JSPLib.concurrency.setRecheckTimeout = function (storage_key, expires_time, jitt
     return expires_timestamp;
 };
 
+JSPLib.network.getNotify = function (url, {url_addons = {}, custom_error = "", ajax_options, xhr_options} = {}) {
+    let full_url = url + (Object.keys(url_addons).length ? '?' + JSPLib._jQuery.param(url_addons) : '');
+    JSPLib.debug.recordTime(full_url, 'Network');
+    return this.get(full_url, {ajax_options, xhr_options}).then(
+        //Success
+        (data) => data,
+        //Failure
+        (error) => {
+            let process_error = this.processError(error, "network.getNotify");
+            let error_key = `${url}?${JSPLib._jQuery.param(url_addons)}`;
+            this.logError(error_key, process_error);
+            this.notifyError(process_error, custom_error);
+            return false;
+        },
+    ).always(() => {
+        JSPLib.debug.recordTimeEnd(full_url, 'Network');
+    });
+};
+
 /****Global variables****/
 
 //Exterior script variables
@@ -427,6 +446,22 @@ const PROGRAM_CSS = `
     font-size: 24px;
     font-weight: bold;
 }
+/**NAVIGATION**/
+#el-nav-events.el-has-new-events {
+    color: red;
+}
+#el-display-subscribe {
+    font-weight: bold;
+}
+#el-display-subscribe a {
+    font-weight: normal;
+}
+#el-display-subscribe a[data-action="show"] {
+    color: green;
+}
+#el-display-subscribe a[data-action="hide"] {
+    color: red;
+}
 /**EVENT PAGE**/
 #el-page {
     margin-left: 2.5em;
@@ -441,21 +476,35 @@ const PROGRAM_CSS = `
 .el-event-body {
     margin: 1em;
 }
-/**EVENT BODY**/
-/****BODY HEADER****/
-.el-body-header {
-    margin-bottom: 1em;
-    font-size: 16px;
-}
-.el-body-page-info {
-    margin-bottom: 1em;
-}
-.el-body-controls {
+.el-event-header {
+    padding: 8px;
+    background-color: var(--form-button-background);
+    border: 1px solid var(--form-button-border-color);
     font-weight: bold;
+    font-size: 20px;
+    margin-right: 2px;
 }
-/****BODY SECTION****/
-.el-found-with {
-    color: orange;
+.el-event-header a {
+    cursor: pointer;
+}
+.el-event-header[data-type="close"] a {
+    color: var(--red-5);
+}
+.el-event-header[data-type="close"] a:hover {
+    color: var(--red-3);
+}
+.el-event-header.el-has-new-events {
+    background-color: lawngreen;
+}
+.el-event-header.el-header-active {
+    background-color: var(--blue-4) !important;
+    border-color: var(--blue-6) !important;
+}
+.el-event-header.el-header-active:hover {
+    background-color: var(--blue-3) !important;
+}
+.el-event-header.el-header-active a {
+    color: white;
 }
 /**HOME**/
 .el-event-body[data-type="home"] {
@@ -470,22 +519,81 @@ const PROGRAM_CSS = `
     height: 32em;
     padding: 1em 2em;
 }
-.el-home-section.el-has-new-events h4,
-.el-event-header.el-has-new-events {
+.el-home-section.el-has-new-events h4 {
     background-color: lawngreen;
+}
+.el-section-controls {
+    list-style-type: none !important;
+    margin-bottom: 5px !important;
+}
+.el-section-controls > div {
+    display: grid;
+    grid-template-columns: 50% 50%;
+}
+.el-section-link a {
+    text-align: center;
+    padding: 4px 6px;
+    display: block;
+    border: 1px solid var(--text-color);
+    border-radius: 25px;
+    width: 90%;
+    height: 90%;
+    margin: 4px 0;
+    font-weight: bold;
+}
+.el-section-link a:hover {
+    background-color: var(--default-border-color);
+}
+.el-more {
+    color: blue;
+    font-weight: bold;
+}
+.el-none {
+    color: red;
 }
 .el-check-more a,
 .el-check-all a {
-    font-weight: bold;
-    color: green;
+    color: mediumseagreen;
 }
 .el-reset-event a {
-    font-weight: bold;
     color: red;
 }
 .el-refresh-event a {
+    color: mediumpurple;
+}
+/**BODY HEADER**/
+.el-body-header {
+    margin-bottom: 1em;
+    font-size: 16px;
+}
+.el-body-page-info {
+    margin-bottom: 1em;
+}
+.el-body-controls {
     font-weight: bold;
-    color: purple;
+}
+/**BODY SECTION**/
+.el-mark-read > a {
+    display: flex;
+    border: 1px solid #888;
+    border-radius: 5px;
+    background-color: var(--default-border-color);
+    height: 30px;
+    width: 30px;
+    justify-content: center;
+    align-items: center;
+}
+.el-mark-read > a:hover {
+    background-color: var(--muted-text-color);
+}
+.el-new-event .el-mark-read > a {
+    background-color: lawngreen;
+}
+.el-new-event .el-mark-read > a:hover {
+    filter: brightness(0.9);
+}
+.el-found-with {
+    color: orange;
 }
 /**TABLE**/
 .el-floating-header {
@@ -518,7 +626,7 @@ const PROGRAM_CSS = `
     text-decoration: underline;
 }
 .el-comments-header .el-found-with {
-    color: initial;
+    color: var(--text-color);
 }
 .el-comments-header > div > span {
     font-size: 18px;
@@ -544,218 +652,49 @@ const PROGRAM_CSS = `
 .el-event-body[data-type="post"] td.edits-column {
     width: 35%;
 }
-/**NAVIGATION**/
-#el-display-subscribe {
-    font-weight: bold;
-}
-#el-display-subscribe a {
-    font-weight: normal;
-}
-#el-display-subscribe a[data-action="show"] {
-    color: green;
-}
-#el-display-subscribe a[data-action="hide"] {
-    color: red;
-}
-
-/*TOSORT*/
-
-
-
-
-#el-nav-events {
-    cursor: pointer;
-}
-#el-nav-events.el-has-new-events {
-    color: red;
-}
-#el-page .el-full-item[data-type="pooldiff"] {
-    overflow-x: auto;
-    max-width: 90vw;
-}
-#el-page .el-full-item[data-type="pooldiff"] ins {
-    background: #cfc;
-    text-decoration: none;
-}
-#el-page .el-full-item[data-type="pooldiff"] del {
-    background: #fcc;
-    text-decoration: none;
-}
-#el-page .el-full-item[data-type="poolposts"] .el-add-pool-posts {
+/**POOL**/
+.el-pool-posts {
     display: flex;
     flex-wrap: wrap;
+}
+.el-add-pool-posts {
     background-color: rgba(0, 255, 0, 0.2);
 }
-#el-page .el-full-item[data-type="poolposts"] .el-rem-pool-posts {
-    display: flex;
+.el-rem-pool-posts {
     background-color: rgba(255, 0, 0, 0.2);
 }
-#el-page .el-full-item[data-type="poolposts"] .post-preview {
+.el-pool-posts .post-preview {
     margin: 5px;
     padding: 5px;
     border: 1px solid var(--dtext-blockquote-border-color);
 }
-#el-page .el-full-item[data-type="poolposts"] .post-preview-150 {
-    width: 155px;
-    height: 175px;
-}
-#el-page .el-full-item[data-type="poolposts"] .post-preview-180 {
-    width: 185px;
-    height: 205px;
-}
-#el-page .el-full-item[data-type="poolposts"] .post-preview-225 {
-    width: 230px;
-    height: 250px;
-}
-#el-page .el-full-item[data-type="poolposts"] .post-preview-270 {
-    width: 275px;
-    height: 300px;
-}
-#el-page .el-full-item[data-type="poolposts"] .post-preview-360 {
-    width: 365px;
-    height: 390px;
-}
-.el-more {
-    color: blue;
+/**DMAIL**/
+.el-event-body[data-type="dmail"] tr[data-is-read="false"] {
     font-weight: bold;
 }
-.el-none {
-    color: red;
+.el-event-body[data-type="dmail"] tr[data-is-deleted="true"],
+.el-event-body[data-type="dmail"] tr[data-is-deleted="true"] a {
+    text-decoration: line-through;
 }
-.el-event-header {
-    padding: 8px;
-    background-color: #EEE;
-    border: 1px solid #DDD;
-    font-weight: bold;
-    font-size: 20px;
-    margin-right: 2px;
-}
-.el-event-header a {
-    cursor: pointer;
-}
-.el-event-header[data-type="close"] a {
-    color: var(--red-5);
-}
-.el-event-header[data-type="close"] a:hover {
-    color: var(--red-3);
-}
-.el-event-header.el-header-active {
-    background-color: var(--blue-4);
-    border-color: var(--blue-6);
-}
-.el-event-header.el-header-active:hover {
-    background-color: var(--blue-3);
-}
-.el-event-header.el-header-active a {
-    color: white;
-}
-.el-event-header.el-header-active a:hover
-#dmail-notice {
-    display: none;
-}
-#el-event-notice {
-    padding: 0.5em;
-}
-.el-post-thumbnail article.post-preview {
-    width: 160px;
-}
-.striped .el-monospace-link:link,
-.striped .el-monospace-link:visited,
-.post-preview .el-monospace-link:link,
-.post-preview .el-monospace-link:visited {
-    font-family: monospace;
-    color: var(--muted-text-color);
-}
-.striped .el-monospace-link:hover,
-.post-preview .el-monospace-link:hover {
-    filter: brightness(1.5);
-}
-#nav #el-subscribe-events {
+/**SUBSCRIBE LINKS**/
+#el-subscribe-events {
     padding-left: 2em;
     font-weight: bold;
 }
-#el-subscribe-events #el-add-links li {
-    margin: 0 -6px;
-}
-#el-subscribe-events .el-subscribed a,
-#subnav-unsubscribe-link {
+#el-subscribe-events .el-subscribed a {
     color: ${SUBSCRIBED_COLOR};
 }
-#el-subscribe-events .el-subscribed a:hover,
-#subnav-unsubscribe-link:hover {
-    filter: brightness(1.5);
-}
-#el-subscribe-events .el-unsubscribed a,
-#subnav-subscribe-link {
+#el-subscribe-events .el-unsubscribed a {
     color: ${UNSUBSCRIBED_COLOR};
 }
-#el-subscribe-events .el-unsubscribed a:hover,
-#subnav-subscribe-link:hover {
+#el-subscribe-events .el-subscribed a:hover,
+#el-subscribe-events .el-unsubscribed a:hover {
     filter: brightness(1.5);
 }
-#el-loading-message,
-#el-event-controls {
-    margin-top: 1em;
-}
-#el-lock-event-notice,
-#el-read-event-notice {
-    font-weight: bold;
-    color: mediumseagreen;
-}
-#el-lock-event-notice:not(.el-locked):hover ,
-#el-read-event-notice:not(.el-read):hover {
-    filter: brightness(1.5);
-}
-.el-overflow-notice {
-    border-top: 1px solid #DDD;
-    font-weight: bold;
-}
-#el-lock-event-notice.el-locked,
-#el-read-event-notice.el-read {
-    color: red;
-}
-#el-reload-event-notice {
-    font-weight: bold;
-    color: orange;
-}
-#el-snooze-event-notice {
-    font-weight: bold;
-    color: darkviolet;
-}
-#el-reload-event-notice:hover {
-    filter: brightness(1.2);
-}
-#el-snooze-event-notice:hover {
-    filter: brightness(1.5);
-}
-#el-absent-section {
-    margin: 0.5em;
-    border: solid 1px grey;
-    padding: 0.5em;
-}
-.el-error-message {
-    color: var(--muted-text-color);
-    font-weight: bold;
-    margin-left: 1em;
-}
-.el-horizontal-rule {
-    border-top: 4px dashed tan;
-    margin: 10px 0;
-}
+/**OTHER**/
 div#el-notice {
     top: unset;
     bottom: 2em;
-}
-.el-paragraph-mark {
-    opacity: 0.25;
-}
-/**DMAIL**/
-tr[data-read="false"] {
-    font-weight: bold;
-}
-tr[data-deleted="true"],
-tr[data-deleted="true"] a {
-    text-decoration: line-through;
 }`;
 
 const MENU_CSS = `
@@ -900,7 +839,7 @@ const PROGRAM_DATA_DETAILS = `
 </ul>
 <p><b>Note:</b> The raw format of all data keys begins with "el-". which is unused by the cache editor controls.</p>`;
 
-let EVENTS_NAV_HTML = '<a id="el-nav-events" class="py-1.5 px-3">Events(<span id="el-events-total">...</span>)</a>';
+let EVENTS_NAV_HTML = '<a id="el-nav-events" class="el-link py-1.5 px-3">Events(<span id="el-events-total">...</span>)</a>';
 
 const MORE_HTML = '<span class="el-more">more</span>';
 const NONE_HTML = '<span class="el-none">none</span>';
@@ -967,6 +906,7 @@ const TYPEDICT = {
     comment: {
         controller: 'comments',
         addons: {group_by: 'comment', search: {is_deleted: false}},
+        html_addons: {group_by: 'comment'},
         user: 'creator_id',
         creator: ['post', 'uploader_id'],
         item: 'post_id',
@@ -996,6 +936,7 @@ const TYPEDICT = {
     },
     note: {
         controller: 'note_versions',
+        html_addons: {type: 'previous'},
         user: 'updater_id',
         creator: ['post', 'uploader_id'],
         item: 'post_id',
@@ -1011,6 +952,7 @@ const TYPEDICT = {
     },
     commentary: {
         controller: 'artist_commentary_versions',
+        html_addons: {type: 'previous'},
         user: 'updater_id',
         creator: ['post', 'uploader_id'],
         item: 'post_id',
@@ -1030,6 +972,7 @@ const TYPEDICT = {
     },
     post: {
         controller: 'post_versions',
+        html_addons: {type: 'previous'},
         get addons() {
             let addons = {search: {is_new: false}};
             if (EL.filter_BUR_edits) {
@@ -1072,6 +1015,7 @@ const TYPEDICT = {
     },
     wiki: {
         controller: 'wiki_page_versions',
+        html_addons: {type: 'previous'},
         user: 'updater_id',
         item: 'wiki_page_id',
         timeval: 'created_at',
@@ -1088,6 +1032,7 @@ const TYPEDICT = {
     },
     artist: {
         controller: 'artist_versions',
+        html_addons: {type: 'previous'},
         user: 'updater_id',
         item: 'artist_id',
         timeval: 'created_at',
@@ -1100,6 +1045,7 @@ const TYPEDICT = {
     },
     pool: {
         controller: 'pool_versions',
+        html_addons: {type: 'previous'},
         user: 'updater_id',
         item: 'pool_id',
         timeval: 'updated_at',
@@ -1295,6 +1241,17 @@ function GetPageValues(page) {
     return {page_min, page_max};
 }
 
+function GetPageEvents(page, events) {
+    let {page_min, page_max} = GetPageValues(page);
+    return events.slice(page_min - 1, page_max);
+}
+
+function GetHTMLAddons(type, events) {
+    let query_ids = JSPLib.utility.getObjectAttributes(events, 'id');
+    let type_addon = TYPEDICT[type].html_addons ?? {};
+    return JSPLib.utility.mergeHashes(type_addon, {search: {id: query_ids.join(','), order: 'custom'}, limit: query_ids.length});
+}
+
 function AnyEventEnabled(type) {
     return EL.post_query_events_enabled.includes(type) || EL.all_subscribe_events.includes(type) || EL.other_events_enabled.includes(type);
 }
@@ -1322,6 +1279,14 @@ function GetCheckVars(event) {
     let type = $container.data('type');
     let selector = `.el-home-section[data-type=${type}] .el-pages-left[data-source="${source}"] span`;
     return {type, source, selector};
+}
+
+function UpdateHomeText(type, source, classname, text) {
+    if (source) {
+        $(`.el-home-section[data-type=${type}] ${classname}[data-source="${source}"] span`).html(text);
+    } else {
+        $(`.el-home-section[data-type=${type}] ${classname} span`).html(text);
+    }
 }
 
 function UpdateTimestamps($obj) {
@@ -1488,6 +1453,7 @@ async function SaveRecentDanbooruID(type, source) {
         SaveLastSeen(type, source, items);
         JSPLib.storage.setLocalData(`el-${type}-${source}-overflow`, false);
         UpdateHomeSource(type, source);
+        UpdateHomeText(type, source, '.el-pages-left', 0);
     } else if (type === 'dmail') {
         SaveLastID(type, source, 1);
     }
@@ -1588,14 +1554,6 @@ function UpdateMultiLink(typelist, subscribed, itemid) {
     });
 }
 
-function UpdateHomeText(type, source, classname, text) {
-    if (source) {
-        $(`.el-home-section[data-type=${type}] ${classname}[data-source="${source}"] span`).html(text);
-    } else {
-        $(`.el-home-section[data-type=${type}] ${classname} span`).html(text);
-    }
-}
-
 function UpdateNavigation(primary = true) {
     let events_total = 0;
     let new_events = false;
@@ -1613,6 +1571,22 @@ function UpdateNavigation(primary = true) {
     }
     if (primary) {
         EL.channel.postMessage({type: 'update_navigation'});
+    }
+}
+
+function UpdateEventsPage(type, primary = true) {
+    if ($(`.el-event-header[data-type="${type}"]`).length === 0) {
+        let {header, body} = RenderEventsSection(type);
+        $('.el-event-header[data-type="close"]').before(header);
+        $('#el-body').append(body);
+        $(`#el-page .el-event-header[data-type=${type}] a`).on(PROGRAM_CLICK, EventTab);
+    } else {
+        $(`.el-event-body[data-type="${type}"]`).children().remove();
+        $('.el-event-header[data-type="home"] a').trigger('click');
+        EL.pages[type] = {};
+    }
+    if (primary) {
+        EL.channel.postMessage({type: 'update_events_page', eventtype: type});
     }
 }
 
@@ -1643,12 +1617,16 @@ function UpdateHomeSource(type, source, primary = true) {
         let last_seen = JSPLib.storage.getLocalData(`el-${type}-${source}-last-seen`, {bypass: !primary});
         let last_checked = JSPLib.storage.getLocalData(`el-${type}-${source}-last-checked`, {bypass: !primary});
         let event_timeout = JSPLib.storage.getLocalData(`el-${type}-${source}-event-timeout`, {bypass: !primary});
-        let overflowed = JSPLib.storage.getLocalData(`el-${type}-${source}-overflow`, {default_val: false, bypass: !primary});
         let found_ago = JSPLib.utility.timeAgo(last_found);
         let seen_ago = JSPLib.utility.timeAgo(last_seen);
         let checked_ago = JSPLib.utility.timeAgo(last_checked);
         let next_check = JSPLib.utility.timeFromNow(event_timeout);
-        let pages_checked = (overflowed ? MORE_HTML : NONE_HTML);
+        let counter_text = $(`.el-home-section[data-type=${type}] .el-pages-left[data-source="${source}"] span`).text();
+        let pages_checked = (counter_text.length ? Number(counter_text) : null);
+        if (!Number.isInteger(pages_checked)) {
+            let overflowed = JSPLib.storage.getLocalData(`el-${type}-${source}-overflow`, {default_val: false, bypass: !primary});
+            pages_checked = (overflowed ? MORE_HTML : NONE_HTML);
+        }
         UpdateHomeText(type, source, '.el-last-found', found_ago);
         UpdateHomeText(type, source, '.el-last-seen', seen_ago);
         UpdateHomeText(type, source, '.el-last-checked', checked_ago);
@@ -1725,20 +1703,17 @@ function UpdatePostPreviews($obj) {
         entry.style.setProperty('display', 'flex', 'important');
         entry.style.setProperty('visibility', 'visible', 'important');
         entry.style.setProperty('justify-content', 'center');
-        entry.style.setProperty('width', '225px');
+        entry.style.setProperty('width', '180px');
     });
 }
 
 function UpdateUserOnNewEvents(primary = true) {
     if (!EL.display_event_notice) return;
     if (!document.hidden) {
-        console.log("Not hidden, showing notice immediately.");
         TriggerEventsNotice();
     } else {
-        console.log("Hidden, setting up a focus window event.");
         $(window).off('focus.el.new-events').one('focus.el.new-events', () => {
             let show_notice = JSPLib.storage.getLocalData('el-new-events-notice', {default_val: false, bypass: true});
-            console.log("Focus event triggered:", show_notice);
             if (show_notice) {
                 TriggerEventsNotice();
             }
@@ -1760,7 +1735,7 @@ function TriggerEventsNotice() {
 function RenderMultilinkMenu(itemid, event_type) {
     return `
 <div id="el-subscribe-events" data-id="${itemid}" data-type="${event_type}" style="display: none;">
-    Subscribe (<span id="el-add-links"></span>)
+    Subscribe ( <span id="el-add-links"></span> )
 </div>`;
 }
 
@@ -1877,17 +1852,21 @@ function RenderHomeSubsection(source) {
 <li class="el-pages-left" data-source="${source}" title="How many pages left to check. Used as a counter for check more and check all.">
     <b>Pages left:</b> (&thinsp;<span></span>&thinsp;)
 </li>
-<li class="el-check-more" data-source="${source}" title="Check the same amount of events as a normal check.">
-    <a class="el-link">Check more</a>
-</li>
-<li class="el-check-all" data-source="${source}" title="Check all events until the latest is reached.">
-    <a class="el-link">Check all</a>
-</li>
-<li class="el-reset-event" data-source="${source}" title="Reset the event position to the latest item.">
-    <a class="el-link">Reset</a>
-</li>
-<li class="el-refresh-event" data-source="${source}" title="Refresh the time values.">
-    <a class="el-link">Refresh</a>
+<li class="el-section-controls">
+    <div>
+        <div class="el-check-more el-section-link" data-source="${source}" title="Check the same amount of events as a normal check.">
+            <a class="el-link">Check more</a>
+        </div>
+        <div class="el-check-all el-section-link" data-source="${source}" title="Check all events until the latest is reached.">
+            <a class="el-link">Check all</a>
+        </div>
+        <div class="el-reset-event el-section-link" data-source="${source}" title="Reset the event position to the latest item.">
+            <a class="el-link">Reset</a>
+        </div>
+        <div class="el-refresh-event el-section-link" data-source="${source}" title="Refresh the time values.">
+            <a class="el-link">Refresh</a>
+        </div>
+    </div>
 </li>`;
 }
 
@@ -1933,23 +1912,9 @@ function InstallEventsNavigation() {
     UpdateNavigation();
     $('#el-nav-events').on(PROGRAM_CLICK, OpenEventsPage);
     let show_notice = JSPLib.storage.getLocalData('el-new-events-notice', {default_val: false});
-    console.log("New page triggered:", show_notice);
     if (show_notice) {
         TriggerEventsNotice();
     }
-}
-
-function InstallEventSection(type) {
-    let {header, body} = RenderEventsSection(type);
-    $('.el-event-header[data-type="close"]').before(header);
-    $('#el-body').append(body);
-    $(`#el-page .el-event-header[data-type=${type}] a`).on(PROGRAM_CLICK, EventTab);
-}
-
-function ClearEventsBody(type) {
-    $(`.el-event-body[data-type="${type}"]`).children().remove();
-    $('.el-event-header[data-type="home"] a').trigger('click');
-    EL.pages[type] = {};
 }
 
 function LoadEventsPage() {
@@ -2019,8 +1984,43 @@ function AppendFloatingHeader($container, $table) {
     let $header = $(`<div class="el-floating-header">${header_html}</div>`);
     $container.append($header);
     UpdateFloatingTHEAD($table.find('thead').get(0));
-    UpdateFloatingTH([...$table.find('th')])
+    UpdateFloatingTH([...$table.find('th')]);
     EL.thead_observer.observe($table.find('thead').get(0));
+}
+
+function InstallErrorPage(type, page) {
+    let $body_section = $(`.el-event-body[data-type="${type}"] .el-body-section`);
+    let events = GetEvents(type);
+    let page_events = GetPageEvents(page, events);
+    let url_addons = GetHTMLAddons(type, page_events);
+    let page_url = '/' + TYPEDICT[type].controller + '?' + $.param(url_addons);
+    let error_html = `
+<div style="font-size: 24px;">
+    <div style="color: red; font-weight: bold;">
+        ERROR LOADING TABLE FOR ${TYPEDICT[type].plural.toUpperCase()}!
+    </div>
+    <div style="margin-top: 0.5em;">
+        Visit the following page to view these events manually: <a class="el-events-page-url" href="${page_url}" target="_blank">*PAGE LINK*</a>
+    </div>
+    <div style="margin-top: 2em;">
+        Click the following link to clear the page when finished: <a class="el-mark-page-read el-link">*MARK PAGE*</a>
+    </div>
+</div>`;
+    $body_section.html(error_html);
+    $body_section.find('.el-events-page-url').one(PROGRAM_CLICK, () => {
+        page_events.forEach((event) => {event.seen = true;});
+        JSPLib.storage.setLocalData(`el-${type}-saved-events`, events);
+        UpdateHomeEvent(type);
+    });
+    let $mark_page = $body_section.find('.el-mark-page-read');
+    $mark_page.one(PROGRAM_CLICK, () => {
+        let selected_ids = JSPLib.utility.getObjectAttributes(page_events, 'id');
+        PruneSavedEvents(type, selected_ids);
+        UpdateMarkReadLinks(type);
+        UpdateHomeEvent(type);
+        $mark_page.addClass('el-link-disabled');
+        JSPLib.notice.notice("Page marked as read.");
+    });
 }
 
 //Filter functions
@@ -2144,19 +2144,27 @@ async function InsertTableEvents(page, type) {
             table_header += (TYPEDICT[type].add_thumbnail ? '<th width="1%">Preview</th>' : "");
             $table.find('thead tr').prepend(table_header);
             let post_ids = new Set();
+            let save_events = false;
             $table.find('tbody tr').each((_, row) => {
                 let $row = $(row);
                 let id = $row.data('id');
                 let event = events.find((ev) => ev.id === id);
                 let match_html = event.match.map((m) => m.replace('-', ' ')).join('&ensp;&amp;<br>');
-                let row_addon = `<td class="el-mark-read"><input type="checkbox"></td><td class="el-found-with">${match_html}</td>`;
+                let row_addon = `<td class="el-mark-read"><a><input type="checkbox"></td></a><td class="el-found-with">${match_html}</td>`;
                 if (TYPEDICT[type].add_thumbnail) {
                     let post_id = $row.data('post-id');
                     post_ids.add(post_id);
                     row_addon += '<td class="el-post-preview"></td>';
                 }
                 $row.prepend(row_addon);
+                if (!event.seen) {
+                    $row.addClass('el-new-event');
+                    save_events = event.seen = true;
+                }
             });
+            if (save_events) {
+                JSPLib.storage.setLocalData(`el-${type}-saved-events`, events);
+            }
             $table.find('time').each((_, entry) => {
                 entry.innerText = JSPLib.utility.timeAgo(entry.dateTime);
             });
@@ -2182,13 +2190,14 @@ async function InsertTableEvents(page, type) {
             $pane.append($table.detach());
             $container.append($pane);
             TYPEDICT[type].insert_postprocess?.($table);
+            $table.find('.el-mark-read > a').on(PROGRAM_CLICK, SelectEvent);
             EL.pages[type][page] = $container;
             $body_section.empty().append($container);
             AppendFloatingHeader($container, $table);
             UpdateHomeEvent(type);
             UpdateNavigation();
         } else {
-            $body_section.html(`<span style="color: red; font-size: 24px; font-weight: bold;">ERROR LOADING TABLE FOR ${TYPEDICT[type].plural.toUpperCase()}!</span>`);
+            InstallErrorPage(type, page);
         }
     } else {
         $body_section.empty().append(EL.pages[type][page]);
@@ -2206,15 +2215,23 @@ async function InsertCommentEvents(page) {
         if ($page) {
             let $section = $('.list-of-comments', $page);
             $section.addClass('el-comments-body');
+            let save_events = false;
             $section.find('article.comment').each((_, entry) => {
                 let $entry = $(entry);
                 let id = $entry.data('id');
                 let event = events.find((ev) => ev.id === id);
                 let match_html = event.match.map((m) => m.replace('-', ' ')).join('&ensp;&amp;<br>');
                 let $post = $entry.closest('div.post');
-                $post.prepend(`<div class="el-mark-read"><input type="checkbox"></div><div class="el-found-with">${match_html}</div>`);
+                $post.prepend(`<div class="el-mark-read"><a><input type="checkbox"></div></a><div class="el-found-with">${match_html}</div>`);
                 $post.addClass('el-comments-column');
+                if (!event.seen) {
+                    $post.addClass('el-new-event');
+                    save_events = event.seen = true;
+                }
             });
+            if (save_events) {
+                JSPLib.storage.setLocalData(`el-comment-saved-events`, events);
+            }
             UpdateTimestamps($section);
             $section.children().slice(0, -1).css({
                 'border-bottom': '1px solid lightgrey',
@@ -2226,12 +2243,13 @@ async function InsertCommentEvents(page) {
                 entry.style.setProperty('display', 'flex', 'important');
                 entry.style.setProperty('visibility', 'visible', 'important');
             });
+            $section.find('.el-mark-read > a').on(PROGRAM_CLICK, SelectEvent);
             EL.pages.comment[page] = $container;
             $body_section.empty().append($container);
             UpdateHomeEvent('comment');
             UpdateNavigation();
         } else {
-            $body_section.html(`<span style="color: red; font-size: 24px; font-weight: bold;">ERROR LOADING TABLE FOR ${TYPEDICT.comment.plural.toUpperCase()}!</span>`);
+            InstallErrorPage('comment', page);
         }
     } else {
         $body_section.empty().append(EL.pages.comment[page]);
@@ -2386,7 +2404,7 @@ async function AddPoolPostsRow(pool_version_id, $row) {
     let post_ids = JSPLib.utility.arrayUnion(add_posts, rem_posts);
     let thumbnails = await GetEventThumbnails(post_ids);
     if (thumbnails.length) {
-        $td.empty().append(`<div class="el-add-pool-posts" style="display:none"></div><div class="el-rem-pool-posts" style="display:none"></div>`);
+        $td.empty().append(`<div class="el-add-pool-posts el-pool-posts" style="display:none"></div><div class="el-rem-pool-posts el-pool-posts" style="display:none"></div>`);
         insertPostPreviews($outerblock.find('.el-add-pool-posts'), thumbnails, add_posts);
         insertPostPreviews($outerblock.find('.el-rem-pool-posts'), thumbnails, rem_posts);
         UpdatePostPreviews($outerblock);
@@ -2398,15 +2416,10 @@ async function AddPoolPostsRow(pool_version_id, $row) {
 //Network functions
 
 async function GetHTMLPage(type, page, events) {
-    let {page_min, page_max} = GetPageValues(page);
-    let page_events = events.slice(page_min - 1, page_max);
-    let query_ids = JSPLib.utility.getObjectAttributes(page_events, 'id');
-    let type_addon = TYPEDICT[type].addons ?? {};
-    let url_addons = JSPLib.utility.mergeHashes(type_addon, {search: {id: query_ids.join(','), order: 'custom'}, type: 'previous', limit: query_ids.length});
-    let type_html = await JSPLib.network.getNotify(`/${TYPEDICT[type].controller}`, {url_addons});
+    let page_events = GetPageEvents(page, events);
+    let url_addons = GetHTMLAddons(type, page_events);
+    let type_html = await JSPLib.network.getNotify(`/${TYPEDICT[type].controller}.html`, {url_addons});
     if (type_html) {
-        page_events.forEach((event) => {event.seen = true;});
-        JSPLib.storage.setLocalData(`el-${type}-saved-events`, events);
         let $parse = $.parseHTML(type_html);
         return DecodeProtectedEmail($parse);
     }
@@ -2447,7 +2460,7 @@ async function GetEventThumbnails(post_ids) {
     let thumbnails = [];
     for (let i = 0; i < post_ids.length; i += QUERY_LIMIT) {
         let query_ids = post_ids.slice(i, i + QUERY_LIMIT);
-        let url_addons = {tags: `id:${query_ids.join(',')} status:any limit:${query_ids.length}`, size: 225, show_votes: false};
+        let url_addons = {tags: `id:${query_ids.join(',')} status:any limit:${query_ids.length}`, size: 180, show_votes: false};
         let html = await JSPLib.network.getNotify('/posts', {url_addons});
         if (html) {
             let $posts = $.parseHTML(html);
@@ -2603,6 +2616,7 @@ function EventTab(event) {
         $('#page').show();
         $('#page-footer').show();
     }
+    $('#el-close-notice-link').trigger('click');
 }
 
 function CheckMore(event) {
@@ -2625,7 +2639,7 @@ function ResetEvent(event) {
 }
 
 function RefreshEvent(event) {
-    let {type, source, selector} = GetCheckVars(event);
+    let {type, source} = GetCheckVars(event);
     UpdateHomeSource(type, source);
 }
 
@@ -2641,6 +2655,13 @@ function PaginatorNext(event) {
     let type = $body.data('type');
     let page = $body.find('.el-body-section').data('page') + 1;
     UpdateSectionPage(type, page);
+}
+
+function SelectEvent(event) {
+    if (event.target.nodeName === 'INPUT') return;
+    let $input = $(event.currentTarget).find('input');
+    let checked = $input.prop('checked');
+    $input.prop('checked', !checked);
 }
 
 function SelectAll(event) {
@@ -2883,13 +2904,9 @@ async function CheckPostQueryType(type, no_limit = false, selector = null) {
         if (found_events.length) {
             printer.debuglog(`Available ${TYPEDICT[type].plural}:`, found_events.length, last_id);
             SaveFoundEvents(type, 'post-query', found_events, items);
-            UpdateHomeEvent(type);
             UpdateNavigation();
-            if ($(`.el-event-header[data-type="${type}"]`).length === 0) {
-                InstallEventSection(type);
-            } else {
-                ClearEventsBody(type);
-            }
+            UpdateEventsPage(type);
+            UpdateHomeEvent(type);
         } else {
             printer.debuglog(`No ${TYPEDICT[type].plural}`, last_id);
         }
@@ -2930,13 +2947,9 @@ async function CheckSubscribeType(type, no_limit = false, selector = null) {
         if (found_events.length) {
             printer.debuglog(`Available ${TYPEDICT[type].plural}:`, found_events.length, last_id);
             SaveFoundEvents(type, 'subscribe', found_events, items);
-            UpdateHomeEvent(type);
             UpdateNavigation();
-            if ($(`.el-event-header[data-type="${type}"]`).length === 0) {
-                InstallEventSection(type);
-            } else {
-                ClearEventsBody(type);
-            }
+            UpdateEventsPage(type);
+            UpdateHomeEvent(type);
         } else {
             printer.debuglog(`No ${TYPEDICT[type].plural}`, last_id);
         }
@@ -2968,13 +2981,9 @@ async function CheckOtherType(type, no_limit = false, selector = null) {
         if (found_events.length) {
             printer.debuglog(`Available ${TYPEDICT[type].plural}:`, found_events.length, last_id);
             SaveFoundEvents(type, 'other', found_events, items);
-            UpdateHomeEvent(type);
             UpdateNavigation();
-            if ($(`.el-event-header[data-type="${type}"]`).length === 0) {
-                InstallEventSection(type);
-            } else {
-                ClearEventsBody(type);
-            }
+            UpdateEventsPage(type);
+            UpdateHomeEvent(type);
         } else {
             printer.debuglog(`No ${TYPEDICT[type].plural}`, last_id);
         }
@@ -3002,6 +3011,9 @@ function BroadcastEL(ev) {
             break;
         case 'update_navigation':
             UpdateNavigation(false);
+            break;
+        case 'update_events_page':
+            UpdateEventsPage(ev.data.eventtype, false);
             break;
         case 'update_event':
             UpdateHomeEvent(ev.data.event_type, false);
@@ -3063,11 +3075,11 @@ function LocalResetCallback() {
 }
 
 function RemoteSettingsCallback() {
-    JSPLib.utility.fullHide('#el-event-notice, #el-subscribe-events');
+    JSPLib.utility.fullHide('#el-subscribe-events');
 }
 
 function RemoteResetCallback() {
-    JSPLib.utility.fullHide('#el-event-notice, #el-subscribe-events');
+    JSPLib.utility.fullHide('#el-subscribe-events');
 }
 
 function GetRecheckExpires() {
@@ -3097,7 +3109,6 @@ function RebindMenuAutocomplete() {
 function MigrateLocalData() {
     let migrated = JSPLib.storage.getLocalData('el-migration-25.0', {default_val: false});
     if (migrated) return;
-    console.log('migrating data');
     EL.all_subscribe_events.forEach((type) => {
         let last_id = JSPLib.storage.getLocalData(`el-${type}lastid`);
         if (last_id) {
