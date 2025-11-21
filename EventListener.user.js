@@ -136,18 +136,18 @@ JSPLib.storage.getLocalData = function (key, {default_val = null, bypass = false
 
 JSPLib.storage.checkStorageData = function (self, key, storage, {validator = JSPLib.storage.localSessionValidator, default_val = null, bypass = false} = {}) {
     let storage_type = this._getStorageType(storage);
-    self.debug('logLevel', "Checking storage", key, JSPLib.debug.VERBOSE);
+    self.debug('logLevel', "Checking storage", key, JSPLib.debug.ALL);
     if (!bypass && key in this.memory_storage[storage_type]) {
-        self.debug('logLevel', "Memory hit", key, JSPLib.debug.DEBUG);
+        self.debug('logLevel', "Memory hit", key, JSPLib.debug.VERBOSE);
         return this.memory_storage[storage_type][key];
     }
     if (!(key in storage)) {
-        self.debug('logLevel', "Storage miss", key, JSPLib.debug.DEBUG);
+        self.debug('logLevel', "Storage miss", key, JSPLib.debug.VERBOSE);
         return default_val;
     }
     let data = this.getStorageData(key, storage, {bypass});
     if (validator?.(key, data)) {
-        self.debug('logLevel', "Data validated", key, JSPLib.debug.VERBOSE);
+        self.debug('logLevel', "Data validated", key, JSPLib.debug.ALL);
         return data;
     }
     self.debug('logLevel', "Data corrupted", key, JSPLib.debug.DEBUG);
@@ -159,6 +159,12 @@ JSPLib.storage.checkLocalData = function (key, {validator = JSPLib.storage.local
 };
 
 JSPLib.debug.addModuleLogs('storage', ['checkStorageData']);
+
+JSPLib.concurrency.checkSemaphore = function (program_shortcut, name) {
+    let storage_name = this._getSemaphoreName(program_shortcut, name, true);
+    let semaphore = JSPLib.storage.getLocalData(storage_name, {default_val: 0, bypass: true});
+    return !JSPLib.utility.validateExpires(semaphore, this.process_semaphore_expires);
+};
 
 JSPLib.concurrency.setRecheckTimeout = function (storage_key, expires_time, jitter = null) {
     if (JSPLib.utility.isNumber(jitter) && jitter < expires_time) {
@@ -444,7 +450,6 @@ const DEFAULT_VALUES = {
     subscribeset: {},
     userset: {},
     openlist: {},
-    new_events_found: false,
     pages: {},
 };
 
@@ -847,7 +852,7 @@ const PROGRAM_DATA_DETAILS = `
 <ul>
     <li>General data
         <ul>
-            <li><b>process-semaphore:</b> Prevents two tabs from processing the same data at the same time.</li>
+            <li><b>process-semaphore-main:</b> Prevents two tabs from processing the same data at the same time.</li>
             <li><b>show-subscribe-links:</b> Whether to display subscribe links on available pages.</li>
             <li><b>new-events-notice:</b> Whether to show a new events notice to the user once a tab gets focus.</li>
             <li><b>user-settings:</b> All configurable settings.</li>
@@ -864,6 +869,7 @@ const PROGRAM_DATA_DETAILS = `
             <li><b>TYPE-SOURCE-last-seen:</b> Timestamp of the most recent item seen from Danbooru.</li>
             <li><b>TYPE-SOURCE-last-found:</b> Timestamp of the last found item.</li>
             <li><b>TYPE-SOURCE-event-timeout:</b> Timestamp of the next check.</li>
+            <li><b>process-semaphore-TYPE-SOURCE:</b> Prevents events from being checked during an ongoing manual check.</li>
         </ul>
     </li>
 </ul>
@@ -1278,7 +1284,8 @@ const BOOL_SETTING_REGEX = RegExp([
     `el-${TYPE_GROUPING}-${SOURCE_GROUPING}-overflow`,
 ].join('|'));
 const TIME_SETTING_REGEX = RegExp([
-    'el-process-semaphore',
+    'el-process-semaphore-main',
+    `el-process-semaphore-${TYPE_GROUPING}-${SOURCE_GROUPING}`,
     `el-${TYPE_GROUPING}-${SOURCE_GROUPING}-last-seen`,
     `el-${TYPE_GROUPING}-${SOURCE_GROUPING}-last-found`,
     `el-${TYPE_GROUPING}-${SOURCE_GROUPING}-last-checked`,
@@ -1440,6 +1447,25 @@ function CorrectList(type, typelist) {
 
 //Helper functions
 
+async function PromiseHashAll(promise_hash) {
+    let promise_array = [];
+    for (let type in promise_hash) {
+        for (let source in promise_hash[type]) {
+            promise_array.push(promise_hash[type][source]);
+        }
+    }
+    let results = await Promise.all(promise_array);
+    let results_hash = {};
+    let index = 0;
+    for (let type in promise_hash) {
+        results_hash[type] = {};
+        for (let source in promise_hash[type]) {
+            results_hash[type][source] = results[index++];
+        }
+    }
+    return results_hash;
+}
+
 function GetPageValues(page) {
     let page_min = ((page - 1) * 20) + 1;
     let page_max = page * 20;
@@ -1489,12 +1515,24 @@ function IsOtherEnabled(type) {
     return EL.other_events_enabled.includes(type);
 }
 
-function CheckSubscribeEvent(type) {
+function CheckSubscribeEnabled(type) {
     return EL.subscribe_events_enabled.includes(type) && (EL.show_creator_events || CheckItemList(type));
 }
 
-function CheckUserEvent(type) {
+function CheckUserEnabled(type) {
     return EL.user_events_enabled.includes(type) && CheckUserList(type);
+}
+
+function CheckEventSemaphore(type, source) {
+    return JSPLib.concurrency.checkSemaphore(PROGRAM_SHORTCUT, `${type}-${source}`);
+}
+
+function ReserveEventSemaphore(type, source) {
+    return JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, `${type}-${source}`);
+}
+
+function FreeEventSemaphore(type, source) {
+    return JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT, `${type}-${source}`);
 }
 
 function CheckEventTimeout(type, source) {
@@ -1564,19 +1602,25 @@ function PostCustomQuery(query) {
 
 //Data functions
 
-function GetEvents(type, bypass = false) {
+function GetEvents(type) {
     let storage_key = `el-${type}-saved-events`;
-    if (JSPLib.storage.inMemoryStorage(storage_key, localStorage) && !bypass) {
+    if (JSPLib.storage.inMemoryStorage(storage_key, localStorage)) {
         //It's already in memory, so it should be good with the current userscript version.
         return JSPLib.storage.getLocalData(storage_key);
     }
     //Events on local storage need to be checked and corrected if possible.
-    let events = JSPLib.storage.getLocalData(storage_key, {default_val: [], bypass});
+    let events = JSPLib.storage.getLocalData(storage_key, {default_val: []});
     if (CorrectEvents(storage_key, events)) {
         //Get the corrected events.
         events = JSPLib.storage.getLocalData(storage_key);
     }
     return events;
+}
+
+function SaveEvents(type, events) {
+    JSPLib.storage.setLocalData(`el-${type}-saved-events`, events);
+    UpdateEventType(type, {broadcast: true});
+    UpdateNavigation({broadcast: true});
 }
 
 function GetItemList(type) {
@@ -1675,8 +1719,6 @@ async function SaveRecentDanbooruID(type, source) {
         SaveLastID(type, source, JSPLib.danbooru.getNextPageID(items, true));
         SaveLastSeen(type, source, items);
         SaveEventRecheck(type, source);
-        UpdateHomeSource(type, source);
-        UpdateHomeText(type, source, '.el-pages-left', 0);
     } else if (type === 'dmail') {
         SaveLastID(type, source, 1);
     }
@@ -1685,8 +1727,6 @@ async function SaveRecentDanbooruID(type, source) {
 function SaveLastChecked(type, source) {
     let last_checked = Date.now();
     JSPLib.storage.setLocalData(`el-${type}-${source}-last-checked`, last_checked);
-    let time_ago = JSPLib.utility.timeAgo(last_checked);
-    UpdateHomeText(type, source, '.el-last-checked', time_ago);
 }
 
 function SaveLastSeen(type, source, items) {
@@ -1718,6 +1758,7 @@ function SaveFoundEvents(type, source, found_events, all_data) {
     let saved_events = GetEvents(type);
     let updated_events = [];
     var last_found_event;
+    var new_events = false;
     found_events.forEach((event) => {
         let saved_event = saved_events.find((ev) => ev.id === event.id);
         if (saved_event) {
@@ -1725,7 +1766,7 @@ function SaveFoundEvents(type, source, found_events, all_data) {
             updated_events.push(saved_event);
         } else {
             updated_events.push(event);
-            EL.new_events_found = true;
+            new_events = true;
         }
         if (!last_found_event || event.id > last_found_event.id) {
             last_found_event = event;
@@ -1742,13 +1783,14 @@ function SaveFoundEvents(type, source, found_events, all_data) {
     let last_record = all_data.find((item) => item.id === last_found_event.id);
     let last_timestamp = JSPLib.utility.toTimeStamp(last_record[TYPEDICT[type].timeval]);
     JSPLib.storage.setLocalData(`el-${type}-${source}-last-found`, last_timestamp);
+    return new_events;
 }
 
 function PruneSavedEvents(type, item_ids) {
     let events = GetEvents(type);
     let pruned_events = events.filter((ev) => !item_ids.includes(ev.id));
-    console.log("Pruned events:", type, item_ids, pruned_events);
-    //JSPLib.storage.setLocalData(`el-${type}-saved-events`, pruned_events);
+    SaveEvents(type, pruned_events);
+    UpdateMarkReadLinks(type);
 }
 
 //Update functions
@@ -1777,50 +1819,70 @@ function UpdateMultiLink(typelist, subscribed, itemid) {
     });
 }
 
-function UpdateNavigation(primary = true) {
-    let events_total = 0;
-    let new_events = false;
-    ALL_EVENTS.forEach((type) => {
-        if (!AnyEventEnabled(type)) return;
-        let events = GetEvents(type, !primary);
-        events_total += events.length;
-        new_events ||= events.some((event) => !event.seen);
-    });
+function UpdateNavigation({events_total = 0, has_new = false, broadcast = false} = {}) {
+    const printer = JSPLib.debug.getFunctionPrint('UpdateNavigation');
+    if (events_total === 0) {
+        ALL_EVENTS.forEach((type) => {
+            if (!AnyEventEnabled(type)) return;
+            let events = GetEvents(type);
+            events_total += events.length;
+            let any_new = events.some((event) => !event.seen);
+            has_new ||= any_new;
+            printer.debuglogLevel(type, events.length, any_new, JSPLib.debug.DEBUG);
+        });
+    }
     $('#el-events-total').text(events_total);
-    if (new_events) {
+    if (has_new) {
         $('#el-nav-events').addClass('el-has-new-events');
     } else {
         $('#el-nav-events').removeClass('el-has-new-events');
     }
-    if (primary) {
-        EL.channel.postMessage({type: 'update_navigation'});
+    printer.debuglogLevel({has_new, events_total, broadcast}, JSPLib.debug.DEBUG);
+    if (broadcast) {
+        EL.channel.postMessage({type: 'update_navigation', event_data: {events_total, has_new}});
     }
 }
 
-function UpdateEventsPage(type, primary = true) {
-    if ($(`.el-event-header[data-type="${type}"]`).length === 0) {
-        $('.el-event-header[data-type="close"]').before(RenderEventHeader(type));
-        $('#el-body').append(RenderEventBody(type));
-        $(`#el-page .el-event-header[data-type=${type}] a`).on(PROGRAM_CLICK, EventTab);
-    } else {
-        $(`.el-event-body[data-type="${type}"]`).children().remove();
-        $('.el-event-header[data-type="home"] a').trigger('click');
-        EL.pages[type] = {};
-    }
-    if (primary) {
-        EL.channel.postMessage({type: 'update_events_page', eventtype: type});
-    }
-}
-
-function UpdateHomeEvent(type, primary = true) {
-    if ($('#el-page').length) {
-        let saved_events = GetEvents(type, !primary);
+function UpdateEventType(type, {saved_total = 0, new_total = 0, has_new = false, broadcast = false} = {}) {
+    const printer = JSPLib.debug.getFunctionPrint('UpdateEventType');
+    if (saved_total === 0) {
+        let saved_events = GetEvents(type);
         let new_events = saved_events.filter((ev) => !ev.seen);
-        UpdateHomeText(type, null, '.el-new-events', new_events.length);
-        UpdateHomeText(type, null, '.el-available-events', saved_events.length);
+        saved_total = saved_events.length;
+        new_total = new_events.length;
+    }
+    printer.debuglogLevel(type, {saved_total, new_total, has_new, broadcast}, JSPLib.debug.DEBUG);
+    if ($('#el-page').length) {
+        if (has_new) {
+            if ($(`.el-event-header[data-type="${type}"]`).length === 0) {
+                printer.debuglog('Installing header/body for', type);
+                var $anchor_header;
+                let target_index = EL.events_order.indexOf(type);
+                $('.el-event-header').each((_, header) => {
+                    let $header = $(header);
+                    let type = $header.data('type');
+                    let type_index = EL.events_order.indexOf(type);
+                    if (type_index > target_index) {
+                        $anchor_header = $header;
+                        return false;
+                    }
+                });
+                $anchor_header ??= $('.el-event-header[data-type="close"]');
+                $anchor_header.before(RenderEventHeader(type));
+                $('#el-body').append(RenderEventBody(type));
+                $(`#el-page .el-event-header[data-type=${type}] a`).on(PROGRAM_CLICK, EventTab);
+            } else {
+                printer.debuglog('Emptying body for', type);
+                $(`.el-event-body[data-type="${type}"]`).children().remove();
+                $('.el-event-header[data-type="home"] a').trigger('click');
+                EL.pages[type] = {};
+            }
+        }
+        UpdateHomeText(type, null, '.el-new-events', new_total);
+        UpdateHomeText(type, null, '.el-available-events', saved_total);
         let $event_tab = $(`.el-event-header[data-type="${type}"]`);
         let $home_section = $(`.el-home-section[data-type="${type}"]`);
-        if (new_events.length) {
+        if (new_total > 0) {
             $event_tab.addClass('el-has-new-events');
             $home_section.addClass('el-has-new-events');
         } else {
@@ -1828,17 +1890,20 @@ function UpdateHomeEvent(type, primary = true) {
             $home_section.removeClass('el-has-new-events');
         }
     }
-    if (primary) {
-        EL.channel.postMessage({type: 'update_event', event_type: type});
+    if (broadcast) {
+        EL.channel.postMessage({type: 'update_type', event_type: type, event_data: {saved_total, new_total, has_new}});
     }
 }
 
-function UpdateHomeSource(type, source, primary = true) {
+function UpdateEventSource(type, source, {last_found = null, last_seen = null, last_checked = null, event_timeout = null, overflow = null, broadcast = false} = {}) {
+    const printer = JSPLib.debug.getFunctionPrint('UpdateEventSource');
+    last_found ??= JSPLib.storage.checkLocalData(`el-${type}-${source}-last-found`);
+    last_seen ??= JSPLib.storage.checkLocalData(`el-${type}-${source}-last-seen`);
+    last_checked ??= JSPLib.storage.checkLocalData(`el-${type}-${source}-last-checked`);
+    event_timeout ??= JSPLib.storage.checkLocalData(`el-${type}-${source}-event-timeout`);
+    overflow ??= JSPLib.storage.checkLocalData(`el-${type}-${source}-overflow`, {default_val: false});
+    printer.debuglogLevel(type, source, {last_found, last_seen, last_checked, event_timeout, overflow, broadcast}, JSPLib.debug.DEBUG);
     if ($('#el-page').length) {
-        let last_found = JSPLib.storage.checkLocalData(`el-${type}-${source}-last-found`, {bypass: !primary});
-        let last_seen = JSPLib.storage.checkLocalData(`el-${type}-${source}-last-seen`, {bypass: !primary});
-        let last_checked = JSPLib.storage.checkLocalData(`el-${type}-${source}-last-checked`, {bypass: !primary});
-        let event_timeout = JSPLib.storage.checkLocalData(`el-${type}-${source}-event-timeout`, {bypass: !primary});
         let found_ago = JSPLib.utility.timeAgo(last_found);
         let seen_ago = JSPLib.utility.timeAgo(last_seen);
         let checked_ago = JSPLib.utility.timeAgo(last_checked);
@@ -1846,8 +1911,7 @@ function UpdateHomeSource(type, source, primary = true) {
         let counter_text = $(`.el-home-section[data-type=${type}] .el-pages-left[data-source="${source}"] span`).text();
         let pages_checked = (counter_text.length ? Number(counter_text) : null);
         if (!Number.isInteger(pages_checked)) {
-            let overflowed = JSPLib.storage.checkLocalData(`el-${type}-${source}-overflow`, {default_val: false, bypass: !primary});
-            pages_checked = (overflowed ? MORE_HTML : NONE_HTML);
+            pages_checked = (overflow ? MORE_HTML : NONE_HTML);
         }
         UpdateHomeText(type, source, '.el-last-found', found_ago);
         UpdateHomeText(type, source, '.el-last-seen', seen_ago);
@@ -1855,8 +1919,8 @@ function UpdateHomeSource(type, source, primary = true) {
         UpdateHomeText(type, source, '.el-next-check', next_check);
         UpdateHomeText(type, source, '.el-pages-left', pages_checked);
     }
-    if (primary) {
-        EL.channel.postMessage({type: 'update_source', event_type: type, event_source: source});
+    if (broadcast) {
+        EL.channel.postMessage({type: 'update_source', event_type: type, event_source: source, event_data: {last_found, last_seen, last_checked, event_timeout, overflow}});
     }
 }
 
@@ -1929,11 +1993,9 @@ function UpdatePostPreviews($obj) {
     });
 }
 
-function UpdateUserOnNewEvents(primary = true) {
+function UpdateUserOnNewEvents(primary) {
     if (!EL.display_event_notice) return;
-    if (!document.hidden) {
-        TriggerEventsNotice();
-    } else {
+    if (document.hidden) {
         $(window).off('focus.el.new-events').one('focus.el.new-events', () => {
             let show_notice = JSPLib.storage.checkLocalData('el-new-events-notice', {default_val: false, bypass: true});
             if (show_notice) {
@@ -1944,12 +2006,27 @@ function UpdateUserOnNewEvents(primary = true) {
             JSPLib.storage.setLocalData('el-new-events-notice', true);
             EL.channel.postMessage({type: 'new_events'});
         }
+    } else {
+        TriggerEventsNotice();
     }
 }
 
 function TriggerEventsNotice() {
     JSPLib.notice.notice("<b>EventListener:</b> New events available.", true);
     JSPLib.storage.setLocalData('el-new-events-notice', false);
+}
+
+function CloseEventsNotice() {
+    $('#el-close-notice-link').trigger('click');
+    EL.channel.postMessage({type: 'close_notice'});
+}
+
+function UpdateAfterCheck(type, source, new_events) {
+    UpdateEventSource(type, source, {broadcast: true});
+    if (new_events) {
+        UpdateEventType(type, {has_new: true, broadcast: true});
+        UpdateNavigation({broadcast: true});
+    }
 }
 
 //Render functions
@@ -2105,15 +2182,15 @@ function LoadEventsPage() {
     $('#page').after(RenderEventsPage());
     ALL_EVENTS.forEach((type) => {
         if (!AnyEventEnabled(type)) return;
-        UpdateHomeEvent(type);
+        UpdateEventType(type);
         if (IsSubscribeEnabled(type)) {
-            UpdateHomeSource(type, 'subscribe');
+            UpdateEventSource(type, 'subscribe');
         }
         if (IsPostQueryEnabled(type)) {
-            UpdateHomeSource(type, 'post-query');
+            UpdateEventSource(type, 'post-query');
         }
         if (IsOtherEnabled(type)) {
-            UpdateHomeSource(type, 'other');
+            UpdateEventSource(type, 'other');
         }
     });
     $('#el-page .el-event-header a').on(PROGRAM_CLICK, EventTab);
@@ -2170,8 +2247,7 @@ function InstallErrorPage(type, page) {
     $body_section.html(error_html);
     $body_section.find('.el-events-page-url').one(PROGRAM_CLICK, () => {
         page_events.forEach((event) => {event.seen = true;});
-        JSPLib.storage.setLocalData(`el-${type}-saved-events`, events);
-        UpdateHomeEvent(type);
+        SaveEvents(type, events);
     });
     $body_section.find('.el-events-reload').one(PROGRAM_CLICK, () => {
         UpdateSectionPage(type, page);
@@ -2180,8 +2256,6 @@ function InstallErrorPage(type, page) {
     $mark_page.one(PROGRAM_CLICK, () => {
         let selected_ids = JSPLib.utility.getObjectAttributes(page_events, 'id');
         PruneSavedEvents(type, selected_ids);
-        UpdateMarkReadLinks(type);
-        UpdateHomeEvent(type);
         $mark_page.addClass('el-link-disabled');
         JSPLib.notice.notice("Page marked as read.");
     });
@@ -2327,7 +2401,7 @@ async function InsertTableEvents(page, type) {
                 }
             });
             if (save_events) {
-                JSPLib.storage.setLocalData(`el-${type}-saved-events`, events);
+                SaveEvents(type, events);
             }
             $table.find('time').each((_, entry) => {
                 entry.innerText = JSPLib.utility.timeAgo(entry.dateTime);
@@ -2358,8 +2432,6 @@ async function InsertTableEvents(page, type) {
             EL.pages[type][page] = $container;
             $body_section.empty().append($container);
             AppendFloatingHeader($container, $table);
-            UpdateHomeEvent(type);
-            UpdateNavigation();
         } else {
             InstallErrorPage(type, page);
         }
@@ -2394,7 +2466,7 @@ async function InsertCommentEvents(page) {
                 }
             });
             if (save_events) {
-                JSPLib.storage.setLocalData(`el-comment-saved-events`, events);
+                SaveEvents('comment', events);
             }
             UpdateTimestamps($section);
             $section.children().slice(0, -1).css({
@@ -2410,8 +2482,6 @@ async function InsertCommentEvents(page) {
             $section.find('.el-mark-read > a').on(PROGRAM_CLICK, SelectEvent);
             EL.pages.comment[page] = $container;
             $body_section.empty().append($container);
-            UpdateHomeEvent('comment');
-            UpdateNavigation();
         } else {
             InstallErrorPage('comment', page);
         }
@@ -2762,7 +2832,7 @@ function OpenEventsPage() {
         $('.el-event-header[data-type="home"]').addClass('el-header-active');
     }
     $('#el-page').show();
-    $('#el-close-notice-link').trigger('click');
+    CloseEventsNotice();
 }
 
 function EventTab(event) {
@@ -2781,31 +2851,27 @@ function EventTab(event) {
         $('#page').show();
         $('#page-footer').show();
     }
-    $('#el-close-notice-link').trigger('click');
+    CloseEventsNotice();
 }
 
 function CheckMore(event) {
     let {type, source} = GetCheckVars(event);
-    CheckMore.checking ??= {};
-    CheckMore.checking[type] ??= {};
-    if (!CheckMore.checking[type][source]) {
-        CheckMore.checking[type][source] = true;
+    if (ReserveEventSemaphore(type, source)) {
         JSPLib.notice.notice(`Checking more ${TYPEDICT[type].plural}.`);
-        ProcessType(type, source, false).then(() => {
-            CheckMore.checking[type][source] = false;
+        ProcessType(type, source, false).then((new_events) => {
+            UpdateAfterCheck(type, source, new_events);
+            FreeEventSemaphore(type, source);
         });
     }
 }
 
 function CheckAll(event) {
     let {type, source} = GetCheckVars(event);
-    CheckAll.checking ??= {};
-    CheckAll.checking[type] ??= {};
-    if (!CheckAll.checking[type][source]) {
-        CheckAll.checking[type][source] = true;
+    if (ReserveEventSemaphore(type, source)) {
         JSPLib.notice.notice(`Checking all ${TYPEDICT[type].plural}.`);
-        ProcessType(type, source, true).then(() => {
-            CheckAll.checking[type][source] = false;
+        ProcessType(type, source, true).then((new_events) => {
+            UpdateAfterCheck(type, source, new_events);
+            FreeEventSemaphore(type, source);
         });
     }
 }
@@ -2814,6 +2880,7 @@ function ResetEvent(event) {
     if (confirm("This will reset the event position to the latest available item. Continue?")) {
         let {type, source} = GetCheckVars(event);
         SaveRecentDanbooruID_T(type, source).then(() => {
+            UpdateEventSource(type, source, {broadcast: true});
             JSPLib.notice.notice("Positions reset.");
         });
     }
@@ -2821,7 +2888,7 @@ function ResetEvent(event) {
 
 function RefreshEvent(event) {
     let {type, source} = GetCheckVars(event);
-    UpdateHomeSource(type, source);
+    UpdateEventSource(type, source);
 }
 
 function PaginatorPrevious(event) {
@@ -2888,7 +2955,6 @@ function MarkSelected(event) {
     }
     if (selected_ids.length) {
         PruneSavedEvents(type, selected_ids);
-        UpdateMarkReadLinks(type);
     } else {
         JSPLib.notice.notice(`No ${TYPEDICT[type].plural} selected!`);
     }
@@ -2906,7 +2972,6 @@ function MarkPage(event) {
         $event_body.find('tbody tr').detach();
     }
     PruneSavedEvents(type, selected_ids);
-    UpdateMarkReadLinks(type);
 }
 
 function MarkAll(event) {
@@ -2921,7 +2986,6 @@ function MarkAll(event) {
     let events = GetEvents(type);
     let selected_ids = JSPLib.utility.getObjectAttributes(events, 'id');
     PruneSavedEvents(type, selected_ids);
-    UpdateMarkReadLinks(type);
 }
 
 async function PostEventPopulateControl() {
@@ -3005,39 +3069,61 @@ function AdjustFloatingTH(entries) {
 //Check event functions
 
 function CheckAllEventsReady() {
-    if (!JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT)) return;
+    if (!JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'main')) return;
     const printer = JSPLib.debug.getFunctionPrint('CheckAllEventsReady');
-    let promise_array = [];
+    let promise_hash = {};
     SUBSCRIBE_EVENTS.forEach((type) => {
-        if (IsSubscribeEnabled(type) && CheckEventTimeout(type, 'subscribe')) {
-            if (CheckSubscribeEvent(type) || CheckUserEvent(type)) {
-                promise_array.push(ProcessSubscribeType_T(type));
-            } else {
+        if (CheckEventTimeout(type, 'subscribe') && CheckEventSemaphore(type, 'subscribe')) {
+            if (!IsSubscribeEnabled(type)) {
+                printer.debuglogLevel("Hard disable:", 'subscribe', type, JSPLib.debug.DEBUG);
+            } else if (!CheckSubscribeEnabled(type) && !CheckUserEnabled(type)) {
                 printer.debuglogLevel("Soft disable:", 'subscribe', type, JSPLib.debug.DEBUG);
+            } else {
+                promise_hash[type] ??= {};
+                promise_hash[type].subscribe = ProcessSubscribeType_T(type);
             }
-        } else {
-            printer.debuglogLevel("Hard disable:", 'subscribe', type, JSPLib.debug.DEBUG);
         }
     });
     POST_QUERY_EVENTS.forEach((type) => {
-        if (IsPostQueryEnabled(type) && CheckEventTimeout(type, 'post-query')) {
-            promise_array.push(ProcessPostQueryType_T(type));
-        } else {
-            printer.debuglogLevel("Hard disable:", 'post-query', type, JSPLib.debug.DEBUG);
+        if (CheckEventTimeout(type, 'post-query') && CheckEventSemaphore(type, 'post-query')) {
+            if (!IsPostQueryEnabled(type)) {
+                printer.debuglogLevel("Hard disable:", 'post-query', type, JSPLib.debug.DEBUG);
+            } else {
+                promise_hash[type] ??= {};
+                promise_hash[type]['post-query'] = ProcessPostQueryType_T(type);
+            }
         }
     });
     OTHER_EVENTS.forEach((type) => {
-        if (IsOtherEnabled(type) && CheckEventTimeout(type, 'other')) {
-            promise_array.push(ProcessOtherType_T(type));
-        } else {
-            printer.debuglogLevel("Hard disable:", 'other', type, JSPLib.debug.DEBUG);
+        if (CheckEventTimeout(type, 'other') && CheckEventSemaphore(type, 'other')) {
+            if (!IsOtherEnabled(type)) {
+
+                printer.debuglogLevel("Hard disable:", 'other', type, JSPLib.debug.DEBUG);
+            } else {
+                promise_hash[type] ??= {};
+                promise_hash[type].other = ProcessOtherType_T(type);
+            }
         }
     });
-    Promise.all(promise_array).then(() => {
-        if (EL.new_events_found) {
-            UpdateUserOnNewEvents();
+    PromiseHashAll(promise_hash).then((results_hash) => {
+        printer.debuglog(results_hash);
+        let all_new_events = false;
+        for (let type in results_hash) {
+            let type_new_events = false;
+            for (let source in results_hash[type]) {
+                type_new_events ||= results_hash[type][source];
+                UpdateEventSource(type, source, {broadcast: true});
+            }
+            if (type_new_events) {
+                UpdateEventType(type, {has_new: true, broadcast: true});
+                all_new_events = true;
+            }
         }
-        JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT);
+        if (all_new_events) {
+            UpdateNavigation({broadcast: true});
+            UpdateUserOnNewEvents(true);
+        }
+        JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT, 'main');
     });
 }
 
@@ -3058,6 +3144,7 @@ function ProcessType(type, source, no_limit) {
 async function ProcessSubscribeType(type, no_limit = false, selector = null) {
     const printer = JSPLib.debug.getFunctionPrint('ProcessSubscribeType');
     let last_id = JSPLib.storage.checkLocalData(`el-${type}-subscribe-last-id`, {default_val: 0});
+    let new_events = false;
     if (last_id) {
         let subscribe_set = GetItemList(type);
         let user_set = GetUserList(type);
@@ -3084,23 +3171,21 @@ async function ProcessSubscribeType(type, no_limit = false, selector = null) {
         let found_events = TYPEDICT[type].find_events(items, 'subscribe', subscribe_set, user_set);
         if (found_events.length) {
             printer.debuglog(`Available ${TYPEDICT[type].plural}:`, found_events.length, last_id);
-            SaveFoundEvents(type, 'subscribe', found_events, items);
-            UpdateNavigation();
-            UpdateEventsPage(type);
-            UpdateHomeEvent(type);
+            new_events = SaveFoundEvents(type, 'subscribe', found_events, items);
         } else {
             printer.debuglog(`No ${TYPEDICT[type].plural}`, last_id);
         }
         SaveEventRecheck(type, 'subscribe');
-        UpdateHomeSource(type, 'subscribe');
     } else {
         SaveRecentDanbooruID_T(type, 'subscribe');
     }
+    return new_events;
 }
 
 async function ProcessPostQueryType(type, no_limit = false, selector = null) {
     const printer = JSPLib.debug.getFunctionPrint('ProcessPostQueryType');
     let last_id = JSPLib.storage.checkLocalData(`el-${type}-post-query-last-id`, {default_val: 0});
+    let new_events = false;
     if (last_id) {
         let type_addon = TYPEDICT[type].json_addons ?? {};
         let post_query = GetTypeQuery(type);
@@ -3124,23 +3209,21 @@ async function ProcessPostQueryType(type, no_limit = false, selector = null) {
         let found_events = TYPEDICT[type].find_events(items, 'post-query');
         if (found_events.length) {
             printer.debuglog(`Available ${TYPEDICT[type].plural}:`, found_events.length, last_id);
-            SaveFoundEvents(type, 'post-query', found_events, items);
-            UpdateNavigation();
-            UpdateEventsPage(type);
-            UpdateHomeEvent(type);
+            new_events = SaveFoundEvents(type, 'post-query', found_events, items);
         } else {
             printer.debuglog(`No ${TYPEDICT[type].plural}`, last_id);
         }
         SaveEventRecheck(type, 'post-query');
-        UpdateHomeSource(type, 'post-query');
     } else {
         SaveRecentDanbooruID_T(type, 'post-query');
     }
+    return new_events;
 }
 
 async function ProcessOtherType(type, no_limit = false, selector = null) {
     const printer = JSPLib.debug.getFunctionPrint('ProcessOtherType');
     let last_id = JSPLib.storage.checkLocalData(`el-${type}-other-last-id`, {default_val: 0});
+    let new_events = false;
     if (last_id) {
         let type_addon = TYPEDICT[type].json_addons ?? {};
         let url_addons = JSPLib.utility.mergeHashes(type_addon, {only: TYPEDICT[type].only});
@@ -3158,18 +3241,15 @@ async function ProcessOtherType(type, no_limit = false, selector = null) {
         let found_events = TYPEDICT[type].find_events(items, 'other');
         if (found_events.length) {
             printer.debuglog(`Available ${TYPEDICT[type].plural}:`, found_events.length, last_id);
-            SaveFoundEvents(type, 'other', found_events, items);
-            UpdateNavigation();
-            UpdateEventsPage(type);
-            UpdateHomeEvent(type);
+            new_events = SaveFoundEvents(type, 'other', found_events, items);
         } else {
             printer.debuglog(`No ${TYPEDICT[type].plural}`, last_id);
         }
         SaveEventRecheck(type, 'other');
-        UpdateHomeSource(type, 'other');
     } else {
         SaveRecentDanbooruID_T(type, 'other');
     }
+    return new_events;
 }
 
 //Settings functions
@@ -3188,19 +3268,25 @@ function BroadcastEL(ev) {
             UpdateMultiLink([ev.data.eventtype], ev.data.was_subscribed, ev.data.userid);
             break;
         case 'update_navigation':
-            UpdateNavigation(false);
+            UpdateNavigation(ev.data.event_data);
             break;
-        case 'update_events_page':
-            UpdateEventsPage(ev.data.eventtype, false);
-            break;
-        case 'update_event':
-            UpdateHomeEvent(ev.data.event_type, false);
+        case 'update_type':
+            UpdateEventType(ev.data.event_type, ev.data.event_data);
+            JSPLib.storage.invalidateLocalData(`el-${ev.data.event_type}-saved-events`);
             break;
         case 'update_source':
-            UpdateHomeSource(ev.data.event_type, ev.data.event_source, false);
+            UpdateEventSource(ev.data.event_type, ev.data.event_source, ev.data.event_data);
+            JSPLib.storage.invalidateLocalData(`el-${ev.data.event_type}-${ev.data.event_source}-last-found`);
+            JSPLib.storage.invalidateLocalData(`el-${ev.data.event_type}-${ev.data.event_source}-last-seen`);
+            JSPLib.storage.invalidateLocalData(`el-${ev.data.event_type}-${ev.data.event_source}-last-checked`);
+            JSPLib.storage.invalidateLocalData(`el-${ev.data.event_type}-${ev.data.event_source}-event-timeout`);
+            JSPLib.storage.invalidateLocalData(`el-${ev.data.event_type}-${ev.data.event_source}-overflow`);
             break;
         case 'new_events':
             UpdateUserOnNewEvents(false);
+            break;
+        case 'close_notice':
+            $('#el-close-notice-link').trigger('click');
             break;
         case 'reload':
             EL.subscribeset[ev.data.eventtype] = ev.data.eventset;
@@ -3218,34 +3304,30 @@ function BroadcastEL(ev) {
 
 function CleanupTasks() {
     ALL_SUBSCRIBES.forEach((type) => {
-        if (CheckSubscribeEvent(type)) return;
-        if (CheckUserEvent(type)) return;
+        if (CheckSubscribeEnabled(type)) return;
+        if (CheckUserEnabled(type)) return;
         SOURCE_SUFFIXES.forEach((suffix) => {
-            //JSPLib.storage.removeLocalData(`el-${type}-post-query-${suffix}`);
-            console.log("removeLocalData:", `el-${type}-subscribe-${suffix}`);
+            JSPLib.storage.removeLocalData(`el-${type}-post-query-${suffix}`);
         });
     });
     POST_QUERY_EVENTS.forEach((type) => {
         if (IsPostQueryEnabled(type)) return;
         SOURCE_SUFFIXES.forEach((suffix) => {
-            //JSPLib.storage.removeLocalData(`el-${type}-post-query-${suffix}`);
-            console.log("removeLocalData:", `el-${type}-post-query-${suffix}`);
+            JSPLib.storage.removeLocalData(`el-${type}-post-query-${suffix}`);
         });
     });
     OTHER_EVENTS.forEach((type) => {
         if (IsOtherEnabled(type)) return;
         SOURCE_SUFFIXES.forEach((suffix) => {
-            //JSPLib.storage.removeLocalData(`el-${type}-other-${suffix}`);
-            console.log("removeLocalData:", `el-${type}-other-${suffix}`);
+            JSPLib.storage.removeLocalData(`el-${type}-other-${suffix}`);
         });
     });
     ALL_EVENTS.forEach((type) => {
-        if (CheckSubscribeEvent(type)) return;
-        if (CheckUserEvent(type)) return;
+        if (CheckSubscribeEnabled(type)) return;
+        if (CheckUserEnabled(type)) return;
         if (IsPostQueryEnabled(type)) return;
         if (IsOtherEnabled(type)) return;
-        //JSPLib.storage.removeLocalData(`el-${type}-saved-events`);
-        console.log("removeLocalData:", `el-${type}-saved-events`);
+        JSPLib.storage.removeLocalData(`el-${type}-saved-events`);
     });
 }
 
@@ -3324,6 +3406,7 @@ function MigrateLocalData() {
             JSPLib.storage.removeLocalData(`el-us-${type}list`);
         }
     });
+    JSPLib.storage.removeLocalData('el-process-semaphoref');
     JSPLib.storage.removeLocalData('el-saved-timeout');
     JSPLib.storage.removeLocalData('el-event-timeout');
     JSPLib.storage.removeLocalData('el-overflow');
@@ -3464,7 +3547,7 @@ const [
 
 //Variables for debug.js
 JSPLib.debug.debug_console = true;
-JSPLib.debug.level = JSPLib.debug.INFO;
+JSPLib.debug.level = JSPLib.debug.DEBUG;
 JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
 //Variables for menu.js
@@ -3478,6 +3561,8 @@ JSPLib.menu.control_config = CONTROL_CONFIG;
 
 //Export JSPLib
 JSPLib.load.exportData(PROGRAM_NAME, EL);
+
+EL.GetEvents = GetEvents;
 
 //Variables for storage.js
 JSPLib.storage.localSessionValidator = ValidateProgramData;
