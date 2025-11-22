@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      25.0
+// @version      25.1
 // @description  Informs users of new events.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -307,6 +307,11 @@ const SETTINGS_CONFIG = {
         reset: true,
         validate: JSPLib.validate.isBoolean,
         hint: "Will trigger a popup notice when there are new events."
+    },
+    display_event_panel: {
+        reset: false,
+        validate: JSPLib.validate.isBoolean,
+        hint: "Will display a notice panel on new events, similar to the old version."
     },
     events_order: {
         allitems: ALL_EVENTS,
@@ -736,6 +741,10 @@ const PROGRAM_CSS = `
 .el-event-body[data-type="comment"] .el-found-with {
     width: 10em;
 }
+.el-event-notice-section[data-type="comment"] .post {
+    border-bottom: 1px solid var(--default-border-color);
+    padding: 5px 0;
+}
 /**POST**/
 .el-event-body[data-type="post"] td.tags-column,
 .el-event-body[data-type="post"] td.edits-column {
@@ -779,6 +788,22 @@ const PROGRAM_CSS = `
 #el-subscribe-events .el-subscribed a:hover,
 #el-subscribe-events .el-unsubscribed a:hover {
     filter: brightness(1.5);
+}
+/**NOTICE PANEL**/
+#el-event-notice {
+    padding: 5px;
+}
+.el-event-notice-section {
+    margin: 1em 0;
+    border-bottom: 2px solid grey;
+}
+#el-event-controls {
+    font-size: 20px;
+    margin-top: 1em;
+}
+#el-read-event-notice {
+    font-weight: bold;
+    color: red;
 }
 /**OTHER**/
 div#el-notice {
@@ -920,6 +945,20 @@ const PROGRAM_DATA_DETAILS = `
 </ul>
 <p><b>Note:</b> The raw format of all data keys begins with "el-". which is unused by the cache editor controls.</p>`;
 
+////Notice
+
+const NOTICE_PANEL = `
+<div id="el-event-notice" class="notice notice-info">
+    <div id="el-event-notice-pane">
+    </div>
+    <div id="el-event-controls">
+        <a id="el-close-event-notice" class="el-link">Close this</a>
+        [
+        <a id="el-read-event-notice" class="el-link el-monospace" title="Mark all items as read.">READ</a>
+        ]
+    </div>
+</div>`;
+
 ////Navigation
 
 const EVENTS_NAV_HTML = '<a id="el-nav-events" class="el-link py-1.5 px-3">Events(<span id="el-events-total">...</span>)</a>';
@@ -1058,7 +1097,7 @@ const OPEN_ITEM_LINKS_HTML = `
 const ERROR_PAGE_HTML = `
 <div style="font-size: 24px;">
     <div style="color: red; font-weight: bold;">
-        ERROR LOADING TABLE FOR %PLURAL%!
+        ERROR LOADING EVENTS FOR %PLURAL%!
     </div>
     <div style="margin-top: 0.5em;">
         Visit the following page to view these events manually: <a class="el-events-page-url" href="%PAGEURL%" target="_blank">*PAGE LINK*</a>
@@ -1351,6 +1390,7 @@ const VALIDATE_REGEXES = {
     id: ID_SETTING_REGEX,
     idlist: ID_LIST_SETTING_REGEX,
     events: EVENTS_SETTING_REGEX,
+    notice: /el-new-events/,
 };
 
 const EVENT_CONSTRAINTS = {
@@ -1394,6 +1434,9 @@ function ValidateProgramData(key, entry) {
                 error_messages = ["Value is not a valid ID list."];
             }
             break;
+        case 'notice':
+            error_messages = ValidateNotice(key, entry);
+            break;
         case 'events':
             error_messages = ValidateEvents(key, entry);
             break;
@@ -1415,6 +1458,19 @@ function GetValidateType(key) {
         }
     }
     return 'other';
+}
+
+function ValidateNotice(key, entry) {
+    if (!JSPLib.utility.isHash(entry)) {
+        return [`${key} is not a hash.`];
+    }
+    let messages = [];
+    for (let type in entry) {
+        if (!JSPLib.validate.validateIDList(entry[type])) {
+            messages.push([`${key}.${type} is not a valid ID list.`]);
+        }
+    }
+    return messages;
 }
 
 function ValidateEvents(key, events) {
@@ -1513,6 +1569,21 @@ async function PromiseHashAll(promise_hash) {
         }
     }
     return results_hash;
+}
+
+function GetNewEventsHash(results_hash) {
+    let new_events_hash = {};
+    for (let type in results_hash) {
+        let event_ids = [];
+        for (let source in results_hash[type]) {
+            let source_ids = JSPLib.utility.getObjectAttributes(results_hash[type][source], 'id');
+            event_ids = JSPLib.utility.arrayUnion(event_ids, source_ids);
+        }
+        if (event_ids.length) {
+            new_events_hash[type] = event_ids;
+        }
+    }
+    return new_events_hash;
 }
 
 function GetPageValues(page) {
@@ -1820,7 +1891,7 @@ function SaveFoundEvents(type, source, found_events, all_data) {
     let saved_events = GetEvents(type);
     let updated_events = [];
     var last_found_event;
-    var new_events = false;
+    var new_events = [];
     found_events.forEach((event) => {
         let saved_event = saved_events.find((ev) => ev.id === event.id);
         if (saved_event) {
@@ -1828,7 +1899,7 @@ function SaveFoundEvents(type, source, found_events, all_data) {
             updated_events.push(saved_event);
         } else {
             updated_events.push(event);
-            new_events = true;
+            new_events.push(event);
         }
         if (!last_found_event || event.id > last_found_event.id) {
             last_found_event = event;
@@ -2090,7 +2161,7 @@ function CloseEventsNotice() {
 
 function UpdateAfterCheck(type, source, new_events) {
     UpdateEventSource(type, source, {broadcast: true});
-    if (new_events) {
+    if (new_events.length) {
         UpdateEventType(type, {has_new: true, broadcast: true});
         UpdateNavigation({broadcast: true});
     }
@@ -2328,6 +2399,43 @@ function InstallSubscribeLinks() {
         UpdateSubscribeLinks();
         $('#el-subscribe-events a').on(PROGRAM_CLICK, SubscribeMultiLink);
     }
+}
+
+function InstallNoticePanel(new_events_hash) {
+    if (!EL.display_event_panel) return;
+    $('#top').after(NOTICE_PANEL);
+    EL.events_order.forEach((type) => {
+        if ((!(type in new_events_hash)) || (new_events_hash[type].length === 0)) return;
+        let $event_section = $(`<div class="el-event-notice-section" data-type="${type}"></div>`);
+        $('#el-event-notice-pane').append($event_section);
+        let saved_events = GetEvents(type);
+        let new_events = saved_events.filter((ev) => new_events_hash[type].includes(ev.id));
+        $event_section.append(`<span style="font-size: 24px; font-weight: bold;">Loading ${TYPEDICT[type].plural}...</span>`);
+        GetHTMLPage(type, null, new_events).then(($page) => {
+            $event_section.children().remove();
+            if ($page) {
+                let $events = (type === 'comment' ? $('.list-of-comments', $page) : $('table.striped', $page));
+                $event_section.append($events);
+                if (type === 'comment') {
+                    $events.find('.post-preview').each((_, entry) => {
+                        entry.style.setProperty('display', 'flex', 'important');
+                        entry.style.setProperty('visibility', 'visible', 'important');
+                    });
+                } else {
+                    UpdatePostPreviews($events);
+                }
+            } else {
+                let plural = TYPEDICT[type].plural.toUpperCase();
+                $event_section.append(`<div style="font-size: 24px;">ERROR LOADING EVENTS FOR ${plural}</div>`);
+            }
+        });
+        new_events.forEach((ev) => {ev.seen = true;});
+        SaveEvents(type, saved_events);
+    });
+    EL.new_events = new_events_hash;
+    $('#el-close-event-notice').one(PROGRAM_CLICK, CloseEventPanel);
+    $('#el-read-event-notice').one(PROGRAM_CLICK, ReadEventPanel);
+    JSPLib.storage.setLocalData('el-new-events', new_events_hash);
 }
 
 function InstallEventsNavigation() {
@@ -2822,7 +2930,7 @@ async function AddPoolPostsRow(pool_version_id, $row) {
 //Network functions
 
 async function GetHTMLPage(type, page, events) {
-    let page_events = GetPageEvents(page, events);
+    let page_events = (Number.isInteger(page) ? GetPageEvents(page, events) : events);
     let url_addons = GetHTMLAddons(type, page_events);
     let type_html = await JSPLib.network.getNotify(`/${TYPEDICT[type].controller}.html`, {url_addons});
     if (type_html) {
@@ -3106,6 +3214,22 @@ function AdjustFloatingTH(entries) {
     UpdateFloatingTH(th_entries, true);
 }
 
+function ReadEventPanel() {
+    for (let type in EL.new_events) {
+        let saved_events = GetEvents(type);
+        let updated_events = saved_events.filter((ev) => !EL.new_events[type].includes(ev.id));
+        SaveEvents(type, updated_events);
+    }
+    JSPLib.notice.notice("All shown events have been cleared.");
+}
+
+function CloseEventPanel() {
+    $('#el-event-notice').hide();
+    JSPLib.storage.removeLocalData('el-new-events');
+    EL.channel.postMessage({type: 'close_panel'});
+    CloseEventsNotice();
+}
+
 //Process event functions
 
 function ProcessAllReadyEvents() {
@@ -3151,7 +3275,7 @@ function ProcessAllReadyEvents() {
         for (let type in results_hash) {
             let type_new_events = false;
             for (let source in results_hash[type]) {
-                type_new_events ||= results_hash[type][source];
+                type_new_events ||= Boolean(results_hash[type][source].length);
                 UpdateEventSource(type, source, {broadcast: true});
             }
             if (type_new_events) {
@@ -3162,6 +3286,8 @@ function ProcessAllReadyEvents() {
         if (all_new_events) {
             UpdateNavigation({broadcast: true});
             UpdateUserOnNewEvents(true);
+            let new_events_hash = GetNewEventsHash(results_hash);
+            InstallNoticePanel(new_events_hash);
         }
         JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT, 'main');
     });
@@ -3170,7 +3296,7 @@ function ProcessAllReadyEvents() {
 async function ProcessEventType(type, source, no_limit = false, selector = null) {
     const printer = JSPLib.debug.getFunctionPrint('ProcessEventType');
     let last_id = JSPLib.storage.checkLocalData(`el-${type}-${source}-last-id`, {default_val: 0});
-    let new_events = false;
+    let new_events = [];
     if (last_id) {
         let item_set = (source === 'subscribe' ? GetItemList(type) : null);
         let user_set = (source === 'subscribe' ? GetUserList(type) : null);
@@ -3253,6 +3379,9 @@ function BroadcastEL(ev) {
         case 'new_events':
             UpdateUserOnNewEvents(false);
             break;
+        case 'close_panel':
+            $('#el-event-notice').hide();
+            break;
         case 'close_notice':
             $('#el-close-notice-link').trigger('click');
             //falls through
@@ -3288,6 +3417,7 @@ function CleanupTasks() {
         if (IsOtherEnabled(type)) return;
         JSPLib.storage.removeLocalData(`el-${type}-saved-events`);
     });
+    JSPLib.storage.removeLocalData('el-new-events');
 }
 
 function MigrateLocalData() {
@@ -3378,6 +3508,7 @@ function InitializeProgramValues() {
     Object.assign(EL, {
         thead_observer: new ResizeObserver(AdjustFloatingTHEAD),
         th_observer: new ResizeObserver(AdjustFloatingTH),
+        new_events: JSPLib.storage.checkLocalData('el-new-events', {default_val: {}}),
     });
     return true;
 }
@@ -3386,6 +3517,7 @@ function RenderSettingsMenu() {
     $('#event-listener').append(JSPLib.menu.renderMenuFramework(MENU_CONFIG));
     $('#el-general-settings').append(JSPLib.menu.renderDomainSelectors());
     $('#el-display-settings').append(JSPLib.menu.renderCheckbox('display_event_notice'));
+    $('#el-display-settings').append(JSPLib.menu.renderCheckbox('display_event_panel'));
     $('#el-display-settings').append(JSPLib.menu.renderSortlist('events_order'));
     $('#el-network-settings').append(JSPLib.menu.renderTextinput('recheck_interval', 10));
     $('#el-filter-settings').append(JSPLib.menu.renderCheckbox('filter_user_events'));
@@ -3450,9 +3582,13 @@ function Main() {
     if (!JSPLib.menu.preloadScript(EL, preload)) return;
     JSPLib.notice.installBanner(PROGRAM_SHORTCUT);
     MigrateLocalData();
-    ProcessAllReadyEvents();
     InstallSubscribeLinks();
     InstallEventsNavigation();
+    if (Object.keys(EL.new_events).length && EL.display_event_panel) {
+        InstallNoticePanel(EL.new_events);
+    } else {
+        ProcessAllReadyEvents();
+    }
     let show_notice = JSPLib.storage.checkLocalData('el-new-events-notice', {default_val: false});
     if (show_notice) {
         TriggerEventsNotice();
@@ -3481,7 +3617,7 @@ const [
 /****Initialization****/
 
 //Variables for debug.js
-JSPLib.debug.debug_console = false;
+JSPLib.debug.debug_console = true;
 JSPLib.debug.level = JSPLib.debug.INFO;
 JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
