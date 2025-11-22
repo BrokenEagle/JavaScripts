@@ -563,9 +563,6 @@ const PROGRAM_CSS = `
     min-height: 2.2em;
     white-space: nowrap;
 }
-[ntisas-tweet] .ntisas-query-button a {
-    min-width: 100%;
-}
 [ntisas-tweet] [data-has-posts=true],
 [ntisas-tweet] [data-has-posts=true]:hover,
 [ntisas-tweet] [data-has-posts=true]:focus {
@@ -575,6 +572,9 @@ const PROGRAM_CSS = `
 [ntisas-tweet] [data-has-posts=false]:hover,
 [ntisas-tweet] [data-has-posts=false]:focus {
     color: red;
+}
+[ntisas-tweet] .ntisas-link-menu {
+    display: flex;
 }
 [ntisas-tweet] .ntisas-control-search,
 [ntisas-tweet] .ntisas-control-search:hover,
@@ -586,17 +586,12 @@ const PROGRAM_CSS = `
 [ntisas-tweet] .ntisas-control-download:hover {
     color: grey;
 }
-[ntisas-tweet] .ntisas-control-search,
-[ntisas-tweet] .ntisas-control-confirm,
-[ntisas-tweet] .ntisas-control-upload,
-[ntisas-tweet] .ntisas-control-download {
-    display: inline-block;
-    text-align: center;
-}
 [ntisas-tweet] .ntisas-query-button {
-    display: inline-block;
-    text-align: center;
-    min-width: 5em;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 5.5em;
+    height: 1.75em;
     border: 1px solid;
     padding: 4px;
 }
@@ -606,11 +601,11 @@ const PROGRAM_CSS = `
 }
 [ntisas-tweet] .ntisas-menu-results {
     border-radius: 25px 0 0 25px;
-    min-width: 8em;
+    width: 9.5em;
 }
 [ntisas-tweet] .ntisas-menu-help {
     border-radius: 0 25px 25px 0;
-    min-width: 2em;
+    width: 2em;
 }
 [ntisas-tweet=main] .ntisas-image-section {
     padding-left: 0.4em;
@@ -653,13 +648,6 @@ const PROGRAM_CSS = `
     font-weight: bold;
     min-width: 250px;
     font-family: ${FONT_FAMILY};
-}
-[ntisas-tweet=main] .ntisas-query-button {
-    margin: 0 -3px;
-}
-[ntisas-tweet=stream] .ntisas-query-button,
-[ntisas-tweet=media] .ntisas-query-button {
-    margin: 0 -2px;
 }
 /**Media tweet**/
 .ntisas-media-tweet .ntisas-media-icon-container {
@@ -6921,7 +6909,6 @@ JSPLib.menu.program_name = PROGRAM_NAME;
 JSPLib.menu.program_data = NTISAS;
 JSPLib.menu.program_reset_data = PROGRAM_RESET_KEYS;
 JSPLib.menu.program_data_regex = PROGRAM_DATA_REGEX;
-JSPLib.menu.settings_callback = RemoteSettingsCallback;
 JSPLib.menu.settings_config = SETTINGS_CONFIG;
 JSPLib.menu.control_config = CONTROL_CONFIG;
 
