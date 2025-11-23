@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      25.5
+// @version      25.6
 // @description  Informs users of new events.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -978,7 +978,7 @@ const NOTICE_PANEL = `
 
 ////Navigation
 
-const EVENTS_NAV_HTML = '<a id="el-nav-events" class="el-link py-1.5 px-3">Events(<span id="el-events-total">...</span>)</a>';
+const EVENTS_NAV_HTML = '<a id="el-nav-events" class="el-link py-1.5 px-3">Events (<span id="el-events-total">...</span>)</a>';
 const SUBSCRIBE_CONTROLS_HTML = '<span id="el-display-subscribe" class="py-1.5 px-3">Subscribe links [&thinsp;<a class="el-link el-monospace" data-action="show" style="display: none;">Show</a><a class="el-link el-monospace" data-action="hide" style="display: none;">Hide</a>&thinsp;]</span>';
 
 const MULTI_LINK_MENU_HTML = `
