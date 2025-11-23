@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      25.2
+// @version      25.3
 // @description  Informs users of new events.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -521,7 +521,9 @@ const DEFAULT_VALUES = {
 
 const SUBSCRIBED_COLOR = 'mediumseagreen';
 const UNSUBSCRIBED_COLOR = 'darkorange';
-const NEW_EVENTS_COLOR = 'lawngreen';
+const NEW_EVENTS_COLOR = 'var(--green-4)';
+const NEW_EVENTS_DARK = 'var(--green-6)';
+const NEW_EVENTS_BORDER = `1px solid ${NEW_EVENTS_DARK}`;
 
 const PROGRAM_CSS = `
 /**GENERAL**/
@@ -589,6 +591,10 @@ const PROGRAM_CSS = `
 }
 .el-event-header.el-has-new-events {
     background-color: ${NEW_EVENTS_COLOR};
+    border: ${NEW_EVENTS_BORDER};
+}
+.el-event-header.el-has-new-events a {
+    color: white;
 }
 .el-event-header.el-header-active {
     background-color: var(--blue-4) !important;
@@ -613,8 +619,11 @@ const PROGRAM_CSS = `
     height: 32em;
     padding: 1em 2em;
 }
+.el-home-section h4 {
+    padding: 2px;
+}
 .el-home-section.el-has-new-events h4 {
-    color: black;
+    color: var(--body-background-color);
     background-color: ${NEW_EVENTS_COLOR};
 }
 .el-section-controls {
@@ -683,9 +692,10 @@ const PROGRAM_CSS = `
 }
 .el-new-event .el-mark-read > a {
     background-color: ${NEW_EVENTS_COLOR};
+    border: ${NEW_EVENTS_BORDER};
 }
 .el-new-event .el-mark-read > a:hover {
-    filter: brightness(0.9);
+    background-color: ${NEW_EVENTS_DARK}
 }
 div.el-found-with.el-comment-column,
 td.el-found-with {
