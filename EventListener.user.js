@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      25.3
+// @version      25.4
 // @description  Informs users of new events.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -125,6 +125,14 @@ JSPLib.utility.isString = function (value) {
 
 JSPLib.utility.isNumber = function (value) {
     return typeof value === 'number' && !isNaN(value);
+};
+
+JSPLib.notice.notice = function (message, {permanent = false, append = false} = {}) {
+    if (this.danbooru_installed && !this.banner_installed) {
+        JSPLib._Danbooru.Utility.notice(message);
+    } else {
+        this._notice(message, permanent, append);
+    }
 };
 
 JSPLib.storage.inMemoryStorage = function (key, storage) {
@@ -817,7 +825,7 @@ td.el-found-with {
 /**OTHER**/
 div#el-notice {
     top: unset;
-    bottom: 2em;
+    bottom: 4em;
 }`;
 
 const MENU_CSS = `
@@ -2171,7 +2179,7 @@ function UpdateUserOnNewEvents(primary) {
 }
 
 function TriggerEventsNotice() {
-    JSPLib.notice.notice("<b>EventListener:</b> New events available.", true);
+    JSPLib.notice.notice("<b>EventListener:</b> New events available.", {permanent: true});
     JSPLib.storage.setLocalData('el-new-events-notice', false);
     JSPLib.storage.setLocalData('el-event-notice-shown', true);
 }
