@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      25.4
+// @version      25.5
 // @description  Informs users of new events.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -3104,9 +3104,11 @@ function CheckAll(event) {
                 ['subscribe', 'post-query', 'other'].forEach((source) => {
                     let overflow = JSPLib.storage.checkLocalData(`el-${type}-${source}-overflow`, {default_val: false});
                     if (overflow) {
-                        promise_hash[type] ??= {};
-                        let selector = `.el-home-section[data-type=${type}] .el-pages-left[data-source="${source}"] span`;
-                        promise_hash[type][source] = ProcessEventType_T(type, source, true, selector);
+                        if (ReserveEventSemaphore(type, source)) {
+                            promise_hash[type] ??= {};
+                            let selector = `.el-home-section[data-type=${type}] .el-pages-left[data-source="${source}"] span`;
+                            promise_hash[type][source] = ProcessEventType_T(type, source, true, selector);
+                        }
                     }
                 });
             });
@@ -3114,9 +3116,10 @@ function CheckAll(event) {
                 for (let type in results_hash) {
                     for (let source in results_hash[type]) {
                         UpdateAfterCheck(type, source, results_hash[type][source]);
+                        FreeEventSemaphore(type, source);
                     }
                 }
-                JSPLib.notice.notice("All events have been checked.");
+                JSPLib.notice.notice("All events have been checked.", {append: true});
                 JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT, 'controls');
             });
         }
