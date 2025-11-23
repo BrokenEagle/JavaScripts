@@ -2492,7 +2492,8 @@ function AppendFloatingHeader(type, $container, $table) {
     let header_html = "";
     EL.observed[type] ??= [];
     $table.find('thead th').each((_, th) => {
-        header_html += `<div class="el-floating-cell">${th.innerText}</div>`;
+        let classname = th.className ?? "";
+        header_html += `<div class="el-floating-cell ${classname}">${th.innerText}</div>`;
         EL.th_observer.observe(th);
         EL.observed[type].push(th);
     });
