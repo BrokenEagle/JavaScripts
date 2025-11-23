@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      25.1
+// @version      25.2
 // @description  Informs users of new events.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -687,7 +687,8 @@ const PROGRAM_CSS = `
 .el-new-event .el-mark-read > a:hover {
     filter: brightness(0.9);
 }
-.el-found-with {
+div.el-found-with.el-comment-column,
+td.el-found-with {
     color: orange;
 }
 /**TABLE**/
@@ -719,9 +720,6 @@ const PROGRAM_CSS = `
 }
 .el-comments-header > div {
     text-decoration: underline;
-}
-.el-comments-header .el-found-with {
-    color: var(--text-color);
 }
 .el-comments-header > div > span {
     font-size: 18px;
@@ -2677,7 +2675,7 @@ async function InsertTableEvents(page, type) {
         let $page = await GetHTMLPage(type, page, events);
         if ($page) {
             let $table = $('table.striped', $page);
-            let table_header = '<th width="2%"></th><th width="8%">Found with</th>';
+            let table_header = '<th class="el-mark-read" width="2%"></th><th class="el-found-with" width="8%">Found with</th>';
             table_header += (TYPEDICT[type].add_thumbnail ? '<th width="1%">Preview</th>' : "");
             $table.find('thead tr').prepend(table_header);
             let post_ids = new Set();
@@ -2757,7 +2755,7 @@ async function InsertCommentEvents(page) {
                 let event = events.find((ev) => ev.id === id);
                 let match_html = event.match.map((m) => m.replace('-', ' ')).join('&ensp;&amp;<br>');
                 let $post = $entry.closest('div.post');
-                $post.prepend(`<div class="el-mark-read"><a><input type="checkbox"></div></a><div class="el-found-with">${match_html}</div>`);
+                $post.prepend(`<div class="el-mark-read el-comment-column"><a><input type="checkbox"></div></a><div class="el-found-with el-comment-column">${match_html}</div>`);
                 $post.addClass('el-comments-column');
                 if (!event.seen) {
                     $post.addClass('el-new-event');
