@@ -259,6 +259,7 @@ const ALL_SUBSCRIBES = JSPLib.utility.arrayUnion(SUBSCRIBE_EVENTS, USER_EVENTS);
 const POST_QUERY_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'flag', 'appeal'];
 const OTHER_EVENTS = ['dmail', 'ban', 'feedback', 'mod_action'];
 const ALL_EVENTS = JSPLib.utility.arrayUnique(JSPLib.utility.multiConcat(POST_QUERY_EVENTS, SUBSCRIBE_EVENTS, OTHER_EVENTS));
+const ALL_SOURCES = ['subscribe', 'post-query', 'other'];
 
 //For factory reset
 const SOURCE_SUFFIXES = ['last-id', 'overflow', 'event-timeout', 'last-checked', 'last-seen', 'last-found'];
@@ -1039,6 +1040,23 @@ const POST_QUERY_SUBSECTION_HTML = `
 <li><u>Post query</u>
     <ul>%s</ul>
 </li>`;
+
+
+const HOME_CONTROLS = `
+<div class="el-home-section prose" data-type="controls">
+    <h4>Controls</h4>
+    <div>
+        <div class="el-check-all el-section-link" title="Check all events for all types.">
+            <a class="el-link">Check all available</a>
+        </div>
+        <div class="el-reset-event el-section-link" title="Reset the event positions of all types.">
+            <a class="el-link">Reset all</a>
+        </div>
+        <div class="el-refresh-event el-section-link" title="Refresh the time values of all types.">
+            <a class="el-link">Refresh all</a>
+        </div>
+    </div>
+</div>`;
 
 const MORE_HTML = '<span class="el-more">more</span>';
 const NONE_HTML = '<span class="el-none">none</span>';
@@ -2237,7 +2255,7 @@ function RenderEventBody(type, body = "") {
 }
 
 function RenderEventsHome() {
-    let body_html = "";
+    let body_html = HOME_CONTROLS;
     EL.events_order.forEach((type) => {
         if (!AnyEventEnabled(type)) return;
         body_html += RenderHomeSection(type);
@@ -3062,29 +3080,82 @@ function CheckMore(event) {
 
 function CheckAll(event) {
     let {type, source} = GetCheckVars(event);
-    if (ReserveEventSemaphore(type, source)) {
-        JSPLib.notice.notice(`Checking all ${TYPEDICT[type].plural}.`);
-        let selector = `.el-home-section[data-type=${type}] .el-pages-left[data-source="${source}"] span`;
-        ProcessEventType_T(type, source, true, selector).then((new_events) => {
-            UpdateAfterCheck(type, source, new_events);
-            FreeEventSemaphore(type, source);
-        });
+    if (type === 'controls') {
+        if (JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'controls')) {
+            JSPLib.notice.notice("Starting events check.");
+            let promise_hash = {};
+            ALL_EVENTS.forEach((type) => {
+                ['subscribe', 'post-query', 'other'].forEach((source) => {
+                    let overflow = JSPLib.storage.checkLocalData(`el-${type}-${source}-overflow`, {default_val: false});
+                    if (overflow) {
+                        promise_hash[type] ??= {};
+                        let selector = `.el-home-section[data-type=${type}] .el-pages-left[data-source="${source}"] span`;
+                        promise_hash[type][source] = ProcessEventType_T(type, source, true, selector);
+                    }
+                });
+            });
+            PromiseHashAll(promise_hash).then((results_hash) => {
+                for (let type in results_hash) {
+                    for (let source in results_hash[type]) {
+                        UpdateAfterCheck(type, source, results_hash[type][source]);
+                    }
+                }
+                JSPLib.notice.notice("All events have been checked.");
+                JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT, 'controls');
+            });
+        }
+    } else {
+        if (ReserveEventSemaphore(type, source)) {
+            JSPLib.notice.notice(`Checking all ${TYPEDICT[type].plural}.`);
+            let selector = `.el-home-section[data-type=${type}] .el-pages-left[data-source="${source}"] span`;
+            ProcessEventType_T(type, source, true, selector).then((new_events) => {
+                UpdateAfterCheck(type, source, new_events);
+                FreeEventSemaphore(type, source);
+            });
+        }
     }
 }
 
 function ResetEvent(event) {
-    if (confirm("This will reset the event position to the latest available item. Continue?")) {
-        let {type, source} = GetCheckVars(event);
-        SaveRecentDanbooruID_T(type, source).then(() => {
-            UpdateEventSource(type, source, {broadcast: true});
-            JSPLib.notice.notice("Positions reset.");
-        });
+    let {type, source} = GetCheckVars(event);
+    if (type === 'controls') {
+        if (confirm("This will reset the event position on all events. Continue?")) {
+            let promise_hash = {};
+            ALL_EVENTS.forEach((type) => {
+                ALL_SOURCES.forEach((source) => {
+                    let overflow = JSPLib.storage.checkLocalData(`el-${type}-${source}-overflow`, {default_val: false});
+                    if (overflow) {
+                        promise_hash[type] ??= {};
+                        promise_hash[type][source] = SaveRecentDanbooruID_T(type, source);
+                    }
+                });
+            });
+            PromiseHashAll(promise_hash).then((results_hash) => {
+                for (let type in results_hash) {
+                    for (let source in results_hash[type]) {
+                        UpdateEventSource(type, source, {broadcast: true});
+                    }
+                }
+                JSPLib.notice.notice("All events have been reset.");
+            });
+        }
+    } else {
+        if (confirm("This will reset the event position to the latest available item. Continue?")) {
+            SaveRecentDanbooruID_T(type, source).then(() => {
+                UpdateEventSource(type, source, {broadcast: true});
+                JSPLib.notice.notice("Positions reset.");
+            });
+        }
     }
 }
 
 function RefreshEvent(event) {
     let {type, source} = GetCheckVars(event);
-    UpdateEventSource(type, source);
+    if (type === 'controls') {
+        $('.el-refresh-event[data-source] a').trigger('click');
+    } else {
+        UpdateEventSource(type, source);
+    }
 }
 
 function PaginatorPrevious(event) {
