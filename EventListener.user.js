@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      25.6
+// @version      25.7
 // @description  Informs users of new events.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -521,6 +521,7 @@ const DEFAULT_VALUES = {
     item_set: {},
     user_set: {},
     open_list: {},
+    page_events: {},
     pages: {},
     observed: {},
 };
@@ -1626,9 +1627,19 @@ function GetPageValues(page) {
     return {page_min, page_max};
 }
 
-function GetPageEvents(page, events) {
-    let {page_min, page_max} = GetPageValues(page);
-    return events.slice(page_min - 1, page_max);
+function GetPageEvents(type, page) {
+    if (!EL.page_events[type]) {
+        EL.page_events[type] = {};
+        let events = GetEvents(type);
+        let page = 1;
+        while (true) {
+            let {page_min, page_max} = GetPageValues(page);
+            EL.page_events[type][page] = events.slice(page_min - 1, page_max);
+            if (page_max >= events.length) break;
+            page++;
+        }
+    }
+    return EL.page_events[type][page];
 }
 
 function GetHTMLAddons(type, events) {
@@ -1950,6 +1961,9 @@ function SaveFoundEvents(type, source, found_events, all_data) {
     let last_record = all_data.find((item) => item.id === last_found_event.id);
     let last_timestamp = JSPLib.utility.toTimeStamp(last_record[TYPEDICT[type].timeval]);
     JSPLib.storage.setLocalData(`el-${type}-${source}-last-found`, last_timestamp);
+    if (new_events.length) {
+        delete EL.page_events[type];
+    }
     return new_events;
 }
 
@@ -2092,18 +2106,18 @@ function UpdateEventSource(type, source, {last_found = null, last_seen = null, l
 }
 
 function UpdateSectionPage(type, page) {
-    let events = GetEvents(type);
+    let events = GetPageEvents(type, page);
     let {page_min, page_max} = GetPageValues(page);
-    let max_page = Math.floor((events.length - 1) / 20) + 1;
     let $body_header = $(`.el-event-body[data-type="${type}"] .el-body-header`);
     let first_event = JSPLib.utility.padNumber(page_min, 3);
-    let last_event = JSPLib.utility.padNumber(Math.min(page_max, events.length), 3);
+    let last_index = events.length + page_min - 1;
+    let last_event = JSPLib.utility.padNumber(Math.min(page_max, last_index), 3);
     if (page === 1) {
         $body_header.find('.el-paginator-prev').addClass('el-link-disabled');
     } else {
         $body_header.find('.el-paginator-prev').removeClass('el-link-disabled');
     }
-    if (page === max_page) {
+    if (!EL.page_events[type][page + 1]) {
         $body_header.find('.el-paginator-next').addClass('el-link-disabled');
     } else {
         $body_header.find('.el-paginator-next').removeClass('el-link-disabled');
@@ -2445,7 +2459,7 @@ function InstallNoticePanel(new_events_hash) {
         let saved_events = GetEvents(type);
         let new_events = saved_events.filter((ev) => new_events_hash[type].includes(ev.id));
         $event_section.append(`<span style="font-size: 24px; font-weight: bold;">Loading ${TYPEDICT[type].plural}...</span>`);
-        GetHTMLPage(type, null, new_events).then(($page) => {
+        GetHTMLPage(type, new_events).then(($page) => {
             $event_section.children().remove();
             if ($page) {
                 let $events = (type === 'comment' ? $('.list-of-comments', $page) : $('table.striped', $page));
@@ -2543,7 +2557,7 @@ function AppendFloatingHeader(type, $container, $table) {
 function InstallErrorPage(type, page) {
     let $body_section = $(`.el-event-body[data-type="${type}"] .el-body-section`);
     let events = GetEvents(type);
-    let page_events = GetPageEvents(page, events);
+    let page_events = GetPageEvents(type, page);
     let url_addons = GetHTMLAddons(type, page_events);
     let error_html = JSPLib.utility.regexReplace(ERROR_PAGE_HTML, {
         PLURAL: TYPEDICT[type].plural.toUpperCase(),
@@ -2551,7 +2565,10 @@ function InstallErrorPage(type, page) {
     });
     $body_section.html(error_html);
     $body_section.find('.el-events-page-url').one(PROGRAM_CLICK, () => {
-        page_events.forEach((event) => {event.seen = true;});
+        page_events.forEach((page_ev) => {
+            let event = events.find((ev) => ev.id === page_ev.id);
+            event.seen = true;
+        });
         SaveEvents(type, events);
     });
     $body_section.find('.el-events-reload').one(PROGRAM_CLICK, () => {
@@ -2689,8 +2706,9 @@ async function InsertTableEvents(page, type) {
     let $body_section = $(`.el-event-body[data-type="${type}"] .el-body-section`);
     if (!EL.pages[type][page]) {
         let events = GetEvents(type);
+        let page_events = GetPageEvents(type, page);
         $body_section.html('<span class="el-loading">Loading...</span>');
-        let $page = await GetHTMLPage(type, page, events);
+        let $page = await GetHTMLPage(type, page_events);
         if ($page) {
             let $table = $('table.striped', $page);
             let table_header = '<th class="el-mark-read" width="2%"></th><th class="el-found-with" width="8%">Found with</th>';
@@ -2762,7 +2780,8 @@ async function InsertCommentEvents(page) {
     if (!EL.pages.comment[page]) {
         $body_section.html('<span style="font-size: 24px; font-weight: bold;">Loading...</span>');
         let events = GetEvents('comment');
-        let $page = await GetHTMLPage('comment', page, events);
+        let page_events = GetPageEvents('comment', page);
+        let $page = await GetHTMLPage('comment', page_events);
         if ($page) {
             let $section = $('.list-of-comments', $page);
             $section.addClass('el-comments-body');
@@ -2964,9 +2983,8 @@ async function AddPoolPostsRow(pool_version_id, $row) {
 
 //Network functions
 
-async function GetHTMLPage(type, page, events) {
-    let page_events = (Number.isInteger(page) ? GetPageEvents(page, events) : events);
-    let url_addons = GetHTMLAddons(type, page_events);
+async function GetHTMLPage(type, events) {
+    let url_addons = GetHTMLAddons(type, events);
     let type_html = await JSPLib.network.getNotify(`/${TYPEDICT[type].controller}.html`, {url_addons});
     if (type_html) {
         let $parse = $.parseHTML(type_html);
@@ -3708,7 +3726,7 @@ const [
 /****Initialization****/
 
 //Variables for debug.js
-JSPLib.debug.debug_console = true;
+JSPLib.debug.debug_console = false;
 JSPLib.debug.level = JSPLib.debug.INFO;
 JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
