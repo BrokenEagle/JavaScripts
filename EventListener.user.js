@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      25.7
+// @version      25.8
 // @description  Informs users of new events.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -321,6 +321,12 @@ const SETTINGS_CONFIG = {
         reset: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Will display a notice panel on new events, similar to the old version."
+    },
+    page_size: {
+        reset: 20,
+        parse: parseInt,
+        validate: (data) => (Number.isInteger(data) && data >= 5 && data <= 200),
+        hint: "Will display a notice panel on new events, similar to the old version (min 5, max 200)."
     },
     events_order: {
         allitems: ALL_EVENTS,
@@ -1622,8 +1628,8 @@ function GetNewEventsHash(results_hash) {
 }
 
 function GetPageValues(page) {
-    let page_min = ((page - 1) * 20) + 1;
-    let page_max = page * 20;
+    let page_min = ((page - 1) * EL.page_size) + 1;
+    let page_max = page * EL.page_size;
     return {page_min, page_max};
 }
 
@@ -2520,7 +2526,7 @@ function LoadEventSection(type) {
     let events = GetEvents(type);
     let body_html = JSPLib.utility.regexReplace(EVENT_SECTION_HTML, {
         TOTAL: JSPLib.utility.padNumber(events.length, 3),
-        MARKPAGE: (events.length > 20 ? MARK_PAGE_HTML : ""),
+        MARKPAGE: (events.length > EL.page_size ? MARK_PAGE_HTML : ""),
     });
     $body.append(body_html);
     $body.find('.el-paginator-prev').on(PROGRAM_CLICK, PaginatorPrevious);
@@ -3627,6 +3633,7 @@ function RenderSettingsMenu() {
     $('#el-general-settings').append(JSPLib.menu.renderDomainSelectors());
     $('#el-display-settings').append(JSPLib.menu.renderCheckbox('display_event_notice'));
     $('#el-display-settings').append(JSPLib.menu.renderCheckbox('display_event_panel'));
+    $('#el-display-settings').append(JSPLib.menu.renderTextinput('page_size', 10));
     $('#el-display-settings').append(JSPLib.menu.renderSortlist('events_order'));
     $('#el-network-settings').append(JSPLib.menu.renderTextinput('recheck_interval', 10));
     $('#el-filter-settings').append(JSPLib.menu.renderCheckbox('filter_user_events'));
