@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SiteTagSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.18
+// @version      4.19
 // @description  Presents additional site links for the wiki tag(s).
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -108,10 +108,6 @@ const PROGRAM_CSS = `
     padding: 2px 5px;
 }
 /*FIXES*/
-#wiki-page-body,
-#excerpt .prose {
-    min-height: 15em;
-}
 .ui-icon {
     display: inline-block;
     height: 16px;
