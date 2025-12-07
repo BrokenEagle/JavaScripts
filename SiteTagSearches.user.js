@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SiteTagSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.0
+// @version      5.1
 // @description  Presents additional site links for the wiki tag(s).
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -47,7 +47,7 @@ const STS = {};
 
 //Setting values
 const BOORU_SITES = ['gelbooru', 'yandere', 'sankaku', 'konachan'];
-const SOURCE_SITES = ['pixiv', 'twitter', 'tumblr', 'deviantart', 'E-Hentai', 'nijie', 'artstation', 'naver', 'lofter', 'skeb', 'tinami'];
+const SOURCE_SITES = ['pixiv', 'twitter', 'tumblr', 'deviantart', 'E-Hentai', 'nijie', 'artstation', 'fanbox', 'naver', 'lofter', 'skeb', 'tinami'];
 
 const CUSTOM_SITES_TOTAL = JSPLib.storage.checkLocalData('sts-custom-sites-total', {
     default_val: 5,
