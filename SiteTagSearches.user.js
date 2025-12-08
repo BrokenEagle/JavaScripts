@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SiteTagSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.2
+// @version      5.3
 // @description  Presents additional site links for the wiki tag(s).
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -441,7 +441,7 @@ function Main() {
         });
         $wiki_container.prepend(RenderMainTag());
     } else {
-        let $elem = $('<p></p>').prepend(RenderMainTag());
+        let $elem = $('<p class="flex"></p>').prepend(RenderMainTag());
         $('#wiki-page-body, #c-posts #a-index .prose').prepend($elem);
     }
     $('.sts-collapsible-links[data-type=source]').on(PROGRAM_CLICK, SiteLinkToggle('e', 's'));
