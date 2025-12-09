@@ -1025,7 +1025,7 @@ const MULTI_LINK_MENU_HTML = JSPLib.utility.normalizeHTML()`
 </div>`;
 
 const SUBSCRIBE_MULTI_LINK_HTML = JSPLib.utility.normalizeHTML()`
-<span id="%IDNAME%" data-type="%TYPELIST%" class="el-multi-link %CLASSNAME%">
+<span class="el-multi-link %CLASSNAME%" data-type="%TYPELIST%">
     <a class="el-link" title="%TITLE%">%NAME%</a>
 </span>`;
 
@@ -2289,9 +2289,7 @@ function RenderSubscribeMultiLink(name, type_list, item_id, event_setting) {
     let is_subscribed = type_list.every((type) => (subscribe_func(type).has(item_id)));
     let class_name = (is_subscribed ? 'el-subscribed' : 'el-unsubscribed');
     let title = (is_subscribed ? 'subscribed' : 'unsubscribed');
-    let id_name = 'el-' + JSPLib.utility.kebabCase(name) + '-link';
     return JSPLib.utility.regexReplace(SUBSCRIBE_MULTI_LINK_HTML, {
-        IDNAME: id_name,
         CLASSNAME: class_name,
         TITLE: title,
         NAME: name,
@@ -2388,17 +2386,14 @@ function InitializeUserShowMenu() {
     let menu_links = [];
     USER_EVENTS.forEach((type) => {
         if (!IsUserSubscribeEnabled(type)) return;
-        let link_html = RenderSubscribeMultiLink(TYPEDICT[type].display, [type], user_id, 'user_events_enabled');
-        menu_links.push(`<span class="el-user-${type}-container">${link_html}</span>`);
+        menu_links.push(RenderSubscribeMultiLink(TYPEDICT[type].display, [type], user_id, 'user_events_enabled'));
     });
     if (AreAllEventsEnabled(ALL_TRANSLATE_EVENTS, 'user_events_enabled')) {
-        let link_html = RenderSubscribeMultiLink("Translations", ALL_TRANSLATE_EVENTS, user_id, 'user_events_enabled');
-        menu_links.push(`<span class="el-user-translated-container">${link_html}</span>`);
+        menu_links.push(RenderSubscribeMultiLink("Translations", ALL_TRANSLATE_EVENTS, user_id, 'user_events_enabled'));
     }
     let enabled_user_events = JSPLib.utility.arrayIntersection(USER_EVENTS, EL.user_events_enabled);
     if (enabled_user_events.length > 1) {
-        let link_html = RenderSubscribeMultiLink("All", enabled_user_events, user_id, 'user_events_enabled');
-        menu_links.push(`<span class="el-user-all-container">${link_html}</span>`);
+        menu_links.push(RenderSubscribeMultiLink("All", enabled_user_events, user_id, 'user_events_enabled'));
     }
     $('#el-add-links', $menu_obj).append(menu_links.join(' | '));
     $('#nav').append($menu_obj);
@@ -2413,17 +2408,14 @@ function InitializePostShowMenu() {
     let menu_links = [];
     ALL_POST_EVENTS.forEach((type) => {
         if (!IsItemSubscribeEnabled(type)) return;
-        let link_html = RenderSubscribeMultiLink(TYPEDICT[type].display, [type], post_id, 'subscribe_events_enabled');
-        menu_links.push(`<span class="el-subscribe-${type}-container">${link_html}</span>`);
+        menu_links.push(RenderSubscribeMultiLink(TYPEDICT[type].display, [type], post_id, 'subscribe_events_enabled'));
     });
     if (AreAllEventsEnabled(ALL_TRANSLATE_EVENTS, 'subscribe_events_enabled')) {
-        let link_html = RenderSubscribeMultiLink("Translations", ALL_TRANSLATE_EVENTS, post_id, 'subscribe_events_enabled');
-        menu_links.push(`<span class="el-subscribe-translated-container">${link_html}</span>`);
+        menu_links.push(RenderSubscribeMultiLink("Translations", ALL_TRANSLATE_EVENTS, post_id, 'subscribe_events_enabled'));
     }
     let enabled_post_events = JSPLib.utility.arrayIntersection(ALL_POST_EVENTS, EL.subscribe_events_enabled);
     if (enabled_post_events.length > 1) {
-        let link_html = RenderSubscribeMultiLink("All", enabled_post_events, post_id, 'subscribe_events_enabled');
-        menu_links.push(`<span class="el-subscribe-all-container">${link_html}</span>`);
+        menu_links.push(RenderSubscribeMultiLink("All", enabled_post_events, post_id, 'subscribe_events_enabled'));
     }
     $('#el-add-links', $menu_obj).append(menu_links.join(' | '));
     $('#nav').append($menu_obj);
@@ -2435,8 +2427,7 @@ function InitializeTopicShowMenu() {
     if (!IsItemSubscribeEnabled('forum')) return false;
     let topic_id = $('body').data('forum-topic-id');
     let $menu_obj = $.parseHTML(RenderMultilinkMenu(topic_id, 'subscribe_events_enabled'));
-    let link_html = RenderSubscribeMultiLink("Topic", ['forum'], topic_id, 'subscribe_events_enabled');
-    $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-forum-container">${link_html}</span>`);
+    $('#el-add-links', $menu_obj).append(RenderSubscribeMultiLink("Topic", ['forum'], topic_id, 'subscribe_events_enabled'));
     $('#nav').append($menu_obj);
     return true;
 }
@@ -2447,8 +2438,7 @@ function InitializeWikiShowMenu() {
     let data_selector = (EL.controller === 'wiki-pages' ? 'wiki-page-id' : 'wiki-page-version-wiki-page-id');
     let wiki_id = $('body').data(data_selector);
     let $menu_obj = $.parseHTML(RenderMultilinkMenu(wiki_id, 'subscribe_events_enabled'));
-    let link_html = RenderSubscribeMultiLink("Wiki", ['wiki'], wiki_id, 'subscribe_events_enabled');
-    $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-wiki-container">${link_html}</span>`);
+    $('#el-add-links', $menu_obj).append(RenderSubscribeMultiLink("Wiki", ['wiki'], wiki_id, 'subscribe_events_enabled'));
     $('#nav').append($menu_obj);
     return true;
 }
@@ -2458,8 +2448,7 @@ function InitializeArtistShowMenu() {
     if (!IsItemSubscribeEnabled('artist')) return false;
     let artist_id = $('body').data('artist-id');
     let $menu_obj = $.parseHTML(RenderMultilinkMenu(artist_id, 'subscribe_events_enabled'));
-    let link_html = RenderSubscribeMultiLink("Artist", ['artist'], artist_id, 'subscribe_events_enabled');
-    $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-artist-container">${link_html}</span>`);
+    $('#el-add-links', $menu_obj).append(RenderSubscribeMultiLink("Artist", ['artist'], artist_id, 'subscribe_events_enabled'));
     $('#nav').append($menu_obj);
     return true;
 }
@@ -2469,8 +2458,7 @@ function InitializePoolShowMenu() {
     if (!IsItemSubscribeEnabled('pool')) return false;
     let pool_id = $('body').data('pool-id');
     let $menu_obj = $.parseHTML(RenderMultilinkMenu(pool_id, 'subscribe_events_enabled'));
-    let link_html = RenderSubscribeMultiLink("Pool", ['pool'], pool_id, 'subscribe_events_enabled');
-    $('#el-add-links', $menu_obj).append(`<span class="el-subscribe-pool-container">${link_html}</span>`);
+    $('#el-add-links', $menu_obj).append(RenderSubscribeMultiLink("Pool", ['pool'], pool_id, 'subscribe_events_enabled'));
     $('#nav').append($menu_obj);
     return true;
 }
@@ -3108,7 +3096,7 @@ function ToggleSubscribeLinks(event) {
 }
 
 function SubscribeMultiLink(event) {
-    let $menu = $(JSPLib.utility.getNthParent(event.target, 4));
+    let $menu = $('#el-subscribe-events');
     let $container = $(event.target.parentElement);
     let item_id = $menu.data('id');
     let event_setting = $menu.data('setting');
