@@ -6846,6 +6846,8 @@ function RenderSettingsMenu() {
 //Main function
 
 async function Main() {
+    let guest_token = JSPLib.utility.readCookie('gt');
+    if (guest_token) return;
     JSPLib.network.jQuerySetup();
     jQuery.ajaxSetup({timeout: JSPLib.utility.one_second * 10});
     JSPLib.menu.preloadScript(NTISAS, {
