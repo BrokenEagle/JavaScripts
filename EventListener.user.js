@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      25.8
+// @version      25.9
 // @description  Informs users of new events.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -51,6 +51,24 @@ JSPLib.debug.getFunctionPrint = function (func_name) {
         this._func_printer[func_name] = printer;
     }
     return this._func_printer[func_name];
+};
+
+JSPLib.utility.renderTemplate = function (literals, args) {
+    let output = "";
+    for (let i = 0; i < literals.raw.length; i++) {
+        output += literals.raw[i];
+        if (i < args.length) {
+            output += args[i];
+        }
+    }
+    return output;
+};
+
+JSPLib.utility.normalizeHTML = function () {
+    return function (literals, ...args) {
+        let output = JSPLib.utility.renderTemplate(literals, args);
+        return output.replace(/\s+/g, ' ').replace(/(?<=>)\s/g, "").replace(/\s(?=<)/g, "");
+    };
 };
 
 JSPLib.utility.toTimeStamp = function (time_value) {
@@ -857,12 +875,12 @@ const MENU_CSS = `
 
 ////Settings menu
 
-const SUBSCRIBE_EVENT_SETTINGS_DETAILS = `
+const SUBSCRIBE_EVENT_SETTINGS_DETAILS = JSPLib.utility.normalizeHTML()`
 <p>
-When the <code>show_creator_events</code> setting is enabled, it will automatically show events for items (post, forum_topic) where the user is the creator, but only if
-those events are also enabled under the <code>subscribe_events_enabled</code> setting. Meaning, events for that event type will be shown to the user whether they are
-<span style="color: ${SUBSCRIBED_COLOR}; font-weight: bold;">SUBSCRIBED</span> or <span style="color: ${UNSUBSCRIBED_COLOR}; font-weight: bold;">UNSUBSCRIBED</span>
-to an individual item (post, forum_topic) on the item's page.
+When the&ensp;<code>show_creator_events</code>&ensp;setting is enabled, it will automatically show events for items (post, forum_topic) where the user is the creator, but only if
+those events are also enabled under the&ensp;<code>subscribe_events_enabled</code>&ensp;setting. Meaning, events for that event type will be shown to the user whether they are&ensp;
+<span style="color: ${SUBSCRIBED_COLOR}; font-weight: bold;">SUBSCRIBED</span>&ensp;or&ensp;<span style="color: ${UNSUBSCRIBED_COLOR}; font-weight: bold;">UNSUBSCRIBED</span>
+&ensp;to an individual item (post, forum_topic) on the item's page.
 </p>
 <p>
 The following is the list of event types and the relation the user needs to have to an item to be automatically subscribed to that item when that event type is enabled.
@@ -919,28 +937,28 @@ The following is the list of event types and the relation the user needs to have
 	</tbody>
 </table>`;
 
-const POST_QUERY_EVENT_SETTINGS_DETAILS = `
+const POST_QUERY_EVENT_SETTINGS_DETAILS = JSPLib.utility.normalizeHTML()`
 <ul>
     <li><b>Edit query:</b>
         <ul>
-            <li>Tags prepended with a "+" adds a search using <code>added_tags_include_any</code>.</li>
-            <li>Tags prepended with a "-" adds a search using <code>removed_tags_include_any</code>.</li>
-            <li>Tags prepended with a "~" adds a search using <code>any_changed_tags</code>.</li>
-            <li>Non-prepended tags adds a search using <code>all_changed_tags</code>.</li>
-            <li>See <a href="/wiki_pages/api:post_versions">API:Post versions</a> for search details.</li>
+            <li>Tags prepended with a "+" adds a search using&ensp;<code>added_tags_include_any</code>.</li>
+            <li>Tags prepended with a "-" adds a search using&ensp;<code>removed_tags_include_any</code>.</li>
+            <li>Tags prepended with a "~" adds a search using&ensp;<code>any_changed_tags</code>.</li>
+            <li>Non-prepended tags adds a search using&ensp;<code>all_changed_tags</code>.</li>
+            <li>See&ensp;<a href="/wiki_pages/api:post_versions">API:Post versions</a>&ensp;for search details.</li>
         </ul>
     </li>
 </ul>`;
 
-const OTHER_EVENT_SETTINGS_DETAILS = `
+const OTHER_EVENT_SETTINGS_DETAILS = JSPLib.utility.normalizeHTML()`
 <ul>
-    <li><b>dmail:</b> Unread, undeleted dmail.</li>
-    <li><b>ban:</b> None.</li>
-    <li><b>feedback:</b> No ban feedbacks.</li>
-    <li><b>mod action:</b> Specific categories must be subscribed.</li>
+    <li><b>dmail:</b>&ensp;Unread, undeleted dmail.</li>
+    <li><b>ban:</b>&ensp;None.</li>
+    <li><b>feedback:</b>&ensp;No ban feedbacks.</li>
+    <li><b>mod action:</b>&ensp;Specific categories must be subscribed.</li>
 </ul>`;
 
-const PROGRAM_DATA_DETAILS = `
+const PROGRAM_DATA_DETAILS = JSPLib.utility.normalizeHTML()`
 <p class="tn">All timestamps are in milliseconds since the epoch (<a href="https://www.epochconverter.com">Epoch converter</a>).</p>
 <ul>
     <li>General data
@@ -952,55 +970,68 @@ const PROGRAM_DATA_DETAILS = `
             <li><b>user-settings:</b> All configurable settings.</li>
         </ul>
     </li>
-    <li>Type data: <code>TYPE</code> is a placeholder for all available event types. <code>SOURCE</code> is a placeholder for the type of operation (subscribe, post-query, other).
+    <li>Type data:&ensp;<code>TYPE</code>&ensp;is a placeholder for all available event types.&ensp;<code>SOURCE</code>&ensp;is a placeholder for the type of operation (subscribe, post-query, other).
         <ul>
-            <li><b>TYPE-item-list:</b> The list of all item IDs that are subscribed.</li>
-            <li><b>TYPE-user-list:</b> The list of all user IDs that are subscribed.</li>
-            <li><b>TYPE-saved-events:</b> The list of all available events.</li>
-            <li><b>TYPE-SOURCE-last-id:</b> Bookmark for the ID of the last seen event. This is where the script starts searching when it does a recheck.</li>
-            <li><b>TYPE-SOURCE-overflow:</b> Did this event reach the query limit last page load? Absence of this key indicates false. This controls whether or not and event will process at the next page refresh.</li>
-            <li><b>TYPE-SOURCE-last-checked:</b> When the userscript last did a check.</li>
-            <li><b>TYPE-SOURCE-last-seen:</b> Timestamp of the most recent item seen from Danbooru.</li>
-            <li><b>TYPE-SOURCE-last-found:</b> Timestamp of the last found item.</li>
-            <li><b>TYPE-SOURCE-event-timeout:</b> Timestamp of the next check.</li>
-            <li><b>process-semaphore-TYPE-SOURCE:</b> Prevents events from being checked during an ongoing manual check.</li>
+            <li><b>TYPE-item-list:</b>&ensp;The list of all item IDs that are subscribed.</li>
+            <li><b>TYPE-user-list:</b>&ensp;The list of all user IDs that are subscribed.</li>
+            <li><b>TYPE-saved-events:</b>&ensp;The list of all available events.</li>
+            <li><b>TYPE-SOURCE-last-id:</b>&ensp;Bookmark for the ID of the last seen event. This is where the script starts searching when it does a recheck.</li>
+            <li><b>TYPE-SOURCE-overflow:</b>&ensp;Did this event reach the query limit last page load? Absence of this key indicates false. This controls whether or not and event will process at the next page refresh.</li>
+            <li><b>TYPE-SOURCE-last-checked:</b>&ensp;When the userscript last did a check.</li>
+            <li><b>TYPE-SOURCE-last-seen:</b>&ensp;Timestamp of the most recent item seen from Danbooru.</li>
+            <li><b>TYPE-SOURCE-last-found:</b>&ensp;Timestamp of the last found item.</li>
+            <li><b>TYPE-SOURCE-event-timeout:</b>&ensp;Timestamp of the next check.</li>
+            <li><b>process-semaphore-TYPE-SOURCE:</b>&ensp;Prevents events from being checked during an ongoing manual check.</li>
         </ul>
     </li>
 </ul>
-<p><b>Note:</b> The raw format of all data keys begins with "el-". which is unused by the cache editor controls.</p>`;
+<p><b>Note:</b>&ensp;The raw format of all data keys begins with "el-". which is unused by the cache editor controls.</p>`;
 
 ////Notice
 
-const NOTICE_PANEL = `
+const NOTICE_PANEL = JSPLib.utility.normalizeHTML()`
 <div id="el-event-notice" class="notice notice-info">
     <div id="el-event-notice-pane">
     </div>
     <div id="el-event-controls">
         <a id="el-close-event-notice" class="el-link">Close this</a>
-        [
+        &ensp;[&ensp;
         <a id="el-read-event-notice" class="el-link el-monospace" title="Mark all items as read.">READ</a>
-        ]
+        &ensp;]
     </div>
 </div>`;
 
 ////Navigation
 
-const EVENTS_NAV_HTML = '<a id="el-nav-events" class="el-link py-1.5 px-3">Events (<span id="el-events-total">...</span>)</a>';
-const SUBSCRIBE_CONTROLS_HTML = '<span id="el-display-subscribe" class="py-1.5 px-3">Subscribe links [&thinsp;<a class="el-link el-monospace" data-action="show" style="display: none;">Show</a><a class="el-link el-monospace" data-action="hide" style="display: none;">Hide</a>&thinsp;]</span>';
+const EVENTS_NAV_HTML = JSPLib.utility.normalizeHTML()`
+<a id="el-nav-events" class="el-link py-1.5 px-3">
+    Events
+    (&thinsp;
+        <span id="el-events-total">...</span>
+    &thinsp;)
+</a>`;
+const SUBSCRIBE_CONTROLS_HTML = JSPLib.utility.normalizeHTML()`
+<span id="el-display-subscribe" class="py-1.5 px-3">
+    Subscribe links
+    [&thinsp;
+        <a class="el-link el-monospace" data-action="show" style="display: none;">Show</a>
+        <a class="el-link el-monospace" data-action="hide" style="display: none;">Hide</a>
+    &thinsp;]
+</span>`;
 
-const MULTI_LINK_MENU_HTML = `
+const MULTI_LINK_MENU_HTML = JSPLib.utility.normalizeHTML()`
 <div id="el-subscribe-events" data-id="%ITEMID%" data-setting="%EVENTSETTING%" style="display: none;">
-    Subscribe ( <span id="el-add-links"></span> )
+    Subscribe (&ensp;<span id="el-add-links"></span>&ensp;)
 </div>`;
 
-const SUBSCRIBE_MULTI_LINK_HTML = `
+const SUBSCRIBE_MULTI_LINK_HTML = JSPLib.utility.normalizeHTML()`
 <span id="%IDNAME%" data-type="%TYPELIST%" class="el-multi-link %CLASSNAME%">
     <a class="el-link" title="%TITLE%">%NAME%</a>
 </span>`;
 
 ////Events page
 
-const EVENTS_PAGE_HTML = `
+const EVENTS_PAGE_HTML = JSPLib.utility.normalizeHTML()`
 <div id="el-page" style="display: none;">
     <div id="el-header">%HEADER%</div>
     <div id="el-body">%BODY%</div>
@@ -1011,31 +1042,31 @@ const EVENT_BODY_HTML = '<div class="el-event-body" data-type="%TYPE%">%BODY%</d
 
 ////Home page
 
-const HOME_SECTION_HTML = `
+const HOME_SECTION_HTML = JSPLib.utility.normalizeHTML()`
 <div class="el-home-section prose" data-type="%TYPE%">
     <h4>%TITLE%</h4>
     <ul>
-        <li class="el-new-events"><b>New:</b> <span></span></li>
-        <li class="el-available-events"><b>Available:</b> <span></span></li>
+        <li class="el-new-events"><b>New:</b>&ensp;<span></span></li>
+        <li class="el-available-events"><b>Available:</b>&ensp;<span></span></li>
         %SUBSECTIONS%
     </ul>
 </div>`;
 
-const HOME_SUBSECTION_HTML = `
+const HOME_SUBSECTION_HTML = JSPLib.utility.normalizeHTML()`
 <li class="el-last-found" data-source="%SOURCE%" title="Time of last item found.">
-    <b>Last found:</b> <span></span>
+    <b>Last found:</b>&ensp;<span></span>
 </li>
 <li class="el-last-seen" data-source="%SOURCE%" title="Time of last item seen by check.">
-    <b>Last seen:</b> <span></span>
+    <b>Last seen:</b>&ensp;<span></span>
 </li>
 <li class="el-last-checked" data-source="%SOURCE%" title="Time last check occurred.">
-    <b>Last checked:</b> <span></span>
+    <b>Last checked:</b>&ensp;<span></span>
 </li>
 <li class="el-next-check" data-source="%SOURCE%" title="Time of next check.">
-    <b>Next check:</b> <span></span>
+    <b>Next check:</b>&ensp;<span></span>
 </li>
 <li class="el-pages-left" data-source="%SOURCE%" title="How many pages left to check. Used as a counter for check more and check all.">
-    <b>Pages left:</b> (&thinsp;<span></span>&thinsp;)
+    <b>Pages left:</b>&ensp;(&thinsp;<span></span>&thinsp;)
 </li>
 <li class="el-section-controls">
     <div>
@@ -1054,18 +1085,18 @@ const HOME_SUBSECTION_HTML = `
     </div>
 </li>`;
 
-const SUBSCRIBE_SUBSECTION_HTML = `
+const SUBSCRIBE_SUBSECTION_HTML = JSPLib.utility.normalizeHTML()`
 <li><u>Subscribe</u>
     <ul>%s</ul>
 </li>`;
 
-const POST_QUERY_SUBSECTION_HTML = `
+const POST_QUERY_SUBSECTION_HTML = JSPLib.utility.normalizeHTML()`
 <li><u>Post query</u>
     <ul>%s</ul>
 </li>`;
 
 
-const HOME_CONTROLS = `
+const HOME_CONTROLS = JSPLib.utility.normalizeHTML()`
 <div class="el-home-section prose" data-type="controls">
     <h4>Controls</h4>
     <div>
@@ -1086,48 +1117,71 @@ const NONE_HTML = '<span class="el-none">none</span>';
 
 ////Event page
 
-const EVENT_SECTION_HTML = `<div class="el-body-header">
+const EVENT_SECTION_HTML = JSPLib.utility.normalizeHTML()`
+<div class="el-body-header">
     <div class="el-body-page-info">
-        Showing events <span class="el-first-event el-monospace"></span> - <span class="el-last-event el-monospace"></span> of <span class="el-total-events el-monospace">%TOTAL%</span>.&emsp;
-        <span class="el-paginator">
-            <a class="el-paginator-prev el-link">&ltprev&gt</a>
-            |
-            <a class="el-paginator-next el-link">&ltnext&gt</a>
-        </span>
+        Showing events&ensp;<span class="el-first-event el-monospace"></span>&ensp;-&ensp;<span class="el-last-event el-monospace"></span>&ensp;of&ensp;<span class="el-total-events el-monospace">%TOTAL%</span>.&emsp;
+        %PAGINATOR%
     </div>
     <div class="el-body-controls">
         <span class="el-select-links">
-            Select [
+            Select [&ensp;
                 <a class="el-select-all el-link" title="Select all on current page.">all</a>
-                |
+                &ensp;|&ensp;
                 <a class="el-select-none el-link" title="Select none on current page.">none</a>
-                |
+                &ensp;|&ensp;
                 <a class="el-select-invert el-link" title="Invert selection on current page.">invert</a>
-            ]
+            &ensp;]
         </span>&emsp;
         <span class="el-mark-read-links">
-            Mark Read [
+            Mark Read [&ensp;
                 <a class="el-mark-selected el-link" title="Mark all selected items on page as read.">selected</a>
                 %MARKPAGE%
-                |
+                |&ensp;
                 <a class="el-mark-all el-link" title="Mark all items across all pages as read.">all</a>
-            ]
+            &ensp;]
         </span>
     </div>
 </div>
 <div class="el-body-section" data-page="1">
 </div>`;
 
-const MARK_PAGE_HTML = '| <a class="el-mark-page el-link" title="Mark all items on page as read.">page</a>';
+const PAGINATOR_HTML = JSPLib.utility.normalizeHTML()`
+<span class="el-paginator">
+    <a class="el-paginator-prev el-link">&ltprev&gt</a>
+    &ensp;|&ensp;
+    <a class="el-paginator-next el-link">&ltnext&gt</a>
+</span>`;
+
+const MARK_PAGE_HTML = ' | <a class="el-mark-page el-link" title="Mark all items on page as read.">page</a>';
+
+////Event table
+
+const TABLE_HEADER_ADDONS_HTML = JSPLib.utility.normalizeHTML()`
+<th class="el-mark-read" width="2%"></th>
+<th class="el-found-with" width="8%">Found with</th>`;
+const TABLE_HEADER_PREVIEW_HTML = '<th width="1%">Preview</th>';
+
+const TABLE_BODY_ADDONS_HTML = JSPLib.utility.normalizeHTML()`
+<td class="el-mark-read">
+    <a>
+        <input type="checkbox">
+    </a>
+</td>
+<td class="el-found-with">
+    %s
+</td>`;
+const TABLE_BODY_PREVIEW_HTML = '<td class="el-post-preview"></td>';
+
 
 ////Open item
 
-const OPEN_ITEM_CONTAINER_HTML = `
+const OPEN_ITEM_CONTAINER_HTML = JSPLib.utility.normalizeHTML()`
 <tr class="el-full-item" data-type="%TYPE%" data-id="%ITEMID%">
     <td colspan="%COLUMNS%"><span class="el-loading">Loading...</span></td>
 </tr>`;
 
-const OPEN_ITEM_LINKS_HTML = `
+const OPEN_ITEM_LINKS_HTML = JSPLib.utility.normalizeHTML()`
 <span class="el-show-hide-links" data-type="%TYPE%" data-id="%ITEMID%">
     <span data-action="show" style><a class="el-link el-monospace">%SHOWTEXT%</a></span>
     <span data-action="hide" style="display:none !important"><a class="el-link el-monospace">%HIDETEXT%</a></span>
@@ -1135,19 +1189,19 @@ const OPEN_ITEM_LINKS_HTML = `
 
 ////Error page
 
-const ERROR_PAGE_HTML = `
+const ERROR_PAGE_HTML = JSPLib.utility.normalizeHTML()`
 <div style="font-size: 24px;">
     <div style="color: red; font-weight: bold;">
         ERROR LOADING EVENTS FOR %PLURAL%!
     </div>
     <div style="margin-top: 0.5em;">
-        Visit the following page to view these events manually: <a class="el-events-page-url" href="%PAGEURL%" target="_blank">*PAGE LINK*</a>
+        Visit the following page to view these events manually:&ensp;<a class="el-events-page-url" href="%PAGEURL%" target="_blank">*PAGE LINK*</a>
     </div>
     <div style="margin-top: 0.5em;">
-        Or you can click the following to try reloading the page: <a class="el-events-reload el-link">*RELOAD PAGE*</a>
+        Or you can click the following to try reloading the page:&ensp;<a class="el-events-reload el-link">*RELOAD PAGE*</a>
     </div>
     <div style="margin-top: 2em;">
-        Click the following link to clear the page when finished: <a class="el-mark-page-read el-link">*MARK PAGE*</a>
+        Click the following link to clear the page when finished:&ensp;<a class="el-mark-page-read el-link">*MARK PAGE*</a>
     </div>
 </div>`;
 
@@ -2464,7 +2518,7 @@ function InstallNoticePanel(new_events_hash) {
         $('#el-event-notice-pane').append($event_section);
         let saved_events = GetEvents(type);
         let new_events = saved_events.filter((ev) => new_events_hash[type].includes(ev.id));
-        $event_section.append(`<span style="font-size: 24px; font-weight: bold;">Loading ${TYPEDICT[type].plural}...</span>`);
+        $event_section.append(`<span class="el-loading">Loading ${TYPEDICT[type].plural}...</span>`);
         GetHTMLPage(type, new_events).then(($page) => {
             $event_section.children().remove();
             if ($page) {
@@ -2527,6 +2581,7 @@ function LoadEventSection(type) {
     let body_html = JSPLib.utility.regexReplace(EVENT_SECTION_HTML, {
         TOTAL: JSPLib.utility.padNumber(events.length, 3),
         MARKPAGE: (events.length > EL.page_size ? MARK_PAGE_HTML : ""),
+        PAGINATOR: (events.length > EL.page_size ? PAGINATOR_HTML : ""),
     });
     $body.append(body_html);
     $body.find('.el-paginator-prev').on(PROGRAM_CLICK, PaginatorPrevious);
@@ -2717,8 +2772,8 @@ async function InsertTableEvents(page, type) {
         let $page = await GetHTMLPage(type, page_events);
         if ($page) {
             let $table = $('table.striped', $page);
-            let table_header = '<th class="el-mark-read" width="2%"></th><th class="el-found-with" width="8%">Found with</th>';
-            table_header += (TYPEDICT[type].add_thumbnail ? '<th width="1%">Preview</th>' : "");
+            let table_header = TABLE_HEADER_ADDONS_HTML;
+            table_header += (TYPEDICT[type].add_thumbnail ? TABLE_HEADER_PREVIEW_HTML : "");
             $table.find('thead tr').prepend(table_header);
             let post_ids = new Set();
             let save_events = false;
@@ -2727,11 +2782,11 @@ async function InsertTableEvents(page, type) {
                 let id = $row.data('id');
                 let event = events.find((ev) => ev.id === id);
                 let match_html = event.match.map((m) => m.replace('-', ' ')).join('&ensp;&amp;<br>');
-                let row_addon = `<td class="el-mark-read"><a><input type="checkbox"></td></a><td class="el-found-with">${match_html}</td>`;
+                let row_addon = JSPLib.utility.sprintf(TABLE_BODY_ADDONS_HTML, match_html);
                 if (TYPEDICT[type].add_thumbnail) {
                     let post_id = $row.data('post-id');
                     post_ids.add(post_id);
-                    row_addon += '<td class="el-post-preview"></td>';
+                    row_addon += TABLE_BODY_PREVIEW_HTML;
                 }
                 $row.prepend(row_addon);
                 if (!event.seen) {
