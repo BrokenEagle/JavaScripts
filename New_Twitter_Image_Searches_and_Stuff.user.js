@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      11.7
+// @version      11.8
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -532,6 +532,9 @@ const PROGRAM_CSS = `
     display: inline-block;
     height: 34px;
 }
+[ntisas-tweet] .ntisas-footer-section {
+    font-size: 15px;
+}
 [ntisas-tweet=stream] .ntisas-footer-section {
     margin-bottom: 0.5em;
 }
@@ -540,9 +543,10 @@ const PROGRAM_CSS = `
     margin-bottom: 10px;
 }
 /**Tweet menu**/
-[ntisas-tweet] .ntisas-tweet-image-menu {
+[ntisas-tweet] .ntisas-tweet-controls {
     display: flex;
     border: 2px solid;
+    height: 2.75em;
 }
 [ntisas-tweet] .ntisas-tweet-header {
     display: flex;
@@ -558,14 +562,6 @@ const PROGRAM_CSS = `
     padding: 8px 12px;
     margin: -8px -12px;
 }
-[ntisas-tweet] .ntisas-image-section {
-    margin-top: 0.2em;
-    min-height: 2.2em;
-    white-space: nowrap;
-}
-[ntisas-tweet] .ntisas-query-button a {
-    min-width: 100%;
-}
 [ntisas-tweet] [data-has-posts=true],
 [ntisas-tweet] [data-has-posts=true]:hover,
 [ntisas-tweet] [data-has-posts=true]:focus {
@@ -575,6 +571,15 @@ const PROGRAM_CSS = `
 [ntisas-tweet] [data-has-posts=false]:hover,
 [ntisas-tweet] [data-has-posts=false]:focus {
     color: red;
+}
+[ntisas-tweet] .ntisas-link-menu {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+[ntisas-tweet=main] .ntisas-link-menu {
+    font-size: 1.1em;
 }
 [ntisas-tweet] .ntisas-control-search,
 [ntisas-tweet] .ntisas-control-search:hover,
@@ -586,18 +591,15 @@ const PROGRAM_CSS = `
 [ntisas-tweet] .ntisas-control-download:hover {
     color: grey;
 }
-[ntisas-tweet] .ntisas-control-search,
-[ntisas-tweet] .ntisas-control-confirm,
-[ntisas-tweet] .ntisas-control-upload,
-[ntisas-tweet] .ntisas-control-download {
-    display: inline-block;
-    text-align: center;
-}
 [ntisas-tweet] .ntisas-query-button {
-    display: inline-block;
-    text-align: center;
-    min-width: 5em;
-    border: 1px solid;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 5.5em;
+    height: 1.75em;
+    border-left: 1px solid;
+    border-top: 1px solid;
+    border-bottom: 1px solid;
     padding: 4px;
 }
 [ntisas-tweet] .ntisas-query-button.ntisas-menu-active a,
@@ -606,20 +608,12 @@ const PROGRAM_CSS = `
 }
 [ntisas-tweet] .ntisas-menu-results {
     border-radius: 25px 0 0 25px;
-    min-width: 8em;
+    min-width: 9.5em;
 }
 [ntisas-tweet] .ntisas-menu-help {
+    border-right: 1px solid;
     border-radius: 0 25px 25px 0;
-    min-width: 2em;
-}
-[ntisas-tweet=main] .ntisas-image-section {
-    padding-left: 0.4em;
-}
-[ntisas-tweet=stream] .ntisas-image-section {
-    padding-left: 0.3em;
-}
-[ntisas-tweet=media] .ntisas-image-section {
-    padding-left: 0.75em;
+    width: 2em;
 }
 [ntisas-tweet=stream] .ntisas-tweet-controls {
     margin-top: 0.5em;
@@ -639,9 +633,6 @@ const PROGRAM_CSS = `
 [ntisas-tweet=media] .ntisas-tweet-header {
     padding: 4px 6px;
 }
-[ntisas-tweet=main] .ntisas-image-section {
-    font-size: 1.1em;
-}
 [ntisas-tweet=main] .ntisas-link-menu {
     font-weight: bold;
     font-family: ${FONT_FAMILY};
@@ -653,13 +644,6 @@ const PROGRAM_CSS = `
     font-weight: bold;
     min-width: 250px;
     font-family: ${FONT_FAMILY};
-}
-[ntisas-tweet=main] .ntisas-query-button {
-    margin: 0 -3px;
-}
-[ntisas-tweet=stream] .ntisas-query-button,
-[ntisas-tweet=media] .ntisas-query-button {
-    margin: 0 -2px;
 }
 /**Media tweet**/
 .ntisas-media-tweet .ntisas-media-icon-container {
@@ -800,6 +784,7 @@ const PROGRAM_CSS = `
 }
 /**Dialogs**/
 .ui-dialog.ui-dialog-twitter.ntisas-dialog {
+    font-size: 15px;
     z-index: 1010;
 }
 .ui-dialog .ntisas-dialog-close.ui-dialog-titlebar-close {
@@ -810,7 +795,6 @@ const PROGRAM_CSS = `
     margin: -8px;
 }
 .ntisas-dialog-container {
-    font-size: 15px;
     font-family: ${FONT_FAMILY};
     line-height: normal;
 }
@@ -896,9 +880,11 @@ const PROGRAM_CSS = `
     font-family: ${FONT_FAMILY};
 }
 .ntisas-post-preview .ntisas-image-container {
-    height: ${POST_PREVIEW_DIMENSION}px;
-    width: ${POST_PREVIEW_DIMENSION}px;
+    height: ${BASE_PREVIEW_WIDTH}px;
+    width: ${BASE_PREVIEW_WIDTH}px;
     margin: 0 auto 5px;
+    display: flex;
+    justify-content: center;
 }
 .ntisas-post-preview img {
     max-width: ${POST_PREVIEW_DIMENSION}px;
@@ -927,6 +913,8 @@ const PROGRAM_CSS = `
     height: ${TWEET_PREVIEW_DIMENSION}px;
     width: ${TWEET_PREVIEW_DIMENSION}px;
     margin: 0 auto 5px;
+    display: flex;
+    justify-content: center;
 }
 .ntisas-illust-preview img {
     max-width: ${TWEET_PREVIEW_DIMENSION}px;
@@ -953,9 +941,15 @@ const PROGRAM_CSS = `
     text-overflow: ellipsis;
 }
 /**Select controls**/
+.ntisas-search-dialog .ntisas-select-controls {
+    right: -5px;
+}
+.ntisas-qtip-container .ntisas-select-controls,
+.ntisas-confirm-dialog .ntisas-select-controls {
+    right: 5px;
+}
 .ntisas-select-controls {
     position: absolute;
-    right: 5px;
     top: 3em;
     width: 4em;
     text-align: center;
@@ -1218,6 +1212,9 @@ const COLOR_CSS = `
     background-color: %BASECOLOR%;
 }
 /**Tweet menu**/
+[ntisas-tweet] .ntisas-tweet-controls {
+    border-color: %TEXTMUTED%;
+}
 [ntisas-tweet] .ntisas-tweet-header {
     background-color: %BASEFAINT%;
     border-right-color: %TEXTMUTED%;
@@ -1230,9 +1227,6 @@ const COLOR_CSS = `
 }
 [ntisas-tweet=stream] .ntisas-tweet-controls {
     background-color: %BACKGROUNDCOLOR%;
-}
-[ntisas-tweet] .ntisas-tweet-image-menu {
-    border-color: %TEXTMUTED%;
 }
 [ntisas-tweet] .ntisas-link-menu {
     color: %TEXTCOLOR%;
@@ -1616,27 +1610,23 @@ Download: L-click, menu for individual downloads; R-click, download all
 
 const NTISAS_TWEET_MENU = `
 <div class="ntisas-tweet-controls">
-    <div class="ntisas-tweet-image-menu">
-        <div class="ntisas-tweet-header"><a class="ntisas-expanded-link">NTISAS</a></div>
-        <div>
-            <div class="ntisas-image-section ntisas-links">
-                <div class="ntisas-link-menu ntisas-links">
-                    <span class="ntisas-query-button ntisas-menu-results">loading...</span>
-                    <span class="ntisas-query-button ntisas-menu-search">
-                        <a class="ntisas-control-search ntisas-expanded-link">Search</a>
-                    </span>
-                    <span class="ntisas-query-button ntisas-menu-upload">
-                        <a class="ntisas-control-upload ntisas-expanded-link" target="_blank">Upload</a>
-                    </span>
-                    <span class="ntisas-query-button ntisas-menu-download">
-                        <a class="ntisas-control-download ntisas-expanded-link">Download</a>
-                    </span>
-                    <span class="ntisas-query-button ntisas-menu-help">
-                        <a class="ntisas-help-info ntisas-expanded-link" title="${NTISAS_TWEET_MENU_HELP}">&nbsp;?&nbsp;</a>
-                    </span>
-                </div>
-            </div>
-        </div>
+    <div class="ntisas-tweet-header">
+        <a class="ntisas-expanded-link">NTISAS</a>
+    </div>
+    <div class="ntisas-link-menu ntisas-links">
+        <span class="ntisas-query-button ntisas-menu-results">loading...</span>
+        <span class="ntisas-query-button ntisas-menu-search">
+            <a class="ntisas-control-search ntisas-expanded-link">Search</a>
+        </span>
+        <span class="ntisas-query-button ntisas-menu-upload">
+            <a class="ntisas-control-upload ntisas-expanded-link" target="_blank">Upload</a>
+        </span>
+        <span class="ntisas-query-button ntisas-menu-download">
+            <a class="ntisas-control-download ntisas-expanded-link">Download</a>
+        </span>
+        <span class="ntisas-query-button ntisas-menu-help">
+            <a class="ntisas-help-info ntisas-expanded-link" title="${NTISAS_TWEET_MENU_HELP}">&nbsp;?&nbsp;</a>
+        </span>
     </div>
 </div>`;
 
@@ -3594,7 +3584,7 @@ function RenderMediaMenu(tweet_id, screen_name, image_urls, videos) {
         return `<div class="ntisas-media-${media_type}" data-order="${i}" title="${media_type} #${i + 1}"><img src="${image_url}">${video_icon}</div>`;
     }).join("");
     return `
-<div class="ntisas-media-menu" ntisas-tweet="media" data-tweet-id="${tweet_id}" data-user-id="${NTISAS.user_id}" data-screen-name="${screen_name}">
+<div class="ntisas-media-menu ntisas-dialog-container" ntisas-tweet="media" data-tweet-id="${tweet_id}" data-user-id="${NTISAS.user_id}" data-screen-name="${screen_name}">
     <div class="ntisas-media-images">
         ${image_html}
     </div>
@@ -5628,7 +5618,7 @@ function OpenMediaTweetMenu(event) {
             let dialog_settings = Object.assign({}, GENERAL_DIALOG_SETTINGS, {
                 title: "Media menu",
                 modal: false,
-                width: 620,
+                width: 640,
                 buttons: {
                     Close: CloseDialog,
                 },
