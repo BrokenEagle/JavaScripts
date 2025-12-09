@@ -344,7 +344,7 @@ const SETTINGS_CONFIG = {
         reset: 20,
         parse: parseInt,
         validate: (data) => (Number.isInteger(data) && data >= 5 && data <= 200),
-        hint: "Will display a notice panel on new events, similar to the old version (min 5, max 200)."
+        hint: "The amount of items to display on each page of events (min 5, max 200)."
     },
     events_order: {
         allitems: ALL_EVENTS,
