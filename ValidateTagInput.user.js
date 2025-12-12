@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.12
+// @version      29.13
 // @description  Validates tag add/remove inputs on a post edit or upload, plus several other post validations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1042,6 +1042,7 @@ JSPLib.storage.indexedDBValidator = ValidateEntry;
 
 //Export JSPLib
 JSPLib.load.exportData(PROGRAM_NAME, VTI);
+JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [], alwayslist: [ValidateTagAdds, ValidateTagRemoves, ValidateTagDeprecations, ValidateUpload]});
 
 /****Execution start****/
 

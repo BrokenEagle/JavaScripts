@@ -37,7 +37,7 @@ JSPLib.utility.renderColorScheme = function (css_text, mode) {
     let auto_lines = [];
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i];
-        if (/^[ \/}]/.test(line)) {
+        if (/^[ /}]/.test(line)) {
             theme_lines.push(line);
             auto_lines.push('    ' + line);
         } else {
@@ -48,6 +48,104 @@ JSPLib.utility.renderColorScheme = function (css_text, mode) {
     let theme_css = theme_lines.join('\n');
     let auto_css = `@media (prefers-color-scheme: ${mode}) {\n${auto_lines.join('\n')}\n}`;
     return '\n' + theme_css + '\n' + auto_css;
+};
+
+JSPLib.utility.isHash = function (value) {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
+};
+
+JSPLib.utility.isNamespaceBound = function (root, eventtype, namespace, selector) {
+    let event_namespaces = this.getBoundEventNames(root, eventtype, selector);
+    let name_parts = namespace.split('.');
+    return event_namespaces.some((name) => this.isSubArray(name.split('.'), name_parts));
+};
+
+JSPLib.danbooru.networkSetup = async function () {
+    this.pending_update_count += 1;
+    this.showPendingUpdateNotice();
+    if (this.num_network_requests >= this.max_network_requests) {
+        await JSPLib.network.rateLimit('danbooru');
+    }
+    this.num_network_requests += 1;
+};
+
+JSPLib.danbooru.alwaysCallback = function () {
+    const context = this;
+    return function (_data, _message, resp) {
+        context.pending_update_count -= 1;
+        context.num_network_requests -= 1;
+        context.checkAPIRateLimit(resp);
+    };
+};
+
+JSPLib.danbooru.successCallback = function (post_id, func) {
+    const context = this;
+    return function (data) {
+        if (typeof func === 'function') {
+            func(data);
+        }
+        context.showPendingUpdateNotice();
+        context.highlightPost(post_id, false);
+        return true;
+    };
+};
+
+JSPLib.danbooru.errorCallback = function (post_id, func_name, params) {
+    const context = this;
+    return function (error) {
+        error = context.processError(error, func_name);
+        let error_key = `${func_name}-${post_id}`;
+        if (params) {
+            error_key += '-' + JSPLib._jQuery.param(params);
+        }
+        context.logError(error_key, error);
+        context.notifyError(error);
+        context.highlightPost(post_id, true);
+        return false;
+    };
+};
+
+JSPLib.danbooru.updatePost = async function (post_id, params) {
+    if (!JSPLib.utility.isHash(params?.post)) return;
+    await this.networkSetup();
+    return JSPLib.network.put(`/posts/${post_id}.json`, {data: {...params}})
+        .always(this.alwaysCallback())
+        .then(
+            this.successCallback(post_id, (data) => {
+                console.log("postUpdate-successCallback", this);
+                let $post_article = JSPLib._jQuery(`#post_${data.id}`);
+                $post_article.attr('data-tags', data.tag_string);
+                $post_article.attr('data-rating', data.rating);
+                $post_article.attr('data-score', data.score);
+                if (data.has_children) {
+                    $post_article.addClass('post-status-has-children');
+                } else {
+                    $post_article.removeClass('post-status-has-children');
+                }
+                if (data.parent_id !== null) {
+                    $post_article.addClass('post-status-has-parent');
+                } else {
+                    $post_article.removeClass('post-status-has-parent');
+                }
+                $post_article.find('img').attr('data-title', `${data.tag_string} rating:${data.rating} score:${data.score}`);
+                let $post_votes = $post_article.find('.post-votes');
+                if ($post_votes.length) {
+                    $post_votes.find('.post-score a').text(data.score);
+                    if (params.post.tag_string?.match(/upvote:self|downvote:self/)) {
+                        //`this` will not be JSPlib.danbooru, so the full name must be specified
+                        this.submitRequest('post_votes', {search: {post_id: data.id, user_id: JSPLib._Danbooru.CurrentUser.data('id')}, limit: 1})
+                            .then((post_votes) => {
+                                $post_votes.find('.active-link').toggleClass('active-link inactive-link');
+                                if (post_votes.length) {
+                                    let vote_selector = (post_votes[0].score > 0 ? '.post-upvote-link' : '.post-downvote-link');
+                                    $post_votes.find(vote_selector).toggleClass('active-link inactive-link');
+                                }
+                            });
+                    }
+                }
+            }),
+            this.errorCallback(post_id, 'updatePost', params)
+        );
 };
 
 /****Global variables****/
@@ -101,7 +199,7 @@ const SETTINGS_CONFIG = {
         hint: "Choose how to separate multiple post IDs copied with Copy ID."
     },
     commentary_relations_check_enabled: {
-        reset: true,
+        reset: false,
         validate: JSPLib.validate.isBoolean,
         hint: "Turns on checking selected posts for parent/child or pool relationships, and loads the post ID if found."
     },
@@ -435,32 +533,6 @@ const MENU_CSS = `
 
 // HTML constants
 
-const SELECT_CONTROLS = `
-<div id="pmm-select-controls" style="display: %SHOWN%;">
-    <div id="pmm-select-only-input">
-        <label for="pmm-select-only">
-            Select Only
-            <input type="checkbox" id="pmm-select-only" %CHECKED%>
-        </label>
-    </div>
-    <div id="pmm-selection-buttons">
-        <button class="pmm-select" %DISABLED% data-type="all">All</button>
-        <button class="pmm-select" %DISABLED% data-type="none">None</button>
-        <button class="pmm-select" %DISABLED% data-type="invert">Invert</button>
-    </div>
-</div>`;
-
-const UNDOCK_PIN = `
-<button id="pmm-undock" class="ui-button ui-corner-all ui-widget" title="pin" style="padding: 0 5px; position: absolute; top: 4px; left: 4px;">
-    <span class="ui-button-icon ui-icon ui-icon-pin-w"></span>
-</button>`;
-
-const APPLY_BUTTON = `
-<div id="pmm-long-inputs" style="display: %s;">
-    <button id="pmm-apply-all" %s>Apply</button>
-</div>`;
-
-
 const MODE_CONTROLS_HTML = `
 <section id="pmm-mode-box">
     <div id="pmm-mode-controls">
@@ -496,6 +568,22 @@ const MODE_CONTROLS_HTML = `
 </section>
 <section id="pmm-placeholder" style="display: none;">
 </section>`;
+
+const EDIT_DIALOG_HTML = `
+<div id="pmm-quick-edit-div">
+    <div class="input stacked-input text required post_tag_string">
+        <label class="text required" for="post_tag_string">Tags</label>
+        <textarea class="text required text-sm ui-autocomplete-input iac-autocomplete" data-autocomplete="tag-edit" required="required" aria-required="true" name="post[tag_string]" id="post_tag_string" autocomplete="off"></textarea>
+    </div>
+    <div id="pmm-validation-input" style="display:none">
+        <label for="pmm-skip-validate-tags">Skip Validation</label>
+        <input type="checkbox" id="pmm-skip-validate-tags">
+    </div>
+    <div id="pmm-warning-bad-upload" class="notice notice-error" style="display:none;"></div>
+    <div id="pmm-warning-new-tags" class="notice notice-error" style="display:none;"></div>
+    <div id="pmm-warning-deprecated-tags" class="notice notice-error" style="display:none;"></div>
+    <div id="pmm-warning-bad-removes" class="notice notice-info" style="display:none;"></div>
+</div>`;
 
 const COMMENTARY_DIALOG_HTML = `
 <div id="pmm-commentary-dialog">
@@ -548,305 +636,24 @@ const POST_VOTE_FIELDS = 'id,post_id';
 
 // Helper functions
 
+function GetCurrentScriptID() {
+    return JSPLib.storage.getLocalData('current_tag_script_id', {default_val: 1});
+}
+
+function GetCurrentTagScript() {
+    return localStorage.getItem("tag-script-" + GetCurrentScriptID());
+}
+
+function CopyToClipboard(post_ids, prefix, suffix, separator, afterspace) {
+    if (afterspace && !['\n', ' '].includes(separator)) {
+        separator += " ";
+    }
+    let post_string = JSPLib.utility.joinList(post_ids, prefix, suffix, separator);
+    Danbooru.Utility.copyToClipboard(post_string);
+}
+
 function CoordinateInBox(coord, box) {
     return coord.x > box.left && coord.x < box.right && coord.y > box.top && coord.y < box.bottom;
-}
-
-function GetAllPreviews() {
-    return document.querySelectorAll('.post-preview img');
-}
-
-// Auxiliary functions
-
-function UpdateDraggerStatus() {
-    if (PMM.available_mode_keys.has(PMM.mode) && PMM.dragger.stopped) {
-        PMM.dragger.start();
-    } else if (!PMM.available_mode_keys.has(PMM.mode) && !PMM.dragger.stopped) {
-        PMM.dragger.stop();
-    }
-}
-
-function UpdateSelectControls() {
-    console.log('UpdateSelectControls', PMM.mode, ['edit', 'view'].includes(PMM.mode));
-    if (PMM.mode === 'tag-script') {
-        $('#pmm-tag-script-field').show();
-    } else {
-        $('#pmm-tag-script-field').hide();
-    }
-    if (['edit', 'view'].includes(PMM.mode)) {
-        $('#pmm-mode-box input, #pmm-mode-box button').attr('disabled', 'disabled');
-        $('#pmm-select-only-input label').addClass('pmm-disabled');
-    } else {
-        $('#pmm-mode-box input, #pmm-mode-box button').attr('disabled', null);
-        $('#pmm-select-only-input label').removeClass('pmm-disabled');
-    }
-}
-
-//Network helpers
-
-async function NetworkSetup() {
-    JSPLib.danbooru.pending_update_count += 1;
-    JSPLib.danbooru.showPendingUpdateNotice();
-    if (JSPLib.danbooru.num_network_requests >= JSPLib.danbooru.max_network_requests) {
-        await JSPLib.network.rateLimit('danbooru');
-    }
-    JSPLib.danbooru.num_network_requests += 1;
-}
-
-function AlwaysCallback(_data, _message, resp) {
-    JSPLib.danbooru.pending_update_count -= 1;
-    JSPLib.danbooru.num_network_requests -= 1;
-    JSPLib.danbooru.checkAPIRateLimit(resp);
-}
-
-function SuccessCallback(post_id, func) {
-    return function (data) {
-        if (typeof func === 'function') {
-            func(data);
-        }
-        JSPLib.danbooru.showPendingUpdateNotice();
-        JSPLib.danbooru.highlightPost(post_id, false);
-    };
-}
-
-function ErrorCallback(post_id, func_name, ...args) {
-    return function (error) {
-        error = JSPLib.network.processError(error, func_name);
-        let error_key = `${func_name}-${post_id}` + (args.length ? '-' + args.join('-') : "");
-        JSPLib.network.logError(error_key, error);
-        JSPLib.network.notifyError(error);
-        JSPLib.danbooru.highlightPost(post_id, true);
-    };
-}
-
-//Network functions
-
-async function VotePost(post_id, score) {
-    NetworkSetup();
-    JSPLib.network.post(`/posts/${post_id}/votes.json?score=${score}`)
-        .always(AlwaysCallback)
-        .then(
-            //Success
-            SuccessCallback(post_id, (data) => {
-                let $post_article = $(`#post_${post_id}`);
-                let $score_link = $post_article.find('.post-score a');
-                let current_score = Number($score_link.text());
-                $score_link.text(current_score + score);
-                let vote_selector = (score > 0 ? 'post-upvote-link' : 'post-downvote-link');
-                $post_article.find(vote_selector).toggleClass('active-link inactive-link');
-            }),
-            //Failure
-            ErrorCallback(post_id, 'VotePost', score)
-        );
-}
-
-async function UnvotePost(post_id) {
-    await PMM.post_vote_promise;
-    if (!(post_id in PMM.post_votes)) return;
-    let vote_id = PMM.post_votes[post_id];
-    let $post_article = $(`#post_${post_id}`);
-    let $active_link = $post_article.find('.active-link');
-    var score = 0;
-    if ($active_link.hasClass('post-upvote-link')) {
-        score = 1;
-    } else if ($active_link.hasClass('post-downvote-link')) {
-        score = -1;
-    } else {
-        return;
-    }
-    await NetworkSetup();
-    // eslint-disable-next-line dot-notation
-    JSPLib.network.delete(`/post_votes/${vote_id}.json`)
-        .always(AlwaysCallback)
-        .then(
-            //Success
-            SuccessCallback(post_id, () => {
-                let $score_link = $post_article.find('.post-score a');
-                let current_score = Number($score_link.text());
-                $score_link.text(current_score - score);
-                $post_article.find('.active-link').toggleClass('active-link inactive-link');
-            }),
-            //Failure
-            ErrorCallback(post_id, 'UnvotePost')
-        );
-}
-
-async function FavoritePost(post_id) {
-    await NetworkSetup();
-    JSPLib.network.post(`/favorites.json?post_id=${post_id}`)
-        .always(AlwaysCallback)
-        .then(
-            //Success
-            SuccessCallback(post_id, (data) => {
-                let $post_article = $(`#post_${post_id}`);
-                $post_article.find('.post-score a').text(data.score);
-                $post_article.find('post-upvote-link').toggleClass('active-link inactive-link');
-                PMM.post_favorites.add(post_id);
-            }),
-            //Failure
-            ErrorCallback(post_id, 'FavoritePost')
-        );
-}
-
-async function UnfavoritePost(post_id) {
-    await PMM.post_favorite_promise;
-    if (!PMM.post_favorites.has(post_id)) return;
-    await NetworkSetup();
-    // eslint-disable-next-line dot-notation
-    JSPLib.network.delete(`/favorites/${post_id}.json`)
-        .always(AlwaysCallback)
-        .then(
-            //Success
-            SuccessCallback(post_id, () => {
-                let $post_article = $(`#post_${post_id}`);
-                let $score_link = $post_article.find('.post-score a');
-                let current_score = Number($score_link.text());
-                $score_link.text(current_score - 1);
-                $post_article.find('post-upvote-link').toggleClass('active-link inactive-link');
-                // eslint-disable-next-line dot-notation
-                PMM.post_favorites.delete(post_id);
-            }),
-            //Failure
-            ErrorCallback(post_id, 'UnfavoritePost')
-        );
-}
-
-function TagscriptPost(post_id) {
-    let current_script_id = JSPLib.storage.getLocalData("current_tag_script_id");
-    let tag_string = localStorage.getItem("tag-script-" + current_script_id);
-    if (tag_string === undefined) {
-        JSPLib.notice.error('No tag script set!');
-    } else {
-        let params = {post: {old_tag_string: "", tag_string}};
-        return JSPLib.danbooru.updatePost(post_id, 'tag-script', params);
-    }
-}
-
-async function UpdatePostVotes(post_ids) {
-    let p = JSPLib.utility.createPromise();
-    PMM.post_vote_promise = p.promise;
-    let post_votes = await JSPLib.danbooru.submitRequest('post_votes', {search: {post_id: post_ids.join(','), user_id: Danbooru.CurrentUser.data('id')}, limit: post_ids.length, only: POST_VOTE_FIELDS});
-    post_votes.forEach((vote) => {
-        PMM.post_votes[vote.post_id] = vote.id;
-    });
-    p.resolve(null);
-}
-
-async function UpdatePostFavorites(post_ids) {
-    let p = JSPLib.utility.createPromise();
-    PMM.post_favorite_promise = p.promise;
-    let query_ids = post_ids.filter((post_id) => !PMM.post_favorites.has(post_id));
-    if (query_ids.length) {
-        let post_favorites = await JSPLib.danbooru.submitRequest('favorites', {search: {post_id: post_ids.join(','), user_id: Danbooru.CurrentUser.data('id')}, limit: post_ids.length, only: POST_VOTE_FIELDS});
-        let favorite_post_ids = JSPLib.utility.getObjectAttributes(post_favorites, 'id');
-        PMM.post_favorites = JSPLib.utility.setUnion(PMM.post_favorites, favorite_post_ids);
-    }
-    p.resolve(null);
-}
-
-function SubmitCommentary(post_ids) {
-    let artist_commentary = {};
-    $('.pmm-commentary-input input, .pmm-commentary-input textarea').each((_, input) => {
-        artist_commentary[input.name] = input.value;
-    });
-    console.log("Artist_commentary:", artist_commentary);
-    let promise_array = [];
-    post_ids.forEach((post_id) => {
-        let p = JSPLib.network.put(`/posts/${post_id}/artist_commentary/create_or_update.json`, {data: {artist_commentary}})
-            .always((_data, _message, resp) => {
-                JSPLib.danbooru.pending_update_count -= 1;
-                JSPLib.danbooru.num_network_requests -= 1;
-                JSPLib.danbooru.checkAPIRateLimit(resp);
-            })
-            .then(
-                //Success
-                () => {
-                    JSPLib.danbooru.showPendingUpdateNotice();
-                    JSPLib.danbooru.highlightPost(post_id, false);
-                    return true;
-                },
-                //Failure
-                (error) => {
-                    error = JSPLib.network.processError(error, "Commentary");
-                    let error_key = `Commentary-${post_id}`;
-                    JSPLib.network.logError(error_key, error);
-                    JSPLib.network.notifyError(error);
-                    JSPLib.danbooru.highlightPost(post_id, true);
-                    return false;
-                }
-            );
-        promise_array.push(p);
-    });
-    Promise.all(promise_array).then((responses) => {
-        if (responses.every(Boolean)) {
-            JSPLib.notice.notice("All posts updated.");
-        } else {
-            let successes = responses.reduce((acc, val) => acc + Number(val), 0);
-            let failures = responses.length - successes;
-            JSPLib.notice.error(`Error updating posts:<br><ul><li>successes: ${successes}</li><li>failures: ${failures}</li></ul>`);
-        }
-    });
-}
-
-function OpenCommentaryDialog(post_ids) {
-    console.log('OpenCommentaryDialog', post_ids);
-    if (!OpenCommentaryDialog.$commentary_dialog) {
-        let $commentary_dialog = $(COMMENTARY_DIALOG_HTML);
-        $commentary_dialog.dialog({
-            title: 'Copy Commentaries',
-            autoOpen: false,
-            modal: true,
-            width: 700,
-            buttons: {
-                "Submit": function() {
-                    SubmitCommentary(PMM.commentary_post_ids);
-                    $(this).dialog("close");
-                },
-                "Cancel": function() {
-                    $(this).dialog("close");
-                },
-            }
-        });
-        $commentary_dialog.find('#pmm-fetch-post button').on(PROGRAM_CLICK, (event) => {
-            let $button = $(event.target);
-            let post_id = Number($commentary_dialog.find('#pmm-fetch-post input').val());
-            if (JSPLib.validate.validateID(post_id)) {
-                $button.attr('disabled', 'disabled');
-                JSPLib.danbooru.submitRequest(`posts/${post_id}/artist_commentary`).then((artist_commentary) => {
-                    ['original_title', 'original_description', 'translated_title', 'translated_description'].forEach((field) => {
-                        $commentary_dialog.find(`[name="${field}"]`).val(artist_commentary[field]);
-                    });
-                    $button.attr('disabled', null);
-                });
-            } else {
-                JSPLib.notice.error("Must enter a valid post ID.");
-            }
-        });
-        OpenCommentaryDialog.$commentary_dialog = $commentary_dialog;
-    }
-    OpenCommentaryDialog.$commentary_dialog.find('input, textarea').val("");
-    let $fetch_input = OpenCommentaryDialog.$commentary_dialog.find('#pmm-fetch-post input');
-    if (post_ids.length === 1) {
-        $fetch_input.val(post_ids[0]);
-    } else if (PMM.commentary_relations_check_enabled) {
-        let $fetch_button = OpenCommentaryDialog.$commentary_dialog.find('#pmm-fetch-post button');
-        $fetch_input.attr('disabled', 'disabled');
-        $fetch_button.attr('disabled', 'disabled');
-        RelationshipCheck(post_ids).then((post_id) => {
-            if (post_id !== null) {
-                $fetch_input.val(post_id);
-            } else {
-                $fetch_input.val("");
-            }
-            $fetch_input.attr('disabled', null);
-            $fetch_button.attr('disabled', null);
-        });
-        $fetch_input.val("loading...");
-    } else {
-        $fetch_input.val("");
-    }
-    OpenCommentaryDialog.$commentary_dialog.dialog('open');
-    PMM.commentary_post_ids = post_ids;
 }
 
 async function ParentPostCheck(post_ids) {
@@ -897,27 +704,60 @@ async function RelationshipCheck(post_ids) {
     return first_post_id;
 }
 
-//Initialize functions
+async function NetworkSetup() {
+    JSPLib.danbooru.pending_update_count += 1;
+    JSPLib.danbooru.showPendingUpdateNotice();
+    if (JSPLib.danbooru.num_network_requests >= JSPLib.danbooru.max_network_requests) {
+        await JSPLib.network.rateLimit('danbooru');
+    }
+    JSPLib.danbooru.num_network_requests += 1;
+}
 
-function InitializeModeMenu() {
-    $('#mode-box').replaceWith(RenderPostModeMenu());
-    $("#pmm-mode-box select").on(PROGRAM_CHANGE, ChangeModeMenu);
-    $('#pmm-select-only').on(PROGRAM_CHANGE, ChangeSelectOnly);
-    $('.pmm-select').on(PROGRAM_CLICK, BatchSelection);
-    $('#pmm-apply-all button').on(PROGRAM_CLICK, BatchApply);
-    $('#pmm-undock').on(PROGRAM_CLICK, UndockModeMenu);
-    $(".post-preview a.post-preview-link").on(PROGRAM_CLICK, PostModeMenu);
-    $(document).on('danbooru:post-preview-updated.pmm', PostPreviewUpdated);
-    $("#pmm-mode-controls select").val(PMM.mode);
-    $("#pmm-select-only").prop('checked', PMM.select_only);
-    if (PMM.long_tagscript_enabled) {
-        $('#pmm-tag-script-field input').addClass('pmm-long-focus');
+// Update functions
+
+function UpdatePostPreview(post_id, score, {score_change = null, post_score = null} = {}) {
+    let $post_article = $(`#post_${post_id}`);
+    let $score_link = $post_article.find('.post-score a');
+    if ($score_link.length) {
+        if (!post_score) {
+            let current_score = Number($score_link.text());
+            post_score = current_score + score_change;
+        }
+        $score_link.text(post_score);
+        var vote_selector;
+        if (score !== 0) {
+            vote_selector = (score > 0 ? '.post-upvote-link' : '.post-downvote-link');
+        } else {
+            vote_selector = '.active-link';
+        }
+        $post_article.find(vote_selector).toggleClass('active-link inactive-link');
     }
-    if (PMM.drag_select_enabled) {
-        PMM.dragger.subscribe('callback', DragSelectCallback);
-        UpdateDraggerStatus();
+}
+
+function UpdateDraggerStatus() {
+    if (PMM.available_mode_keys.has(PMM.mode) && PMM.dragger.stopped) {
+        PMM.dragger.start();
+    } else if (!PMM.available_mode_keys.has(PMM.mode) && !PMM.dragger.stopped) {
+        PMM.dragger.stop();
     }
-    UpdateSelectControls();
+}
+
+function UpdateSelectControls() {
+    if (PMM.mode === 'tag-script') {
+        $('#pmm-tag-script-field').show();
+    } else {
+        $('#pmm-tag-script-field').hide();
+    }
+    if (['edit', 'view'].includes(PMM.mode)) {
+        $('#pmm-mode-box input, #pmm-mode-box button').attr('disabled', 'disabled');
+        $('#pmm-select-only-input label').addClass('pmm-disabled');
+    } else {
+        $('#pmm-mode-box input, #pmm-mode-box button').attr('disabled', null);
+        $('#pmm-select-only-input label').removeClass('pmm-disabled');
+        if (!PMM.select_only) {
+            $('#pmm-selection-buttons button, #pmm-apply-all button').attr('disabled', 'disabled');
+        }
+    }
 }
 
 //Render functions
@@ -937,6 +777,213 @@ function RenderPostModeMenuAddons() {
     return html;
 }
 
+//Initialize functions
+
+function InitializeModeMenu() {
+    $('#mode-box').replaceWith(RenderPostModeMenu());
+    $('#pmm-mode-box select').on(PROGRAM_CHANGE, ChangeModeMenu);
+    $('#pmm-select-only').on(PROGRAM_CHANGE, ChangeSelectOnly);
+    $('.pmm-select').on(PROGRAM_CLICK, BatchSelection);
+    $('#pmm-apply-all button').on(PROGRAM_CLICK, BatchApply);
+    $('#pmm-undock').on(PROGRAM_CLICK, UndockModeMenu);
+    $('.post-preview a.post-preview-link').on(PROGRAM_CLICK, PostModeMenu);
+    $('#pmm-tag-script-field input').on('blur.pmm', SaveTagScript);
+    $(document).on('keydown.pmm.change_tag_script', null, "0 1 2 3 4 5 6 7 8 9", ChangeTagScript);
+    $("#pmm-mode-controls select").val(PMM.mode);
+    $("#pmm-select-only").prop('checked', PMM.select_only);
+    $('#pmm-tag-script-field input').val(GetCurrentTagScript());
+    UpdateSelectControls();
+    if (PMM.long_tagscript_enabled) {
+        $('#pmm-tag-script-field input').addClass('pmm-long-focus');
+    }
+    if (PMM.drag_select_enabled) {
+        PMM.dragger.subscribe('callback', DragSelectCallback);
+        UpdateDraggerStatus();
+    }
+    UnbindDanbooruChangeTagScript();
+}
+
+function OpenEditDialog(post_ids) {
+    console.log('OpenEditDialog', post_ids);
+    if (post_ids.length !== 1) return;
+    if (!OpenEditDialog.dialog) {
+        let $edit_dialog = $(EDIT_DIALOG_HTML);
+        $edit_dialog.dialog({
+            title: "Post edit",
+            autoOpen: false,
+            width: 1000,
+            height: 300,
+            resizable: true,
+            buttons: {
+                Submit: CloseDialog,
+                Cancel: CloseDialog,
+            },
+        });
+        OpenEditDialog.dialog = $edit_dialog;
+    }
+    let $edit_dialog = OpenEditDialog.dialog;
+    console.log('OpenEditDialog', $edit_dialog);
+    $edit_dialog.data('post-id', post_ids[0]);
+    $edit_dialog.dialog('open');
+}
+
+function OpenCommentaryDialog(post_ids) {
+    if (!OpenCommentaryDialog.dialog) {
+        let $commentary_dialog = $(COMMENTARY_DIALOG_HTML);
+        $commentary_dialog.dialog({
+            title: 'Copy Commentaries',
+            autoOpen: false,
+            modal: true,
+            width: 700,
+            buttons: {
+                Submit: SubmitCommentary,
+                Cancel: CloseDialog,
+            }
+        });
+        $commentary_dialog.find('#pmm-fetch-post button').on(PROGRAM_CLICK, FetchCommentary);
+        OpenCommentaryDialog.dialog = $commentary_dialog;
+    }
+    let $commentary_dialog = OpenCommentaryDialog.dialog;
+    $commentary_dialog.find('input, textarea').val("");
+    let $fetch_input = $commentary_dialog.find('#pmm-fetch-post input');
+    if (post_ids.length === 1) {
+        $fetch_input.val(post_ids[0]);
+    } else if (PMM.commentary_relations_check_enabled) {
+        let $fetch_button = $commentary_dialog.find('#pmm-fetch-post button');
+        $fetch_input.attr('disabled', 'disabled');
+        $fetch_button.attr('disabled', 'disabled');
+        RelationshipCheck(post_ids).then((post_id) => {
+            if (post_id !== null) {
+                $fetch_input.val(post_id);
+            } else {
+                $fetch_input.val("");
+            }
+            $fetch_input.attr('disabled', null);
+            $fetch_button.attr('disabled', null);
+        });
+        $fetch_input.val("loading...");
+    }
+    $commentary_dialog.dialog('open');
+    PMM.commentary_post_ids = post_ids;
+}
+
+function UnbindDanbooruChangeTagScript() {
+    JSPLib.utility.recheckTimer({
+        check: () => !JSPLib.utility.isNamespaceBound(document, 'keydown', 'danbooru.change_tag_script', {ordered: false}),
+        exec: () => {
+            $(document).off('keydown.danbooru.change_tag_script');
+        },
+    }, 100, JSPLib.utility.one_second * 5);
+}
+
+//Network functions
+
+async function VotePost(post_id, score) {
+    if (PMM.post_votes[post_id]?.score === score) return true;
+    await NetworkSetup();
+    return JSPLib.network.post(`/posts/${post_id}/votes.json?score=${score}`)
+        .always(JSPLib.danbooru.alwaysCallback())
+        .then(
+            JSPLib.danbooru.successCallback(post_id, (data) => {
+                let score_change = score - (PMM.post_votes[post_id]?.score ?? 0);
+                UpdatePostPreview(post_id, score, {score_change});
+                PMM.post_votes[post_id] = {id: data.id, score};
+            }),
+            JSPLib.danbooru.errorCallback(post_id, 'VotePost', {score})
+        );
+}
+
+async function UnvotePost(post_id) {
+    await PMM.post_vote_promise;
+    if (!(post_id in PMM.post_votes)) return true;
+    let vote_id = PMM.post_votes[post_id].id;
+    await NetworkSetup();
+    // eslint-disable-next-line dot-notation
+    return JSPLib.network.delete(`/post_votes/${vote_id}.json`)
+        .always(JSPLib.danbooru.alwaysCallback())
+        .then(
+            JSPLib.danbooru.successCallback(post_id, () => {
+                let score_change = -PMM.post_votes[post_id].score;
+                UpdatePostPreview(post_id, 0, {score_change});
+                delete PMM.post_votes[post_id];
+            }),
+            JSPLib.danbooru.errorCallback(post_id, 'UnvotePost')
+        );
+}
+
+async function FavoritePost(post_id) {
+    if (PMM.post_favorites.has(post_id)) return true;
+    await NetworkSetup();
+    return JSPLib.network.post(`/favorites.json?post_id=${post_id}`)
+        .always(JSPLib.danbooru.alwaysCallback())
+        .then(
+            JSPLib.danbooru.successCallback(post_id, (data) => {
+                UpdatePostPreview(post_id, 1, {post_score: data.score});
+                PMM.post_favorites.add(post_id);
+            }),
+            JSPLib.danbooru.errorCallback(post_id, 'FavoritePost')
+        );
+}
+
+async function UnfavoritePost(post_id) {
+    await PMM.post_favorite_promise;
+    if (!PMM.post_favorites.has(post_id)) return true;
+    await NetworkSetup();
+    // eslint-disable-next-line dot-notation
+    JSPLib.network.delete(`/favorites/${post_id}.json`)
+        .always(JSPLib.danbooru.alwaysCallback())
+        .then(
+            JSPLib.danbooru.successCallback(post_id, () => {
+                UpdatePostPreview(post_id, 0, {score_change: -1});
+                // eslint-disable-next-line dot-notation
+                PMM.post_favorites.delete(post_id);
+            }),
+            JSPLib.danbooru.errorCallback(post_id, 'UnfavoritePost')
+        );
+}
+
+async function UpdatePostCommentary(post_id, artist_commentary) {
+    await NetworkSetup();
+    return JSPLib.network.put(`/posts/${post_id}/artist_commentary/create_or_update.json`, {data: {artist_commentary}})
+        .always(JSPLib.danbooru.alwaysCallback())
+        .then(
+            JSPLib.danbooru.successCallback(post_id),
+            JSPLib.danbooru.errorCallback(post_id, 'UpdatePostCommentary', artist_commentary)
+        );
+}
+
+function TagscriptPost(post_id) {
+    let tag_script = $('#pmm-tag-script-field input').val().trim();
+    if (tag_script) {
+        let params = {post: {old_tag_string: "", tag_string: tag_script}};
+        JSPLib.danbooru.updatePost(post_id, params);
+    } else {
+        JSPLib.notice.error('No tag script set!');
+    }
+}
+
+async function PreloadPostVotes(post_ids) {
+    let p = JSPLib.utility.createPromise();
+    PMM.post_vote_promise = p.promise;
+    let post_votes = await JSPLib.danbooru.submitRequest('post_votes', {search: {post_id: post_ids.join(','), user_id: Danbooru.CurrentUser.data('id')}, limit: post_ids.length, only: POST_VOTE_FIELDS});
+    post_votes.forEach((vote) => {
+        PMM.post_votes[vote.post_id] = {id: vote.id, score: vote.score};
+    });
+    p.resolve(null);
+}
+
+async function PreloadPostFavorites(post_ids) {
+    let p = JSPLib.utility.createPromise();
+    PMM.post_favorite_promise = p.promise;
+    let query_ids = post_ids.filter((post_id) => !PMM.post_favorites.has(post_id));
+    if (query_ids.length) {
+        let post_favorites = await JSPLib.danbooru.submitRequest('favorites', {search: {post_id: post_ids.join(','), user_id: Danbooru.CurrentUser.data('id')}, limit: post_ids.length, only: POST_VOTE_FIELDS});
+        let favorite_post_ids = JSPLib.utility.getObjectAttributes(post_favorites, 'post_id');
+        PMM.post_favorites = JSPLib.utility.setUnion(PMM.post_favorites, JSPLib.utility.arrayToSet(favorite_post_ids));
+    }
+    p.resolve(null);
+}
+
 //Event handlers
 
 function PostModeMenu(event) {
@@ -944,17 +991,22 @@ function PostModeMenu(event) {
         let $link = $(event.currentTarget);
         let $article = $link.closest("article");
         let post_id = $article.data("id");
-        if (PMM.mode === 'edit') {
+        console.log('PostModeMenu', post_id);
+        if (false && PMM.mode === 'edit') {
             var $post = $("#post_" + post_id);
             $("#quick-edit-form").attr("data-post-id", post_id);
             $("#post_tag_string").val($post.data("tags") + " ").focus().selectEnd();
-            $('#quick-edit-div').dialog(EDIT_DIALOG_SETTINGS);
-        } else if (PMM.select_only) {
+            if (!$('#quick-edit-div').dialog('instance')) {
+                $('#quick-edit-div').dialog(EDIT_DIALOG_SETTINGS);
+            }
+        } else if (PMM.select_only && !PMM.mode === 'edit') {
+            console.log('PostModeMenu-1');
             $article.toggleClass('pmm-selected');
             // eslint-disable-next-line dot-notation
             let toggle_func = (PMM.modified.has(post_id) ? PMM.modified.delete : PMM.modified.add);
             toggle_func.call(PMM.modified, post_id);
         } else {
+            console.log('PostModeMenu-2');
             $article.addClass('pmm-selected');
             PMM.modified.add(post_id);
             MenuFunctions([post_id]);
@@ -984,25 +1036,46 @@ function BatchApply() {
 
 function ChangeModeMenu() {
     PMM.mode = $("#pmm-mode-box select").val();
-    console.log('ChangeModeMenu', PMM.mode);
     JSPLib.storage.setLocalData('pmm-mode', PMM.mode);
     UpdateSelectControls();
-    if (!PMM.select_only) {
-        $('.pmm-selected').removeClass('pmm-selected');
-        PMM.modified.clear();
-    }
+    $('.pmm-selected').removeClass('pmm-selected');
+    PMM.modified.clear();
     if (PMM.drag_select_enabled) {
         UpdateDraggerStatus();
     }
+    PMM.channel.postMessage({type: 'change_mode', mode: PMM.mode});
 }
 
 function ChangeSelectOnly(event) {
     PMM.select_only = event.currentTarget.checked;
     JSPLib.storage.setLocalData('pmm-select-only', PMM.select_only);
-    let $modify_controls = $('#pmm-apply-all button, .pmm-select');
-    $modify_controls.prop('disabled', !PMM.select_only);
+    UpdateSelectControls();
     $('.pmm-selected').removeClass('pmm-selected');
     PMM.modified.clear();
+    PMM.channel.postMessage({type: 'change_select_only', select_only: PMM.select_only});
+}
+
+function SaveTagScript(event) {
+    let tag_script = $(event.target).val();
+    let current_script_id = GetCurrentScriptID();
+    if (tag_script) {
+        localStorage.setItem("tag-script-" + current_script_id, tag_script);
+    } else {
+        localStorage.removeItem("tag-script-" + current_script_id);
+    }
+}
+
+function ChangeTagScript(event) {
+    if (PMM.mode === 'tag-script') {
+        $("#pmm-tag-script-field input").val(GetCurrentTagScript());
+        let current_script_id = GetCurrentScriptID();
+        let change_script_id = Number(event.key);
+        if (current_script_id !== change_script_id) {
+            JSPLib.storage.setLocalData('current_tag_script_id', change_script_id);
+            JSPLib.notice.notice(`Switched to tag script #${event.key}. To switch tag scripts, use the number keys.`);
+        }
+        event.preventDefault();
+    }
 }
 
 function UndockModeMenu() {
@@ -1023,28 +1096,50 @@ function UndockModeMenu() {
     $('#pmm-undock span').toggleClass('ui-icon-pin-w ui-icon-pin-s');
 }
 
-function CloseEditDialog() {
-    $('#quick-edit-div').dialog('close');
+function FetchCommentary(event) {
+    let $button = $(event.target);
+    let $commentary_dialog = $button.closest('.ui-dialog-content');
+    let post_id = Number($commentary_dialog.find('#pmm-fetch-post input').val());
+    if (JSPLib.validate.validateID(post_id)) {
+        $button.attr('disabled', 'disabled');
+        JSPLib.danbooru.submitRequest(`posts/${post_id}/artist_commentary`).then((artist_commentary) => {
+            ['original_title', 'original_description', 'translated_title', 'translated_description'].forEach((field) => {
+                $commentary_dialog.find(`[name="${field}"]`).val(artist_commentary[field]);
+            });
+            $button.attr('disabled', null);
+        });
+    } else {
+        JSPLib.notice.error("Must enter a valid post ID.");
+    }
 }
 
-function PostPreviewUpdated(event, post) {
-    let $post = $(`#post_${post.id}`);
-    $post.find('a.post-preview-link').on(PROGRAM_CLICK, PostModeMenu);
-    if (PMM.modified.has(post.id)) {
-        $post.addClass('pmm-selected');
-    }
-    if (Number.isInteger(PMM.init_timer)) {
-        clearTimeout(PMM.init_timer);
-    }
-    if (PMM.drag_select_enabled) {
-        PMM.init_timer = setTimeout(() => {
-            PMM.dragger.SelectableSet._initElements = [...document.querySelectorAll('.post-preview img')];
-            PMM.dragger.SelectableSet.clear();
-            PMM.dragger.SelectedSet.clear();
-            PMM.dragger.setSelectables(document.querySelectorAll('.post-preview img'));
-            PMM.init_timer = null;
-        }, 1000);
-    }
+function SubmitCommentary(event) {
+    let post_ids = PMM.commentary_post_ids;
+    let artist_commentary = {};
+    $('.pmm-commentary-input input, .pmm-commentary-input textarea').each((_, input) => {
+        artist_commentary[input.name] = input.value;
+    });
+    console.log("Artist_commentary:", artist_commentary);
+    let promise_array = post_ids.map((post_id) => UpdatePostCommentary(post_id, artist_commentary));
+    Promise.all(promise_array).then((responses) => {
+        if (responses.every(Boolean)) {
+            JSPLib.notice.notice("All posts updated.");
+        } else {
+            let successes = responses.reduce((acc, val) => acc + Number(val), 0);
+            let failures = responses.length - successes;
+            JSPLib.notice.error(`Error updating posts:<br><ul><li>successes: ${successes}</li><li>failures: ${failures}</li></ul>`);
+        }
+    });
+    CloseDialog(event);
+}
+
+function CloseDialog(event) {
+    let $dialog = $(event.target).closest('.ui-dialog').find('.ui-dialog-content');
+    $dialog.dialog('close');
+}
+
+function CloseEditDialog() {
+    $('#quick-edit-div').dialog('close');
 }
 
 function DragSelectCallback({items, event}) {
@@ -1085,61 +1180,92 @@ function DragSelectCallback({items, event}) {
     document.getSelection().removeAllRanges();
 }
 
-// Main execution functions
+// Menu function
 
 function MenuFunctions(post_ids) {
-    const copyToClipboard = function (post_ids, prefix, suffix, separator, afterspace) {
-        if (afterspace && !['\n', ' '].includes(separator)) {
-            separator += " ";
-        }
-        let post_string = JSPLib.utility.joinList(post_ids, prefix, suffix, separator);
-        Danbooru.Utility.copyToClipboard(post_string);
-    };
-
-    var prefix;
-    var post_string;
+    console.log('MenuFunctions', post_ids);
     if (PMM.mode === 'unvote') {
-        UpdatePostVotes(post_ids);
+        PreloadPostVotes(post_ids);
     }
     if (PMM.mode === 'unfavorite') {
-        UpdatePostFavorites(post_ids);
+        PreloadPostFavorites(post_ids);
     }
-    for (let i = 0; i < post_ids.length; i++) {
-        let post_id = post_ids[i];
-        switch (PMM.mode) {
-            case 'copy-id':
-                return copyToClipboard(post_ids, "", "", PMM.id_separator_char, false);
-            case 'copy-short':
-                return copyToClipboard(post_ids, "post #", "", PMM.id_separator_char, true);
-            case 'copy-link':
-                return copyToClipboard(post_ids, "https://danbooru.donmai.us/posts/", " ", PMM.id_separator_char, true);
-            case 'vote-up':
-                VotePost(post_id, 1);
-                break;
-            case 'vote-down':
-                VotePost(post_id, -1);
-                break;
-            case 'unvote':
-                UnvotePost(post_id);
-                break;
-            case 'favorite':
-                FavoritePost(post_id);
-                break;
-            case 'unvaforite':
-                UnfavoritePost(post_id);
-                break;
-            case 'tag-script':
-                TagscriptPost(post_id);
-                break;
-            case 'commentary':
-                return OpenCommentaryDialog(post_ids);
-            default:
-                //Do nothing
+    if (['edit', 'copy-id', 'copy-short', 'copy-link', 'commentary'].includes(PMM.mode)) {
+        MenuFunctionsMulti(post_ids);
+    } else {
+        for (let i = 0; i < post_ids.length; i++) {
+            MenuFunctionsSingle(post_ids[i]);
         }
     }
 }
 
+function MenuFunctionsSingle(post_id) {
+    switch (PMM.mode) {
+        case 'vote-up':
+            VotePost(post_id, 1);
+            break;
+        case 'vote-down':
+            VotePost(post_id, -1);
+            break;
+        case 'unvote':
+            UnvotePost(post_id);
+            break;
+        case 'favorite':
+            FavoritePost(post_id);
+            break;
+        case 'unfavorite':
+            UnfavoritePost(post_id);
+            break;
+        case 'tag-script':
+            TagscriptPost(post_id);
+            //falls through
+        default:
+            //do nothing
+    }
+}
+
+function MenuFunctionsMulti(post_ids) {
+    switch (PMM.mode) {
+        case 'edit':
+            OpenEditDialog(post_ids);
+            break;
+        case 'copy-id':
+            CopyToClipboard(post_ids, "", "", PMM.id_separator_char, false);
+            break;
+        case 'copy-short':
+            CopyToClipboard(post_ids, "post #", "", PMM.id_separator_char, true);
+            break;
+        case 'copy-link':
+            CopyToClipboard(post_ids, "https://danbooru.donmai.us/posts/", " ", PMM.id_separator_char, true);
+            break;
+        case 'commentary':
+            OpenCommentaryDialog(post_ids);
+            //falls through
+        default:
+            //do nothing
+    }
+}
+
 //Settings functions
+
+function BroadcastPMM(ev) {
+    const printer = JSPLib.debug.getFunctionPrint('BroadcastPMM');
+    printer.debuglog(`(${ev.data.type}):`, ev.data);
+    switch (ev.data.type) {
+        case 'change_mode':
+            PMM.mode = ev.data.mode;
+            $("#pmm-mode-controls select").val(PMM.mode);
+            UpdateSelectControls();
+            break;
+        case 'change_select_only':
+            PMM.select_only = ev.data.select_only;
+            $('#pmm-select-only-input input').prop('checked', PMM.select_only);
+            UpdateSelectControls();
+            //falls through
+        default:
+            //do nothing
+    }
+}
 
 function InitializeProgramValues() {
     Object.assign(PMM, {
@@ -1149,15 +1275,13 @@ function InitializeProgramValues() {
         select_only: JSPLib.storage.getLocalData('pmm-select-only', {default_val: false}),
         all_post_ids: new Set(JSPLib.utility.getDOMAttributes($('.post-preview'), 'id', parseInt)),
         $drag_area: document.querySelector('#posts'),
-    });
+     });
     if (PMM.safe_tag_script_enabled && PMM.mode === 'tag-script') {
-        JSPLib.storage.removeLocalData('mode', 'view');
-        JSPLib.storage.removeLocalData('pmm-mode', 'view');
         PMM.mode = 'view';
     }
     if (PMM.drag_select_enabled) {
         PMM.dragger = new DragSelect({
-            selectables: GetAllPreviews(),
+            selectables: document.querySelectorAll('.post-preview img'),
             area: PMM.$drag_area,
             draggability: false,
             immediateDrag: false
@@ -1165,6 +1289,7 @@ function InitializeProgramValues() {
     }
     JSPLib.danbooru.max_network_requests = PMM.maximum_concurrent_requests;
     JSPLib.danbooru.highlight_post_enabled = PMM.highlight_errors_enabled;
+    JSPLib.load.setProgramGetter(PMM, 'VTI', 'ValidateTagInput');
     return true;
 }
 
@@ -1175,6 +1300,7 @@ function RenderSettingsMenu() {
     $('#pmm-mode-settings').append(JSPLib.menu.renderSortlist('mode_order'));
     $('#pmm-mode-settings').append(JSPLib.menu.renderInputSelectors('id_separator', 'radio'));
     $('#pmm-mode-settings').append(JSPLib.menu.renderCheckbox('safe_tag_script_enabled'));
+    $('#pmm-mode-settings').append(JSPLib.menu.renderCheckbox('commentary_relations_check_enabled'));
     $("#pmm-network-settings").append(JSPLib.menu.renderTextinput('maximum_concurrent_requests', 10));
     $('#pmm-network-settings').append(JSPLib.menu.renderCheckbox('highlight_errors_enabled'));
     $('#pmm-select-settings').append(JSPLib.menu.renderCheckbox('drag_select_enabled'));
@@ -1195,6 +1321,7 @@ function Main() {
         run_on_settings: false,
         default_data: DEFAULT_VALUES,
         initialize_func: InitializeProgramValues,
+        broadcast_func: BroadcastPMM,
         render_menu_func: RenderSettingsMenu,
         program_css: css_text,
         menu_css: MENU_CSS,
@@ -1207,8 +1334,15 @@ function Main() {
     if (PMM.highlight_errors_enabled) {
         JSPLib.utility.setCSSStyle(JSPLib.danbooru.highlight_css, 'highlight');
     }
+    if (Object.keys(PMM.VTI).length) {
+        console.log("Got exported functions");
+    }
     if (PMM.available_mode_keys.has('edit')) {
-        $('#validate-tags, button[name=cancel]').off('click.danbooru').on('click.pmm', CloseEditDialog);
+        if (Object.keys(PMM.VTI).length) {
+            console.log("Got exported functions");
+        } else {
+            $('#validate-tags, input[name=commit], button[name=cancel]').off('click.danbooru').on(PROGRAM_CLICK, CloseEditDialog);
+        }
     }
 }
 
