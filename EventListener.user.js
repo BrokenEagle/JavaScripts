@@ -808,6 +808,13 @@ td.el-found-with {
     padding: 5px;
     border: 1px solid var(--dtext-blockquote-border-color);
 }
+/**WIKI**/
+.el-event-body[data-type="wiki"] ul.wiki-other-names-diff-list li.added {
+    background: var(--wiki-page-versions-diff-ins-background);
+}
+.el-event-body[data-type="wiki"] ul.wiki-other-names-diff-list li.removed {
+    background: var(--wiki-page-versions-diff-del-background);
+}
 /**DMAIL**/
 .el-event-body[data-type="dmail"] tr[data-is-read="false"] {
     font-weight: bold;
