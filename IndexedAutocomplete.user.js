@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.24
+// @version      29.25
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -31,7 +31,38 @@
 
 /****Library updates****/
 
-////NONE
+JSPLib.load.programInitialize = function (self, entry_func, {program_name = null, function_name = null, required_variables = [], required_selectors = [], optional_selectors = [], max_retries = JSPLib.load._default_max_retries, timer_interval = JSPLib.load._default_timer_interval} = {}) {
+    if (program_name) {
+        if (JSPLib._window_jsp.program[program_name]) return;
+        JSPLib._window_jsp.program[program_name] = {
+            version: JSPLib._gm_info.script.version,
+            start: Date.now(),
+        };
+        JSPLib._window_jsp.info.scripts.push({
+            program_name,
+            load_start: performance.now(),
+        });
+        if (JSPLib.debug.debug_console) {
+            JSPLib._window_jsp.program[program_name].info = JSPLib._gm_info;
+        }
+    }
+    let initialize_name = program_name || function_name;
+    if (typeof initialize_name !== 'string') {
+        self.debug('logLevel', "No name program/function name passed in!", JSPLib.debug.ERROR);
+        return;
+    }
+    this.program_load_retries[initialize_name] = 0;
+    let load_id = this._program_load_id++;
+    JSPLib.debug.debugTime(load_id + "-programLoad");
+    this.program_load_timers[initialize_name] = JSPLib.utility.initializeInterval(() => {
+        if (!this.load_when_hidden && document.hidden) {
+            return false;
+        }
+        return this.programLoad(entry_func, initialize_name, required_variables, required_selectors, optional_selectors, max_retries, load_id);
+    }, timer_interval);
+};
+
+JSPLib.debug.addModuleLogs('load', ['programInitialize']);
 
 /****Global variables****/
 
@@ -2030,7 +2061,7 @@ function DelayInitializeTagAutocomplete(selector, type) {
         $(selector).attr('data-autocomplete', type);
     }
     clearTimeout(DelayInitializeTagAutocomplete.timer);
-    DelayInitializeTagAutocomplete.timer = setTimeout(DanbooruIntializeTagAutocomplete, JQUERY_DELAY);
+    DelayInitializeTagAutocomplete.timer = setTimeout(InitializeTagQueryAutocompleteIndexed, JQUERY_DELAY);
 }
 
 //Rebind callback functions
@@ -2057,7 +2088,7 @@ function RebindMultipleTag() {
         check: () => JSPLib.utility.hasDOMDataKey(AUTOCOMPLETE_MULTITAG_SELECTORS, 'uiAutocomplete'),
         exec: () => {
             $(AUTOCOMPLETE_MULTITAG_SELECTORS).autocomplete('destroy').off('keydown.Autocomplete.tab');
-            DanbooruIntializeTagAutocomplete();
+            InitializeTagQueryAutocompleteIndexed();
         }
     }, TIMER_POLL_INTERVAL);
 }
@@ -2111,8 +2142,8 @@ function ReorderAutocompleteEvent($obj) {
 
 //Initialization functions
 
-function DanbooruIntializeTagAutocomplete() {
-    var $fields_multiple = $(AUTOCOMPLETE_MULTITAG_SELECTORS);
+function InitializeTagQueryAutocompleteIndexed(fields_selector = AUTOCOMPLETE_MULTITAG_SELECTORS, reorder_selector = '#upload_tag_string, #post_tag_string') {
+    let $fields_multiple = $(fields_selector);
     $fields_multiple.autocomplete({
         select(event, ui) {
             if (event.key === "Enter") {
@@ -2184,11 +2215,13 @@ function DanbooruIntializeTagAutocomplete() {
         autocomplete._renderItem = Danbooru.Autocomplete.render_item;
         autocomplete._renderMenu = RenderMenuItem();
     });
-    let $tag_input_fields = $("#upload_tag_string, #post_tag_string");
-    if ($tag_input_fields.length) {
-        ReorderAutocompleteEvent($tag_input_fields);
-    }
     $fields_multiple.addClass('iac-autocomplete');
+    if (reorder_selector) {
+        let $tag_input_fields = $(reorder_selector);
+        if ($tag_input_fields.length) {
+            ReorderAutocompleteEvent($tag_input_fields);
+        }
+    }
 }
 
 function InitializeAutocompleteIndexed(selector, keycode, multiple = false, wiki = false) {
@@ -2445,7 +2478,7 @@ function SetupAutocompleteBindings() {
     Danbooru.Autocomplete.render_item_old = Danbooru.Autocomplete.render_item;
     Danbooru.Autocomplete.render_item = JSPLib.utility.hijackFunction(AutocompleteRenderItem, HighlightSelected);
     Danbooru.Autocomplete.initialize_tag_autocomplete_old = Danbooru.Autocomplete.initialize_tag_autocomplete;
-    Danbooru.Autocomplete.initialize_tag_autocomplete = DanbooruIntializeTagAutocomplete;
+    Danbooru.Autocomplete.initialize_tag_autocomplete = InitializeTagQueryAutocompleteIndexed;
 }
 
 function SetupAutocompleteInitializations() {
@@ -2736,7 +2769,7 @@ JSPLib.storage.indexedDBValidator = ValidateEntry;
 
 //Export JSPLib
 JSPLib.load.exportData(PROGRAM_NAME, IAC, {other_data: TERM_REGEX, datalist: ['cached_data']});
-JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [DanbooruIntializeTagAutocomplete], alwayslist: [InitializeAutocompleteIndexed]});
+JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [], alwayslist: [InitializeAutocompleteIndexed, InitializeTagQueryAutocompleteIndexed]});
 
 /****Execution start****/
 
