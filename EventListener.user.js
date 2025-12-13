@@ -2971,7 +2971,12 @@ async function AddForumPostRow(forum_id, $row) {
     let $outerblock = $(RenderOpenItemContainer('forum', forum_id, 6));
     let $td = $outerblock.find('td');
     $row.after($outerblock);
-    let forum_page = await JSPLib.network.getNotify(`/forum_posts/${forum_id}`);
+    let ajax_options = {
+        beforeSend (request) {
+            request.setRequestHeader('accept', 'text/html');
+        },
+    };
+    let forum_page = await JSPLib.network.getNotify(`/forum_posts/${forum_id}`, {ajax_options});
     if (forum_page) {
         let $forum_page = $.parseHTML(forum_page);
         let $forum_post = $(`#forum_post_${forum_id}`, $forum_page);
