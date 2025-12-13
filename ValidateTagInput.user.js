@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.12
+// @version      29.13
 // @description  Validates tag add/remove inputs on a post edit or upload, plus several other post validations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -35,7 +35,56 @@
 
 /****Library updates****/
 
-////NONE
+JSPLib.load.programInitialize = function (self, entry_func, {program_name = null, function_name = null, required_variables = [], required_selectors = [], optional_selectors = [], max_retries = JSPLib.load._default_max_retries, timer_interval = JSPLib.load._default_timer_interval} = {}) {
+    if (program_name) {
+        if (JSPLib._window_jsp.program[program_name]) return;
+        JSPLib._window_jsp.program[program_name] = {
+            version: JSPLib._gm_info.script.version,
+            start: Date.now(),
+        };
+        JSPLib._window_jsp.info.scripts.push({
+            program_name,
+            load_start: performance.now(),
+        });
+        if (JSPLib.debug.debug_console) {
+            JSPLib._window_jsp.program[program_name].info = JSPLib._gm_info;
+        }
+    }
+    let initialize_name = program_name || function_name;
+    if (typeof initialize_name !== 'string') {
+        self.debug('logLevel', "No name program/function name passed in!", JSPLib.debug.ERROR);
+        return;
+    }
+    this.program_load_retries[initialize_name] = 0;
+    let load_id = this._program_load_id++;
+    JSPLib.debug.debugTime(load_id + "-programLoad");
+    this.program_load_timers[initialize_name] = JSPLib.utility.initializeInterval(() => {
+        if (!this.load_when_hidden && document.hidden) {
+            return false;
+        }
+        return this.programLoad(entry_func, initialize_name, required_variables, required_selectors, optional_selectors, max_retries, load_id);
+    }, timer_interval);
+};
+
+JSPLib.load.exportData = function (program_name, program_value, {other_data = null, readlist = [], writelist = []} = {}) {
+    if (JSPLib.debug.debug_console) {
+        JSPLib._window_jsp.lib = JSPLib._window_jsp.lib || {};
+        JSPLib._window_jsp.lib[program_name] = JSPLib;
+        JSPLib._window_jsp.value = JSPLib._window_jsp.value || {};
+        JSPLib._window_jsp.value[program_name] = program_value;
+        JSPLib._window_jsp.other = JSPLib._window_jsp.other || {};
+        JSPLib._window_jsp.other[program_name] = other_data;
+    }
+    JSPLib._window_jsp.exports[program_name] = JSPLib._window_jsp.exports[program_name] || {};
+    readlist.forEach((name) => {
+        Object.defineProperty(JSPLib._window_jsp.exports[program_name], name, {get: () => program_value[name]});
+    });
+    writelist.forEach((name) => {
+        Object.defineProperty(JSPLib._window_jsp.exports[program_name], name, {get: () => program_value[name], set: (val) => {program_value[name] = val;}});
+    });
+};
+
+JSPLib.debug.addModuleLogs('load', ['programInitialize']);
 
 /****Global variables****/
 
@@ -386,7 +435,7 @@ function GetCurrentTags() {
 }
 
 function GetAutoImplications() {
-    VTI.preedittags.forEach((tag) => {
+    VTI.preedit_tags.forEach((tag) => {
         let match = tag.match(COSPLAY_REGEX);
         if (match) {
             let base_tag = match[1];
@@ -440,6 +489,17 @@ function EnableUI(type) {
         $("#validate-tags")[0].setAttribute('value', 'Submit');
     } else if (type === "check") {
         $("#check-tags")[0].setAttribute('value', 'Check');
+    }
+}
+
+function PreloadImplications() {
+    let printer = JSPLib.debug.getFunctionPrint('PreloadImplications');
+    if (VTI.implication_check_enabled) {
+        VTI.implications_promise = QueryTagImplications(VTI.preedit_tags);
+        VTI.implications_promise.then(() => {
+            printer.debuglog("Adding auto implications");
+            GetAutoImplications();
+        });
     }
 }
 
@@ -565,21 +625,13 @@ async function QueryTagDeprecations(taglist) {
 function PostModeMenu(event) {
     let s = $("#mode-box select").val();
     if (s === "edit") {
-        $("#validation-input,#warning-bad-upload,#warning-new-tags,#warning-bad-removes").hide();
+        $("#validation-input,#warning-bad-upload,#warning-new-tags,#warning-bad-removes,#warning-deprecated-tags").hide();
         let post_id = $(event.target).closest("article").data("id");
         let $post = $("#post_" + post_id);
-        VTI.preedittags = $post.data("tags").split(' ');
-        this.debug('log', "Preedit tags:", VTI.preedittags);
+        VTI.preedit_tags = $post.data("tags").split(' ');
+        this.debug('log', "Preedit tags:", VTI.preedit_tags);
         //Wait until the edit box loads before querying implications
-        if (VTI.implication_check_enabled) {
-            setTimeout(() => {
-                VTI.implications_promise = QueryTagImplications(VTI.preedittags);
-                VTI.implications_promise.then(() => {
-                    this.debug('log', "Adding auto implications");
-                    GetAutoImplications();
-                });
-            }, QUICKEDIT_WAIT_TIME);
-        }
+        setTimeout(PreloadImplications, QUICKEDIT_WAIT_TIME);
         event.preventDefault();
     }
 }
@@ -662,7 +714,7 @@ function RebindHotkey() {
 async function ValidateTagAdds() {
     let postedittags = GetCurrentTags();
     let positivetags = JSPLib.utility.filterRegex(postedittags, NEGATIVE_REGEX, true);
-    let useraddtags = JSPLib.utility.arrayDifference(positivetags, VTI.preedittags);
+    let useraddtags = JSPLib.utility.arrayDifference(positivetags, VTI.preedit_tags);
     VTI.addedtags = JSPLib.utility.arrayDifference(useraddtags, GetNegativetags(postedittags));
     this.debug('log', "Added tags:", VTI.addedtags);
     if ((VTI.addedtags.length === 0) || IsSkipValidate()) {
@@ -700,7 +752,7 @@ async function ValidateTagRemoves() {
     }
     await VTI.implications_promise;
     let postedittags = TransformTypetags(GetCurrentTags());
-    let deletedtags = JSPLib.utility.arrayDifference(VTI.preedittags, postedittags);
+    let deletedtags = JSPLib.utility.arrayDifference(VTI.preedit_tags, postedittags);
     let negatedtags = JSPLib.utility.arrayIntersection(GetNegativetags(postedittags), postedittags);
     let removedtags = deletedtags.concat(negatedtags);
     let finaltags = JSPLib.utility.arrayDifference(postedittags, removedtags);
@@ -732,7 +784,7 @@ async function ValidateTagRemoves() {
 async function ValidateTagDeprecations() {
     if (!VTI.deprecation_check_enabled || IsSkipValidate()) {
         this.debug('log', "Skipping!");
-        $("#warning-bad-removes").hide();
+        $("#warning-deprecated-tags").hide();
         return true;
     }
     let postedit_tags = GetCurrentTags();
@@ -780,7 +832,7 @@ function ValidateUpload() {
 async function ValidateArtist() {
     let source_url = $("#post_source").val();
     let artist_names = $(".artist-tag-list .tag-type-1 .wiki-link").map((i, entry) => decodeURIComponent(JSPLib.utility.parseParams(entry.search.slice(1)).name)).toArray();
-    if (artist_names.length === 0 && !VTI.preedittags.includes('official_art')) {
+    if (artist_names.length === 0 && !VTI.preedit_tags.includes('official_art')) {
         //Validate no artist tag
         let option_html = "";
         if (!source_url.match(/https?:\/\//)) {
@@ -797,7 +849,7 @@ async function ValidateArtist() {
             let artist_html = `There is an available artist tag for this post [${artist_list.join(', ')}]. Open the edit menu and consider adding it.`;
             VTI.validate_lines.push(artist_html);
         } else {
-            if (!VTI.preedittags.includes('artist_request')) {
+            if (!VTI.preedit_tags.includes('artist_request')) {
                 option_html = `<br>...or, consider adding at least <a href="/wiki_pages/artist_request">artist request</a> or <a href="/wiki_pages/official_art">official art</a> as applicable.`;
             }
             let new_artist_addons = $.param({artist: {source: source_url}});
@@ -842,7 +894,7 @@ function ValidateCopyright() {
     if (copyright_names_length) {
         this.debug('log', "Has a copyright.");
         return;
-    } if (VTI.preedittags.includes('copyright_request')) {
+    } if (VTI.preedit_tags.includes('copyright_request')) {
         this.debug('log', "Has copyright request.");
         return;
     }
@@ -880,7 +932,7 @@ function InitializeProgramValues() {
         was_upload: JSPLib.storage.getSessionData('vti-was-upload', {default_val: false}),
     });
     Object.assign(VTI, {
-        preedittags: (VTI.is_post_show ? $(".image-container").data('tags').split(' ') : [] ),
+        preedit_tags: (VTI.is_post_show ? $(".image-container").data('tags').split(' ') : [] ),
     });
     if (VTI.is_upload) {
         JSPLib.storage.setSessionData('vti-was-upload', true);
@@ -955,10 +1007,10 @@ function Main() {
         $("#related-tags-container").before(WARNING_MESSAGES);
     }
     if (VTI.is_post_show) {
-        this.debug('log', "Preedit tags:", VTI.preedittags);
+        this.debug('log', "Preedit tags:", VTI.preedit_tags);
         if (VTI.implication_check_enabled) {
             $(document).on('danbooru:open-post-edit-tab.vti danbooru:open-post-edit-dialog.vti', () => {
-                VTI.implications_promise = QueryTagImplications(VTI.preedittags);
+                VTI.implications_promise = QueryTagImplications(VTI.preedit_tags);
                 VTI.implications_promise.then(() => {
                     this.debug('log', "Adding auto implications");
                     GetAutoImplications();
@@ -1041,7 +1093,8 @@ JSPLib.menu.control_config = CONTROL_CONFIG;
 JSPLib.storage.indexedDBValidator = ValidateEntry;
 
 //Export JSPLib
-JSPLib.load.exportData(PROGRAM_NAME, VTI);
+JSPLib.load.exportData(PROGRAM_NAME, VTI, {writelist: ['preedit_tags']});
+JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [], alwayslist: [ValidateTagAdds, ValidateTagRemoves, ValidateTagDeprecations, ValidateUpload, PreloadImplications]});
 
 /****Execution start****/
 
