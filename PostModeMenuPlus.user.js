@@ -383,9 +383,10 @@ div#pmm-mode-controls {
     display: flex;
     align-items: flex-end;
     margin-bottom: 2px;
+    justify-content: space-between;
 }
-div#pmm-mode-controls > div {
-    width: 50%;
+div#pmm-mode-select {
+    width: 44%;
 }
 div#pmm-mode-select h2 {
     text-align: right;
@@ -396,8 +397,7 @@ div#pmm-mode-select select {
 }
 /**SELECT CONTROLS**/
 div#pmm-select-controls {
-    display: block;
-    margin-left: 0.2em;
+    width: 54%;
 }
 div#pmm-select-only-input label {
     cursor: pointer;
@@ -425,7 +425,7 @@ div#pmm-selection-buttons {
 div#pmm-selection-buttons button.pmm-select {
     font-size: 10px;
     width: 30%;
-    padding: 1px 0;
+    padding: 1px;
     border-radius: 3px;
     border: 1px solid;
 }
