@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://github.com/BrokenEagle
-// @version      9.0
+// @version      9.1
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1480,10 +1480,12 @@ function PostModeMenu(event) {
     let $article = $(event.currentTarget).closest("article");
     if (PMM.select_only && DRAGGABLE_MODES.includes(PMM.mode)) {
         $article.toggleClass('pmm-selected');
-    } else {
+    } else if (PMM.mode !== 'view') {
         let post_id = $article.data("id");
         $article.addClass('pmm-selected');
         MenuFunctions([post_id]);
+    } else {
+        return;
     }
     event.preventDefault();
 }
