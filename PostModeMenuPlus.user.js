@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://github.com/BrokenEagle
-// @version      9.2
+// @version      9.3
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -357,9 +357,6 @@ const DEFAULT_VALUES = {
 
 const PROGRAM_CSS = `
 /**GENERAL**/
-div#c-posts div#a-index aside#sidebar {
-    min-width: 20em;
-}
 .pmm-dialog label {
     display: block;
     font-weight: bold;
@@ -385,9 +382,17 @@ section#pmm-mode-box {
 div#pmm-mode-controls {
     display: flex;
     align-items: flex-end;
+    margin-bottom: 2px;
 }
-div#pmm-mode-controls h2 {
+div#pmm-mode-controls > div {
+    width: 50%;
+}
+div#pmm-mode-select h2 {
     text-align: right;
+}
+div#pmm-mode-select select {
+    width: 100%;
+    font-size: 12px;
 }
 /**SELECT CONTROLS**/
 div#pmm-select-controls {
@@ -415,12 +420,12 @@ div#pmm-select-only-input input {
 }
 div#pmm-selection-buttons {
     display: flex;
-    gap: 2px;
+    justify-content: space-around;
 }
 div#pmm-selection-buttons button.pmm-select {
-    font-size: 11px;
-    width: 4em;
-    padding: 2px;
+    font-size: 10px;
+    width: 30%;
+    padding: 1px 0;
     border-radius: 3px;
     border: 1px solid;
 }
@@ -728,11 +733,9 @@ const MENU_CSS = `
 const MODE_CONTROLS_HTML = `
 <section id="pmm-mode-box">
     <div id="pmm-mode-controls">
-        <div>
+        <div id="pmm-mode-select">
             <h2>Mode</h2>
-            <form action="/">
-                <select name="mode">%s</select>
-            </form>
+            <select name="mode">%s</select>
         </div>
         <div id="pmm-select-controls">
             <div id="pmm-select-only-input">
