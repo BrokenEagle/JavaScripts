@@ -1377,6 +1377,7 @@ async function UpdatePostCommentary(post_id, artist_commentary, tag_changes) {
                 let updated_tags = JSPLib.utility.arrayUnion(tags, tag_changes.adds);
                 updated_tags = JSPLib.utility.arrayDifference(updated_tags, tag_changes.removes);
                 JSPLib.utility.setDataAttribute($post, 'tags', updated_tags.toSorted().join(' '));
+                DestroyTooltip(post_id);
             }),
             JSPLib.danbooru.errorCallback(post_id, 'UpdatePostCommentary', artist_commentary)
         );
