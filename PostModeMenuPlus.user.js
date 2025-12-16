@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://github.com/BrokenEagle
-// @version      9.1
+// @version      9.2
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -357,6 +357,9 @@ const DEFAULT_VALUES = {
 
 const PROGRAM_CSS = `
 /**GENERAL**/
+div#c-posts div#a-index aside#sidebar {
+    min-width: 20em;
+}
 .pmm-dialog label {
     display: block;
     font-weight: bold;
@@ -777,11 +780,11 @@ const EDIT_DIALOG_HTML = `
 const COMMENTARY_DIALOG_HTML = `
 <div id="pmm-commentary-dialog">
     <div id="pmm-fetch">
-        <label>Load from post #</label>
-        <input type="text" title="Enter a post ID">
-        <button name="post">Fetch post</button>
-        <button name="parent">Fetch parent</button>
-        <button name="pool">Fetch pool</button>
+        <label>Post ID</label>
+        <input type="text" placeholder="Enter a post ID">
+        <button name="post" title="Loads the commentary of the post ID entered.">Fetch post</button>
+        <button name="parent" title="Loads the parent post's commentary amongst all of the selected posts.">Fetch parent</button>
+        <button name="pool" title="Loads the first post's commentary of a pool amongst all of the selected posts.">Fetch pool</button>
     </div>
     <div class="pmm-commentary-input">
         <label for="pmm-artist-commentary-original-title">Original title</label>
