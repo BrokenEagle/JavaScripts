@@ -1037,10 +1037,10 @@ function UpdateSelectControls() {
         $('#pmm-tag-script-field').hide();
     }
     if (['edit', 'view'].includes(PMM.mode)) {
-        $('#pmm-select-only input, #pmm-selection-buttons button, #pmm-apply-all button').attr('disabled', 'disabled');
+        $('#pmm-select-only-input input, #pmm-selection-buttons button, #pmm-apply-all button').attr('disabled', 'disabled');
         $('#pmm-select-only-input label').addClass('pmm-disabled');
     } else {
-        $('#pmm-select-only input, #pmm-selection-buttons button, #pmm-apply-all button').attr('disabled', null);
+        $('#pmm-select-only-input input, #pmm-selection-buttons button, #pmm-apply-all button').attr('disabled', null);
         $('#pmm-select-only-input label').removeClass('pmm-disabled');
         if (!PMM.select_only) {
             $('#pmm-selection-buttons button, #pmm-apply-all button').attr('disabled', 'disabled');
