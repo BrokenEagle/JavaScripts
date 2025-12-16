@@ -450,7 +450,6 @@ div#pmm-apply-all button {
     width: 100%;
     margin: 0.2em 0;
     border: 2px solid;
-    color: white;
     font-weight: bold;
     border-radius: 10px;
 }
@@ -559,7 +558,7 @@ div#pmm-apply-all button:hover {
     box-shadow: 0 0 0 1px var(--green-4);
 }
 div#pmm-apply-all button:disabled {
-    color: var(--grey-4);
+    color: var(--grey-3);
     border-color: var(--green-2);
     background-color: var(--green-1);
     box-shadow: none;
@@ -653,7 +652,7 @@ div#pmm-apply-all button:hover {
     box-shadow: 0 0 0 1px var(--green-4);
 }
 div#pmm-apply-all button:disabled {
-    color: var(--grey-7);
+    color: var(--grey-5);
     border-color: var(--green-8);
     background-color: var(--green-9);
     box-shadow: none;
