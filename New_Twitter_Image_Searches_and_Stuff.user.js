@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         New Twitter Image Searches and Stuff
+// @name         New Twitter Image Searches and Stuff (library upgrade)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      11.8
+// @version      11.9
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -18,19 +18,19 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/saucenao.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/menu.js
 // @resource     jquery_ui_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/jquery_ui_custom.css
 // @resource     jquery_qtip_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.css
 // @grant        GM_getResourceText
@@ -3847,7 +3847,7 @@ function RenderColorStyle(css, color_data) {
 
 function InitializeCleanupTasks() {
     CheckServerBadTweets();
-    JSPLib.storage.pruneProgramCache(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, PRUNE_RECHECK_EXPIRES);
+    JSPLib.storage.pruneProgramCache(PROGRAM_DATA_REGEX, PRUNE_RECHECK_EXPIRES);
 }
 
 async function InitializeTotalRecords(manual = false) {
@@ -6566,7 +6566,7 @@ function BroadcastNTISAS(ev) {
             break;
         case 'database':
             JSPLib.storage.removeSessionData('ntisas-database-info');
-            $(window).one('focus.ntisas.reload', () => {window.location.reload();});
+            $(window).one('focus.ntisas.reload', JSPLib.utility.refreshPage);
             break;
         case 'currentrecords':
             JSPLib.storage.invalidateLocalData('ntisas-recent-timestamp');
@@ -6890,7 +6890,7 @@ async function Main() {
     JSPLib.utility.setCSSStyle(NOTICE_CSS, 'notice');
     JSPLib.utility.setCSSStyle(GM_getResourceText('jquery_qtip_css'), 'qtip');
     JSPLib.utility.initializeInterval(RegularCheck, PROGRAM_RECHECK_INTERVAL);
-    JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
+    JSPLib.statistics.addPageStatistics();
     JSPLib.load.noncriticalTasks(InitializeCleanupTasks);
 }
 

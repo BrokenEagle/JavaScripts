@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         PostModeMenu+
+// @name         PostModeMenu+ (update library)
 // @namespace    https://github.com/BrokenEagle
-// @version      9.3
+// @version      9.6
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -15,228 +15,23 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/PostModeMenuPlus.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/PostModeMenuPlus.user.js
 // @require      https://cdn.jsdelivr.net/npm/dragselect@2.3.1/dist/ds.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/menu.js
 // ==/UserScript==
 
 /* global $ Danbooru JSPLib DragSelect */
 
 /****Library updates****/
 
-JSPLib.utility.recheckInterval = function ({check = null, exec = null, debug = null, fail = null, always = null, duration = null, interval = null} = {}) {
-    let expires = Number.isInteger(duration) && this.getExpires(duration);
-    var timeobj = {};
-    var timer = null;
-    timer = timeobj.timer = this.initializeInterval(() => {
-        if (check?.()) {
-            exec?.();
-            timeobj.timer = true;
-        } else if (!expires || this.validateExpires(expires)) {
-            debug?.();
-            return false;
-        } else {
-            fail?.();
-            timeobj.timer = false;
-        }
-        always?.();
-        if (Number.isInteger(timer)) {
-            clearInterval(timer);
-        }
-        return true;
-    }, interval);
-    return timeobj;
-};
-
-JSPLib.utility.namespaceWaitExecute = function ({root = null, type = null, namespace = null, selector = null, found = null, interval = null, duration = null, presence = true} = {}) {
-    let target = selector ?? root.nodeName ?? root;
-    this.recheckInterval({
-        check: () => this.not(this.isNamespaceBound(root, type, namespace, selector), !presence),
-        debug: () => JSPLib.debug.debuglogLevel(`Event handler wait: ${type}.${namespace} for ${target}.`, JSPLib.debug.VERBOSE),
-        fail: () => JSPLib.debug.debuglogLevel(`Event handler not found: ${type}.${namespace} for ${target}.`, JSPLib.debug.WARNING),
-        exec: found,
-        interval,
-        duration,
-    });
-};
-
-JSPLib.utility.renderColorScheme = function (css_text, mode) {
-    let lines = css_text.trim().split('\n');
-    let theme_lines = [];
-    let auto_lines = [];
-    for (let i = 0; i < lines.length; i++) {
-        let line = lines[i];
-        if (/^[ /}]/.test(line)) {
-            theme_lines.push(line);
-            auto_lines.push('    ' + line);
-        } else {
-            theme_lines.push(`body[data-current-user-theme=${mode}] ${line}`);
-            auto_lines.push(`    body[data-current-user-theme=auto] ${line}`);
-        }
-    }
-    let theme_css = theme_lines.join('\n');
-    let auto_css = `@media (prefers-color-scheme: ${mode}) {\n${auto_lines.join('\n')}\n}`;
-    return '\n' + theme_css + '\n' + auto_css;
-};
-
-JSPLib.utility.isHash = function (value) {
-    return typeof value === "object" && value !== null && !Array.isArray(value);
-};
-
-JSPLib.utility.isNamespaceBound = function (root, eventtype, namespace, selector) {
-    let event_namespaces = this.getBoundEventNames(root, eventtype, selector);
-    let name_parts = namespace.split('.');
-    return event_namespaces.some((name) => this.isSubArray(name.split('.'), name_parts));
-};
-
-JSPLib.utility.setDataAttribute = function ($obj, key, value) {
-    $obj.attr('data-' + key, value);
-    $obj.data(key, value);
-};
-
-JSPLib.danbooru.networkSetup = async function () {
-    this.pending_update_count += 1;
-    this.showPendingUpdateNotice();
-    if (this.num_network_requests >= this.max_network_requests) {
-        await JSPLib.network.rateLimit('danbooru');
-    }
-    this.num_network_requests += 1;
-};
-
-JSPLib.danbooru.alwaysCallback = function () {
-    const context = this;
-    return function (_data, _message, resp) {
-        context.pending_update_count -= 1;
-        context.num_network_requests -= 1;
-        context.checkAPIRateLimit(resp);
-    };
-};
-
-JSPLib.danbooru.successCallback = function (post_id, func_name, success) {
-    const context = this;
-    return function (data) {
-        JSPLib.debug.debuglogLevel(`${func_name}-success:`, data, JSPLib.debug.INFO);
-        if (typeof success === 'function') {
-            success(data);
-        }
-        context.showPendingUpdateNotice();
-        context.highlightPost(post_id, false);
-        return true;
-    };
-};
-
-JSPLib.danbooru.errorCallback = function (post_id, func_name, params) {
-    const context = this;
-    return function (error) {
-        error = JSPLib.network.processError(error, func_name);
-        let error_key = `${func_name}-${post_id}`;
-        if (params) {
-            error_key += '-' + JSPLib._jQuery.param(params);
-        }
-        JSPLib.network.logError(error_key, error);
-        JSPLib.network.notifyError(error);
-        context.highlightPost(post_id, true);
-        return false;
-    };
-};
-
-JSPLib.danbooru._updatePostVotes = function (params, post_data, $post_votes) {
-    let fav_matches = JSPLib.utility.findAll(params.post.tag_string ?? "", /(?<=^| )-?fav:me(?= |$)/g);
-    if (fav_matches.length) {
-        let last_match = fav_matches.at(-1);
-        if (last_match === 'fav:me' && $post_votes.find('.post-upvote-link.active-link').length === 0) {
-            $post_votes.find('.post-score a').text(post_data.score + 1);
-        } else if (last_match === '-fav:me' && $post_votes.find('.post-upvote-link.inactive-link').length === 0) {
-            $post_votes.find('.post-score a').text(post_data.score - 1);
-        } else {
-            $post_votes.find('.post-score a').text(post_data.score);
-        }
-    } else {
-        $post_votes.find('.post-score a').text(post_data.score);
-    }
-    if (/(?:^| )(?:upvote:self|downvote:self|-?fav:me)(?: |$)/.test(params.post.tag_string)) {
-        this.submitRequest('post_votes', {search: {post_id: post_data.id, user_id: JSPLib._Danbooru.CurrentUser.data('id')}, limit: 1})
-            .then((vote_data) => {
-                $post_votes.find('.active-link').toggleClass('active-link inactive-link');
-                if (vote_data.length) {
-                    let vote_selector = (vote_data[0].score > 0 ? '.post-upvote-link' : '.post-downvote-link');
-                    let $vote = $post_votes.find(vote_selector);
-                    $vote.toggleClass('active-link inactive-link');
-                    $vote.addClass('post-unvote-link');
-                    JSPLib.utility.setDataAttribute($vote, 'method', 'delete');
-                    $vote.attr('href', `/post_votes/${vote_data[0].id}`);
-                }
-            });
-    }
-};
-
-JSPLib.danbooru.updatePost = async function (post_id, params) {
-    if (!JSPLib.utility.isHash(params?.post)) return;
-    await this.networkSetup();
-    return JSPLib.network.put(`/posts/${post_id}.json`, {data: {...params}})
-        .always(this.alwaysCallback())
-        .then(
-            this.successCallback(post_id, 'danbooru.updatePost', (post_data) => {
-                let $post_article = JSPLib._jQuery(`#post_${post_data.id}`);
-                JSPLib.utility.setDataAttribute($post_article, 'tags', post_data.tag_string);
-                JSPLib.utility.setDataAttribute($post_article, 'rating', post_data.rating);
-                JSPLib.utility.setDataAttribute($post_article, 'score', post_data.score);
-                if (post_data.has_children) {
-                    $post_article.addClass('post-status-has-children');
-                } else {
-                    $post_article.removeClass('post-status-has-children');
-                }
-                if (post_data.parent_id !== null) {
-                    $post_article.addClass('post-status-has-parent');
-                } else {
-                    $post_article.removeClass('post-status-has-parent');
-                }
-                let $img = $post_article.find('img');
-                let title = `${post_data.tag_string} rating:${post_data.rating} score:${post_data.score}`;
-                if ($img.attr('title')) {
-                    $img.attr('title', title);
-                } else if ($img.data('title')) {
-                    JSPLib.utility.setDataAttribute($img, 'title', title);
-                }
-                let $post_votes = $post_article.find('.post-votes');
-                if ($post_votes.length) {
-                    this._updatePostVotes(params, post_data, $post_votes);
-                }
-                $post_article.find('.post-preview-image').get(0)._tippy?.destroy();
-            }),
-            this.errorCallback(post_id, 'danbooru.updatePost', params)
-        );
-};
-
-JSPLib.load.setProgramGetter = function (program_value, other_program_key, other_program_name, min_version = null) {
-    Object.defineProperty(program_value, other_program_key, { get() {return JSPLib._window_jsp.exports[other_program_name] ?? {};}});
-    Object.defineProperty(program_value, 'has_' + other_program_key, { get() {return other_program_name in JSPLib._window_jsp.program;}});
-    if (min_version !== null) {
-        Object.defineProperty(program_value, other_program_key + '_version', { get() {return Number(JSPLib._window_jsp.program[other_program_name].version);}});
-        Object.defineProperty(program_value, 'use_' + other_program_key, { get() {return program_value['has_' + other_program_key] && program_value[other_program_key + '_version'] >= min_version;}});
-    }
-};
-
-JSPLib.load.scriptWaitExecute = function (program_data, other_program_key, {version = true, available = null, fallback = null}) {
-    //For script dependent code which may used at the beginning of program execution
-    JSPLib.utility.recheckInterval({
-        check: () => (version && program_data['use_' + other_program_key] || !version && program_data['has_' + other_program_key]),
-        exec: available,
-        fail: fallback,
-        interval: JSPLib.load.script_wait_interval,
-        duration: JSPLib.load.fallback_wait_duration,
-    });
-};
-
-JSPLib.load.script_wait_interval = 500;
-JSPLib.load.fallback_wait_duration = JSPLib.utility.one_second * 5;
+////NONE
 
 /****Global variables****/
 
@@ -250,8 +45,6 @@ const PROGRAM_LOAD_OPTIONAL_SELECTORS = ['#c-posts #a-index #mode-box', '#c-user
 //Program name constants
 const PROGRAM_NAME = 'PostModeMenu';
 const PROGRAM_SHORTCUT = 'pmm';
-const PROGRAM_CLICK = 'click.pmm';
-const PROGRAM_CHANGE = 'change.pmm';
 
 //Program variable
 const PMM = {};
@@ -291,37 +84,37 @@ const SETTINGS_CONFIG = {
     },
     edit_tag_grouping_enabled: {
         reset: false,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Groups tags the same way as on the post's main page. (network: 1)"
     },
     autoload_post_commentary_enabled: {
         reset: false,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Autoloads the commentary when a single post is selected. (network: 1)"
     },
     safe_tag_script_enabled: {
         reset: false,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Unsets the tag script mode when navigating to a new page."
     },
     long_searchbar_enabled: {
         reset: false,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Adds additional CSS which repositions the searchbar and has it span the entire screen."
     },
     long_tagscript_enabled: {
         reset: false,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Adds additional CSS which makes the tagscript bar span the entire screen when selected."
     },
     highlight_errors_enabled: {
         reset: false,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Adds visualization to the specific posts when network errors occur."
     },
     drag_select_enabled: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Turns on being able to drag select, allowing multiple posts to be processed at once."
     },
 };
@@ -1144,14 +937,14 @@ function RenderPostModeMenuAddons() {
 
 function InitializeModeMenu() {
     $('#mode-box').replaceWith(RenderPostModeMenu());
-    $('#pmm-mode-box select').on(PROGRAM_CHANGE, () => UpdateModeMenu());
-    $('#pmm-select-only').on(PROGRAM_CHANGE, () => UpdateSelectOnly());
-    $('.pmm-select').on(PROGRAM_CLICK, BatchSelection);
-    $('#pmm-apply-all button').on(PROGRAM_CLICK, BatchApply);
-    $('#pmm-undock').on(PROGRAM_CLICK, UndockModeMenu);
-    $('.post-preview a.post-preview-link').on(PROGRAM_CLICK, PostModeMenu);
-    $('.post-preview a.post-upvote-link').on(PROGRAM_CLICK, PostUpvote);
-    $('.post-preview a.post-downvote-link').on(PROGRAM_CLICK, PostDownvote);
+    $('#pmm-mode-box select').on(JSPLib.program_change, () => UpdateModeMenu());
+    $('#pmm-select-only').on(JSPLib.program_change, () => UpdateSelectOnly());
+    $('.pmm-select').on(JSPLib.program_click, BatchSelection);
+    $('#pmm-apply-all button').on(JSPLib.program_click, BatchApply);
+    $('#pmm-undock').on(JSPLib.program_click, UndockModeMenu);
+    $('.post-preview a.post-preview-link').on(JSPLib.program_click, PostModeMenu);
+    $('.post-preview a.post-upvote-link').on(JSPLib.program_click, PostUpvote);
+    $('.post-preview a.post-downvote-link').on(JSPLib.program_click, PostDownvote);
     $('#pmm-tag-script-field input').on('blur.pmm', SaveTagScript);
     $(document).on('keydown.pmm.change_tag_script', null, "0 1 2 3 4 5 6 7 8 9", ChangeTagScript);
     $("#pmm-mode-controls select").val(PMM.mode);
@@ -1205,10 +998,10 @@ function CommentaryDialog(post_ids) {
             open: CommentaryDialogOpen,
             close: CommentaryDialogClose,
         }, COMMENTARY_DIALOG_SETTINGS));
-        PMM.commentary_dialog.find('#pmm-fetch button[name=post]').on(PROGRAM_CLICK, FetchPostCommentary);
-        PMM.commentary_dialog.find('#pmm-fetch button[name=parent]').on(PROGRAM_CLICK, FetchParentCommentary);
-        PMM.commentary_dialog.find('#pmm-fetch button[name=pool]').on(PROGRAM_CLICK, FetchPoolCommentary);
-        PMM.commentary_dialog.find('.pmm-commentary-tag input').on(PROGRAM_CHANGE, ChangeCommentaryTag);
+        PMM.commentary_dialog.find('#pmm-fetch button[name=post]').on(JSPLib.program_click, FetchPostCommentary);
+        PMM.commentary_dialog.find('#pmm-fetch button[name=parent]').on(JSPLib.program_click, FetchParentCommentary);
+        PMM.commentary_dialog.find('#pmm-fetch button[name=pool]').on(JSPLib.program_click, FetchPoolCommentary);
+        PMM.commentary_dialog.find('.pmm-commentary-tag input').on(JSPLib.program_change, ChangeCommentaryTag);
         PMM.commentary_dialog.closest('.pmm-dialog').find('.ui-button').each((_, entry) => {
             let button_id = 'pmm-commentary-' + entry.innerText.toLowerCase();
             $(entry).attr('id', button_id);
@@ -1281,7 +1074,7 @@ async function VotePost(post_id, score, singular) {
     }
     const printer = JSPLib.debug.getFunctionPrint('VotePost');
     printer.debuglogLevel(post_id, JSPLib.debug.DEBUG);
-    await JSPLib.danbooru.networkSetup();
+    await JSPLib.danbooru.updateSetup();
     JSPLib.network.post(`/posts/${post_id}/votes.json?score=${score}`)
         .always(JSPLib.danbooru.alwaysCallback())
         .then(
@@ -1304,7 +1097,7 @@ async function UnvotePost(post_id, singular) {
     printer.debuglogLevel(post_id, JSPLib.debug.DEBUG);
     await PMM.post_vote_promise;
     let vote_id = PMM.post_votes[post_id].id;
-    await JSPLib.danbooru.networkSetup();
+    await JSPLib.danbooru.updateSetup();
     //eslint-disable-next-line dot-notation
     JSPLib.network.delete(`/post_votes/${vote_id}.json`)
         .always(JSPLib.danbooru.alwaysCallback())
@@ -1326,7 +1119,7 @@ async function FavoritePost(post_id, singular) {
     }
     const printer = JSPLib.debug.getFunctionPrint('FavoritePost');
     printer.debuglogLevel(post_id, JSPLib.debug.DEBUG);
-    await JSPLib.danbooru.networkSetup();
+    await JSPLib.danbooru.updateSetup();
     JSPLib.network.post(`/favorites.json?post_id=${post_id}`)
         .always(JSPLib.danbooru.alwaysCallback())
         .then(
@@ -1348,7 +1141,7 @@ async function UnfavoritePost(post_id, singular) {
     }
     const printer = JSPLib.debug.getFunctionPrint('UnfavoritePost');
     printer.debuglogLevel(post_id, JSPLib.debug.DEBUG);
-    await JSPLib.danbooru.networkSetup();
+    await JSPLib.danbooru.updateSetup();
     //eslint-disable-next-line dot-notation
     JSPLib.network.delete(`/favorites/${post_id}.json`)
         .always(JSPLib.danbooru.alwaysCallback())
@@ -1366,7 +1159,7 @@ async function UnfavoritePost(post_id, singular) {
 async function UpdatePostCommentary(post_id, artist_commentary, tag_changes) {
     const printer = JSPLib.debug.getFunctionPrint('UpdatePostCommentary');
     printer.debuglogLevel(post_id, artist_commentary, tag_changes, JSPLib.debug.DEBUG);
-    await JSPLib.danbooru.networkSetup();
+    await JSPLib.danbooru.updateSetup();
     return JSPLib.network.put(`/posts/${post_id}/artist_commentary/create_or_update.json`, {data: {artist_commentary}})
         .always(JSPLib.danbooru.alwaysCallback())
         .then(
@@ -1672,7 +1465,7 @@ function EditDialogClose() {
 
 function FetchPostCommentary() {
     let post_id = Number($('#pmm-fetch input').val());
-    if (JSPLib.validate.validateID(post_id)) {
+    if (JSPLib.utility.validateID(post_id)) {
         JSPLib.notice.notice("Loading commentary data.");
         DisableCommentaryInterface();
         GetCommentary(post_id).then(() => {
@@ -1901,7 +1694,7 @@ function BroadcastPMM(ev) {
 
 function InitializeProgramValues() {
     PMM.user_id = Danbooru.CurrentUser.data('id');
-    if (!JSPLib.validate.validateID(PMM.user_id) || Danbooru.CurrentUser.data('level') < GOLD_LEVEL || Danbooru.CurrentUser.data('is-banned')) return false;
+    if (!JSPLib.utility.validateID(PMM.user_id) || Danbooru.CurrentUser.data('level') < GOLD_LEVEL || Danbooru.CurrentUser.data('is-banned')) return false;
     Object.assign(PMM, {
         mode: JSPLib.storage.getLocalData('pmm-mode'),
         available_mode_keys: new Set(PMM.available_modes.map((mode) => JSPLib.utility.kebabCase(mode.toLocaleLowerCase()))),
@@ -1960,6 +1753,8 @@ function Main() {
         render_menu_func: RenderSettingsMenu,
         program_css: PROGRAM_CSS,
         menu_css: MENU_CSS,
+        light_css: LIGHT_MODE_CSS,
+        dark_css: DARK_MODE_CSS,
     };
     if (!JSPLib.menu.preloadScript(PMM, preload)) return;
     InitializeModeMenu();
@@ -1976,26 +1771,26 @@ function Main() {
         $('#quick-edit-div').remove();
     }
     UnbindEventHandlers();
-    JSPLib.utility.setCSSStyle(JSPLib.utility.renderColorScheme(LIGHT_MODE_CSS, 'light'), 'lightmode');
-    JSPLib.utility.setCSSStyle(JSPLib.utility.renderColorScheme(DARK_MODE_CSS, 'dark'), 'darkmode');
 }
 
 /****Initialization****/
 
+//Variables for JSPLib
+
+JSPLib.program_name = PROGRAM_NAME;
+JSPLib.program_shortcut = PROGRAM_SHORTCUT;
+JSPLib.program_data = PMM;
+
 //Variables for debug.js
-JSPLib.debug.level = JSPLib.storage.checkLocalData(PROGRAM_SHORTCUT + '-debug-level', {validator: ((_, data) => Number.isInteger(data)), default_val: JSPLib.debug.INFO});
-JSPLib.debug.debug_console = JSPLib.storage.checkLocalData(PROGRAM_SHORTCUT + '-debug-mode', {validator: ((_, data) => typeof data === 'boolean'), default_val: false});
-JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
+JSPLib.debug.mode = false;
+JSPLib.debug.level = JSPLib.debug.INFO;
 
 //Variables for menu.js
-JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
-JSPLib.menu.program_name = PROGRAM_NAME;
-JSPLib.menu.program_data = PMM;
 JSPLib.menu.settings_config = SETTINGS_CONFIG;
 
 //Export JSPLib
-JSPLib.load.exportData(PROGRAM_NAME, PMM);
+JSPLib.load.exportData();
 
 /****Execution start****/
 
-JSPLib.load.programInitialize(Main, {program_name: PROGRAM_NAME, required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, optional_selectors: PROGRAM_LOAD_OPTIONAL_SELECTORS});
+JSPLib.load.programInitialize(Main, {required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, optional_selectors: PROGRAM_LOAD_OPTIONAL_SELECTORS});

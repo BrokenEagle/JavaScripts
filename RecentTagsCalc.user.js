@@ -1138,7 +1138,7 @@ function Main() {
     DisplayFrequentTags();
     $("#form").on('submit.rtc', CaptureTagSubmission);
     JSPLib.utility.setCSSStyle(program_css,'program');
-    JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
+    JSPLib.statistics.addPageStatistics();
     JSPLib.load.noncriticalTasks(CleanupTasks);
 }
 

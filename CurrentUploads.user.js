@@ -1738,7 +1738,7 @@ async function ProcessUploads() {
 }
 
 function CleanupTasks() {
-    JSPLib.storage.pruneProgramCache(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, prune_expires);
+    JSPLib.storage.pruneProgramCache(PROGRAM_DATA_REGEX, prune_expires);
 }
 
 //Cache functions
@@ -1886,7 +1886,7 @@ function Main() {
         CU.hidden = true;
         setTimeout(() => {$("#toggle-count-notice").click();}, JQUERY_DELAY);
     }
-    JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
+    JSPLib.statistics.addPageStatistics();
     JSPLib.load.noncriticalTasks(CleanupTasks);
 }
 

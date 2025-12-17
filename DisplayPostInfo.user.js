@@ -699,7 +699,7 @@ async function ProcessDomainStatistics() {
 ////OTHER
 
 function CleanupTasks() {
-    JSPLib.storage.pruneProgramCache(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, PRUNE_EXPIRES);
+    JSPLib.storage.pruneProgramCache(PROGRAM_DATA_REGEX, PRUNE_EXPIRES);
 }
 
 //Settings functions
@@ -873,7 +873,7 @@ function Main() {
         DPI.all_uploaders = GetUsersData(all_uploaders);
         UpdateThumbnailTitles();
     }
-    JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
+    JSPLib.statistics.addPageStatistics();
     JSPLib.load.noncriticalTasks(CleanupTasks);
 }
 

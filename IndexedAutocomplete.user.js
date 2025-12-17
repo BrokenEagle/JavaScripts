@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         IndexedAutocomplete
+// @name         IndexedAutocomplete (update library)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.25
+// @version      29.26
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -14,55 +14,24 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c7a29c59847b2dc1a2c305700826d6bb888d9a19/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru validate */
 
 /****Library updates****/
 
-JSPLib.load.programInitialize = function (self, entry_func, {program_name = null, function_name = null, required_variables = [], required_selectors = [], optional_selectors = [], max_retries = JSPLib.load._default_max_retries, timer_interval = JSPLib.load._default_timer_interval} = {}) {
-    if (program_name) {
-        if (JSPLib._window_jsp.program[program_name]) return;
-        JSPLib._window_jsp.program[program_name] = {
-            version: JSPLib._gm_info.script.version,
-            start: Date.now(),
-        };
-        JSPLib._window_jsp.info.scripts.push({
-            program_name,
-            load_start: performance.now(),
-        });
-        if (JSPLib.debug.debug_console) {
-            JSPLib._window_jsp.program[program_name].info = JSPLib._gm_info;
-        }
-    }
-    let initialize_name = program_name || function_name;
-    if (typeof initialize_name !== 'string') {
-        self.debug('logLevel', "No name program/function name passed in!", JSPLib.debug.ERROR);
-        return;
-    }
-    this.program_load_retries[initialize_name] = 0;
-    let load_id = this._program_load_id++;
-    JSPLib.debug.debugTime(load_id + "-programLoad");
-    this.program_load_timers[initialize_name] = JSPLib.utility.initializeInterval(() => {
-        if (!this.load_when_hidden && document.hidden) {
-            return false;
-        }
-        return this.programLoad(entry_func, initialize_name, required_variables, required_selectors, optional_selectors, max_retries, load_id);
-    }, timer_interval);
-};
-
-JSPLib.debug.addModuleLogs('load', ['programInitialize']);
+////NONE
 
 /****Global variables****/
 
@@ -75,7 +44,6 @@ const PROGRAM_LOAD_REQUIRED_SELECTORS = ['#top', '#page'];
 
 //Program name constants
 const PROGRAM_SHORTCUT = 'iac';
-const PROGRAM_KEYDOWN = 'keydown.iac';
 const PROGRAM_NAME = 'IndexedAutocomplete';
 
 //Program data constants
@@ -130,12 +98,12 @@ const SETTINGS_CONFIG = {
     },
     usage_enabled: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Uncheck to turn off usage mechanism."
     },
     alternate_sorting_enabled: {
         reset: false,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Check to use alternate weights and/or scales for sorting calculations."
     },
     postcount_scale: {
@@ -170,12 +138,12 @@ const SETTINGS_CONFIG = {
     },
     metatag_source_enabled: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Adds metatags to autocomplete results on all post tag search inputs."
     },
     BUR_source_enabled: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Adds BUR script elements to autocomplete results on bulk update requests, tag aliases, and tag implications."
     },
     source_results_returned: {
@@ -186,17 +154,17 @@ const SETTINGS_CONFIG = {
     },
     source_highlight_enabled: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Adds highlights and stylings to the HTML classes set by the program."
     },
     highlight_words_enabled: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Underlines word matches on word match results."
     },
     source_grouping_enabled: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Groups the results by tag autocomplete sources."
     },
     source_order: {
@@ -208,22 +176,22 @@ const SETTINGS_CONFIG = {
     },
     alternate_tag_source: {
         reset: false,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Uses the <code>/tags</code> controller instead of the normal autocomplete source."
     },
     alternate_tag_wildcards: {
         reset: false,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Allows using a wildcard anywhere in a string with a wildcard always being added to the end."
     },
     word_start_matches: {
         reset: false,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Always adds a wildcard to the end, which forces the old behavior of searching from the beginning only."
     },
     network_only_mode: {
         reset: false,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: `Always goes to network. <b><span style="color:red">Warning:</span> This negates the benefit of cached data!</b>`
     },
     recheck_data_interval: {
@@ -234,17 +202,17 @@ const SETTINGS_CONFIG = {
     },
     text_input_autocomplete_enabled: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Enables autocomplete in non-autocomplete text fields (Alt+A to enable/disable), inserting a wiki link upon completion."
     },
     forum_quick_search_enabled: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Adds a quick search bar where applicable using forum topic titles."
     },
     comment_quick_search_enabled: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Adds a quick search bar where applicable using post search queries."
     },
 };
@@ -1238,13 +1206,14 @@ const USAGE_CONSTRAINTS = {
 //Validate functions
 
 function ValidateEntry(key, entry) {
+    const printer = JSPLib.debug.getFunctionPrint('ValidateEntry');
     if (!JSPLib.validate.validateIsHash(key, entry)) {
         return false;
     }
     if (key.match(/^(?:ac|pl|us|fg|ss|ar|wp|ft)-/)) {
         return ValidateAutocompleteEntry(key, entry);
     }
-    this.debug('log', "Bad key!");
+    printer.debuglog("Bad key!");
     return false;
 }
 
@@ -1273,7 +1242,7 @@ function ValidateProgramData(key, entry) {
             }
             break;
         case 'iac-choice-info':
-            if (JSPLib.validate.isHash(entry)) {
+            if (JSPLib.utility.isHash(entry)) {
                 checkerror = ValidateUsageData(entry);
             } else {
                 checkerror = ['Value is not a hash'];
@@ -1309,7 +1278,7 @@ function ValidateUsageData(choice_info) {
     let error_messages = [];
     let choice_order = choice_info.choice_order;
     let choice_data = choice_info.choice_data;
-    if (!JSPLib.validate.isHash(choice_order) || !JSPLib.validate.isHash(choice_data)) {
+    if (!JSPLib.utility.isHash(choice_order) || !JSPLib.utility.isHash(choice_data)) {
         error_messages.push("Choice data/order is not a hash.");
         choice_info.choice_order = {};
         choice_info.choice_data = {};
@@ -1323,7 +1292,7 @@ function ValidateUsageData(choice_info) {
             continue;
         }
         for (let i = 0; i < choice_order[type].length; i++) {
-            if (!JSPLib.validate.isString(choice_order[type][i])) {
+            if (!JSPLib.utility.isString(choice_order[type][i])) {
                 error_messages.push(`choice_order[${type}][${i}] is not a string`);
                 choice_order[type].splice(i, 1);
                 i--;
@@ -1332,7 +1301,7 @@ function ValidateUsageData(choice_info) {
     }
     //Validate choice data
     for (let type in choice_data) {
-        if (!JSPLib.validate.isHash(choice_data[type])) {
+        if (!JSPLib.utility.isHash(choice_data[type])) {
             error_messages.push(`choice_data[${type}] is not a hash`);
             delete choice_data[type];
             continue;
@@ -1593,7 +1562,7 @@ function AutocompleteRenderItem(list, item) {
     <div class="iac-line-entry iac-query">${line_item}</div>
 </li>`);
     $list_item.data("item.autocomplete", item);
-    $list_item.find('a').on('click.iac', (event) => {event.preventDefault();});
+    $list_item.find('a').on(JSPLib.program_click, (event) => {event.preventDefault();});
     return $list_item.appendTo(list);
 }
 
@@ -1695,7 +1664,8 @@ function GroupSources(data) {
 }
 
 function FixExpirationCallback(key, value, tagname, type) {
-    this.debug('log', "Fixing expiration:", tagname);
+    const printer = JSPLib.debug.getFunctionPrint('FixExpirationCallback');
+    printer.debuglog("Fixing expiration:", tagname);
     JSPLib.danbooru.submitRequest('tags', {search: {name: tagname}}).then((data) => {
         if (!data.length) {
             return;
@@ -1760,6 +1730,7 @@ function AddUserSelected(type, metatag, term, data, query_type, word_mode, key) 
 
 //For autocomplete select
 function InsertUserSelected(data, input, selected) {
+    const printer = JSPLib.debug.getFunctionPrint('InsertUserSelected');
     if (!IAC.usage_enabled || !$(input).hasClass('iac-autocomplete')) {
         return;
     }
@@ -1774,7 +1745,7 @@ function InsertUserSelected(data, input, selected) {
         }
         item = $links.data('item.autocomplete');
         if (!item) {
-            this.debug('log', "Error: No autocomplete data found!", $links, item);
+            printer.debuglog("Error: No autocomplete data found!", $links, item);
             return;
         }
         type = item.type;
@@ -1814,7 +1785,7 @@ function InsertUserSelected(data, input, selected) {
     //Final failsafe
     if (!IAC.source_data[type] || !IAC.source_data[type][term]) {
         if (!IAC.choice_data[type] || !IAC.choice_data[type][term]) {
-            this.debug('log', "Error: Bad data selector!", type, term, selected, data, item);
+            printer.debuglog("Error: Bad data selector!", type, term, selected, data, item);
             return;
         }
         source_data = IAC.choice_data[type][term];
@@ -2002,24 +1973,26 @@ function HighlightGlobs(search, name) {
 }
 
 function CorrectUsageData() {
+    const printer = JSPLib.debug.getFunctionPrint('CorrectUsageData');
     let error_messages = ValidateUsageData(IAC);
     if (error_messages.length) {
-        this.debug('log', "Corrections to usage data detected!");
-        error_messages.forEach((error) => {this.debug('log', error);});
+        printer.debuglog("Corrections to usage data detected!");
+        error_messages.forEach((error) => {printer.debuglog(error);});
         StoreUsageData('correction');
     } else {
-        this.debug('log', "Usage data is valid.");
+        printer.debuglog("Usage data is valid.");
     }
 }
 
 function PruneUsageData() {
+    const printer = JSPLib.debug.getFunctionPrint('PruneUsageData');
     let is_dirty = false;
     for (let type_key in IAC.choice_data) {
         let type_entry = IAC.choice_data[type_key];
         for (let key in type_entry) {
             let entry = type_entry[key];
             if (!JSPLib.utility.validateExpires(entry.expires, GetUsageExpires())) {
-                this.debug('log', "Pruning choice data!", type_key, key);
+                printer.debuglog("Pruning choice data!", type_key, key);
                 IAC.choice_order[type_key] = JSPLib.utility.arrayDifference(IAC.choice_order[type_key], [key]);
                 delete type_entry[key];
                 is_dirty = true;
@@ -2067,34 +2040,38 @@ function DelayInitializeTagAutocomplete(selector, type) {
 //Rebind callback functions
 
 function RebindRenderCheck() {
-    JSPLib.utility.recheckTimer({
+    JSPLib.utility.recheckInterval({
         check: () => !JSPLib.utility.hasDOMDataKey(AUTOCOMPLETE_REBIND_SELECTORS, 'iac-render'),
         exec: RebindRender,
-    }, TIMER_POLL_INTERVAL, JSPLib.utility.one_second * 5);
+        interval: TIMER_POLL_INTERVAL,
+        duration: JSPLib.utility.one_second * 5,
+    });
 }
 
 function RebindAnyAutocomplete(selector, keycode, multiple) {
-    JSPLib.utility.recheckTimer({
+    JSPLib.utility.recheckInterval({
         check: () => JSPLib.utility.hasDOMDataKey(selector, 'uiAutocomplete'),
         exec: () => {
             $(selector).autocomplete('destroy').off('keydown.Autocomplete.tab');
             InitializeAutocompleteIndexed(selector, keycode, multiple);
-        }
-    }, TIMER_POLL_INTERVAL);
+        },
+        interval: TIMER_POLL_INTERVAL,
+    });
 }
 
 function RebindMultipleTag() {
-    JSPLib.utility.recheckTimer({
+    JSPLib.utility.recheckInterval({
         check: () => JSPLib.utility.hasDOMDataKey(AUTOCOMPLETE_MULTITAG_SELECTORS, 'uiAutocomplete'),
         exec: () => {
             $(AUTOCOMPLETE_MULTITAG_SELECTORS).autocomplete('destroy').off('keydown.Autocomplete.tab');
             InitializeTagQueryAutocompleteIndexed();
-        }
-    }, TIMER_POLL_INTERVAL);
+        },
+        interval: TIMER_POLL_INTERVAL,
+    });
 }
 
 function RebindSingleTag() {
-    JSPLib.utility.recheckTimer({
+    JSPLib.utility.recheckInterval({
         check: () => JSPLib.utility.hasDOMDataKey('[data-autocomplete=tag]', 'uiAutocomplete'),
         exec: () => {
             let autocomplete = AnySourceIndexed('ac', true);
@@ -2119,8 +2096,9 @@ function RebindSingleTag() {
                     autocomplete._renderMenu = RenderMenuItem();
                 });
             }, JQUERY_DELAY);
-        }
-    }, TIMER_POLL_INTERVAL);
+        },
+        interval: TIMER_POLL_INTERVAL,
+    });
 }
 
 function ReorderAutocompleteEvent($obj) {
@@ -2286,7 +2264,7 @@ function InitializeTextAreaAutocomplete() {
     IAC.ac_source = JSPLib.storage.getLocalData('iac-ac-source', {default_val: 0});
     IAC.ac_mode = JSPLib.storage.getLocalData('iac-ac-mode', {default_val: 0});
     IAC.ac_caps = JSPLib.storage.getLocalData('iac-ac-caps', {default_val: 0});
-    $('textarea:not([data-autocomplete]), input[type=text]:not([data-autocomplete])').on(PROGRAM_KEYDOWN, null, 'alt+a', (event) => {
+    $('textarea:not([data-autocomplete]), input[type=text]:not([data-autocomplete])').on(JSPLib.program_keydown, null, 'alt+a', (event) => {
         let $input = $(event.currentTarget);
         let type = AUTOCOMPLETE_SOURCE[IAC.ac_source];
         if (!$input.data('insert-autocomplete')) {
@@ -2295,7 +2273,7 @@ function InitializeTextAreaAutocomplete() {
             DisableTextAreaAutocomplete($input, type);
         }
     }).data('insert-autocomplete', false);
-    $('textarea:not([data-autocomplete]), input[type=text]:not([data-autocomplete])').on(PROGRAM_KEYDOWN, null, 'alt+1 alt+2 alt+3', (event) => {
+    $('textarea:not([data-autocomplete]), input[type=text]:not([data-autocomplete])').on(JSPLib.program_keydown, null, 'alt+1 alt+2 alt+3', (event) => {
         if (event.originalEvent.key === '1') {
             IAC.ac_source = (IAC.ac_source + 1) % AUTOCOMPLETE_SOURCE.length;
             JSPLib.notice.notice(RenderAutocompleteNotice('source', AUTOCOMPLETE_SOURCE, IAC.ac_source));
@@ -2338,7 +2316,8 @@ function DisableTextAreaAutocomplete($input) {
 //Main auxiliary functions
 
 async function NetworkSource(type, key, term, metatag, query_type, word_mode, process = true) {
-    this.debug('log', "Querying", type, ':', term);
+    const printer = JSPLib.debug.getFunctionPrint('NetworkSource');
+    printer.debuglog("Querying", type, ':', term);
     const CONFIG = SOURCE_CONFIG[type];
     let url_addons = $.extend({limit: IAC.source_results_returned}, CONFIG.data(term));
     let data = await JSPLib.danbooru.submitRequest(CONFIG.url, url_addons);
@@ -2360,7 +2339,7 @@ async function NetworkSource(type, key, term, metatag, query_type, word_mode, pr
 function AnySourceIndexed(keycode, has_context = false) {
     var type = SOURCE_KEY[keycode];
     return async function (term, prefix) {
-        if ((!SOURCE_CONFIG[type].spacesallowed || JSPLib.validate.isString(prefix)) && term.match(/\S\s/)) {
+        if ((!SOURCE_CONFIG[type].spacesallowed || JSPLib.utility.isString(prefix)) && term.match(/\S\s/)) {
             return [];
         }
         term = term.trim();
@@ -2384,7 +2363,7 @@ function AnySourceIndexed(keycode, has_context = false) {
         let UID = IAC.query_UID[key] = JSPLib.utility.getUniqueID();
         JSPLib.debug.debugTime('autocomplete-' + UID);
         JSPLib.debug.debugTime('source-' + UID);
-        var use_metatag = (JSPLib.validate.isString(prefix) ? prefix : "");
+        var use_metatag = (JSPLib.utility.isString(prefix) ? prefix : "");
         var query_type = (has_context ? $(this.element).data('autocomplete') : null);
         var final_data = null;
         if (!IAC.network_only_mode) {
@@ -2405,10 +2384,11 @@ function AnySourceIndexed(keycode, has_context = false) {
 }
 
 function RecheckSourceData(type, key, term, data, word_mode) {
+    const printer = JSPLib.debug.getFunctionPrint('RecheckSourceData');
     if (IAC.recheck_data_interval > 0) {
         let recheck_time = data.expires - GetRecheckExpires();
         if (!JSPLib.utility.validateExpires(recheck_time)) {
-            this.debug('log', "Rechecking", type, ':', term);
+            printer.debuglog("Rechecking", type, ':', term);
             NetworkSource(type, key, term, null, null, word_mode, false);
         }
     }
@@ -2558,7 +2538,7 @@ function SetupAutocompleteInitializations() {
 
 function CleanupTasks() {
     PruneUsageData();
-    JSPLib.storage.pruneProgramCache(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, PRUNE_EXPIRES);
+    JSPLib.storage.pruneProgramCache(PROGRAM_DATA_REGEX, PRUNE_EXPIRES);
 }
 
 //Cache functions
@@ -2578,7 +2558,8 @@ function UpdateLocalData(key, data) {
 //Settings functions
 
 function BroadcastIAC(event) {
-    this.debug('log', `(${event.data.type}): ${event.data.name} ${event.data.key}`);
+    const printer = JSPLib.debug.getFunctionPrint('BroadcastIAC');
+    printer.debuglog(`(${event.data.type}): ${event.data.name} ${event.data.key}`);
     switch (event.data.type) {
         case 'text_autocomplete':
             IAC.ac_source = event.data.source;
@@ -2615,12 +2596,13 @@ function GetRecheckExpires() {
 }
 
 function InitializeProgramValues() {
+    const printer = JSPLib.debug.getFunctionPrint('InitializeProgramValues');
     if (!JSPLib.storage.use_indexed_db) {
-        this.debug('warn', "No Indexed DB! Exiting...");
+        printer.debugwarn("No Indexed DB! Exiting...");
         return false;
     }
     if (document.querySelector(AUTOCOMPLETE_ALL_SELECTORS) === null && !GetHasQuickSearchBar()) {
-        this.debug('warn', "No autocomplete inputs! Exiting...");
+        printer.debugwarn("No autocomplete inputs! Exiting...");
         return false;
     }
     Object.assign(IAC, {
@@ -2634,7 +2616,7 @@ function InitializeProgramValues() {
     Object.assign(IAC, {
         categories: IAC.prefixes.filter((key) => (!['-', '~'].includes(key))).map((key) => (key.slice(0, -1))),
     });
-    if (JSPLib.validate.isHash(IAC.choice_info)) {
+    if (JSPLib.utility.isHash(IAC.choice_info)) {
         IAC.choice_order = IAC.choice_info.choice_order;
         IAC.choice_data = IAC.choice_info.choice_data;
     }
@@ -2723,40 +2705,23 @@ function Main() {
     SetupAutocompleteBindings();
     SetupAutocompleteInitializations();
     SetTagAutocompleteSource();
-    JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
+    JSPLib.statistics.addPageStatistics();
     JSPLib.load.noncriticalTasks(CleanupTasks);
 }
 
-/****Function decoration****/
-
-[
-    BroadcastIAC, NetworkSource, PruneUsageData, CorrectUsageData, InsertUserSelected,
-    FixExpirationCallback, ValidateEntry,
-    RecheckSourceData, InitializeProgramValues,
-] = JSPLib.debug.addFunctionLogs([
-    BroadcastIAC, NetworkSource, PruneUsageData, CorrectUsageData, InsertUserSelected,
-    FixExpirationCallback, ValidateEntry,
-    RecheckSourceData, InitializeProgramValues,
-]);
-
-[
-    ValidateUsageData, RenderSettingsMenu,
-] = JSPLib.debug.addFunctionTimers([
-    //Sync
-    ValidateUsageData, RenderSettingsMenu,
-]);
-
 /****Initialization****/
 
+//Variables for JSPLib
+
+JSPLib.program_name = PROGRAM_NAME;
+JSPLib.program_shortcut = PROGRAM_SHORTCUT;
+JSPLib.program_data = IAC;
+
 //Variables for debug.js
-JSPLib.debug.debug_console = false;
+JSPLib.debug.mode = false;
 JSPLib.debug.level = JSPLib.debug.INFO;
-JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
 //Variables for menu.js
-JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
-JSPLib.menu.program_name = PROGRAM_NAME;
-JSPLib.menu.program_data = IAC;
 JSPLib.menu.program_reset_data = PROGRAM_RESET_KEYS;
 JSPLib.menu.program_data_regex = PROGRAM_DATA_REGEX;
 JSPLib.menu.settings_callback = RemoteSettingsCallback;
@@ -2768,9 +2733,9 @@ JSPLib.menu.control_config = CONTROL_CONFIG;
 JSPLib.storage.indexedDBValidator = ValidateEntry;
 
 //Export JSPLib
-JSPLib.load.exportData(PROGRAM_NAME, IAC, {other_data: TERM_REGEX, datalist: ['cached_data']});
-JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [], alwayslist: [InitializeAutocompleteIndexed, InitializeTagQueryAutocompleteIndexed]});
+JSPLib.load.exportData({other_data: TERM_REGEX, read_list: ['cached_data']});
+JSPLib.load.exportFuncs({always_list: [InitializeAutocompleteIndexed, InitializeTagQueryAutocompleteIndexed]});
 
 /****Execution start****/
 
-JSPLib.load.programInitialize(Main, {program_name: PROGRAM_NAME, required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, required_selectors: PROGRAM_LOAD_REQUIRED_SELECTORS});
+JSPLib.load.programInitialize(Main, {required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, required_selectors: PROGRAM_LOAD_REQUIRED_SELECTORS});

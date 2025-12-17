@@ -1475,7 +1475,7 @@ FUNC.SetupInitializations = function () {
 };
 
 FUNC.CleanupTasks = function () {
-    JSPLib.storage.pruneProgramCache(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, PRUNE_EXPIRES);
+    JSPLib.storage.pruneProgramCache(PROGRAM_DATA_REGEX, PRUNE_EXPIRES);
 };
 
 //Menu functions
@@ -1584,7 +1584,7 @@ FUNC.Main = function() {
     };
     if (!JSPLib.menu.preloadScript(IRT, preload)) return;
     FUNC.SetupInitializations();
-    JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
+    JSPLib.statistics.addPageStatistics();
     JSPLib.load.noncriticalTasks(FUNC.CleanupTasks);
 };
 
