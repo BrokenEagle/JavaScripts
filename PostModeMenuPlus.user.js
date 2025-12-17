@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://github.com/BrokenEagle
-// @version      9.3
+// @version      9.4
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -101,8 +101,36 @@ JSPLib.utility.setDataAttribute = function ($obj, key, value) {
     $obj.data(key, value);
 };
 
+JSPLib.danbooru.pending_updates = {
+    get count () { return this._count; },
+    set count (val) {
+        this._count = val;
+        this.plural ||= this._count > 1;
+        this.finished &&= false;
+    },
+    reset() {
+        this.plural = false;
+        this.finished = true;
+    },
+    plural: false,
+    finished: false,
+    _count: 0,
+};
+
+JSPLib.danbooru.showPendingUpdateNotice = function() {
+    if (this.pending_updates.finished) return;
+    let text = (this.pending_updates.plural ? 'posts' : 'post');
+    if (this.pending_updates.count === 0) {
+        text = JSPLib.utility.titleizeString(text);
+        JSPLib.notice.notice(`${text} updated.`);
+        this.pending_updates.reset();
+    } else {
+        JSPLib.notice.notice(`Updating ${text} (${this.pending_updates.count} pending)...`, true);
+    }
+};
+
 JSPLib.danbooru.networkSetup = async function () {
-    this.pending_update_count += 1;
+    this.pending_updates.count += 1;
     this.showPendingUpdateNotice();
     if (this.num_network_requests >= this.max_network_requests) {
         await JSPLib.network.rateLimit('danbooru');
@@ -113,7 +141,7 @@ JSPLib.danbooru.networkSetup = async function () {
 JSPLib.danbooru.alwaysCallback = function () {
     const context = this;
     return function (_data, _message, resp) {
-        context.pending_update_count -= 1;
+        context.pending_updates.count -= 1;
         context.num_network_requests -= 1;
         context.checkAPIRateLimit(resp);
     };
