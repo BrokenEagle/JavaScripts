@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://github.com/BrokenEagle
-// @version      9.6
+// @version      9.7
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -576,26 +576,26 @@ const COMMENTARY_DIALOG_HTML = `
 <div id="pmm-commentary-dialog">
     <div id="pmm-fetch">
         <label>Post ID</label>
-        <input type="text" placeholder="Enter a post ID">
+        <input type="text" placeholder="Enter a post ID" autocomplete="off">
         <button name="post" title="Loads the commentary of the post ID entered.">Fetch post</button>
         <button name="parent" title="Loads the parent post's commentary amongst all of the selected posts.">Fetch parent</button>
         <button name="pool" title="Loads the first post's commentary of a pool amongst all of the selected posts.">Fetch pool</button>
     </div>
     <div class="pmm-commentary-input">
         <label for="pmm-artist-commentary-original-title">Original title</label>
-        <input id="pmm-artist-commentary-original-title" name="original_title" type="text">
+        <input id="pmm-artist-commentary-original-title" name="original_title" type="text" autocomplete="off">
     </div>
     <div class="pmm-commentary-input">
         <label for="pmm-artist-commentary-original-description">Original description</label>
-        <textarea id="pmm-artist-commentary-original-description" name="original_description"></textarea>
+        <textarea id="pmm-artist-commentary-original-description" name="original_description" autocomplete="off"></textarea>
     </div>
     <div class="pmm-commentary-input">
         <label class="string optional" for="pmm-artist-commentary-translated-title">Translated title</label>
-        <input id="pmm-artist-commentary-translated-title" name="translated_title" type="text">
+        <input id="pmm-artist-commentary-translated-title" name="translated_title" type="text" autocomplete="off">
     </div>
     <div class="pmm-commentary-input">
         <label class="text optional" for="pmm-artist-commentary-translated-description">Translated description</label>
-        <textarea name="translated_description" id="pmm-artist-commentary-translated-description"></textarea>
+        <textarea name="translated_description" id="pmm-artist-commentary-translated-description" autocomplete="off"></textarea>
     </div>
     <div id="pmm-commentary-tags">
         <div class="pmm-commentary-tag" data-tag="commentary">
