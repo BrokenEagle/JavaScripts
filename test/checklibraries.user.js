@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheckLibraries
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.0
+// @version      17.0
 // @source       https://danbooru.donmai.us/users/23799
 // @description  Runs tests on all of the libraries
 // @author       BrokenEagle
@@ -15,18 +15,18 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-setitems@1.4.0/dist/localforage-setitems.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20240821/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b7ba0e52a69709552ecf4a270895b32548716967/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b7ba0e52a69709552ecf4a270895b32548716967/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b7ba0e52a69709552ecf4a270895b32548716967/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b7ba0e52a69709552ecf4a270895b32548716967/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b7ba0e52a69709552ecf4a270895b32548716967/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b7ba0e52a69709552ecf4a270895b32548716967/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b7ba0e52a69709552ecf4a270895b32548716967/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b7ba0e52a69709552ecf4a270895b32548716967/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b7ba0e52a69709552ecf4a270895b32548716967/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b7ba0e52a69709552ecf4a270895b32548716967/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b7ba0e52a69709552ecf4a270895b32548716967/lib/saucenao.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b7ba0e52a69709552ecf4a270895b32548716967/lib/load.js
 // @connect      cdn.donmai.us
 // @connect      saucenao.com
 // ==/UserScript==
@@ -220,19 +220,19 @@ async function CheckDebugLibrary() {
     console.log("++++++++++++++++++++CheckDebugLibrary++++++++++++++++++++");
     console.log("Start time:", JSPLib.utility.getProgramTime());
     ResetResult();
-    let debug_enabled = JSPLib.debug.debug_console;
+    let debug_enabled = JSPLib.debug.mode;
     let debug_level = JSPLib.debug.level;
 
     console.log("Checking debuglog(): check this out");
     JSPLib.debug.pretext = "Check:";
     JSPLib.debug.debuglog("enabled: check this out");
     JSPLib.debug.debuglog(() => ["delaylog: check this out"]);
-    JSPLib.debug.debug_console = false;
+    JSPLib.debug.mode = false;
     JSPLib.debug.debuglog("disabled: check this out");
     JSPLib.debug.pretext = "";
 
     console.log("Checking debugwarnLevel(): WARNING+");
-    JSPLib.debug.debug_console = true;
+    JSPLib.debug.mode = true;
     JSPLib.debug.pretext = "CheckLibraries:";
     JSPLib.debug.level = JSPLib.debug.WARNING;
     JSPLib.debug.debugwarnLevel("ALL", JSPLib.debug.ALL);
@@ -244,10 +244,10 @@ async function CheckDebugLibrary() {
 
     console.log("Checking debug timer");
     JSPLib.debug.program_shortcut = "bl";
-    JSPLib.debug.debug_console = false;
+    JSPLib.debug.mode = false;
     JSPLib.debug.debugTime("check");
     JSPLib.debug.debugTimeEnd("check");
-    JSPLib.debug.debug_console = true;
+    JSPLib.debug.mode = true;
     JSPLib.debug.debugTime("check");
     JSPLib.debug.debugTimeEnd("check");
     JSPLib.debug.program_shortcut = "cl";
@@ -255,7 +255,7 @@ async function CheckDebugLibrary() {
     console.log("Checking record timer");
     JSPLib.debug.recordTime('test1', 'test');
     JSPLib.debug.recordTimeEnd('test1', 'test');
-    JSPLib.debug.debug_console = false;
+    JSPLib.debug.mode = false;
     JSPLib.debug.recordTime('test2', 'test');
     JSPLib.debug.recordTimeEnd('test2', 'test');
     let result_length1 = Object.keys(JSPLib.debug._records).length;
@@ -266,7 +266,7 @@ async function CheckDebugLibrary() {
     JSPLib.debug.debugExecute(() => {
         testvalue1 += 1;
     });
-    JSPLib.debug.debug_console = true;
+    JSPLib.debug.mode = true;
     JSPLib.debug.debugExecute(() => {
         testvalue1 += 2;
     });
@@ -285,22 +285,7 @@ async function CheckDebugLibrary() {
     TestPrint("Result value should be a promise", RecordResult(result1?.constructor?.name === "Promise"), {result: result1});
     TestPrint("Result promise value should be 5", RecordResult(result2 === 5), {result: result2});
 
-    console.log("Checking addFunctionLogs");
-    testfunc = function FunctionLogs (a, b) {this.debug('log', "check this out", a, "+", b, "= ?");};
-    [testfunc] = JSPLib.debug.addFunctionLogs([testfunc]);
-    testfunc('0', '1');
-
-    console.log("Checking addFunctionTimers");
-    [testfunc] = JSPLib.debug.addFunctionTimers([
-        [testfunc, 0, 1],
-    ]);
-    testfunc('a', 'b');
-
-    console.log("Testing decorated functions with debug off...");
-    JSPLib.debug.debug_console = false;
-    testfunc('c', 'd');
-
-    JSPLib.debug.debug_console = debug_enabled;
+    JSPLib.debug.mode = debug_enabled;
     JSPLib.debug.level = debug_level;
     console.log(`CheckDebugLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
@@ -309,7 +294,7 @@ async function CheckNoticeLibrary() {
     console.log("++++++++++++++++++++CheckNoticeLibrary++++++++++++++++++++");
     console.log("Start time:", JSPLib.utility.getProgramTime());
     ResetResult();
-    let debug_enabled = JSPLib.debug.debug_console;
+    let debug_enabled = JSPLib.debug.mode;
     let debug_level = JSPLib.debug.level;
 
     console.log("Checking notice");
@@ -321,18 +306,18 @@ async function CheckNoticeLibrary() {
     await JSPLib.utility.sleep(2000);
 
     console.log("Checking debugNotice");
-    JSPLib.debug.debug_console = false;
+    JSPLib.debug.mode = false;
     JSPLib.notice.debugNotice("shouldn't see this");
     await JSPLib.utility.sleep(2000);
-    JSPLib.debug.debug_console = true;
+    JSPLib.debug.mode = true;
     JSPLib.notice.debugNotice("should see this");
     await JSPLib.utility.sleep(2000);
 
     console.log("Checking debugError");
-    JSPLib.debug.debug_console = false;
+    JSPLib.debug.mode = false;
     JSPLib.notice.debugError("shouldn't see this");
     await JSPLib.utility.sleep(2000);
-    JSPLib.debug.debug_console = true;
+    JSPLib.debug.mode = true;
     JSPLib.notice.debugError("should see this");
     await JSPLib.utility.sleep(2000);
 
@@ -373,18 +358,18 @@ async function CheckNoticeLibrary() {
     await JSPLib.utility.sleep(2000);
 
     console.log("Checking debugNotice #2");
-    JSPLib.debug.debug_console = false;
+    JSPLib.debug.mode = false;
     JSPLib.notice.debugNotice("shouldn't see this #2");
     await JSPLib.utility.sleep(2000);
-    JSPLib.debug.debug_console = true;
+    JSPLib.debug.mode = true;
     JSPLib.notice.debugNotice("should see this #2");
     await JSPLib.utility.sleep(2000);
 
     console.log("Checking debugError #2");
-    JSPLib.debug.debug_console = false;
+    JSPLib.debug.mode = false;
     JSPLib.notice.debugError("shouldn't see this #2");
     await JSPLib.utility.sleep(2000);
-    JSPLib.debug.debug_console = true;
+    JSPLib.debug.mode = true;
     JSPLib.notice.debugError("should see this #2");
     await JSPLib.utility.sleep(2000);
 
@@ -403,7 +388,7 @@ async function CheckNoticeLibrary() {
     await JSPLib.utility.sleep(2000);
     jQuery('#cl-close-notice-link').click();
 
-    JSPLib.debug.debug_console = debug_enabled;
+    JSPLib.debug.mode = debug_enabled;
     JSPLib.debug.level = debug_level;
     console.log(`CheckNoticeLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
@@ -941,11 +926,6 @@ async function CheckUtilityLibrary() {
     let resultmeta1 = JSPLib.utility.getMeta(metaselector1);
     TestPrint(`Meta ${metaselector1} should have the content of ${repr(expectedmeta1)}`, RecordResult(expectedmeta1 === resultmeta1), {result: repr(resultmeta1)});
 
-    console.log("Checking getHTMLTree");
-    let expectedtree1 = "html > body.c-static.a-site-map.flex.flex-col:nth-of-type(1) > footer#page-footer.text-sm.text-center.flex-initial.mt-4.py-3.w-full.border-t.flex.flex-wrap.items-center.justify-center.gap-1:nth-of-type(1)";
-    result1 = JSPLib.utility.getHTMLTree(document.querySelector('footer'));
-    TestPrint(`The footer should have "${expectedtree1}" as the HTML tree`, RecordResult(result1 === expectedtree1), {result: result1});
-
     console.log("Checking getNthParent");
     $domtest = jQuery.parseHTML(walkdom_test);
     let child1 = jQuery("#child0a", $domtest)[0];
@@ -977,33 +957,36 @@ async function CheckUtilityLibrary() {
     dimensions2 = JSPLib.utility.getPreviewDimensions(dimensions1.width, dimensions1.height, base_dimensions);
     TestPrint(`Dimensions should have width of 106 and height of 150`, RecordResult(Boolean(dimensions2?.[0] === 106 && dimensions2?.[1] === 150)), {result: repr(dimensions2)});
 
-    console.log("Checking recheckTimer");
+    console.log("Checking recheckInterval");
     let checkvalue1 = false;
     let checkvalue2 = false;
     let checkvalue3 = false;
     let iterator1 = 0;
     let iterator2 = 0;
-    let timer1 = JSPLib.utility.recheckTimer({
+    let timer1 = JSPLib.utility.recheckInterval({
         check: () => {
             console.log("[Non-expiring] Checking value", ++iterator1, "times.");
             return checkvalue1;
         },
-        exec: () => {checkvalue2 = true;}
-    }, 100);
-    let timer2 = JSPLib.utility.recheckTimer({
+        exec: () => {checkvalue2 = true;},
+        interval: 100,
+    });
+    let timer2 = JSPLib.utility.recheckInterval({
         check: () => {
             console.log("[Expiring] Checking value", ++iterator2, "times.");
             return checkvalue1;
         },
-        exec: () => {checkvalue3 = true;}
-    }, 100, 100);
+        exec: () => {checkvalue3 = true;},
+        interval: 100,
+        duration: 100,
+    });
     await JSPLib.utility.sleep(JSPLib.utility.one_second);
     checkvalue1 = true;
     await JSPLib.utility.sleep(JSPLib.utility.one_second);
     TestPrint(`Non-expiring timer should have been successful`, RecordResult(timer1.timer === true), {result: repr(timer1)});
     TestPrint(`Non-expiring timer should have changed value to true`, RecordResult(checkvalue2 === true), {result: checkvalue2});
     TestPrint(`Expiring timer should have not been successful`, RecordResult(timer2.timer === false), {no_result: true});
-    TestPrint(`Expiring timer should have changed value to true`, RecordResult(checkvalue3 === false), {no_result: true});
+    TestPrint(`Expiring timer should have left value at false`, RecordResult(checkvalue3 === false), {no_result: true});
 
     console.log("Checking readCookie");
     let cookiename1 = "doesnt-exist";
@@ -1079,13 +1062,13 @@ function CheckStatisticsLibrary() {
     JSPLib.debug.recordTime('statistics', 'test');
     JSPLib.debug.recordTimeEnd('statistics', 'test');
     console.log("Shouldn't see output #2");
-    let debug_enabled = JSPLib.debug.debug_console;
-    JSPLib.debug.debug_console = false;
+    let debug_enabled = JSPLib.debug.mode;
+    JSPLib.debug.mode = false;
     JSPLib.statistics.outputAdjustedMean("Statistics Test");
     console.log("Should see output #3");
-    JSPLib.debug.debug_console = true;
+    JSPLib.debug.mode = true;
     JSPLib.statistics.outputAdjustedMean("Statistics Test");
-    JSPLib.debug.debug_console = debug_enabled;
+    JSPLib.debug.mode = debug_enabled;
 
     console.log(`CheckStatisticsLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
@@ -1138,7 +1121,7 @@ function CheckValidateLibrary() {
 
         console.log("Checking expires_constraints");
         testdata1 = {value: -1};
-        testdata2 = {value: "1"};
+        testdata2 = {value: 1};
         result1 = validate(testdata1, {value: JSPLib.validate.expires_constraints});
         result2 = validate(testdata2, {value: JSPLib.validate.expires_constraints});
         TestPrint(`Object ${repr(testdata1)} should have 1 validation error`, RecordResult(GetValidationLength(result1) === 1), {no_result: true});
@@ -1607,7 +1590,7 @@ async function CheckStorageLibrary() {
         console.log("Checking pruneProgramCache");
         await JSPLib.storage.saveData('expired-value', data3);
         await JSPLib.storage.saveData('good-value', data4);
-        await JSPLib.storage.pruneProgramCache('cl', /-value$/, JSPLib.utility.one_minute);
+        await JSPLib.storage.pruneProgramCache(/-value$/, JSPLib.utility.one_minute);
         result1 = await JSPLib.storage.retrieveData('expired-value');
         result2 = await JSPLib.storage.retrieveData('good-value');
         TestPrint("expired-value should be pruned and return null with retrieveData", RecordResult(result1 === null), {result: repr(result1)});
@@ -1627,12 +1610,12 @@ async function CheckStorageLibrary() {
         console.log("Checking programCacheInfo");
         await JSPLib.storage.saveData('expired-value', data3);
         await JSPLib.storage.saveData('good-value', data4);
-        result1 = await JSPLib.storage.programCacheInfo('cl', /^(good|expired)-value$/);
+        result1 = await JSPLib.storage.programCacheInfo(/^(good|expired)-value$/);
         result2 = Object.keys(result1);
         TestPrint("Cache info should have 3 storage keys", RecordResult(ArrayEqual(result2, ['index', 'session', 'local'], false)), {result: result2});
         TestPrint("Cache info should have 2 Index DB items", RecordResult(result1.index.program_items === 2), {result: result1.index.program_items});
         TestPrint("Cache info should have 2 session storage items", RecordResult(result1.session.program_items === 2), {result: result1.session.program_items});
-        TestPrint("Cache info should have 1 local storage items", RecordResult(result1.local.program_items === 1), {result: result1.local.program_items});
+        TestPrint("Cache info should have 2 local storage items", RecordResult(result1.local.program_items === 2), {result: result1.local.program_items});
     }
 
     //Cleanup actions
@@ -1650,7 +1633,7 @@ async function CheckConcurrencyLibrary() {
     let key1 = 'cl-process-semaphore-test';
     let key2 = 'cl.semaphore.test';
     localStorage.removeItem(key1);
-    let result1 = JSPLib.concurrency.reserveSemaphore('cl', 'test');
+    let result1 = JSPLib.concurrency.reserveSemaphore('test');
     let result2 = JSPLib.storage.getStorageData(key1, localStorage);
     console.log(JSPLib._window);
     let result3 = JSPLib.utility.isNamespaceBound(JSPLib._window, 'beforeunload', key2);
@@ -1658,11 +1641,11 @@ async function CheckConcurrencyLibrary() {
     TestPrint("Before unload event should have been created", RecordResult(result3 === true), {result: result3});
 
     console.log("Checking checkSemaphore");
-    result1 = JSPLib.concurrency.checkSemaphore('cl', 'test');
+    result1 = JSPLib.concurrency.checkSemaphore('test');
     TestPrint("Semaphore should not be available", RecordResult(result1 === false), {result: result1});
 
     console.log("Checking freeSemaphore");
-    JSPLib.concurrency.freeSemaphore('cl', 'test');
+    JSPLib.concurrency.freeSemaphore('test');
     result1 = JSPLib.concurrency.checkSemaphore('cl', 'test');
     result2 = JSPLib.utility.isNamespaceBound(JSPLib._window, 'beforeunload', key2);
     TestPrint("Semaphore should be available", RecordResult(result1 === true), {result: result1});
@@ -1801,9 +1784,9 @@ async function CheckNetworkLibrary() {
 
     console.log("Checking processError");
     let error1 = {status: 502};
-    let baderror1 = {status: 999, responseText: "Bad error code!"};
+    let baderror1 = {status: -999, responseText: "Bad error!"};
     result1 = JSPLib.network.processError(error1, "CheckNetworkLibrary");
-    TestPrint(`The error ${repr(error1)} should be processed to ${repr(error1)}`, RecordResult(result1.status === baderror1.status && result1.responseText === baderror1.responseText), {result: repr(result1)});
+    TestPrint(`The error ${repr(error1)} should be processed to ${repr(baderror1)}`, RecordResult(result1.status === baderror1.status && result1.responseText === baderror1.responseText), {result: repr(result1)});
 
     console.log("Checking logError");
     JSPLib.network.error_domname = "#checklibrary-error";
@@ -2203,29 +2186,32 @@ async function checklibrary() {
     document.body.style.height = '5000px';
     setTimeout(() => {window.scroll(0, 10000);}, 2000);
 
-    //await CheckDebugLibrary();
-    //await CheckNoticeLibrary();
-    //await CheckUtilityLibrary();
-    //CheckStatisticsLibrary();
-    //CheckValidateLibrary();
+    await CheckDebugLibrary();
+    await CheckNoticeLibrary();
+    await CheckUtilityLibrary();
+    CheckStatisticsLibrary();
+    CheckValidateLibrary();
     await CheckStorageLibrary();
-    //await CheckConcurrencyLibrary();
-    //await CheckNetworkLibrary();
-    //await CheckDanbooruLibrary();
-    //await CheckSaucenaoLibrary();
-    //await CheckLoadLibrary();
+    await CheckConcurrencyLibrary();
+    await CheckNetworkLibrary();
+    await CheckDanbooruLibrary();
+    await CheckSaucenaoLibrary();
+    await CheckLoadLibrary();
     console.log(`All library results: ${overall_test_successes} succeses, ${overall_test_failures} failures`);
 }
 
 /****INITIALIZATION****/
 
-JSPLib.debug.debug_console = true;
+JSPLib.program_shortcut = 'cl';
+JSPLib.program_name = 'CheckLibraries';
+
+JSPLib.debug.mode = true;
 JSPLib.debug.level = JSPLib.debug.INFO;
-JSPLib.debug.program_shortcut = 'cl';
 
 //Export JSPLib
-JSPLib.load.exportData('CheckLibraries');
+JSPLib.load.exportData();
 
 /****Execution start****/
 
 JSPLib.load.programInitialize(checklibrary, {program_name: 'CL', required_variables: ['window.jQuery', 'window.Danbooru'], required_selectors: ["footer"]});
+
