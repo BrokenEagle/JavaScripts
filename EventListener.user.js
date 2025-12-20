@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      25.9
+// @version      25.10
 // @description  Informs users of new events.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -12,253 +12,24 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/EventListener.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/EventListener.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru */
 
 /****Library updates****/
 
-JSPLib.debug.getFunctionPrint = function (func_name) {
-    this._func_printer ??= {};
-    if (!this._func_printer[func_name]) {
-        let printer = {};
-        if (this.debug_console) {
-            let context = this;
-            context._func_iteration ??= {};
-            context._func_iteration[func_name] = 0;
-            ['debuglog', 'debugwarn', 'debugerror', 'debuglogLevel', 'debugwarnLevel', 'debugerrorLevel'].forEach((debugfunc) => {
-                printer[debugfunc] = function (...args) {
-                    let iteration = context._func_iteration[func_name]++;
-                    context[debugfunc](`${func_name}[${iteration}] -`, ...args);
-                };
-            });
-        } else {
-            ['debuglog', 'debugwarn', 'debugerror', 'debuglogLevel', 'debugwarnLevel', 'debugerrorLevel'].forEach((debugfunc) => {
-                printer[debugfunc] = (() => {});
-            });
-        }
-        this._func_printer[func_name] = printer;
-    }
-    return this._func_printer[func_name];
-};
-
-JSPLib.utility.renderTemplate = function (literals, args) {
-    let output = "";
-    for (let i = 0; i < literals.raw.length; i++) {
-        output += literals.raw[i];
-        if (i < args.length) {
-            output += args[i];
-        }
-    }
-    return output;
-};
-
-JSPLib.utility.normalizeHTML = function () {
-    return function (literals, ...args) {
-        let output = JSPLib.utility.renderTemplate(literals, args);
-        return output.replace(/\s+/g, ' ').replace(/(?<=>)\s/g, "").replace(/\s(?=<)/g, "");
-    };
-};
-
-JSPLib.utility.toTimeStamp = function (time_value) {
-    while (typeof time_value === 'string') {
-        var tmp;
-        try {
-            tmp = JSON.parse(time_value);
-        } catch(e) {
-            break;
-        }
-        time_value = tmp;
-    }
-    return (typeof time_value === 'string' ? new Date(time_value).getTime() : time_value);
-};
-
-JSPLib.utility.timeAgo = function (time_value, {precision = 2, compare_time = null, recent_duration = null} = {}) {
-    let timestamp = this.toTimeStamp(time_value);
-    if (!this.isTimestamp(timestamp)) return "N/A";
-    compare_time ??= Date.now();
-    let time_interval = compare_time - timestamp;
-    if (this.isTimestamp(recent_duration) && time_interval < recent_duration) {
-        return "recently";
-    }
-    if (time_interval < JSPLib.utility.one_hour) {
-        return this.setPrecision(time_interval / JSPLib.utility.one_minute, precision) + " minutes ago";
-    }
-    if (time_interval < JSPLib.utility.one_day) {
-        return this.setPrecision(time_interval / JSPLib.utility.one_hour, precision) + " hours ago";
-    }
-    if (time_interval < JSPLib.utility.one_month) {
-        return this.setPrecision(time_interval / JSPLib.utility.one_day, precision) + " days ago";
-    }
-    if (time_interval < JSPLib.utility.one_year) {
-        return this.setPrecision(time_interval / JSPLib.utility.one_month, precision) + " months ago";
-    }
-    return this.setPrecision(time_interval / JSPLib.utility.one_year, precision) + " years ago";
-};
-
-JSPLib.utility.timeFromNow = function (time_value, {precision = 2, compare_time = null, recent_duration = null} = {}) {
-    let timestamp = this.toTimeStamp(time_value);
-    if (!this.isTimestamp(timestamp)) return "N/A";
-    compare_time ??= Date.now();
-    let time_interval = timestamp - compare_time;
-    if (this.isTimestamp(recent_duration) && time_interval < recent_duration) {
-        return "soon";
-    }
-    if (time_interval < 0) {
-        return "already passed";
-    }
-    if (time_interval < JSPLib.utility.one_hour) {
-        return "in " + this.setPrecision(time_interval / JSPLib.utility.one_minute, precision) + " minutes";
-    }
-    if (time_interval < JSPLib.utility.one_day) {
-        return "in " + this.setPrecision(time_interval / JSPLib.utility.one_hour, precision) + " hours";
-    }
-    if (time_interval < JSPLib.utility.one_month) {
-        return "in " + this.setPrecision(time_interval / JSPLib.utility.one_day, precision) + " days";
-    }
-    if (time_interval < JSPLib.utility.one_year) {
-        return "in " + this.setPrecision(time_interval / JSPLib.utility.one_month, precision) + " months";
-    }
-    return "in " + this.setPrecision(time_interval / JSPLib.utility.one_year, precision) + " years";
-};
-
-JSPLib.utility.isHash = function (value) {
-    return typeof value === "object" && value !== null && !Array.isArray(value);
-};
-
-JSPLib.utility.isString = function (value) {
-    return typeof value === "string";
-};
-
-JSPLib.utility.isNumber = function (value) {
-    return typeof value === 'number' && !isNaN(value);
-};
-
-JSPLib.notice.notice = function (message, {permanent = false, append = false} = {}) {
-    if (this.danbooru_installed && !this.banner_installed) {
-        JSPLib._Danbooru.Utility.notice(message);
-    } else {
-        this._notice(message, permanent, append);
-    }
-};
-
-JSPLib.storage.inMemoryStorage = function (key, storage) {
-    let storage_type = this._getStorageType(storage);
-    return key in this.memory_storage[storage_type];
-};
-
-JSPLib.storage.getStorageData = function (key, storage, {default_val = null, bypass = false} = {}) {
-    let storage_type = this._getStorageType(storage);
-    var return_val;
-    if (!bypass && key in this.memory_storage[storage_type]) {
-        return_val = this.memory_storage[storage_type][key];
-    } else if (key in storage) {
-        let record_key = this._getUID(key);
-        JSPLib.debug.recordTime(record_key, 'Storage');
-        let data = storage.getItem(key);
-        JSPLib.debug.recordTimeEnd(record_key, 'Storage');
-        try {
-            return_val = this.memory_storage[storage_type][key] = JSON.parse(data);
-        } catch (e) {
-            //swallow exception
-        }
-    }
-    if (return_val === undefined){
-        return_val = default_val;
-    }
-    return JSPLib.utility.dataCopy(return_val);
-};
-
-JSPLib.storage.getLocalData = function (key, {default_val = null, bypass = false} = {}) {
-    return this.getStorageData(key, localStorage, {default_val, bypass});
-};
-
-JSPLib.storage.checkStorageData = function (self, key, storage, {validator = JSPLib.storage.localSessionValidator, default_val = null, bypass = false} = {}) {
-    let storage_type = this._getStorageType(storage);
-    self.debug('logLevel', "Checking storage", key, JSPLib.debug.ALL);
-    if (!bypass && key in this.memory_storage[storage_type]) {
-        self.debug('logLevel', "Memory hit", key, JSPLib.debug.VERBOSE);
-        return this.memory_storage[storage_type][key];
-    }
-    if (!(key in storage)) {
-        self.debug('logLevel', "Storage miss", key, JSPLib.debug.VERBOSE);
-        return default_val;
-    }
-    let data = this.getStorageData(key, storage, {bypass});
-    if (validator?.(key, data)) {
-        self.debug('logLevel', "Data validated", key, JSPLib.debug.ALL);
-        return data;
-    }
-    self.debug('logLevel', "Data corrupted", key, JSPLib.debug.DEBUG);
-    return default_val;
-};
-
-JSPLib.storage.checkLocalData = function (key, {validator = JSPLib.storage.localSessionValidator, default_val = null, bypass = false} = {}) {
-    return this.checkStorageData(key, localStorage, {validator, default_val, bypass});
-};
-
-JSPLib.debug.addModuleLogs('storage', ['checkStorageData']);
-
-JSPLib.concurrency.checkSemaphore = function (program_shortcut, name) {
-    let storage_name = this._getSemaphoreName(program_shortcut, name, true);
-    let semaphore = JSPLib.storage.getLocalData(storage_name, {default_val: 0, bypass: true});
-    return !JSPLib.utility.validateExpires(semaphore, this.process_semaphore_expires);
-};
-
-JSPLib.concurrency.setRecheckTimeout = function (storage_key, expires_time, jitter = null) {
-    if (JSPLib.utility.isNumber(jitter) && jitter < expires_time) {
-        expires_time += -Math.random() * jitter;
-    }
-    let expires_timestamp = JSPLib.utility.getExpires(expires_time);
-    JSPLib.storage.setLocalData(storage_key, expires_timestamp);
-    return expires_timestamp;
-};
-
-JSPLib.network.getNotify = function (url, {url_addons = {}, custom_error = "", ajax_options, xhr_options} = {}) {
-    let full_url = url + (Object.keys(url_addons).length ? '?' + JSPLib._jQuery.param(url_addons) : '');
-    JSPLib.debug.recordTime(full_url, 'Network');
-    return this.get(full_url, {ajax_options, xhr_options}).then(
-        //Success
-        (data) => data,
-        //Failure
-        (error) => {
-            let process_error = this.processError(error, "network.getNotify");
-            let error_key = `${url}?${JSPLib._jQuery.param(url_addons)}`;
-            this.logError(error_key, process_error);
-            this.notifyError(process_error, custom_error);
-            return false;
-        },
-    ).always(() => {
-        JSPLib.debug.recordTimeEnd(full_url, 'Network');
-    });
-};
-
-JSPLib.menu._broadcastReset = function (event, menu) {
-    Object.assign(menu.program_data, JSPLib.utility.dataCopy(menu.program_reset_data));
-    menu.loadStorageKeys();
-    JSPLib.menu._updateSettingsFromBroadcast(event.data.user_settings);
-    if (typeof menu.reset_callback === 'function') {
-        menu.reset_callback();
-    }
-};
-
-JSPLib.menu._broadcastSettings = function (event, menu) {
-    JSPLib.menu._updateSettingsFromBroadcast(event.data.user_settings);
-    if (typeof menu.settings_callback === 'function') {
-        menu.settings_callback();
-    }
-};
+////NONE
 
 /****Global variables****/
 
@@ -332,18 +103,18 @@ const MODACTION_EVENTS = [
 const SETTINGS_CONFIG = {
     display_event_notice: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Will trigger a popup notice when there are new events."
     },
     display_event_panel: {
         reset: false,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Will display a notice panel on new events, similar to the old version."
     },
     page_size: {
         reset: 20,
         parse: parseInt,
-        validate: (data) => (Number.isInteger(data) && data >= 5 && data <= 200),
+        validate: (data) => (JSPLib.utility.isInteger(data) && data >= 5 && data <= 200),
         hint: "The amount of items to display on each page of events (min 5, max 200)."
     },
     events_order: {
@@ -355,32 +126,32 @@ const SETTINGS_CONFIG = {
     },
     filter_user_events: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Only show events not created by the user."
     },
     show_creator_events: {
         reset: false,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Show subscribe events regardless of subscribe status on the item's page when the creator is the user.<br>&emsp;<i>(See <b>Additional setting details</b> for more clarifying info)</i>."
     },
     show_parent_events: {
         reset: false,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Show post events when a subscribed post is parented by another post."
     },
     filter_untranslated_commentary: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Only show new commentary that has translated sections."
     },
     filter_autobans: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: `Only show bans not created by <a class="user-moderator with-style" style="color:var(--user-moderator-color)" href="/users/${SERVER_USER_ID}">DanbooruBot</a>.`
     },
     filter_autofeedback: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: 'Only show feedback not created by an administrative action, e.g. bans or promotions.'
     },
     filter_post_edits: {
@@ -391,13 +162,13 @@ const SETTINGS_CONFIG = {
     },
     filter_BUR_edits: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: `Only show edits not created by <a class="user-moderator with-style" style="color:var(--user-moderator-color)" href="/users/${SERVER_USER_ID}">DanbooruBot</a>.`
     },
     filter_users: {
         reset: "",
-        parse: (input) => (JSPLib.utility.arrayUnique(input.split(/\s*,\s*/).map(Number).filter(JSPLib.validate.validateID))),
-        validate: (input) => (JSPLib.validate.validateIDList(input)),
+        parse: (input) => (JSPLib.utility.arrayUnique(input.split(/\s*,\s*/).map(Number).filter(JSPLib.utility.validateID))),
+        validate: (input) => (JSPLib.utility.validateIDList(input)),
         hint: 'Enter a list of user IDs to filter (comma separated).'
     },
     recheck_interval: {
@@ -1515,24 +1286,24 @@ function ValidateProgramData(key, entry) {
             error_messages = JSPLib.menu.validateUserSettings(entry);
             break;
         case 'bool':
-            if (!JSPLib.validate.isBoolean(entry)) {
+            if (!JSPLib.utility.isBoolean(entry)) {
                 error_messages = ["Value is not a boolean."];
             }
             break;
         case 'time':
-            if (!Number.isInteger(entry)) {
+            if (!JSPLib.utility.isInteger(entry)) {
                 error_messages = ["Value is not an integer."];
             } else if (entry < 0) {
                 error_messages = ["Value is not greater than or equal to zero."];
             }
             break;
         case 'id':
-            if (!JSPLib.validate.validateID(entry)) {
+            if (!JSPLib.utility.validateID(entry)) {
                 error_messages = ["Value is not a valid ID."];
             }
             break;
         case 'idlist':
-            if (!JSPLib.validate.validateIDList(entry)) {
+            if (!JSPLib.utility.validateIDList(entry)) {
                 error_messages = ["Value is not a valid ID list."];
             }
             break;
@@ -1568,7 +1339,7 @@ function ValidateNotice(key, entry) {
     }
     let messages = [];
     for (let type in entry) {
-        if (!JSPLib.validate.validateIDList(entry[type])) {
+        if (!JSPLib.utility.validateIDList(entry[type])) {
             messages.push([`${key}.${type} is not a valid ID list.`]);
         }
     }
@@ -1636,10 +1407,10 @@ function CorrectEvents(key, events) {
 function CorrectList(type, typelist) {
     const printer = JSPLib.debug.getFunctionPrint('CorrectList');
     let error_messages = [];
-    if (!JSPLib.validate.validateIDList(typelist[type])) {
+    if (!JSPLib.utility.validateIDList(typelist[type])) {
         error_messages.push([`Corrupted data on ${type} list!`]);
         let oldlist = JSPLib.utility.dataCopy(typelist[type]);
-        typelist[type] = (Array.isArray(typelist[type]) ? typelist[type].filter((id) => JSPLib.validate.validateID(id)) : []);
+        typelist[type] = (Array.isArray(typelist[type]) ? typelist[type].filter((id) => JSPLib.utility.validateID(id)) : []);
         JSPLib.debug.debugExecute(() => {
             let validation_error = (Array.isArray(oldlist) ? JSPLib.utility.arrayDifference(oldlist, typelist[type]) : typelist[type]);
             error_messages.push(["Validation error:", validation_error]);
@@ -1756,15 +1527,15 @@ function CheckUserEnabled(type) {
 }
 
 function CheckEventSemaphore(type, source) {
-    return JSPLib.concurrency.checkSemaphore(PROGRAM_SHORTCUT, `${type}-${source}`);
+    return JSPLib.concurrency.checkSemaphore(`${type}-${source}`);
 }
 
 function ReserveEventSemaphore(type, source) {
-    return JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, `${type}-${source}`);
+    return JSPLib.concurrency.reserveSemaphore(`${type}-${source}`);
 }
 
 function FreeEventSemaphore(type, source) {
-    return JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT, `${type}-${source}`);
+    return JSPLib.concurrency.freeSemaphore(`${type}-${source}`);
 }
 
 function CheckEventTimeout(type, source) {
@@ -1944,7 +1715,7 @@ function CheckUserList(type) {
 
 function SaveLastID(type, source, last_id) {
     const printer = JSPLib.debug.getFunctionPrint('SaveLastID');
-    if (!JSPLib.validate.validateID(last_id)) {
+    if (!JSPLib.utility.validateID(last_id)) {
         printer.debugwarnLevel("Last ID for", type, "is not valid!", last_id, JSPLib.debug.WARNING);
         return;
     }
@@ -2639,15 +2410,30 @@ function InstallErrorPage(type, page) {
     });
 }
 
-function RebindMenuAutocomplete() {
-    JSPLib.utility.recheckTimer({
-        check: () => JSPLib.utility.hasDOMDataKey('#user_blacklisted_tags, #user_favorite_tags', 'uiAutocomplete'),
-        exec: () => {
-            $('#user_blacklisted_tags, #user_favorite_tags').autocomplete('destroy').off('keydown.Autocomplete.tab');
-            $('#el-control-search-query, #el-setting-filter-post-edits, ' + JSPLib.utility.joinList(POST_QUERY_EVENTS, '#el-setting-', '-query', ',')).attr('data-autocomplete', 'tag-query');
-            setTimeout(Danbooru.Autocomplete.initialize_tag_autocomplete, JQUERY_DELAY);
-        }
-    }, TIMER_POLL_INTERVAL);
+function SetupMenuAutocomplete() {
+    const printer = JSPLib.debug.getFunctionPrint('SetupAutocomplete');
+    let selector = '#el-setting-filter-post-edits,' + JSPLib.utility.joinList(POST_QUERY_EVENTS, '#el-setting-', '-query', ',');
+    JSPLib.load.scriptWaitExecute(EL, 'IAC', {
+        available: () => {
+            EL.IAC.InitializeTagQueryAutocompleteIndexed(selector, null);
+            printer.debuglogLevel(`Initialized IAC autocomplete on ${selector}.`, JSPLib.debug.DEBUG);
+        },
+        fallback: () => {
+            JSPLib.utility.setDataAttribute($(selector), 'autocomplete', 'tag-query');
+            $(selector).autocomplete({
+                select (_event, ui) {
+                    Danbooru.Autocomplete.insert_completion(this, ui.item.value);
+                    return false;
+                },
+                async source(_req, resp) {
+                    let term = Danbooru.Autocomplete.current_term(this.element);
+                    let results = await Danbooru.Autocomplete.autocomplete_source(term, "tag_query");
+                    resp(results);
+                },
+            });
+            printer.debuglogLevel(`Initialized Danbooru autocomplete on ${selector}.`, JSPLib.debug.DEBUG);
+        },
+    });
 }
 
 //Filter functions
@@ -3117,9 +2903,9 @@ function SubscribeMultiLink(event) {
     type_list.forEach((type) => {
         setTimeout(() => {
             if (event_setting === 'subscribe_events_enabled') {
-                SetItemList_T(type, subscribed, item_id);
+                SetItemList(type, subscribed, item_id);
             } else if (event_setting === 'user_events_enabled') {
-                SetUserList_T(type, subscribed, item_id);
+                SetUserList(type, subscribed, item_id);
             }
         }, NONSYNCHRONOUS_DELAY);
     });
@@ -3166,7 +2952,7 @@ function CheckMore(event) {
     if (ReserveEventSemaphore(type, source)) {
         JSPLib.notice.notice(`Checking more ${TYPEDICT[type].plural}.`);
         let selector = `.el-home-section[data-type=${type}] .el-pages-left[data-source="${source}"] span`;
-        ProcessEventType_T(type, source, false, selector).then((new_events) => {
+        ProcessEventType(type, source, false, selector).then((new_events) => {
             UpdateAfterCheck(type, source, new_events);
             FreeEventSemaphore(type, source);
         });
@@ -3176,7 +2962,7 @@ function CheckMore(event) {
 function CheckAll(event) {
     let {type, source} = GetCheckVars(event);
     if (type === 'controls') {
-        if (JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'controls')) {
+        if (JSPLib.concurrency.reserveSemaphore('controls')) {
             JSPLib.notice.notice("Starting events check.");
             let promise_hash = {};
             ALL_EVENTS.forEach((type) => {
@@ -3186,7 +2972,7 @@ function CheckAll(event) {
                         if (ReserveEventSemaphore(type, source)) {
                             promise_hash[type] ??= {};
                             let selector = `.el-home-section[data-type=${type}] .el-pages-left[data-source="${source}"] span`;
-                            promise_hash[type][source] = ProcessEventType_T(type, source, true, selector);
+                            promise_hash[type][source] = ProcessEventType(type, source, true, selector);
                         }
                     }
                 });
@@ -3199,14 +2985,14 @@ function CheckAll(event) {
                     }
                 }
                 JSPLib.notice.notice("All events have been checked.", {append: true});
-                JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT, 'controls');
+                JSPLib.concurrency.freeSemaphore('controls');
             });
         }
     } else {
         if (ReserveEventSemaphore(type, source)) {
             JSPLib.notice.notice(`Checking all ${TYPEDICT[type].plural}.`);
             let selector = `.el-home-section[data-type=${type}] .el-pages-left[data-source="${source}"] span`;
-            ProcessEventType_T(type, source, true, selector).then((new_events) => {
+            ProcessEventType(type, source, true, selector).then((new_events) => {
                 UpdateAfterCheck(type, source, new_events);
                 FreeEventSemaphore(type, source);
             });
@@ -3224,7 +3010,7 @@ function ResetEvent(event) {
                     let overflow = JSPLib.storage.checkLocalData(`el-${type}-${source}-overflow`, {default_val: false});
                     if (overflow) {
                         promise_hash[type] ??= {};
-                        promise_hash[type][source] = SaveRecentDanbooruID_T(type, source);
+                        promise_hash[type][source] = SaveRecentDanbooruID(type, source);
                     }
                 });
             });
@@ -3239,7 +3025,7 @@ function ResetEvent(event) {
         }
     } else {
         if (confirm("This will reset the event position to the latest available item. Continue?")) {
-            SaveRecentDanbooruID_T(type, source).then(() => {
+            SaveRecentDanbooruID(type, source).then(() => {
                 UpdateEventSource(type, source, {broadcast: true});
                 JSPLib.notice.notice("Positions reset.");
             });
@@ -3403,7 +3189,7 @@ function CloseEventPanel() {
 //Process event functions
 
 function ProcessAllReadyEvents() {
-    if (!JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'main')) return;
+    if (!JSPLib.concurrency.reserveSemaphore('main')) return;
     const printer = JSPLib.debug.getFunctionPrint('ProcessAllReadyEvents');
     let promise_hash = {};
     SUBSCRIBE_EVENTS.forEach((type) => {
@@ -3414,7 +3200,7 @@ function ProcessAllReadyEvents() {
                 printer.debuglogLevel("Soft disable:", 'subscribe', type, JSPLib.debug.DEBUG);
             } else {
                 promise_hash[type] ??= {};
-                promise_hash[type].subscribe = ProcessEventType_T(type, 'subscribe');
+                promise_hash[type].subscribe = ProcessEventType(type, 'subscribe');
             }
         }
     });
@@ -3424,7 +3210,7 @@ function ProcessAllReadyEvents() {
                 printer.debuglogLevel("Hard disable:", 'post-query', type, JSPLib.debug.DEBUG);
             } else {
                 promise_hash[type] ??= {};
-                promise_hash[type]['post-query'] = ProcessEventType_T(type, 'post-query');
+                promise_hash[type]['post-query'] = ProcessEventType(type, 'post-query');
             }
         }
     });
@@ -3435,7 +3221,7 @@ function ProcessAllReadyEvents() {
                 printer.debuglogLevel("Hard disable:", 'other', type, JSPLib.debug.DEBUG);
             } else {
                 promise_hash[type] ??= {};
-                promise_hash[type].other = ProcessEventType_T(type, 'other');
+                promise_hash[type].other = ProcessEventType(type, 'other');
             }
         }
     });
@@ -3459,7 +3245,7 @@ function ProcessAllReadyEvents() {
             let new_events_hash = GetNewEventsHash(results_hash);
             InstallNoticePanel(new_events_hash);
         }
-        JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT, 'main');
+        JSPLib.concurrency.freeSemaphore('main');
     });
 }
 
@@ -3512,7 +3298,7 @@ async function ProcessEventType(type, source, no_limit = false, selector = null)
         }
         SaveEventRecheck(type, source);
     } else {
-        SaveRecentDanbooruID_T(type, source);
+        SaveRecentDanbooruID(type, source);
     }
     return new_events;
 }
@@ -3670,7 +3456,7 @@ function InitializeProgramValues() {
         printer.debugwarnLevel("User must log in!", JSPLib.debug.WARNING);
         return false;
     }
-    if (!JSPLib.utility.isString(EL.user_name) || !JSPLib.validate.validateID(EL.user_id)) {
+    if (!JSPLib.utility.isString(EL.user_name) || !JSPLib.utility.validateID(EL.user_id)) {
         printer.debugwarnLevel("Invalid meta variables!", JSPLib.debug.WARNING);
         return false;
     }
@@ -3680,6 +3466,7 @@ function InitializeProgramValues() {
         th_observer: new ResizeObserver(AdjustFloatingTH),
         new_events: JSPLib.storage.checkLocalData('el-new-events', {default_val: {}}),
     });
+    JSPLib.load.setProgramGetter(EL, 'IAC', 'IndexedAutocomplete', 29.25);
     return true;
 }
 
@@ -3735,7 +3522,7 @@ function RenderSettingsMenu() {
     JSPLib.menu.listCacheClick();
     JSPLib.menu.refreshCacheClick();
     JSPLib.menu.cacheAutocomplete();
-    RebindMenuAutocomplete();
+    SetupMenuAutocomplete();
 }
 
 //Main program
@@ -3746,12 +3533,12 @@ function Main() {
         default_data: DEFAULT_VALUES,
         initialize_func: InitializeProgramValues,
         broadcast_func: BroadcastEL,
-        render_menu_func: RenderSettingsMenu_T,
+        render_menu_func: RenderSettingsMenu,
         program_css: PROGRAM_CSS,
         menu_css: MENU_CSS,
     };
     if (!JSPLib.menu.preloadScript(EL, preload)) return;
-    JSPLib.notice.installBanner(PROGRAM_SHORTCUT);
+    JSPLib.notice.installBanner();
     MigrateLocalData();
     InstallSubscribeLinks();
     InstallEventsNavigation();
@@ -3767,35 +3554,19 @@ function Main() {
     JSPLib.load.noncriticalTasks(CleanupTasks);
 }
 
-/****Function decoration****/
-
-const [
-    RenderSettingsMenu_T,
-    SetItemList_T,
-    SetUserList_T,
-    ProcessEventType_T,
-    SaveRecentDanbooruID_T
-] = JSPLib.debug.addFunctionTimers([
-    //Sync
-    RenderSettingsMenu,
-    [SetItemList, 0],
-    [SetUserList, 0],
-    //Async
-    [ProcessEventType, 0, 1],
-    [SaveRecentDanbooruID, 0, 1]
-]);
-
 /****Initialization****/
 
+//Variables for JSPLib
+
+JSPLib.program_name = PROGRAM_NAME;
+JSPLib.program_shortcut = PROGRAM_SHORTCUT;
+JSPLib.program_data = EL;
+
 //Variables for debug.js
-JSPLib.debug.debug_console = false;
+JSPLib.debug.mode = false;
 JSPLib.debug.level = JSPLib.debug.INFO;
-JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
 //Variables for menu.js
-JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
-JSPLib.menu.program_name = PROGRAM_NAME;
-JSPLib.menu.program_data = EL;
 JSPLib.menu.settings_callback = InitializeChangedSettings;
 JSPLib.menu.reset_callback = InitializeChangedSettings;
 JSPLib.menu.settings_config = SETTINGS_CONFIG;
@@ -3805,8 +3576,8 @@ JSPLib.menu.control_config = CONTROL_CONFIG;
 JSPLib.storage.localSessionValidator = ValidateProgramData;
 
 //Export JSPLib
-JSPLib.load.exportData(PROGRAM_NAME, EL);
+JSPLib.load.exportData();
 
 /****Execution start****/
 
-JSPLib.load.programInitialize(Main, {program_name: PROGRAM_NAME, required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, required_selectors: PROGRAM_LOAD_REQUIRED_SELECTORS});
+JSPLib.load.programInitialize(Main, {required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, required_selectors: PROGRAM_LOAD_REQUIRED_SELECTORS});
