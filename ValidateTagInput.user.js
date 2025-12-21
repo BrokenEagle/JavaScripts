@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ValidateTagInput
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.14
+// @version      29.15
 // @description  Validates tag add/remove inputs on a post edit or upload, plus several other post validations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -64,20 +64,10 @@ const VTI = {};
 
 //Main settings
 const SETTINGS_CONFIG = {
-    alias_check_enabled: {
-        reset: true,
-        validate: JSPLib.utility.isBoolean,
-        hint: "Checks and removes aliased tags from tag add validation."
-    },
     implication_check_enabled: {
         reset: true,
         validate: JSPLib.utility.isBoolean,
         hint: "Turns off querying implications for tag remove validation."
-    },
-    deprecation_check_enabled: {
-        reset: true,
-        validate: JSPLib.utility.isBoolean,
-        hint: "Turns off querying tags for deprecations."
     },
     upload_check_enabled: {
         reset: false,
@@ -180,8 +170,6 @@ const MENU_CONFIG = {
 // Default values
 
 const DEFAULT_VALUES = {
-    deprecated_tags: [],
-    aliastags: [],
     implicationdict: {},
     implications_promise: null,
     validate_lines: [],
@@ -284,8 +272,7 @@ const TIMER_POLL_INTERVAL = 100;
 
 //Expiration time is one month
 const PRUNE_EXPIRES = JSPLib.utility.one_day;
-const RELATION_EXPIRATION = JSPLib.utility.one_month;
-const TAG_EXPIRATION = JSPLib.utility.one_year;
+const TAG_EXPIRATION = JSPLib.utility.one_month;
 const ARTIST_EXPIRATION = JSPLib.utility.one_month;
 
 //Tag regexes
@@ -303,23 +290,29 @@ const QUERY_LIMIT = 100;
 //Other constants
 
 const TAG_FIELDS = "id,name,is_deprecated";
+const ALIAS_FIELDS = "id,name,post_count,is_deprecated,antecedent_alias[consequent_name]";
 const RELATION_FIELDS = "id,antecedent_name,consequent_name";
 
 //Validate constants
 
-const RELATION_CONSTRAINTS = {
-    entry: JSPLib.validate.arrayentry_constraints(),
-    value: JSPLib.validate.basic_stringonly_validator
+const ALIAS_CONSTRAINTS = {
+    expires: JSPLib.validate.expires_constraints,
+    value: JSPLib.validate.stringonly_constraints,
 };
 
-const DEPRACATION_CONSTRAINTS = {
+const IMPLICATION_CONSTRAINTS = {
+    entry: JSPLib.validate.arrayentry_constraints(),
+    value: JSPLib.validate.basic_stringonly_validator,
+};
+
+const DEPRECATION_CONSTRAINTS = {
     expires: JSPLib.validate.expires_constraints,
     value: JSPLib.validate.boolean_constraints,
 };
 
 const ARTIST_CONSTRAINTS = {
     expires: JSPLib.validate.expires_constraints,
-    value: JSPLib.validate.inclusion_constraints([true])
+    value: JSPLib.validate.inclusion_constraints([true]),
 };
 
 /****Functions****/
@@ -331,24 +324,23 @@ function ValidateEntry(key, entry) {
     if (!JSPLib.validate.validateIsHash(key, entry)) {
         return false;
     }
-    if (key.match(/^(ti|ta)-/)) {
-        return ValidateRelationEntry(key, entry);
+    if (key.match(/^ta-/)) {
+        return JSPLib.validate.validateHashEntries(key, entry, ALIAS_CONSTRAINTS);
+    }
+    if (key.match(/^ti-/)) {
+        if (!JSPLib.validate.validateHashEntries(key, entry, IMPLICATION_CONSTRAINTS.entry)) {
+            return false;
+        }
+        return JSPLib.validate.validateArrayValues(key + '.value', entry.value, IMPLICATION_CONSTRAINTS.value);
     }
     if (key.match(/^td-/)) {
-        return JSPLib.validate.validateHashEntries(key, entry, DEPRACATION_CONSTRAINTS);
+        return JSPLib.validate.validateHashEntries(key, entry, DEPRECATION_CONSTRAINTS);
     }
     if (key.match(/^are-/)) {
         return JSPLib.validate.validateHashEntries(key, entry, ARTIST_CONSTRAINTS);
     }
     printer.debuglog("Bad key:", key);
     return false;
-}
-
-function ValidateRelationEntry(key, entry) {
-    if (!JSPLib.validate.validateHashEntries(key, entry, RELATION_CONSTRAINTS.entry)) {
-        return false;
-    }
-    return JSPLib.validate.validateArrayValues(key + '.value', entry.value, RELATION_CONSTRAINTS.value);
 }
 
 function ValidateProgramData(key, entry) {
@@ -467,50 +459,77 @@ function PreloadImplications() {
 //Network functions
 
 //Queries aliases of added tags... can be called multiple times
-async function QueryTagAliases(taglist) {
-    const printer = JSPLib.debug.getFunctionPrint('QueryTagAliases');
-    QueryTagAliases.seen_tags ??= [];
-    let unseen_tags = JSPLib.utility.arrayDifference(taglist, QueryTagAliases.seen_tags);
-    if (unseen_tags.length === 0) return;
-    let tag_keys = unseen_tags.map((tag) => 'ta-' + tag);
-    let cached = await JSPLib.storage.batchCheckLocalDB(tag_keys, RELATION_EXPIRATION);
-    let found_keys = JSPLib.utility.arrayIntersection(tag_keys, Object.keys(cached));
-    let missing_keys = JSPLib.utility.arrayDifference(tag_keys, Object.keys(cached));
-    printer.debuglog("Cached aliases:", found_keys);
-    printer.debuglog("Uncached aliases:", missing_keys);
-    if (missing_keys.length) {
-        let missing_aliases = missing_keys.map((key) => key.replace(/^ta-/, ""));
-        let options = {url_addons: {search: {antecedent_name_space: missing_aliases.join(' '), status: 'active'}, only: RELATION_FIELDS}, long_format: true};
-        let all_aliases = await JSPLib.danbooru.getAllItems('tag_aliases', QUERY_LIMIT, options);
-        let found_aliases = [];
-        let mapped_aliases = {};
-        all_aliases.forEach((alias) => {
-            found_aliases.push(alias.antecedent_name);
-            mapped_aliases['ta-' + alias.antecedent_name] = {value: [alias.consequent_name], expires: JSPLib.utility.getExpires(RELATION_EXPIRATION)};
-        });
-        let unfound_aliases = JSPLib.utility.arrayDifference(missing_aliases, found_aliases);
-        unfound_aliases.forEach((tag) => {
-            mapped_aliases['ta-' + tag] = {value: [], expires: JSPLib.utility.getExpires(RELATION_EXPIRATION)};
-        });
-        JSPLib.storage.batchSaveData(mapped_aliases);
-        VTI.aliastags = JSPLib.utility.concat(VTI.aliastags, found_aliases);
-        printer.debuglog("Found aliases:", found_aliases);
-        printer.debuglog("Unfound aliases:", unfound_aliases);
-    }
-    for (let key in cached) {
-        if (cached[key].value.length) {
-            VTI.aliastags.push(key.replace(/^ta-/, ""));
+async function QueryTags(taglist) {
+    const printer = JSPLib.debug.getFunctionPrint('QueryTags');
+    QueryTags.alias_tags ??= [];
+    QueryTags.deprecated_tags ??= [];
+    QueryTags.empty_tags ??= [];
+    QueryTags.populated_tags ??= [];
+    let check_tags = JSPLib.utility.arrayDifference(taglist, JSPLib.utility.multiConcat(QueryTags.alias_tags, QueryTags.deprecated_tags, QueryTags.empty_tags, QueryTags.populated_tags));
+    if (check_tags.length > 0) {
+        let alias_keys = check_tags.map((tag) => 'ta-' + tag);
+        let deprecated_keys = check_tags.map((tag) => 'td-' + tag);
+        let tag_keys = JSPLib.utility.concat(alias_keys, deprecated_keys);
+        let cached = await JSPLib.storage.batchCheckLocalDB(tag_keys, TAG_EXPIRATION);
+        let found_names = [];
+        for (let key in cached) {
+            if (key.startsWith('ta-')) {
+                let tag_name = key.replace(/^ta-/, "");
+                QueryTags.alias_tags.push(tag_name);
+                found_names.push(tag_name);
+            } else if (cached[key].is_deprecated) {
+                let tag_name = key.replace(/^td-/, "");
+                QueryTags.deprecated_tags.push(tag_name);
+                found_names.push(tag_name);
+            }
+        }
+        let missing_names = JSPLib.utility.arrayDifference(check_tags, found_names);
+        printer.debuglog("Cached tags:", found_names);
+        printer.debuglog("Uncached tags:", missing_names);
+        if (missing_names.length) {
+            let options = {url_addons: {search: {name_space: missing_names.join(' ')}, only: ALIAS_FIELDS}, long_format: true};
+            let tags = await JSPLib.danbooru.getAllItems('tags', QUERY_LIMIT, options);
+            let found_aliases = [];
+            let found_deprecations = [];
+            let mapped_data = {};
+            tags.forEach((tag) => {
+                if (tag.antecedent_alias && !tag.is_deprecated) {
+                    let consequent = tag.antecedent_alias.consequent_name;
+                    found_aliases.push(tag.name);
+                    mapped_data['ta-' + tag.name] = {value: [consequent], expires: JSPLib.utility.getExpires(TAG_EXPIRATION)};
+                } else if (tag.is_deprecated) {
+                    mapped_data['td-' + tag.name] = {value: tag.is_deprecated, expires: JSPLib.utility.getExpires(TAG_EXPIRATION)};
+                    found_deprecations.push(tag.name);
+                } else if (tag.post_count > 0) {
+                    QueryTags.populated_tags.push(tag.name);
+                } else {
+                    QueryTags.empty_tags.push(tag.name);
+                }
+            });
+            JSPLib.storage.batchSaveData(mapped_data);
+            printer.debuglog("Network aliases:", found_aliases);
+            printer.debuglog("Network deprecations:", found_deprecations);
+            printer.debuglog("Network populated:", QueryTags.populated_tags);
+            printer.debuglog("Network empty:", QueryTags.empty_tags);
+            QueryTags.alias_tags = JSPLib.utility.concat(QueryTags.alias_tags, found_aliases);
+            QueryTags.deprecated_tags = JSPLib.utility.concat(QueryTags.deprecated_tags, found_deprecations);
+        }
+        for (let key in cached) {
+            if (key.startsWith('ta-') && cached[key].value.length) {
+                QueryTags.alias_tags.push(key.replace(/^ta-/, ""));
+            } else if (key.startsWith('td-') && cached[key].value) {
+                QueryTags.deprecated_tags.push(key.replace(/^td-/, ""));
+            }
         }
     }
-    QueryTagAliases.seen_tags = JSPLib.utility.concat(QueryTagAliases.seen_tags, unseen_tags);
-    printer.debuglog("Aliases:", VTI.aliastags);
+    return {deprecated_tags: QueryTags.deprecated_tags, empty_tags: QueryTags.empty_tags};
 }
 
 //Queries implications of preexisting tags... called once per image
 async function QueryTagImplications(taglist) {
     const printer = JSPLib.debug.getFunctionPrint('QueryTagImplications');
     let tag_keys = taglist.map((tag) => 'ti-' + tag);
-    let cached = await JSPLib.storage.batchCheckLocalDB(tag_keys, RELATION_EXPIRATION);
+    let cached = await JSPLib.storage.batchCheckLocalDB(tag_keys, TAG_EXPIRATION);
     let found_keys = JSPLib.utility.arrayIntersection(tag_keys, Object.keys(cached));
     let missing_keys = JSPLib.utility.arrayDifference(tag_keys, Object.keys(cached));
     printer.debuglog("Cached implications:", found_keys);
@@ -527,12 +546,12 @@ async function QueryTagImplications(taglist) {
         });
         let mapped_implications = {};
         for (let tag in network_data) {
-            mapped_implications['ti-' + tag] = {value: network_data[tag], expires: JSPLib.utility.getExpires(RELATION_EXPIRATION)};
+            mapped_implications['ti-' + tag] = {value: network_data[tag], expires: JSPLib.utility.getExpires(TAG_EXPIRATION)};
         }
         let found_implications = Object.keys(network_data);
         let unfound_implications = JSPLib.utility.arrayDifference(missing_implications, found_implications);
         unfound_implications.forEach((tag) => {
-            mapped_implications['ti-' + tag] = {value: [], expires: JSPLib.utility.getExpires(RELATION_EXPIRATION)};
+            mapped_implications['ti-' + tag] = {value: [], expires: JSPLib.utility.getExpires(TAG_EXPIRATION)};
         });
         JSPLib.storage.batchSaveData(mapped_implications);
         printer.debuglog("Found implications:", found_implications);
@@ -543,45 +562,6 @@ async function QueryTagImplications(taglist) {
         VTI.implicationdict[key.replace(/^ti-/, "")] = cached[key].value;
     }
     printer.debuglog("Implications:", VTI.implicationdict);
-}
-
-//Queries deprecations of all tags... can be called multiple times
-async function QueryTagDeprecations(taglist) {
-    const printer = JSPLib.debug.getFunctionPrint('QueryTagDeprecations');
-    QueryTagDeprecations.seen_tags ??= [];
-    let unseen_tags = JSPLib.utility.arrayDifference(taglist, QueryTagDeprecations.seen_tags);
-    if (unseen_tags.length === 0) return;
-    let tag_keys = unseen_tags.map((tag) => 'td-' + tag);
-    let cached = await JSPLib.storage.batchCheckLocalDB(tag_keys, TAG_EXPIRATION);
-    let found_keys = JSPLib.utility.arrayIntersection(tag_keys, Object.keys(cached));
-    let missing_keys = JSPLib.utility.arrayDifference(tag_keys, Object.keys(cached));
-    printer.debuglog("Cached tags:", found_keys);
-    printer.debuglog("Uncached tags:", missing_keys);
-    if (missing_keys.length) {
-        let missing_tags = missing_keys.map((key) => key.replace(/^td-/, ""));
-        let options = {url_addons: {search: {name_space: missing_tags.join(' '), hide_empty: 'yes'}, only: TAG_FIELDS}, long_format: true};
-        let all_tags = await JSPLib.danbooru.getAllItems('tags', QUERY_LIMIT, options);
-        let found_deprecations = [];
-        let mapped_deprecations = {};
-        all_tags.forEach((tag) => {
-            if (tag.is_deprecated) {
-                mapped_deprecations['td-' + tag.name] = {value: tag.is_deprecated, expires: JSPLib.utility.getExpires(TAG_EXPIRATION)};
-                found_deprecations.push(tag.name);
-            } else {
-                mapped_deprecations['td-' + tag.name] = {value: tag.is_deprecated, expires: JSPLib.utility.getExpires(JSPLib.utility.one_week)};
-            }
-        });
-        JSPLib.storage.batchSaveData(mapped_deprecations);
-        VTI.deprecated_tags = JSPLib.utility.concat(VTI.deprecated_tags, found_deprecations);
-        printer.debuglog("Found tags:", found_deprecations);
-    }
-    for (let key in cached) {
-        if (cached[key].value) {
-            VTI.deprecated_tags.push(key.replace(/^td-/, ""));
-        }
-    }
-    QueryTagDeprecations.seen_tags = JSPLib.utility.concat(QueryTagDeprecations.seen_tags, unseen_tags);
-    printer.debuglog("Deprecated tags:", VTI.deprecated_tags);
 }
 
 //Event handlers
@@ -606,7 +586,7 @@ async function CheckTags() {
     if (VTI.is_check_ready) {
         VTI.is_check_ready = false;
         DisableUI("check");
-        let statuses = await Promise.all([ValidateTagAdds(), ValidateTagRemoves(), ValidateTagDeprecations(), ValidateUpload()]);
+        let statuses = await Promise.all([ValidateTagAdds(), ValidateTagRemoves(), ValidateUpload()]);
         if (statuses.every((item) => item)) {
             JSPLib.notice.notice("Tags good to submit!");
         } else {
@@ -624,7 +604,7 @@ async function ValidateTags() {
     if (VTI.is_validate_ready) {
         VTI.is_validate_ready = false;
         DisableUI("submit");
-        let statuses = await Promise.all([ValidateTagAdds(), ValidateTagRemoves(), ValidateTagDeprecations(), ValidateUpload()]);
+        let statuses = await Promise.all([ValidateTagAdds(), ValidateTagRemoves(), ValidateUpload()]);
         if (statuses.every((item) => item)) {
             if (VTI.approval_check_enabled && $('#post_is_pending').prop('checked') && !confirm("Submit upload for approval?")) {
                 VTI.is_validate_ready = true;
@@ -684,36 +664,43 @@ function RebindHotkey() {
 
 async function ValidateTagAdds() {
     const printer = JSPLib.debug.getFunctionPrint('ValidateTagAdds');
-    let postedittags = GetCurrentTags();
-    let positivetags = JSPLib.utility.filterRegex(postedittags, NEGATIVE_REGEX, true);
-    let useraddtags = JSPLib.utility.arrayDifference(positivetags, VTI.preedit_tags);
-    VTI.addedtags = JSPLib.utility.arrayDifference(useraddtags, GetNegativetags(postedittags));
-    printer.debuglog("Added tags:", VTI.addedtags);
-    if ((VTI.addedtags.length === 0) || IsSkipValidate()) {
+    let post_edit_tags = GetCurrentTags();
+    let positive_tags = JSPLib.utility.filterRegex(post_edit_tags, NEGATIVE_REGEX, true);
+    let useraddtags = JSPLib.utility.arrayDifference(positive_tags, VTI.preedit_tags);
+    let added_tags = JSPLib.utility.arrayDifference(useraddtags, GetNegativetags(post_edit_tags));
+    printer.debuglog("Added tags:", added_tags);
+    if ((added_tags.length === 0) || IsSkipValidate()) {
         printer.debuglog("Skipping!");
-        $("#warning-new-tags").hide();
+        $("#warning-new-tags, #warning-deprecated-tags").hide();
         return true;
     }
-    let options = {url_addons: {search: {name_space: VTI.addedtags.join(' '), is_empty: false}, only: TAG_FIELDS}, long_format: true};
-    let all_aliases = await JSPLib.danbooru.getAllItems('tags', QUERY_LIMIT, options);
-    VTI.checktags = JSPLib.utility.getObjectAttributes(all_aliases, 'name');
-    let nonexisttags = JSPLib.utility.arrayDifference(VTI.addedtags, VTI.checktags);
-    if (VTI.alias_check_enabled) {
-        await QueryTagAliases(nonexisttags);
-        nonexisttags = JSPLib.utility.arrayDifference(nonexisttags, VTI.aliastags);
-    }
-    if (nonexisttags.length > 0) {
-        printer.debuglog("Nonexistant tags!");
-        nonexisttags.forEach((tag, i) => {printer.debuglog(i, tag);});
+    let status = true;
+    let {deprecated_tags, empty_tags} = await QueryTags(added_tags);
+    let final_empty = JSPLib.utility.arrayIntersection(added_tags, empty_tags);
+    if (final_empty.length > 0) {
+        printer.debuglog("Empty tags:", final_empty);
         $("#validation-input").show();
         $("#warning-new-tags").show();
-        let taglist = nonexisttags.join(', ');
-        $("#warning-new-tags")[0].innerHTML = '<strong>Warning</strong>: The following new tags will be created:  ' + taglist;
-        return false;
+        $("#warning-new-tags")[0].innerHTML = '<strong>Warning</strong>: The following new tags will be created:  ' + final_empty.join(', ');
+        status = false;
+    } else {
+        $("#warning-new-tags").hide();
     }
-    printer.debuglog("Free and clear to submit!");
-    $("#warning-new-tags").hide();
-    return true;
+    let final_deprecated = JSPLib.utility.arrayIntersection(added_tags, deprecated_tags);
+    if (final_deprecated.length > 0) {
+        printer.debuglog("Deprecated tags:", final_deprecated);
+        $("#validation-input").show();
+        $("#warning-deprecated-tags").show();
+        $("#warning-deprecated-tags")[0].innerHTML = '<strong>Warning</strong>: The following tags are deprecated:  ' + final_deprecated.join(', ');
+        status = false;
+    } else {
+        $("#warning-deprecated-tags").hide();
+    }
+    if (status) {
+        printer.debuglog("Free and clear to submit!");
+        $("#warning-new-tags").hide();
+    }
+    return status;
 }
 
 async function ValidateTagRemoves() {
@@ -724,29 +711,25 @@ async function ValidateTagRemoves() {
         return true;
     }
     await VTI.implications_promise;
-    let postedittags = TransformTypetags(GetCurrentTags());
-    let deletedtags = JSPLib.utility.arrayDifference(VTI.preedit_tags, postedittags);
-    let negatedtags = JSPLib.utility.arrayIntersection(GetNegativetags(postedittags), postedittags);
-    let removedtags = deletedtags.concat(negatedtags);
-    let finaltags = JSPLib.utility.arrayDifference(postedittags, removedtags);
-    printer.debuglog("Final tags:", finaltags);
-    printer.debuglog("Removed tags:", deletedtags, negatedtags);
-    let allrelations = [];
-    removedtags.forEach((tag) => {
-        let badremoves = JSPLib.utility.arrayIntersection(GetAllRelations(tag, VTI.implicationdict), finaltags);
-        if (badremoves.length) {
-            allrelations.push(badremoves.toString() + ' -> ' + tag);
+    let post_edit_tags = TransformTypetags(GetCurrentTags());
+    let deleted_tags = JSPLib.utility.arrayDifference(VTI.preedit_tags, post_edit_tags);
+    let negated_tags = JSPLib.utility.arrayIntersection(GetNegativetags(post_edit_tags), post_edit_tags);
+    let removed_tags = deleted_tags.concat(negated_tags);
+    let final_tags = JSPLib.utility.arrayDifference(post_edit_tags, removed_tags);
+    printer.debuglog("Final tags:", final_tags);
+    printer.debuglog("Removed tags:", deleted_tags, negated_tags);
+    let all_relations = [];
+    removed_tags.forEach((tag) => {
+        let bad_removes = JSPLib.utility.arrayIntersection(GetAllRelations(tag, VTI.implicationdict), final_tags);
+        if (bad_removes.length) {
+            all_relations.push(bad_removes.toString() + ' -> ' + tag);
         }
     });
-    if (allrelations.length) {
-        JSPLib.debug.debugExecute(() => {
-            printer.debuglog("Badremove tags!");
-            allrelations.forEach((relation, i) => {printer.debuglog(i, relation);});
-        });
+    if (all_relations.length) {
+        printer.debuglog("Bad removes:\n" + all_relations.join('\n'));
         $("#validation-input").show();
         $("#warning-bad-removes").show();
-        let removelist = allrelations.join('<br>');
-        $("#warning-bad-removes")[0].innerHTML = '<strong>Notice</strong>: The following implication relations prevent certain tag removes:<br>' + removelist;
+        $("#warning-bad-removes")[0].innerHTML = '<strong>Notice</strong>: The following implication relations prevent certain tag removes:<br>' + all_relations.join('<br>');
         return false;
     }
     printer.debuglog("Free and clear to submit!");
@@ -755,27 +738,7 @@ async function ValidateTagRemoves() {
 }
 
 async function ValidateTagDeprecations() {
-    const printer = JSPLib.debug.getFunctionPrint('ValidateTagDeprecations');
-    if (!VTI.deprecation_check_enabled || IsSkipValidate()) {
-        printer.debuglog("Skipping!");
-        $("#warning-deprecated-tags").hide();
-        return true;
-    }
-    let postedit_tags = GetCurrentTags();
-    let current_tags = JSPLib.utility.filterRegex(postedit_tags, NEGATIVE_REGEX, true);
-    let query_tags = JSPLib.utility.arrayDifference(current_tags, GetNegativetags(postedit_tags));
-    printer.debuglog("Query tags:", query_tags);
-    await QueryTagDeprecations(query_tags);
-    let deprecated_tags = JSPLib.utility.arrayIntersection(query_tags, VTI.deprecated_tags);
-    if (deprecated_tags.length > 0) {
-        printer.debuglog("Deprecated tags:", deprecated_tags);
-        $("#validation-input").show();
-        $("#warning-deprecated-tags").show();
-        $("#warning-deprecated-tags")[0].innerHTML = '<strong>Warning</strong>: The following tags are deprecated:  ' + deprecated_tags.join(', ');
-        return false;
-    }
-    printer.debuglog("Free and clear to submit!");
-    $("#warning-deprecated-tags").hide();
+    //Temporarily needed since it was exported
     return true;
 }
 
@@ -807,7 +770,7 @@ function ValidateUpload() {
 async function ValidateArtist() {
     const printer = JSPLib.debug.getFunctionPrint('ValidateArtist');
     let source_url = $("#post_source").val();
-    let artist_names = $(".artist-tag-list .tag-type-1 .wiki-link").map((i, entry) => decodeURIComponent(JSPLib.utility.parseParams(entry.search.slice(1)).name)).toArray();
+    let artist_names = $(".artist-tag-list .tag-type-1 .wiki-link").map((_i, entry) => decodeURIComponent(JSPLib.utility.parseParams(entry.search.slice(1)).name)).toArray();
     if (artist_names.length === 0 && !VTI.preedit_tags.includes('official_art')) {
         //Validate no artist tag
         let option_html = "";
@@ -932,7 +895,6 @@ function RenderSettingsMenu() {
     $("#vti-pre-edit-settings").append(JSPLib.menu.renderTextinput('general_low_threshold', 10));
     $("#vti-pre-edit-settings").append(JSPLib.menu.renderTextinput('general_moderate_threshold', 10));
     $('#vti-post-edit-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", POSTEDIT_SETTINGS_DETAILS));
-    $("#vti-post-edit-settings").append(JSPLib.menu.renderCheckbox('alias_check_enabled'));
     $("#vti-post-edit-settings").append(JSPLib.menu.renderCheckbox('implication_check_enabled'));
     $("#vti-post-edit-settings").append(JSPLib.menu.renderCheckbox('upload_check_enabled'));
     $("#vti-post-edit-settings").append(JSPLib.menu.renderCheckbox('approval_check_enabled'));
