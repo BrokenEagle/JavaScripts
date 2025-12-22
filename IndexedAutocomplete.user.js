@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.26
+// @version      29.27
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -811,7 +811,7 @@ const CALLBACK_INTERVAL = 1000; //Interval for fixup callback functions
 const ALL_CATEGORIES = [0, 1, 3, 4, 5];
 const ALL_TOPICS = [0, 1, 2];
 const ALL_POOLS = ['collection', 'series'];
-const ALL_USERS = ['Member', 'Gold', 'Platinum', 'Builder', 'Moderator', 'Admin'];
+const ALL_USERS = ['Member', 'Gold', 'Platinum', 'Builder', 'Contributor', 'Approver', 'Moderator', 'Admin', 'Owner'];
 
 //All of the following are used to determine when to run the script
 const AUTOCOMPLETE_USERLIST = [
