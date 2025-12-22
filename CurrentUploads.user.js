@@ -226,6 +226,21 @@ const PROGRAM_CSS = `
 }
 #count-query-user {
     margin: 0.5em;
+    display: flex;
+    gap: 0.5em;
+}
+#count-query-user > label {
+    background-color: var(--grey-2);
+    padding: 5px 10px;
+    border-radius: 25px;
+    border: 1px solid grey;
+    cursor: pointer;
+}
+#count-query-user > label:hover {
+    background-color:  var(--grey-1);
+}
+#count-query-user > label > input {
+    vertical-align: middle;
 }
 #stash-count-notice {
     color: #F44;
@@ -336,6 +351,7 @@ const PROGRAM_CSS = `
 #count-copyrights-header {
     font-size: 1.25em;
     font-weight: bold;
+    display: flex;
 }
 #count-copyrights-section {
     margin: 0.5em;
@@ -364,24 +380,11 @@ const PROGRAM_CSS = `
     margin: 1em;
     display: none;
 }
-#count-module .ui-checkboxradio-label {
-    color: black;
-    background-color: lightgrey;
-}
-#count-module .ui-checkboxradio-label:hover {
-    filter: brightness(1.1);
-}
 #count-copyrights-header .cu-triangle {
     position: relative;
 }
 #count-copyrights-header .cu-svg-caret {
     position: absolute;
-}
-#count-copyrights-header .cu-svg-caret-right {
-    top: 2px;
-}
-#count-copyrights-header .cu-svg-caret-down {
-    top: 0;
 }
 #count-copyrights-header .cu-triangle-right .cu-svg-caret-down {
     display: none;
@@ -450,14 +453,18 @@ const notice_box = `
                 </div>
             </div>
         </div>
-        <div id="count-query-user">
+        <div id="count-query-user" style="display: flex; gap: 0.5em;">
             <input id="count_query_user_id" placeholder="Check users" type="text">
             <input id="count_submit_user_id" type="submit" value="Submit" class="btn">
             <input id="count_refresh_user_id" type="submit" value="Refresh" class="btn">
-            <label for="count_approver_select" style="color:black;background-color:lightgrey">Approvals</label>
-            <input id="count_approver_select" class="cu-program-checkbox" type="checkbox">
-            <label for="count_override_select" style="color:black;background-color:lightgrey">Override</label>
-            <input id="count_override_select" class="cu-program-checkbox" type="checkbox">
+            <label for="count_approver_select">
+                Approvals
+                <input id="count_approver_select" class="cu-program-checkbox" type="checkbox">
+            </label>
+            <label for="count_override_select">
+                Override
+                <input id="count_override_select" class="cu-program-checkbox" type="checkbox">
+            </label>
         </div>
     </div>
     <div id="upload-counts-toggle">
