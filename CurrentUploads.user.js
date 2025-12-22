@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.22
+// @version      16.23
 // @description  Gives up-to-date stats on uploads.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -14,17 +14,17 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru CanvasJS */
@@ -44,7 +44,6 @@ const PROGRAM_LOAD_REQUIRED_SELECTORS = ["#top", "#page-footer"];
 
 //Program name constants
 const PROGRAM_SHORTCUT = 'cu';
-const PROGRAM_CLICK = 'click.cu';
 const PROGRAM_NAME = 'CurrentUploads';
 
 //Program data constants
@@ -74,12 +73,12 @@ const period_selectors = ['daily', 'weekly', 'monthly', 'yearly', 'alltime'];
 const SETTINGS_CONFIG = {
     copyrights_merge: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Merge all implied copyrights to their base copyright. Ex: (splatoon_1, splatoon_2) -> splatoon."
     },
     copyrights_enabled: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Process and show user copyright uploads."
     },
     periods_shown: {
@@ -760,7 +759,7 @@ function ValidateProgramData(key, entry) {
             break;
         case 'cu-hide-current-uploads':
         case 'cu-stash-current-uploads':
-            if (!JSPLib.validate.isBoolean(entry)) {
+            if (!JSPLib.utility.isBoolean(entry)) {
                 checkerror = ['Value is not a boolean.'];
             }
             break;
@@ -1250,17 +1249,17 @@ async function PopulateTable() {
     //Prevent function from being reentrant while processing uploads
     PopulateTable.is_started = true;
     var post_data = [];
-    InitializeControls_T();
+    InitializeControls();
     if (CU.checked_users[CU.usertag][CU.current_username] === undefined) {
         TableMessage(`<div id="empty-uploads">Loading data... (<span id="loading-counter">...</span>)</div>`);
-        post_data = await ProcessUploads_T(CU.current_username);
+        post_data = await ProcessUploads(CU.current_username);
         CU.checked_users[CU.usertag][CU.current_username] = post_data.length;
     }
     let is_override = $("#count_override_select")[0].checked;
     if (is_override || CU.checked_users[CU.usertag][CU.current_username]) {
         CU.active_copytags = JSPLib.utility.dataCopy(CU.user_copytags[CU.usertag][CU.current_username].daily);
-        await CheckPeriodUploads_T(CU.current_username);
-        InitializeTable_T();
+        await CheckPeriodUploads(CU.current_username);
+        InitializeTable();
     } else {
         TableMessage(`<div id="empty-uploads">${CU.empty_uploads_message}</div>`);
     }
@@ -1270,17 +1269,20 @@ async function PopulateTable() {
 function InitializeControls() {
     //Render the controls only once when the table is first opened
     if (!CU.controls_initialized) {
-        $('.cu-program-checkbox').checkboxradio();
         $("#count-controls").html(RenderAllTooltipControls());
         $("#count-copyrights-controls").html(RenderCopyrightControls());
-        $(".cu-select-tooltip").on(PROGRAM_CLICK, TooltipChange);
-        $(".cu-select-period a").on(PROGRAM_CLICK, CopyrightPeriod_T);
-        $("#count-copyrights-header a").on(PROGRAM_CLICK, ToggleCopyrightsSection);
-        $("#count_submit_user_id").on(PROGRAM_CLICK, CheckUser_T);
-        $("#count_refresh_user_id").on(PROGRAM_CLICK, RefreshUser_T);
-        $("#count_add_copyright").on(PROGRAM_CLICK, AddCopyright_T);
+        $(".cu-select-tooltip").on(JSPLib.program_click, TooltipChange);
+        $(".cu-select-period a").on(JSPLib.program_click, CopyrightPeriod);
+        $("#count-copyrights-header a").on(JSPLib.program_click, ToggleCopyrightsSection);
+        $("#count_submit_user_id").on(JSPLib.program_click, CheckUser);
+        $("#count_refresh_user_id").on(JSPLib.program_click, RefreshUser);
+        $("#count_add_copyright").on(JSPLib.program_click, AddCopyright);
         CU.controls_initialized = true;
-        setTimeout(() => {CU.IAC.InitializeAutocompleteIndexed?.("#count_query_user_id", 'us');}, 1000);
+        if (CU.use_IAC) {
+            setTimeout(() => {
+                CU.IAC.InitializeAutocompleteIndexed("#count_query_user_id", 'us');
+            }, 1000);
+        }
     }
 }
 
@@ -1288,9 +1290,9 @@ function InitializeTable() {
     $("#count-header").html(AddTable(RenderHeader(), 'class="striped"'));
     $("#count-table").html(AddTable(RenderBody(), 'class="striped"'));
     $("#count-order").html(RenderOrderMessage("d", 0));
-    $("#count-header .cu-process").on(PROGRAM_CLICK, GetPeriod_T);
-    $("#count-header th").on(PROGRAM_CLICK, SortTable);
-    $("#count-table .cu-manual,#count-table .cu-limited").on(PROGRAM_CLICK, RenderChart_T);
+    $("#count-header .cu-process").on(JSPLib.program_click, GetPeriod);
+    $("#count-header th").on(JSPLib.program_click, SortTable);
+    $("#count-table .cu-manual,#count-table .cu-limited").on(JSPLib.program_click, RenderChart);
     $("#count-controls,#count-copyrights,#count-header").show();
     $(`.cu-select-tooltip[data-type="${CU.current_metric}"] a`).click();
     CU.sorttype = 0;
@@ -1366,7 +1368,7 @@ async function GetPeriod(event) {
     let is_limited = $(event.target).hasClass("cu-limited");
     let period = header.dataset.period;
     $(`#count-header th[data-period=${period}] .cu-display`).show();
-    await GetPeriodUploads_T(CU.current_username, period, is_limited, `#count-header th[data-period=${period}] .cu-counter`);
+    await GetPeriodUploads(CU.current_username, period, is_limited, `#count-header th[data-period=${period}] .cu-counter`);
     CU.period_available[CU.usertag][CU.current_username][period] = true;
     let column = header.cellIndex;
     let $cells = $(`#count-table td:nth-of-type(${column + 1})`);
@@ -1382,7 +1384,7 @@ async function GetPeriod(event) {
     }
     $(`#count-header th[data-period=${period}] .cu-display`).hide();
     $(`.cu-select-tooltip[data-type="${CU.current_metric}"] a`).click();
-    $(event.target).off(PROGRAM_CLICK);
+    $(event.target).off(JSPLib.program_click);
 }
 
 function SortTable(event) {
@@ -1503,7 +1505,7 @@ function TooltipChange(event) {
     $(`.cu-select-tooltip[data-type="${CU.current_metric}"]`).addClass("cu-activetooltip");
     $(`.cu-tooltiptext[data-type="${CU.current_metric}"]`).addClass("cu-activetooltip");
     JSPLib.storage.setLocalData('cu-current-metric', CU.current_metric);
-    $(".cu-hover .cu-uploads").off('mouseover.cu').on('mouseover.cu', TooltipHover_T);
+    $(".cu-hover .cu-uploads").off(JSPLib.program_mouseover).on(JSPLib.program_mouseover, TooltipHover);
     event.preventDefault();
 }
 
@@ -1532,7 +1534,7 @@ async function CopyrightPeriod(event) {
     if (short_period === 'manual') {
         $("#count-copyrights-manual").show();
         $('#count-copyrights-list').html(RenderCopyrights('manual'));
-        $("#count-copyrights-list a").off(PROGRAM_CLICK).on(PROGRAM_CLICK, ToggleCopyrightTag);
+        $("#count-copyrights-list a").off(JSPLib.program_click).on(JSPLib.program_click, ToggleCopyrightTag);
     } else {
         $("#count-copyrights-manual").hide();
         let current_period = period_info.longname[short_period];
@@ -1545,7 +1547,7 @@ async function CopyrightPeriod(event) {
                 let user_copytags = SortDict(copyright_count);
                 if (CU.user_settings.copyrights_merge) {
                     $("#count-copyrights-counter").html(copyright_counter);
-                    user_copytags = await MergeCopyrightTags_T(user_copytags);
+                    user_copytags = await MergeCopyrightTags(user_copytags);
                     $("#count-copyrights-counter").html('');
                 }
                 CU.user_copytags[CU.usertag][CU.current_username][current_period] = user_copytags;
@@ -1554,7 +1556,7 @@ async function CopyrightPeriod(event) {
                 $('#count-copyrights-list').html(`<div id="empty-statistics">${copyright_no_uploads}</div>`);
             } else {
                 $('#count-copyrights-list').html(RenderCopyrights(current_period));
-                $("#count-copyrights-list a").off(PROGRAM_CLICK).on(PROGRAM_CLICK, ToggleCopyrightTag);
+                $("#count-copyrights-list a").off(JSPLib.program_click).on(JSPLib.program_click, ToggleCopyrightTag);
             }
         } else {
             $('#count-copyrights-list').html(`<div id="empty-statistics">${copyright_no_statistics}</div>`);
@@ -1574,16 +1576,13 @@ function ToggleNotice(event) {
             CU.current_username = CU.username.toLowerCase();
             CU.level_string = (CU.username === "Anonymous" ? 'Member' : Danbooru.CurrentUser.data('level-string'));
             CU.usertag = 'user';
-            PopulateTable_T();
+            PopulateTable();
         }
         CU.channel.postMessage({type: "show"});
     } else {
         CU.hidden = true;
         $('#upload-counts').removeClass('opened');
         $('.cu-program-checkbox').prop('checked', false);
-        if (CU.controls_initialized) {
-            $('.cu-program-checkbox').checkboxradio("refresh");
-        }
         $("#count-chart").hide();
         CU.channel.postMessage({type: "hide"});
     }
@@ -1601,9 +1600,6 @@ function StashNotice(event) {
         CU.hidden = true;
         $('#upload-counts,#upload-counts-restore').removeClass('opened').addClass('stashed');
         $('.cu-program-checkbox').prop('checked', false);
-        if (CU.controls_initialized) {
-            $('.cu-program-checkbox').checkboxradio("refresh");
-        }
         $("#count-chart").hide();
         CU.channel.postMessage({type: "stash"});
     }
@@ -1622,7 +1618,7 @@ async function RefreshUser() {
     });
     await Promise.all(promise_array);
     $("#count-copyrights-counter").html('');
-    InitializeTable_T();
+    InitializeTable();
 }
 
 async function CheckUser() {
@@ -1648,7 +1644,7 @@ async function CheckUser() {
             CU.empty_uploads_message = is_approvals ? empty_approvals_message_other : empty_uploads_message_other;
             CU.usertag = is_approvals ? 'approver' : 'user';
             CU.counttype = is_approvals ? 'approvals' : 'uploads';
-            PopulateTable_T();
+            PopulateTable();
         } else {
             TableMessage(`<div id="empty-uploads">User doesn't exist!</div>`);
         }
@@ -1669,7 +1665,7 @@ async function AddCopyright() {
     CU.active_copytags.push(tag);
     CU.active_copytags = JSPLib.utility.arrayUnique(CU.active_copytags);
     $('#count-copyrights-list').html(RenderCopyrights('manual'));
-    $("#count-copyrights-list a").off(PROGRAM_CLICK).on(PROGRAM_CLICK, ToggleCopyrightTag);
+    $("#count-copyrights-list a").off(JSPLib.program_click).on(JSPLib.program_click, ToggleCopyrightTag);
 }
 
 function TooltipHover(event) {
@@ -1690,7 +1686,7 @@ async function ProcessUploads() {
     var current_uploads = [];
     var user_copytags = [];
     if (CU.current_username !== "Anonymous") {
-        current_uploads = await GetPeriodUploads_T(CU.current_username, 'd');
+        current_uploads = await GetPeriodUploads(CU.current_username, 'd');
     }
     let previous_key = GetPeriodKey("previous");
     if (current_uploads.length) {
@@ -1707,7 +1703,7 @@ async function ProcessUploads() {
             let prev_copyright_count = GetCopyrightCount(previous_uploads);
             user_copytags = SortDict(curr_copyright_count);
             if (CU.user_settings.copyrights_merge) {
-                user_copytags = await MergeCopyrightTags_T(user_copytags);
+                user_copytags = await MergeCopyrightTags(user_copytags);
             }
             if (CU.user_settings.copyrights_threshold) {
                 user_copytags = user_copytags.slice(0, CU.user_settings.copyrights_threshold);
@@ -1738,7 +1734,7 @@ async function ProcessUploads() {
 }
 
 function CleanupTasks() {
-    JSPLib.storage.pruneProgramCache(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, prune_expires);
+    JSPLib.storage.pruneProgramCache(PROGRAM_DATA_REGEX, prune_expires);
 }
 
 //Cache functions
@@ -1808,11 +1804,11 @@ function InitializeProgramValues() {
     Object.assign(CU, {
         username: Danbooru.CurrentUser.data('name'),
         is_gold_user: Danbooru.CurrentUser.data('is-gold'),
-        get IAC() {return JSPLib.load.getExport('IndexedAutocomplete') || Danbooru.IAC || {};},
         current_metric: JSPLib.storage.checkLocalData('cu-current-metric', {default_val: 'score'}),
         hidden: Boolean(JSPLib.storage.checkLocalData('cu-hide-current-uploads', {default_val: true})),
         stashed: Boolean(JSPLib.storage.checkLocalData('cu-stash-current-uploads', {default_val: false})),
     });
+    JSPLib.load.setProgramGetter(CU, 'IAC', 'IndexedAutocomplete', 29.25);
     return true;
 }
 
@@ -1845,7 +1841,7 @@ function RenderSettingsMenu() {
     JSPLib.menu.purgeCacheClick();
     JSPLib.menu.expandableClick();
     JSPLib.menu.dataSourceChange();
-    $("#cu-control-data-type").on('change.cu', DataTypeChange);
+    $("#cu-control-data-type").on(JSPLib.program_change, DataTypeChange);
     JSPLib.menu.rawDataChange();
     JSPLib.menu.getCacheClick(ValidateProgramData);
     JSPLib.menu.saveCacheClick(ValidateProgramData, ValidateEntry);
@@ -1864,7 +1860,7 @@ function Main() {
         reset_data: PROGRAM_RESET_KEYS,
         initialize_func: InitializeProgramValues,
         broadcast_func: BroadcastCU,
-        render_menu_func: RenderSettingsMenu_T,
+        render_menu_func: RenderSettingsMenu,
         program_css: PROGRAM_CSS,
     };
     if (!JSPLib.menu.preloadScript(CU, preload)) return;
@@ -1879,42 +1875,30 @@ function Main() {
     }
     $('header#top').append($notice_box);
     $('footer#page-footer').append($footer_notice);
-    $("#toggle-count-notice").on(PROGRAM_CLICK, ToggleNotice);
-    $("#stash-count-notice,#restore-count-notice").on(PROGRAM_CLICK, StashNotice);
+    $("#toggle-count-notice").on(JSPLib.program_click, ToggleNotice);
+    $("#stash-count-notice,#restore-count-notice").on(JSPLib.program_click, StashNotice);
     if (CU.hidden === false) {
         //Set to opposite so that click can be used and sets it back
         CU.hidden = true;
         setTimeout(() => {$("#toggle-count-notice").click();}, JQUERY_DELAY);
     }
-    JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
+    JSPLib.statistics.addPageStatistics();
     JSPLib.load.noncriticalTasks(CleanupTasks);
 }
 
-/****Function decoration****/
-
-const [
-    RenderSettingsMenu_T, InitializeTable_T, InitializeControls_T, TooltipHover_T, RenderChart_T,
-    GetPeriod_T, CheckPeriodUploads_T, GetPeriodUploads_T, RefreshUser_T, CheckUser_T, AddCopyright_T,
-    CopyrightPeriod_T, MergeCopyrightTags_T, ProcessUploads_T, PopulateTable_T,
-] = JSPLib.debug.addFunctionTimers([
-    //Sync
-    RenderSettingsMenu, InitializeTable, InitializeControls, TooltipHover, RenderChart,
-    //Async
-    GetPeriod, CheckPeriodUploads, GetPeriodUploads, RefreshUser, CheckUser, AddCopyright,
-    CopyrightPeriod, MergeCopyrightTags, ProcessUploads, PopulateTable,
-]);
-
 /****Initialization****/
+
+//Variables for JSPLib
+
+JSPLib.program_name = PROGRAM_NAME;
+JSPLib.program_shortcut = PROGRAM_SHORTCUT;
+JSPLib.program_data = CU;
 
 //Variables for debug.js
 JSPLib.debug.debug_console = false;
 JSPLib.debug.level = JSPLib.debug.INFO;
-JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
 //Variables for menu.js
-JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
-JSPLib.menu.program_name = PROGRAM_NAME;
-JSPLib.menu.program_data = CU;
 JSPLib.menu.program_reset_data = PROGRAM_RESET_KEYS;
 JSPLib.menu.program_data_regex = PROGRAM_DATA_REGEX;
 JSPLib.menu.program_data_key = OptionCacheDataKey;
@@ -1925,7 +1909,7 @@ JSPLib.menu.control_config = CONTROL_CONFIG;
 JSPLib.network.counter_domname = "#loading-counter";
 
 //Export JSPLib
-JSPLib.load.exportData(PROGRAM_NAME, CU);
+JSPLib.load.exportData();
 
 //Variables for storage.js
 JSPLib.storage.indexedDBValidator = ValidateEntry;
@@ -1933,4 +1917,4 @@ JSPLib.storage.localSessionValidator = ValidateProgramData;
 
 /****Execution start****/
 
-JSPLib.load.programInitialize(Main, {program_name: PROGRAM_NAME, required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, required_selectors: PROGRAM_LOAD_REQUIRED_SELECTORS});
+JSPLib.load.programInitialize(Main, {required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, required_selectors: PROGRAM_LOAD_REQUIRED_SELECTORS});
