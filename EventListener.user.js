@@ -949,7 +949,7 @@ const MARK_PAGE_HTML = ' | <a class="el-mark-page el-link" title="Mark all items
 
 const TABLE_HEADER_ADDONS_HTML = JSPLib.utility.normalizeHTML()`
 <th class="el-mark-read" width="2%"></th>
-<th class="el-found-with" width="8%">Found with</th>`;
+<th class="el-found-with" width="6%">Found by</th>`;
 const TABLE_HEADER_PREVIEW_HTML = '<th width="1%">Preview</th>';
 
 const TABLE_BODY_ADDONS_HTML = JSPLib.utility.normalizeHTML()`
@@ -1097,6 +1097,10 @@ const TYPEDICT = {
         find_events: FindEvents,
         insert_events: InsertTableEvents,
         add_thumbnail: true,
+        column_widths: {
+            'post-column': '8%',
+            'note-column': '8%',
+        },
         plural: 'notes',
         display: "Notes",
         includes: 'post[uploader_id]',
@@ -2666,7 +2670,7 @@ async function InsertCommentEvents(page) {
                 'border-bottom': '1px solid lightgrey',
                 'padding-bottom': '10px',
             });
-            let $container = $('<div class="el-comments-section"><div class="el-comments-header"><div class="el-mark-read"></div><div class="el-found-with"><span>Found with</span></div><div class="el-comments-column"><span>Comments</span></div></div></div>');
+            let $container = $('<div class="el-comments-section"><div class="el-comments-header"><div class="el-mark-read"></div><div class="el-found-with"><span>Found by</span></div><div class="el-comments-column"><span>Comments</span></div></div></div>');
             $container.append($section);
             $section.find('.post-preview').each((_, entry) => {
                 entry.style.setProperty('display', 'flex', 'important');
