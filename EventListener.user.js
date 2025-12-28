@@ -657,6 +657,10 @@ const LIGHT_MODE_CSS = `
 .el-section-link a:hover {
     background-color: var(--grey-1);
 }
+.el-pause-events a,
+.el-resume-events a {
+    color: var(--orange-3);
+}
 /**BODY SECTION**/
 .el-mark-read a.el-select {
     border-color: #888;
@@ -770,6 +774,10 @@ const DARK_MODE_CSS = `
 }
 .el-section-link a:hover {
     background-color: var(--grey-8);
+}
+.el-pause-events a,
+.el-resume-events a {
+    color: var(--orange-4);
 }
 /**BODY SECTION**/
 .el-mark-read a.el-select {
@@ -956,6 +964,7 @@ const PROGRAM_DATA_DETAILS = JSPLib.utility.normalizeHTML()`
             <li><b>show-subscribe-links:</b> Whether to display subscribe links on available pages.</li>
             <li><b>new-events-notice:</b> Whether to show a new events notice to the user once a tab gets focus.</li>
             <li><b>event-notice-shown:</b> Whether the event notice is currently shown.</li>
+            <li><b>pause-events:</b> Timestamp for pausing event checks.</li>
             <li><b>user-settings:</b> All configurable settings.</li>
         </ul>
     </li>
@@ -1097,6 +1106,12 @@ const HOME_CONTROLS = JSPLib.utility.normalizeHTML()`
         </div>
         <div class="el-refresh-event el-section-link" title="Refresh the time values of all types.">
             <a class="el-link">Refresh all</a>
+        </div>
+        <div class="el-pause-events el-section-link" title="Stops checking events for one hour.">
+            <a class="el-link">Pause ${PROGRAM_NAME}</a>
+        </div>
+        <div class="el-resume-events el-section-link" title="Resumes checking events." style="display: none;">
+            <a class="el-link">Resume ${PROGRAM_NAME}</a>
         </div>
     </div>
 </div>`;
@@ -2587,6 +2602,8 @@ function LoadEventsPage() {
     $('#el-page .el-check-all a').on(JSPLib.program_click, CheckAll);
     $('#el-page .el-reset-event a').on(JSPLib.program_click, ResetEvent);
     $('#el-page .el-refresh-event a').on(JSPLib.program_click, RefreshEvent);
+    $('#el-page .el-pause-events a').on(JSPLib.program_click, PauseEvents);
+    $('#el-page .el-resume-events a').on(JSPLib.program_click, ResumeEvents);
 }
 
 function LoadEventSection(type) {
@@ -3162,6 +3179,10 @@ function OpenEventsPage(event) {
     if ($('#el-page').length === 0) {
         LoadEventsPage();
         $('.el-event-header[data-type="home"]').addClass('el-header-active');
+        if (!JSPLib.concurrency.checkTimeout('el-pause-events', JSPLib.utility.one_hour)) {
+            $('.el-pause-events').hide();
+            $('.el-resume-events').show();
+        }
     }
     $('#el-page').show();
     EL.events_page_open = true;
@@ -3283,6 +3304,20 @@ function RefreshEvent(event) {
     } else {
         UpdateEventSource(type, source);
     }
+}
+
+function PauseEvents() {
+    JSPLib.concurrency.setRecheckTimeout('el-pause-events', JSPLib.utility.one_hour);
+    $('.el-pause-events').hide();
+    $('.el-resume-events').show();
+    JSPLib.notice.notice("Pausing event checks for one hour.");
+}
+
+function ResumeEvents() {
+    JSPLib.concurrency.setRecheckTimeout('el-pause-events', 0);
+    $('.el-resume-events').hide();
+    $('.el-pause-events').show();
+    JSPLib.notice.notice("Resuming event checks.");
 }
 
 function PaginatorPrevious(event) {
@@ -3432,7 +3467,7 @@ function CloseEventPanel() {
 //Process event functions
 
 function ProcessAllReadyEvents() {
-    if (!JSPLib.concurrency.reserveSemaphore('main')) return;
+    if (!JSPLib.concurrency.checkTimeout('el-pause-events', JSPLib.utility.one_hour) || !JSPLib.concurrency.reserveSemaphore('main')) return;
     const printer = JSPLib.debug.getFunctionPrint('ProcessAllReadyEvents');
     let promise_hash = {};
     SUBSCRIBE_EVENTS.forEach((type) => {
