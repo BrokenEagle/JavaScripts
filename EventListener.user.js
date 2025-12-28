@@ -312,11 +312,19 @@ const DEFAULT_VALUES = {
 
 //CSS Constants
 
-const SUBSCRIBED_COLOR = 'mediumseagreen';
-const UNSUBSCRIBED_COLOR = 'darkorange';
-const NEW_EVENTS_COLOR = 'var(--green-4)';
-const NEW_EVENTS_DARK = 'var(--green-6)';
-const NEW_EVENTS_BORDER = `1px solid ${NEW_EVENTS_DARK}`;
+const SUBSCRIBED_COLOR_LIGHT = 'var(--green-3)';
+const UNSUBSCRIBED_COLOR_LIGHT = 'var(--orange-3)';
+const SUBSCRIBED_COLOR_DARK = 'var(--green-4)';
+const UNSUBSCRIBED_COLOR_DARK = 'var(--orange-4)';
+const NEW_EVENTS_BASE_DARK = 'var(--green-7)';
+const NEW_EVENTS_LIGHTEN_DARK = 'var(--green-6)';
+const NEW_EVENTS_BASE_LIGHT = 'var(--green-4)';
+const NEW_EVENTS_LIGHTEN_LIGHT = 'var(--green-3)';
+const NEW_EVENTS_DARKEN_LIGHT = 'var(--green-5)';
+const INSERT_COLOR_LIGHT = 'var(--green-2)';
+const DELETE_COLOR_LIGHT = 'var(--red-2)';
+const INSERT_COLOR_DARK = 'var(--green-7)';
+const DELETE_COLOR_DARK = 'var(--red-7)';
 
 const PROGRAM_CSS = `
 /**GENERAL**/
@@ -327,7 +335,6 @@ const PROGRAM_CSS = `
     cursor: pointer;
 }
 .el-link-disabled {
-    color: var(--text-color);
     pointer-events: none;
 }
 .el-loading {
@@ -336,7 +343,7 @@ const PROGRAM_CSS = `
 }
 /**NAVIGATION**/
 #el-nav-events.el-has-new-events {
-    color: red;
+    color: var(--red-5);
 }
 #el-display-subscribe {
     font-weight: bold;
@@ -345,10 +352,10 @@ const PROGRAM_CSS = `
     font-weight: normal;
 }
 #el-display-subscribe a[data-action="show"] {
-    color: green;
+    color: var(--green-5);
 }
 #el-display-subscribe a[data-action="hide"] {
-    color: red;
+    color: var(--red-5);
 }
 /**EVENT PAGE**/
 #el-page {
@@ -366,8 +373,7 @@ const PROGRAM_CSS = `
 }
 .el-event-header {
     padding: 8px;
-    background-color: var(--form-button-background);
-    border: 1px solid var(--form-button-border-color);
+    border: 1px solid;
     font-weight: bold;
     font-size: 20px;
     white-space: nowrap;
@@ -376,28 +382,12 @@ const PROGRAM_CSS = `
 .el-event-header a {
     cursor: pointer;
 }
-.el-event-header[data-type="close"] a {
-    color: var(--red-5);
-}
-.el-event-header[data-type="close"] a:hover {
-    color: var(--red-3);
-}
 .el-event-header.el-has-new-events {
-    background-color: ${NEW_EVENTS_COLOR};
-    border: ${NEW_EVENTS_BORDER};
+    border: 1px solid;
 }
-.el-event-header.el-has-new-events a {
-    color: white;
-}
-.el-event-header.el-header-active {
-    background-color: var(--blue-4) !important;
-    border-color: var(--blue-6) !important;
-}
-.el-event-header.el-header-active:hover {
-    background-color: var(--blue-3) !important;
-}
+.el-event-header.el-has-new-events a,
 .el-event-header.el-header-active a {
-    color: white;
+    color: var(--white);
 }
 /**HOME**/
 .el-event-body[data-type="home"] {
@@ -405,7 +395,7 @@ const PROGRAM_CSS = `
     flex-wrap: wrap;
     overflow-y: auto;
     height: calc(100vh - 7.5em);
-    border: 1px solid var(--default-border-color);
+    border: 1px solid;
 }
 .el-home-section {
     width: 25em;
@@ -416,8 +406,7 @@ const PROGRAM_CSS = `
     padding: 2px;
 }
 .el-home-section.el-has-new-events h4 {
-    color: var(--body-background-color);
-    background-color: ${NEW_EVENTS_COLOR};
+    color: var(--white);
 }
 .el-section-controls {
     list-style-type: none !important;
@@ -431,32 +420,29 @@ const PROGRAM_CSS = `
     text-align: center;
     padding: 4px 6px;
     display: block;
-    border: 1px solid var(--text-color);
+    border: 1px solid;
     border-radius: 25px;
     width: 90%;
     height: 90%;
     margin: 4px 0;
     font-weight: bold;
 }
-.el-section-link a:hover {
-    background-color: var(--default-border-color);
-}
 .el-more {
-    color: blue;
+    color: var(--blue-5);
     font-weight: bold;
 }
 .el-none {
-    color: red;
+    color: var(--red-5);
 }
 .el-check-more a,
 .el-check-all a {
-    color: mediumseagreen;
+    color: var(--green-5);
 }
 .el-reset-event a {
-    color: red;
+    color: var(--red-5);
 }
 .el-refresh-event a {
-    color: mediumpurple;
+    color: var(--purple-5);
 }
 /**BODY HEADER**/
 .el-body-header {
@@ -472,33 +458,23 @@ const PROGRAM_CSS = `
 /**BODY SECTION**/
 .el-mark-read a.el-select {
     display: flex;
-    border: 1px solid #888;
+    border: 1px solid;
     border-radius: 5px;
-    background-color: var(--default-border-color);
     height: 30px;
     width: 30px;
     justify-content: center;
     align-items: center;
 }
-.el-mark-read a.el-select:hover {
-    background-color: var(--muted-text-color);
-}
 .el-new-event .el-mark-read a.el-select {
-    background-color: ${NEW_EVENTS_COLOR};
-    border: ${NEW_EVENTS_BORDER};
-}
-.el-new-event .el-mark-read a.el-select:hover {
-    background-color: ${NEW_EVENTS_DARK}
+    border: 1px solid;
 }
 /**TABLE**/
 .el-floating-header {
      display: flex;
-     background: var(--body-background-color);
      position: absolute;
      top: 0;
      font-weight: bold;
-     border-bottom: 2px solid var(--table-header-border-color);
-     box-shadow: 0px 1px var(--body-background-color);
+     border-bottom: 2px solid;
      z-index: 10;
 }
 .el-floating-cell {
@@ -516,7 +492,7 @@ const PROGRAM_CSS = `
 }
 td.el-found-with {
     text-align: center;
-    color: orange;
+    color: var(--orange-3);
 }
 table.el-striped td,
 table.el-striped th {
@@ -554,7 +530,7 @@ table.el-striped thead tr {
     padding-left: 0.5em;
 }
 .el-comments-body .el-comments-column {
-    border-bottom: 1px solid lightgrey;
+    border-bottom: 1px solid;
     padding-bottom: 10px;
 }
 .el-event-body[data-type="comment"] .el-mark-read {
@@ -567,12 +543,8 @@ table.el-striped thead tr {
     display: flex;
     justify-content: center;
 }
-.el-event-notice-section[data-type="comment"] .post {
-    border-bottom: 1px solid var(--default-border-color);
-    padding: 5px 0;
-}
 div.el-found-with.el-comment-column {
-    color: orange;
+    color: var(--orange-3);
 }
 /**POST**/
 .el-event-body[data-type="post"] td.tags-column,
@@ -584,23 +556,10 @@ div.el-found-with.el-comment-column {
     display: flex;
     flex-wrap: wrap;
 }
-.el-add-pool-posts {
-    background-color: rgba(0, 255, 0, 0.2);
-}
-.el-rem-pool-posts {
-    background-color: rgba(255, 0, 0, 0.2);
-}
 .el-pool-posts .post-preview {
     margin: 5px;
     padding: 5px;
-    border: 1px solid var(--dtext-blockquote-border-color);
-}
-/**WIKI**/
-.el-event-body[data-type="wiki"] ul.wiki-other-names-diff-list li.added {
-    background: var(--wiki-page-versions-diff-ins-background);
-}
-.el-event-body[data-type="wiki"] ul.wiki-other-names-diff-list li.removed {
-    background: var(--wiki-page-versions-diff-del-background);
+    border: 1px solid;
 }
 /**DMAIL**/
 .el-event-body[data-type="dmail"] tr[data-is-read="false"] {
@@ -614,12 +573,6 @@ div.el-found-with.el-comment-column {
 #el-subscribe-events {
     padding-left: 2em;
     font-weight: bold;
-}
-#el-subscribe-events .el-subscribed a {
-    color: ${SUBSCRIBED_COLOR};
-}
-#el-subscribe-events .el-unsubscribed a {
-    color: ${UNSUBSCRIBED_COLOR};
 }
 #el-subscribe-events .el-subscribed a:hover,
 #el-subscribe-events .el-unsubscribed a:hover {
@@ -639,12 +592,249 @@ div.el-found-with.el-comment-column {
 }
 #el-read-event-notice {
     font-weight: bold;
-    color: red;
+    color: var(--red-5);
+}
+.el-event-notice-section[data-type="comment"] .post {
+    border-bottom: 1px solid;
+    padding: 5px 0;
+}
+/**MENU**/
+.el-menu-subscribe,
+.el-menu-unsubscribe {
+    font-weight: bold;
 }
 /**OTHER**/
 div#el-notice {
     top: unset;
     bottom: 4em;
+}`;
+
+const LIGHT_MODE_CSS = `
+/**GENERAL**/
+.el-link-disabled {
+    color: var(--black);
+}
+/**EVENT PAGE**/
+.el-event-header {
+    background-color: var(--grey-2);
+    border-color: var(--grey-3);
+}
+.el-event-header[data-type="close"] a {
+    color: var(--red-5);
+}
+.el-event-header[data-type="close"] a:hover {
+    color: var(--red-4);
+}
+.el-event-header.el-has-new-events {
+    background-color: ${NEW_EVENTS_BASE_LIGHT};
+    border-color: ${NEW_EVENTS_DARKEN_LIGHT};
+}
+.el-event-header.el-has-new-events:hover {
+    background-color: ${NEW_EVENTS_LIGHTEN_LIGHT};
+}
+.el-event-header.el-header-active {
+    background-color: var(--blue-5);
+    border-color: var(--blue-6);
+}
+.el-event-header.el-header-active:hover {
+    background-color: var(--blue-4);
+}
+/**HOME**/
+.el-event-body[data-type="home"] {
+    border-color: var(--grey-1);
+}
+.el-home-section.el-has-new-events h4 {
+    background-color: ${NEW_EVENTS_BASE_LIGHT};
+}
+.el-section-link a {
+    border-color: var(--grey-5);
+}
+.el-section-link a:hover {
+    background-color: var(--grey-1);
+}
+/**BODY SECTION**/
+.el-mark-read a.el-select {
+    border-color: #888;
+    background-color: var(--grey-1);
+}
+.el-mark-read a.el-select:hover {
+    background-color: var(--grey-2);
+}
+.el-new-event .el-mark-read a.el-select {
+    background-color: ${NEW_EVENTS_LIGHTEN_LIGHT};
+    border-color: ${NEW_EVENTS_BASE_LIGHT};
+}
+.el-new-event .el-mark-read a.el-select:hover {
+    background-color: ${NEW_EVENTS_BASE_LIGHT}
+}
+/**TABLE**/
+.el-floating-header {
+     background: var(--white);
+     border-bottom-color: var(--grey-2);
+     box-shadow: 0px 1px var(--white);
+}
+table.el-striped tbody tr {
+  border-bottom-color: var(--grey-2);
+}
+/**COMMENT**/
+.el-comments-body .el-comments-column {
+    border-bottom-color: var(--grey-2);
+}
+/**NOTE**/
+.el-event-body[data-type="note"] td.diff-body ins {
+    background: ${INSERT_COLOR_LIGHT};
+}
+.el-event-body[data-type="note"] td.diff-body del {
+    background: ${DELETE_COLOR_LIGHT};
+}
+/**POOL**/
+.el-add-pool-posts {
+    background-color: ${INSERT_COLOR_LIGHT};
+}
+.el-rem-pool-posts {
+    background-color: ${DELETE_COLOR_LIGHT};
+}
+.el-pool-posts .post-preview {
+    border-color: var(--grey-1);
+}
+/**WIKI**/
+.el-event-body[data-type="wiki"] ul.wiki-other-names-diff-list li.added {
+    background: ${INSERT_COLOR_LIGHT};
+}
+.el-event-body[data-type="wiki"] ul.wiki-other-names-diff-list li.removed {
+    background: ${DELETE_COLOR_LIGHT};
+}
+/**SUBSCRIBE_LINKS**/
+#el-subscribe-events .el-subscribed a {
+    color: ${SUBSCRIBED_COLOR_LIGHT};
+}
+#el-subscribe-events .el-unsubscribed a {
+    color: ${UNSUBSCRIBED_COLOR_LIGHT};
+}
+/**NOTICE PANEL**/
+.el-event-notice-section[data-type="comment"] .post {
+    border-bottom-color: var(--grey-2);
+}
+/**MENU**/
+.el-menu-subscribe {
+    color: ${SUBSCRIBED_COLOR_LIGHT};
+}
+.el-menu-unsubscribe {
+    color: ${UNSUBSCRIBED_COLOR_LIGHT};
+}`;
+
+const DARK_MODE_CSS = `
+/**GENERAL**/
+.el-link-disabled {
+    color: var(--white);
+}
+/**EVENT PAGE**/
+.el-event-header {
+    background-color: var(--grey-7);
+    border-color: var(--grey-6);
+}
+.el-event-header[data-type="close"] a {
+    color: var(--red-5);
+}
+.el-event-header[data-type="close"] a:hover {
+    color: var(--red-4);
+}
+.el-event-header.el-has-new-events {
+    background-color: ${NEW_EVENTS_BASE_DARK};
+    border-color: ${NEW_EVENTS_LIGHTEN_DARK};
+}
+.el-event-header.el-has-new-events:hover {
+    background-color: ${NEW_EVENTS_LIGHTEN_DARK};
+}
+.el-event-header.el-header-active {
+    background-color: var(--blue-7);
+    border-color: var(--blue-6);
+}
+.el-event-header.el-header-active:hover {
+    background-color: var(--blue-6);
+}
+/**HOME**/
+.el-event-body[data-type="home"] {
+    border-color: var(--grey-8);
+}
+.el-home-section.el-has-new-events h4 {
+    background-color: ${NEW_EVENTS_BASE_DARK};
+}
+.el-section-link a {
+    border-color: var(--grey-4);
+}
+.el-section-link a:hover {
+    background-color: var(--grey-8);
+}
+/**BODY SECTION**/
+.el-mark-read a.el-select {
+    border-color: #888;
+    background-color: var(--grey-8);
+}
+.el-mark-read a.el-select:hover {
+    background-color: var(--grey-7);
+}
+.el-new-event .el-mark-read a.el-select {
+    background-color: ${NEW_EVENTS_BASE_DARK};
+    border-color: ${NEW_EVENTS_LIGHTEN_DARK};
+}
+.el-new-event .el-mark-read a.el-select:hover {
+    background-color: ${NEW_EVENTS_LIGHTEN_DARK}
+}
+/**TABLE**/
+.el-floating-header {
+     background: var(--grey-9);
+     border-bottom-color: var(--grey-7);
+     box-shadow: 0px 1px var(--grey-9);
+}
+table.el-striped tbody tr {
+  border-bottom-color: var(--grey-7);
+}
+/**COMMENT**/
+.el-comments-body .el-comments-column {
+    border-bottom-color: var(--grey-7);
+}
+/**NOTE**/
+.el-event-body[data-type="note"] td.diff-body ins {
+    background: ${INSERT_COLOR_DARK};
+}
+.el-event-body[data-type="note"] td.diff-body del {
+    background: ${DELETE_COLOR_DARK};
+}
+/**POOL**/
+.el-add-pool-posts {
+    background-color: ${INSERT_COLOR_DARK};
+}
+.el-rem-pool-posts {
+    background-color: ${DELETE_COLOR_DARK};
+}
+.el-pool-posts .post-preview {
+    border-color: var(--grey-8);
+}
+/**WIKI**/
+.el-event-body[data-type="wiki"] ul.wiki-other-names-diff-list li.added {
+    background: ${INSERT_COLOR_DARK};
+}
+.el-event-body[data-type="wiki"] ul.wiki-other-names-diff-list li.removed {
+    background: ${DELETE_COLOR_DARK};
+}
+/**SUBSCRIBE_LINKS**/
+#el-subscribe-events .el-subscribed a {
+    color: ${SUBSCRIBED_COLOR_DARK};
+}
+#el-subscribe-events .el-unsubscribed a {
+    color: ${UNSUBSCRIBED_COLOR_DARK};
+}
+/**NOTICE PANEL**/
+.el-event-notice-section[data-type="comment"] .post {
+    border-bottom-color: var(--grey-8);
+}
+/**MENU**/
+.el-menu-subscribe {
+    color: ${SUBSCRIBED_COLOR_DARK};
+}
+.el-menu-unsubscribe {
+    color: ${UNSUBSCRIBED_COLOR_DARK};
 }`;
 
 const MENU_CSS = `
@@ -673,7 +863,7 @@ const SUBSCRIBE_EVENT_SETTINGS_DETAILS = JSPLib.utility.normalizeHTML()`
 <p>
 When the&ensp;<code>show_creator_events</code>&ensp;setting is enabled, it will automatically show events for items (post, forum_topic) where the user is the creator, but only if
 those events are also enabled under the&ensp;<code>subscribe_events_enabled</code>&ensp;setting. Meaning, events for that event type will be shown to the user whether they are&ensp;
-<span style="color: ${SUBSCRIBED_COLOR}; font-weight: bold;">SUBSCRIBED</span>&ensp;or&ensp;<span style="color: ${UNSUBSCRIBED_COLOR}; font-weight: bold;">UNSUBSCRIBED</span>
+<span class="el-menu-subscribe">SUBSCRIBED</span>&ensp;or&ensp;<span class="el-menu-unsubscribe">UNSUBSCRIBED</span>
 &ensp;to an individual item (post, forum_topic) on the item's page.
 </p>
 <p>
@@ -3554,6 +3744,8 @@ function Main() {
         broadcast_func: BroadcastEL,
         render_menu_func: RenderSettingsMenu,
         program_css: PROGRAM_CSS,
+        light_css: LIGHT_MODE_CSS,
+        dark_css: DARK_MODE_CSS,
         menu_css: MENU_CSS,
     };
     if (!JSPLib.menu.preloadScript(EL, preload)) return;
