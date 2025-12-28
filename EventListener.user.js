@@ -2672,10 +2672,7 @@ async function InsertCommentEvents(page) {
             UpdateTimestamps($section);
             let $container = $('<div class="el-comments-section"><div class="el-comments-header"><div class="el-mark-read"></div><div class="el-found-with"><span>Found by</span></div><div class="el-comments-column"><span>Comments</span></div></div></div>');
             $container.append($section);
-            $section.find('.post-preview').each((_, entry) => {
-                entry.style.setProperty('display', 'flex', 'important');
-                entry.style.setProperty('visibility', 'visible', 'important');
-            });
+            $section.find('.post-preview').addClass('blacklist-initialized');
             $section.find('.el-mark-read > a').on(JSPLib.program_click, SelectEvent);
             EL.pages.comment[page] = $container;
             $body_section.empty().append($container);
