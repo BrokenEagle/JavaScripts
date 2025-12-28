@@ -2865,7 +2865,7 @@ async function InsertCommentEvents(page) {
     EL.pages.comment ??= {};
     let $body_section = $('.el-event-body[data-type="comment"] .el-body-section');
     if (!EL.pages.comment[page]) {
-        $body_section.html('<span style="font-size: 24px; font-weight: bold;">Loading...</span>');
+        $body_section.html('<span class="el-loading">Loading...</span>');
         let events = GetEvents('comment');
         let page_events = GetPageEvents('comment', page);
         let $page = await GetHTMLPage('comment', page_events);
@@ -2941,14 +2941,14 @@ function PoolPostprocess($table) {
             $post_count.attr('data-add-posts', add_posts);
             $post_count.attr('data-rem-posts', rem_posts);
         } else {
-            $post_count.prepend('<span style="font-family:monospace">&nbsp;&nbsp;No posts&nbsp;|&nbsp;</span>');
+            $post_count.prepend('<span class="el-monospace">&nbsp;&nbsp;No posts&nbsp;|&nbsp;</span>');
         }
         let $desc_changed_link = $row.find('.diff-column a[href$="/diff"]');
         if ($desc_changed_link.length !== 0) {
             let link_html = RenderOpenItemLinks('pooldiff', pool_version_id, 'Show diff', 'Hide diff');
             $desc_changed_link.replaceWith(link_html);
         } else {
-            $row.find('.diff-column').html('<span style="font-family:monospace">&nbsp;&nbsp;No diff</span>');
+            $row.find('.diff-column').html('<span class="el-monospace">&nbsp;&nbsp;No diff</span>');
         }
     });
     OpenEventClick('pooldiff', $table, AddPoolDiffRow);
