@@ -542,6 +542,9 @@ td.el-found-with {
 .el-comments-header > div > span {
     font-size: 18px;
 }
+.el-comments-header .el-found-with {
+    text-align: center;
+}
 .el-comments-header .el-comments-column {
     padding-left: 2.5em;
 }
@@ -553,10 +556,14 @@ td.el-found-with {
     padding-left: 0.5em;
 }
 .el-event-body[data-type="comment"] .el-mark-read {
-    width: 2em;
+    width: 5em;
 }
 .el-event-body[data-type="comment"] .el-found-with {
     width: 10em;
+}
+.el-event-body[data-type="comment"] .el-comments-body .el-comment-column {
+    display: flex;
+    justify-content: center;
 }
 .el-event-notice-section[data-type="comment"] .post {
     border-bottom: 1px solid var(--default-border-color);
