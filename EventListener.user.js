@@ -341,6 +341,11 @@ const PROGRAM_CSS = `
     font-size: 24px;
     font-weight: bold;
 }
+.el-error {
+    font-weight: bold;
+    font-size: 24px;
+    color: red;
+}
 /**NAVIGATION**/
 #el-nav-events.el-has-new-events {
     color: var(--red-5);
@@ -1205,7 +1210,7 @@ const OPEN_ITEM_LINKS_HTML = JSPLib.utility.normalizeHTML()`
 
 const ERROR_PAGE_HTML = JSPLib.utility.normalizeHTML()`
 <div style="font-size: 24px;">
-    <div style="color: red; font-weight: bold;">
+    <div class="el-error">
         ERROR LOADING EVENTS FOR %PLURAL%!
     </div>
     <div style="margin-top: 0.5em;">
@@ -2544,7 +2549,7 @@ function InstallNoticePanel(new_events_hash) {
                 }
             } else {
                 let plural = TYPEDICT[type].plural.toUpperCase();
-                $event_section.append(`<div style="font-size: 24px;">ERROR LOADING EVENTS FOR ${plural}</div>`);
+                $event_section.append(`<div class="el-error">ERROR LOADING EVENTS FOR ${plural}</div>`);
             }
         });
         new_events.forEach((ev) => {ev.seen = true;});
@@ -2987,7 +2992,7 @@ async function AddDmailRow(dmail_id, $row) {
         $('.dmail h1:first-of-type', $dmail).hide();
         $td.empty().append($('.dmail', $dmail));
     } else {
-        $td.empty().append('<span style="font-weight: bold; font-size: 24px; color: red;">ERROR LOADING DMAIL!</span>');
+        $td.empty().append('<span class="el-error">ERROR LOADING DMAIL!</span>');
     }
 }
 
@@ -3006,7 +3011,7 @@ async function AddForumPostRow(forum_id, $row) {
         let $forum_post = $(`#forum_post_${forum_id}`, $forum_page);
         $td.empty().append($forum_post);
     } else {
-        $td.empty().append('<span style="font-weight: bold; font-size: 24px; color: red;">ERROR LOADING FORUM POST!</span>');
+        $td.empty().append('<span class="el-error">ERROR LOADING FORUM POST!</span>');
     }
 }
 
@@ -3020,7 +3025,7 @@ async function AddWikiDiffRow(wiki_version_id, $row) {
         $td.empty().append($('#a-diff #content', $wiki_diff_page));
         $outerblock.find('.fixed-width-container').removeClass('.fixed-width-container');
     } else {
-        $td.empty().append('<span style="font-weight: bold; font-size: 24px; color: red;">ERROR LOADING WIKI PAGE DIFF!</span>');
+        $td.empty().append('<span class="el-error">ERROR LOADING WIKI PAGE DIFF!</span>');
     }
 }
 
@@ -3034,7 +3039,7 @@ async function AddPoolDiffRow(pool_version_id, $row) {
         $td.empty().append($('#a-diff', $pool_diff));
         $outerblock.find('#a-diff > h1').hide();
     } else {
-        $td.empty().append('<span style="font-weight: bold; font-size: 24px; color: red;">ERROR LOADING POOL DIFF!</span>');
+        $td.empty().append('<span class="el-error">ERROR LOADING POOL DIFF!</span>');
     }
 }
 
@@ -3062,7 +3067,7 @@ async function AddPoolPostsRow(pool_version_id, $row) {
         insertPostPreviews($outerblock.find('.el-rem-pool-posts'), thumbnails, rem_posts);
         UpdatePostPreviews($outerblock);
     } else {
-        $td.empty().append('<span style="font-weight: bold; font-size: 24px; color: red;">ERROR LOADING POOL POSTS!</span>');
+        $td.empty().append('<span class="el-error">ERROR LOADING POOL POSTS!</span>');
     }
 }
 
