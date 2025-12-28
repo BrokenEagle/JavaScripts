@@ -485,7 +485,7 @@ const PROGRAM_CSS = `
     font-weight: bold;
 }
 /**BODY SECTION**/
-.el-mark-read > a {
+.el-mark-read a.el-select {
     display: flex;
     border: 1px solid #888;
     border-radius: 5px;
@@ -495,14 +495,14 @@ const PROGRAM_CSS = `
     justify-content: center;
     align-items: center;
 }
-.el-mark-read > a:hover {
+.el-mark-read a.el-select:hover {
     background-color: var(--muted-text-color);
 }
-.el-new-event .el-mark-read > a {
+.el-new-event .el-mark-read a.el-select {
     background-color: ${NEW_EVENTS_COLOR};
     border: ${NEW_EVENTS_BORDER};
 }
-.el-new-event .el-mark-read > a:hover {
+.el-new-event .el-mark-read a.el-select:hover {
     background-color: ${NEW_EVENTS_DARK}
 }
 div.el-found-with.el-comment-column,
@@ -959,7 +959,7 @@ const TABLE_HEADER_PREVIEW_HTML = '<th width="1%">Preview</th>';
 
 const TABLE_BODY_ADDONS_HTML = JSPLib.utility.normalizeHTML()`
 <td class="el-mark-read">
-    <a>
+    <a class="el-select">
         <input type="checkbox">
     </a>
 </td>
@@ -2656,7 +2656,7 @@ async function InsertCommentEvents(page) {
                 let event = events.find((ev) => ev.id === id);
                 let match_html = event.match.map((m) => m.replace('-', ' ')).join('&ensp;&amp;<br>');
                 let $post = $entry.closest('div.post');
-                $post.prepend(`<div class="el-mark-read el-comment-column"><a><input type="checkbox"></div></a><div class="el-found-with el-comment-column">${match_html}</div>`);
+                $post.prepend(`<div class="el-mark-read el-comment-column"><a class="el-select"><input type="checkbox"></div></a><div class="el-found-with el-comment-column">${match_html}</div>`);
                 $post.addClass('el-comments-column');
                 if (!event.seen) {
                     $post.addClass('el-new-event');
