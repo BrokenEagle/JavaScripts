@@ -1002,8 +1002,6 @@ const ERROR_PAGE_HTML = JSPLib.utility.normalizeHTML()`
 
 //Time constants
 
-const TIMER_POLL_INTERVAL = 100; //Polling interval for checking program status
-const JQUERY_DELAY = 1; //For jQuery updates that should not be done synchronously
 const NONSYNCHRONOUS_DELAY = 1; //For operations too costly in events to do synchronously
 const MIN_JITTER = JSPLib.utility.one_minute;
 const MAX_JITTER = JSPLib.utility.one_minute * 10;
