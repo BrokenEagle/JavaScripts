@@ -1157,6 +1157,30 @@ const TABLE_BODY_ADDONS_HTML = JSPLib.utility.normalizeHTML()`
 </td>`;
 const TABLE_BODY_PREVIEW_HTML = '<td class="el-post-preview"></td>';
 
+////Event comment
+
+const COMMENT_SECTION_HTML = JSPLib.utility.normalizeHTML()`
+<div class="el-comments-section">
+    <div class="el-comments-header">
+        <div class="el-mark-read"></div>
+        <div class="el-found-with">
+            <span>Found by</span>
+        </div>
+        <div class="el-comments-column">
+            <span>Comments</span>
+        </div>
+    </div>
+</div>`;
+
+const COMMENT_EVENT_HTML = JSPLib.utility.normalizeHTML()`
+<div class="el-mark-read el-comment-column">
+    <a class="el-select">
+        <input type="checkbox">
+    </a>
+</div>
+<div class="el-found-with el-comment-column">
+    %s
+</div>`;
 
 ////Open item
 
@@ -2849,7 +2873,7 @@ async function InsertCommentEvents(page) {
                 let event = events.find((ev) => ev.id === id);
                 let match_html = event.match.map((m) => m.replace('-', ' ')).join('&ensp;&amp;<br>');
                 let $post = $entry.closest('div.post');
-                $post.prepend(`<div class="el-mark-read el-comment-column"><a class="el-select"><input type="checkbox"></div></a><div class="el-found-with el-comment-column">${match_html}</div>`);
+                $post.prepend(JSPLib.utility.sprintf(COMMENT_EVENT_HTML, match_html));
                 $post.addClass('el-comments-column');
                 if (!event.seen) {
                     $post.addClass('el-new-event');
@@ -2860,7 +2884,7 @@ async function InsertCommentEvents(page) {
                 SaveEvents('comment', events);
             }
             UpdateTimestamps($section);
-            let $container = $('<div class="el-comments-section"><div class="el-comments-header"><div class="el-mark-read"></div><div class="el-found-with"><span>Found by</span></div><div class="el-comments-column"><span>Comments</span></div></div></div>');
+            let $container = $(COMMENT_SECTION_HTML);
             $container.append($section);
             $section.find('.post-preview').addClass('blacklist-initialized');
             $section.find('.el-mark-read > a').on(JSPLib.program_click, SelectEvent);
