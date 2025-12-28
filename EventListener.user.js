@@ -257,21 +257,6 @@ const SETTINGS_CONFIG = {
 };
 
 const CONTROL_CONFIG = {
-    post_events: {
-        allitems: ['post', 'comment', 'note', 'commentary', 'approval'],
-        value: [],
-        hint: "Select which events to populate.",
-    },
-    operation: {
-        allitems: ['add', 'subtract', 'overwrite'],
-        value: ['add'],
-        hint: "Select how the query will affect existing subscriptions.",
-    },
-    search_query: {
-        value: "",
-        buttons: ['get'],
-        hint: 'Enter a post search query to populate. See <a href="/wiki_pages/43049">Help:Cheatsheet</a> for more info.',
-    },
     cache_info: {
         value: "Click to populate",
         hint: "Calculates the cache usage of the program and compares it to the total usage.",
