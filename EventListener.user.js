@@ -2576,6 +2576,7 @@ async function InsertTableEvents(page, type) {
         let $page = await GetHTMLPage(type, page_events);
         if ($page) {
             let $table = $('table.striped', $page);
+            $table.removeClass('autofit');
             let table_header = TABLE_HEADER_ADDONS_HTML;
             table_header += (TYPEDICT[type].add_thumbnail ? TABLE_HEADER_PREVIEW_HTML : "");
             $table.find('thead tr').prepend(table_header);
