@@ -374,7 +374,7 @@ const PROGRAM_CSS = `
     display: flex;
 }
 #el-body {
-    min-height: 50em;
+    min-height: calc(100vh - 6em);
 }
 .el-event-body {
     margin: 1em;
