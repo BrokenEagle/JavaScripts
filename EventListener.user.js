@@ -43,7 +43,6 @@ const PROGRAM_LOAD_REQUIRED_SELECTORS = ['#nav', '#page'];
 
 //Program name constants
 const PROGRAM_SHORTCUT = 'el';
-const PROGRAM_CLICK = 'click.el';
 const PROGRAM_NAME = 'EventListener';
 
 //Main program variable
@@ -1900,7 +1899,7 @@ function UpdateEventType(type, {saved_total = 0, new_total = 0, has_new = false,
                 $anchor_header ??= $('.el-event-header[data-type="close"]');
                 $anchor_header.before(RenderEventHeader(type));
                 $('#el-body').append(RenderEventBody(type));
-                $(`#el-page .el-event-header[data-type=${type}] a`).on(PROGRAM_CLICK, EventTab);
+                $(`#el-page .el-event-header[data-type=${type}] a`).on(JSPLib.program_click, EventTab);
             } else {
                 printer.debuglogLevel('Emptying body for', type, JSPLib.debug.INFO);
                 $(`.el-event-body[data-type="${type}"]`).children().remove();
@@ -2280,9 +2279,9 @@ function InstallSubscribeLinks() {
     }
     if (show_submenu) {
         $('#subnav-menu').append(SUBSCRIBE_CONTROLS_HTML);
-        $('#el-display-subscribe a').on(PROGRAM_CLICK, ToggleSubscribeLinks);
+        $('#el-display-subscribe a').on(JSPLib.program_click, ToggleSubscribeLinks);
         UpdateSubscribeLinks();
-        $('#el-subscribe-events a').on(PROGRAM_CLICK, SubscribeMultiLink);
+        $('#el-subscribe-events a').on(JSPLib.program_click, SubscribeMultiLink);
     }
 }
 
@@ -2318,14 +2317,14 @@ function InstallNoticePanel(new_events_hash) {
         SaveEvents(type, saved_events);
     });
     EL.new_events = new_events_hash;
-    $('#el-close-event-notice').one(PROGRAM_CLICK, CloseEventPanel);
-    $('#el-read-event-notice').one(PROGRAM_CLICK, ReadEventPanel);
+    $('#el-close-event-notice').one(JSPLib.program_click, CloseEventPanel);
+    $('#el-read-event-notice').one(JSPLib.program_click, ReadEventPanel);
     JSPLib.storage.setLocalData('el-new-events', new_events_hash);
 }
 
 function InstallEventsNavigation() {
     $('#nav-more').before(EVENTS_NAV_HTML);
-    $('#el-nav-events').on(PROGRAM_CLICK, OpenEventsPage);
+    $('#el-nav-events').on(JSPLib.program_click, OpenEventsPage);
     UpdateNavigation();
 }
 
@@ -2344,11 +2343,11 @@ function LoadEventsPage() {
             UpdateEventSource(type, 'other');
         }
     });
-    $('#el-page .el-event-header a').on(PROGRAM_CLICK, EventTab);
-    $('#el-page .el-check-more a').on(PROGRAM_CLICK, CheckMore);
-    $('#el-page .el-check-all a').on(PROGRAM_CLICK, CheckAll);
-    $('#el-page .el-reset-event a').on(PROGRAM_CLICK, ResetEvent);
-    $('#el-page .el-refresh-event a').on(PROGRAM_CLICK, RefreshEvent);
+    $('#el-page .el-event-header a').on(JSPLib.program_click, EventTab);
+    $('#el-page .el-check-more a').on(JSPLib.program_click, CheckMore);
+    $('#el-page .el-check-all a').on(JSPLib.program_click, CheckAll);
+    $('#el-page .el-reset-event a').on(JSPLib.program_click, ResetEvent);
+    $('#el-page .el-refresh-event a').on(JSPLib.program_click, RefreshEvent);
 }
 
 function LoadEventSection(type) {
@@ -2361,14 +2360,14 @@ function LoadEventSection(type) {
         PAGINATOR: (events.length > EL.page_size ? PAGINATOR_HTML : ""),
     });
     $body.append(body_html);
-    $body.find('.el-paginator-prev').on(PROGRAM_CLICK, PaginatorPrevious);
-    $body.find('.el-paginator-next').on(PROGRAM_CLICK, PaginatorNext);
-    $body.find('.el-select-all').on(PROGRAM_CLICK, SelectAll);
-    $body.find('.el-select-none').on(PROGRAM_CLICK, SelectNone);
-    $body.find('.el-select-invert').on(PROGRAM_CLICK, SelectInvert);
-    $body.find('.el-mark-selected').on(PROGRAM_CLICK, MarkSelected);
-    $body.find('.el-mark-page').on(PROGRAM_CLICK, MarkPage);
-    $body.find('.el-mark-all').on(PROGRAM_CLICK, MarkAll);
+    $body.find('.el-paginator-prev').on(JSPLib.program_click, PaginatorPrevious);
+    $body.find('.el-paginator-next').on(JSPLib.program_click, PaginatorNext);
+    $body.find('.el-select-all').on(JSPLib.program_click, SelectAll);
+    $body.find('.el-select-none').on(JSPLib.program_click, SelectNone);
+    $body.find('.el-select-invert').on(JSPLib.program_click, SelectInvert);
+    $body.find('.el-mark-selected').on(JSPLib.program_click, MarkSelected);
+    $body.find('.el-mark-page').on(JSPLib.program_click, MarkPage);
+    $body.find('.el-mark-all').on(JSPLib.program_click, MarkAll);
     UpdateSectionPage(type, 1);
 }
 
@@ -2402,18 +2401,18 @@ function InstallErrorPage(type, page) {
         PAGEURL: '/' + TYPEDICT[type].controller + '?' + $.param(url_addons),
     });
     $body_section.html(error_html);
-    $body_section.find('.el-events-page-url').one(PROGRAM_CLICK, () => {
+    $body_section.find('.el-events-page-url').one(JSPLib.program_click, () => {
         page_events.forEach((page_ev) => {
             let event = events.find((ev) => ev.id === page_ev.id);
             event.seen = true;
         });
         SaveEvents(type, events);
     });
-    $body_section.find('.el-events-reload').one(PROGRAM_CLICK, () => {
+    $body_section.find('.el-events-reload').one(JSPLib.program_click, () => {
         UpdateSectionPage(type, page);
     });
     let $mark_page = $body_section.find('.el-mark-page-read');
-    $mark_page.one(PROGRAM_CLICK, () => {
+    $mark_page.one(JSPLib.program_click, () => {
         let selected_ids = JSPLib.utility.getObjectAttributes(page_events, 'id');
         PruneSavedEvents(type, selected_ids);
         $mark_page.addClass('el-link-disabled');
@@ -2614,7 +2613,7 @@ async function InsertTableEvents(page, type) {
             $pane.append($table.detach());
             $container.append($pane);
             TYPEDICT[type].insert_postprocess?.($table);
-            $table.find('.el-mark-read > a').on(PROGRAM_CLICK, SelectEvent);
+            $table.find('.el-mark-read > a').on(JSPLib.program_click, SelectEvent);
             EL.pages[type][page] = $container;
             $body_section.empty().append($container);
             AppendFloatingHeader(type, $container, $table);
@@ -2666,7 +2665,7 @@ async function InsertCommentEvents(page) {
                 entry.style.setProperty('display', 'flex', 'important');
                 entry.style.setProperty('visibility', 'visible', 'important');
             });
-            $section.find('.el-mark-read > a').on(PROGRAM_CLICK, SelectEvent);
+            $section.find('.el-mark-read > a').on(JSPLib.program_click, SelectEvent);
             EL.pages.comment[page] = $container;
             $body_section.empty().append($container);
         } else {
@@ -3151,7 +3150,7 @@ function MarkAll(event) {
 }
 
 function OpenEventClick(type, $table, func) {
-    $table.find(`.el-show-hide-links[data-type="${type}"] a`).off(PROGRAM_CLICK).on(PROGRAM_CLICK, (event) => {
+    $table.find(`.el-show-hide-links[data-type="${type}"] a`).off(JSPLib.program_click).on(JSPLib.program_click, (event) => {
         EL.open_list[type] ??= [];
         let $row = $(event.currentTarget).closest('tr');
         let item_id = $row.data('id');
