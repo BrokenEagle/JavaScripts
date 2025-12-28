@@ -518,6 +518,16 @@ td.el-found-with {
     text-align: center;
     color: orange;
 }
+table.el-striped td,
+table.el-striped th {
+  padding: 4px 6px;
+}
+table.el-striped tbody tr {
+  border-bottom: 1px solid;
+}
+table.el-striped thead tr {
+  border-bottom: 2px solid transparent;
+}
 /**COMMENT**/
 .el-comments-header {
     display: flex;
@@ -2559,7 +2569,7 @@ async function InsertTableEvents(page, type) {
         let $page = await GetHTMLPage(type, page_events);
         if ($page) {
             let $table = $('table.striped', $page);
-            $table.removeClass('autofit');
+            $table.removeClass('autofit striped').addClass('el-striped');
             let table_header = TABLE_HEADER_ADDONS_HTML;
             table_header += (TYPEDICT[type].add_thumbnail ? TABLE_HEADER_PREVIEW_HTML : "");
             $table.find('thead tr').prepend(table_header);
