@@ -522,6 +522,9 @@ td.el-found-with {
 }
 .el-floating-cell {
     padding: 4px 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 .el-table-pane {
     height: calc(100vh - 13em);
@@ -529,6 +532,9 @@ td.el-found-with {
 }
 .el-table-container {
     position: relative;
+}
+td.el-found-with {
+    text-align: center;
 }
 /**COMMENT**/
 .el-comments-header {
