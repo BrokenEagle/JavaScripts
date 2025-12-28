@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      25.10
+// @version      25.11
 // @description  Informs users of new events.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -123,6 +123,11 @@ const SETTINGS_CONFIG = {
         sortvalue: true,
         validate: (data) => JSPLib.utility.arrayEquals(data, ALL_EVENTS),
         hint: "Set the order for how events appear on the home tab of the events page, as well as their placement in the tab list."
+    },
+    ascending_order: {
+        reset: false,
+        validate: JSPLib.utility.isBoolean,
+        hint: "Changes the order of events: oldest -> newest."
     },
     filter_user_events: {
         reset: true,
@@ -1619,21 +1624,27 @@ function PostCustomQuery(query) {
 //Data functions
 
 function GetEvents(type) {
+    var events;
     let storage_key = `el-${type}-saved-events`;
     if (JSPLib.storage.inMemoryStorage(storage_key, localStorage)) {
         //It's already in memory, so it should be good with the current userscript version.
-        return JSPLib.storage.getLocalData(storage_key);
-    }
-    //Events on local storage need to be checked and corrected if possible.
-    let events = JSPLib.storage.getLocalData(storage_key, {default_val: []});
-    if (CorrectEvents(storage_key, events)) {
-        //Get the corrected events.
         events = JSPLib.storage.getLocalData(storage_key);
+    } else {
+        //Events on local storage need to be checked and corrected if possible.
+        events = JSPLib.storage.getLocalData(storage_key, {default_val: []});
+        if (CorrectEvents(storage_key, events)) {
+            //Get the corrected events.
+            events = JSPLib.storage.getLocalData(storage_key);
+        }
+    }
+    if (EL.ascending_order) {
+        events.reverse();
     }
     return events;
 }
 
 function SaveEvents(type, events) {
+    events.sort((eva, evb) => evb.id - eva.id);
     JSPLib.storage.setLocalData(`el-${type}-saved-events`, events);
     UpdateEventType(type, {broadcast: true});
     UpdateNavigation({broadcast: true});
@@ -3476,6 +3487,7 @@ function RenderSettingsMenu() {
     $('#el-display-settings').append(JSPLib.menu.renderCheckbox('display_event_notice'));
     $('#el-display-settings').append(JSPLib.menu.renderCheckbox('display_event_panel'));
     $('#el-display-settings').append(JSPLib.menu.renderTextinput('page_size', 10));
+    $('#el-display-settings').append(JSPLib.menu.renderCheckbox('ascending_order'));
     $('#el-display-settings').append(JSPLib.menu.renderSortlist('events_order'));
     $('#el-network-settings').append(JSPLib.menu.renderTextinput('recheck_interval', 10));
     $('#el-filter-settings').append(JSPLib.menu.renderCheckbox('filter_user_events'));
