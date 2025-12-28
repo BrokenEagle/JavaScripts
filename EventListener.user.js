@@ -505,10 +505,6 @@ const PROGRAM_CSS = `
 .el-new-event .el-mark-read a.el-select:hover {
     background-color: ${NEW_EVENTS_DARK}
 }
-div.el-found-with.el-comment-column,
-td.el-found-with {
-    color: orange;
-}
 /**TABLE**/
 .el-floating-header {
      display: flex;
@@ -535,6 +531,7 @@ td.el-found-with {
 }
 td.el-found-with {
     text-align: center;
+    color: orange;
 }
 /**COMMENT**/
 .el-comments-header {
@@ -574,6 +571,9 @@ td.el-found-with {
 .el-event-notice-section[data-type="comment"] .post {
     border-bottom: 1px solid var(--default-border-color);
     padding: 5px 0;
+}
+div.el-found-with.el-comment-column {
+    color: orange;
 }
 /**POST**/
 .el-event-body[data-type="post"] td.tags-column,
