@@ -668,55 +668,55 @@ those events are also enabled under the&ensp;<code>subscribe_events_enabled</cod
 The following is the list of event types and the relation the user needs to have to an item to be automatically subscribed to that item when that event type is enabled.
 </p>
 <table class="striped">
-	<thead>
-		<tr>
-			<th>Event type</th>
+    <thead>
+        <tr>
+            <th>Event type</th>
             <th>Item type</th>
-			<th>User relation</th>
-		</tr>
-	</thead>
-	<tbody>
-		<tr>
-			<td>note</td>
+            <th>User relation</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>note</td>
             <td>post</td>
-			<td>uploader</td>
-		</tr>
-		<tr>
-			<td>commentary</td>
+            <td>uploader</td>
+        </tr>
+        <tr>
+            <td>commentary</td>
             <td>post</td>
-			<td>uploader</td>
-		</tr>
-		<tr>
-			<td>comment</td>
+            <td>uploader</td>
+        </tr>
+        <tr>
+            <td>comment</td>
             <td>post</td>
-			<td>uploader</td>
-		</tr>
-		<tr>
-			<td>post (edit)</td>
+            <td>uploader</td>
+        </tr>
+        <tr>
+            <td>post (edit)</td>
             <td>post</td>
-			<td>uploader</td>
-		</tr>
-		<tr>
-			<td>flag</td>
+            <td>uploader</td>
+        </tr>
+        <tr>
+            <td>flag</td>
             <td>post</td>
-			<td>uploader</td>
-		</tr>
-		<tr>
-			<td>appeal</td>
+            <td>uploader</td>
+        </tr>
+        <tr>
+            <td>appeal</td>
             <td>post</td>
-			<td>uploader</td>
-		</tr>
-		<tr>
-			<td>approval</td>
+            <td>uploader</td>
+        </tr>
+        <tr>
+            <td>approval</td>
             <td>post</td>
-			<td>uploader</td>
-		</tr>
-		<tr>
-			<td>forum topic</td>
+            <td>uploader</td>
+        </tr>
+        <tr>
+            <td>forum topic</td>
             <td>forum_topic</td>
-			<td>forum topic OP</td>
-		</tr>
-	</tbody>
+            <td>forum topic OP</td>
+        </tr>
+    </tbody>
 </table>`;
 
 const POST_QUERY_EVENT_SETTINGS_DETAILS = JSPLib.utility.normalizeHTML()`
