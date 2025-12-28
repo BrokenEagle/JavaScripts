@@ -553,6 +553,10 @@ table.el-striped thead tr {
 .el-comments-body .el-found-width {
     padding-left: 0.5em;
 }
+.el-comments-body .el-comments-column {
+    border-bottom: 1px solid lightgrey;
+    padding-bottom: 10px;
+}
 .el-event-body[data-type="comment"] .el-mark-read {
     width: 5em;
 }
@@ -2666,10 +2670,6 @@ async function InsertCommentEvents(page) {
                 SaveEvents('comment', events);
             }
             UpdateTimestamps($section);
-            $section.children().slice(0, -1).css({
-                'border-bottom': '1px solid lightgrey',
-                'padding-bottom': '10px',
-            });
             let $container = $('<div class="el-comments-section"><div class="el-comments-header"><div class="el-mark-read"></div><div class="el-found-with"><span>Found by</span></div><div class="el-comments-column"><span>Comments</span></div></div></div>');
             $container.append($section);
             $section.find('.post-preview').each((_, entry) => {
