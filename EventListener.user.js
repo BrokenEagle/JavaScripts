@@ -1186,13 +1186,19 @@ const COMMENT_EVENT_HTML = JSPLib.utility.normalizeHTML()`
 
 const OPEN_ITEM_CONTAINER_HTML = JSPLib.utility.normalizeHTML()`
 <tr class="el-full-item" data-type="%TYPE%" data-id="%ITEMID%">
-    <td colspan="%COLUMNS%"><span class="el-loading">Loading...</span></td>
+    <td colspan="%COLUMNS%">
+        <span class="el-loading">Loading...</span>
+    </td>
 </tr>`;
 
 const OPEN_ITEM_LINKS_HTML = JSPLib.utility.normalizeHTML()`
 <span class="el-show-hide-links" data-type="%TYPE%" data-id="%ITEMID%">
-    <span data-action="show" style><a class="el-link el-monospace">%SHOWTEXT%</a></span>
-    <span data-action="hide" style="display:none !important"><a class="el-link el-monospace">%HIDETEXT%</a></span>
+    <span data-action="show" style>
+        <a class="el-link el-monospace">%SHOWTEXT%</a>
+    </span>
+    <span data-action="hide" style="display:none !important">
+        <a class="el-link el-monospace">%HIDETEXT%</a>
+    </span>
 </span>`;
 
 ////Error page
