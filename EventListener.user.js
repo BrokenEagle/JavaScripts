@@ -2540,7 +2540,6 @@ function InstallSubscribeLinks() {
 }
 
 function InstallNoticePanel(new_events_hash) {
-    if (!EL.display_event_panel) return;
     $('#top').after(NOTICE_PANEL);
     EL.events_order.forEach((type) => {
         if ((!(type in new_events_hash)) || (new_events_hash[type].length === 0)) return;
@@ -3521,7 +3520,9 @@ function ProcessAllReadyEvents() {
             UpdateNavigation({broadcast: true});
             UpdateUserOnNewEvents(true);
             let new_events_hash = GetNewEventsHash(results_hash);
-            InstallNoticePanel(new_events_hash);
+            if (EL.display_event_panel) {
+                InstallNoticePanel(new_events_hash);
+            }
         }
         JSPLib.concurrency.freeSemaphore('main');
     });
@@ -3823,7 +3824,7 @@ function Main() {
     MigrateLocalData();
     InstallSubscribeLinks();
     InstallEventsNavigation();
-    if (Object.keys(EL.new_events).length && EL.display_event_panel) {
+    if (EL.display_event_panel && Object.keys(EL.new_events).length) {
         InstallNoticePanel(EL.new_events);
     } else {
         ProcessAllReadyEvents();
