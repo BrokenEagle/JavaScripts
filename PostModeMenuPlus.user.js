@@ -549,8 +549,8 @@ const MODE_CONTROLS_HTML = `
     <div id="pmm-apply-all">
         <button>Apply</button>
     </div>
-    <button id="pmm-undock" class="ui-button ui-corner-all ui-widget" title="pin">
-        <span class="ui-button-icon ui-icon ui-icon-pin-w"></span>
+    <button id="pmm-undock" title="pin">
+        <svg x="0" y="0" viewBox="0 0 128 128" style="transform: rotate(63deg);" width="18" height="18"><style>.st0,.st1{display:none;fill:#191919}.st1,.st4{fill-rule:evenodd;clip-rule:evenodd}.st4,.st5{display:inline;fill:#191919}</style><g id="row2"><path id="nav:4_1_" d="M36.1 55.8 75.9 76c4.9 2.5 6.8 8.4 4.3 13.2-2.5 4.8-8.5 6.7-13.4 4.2L26.9 73.2c-4.9-2.5-6.8-8.4-4.3-13.2s8.6-6.7 13.5-4.2zm1.8 28.5 13.3 6.8L23.9 127l14-42.7zM68.2 2l33.7 17.1c4.1 2.1 5.8 7.1 3.6 11.2-2.1 4.1-7.2 5.7-11.4 3.6L60.5 16.7c-4.1-2.1-5.8-7.1-3.6-11.2C59 1.5 64.1-.1 68.2 2zm7.9 69.1c2.3-6.8 5.4-14 9.2-21.1 2.1-4 4.3-7.8 6.6-11.4l-34-17.3c-1.7 3.9-3.5 7.9-5.6 11.9-3.8 7.2-7.9 13.8-12.2 19.6l36 18.3z" style="fill-rule:evenodd;clip-rule:evenodd;fill:#191919"></path></g></svg>
     </button>
 </section>
 <section id="pmm-placeholder" style="display: none;">
@@ -1338,19 +1338,21 @@ function ChangeTagScript(event) {
 function UndockModeMenu() {
     let $mode_box = $('#pmm-mode-box');
     let $placeholder = $('#pmm-placeholder');
+    let $pin_svg = $('#pmm-undock > svg');
     let {height, width} = getComputedStyle($mode_box.get(0));
     if (PMM.pinned) {
         $mode_box.css({top: "", left: "", width: "", position: 'relative'});
+        $pin_svg.css('transform', 'rotate(63deg)');
         $placeholder.hide();
         PMM.pinned = false;
     } else {
         let {top, left} = $mode_box.get(0).getBoundingClientRect();
         $mode_box.css({top, left, width, position: 'fixed'});
+        $pin_svg.css('transform', 'rotate(-27deg)');
         $placeholder.show();
         PMM.pinned = true;
     }
     $('#pmm-placeholder').css('height', height);
-    $('#pmm-undock span').toggleClass('ui-icon-pin-w ui-icon-pin-s');
 }
 
 function PostUpvote(event) {
