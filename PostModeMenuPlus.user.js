@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://github.com/BrokenEagle
-// @version      9.7
+// @version      9.8
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1432,8 +1432,8 @@ function ValidateEdit() {
 
 function EditDialogOpen() {
     let tag_string = $(`#post_${PMM.edit_post_id}`).data('tags');
+    let $text_area = PMM.edit_dialog.find('#pmm-tag-string textarea');
     if (PMM.edit_tag_grouping_enabled) {
-        let $text_area = $('#pmm-tag-string textarea');
         $text_area.val('loading...');
         $text_area.attr('disabled', 'disabled');
         JSPLib.danbooru.submitRequest('posts/' + PMM.edit_post_id, {only: POST_CATEGORY_FIELDS}).then((data) => {
@@ -1446,9 +1446,11 @@ function EditDialogOpen() {
             });
             $text_area.val(grouped_tag_string.trim() + " ");
             $text_area.attr('disabled', null);
+            $text_area.get(0).focus();
         });
     } else {
-        $('#pmm-tag-string textarea').val(tag_string + ' ');
+        $text_area.val(tag_string + ' ');
+        $text_area.get(0).focus();
     }
     if (PMM.use_VTI) {
         PMM.VTI.preedit_tags = tag_string.split(' ');
