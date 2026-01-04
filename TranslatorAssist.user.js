@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.9
+// @version      6.10
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -12,16 +12,16 @@
 // @run-at       document-idle
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/TranslatorAssist.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/TranslatorAssist.user.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/menu.js
 // @connect      validator.nu
 // ==/UserScript==
 
@@ -31,27 +31,29 @@
 
 /****Library updates****/
 
-JSPLib.utility.timeAgo = function (time_value, {precision = 2, compare_time = null, recent_duration = null} = {}) {
-    let timestamp = Number(time_value) || this.toTimeStamp(time_value);
-    if (!this.isTimestamp(timestamp)) return "N/A";
-    compare_time ??= Date.now();
-    let time_interval = compare_time - timestamp;
-    if (this.isTimestamp(recent_duration) && time_interval < recent_duration) {
-        return "recently";
-    }
-    if (time_interval < JSPLib.utility.one_hour) {
-        return this.setPrecision(time_interval / JSPLib.utility.one_minute, precision) + " minutes ago";
-    }
-    if (time_interval < JSPLib.utility.one_day) {
-        return this.setPrecision(time_interval / JSPLib.utility.one_hour, precision) + " hours ago";
-    }
-    if (time_interval < JSPLib.utility.one_month) {
-        return this.setPrecision(time_interval / JSPLib.utility.one_day, precision) + " days ago";
-    }
-    if (time_interval < JSPLib.utility.one_year) {
-        return this.setPrecision(time_interval / JSPLib.utility.one_month, precision) + " months ago";
-    }
-    return this.setPrecision(time_interval / JSPLib.utility.one_year, precision) + " years ago";
+JSPLib.program = new Proxy(JSPLib, {
+    get(target, prop, _receiver) {
+        return prop + (target.program_shortcut.length ? '.' + target.program_shortcut : "");
+    },
+});
+
+JSPLib.utility.clickAndHold = function(selector, func, namespace = "", wait_time = 500, interval_time = 100) {
+    let $obj = (typeof selector === 'string' ? JSPLib._jQuery(selector) : selector);
+    let event_namespaces = ['mousedown', 'mouseup', 'mouseleave'].map((event_type) => (event_type + (namespace ? '.' + namespace : "")));
+    let timer = null;
+    let interval = null;
+    $obj.on(event_namespaces[0], (event) => {
+        if (event.button !== 0) return;
+        func(event);
+        timer = setTimeout(() => {
+            interval = this.initializeInterval(() => {
+                func(event);
+            }, interval_time);
+        }, wait_time);
+    }).on(event_namespaces.slice(1).join(', '), () => {
+        clearTimeout(timer);
+        clearInterval(interval);
+    });
 };
 
 /****Global variables****/
@@ -66,9 +68,6 @@ const PROGRAM_LOAD_OPTIONAL_SELECTORS = ['#c-posts #a-show .image-container', '#
 
 //Program name constants
 const PROGRAM_SHORTCUT = 'ta';
-const PROGRAM_CLICK = 'click.ta';
-const PROGRAM_KEYDOWN = 'keydown.ta';
-const PROGRAM_KEYUP = 'keyup.ta';
 const PROGRAM_NAME = 'TranslatorAssist';
 
 //Main program variable
@@ -101,12 +100,12 @@ const EMBEDDED_STYLES = ['border-radius', 'rotate', 'background-color', 'justify
 const SETTINGS_CONFIG = {
     close_notice_enabled: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Show a notice when closing the side menu."
     },
     check_last_noted_enabled: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Show a notice when navigating to a post if the post has been noted within a cutoff period."
     },
     last_noted_cutoff: {
@@ -117,7 +116,7 @@ const SETTINGS_CONFIG = {
     },
     query_last_noter_enabled: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Query for the last noter when opening the side menu."
     },
     last_noter_cache_time: {
@@ -128,12 +127,12 @@ const SETTINGS_CONFIG = {
     },
     filter_last_noter_enabled: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Filter out self edits when checking for the last noter."
     },
     new_noter_check_enabled: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Poll for new noters when the side menu is open."
     },
     new_noter_check_interval: {
@@ -158,12 +157,12 @@ const SETTINGS_CONFIG = {
     },
     text_shadow_enabled: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Uncheck to removed text shadow section."
     },
     ruby_enabled: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Uncheck to removed ruby section."
     },
     available_ruby_styles: {
@@ -174,7 +173,7 @@ const SETTINGS_CONFIG = {
     },
     embedded_enabled: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Uncheck to removed embedded tab."
     },
     available_embedded_styles: {
@@ -185,12 +184,12 @@ const SETTINGS_CONFIG = {
     },
     controls_enabled: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Uncheck to removed controls tab."
     },
     codes_enabled: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Uncheck to removed codes tab."
     },
 };
@@ -245,17 +244,19 @@ const PROGRAM_CSS = `
     position: absolute;
 }
 .ta-menu-tab {
-    border: 1px solid #888;
+    border: 1px solid;
     border-radius: 0.7em 0.7em 0 0;
-    background: var(--subnav-menu-background-color);
     padding: 0.5em;
-    margin: 0 -0.2em;
+    margin: 0 -0.15em;
     display: inline-block;
 }
 .ta-menu-tab.ta-active {
-    color: white;
-    background: blue;
     text-shadow: 1px 0px 0px;
+}
+#ta-side-menu input[type=checkbox]:not(:checked) {
+    appearance: none;
+    width: 13px;
+    height: 13px;
 }
 /** Side menu **/
 #ta-side-menu {
@@ -265,11 +266,10 @@ const PROGRAM_CSS = `
     width: 20.6em;
     height: auto;
     z-index: 100;
-    background: var(--body-background-color);
 }
 #ta-side-menu > div {
     position: relative;
-    border: 1px solid var(--text-color);
+    border: 1px solid;
     padding: 0.35em;
 }
 #ta-side-menu #ta-side-menu-header {
@@ -286,7 +286,7 @@ const PROGRAM_CSS = `
     position: absolute;
     top: 3.3em;
     font-size: 0.85em;
-    border: 1px dashed #DDD;
+    border: 1px dashed;
     padding: 0.35em;
     min-height: 5em;
     line-height: 1.4em;
@@ -315,7 +315,6 @@ const PROGRAM_CSS = `
     top: 2.75em;
     right: 0.5em;
     padding: 0.25em 0.75em;
-    background: #f0f0f0;
     display: flex;
 }
 #ta-side-menu #ta-size-controls img {
@@ -323,7 +322,7 @@ const PROGRAM_CSS = `
 }
 #ta-side-menu #ta-side-menu-tabs {
     letter-spacing: -1px;
-    border-bottom: 1px solid #F0F0F0;
+    border-bottom: 1px solid;
 }
 #ta-side-menu button {
     font-weight: bold;
@@ -343,18 +342,12 @@ const PROGRAM_CSS = `
     padding: 0.5em 0.9em;
 }
 #ta-sections hr {
-    border: 1px solid var(--default-border-color);
+    border: 1px solid;
 }
 /**** Main section ****/
 /****** Block subsection ******/
-button.ta-html-style-tag {
-    background-color: cadetblue;
-    border-color: darkcyan;
-    color: white;
-}
-button.ta-html-style-tag:hover {
-    background-color: cadetblue;
-    filter: brightness(1.25);
+#ta-main-blocks-subsection button.ta-html-style-tag {
+    filter: hue-rotate(-10deg);
 }
 /****** Styles subsection ******/
 #ta-main-styles-subsection .ta-text-input {
@@ -385,7 +378,7 @@ button.ta-html-style-tag:hover {
     padding: 0.2em;
 }
 #ta-constructs-text-shadow-subsection #ta-text-shadow-grid {
-    border: 1px solid #CCC;
+    border: 1px solid;
     margin-top: 1em;
 }
 #ta-constructs-text-shadow-subsection #ta-text-shadow-grid .ta-grid-item {
@@ -404,14 +397,13 @@ button.ta-html-style-tag:hover {
 /****** Ruby subsection ******/
 #ta-constructs-ruby-subsection ruby {
     font-size: 1.5em;
-    border: 1px solid var(--form-button-border-color);
+    border: 1px solid;
     padding: 0.6em 0.2em 0.1em;
 }
 #ta-constructs-ruby-subsection #ta-ruby-text {
     margin: 0.25em 3em 1em 1em;
     padding: 2em 1em 1em;
-    background-color: var(--subnav-background-color);
-    border: 1px solid var(--footer-border-color);
+    border: 1px solid;
 }
 #ta-constructs-ruby-subsection #ta-ruby-dialog-open {
     width: 90%;
@@ -423,11 +415,9 @@ button.ta-html-style-tag:hover {
 #ta-section-embedded #ta-embedded-mode {
     font-size: 1.2em;
     padding: 5px;
-    border: 4px dashed var(--default-border-color);
+    border: 4px dashed;
     margin: 1em;
     width: 15.5em;
-    box-shadow: 0 0 0 4px var(--subnav-menu-background-color);
-    background: var(--subnav-menu-background-color);
 }
 /****** Embedded block subsection ******/
 #ta-embedded-block-subsection {
@@ -473,8 +463,19 @@ button.ta-html-style-tag:hover {
 #ta-controls-placement-subsection #ta-placement-controls button div {
     font-size: 2em;
 }
+#ta-controls-placement-subsection #ta-placement-controls button svg {
+    position: absolute;
+}
+#ta-controls-placement-subsection #ta-placement-controls button.ta-lr-svg svg {
+    top: 17px;
+    left: 10px;
+}
+#ta-controls-placement-subsection #ta-placement-controls button.ta-tb-svg svg {
+    top: 13px;
+    left: 7px;
+}
 #ta-controls-placement-subsection #ta-placement-info {
-    border: 1px solid var(--footer-border-color);
+    border: 1px solid;
     padding: 5px 5px 0 5px;
 }
 #ta-controls-placement-subsection #ta-placement-info > div:not(:nth-last-child(1)) {
@@ -568,7 +569,7 @@ button.ta-html-style-tag:hover {
 }
 .ta-load-sessions {
     height: 26em;
-    border: 1px solid #DDD;
+    border: 1px solid;
     overflow-y: auto;
     overflow-x: hidden;
 }
@@ -587,7 +588,7 @@ button.ta-html-style-tag:hover {
 }
 /** Post options **/
 #ta-side-menu-open {
-    color: green;
+    color: var(--green-5);
 }
 /** Cursor **/
 #ta-side-menu button[disabled],
@@ -619,6 +620,180 @@ button.ta-html-style-tag:hover {
     position: relative; /* Hack so that the focus border isn't clobbered by neighbors (e.g. on Firefox) */
 }`;
 
+const LIGHT_MODE_CSS = `
+/** General **/
+.ta-menu-tab {
+    border-color: var(--grey-2);
+    background: var(--grey-0);
+}
+.ta-menu-tab.ta-active {
+    color: var(--white);
+    border-color: var(--blue-6);
+    background: var(--blue-4);
+}
+.ta-menu-tab.ta-active:hover {
+    background: var(--blue-3);
+}
+#ta-side-menu button {
+    border-color: var(--grey-2);
+    background-color: var(--grey-1);
+    color: var(--black);
+}
+#ta-side-menu button:hover {
+    background-color: var(--grey-0);
+}
+/** Side menu **/
+#ta-side-menu {
+    background: var(--white);
+}
+#ta-side-menu > div {
+    border-color: var(--grey-3);
+}
+#ta-side-menu #ta-side-menu-text {
+    border-color: var(--grey-2);
+    background: var(--grey-0);
+}
+#ta-side-menu #ta-size-controls {
+    background: var(--grey-2);
+}
+#ta-side-menu #ta-side-menu-tabs {
+    border-bottom-color: var(--grey-1);
+}
+/** Sections **/
+#ta-sections hr {
+    border-color: var(--grey-0);
+}
+/**** Main section ****/
+/****** Block subsection ******/
+#ta-main-blocks-subsection button.ta-html-style-tag {
+    background-color: var(--azure-5);
+    border-color: var(--azure-6);
+    color: var(--white);
+}
+#ta-main-blocks-subsection button.ta-html-style-tag:hover {
+    background-color: var(--azure-4);
+}
+/**** Constructs section ****/
+/****** Text shadow subsection ******/
+#ta-constructs-text-shadow-subsection #ta-text-shadow-grid {
+    border-color: var(--grey-2);
+}
+#ta-constructs-text-shadow-subsection #ta-text-shadow-grid .ta-grid-center {
+    background-color: var(--grey-4);
+}
+/****** Ruby subsection ******/
+#ta-constructs-ruby-subsection ruby {
+    border-color: var(--grey-1);
+}
+#ta-constructs-ruby-subsection #ta-ruby-text {
+    background: var(--blue-0);
+    border-color: var(--grey-0);
+}
+/**** Embedded section ****/
+#ta-section-embedded #ta-embedded-mode {
+    border-color: var(--grey-1);
+    box-shadow: 0 0 0 4px var(--grey-0);
+    background: var(--grey-0);
+}
+/**** Controls section ****/
+/****** Placement subsection ******/
+#ta-controls-placement-subsection #ta-placement-info {
+    border-color: var(--grey-0);
+}
+/** Load dialog **/
+.ta-load-sessions {
+    border-color: var(--grey-3);
+}`;
+
+const DARK_MODE_CSS = `
+/** General **/
+.ta-menu-tab {
+    border-color: var(--grey-7);
+    background: var(--grey-8);
+}
+.ta-menu-tab.ta-active {
+    color: var(--white);
+    background: var(--blue-7);
+}
+.ta-menu-tab.ta-active:hover {
+    background: var(--blue-6);
+}
+#ta-side-menu button {
+    border-color: var(--grey-6);
+    background-color: var(--grey-7);
+    color: var(--grey-1);
+}
+#ta-side-menu button:hover {
+    background-color: var(--grey-5);
+}
+/** Side menu **/
+#ta-side-menu {
+    background: var(--grey-9);
+}
+#ta-side-menu > div {
+    border-color: var(--grey-5);
+}
+#ta-side-menu #ta-side-menu-text {
+    border-color: var(--grey-6);
+    background: var(--grey-8);
+}
+#ta-side-menu #ta-size-controls {
+    background: var(--grey-6);
+}
+#ta-side-menu #ta-side-menu-tabs {
+    border-bottom-color: var(--grey-7);
+}
+/** Sections **/
+#ta-sections hr {
+    border-color: var(--grey-8);
+}
+/**** Main section ****/
+/****** Block subsection ******/
+#ta-main-blocks-subsection button.ta-html-style-tag {
+    background-color: var(--azure-7);
+    border-color: var(--azure-6);
+    color: var(--white);
+}
+#ta-main-blocks-subsection button.ta-html-style-tag:hover {
+    background-color: var(--azure-6);
+}
+/**** Constructs section ****/
+/****** Text shadow subsection ******/
+#ta-constructs-text-shadow-subsection #ta-text-shadow-grid {
+    border-color: var(--grey-6);
+}
+#ta-constructs-text-shadow-subsection #ta-text-shadow-grid .ta-grid-center {
+    background-color: var(--grey-4);
+}
+/****** Ruby subsection ******/
+#ta-constructs-ruby-subsection ruby {
+    border-color: var(--grey-7);
+}
+#ta-constructs-ruby-subsection #ta-ruby-text {
+    background: var(--blue-9);
+    border-color: var(--grey-8);
+}
+/**** Embedded section ****/
+#ta-section-embedded #ta-embedded-mode {
+    border-color: var(--grey-7);
+    box-shadow: 0 0 0 4px var(--grey-8);
+    background: var(--grey-8);
+}
+/**** Controls section ****/
+/****** Placement subsection ******/
+#ta-controls-placement-subsection #ta-placement-info {
+    border-color: var(--grey-8);
+}
+/**** Codes section ****/
+/****** Special characters subsection ******/
+#ta-section-codes #ta-codes-special-subsection button span.ta-variation {
+    filter: brightness(0) saturate(100%) invert(100%) sepia(6%) saturate(3186%) hue-rotate(180deg) brightness(94%) contrast(97%); /* https://codepen.io/sosuke/pen/Pjoqqp */
+}
+/** Load dialog **/
+.ta-load-sessions {
+    border-color: var(--grey-5);
+}`;
+
 const MENU_CSS = `
 .jsplib-selectors.ta-selectors:not([data-setting="available_html_tags"], [data-setting="domain_selector"]) label {
     width: 165px;
@@ -626,10 +801,10 @@ const MENU_CSS = `
 
 //HTML constants
 
-const EXPAND_LR_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="15" viewBox="0 0 22 16"><path d="M17 0v3h-5v4h5v3l5-5-5-5zM5 10V7h5V3H5V0L0 5l5 5z"></path></svg>';
-const EXPAND_TB_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="15" viewBox="0 0 22 16" transform="rotate(90)"><path d="M17 0v3h-5v4h5v3l5-5-5-5zM5 10V7h5V3H5V0L0 5l5 5z"></path></svg>';
-const CONTRACT_LR_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="15" viewBox="0 0 22 16"><path d="M22 3h-5V0l-5 5 5 5V7h5V3zM0 7h5v3l5-5-5-5v3H0v4z"/></svg>';
-const CONTRACT_TB_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="15" viewBox="0 0 22 16" transform="rotate(90)"><path d="M22 3h-5V0l-5 5 5 5V7h5V3zM0 7h5v3l5-5-5-5v3H0v4z"/></svg>';
+const EXPAND_LR_SVG = '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" width="25" height="20" viewBox="0 0 22 16"><path d="M17 0v3h-5v4h5v3l5-5-5-5zM5 10V7h5V3H5V0L0 5l5 5z"></path></svg>';
+const EXPAND_TB_SVG = '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" width="25" height="20" viewBox="0 0 22 16" transform="rotate(90)"><path d="M17 0v3h-5v4h5v3l5-5-5-5zM5 10V7h5V3H5V0L0 5l5 5z"></path></svg>';
+const CONTRACT_LR_SVG = '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" width="25" height="20" viewBox="0 0 22 16"><path d="M22 3h-5V0l-5 5 5 5V7h5V3zM0 7h5v3l5-5-5-5v3H0v4z"/></svg>';
+const CONTRACT_TB_SVG = '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" width="25" height="20" viewBox="0 0 22 16" transform="rotate(90)"><path d="M22 3h-5V0l-5 5 5 5V7h5V3zM0 7h5v3l5-5-5-5v3H0v4z"/></svg>';
 const PLUS_SIGN = `
 <svg xmlns="http://www.w3.org/2000/svg"  width="15" height="15" viewBox="-20 -40 240 240">
     <path d="M75,0 V75 H0 V125 H75 V200 H125 V125 H200 V75 H125 V0 H75 z" fill="#080" />
@@ -751,14 +926,14 @@ const CONTROLS_SECTION = `
 <div class="ta-header ta-cursor-text">Placement:</div>
 <div id="ta-controls-placement-subsection" style="display: flex;" class="ta-subsection ta-cursor-initial">
     <div id="ta-placement-controls">
-        <button class="ta-button-placement ta-button-svg" data-action="expand-width" title="Expand width (Hotkey: shift + right arrow)">
-            <img style="top: 0.75em; left: 1em;" src="data:image/svg+xml,${JSPLib.utility.fullEncodeURIComponent(EXPAND_LR_SVG)}">
+        <button class="ta-button-placement ta-button-svg ta-lr-svg" data-action="expand-width" title="Expand width (Hotkey: shift + right arrow)">
+            ${EXPAND_LR_SVG}
         </button>
         <button class="ta-button-placement" data-action="move-up" title="Move up (Hotkey: up arrow)">
             <div style="transform: rotate(270deg);">➜</div>
         </button>
-        <button class="ta-button-placement ta-button-svg" data-action="expand-height" title="Expand height (Hotkey: shift + down arrow)">
-            <img style="top: 0.5em; left: 0.75em;" src="data:image/svg+xml,${JSPLib.utility.fullEncodeURIComponent(EXPAND_TB_SVG)}">
+        <button class="ta-button-placement ta-button-svg ta-tb-svg" data-action="expand-height" title="Expand height (Hotkey: shift + down arrow)">
+            ${EXPAND_TB_SVG}
         </button>
         <button class="ta-button-placement move-left" data-action="move-left" title="Move left (Hotkey: left arrow)">
             <div style="transform: rotate(180deg);">➜</div>
@@ -769,14 +944,14 @@ const CONTROLS_SECTION = `
         <button class="ta-button-placement" data-action="move-right" title="Move right (Hotkey: right arrow)">
             <div>➜</div>
         </button>
-        <button class="ta-button-placement ta-button-svg" data-action="contract-width" title="Contract width (Hotkey: shift + left arrow)">
-            <img style="top: 0.75em; left: 1em;" src="data:image/svg+xml,${JSPLib.utility.fullEncodeURIComponent(CONTRACT_LR_SVG)}">
+        <button class="ta-button-placement ta-button-svg ta-lr-svg" data-action="contract-width" title="Contract width (Hotkey: shift + left arrow)">
+            ${CONTRACT_LR_SVG}
         </button>
         <button class="ta-button-placement" data-action="move-down" title="Move down (Hotkey: down arrow)">
             <div style="transform: rotate(90deg);">➜</div>
         </button>
-        <button class="ta-button-placement ta-button-svg" data-action="contract-height" title="Contract height (Hotkey: shift + up arrow)">
-            <img style="top: 0.5em; left: 0.75em;" src="data:image/svg+xml,${JSPLib.utility.fullEncodeURIComponent(CONTRACT_TB_SVG)}">
+        <button class="ta-button-placement ta-button-svg ta-tb-svg" data-action="contract-height" title="Contract height (Hotkey: shift + up arrow)">
+            ${CONTRACT_TB_SVG}
         </button>
     </div>
     <div id="ta-placement-info">
@@ -974,6 +1149,7 @@ const SPECIAL_CHARS = [{
 }, {
     char: '✔',
     title: 'heavy check mark',
+    variation: true,
 }, {
     char: '★',
     title: 'black star',
@@ -1073,6 +1249,7 @@ const SPECIAL_CHARS = [{
 }, {
     char: '〰',
     title: 'wavy dash',
+    variation: true,
 }, {
     char: '～',
     title: 'fullwidth tilde',
@@ -1391,6 +1568,7 @@ function RenderLoadDialog(panel) {
 }
 
 function RenderLoadSessions(panel, sessions) {
+    const printer = JSPLib.debug.getFunctionPrint('RenderLoadSessions');
     let html = "";
     let updated_list = [];
     sessions.forEach((item) => {
@@ -1398,7 +1576,7 @@ function RenderLoadSessions(panel, sessions) {
             html += RenderLoadItem(item);
             updated_list.push(item);
         } else {
-            JSPLib.debug.debugerror("Malformed item found:", item);
+            printer.debugerror("Malformed item found:", item);
         }
     });
     if (updated_list.length !== sessions.length) {
@@ -1456,7 +1634,7 @@ function RenderTextShadowGrid() {
         let row_val = -1;
         ['top', 'middle', 'bottom'].forEach((rowname) => {
             if (colname === 'center' && rowname === 'middle') {
-                grid_html += `<div class="ta-grid-item" style="top: ${top_em}em; right: ${right_em}em; background-color: var(--text-color);"></div>`;
+                grid_html += `<div class="ta-grid-item ta-grid-center" style="top: ${top_em}em; right: ${right_em}em;"></div>`;
             } else {
                 let input_name = 'shadow-grid-' + rowname + '-' + colname;
                 let classname = (row_val === 0 || col_val === 0 ? 'ta-grid-side' : 'ta-grid-corner');
@@ -1477,7 +1655,8 @@ function RenderCharButtons(char_list) {
     let html = "";
     char_list.forEach((item) => {
         let display = item.display || item["char"];
-        html += `<button value="${item["char"]}" title="${item.title}">${display}</button>`;
+        let classname = (item.variation ? 'ta-variation' : "");
+        html += `<button value="${item["char"]}" title="${item.title}"><span class="${classname}">${display}</span></button>`;
     });
     return html;
 }
@@ -1540,30 +1719,32 @@ function QueryNoteVersions(search_options, query_options) {
         {search: {post_id: TA.post_id}, limit: 1},
         {search: search_options},
         query_options
-        );
+    );
     return JSPLib.danbooru.submitRequest('note_versions', send_options);
 }
 
 function QueryNewNotations() {
+    const printer = JSPLib.debug.getFunctionPrint('QueryNewNotations');
     QueryNoteVersions({id_gt: TA.last_id, updater_id_not_eq: TA.user_id}, {only: 'id,updated_at'}).then((data) => {
         if (data.length > 0) {
-            JSPLib.debug.debuglog("New note record:", data);
+            printer.debuglog("New note record:", data);
             alert("New noter detected: " + JSPLib.utility.timeAgo(data[0].updated_at));
             TA.noter_detected = true;
         } else {
-            JSPLib.debug.debuglog("No new noter detected.");
+            printer.debuglog("No new noter detected.");
         }
     });
 }
 
 function QueryLastNotation() {
+    const printer = JSPLib.debug.getFunctionPrint('QueryLastNotation');
     let query_options = {only: 'id,updated_at,updater[id,name,level,level_string]'};
     if (TA.last_noter_cache_time > 0) {
         query_options.expires_in = TA.last_noter_cache_time + 'min';
     }
     let search_options = (TA.filter_last_noter_enabled ? {updater_id_not_eq: TA.user_id} : {});
     QueryNoteVersions(search_options, query_options).then((data) => {
-        JSPLib.debug.debuglog("Last note record:", data);
+        printer.debuglog("Last note record:", data);
         TA.last_noter_queried = true;
         let timeago_timestamp = (data.length ? JSPLib.utility.timeAgo(data[0].updated_at) : 'N/A');
         let last_updater = (data.length ? RenderUserLink(data[0].updater) : 'N/A');
@@ -1583,6 +1764,7 @@ function QueryLastNotation() {
 }
 
 async function ValidateHTML(input_html) {
+    const printer = JSPLib.debug.getFunctionPrint('ValidateHTML');
     var data, resp;
     let send_html = HTML_DOC_HEADER + input_html + HTML_DOC_FOOTER;
     try {
@@ -1595,19 +1777,19 @@ async function ValidateHTML(input_html) {
         });
     } catch(e) {
         JSPLib.notice.error("Error querying validation server <code>validator.nu</code>");
-        JSPLib.debug.debugerror("Server error:", e);
+        printer.debugerror("Server error:", e);
         return null;
     }
     try {
         data = JSON.parse(resp.response);
     } catch(e) {
         JSPLib.notice.error("Unable to parse validation response!");
-        JSPLib.debug.debugerror("Parse error:", e, resp.response);
+        printer.debugerror("Parse error:", e, resp.response);
         return null;
     }
-    if (!JSPLib.validate.isHash(data) || !('messages' in data)) {
+    if (!JSPLib.utility.isHash(data) || !('messages' in data)) {
         JSPLib.notice.error("Unexpected response format!");
-        JSPLib.debug.debugerror("Unexpected format:", data);
+        printer.debugerror("Unexpected format:", data);
         return null;
     }
     return data;
@@ -1637,6 +1819,7 @@ function BuildHTMLTag(tag_name, attrib_dict, style_dict, blank_style = false) {
 }
 
 function ParseTagAttributes(html_tag) {
+    const printer = JSPLib.debug.getFunctionPrint('ParseTagAttributes');
     let attrib_items = JSPLib.utility.findAll(html_tag, /\w+="[^"]+"/g);
     if (attrib_items.length === 0) return {attrib_dict: {}, style_dict: {}};
     let attrib_pairs = attrib_items.map((attrib) => JSPLib.utility.findAll(attrib, /(\w+)="([^"]+)"/g).filter((_item, i) => (i % 3)));
@@ -1650,7 +1833,7 @@ function ParseTagAttributes(html_tag) {
     } else {
         style_dict = {};
     }
-    JSPLib.debug.debuglog("ParseTagAttributes", {attrib_dict, style_dict});
+    printer.debuglog({attrib_dict, style_dict});
     return {attrib_dict, style_dict};
 }
 
@@ -1732,6 +1915,7 @@ function GetTag(html_text, cursor, warning = true) {
 }
 
 function GetHTMLTag(html_text, cursor) {
+    const printer = JSPLib.debug.getFunctionPrint('GetHTMLTag');
     let html_tags = TokenizeHTML(html_text);
     let html_tag = html_tags.filter((tag) => (cursor >= tag.open_tag_start && cursor < tag.open_tag_end))[0];
     if (!html_tag) return;
@@ -1743,11 +1927,12 @@ function GetHTMLTag(html_text, cursor) {
     let {style_dict, attrib_dict} = ParseTagAttributes(html_tag.open_tag);
     html_tag.style_dict = style_dict;
     html_tag.attrib_dict = attrib_dict;
-    JSPLib.debug.debuglog("GetHTMLTag", html_tag);
+    printer.debuglog({html_tag});
     return html_tag;
 }
 
 function GetEmbeddedTag(html_text) {
+    const printer = JSPLib.debug.getFunctionPrint('GetEmbeddedTag');
     let html_tags = TokenizeHTML(html_text);
     let embedded_tag = null;
     for (let i = 0; i < html_tags.length; i++) {
@@ -1765,7 +1950,7 @@ function GetEmbeddedTag(html_text) {
     embedded_tag.inner_html = html_text.slice(embedded_tag.open_tag_end, embedded_tag.close_tag_start);
     embedded_tag.full_tag = html_text.slice(embedded_tag.open_tag_start, embedded_tag.close_tag_end);
     embedded_tag.tag_name = embedded_tag.open_tag.match(/<(\w+)/)[1];
-    JSPLib.debug.debuglog("GetEmbeddedTag", embedded_tag);
+    printer.debuglog({embedded_tag});
     return embedded_tag;
 }
 
@@ -1788,9 +1973,9 @@ function GetRubyTag(html_text, cursor) {
     let temp_inner_tags = [...inner_tags];
     let base_inner_tags = [];
     var next_inner_tag;
-    const _unshift_tags = function (current_tag, html_tags) {return html_tags.filter((html_tag) => (html_tag.open_tag_start >= next_inner_tag.close_tag_end));};
+    const _unshift_tags = function (html_tags) {return html_tags.filter((html_tag) => (html_tag.open_tag_start >= next_inner_tag.close_tag_end));};
     while (next_inner_tag = inner_tags.shift()) {
-        inner_tags = _unshift_tags(next_inner_tag, inner_tags);
+        inner_tags = _unshift_tags(inner_tags);
         next_inner_tag.open_tag = html_text.slice(next_inner_tag.open_tag_start, next_inner_tag.open_tag_end);
         next_inner_tag.tag_name = next_inner_tag.open_tag.match(/<(\w+)/)[1];
         if (next_inner_tag.tag_name !== 'rt' && next_inner_tag.tag_name !== 'span') continue;
@@ -2057,6 +2242,7 @@ function SelectNote(callback) {
 // CSS functions
 
 function GetCSSStyles(overwrite, selector) {
+    const printer = JSPLib.debug.getFunctionPrint('GetCSSStyles');
     let add_styles = {};
     let invalid_styles = {};
     let test_div = document.createElement('div');
@@ -2072,11 +2258,11 @@ function GetCSSStyles(overwrite, selector) {
             let final_value = STYLE_CONFIG[style_name]?.finalize?.(parse_value) || parse_value;
             add_styles[parse_style_name] = final_value;
         } else {
-            JSPLib.debug.debugwarn(`Invalid style [${style_name}]: ${value} => ${parse_value} -> ${normalized_value} != ${test_div.style.getPropertyValue(style_name)}`);
+            printer.debugwarn(`Invalid style [${style_name}]: ${value} => ${parse_value} -> ${normalized_value} != ${test_div.style.getPropertyValue(style_name)}`);
             invalid_styles[parse_style_name] = parse_value;
         }
     });
-    JSPLib.debug.debuglog('GetCSSStyles', {add_styles, invalid_styles});
+    printer.debuglog({add_styles, invalid_styles});
     return [add_styles, invalid_styles];
 }
 
@@ -2181,7 +2367,7 @@ function ParseDirectionStyles(style_dict) {
 
 function BuildTextShadowStyle(append, style_dict) {
     let errors = [];
-    let attribs = JSPLib.utility.mergeHashes(...$('#ta-text-shadow-attribs input').map((i, entry) => ({[entry.dataset.name.trim()]: entry.value})));
+    let attribs = JSPLib.utility.mergeHashes(...$('#ta-text-shadow-attribs input').map((_, entry) => ({[entry.dataset.name.trim()]: entry.value})));
     let initial_shadow = (append && style_dict['text-shadow']) || "";
     if (attribs.size === "") {
         return initial_shadow;
@@ -2194,7 +2380,7 @@ function BuildTextShadowStyle(append, style_dict) {
         return false;
     }
     attribs.color = FinalizeColor(attribs.color);
-    let grid_points = $('#ta-text-shadow-grid input').filter((i, entry) => entry.checked).map((i, entry) => entry.value).toArray().map(JSON.parse);
+    let grid_points = $('#ta-text-shadow-grid input').filter((_, entry) => entry.checked).map((_, entry) => entry.value).toArray().map(JSON.parse);
     let text_shadows = grid_points.map((grid_point) => {
         let horizontal = (grid_point[0] === 0 ? '0' : "") || ((grid_point[0] === -1 ? '-' : "") + attribs.size);
         let vertical = (grid_point[1] === 0 ? '0' : "") || ((grid_point[1] === -1 ? '-' : "") + attribs.size);
@@ -2232,6 +2418,7 @@ function TokenizeTextShadow(shadow) {
 }
 
 function ParseTextShadows(style_dict) {
+    const printer = JSPLib.debug.getFunctionPrint('ParseTextShadows');
     if (!style_dict['text-shadow']) return;
     let text_shadows = style_dict['text-shadow'].split(',').map((str) => str.trim());
     //The first shadow is used for style parsing
@@ -2255,7 +2442,7 @@ function ParseTextShadows(style_dict) {
         let input_name = 'shadow-grid-' + rowname + '-' + colname;
         TA.shadow_grid[input_name] = true;
     });
-    JSPLib.debug.debuglog('ParseTextShadows', {shadow_style, shadow_grid: TA.shadow_grid});
+    printer.debuglog({shadow_style, shadow_grid: TA.shadow_grid});
     return shadow_style;
 }
 
@@ -2264,8 +2451,8 @@ function ParseTextShadows(style_dict) {
 function OpenLoadDialog(panel) {
     if (!TA.$load_dialog[panel]) {
         let $dialog = $(RenderLoadDialog(panel));
-        $dialog.find('.ta-load-session-item').on(PROGRAM_CLICK, LoadSessionInput);
-        $dialog.find('.ta-load-saved-controls a').on(PROGRAM_CLICK, LoadControls);
+        $dialog.find('.ta-load-session-item').on(JSPLib.program.click, LoadSessionInput);
+        $dialog.find('.ta-load-saved-controls a').on(JSPLib.program.click, LoadControls);
         $dialog.dialog(LOAD_DIALOG_SETTINGS);
         TA.$load_dialog[panel] = $dialog;
     }
@@ -2276,12 +2463,12 @@ function OpenLoadDialog(panel) {
 function OpenRubyDialog() {
     if (!TA.$ruby_dialog) {
         TA.$ruby_dialog = $(RenderRubyDialog());
-        TA.$ruby_dialog.find('#ta-ruby-dialog-tabs > .ta-menu-tab').on(PROGRAM_CLICK, SwitchRubySections);
+        TA.$ruby_dialog.find('#ta-ruby-dialog-tabs > .ta-menu-tab').on(JSPLib.program.click, SwitchRubySections);
         TA.$ruby_dialog.dialog(RUBY_DIALOG_SETTINGS);
         TA.$pin_button = $("<button/>").button({icons: {primary: "ui-icon-pin-w"}, label: "pin", text: false});
         TA.$pin_button.css({width: "20px", height: "20px", position: "absolute", right: "28.4px"});
         TA.$ruby_dialog.parent().children(".ui-dialog-titlebar").append(TA.$pin_button);
-        TA.$pin_button.on(PROGRAM_CLICK, PinRubyDialog);
+        TA.$pin_button.on(JSPLib.program.click, PinRubyDialog);
     }
     TA.$ruby_dialog.dialog('open');
 }
@@ -2461,6 +2648,7 @@ function DeleteBlock() {
 }
 
 function SaveHTML(text_area) {
+    const printer = JSPLib.debug.getFunctionPrint('SaveHTML');
     let $text_area = $(text_area);
     let undo_actions = $text_area.data('undo_actions') || [];
     let undo_index = $text_area.data('undo_index') || 0;
@@ -2469,10 +2657,11 @@ function SaveHTML(text_area) {
     $text_area.data('undo_actions', undo_actions);
     $text_area.data('undo_index', undo_actions.length);
     $text_area.data('undo_saved', true);
-    JSPLib.debug.debuglog('SaveMarkup', {undo_actions, undo_index});
+    printer.debuglog({undo_actions, undo_index});
 }
 
 function UndoAction() {
+    const printer = JSPLib.debug.getFunctionPrint('UndoAction');
     let text_area = GetActiveTextArea(false);
     if (!text_area) return;
     let $text_area = $(text_area);
@@ -2482,7 +2671,7 @@ function UndoAction() {
         $text_area.data('undo_actions', undo_actions);
     }
     let undo_html = undo_actions.slice(undo_index - 1, undo_index)[0];
-    if (JSPLib.validate.isString(undo_html)) {
+    if (JSPLib.utility.isString(undo_html)) {
         text_area.value = undo_html;
     } else {
         JSPLib.notice.notice("Beginning of actions buffer reached.");
@@ -2490,11 +2679,12 @@ function UndoAction() {
     let new_index = Math.max(0, undo_index - 1);
     $text_area.data('undo_index', new_index);
     $text_area.data('undo_saved', false);
-    JSPLib.debug.debuglog('UndoAction', {undo_actions, undo_index, new_index});
+    printer.debuglog({undo_actions, undo_index, new_index});
     return Boolean(undo_html);
 }
 
 function RedoAction() {
+    const printer = JSPLib.debug.getFunctionPrint('RedoAction');
     let text_area = GetActiveTextArea(false);
     if (!text_area) return;
     let $text_area = $(text_area);
@@ -2508,16 +2698,17 @@ function RedoAction() {
     let new_index = Math.min(undo_actions.length - 1, undo_index + 1);
     $text_area.data('undo_index', new_index);
     $text_area.data('undo_saved', false);
-    JSPLib.debug.debuglog('RedoAction', {undo_actions, undo_index, new_index});
+    printer.debuglog({undo_actions, undo_index, new_index});
     return Boolean(undo_html);
 }
 
 function ClearActions(event) {
+    const printer = JSPLib.debug.getFunctionPrint('ClearActions');
     let $text_area = $(event.currentTarget);
     $text_area.data('undo_actions', []);
     $text_area.data('undo_index', 0);
     $text_area.data('undo_saved', false);
-    JSPLib.debug.debuglog('Cleared actions.');
+    printer.debuglogLevel('Cleared actions.', JSPLib.debug.DEBUG);
 }
 
 function NormalizeNote() {
@@ -2528,18 +2719,21 @@ function NormalizeNote() {
     let normalized_text = $('<div>' + html_text + '</div>').html();
     text_area.value = normalized_text;
     text_area.focus();
+    JSPLib.notice.notice("Note normalized.");
 }
 
 async function SanitizeNote() {
     let text_area = GetActiveTextArea();
     if (!text_area) return;
     SaveHTML(text_area);
-    let data = await JSPLib.danbooru.submitRequest('note_previews', {body: text_area.value});
+    let data = await JSPLib.network.post('/notes/preview.json', {data: {body: text_area.value}});
     text_area.value = data.body;
     text_area.focus();
+    JSPLib.notice.notice("Note sanitized.");
 }
 
 async function ValidateNote() {
+    const printer = JSPLib.debug.getFunctionPrint('ValidateNote');
     let text_area = GetActiveTextArea();
     if (!text_area) return;
     let transform_html = text_area.value.replace(/<tn>/g, '<p class="tn">').replace(/<\/tn>/g, '</p>');
@@ -2549,17 +2743,18 @@ async function ValidateNote() {
     }
     let error_lines = [];
     if (html_errors.messages.length) {
-        JSPLib.debug.debuglog("HTML errors:", html_errors);
+        printer.debuglog("HTML errors:", html_errors);
         error_lines = html_errors.messages.map((message, i) => RenderHTMLError(i, message, transform_html));
     }
     let css_errors = ValidateCSS(text_area.innerHTML);
     if (css_errors.length) {
-        JSPLib.debug.debuglog("CSS errors:", css_errors);
+        printer.debuglog("CSS errors:", css_errors);
         error_lines = JSPLib.utility.concat(error_lines, css_errors.map((error, i) => RenderCSSError(i, error)));
     }
     if (error_lines.length) {
         JSPLib.notice.error('<ul>' + error_lines.join('') + '</ul>');
     }
+    JSPLib.notice.notice("Note validated.");
 }
 
 //// Constructs section handlers
@@ -2568,18 +2763,18 @@ function TextShadowControls(event) {
     let value = $(event.currentTarget).data('value');
     switch (value) {
         case 'all':
-            $('#ta-text-shadow-grid input').each((i, entry) => {$(entry).prop('checked', true);});
+            $('#ta-text-shadow-grid input').each((_, entry) => {$(entry).prop('checked', true);});
             break;
         case 'sides':
-            $('#ta-text-shadow-grid .ta-grid-side').each((i, entry) => {$(entry).prop('checked', true);});
-            $('#ta-text-shadow-grid .ta-grid-corner').each((i, entry) => {$(entry).prop('checked', false);});
+            $('#ta-text-shadow-grid .ta-grid-side').each((_, entry) => {$(entry).prop('checked', true);});
+            $('#ta-text-shadow-grid .ta-grid-corner').each((_, entry) => {$(entry).prop('checked', false);});
             break;
         case 'corners':
-            $('#ta-text-shadow-grid .ta-grid-corner').each((i, entry) => {$(entry).prop('checked', true);});
-            $('#ta-text-shadow-grid .ta-grid-side').each((i, entry) => {$(entry).prop('checked', false);});
+            $('#ta-text-shadow-grid .ta-grid-corner').each((_, entry) => {$(entry).prop('checked', true);});
+            $('#ta-text-shadow-grid .ta-grid-side').each((_, entry) => {$(entry).prop('checked', false);});
             break;
         case 'none':
-            $('#ta-text-shadow-grid input').each((i, entry) => {$(entry).prop('checked', false);});
+            $('#ta-text-shadow-grid input').each((_, entry) => {$(entry).prop('checked', false);});
             //falls through
         default:
             //do nothing
@@ -2976,7 +3171,7 @@ function SaveSession() {
     var name, key, isnew;
     let panel = TA.active_panel;
     let $dialog = TA.$load_dialog[panel];
-    let checked_sessions = $dialog.find('li').filter((i, entry) => $(entry).find('input').prop('checked'));
+    let checked_sessions = $dialog.find('li').filter((_, entry) => $(entry).find('input').prop('checked'));
     if (checked_sessions.length > 1) {
         JSPLib.notice.error("Multiple sessions selected... select only 1 to edit, or none to create a new.");
         return;
@@ -3002,7 +3197,7 @@ function SaveSession() {
     JSPLib.storage.setLocalData('ta-session-' + key, save_inputs);
     if (isnew) {
         let $load_item = $(RenderLoadItem({key, name}));
-        $load_item.find('a').on(PROGRAM_CLICK, LoadSessionInput);
+        $load_item.find('a').on(JSPLib.program.click, LoadSessionInput);
         let $list = TA.$load_dialog[panel].find('.ta-load-sessions ul');
         if ($list.length === 0) {
             $list = $('<ul></ul>');
@@ -3016,7 +3211,7 @@ function SaveSession() {
 function RenameSession() {
     let panel = TA.active_panel;
     let $dialog = TA.$load_dialog[panel];
-    let checked_sessions = $dialog.find('li').filter((i, entry) => $(entry).find('input').prop('checked'));
+    let checked_sessions = $dialog.find('li').filter((_, entry) => $(entry).find('input').prop('checked'));
     if (checked_sessions.length === 0) {
         JSPLib.notice.error("Must select at least 1 session to rename.");
         return;
@@ -3067,13 +3262,14 @@ function DeleteSessions() {
 }
 
 function LoadSessionInput(event) {
+    const printer = JSPLib.debug.getFunctionPrint('LoadSessionInput');
     let panel = TA.active_panel;
     let {key} = $(event.currentTarget).data();
     let session_list = JSPLib.storage.getLocalData('ta-load-session-' + panel);
     let session_item = session_list.find((item) => item.key === key);
     let load_inputs = JSPLib.storage.getLocalData('ta-session-' + key);
     if (!load_inputs) {
-        JSPLib.debug.debugerror('Missing session:', panel, key, session_item);
+        printer.debugerror('Missing session:', panel, key, session_item);
         session_list = session_list.filter((item) => item.key !== key);
         JSPLib.storage.setLocalData('ta-load-session-' + panel, session_list);
         $(event.currentTarget).closest('li').remove();
@@ -3121,16 +3317,16 @@ function CleanupLastNoted() {
 }
 
 function SetLastNoted() {
-    JSPLib.storage.setLocalData(TA.seen_key, Date.now() + TA.last_noted_cutoff_mins);
+    JSPLib.storage.setLocalData('ta-post-seen-' + TA.post_id, Date.now() + TA.last_noted_cutoff_mins);
 }
 
 function CheckLastNoted() {
     if ((Date.now() - TA.last_noted) < TA.last_noted_cutoff_mins) {
-        let seen_expires = JSPLib.storage.getLocalData(TA.seen_key);
+        let seen_expires = JSPLib.storage.getLocalData('ta-post-seen-' + TA.post_id);
         if (!JSPLib.utility.validateExpires(seen_expires)) {
             alert("Post was noted: " + JSPLib.utility.timeAgo(TA.last_noted));
         }
-        JSPLib.storage.setLocalData(TA.seen_key, TA.last_noted + TA.last_noted_cutoff_mins);
+        JSPLib.storage.setLocalData('ta-post-seen-' + TA.post_id, TA.last_noted + TA.last_noted_cutoff_mins);
     }
 }
 
@@ -3153,16 +3349,18 @@ function PollForNewNotations() {
 // Other functions
 
 function CheckEmbeddedFontSize() {
-    JSPLib.utility.recheckTimer({
+    JSPLib.utility.recheckInterval({
         check: () => JSPLib.utility.isNamespaceBound('#image', 'click', 'danbooru') && $('.note-container').is(':visible'),
         exec: () => {
             let font_size = Number(($('.image-container').get(0)?.style.getPropertyValue('--note-font-size') || '').match(/\d+/)[0]);
             if (font_size === 0) {
                 Danbooru.Note.Box.scale_all();
-                [...Danbooru.Note.notes].forEach(note => note.box.copy_style_attributes());
+                [...Danbooru.Note.notes].forEach((note) => note.box.copy_style_attributes());
+                $('.note-box-highlighted').removeClass('note-box-highlighted');
             }
-        }
-    }, 500);
+        },
+        interval: 500,
+    });
 }
 
 // Side menu functions
@@ -3206,45 +3404,45 @@ function InitializeSideMenu() {
         $('#ta-side-menu-tabs [data-value=codes]').show();
     }
     $('#post-option-add-note').after(MENU_OPTION);
-    $('#ta-side-menu-tabs .ta-menu-tab').on(PROGRAM_CLICK, SwitchSections);
-    $('#ta-toggle-embedded-mode').on(PROGRAM_CLICK, ToggleEmbeddedMode);
-    $('#ta-add-embedded-element').on(PROGRAM_CLICK, AddEmbeddedElement);
-    $('#ta-remove-embedded-element').on(PROGRAM_CLICK, RemoveEmbeddedElement);
-    $('#ta-set-embedded-level').on(PROGRAM_CLICK, SetEmbeddedLevel);
-    $('.ta-apply-block-element').on(PROGRAM_CLICK, ApplyBlock);
-    $('#ta-delete-block').on(PROGRAM_CLICK, DeleteBlock);
-    $('#ta-undo-action').on(PROGRAM_CLICK, UndoAction);
-    $('#ta-redo-action').on(PROGRAM_CLICK, RedoAction);
-    $(document).on(PROGRAM_KEYUP, '.note-edit-dialog textarea', ClearActions);
-    $('#ta-normalize-note').on(PROGRAM_CLICK, NormalizeNote);
-    $('#ta-sanitize-note').on(PROGRAM_CLICK, SanitizeNote);
-    $('#ta-validate-note').on(PROGRAM_CLICK, ValidateNote);
-    $('#ta-text-shadow-controls a').on(PROGRAM_CLICK, TextShadowControls);
-    $('#ta-ruby-dialog-open').on(PROGRAM_CLICK, OpenRubyDialog);
+    $('#ta-side-menu-tabs .ta-menu-tab').on(JSPLib.program.click, SwitchSections);
+    $('#ta-toggle-embedded-mode').on(JSPLib.program.click, ToggleEmbeddedMode);
+    $('#ta-add-embedded-element').on(JSPLib.program.click, AddEmbeddedElement);
+    $('#ta-remove-embedded-element').on(JSPLib.program.click, RemoveEmbeddedElement);
+    $('#ta-set-embedded-level').on(JSPLib.program.click, SetEmbeddedLevel);
+    $('.ta-apply-block-element').on(JSPLib.program.click, ApplyBlock);
+    $('#ta-delete-block').on(JSPLib.program.click, DeleteBlock);
+    $('#ta-undo-action').on(JSPLib.program.click, UndoAction);
+    $('#ta-redo-action').on(JSPLib.program.click, RedoAction);
+    $(document).on(JSPLib.program.keyup, '.note-edit-dialog textarea', ClearActions);
+    $('#ta-normalize-note').on(JSPLib.program.click, NormalizeNote);
+    $('#ta-sanitize-note').on(JSPLib.program.click, SanitizeNote);
+    $('#ta-validate-note').on(JSPLib.program.click, ValidateNote);
+    $('#ta-text-shadow-controls a').on(JSPLib.program.click, TextShadowControls);
+    $('#ta-ruby-dialog-open').on(JSPLib.program.click, OpenRubyDialog);
     JSPLib.utility.clickAndHold('#ta-placement-controls .ta-button-placement', PlacementControl, PROGRAM_SHORTCUT);
-    $('#ta-get-placement').on(PROGRAM_CLICK, GetPlacement);
-    $('#ta-save-note').on(PROGRAM_CLICK, SaveNote);
-    $('#ta-edit-note').on(PROGRAM_CLICK, EditNote);
-    $('#ta-delete-note').on(PROGRAM_CLICK, DeleteNote);
-    $('#ta-show-note').on(PROGRAM_CLICK, ShowNote);
-    $('#ta-hide-note').on(PROGRAM_CLICK, HideNote);
-    $('#ta-reset-note').on(PROGRAM_CLICK, ResetNote);
-    $('#ta-next-note').on(PROGRAM_CLICK, NextNote);
-    $('#ta-previous-note').on(PROGRAM_CLICK, PreviousNote);
-    $('#ta-unselect-note').on(PROGRAM_CLICK, UnselectNote);
-    $('#ta-copy-note').on(PROGRAM_CLICK, CopyNote);
-    $('#ta-section-codes button').on(PROGRAM_CLICK, InsertCharacter);
-    $('#ta-side-menu-copy').on(PROGRAM_CLICK, CopyTagStyles);
-    $('#ta-side-menu-clear').on(PROGRAM_CLICK, ClearTagStyles);
-    $('#ta-side-menu-apply').on(PROGRAM_CLICK, ApplyTagStyles);
-    $('#ta-size-controls > a').on(PROGRAM_CLICK, ResizeSideMenu);
-    $('#ta-side-menu-reset').on(PROGRAM_CLICK, ResetSideMenu);
-    $('#ta-side-menu-close').on(PROGRAM_CLICK, CloseSideMenu);
-    $('#ta-side-menu-load').on(PROGRAM_CLICK, LoadTagStyles);
-    $('#ta-side-menu-open').on(PROGRAM_CLICK, OpenSideMenu);
-    $(document).on(PROGRAM_KEYDOWN, null, 'alt+t', KeyboardMenuToggle);
-    $(document).on(PROGRAM_KEYDOWN, null, 'alt+r', ResetSideMenu);
-    $(document).on('visibilitychange.ta', CheckMissedLastNoterPolls);
+    $('#ta-get-placement').on(JSPLib.program.click, GetPlacement);
+    $('#ta-save-note').on(JSPLib.program.click, SaveNote);
+    $('#ta-edit-note').on(JSPLib.program.click, EditNote);
+    $('#ta-delete-note').on(JSPLib.program.click, DeleteNote);
+    $('#ta-show-note').on(JSPLib.program.click, ShowNote);
+    $('#ta-hide-note').on(JSPLib.program.click, HideNote);
+    $('#ta-reset-note').on(JSPLib.program.click, ResetNote);
+    $('#ta-next-note').on(JSPLib.program.click, NextNote);
+    $('#ta-previous-note').on(JSPLib.program.click, PreviousNote);
+    $('#ta-unselect-note').on(JSPLib.program.click, UnselectNote);
+    $('#ta-copy-note').on(JSPLib.program.click, CopyNote);
+    $('#ta-section-codes button').on(JSPLib.program.click, InsertCharacter);
+    $('#ta-side-menu-copy').on(JSPLib.program.click, CopyTagStyles);
+    $('#ta-side-menu-clear').on(JSPLib.program.click, ClearTagStyles);
+    $('#ta-side-menu-apply').on(JSPLib.program.click, ApplyTagStyles);
+    $('#ta-size-controls > a').on(JSPLib.program.click, ResizeSideMenu);
+    $('#ta-side-menu-reset').on(JSPLib.program.click, ResetSideMenu);
+    $('#ta-side-menu-close').on(JSPLib.program.click, CloseSideMenu);
+    $('#ta-side-menu-load').on(JSPLib.program.click, LoadTagStyles);
+    $('#ta-side-menu-open').on(JSPLib.program.click, OpenSideMenu);
+    $(document).on(JSPLib.program.keydown, null, 'alt+t', KeyboardMenuToggle);
+    $(document).on(JSPLib.program.keydown, null, 'alt+r', ResetSideMenu);
+    $(document).on(JSPLib.program.visibilitychange, CheckMissedLastNoterPolls);
     let positions = JSPLib.storage.getLocalData('ta-position', {default_val: {}});
     TA.$side_menu = $('#ta-side-menu');
     for (let key in positions) {
@@ -3272,9 +3470,6 @@ function InitializeProgramValues() {
         last_noted: JSPLib.utility.toTimeStamp(document.body.dataset.postLastNotedAt),
         mode: JSPLib.storage.getLocalData('ta-mode', {default_val: 'main'}),
         last_noted_cutoff_mins: TA.last_noted_cutoff * JSPLib.utility.one_minute,
-    });
-    Object.assign(TA, {
-        seen_key: 'ta-post-seen-' + TA.post_id,
     });
     return true;
 }
@@ -3313,10 +3508,12 @@ function Main() {
         initialize_func: InitializeProgramValues,
         render_menu_func: RenderSettingsMenu,
         program_css: PROGRAM_CSS,
+        light_css: LIGHT_MODE_CSS,
+        dark_css: DARK_MODE_CSS,
         menu_css: MENU_CSS,
     };
     if (!JSPLib.menu.preloadScript(TA, preload)) return;
-    $('#translate').on(PROGRAM_CLICK, ToggleSideNotice);
+    $('#translate').on(JSPLib.program.click, ToggleSideNotice);
     if (TA.check_last_noted_enabled) {
         CheckLastNoted();
         Danbooru.Note.Edit.save = JSPLib.utility.hijackFunction(Danbooru.Note.Edit.save, SetLastNoted);
@@ -3329,23 +3526,22 @@ function Main() {
 
 /****Initialization****/
 
+//Variables for JSPLib
+
+JSPLib.program_name = PROGRAM_NAME;
+JSPLib.program_shortcut = PROGRAM_SHORTCUT;
+JSPLib.program_data = TA;
+
 //Variables for debug.js
-JSPLib.debug.debug_console = false;
+JSPLib.debug.mode = false;
 JSPLib.debug.level = JSPLib.debug.INFO;
-JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
 //Variables for menu.js
-JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
-JSPLib.menu.program_name = PROGRAM_NAME;
-JSPLib.menu.program_data = TA;
-JSPLib.menu.settings_migrations = [
-    {from: 'available_html_styles', to: 'available_css_styles'},
-];
 JSPLib.menu.settings_config = SETTINGS_CONFIG;
 
 //Export JSPLib
-JSPLib.load.exportData(PROGRAM_NAME, TA);
+JSPLib.load.exportData();
 
 /****Execution start****/
 
-JSPLib.load.programInitialize(Main, {program_name: PROGRAM_NAME, required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, optional_selectors: PROGRAM_LOAD_OPTIONAL_SELECTORS});
+JSPLib.load.programInitialize(Main, {required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, optional_selectors: PROGRAM_LOAD_OPTIONAL_SELECTORS});
