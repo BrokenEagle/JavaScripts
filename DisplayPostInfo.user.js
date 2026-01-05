@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DisplayPostInfo
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      12.13
+// @version      12.14
 // @description  Display views, uploader, and other info to the user.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -19,17 +19,17 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/core.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/md5.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru CryptoJS */
@@ -45,7 +45,7 @@ const DANBOORU_TOPIC_ID = '15926';
 
 //Variables for load.js
 const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'Danbooru.PostTooltip'];
-const PROGRAM_LOAD_OPTIONAL_SELECTORS = ['#c-posts #a-show', '#c-posts #a-index', "#c-explore-posts #a-viewed", "#c-explore-posts #a-curated", '#c-users #a-edit'];
+const PROGRAM_LOAD_OPTIONAL_SELECTORS = ['#c-posts #a-show', '#c-posts #a-index', "#c-explore-posts #a-viewed", "#c-explore-posts #a-popular", '#c-users #a-edit'];
 
 //Program name constants
 const PROGRAM_SHORTCUT = 'dpi';
@@ -68,22 +68,22 @@ const DPI = {};
 const SETTINGS_CONFIG = {
     post_views_enabled: {
         reset: false,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Shows post views on the post page."
     },
     top_tagger_enabled: {
         reset: false,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Shows top tagger on the post page."
     },
     basic_post_tooltip: {
         reset: false,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Adds the post uploader to the basic post tooltips."
     },
     advanced_post_tooltip: {
         reset: false,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Enables the configuration of post tooltip settings."
     },
     post_show_delay: {
@@ -100,22 +100,22 @@ const SETTINGS_CONFIG = {
     },
     post_favorites_enabled: {
         reset: false,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Adds attributes to posts that allows the user to apply their own CSS styles to them."
     },
     post_statistics_enabled: {
         reset: false,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Shows post statistics for all of the posts on a page."
     },
     domain_statistics_enabled: {
         reset: false,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Shows domain statistics for all of the posts on a page."
     },
     tag_statistics_enabled: {
         reset: false,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Shows the percentage of posts with the tags from the tag column."
     },
 };
@@ -193,12 +193,11 @@ const POST_INDEX_CSS = `
     color: blue;
 }
 .dpi-tag-statistic {
-    color:lightpink;
+    color: lightpink;
 }
 #c-posts #a-index #sidebar {
     width: 16em;
-}
-`;
+}`;
 
 //HTML constants
 
@@ -333,6 +332,7 @@ const VIEW_CONSTRAINTS = {
 //Validate functions
 
 function ValidateEntry(key, entry) {
+    const printer = JSPLib.debug.getFunctionPrint('ValidateEntry');
     if (!JSPLib.validate.validateIsHash(key, entry)) {
         return false;
     }
@@ -343,7 +343,7 @@ function ValidateEntry(key, entry) {
     } if (key.match(/^pv-/)) {
         return JSPLib.validate.validateHashEntries(key, entry, VIEW_CONSTRAINTS);
     }
-    this.debug('log', "Bad key!");
+    printer.debuglog("Bad key!");
     return false;
 }
 
@@ -452,17 +452,18 @@ function PostViewsExpiration(created_timestamp) {
 //Network functions
 
 async function GetUserData(user_id) {
+    const printer = JSPLib.debug.getFunctionPrint('GetUserData');
     let user_key = `user-${user_id}`;
     let data = await JSPLib.storage.checkLocalDB(user_key, USER_EXPIRATION);
     var mapped_data;
     if (!data) {
-        this.debug('log', "Querying:", user_id);
+        printer.debuglog("Querying:", user_id);
         let user_data = await JSPLib.danbooru.submitRequest("users", {search: {id: user_id, expiry: 30}, only: USER_FIELDS});
         if (user_data && user_data.length) {
             mapped_data = MapUserData(user_data[0]);
             JSPLib.storage.saveData(user_key, {value: mapped_data, expires: JSPLib.utility.getExpires(USER_EXPIRATION)});
         } else {
-            this.debug('log', "Missing user:", user_id);
+            printer.debuglog("Missing user:", user_id);
             mapped_data = BlankUser(user_id);
             JSPLib.storage.saveData(user_key, {value: mapped_data, expires: JSPLib.utility.getExpires(BAD_USER_EXPIRATION)});
         }
@@ -473,12 +474,12 @@ async function GetUserData(user_id) {
 }
 
 async function GetUsersData(user_ids) {
+    const printer = JSPLib.debug.getFunctionPrint('GetUsersData');
     let user_keys = user_ids.map((user_id) => 'user-' + user_id);
     let cached = await JSPLib.storage.batchCheckLocalDB(user_keys, USER_EXPIRATION);
-    let found_keys = JSPLib.utility.arrayIntersection(user_keys, Object.keys(cached));
     let missing_keys = JSPLib.utility.arrayDifference(user_keys, Object.keys(cached));
     if (missing_keys.length) {
-        this.debug('log', "Missing users:", missing_keys);
+        printer.debuglog("Missing users:", missing_keys);
         let missing_ids = missing_keys.map((key) => Number(key.replace('user-', "")));
         let users = await JSPLib.danbooru.submitRequest("users", {search: {id: missing_ids.join(',')}, limit: missing_ids.length, only: USER_FIELDS});
         let mapped_users = MapUsersData(users);
@@ -487,7 +488,7 @@ async function GetUsersData(user_ids) {
         if (users.length !== missing_keys.length) {
             let network_ids = JSPLib.utility.getObjectAttributes(users, 'id');
             let bad_ids = JSPLib.utility.arrayDifference(missing_ids, network_ids);
-            this.debug('log', "Bad users:", bad_ids);
+            printer.debuglog("Bad users:", bad_ids);
             let bad_users = BlankUsers(bad_ids);
             SaveMappedListData(bad_users, BAD_USER_EXPIRATION);
             cached = JSPLib.utility.mergeHashes(cached, bad_users);
@@ -501,10 +502,11 @@ async function GetUsersData(user_ids) {
 ////#A-SHOW
 
 async function DisplayPostViews() {
+    const printer = JSPLib.debug.getFunctionPrint('DisplayPostViews');
     var post_views;
     let post_id = $('.image-container').data('id');
     let views_key = `pv-${post_id}`;
-    this.debug('log', "Checking:", post_id);
+    printer.debuglog("Checking:", post_id);
     let view_data = await JSPLib.storage.checkLocalDB(views_key, MAX_VIEWS_EXPIRATION);
     if (!view_data) {
         let post_timestamp = new Date($("#post-information time").attr("datetime")).getTime();
@@ -513,7 +515,7 @@ async function DisplayPostViews() {
             post_views = await $.get(`https://isshiki.donmai.us/post_views/${post_id}`);
         } catch(e) {
             let error_text = `${e.status} ${e.responseText || e.statusText}`;
-            this.debug('log', "Error:", e.status, e.responseText || e.statusText);
+            printer.debuglog("Error:", e.status, e.responseText || e.statusText);
             $("#dpi-post-views").html(`Views: ${error_text}`).show();
             return;
         }
@@ -530,6 +532,7 @@ async function DisplayPostViews() {
 }
 
 async function DisplayTopTagger() {
+    const printer = JSPLib.debug.getFunctionPrint('DisplayTopTagger');
     var name_html, top_tagger_id;
     let $image = $(".image-container");
     let uploader_id = $image.data('uploader-id');
@@ -539,7 +542,7 @@ async function DisplayTopTagger() {
     let key_hash = `tt-${post_id}-${tag_hash}`;
     let data = await JSPLib.storage.checkLocalDB(key_hash, TOP_TAGGER_EXPIRATION);
     if (!data) {
-        this.debug('log', "Cache miss:", key_hash);
+        printer.debuglog("Cache miss:", key_hash);
         //Hashed so that it's mutable
         let current_tags = {tags: tag_string.split(' ')};
         let user_tags = DPI.user_tags = {};
@@ -565,15 +568,15 @@ async function DisplayTopTagger() {
                 top_taggers.sort((a, b) => (version_order.indexOf(b) - version_order.indexOf(a)));
             }
             top_tagger_id = top_taggers[0];
-            this.debug('log', "Top tagger found:", top_tagger_id);
+            printer.debuglog("Top tagger found:", top_tagger_id);
             JSPLib.storage.saveData(key_hash, {value: top_tagger_id, expires: JSPLib.utility.getExpires(TOP_TAGGER_EXPIRATION)});
         } else {
-            this.debug('log', "Error: No post versions found", post_versions);
+            printer.debuglog("Error: No post versions found", post_versions);
             name_html = "No data!";
         }
     } else {
         top_tagger_id = data.value;
-        this.debug('log', "Cache hit:", key_hash);
+        printer.debuglog("Cache hit:", key_hash);
     }
     if (top_tagger_id) {
         if (!(top_tagger_id in DPI.user_promises)) {
@@ -587,19 +590,9 @@ async function DisplayTopTagger() {
 
 ////#A-INDEX
 
-async function RenderTooltip(render_promise, instance) {
-    await Promise.all([render_promise, DPI.favorites_promise]);
-    let $target = $(instance.reference);
-    let post_id = $target.closest('.post-preview').data('id');
-    if (!DPI.favorite_ids.includes(post_id)) {
-        return;
-    }
-    $(instance.popper).find('.fa-heart').removeClass('far').addClass('fas');
-}
-
 function UpdateThumbnailTitles() {
     DPI.all_uploaders.then((data) => {
-        $(".post-preview").each((i, entry) => {
+        $(".post-preview").each((_, entry) => {
             let uploader_id = $(entry).data('uploader-id');
             let $image = $("img", entry);
             let title = $image.attr('title');
@@ -611,10 +604,10 @@ function UpdateThumbnailTitles() {
 
 async function ProcessPostFavorites() {
     let $post_previews = $(".post-preview");
-    let post_ids = $post_previews.map((i, entry) => $(entry).data('id')).toArray();
+    let post_ids = $post_previews.map((_, entry) => $(entry).data('id')).toArray();
     let favorites = await JSPLib.danbooru.submitRequest('favorites', {search: {user_id: DPI.user_id, post_id: post_ids.join(',')}, limit: post_ids.length, only: 'post_id'});
     DPI.favorite_ids = JSPLib.utility.getObjectAttributes(favorites, 'post_id');
-    $post_previews.each((i, entry) => {
+    $post_previews.each((_, entry) => {
         let $entry = $(entry);
         let post_id = $entry.data('id');
         let is_favorited = DPI.favorite_ids.includes(post_id);
@@ -626,8 +619,8 @@ function ProcessTagStatistics() {
     let $search_tags = $("#tag-box .search-tag");
     let $post_previews = $(".post-preview");
     let total_posts = $post_previews.length;
-    let post_tags = $post_previews.map((i, entry) => [$(entry).data('tags').split(' ')]).toArray();
-    let column_tags = $search_tags.map((i, entry) => $(entry).text().replace(/ /g, '_')).toArray();
+    let post_tags = $post_previews.map((_, entry) => [$(entry).data('tags').split(' ')]).toArray();
+    let column_tags = $search_tags.map((_, entry) => $(entry).text().replace(/ /g, '_')).toArray();
     let column_info = {};
     column_tags.forEach((tag) => {
         column_info[tag] = post_tags.filter((entry) => entry.includes(tag)).length;
@@ -877,35 +870,19 @@ function Main() {
     JSPLib.load.noncriticalTasks(CleanupTasks);
 }
 
-/****Function decoration****/
-
-[
-    GetUserData, DisplayPostViews, DisplayTopTagger, GetUsersData, ValidateEntry,
-] = JSPLib.debug.addFunctionLogs([
-    GetUserData, DisplayPostViews, DisplayTopTagger, GetUsersData, ValidateEntry,
-]);
-
-[
-    RenderSettingsMenu,
-    DisplayPostViews, DisplayTopTagger, GetUsersData,
-] = JSPLib.debug.addFunctionTimers([
-    //Sync
-    RenderSettingsMenu,
-    //Async
-    DisplayPostViews, DisplayTopTagger, GetUsersData,
-]);
-
 /****Initialization****/
 
+//Variables for JSPLib
+
+JSPLib.program_name = PROGRAM_NAME;
+JSPLib.program_shortcut = PROGRAM_SHORTCUT;
+JSPLib.program_data = DPI;
+
 //Variables for debug.js
-JSPLib.debug.debug_console = false;
+JSPLib.debug.mode = false;
 JSPLib.debug.level = JSPLib.debug.INFO;
-JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
 //Variables for menu.js
-JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
-JSPLib.menu.program_name = PROGRAM_NAME;
-JSPLib.menu.program_data = DPI;
 JSPLib.menu.program_data_regex = PROGRAM_DATA_REGEX;
 JSPLib.menu.program_data_key = PROGRAM_DATA_KEY;
 JSPLib.menu.settings_callback = RemoteSettingsCallback;
@@ -917,9 +894,8 @@ JSPLib.storage.indexedDBValidator = ValidateEntry;
 JSPLib.storage.localSessionValidator = ValidateProgramData;
 
 //Export JSPLib
-JSPLib.load.exportData(PROGRAM_NAME, DPI);
-JSPLib.load.exportFuncs(PROGRAM_NAME, {debuglist: [], alwayslist: [GetUsersData]});
+JSPLib.load.exportData();
 
 /****Execution start****/
 
-JSPLib.load.programInitialize(Main, {program_name: PROGRAM_NAME, required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, optional_selectors: PROGRAM_LOAD_OPTIONAL_SELECTORS});
+JSPLib.load.programInitialize(Main, {required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, optional_selectors: PROGRAM_LOAD_OPTIONAL_SELECTORS});
