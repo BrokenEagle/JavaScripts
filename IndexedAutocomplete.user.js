@@ -1381,10 +1381,6 @@ function GetConsequentMatch(term, tag) {
     return retval;
 }
 
-function GetIsBur() {
-    return (IAC.controller === 'bulk-update-requests') && ['edit', 'new'].includes(IAC.action);
-}
-
 const MapMetatag = (type, metatag, value) => ({
     type,
     antecedent: null,
@@ -2496,7 +2492,7 @@ function InitializeProgramValues() {
     Object.assign(IAC, {
         user_id: Danbooru.CurrentUser.data('id'),
         choice_info: JSPLib.storage.getLocalData('iac-choice-info', {default_val: {}}),
-        is_bur: GetIsBur(),
+        is_bur: (IAC.controller === 'bulk-update-requests') && ['edit', 'new'].includes(IAC.action),
         prefixes: JSON.parse(JSPLib.utility.getMeta('autocomplete-tag-prefixes')),
     }, PROGRAM_RESET_KEYS);
     Object.assign(IAC, {
