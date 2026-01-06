@@ -1998,14 +1998,6 @@ function RebindMultipleTag() {
             InitializeTagQueryAutocompleteIndexed();
         },
     });
-    JSPLib.utility.recheckInterval({
-        check: () => JSPLib.utility.hasDOMDataKey(AUTOCOMPLETE_MULTITAG_SELECTORS, 'uiAutocomplete'),
-        exec: () => {
-            $(AUTOCOMPLETE_MULTITAG_SELECTORS).autocomplete('destroy').off('keydown.Autocomplete.tab');
-            InitializeTagQueryAutocompleteIndexed();
-        },
-        interval: TIMER_POLL_INTERVAL,
-    });
 }
 
 function RebindSingleTag() {
