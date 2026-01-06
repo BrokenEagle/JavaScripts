@@ -205,16 +205,6 @@ const SETTINGS_CONFIG = {
         validate: JSPLib.utility.isBoolean,
         hint: "Enables autocomplete in non-autocomplete text fields (Alt+A to enable/disable), inserting a wiki link upon completion."
     },
-    forum_quick_search_enabled: {
-        reset: true,
-        validate: JSPLib.utility.isBoolean,
-        hint: "Adds a quick search bar where applicable using forum topic titles."
-    },
-    comment_quick_search_enabled: {
-        reset: true,
-        validate: JSPLib.utility.isBoolean,
-        hint: "Adds a quick search bar where applicable using post search queries."
-    },
 };
 
 //Available config values
@@ -453,26 +443,6 @@ const SETTINGS_MENU_CSS = `
 }`;
 
 //HTML Constants
-
-const FORUM_TOPIC_SEARCH = `
-<li>
-    <form autocomplete="off" class="simple_form search-form quick-search-form one-line-form" novalidate="novalidate" action="/forum_topics" accept-charset="UTF-8" method="get">
-        <div class="input string optional">
-            <input id="quick_search_title_matches" placeholder="Search topics" type="text" name="search[title_ilike]" class="string optional" data-autocomplete="forum-topic" autocomplete="off">
-        </div>
-        <input type="hidden" name="redirect" value="true">
-    </form>
-</li>`;
-
-const POST_COMMENT_SEARCH = `
-<li>
-    <form autocomplete="off" class="simple_form search-form quick-search-form one-line-form" novalidate="novalidate" action="/comments" accept-charset="UTF-8" method="get">
-        <div class="input string optional">
-            <input type="hidden" name="group_by" id="group_by" value="post">
-            <input id="quick_search_post_matches" placeholder="Search posts" type="text" name="tags" class="string optional" data-autocomplete="tag-query" autocomplete="off">
-        </div>
-    </form>
-</li>`;
 
 const TEXT_AUTOCOMPLETE_DETAILS = `
 <ul>
@@ -1360,10 +1330,6 @@ function GetConsequentMatch(term, tag) {
 
 function GetIsBur() {
     return (IAC.controller === 'bulk-update-requests') && ['edit', 'new'].includes(IAC.action);
-}
-
-function GetHasQuickSearchBar() {
-    return ['forum-topics', 'forum-posts', 'comments'].includes(IAC.controller);
 }
 
 const MapMetatag = (type, metatag, value) => ({
@@ -2396,16 +2362,6 @@ function ProcessSourceData(type, metatag, term, data, query_type, key, word_mode
 
 //Main execution functions
 
-function InstallQuickSearchBars() {
-    if (IAC.forum_quick_search_enabled && (IAC.controller === 'forum-topics' || IAC.controller === 'forum-posts')) {
-        JSPLib.utility.setCSSStyle(FORUM_CSS, 'forum');
-        $('#subnav-menu .search_body_matches').closest('li').after(FORUM_TOPIC_SEARCH);
-    }
-    if (IAC.comment_quick_search_enabled && IAC.controller === 'comments') {
-        $('#subnav-menu .search_body_matches').closest('li').after(POST_COMMENT_SEARCH);
-    }
-}
-
 function SetupAutocompleteInitializations() {
     switch (IAC.controller) {
         case 'wiki-pages':
@@ -2438,9 +2394,7 @@ function SetupAutocompleteInitializations() {
                 RebindAnyAutocomplete('[data-autocomplete=saved-search-label]', 'ss', true);
             }
             break;
-        case 'forum-topics':
         case 'forum-posts':
-            DelayInitializeAutocomplete('#quick_search_title_matches', 'ft');
             if (IAC.action === 'search') {
                 DelayInitializeAutocomplete('#search_topic_title_matches', 'ft');
             }
@@ -2546,7 +2500,7 @@ function InitializeProgramValues() {
         printer.debugwarn("No Indexed DB! Exiting...");
         return false;
     }
-    if (document.querySelector(AUTOCOMPLETE_ALL_SELECTORS) === null && !GetHasQuickSearchBar()) {
+    if (document.querySelector(AUTOCOMPLETE_ALL_SELECTORS) === null) {
         printer.debugwarn("No autocomplete inputs! Exiting...");
         return false;
     }
@@ -2584,8 +2538,6 @@ function RenderSettingsMenu() {
     $('#iac-general-settings-message').append(JSPLib.menu.renderExpandable("Text autocomplete details", TEXT_AUTOCOMPLETE_DETAILS));
     $('#iac-general-settings').append(JSPLib.menu.renderDomainSelectors());
     $('#iac-general-settings').append(JSPLib.menu.renderCheckbox('text_input_autocomplete_enabled'));
-    $('#iac-general-settings').append(JSPLib.menu.renderCheckbox('forum_quick_search_enabled'));
-    $('#iac-general-settings').append(JSPLib.menu.renderCheckbox('comment_quick_search_enabled'));
     $('#iac-source-settings').append(JSPLib.menu.renderCheckbox('BUR_source_enabled'));
     $('#iac-source-settings').append(JSPLib.menu.renderCheckbox('metatag_source_enabled'));
     $('#iac-usage-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", USAGE_SETTINGS_DETAILS));
@@ -2657,7 +2609,6 @@ function Main() {
         menu_css: SETTINGS_MENU_CSS,
     };
     if (!JSPLib.menu.preloadScript(IAC, preload)) return;
-    InstallQuickSearchBars();
     CorrectUsageData();
     SetupAutocompleteInitializations();
     SetTagAutocompleteSource();
