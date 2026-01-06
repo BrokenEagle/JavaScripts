@@ -1739,9 +1739,8 @@ function InsertCompletion(input, completion) {
         Danbooru.Autocomplete.insert_completion(input, completion);
         return;
     }
-    // Trim all whitespace (tabs, spaces) except for line returns
-    var before_caret_text = input.value.substring(0, input.selectionStart).replace(/^[ \t]+|[ \t]+$/gm, "");
-    var after_caret_text = input.value.substring(input.selectionStart).replace(/^[ \t]+|[ \t]+$/gm, "");
+    var before_caret_text = input.value.substring(0, input.selectionStart);
+    var after_caret_text = input.value.substring(input.selectionStart);
     var regexp = new RegExp('(' + IAC.prefixes.join('|') + ')?\\S+$', 'g');
     let $input = $(input);
     let start = 0, end = 0;
@@ -1773,6 +1772,9 @@ function InsertCompletion(input, completion) {
         }
         setTimeout(() => {DisableTextAreaAutocomplete($input);}, 100);
     } else {
+        // Trim all whitespace (tabs, spaces) except for line returns
+        before_caret_text = before_caret_text.replace(/^[ \t]+|[ \t]+$/gm, "");
+        after_caret_text = after_caret_text.replace(/^[ \t]+|[ \t]+$/gm, "");
         var query = ParseQuery(input.value, input.selectionStart);
         var select = ParseQuery(completion, completion.length);
         before_caret_text = before_caret_text.substring(0, before_caret_text.search(/\S+$/));
