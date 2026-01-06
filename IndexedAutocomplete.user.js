@@ -1986,7 +1986,7 @@ function RebindAnyAutocomplete(selector, keycode, multiple) {
     RebindAutocomplete({
         selector,
         func () {
-            InitializeAutocompleteIndexed(selector, keycode, multiple);
+            InitializeAutocompleteIndexed(selector, keycode, {multiple});
         },
     });
 }
@@ -2120,7 +2120,7 @@ function InitializeTagQueryAutocompleteIndexed(fields_selector = AUTOCOMPLETE_MU
     }
 }
 
-function InitializeAutocompleteIndexed(selector, keycode, multiple = false, wiki = false) {
+function InitializeAutocompleteIndexed(selector, keycode, {multiple = false, wiki_link = false} = {}) {
     let type = SOURCE_KEY[keycode];
     var $fields = $(selector);
     let autocomplete = AnySourceIndexed(keycode);
@@ -2129,9 +2129,7 @@ function InitializeAutocompleteIndexed(selector, keycode, multiple = false, wiki
         delay: 100,
         async source(request, respond) {
             var term;
-            if (multiple || wiki) {
-                term = ParseQuery(request.term, this.element.get(0).selectionStart).term;
-                if (!term) {
+            if (multiple || wiki_link) {
                     respond([]);
                     return;
                 }
@@ -2143,15 +2141,11 @@ function InitializeAutocompleteIndexed(selector, keycode, multiple = false, wiki
         },
         select (event, ui) {
             InsertUserSelected(this, ui.item);
-            if (wiki) {
+            if (multiple || wiki_link) {
                 InsertCompletion(this, ui.item.name);
-                event.stopImmediatePropagation();
-                return false;
-            } if (multiple) {
-                if (event.key === 'Enter') {
+                if (wiki_link || event.key === 'Enter') {
                     event.stopImmediatePropagation();
                 }
-                Danbooru.Autocomplete.insert_completion(this, ui.item.name);
                 return false;
             }
             ui.item.name = ui.item.name.trim();
@@ -2162,7 +2156,7 @@ function InitializeAutocompleteIndexed(selector, keycode, multiple = false, wiki
     setTimeout(() => {
         $fields.each((_, field) => {
             let autocomplete = $(field).data('uiAutocomplete');
-            if (wiki) {
+            if (wiki_link) {
                 autocomplete._renderItem = AutocompleteRenderItem;
             } else {
                 autocomplete._renderItem = RenderListItem(alink_func);
@@ -2174,7 +2168,7 @@ function InitializeAutocompleteIndexed(selector, keycode, multiple = false, wiki
         $fields.on('keydown.Autocomplete.tab', null, 'tab', Danbooru.Autocomplete.on_tab);
     }
     $fields.data('autocomplete', type);
-    $fields.data('multiple', multiple || wiki);
+    $fields.data('multiple', multiple || wiki_link);
     $fields.addClass('iac-autocomplete');
 }
 
@@ -2215,7 +2209,7 @@ function EnableTextAreaAutocomplete($input, type) {
     }
     let input_selector = JSPLib.utility.getHTMLTree($input[0]);
     let type_shortcut = PROGRAM_DATA_KEY[type];
-    InitializeAutocompleteIndexed(input_selector, type_shortcut, false, true);
+    InitializeAutocompleteIndexed(input_selector, type_shortcut, {wiki_link: true});
     $input.data('insert-autocomplete', true);
     $input.data('autocomplete', 'tag-edit');
     JSPLib.notice.notice(JSPLib.utility.sprintf(AUTOCOMPLETE_MESSAGE, AUTOCOMPLETE_SOURCE[IAC.ac_source], AUTOCOMPLETE_MODE[IAC.ac_mode], AUTOCOMPLETE_CAPITALIZATION[IAC.ac_caps]));
