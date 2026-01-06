@@ -31,7 +31,39 @@
 
 /****Library updates****/
 
-////NONE
+JSPLib.utility.renderTemplate = function (literals, args, mapping) {
+    let output = "";
+    for (let i = 0; i < literals.raw.length; i++) {
+        output += literals.raw[i];
+        if (i < args.length) {
+            let insert = (mapping && args[i] in mapping ? mapping[args[i]] : args[i]);
+            output += insert;
+        }
+    }
+    return output;
+};
+
+JSPLib.utility.generateTemplate = function (func, literals, args) {
+    return function (mapping) {
+        return func(JSPLib.utility.renderTemplate(literals, args, mapping));
+    };
+};
+
+JSPLib.utility.normalizeHTML = function ({template = false} = {}) {
+    const normalize = function (output) {
+        // Mark all of the spaces surrounded by a gt/lt and a non-space or lt/gt. These spaces need to stay.
+        let marked_output = output.replaceAll('> <', '>\xff<').replace(/(?<=>)\s(?=[^ <])/g, '\xff').replace(/(?<=[^ >])\s(?=<)/g, '\xff');
+        let normalized_output = marked_output.replace(/\s+/g, ' ').replace(/(?<=>)\s/g, "").replace(/\s(?=<)/g, "");
+        // Once the HTML has been normalized, restore all of the intentional spaces.
+        return normalized_output.replaceAll('\xff', ' ');
+    };
+    return function (literals, ...args) {
+        if (template) {
+            return JSPLib.utility.generateTemplate(normalize, literals, args);
+        }
+        return normalize(JSPLib.utility.renderTemplate(literals, args));
+    };
+};
 
 /****Global variables****/
 
@@ -444,7 +476,7 @@ const SETTINGS_MENU_CSS = `
 
 //HTML Constants
 
-const TEXT_AUTOCOMPLETE_DETAILS = `
+const TEXT_AUTOCOMPLETE_DETAILS = JSPLib.utility.normalizeHTML()`
 <ul>
     <li><b>Source (Alt+1):</b>
         <ul>
@@ -477,14 +509,14 @@ const TEXT_AUTOCOMPLETE_DETAILS = `
     </li>
 </ul>`;
 
-const USAGE_SETTINGS_DETAILS = `
+const USAGE_SETTINGS_DETAILS = JSPLib.utility.normalizeHTML()`
 <h5>Equations</h5>
 <ul>
     <li><span style="width:5em;display:inline-block"><b>Hit:</b></span><span class="iac-formula">usage_count = Min( usage_count + 1 , usage_maximum )</span></li>
     <li><span style="width:5em;display:inline-block"><b>Miss:</b></span><span class="iac-formula">usage_count = usage_count * usage_multiplier</span></li>
 </ul>`;
 
-const DISPLAY_SETTINGS_DETAILS = `
+const DISPLAY_SETTINGS_DETAILS = JSPLib.utility.normalizeHTML()`
 <ul>
     <li><b>Source highlight enabled:</b> The following are the CSS classes and default styling.
         <ul>
@@ -515,7 +547,7 @@ const DISPLAY_SETTINGS_DETAILS = `
     </li>
 </ul>`;
 
-const SORT_SETTINGS_DETAILS = `
+const SORT_SETTINGS_DETAILS = JSPLib.utility.normalizeHTML()`
 <ul>
     <li>Alternate sorting must be enabled to use the alternate scales/weights.</li>
     <li>These settings won't affect anything if source grouping is enabled.</li>
@@ -527,7 +559,7 @@ const SORT_SETTINGS_DETAILS = `
     <li><span style="width:8em;display:inline-block"><b>Logarithmic:</b></span><span class="iac-formula">tag_weight = source_weight x Log( post_count )</span></li>
 </ul>`;
 
-const NETWORK_SETTINGS_DETAILS = `
+const NETWORK_SETTINGS_DETAILS = JSPLib.utility.normalizeHTML()`
 <ul>
     <li><b>Alternate tag source:</b> No tag correct or tag prefix matches.</li>
     <li><b>Alternate tag wildcards:</b> This uses the <code>/tags</code> endpoint instead of the usual <code>/autocomplete</code> one when wildcards are used, though that shouldn't change the results being returned.
@@ -545,7 +577,7 @@ const NETWORK_SETTINGS_DETAILS = `
     </li>
 </ul>`;
 
-const CACHE_DATA_DETAILS = `
+const CACHE_DATA_DETAILS = JSPLib.utility.normalizeHTML()`
 <ul>
     <li><b>Autocomplete data:</b> Data from every combination of keys in the text input.
         <ul style="font-size:80%">
@@ -561,7 +593,7 @@ const CACHE_DATA_DETAILS = `
     </li>
 </ul>`;
 
-const PROGRAM_DATA_DETAILS = `
+const PROGRAM_DATA_DETAILS = JSPLib.utility.normalizeHTML()`
 <p class="tn">All timestamps are in milliseconds since the epoch (<a href="https://www.epochconverter.com">Epoch converter</a>).</p>
 <ul>
     <li><u>General data</u>
@@ -598,7 +630,7 @@ const PROGRAM_DATA_DETAILS = `
     </li>
 </ul>`;
 
-const AUTOCOMPLETE_MESSAGE = `
+const AUTOCOMPLETE_MESSAGE = JSPLib.utility.normalizeHTML()`
 <b>Autocomplete turned on!</b>
 <hr>
 <table>
@@ -613,6 +645,71 @@ const AUTOCOMPLETE_MESSAGE = `
         </tr>
    </tbody>
 </table>`;
+
+const POOL_TEMPLATE = JSPLib.utility.normalizeHTML({template: true})`
+<div class="iac-line-entry iac-pool">
+    <span>
+        <a class="pool-category-${'category'} autocomplete-item">${'label'}</a>
+    </span>
+    <span class="post-count">${'post_count'}</span>
+</div>`;
+
+const USER_TEMPLATE = JSPLib.utility.normalizeHTML({template: true})`
+<div class="iac-line-entry iac-user">
+    <span>
+        <a class="user-${'level'} autocomplete-item">${'label'}</a>
+    </span>
+</div>`;
+
+const FAVGROUP_TEMPLATE = JSPLib.utility.normalizeHTML({template: true})`
+<div class="iac-line-entry iac-favgroup">
+    <span>
+        <a class="autocomplete-item">${'label'}</a>
+    </span>
+    <span class="post-count" style="flex-basis: 10%; text-align: right">${'post_count'}</span>
+</div>`;
+
+const SEARCH_TEMPLATE = JSPLib.utility.normalizeHTML({template: true})`
+<div class="iac-line-entry iac-search">
+    <span>
+        <a class="autocomplete-item">${'label'}</a>
+    </span>
+</div>`;
+
+const WIKIPAGE_TEMPLATE = JSPLib.utility.normalizeHTML({template: true})`
+<div class="iac-line-entry iac-wiki-page">
+    <span>
+        <a class="tag-type-${'category'} autocomplete-item">${'label'}</a>
+    </span>
+    <span class="post-count">${'count'}</span>
+</div>`;
+
+const ARTIST_TEMPLATE = JSPLib.utility.normalizeHTML({template: true})`
+<div class="iac-line-entry iac-artist">
+    <span>
+        <a class="tag-type-1 autocomplete-item">${'label'}</a>
+    </span>
+    <span class="post-count">${'count'}</span>
+</div>`;
+
+const FORUMTOPIC_TEMPLATE = JSPLib.utility.normalizeHTML({template: true})`
+<div class="iac-line-entry iac-forum-topic">
+    <span>
+        <a class="forum-topic-category-${'category'} autocomplete-item">${'label'}</a>
+    </span>
+    <span class="response-count">${'response_count'}</span>
+</div>`;
+
+const LINE_ITEM_TEMPLATE = JSPLib.utility.normalizeHTML({template: true})`
+<span class="iac-tag-info">
+    <a href="${'url'}" class="${'link_classes'}">${'tag_html'}</a>
+</span>
+<span class="post-count">${'post_text'}</span>`;
+
+const LIST_ITEM_TEMPLATE = JSPLib.utility.normalizeHTML({template: true})`
+<li ${'data_items'}>
+    <div class="iac-line-entry iac-query">${'line_item'}</div>
+</li>`;
 
 //Autocomplete constants
 
@@ -886,16 +983,7 @@ const SOURCE_CONFIG = {
         fixupexpiration: false,
         searchstart: false,
         spacesallowed: true,
-        render: (_domobj, item) => {
-            let html = `
-<div class="iac-line-entry iac-pool">
-    <span>
-        <a class="pool-category-${item.category} autocomplete-item">${item.label}</a>
-    </span>
-    <span class="post-count">${item.post_count}</span>
-</div>`;
-            return $(html);
-        },
+        render: (_domobj, item) => $(POOL_TEMPLATE(item)),
     },
     user: {
         url: 'users',
@@ -915,15 +1003,7 @@ const SOURCE_CONFIG = {
         fixupexpiration: false,
         searchstart: true,
         spacesallowed: false,
-        render: (_domobj, item) => {
-            let html = `
-<div class="iac-line-entry iac-user">
-    <span>
-        <a class="user-${item.level.toLowerCase()} autocomplete-item">${item.label}</a>
-    </span>
-</div>`;
-            return $(html);
-        },
+        render: (_domobj, item) => $(USER_TEMPLATE({level: item.level.toLowerCase(), label: item.label})),
     },
     favgroup: {
         url: 'favorite_groups',
@@ -942,16 +1022,7 @@ const SOURCE_CONFIG = {
         fixupexpiration: false,
         searchstart: false,
         spacesallowed: true,
-        render: (_domobj, item) => {
-            let html = `
-<div class="iac-line-entry iac-favgroup">
-    <span>
-        <a class="autocomplete-item">${item.label}</a>
-    </span>
-    <span class="post-count" style="flex-basis: 10%; text-align: right">${item.post_count}</span>
-</div>`;
-            return $(html);
-        },
+        render: (_domobj, item) => $(FAVGROUP_TEMPLATE(item)),
     },
     search: {
         url: 'autocomplete',
@@ -968,15 +1039,7 @@ const SOURCE_CONFIG = {
         fixupexpiration: false,
         searchstart: true,
         spacesallowed: false,
-        render: (_domobj, item) => {
-            let html = `
-<div class="iac-line-entry iac-search">
-    <span>
-        <a class="autocomplete-item">${item.label}</a>
-    </span>
-</div>`;
-            return $(html);
-        },
+        render: (_domobj, item) => $(SEARCH_TEMPLATE(item)),
     },
     wikipage: {
         url: 'wiki_pages',
@@ -1000,14 +1063,7 @@ const SOURCE_CONFIG = {
         spacesallowed: true,
         render: (_domobj, item) => {
             let count = (item.no_tag ? 'No tag' : item.post_count);
-            let html = `
-<div class="iac-line-entry iac-wiki-page">
-    <span>
-        <a class="tag-type-${item.category} autocomplete-item">${item.label}</a>
-    </span>
-    <span class="post-count">${count}</span>
-</div>`;
-            return $(html);
+            return $(WIKIPAGE_TEMPLATE(Object.assign({count}, item)));
         },
     },
     artist: {
@@ -1031,14 +1087,7 @@ const SOURCE_CONFIG = {
         spacesallowed: false,
         render: (_domobj, item) => {
             let count = (item.no_tag ? 'No tag' : item.post_count);
-            let html = `
-<div class="iac-line-entry iac-artist">
-    <span>
-        <a class="tag-type-1 autocomplete-item">${item.label}</a>
-    </span>
-    <span class="post-count">${count}</span>
-</div>`;
-            return $(html);
+            return $(ARTIST_TEMPLATE({label: item.label, count}));
         },
     },
     forumtopic: {
@@ -1059,16 +1108,7 @@ const SOURCE_CONFIG = {
         fixupexpiration: false,
         searchstart: false,
         spacesallowed: true,
-        render: (_domobj, item) => {
-            let html = `
-<div class="iac-line-entry iac-forum-topic">
-    <span>
-        <a class="forum-topic-category-${item.category} autocomplete-item">${item.label}</a>
-    </span>
-    <span class="response-count">${item.response_count}</span>
-</div>`;
-            return $(html);
-        },
+        render: (_domobj, item) => $(FORUMTOPIC_TEMPLATE(item)),
     }
 };
 
@@ -1447,14 +1487,14 @@ function AutocompleteRenderItem(list, item) {
     if (SOURCE_CONFIG[item.type].render) {
         return RenderListItem(SOURCE_CONFIG[item.type].render)(list, item);
     }
-    let tag_info = "";
+    let tag_html = "";
     if (item.antecedent) {
-        tag_info = `<span class="autocomplete-tag">${item.label}</span>`;
+        tag_html = `<span class="autocomplete-tag">${item.label}</span>`;
         let antecedent = item.antecedent.replace(/_/g, " ");
-        tag_info = '<span class="autocomplete-arrow">→</span>' + tag_info;
-        tag_info = `<span class="autocomplete-antecedent autocomplete-item">${antecedent}</span>` + tag_info;
+        tag_html = '<span class="autocomplete-arrow">→</span>' + tag_html;
+        tag_html = `<span class="autocomplete-antecedent autocomplete-item">${antecedent}</span>` + tag_html;
     } else {
-        tag_info = `<span class="autocomplete-tag autocomplete-item">${item.label}</span>`;
+        tag_html = `<span class="autocomplete-tag autocomplete-item">${item.label}</span>`;
     }
     let post_text = "";
     if (item.post_count !== undefined) {
@@ -1475,16 +1515,9 @@ function AutocompleteRenderItem(list, item) {
     } else if (item.type === 'pool') {
         link_classes.push('pool-category-' + item.category);
     }
-    let line_item = `
-<span class="iac-tag-info">
-    <a href="${url}" class="${link_classes.join(' ')}">${tag_info}</a>
-</span>
-<span class="post-count">${post_text}</span>`;
+    let line_item = LINE_ITEM_TEMPLATE({url, link_classes: link_classes.join(' '), tag_html, post_text});
     let data_items = ["type", "antecedent", "value", "category", "post_count"].map((attr) => `data-autocomplete-${attr.replace(/_/g, "-")}="${item[attr]}"`);
-    let $list_item = $(`
-<li ${data_items.join(' ')}>
-    <div class="iac-line-entry iac-query">${line_item}</div>
-</li>`);
+    let $list_item = $(LIST_ITEM_TEMPLATE({data_items: data_items.join(' '), line_item}));
     $list_item.data("item.autocomplete", item);
     $list_item.find('a').on(JSPLib.program_click, (event) => {event.preventDefault();});
     return $list_item.appendTo(list);
