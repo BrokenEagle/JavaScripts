@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.27
+// @version      29.28
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -327,7 +327,6 @@ iac-search > span {
     flex-basis: 100%;
 }
 .iac-user-choice .autocomplete-item {
-    box-shadow: 0px 2px 0px #000;
     padding-bottom: 1px;
     line-height: 150%;
     display: inline-block;
@@ -384,102 +383,62 @@ iac-search > span {
 }
 .related-tags .current-related-tags-columns li.selected:before {
     visibility: visible;
-}
-/** DARK/LIGHT Color Setup **/
-body[data-current-user-theme=light] .iac-already-used {
+}`;
+
+const LIGHT_MODE_CSS = `
+/****GENERAL****/
+.iac-already-used {
     background-color: #FFFFAA;
 }
-body[data-current-user-theme=light] .iac-tag-metatag > div:before,
-body[data-current-user-theme=light] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:link,
-body[data-current-user-theme=light] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:visited,
-body[data-current-user-theme=light] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:hover {
+.iac-user-choice .autocomplete-item {
+    box-shadow: 0px 2px 0px #000;
+}
+.iac-tag-metatag > div:before,
+.iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:link,
+.iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:visited,
+.iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:hover {
     color: #000;
 }
-body[data-current-user-theme=light] .iac-highlight-match {
+.iac-highlight-match {
     filter: brightness(0.75);
 }
-body[data-current-user-theme=dark] .iac-already-used {
-    background-color: #666622;
-}
-body[data-current-user-theme=dark] .iac-tag-metatag > div:before,
-body[data-current-user-theme=dark] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:link,
-body[data-current-user-theme=dark] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:visited,
-body[data-current-user-theme=dark] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:hover {
-    color: #FFF;
-}
-body[data-current-user-theme=dark] .iac-highlight-match {
-    filter: brightness(1.25);
-}
-@media (prefers-color-scheme: light) {
-    body[data-current-user-theme=auto] .iac-already-used {
-        background-color: #FFFFAA;
-    }
-    body[data-current-user-theme=auto] .iac-tag-metatag > div:before,
-    body[data-current-user-theme=auto] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:link,
-    body[data-current-user-theme=auto] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:visited,
-    body[data-current-user-theme=auto] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:hover {
-        color: #000;
-    }
-    body[data-current-user-theme=auto] .iac-highlight-match {
-        filter: brightness(0.75);
-    }
-}
-@media (prefers-color-scheme: dark) {
-    body[data-current-user-theme=auto] .iac-already-used {
-        background-color: #666622;
-    }
-    body[data-current-user-theme=auto] .iac-tag-metatag > div:before,
-    body[data-current-user-theme=auto] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:link,
-    body[data-current-user-theme=auto] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:visited,
-    body[data-current-user-theme=auto] .iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:hover {
-        color: #FFF;
-    }
-    body[data-current-user-theme=auto] .iac-highlight-match {
-        filter: brightness(1.25);
-    }
-}
-`;
-
-const FORUM_CSS = `
-body[data-current-user-theme=light] .ui-menu-item .forum-topic-category-0 {
+/****FORUM****/
+.ui-menu-item .forum-topic-category-0 {
     color: blue;
 }
-body[data-current-user-theme=light] .ui-menu-item .forum-topic-category-1 {
+.ui-menu-item .forum-topic-category-1 {
     color: green;
 }
-body[data-current-user-theme=light] .ui-menu-item .forum-topic-category-2 {
+.ui-menu-item .forum-topic-category-2 {
     color: red;
+}`;
+
+const DARK_MODE_CSS = `
+/****GENERAL****/
+.iac-already-used {
+    background-color: #666622;
 }
-body[data-current-user-theme=dark] .ui-menu-item .forum-topic-category-0 {
+.iac-user-choice .autocomplete-item {
+    box-shadow: 0px 2px 0px #DDD;
+}
+.iac-tag-metatag > div:before,
+.iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:link,
+.iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:visited,
+.iac-tag-highlight .tag-type-${METATAG_TAG_CATEGORY}:hover {
+    color: #FFF;
+}
+.iac-highlight-match {
+    filter: brightness(1.25);
+}
+/****FORUM****/
+.ui-menu-item .forum-topic-category-0 {
     color: var(--blue-3);
 }
-body[data-current-user-theme=dark] .ui-menu-item .forum-topic-category-1 {
+.ui-menu-item .forum-topic-category-1 {
     color: var(--green-3);
 }
-body[data-current-user-theme=dark] .ui-menu-item .forum-topic-category-2 {
+.ui-menu-item .forum-topic-category-2 {
     color: var(--red-3);
-}
-@media (prefers-color-scheme: light) {
-    .ui-menu-item .forum-topic-category-0 {
-        color: blue;
-    }
-    .ui-menu-item .forum-topic-category-1 {
-        color: green;
-    }
-    .ui-menu-item .forum-topic-category-2 {
-        color: red;
-    }
-}
-@media (prefers-color-scheme: dark) {
-    .ui-menu-item .forum-topic-category-0 {
-        color: var(--blue-3);
-    }
-    .ui-menu-item .forum-topic-category-1 {
-        color: var(--green-3);
-    }
-    .ui-menu-item .forum-topic-category-2 {
-        color: var(--red-3);
-    }
 }`;
 
 const SETTINGS_MENU_CSS = `
@@ -2693,6 +2652,8 @@ function Main() {
         broadcast_func: BroadcastIAC,
         render_menu_func: RenderSettingsMenu,
         program_css: PROGRAM_CSS,
+        light_css: LIGHT_MODE_CSS,
+        dark_css: DARK_MODE_CSS,
         menu_css: SETTINGS_MENU_CSS,
     };
     if (!JSPLib.menu.preloadScript(IAC, preload)) return;
