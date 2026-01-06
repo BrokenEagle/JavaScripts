@@ -958,8 +958,8 @@ const SOURCE_CONFIG = {
             }
         ),
         expiration: (d) => (d.length ? ExpirationTime('tag', d[0].post_count) : MinimumExpirationTime('tag')),
-        searchstart: true,
-        spacesallowed: false
+        search_start: true,
+        spaces_allowed: false
     },
     tag2: {
         url: 'tags',
@@ -981,8 +981,8 @@ const SOURCE_CONFIG = {
             }, GetConsequentMatch(term, tag))
         ,
         expiration: (d) => (d.length ? ExpirationTime('tag', d[0].post_count) : MinimumExpirationTime('tag')),
-        searchstart: true,
-        spacesallowed: false
+        search_start: true,
+        spaces_allowed: false
     },
     metatag: {},
     pool: {
@@ -1000,8 +1000,8 @@ const SOURCE_CONFIG = {
             category: pool.category
         }),
         expiration: (d) => (d.length ? ExpirationTime('pool', d[0].post_count) : MinimumExpirationTime('pool')),
-        searchstart: false,
-        spacesallowed: true,
+        search_start: false,
+        spaces_allowed: true,
         render: (_domobj, item) => $(POOL_TEMPLATE(item)),
     },
     user: {
@@ -1019,8 +1019,8 @@ const SOURCE_CONFIG = {
             level: user.level_string
         }),
         expiration: () => MinimumExpirationTime('user'),
-        searchstart: true,
-        spacesallowed: false,
+        search_start: true,
+        spaces_allowed: false,
         render: (_domobj, item) => $(USER_TEMPLATE({level: item.level.toLowerCase(), label: item.label})),
     },
     favgroup: {
@@ -1028,7 +1028,7 @@ const SOURCE_CONFIG = {
         data: (term) => ({
             search: {
                 name_matches: term,
-                creator_id: IAC.userid,
+                creator_id: IAC.user_id,
             },
             only: 'name,post_ids'
         }),
@@ -1037,8 +1037,8 @@ const SOURCE_CONFIG = {
             post_count: favgroup.post_ids.length,
         }),
         expiration: () => MinimumExpirationTime('favgroup'),
-        searchstart: false,
-        spacesallowed: true,
+        search_start: false,
+        spaces_allowed: true,
         render: (_domobj, item) => $(FAVGROUP_TEMPLATE(item)),
     },
     search: {
@@ -1053,8 +1053,8 @@ const SOURCE_CONFIG = {
             name: label.value,
         }),
         expiration: () => MinimumExpirationTime('search'),
-        searchstart: true,
-        spacesallowed: false,
+        search_start: true,
+        spaces_allowed: false,
         render: (_domobj, item) => $(SEARCH_TEMPLATE(item)),
     },
     wikipage: {
@@ -1074,8 +1074,8 @@ const SOURCE_CONFIG = {
             no_tag: !wikipage.tag,
         }),
         expiration: (d) => (d.length && d[0].tag ? ExpirationTime('wikipage', d[0].tag.post_count) : MinimumExpirationTime('wikipage')),
-        searchstart: true,
-        spacesallowed: true,
+        search_start: true,
+        spaces_allowed: true,
         render: (_domobj, item) => {
             let count = (item.no_tag ? 'No tag' : item.post_count);
             return $(WIKIPAGE_TEMPLATE(Object.assign({count}, item)));
@@ -1097,8 +1097,8 @@ const SOURCE_CONFIG = {
             no_tag: !artist.tag,
         }),
         expiration: (d) => (d.length && d[0].tag ? ExpirationTime('artist', d[0].tag.post_count) : MinimumExpirationTime('artist')),
-        searchstart: true,
-        spacesallowed: false,
+        search_start: true,
+        spaces_allowed: false,
         render: (_domobj, item) => {
             let count = (item.no_tag ? 'No tag' : item.post_count);
             return $(ARTIST_TEMPLATE({label: item.label, count}));
@@ -1119,8 +1119,8 @@ const SOURCE_CONFIG = {
             name: forumtopic.title,
         }),
         expiration: () => MinimumExpirationTime('forumtopic'),
-        searchstart: false,
-        spacesallowed: true,
+        search_start: false,
+        spaces_allowed: true,
         render: (_domobj, item) => $(FORUMTOPIC_TEMPLATE(item)),
     }
 };
@@ -2259,7 +2259,7 @@ async function NetworkSource(type, key, term, metatag, query_type, word_mode, pr
 function AnySourceIndexed(keycode, has_context = false) {
     var type = SOURCE_KEY[keycode];
     return async function (term, prefix) {
-        if ((!SOURCE_CONFIG[type].spacesallowed || JSPLib.utility.isString(prefix)) && term.match(/\S\s/)) {
+        if ((!SOURCE_CONFIG[type].spaces_allowed || JSPLib.utility.isString(prefix)) && term.match(/\S\s/)) {
             return [];
         }
         term = term.trim();
@@ -2277,7 +2277,7 @@ function AnySourceIndexed(keycode, has_context = false) {
             term += (!word_mode && !term.endsWith('*') ? '*' : "");
         } else {
             term += (term.endsWith('*') ? "" : '*');
-            term = (SOURCE_CONFIG[type].searchstart ? "" : "*") + term;
+            term = (SOURCE_CONFIG[type].search_start ? "" : "*") + term;
         }
         var key = (keycode + '-' + term).toLowerCase();
         var use_metatag = (JSPLib.utility.isString(prefix) ? prefix : "");
@@ -2495,9 +2495,7 @@ function InitializeProgramValues() {
         return false;
     }
     Object.assign(IAC, {
-        userid: Danbooru.CurrentUser.data('id'),
-    });
-    Object.assign(IAC, {
+        user_id: Danbooru.CurrentUser.data('id'),
         choice_info: JSPLib.storage.getLocalData('iac-choice-info', {default_val: {}}),
         is_bur: GetIsBur(),
         prefixes: JSON.parse(JSPLib.utility.getMeta('autocomplete-tag-prefixes')),
