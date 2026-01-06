@@ -1543,12 +1543,10 @@ function RenderListItem(alink_func) {
     };
 }
 
-function RenderMenuItem() {
-    return function (ul, items) {
-        items.forEach((item) => {
-            this._renderItemData(ul, item);
-        });
-    };
+function RenderMenuItem(ul, items) {
+    items.forEach((item) => {
+        this._renderItemData(ul, item);
+    });
 }
 
 function RenderAutocompleteNotice(type, list, index) {
@@ -1941,7 +1939,7 @@ function RebindRender() {
         let autocomplete = $(entry).data('uiAutocomplete');
         if (!render_set && autocomplete) {
             autocomplete._renderItem = AutocompleteRenderItem;
-            autocomplete._renderMenu = RenderMenuItem();
+            autocomplete._renderMenu = RenderMenuItem;
             $(entry).data('iac-render', true);
         }
     });
@@ -2029,7 +2027,7 @@ function RebindSingleTag() {
                 $fields.each((_, field) => {
                     let autocomplete = $(field).data('uiAutocomplete');
                     autocomplete._renderItem = AutocompleteRenderItem;
-                    autocomplete._renderMenu = RenderMenuItem();
+                    autocomplete._renderMenu = RenderMenuItem;
                 });
             }, JQUERY_DELAY);
         },
@@ -2109,7 +2107,7 @@ function InitializeTagQueryAutocompleteIndexed(fields_selector = AUTOCOMPLETE_MU
     $fields_multiple.each((_, entry) => {
         let autocomplete = $(entry).data('uiAutocomplete');
         autocomplete._renderItem = AutocompleteRenderItem;
-        autocomplete._renderMenu = RenderMenuItem();
+        autocomplete._renderMenu = RenderMenuItem;
     });
     $fields_multiple.addClass('iac-autocomplete');
     if (reorder_selector) {
@@ -2167,7 +2165,7 @@ function InitializeAutocompleteIndexed(selector, keycode, multiple = false, wiki
             } else {
                 autocomplete._renderItem = RenderListItem(alink_func);
             }
-            autocomplete._renderMenu = RenderMenuItem();
+            autocomplete._renderMenu = RenderMenuItem;
         });
     }, JQUERY_DELAY);
     if (!JSPLib.utility.isNamespaceBound(selector, 'keydown', 'Autocomplete.tab')) {
