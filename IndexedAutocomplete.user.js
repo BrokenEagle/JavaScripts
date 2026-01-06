@@ -936,7 +936,6 @@ const SOURCE_CONFIG = {
             }
         ),
         expiration: (d) => (d.length ? ExpirationTime('tag', d[0].post_count) : MinimumExpirationTime('tag')),
-        fixupexpiration: false,
         searchstart: true,
         spacesallowed: false
     },
@@ -960,7 +959,6 @@ const SOURCE_CONFIG = {
             }, GetConsequentMatch(term, tag))
         ,
         expiration: (d) => (d.length ? ExpirationTime('tag', d[0].post_count) : MinimumExpirationTime('tag')),
-        fixupexpiration: false,
         searchstart: true,
         spacesallowed: false
     },
@@ -980,7 +978,6 @@ const SOURCE_CONFIG = {
             category: pool.category
         }),
         expiration: (d) => (d.length ? ExpirationTime('pool', d[0].post_count) : MinimumExpirationTime('pool')),
-        fixupexpiration: false,
         searchstart: false,
         spacesallowed: true,
         render: (_domobj, item) => $(POOL_TEMPLATE(item)),
@@ -1000,7 +997,6 @@ const SOURCE_CONFIG = {
             level: user.level_string
         }),
         expiration: () => MinimumExpirationTime('user'),
-        fixupexpiration: false,
         searchstart: true,
         spacesallowed: false,
         render: (_domobj, item) => $(USER_TEMPLATE({level: item.level.toLowerCase(), label: item.label})),
@@ -1019,7 +1015,6 @@ const SOURCE_CONFIG = {
             post_count: favgroup.post_ids.length,
         }),
         expiration: () => MinimumExpirationTime('favgroup'),
-        fixupexpiration: false,
         searchstart: false,
         spacesallowed: true,
         render: (_domobj, item) => $(FAVGROUP_TEMPLATE(item)),
@@ -1036,7 +1031,6 @@ const SOURCE_CONFIG = {
             name: label.value,
         }),
         expiration: () => MinimumExpirationTime('search'),
-        fixupexpiration: false,
         searchstart: true,
         spacesallowed: false,
         render: (_domobj, item) => $(SEARCH_TEMPLATE(item)),
@@ -1057,8 +1051,7 @@ const SOURCE_CONFIG = {
             post_count: wikipage.tag?.post_count || 0,
             no_tag: !wikipage.tag,
         }),
-        expiration: () => MinimumExpirationTime('wikipage'),
-        fixupexpiration: true,
+        expiration: (d) => (d.length && d[0].tag ? ExpirationTime('wikipage', d[0].tag.post_count) : MinimumExpirationTime('wikipage')),
         searchstart: true,
         spacesallowed: true,
         render: (_domobj, item) => {
@@ -1081,8 +1074,7 @@ const SOURCE_CONFIG = {
             name: artist.name,
             no_tag: !artist.tag,
         }),
-        expiration: () => MinimumExpirationTime('artist'),
-        fixupexpiration: true,
+        expiration: (d) => (d.length && d[0].tag ? ExpirationTime('artist', d[0].tag.post_count) : MinimumExpirationTime('artist')),
         searchstart: true,
         spacesallowed: false,
         render: (_domobj, item) => {
@@ -1105,7 +1097,6 @@ const SOURCE_CONFIG = {
             name: forumtopic.title,
         }),
         expiration: () => MinimumExpirationTime('forumtopic'),
-        fixupexpiration: false,
         searchstart: false,
         spacesallowed: true,
         render: (_domobj, item) => $(FORUMTOPIC_TEMPLATE(item)),
@@ -1610,18 +1601,6 @@ function SortSources(data) {
 function GroupSources(data) {
     let source_order = IAC.source_order;
     data.sort((a, b) => (source_order.indexOf(a.source) - source_order.indexOf(b.source)));
-}
-
-function FixExpirationCallback(key, value, tagname, type) {
-    const printer = JSPLib.debug.getFunctionPrint('FixExpirationCallback');
-    printer.debuglog("Fixing expiration:", tagname);
-    JSPLib.danbooru.submitRequest('tags', {search: {name: tagname}}).then((data) => {
-        if (!data.length) {
-            return;
-        }
-        let expiration_time = ExpirationTime(type, data[0].post_count);
-        JSPLib.storage.saveData(key, {value, expires: JSPLib.utility.getExpires(expiration_time)});
-    });
 }
 
 //Usage functions
@@ -2291,9 +2270,6 @@ async function NetworkSource(type, key, term, metatag, query_type, word_mode, pr
     var expiration_time = CONFIG.expiration(d);
     var save_data = JSPLib.utility.dataCopy(d);
     JSPLib.storage.saveData(key, {value: save_data, expires: JSPLib.utility.getExpires(expiration_time)});
-    if (CONFIG.fixupexpiration && d.length) {
-        setTimeout(() => {FixExpirationCallback(key, save_data, save_data[0].value, type);}, CALLBACK_INTERVAL);
-    }
     if (process) {
         return ProcessSourceData(type, metatag, term, d, query_type, key, word_mode);
     }
