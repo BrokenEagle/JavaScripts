@@ -740,20 +740,33 @@ const COUNT_METATAG_SYNONYMS = COUNT_METATAGS.map((metatag) => {
 
 const CATEGORY_COUNT_METATAGS = ['gentags', 'arttags', 'copytags', 'chartags', 'metatags'];
 
+const STATIC_METATAGS = [
+    'order', 'status', 'rating', 'locked', 'child', 'parent', 'filetype', 'disapproved', 'embedded',
+    'commentary', 'is', 'has',
+];
+
+const USER_METATAGS = [
+    'user', 'approver', 'commenter', 'comm', 'noter', 'noteupdater', 'artcomm', 'commentaryupdater',
+    'flagger', 'appealer', 'upvote', 'downvote', 'fav', 'ordfav'
+];
+
+const POOL_METATAGS = [
+    'pool', 'ordpool'
+];
+
+const FAVGROUP_METATAGS = [
+    'favgroup', 'ordfavgroup'
+];
+
+const SAVED_SEARCH_METATAGS = [
+    'search'
+];
+
 const ALL_METATAGS = JSPLib.utility.multiConcat([
-    'user', 'approver', 'commenter', 'comm', 'noter', 'noteupdater', 'artcomm', 'commentaryupdater',
-    'flagger', 'appealer', 'upvote', 'downvote', 'fav', 'ordfav', 'favgroup', 'ordfavgroup', 'pool',
-    'ordpool', 'note', 'comment', 'commentary', 'id', 'rating', 'locked', 'source', 'status', 'filetype',
-    'disapproved', 'parent', 'child', 'search', 'embedded', 'md5', 'width', 'height', 'mpixels', 'ratio',
-    'score', 'favcount', 'filesize', 'date', 'age', 'order', 'limit', 'tagcount', 'pixiv_id', 'pixiv',
-    'unaliased', 'exif', 'duration', 'random', 'is', 'has',
-    'user', 'approver', 'commenter', 'comm', 'noter', 'noteupdater', 'artcomm', 'commentaryupdater',
-    'flagger', 'appealer', 'upvote', 'downvote', 'fav', 'ordfav', 'favgroup', 'ordfavgroup', 'pool',
-    'ordpool', 'note', 'comment', 'commentary', 'id', 'rating', 'source', 'status', 'filetype',
-    'disapproved', 'parent', 'child', 'search', 'embedded', 'md5', 'width', 'height', 'mpixels', 'ratio',
-    'score', 'upvotes', 'downvotes', 'favcount', 'filesize', 'date', 'age', 'order', 'limit', 'tagcount', 'pixiv_id', 'pixiv',
-    'unaliased', 'exif', 'duration', 'random', 'is', 'has', 'ai',
-], COUNT_METATAGS, COUNT_METATAG_SYNONYMS, CATEGORY_COUNT_METATAGS);
+    'note', 'comment', 'id', 'source', 'md5', 'width', 'height', 'mpixels', 'ratio', 'score', 'upvotes',
+    'downvotes', 'favcount', 'filesize', 'date', 'age', 'limit', 'tagcount', 'pixiv_id', 'pixiv',
+    'unaliased', 'exif', 'duration', 'random', 'ai',
+], STATIC_METATAGS, USER_METATAGS, POOL_METATAGS, FAVGROUP_METATAGS, SAVED_SEARCH_METATAGS, COUNT_METATAGS, COUNT_METATAG_SYNONYMS, CATEGORY_COUNT_METATAGS);
 
 const ORDER_METATAGS = JSPLib.utility.multiConcat([
     'id', 'id_desc',
@@ -784,11 +797,20 @@ COUNT_METATAG_SYNONYMS.flatMap((metatag) => [metatag, metatag + '_asc']),
 CATEGORY_COUNT_METATAGS.flatMap((metatag) => [metatag, metatag + '_asc'])
 );
 
+const METATAG_REGEXES = {
+    static: RegExp('^(?:' + STATIC_METATAGS.join('|') + ')$'),
+    user: RegExp('^(?:' + USER_METATAGS.join('|') + ')$'),
+    pool: RegExp('^(?:' + POOL_METATAGS.join('|') + ')$'),
+    favgroup: RegExp('^(?:' + FAVGROUP_METATAGS.join('|') + ')$'),
+    search: RegExp('^(?:' + SAVED_SEARCH_METATAGS.join('|') + ')$'),
+    tag: /^tag$/,
+};
+
 const POST_STATUSES = ['active', 'deleted', 'pending', 'flagged', 'appealed', 'banned', 'modqueue', 'unmoderated'];
 const POST_RATINGS = ['general', 'sensitive', 'questionable', 'explicit'];
 const FILE_TYPES = ['jpg', 'png', 'gif', 'webp', 'avif', 'mp4', 'webm', 'swf', 'zip'];
 
-const STATIC_METATAGS = {
+const STATIC_METATAGS_MAP = {
     is: JSPLib.utility.multiConcat(['parent', 'child', 'sfw', 'nsfw'], POST_STATUSES, FILE_TYPES, POST_RATINGS),
     has: ['parent', 'children', 'source', 'appeals', 'flags', 'replacements', 'comments', 'commentary', 'notes', 'pools'],
     status: JSPLib.utility.concat(['any'], POST_STATUSES),
@@ -1386,9 +1408,9 @@ function MetatagData() {
 function SubmetatagData() {
     if (!SubmetatagData.data) {
         SubmetatagData.data = [];
-        for (let metatag in STATIC_METATAGS) {
-            for (let i = 0; i < STATIC_METATAGS[metatag].length; i++) {
-                let submetatag = STATIC_METATAGS[metatag][i];
+        for (let metatag in STATIC_METATAGS_MAP) {
+            for (let i = 0; i < STATIC_METATAGS_MAP[metatag].length; i++) {
+                let submetatag = STATIC_METATAGS_MAP[metatag][i];
                 SubmetatagData.data.push(MapMetatag('metatag', metatag, submetatag));
             }
         }
@@ -2078,43 +2100,25 @@ function InitializeTagQueryAutocompleteIndexed(fields_selector = AUTOCOMPLETE_MU
             var term = query.term;
             var prefix = query.prefix;
             var results = [];
-            switch (metatag) {
-                case "order":
-                case "status":
-                case "rating":
-                case "locked":
-                case "child":
-                case "parent":
-                case "filetype":
-                case "disapproved":
-                case "embedded":
-                case "commentary":
-                case "is":
-                case "has":
+            var metatag_type = null;
+            for (let key in METATAG_REGEXES) {
+                let match = METATAG_REGEXES[key].exec(metatag);
+                if (match) {
+                    metatag_type = match[0];
+                    break;
+                }
+            }
+            switch (metatag_type) {
+                case "static":
                     results = IAC.static_metatag_source(term, metatag);
                     break;
                 case "user":
-                case "approver":
-                case "commenter":
-                case "comm":
-                case "noter":
-                case "noteupdater":
-                case "commentaryupdater":
-                case "artcomm":
-                case "fav":
-                case "ordfav":
-                case "appealer":
-                case "flagger":
-                case "upvote":
-                case "downvote":
                     results = await IAC.user_source(term, prefix);
                     break;
                 case "pool":
-                case "ordpool":
                     results = await IAC.pool_source(term, prefix);
                     break;
                 case "favgroup":
-                case "ordfavgroup":
                     results = await IAC.favorite_group_source(term, prefix, Danbooru.CurrentUser.data("id"));
                     break;
                 case "search":
