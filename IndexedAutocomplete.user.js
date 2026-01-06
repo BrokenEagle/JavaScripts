@@ -1533,14 +1533,16 @@ function AutocompleteRenderItem(list, item) {
     let $list_item = $(LIST_ITEM_TEMPLATE({data_items: data_items.join(' '), line_item}));
     $list_item.data("item.autocomplete", item);
     $list_item.find('a').on(JSPLib.program_click, (event) => {event.preventDefault();});
-    return $list_item.appendTo(list);
+    $list_item.appendTo(list);
+    HighlightSelected($list_item, item);
+    return $list_item;
 }
 
 function RenderListItem(alink_func) {
     return function (list, item) {
         let $link = alink_func($('<a/>'), item);
         let $container = $('<div/>').append($link);
-        HighlightSelected($container, list, item);
+        HighlightSelected($container, item);
         return $('<li/>').data('item.autocomplete', item).append($container).appendTo(list);
     };
 }
@@ -1679,39 +1681,13 @@ function AddUserSelected(type, metatag, term, data, query_type, word_mode, key) 
 }
 
 //For autocomplete select
-function InsertUserSelected(data, input, selected) {
+function InsertUserSelected(input, item) {
     const printer = JSPLib.debug.getFunctionPrint('InsertUserSelected');
     if (!IAC.usage_enabled || !$(input).hasClass('iac-autocomplete')) {
         return;
     }
-    var type, item, term, source_data;
-    //Being hamstrung by Danbooru's select function of the multi-source tag complete
-    if (typeof selected === 'string') {
-        let autocomplete = $(input).autocomplete('instance');
-        let list_container = autocomplete.menu.element[0];
-        let $links = $('.ui-state-active', list_container).parent();
-        if ($links.length === 0) {
-            $links = $('.ui-menu-item:first-of-type', list_container);
-        }
-        item = $links.data('item.autocomplete');
-        if (!item) {
-            printer.debuglog("Error: No autocomplete data found!", $links, item);
-            return;
-        }
-        type = item.type;
-        if (!type) {
-            let autocomplete_type = $(input).data('autocomplete');
-            if (autocomplete_type === 'tag-query' || autocomplete_type === 'tag-edit') {
-                let match = selected.match(TERM_REGEX);
-                type = (match[2] && match[3].length ? match[2] : 'tag');
-            } else {
-                type = autocomplete_type.replace(/-/g, "");
-            }
-        }
-    } else {
-        item = selected;
-        type = SOURCE_KEY[data];
-    }
+    var term, source_data;
+    let type = item.type;
     if (item.category === BUR_TAG_CATEGORY) {
         return;
     }
@@ -1724,7 +1700,7 @@ function InsertUserSelected(data, input, selected) {
         term = item.name;
     }
     if (item.category === METATAG_TAG_CATEGORY) {
-        if (item.type === 'tag') {
+        if (type === 'tag') {
             input.selectionStart = input.selectionEnd = input.selectionStart - 1;
             setTimeout(() => {$(input).autocomplete('search');}, 100);
         }
@@ -1735,7 +1711,7 @@ function InsertUserSelected(data, input, selected) {
     //Final failsafe
     if (!IAC.source_data[type] || !IAC.source_data[type][term]) {
         if (!IAC.choice_data[type] || !IAC.choice_data[type][term]) {
-            printer.debuglog("Error: Bad data selector!", type, term, selected, data, item);
+            printer.debuglog("Error: Bad data selector!", type, term, item);
             return;
         }
         source_data = IAC.choice_data[type][term];
@@ -1831,7 +1807,7 @@ function StaticMetatagSource(term, metatag) {
 }
 
 //For autocomplete render
-function HighlightSelected($link, _list, item) {
+function HighlightSelected($link, item) {
     if (IAC.source_highlight_enabled) {
         if (item.expires) {
             $($link).addClass('iac-user-choice');
@@ -1968,7 +1944,7 @@ function RebindRender() {
         let render_set = $(entry).data('iac-render');
         let autocomplete = $(entry).data('uiAutocomplete');
         if (!render_set && autocomplete) {
-            autocomplete._renderItem = IAC.render_item;
+            autocomplete._renderItem = AutocompleteRenderItem;
             autocomplete._renderMenu = RenderMenuItem();
             $(entry).data('iac-render', true);
         }
@@ -2050,14 +2026,14 @@ function RebindSingleTag() {
                     respond(results);
                 },
                 select (_, ui) {
-                    InsertUserSelected('ac', this, ui.item);
+                    InsertUserSelected(this, ui.item);
                 },
             });
             $fields.addClass('iac-autocomplete');
             setTimeout(() => {
                 $fields.each((_, field) => {
                     let autocomplete = $(field).data('uiAutocomplete');
-                    autocomplete._renderItem = IAC.render_item;
+                    autocomplete._renderItem = AutocompleteRenderItem;
                     autocomplete._renderMenu = RenderMenuItem();
                 });
             }, JQUERY_DELAY);
@@ -2091,7 +2067,8 @@ function InitializeTagQueryAutocompleteIndexed(fields_selector = AUTOCOMPLETE_MU
             if (event.key === "Enter") {
                 event.stopImmediatePropagation();
             }
-            IAC.insert_completion(this, ui.item.name);
+            InsertCompletion(this, ui.item.name);
+            InsertUserSelected(this, ui.item);
             return false;
         },
         async source(req, resp) {
@@ -2136,7 +2113,7 @@ function InitializeTagQueryAutocompleteIndexed(fields_selector = AUTOCOMPLETE_MU
     });
     $fields_multiple.each((_, entry) => {
         let autocomplete = $(entry).data('uiAutocomplete');
-        autocomplete._renderItem = IAC.render_item;
+        autocomplete._renderItem = AutocompleteRenderItem;
         autocomplete._renderMenu = RenderMenuItem();
     });
     $fields_multiple.addClass('iac-autocomplete');
@@ -2170,7 +2147,7 @@ function InitializeAutocompleteIndexed(selector, keycode, multiple = false, wiki
             respond(results);
         },
         select (event, ui) {
-            InsertUserSelected(keycode, this, ui.item);
+            InsertUserSelected(this, ui.item);
             if (wiki) {
                 InsertCompletion(this, ui.item.name);
                 event.stopImmediatePropagation();
@@ -2191,7 +2168,7 @@ function InitializeAutocompleteIndexed(selector, keycode, multiple = false, wiki
         $fields.each((_, field) => {
             let autocomplete = $(field).data('uiAutocomplete');
             if (wiki) {
-                autocomplete._renderItem = IAC.render_item;
+                autocomplete._renderItem = AutocompleteRenderItem;
             } else {
                 autocomplete._renderItem = RenderListItem(alink_func);
             }
@@ -2539,9 +2516,6 @@ function InitializeProgramValues() {
         favorite_group_source: AnySourceIndexed('fg'),
         saved_search_source: AnySourceIndexed('ss'),
         static_metatag_source: StaticMetatagSource,
-        insert_completion: JSPLib.utility.hijackFunction(InsertCompletion, InsertUserSelected),
-        render_item: JSPLib.utility.hijackFunction(AutocompleteRenderItem, HighlightSelected),
-        initialize_tag_autocomplete: InitializeTagQueryAutocompleteIndexed,
     });
     return true;
 }
