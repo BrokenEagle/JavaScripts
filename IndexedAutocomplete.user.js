@@ -2016,13 +2016,12 @@ function RebindSingleTag() {
     RebindAutocomplete({
         selector: '[data-autocomplete=tag]',
         func () {
-            let autocomplete = AnySourceIndexed('ac', true);
             let $fields = $('[data-autocomplete=tag]');
             $fields.autocomplete({
                 minLength: 1,
                 autoFocus: true,
                 async source(request, respond) {
-                    let results = await autocomplete.call(this, request.term);
+                    let results = await IAC.tag_source(request.term, {autocomplete: this});
                     respond(results);
                 },
                 select (_, ui) {
@@ -2090,19 +2089,19 @@ function InitializeTagQueryAutocompleteIndexed(fields_selector = AUTOCOMPLETE_MU
                     results = IAC.static_metatag_source(term, metatag);
                     break;
                 case "user":
-                    results = await IAC.user_source(term, prefix);
+                    results = await IAC.user_source(term, {prefix, autocomplete: this});
                     break;
                 case "pool":
-                    results = await IAC.pool_source(term, prefix);
+                    results = await IAC.pool_source(term, {prefix, autocomplete: this});
                     break;
                 case "favgroup":
-                    results = await IAC.favorite_group_source(term, prefix, Danbooru.CurrentUser.data("id"));
+                    results = await IAC.favorite_group_source(term, {prefix, autocomplete: this});
                     break;
                 case "search":
-                    results = await IAC.saved_search_source(term, prefix);
+                    results = await IAC.saved_search_source(term, {prefix, autocomplete: this});
                     break;
                 case "tag":
-                    results = await IAC.tag_source(term);
+                    results = await IAC.tag_source(term, {autocomplete: this});
                     break;
                 default:
                     results = [];
@@ -2128,7 +2127,7 @@ function InitializeTagQueryAutocompleteIndexed(fields_selector = AUTOCOMPLETE_MU
 function InitializeAutocompleteIndexed(selector, keycode, multiple = false, wiki = false) {
     let type = SOURCE_KEY[keycode];
     var $fields = $(selector);
-    let autocomplete = AnySourceIndexed(keycode, true);
+    let autocomplete = AnySourceIndexed(keycode);
     $fields.autocomplete({
         minLength: 1,
         delay: 100,
@@ -2143,7 +2142,7 @@ function InitializeAutocompleteIndexed(selector, keycode, multiple = false, wiki
             } else {
                 term = request.term;
             }
-            let results = await autocomplete.call(this, term);
+            let results = await autocomplete(term, {autocomplete: this});
             respond(results);
         },
         select (event, ui) {
@@ -2238,7 +2237,7 @@ function DisableTextAreaAutocomplete($input) {
 
 //Main auxiliary functions
 
-async function NetworkSource(type, key, term, metatag, query_type, word_mode, process = true) {
+async function NetworkSource(type, key, term, {metatag = null, query_type = null, word_mode = null, element = null, process = true} = {}) {
     const printer = JSPLib.debug.getFunctionPrint('NetworkSource');
     printer.debuglog("Querying", type, ':', term);
     const CONFIG = SOURCE_CONFIG[type];
@@ -2252,13 +2251,13 @@ async function NetworkSource(type, key, term, metatag, query_type, word_mode, pr
     var save_data = JSPLib.utility.dataCopy(d);
     JSPLib.storage.saveData(key, {value: save_data, expires: JSPLib.utility.getExpires(expiration_time)});
     if (process) {
-        return ProcessSourceData(type, metatag, term, d, query_type, key, word_mode);
+        return ProcessSourceData(type, key, term, metatag, query_type, word_mode, data, element);
     }
 }
 
-function AnySourceIndexed(keycode, has_context = false) {
+function AnySourceIndexed(keycode) {
     var type = SOURCE_KEY[keycode];
-    return async function (term, prefix) {
+    return async function (term, {prefix, autocomplete} = {}) {
         if ((!SOURCE_CONFIG[type].spaces_allowed || JSPLib.utility.isString(prefix)) && term.match(/\S\s/)) {
             return [];
         }
@@ -2280,19 +2279,19 @@ function AnySourceIndexed(keycode, has_context = false) {
             term = (SOURCE_CONFIG[type].search_start ? "" : "*") + term;
         }
         var key = (keycode + '-' + term).toLowerCase();
-        var use_metatag = (JSPLib.utility.isString(prefix) ? prefix : "");
-        var query_type = (has_context ? $(this.element).data('autocomplete') : null);
+        var metatag = (JSPLib.utility.isString(prefix) ? prefix : "");
+        var query_type = $(autocomplete.element).data('autocomplete');
         var final_data = null;
         if (!IAC.network_only_mode) {
             var max_expiration = MaximumExpirationTime(type);
             var cached = await JSPLib.storage.checkLocalDB(key, max_expiration);
             if (ValidateCached(cached, type, term, word_mode)) {
                 RecheckSourceData(type, key, term, cached, word_mode);
-                final_data = ProcessSourceData(type, use_metatag, term, cached.value, query_type, key, word_mode);
+                final_data = ProcessSourceData(type, key, term, metatag, query_type, word_mode, cached.value, autocomplete.element[0]);
             }
         }
         if (!final_data) {
-            final_data = NetworkSource(type, key, term, use_metatag, query_type, word_mode);
+            final_data = NetworkSource(type, key, term, {metatag, query_type, word_mode, element: autocomplete.element[0]});
         }
         Object.assign(final_data, {term, key});
         return final_data;
@@ -2305,12 +2304,12 @@ function RecheckSourceData(type, key, term, data, word_mode) {
         let recheck_time = data.expires - GetRecheckExpires();
         if (!JSPLib.utility.validateExpires(recheck_time)) {
             printer.debuglog("Rechecking", type, ':', term);
-            NetworkSource(type, key, term, null, null, word_mode, false);
+            NetworkSource(type, key, term, {process: false});
         }
     }
 }
 
-function ProcessSourceData(type, metatag, term, data, query_type, key, word_mode = false) {
+function ProcessSourceData(type, key, term, metatag, query_type, word_mode, data, element) {
     data.forEach((val) => {
         FixupMetatag(val, metatag);
         Object.assign(val, {term, key, type});
@@ -2342,9 +2341,9 @@ function ProcessSourceData(type, metatag, term, data, query_type, key, word_mode
         data.splice(IAC.source_results_returned);
     }
     //Doing this here to avoid processing it on each list item
-    IAC.highlight_used = (document.activeElement.tagName === 'TEXTAREA' && ['post_tag_string', 'upload_tag_string'].includes(document.activeElement.id));
+    IAC.highlight_used = (element.tagName === 'TEXTAREA' && ['post_tag_string', 'upload_tag_string'].includes(element.id));
     if (IAC.highlight_used) {
-        let adjusted_tag_string = RemoveTerm(document.activeElement.value, document.activeElement.selectionStart);
+        let adjusted_tag_string = RemoveTerm(element.value, element.selectionStart);
         IAC.current_tags = adjusted_tag_string.split(/\s+/);
     }
     return data;
