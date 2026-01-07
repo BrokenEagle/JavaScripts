@@ -2265,7 +2265,7 @@ function AnySourceIndexed(keycode) {
             var max_expiration = MaximumExpirationTime(type);
             var cached = await JSPLib.storage.checkLocalDB(key, max_expiration);
             if (ValidateCached(cached, type, term, word_mode)) {
-                RecheckSourceData(type, key, term, cached, word_mode);
+                RecheckSourceData(type, key, term, cached);
                 final_data = ProcessSourceData(type, key, term, metatag, query_type, word_mode, cached.value, autocomplete.element[0]);
             }
         }
@@ -2277,7 +2277,7 @@ function AnySourceIndexed(keycode) {
     };
 }
 
-function RecheckSourceData(type, key, term, data, word_mode) {
+function RecheckSourceData(type, key, term, data) {
     const printer = JSPLib.debug.getFunctionPrint('RecheckSourceData');
     if (IAC.recheck_data_interval > 0) {
         let recheck_time = data.expires - GetRecheckExpires();
