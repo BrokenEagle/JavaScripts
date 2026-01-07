@@ -2221,13 +2221,13 @@ async function NetworkSource(type, key, term, {metatag = null, query_type = null
     printer.debuglog("Querying", type, ':', term);
     const CONFIG = SOURCE_CONFIG[type];
     let url_addons = $.extend({limit: IAC.source_results_returned}, CONFIG.data(term));
-    let data = await JSPLib.danbooru.submitRequest(CONFIG.url, url_addons);
-    if (!data || !Array.isArray(data)) {
+    let network_data = await JSPLib.danbooru.submitRequest(CONFIG.url, url_addons);
+    if (!network_data || !Array.isArray(network_data)) {
         return [];
     }
-    var d = data.map((item) => CONFIG.map(item, term));
-    var expiration_time = CONFIG.expiration(d);
-    var save_data = JSPLib.utility.dataCopy(d);
+    var data = network_data.map((item) => CONFIG.map(item, term));
+    var expiration_time = CONFIG.expiration(data);
+    var save_data = JSPLib.utility.dataCopy(data);
     JSPLib.storage.saveData(key, {value: save_data, expires: JSPLib.utility.getExpires(expiration_time)});
     if (process) {
         return ProcessSourceData(type, key, term, metatag, query_type, word_mode, data, element);
