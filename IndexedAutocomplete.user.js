@@ -1361,14 +1361,6 @@ function RemoveTerm(str, index) {
     return (first_slice.slice(0, first_space) + second_slice.slice(second_space)).slice(1, -1);
 }
 
-function GetPrefix(str) {
-    if (!(str in GetPrefix.prefixhash)) {
-        GetPrefix.prefixhash[str] = str.split('_').map((part) => (part.replace(/[()]/g, "")[0])).join("");
-    }
-    return GetPrefix.prefixhash[str];
-}
-GetPrefix.prefixhash = {};
-
 function GetConsequentMatch(term, tag) {
     let retval = {source: 'tag', antecedent: null};
     let regex = RegExp('^' + JSPLib.utility.regexpEscape(term).replace(/\\\*/g, '.*'));
