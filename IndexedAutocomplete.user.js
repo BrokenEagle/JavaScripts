@@ -2272,7 +2272,6 @@ function AnySourceIndexed(keycode) {
         if (!final_data) {
             final_data = NetworkSource(type, key, term, {metatag, query_type, word_mode, element: autocomplete.element[0]});
         }
-        Object.assign(final_data, {term, key});
         return final_data;
     };
 }
