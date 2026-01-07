@@ -857,6 +857,18 @@ const BUR_DATA = BUR_KEYWORDS.map((tag) => ({
     category: BUR_TAG_CATEGORY,
     key: null,
 }));
+const BUR_LIMITS = {
+    alias: 4,
+    unalias: 4,
+    imply: 4,
+    unimply: 4,
+    rename: 4,
+    deprecate: 2,
+    undeprecate: 2,
+    nuke: 2,
+    category: 4,
+    convert: 4,
+};
 
 //Time constants
 const PRUNE_EXPIRES = JSPLib.utility.one_day;
@@ -2339,7 +2351,7 @@ function ProcessSourceData(type, key, term, metatag, query_type, word_mode, data
         if (words.length === 1) {
             // Show only BUR commands for the first word of each line.
             data = GetConstantMatches(BUR_DATA, term);
-        } else if (words.length > 2 && words.at(-1) === '->') {
+        } else if ((words.length > 2 && words.at(-1) === '->') || (words.length > BUR_LIMITS[words[0]])) {
             // For the 3rd word and beyond, don't show the autocomplte when the right arrow is detected.
             return [];
         } else if (words[0] === 'category' && words.length > 3) {
