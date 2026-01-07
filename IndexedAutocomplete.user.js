@@ -1768,18 +1768,16 @@ function InsertCompletion(input, completion) {
         before_caret_text = before_caret_text.replace(/^[ \t]+|[ \t]+$/gm, "");
         after_caret_text = after_caret_text.replace(/^[ \t]+|[ \t]+$/gm, "");
         var query = ParseQuery(input.value, input.selectionStart);
-        var select = ParseQuery(completion, completion.length);
         before_caret_text = before_caret_text.substring(0, before_caret_text.search(/\S+$/));
-        var prefix = (query.metatag !== "tag" ? (query.prefix || select.prefix) : query.operator);
-        var name = (query.metatag === "tag" ? completion : select.term);
-        before_caret_text += prefix + name + ' ';
+        var prefix = (input.id === 'post_tag_string' ? query.prefix : query.operator);
+        before_caret_text += prefix + completion + ' ';
         start = end = before_caret_text.length;
     }
     input.value = before_caret_text + after_caret_text;
     input.selectionStart = start;
     input.selectionEnd = end;
     $(input).trigger("input");
-    $(() => $(input).autocomplete("instance").close());
+    setTimeout(() => {$(input).autocomplete("instance").close();}, JQUERY_DELAY);
 }
 
 function StaticMetatagSource(term, metatag) {
