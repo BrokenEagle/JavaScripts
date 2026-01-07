@@ -79,7 +79,7 @@ const PROGRAM_SHORTCUT = 'iac';
 const PROGRAM_NAME = 'IndexedAutocomplete';
 
 //Program data constants
-const PROGRAM_DATA_REGEX = /^(af|ref|ac|pl|us|fg|ss|ar|wp|ft)-/; //Regex that matches the prefix of all program cache data
+const PROGRAM_DATA_REGEX = /^(ac|pl|us|fg|ss|ar|wp|ft)-/; //Regex that matches the prefix of all program cache data
 const PROGRAM_DATA_KEY = {
     tag: 'ac',
     pool: 'pl',
