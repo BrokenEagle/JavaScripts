@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.28
+// @version      29.29
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -838,6 +838,7 @@ const CATEGORY_DATA = CATEGORY_NAMES.map((category) => ({
 //Regex constants
 
 const TERM_REGEX = RegExp('([-~]*)(?:(' + JSPLib.utility.concat(ALL_METATAGS, TYPE_TAGS).join('|') + '):)?(\\S*)$', 'i');
+const CATEGORY_REGEX = RegExp('^[-~]*(?:' + TYPE_TAGS.join('|') + '):$', 'i');
 
 const WORD_DELIMITERS = '_+:;!./()-';
 const DELIMITER_GROUP = `[${WORD_DELIMITERS}]`;
@@ -1803,7 +1804,7 @@ function InsertCompletion(input, completion) {
         after_caret_text = after_caret_text.replace(/^[ \t]+|[ \t]+$/gm, "");
         var query = ParseQuery(input.value, input.selectionStart);
         before_caret_text = before_caret_text.substring(0, before_caret_text.search(/\S+$/));
-        var prefix = (input.id === 'post_tag_string' ? query.prefix : query.operator);
+        var prefix = input.id === 'post_tag_string' || !CATEGORY_REGEX.test(query.prefix) ? query.prefix : query.operator;
         if (IAC.is_bur && IAC.BUR_source_enabled) {
             let line_text = before_caret_text.split('\n').at(-1);
             let words = line_text.split(/\s+/);
