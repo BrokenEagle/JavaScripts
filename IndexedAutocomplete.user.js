@@ -71,7 +71,7 @@ JSPLib.utility.normalizeHTML = function ({template = false} = {}) {
 const DANBOORU_TOPIC_ID = '14701';
 
 //Variables for load.js
-const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.Autocomplete', 'Danbooru.RelatedTag', 'Danbooru.CurrentUser'];
+const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.Autocomplete', 'Danbooru.CurrentUser'];
 const PROGRAM_LOAD_REQUIRED_SELECTORS = ['#top', '#page'];
 
 //Program name constants
@@ -219,7 +219,7 @@ const SETTINGS_CONFIG = {
     word_start_matches: {
         reset: false,
         validate: JSPLib.utility.isBoolean,
-        hint: "Always adds a wildcard to the end, which forces the old behavior of searching from the beginning only."
+        hint: "Always adds a wildcard to the end, which forces the old behavior of searching from the beginning only. <b>Note:</b> This will cause correction results from being returned."
     },
     network_only_mode: {
         reset: false,
@@ -864,7 +864,6 @@ const BUR_DATA = BUR_KEYWORDS.map((tag) => ({
 const PRUNE_EXPIRES = JSPLib.utility.one_day;
 const JQUERY_DELAY = 500; //Delay for calling functions after initialization
 const TIMER_POLL_INTERVAL = 100; //Polling interval for checking program status
-const CALLBACK_INTERVAL = 1000; //Interval for fixup callback functions
 
 //Data inclusion lists
 const ALL_CATEGORIES = [0, 1, 3, 4, 5];
@@ -884,6 +883,7 @@ const AUTOCOMPLETE_REBINDLIST = [
 ];
 //DOM elements with autocomplete
 const AUTOCOMPLETE_DOMLIST = [
+    '#search_topic_title_matches',
     '#bulk_update_request_script',
     '[data-autocomplete=tag]',
     '[data-autocomplete=wiki-page]',
@@ -1360,7 +1360,7 @@ function ParseQuery(text, caret) {
     if (IAC.categories.includes(metatag)) {
         metatag = 'tag';
     }
-    return { operator, metatag, term, prefix };
+    return {operator, metatag, term, prefix};
 }
 
 function RemoveTerm(str, index) {
