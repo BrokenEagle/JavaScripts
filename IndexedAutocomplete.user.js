@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.29
+// @version      29.30
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -962,14 +962,16 @@ const SOURCE_KEY = {
 const SOURCE_CONFIG = {
     tag1: {
         url: 'autocomplete',
-        data: (term) => (
-            {
+        invalid: (term) => ParseQuery(term, term.length).prefix.length > 0,
+        data: (term, query_type) => {
+            let type = query_type === 'tag' ? 'tag' : 'tag_query';
+            return {
                 search: {
-                    type: 'tag_query',
+                    type,
                     query: term,
                 }
-            }
-        ),
+            };
+        },
         map: (tag) => (
             {
                 antecedent: tag.antecedent ?? null,
@@ -985,6 +987,7 @@ const SOURCE_CONFIG = {
     },
     tag2: {
         url: 'tags',
+        invalid: (term) => ParseQuery(term, term.length).prefix.length > 0,
         data: (term) => (
             {
                 search: {
@@ -2251,9 +2254,13 @@ function DisableTextAreaAutocomplete($input) {
 
 async function NetworkSource(type, key, term, {metatag = null, query_type = null, word_mode = null, element = null, process = true} = {}) {
     const printer = JSPLib.debug.getFunctionPrint('NetworkSource');
-    printer.debuglog("Querying", type, ':', term);
     const CONFIG = SOURCE_CONFIG[type];
-    let url_addons = $.extend({limit: IAC.source_results_returned}, CONFIG.data(term));
+    if (CONFIG.invalid?.(term)) {
+        printer.debuglog("Invalid search term for", query_type ?? type, ':', term);
+        return [];
+    }
+    printer.debuglog("Querying", type, ':', term);
+    let url_addons = $.extend({limit: IAC.source_results_returned}, CONFIG.data(term, query_type));
     let network_data = await JSPLib.danbooru.submitRequest(CONFIG.url, url_addons);
     if (!network_data || !Array.isArray(network_data)) {
         return [];
