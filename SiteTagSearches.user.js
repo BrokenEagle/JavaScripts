@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SiteTagSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.3
+// @version      5.4
 // @description  Presents additional site links for the wiki tag(s).
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -13,13 +13,13 @@
 // @run-at       document-idle
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SiteTagSearches.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SiteTagSearches.user.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/menu.js
 // ==/UserScript==
 
 /* global $ JSPLib */
@@ -39,7 +39,6 @@ const PROGRAM_LOAD_OPTIONAL_SELECTORS = ['#c-wiki-pages #a-show', '#c-posts #a-i
 
 //Program name constants
 const PROGRAM_SHORTCUT = 'sts';
-const PROGRAM_CLICK = 'click.sts';
 const PROGRAM_NAME = 'SiteTagSearches';
 
 //Main program variable
@@ -88,25 +87,25 @@ for (let index = 1; index <= CUSTOM_SITES_TOTAL; index++) {
     Object.assign(SETTINGS_CONFIG, {
         [`custom_site_${index}_enabled`]: {
             reset: false,
-            validate: JSPLib.validate.isBoolean,
+            validate: JSPLib.utility.isBoolean,
             hint: `Enable custom site ${index}.`
         },
         [`custom_site_${index}_url`]: {
             reset: "",
             parse: String,
-            validate: JSPLib.validate.isString,
+            validate: JSPLib.utility.isString,
             hint: `Tag URL for custom site ${index}.`
         },
         [`custom_site_${index}_name`]: {
             reset: "",
             parse: String,
-            validate: JSPLib.validate.isString,
+            validate: JSPLib.utility.isString,
             hint: `Entry name for custom site ${index}.`
         },
         [`custom_site_${index}_icon`]: {
             reset: "",
             parse: String,
-            validate: JSPLib.validate.isString,
+            validate: JSPLib.utility.isString,
             hint: `Icon URL for custom site ${index}. (optional)`
         }
     });
@@ -444,30 +443,28 @@ function Main() {
         let $elem = $('<p class="flex"></p>').prepend(RenderMainTag());
         $('#wiki-page-body, #c-posts #a-index .prose').prepend($elem);
     }
-    $('.sts-collapsible-links[data-type=source]').on(PROGRAM_CLICK, SiteLinkToggle('e', 's'));
-    $('.sts-collapsible-links[data-type=booru]').on(PROGRAM_CLICK, SiteLinkToggle('w', 'n'));
+    $('.sts-collapsible-links[data-type=source]').on(JSPLib.program_click, SiteLinkToggle('e', 's'));
+    $('.sts-collapsible-links[data-type=booru]').on(JSPLib.program_click, SiteLinkToggle('w', 'n'));
 }
-
-/****Function decoration****/
-
-////NONE
 
 /****Initialization****/
 
+//Variables for JSPLib
+
+JSPLib.program_name = PROGRAM_NAME;
+JSPLib.program_shortcut = PROGRAM_SHORTCUT;
+JSPLib.program_data = STS;
+
 //Variables for debug.js
-JSPLib.debug.debug_console = false;
+JSPLib.debug.mode = false;
 JSPLib.debug.level = JSPLib.debug.INFO;
-JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
 //Variables for menu.js
-JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
-JSPLib.menu.program_name = PROGRAM_NAME;
-JSPLib.menu.program_data = STS;
 JSPLib.menu.settings_config = SETTINGS_CONFIG;
 
 //Export JSPLib
-JSPLib.load.exportData(PROGRAM_NAME, STS);
+JSPLib.load.exportData();
 
 /****Execution start****/
 
-JSPLib.load.programInitialize(Main, {program_name: PROGRAM_NAME, required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, optional_selectors: PROGRAM_LOAD_OPTIONAL_SELECTORS});
+JSPLib.load.programInitialize(Main, {required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, optional_selectors: PROGRAM_LOAD_OPTIONAL_SELECTORS});
