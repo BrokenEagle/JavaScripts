@@ -824,7 +824,18 @@ const STATIC_METATAGS_MAP = {
     order: ORDER_METATAGS,
 };
 
-const TYPE_TAGS = ['ch', 'co', 'gen', 'char', 'copy', 'art', 'meta', 'general', 'character', 'copyright', 'artist'];
+const CATEGORY_NAMES = ['meta', 'general', 'character', 'copyright', 'artist'];
+const TYPE_TAGS = JSPLib.utility.concat(['ch', 'co', 'gen', 'char', 'copy', 'art'], CATEGORY_NAMES);
+
+const CATEGORY_DATA = CATEGORY_NAMES.map((category) => ({
+    type: 'tag',
+    label: category,
+    name: category,
+    post_count: 'N/A',
+    source: 'category',
+    category: BUR_TAG_CATEGORY,
+    key: null,
+}));
 
 //Regex constants
 
@@ -838,7 +849,7 @@ const DELIMITER_GROUP_RG = new RegExp(DELIMITER_GROUP);
 const ALL_DELIMTER_RG = new RegExp(DELIMITER_GROUP + '|' + DELIMITER_NOT_GROUP + '+', 'g');
 
 //BUR constants
-const BUR_KEYWORDS = ['alias', 'unalias', 'imply', 'unimply', 'rename', 'update', 'deprecate', 'undeprecate', 'nuke', 'category'];
+const BUR_KEYWORDS = ['alias', 'unalias', 'imply', 'unimply', 'rename', 'update', 'deprecate', 'undeprecate', 'nuke', 'category', 'convert'];
 const BUR_DATA = BUR_KEYWORDS.map((tag) => ({
     type: 'tag',
     label: tag,
@@ -1361,6 +1372,19 @@ function RemoveTerm(str, index) {
     return (first_slice.slice(0, first_space) + second_slice.slice(second_space)).slice(1, -1);
 }
 
+function GetConstantMatches(constant_data, term) {
+    let matching = [];
+    let nonmatching = [];
+    constant_data.forEach((data) => {
+        if (GetGlobMatches(data.name, term)) {
+            matching.push(data);
+        } else {
+            nonmatching.push(data);
+        }
+    });
+    return JSPLib.utility.concat(matching, nonmatching).map((data) => Object.assign({term}, data));
+}
+
 function GetConsequentMatch(term, tag) {
     let retval = {source: 'tag', antecedent: null};
     let regex = RegExp('^' + JSPLib.utility.regexpEscape(term).replace(/\\\*/g, '.*'));
@@ -1770,6 +1794,14 @@ function InsertCompletion(input, completion) {
         var query = ParseQuery(input.value, input.selectionStart);
         before_caret_text = before_caret_text.substring(0, before_caret_text.search(/\S+$/));
         var prefix = (input.id === 'post_tag_string' ? query.prefix : query.operator);
+        if (IAC.is_bur && IAC.BUR_source_enabled) {
+            let line_text = before_caret_text.split('\n').at(-1);
+            let words = line_text.split(/\s+/);
+            if (words.length === 1 || words[0] !== 'update') {
+                // Commands should not have a prefix, and only the update command should have tags with prefixes
+                prefix = "";
+            }
+        }
         before_caret_text += prefix + completion + ' ';
         start = end = before_caret_text.length;
     }
@@ -2304,9 +2336,18 @@ function ProcessSourceData(type, key, term, metatag, query_type, word_mode, data
         AddUserSelected(type, metatag, term, data, query_type, word_mode, key);
     }
     if (IAC.is_bur && IAC.BUR_source_enabled) {
-        let add_data = BUR_DATA.filter((data) => (term.length === 2 || GetGlobMatches(data.name, term))).map((data) => Object.assign({term}, data));
-        data.unshift(...add_data);
-        data.splice(IAC.source_results_returned);
+        let line_text = element.value.substring(0, element.selectionStart).split('\n').at(-1).trim();
+        let words = line_text.split(/\s+/);
+        if (words.length === 1) {
+            // Show only BUR commands for the first word of each line.
+            data = GetConstantMatches(BUR_DATA, term);
+        } else if (words.length > 2 && words.at(-1) === '->') {
+            // For the 3rd word and beyond, don't show the autocomplte when the right arrow is detected.
+            return [];
+        } else if (words[0] === 'category' && words.length > 3) {
+            // Show tag categories for the 4th word of the category command.
+            data = GetConstantMatches(CATEGORY_DATA, term);
+        }
     }
     //Doing this here to avoid processing it on each list item
     IAC.highlight_used = (element.tagName === 'TEXTAREA' && ['post_tag_string', 'upload_tag_string'].includes(element.id));
