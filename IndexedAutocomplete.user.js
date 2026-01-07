@@ -2120,15 +2120,12 @@ function InitializeAutocompleteIndexed(selector, keycode, {multiple = false, wik
         minLength: 1,
         delay: 100,
         async source(request, respond) {
-            var term;
-            if (multiple || wiki_link) {
-                    respond([]);
-                    return;
-                }
-            } else {
-                term = request.term;
+            let parse = ParseQuery(request.term, this.element.get(0).selectionStart);
+            if (parse.prefix || !parse.term) {
+                respond([]);
+                return;
             }
-            let results = await autocomplete(term, {autocomplete: this});
+            let results = await autocomplete(parse.term, {autocomplete: this});
             respond(results);
         },
         select (event, ui) {
@@ -2203,7 +2200,7 @@ function EnableTextAreaAutocomplete($input, type) {
     let type_shortcut = PROGRAM_DATA_KEY[type];
     InitializeAutocompleteIndexed(input_selector, type_shortcut, {wiki_link: true});
     $input.data('insert-autocomplete', true);
-    $input.data('autocomplete', 'tag-edit');
+    $input.data('autocomplete', 'tag');
     JSPLib.notice.notice(JSPLib.utility.sprintf(AUTOCOMPLETE_MESSAGE, AUTOCOMPLETE_SOURCE[IAC.ac_source], AUTOCOMPLETE_MODE[IAC.ac_mode], AUTOCOMPLETE_CAPITALIZATION[IAC.ac_caps]));
 }
 
