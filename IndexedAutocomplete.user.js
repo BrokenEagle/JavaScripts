@@ -356,15 +356,13 @@ iac-search > span {
 .iac-tag-alias a {
     font-style: italic;
 }
-.iac-tag-highlight {
-    margin-top: -5px;
-    margin-bottom: 5px;
-}
 .iac-tag-highlight > div:before {
     content: "●";
     padding-right: 4px;
     font-weight: bold;
     font-size: 150%;
+    transform: translateY(-2px);
+}
 }
 .iac-tag-bur > div:before {
     color: #000;
