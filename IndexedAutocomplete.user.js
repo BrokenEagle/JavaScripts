@@ -2345,7 +2345,7 @@ function ProcessSourceData(type, key, term, metatag, query_type, word_mode, data
     if (IAC.usage_enabled) {
         AddUserSelected(type, metatag, term, data, query_type, word_mode, key);
     }
-    if (IAC.is_bur && IAC.BUR_source_enabled) {
+    if (IAC.is_bur && IAC.BUR_source_enabled && element.id === 'bulk_update_request_script') {
         let line_text = element.value.substring(0, element.selectionStart).split('\n').at(-1).trim();
         let words = line_text.split(/\s+/);
         if (words.length === 1) {
