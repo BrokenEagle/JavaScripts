@@ -5,8 +5,9 @@
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
-// @match        *://*.donmai.us/*
-// @exclude      /^https?://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
+// @match        https://*.donmai.us/*
+// @exclude      /^(?!https:\/\/\w+\.donmai\.us\/((posts|upload_media_assets|uploads)\/\d+|uploads\/\d+\/assets\/\d+|settings)\/?(\?|$)).*/
+// @exclude      /^https://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
 // @run-at       document-idle
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/IndexedRelatedTags.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/IndexedRelatedTags.user.js
