@@ -1282,7 +1282,17 @@ function UpdateSelected() {
 function ToggleTag(event) {
     let $field = $('#post_tag_string');
     let $link = $(event.target).closest('li').find('a');
+    let category = $link.data('category');
     let tag = $link.data('tag-name');
+    if (category === DEPRECATED_TAG_CATEGORY) {
+        JSPLib.notice.error(`Tag "${tag}" is deprecated.`);
+        event.preventDefault();
+        return;
+    }
+    if (category === NONEXISTENT_TAG_CATEGORY && !Danbooru.RelatedTag.current_tags().includes(tag) && !confirm(`Tag "${tag}" does not exist. Continue?`)) {
+        event.preventDefault();
+        return;
+    }
     let old_value = $field.val();
     if (Danbooru.RelatedTag.current_tags().includes(tag)) {
         let escaped_tag = RegExp.escape(tag);
