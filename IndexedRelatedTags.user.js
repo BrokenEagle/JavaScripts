@@ -31,7 +31,21 @@
 
 /****Library updates****/
 
-////NONE
+JSPLib.danbooru.initializeAutocomplete = function (selector, autocomplete_type, query_type) {
+    let $input = $(selector);
+    JSPLib.utility.setDataAttribute($input, 'autocomplete', query_type);
+    $input.autocomplete({
+        select (_event, ui) {
+            Danbooru.Autocomplete.insert_completion(this, ui.item.value);
+            return false;
+        },
+        async source(_req, resp) {
+            let term = Danbooru.Autocomplete.current_term(this.element);
+            let results = await Danbooru.Autocomplete.autocomplete_source(term, query_type);
+            resp(results);
+        },
+    });
+};
 
 /****Global variables****/
 
@@ -1473,12 +1487,28 @@ function DataTypeChange() {
     $('.irt-options[data-setting=query_order]')[action]();
 }
 
+function InitializeMenuAutocomplete() {
+    const printer = JSPLib.debug.getFunctionPrint('InitializeMenuAutocomplete');
+    JSPLib.load.scriptWaitExecute(IRT, 'IAC', {
+        available: () => {
+            $('#irt-control-tag-name, #irt-checklist-frequent-tags').data('tag-query');
+            IRT.IAC.InitializeTagQueryAutocompleteIndexed('#irt-control-tag-name, #irt-checklist-frequent-tags textarea', null);
+            printer.debuglogLevel('Initialized IAC autocomplete on menu inputs.', JSPLib.debug.DEBUG);
+        },
+        fallback: () => {
+            JSPLib.danboru.initializeAutocomplete('#irt-control-tag-name, #irt-checklist-frequent-tags textarea', 'tag-query', 'tag_query');
+            printer.debuglogLevel('Initialized Danbooru autocomplete on menu inputs.', JSPLib.debug.DEBUG);
+        },
+    });
+}
+
 function InitializeProgramValues() {
     const printer = JSPLib.debug.getFunctionPrint('InitializeProgramValues');
     if (!JSPLib.storage.use_indexed_db) {
         printer.debugwarn("No Indexed DB! Exiting...");
         return false;
     }
+    JSPLib.load.setProgramGetter(IRT, 'IAC', 'IndexedAutocomplete', 29.25);
     return true;
 }
 
@@ -1506,7 +1536,6 @@ function RenderSettingsMenu() {
     $('#irt-network-settings').append(JSPLib.menu.renderCheckbox('network_only_mode'));
     $('#irt-checklist-controls').append(JSPLib.menu.renderCheckbox('import_export', true));
     $('#irt-checklist-controls').append(JSPLib.menu.renderTextinput('tag_name', 50, true));
-    $('#irt-control-tag-name').attr('data-autocomplete', 'tag-query');
     $('#irt-checklist-controls').append(CHECKLIST_TEXTAREA);
     $('#irt-controls').append(JSPLib.menu.renderCacheControls());
     $('#irt-cache-controls-message').append(JSPLib.menu.renderExpandable("Cache Data details", CACHE_DATA_DETAILS));
@@ -1541,6 +1570,7 @@ function RenderSettingsMenu() {
     JSPLib.menu.listCacheClick();
     JSPLib.menu.refreshCacheClick();
     JSPLib.menu.cacheAutocomplete();
+    InitializeMenuAutocomplete();
 }
 
 //Main program
