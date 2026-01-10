@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DTextStyler
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.8
+// @version      5.9
 // @description  Danbooru DText UI addon.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -12,14 +12,14 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/DTextStyler.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/DTextStyler.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251105/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru Papa */
@@ -40,8 +40,6 @@ const PROGRAM_LOAD_OPTIONAL_SELECTORS = ['.dtext-previewable textarea', '#add-co
 
 //Program name constants
 const PROGRAM_SHORTCUT = 'ds';
-const PROGRAM_CLICK = 'click.ds';
-const PROGRAM_KEYUP = 'keyup.ds';
 const PROGRAM_NAME = 'DTextStyler';
 
 //Main program variable
@@ -60,12 +58,12 @@ const ALL_ACTIONS = ['undo', 'redo'];
 const SETTINGS_CONFIG = {
     post_commentary_enabled: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Show dtext controls on the post commentary dialog."
     },
     upload_commentary_enabled: {
         reset: true,
-        validate: JSPLib.validate.isBoolean,
+        validate: JSPLib.utility.isBoolean,
         hint: "Show dtext controls above the upload commentary inputs."
     },
     dtext_types_handled: {
@@ -145,9 +143,7 @@ const PROGRAM_CSS = `
     font-size: 16px;
     font-weight: bold;
     white-space: nowrap;
-}`;
-
-const POST_CSS = `
+}
 /** Posts page **/
 form#fetch-commentary input#commentary_source {
     max-width: 75%;
@@ -163,9 +159,7 @@ button.ds-dialog-button[name=Cancel] {
 button.ds-dialog-button[name=Submit] {
     color: white;
     background: green;
-}`;
-
-const UPLOAD_CSS = `
+}
 /** Uploads page **/
 #ds-commentary-container {
     width: 65rem;
@@ -549,6 +543,7 @@ function TableMarkup(text_area, has_header) {
 }
 
 function SaveMarkup(text_area) {
+    const printer = JSPLib.debug.getFunctionPrint('SaveMarkup');
     let $text_area = $(text_area);
     let undo_actions = $text_area.data('undo_actions') || [];
     let undo_index = $text_area.data('undo_index') || 0;
@@ -557,10 +552,11 @@ function SaveMarkup(text_area) {
     $text_area.data('undo_actions', undo_actions);
     $text_area.data('undo_index', undo_actions.length);
     $text_area.data('undo_saved', true);
-    JSPLib.debug.debuglog('SaveMarkup', {undo_actions, undo_index});
+    printer.debuglog('SaveMarkup', {undo_actions, undo_index});
 }
 
 function UndoAction(text_area) {
+    const printer = JSPLib.debug.getFunctionPrint('UndoAction');
     let $text_area = $(text_area);
     let {undo_actions = [], undo_index = 0, undo_saved} = $text_area.data();
     if (undo_saved) {
@@ -576,11 +572,12 @@ function UndoAction(text_area) {
     let new_index = Math.max(0, undo_index - 1);
     $text_area.data('undo_index', new_index);
     $text_area.data('undo_saved', false);
-    JSPLib.debug.debuglog('UndoAction', {undo_actions, undo_index, new_index});
+    printer.debuglog('UndoAction', {undo_actions, undo_index, new_index});
     return Boolean(undo_html);
 }
 
 function RedoAction(text_area) {
+    const printer = JSPLib.debug.getFunctionPrint('RedoAction');
     let $text_area = $(text_area);
     let {undo_actions = [], undo_index = 0} = $text_area.data();
     let undo_html = undo_actions.slice(undo_index + 1, undo_index + 2)[0];
@@ -592,16 +589,17 @@ function RedoAction(text_area) {
     let new_index = Math.min(undo_actions.length - 1, undo_index + 1);
     $text_area.data('undo_index', new_index);
     $text_area.data('undo_saved', false);
-    JSPLib.debug.debuglog('RedoAction', {undo_actions, undo_index, new_index});
+    printer.debuglog('RedoAction', {undo_actions, undo_index, new_index});
     return Boolean(undo_html);
 }
 
 function ClearActions(event) {
+    const printer = JSPLib.debug.getFunctionPrint('ClearActions');
     let $text_area = $(event.currentTarget);
     $text_area.data('undo_actions', []);
     $text_area.data('undo_index', 0);
     $text_area.data('undo_saved', false);
-    JSPLib.debug.debuglog('Cleared actions.');
+    printer.debuglog('Cleared actions.');
 }
 
 function DisplayUploadCommentary(open) {
@@ -673,10 +671,11 @@ function RenderPreviewSection(name, has_header=false) {
 //Dtext functions
 
 function CSVtoDtextTable(csvtext, has_header) {
+    const printer = JSPLib.debug.getFunctionPrint('CSVtoDtextTable');
     let tabletext = "";
     let sectiontext = "";
     let csvdata = Papa.parse(csvtext);
-    JSPLib.debug.debuglog('CSVtoDtextTable', {csvdata, has_header});
+    printer.debuglog('CSVtoDtextTable', {csvdata, has_header});
     csvdata.data.forEach((row, i)=>{
         let rowtext = "";
         row.forEach((col)=>{
@@ -768,6 +767,7 @@ function ClearPreview(event) {
 }
 
 function DtextPreview() {
+    const printer = JSPLib.debug.getFunctionPrint('DtextPreview');
     DS.$edit_commentary.hide();
     let promise_array = [];
     let preview_array = [];
@@ -802,7 +802,7 @@ function DtextPreview() {
             let action = (is_shown ? 'show' : 'hide');
             $display[action]();
         });
-        JSPLib.debug.debuglog('DtextPreview', preview_array);
+        printer.debuglog('DtextPreview', preview_array);
     });
     DS.mode = 'preview';
 }
@@ -867,9 +867,9 @@ function InitializeDtextPreviews() {
         $container.addClass('ds-container');
         $container.find('.dtext-previewable').before(RenderMarkupControls());
         InitializeButtons($container.find('.ds-buttons'));
-        $textarea.on(PROGRAM_KEYUP, ClearActions);
+        $textarea.on(JSPLib.program.keyup, ClearActions);
     });
-    $('.dtext-preview-button').on(PROGRAM_CLICK, ClearPreview);
+    $('.dtext-preview-button').on(JSPLib.program.click, ClearPreview);
 }
 
 function InitializeCommentaryDialog() {
@@ -889,9 +889,9 @@ function InitializeCommentaryDialog() {
         });
     });
     //Wait for the dialog to be initialized before performing the final step
-    JSPLib.utility.recheckTimer({
+    JSPLib.utility.recheckInterval({
         check: () => JSPLib.utility.hasDOMDataKey('#add-commentary-dialog', 'uiDialog'),
-        exec: ()=>{
+        exec: () => {
             let buttons = DS.$add_commentary_dialog.dialog('option', 'buttons');
             buttons = Object.assign(DIALOG_CONFIG, buttons);
             let dialog_width = Math.max((DS.available_dtext_markup.length + DS.available_dtext_actions.length) * 40 + 50, DS.$add_commentary_dialog.dialog('option', 'width'));
@@ -930,17 +930,17 @@ function InitializeUploadCommentary() {
         append(PREVIEW_BUTTONS);
     $('#tags-container').before(DS.$overall_container);
     //Initialize commentary handlers
-    (DS.$preview_button = $('#ds-preview-button')).on(PROGRAM_CLICK, ()=>{
+    (DS.$preview_button = $('#ds-preview-button')).on(JSPLib.program.click, ()=>{
         DtextPreview();
         DS.$preview_button.hide();
         DS.$edit_button.show();
     });
-    (DS.$edit_button = $('#ds-edit-button')).on(PROGRAM_CLICK, ()=>{
+    (DS.$edit_button = $('#ds-edit-button')).on(JSPLib.program.click, ()=>{
         DtextEdit();
         DS.$preview_button.show();
         DS.$edit_button.hide();
     });
-    (DS.$remove_button = $('#ds-remove-button')).on(PROGRAM_CLICK, ()=>{
+    (DS.$remove_button = $('#ds-remove-button')).on(JSPLib.program.click, ()=>{
         DS.$overall_container.remove();
     });
     //Wait until Danbooru binds the click, otherwise 2 click handlers will be bound
@@ -952,13 +952,13 @@ function InitializeUploadCommentary() {
             if (DS.commentary_open) {
                 DisplayUploadCommentary(true);
             }
-            (DS.$toggle_artist_commentary = $('#toggle-artist-commentary')).off('click.danbooru').on(PROGRAM_CLICK, function(event) {
+            (DS.$toggle_artist_commentary = $('#toggle-artist-commentary')).off('click.danbooru').on(JSPLib.program.click, function(event) {
                 Danbooru.Upload.toggle_commentary();
                 event.preventDefault();
             });
             DS.translation_open = DS.$commentary_translation.is(':visible');
             Danbooru.Upload.toggle_translation = ToggleTranslation;
-            (DS.$toggle_commentary_translation = $('#toggle-commentary-translation')).off('click.danbooru').on(PROGRAM_CLICK, function(event) {
+            (DS.$toggle_commentary_translation = $('#toggle-commentary-translation')).off('click.danbooru').on(JSPLib.program.click, function(event) {
                 Danbooru.Upload.toggle_translation();
                 event.preventDefault();
             });
@@ -968,7 +968,7 @@ function InitializeUploadCommentary() {
     DS.$preview_display = $('.ds-preview-display');
     DS.$commentary_buttons = $('#ds-commentary-buttons');
     DS.$markup_controls = $('.ds-markup-controls');
-    DS.$overall_container.find('.ds-commentary-input').on(PROGRAM_KEYUP, ClearActions);
+    DS.$overall_container.find('.ds-commentary-input').on(JSPLib.program.keyup, ClearActions);
 }
 
 // Settings functions
@@ -1010,32 +1010,31 @@ function Main() {
     }
     if (DS.post_commentary_enabled && DS.controller === 'posts' && DS.action === 'show') {
         InitializeCommentaryDialog();
-        JSPLib.utility.setCSSStyle(POST_CSS, 'post');
-    } else if (DS.upload_commentary_enabled && ((DS.controller === 'uploads' && DS.action === 'show') || (DS.controller === 'upload-media-assets' && DS.action === 'show'))) {
-        InitializeUploadCommentary();
-        JSPLib.utility.setCSSStyle(UPLOAD_CSS, 'upload');
+    } else if (DS.upload_commentary_enabled && (DS.action === 'show' && ['uploads', 'upload-media-assets'].includes(DS.controller))) {
+        InitializeUploadCommentaryWait();
     }
-    $('.dtext-markup').on(PROGRAM_CLICK, DtextMarkup);
-    $('.dtext-action').on(PROGRAM_CLICK, DtextAction);
+    $('.dtext-markup').on(JSPLib.program.click, DtextMarkup);
+    $('.dtext-action').on(JSPLib.program.click, DtextAction);
     JSPLib.utility.blockActiveElementSwitch('.dtext-markup, .dtext-action');
 }
 
 /****Initialization****/
 
+//Variables for JSPLib
+JSPLib.program_name = PROGRAM_NAME;
+JSPLib.program_shortcut = PROGRAM_SHORTCUT;
+JSPLib.program_data = DS;
+
 //Variables for debug.js
-JSPLib.debug.debug_console = false;
+JSPLib.debug.mode = false;
 JSPLib.debug.level = JSPLib.debug.INFO;
-JSPLib.debug.program_shortcut = PROGRAM_SHORTCUT;
 
 //Variables for menu.js
-JSPLib.menu.program_shortcut = PROGRAM_SHORTCUT;
-JSPLib.menu.program_name = PROGRAM_NAME;
-JSPLib.menu.program_data = DS;
 JSPLib.menu.settings_config = SETTINGS_CONFIG;
 
 //Export JSPLib
-JSPLib.load.exportData(PROGRAM_NAME, DS);
+JSPLib.load.exportData();
 
 /****Execution start****/
 
-JSPLib.load.programInitialize(Main, {program_name: PROGRAM_NAME, required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, optional_selectors: PROGRAM_LOAD_OPTIONAL_SELECTORS});
+JSPLib.load.programInitialize(Main, {required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, optional_selectors: PROGRAM_LOAD_OPTIONAL_SELECTORS});
