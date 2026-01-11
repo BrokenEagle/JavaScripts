@@ -1,16 +1,15 @@
 // ==UserScript==
 // @name         SiteTagSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.4
+// @version      5.5
 // @description  Presents additional site links for the wiki tag(s).
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
-// @match        *://*.donmai.us/posts?*
-// @match        *://*.donmai.us/wiki_pages/*
-// @match        *://*.donmai.us/settings
-// @exclude      /^https?://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
+// @match        https://*.donmai.us/*
+// @exclude      /^(?!https:\/\/\w+\.donmai\.us\/(posts|wiki_pages\/[^\/?]+|settings)?\/?(\?|$)).*/
+// @exclude      /^https:\/\/\w+\.donmai\.us\/[^.]*\.(xml|json|atom)(\?|$)/
 // @grant        none
-// @run-at       document-idle
+// @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SiteTagSearches.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SiteTagSearches.user.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/module.js
