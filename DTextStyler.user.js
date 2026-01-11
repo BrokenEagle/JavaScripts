@@ -176,7 +176,7 @@ const PROGRAM_CSS = `
     overflow-y: auto;
 }
 .ds-preview-display .ds-section {
-    border: 1px solid #EEE;
+    border: 1px solid;
     padding: 5px;
     min-height: 10em;
 }
@@ -199,6 +199,7 @@ const PROGRAM_CSS = `
 .ds-markup-headers > div > div {
     text-align: center;
     font-weight: bold;
+    color: var(--black);
 }
 .dtext-button {
     width: 40px;
@@ -228,6 +229,16 @@ button.ds-dialog-button[name=Cancel] {
 button.ds-dialog-button[name=Submit] {
     color: white;
     background: green;
+}`;
+
+const LIGHT_MODE_CSS = `
+.ds-preview-display .ds-section {
+    border-color: var(--grey-2);
+}`;
+
+const DARK_MODE_CSS = `
+.ds-preview-display .ds-section {
+    border-color: var(--grey-7);
 }`;
 
 const MENU_CSS = `
@@ -1134,6 +1145,8 @@ function Main() {
         initialize_func: InitializeProgramValues,
         render_menu_func: RenderSettingsMenu,
         program_css: PROGRAM_CSS,
+        light_css: LIGHT_MODE_CSS,
+        dark_css: DARK_MODE_CSS,
         menu_css: MENU_CSS,
     };
     if (!JSPLib.menu.preloadScript(DS, preload)) return;
