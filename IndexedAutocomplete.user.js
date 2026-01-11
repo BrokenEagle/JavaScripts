@@ -2655,7 +2655,7 @@ JSPLib.menu.control_config = CONTROL_CONFIG;
 JSPLib.storage.indexedDBValidator = ValidateEntry;
 
 //Export JSPLib
-JSPLib.load.exportData({other_data: TERM_REGEX, read_list: ['cached_data']});
+JSPLib.load.exportData({other_data: TERM_REGEX});
 JSPLib.load.exportFuncs({always_list: [InitializeAutocompleteIndexed, InitializeTagQueryAutocompleteIndexed]});
 
 /****Execution start****/
