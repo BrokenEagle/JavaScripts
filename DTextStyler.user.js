@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DTextStyler
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.9
+// @version      5.10
 // @description  Danbooru DText UI addon.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -982,8 +982,8 @@ function InitializeButtons($button_container) {
         $button_container.find(`button[name=${key}] > *:first-of-type`)
             .css({top, left});
     }
-    $('.dtext-markup').on(JSPLib.program.click, DtextMarkup);
-    $('.dtext-action').on(JSPLib.program.click, DtextAction);
+    $button_container.find('.dtext-markup').on(JSPLib.program.click, DtextMarkup);
+    $button_container.find('.dtext-action').on(JSPLib.program.click, DtextAction);
     JSPLib.utility.blockActiveElementSwitch('.dtext-markup, .dtext-action');
 }
 
