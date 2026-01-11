@@ -303,7 +303,11 @@ const CONTROL_BUTTONS = `
 const UPLOAD_COMMENTARY_DESCRIPTION = `
 <div class="input stacked-input text optional post_artist_commentary_%IDENTIFIER%">
     <label class="text optional" for="post_artist_commentary_%IDENTIFIER%">%DISPLAY%</label>
-    <textarea class="text optional" name="post[artist_commentary][%IDENTIFIER%]" id="post_artist_commentary_%IDENTIFIER%"></textarea>
+    <div class="dtext-editor relative w-fit">
+        <div class="dtext-editor-body relative resize overflow-hidden">
+            <textarea class="dtext optional w-full h-full m-0 p-1 resize-none thin-scrollbar ui-autocomplete-input" name="post[artist_commentary][%IDENTIFIER%]" id="post_artist_commentary_%IDENTIFIER%"></textarea>
+        </div>
+    </div>
 </div>`;
 
 const DTEXT_TEXTAREA = `
