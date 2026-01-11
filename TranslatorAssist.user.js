@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.10
+// @version      6.11
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
-// @match        https://*.donmai.us/posts/*
-// @match        https://*.donmai.us/settings
-// @exclude      /^https?://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
+// @match        https://*.donmai.us/*
+// @exclude      /^(?!https:\/\/\w+\.donmai\.us\/(posts\/\d+|settings)?\/?(\?|$)).*/
+// @exclude      /^https://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
 // @grant        GM.xmlHttpRequest
 // @run-at       document-idle
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/TranslatorAssist.user.js
