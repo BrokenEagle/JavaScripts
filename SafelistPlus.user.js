@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         SafelistPlus
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.23
+// @version      4.24
 // @description  Alternate Danbooru blacklist handler.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
-// @match        *://*.donmai.us/*
-// @exclude      /^https?://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
+// @match        https://*.donmai.us/*
+// @exclude      /^https://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
 // @grant        none
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SafelistPlus.user.js
