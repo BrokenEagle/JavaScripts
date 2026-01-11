@@ -93,6 +93,9 @@ JSPLib.utility.subscribeDOMProperty = function (obj, prop, func) {
     });
 };
 
+//For module.js, since this script does not import notice.js. The notice.js module needs its own version
+JSPLib.notice.close = (() => JSPLib._document.getElementById('close-notice-link')?.click());
+
 /****Global variables****/
 
 //Exterior script variables
@@ -551,7 +554,7 @@ function GetTextArea($obj) {
     if (!text_area) {
         JSPLib.notice.error("No text input selected.");
     } else {
-        DS.$close_notice.click();
+        JSPLib.notice.close();
     }
     return text_area;
 }
@@ -819,9 +822,7 @@ function DtextMarkup(event) {
     if (!text_area) return;
     let name = $button.attr('name');
     let markup_func = (MARKUP_BUTTON_CONFIG[name].markup ? MARKUP_BUTTON_CONFIG[name].markup : MarkupSelectionText);
-    if (markup_func(text_area, MARKUP_BUTTON_CONFIG[name])) {
-        DS.$close_notice.click();
-    }
+    markup_func(text_area, MARKUP_BUTTON_CONFIG[name]);
 }
 
 function DtextAction(event) {
@@ -830,9 +831,7 @@ function DtextAction(event) {
     if (!text_area) return;
     let name = $button.attr('name');
     let action_func = ACTION_BUTTON_CONFIG[name].action;
-    if (action_func(text_area, ACTION_BUTTON_CONFIG[name])) {
-        DS.$close_notice.click();
-    }
+    action_func(text_area, ACTION_BUTTON_CONFIG[name]);
 }
 
 function OpenDialog() {
@@ -1117,7 +1116,6 @@ function InitializeUploadCommentary() {
 
 function InitializeProgramValues() {
     Object.assign(DS, {
-        $close_notice: $('#close-notice-link'),
         size_observer: new ResizeObserver(ResizeDtextPreview),
     });
     return true;
