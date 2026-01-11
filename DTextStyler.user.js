@@ -849,8 +849,10 @@ function OpenDialog() {
 
 function CommentaryDtextPreview() {
     const printer = JSPLib.debug.getFunctionPrint('CommentaryDtextPreview');
-    let {height} = getComputedStyle(DS.$add_commentary_dialog.get(0));
-    DS.$add_commentary_dialog.css({height});
+    if (DS.controller === 'posts') {
+        let {height} = getComputedStyle(DS.$add_commentary_dialog.get(0));
+        DS.$add_commentary_dialog.css({height});
+    }
     DS.$preview_button.hide();
     DS.$edit_button.show();
     DS.$edit_commentary.hide();
@@ -895,7 +897,9 @@ function CommentaryDtextPreview() {
 }
 
 function CommentaryDtextEdit() {
-    DS.$add_commentary_dialog.css('height', 'auto');
+    if (DS.controller === 'posts') {
+        DS.$add_commentary_dialog.css('height', 'auto');
+    }
     DS.$preview_button.show();
     DS.$edit_button.hide();
     DS.$preview_display.hide();
