@@ -26,7 +26,72 @@
 
 /****Library updates****/
 
-////NONE
+JSPLib.program = new Proxy(JSPLib, {
+    get(target, prop, _receiver) {
+        return prop + (target.program_shortcut.length ? '.' + target.program_shortcut : "");
+    },
+});
+
+JSPLib.utility.getAttr = function (domobj, key) {
+    if (typeof key === 'string') {
+        return domobj.attributes[key].value;
+    }
+    let data = {};
+    for (let attr of domobj.attributes) {
+        if (Array.isArray(key) && !key.includes(attr.name)) continue;
+        data[attr.name] = attr.value;
+    }
+    return data;
+};
+
+JSPLib.utility.isNamespaceBound2 = function ({root = null, eventtype = null, namespace = null, selector = null, presence = true} = {}) {
+    let event_namespaces = this.getBoundEventNames(root, eventtype, selector);
+    let name_parts = namespace.split('.');
+    return this._not(event_namespaces.some((name) => this.isSubArray(name.split('.'), name_parts)), !presence);
+};
+
+JSPLib.utility.DOMWaitExecute = function ({namespace_check = null, data_check = null, extra_check = null, found = null, interval = null, duration = null, name = null} = {}) {
+    const printer = (name ? JSPLib.debug.getFunctionPrint('utility.DOMWaitExecute') : (()=>{}));
+    extra_check ??= (() => true);
+    this.recheckInterval({
+        check: () => {
+            let checks = [];
+            if (namespace_check !== null) {
+                checks.push(this.isNamespaceBound2(namespace_check));
+            }
+            if (data_check !== null) {
+                checks.push(this.hasDOMDataKey(data_check.selector, data_check.key));
+            }
+            if (extra_check !== null) {
+                checks.push(extra_check());
+            }
+            return checks.every((c) => c);
+        },
+        debug: () => printer.debuglogLevel(`Waiting on DOM: ${name}.`, JSPLib.debug.VERBOSE),
+        fail: () => printer.debuglogLevel(`Failed to execute: ${name}.`, JSPLib.debug.WARNING),
+        exec: () => {
+            printer.debuglogLevel(`Event triggered: ${name}.`, JSPLib.debug.INFO);
+            found();
+        },
+        interval,
+        duration,
+    });
+};
+
+JSPLib.utility.subscribeDOMProperty = function (obj, prop, func) {
+    const property = Object.getOwnPropertyDescriptor(obj.constructor.prototype, prop);
+    Object.defineProperty(obj, prop, {
+        set: function(value) {
+            property.set.call(obj, value);
+            func?.(value);
+        },
+        get: function() {
+            return property.get.call(obj);
+        },
+        configurable: true,
+        enumerable: true,
+    });
+};
 
 /****Global variables****/
 
@@ -36,7 +101,7 @@ const GITHUB_WIKI_PAGE = 'https://github.com/BrokenEagle/JavaScripts/wiki/DtextS
 
 //Variables for load.js
 const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.Upload'];
-const PROGRAM_LOAD_OPTIONAL_SELECTORS = ['.dtext-previewable textarea', '#add-commentary-dialog', '.upload_artist_commentary_container', '#c-users #a-edit'];
+const PROGRAM_LOAD_OPTIONAL_SELECTORS = ['.dtext-editor textarea', '#add-commentary-dialog', '.upload-edit-container', '#c-users #a-edit'];
 
 //Program name constants
 const PROGRAM_SHORTCUT = 'ds';
@@ -113,12 +178,16 @@ const PROGRAM_CSS = `
 .ds-preview-display .ds-section {
     border: 1px solid #EEE;
     padding: 5px;
+    min-height: 10em;
 }
 .ds-preview-display .ds-section-header {
     font-size: var(--text-lg);
     font-weight: bold;
     text-decoration: underline;
     margin: 0.5rem 0;
+}
+.ds-button {
+    width: 7em;
 }
 /**** Markup buttons ****/
 .ds-markup-headers > div,
@@ -159,34 +228,6 @@ button.ds-dialog-button[name=Cancel] {
 button.ds-dialog-button[name=Submit] {
     color: white;
     background: green;
-}
-/** Uploads page **/
-#ds-commentary-container {
-    width: 65rem;
-    background: #F8F8F8;
-    border: 2px solid #EEE;
-    box-shadow: 0 0 0 2px #DEF;
-    padding: 10px;
-    margin: 10px 0;
-}
-#ds-commentary-container .ds-markup-controls {
-    border-bottom: 1px solid #DDD;
-    padding-bottom: 5px;
-    margin-bottom: 10px;
-}
-#edit-dialog #ds-commentary-container {
-    display: none; /* Hide commentary when the tag box is detached */
-}
-#ds-commentary-buttons {
-    border-top: 2px solid #DDD;
-    padding-top: 5px;
-}
-.ds-commentary-button {
-    display: inline-block;
-}
-#ds-remove-button {
-    color: white;
-    background: red;
 }`;
 
 const MENU_CSS = `
@@ -236,10 +277,31 @@ const PREVIEW_SECTION = `
 
 const PREVIEW_BUTTONS = `
 <div id="ds-commentary-buttons">
-    <button type="button" id="ds-preview-button" class="ds-commentary-button ui-button ui-corner-all ui-widget">Preview</button>
-    <button type="button" id="ds-edit-button" class="ds-commentary-button ui-button ui-corner-all ui-widget">Edit</button>
-    <button type="button" id="ds-remove-button" class="ds-commentary-button ui-button ui-corner-all ui-widget">Remove</button>
+    <button type="button" id="ds-preview-button" class="ds-button ds-commentary-button ui-button ui-corner-all ui-widget">Preview</button>
+    <button type="button" id="ds-edit-button" class="ds-button ds-commentary-button ui-button ui-corner-all ui-widget">Edit</button>
 </div>`;
+
+const CONTROL_BUTTONS = `
+<button class="ds-button ds-show-preview">Preview</button>
+<button style="display: none;" class="ds-button ds-edit-preview">Edit</button>
+`
+
+const UPLOAD_COMMENTARY_DESCRIPTION = `
+<div class="input stacked-input text optional post_artist_commentary_%IDENTIFIER%">
+    <label class="text optional" for="post_artist_commentary_%IDENTIFIER%">%DISPLAY%</label>
+    <textarea class="text optional" name="post[artist_commentary][%IDENTIFIER%]" id="post_artist_commentary_%IDENTIFIER%"></textarea>
+</div>`;
+
+const DTEXT_TEXTAREA = `
+<div class="relative w-fit ds-edit-dtext dtext-editor %CLASSES%">
+    <div class="relative resize overflow-hidden dtext-editor-body">
+        <textarea class="ds-input ds-general-input dtext optional w-full h-full m-0 p-1 resize-none thin-scrollbar" name="%NAME%" id="%IDENTIFIER%">%VALUE%</textarea>
+    </div>
+</div>
+<div class="ds-preview-dtext dtext-preview prose w-full h-full p-1 border overflow-auto thin-scrollbar" style="display: none;">
+</div>`;
+
+const LOADING_MESSAGE = '<div style="font-size: 20px; font-weight: bold;">loading...</div>';
 
 //Config constants
 
@@ -450,16 +512,8 @@ const ACTION_SECTION_CONFIG = {
 };
 
 const DIALOG_CONFIG = {
-    Preview: function() {
-        DS.$dialog_buttons.filter('[name=Preview]').hide();
-        DS.$dialog_buttons.filter('[name=Edit]').show();
-        DtextPreview();
-    },
-    Edit: function() {
-        DS.$dialog_buttons.filter('[name=Preview]').show();
-        DS.$dialog_buttons.filter('[name=Edit]').hide();
-        DtextEdit();
-    },
+    Preview: CommentaryDtextPreview,
+    Edit: CommentaryDtextEdit,
 };
 
 //Other
@@ -477,7 +531,7 @@ const DTEXT_SELECTORS = {
 //Auxiliary functions
 
 function GetTextArea($obj) {
-    let $text_areas = $obj.closest('.ds-container').find('textarea, input');
+    let $text_areas = $obj.closest('.ds-container').find('.ds-input');
     if ($text_areas.length <= 1) {
         var text_area = $text_areas.get(0);
     } else {
@@ -663,6 +717,23 @@ function RenderMarkupControls() {
     return JSPLib.utility.sprintf(MARKUP_CONTROLS, String(width), header_html, button_html);
 }
 
+function RenderUploadCommentary(identifier) {
+    let display_name = JSPLib.utility.displayCase(identifier);
+    return JSPLib.utility.regexReplace(UPLOAD_COMMENTARY_DESCRIPTION, {
+        DISPLAY: display_name,
+        IDENTIFIER: identifier,
+    });
+}
+
+function RenderDtextPreview(id, name, value, classes) {
+    return JSPLib.utility.regexReplace(DTEXT_TEXTAREA, {
+        CLASSES: classes,
+        IDENTIFIER: id,
+        NAME: name,
+        VALUE: value,
+    });
+}
+
 function RenderPreviewSection(name, has_header=false) {
     let section_header = (has_header ? `<div class="ds-section-header">${JSPLib.utility.displayCase(name)}</div>` : "");
     return JSPLib.utility.sprintf(PREVIEW_SECTION, name, section_header);
@@ -719,6 +790,16 @@ function AddTableData(input) {
     return '[td]' + input + '[/td]\n';
 }
 
+//Network functions
+
+function GetDtextPreview(body, inline) {
+    GetDtextPreview.memoized ??= {};
+    if (!(body in GetDtextPreview.memoized)) {
+        GetDtextPreview.memoized[body] = JSPLib.network.post('/dtext_preview', {data: {body, inline, disable_mentions: true, media_embeds: false}});
+    }
+    return GetDtextPreview.memoized[body];
+}
+
 //Event handlers
 
 function DtextMarkup(event) {
@@ -747,70 +828,96 @@ function OpenDialog() {
     if (!DS.$add_commentary_dialog.data('initialized')) {
         (DS.$dialog_buttons = DS.$add_commentary_dialog.closest('.ui-dialog').find('.ui-dialog-buttonset button'))
             .each((_i, button)=>{
-                $(button).addClass('ds-dialog-button').attr('name', button.innerText);
+                $(button).addClass('ds-button ds-dialog-button').attr('name', button.innerText);
             });
+        DS.$preview_button = DS.$dialog_buttons.filter('[name=Preview]');
+        DS.$edit_button = DS.$dialog_buttons.filter('[name=Edit]');
         DS.$add_commentary_dialog.data('initialized', true);
     }
-    DS.$dialog_buttons.filter('[name=Preview]').show();
-    DS.$dialog_buttons.filter('[name=Edit]').hide();
-    DS.$edit_commentary = $('.ds-edit-commentary');
-    DS.$preview_display = $('.ds-preview-display');
-    DtextEdit();
+    CommentaryDtextEdit();
 }
 
-function ClearPreview(event) {
-    setTimeout(()=>{
-        if (event.currentTarget.value === 'Preview') {
-            $(event.currentTarget).closest('form').find('.dtext-preview').html("");
-        }
-    }, 500);
-}
-
-function DtextPreview() {
-    const printer = JSPLib.debug.getFunctionPrint('DtextPreview');
+function CommentaryDtextPreview() {
+    const printer = JSPLib.debug.getFunctionPrint('CommentaryDtextPreview');
+    let {height} = getComputedStyle(DS.$add_commentary_dialog.get(0));
+    DS.$add_commentary_dialog.css({height});
+    DS.$preview_button.hide();
+    DS.$edit_button.show();
     DS.$edit_commentary.hide();
+    DS.$preview_display.show();
+    DS.$preview_display.find('.ds-section').html(LOADING_MESSAGE);
     let promise_array = [];
     let preview_array = [];
     (DS.$commentary_input ||= $('.ds-commentary-input')).each((_i, input)=>{
         let {section, part} = $(input).data();
         let preview = {section, part};
         let inline = preview.inline = [...input.classList].includes('string');
-        let body = preview.body = input.value;
-        let promise = (body.trim(/\s+/).length > 0 ? JSPLib.network.post('/dtext_preview', {data: {body, inline}}) : Promise.resolve(null));
+        let body = preview.original_body = input.value;
+        var promise;
+        if (body.trim(/\s+/).length > 0) {
+            promise = GetDtextPreview(body, inline);
+        } else {
+            promise = Promise.resolve(null);
+        }
         promise_array.push(promise);
         preview_array.push(preview);
     });
     Promise.all(promise_array).then((data)=>{
         data.forEach((body, i)=>{
-            preview_array[i].body = body;
+            preview_array[i].rendered_body = body;
         });
-        ['original', 'artist', 'translated'].forEach((section)=>{
-            let $display = DS.$preview_display.filter(`[data-section=${section}]`);
-            if ($display.length === 0) return;
-            let is_shown = false;
+        ['original', 'translated'].forEach((section)=>{
+            let $display = DS.$preview_display.find(`[data-section=${section}]`);
             let $section = $display.find('.ds-section').html("");
-            ['title', 'description', 'desc'].forEach((part)=>{
+            ['title', 'description'].forEach((part)=>{
                 let preview = preview_array.find((item) => (item.section === section && item.part === part));
-                if (!preview?.body) return;
+                if (!preview?.rendered_body) return;
                 if (part === 'title') {
-                    $section.append(`<h3><span class="prose">${preview.body}</span></h3>`);
-                } else if (part === 'description' || part === 'desc') {
-                    $section.append(`<div class="prose">${preview.body}</div>`);
+                    $section.append(`<h3><span class="prose">${preview.rendered_body}</span></h3>`);
+                } else if (part === 'description') {
+                    $section.append(`<div class="prose">${preview.rendered_body}</div>`);
                 }
-                is_shown = true;
             });
-            let action = (is_shown ? 'show' : 'hide');
-            $display[action]();
         });
-        printer.debuglog('DtextPreview', preview_array);
+        printer.debuglog(preview_array);
     });
     DS.mode = 'preview';
 }
 
-function DtextEdit() {
+function CommentaryDtextEdit() {
+    DS.$add_commentary_dialog.css('height', 'auto');
+    DS.$preview_button.show();
+    DS.$edit_button.hide();
     DS.$preview_display.hide();
     DS.$edit_commentary.show();
     DS.mode = 'edit';
+}
+
+function GeneralDtextPreview(event) {
+    let $container = $(event.target).closest('form').find('.ds-container');
+    DS.size_observer.disconnect($container.find('.ds-edit-dtext').get(0));
+    let $preview = $container.find('.ds-preview-dtext').show();
+    $container.find('.ds-edit-dtext').hide();
+    let body = $container.find('.ds-edit-dtext textarea').val() ?? "";
+    if (body.trim().length > 0) {
+        $preview.html(LOADING_MESSAGE);
+        GetDtextPreview(body, false).then((preview_html) => {
+            $preview.html(preview_html);
+        });
+    }
+    $(event.target).hide();
+    $(event.target).parent().find('button.ds-edit-preview').show();
+    event.preventDefault();
+}
+
+function GeneralDtextEdit(event) {
+    let $container = $(event.target).closest('form').find('.ds-container');
+    DS.size_observer.observe($container.find('.ds-edit-dtext').get(0));
+    $container.find('.ds-preview-dtext').hide();
+    $container.find('.ds-edit-dtext').show();
+    $(event.target).hide();
+    $(event.target).parent().find('button.ds-show-preview').show();
+    event.preventDefault();
 }
 
 function ToggleCommentary() {
@@ -847,6 +954,14 @@ function ToggleTranslation() {
     DS.translation_open = !DS.translation_open;
 }
 
+function ResizeDtextPreview(resizes, observer) {
+    for (let i = 0; i < resizes.length; i++) {
+        if (resizes[i].contentRect.height > 0) {
+            $(resizes[i].target).closest('.ds-container').find('.ds-preview-dtext').css({height: resizes[i].contentRect.height, width: resizes[i].contentRect.width});
+        }
+    }
+}
+
 //Initialize
 
 function InitializeButtons($button_container) {
@@ -856,20 +971,41 @@ function InitializeButtons($button_container) {
         $button_container.find(`button[name=${key}] > *:first-of-type`)
             .css({top, left});
     }
+    $('.dtext-markup').on(JSPLib.program.click, DtextMarkup);
+    $('.dtext-action').on(JSPLib.program.click, DtextAction);
+    JSPLib.utility.blockActiveElementSwitch('.dtext-markup, .dtext-action');
 }
 
 function InitializeDtextPreviews() {
     let containers = JSPLib.utility.multiConcat(...DS.dtext_types_handled.map((type) => DTEXT_SELECTORS[type]));
-    let final_selector = JSPLib.utility.joinList(containers, '.', ' .dtext-previewable textarea', ', ');
+    let final_selector = JSPLib.utility.joinList(containers, '.', ' .dtext-editor textarea', ', ');
     $(final_selector).each((_i, textarea)=>{
         let $textarea = $(textarea);
         let $container = $textarea.closest('.input.dtext');
+        let $form = $container.closest('form');
         $container.addClass('ds-container');
-        $container.find('.dtext-previewable').before(RenderMarkupControls());
+        let {id, name} = JSPLib.utility.getAttr(textarea, ['id', 'name']);
+        let value = $textarea.val() ?? "";
+        let classes = ($container.find('.dtext-editor-large').length ? 'dtext-editor-large' : "");
+        $container.html(RenderDtextPreview(id, name, value, classes));
+        $container.prepend(RenderMarkupControls());
         InitializeButtons($container.find('.ds-buttons'));
+        DS.size_observer.observe($container.find('.ds-edit-dtext').get(0));
         $textarea.on(JSPLib.program.keyup, ClearActions);
+        let $controls = $form.children().eq(-1);
+        var $submit_control;
+        if ($controls.get(0).tagName === 'INPUT') {
+            $submit_control = $controls;
+            $controls = $('<div class="flex gap-2 items-center"></div>')
+            $controls.append($submit_control.detach());
+            $form.append($controls);
+        } else {
+            $submit_control = $controls.find('input[type=submit]');
+        }
+        $submit_control.after(CONTROL_BUTTONS);
+        $controls.find('.ds-show-preview').on(JSPLib.program.click, GeneralDtextPreview);
+        $controls.find('.ds-edit-preview').on(JSPLib.program.click, GeneralDtextEdit);
     });
-    $('.dtext-preview-button').on(JSPLib.program.click, ClearPreview);
 }
 
 function InitializeCommentaryDialog() {
@@ -879,19 +1015,26 @@ function InitializeCommentaryDialog() {
     DS.$add_commentary_dialog.find('#fetch-commentary')
         .after(RenderMarkupControls());
     InitializeButtons(DS.$add_commentary_dialog.find('.ds-buttons'));
-    $('#edit-commentary')
-        .addClass('ds-edit-commentary')
-        .after(RenderPreviewSection('original', true) + RenderPreviewSection('translated', true));
+    DS.$preview_display = $('<div></div>');
+    DS.$preview_display.append(RenderPreviewSection('original', true));
+    DS.$preview_display.append(RenderPreviewSection('translated', true));
+    DS.$edit_commentary = $('#edit-commentary').after(DS.$preview_display);
     DS.$add_commentary_dialog.data('initialized', false);
     ['original', 'translated'].forEach((section)=>{
         ['title', 'description'].forEach((part)=>{
-            $(`#artist_commentary_${section}_${part}`).data({section, part}).addClass('ds-commentary-input');
+            $(`#artist_commentary_${section}_${part}`).data({section, part}).addClass('ds-input ds-commentary-input');
         });
     });
     //Wait for the dialog to be initialized before performing the final step
-    JSPLib.utility.recheckInterval({
-        check: () => JSPLib.utility.hasDOMDataKey('#add-commentary-dialog', 'uiDialog'),
-        exec: () => {
+    JSPLib.utility.DOMWaitExecute({
+        name: "commentary dialog initialization",
+        data_check: {
+            selector: '#add-commentary-dialog',
+            key: 'uiDialog',
+        },
+        interval: 500,
+        duration: JSPLib.utility.one_second * 15,
+        found: () => {
             let buttons = DS.$add_commentary_dialog.dialog('option', 'buttons');
             buttons = Object.assign(DIALOG_CONFIG, buttons);
             let dialog_width = Math.max((DS.available_dtext_markup.length + DS.available_dtext_actions.length) * 40 + 50, DS.$add_commentary_dialog.dialog('option', 'width'));
@@ -899,76 +1042,64 @@ function InitializeCommentaryDialog() {
             DS.$add_commentary_dialog.dialog('option', 'width', dialog_width);
             DS.$add_commentary_dialog.on('dialogopen.ds', OpenDialog);
         },
-    }, 500, JSPLib.utility.one_second * 15);
-    DS.$add_commentary_dialog.find('.ds-commentary-input').on(PROGRAM_KEYUP, ClearActions);
+    });
+    DS.$add_commentary_dialog.find('.ds-commentary-input').on(JSPLib.program.keyup, ClearActions);
+}
+
+function InitializeUploadCommentaryWait() {
+    // Wait until the commentary inputs have been set by Danbooru
+    DS.upload_commentary_initialized = false;
+    JSPLib.utility.subscribeDOMProperty($("#post_artist_commentary_original_title").get(0), 'value', (title) => {
+        DS.upload_commentary_initialized = true;
+        DS.upload_commentary_description = $(".post_artist_commentary_original_description .dtext-editor").get(0).editor.dtext;
+    });
+    JSPLib.utility.recheckInterval({
+        check: () => DS.upload_commentary_initialized,
+        exec: InitializeUploadCommentary,
+        fail: InitializeUploadCommentary,
+        interval: 250,
+        duration: JSPLib.utility.one_second * 5,
+    });
 }
 
 function InitializeUploadCommentary() {
-    //Move existing sections and add controls
-    DS.$upload_artist_commentary_container = $('.upload_artist_commentary_container').detach();
-    if (DS.$upload_artist_commentary_container.length === 0) return;
-    DS.$upload_artist_commentary_container
-        .addClass('ds-container')
-        .prepend(RenderMarkupControls());
-    InitializeButtons(DS.$upload_artist_commentary_container.find('.ds-buttons'));
-    (DS.$artist_commentary = DS.$upload_artist_commentary_container.find('.artist-commentary'))
-        .addClass('ds-edit-commentary')
-        .after(RenderPreviewSection('artist'));
-    DS.$upload_commentary_translation_container = $('.upload_commentary_translation_container').detach();
-    (DS.$commentary_translation = DS.$upload_commentary_translation_container.find('.commentary-translation'))
-        .addClass('ds-edit-commentary')
-        .after(RenderPreviewSection('translated'));
-    ['artist', 'translated'].forEach((section)=>{
-        let $container = (section === 'artist' ? DS.$upload_artist_commentary_container : DS.$upload_commentary_translation_container);
-        ['title', 'desc'].forEach((part)=>{
-            $container.find(`#post_${section}_commentary_${part}`).data({section, part}).addClass('ds-commentary-input');
+    const setOverallContainerHeight = function () {
+        let {height} = getComputedStyle(DS.$overall_container.get(0));
+        DS.$overall_container.css({height});
+    };
+    $('.post_artist_commentary_original_description, .post_artist_commentary_translated_description').remove();
+    DS.$overall_container = $('<div></div>');
+    DS.$edit_commentary = $('<div></div>');
+    DS.$preview_display = $('<div></div>').hide();
+    DS.$markup_controls = $(RenderMarkupControls());
+    DS.$commentary_buttons = $(PREVIEW_BUTTONS);
+    DS.$edit_commentary.append($('.post_artist_commentary_original_title').detach());
+    DS.$edit_commentary.append(RenderUploadCommentary('original_description'));
+    DS.$edit_commentary.append($('.post_artist_commentary_translated_title').detach());
+    DS.$edit_commentary.append(RenderUploadCommentary('translated_description'));
+    DS.$preview_display.append(RenderPreviewSection('original', true));
+    DS.$preview_display.append(RenderPreviewSection('translated', true));
+    DS.$overall_container.append(DS.$edit_commentary);
+    DS.$overall_container.append(DS.$preview_display);
+    $('div.source-tab').addClass('ds-container');
+    $('div.source-tab').append(DS.$markup_controls);
+    $('div.source-tab').append(DS.$overall_container);
+    $('div.source-tab').append(DS.$commentary_buttons);
+    InitializeButtons(DS.$markup_controls.find('.ds-buttons'));
+    $("#post_artist_commentary_original_description").val(DS.upload_commentary_description);
+    ['original', 'translated'].forEach((section)=>{
+        ['title', 'description'].forEach((part)=>{
+            $(`#post_artist_commentary_${section}_${part}`).data({section, part}).addClass('ds-input ds-commentary-input');
         });
     });
-    (DS.$overall_container = $('<div id="ds-commentary-container"></div>'))
-        .append(DS.$upload_artist_commentary_container)
-        .append(DS.$upload_commentary_translation_container).
-        append(PREVIEW_BUTTONS);
-    $('#tags-container').before(DS.$overall_container);
-    //Initialize commentary handlers
-    (DS.$preview_button = $('#ds-preview-button')).on(JSPLib.program.click, ()=>{
-        DtextPreview();
-        DS.$preview_button.hide();
-        DS.$edit_button.show();
-    });
-    (DS.$edit_button = $('#ds-edit-button')).on(JSPLib.program.click, ()=>{
-        DtextEdit();
-        DS.$preview_button.show();
-        DS.$edit_button.hide();
-    });
-    (DS.$remove_button = $('#ds-remove-button')).on(JSPLib.program.click, ()=>{
-        DS.$overall_container.remove();
-    });
-    //Wait until Danbooru binds the click, otherwise 2 click handlers will be bound
-    JSPLib.utility.recheckTimer({
-        check: () => JSPLib.utility.isNamespaceBound('#toggle-artist-commentary', 'click', 'danbooru'),
-        exec: ()=>{
-            DS.commentary_open = DS.$artist_commentary.is(':visible');
-            Danbooru.Upload.toggle_commentary = ToggleCommentary;
-            if (DS.commentary_open) {
-                DisplayUploadCommentary(true);
-            }
-            (DS.$toggle_artist_commentary = $('#toggle-artist-commentary')).off('click.danbooru').on(JSPLib.program.click, function(event) {
-                Danbooru.Upload.toggle_commentary();
-                event.preventDefault();
-            });
-            DS.translation_open = DS.$commentary_translation.is(':visible');
-            Danbooru.Upload.toggle_translation = ToggleTranslation;
-            (DS.$toggle_commentary_translation = $('#toggle-commentary-translation')).off('click.danbooru').on(JSPLib.program.click, function(event) {
-                Danbooru.Upload.toggle_translation();
-                event.preventDefault();
-            });
-        },
-    }, 500, JSPLib.utility.one_second * 15);
-    DS.$edit_commentary = $('.ds-edit-commentary');
-    DS.$preview_display = $('.ds-preview-display');
-    DS.$commentary_buttons = $('#ds-commentary-buttons');
-    DS.$markup_controls = $('.ds-markup-controls');
-    DS.$overall_container.find('.ds-commentary-input').on(JSPLib.program.keyup, ClearActions);
+    DS.$preview_button = $('#ds-preview-button').on(JSPLib.program.click, CommentaryDtextPreview);
+    DS.$edit_button = $('#ds-edit-button').on(JSPLib.program.click, CommentaryDtextEdit).hide();
+    let $source_tab_link = $('a.source-tab');
+    if ($source_tab_link.hasClass('active-tab')) {
+        setOverallContainerHeight();
+    } else {
+        $source_tab_link.one(JSPLib.program.click, setOverallContainerHeight);
+    }
 }
 
 // Settings functions
@@ -976,6 +1107,7 @@ function InitializeUploadCommentary() {
 function InitializeProgramValues() {
     Object.assign(DS, {
         $close_notice: $('#close-notice-link'),
+        size_observer: new ResizeObserver(ResizeDtextPreview),
     });
     return true;
 }
@@ -1013,9 +1145,6 @@ function Main() {
     } else if (DS.upload_commentary_enabled && (DS.action === 'show' && ['uploads', 'upload-media-assets'].includes(DS.controller))) {
         InitializeUploadCommentaryWait();
     }
-    $('.dtext-markup').on(JSPLib.program.click, DtextMarkup);
-    $('.dtext-action').on(JSPLib.program.click, DtextAction);
-    JSPLib.utility.blockActiveElementSwitch('.dtext-markup, .dtext-action');
 }
 
 /****Initialization****/
