@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedRelatedTags
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.8
+// @version      3.9
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1564,7 +1564,7 @@ function RenderSettingsMenu() {
     $('#irt-cache-editor-controls').append(JSPLib.menu.renderTextinput('data_name', 20, true));
     JSPLib.menu.engageUI(true, true);
     JSPLib.menu.saveUserSettingsClick();
-    JSPLib.menu.resetUserSettingsClick(LOCALSTORAGE_KEYS);
+    JSPLib.menu.resetUserSettingsClick();
     $('#irt-tag-name-view').on(JSPLib.program_click, ViewChecklistTag);
     $('#irt-tag-name-save').on(JSPLib.program_click, SaveChecklistTag);
     $('#irt-tag-name-populate').on(JSPLib.program_click, PopulateChecklistTag);
