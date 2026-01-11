@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      11.8
+// @version      11.10
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -3142,8 +3142,17 @@ function PageNavigation(pagetype) {
     if (IsPageType(STREAMING_PAGES) || IsTweetPage()) {
         if ($('#ntisas-side-menu').length === 0) {
             $(document.body).append(RenderSideMenu());
-            if (JSPLib._window.navigation) {
-                $(JSPLib._window.navigation).off('navigate.ntisas').on('navigate.ntisas', MenuNavigation);
+            $(window).off('popstate.ntisas').on('popstate.ntisas', (...args) => {console.log("popState:", args); MenuNavigation();});
+            if (!window.history.pushState_NTISAS) {
+                window.history.pushState = new Proxy(window.history.pushState, {
+                    apply (target, context, args) {
+                        let output = target.apply(context, args);
+                        MenuNavigation();
+                        console.log("pushState:", args);
+                        return output;
+                    },
+                });
+                window.history.pushState_NTISAS = true;
             }
             InitializeSideMenu();
             InitializeDatabaseLink();
@@ -3196,7 +3205,7 @@ function PageNavigation(pagetype) {
             }
         }
     }
-    UpdateSideMenu(NTISAS.page, !JSPLib._window.navigation);
+    UpdateSideMenu(NTISAS.page, false);
     UpdateSimilarControls();
     UpdateConfirmUploadControls();
     UpdateConfirmDownloadControls();
@@ -5409,9 +5418,8 @@ function SeenTweet(entries, observer) {
     });
 }
 
-function MenuNavigation(event) {
-    if (event.originalEvent.destination.url.startsWith('blob:')) return;
-    let page_type = GetPageType(event.originalEvent.destination.url);
+function MenuNavigation() {
+    let page_type = GetPageType(window.location.href);
     UpdateSideMenu(page_type, true);
 }
 
