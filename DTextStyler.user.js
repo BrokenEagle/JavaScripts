@@ -994,36 +994,63 @@ function InitializeButtons($button_container) {
     JSPLib.utility.blockActiveElementSwitch('.dtext-markup, .dtext-action');
 }
 
+function InitializeAutocomplete(selector) {
+    const printer = JSPLib.debug.getFunctionPrint('InitializeAutocomplete');
+    JSPLib.load.scriptWaitExecute(DS, 'IAC', {
+        available: () => {
+            DS.IAC.InitializeProgramValues(true);
+            DS.IAC.InitializeTextAreaAutocomplete(selector);
+            printer.debuglogLevel(`Initialized IAC textarea autocomplete: ${selector}`, JSPLib.debug.DEBUG);
+        },
+        fallback: () => {
+            printer.debuglogLevel(`Unable to initialize textarea autocomplete: ${selector}`, JSPLib.debug.DEBUG);
+        },
+    });
+}
+
 function InitializeDtextPreviews() {
+    const printer = JSPLib.debug.getFunctionPrint('InitializeDtextPreviews');
     let containers = JSPLib.utility.multiConcat(...DS.dtext_types_handled.map((type) => DTEXT_SELECTORS[type]));
     let final_selector = JSPLib.utility.joinList(containers, '.', ' .dtext-editor textarea', ', ');
-    $(final_selector).each((_i, textarea)=>{
-        let $textarea = $(textarea);
-        let $container = $textarea.closest('.input.dtext');
-        let $form = $container.closest('form');
-        $container.addClass('ds-container');
-        let {id, name} = JSPLib.utility.getAttr(textarea, ['id', 'name']);
-        let value = $textarea.val() ?? "";
-        let classes = ($container.find('.dtext-editor-large').length ? 'dtext-editor-large' : "");
-        $container.html(RenderDtextPreview(id, name, value, classes));
-        $container.prepend(RenderMarkupControls());
-        InitializeButtons($container.find('.ds-buttons'));
-        DS.size_observer.observe($container.find('.ds-edit-dtext').get(0));
-        $textarea.on(JSPLib.program.keyup, ClearActions);
-        let $controls = $form.children().eq(-1);
-        var $submit_control;
-        if ($controls.get(0).tagName === 'INPUT') {
-            $submit_control = $controls;
-            $controls = $('<div class="flex gap-2 items-center"></div>')
-            $controls.append($submit_control.detach());
-            $form.append($controls);
-        } else {
-            $submit_control = $controls.find('input[type=submit]');
-        }
-        $submit_control.after(CONTROL_BUTTONS);
-        $controls.find('.ds-show-preview').on(JSPLib.program.click, GeneralDtextPreview);
-        $controls.find('.ds-edit-preview').on(JSPLib.program.click, GeneralDtextEdit);
-    });
+    let textarea_selectors = [];
+    for (let type in DTEXT_SELECTORS) {
+        DTEXT_SELECTORS[type].forEach((classname) => {
+            let selector = `.${classname} .dtext-editor textarea`;
+            let $textareas = $(selector);
+            if ($textareas.length === 0) return;
+            textarea_selectors.push(selector);
+            $textareas.each((_i, textarea)=>{
+                let $textarea = $(textarea);
+                let $container = $textarea.closest('.input.dtext');
+                let $form = $container.closest('form');
+                $container.addClass('ds-container');
+                let {id, name} = JSPLib.utility.getAttr(textarea, ['id', 'name']);
+                let value = $textarea.val() ?? "";
+                let classes = ($container.find('.dtext-editor-large').length ? 'dtext-editor-large' : "");
+                $container.html(RenderDtextPreview(id, name, value, classes));
+                $container.prepend(RenderMarkupControls());
+                InitializeButtons($container.find('.ds-buttons'));
+                DS.size_observer.observe($container.find('.ds-edit-dtext').get(0));
+                $container.find('.ds-input').on(JSPLib.program.keyup, ClearActions);
+                let $controls = $form.children().eq(-1);
+                var $submit_control;
+                if ($controls.get(0).tagName === 'INPUT') {
+                    $submit_control = $controls;
+                    $controls = $('<div class="flex gap-2 items-center"></div>')
+                    $controls.append($submit_control.detach());
+                    $form.append($controls);
+                } else {
+                    $submit_control = $controls.find('input[type=submit]');
+                }
+                $submit_control.after(CONTROL_BUTTONS);
+                $controls.find('.ds-show-preview').on(JSPLib.program.click, GeneralDtextPreview);
+                $controls.find('.ds-edit-preview').on(JSPLib.program.click, GeneralDtextEdit);
+            });
+        });
+    }
+    if(textarea_selectors.length) {
+        InitializeAutocomplete(textarea_selectors.join(', '));
+    }
 }
 
 function InitializeCommentaryDialog() {
@@ -1062,6 +1089,7 @@ function InitializeCommentaryDialog() {
         },
     });
     DS.$add_commentary_dialog.find('.ds-input').on(JSPLib.program.keyup, ClearActions);
+    InitializeAutocomplete('#edit-commentary .ds-input');
 }
 
 function InitializeUploadCommentaryWait() {
@@ -1119,6 +1147,7 @@ function InitializeUploadCommentary() {
         $source_tab_link.one(JSPLib.program.click, setOverallContainerHeight);
     }
     DS.$edit_commentary.find('.ds-input').on(JSPLib.program.keyup, ClearActions);
+    InitializeAutocomplete('.source-tab .ds-input');
 }
 
 // Settings functions
@@ -1127,6 +1156,7 @@ function InitializeProgramValues() {
     Object.assign(DS, {
         size_observer: new ResizeObserver(ResizeDtextPreview),
     });
+    JSPLib.load.setProgramGetter(DS, 'IAC', 'IndexedAutocomplete', 29.32);
     return true;
 }
 
