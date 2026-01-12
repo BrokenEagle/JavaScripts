@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DTextStyler
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.11
+// @version      5.12
 // @description  Danbooru DText UI addon.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -90,6 +90,31 @@ JSPLib.utility.subscribeDOMProperty = function (obj, prop, func) {
         },
         configurable: true,
         enumerable: true,
+    });
+};
+
+JSPLib.utility.setPropertyTrap = function (obj, property, {getter = null, setter = null} = {}) {
+    const private_property = '_' + property;
+    obj[property] = new Proxy(obj, {
+        get(target, prop, receiver) {
+            getter?.(prop);
+            return target[private_property][prop];
+        },
+        set(target, prop, value, receiver) {
+            setter?.(prop, value);
+            target[private_property][prop] = value;
+        },
+    });
+    Object.defineProperty(obj, property, {
+        configurable: false,
+        enumerable: true,
+        writeable: false,
+    });
+    Object.defineProperty(obj, private_property, {
+        value: {},
+        configurable: false,
+        enumerable: false,
+        writeable: false,
     });
 };
 
@@ -1092,27 +1117,12 @@ function InitializeCommentaryDialog() {
     InitializeAutocomplete('#edit-commentary .ds-input');
 }
 
-function InitializeUploadCommentaryWait() {
-    // Wait until the commentary inputs have been set by Danbooru
-    DS.upload_commentary_initialized = false;
-    JSPLib.utility.subscribeDOMProperty($("#post_artist_commentary_original_title").get(0), 'value', (title) => {
-        DS.upload_commentary_initialized = true;
-        DS.upload_commentary_description = $(".post_artist_commentary_original_description .dtext-editor").get(0).editor.dtext;
-    });
-    JSPLib.utility.recheckInterval({
-        check: () => DS.upload_commentary_initialized,
-        exec: InitializeUploadCommentary,
-        fail: InitializeUploadCommentary,
-        interval: 250,
-        duration: JSPLib.utility.one_second * 5,
-    });
-}
-
 function InitializeUploadCommentary() {
     const setOverallContainerHeight = function () {
         let {height} = getComputedStyle(DS.$overall_container.get(0));
         DS.$overall_container.css({height});
     };
+    let description = $(".post_artist_commentary_original_description .dtext-editor").get(0).editor?.dtext ?? "";
     $('.post_artist_commentary_original_description, .post_artist_commentary_translated_description').remove();
     DS.$overall_container = $('<div></div>');
     DS.$edit_commentary = $('<div></div>');
@@ -1132,7 +1142,7 @@ function InitializeUploadCommentary() {
     $('div.source-tab').append(DS.$overall_container);
     $('div.source-tab').append(DS.$commentary_buttons);
     InitializeButtons(DS.$markup_controls.find('.ds-buttons'));
-    $("#post_artist_commentary_original_description").val(DS.upload_commentary_description);
+    $("#post_artist_commentary_original_description").val(description);
     ['original', 'translated'].forEach((section)=>{
         ['title', 'description'].forEach((part)=>{
             $(`#post_artist_commentary_${section}_${part}`).data({section, part}).addClass('ds-input ds-commentary-input');
@@ -1148,6 +1158,13 @@ function InitializeUploadCommentary() {
     }
     DS.$edit_commentary.find('.ds-input').on(JSPLib.program.keyup, ClearActions);
     InitializeAutocomplete('.source-tab .ds-input');
+    JSPLib.utility.setPropertyTrap($(".post_artist_commentary_original_description .dtext-editor").get(0), 'editor', {
+        setter: (prop, value) => {
+            if (prop === 'dtext') {
+                $("#post_artist_commentary_original_description").val(value);
+            }
+        },
+    });
 }
 
 // Settings functions
@@ -1193,7 +1210,7 @@ function Main() {
     if (DS.post_commentary_enabled && DS.controller === 'posts' && DS.action === 'show') {
         InitializeCommentaryDialog();
     } else if (DS.upload_commentary_enabled && (DS.action === 'show' && ['uploads', 'upload-media-assets'].includes(DS.controller))) {
-        InitializeUploadCommentaryWait();
+        InitializeUploadCommentary();
     }
 }
 
