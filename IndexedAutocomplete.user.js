@@ -2521,13 +2521,14 @@ function GetRecheckExpires() {
     return IAC.recheck_data_interval * JSPLib.utility.one_day;
 }
 
-function InitializeProgramValues() {
+function InitializeProgramValues(override = false) {
+    if (InitializeProgramValues.initialized) return;
     const printer = JSPLib.debug.getFunctionPrint('InitializeProgramValues');
     if (!JSPLib.storage.use_indexed_db) {
         printer.debugwarn("No Indexed DB! Exiting...");
         return false;
     }
-    if (document.querySelector(AUTOCOMPLETE_ALL_SELECTORS) === null) {
+    if (!override && document.querySelector(AUTOCOMPLETE_ALL_SELECTORS) === null) {
         printer.debugwarn("No autocomplete inputs! Exiting...");
         return false;
     }
@@ -2552,6 +2553,9 @@ function InitializeProgramValues() {
         saved_search_source: AnySourceIndexed('ss'),
         static_metatag_source: StaticMetatagSource,
     });
+    SetTagAutocompleteSource();
+    CorrectUsageData();
+    InitializeProgramValues.initialized = true;
     return true;
 }
 
@@ -2631,9 +2635,7 @@ function Main() {
         menu_css: SETTINGS_MENU_CSS,
     };
     if (!JSPLib.menu.preloadScript(IAC, preload)) return;
-    CorrectUsageData();
     SetupAutocompleteInitializations();
-    SetTagAutocompleteSource();
     JSPLib.statistics.addPageStatistics();
     JSPLib.load.noncriticalTasks(CleanupTasks);
 }
@@ -2663,7 +2665,7 @@ JSPLib.storage.indexedDBValidator = ValidateEntry;
 
 //Export JSPLib
 JSPLib.load.exportData({other_data: TERM_REGEX});
-JSPLib.load.exportFuncs({always_list: [InitializeAutocompleteIndexed, InitializeTagQueryAutocompleteIndexed]});
+JSPLib.load.exportFuncs({always_list: [InitializeAutocompleteIndexed, InitializeTagQueryAutocompleteIndexed, InitializeTextAreaAutocomplete, InitializeProgramValues]});
 
 /****Execution start****/
 
