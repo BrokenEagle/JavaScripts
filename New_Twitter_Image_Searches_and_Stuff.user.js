@@ -53,6 +53,10 @@ JSPLib.program = new Proxy(JSPLib, {
     },
 });
 
+JSPLib.debug.debugError = function () {
+    return (JSPLib.debug.mode ? new Error() : null);
+};
+
 /****Global variables****/
 
 //Exterior script variables
@@ -4470,7 +4474,7 @@ function QueueStorageRequest(type, key, value, database) {
             value,
             database,
             deferred: JSPLib.utility.createPromise(),
-            error: (JSPLib.debug.mode ? new Error() : null),
+            error: JSPLib.debug.debugError(),
         };
         if (CACHE_STORAGE_TYPES.includes(type)) {
             JSPLib.debug.recordTime(key, 'Storage-queue');
@@ -4558,7 +4562,7 @@ function QueueNetworkRequest (type, item) {
         item,
         request_key,
         deferred: JSPLib.utility.createPromise(),
-        error: (JSPLib.debug.mode ? new Error() : null),
+        error: JSPLib.debug.debugError(),
     };
     JSPLib.debug.recordTime(request_key, 'Network-queue');
     QUEUED_NETWORK_REQUESTS.push(request);
