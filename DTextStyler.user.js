@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DTextStyler
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.10
+// @version      5.11
 // @description  Danbooru DText UI addon.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -671,7 +671,7 @@ function ClearActions(event) {
     $text_area.data('undo_actions', []);
     $text_area.data('undo_index', 0);
     $text_area.data('undo_saved', false);
-    printer.debuglog('Cleared actions.');
+    printer.debuglogLevel('Cleared actions.', JSPLib.debug.DEBUG);
 }
 
 function DisplayUploadCommentary(open) {
@@ -1061,7 +1061,7 @@ function InitializeCommentaryDialog() {
             DS.$add_commentary_dialog.on('dialogopen.ds', OpenDialog);
         },
     });
-    DS.$add_commentary_dialog.find('.ds-commentary-input').on(JSPLib.program.keyup, ClearActions);
+    DS.$add_commentary_dialog.find('.ds-input').on(JSPLib.program.keyup, ClearActions);
 }
 
 function InitializeUploadCommentaryWait() {
@@ -1118,6 +1118,7 @@ function InitializeUploadCommentary() {
     } else {
         $source_tab_link.one(JSPLib.program.click, setOverallContainerHeight);
     }
+    DS.$edit_commentary.find('.ds-input').on(JSPLib.program.keyup, ClearActions);
 }
 
 // Settings functions
