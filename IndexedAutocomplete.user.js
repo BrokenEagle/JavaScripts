@@ -2208,11 +2208,11 @@ function InitializeAutocompleteIndexed(selector, keycode, {multiple = false, wik
     $fields.addClass('iac-autocomplete');
 }
 
-function InitializeTextAreaAutocomplete() {
+function InitializeTextAreaAutocomplete(selector = 'textarea:not([data-autocomplete]), input[type=text]:not([data-autocomplete])') {
     IAC.ac_source = JSPLib.storage.getLocalData('iac-ac-source', {default_val: 0});
     IAC.ac_mode = JSPLib.storage.getLocalData('iac-ac-mode', {default_val: 0});
     IAC.ac_caps = JSPLib.storage.getLocalData('iac-ac-caps', {default_val: 0});
-    $('textarea:not([data-autocomplete]), input[type=text]:not([data-autocomplete])').on(JSPLib.program_keydown, null, 'alt+a', (event) => {
+    $(selector).filter(':not(.iac-autocomplete)').on(JSPLib.program_keydown, null, 'alt+a', (event) => {
         let $input = $(event.currentTarget);
         let type = AUTOCOMPLETE_SOURCE[IAC.ac_source];
         if (!$input.data('insert-autocomplete')) {
@@ -2221,7 +2221,7 @@ function InitializeTextAreaAutocomplete() {
             DisableTextAreaAutocomplete($input, type);
         }
     }).data('insert-autocomplete', false);
-    $('textarea:not([data-autocomplete]), input[type=text]:not([data-autocomplete])').on(JSPLib.program_keydown, null, 'alt+1 alt+2 alt+3', (event) => {
+    $(selector).filter(':not(.iac-autocomplete)').on(JSPLib.program_keydown, null, 'alt+1 alt+2 alt+3', (event) => {
         if (event.originalEvent.key === '1') {
             IAC.ac_source = (IAC.ac_source + 1) % AUTOCOMPLETE_SOURCE.length;
             JSPLib.notice.notice(RenderAutocompleteNotice('source', AUTOCOMPLETE_SOURCE, IAC.ac_source));
@@ -2236,7 +2236,7 @@ function InitializeTextAreaAutocomplete() {
             JSPLib.storage.setLocalData('iac-ac-caps', IAC.ac_caps);
         }
         IAC.channel.postMessage({type: 'text_autocomplete', source: IAC.ac_source, mode: IAC.ac_mode, caps: IAC.ac_caps});
-    });
+    }).addClass('iac-autocomplete');
 }
 
 function EnableTextAreaAutocomplete($input, type) {
