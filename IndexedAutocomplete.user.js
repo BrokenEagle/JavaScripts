@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.32
+// @version      29.33
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1767,7 +1767,8 @@ function InsertUserSelected(input, item) {
     StoreUsageData('insert', term);
 }
 
-function InsertCompletion(input, completion) {
+function InsertCompletion(input, item) {
+    let completion = item.name;
     if (!$(input).hasClass('iac-autocomplete')) {
         Danbooru.Autocomplete.insert_completion(input, completion);
         return;
@@ -1808,15 +1809,18 @@ function InsertCompletion(input, completion) {
         // Trim all whitespace (tabs, spaces) except for line returns
         before_caret_text = before_caret_text.replace(/^[ \t]+|[ \t]+$/gm, "");
         after_caret_text = after_caret_text.replace(/^[ \t]+|[ \t]+$/gm, "");
-        var query = ParseQuery(input.value, input.selectionStart);
         before_caret_text = before_caret_text.substring(0, before_caret_text.search(/\S+$/));
-        var prefix = input.id === 'post_tag_string' || !CATEGORY_REGEX.test(query.prefix) ? query.prefix : query.operator;
-        if (IAC.is_bur && IAC.BUR_source_enabled) {
-            let line_text = before_caret_text.split('\n').at(-1);
-            let words = line_text.split(/\s+/);
-            if (words.length === 1 || words[0] !== 'update') {
-                // Commands should not have a prefix, and only the update command should have tags with prefixes
-                prefix = "";
+        var prefix = "";
+        if (item.source !== 'metatag') {
+            var query = ParseQuery(input.value, input.selectionStart);
+            prefix = input.id === 'post_tag_string' || !CATEGORY_REGEX.test(query.prefix) ? query.prefix : query.operator;
+            if (IAC.is_bur && IAC.BUR_source_enabled) {
+                let line_text = before_caret_text.split('\n').at(-1);
+                let words = line_text.split(/\s+/);
+                if (words.length === 1 || words[0] !== 'update') {
+                    // Commands should not have a prefix, and only the update command should have tags with prefixes
+                    prefix = "";
+                }
             }
         }
         before_caret_text += prefix + completion + ' ';
@@ -2097,7 +2101,7 @@ function InitializeTagQueryAutocompleteIndexed(fields_selector = AUTOCOMPLETE_MU
             if (event.key === "Enter") {
                 event.stopImmediatePropagation();
             }
-            InsertCompletion(this, ui.item.name);
+            InsertCompletion(this, ui.item);
             InsertUserSelected(this, ui.item);
             return false;
         },
@@ -2111,7 +2115,7 @@ function InitializeTagQueryAutocompleteIndexed(fields_selector = AUTOCOMPLETE_MU
             for (let key in METATAG_REGEXES) {
                 let match = METATAG_REGEXES[key].exec(metatag);
                 if (match) {
-                    metatag_type = match[0];
+                    metatag_type = key;
                     break;
                 }
             }
@@ -2174,7 +2178,7 @@ function InitializeAutocompleteIndexed(selector, keycode, {multiple = false, wik
         select (event, ui) {
             InsertUserSelected(this, ui.item);
             if (multiple || wiki_link) {
-                InsertCompletion(this, ui.item.name);
+                InsertCompletion(this, ui.item);
                 if (wiki_link || event.key === 'Enter') {
                     event.stopImmediatePropagation();
                 }
