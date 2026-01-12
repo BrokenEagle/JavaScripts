@@ -6141,9 +6141,7 @@ function MarkupStreamTweet(tweet) {
         }
     } catch (e) {
         printer.debugerror(e, tweet);
-        if (JSPLib.debug.mode) {
-            JSPLib.notice.error("Error marking up stream tweet! (check debug console for details)", false);
-        }
+        JSPLib.notice.debugError("Error marking up stream tweet! (check debug console for details)", false);
     }
     $('.ntisas-tweet-actions', tweet).after('<div class="ntisas-footer-section"></div>');
 }
@@ -6221,9 +6219,7 @@ function MarkupMainTweet(tweet) {
         }
     } catch (e) {
         printer.debugerror(e, tweet);
-        if (JSPLib.debug.mode) {
-            JSPLib.notice.error("Error marking up main tweet! (check debug console for details)", false);
-        }
+        JSPLib.notice.debugError("Error marking up main tweet! (check debug console for details)", false);
     }
     $('.ntisas-tweet-actions', tweet).after('<div class="ntisas-footer-section"></div>');
 }
