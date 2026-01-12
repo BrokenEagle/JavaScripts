@@ -319,6 +319,9 @@ const PROGRAM_CSS = `
     white-space: nowrap;
     align-items: center;
 }
+.iac-line-entry.ui-menu-item-wrapper.ui-state-active {
+    border: none;
+}
 .iac-line-entry a {
     white-space: normal;
 }
