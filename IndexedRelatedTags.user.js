@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedRelatedTags
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.9
+// @version      3.10
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -32,20 +32,25 @@
 
 /****Library updates****/
 
-JSPLib.danbooru.initializeAutocomplete = function (selector, autocomplete_type, query_type) {
-    let $input = $(selector);
-    JSPLib.utility.setDataAttribute($input, 'autocomplete', query_type);
-    $input.autocomplete({
-        select (_event, ui) {
-            Danbooru.Autocomplete.insert_completion(this, ui.item.value);
-            return false;
-        },
-        async source(_req, resp) {
-            let term = Danbooru.Autocomplete.current_term(this.element);
-            let results = await Danbooru.Autocomplete.autocomplete_source(term, query_type);
-            resp(results);
-        },
-    });
+JSPLib.danbooru.initializeAutocomplete = function (selector, autocomplete_type) {
+    let $fields = $(selector);
+    JSPLib.utility.setDataAttribute($fields, 'autocomplete', autocomplete_type);
+    if (['tag-edit', 'tag-query'].includes(autocomplete_type)) {
+        $fields.autocomplete({
+            select (_event, ui) {
+                Danbooru.Autocomplete.insert_completion(this, ui.item.value);
+                return false;
+            },
+            async source(_request, respond) {
+                let term = Danbooru.Autocomplete.current_term(this.element);
+                let results = await Danbooru.Autocomplete.autocomplete_source(term, 'tag_query');
+                respond(results);
+            },
+        });
+    } else {
+        let query_type = autocomplete_type.replaceAll(/-/g, '_');
+        Danbooru.Autocomplete.initialize_fields($fields, query_type);
+    }
 };
 
 /****Global variables****/
