@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      11.11
+// @version      11.12
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2512,7 +2512,7 @@ function ValidateProgramData(key, entry) {
             break;
         case 'ntisas-postver-lastid':
         case 'ntisas-badver-lastid':
-            if (!JSPLib.validate.validateID(entry)) {
+            if (!JSPLib.utility.validateID(entry)) {
                 checkerror = ["Value is not a valid ID."];
             }
             break;
@@ -2767,7 +2767,7 @@ function PromptSavePostIDs(tweet_id, message, initial_post_ids) {
         let confirm_post_ids = JSPLib.utility.arrayUnique(
             prompt_string.split(',')
                 .map(Number)
-                .filter((num) => JSPLib.validate.validateID(num))
+                .filter((num) => JSPLib.utility.validateID(num))
         );
         printer.debuglog("Confirmed IDs:", confirm_post_ids);
         if (confirm_post_ids.length === 0) {
@@ -3281,7 +3281,7 @@ async function CheckPostvers() {
         SavePostvers(add_entries, rem_entries);
         let lastid = JSPLib.danbooru.getNextPageID(post_versions, true);
         //Since the post version last ID is critical, an extra sanity check has been added
-        if (JSPLib.validate.validateID(lastid)) {
+        if (JSPLib.utility.validateID(lastid)) {
             JSPLib.storage.setLocalData('ntisas-postver-lastid', lastid);
             let all_timestamps = JSPLib.utility.getObjectAttributes(post_versions, 'updated_at');
             let normal_timestamps = all_timestamps.map((timestamp) => (new Date(timestamp).getTime()));
@@ -3313,7 +3313,7 @@ async function CheckServerBadTweets() {
             SavePostvers(add_entries, rem_entries);
             let lastid = JSPLib.danbooru.getNextPageID(post_versions, true);
             //Since the post version last ID is critical, an extra sanity check has been added
-            if (JSPLib.validate.validateID(lastid)) {
+            if (JSPLib.utility.validateID(lastid)) {
                 JSPLib.storage.setLocalData('ntisas-badver-lastid', lastid);
                 InitializeCurrentRecords();
                 NTISAS.channel.postMessage({type: 'currentrecords'});
@@ -3346,7 +3346,7 @@ function SavePostvers(add_entries, rem_entries) {
         let tweet_key = 'tweet-' + tweet_id;
         let post_ids = add_entries[tweet_id];
         JSPLib.storage.retrieveData(tweet_key, {bypass_cache: true, database: JSPLib.storage.twitterstorage}).then((data) => {
-            if (JSPLib.validate.validateIDList(data)) {
+            if (JSPLib.utility.validateIDList(data)) {
                 printer.debuglogLevel("Tweet adds/rems - existing IDs:", tweet_key, data, JSPLib.debug.DEBUG);
                 post_ids = JSPLib.utility.arrayUnique(JSPLib.utility.arrayDifference(JSPLib.utility.arrayUnion(data, add_entries[tweet_id]), rem_entries[tweet_id]));
             }
@@ -3363,7 +3363,7 @@ function SavePostvers(add_entries, rem_entries) {
         let tweet_key = 'tweet-' + tweet_id;
         let post_ids = add_entries[tweet_id];
         JSPLib.storage.retrieveData(tweet_key, {bypass_cache: true, database: JSPLib.storage.twitterstorage}).then((data) => {
-            if (JSPLib.validate.validateIDList(data)) {
+            if (JSPLib.utility.validateIDList(data)) {
                 printer.debuglog("Tweet adds - existing IDs:", tweet_key, data);
                 post_ids = JSPLib.utility.arrayUnion(data, post_ids);
             }
@@ -3380,7 +3380,7 @@ function SavePostvers(add_entries, rem_entries) {
         let tweet_key = 'tweet-' + tweet_id;
         let post_ids = [];
         JSPLib.storage.retrieveData(tweet_key, {bypass_cache: true, database: JSPLib.storage.twitterstorage}).then((data) => {
-            if (data !== null && JSPLib.validate.validateIDList(data)) {
+            if (data !== null && JSPLib.utility.validateIDList(data)) {
                 printer.debuglog("Tweet removes - existing IDs:", tweet_key, data);
                 post_ids = JSPLib.utility.arrayUnique(JSPLib.utility.arrayDifference(data, rem_entries[tweet_id]));
             }
