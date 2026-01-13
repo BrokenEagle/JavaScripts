@@ -1112,6 +1112,7 @@ const SOURCE_CONFIG = {
         url: 'favorite_groups',
         data: (term) => ({
             search: {
+                order: 'post_count',
                 name_matches: term,
                 creator_id: IAC.user_id,
             },
