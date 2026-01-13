@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.33
+// @version      29.34
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -741,34 +741,6 @@ const COUNT_METATAG_SYNONYMS = COUNT_METATAGS.map((metatag) => {
 
 const CATEGORY_COUNT_METATAGS = ['gentags', 'arttags', 'copytags', 'chartags', 'metatags'];
 
-const STATIC_METATAGS = [
-    'order', 'status', 'rating', 'locked', 'child', 'parent', 'filetype', 'disapproved', 'embedded',
-    'commentary', 'is', 'has',
-];
-
-const USER_METATAGS = [
-    'user', 'approver', 'commenter', 'comm', 'noter', 'noteupdater', 'artcomm', 'commentaryupdater',
-    'flagger', 'appealer', 'upvote', 'downvote', 'fav', 'ordfav'
-];
-
-const POOL_METATAGS = [
-    'pool', 'ordpool'
-];
-
-const FAVGROUP_METATAGS = [
-    'favgroup', 'ordfavgroup'
-];
-
-const SAVED_SEARCH_METATAGS = [
-    'search'
-];
-
-const ALL_METATAGS = JSPLib.utility.multiConcat([
-    'note', 'comment', 'id', 'source', 'md5', 'width', 'height', 'mpixels', 'ratio', 'score', 'upvotes',
-    'downvotes', 'favcount', 'filesize', 'date', 'age', 'limit', 'tagcount', 'pixiv_id', 'pixiv',
-    'unaliased', 'exif', 'duration', 'random', 'ai',
-], STATIC_METATAGS, USER_METATAGS, POOL_METATAGS, FAVGROUP_METATAGS, SAVED_SEARCH_METATAGS, COUNT_METATAGS, COUNT_METATAG_SYNONYMS, CATEGORY_COUNT_METATAGS);
-
 const ORDER_METATAGS = JSPLib.utility.multiConcat([
     'id', 'id_desc',
     'md5', 'md5_asc',
@@ -798,8 +770,53 @@ COUNT_METATAG_SYNONYMS.flatMap((metatag) => [metatag, metatag + '_asc']),
 CATEGORY_COUNT_METATAGS.flatMap((metatag) => [metatag, metatag + '_asc'])
 );
 
-const METATAG_REGEXES = {
-    static: RegExp('^(?:' + STATIC_METATAGS.join('|') + ')$'),
+const POST_STATUSES = ['active', 'deleted', 'pending', 'flagged', 'appealed', 'banned', 'modqueue', 'unmoderated'];
+const POST_RATINGS = ['general', 'sensitive', 'questionable', 'explicit'];
+const FILE_TYPES = ['jpg', 'png', 'gif', 'webp', 'avif', 'mp4', 'webm', 'swf', 'zip'];
+const DISAPPROVAL_REASONS = ['breaks_rules', 'poor_quality', 'disinterest'];
+
+const QUERY_METATAGS_MAP = {
+    is: JSPLib.utility.multiConcat(['parent', 'child', 'sfw', 'nsfw'], POST_STATUSES, FILE_TYPES, POST_RATINGS),
+    has: ['parent', 'children', 'source', 'appeals', 'flags', 'replacements', 'comments', 'commentary', 'notes', 'pools'],
+    status: JSPLib.utility.concat(['any'], POST_STATUSES),
+    child: JSPLib.utility.concat(['any', 'none'], POST_STATUSES),
+    parent: JSPLib.utility.concat(['any', 'none'], POST_STATUSES),
+    rating: POST_RATINGS,
+    source: ['none', 'http'],
+    embedded: ['true', 'false'],
+    filetype: FILE_TYPES,
+    commentary: ['true', 'false', 'translated', 'untranslated'],
+    disapproved: DISAPPROVAL_REASONS,
+    order: ORDER_METATAGS,
+};
+
+const QUERY_STATIC_METATAGS = Object.keys(QUERY_METATAGS_MAP);
+
+const USER_METATAGS = [
+    'user', 'approver', 'commenter', 'comm', 'noter', 'noteupdater', 'artcomm', 'commentaryupdater',
+    'flagger', 'appealer', 'upvote', 'downvote', 'fav', 'ordfav'
+];
+
+const POOL_METATAGS = [
+    'pool', 'ordpool'
+];
+
+const FAVGROUP_METATAGS = [
+    'favgroup', 'ordfavgroup'
+];
+
+const SAVED_SEARCH_METATAGS = [
+    'search'
+];
+
+const QUERY_METATAGS = JSPLib.utility.multiConcat([
+    'note', 'comment', 'id', 'source', 'md5', 'width', 'height', 'mpixels', 'ratio', 'score', 'upvotes',
+    'downvotes', 'favcount', 'filesize', 'date', 'age', 'limit', 'tagcount', 'pixiv_id', 'pixiv',
+    'unaliased', 'exif', 'duration', 'random', 'ai',
+], QUERY_STATIC_METATAGS, USER_METATAGS, POOL_METATAGS, FAVGROUP_METATAGS, SAVED_SEARCH_METATAGS, COUNT_METATAGS, COUNT_METATAG_SYNONYMS, CATEGORY_COUNT_METATAGS).toSorted();
+
+const QUERY_METATAG_REGEXES = {
+    static: RegExp('^(?:' + QUERY_STATIC_METATAGS.join('|') + ')$'),
     user: RegExp('^(?:' + USER_METATAGS.join('|') + ')$'),
     pool: RegExp('^(?:' + POOL_METATAGS.join('|') + ')$'),
     favgroup: RegExp('^(?:' + FAVGROUP_METATAGS.join('|') + ')$'),
@@ -807,26 +824,31 @@ const METATAG_REGEXES = {
     tag: /^tag$/,
 };
 
-const POST_STATUSES = ['active', 'deleted', 'pending', 'flagged', 'appealed', 'banned', 'modqueue', 'unmoderated'];
-const POST_RATINGS = ['general', 'sensitive', 'questionable', 'explicit'];
-const FILE_TYPES = ['jpg', 'png', 'gif', 'webp', 'avif', 'mp4', 'webm', 'swf', 'zip'];
+const CATEGORY_NAMES = ['meta', 'general', 'character', 'copyright', 'artist'];
+const CATEGORIZATION_METATAGS = JSPLib.utility.concat(['ch', 'co', 'gen', 'char', 'copy', 'art'], CATEGORY_NAMES);
 
-const STATIC_METATAGS_MAP = {
-    is: JSPLib.utility.multiConcat(['parent', 'child', 'sfw', 'nsfw'], POST_STATUSES, FILE_TYPES, POST_RATINGS),
-    has: ['parent', 'children', 'source', 'appeals', 'flags', 'replacements', 'comments', 'commentary', 'notes', 'pools'],
-    status: JSPLib.utility.concat(['any'], POST_STATUSES),
-    child: JSPLib.utility.concat(['any', 'none'], POST_STATUSES),
-    parent: JSPLib.utility.concat(['any', 'none'], POST_STATUSES),
+const EDIT_METATAGS_MAP = {
+    status: ['active', 'banned', 'pending'],
+    child: ['none'],
+    parent: ['none'],
     rating: POST_RATINGS,
-    embedded: ['true', 'false'],
-    filetype: FILE_TYPES,
-    commentary: ['true', 'false', 'translated', 'untranslated'],
-    disapproved: ['breaks_rules', 'poor_quality', 'disinterest'],
-    order: ORDER_METATAGS,
+    source: ['none'],
+    upvote: ['self'],
+    downvote: ['self'],
+    fav: ['self'],
+    disapproved: DISAPPROVAL_REASONS,
 };
 
-const CATEGORY_NAMES = ['meta', 'general', 'character', 'copyright', 'artist'];
-const TYPE_TAGS = JSPLib.utility.concat(['ch', 'co', 'gen', 'char', 'copy', 'art'], CATEGORY_NAMES);
+const EDIT_STATIC_METATAGS = Object.keys(EDIT_METATAGS_MAP);
+
+const EDIT_METATAGS = JSPLib.utility.multiConcat([
+    'newpool', 'pool', 'favgroup',
+], EDIT_STATIC_METATAGS, CATEGORIZATION_METATAGS).toSorted();
+
+const EDIT_METATAG_REGEXES = Object.assign({}, QUERY_METATAG_REGEXES, {
+    static: RegExp('^(?:' + EDIT_STATIC_METATAGS.join('|') + ')$'),
+    user: RegExp('^(?:' + JSPLib.utility.arrayDifference(USER_METATAGS, ['upvote', 'downvote', 'fav']).join('|') + ')$')
+}) ;
 
 const CATEGORY_DATA = CATEGORY_NAMES.map((category) => ({
     type: 'tag',
@@ -840,8 +862,8 @@ const CATEGORY_DATA = CATEGORY_NAMES.map((category) => ({
 
 //Regex constants
 
-const TERM_REGEX = RegExp('([-~]*)(?:(' + JSPLib.utility.concat(ALL_METATAGS, TYPE_TAGS).join('|') + '):)?(\\S*)$', 'i');
-const CATEGORY_REGEX = RegExp('^[-~]*(?:' + TYPE_TAGS.join('|') + '):$', 'i');
+const TERM_REGEX = RegExp('([-~]*)(?:(' + JSPLib.utility.concat(QUERY_METATAGS, CATEGORIZATION_METATAGS).join('|') + '):)?(\\S*)$', 'i');
+const CATEGORY_REGEX = RegExp('^[-~]*(?:' + CATEGORIZATION_METATAGS.join('|') + '):$', 'i');
 
 const WORD_DELIMITERS = '_+:;!./()-';
 const DELIMITER_GROUP = `[${WORD_DELIMITERS}]`;
@@ -1364,6 +1386,14 @@ function ValidateCached(cached, type, term, word_mode) {
 
 //Helper functions
 
+function GetQueryType(element) {
+    if (element.id === 'post_tag_string') {
+        return 'tag-edit';
+    }
+    let query_type = $(element).data('autocomplete');
+    return (query_type === 'tag-edit' ? 'tag-query' : query_type);
+}
+
 function ParseQuery(text, caret) {
     let before_caret_text = text.substring(0, caret);
     let match = before_caret_text.match(TERM_REGEX);
@@ -1420,31 +1450,35 @@ const MapMetatag = (type, metatag, value) => ({
     label: metatag + ':' + value,
     value: metatag + ':' + value,
     name: metatag + ':' + value,
+    original: value,
     post_count: METATAG_TAG_CATEGORY,
     source: 'metatag',
     category: METATAG_TAG_CATEGORY
 });
 
-function MetatagData() {
-    if (!MetatagData.data) {
-        MetatagData.data = ALL_METATAGS
+function MetatagData(type) {
+    MetatagData.memoized ??= {};
+    if (!MetatagData.memoized[type]) {
+        let metatags = (type === 'tag-edit' ? EDIT_METATAGS : QUERY_METATAGS);
+        MetatagData.memoized[type] = metatags
             .filter((tag) => (tag[0] !== '-'))
             .map((tag) => (MapMetatag('tag', tag, "")));
     }
-    return MetatagData.data;
+    return MetatagData.memoized[type];
 }
 
-function SubmetatagData() {
-    if (!SubmetatagData.data) {
-        SubmetatagData.data = [];
-        for (let metatag in STATIC_METATAGS_MAP) {
-            for (let i = 0; i < STATIC_METATAGS_MAP[metatag].length; i++) {
-                let submetatag = STATIC_METATAGS_MAP[metatag][i];
-                SubmetatagData.data.push(MapMetatag('metatag', metatag, submetatag));
+function SubmetatagData(type) {
+    SubmetatagData.memoized ??= {};
+    if (!SubmetatagData.memoized[type]) {
+        SubmetatagData.memoized[type] = [];
+        let mapping = (type === 'tag-edit' ? EDIT_METATAGS_MAP : QUERY_METATAGS_MAP);
+        for (let metatag in mapping) {
+            for (let i = 0; i < mapping[metatag].length; i++) {
+                SubmetatagData.memoized[type].push(MapMetatag('metatag', metatag, mapping[metatag][i]));
             }
         }
     }
-    return SubmetatagData.data;
+    return SubmetatagData.memoized[type];
 }
 
 function GlobRegex(search, use_capture, return_groups = false) {
@@ -1682,9 +1716,16 @@ function AddUserSelected(type, metatag, term, data, query_type, word_mode, key) 
         return;
     }
     let user_order = GetChoiceOrder(type, term, word_mode);
+    let check_values = ['tag-edit', 'tag-query'].includes(query_type);
+    let valid_values = (check_values ? JSPLib.utility.getObjectAttributes(data, 'name') : []);
     for (let i = user_order.length - 1; i >= 0; i--) {
         let checkterm = user_order[i];
         if (query_type === 'tag' && choice[checkterm].category === METATAG_TAG_CATEGORY) {
+            // Don't insert static tags on tag-only inputs
+            continue;
+        }
+        if (check_values && !valid_values.includes(checkterm)) {
+            // Don't insert static metatags where they're not valid: tag-query and tag-edit have different sets.
             continue;
         }
         //Splice out Danbooru data if it exists
@@ -1726,15 +1767,10 @@ function InsertUserSelected(input, item) {
     } else {
         term = item.name;
     }
-    if (item.category === METATAG_TAG_CATEGORY) {
-        if (type === 'tag') {
-            input.selectionStart = input.selectionEnd = input.selectionStart - 1;
-            setTimeout(() => {$(input).autocomplete('search');}, 100);
-        }
+    if (item.category === METATAG_TAG_CATEGORY || item.source === 'tag-abbreviation') {
         source_data = item;
-    } else if (item.source === 'tag-abbreviation') {
-        source_data = item;
-    } else
+    }
+    else
     //Final failsafe
     if (!IAC.source_data[type] || !IAC.source_data[type][term]) {
         if (!IAC.choice_data[type] || !IAC.choice_data[type][term]) {
@@ -1752,7 +1788,7 @@ function InsertUserSelected(input, item) {
     //So the use count doesn't get squashed by the new variable assignment
     let use_count = (IAC.choice_data[type][term] && IAC.choice_data[type][term].use_count) || 0;
     IAC.choice_data[type][term] = JSPLib.utility.dataCopy(source_data);
-    ['key', 'term', 'label', 'value', 'type'].forEach((e) => {delete IAC.choice_data[type][term][e];});
+    ['key', 'term', 'label', 'value', 'type', 'original'].forEach((e) => {delete IAC.choice_data[type][term][e];});
     IAC.choice_data[type][term].expires = JSPLib.utility.getExpires(GetUsageExpires());
     IAC.choice_data[type][term].use_count = use_count + 1;
     if (IAC.usage_maximum > 0) {
@@ -1773,6 +1809,7 @@ function InsertCompletion(input, item) {
         Danbooru.Autocomplete.insert_completion(input, completion);
         return;
     }
+    let query_type = GetQueryType(input);
     var before_caret_text = input.value.substring(0, input.selectionStart);
     var after_caret_text = input.value.substring(input.selectionStart);
     var regexp = new RegExp('(' + IAC.prefixes.join('|') + ')?\\S+$', 'g');
@@ -1804,7 +1841,7 @@ function InsertCompletion(input, item) {
                 end = before_caret_text.length - 2;
             }
         }
-        setTimeout(() => {DisableTextAreaAutocomplete($input);}, 100);
+        setTimeout(() => {DisableTextAreaAutocomplete($input);}, 1);
     } else {
         // Trim all whitespace (tabs, spaces) except for line returns
         before_caret_text = before_caret_text.replace(/^[ \t]+|[ \t]+$/gm, "");
@@ -1813,7 +1850,7 @@ function InsertCompletion(input, item) {
         var prefix = "";
         if (item.source !== 'metatag') {
             var query = ParseQuery(input.value, input.selectionStart);
-            prefix = input.id === 'post_tag_string' || !CATEGORY_REGEX.test(query.prefix) ? query.prefix : query.operator;
+            prefix = query_type === 'tag-edit' || !CATEGORY_REGEX.test(query.prefix) ? query.prefix : query.operator;
             if (IAC.is_bur && IAC.BUR_source_enabled) {
                 let line_text = before_caret_text.split('\n').at(-1);
                 let words = line_text.split(/\s+/);
@@ -1830,18 +1867,26 @@ function InsertCompletion(input, item) {
     input.selectionStart = start;
     input.selectionEnd = end;
     $(input).trigger("input");
+    if (item.category === METATAG_TAG_CATEGORY && item.type === 'tag') {
+        let mapping = (query_type === 'tag-edit' ? EDIT_METATAGS_MAP : QUERY_METATAGS_MAP);
+        input.selectionStart = input.selectionEnd = input.selectionStart - 1;
+        if (item.source === 'metatag' && item.name.slice(0, -1) in mapping) {
+            setTimeout(() => {$(input).autocomplete('search');}, 1);
+            return;
+        }
+    }
     setTimeout(() => {$(input).autocomplete("instance").close();}, 1);
 }
 
-function StaticMetatagSource(term, metatag) {
+function StaticMetatagSource(term, metatag, query_type) {
     let lower_term = term.toLowerCase();
     let full_term = `${metatag}:${lower_term}`;
-    let data = SubmetatagData()
+    let data = SubmetatagData(query_type)
         .filter((item) => item.name.startsWith(full_term))
         .map((item) => Object.assign({}, item, {term}))
         .sort((a, b) => a.name.localeCompare(b.name))
         .slice(0, IAC.source_results_returned);
-    AddUserSelected('metatag', "", full_term, data, false, null);
+    AddUserSelected('metatag', "", full_term, data, query_type, false, null);
     return data;
 }
 
@@ -2094,7 +2139,7 @@ function ReorderAutocompleteEvent($obj) {
 
 //Initialization functions
 
-function InitializeTagQueryAutocompleteIndexed(fields_selector = AUTOCOMPLETE_MULTITAG_SELECTORS, reorder_selector = '#upload_tag_string, #post_tag_string') {
+function InitializeTagQueryAutocompleteIndexed(fields_selector = AUTOCOMPLETE_MULTITAG_SELECTORS, reorder_selector = '#post_tag_string') {
     let $fields_multiple = $(fields_selector);
     $fields_multiple.autocomplete({
         select(event, ui) {
@@ -2106,14 +2151,16 @@ function InitializeTagQueryAutocompleteIndexed(fields_selector = AUTOCOMPLETE_MU
             return false;
         },
         async source(req, resp) {
+            var query_type = GetQueryType(this.element.get(0));
             var query = ParseQuery(req.term, this.element.get(0).selectionStart);
             var metatag = query.metatag;
             var term = query.term;
             var prefix = query.prefix;
             var results = [];
             var metatag_type = null;
-            for (let key in METATAG_REGEXES) {
-                let match = METATAG_REGEXES[key].exec(metatag);
+            var regex_map = (query_type === 'tag-edit' ? EDIT_METATAG_REGEXES : QUERY_METATAG_REGEXES);
+            for (let key in regex_map) {
+                let match = regex_map[key].exec(metatag);
                 if (match) {
                     metatag_type = key;
                     break;
@@ -2121,7 +2168,7 @@ function InitializeTagQueryAutocompleteIndexed(fields_selector = AUTOCOMPLETE_MU
             }
             switch (metatag_type) {
                 case "static":
-                    results = IAC.static_metatag_source(term, metatag);
+                    results = IAC.static_metatag_source(term, metatag, query_type);
                     break;
                 case "user":
                     results = await IAC.user_source(term, {prefix, autocomplete: this});
@@ -2310,18 +2357,18 @@ function AnySourceIndexed(keycode) {
         }
         var key = (keycode + '-' + term).toLowerCase();
         var metatag = (JSPLib.utility.isString(prefix) ? prefix : "");
-        var query_type = $(autocomplete.element).data('autocomplete');
+        var query_type = GetQueryType(autocomplete.element.get(0));
         var final_data = null;
         if (!IAC.network_only_mode) {
             var max_expiration = MaximumExpirationTime(type);
             var cached = await JSPLib.storage.checkLocalDB(key, max_expiration);
             if (ValidateCached(cached, type, term, word_mode)) {
                 RecheckSourceData(type, key, term, cached);
-                final_data = ProcessSourceData(type, key, term, metatag, query_type, word_mode, cached.value, autocomplete.element[0]);
+                final_data = ProcessSourceData(type, key, term, metatag, query_type, word_mode, cached.value, autocomplete.element.get(0));
             }
         }
         if (!final_data) {
-            final_data = NetworkSource(type, key, term, {metatag, query_type, word_mode, element: autocomplete.element[0]});
+            final_data = NetworkSource(type, key, term, {metatag, query_type, word_mode, element: autocomplete.element.get(0)});
         }
         return final_data;
     };
@@ -2351,7 +2398,7 @@ function ProcessSourceData(type, key, term, metatag, query_type, word_mode, data
         if (IAC.metatag_source_enabled) {
             if (query_type !== 'tag') {
                 let regex = new RegExp('^' + JSPLib.utility.regexpEscape(term).replace(/\\\*/g, '.*'));
-                let filter_data = MetatagData().filter((data) => data.name.match(regex));
+                let filter_data = MetatagData(query_type).filter((data) => data.name.match(regex));
                 let metatag_term = term + (term.endsWith('*') ? "" : '*');
                 let add_data = filter_data.map((item) => Object.assign({term: metatag_term}, item));
                 data.unshift(...add_data);
@@ -2379,7 +2426,7 @@ function ProcessSourceData(type, key, term, metatag, query_type, word_mode, data
         }
     }
     //Doing this here to avoid processing it on each list item
-    IAC.highlight_used = (element.tagName === 'TEXTAREA' && ['post_tag_string', 'upload_tag_string'].includes(element.id));
+    IAC.highlight_used = query_type === 'tag-edit';
     if (IAC.highlight_used) {
         let adjusted_tag_string = RemoveTerm(element.value, element.selectionStart);
         IAC.current_tags = adjusted_tag_string.split(/\s+/);
@@ -2664,7 +2711,7 @@ JSPLib.menu.control_config = CONTROL_CONFIG;
 JSPLib.storage.indexedDBValidator = ValidateEntry;
 
 //Export JSPLib
-JSPLib.load.exportData({other_data: TERM_REGEX});
+JSPLib.load.exportData();
 JSPLib.load.exportFuncs({always_list: [InitializeAutocompleteIndexed, InitializeTagQueryAutocompleteIndexed, InitializeTextAreaAutocomplete, InitializeProgramValues]});
 
 /****Execution start****/
