@@ -784,14 +784,14 @@ const DISAPPROVAL_REASONS = ['breaks_rules', 'poor_quality', 'disinterest'];
 const QUERY_METATAGS_MAP = {
     is: JSPLib.utility.multiConcat(['parent', 'child', 'sfw', 'nsfw'], POST_STATUSES, FILE_TYPES, POST_RATINGS),
     has: ['parent', 'children', 'source', 'appeals', 'flags', 'replacements', 'comments', 'commentary', 'notes', 'pools'],
-    status: JSPLib.utility.concat(['any'], POST_STATUSES),
+    status: JSPLib.utility.concat(['any', 'all'], POST_STATUSES),
     child: JSPLib.utility.concat(['any', 'none'], POST_STATUSES),
     parent: JSPLib.utility.concat(['any', 'none'], POST_STATUSES),
     rating: POST_RATINGS,
     source: ['none', 'http'],
     embedded: ['true', 'false'],
     filetype: FILE_TYPES,
-    commentary: ['true', 'false', 'translated', 'untranslated'],
+    commentary: ['all', 'none', 'true', 'false', 'translated', 'untranslated'],
     disapproved: DISAPPROVAL_REASONS,
     order: ORDER_METATAGS,
 };
