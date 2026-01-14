@@ -2311,9 +2311,9 @@ function InitializeTagQueryAutocompleteIndexed(fields_selector = AUTOCOMPLETE_MU
             InsertUserSelected(this, ui.item);
             return false;
         },
-        async source(req, resp) {
+        async source(request, respond) {
             var query_type = GetQueryType(this.element.get(0));
-            var query = ParseQuery(req.term, this.element.get(0).selectionStart);
+            var query = ParseQuery(request.term, this.element.get(0).selectionStart);
             var metatag = query.metatag;
             var term = query.term;
             var prefix = query.prefix;
@@ -2350,7 +2350,7 @@ function InitializeTagQueryAutocompleteIndexed(fields_selector = AUTOCOMPLETE_MU
                     results = [];
                     break;
             }
-            resp(results);
+            respond(results);
         },
         open: AutocompleteOpen,
         close: AutocompleteClose,
