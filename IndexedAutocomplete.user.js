@@ -1580,6 +1580,22 @@ function GetWordMatches(name, search, use_capture) {
     return match;
 }
 
+function AutocompleteOpen(event) {
+    let input = event.target;
+    let selection_start = input.selectionStart;
+    clearInterval(input._iac_timer);
+    input._iac_timer = setInterval(() => {
+        if (input.selectionStart !== selection_start) {
+            $(event.target).autocomplete('close');
+            clearInterval(input._iac_timer);
+        }
+    }, 100);
+}
+
+function AutocompleteClose(event) {
+    clearInterval(event.target._iac_timer);
+}
+
 //Time functions
 
 function MinimumExpirationTime(type) {
@@ -2250,6 +2266,8 @@ function RebindSingleTag() {
                 select (_, ui) {
                     InsertUserSelected(this, ui.item);
                 },
+                open: AutocompleteOpen,
+                close: AutocompleteClose,
             });
             $fields.addClass('iac-autocomplete');
             setTimeout(() => {
@@ -2334,6 +2352,8 @@ function InitializeTagQueryAutocompleteIndexed(fields_selector = AUTOCOMPLETE_MU
             }
             resp(results);
         },
+        open: AutocompleteOpen,
+        close: AutocompleteClose,
     });
     $fields_multiple.each((_, entry) => {
         let autocomplete = $(entry).data('uiAutocomplete');
@@ -2377,6 +2397,8 @@ function InitializeAutocompleteIndexed(selector, keycode, {multiple = false, wik
             ui.item.name = ui.item.name.trim();
             return ui.item.name;
         },
+        open: AutocompleteOpen,
+        close: AutocompleteClose,
     });
     let alink_func = (SOURCE_CONFIG[type].render ? SOURCE_CONFIG[type].render : ($domobj, item) => $domobj.text(item.name));
     setTimeout(() => {
