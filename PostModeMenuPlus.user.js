@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://github.com/BrokenEagle
-// @version      9.9
+// @version      9.10
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -542,7 +542,7 @@ const MODE_CONTROLS_HTML = `
         </div>
     </div>
     <div id="pmm-tag-script-field">
-        <input placeholder="Enter tag script" style="margin: 0.25em 0;" autocomplete="off">
+        <input placeholder="Enter tag script" style="margin: 0.25em 0;" autocomplete="off" id="tag-script-field">
     </div>
     <div id="pmm-apply-all">
         <button>Apply</button>
@@ -1012,11 +1012,12 @@ function SetupAutocomplete(selector) {
     const printer = JSPLib.debug.getFunctionPrint('SetupAutocomplete');
     JSPLib.load.scriptWaitExecute(PMM, 'IAC', {
         available: () => {
+            $(selector).data('autocomplete', 'tag-edit');
             PMM.IAC.InitializeTagQueryAutocompleteIndexed(selector, null);
             printer.debuglogLevel(`Initialized IAC autocomplete on ${selector}.`, JSPLib.debug.DEBUG);
         },
         fallback: () => {
-            JSPLib.utility.setDataAttribute($(selector), 'autocomplete', 'tag-query');
+            JSPLib.utility.setDataAttribute($(selector), 'autocomplete', 'tag-edit');
             $(selector).autocomplete({
                 select (_event, ui) {
                     Danbooru.Autocomplete.insert_completion(this, ui.item.value);
