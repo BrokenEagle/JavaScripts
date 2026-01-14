@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.34
+// @version      29.35
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1432,7 +1432,7 @@ function ValidateCached(cached, type, term, word_mode) {
 //Helper functions
 
 function GetQueryType(element) {
-    if (element.id === 'post_tag_string') {
+    if (['post_tag_string', 'tag-script-field'].includes(element.id)) {
         return 'tag-edit';
     }
     let query_type = $(element).data('autocomplete');
