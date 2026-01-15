@@ -3951,53 +3951,6 @@ function CleanupTasks() {
     JSPLib.storage.removeLocalData('el-new-events');
 }
 
-function MigrateLocalData() {
-    let migrated = JSPLib.storage.getLocalData('el-migration-25.0', {default_val: false});
-    if (migrated) return;
-    EL.all_subscribe_events.forEach((type) => {
-        let last_id = JSPLib.storage.getLocalData(`el-${type}lastid`);
-        if (last_id) {
-            JSPLib.storage.setLocalData(`el-${type}-subscribe-last-id`, last_id);
-            JSPLib.storage.removeLocalData(`el-${type}lastid`);
-        }
-    });
-    EL.post_query_events_enabled.forEach((type) => {
-        let last_id = JSPLib.storage.getLocalData(`el-pq-${type}lastid`);
-        if (last_id) {
-            JSPLib.storage.setLocalData(`el-${type}-post-query-last-id`, last_id);
-            JSPLib.storage.removeLocalData(`el-pq-${type}lastid`);
-        }
-    });
-    EL.other_events_enabled.forEach((type) => {
-        let last_id = JSPLib.storage.getLocalData(`el-ot-${type}lastid`);
-        if (last_id) {
-            JSPLib.storage.setLocalData(`el-${type}-other-last-id`, last_id);
-            JSPLib.storage.removeLocalData(`el-ot-${type}lastid`);
-        }
-    });
-    SUBSCRIBE_EVENTS.forEach((type) => {
-        let item_list = JSPLib.storage.getLocalData(`el-${type}list`);
-        if (item_list) {
-            JSPLib.storage.setLocalData(`el-${type}-item-list`, item_list);
-            JSPLib.storage.removeLocalData(`el-${type}list`);
-        }
-        JSPLib.storage.removeLocalData(`el-${type}overflow`);
-    });
-    USER_EVENTS.forEach((type) => {
-        let user_list = JSPLib.storage.getLocalData(`el-us-${type}list`);
-        if (user_list) {
-            JSPLib.storage.setLocalData(`el-${type}-user-list`, user_list);
-            JSPLib.storage.removeLocalData(`el-us-${type}list`);
-        }
-    });
-    JSPLib.storage.removeLocalData('el-process-semaphoref');
-    JSPLib.storage.removeLocalData('el-saved-timeout');
-    JSPLib.storage.removeLocalData('el-event-timeout');
-    JSPLib.storage.removeLocalData('el-overflow');
-    JSPLib.storage.removeLocalData('el-last-seen');
-    JSPLib.storage.setLocalData('el-migration-25.0', true);
-}
-
 function InitializeChangedSettings() {
     $('#el-nav-events, #el-display-subscribe, #el-subscribe-events, #el-page').remove();
     InitializeUserSettings();
@@ -4122,7 +4075,6 @@ function Main() {
     };
     if (!JSPLib.menu.preloadScript(EL, preload)) return;
     JSPLib.notice.installBanner();
-    MigrateLocalData();
     InstallSubscribeLinks();
     InstallEventsNavigation();
     if (EL.display_event_panel && Object.keys(EL.new_events).length) {
