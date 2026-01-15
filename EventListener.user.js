@@ -1872,25 +1872,6 @@ function CorrectList(type, typelist) {
 
 //Helper functions
 
-async function PromiseHashAll(promise_hash) {
-    let promise_array = [];
-    for (let type in promise_hash) {
-        for (let source in promise_hash[type]) {
-            promise_array.push(promise_hash[type][source]);
-        }
-    }
-    let results = await Promise.all(promise_array);
-    let results_hash = {};
-    let index = 0;
-    for (let type in promise_hash) {
-        results_hash[type] = {};
-        for (let source in promise_hash[type]) {
-            results_hash[type][source] = results[index++];
-        }
-    }
-    return results_hash;
-}
-
 function GetNewEventsHash(results_hash) {
     let new_events_hash = {};
     for (let type in results_hash) {
@@ -3529,7 +3510,7 @@ function CheckAll(event) {
                     }
                 });
             });
-            PromiseHashAll(promise_hash).then((results_hash) => {
+            JSPLib.utility.promiseHashAll(promise_hash).then((results_hash) => {
                 for (let type in results_hash) {
                     for (let source in results_hash[type]) {
                         UpdateAfterCheck(type, source, results_hash[type][source]);
@@ -3566,7 +3547,7 @@ function ResetEvent(event) {
                     }
                 });
             });
-            PromiseHashAll(promise_hash).then((results_hash) => {
+            JSPLib.utility.promiseHashAll(promise_hash).then((results_hash) => {
                 for (let type in results_hash) {
                     for (let source in results_hash[type]) {
                         UpdateEventSource(type, source, {broadcast: true});
@@ -3791,7 +3772,7 @@ function ProcessAllReadyEvents() {
             }
         }
     });
-    PromiseHashAll(promise_hash).then((results_hash) => {
+    JSPLib.utility.promiseHashAll(promise_hash).then((results_hash) => {
         printer.debuglog(results_hash);
         let all_new_events = false;
         for (let type in results_hash) {
