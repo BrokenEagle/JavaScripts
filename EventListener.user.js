@@ -29,6 +29,32 @@
 
 /****Library updates****/
 
+JSPLib.debug.getFunctionPrint = function (func_name) {
+    this._func_printer ??= {};
+    if (!this._func_printer[func_name]) {
+        let printer = {};
+        if (this.mode) {
+            let context = this;
+            context._func_iteration ??= {};
+            context._func_iteration[func_name] = 0;
+            ['debuglog', 'debugwarn', 'debugerror', 'debuglogLevel', 'debugwarnLevel', 'debugerrorLevel'].forEach((debugfunc) => {
+                printer[debugfunc] = function (...args) {
+                    let iteration = context._func_iteration[func_name];
+                    context[debugfunc](`${func_name}[${iteration}] -`, ...args);
+                };
+            });
+        } else {
+            ['debuglog', 'debugwarn', 'debugerror', 'debuglogLevel', 'debugwarnLevel', 'debugerrorLevel'].forEach((debugfunc) => {
+                printer[debugfunc] = (() => {});
+            });
+        }
+        this._func_printer[func_name] = printer;
+    } else if (this.mode) {
+        this._func_iteration[func_name]++;
+    }
+    return this._func_printer[func_name];
+};
+
 JSPLib.utility.isHash = function (value) {
     return value?.constructor.name === 'Object';
 };
