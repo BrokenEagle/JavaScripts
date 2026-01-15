@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      25.12
+// @version      26.0
 // @description  Informs users of new events.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -29,7 +29,116 @@
 
 /****Library updates****/
 
-////NONE
+JSPLib.utility.isHash = function (value) {
+    return value?.constructor.name === 'Object';
+};
+
+JSPLib.utility.promiseHashAll = async function (promise_hash) {
+    const correlate = function (hash, parr = null) {
+        parr ??= [];
+        for (let key in hash) {
+            if (hash[key].constructor.name === 'Promise') {
+                parr.push(hash[key]);
+            } else if (JSPLib.utility.isHash(hash[key])) {
+                correlate(hash[key], parr);
+            }
+        }
+        return parr;
+    };
+    const resolve = function (hash) {
+        let result = {};
+        for (let key in hash) {
+            if (hash[key].constructor.name === 'Promise') {
+                let index = promise_array.indexOf(hash[key]);
+                result[key] = result_array[index];
+            } else if (JSPLib.utility.isHash(hash[key])) {
+                result[key] = resolve(hash[key]);
+            }
+        }
+        return result;
+    };
+    let promise_array = correlate(promise_hash);
+    let result_array = await Promise.all(promise_array);
+    return resolve(promise_hash);
+};
+
+JSPLib.danbooru.getAllItems = async function (type, limit, {url_addons = {}, batches = null, reverse = false, long_format = false, id_list = null, page = null, domain = "", domname = null, notify = false} = {}) {
+    const printer = JSPLib.debug.getFunctionPrint('danbooru.getAllItems');
+    if (id_list !== null && !JSPLib.utility.validateIDList(id_list)) {
+        throw new Error("danbooru.getAllItems: Invalid ID list");
+    }
+    printer.debuglogLevel({type, limit, url_addons, batches, reverse, long_format, id_list, page, domain, domname, notify}, JSPLib.debug.ALL);
+    let page_modifier = (reverse ? 'a' : 'b');
+    let page_addon = (Number.isInteger(page) ? {page: `${page_modifier}${page}`} : {});
+    let limit_addon = {limit};
+    let batch_num = 1;
+    let last_id = (id_list !== null ? (reverse ? Math.max(...id_list) : Math.min(...id_list)) : null);
+    var return_items = [];
+    await this.initializePageCounter(type, limit, url_addons, reverse, long_format, id_list, page, domain, domname, notify);
+    while (true) {
+        let request_addons = JSPLib.utility.mergeHashes(url_addons, page_addon, limit_addon);
+        let temp_items = await this.submitRequest(type, request_addons, {default_val: [], long_format, domain, notify});
+        return_items = JSPLib.utility.concat(return_items, temp_items);
+        let latest_id = this.getNextPageID(temp_items, reverse);
+        this.updatePageCounter(domname, limit, latest_id, reverse, id_list);
+        if (
+            (batches && batch_num >= batches) ||
+            (id_list !== null && ((reverse && latest_id >= last_id) || (!reverse && latest_id <= last_id))) ||
+            (id_list === null && temp_items.length < limit) ||
+            (temp_items.length === 0)
+        ) {
+            return return_items;
+        }
+        page_addon = {page: `${page_modifier}${latest_id}`};
+        printer.debuglogLevel("#", batch_num++, "Rechecking", type, "@", latest_id, JSPLib.debug.INFO);
+    }
+};
+
+JSPLib.danbooru.initializePageCounter = async function (type, limit, url_addons, reverse, long_format, id_list, page, domain, domname, notify) {
+    const printer = JSPLib.debug.getFunctionPrint('danbooru.initializePageCounter');
+    if (domname) {
+        if (id_list !== null) {
+            let total_pages = Math.ceil(id_list.length / limit);
+            JSPLib._jQuery(domname).text(total_pages);
+            printer.debuglogLevel(domname, total_pages, JSPLib.debug.INFO);
+        } else if (Number.isInteger(page)) {
+            let latest_id = JSPLib._jQuery(domname).data('latest-id');
+            if (!Number.isInteger(latest_id)) {
+                let request_addons = JSPLib.utility.mergeHashes(url_addons, {limit: 1}, {only: 'id'});
+                if (!reverse) {
+                    request_addons.page = 'a0';
+                }
+                let latest_item = await this.submitRequest(type, request_addons, {default_val: [], long_format, domain, notify});
+                if (latest_item.length) {
+                    latest_id = latest_item[0].id;
+                    let current_counter = Math.abs(Math.ceil((latest_id - page) / limit));
+                    JSPLib._jQuery(domname).text(current_counter);
+                    JSPLib._jQuery(domname).data('latest-id', latest_id);
+                    printer.debuglogLevel(domname, current_counter, latest_id, page, JSPLib.debug.INFO);
+                }
+            }
+        }
+    }
+};
+
+JSPLib.danbooru.updatePageCounter = function (domname, limit, page, reverse, id_list) {
+    const printer = JSPLib.debug.getFunctionPrint('danbooru.updatePageCounter');
+    if (domname) {
+        if (id_list !== null) {
+            let remaining_ids = id_list.filter((id) => (reverse && id > page) || (!reverse && id < page));
+            let remaining_pages = Math.ceil(remaining_ids.length / limit);
+            JSPLib._jQuery(domname).text(remaining_pages);
+            printer.debuglogLevel(domname, remaining_pages, JSPLib.debug.INFO);
+        } else {
+            let latest_id = JSPLib._jQuery(domname).data('latest-id');
+            if (Number.isInteger(latest_id)) {
+                let current_counter = (Number.isInteger(page) ? Math.abs(Math.ceil((latest_id - page) / limit)) : 0);
+                JSPLib._jQuery(domname).text(current_counter);
+                printer.debuglogLevel(domname, current_counter, latest_id, page, JSPLib.debug.INFO);
+            }
+        }
+    }
+};
 
 /****Global variables****/
 
@@ -142,6 +251,31 @@ const SETTINGS_CONFIG = {
         reset: false,
         validate: JSPLib.utility.isBoolean,
         hint: "Show post events when a subscribed post is parented by another post."
+    },
+    show_all_subscribe_controls: {
+        reset: false,
+        validate: JSPLib.utility.isBoolean,
+        hint: "Will show all subscribe controls regardless of an event being enabled or not."
+    },
+    filter_user_mod_actions: {
+        reset: false,
+        validate: JSPLib.utility.isBoolean,
+        hint: "Filters user modactions by user."
+    },
+    filter_subscribe_mod_actions: {
+        reset: false,
+        validate: JSPLib.utility.isBoolean,
+        hint: "Filters subscribe modactions by type. Applicable event types are: posts, forum topics, artists, pools."
+    },
+    filter_creator_mod_actions: {
+        reset: false,
+        validate: JSPLib.utility.isBoolean,
+        hint: "Shows the events of items created by the user. Applicable event types are: posts, comments, forum topics, forum posts."
+    },
+    filter_related_mod_actions: {
+        reset: false,
+        validate: JSPLib.utility.isBoolean,
+        hint: "Shows the events of items related to items created by the user. Applicable event types are: comments, forum posts."
     },
     filter_untranslated_commentary: {
         reset: true,
@@ -949,10 +1083,22 @@ const POST_QUERY_EVENT_SETTINGS_DETAILS = JSPLib.utility.normalizeHTML()`
 
 const OTHER_EVENT_SETTINGS_DETAILS = JSPLib.utility.normalizeHTML()`
 <ul>
-    <li><b>dmail:</b>&ensp;Unread, undeleted dmail.</li>
-    <li><b>ban:</b>&ensp;None.</li>
-    <li><b>feedback:</b>&ensp;No ban feedbacks.</li>
-    <li><b>mod action:</b>&ensp;Specific categories must be subscribed.</li>
+    <li><u>Event restrictions</u>
+        <ul>
+            <li><b>dmail:</b>&ensp;Unread, undeleted dmail.</li>
+            <li><b>ban:</b>&ensp;None.</li>
+            <li><b>feedback:</b>&ensp;No ban feedbacks.</li>
+            <li><b>mod action:</b>&ensp;Specific categories must be subscribed.</li>
+        </ul>
+    </li>
+    <li><code>filter_subscribe_mod_actions:</code>&ensp;Uses the existing subscription lists for all types. To show missing subscribe controls, enable the&ensp;<code>show_all_subscribe_controls</code>&ensp; setting.</li>
+    <li><code>filter_user_mod_actions:</code>&ensp;Adds a "Mod Action" subscribe control to all profile pages.</li>
+    <li><code>filter_related_mod_actions:</code>
+        <ul>
+            <li>Comments on posts created by the user.</li>
+            <li>Forum posts on on forum topics created by the user.</li>
+        </ul>
+    </li>
 </ul>`;
 
 const PROGRAM_DATA_DETAILS = JSPLib.utility.normalizeHTML()`
@@ -1065,6 +1211,7 @@ const HOME_SUBSECTION_HTML = JSPLib.utility.normalizeHTML()`
 </li>
 <li class="el-pages-left" data-source="%SOURCE%" title="How many pages left to check. Used as a counter for check more and check all.">
     <b>Pages left:</b>&ensp;(&thinsp;<span></span>&thinsp;)
+    <ul></ul>
 </li>
 <li class="el-section-controls">
     <div>
@@ -1115,6 +1262,11 @@ const HOME_CONTROLS = JSPLib.utility.normalizeHTML()`
         </div>
     </div>
 </div>`;
+
+const SUBCOUNTER_HTML = JSPLib.utility.normalizeHTML()`
+<li class="el-subpages-left" data-type="%TYPE%" title="How many pages left to check for includes.">
+    <b>%DISPLAY%:</b>&ensp;(&thinsp;<span>...</span>&thinsp;)
+</li>`;
 
 const MORE_HTML = '<span class="el-more">more</span>';
 const NONE_HTML = '<span class="el-none">none</span>';
@@ -1482,11 +1634,48 @@ const TYPEDICT = {
             return {search: {category: EL.subscribed_mod_actions.join(',')}};
         },
         timeval: 'created_at',
-        only: 'id,created_at,category',
+        only: 'id,created_at,category,subject_type,subject_id,creator_id',
         find_events: FindCategoryEvents,
         insert_events: InsertTableEvents,
         plural: 'mod actions',
     },
+};
+
+const INCLUDEDICT = {
+    post: {
+        controller: 'posts',
+        json_addons: (item_ids) => ({tags: 'status:any id:' + item_ids.join(',')}),
+        only: 'id,uploader_id',
+        creator: 'uploader_id',
+    },
+    comment: {
+        controller: 'comments',
+        json_addons: (item_ids) => ({search: {id: item_ids.join(',')}, group_by: 'comment'}),
+        only: 'id,post_id,creator_id',
+        includes: 'post[uploader_id]',
+        subscribe: 'post_id',
+        creator: 'creator_id',
+        related: ['post', 'uploader_id'],
+    },
+    forum_topic: {
+        controller: 'forum_topics',
+        json_addons: (item_ids) => ({search: {id: item_ids.join(',')}}),
+        only: 'id,creator_id',
+        creator: 'creator_id',
+        type: 'forum',
+    },
+    forum_post: {
+        controller: 'forum_posts',
+        json_addons: (item_ids) => ({search: {id: item_ids.join(',')}}),
+        only: 'id,topic_id,creator_id',
+        includes: 'topic[creator_id]',
+        subscribe: 'topic_id',
+        creator: 'creator_id',
+        related: ['topic', 'creator_id'],
+        type: 'forum',
+    },
+    artist: {},
+    pool: {},
 };
 
 //Validate constants
@@ -1765,6 +1954,7 @@ function IsItemSubscribeEnabled(type) {
 }
 
 function IsUserSubscribeEnabled(type) {
+    if (type === 'mod_action') return EL.filter_user_mod_actions;
     return EL.user_events_enabled.includes(type);
 }
 
@@ -1903,8 +2093,8 @@ function SaveEvents(type, events) {
     UpdateNavigation({broadcast: true});
 }
 
-function GetItemList(type) {
-    if (!IsItemSubscribeEnabled(type)) {
+function GetItemList(type, override = false) {
+    if (!override && !IsItemSubscribeEnabled(type)) {
         return new Set();
     }
     if (EL.item_set[type]) {
@@ -1921,8 +2111,8 @@ function GetItemList(type) {
 }
 
 function SetItemList(type, remove_item, item_id) {
-    if (!IsItemSubscribeEnabled(type)) return;
-    let item_set = GetItemList(type);
+    if (!EL.show_all_subscribe_controls && !IsItemSubscribeEnabled(type)) return;
+    let item_set = GetItemList(type, true);
     if (remove_item) {
         // eslint-disable-next-line dot-notation
         item_set.delete(item_id);
@@ -2328,7 +2518,7 @@ function RenderMultilinkMenu(item_id, event_setting) {
 
 function RenderSubscribeMultiLink(name, type_list, item_id, event_setting) {
     let subscribe_func = (event_setting === 'subscribe_events_enabled' ? GetItemList : GetUserList);
-    let is_subscribed = type_list.every((type) => (subscribe_func(type).has(item_id)));
+    let is_subscribed = type_list.every((type) => (subscribe_func(type, true).has(item_id)));
     let class_name = (is_subscribed ? 'el-subscribed' : 'el-unsubscribed');
     let title = (is_subscribed ? 'subscribed' : 'unsubscribed');
     return JSPLib.utility.regexReplace(SUBSCRIBE_MULTI_LINK_HTML, {
@@ -2422,18 +2612,24 @@ function RenderHomeSubsection(source) {
 
 function InitializeUserShowMenu() {
     //#C-USERS #A-SHOW
-    if (!AreAnyEventsEnabled(USER_EVENTS, 'user_events_enabled')) return false;
+    if (!EL.show_all_subscribe_controls && !EL.filter_user_mod_actions && !AreAnyEventsEnabled(USER_EVENTS, 'user_events_enabled')) return false;
     let user_id = $(document.body).data('user-id');
     let $menu_obj = $.parseHTML(RenderMultilinkMenu(user_id, 'user_events_enabled'));
     let menu_links = [];
     USER_EVENTS.forEach((type) => {
-        if (!IsUserSubscribeEnabled(type)) return;
+        if (!EL.show_all_subscribe_controls && !IsUserSubscribeEnabled(type)) return;
         menu_links.push(RenderSubscribeMultiLink(TYPEDICT[type].display, [type], user_id, 'user_events_enabled'));
     });
-    if (AreAllEventsEnabled(ALL_TRANSLATE_EVENTS, 'user_events_enabled')) {
+    if (EL.show_all_subscribe_controls || AreAllEventsEnabled(ALL_TRANSLATE_EVENTS, 'user_events_enabled')) {
         menu_links.push(RenderSubscribeMultiLink("Translations", ALL_TRANSLATE_EVENTS, user_id, 'user_events_enabled'));
     }
-    let enabled_user_events = JSPLib.utility.arrayIntersection(USER_EVENTS, EL.user_events_enabled);
+    if (EL.filter_user_mod_actions) {
+        menu_links.push(RenderSubscribeMultiLink("Mod Actions", ['mod_action'], user_id, 'user_events_enabled'));
+    }
+    let enabled_user_events = (EL.show_all_subscribe_controls ? USER_EVENTS : JSPLib.utility.arrayIntersection(USER_EVENTS, EL.user_events_enabled));
+    if (EL.filter_user_mod_actions) {
+        enabled_user_events.push('mod_action');
+    }
     if (enabled_user_events.length > 1) {
         menu_links.push(RenderSubscribeMultiLink("All", enabled_user_events, user_id, 'user_events_enabled'));
     }
@@ -2444,18 +2640,18 @@ function InitializeUserShowMenu() {
 
 function InitializePostShowMenu() {
     //#C-POSTS #A-SHOW
-    if (!AreAnyEventsEnabled(ALL_POST_EVENTS, 'subscribe_events_enabled')) return false;
+    if (!EL.show_all_subscribe_controls && !AreAnyEventsEnabled(ALL_POST_EVENTS, 'subscribe_events_enabled')) return false;
     let post_id = $('.image-container').data('id');
     let $menu_obj = $.parseHTML(RenderMultilinkMenu(post_id, 'subscribe_events_enabled'));
     let menu_links = [];
     ALL_POST_EVENTS.forEach((type) => {
-        if (!IsItemSubscribeEnabled(type)) return;
+        if (!EL.show_all_subscribe_controls && !IsItemSubscribeEnabled(type)) return;
         menu_links.push(RenderSubscribeMultiLink(TYPEDICT[type].display, [type], post_id, 'subscribe_events_enabled'));
     });
-    if (AreAllEventsEnabled(ALL_TRANSLATE_EVENTS, 'subscribe_events_enabled')) {
+    if (EL.show_all_subscribe_controls || AreAllEventsEnabled(ALL_TRANSLATE_EVENTS, 'subscribe_events_enabled')) {
         menu_links.push(RenderSubscribeMultiLink("Translations", ALL_TRANSLATE_EVENTS, post_id, 'subscribe_events_enabled'));
     }
-    let enabled_post_events = JSPLib.utility.arrayIntersection(ALL_POST_EVENTS, EL.subscribe_events_enabled);
+    let enabled_post_events = (EL.show_all_subscribe_controls ? ALL_POST_EVENTS : JSPLib.utility.arrayIntersection(ALL_POST_EVENTS, EL.subscribe_events_enabled));
     if (enabled_post_events.length > 1) {
         menu_links.push(RenderSubscribeMultiLink("All", enabled_post_events, post_id, 'subscribe_events_enabled'));
     }
@@ -2466,7 +2662,7 @@ function InitializePostShowMenu() {
 
 function InitializeTopicShowMenu() {
     //#C-FORUM-TOPICS #A-SHOW
-    if (!IsItemSubscribeEnabled('forum')) return false;
+    if (!EL.show_all_subscribe_controls && !IsItemSubscribeEnabled('forum')) return false;
     let topic_id = $('body').data('forum-topic-id');
     let $menu_obj = $.parseHTML(RenderMultilinkMenu(topic_id, 'subscribe_events_enabled'));
     $('#el-add-links', $menu_obj).append(RenderSubscribeMultiLink("Topic", ['forum'], topic_id, 'subscribe_events_enabled'));
@@ -2476,7 +2672,7 @@ function InitializeTopicShowMenu() {
 
 function InitializeWikiShowMenu() {
     //#C-WIKI-PAGES #A-SHOW / #C-WIKI-PAGE-VERSIONS #A-SHOW
-    if (!IsItemSubscribeEnabled('wiki')) return false;
+    if (!EL.show_all_subscribe_controls && !IsItemSubscribeEnabled('wiki')) return false;
     let data_selector = (EL.controller === 'wiki-pages' ? 'wiki-page-id' : 'wiki-page-version-wiki-page-id');
     let wiki_id = $('body').data(data_selector);
     let $menu_obj = $.parseHTML(RenderMultilinkMenu(wiki_id, 'subscribe_events_enabled'));
@@ -2487,7 +2683,7 @@ function InitializeWikiShowMenu() {
 
 function InitializeArtistShowMenu() {
     //#C-ARTISTS #A-SHOW
-    if (!IsItemSubscribeEnabled('artist')) return false;
+    if (!EL.show_all_subscribe_controls && !IsItemSubscribeEnabled('artist')) return false;
     let artist_id = $('body').data('artist-id');
     let $menu_obj = $.parseHTML(RenderMultilinkMenu(artist_id, 'subscribe_events_enabled'));
     $('#el-add-links', $menu_obj).append(RenderSubscribeMultiLink("Artist", ['artist'], artist_id, 'subscribe_events_enabled'));
@@ -2497,7 +2693,7 @@ function InitializeArtistShowMenu() {
 
 function InitializePoolShowMenu() {
     //#C-POOLS #A-SHOW
-    if (!IsItemSubscribeEnabled('pool')) return false;
+    if (!EL.show_all_subscribe_controls && !IsItemSubscribeEnabled('pool')) return false;
     let pool_id = $('body').data('pool-id');
     let $menu_obj = $.parseHTML(RenderMultilinkMenu(pool_id, 'subscribe_events_enabled'));
     $('#el-add-links', $menu_obj).append(RenderSubscribeMultiLink("Pool", ['pool'], pool_id, 'subscribe_events_enabled'));
@@ -2757,14 +2953,60 @@ function FindEvents(array, source, subscribe_set, user_set) {
 }
 
 function FindCategoryEvents(array) {
+    const printer = JSPLib.debug.getFunctionPrint('FindCategoryEvents');
     let found_events = [];
     for (let i = 0; i < array.length; i ++) {
-        if(EL.subscribed_mod_actions.includes(array[i].category)) {
-            found_events.push({
-                id: array[i].id,
-                match: ['category'],
-                seen: false,
-            });
+        let modaction = array[i];
+        if (!modaction.subject_type) continue;
+        if (EL.filter_user_events && (modaction.creator_id === EL.user_id)) continue;
+        if (EL.filter_users.includes(modaction.creator_id)) continue;
+        if(!EL.subscribed_mod_actions.includes(modaction.category)) continue;
+        let item = {
+            id: modaction.id,
+            match: [],
+            seen: false,
+        };
+        let subject_type = JSPLib.utility.snakeCase(modaction.subject_type);
+        let config = INCLUDEDICT[subject_type];
+        let filtered = false;
+        if (EL.filter_user_mod_actions && subject_type === 'user') {
+            let user_set = GetUserList('mod_action');
+            if (user_set.size && user_set.has(modaction.subject_id)) {
+                printer.debuglogLevel('user_set', subject_type, modaction, JSPLib.debug.DEBUG);
+                item.match.push('user');
+            }
+            filtered = true;
+        }
+        if (EL.filter_subscribe_mod_actions && JSPLib.utility.isHash(config)) {
+            let event_type = config.type ?? subject_type;
+            let subscribe_set = GetItemList(event_type, true);
+            let item_id = (config.subscribe ? modaction.subject?.[config.subscribe] : modaction.subject_id);
+            if (subscribe_set.size && subscribe_set.has(item_id)) {
+                printer.debuglogLevel('subscribe_set', subject_type, modaction, JSPLib.debug.DEBUG);
+                item.match.push('subscribe');
+            }
+            filtered = true;
+        }
+        if (EL.filter_creator_mod_actions && config?.creator) {
+            if (modaction.subject?.[config.creator] === EL.user_id) {
+                printer.debuglogLevel('creator_event', subject_type, modaction, JSPLib.debug.DEBUG);
+                item.match.push('creator');
+            }
+            filtered = true;
+        }
+        if (EL.filter_related_mod_actions && config?.related) {
+            if (modaction.subject && JSPLib.utility.getNestedAttribute(modaction.subject, config.related) === EL.user_id) {
+                printer.debuglogLevel('related_event', subject_type, modaction, JSPLib.debug.DEBUG);
+                item.match.push('related');
+            }
+            filtered = true;
+        }
+        if (!filtered) {
+            printer.debuglogLevel('category_event', subject_type, modaction, JSPLib.debug.DEBUG);
+            item.match.push('category');
+        }
+        if (item.match.length) {
+            found_events.push(item);
         }
     }
     return found_events;
@@ -3129,6 +3371,53 @@ async function AddParentInclude(versions) {
     return versions;
 }
 
+async function AddModActionSubject(modactions) {
+    const printer = JSPLib.debug.getFunctionPrint('AddModActionSubject');
+    if (modactions.length > 0) {
+        let subject_dict = {};
+        modactions.filter((modaction) => JSPLib.utility.validateID(modaction.subject_id)).forEach((modaction) => {
+            let subject_type = JSPLib.utility.snakeCase(modaction.subject_type);
+            subject_dict[subject_type] ??= [];
+            subject_dict[subject_type].push(modaction.subject_id);
+        });
+        let promise_hash = {};
+        for (let subject_type in subject_dict) {
+            const config = INCLUDEDICT[subject_type];
+            if (!config || !config.controller) continue;
+            if (!((EL.filter_subscribe_mod_actions && config.subscribe) ||
+                  (EL.filter_creator_mod_actions && config.creator) ||
+                  (EL.filter_related_mod_actions && config.related))) continue;
+            let query_ids = JSPLib.utility.arrayUnique(subject_dict[subject_type]);
+            let search_addon = config.json_addons(query_ids);
+            let only_addon = config.only;
+            if (EL.filter_related_mod_actions && config.includes) {
+                only_addon += ',' + config.includes;
+            }
+            let url_addons = JSPLib.utility.mergeHashes(search_addon, {only: only_addon});
+            let selector = null;
+            if (query_ids.length > QUERY_LIMIT) {
+                selector = `.el-home-section[data-type="mod_action"] .el-pages-left[data-source="other"] .el-subpages-left[data-type="${subject_type}"] > span`;
+                if ($(selector).length === 0) {
+                    printer.debuglog("Installing counter:", subject_type);
+                    $('.el-home-section[data-type="mod_action"] .el-pages-left[data-source="other"] > ul').append(JSPLib.utility.regexReplace(SUBCOUNTER_HTML, {
+                        DISPLAY: JSPLib.utility.displayCase(subject_type),
+                        TYPE: subject_type,
+                    }));
+                }
+            }
+            printer.debuglog("Querying modaction includes:", subject_type, query_ids.length);
+            promise_hash[subject_type] = JSPLib.danbooru.getAllItems(config.controller, QUERY_LIMIT, {url_addons, long_format: true, domname: selector, id_list: query_ids, expected_size: query_ids.length});
+        }
+        let result_hash = await JSPLib.utility.promiseHashAll(promise_hash);
+        for (let subject_type in result_hash) {
+            modactions.filter((modaction) => subject_dict[subject_type].includes(modaction.subject_id)).forEach((modaction) => {
+                modaction.subject = result_hash[subject_type].find((item) => item.id === modaction.subject_id);
+            });
+        }
+    }
+    return modactions;
+}
+
 async function GetEventThumbnails(post_ids) {
     let thumbnails = [];
     for (let i = 0; i < post_ids.length; i += QUERY_LIMIT) {
@@ -3214,7 +3503,7 @@ function CheckMore(event) {
     let {type, source} = GetCheckVars(event);
     if (ReserveEventSemaphore(type, source)) {
         JSPLib.notice.notice(`Checking more ${TYPEDICT[type].plural}.`);
-        let selector = `.el-home-section[data-type=${type}] .el-pages-left[data-source="${source}"] span`;
+        let selector = `.el-home-section[data-type="${type}"] .el-pages-left[data-source="${source}"] > span`;
         ProcessEventType(type, source, false, selector).then((new_events) => {
             UpdateAfterCheck(type, source, new_events);
             FreeEventSemaphore(type, source);
@@ -3234,7 +3523,7 @@ function CheckAll(event) {
                     if (overflow) {
                         if (ReserveEventSemaphore(type, source)) {
                             promise_hash[type] ??= {};
-                            let selector = `.el-home-section[data-type=${type}] .el-pages-left[data-source="${source}"] span`;
+                            let selector = `.el-home-section[data-type=${type}] .el-pages-left[data-source="${source}"] > span`;
                             promise_hash[type][source] = ProcessEventType(type, source, true, selector);
                         }
                     }
@@ -3254,7 +3543,7 @@ function CheckAll(event) {
     } else {
         if (ReserveEventSemaphore(type, source)) {
             JSPLib.notice.notice(`Checking all ${TYPEDICT[type].plural}.`);
-            let selector = `.el-home-section[data-type=${type}] .el-pages-left[data-source="${source}"] span`;
+            let selector = `.el-home-section[data-type=${type}] .el-pages-left[data-source="${source}"] > span`;
             ProcessEventType(type, source, true, selector).then((new_events) => {
                 UpdateAfterCheck(type, source, new_events);
                 FreeEventSemaphore(type, source);
@@ -3559,6 +3848,9 @@ async function ProcessEventType(type, source, no_limit = false, selector = null)
         if (EL.show_parent_events && type === 'post' && source === 'subscribe') {
             items = await AddParentInclude(items);
         }
+        if ((EL.filter_subscribe_mod_actions || EL.filter_creator_mod_actions || EL.filter_related_mod_actions) && type === 'mod_action') {
+            items = await AddModActionSubject(items);
+        }
         SaveLastChecked(type, source);
         if (items.length) {
             let batch_limit = (Number.isInteger(batches) ? batches * QUERY_LIMIT : Infinity);
@@ -3778,10 +4070,15 @@ function RenderSettingsMenu() {
     $('#el-subscribe-event-settings').append(JSPLib.menu.renderInputSelectors('subscribe_events_enabled', 'checkbox'));
     $('#el-subscribe-event-settings').append(JSPLib.menu.renderCheckbox('show_creator_events'));
     $('#el-subscribe-event-settings').append(JSPLib.menu.renderCheckbox('show_parent_events'));
+    $('#el-subscribe-event-settings').append(JSPLib.menu.renderCheckbox('show_all_subscribe_controls'));
     $('#el-user-event-settings').append(JSPLib.menu.renderInputSelectors('user_events_enabled', 'checkbox'));
-    $('#el-other-event-settings-message').append(JSPLib.menu.renderExpandable("Event exceptions", OTHER_EVENT_SETTINGS_DETAILS));
+    $('#el-other-event-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", OTHER_EVENT_SETTINGS_DETAILS));
     $('#el-other-event-settings').append(JSPLib.menu.renderInputSelectors('other_events_enabled', 'checkbox'));
     $('#el-other-event-settings').append(JSPLib.menu.renderInputSelectors('subscribed_mod_actions', 'checkbox'));
+    $('#el-other-event-settings').append(JSPLib.menu.renderCheckbox('filter_subscribe_mod_actions'));
+    $('#el-other-event-settings').append(JSPLib.menu.renderCheckbox('filter_user_mod_actions'));
+    $('#el-other-event-settings').append(JSPLib.menu.renderCheckbox('filter_creator_mod_actions'));
+    $('#el-other-event-settings').append(JSPLib.menu.renderCheckbox('filter_related_mod_actions'));
     $('#el-controls').append(JSPLib.menu.renderCacheControls());
     $('#el-cache-controls').append(JSPLib.menu.renderLinkclick('cache_info'));
     $('#el-cache-controls').append(JSPLib.menu.renderCacheInfoTable());
