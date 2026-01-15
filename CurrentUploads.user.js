@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      16.24
+// @version      16.25
 // @description  Gives up-to-date stats on uploads.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1902,7 +1902,7 @@ JSPLib.program_shortcut = PROGRAM_SHORTCUT;
 JSPLib.program_data = CU;
 
 //Variables for debug.js
-JSPLib.debug.debug_console = false;
+JSPLib.debug.mode = false;
 JSPLib.debug.level = JSPLib.debug.INFO;
 
 //Variables for menu.js
