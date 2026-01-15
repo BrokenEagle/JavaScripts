@@ -3337,6 +3337,7 @@ async function GetHTMLPage(type, events) {
 }
 
 async function AddParentInclude(versions) {
+    const printer = JSPLib.debug.getFunctionPrint('AddParentInclude');
     let parent_ids = versions.map((version) => {
         if (!version.parent_changed) return null;
         let changed_tags = JSPLib.utility.concat(version.added_tags, version.removed_tags);
@@ -3348,20 +3349,28 @@ async function AddParentInclude(versions) {
     if (parent_ids.length > 0) {
         let url_addons = {
             tags: `id:${parent_ids.join(',')} status:any`,
-            limit: parent_ids.length,
             only: 'id,uploader_id',
         };
-        let parent_posts = await JSPLib.danbooru.getAllItems('posts', 200, {url_addons, long_format: true});
-        for (let i = 0; i < versions.length; i++) {
-            let version = versions[i];
-            if (version.parent_changed) {
-                let parent_id = version.post.parent_id;
-                let parent_post = parent_posts.find((post) => post.id === parent_id);
-                if (parent_post) {
-                    version.post.parent = parent_post;
-                }
+        let selector = null;
+        if (parent_ids.length > QUERY_LIMIT) {
+            selector = '.el-home-section[data-type="post"] .el-pages-left[data-source="subscribe"] .el-subpages-left[data-type="parent"] > span';
+            if ($(selector).length === 0) {
+                printer.debuglog("Installing counter.");
+                $('.el-home-section[data-type="post"] .el-pages-left[data-source="subscribe"] > ul').append(JSPLib.utility.regexReplace(SUBCOUNTER_HTML, {
+                    DISPLAY: 'Parent',
+                    TYPE: 'parent',
+                }));
             }
         }
+        printer.debuglog("Querying parent includes:", parent_ids.length);
+        let parent_posts = await JSPLib.danbooru.getAllItems('posts', QUERY_LIMIT, {url_addons, long_format: true, domname: selector, id_list: parent_ids});
+        versions.filter((version) => version.parent_changed).forEach((version) => {
+            let parent_id = version.post.parent_id;
+            let parent_post = parent_posts.find((post) => post.id === parent_id);
+            if (parent_post) {
+                version.post.parent = parent_post;
+            }
+        });
     }
     return versions;
 }
