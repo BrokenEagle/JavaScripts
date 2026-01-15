@@ -3952,7 +3952,7 @@ function CleanupTasks() {
         if (CheckSubscribeEnabled(type)) return;
         if (CheckUserEnabled(type)) return;
         SOURCE_SUFFIXES.forEach((suffix) => {
-            JSPLib.storage.removeLocalData(`el-${type}-post-query-${suffix}`);
+            JSPLib.storage.removeLocalData(`el-${type}-subscribe-${suffix}`);
         });
     });
     POST_QUERY_EVENTS.forEach((type) => {
