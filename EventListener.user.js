@@ -1996,6 +1996,20 @@ function ClearPages(type) {
     delete EL.observed[type];
 }
 
+function InvalidateTypeTab(type, remove) {
+    const printer = JSPLib.debug.getFunctionPrint('InvalidateTypeTab');
+    if (remove) {
+        printer.debuglogLevel('Removing head/body for', type, JSPLib.debug.INFO);
+        $(`.el-event-header[data-type="${type}"]`).remove();
+        $(`.el-event-body[data-type="${type}"]`).remove();
+    } else {
+        printer.debuglogLevel('Emptying body for', type, JSPLib.debug.INFO);
+        $(`.el-event-body[data-type="${type}"]`).children().remove();
+    }
+    $('.el-event-header[data-type="home"] a').trigger('click');
+    ClearPages(type);
+}
+
 function UpdateHomeText(type, source, classname, text) {
     if (source) {
         $(`.el-home-section[data-type=${type}] ${classname}[data-source="${source}"] span`).html(text);
@@ -2070,7 +2084,7 @@ function GetEvents(type) {
 function SaveEvents(type, events) {
     events.sort((eva, evb) => evb.id - eva.id);
     JSPLib.storage.setLocalData(`el-${type}-saved-events`, events);
-    UpdateEventType(type, {broadcast: true});
+    UpdateEventType(type, {broadcast: true, save_event: true});
     UpdateNavigation({broadcast: true});
 }
 
@@ -2297,9 +2311,9 @@ function UpdateNavigation({events_total = 0, has_new = false, broadcast = false}
     }
 }
 
-function UpdateEventType(type, {saved_total = 0, new_total = 0, has_new = false, broadcast = false} = {}) {
+function UpdateEventType(type, {saved_total = null, new_total = null, has_new = false, save_event = false, broadcast = false} = {}) {
     const printer = JSPLib.debug.getFunctionPrint('UpdateEventType');
-    if (saved_total === 0) {
+    if (saved_total === null) {
         let saved_events = GetEvents(type);
         let new_events = saved_events.filter((ev) => !ev.seen);
         saved_total = saved_events.length;
@@ -2326,11 +2340,11 @@ function UpdateEventType(type, {saved_total = 0, new_total = 0, has_new = false,
                 $('#el-body').append(RenderEventBody(type));
                 $(`#el-page .el-event-header[data-type=${type}] a`).on(JSPLib.program_click, EventTab);
             } else {
-                printer.debuglogLevel('Emptying body for', type, JSPLib.debug.INFO);
-                $(`.el-event-body[data-type="${type}"]`).children().remove();
-                $('.el-event-header[data-type="home"] a').trigger('click');
-                ClearPages(type);
+                InvalidateTypeTab(type, false);
             }
+        }
+        if (save_event && !broadcast) {
+            InvalidateTypeTab(type, saved_total === 0);
         }
         UpdateHomeText(type, null, '.el-new-events', new_total);
         UpdateHomeText(type, null, '.el-available-events', saved_total);
@@ -2345,7 +2359,7 @@ function UpdateEventType(type, {saved_total = 0, new_total = 0, has_new = false,
         }
     }
     if (broadcast) {
-        EL.channel.postMessage({type: 'update_type', event_type: type, event_data: {saved_total, new_total, has_new}});
+        EL.channel.postMessage({type: 'update_type', event_type: type, event_data: {saved_total, new_total, has_new, save_event}});
     }
 }
 
