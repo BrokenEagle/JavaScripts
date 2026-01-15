@@ -1587,7 +1587,7 @@ const TYPEDICT = {
         find_events: FindEvents,
         insert_events: InsertTableEvents,
         plural: 'approvals',
-        display: "Approval",
+        display: "Approvals",
         includes: 'post[uploader_id]',
     },
     wiki: {
