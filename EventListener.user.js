@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      26.0
+// @version      26.1
 // @description  Informs users of new events.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -88,81 +88,30 @@ JSPLib.utility.promiseHashAll = async function (promise_hash) {
     return resolve(promise_hash);
 };
 
-JSPLib.danbooru.getAllItems = async function (type, limit, {url_addons = {}, batches = null, reverse = false, long_format = false, id_list = null, page = null, domain = "", domname = null, notify = false} = {}) {
-    const printer = JSPLib.debug.getFunctionPrint('danbooru.getAllItems');
-    if (id_list !== null && !JSPLib.utility.validateIDList(id_list)) {
-        throw new Error("danbooru.getAllItems: Invalid ID list");
+JSPLib.danbooru.getAllIDItems = async function (type, id_list, limit, {id_addon = null, other_addons = {}, long_format = false, domain = "", domname = null, notify = false} = {}) {
+    const printer = JSPLib.debug.getFunctionPrint('danbooru.getAllIDItems');
+    if (!JSPLib.utility.validateIDList(id_list)) {
+        throw new Error("danbooru.getAllIDItems: Invalid ID list");
     }
-    printer.debuglogLevel({type, limit, url_addons, batches, reverse, long_format, id_list, page, domain, domname, notify}, JSPLib.debug.ALL);
-    let page_modifier = (reverse ? 'a' : 'b');
-    let page_addon = (Number.isInteger(page) ? {page: `${page_modifier}${page}`} : {});
+    printer.debuglogLevel({type, id_list, limit, id_addon, other_addons, long_format, domain, domname, notify}, JSPLib.debug.ALL);
+    id_addon ??= (arr) => ({search: {id: arr.join(',')}});
     let limit_addon = {limit};
-    let batch_num = 1;
-    let last_id = (id_list !== null ? (reverse ? Math.max(...id_list) : Math.min(...id_list)) : null);
     var return_items = [];
-    await this.initializePageCounter(type, limit, url_addons, reverse, long_format, id_list, page, domain, domname, notify);
-    while (true) {
-        let request_addons = JSPLib.utility.mergeHashes(url_addons, page_addon, limit_addon);
+    let total_pages = Math.ceil(id_list.length / limit);
+    this.setIDCounter(domname, total_pages);
+    for (let i = 0; i < id_list.length; i += limit) {
+        let sublist = id_list.slice(i, i + limit);
+        let request_addons = JSPLib.utility.mergeHashes(id_addon(sublist), other_addons, limit_addon);
         let temp_items = await this.submitRequest(type, request_addons, {default_val: [], long_format, domain, notify});
         return_items = JSPLib.utility.concat(return_items, temp_items);
-        let latest_id = this.getNextPageID(temp_items, reverse);
-        this.updatePageCounter(domname, limit, latest_id, reverse, id_list);
-        if (
-            (batches && batch_num >= batches) ||
-            (id_list !== null && ((reverse && latest_id >= last_id) || (!reverse && latest_id <= last_id))) ||
-            (id_list === null && temp_items.length < limit) ||
-            (temp_items.length === 0)
-        ) {
-            return return_items;
-        }
-        page_addon = {page: `${page_modifier}${latest_id}`};
-        printer.debuglogLevel("#", batch_num++, "Rechecking", type, "@", latest_id, JSPLib.debug.INFO);
+        this.setIDCounter(domname, --total_pages);
     }
+    return return_items;
 };
 
-JSPLib.danbooru.initializePageCounter = async function (type, limit, url_addons, reverse, long_format, id_list, page, domain, domname, notify) {
-    const printer = JSPLib.debug.getFunctionPrint('danbooru.initializePageCounter');
+JSPLib.danbooru.setIDCounter = function (domname, counter) {
     if (domname) {
-        if (id_list !== null) {
-            let total_pages = Math.ceil(id_list.length / limit);
-            JSPLib._jQuery(domname).text(total_pages);
-            printer.debuglogLevel(domname, total_pages, JSPLib.debug.INFO);
-        } else if (Number.isInteger(page)) {
-            let latest_id = JSPLib._jQuery(domname).data('latest-id');
-            if (!Number.isInteger(latest_id)) {
-                let request_addons = JSPLib.utility.mergeHashes(url_addons, {limit: 1}, {only: 'id'});
-                if (!reverse) {
-                    request_addons.page = 'a0';
-                }
-                let latest_item = await this.submitRequest(type, request_addons, {default_val: [], long_format, domain, notify});
-                if (latest_item.length) {
-                    latest_id = latest_item[0].id;
-                    let current_counter = Math.abs(Math.ceil((latest_id - page) / limit));
-                    JSPLib._jQuery(domname).text(current_counter);
-                    JSPLib._jQuery(domname).data('latest-id', latest_id);
-                    printer.debuglogLevel(domname, current_counter, latest_id, page, JSPLib.debug.INFO);
-                }
-            }
-        }
-    }
-};
-
-JSPLib.danbooru.updatePageCounter = function (domname, limit, page, reverse, id_list) {
-    const printer = JSPLib.debug.getFunctionPrint('danbooru.updatePageCounter');
-    if (domname) {
-        if (id_list !== null) {
-            let remaining_ids = id_list.filter((id) => (reverse && id > page) || (!reverse && id < page));
-            let remaining_pages = Math.ceil(remaining_ids.length / limit);
-            JSPLib._jQuery(domname).text(remaining_pages);
-            printer.debuglogLevel(domname, remaining_pages, JSPLib.debug.INFO);
-        } else {
-            let latest_id = JSPLib._jQuery(domname).data('latest-id');
-            if (Number.isInteger(latest_id)) {
-                let current_counter = (Number.isInteger(page) ? Math.abs(Math.ceil((latest_id - page) / limit)) : 0);
-                JSPLib._jQuery(domname).text(current_counter);
-                printer.debuglogLevel(domname, current_counter, latest_id, page, JSPLib.debug.INFO);
-            }
-        }
+        JSPLib._jQuery(domname).text(counter);
     }
 };
 
@@ -1670,13 +1619,13 @@ const TYPEDICT = {
 const INCLUDEDICT = {
     post: {
         controller: 'posts',
-        json_addons: (item_ids) => ({tags: 'status:any id:' + item_ids.join(',')}),
+        id_addon: (item_ids) => ({tags: 'status:any id:' + item_ids.join(',')}),
         only: 'id,uploader_id',
         creator: 'uploader_id',
     },
     comment: {
         controller: 'comments',
-        json_addons: (item_ids) => ({search: {id: item_ids.join(',')}, group_by: 'comment'}),
+        other_addons: {group_by: 'comment'},
         only: 'id,post_id,creator_id',
         includes: 'post[uploader_id]',
         subscribe: 'post_id',
@@ -1685,14 +1634,12 @@ const INCLUDEDICT = {
     },
     forum_topic: {
         controller: 'forum_topics',
-        json_addons: (item_ids) => ({search: {id: item_ids.join(',')}}),
         only: 'id,creator_id',
         creator: 'creator_id',
         type: 'forum',
     },
     forum_post: {
         controller: 'forum_posts',
-        json_addons: (item_ids) => ({search: {id: item_ids.join(',')}}),
         only: 'id,topic_id,creator_id',
         includes: 'topic[creator_id]',
         subscribe: 'topic_id',
@@ -3371,10 +3318,10 @@ async function AddParentInclude(versions) {
         if (!parent_tag) return null;
         return Number(parent_tag.slice(7));
     });
-    parent_ids = JSPLib.utility.arrayUnique(parent_ids.filter((id) => id !== null));
+    parent_ids = JSPLib.utility.arrayUnique(parent_ids.filter((id) => id !== null)).toSorted();
     if (parent_ids.length > 0) {
-        let url_addons = {
-            tags: `id:${parent_ids.join(',')} status:any`,
+        let id_addon = (item_ids) => ({tags: 'status:any id:' + item_ids.join(',')});
+        let other_addons = {
             only: 'id,uploader_id',
         };
         let selector = null;
@@ -3389,7 +3336,7 @@ async function AddParentInclude(versions) {
             }
         }
         printer.debuglog("Querying parent includes:", parent_ids.length);
-        let parent_posts = await JSPLib.danbooru.getAllItems('posts', QUERY_LIMIT, {url_addons, long_format: true, domname: selector, id_list: parent_ids});
+        let parent_posts = await JSPLib.danbooru.getAllIDItems('posts', parent_ids, QUERY_LIMIT, {id_addon, other_addons, domname: selector});
         versions.filter((version) => version.parent_changed).forEach((version) => {
             let parent_id = version.post.parent_id;
             let parent_post = parent_posts.find((post) => post.id === parent_id);
@@ -3417,13 +3364,14 @@ async function AddModActionSubject(modactions) {
             if (!((EL.filter_subscribe_mod_actions && config.subscribe) ||
                   (EL.filter_creator_mod_actions && config.creator) ||
                   (EL.filter_related_mod_actions && config.related))) continue;
-            let query_ids = JSPLib.utility.arrayUnique(subject_dict[subject_type]);
-            let search_addon = config.json_addons(query_ids);
-            let only_addon = config.only;
+            let query_ids = JSPLib.utility.arrayUnique(subject_dict[subject_type]).toSorted();
+            let other_addons = {only: config.only};
             if (EL.filter_related_mod_actions && config.includes) {
-                only_addon += ',' + config.includes;
+                other_addons.only += ',' + config.includes;
             }
-            let url_addons = JSPLib.utility.mergeHashes(search_addon, {only: only_addon});
+            if (config.other_addons) {
+                other_addons = JSPLib.utility.mergeHashes(other_addons, config.other_addons);
+            }
             let selector = null;
             if (query_ids.length > QUERY_LIMIT) {
                 selector = `.el-home-section[data-type="mod_action"] .el-pages-left[data-source="other"] .el-subpages-left[data-type="${subject_type}"] > span`;
@@ -3436,7 +3384,7 @@ async function AddModActionSubject(modactions) {
                 }
             }
             printer.debuglog("Querying modaction includes:", subject_type, query_ids.length);
-            promise_hash[subject_type] = JSPLib.danbooru.getAllItems(config.controller, QUERY_LIMIT, {url_addons, long_format: true, domname: selector, id_list: query_ids, expected_size: query_ids.length});
+            promise_hash[subject_type] = JSPLib.danbooru.getAllIDItems(config.controller, query_ids, QUERY_LIMIT, {id_addon: config.id_addon, other_addons, domname: selector});
         }
         let result_hash = await JSPLib.utility.promiseHashAll(promise_hash);
         for (let subject_type in result_hash) {
