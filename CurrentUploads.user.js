@@ -14,17 +14,17 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c842aecd3e35d74b639db7c2628286f687c3a331/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c842aecd3e35d74b639db7c2628286f687c3a331/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c842aecd3e35d74b639db7c2628286f687c3a331/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c842aecd3e35d74b639db7c2628286f687c3a331/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c842aecd3e35d74b639db7c2628286f687c3a331/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c842aecd3e35d74b639db7c2628286f687c3a331/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c842aecd3e35d74b639db7c2628286f687c3a331/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c842aecd3e35d74b639db7c2628286f687c3a331/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c842aecd3e35d74b639db7c2628286f687c3a331/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c842aecd3e35d74b639db7c2628286f687c3a331/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c842aecd3e35d74b639db7c2628286f687c3a331/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru CanvasJS */
@@ -164,45 +164,44 @@ const DEFAULT_VALUES = {
 //CSS Constants
 
 //Style information
-const PROGRAM_CSS = `
+const PROGRAM_CSS = JSPLib.utility.nestedCSSCheck()`
 #upload-counts {
     border-style: dotted;
     border-width: 2px;
     max-width: 70em;
     margin-left: 2em;
+    &.opened {
+        border-style: dashed;
+        border-width: 5px;
+        #count-module {
+            display: block;
+            margin-bottom: 1em;
+            border: var(--form-input-border);
+            #count-header {
+                margin-left: 1em;
+            }
+            #count-table {
+                white-space: nowrap;
+                margin-left: 1em;
+            }
+            th, td {
+                width: 10em;
+                text-align: center;
+                &:first-of-type {
+                    width: 12em;
+                    text-align: left;
+                }
+            }
+        }
+    }
+    #count-module {
+        display: none;
+    }
+    &.stashed {
+        display: none;
+    }
 }
-#upload-counts.opened {
-    border-style: dashed;
-    border-width: 5px;
-}
-#upload-counts.stashed {
-    display: none;
-}
-#count-module {
-    margin-bottom: 1em;
-    display: none;
-    border: var(--form-input-border);
-}
-#upload-counts.opened #count-module {
-    display: block;
-}
-#count-header {
-    margin-left: 1em;
-}
-#count-table {
-    white-space: nowrap;
-    margin-left: 1em;
-}
-#count-header th,
-#count-table td {
-    width: 10em;
-    text-align: center;
-}
-#count-header th:first-of-type,
-#count-table td:first-of-type {
-    width: 12em;
-    text-align: left;
-}
+
 #count-table.overflowed {
     max-height: 20em;
     overflow-x: hidden;
@@ -1278,12 +1277,12 @@ function InitializeControls() {
     if (!CU.controls_initialized) {
         $("#count-controls").html(RenderAllTooltipControls());
         $("#count-copyrights-controls").html(RenderCopyrightControls());
-        $(".cu-select-tooltip").on(JSPLib.program_click, TooltipChange);
-        $(".cu-select-period a").on(JSPLib.program_click, CopyrightPeriod);
-        $("#count-copyrights-header a").on(JSPLib.program_click, ToggleCopyrightsSection);
-        $("#count_submit_user_id").on(JSPLib.program_click, CheckUser);
-        $("#count_refresh_user_id").on(JSPLib.program_click, RefreshUser);
-        $("#count_add_copyright").on(JSPLib.program_click, AddCopyright);
+        $(".cu-select-tooltip").on(JSPLib.program.click, TooltipChange);
+        $(".cu-select-period a").on(JSPLib.program.click, CopyrightPeriod);
+        $("#count-copyrights-header a").on(JSPLib.program.click, ToggleCopyrightsSection);
+        $("#count_submit_user_id").on(JSPLib.program.click, CheckUser);
+        $("#count_refresh_user_id").on(JSPLib.program.click, RefreshUser);
+        $("#count_add_copyright").on(JSPLib.program.click, AddCopyright);
         CU.controls_initialized = true;
         if (CU.use_IAC) {
             setTimeout(() => {
@@ -1297,9 +1296,9 @@ function InitializeTable() {
     $("#count-header").html(AddTable(RenderHeader(), 'class="striped"'));
     $("#count-table").html(AddTable(RenderBody(), 'class="striped"'));
     $("#count-order").html(RenderOrderMessage("d", 0));
-    $("#count-header .cu-process").on(JSPLib.program_click, GetPeriod);
-    $("#count-header th").on(JSPLib.program_click, SortTable);
-    $("#count-table .cu-manual,#count-table .cu-limited").on(JSPLib.program_click, RenderChart);
+    $("#count-header .cu-process").on(JSPLib.program.click, GetPeriod);
+    $("#count-header th").on(JSPLib.program.click, SortTable);
+    $("#count-table .cu-manual,#count-table .cu-limited").on(JSPLib.program.click, RenderChart);
     $("#count-controls,#count-copyrights,#count-header").show();
     $(`.cu-select-tooltip[data-type="${CU.current_metric}"] a`).click();
     CU.sorttype = 0;
@@ -1391,7 +1390,7 @@ async function GetPeriod(event) {
     }
     $(`#count-header th[data-period=${period}] .cu-display`).hide();
     $(`.cu-select-tooltip[data-type="${CU.current_metric}"] a`).click();
-    $(event.target).off(JSPLib.program_click);
+    $(event.target).off(JSPLib.program.click);
 }
 
 function SortTable(event) {
@@ -1512,7 +1511,7 @@ function TooltipChange(event) {
     $(`.cu-select-tooltip[data-type="${CU.current_metric}"]`).addClass("cu-activetooltip");
     $(`.cu-tooltiptext[data-type="${CU.current_metric}"]`).addClass("cu-activetooltip");
     JSPLib.storage.setLocalData('cu-current-metric', CU.current_metric);
-    $(".cu-hover .cu-uploads").off(JSPLib.program_mouseover).on(JSPLib.program_mouseover, TooltipHover);
+    $(".cu-hover .cu-uploads").off(JSPLib.program.mouseover).on(JSPLib.program.mouseover, TooltipHover);
     event.preventDefault();
 }
 
@@ -1541,7 +1540,7 @@ async function CopyrightPeriod(event) {
     if (short_period === 'manual') {
         $("#count-copyrights-manual").show();
         $('#count-copyrights-list').html(RenderCopyrights('manual'));
-        $("#count-copyrights-list a").off(JSPLib.program_click).on(JSPLib.program_click, ToggleCopyrightTag);
+        $("#count-copyrights-list a").off(JSPLib.program.click).on(JSPLib.program.click, ToggleCopyrightTag);
     } else {
         $("#count-copyrights-manual").hide();
         let current_period = period_info.longname[short_period];
@@ -1563,7 +1562,7 @@ async function CopyrightPeriod(event) {
                 $('#count-copyrights-list').html(`<div id="empty-statistics">${copyright_no_uploads}</div>`);
             } else {
                 $('#count-copyrights-list').html(RenderCopyrights(current_period));
-                $("#count-copyrights-list a").off(JSPLib.program_click).on(JSPLib.program_click, ToggleCopyrightTag);
+                $("#count-copyrights-list a").off(JSPLib.program.click).on(JSPLib.program.click, ToggleCopyrightTag);
             }
         } else {
             $('#count-copyrights-list').html(`<div id="empty-statistics">${copyright_no_statistics}</div>`);
@@ -1672,7 +1671,7 @@ async function AddCopyright() {
     CU.active_copytags.push(tag);
     CU.active_copytags = JSPLib.utility.arrayUnique(CU.active_copytags);
     $('#count-copyrights-list').html(RenderCopyrights('manual'));
-    $("#count-copyrights-list a").off(JSPLib.program_click).on(JSPLib.program_click, ToggleCopyrightTag);
+    $("#count-copyrights-list a").off(JSPLib.program.click).on(JSPLib.program.click, ToggleCopyrightTag);
 }
 
 function TooltipHover(event) {
@@ -1848,7 +1847,7 @@ function RenderSettingsMenu() {
     JSPLib.menu.purgeCacheClick();
     JSPLib.menu.expandableClick();
     JSPLib.menu.dataSourceChange();
-    $("#cu-control-data-type").on(JSPLib.program_change, DataTypeChange);
+    $("#cu-control-data-type").on(JSPLib.program.change, DataTypeChange);
     JSPLib.menu.rawDataChange();
     JSPLib.menu.getCacheClick(ValidateProgramData);
     JSPLib.menu.saveCacheClick(ValidateProgramData, ValidateEntry);
@@ -1882,8 +1881,8 @@ function Main() {
     }
     $('header#top').append($notice_box);
     $('footer#page-footer').append($footer_notice);
-    $("#toggle-count-notice").on(JSPLib.program_click, ToggleNotice);
-    $("#stash-count-notice,#restore-count-notice").on(JSPLib.program_click, StashNotice);
+    $("#toggle-count-notice").on(JSPLib.program.click, ToggleNotice);
+    $("#stash-count-notice,#restore-count-notice").on(JSPLib.program.click, StashNotice);
     if (CU.hidden === false) {
         //Set to opposite so that click can be used and sets it back
         CU.hidden = true;
@@ -1896,13 +1895,12 @@ function Main() {
 /****Initialization****/
 
 //Variables for JSPLib
-
 JSPLib.program_name = PROGRAM_NAME;
 JSPLib.program_shortcut = PROGRAM_SHORTCUT;
 JSPLib.program_data = CU;
 
 //Variables for debug.js
-JSPLib.debug.mode = false;
+JSPLib.debug.mode = true;
 JSPLib.debug.level = JSPLib.debug.INFO;
 
 //Variables for menu.js
