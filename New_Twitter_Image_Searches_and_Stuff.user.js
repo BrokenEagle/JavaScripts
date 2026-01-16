@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      11.12
+// @version      11.13
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -3150,19 +3150,10 @@ function PageNavigation(pagetype) {
     //Only render pages with attachment points
     if (IsPageType(STREAMING_PAGES) || IsTweetPage()) {
         if ($('#ntisas-side-menu').length === 0) {
-            $(document.body).append(RenderSideMenu());
-            $(window).off('popstate.ntisas').on('popstate.ntisas', (...args) => {console.log("popState:", args); MenuNavigation();});
-            if (!window.history.pushState_NTISAS) {
-                window.history.pushState = new Proxy(window.history.pushState, {
-                    apply (target, context, args) {
-                        let output = target.apply(context, args);
-                        MenuNavigation();
-                        console.log("pushState:", args);
-                        return output;
-                    },
-                });
-                window.history.pushState_NTISAS = true;
+            if (JSPLib._window.navigation) {
+                $(JSPLib._window.navigation).off('navigate.ntisas').on('navigate.ntisas', MenuNavigation);
             }
+            $(document.body).append(RenderSideMenu());
             InitializeSideMenu();
             InitializeDatabaseLink();
             InitializeTotalRecords().then((total) => {
@@ -3214,7 +3205,7 @@ function PageNavigation(pagetype) {
             }
         }
     }
-    UpdateSideMenu(NTISAS.page, false);
+    UpdateSideMenu(NTISAS.page, !JSPLib._window.navigation);
     UpdateSimilarControls();
     UpdateConfirmUploadControls();
     UpdateConfirmDownloadControls();
@@ -5429,8 +5420,9 @@ function SeenTweet(entries, observer) {
     });
 }
 
-function MenuNavigation() {
-    let page_type = GetPageType(window.location.href);
+function MenuNavigation(event) {
+    if (event.originalEvent.destination.url.startsWith('blob:')) return;
+    let page_type = GetPageType(event.originalEvent.destination.url);
     UpdateSideMenu(page_type, true);
 }
 
