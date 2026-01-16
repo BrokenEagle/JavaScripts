@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SafelistPlus
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      4.25
+// @version      4.26
 // @description  Alternate Danbooru blacklist handler.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -640,7 +640,7 @@ class Safelist {
         });
     }
     setPushButtonClick() {
-        const printer = JSPLib.debug.getFunctionPrinter('setPushButtonClick');
+        const printer = JSPLib.debug.getFunctionPrint('setPushButtonClick');
         let context = this;
         $(".safelist-push", context.menu).off(JSPLib.program_click).on(JSPLib.program_click,()=>{
             if (confirm("Update your blacklist on Danbooru?")) {
