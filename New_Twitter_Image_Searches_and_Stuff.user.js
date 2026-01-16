@@ -384,6 +384,10 @@ const PROGRAM_CSS = `
     font-weight: bold;
     line-height: 18px;
 }
+#ntisas-menu-info tr,
+#ntisas-menu-controls tr {
+    white-space: nowrap;
+}
 #ntisas-menu-info td,
 #ntisas-menu-controls td {
     padding: 0 2px;
