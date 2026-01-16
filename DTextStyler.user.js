@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DTextStyler
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.12
+// @version      5.13
 // @description  Danbooru DText UI addon.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -88,12 +88,14 @@ JSPLib.utility.subscribeDOMProperty = function (obj, prop, func) {
         get: function() {
             return property.get.call(obj);
         },
-        configurable: true,
+        configurable: false,
         enumerable: true,
+        writeable: false,
     });
 };
 
-JSPLib.utility.setPropertyTrap = function (obj, property, {getter = null, setter = null} = {}) {
+JSPLib.utility.setPropertyTrap = function (obj, property, {value = {}, getter = null, setter = null} = {}) {
+    // For subproperties that are accessed/written after the DOM object is initialized
     const private_property = '_' + property;
     obj[property] = new Proxy(obj, {
         get(target, prop, receiver) {
@@ -101,8 +103,8 @@ JSPLib.utility.setPropertyTrap = function (obj, property, {getter = null, setter
             return target[private_property][prop];
         },
         set(target, prop, value, receiver) {
-            setter?.(prop, value);
             target[private_property][prop] = value;
+            setter?.(prop, value);
         },
     });
     Object.defineProperty(obj, property, {
@@ -111,7 +113,7 @@ JSPLib.utility.setPropertyTrap = function (obj, property, {getter = null, setter
         writeable: false,
     });
     Object.defineProperty(obj, private_property, {
-        value: {},
+        value,
         configurable: false,
         enumerable: false,
         writeable: false,
@@ -1164,6 +1166,7 @@ function InitializeUploadCommentary() {
                 $("#post_artist_commentary_original_description").val(value);
             }
         },
+        value: {dtext: description},
     });
 }
 
