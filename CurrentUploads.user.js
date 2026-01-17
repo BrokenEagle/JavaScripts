@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         CurrentUploads
+// @name         CurrentUploads (edit)
 // @namespace    https://github.com/BrokenEagle/JavaScripts
 // @version      16.25
 // @description  Gives up-to-date stats on uploads.
@@ -14,17 +14,17 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c842aecd3e35d74b639db7c2628286f687c3a331/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c842aecd3e35d74b639db7c2628286f687c3a331/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c842aecd3e35d74b639db7c2628286f687c3a331/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c842aecd3e35d74b639db7c2628286f687c3a331/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c842aecd3e35d74b639db7c2628286f687c3a331/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c842aecd3e35d74b639db7c2628286f687c3a331/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c842aecd3e35d74b639db7c2628286f687c3a331/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c842aecd3e35d74b639db7c2628286f687c3a331/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c842aecd3e35d74b639db7c2628286f687c3a331/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c842aecd3e35d74b639db7c2628286f687c3a331/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c842aecd3e35d74b639db7c2628286f687c3a331/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a8a18cd55504e2e20f255b270805f4c0da3406c5/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a8a18cd55504e2e20f255b270805f4c0da3406c5/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a8a18cd55504e2e20f255b270805f4c0da3406c5/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a8a18cd55504e2e20f255b270805f4c0da3406c5/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a8a18cd55504e2e20f255b270805f4c0da3406c5/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a8a18cd55504e2e20f255b270805f4c0da3406c5/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a8a18cd55504e2e20f255b270805f4c0da3406c5/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a8a18cd55504e2e20f255b270805f4c0da3406c5/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a8a18cd55504e2e20f255b270805f4c0da3406c5/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a8a18cd55504e2e20f255b270805f4c0da3406c5/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a8a18cd55504e2e20f255b270805f4c0da3406c5/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru CanvasJS */
@@ -165,6 +165,19 @@ const DEFAULT_VALUES = {
 
 //Style information
 const PROGRAM_CSS = JSPLib.utility.nestedCSSCheck()`
+/**GENERAL**/
+.cu-switch-control {
+    &.cu-active-control {
+        text-shadow: 1px 0 0;
+    }
+    a {
+        color: grey;
+        &:hover {
+            filter: brightness(1.5);
+        }
+    }
+}
+/**MAIN**/
 #upload-counts {
     border-style: dotted;
     border-width: 2px;
@@ -175,37 +188,68 @@ const PROGRAM_CSS = JSPLib.utility.nestedCSSCheck()`
         border-width: 5px;
         #count-module {
             display: block;
-            margin-bottom: 1em;
-            border: var(--form-input-border);
-            #count-header {
-                margin-left: 1em;
-            }
-            #count-table {
-                white-space: nowrap;
-                margin-left: 1em;
-            }
-            th, td {
-                width: 10em;
-                text-align: center;
-                &:first-of-type {
-                    width: 12em;
-                    text-align: left;
-                }
-            }
         }
-    }
-    #count-module {
-        display: none;
+        #upload-counts-toggle {
+            margin: 0.5em;
+        }
     }
     &.stashed {
         display: none;
     }
 }
-
-#count-table.overflowed {
-    max-height: 20em;
-    overflow-x: hidden;
-    overflow-y: auto;
+#count-module {
+    display: none;
+    padding-bottom: 1em;
+    border-bottom: 1px solid;
+}
+/**TABLE**/
+#count-table {
+    margin-left: 1em;
+    td, th {
+        width: 10em;
+        text-align: center;
+        &:first-of-type {
+            width: 12em;
+            text-align: left;
+        }
+        &:not(:first-of-type) {
+            border-left: 1px solid;
+        }
+    }
+}
+#count-header a {
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 5px;
+}
+#count-body {
+    .overflowed {
+        max-height: 20em;
+        overflow-x: hidden;
+        overflow-y: auto;
+        tr:nth-child(1) .cu-tooltiptext {
+            top: -5px;
+        }
+        tr:nth-child(2) .cu-tooltiptext {
+            top: -25px;
+        }
+        tr:nth-child(3) .cu-tooltiptext {
+            top: -40px;
+        }
+        tr:nth-last-child(2) .cu-tooltiptext {
+            top: -60px;
+        }
+        tr:nth-last-child(1) .cu-tooltiptext {
+            top: -75px;
+        }
+    }
+    .cu-uploads {
+        background-color: var(--body-background-color);
+        padding: 0 5px;
+    }
+    a.with-style:hover {
+        filter: brightness(1.5);
+    }
 }
 #count-order {
     color: var(--muted-text-color);
@@ -217,58 +261,11 @@ const PROGRAM_CSS = JSPLib.utility.nestedCSSCheck()`
 #count-chart {
     height: 400px;
     width: 100%;
-    display: none;
 }
 #count-controls {
-    display: none;
-    margin-left: 1em;
-}
-#count-query-user {
-    margin: 0.5em;
     display: flex;
-    gap: 0.5em;
-}
-#count-query-user > label {
-    background-color: var(--grey-2);
-    padding: 5px 10px;
-    border-radius: 25px;
-    border: 1px solid grey;
-    cursor: pointer;
-}
-#count-query-user > label:hover {
-    background-color:  var(--grey-1);
-}
-#count-query-user > label > input {
-    vertical-align: middle;
-}
-#stash-count-notice {
-    color: #F44;
-    font-weight: bold;
-    font-size: 80%;
-}
-#stash-count-notice:hover {
-    color: #F88;
-}
-#empty-uploads {
-    margin: 1em;
-    font-size: 200%;
-    font-weight: bold;
-    font-family: monospace;
-}
-#upload-counts.opened #upload-counts-toggle {
-    margin: 0.5em;
-}
-#upload-counts-restore {
-    display: none;
-}
-#upload-counts-restore.stashed {
-    display: inline-block;
-}
-#upload-counts-restore a {
-    color: mediumseagreen;
-}
-#restore-count-notice:hover {
-    filter: brightness(1.1);
+    gap: 20px;
+    flex-wrap: wrap;
 }
 .cu-tooltip {
     position: relative;
@@ -276,156 +273,206 @@ const PROGRAM_CSS = JSPLib.utility.nestedCSSCheck()`
     border-bottom: 1px dotted black;
     min-width: 2em;
     text-align: center;
-}
-.cu-tooltip .cu-tooltiptext {
-    visibility: hidden;
-    width: 90px;
-    background-color: black;
-    color: #fff;
-    text-align: left;
-    border-radius: 6px;
-    padding: 5px;
-    /* Position the tooltip */
-    position: absolute;
-    z-index: 1;
-    top: -50px;
-    right: -100px;
-}
-.cu-tooltip:hover .cu-tooltiptext.cu-activetooltip {
-    visibility: visible;
-}
-#count-table.overflowed tr:nth-child(1) .cu-tooltiptext {
-    top: -5px;
-}
-#count-table.overflowed tr:nth-child(2) .cu-tooltiptext {
-    top: -25px;
-}
-#count-table.overflowed tr:nth-child(3) .cu-tooltiptext {
-    top: -40px;
-}
-#count-table.overflowed tr:nth-last-child(2) .cu-tooltiptext {
-    top: -60px;
-}
-#count-table.overflowed tr:nth-last-child(1) .cu-tooltiptext {
-    top: -75px;
-}
-.cu-select-tooltip a {
-    color: grey;
-    margin-right: 1em;
-}
-.cu-select-tooltip a:hover,
-.cu-select-period a:hover{
-    filter: brightness(1.5);
-}
-.cu-select-tooltip.cu-activetooltip a {
-    font-weight: bold;
+    .cu-tooltiptext {
+        visibility: hidden;
+        width: 90px;
+        background-color: black;
+        color: #fff;
+        text-align: left;
+        border-radius: 6px;
+        padding: 5px;
+        /* Position the tooltip */
+        position: absolute;
+        z-index: 1;
+        top: -50px;
+        right: -100px;
+    }
+    &:hover .cu-tooltiptext.cu-activetooltip {
+        visibility: visible;
+    }
 }
 .cu-period-header {
-    background-color: #CCC;
-    border-left: 1px solid #444;
+    border-left: 1px solid;
     margin-left: -1px;
 }
-[data-current-user-theme="dark"] .cu-period-header {
-    background-color: #666;
+#empty-uploads {
+    margin: 1em;
+    font-size: 200%;
+    font-weight: bold;
+    font-family: monospace;
 }
-#count-header .cu-manual,
-#count-header .cu-limited {
-    background-color: var(--body-background-color);
-}
-#count-header .cu-manual:hover,
-#count-header .cu-limited:hover {
-    color: grey;
-}
-#count-table .cu-uploads {
-    background-color: var(--body-background-color);
-    padding: 0 5px;
-}
-#count-table a.with-style:hover {
-    filter: brightness(1.5);
-}
+/**COPYRIGHTS**/
 #count-copyrights {
     margin: 1em;
-    display: none;
 }
 #count-copyrights-header {
     font-size: 1.25em;
     font-weight: bold;
     display: flex;
+    .cu-triangle {
+        position: relative;
+        width: 1em;
+    }
+    .cu-svg-caret {
+        position: absolute;
+    }
+    .cu-triangle-right .cu-svg-caret-down {
+        display: none;
+    }
+    .cu-triangle-down .cu-svg-caret-right {
+        display: none;
+    }
+    .cu-svg-caret-right {
+        top: -2px;
+    }
+    .cu-svg-caret-down {
+        top: -4px;
+    }
 }
 #count-copyrights-section {
     margin: 0.5em;
-    display: none;
 }
-.cu-select-period a {
-    color: grey;
-    margin-right: 1em;
-}
-.cu-select-period.cu-active-period a {
-    font-weight: bold;
+#count-copyrights-controls {
+    display: flex;
+    gap: 20px;
 }
 #count-copyrights-list {
     line-height: 150%;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    .cu-active-copyright a {
+        text-shadow: 1px 0 0;
+    }
 }
-#count-copyrights-list .cu-active-copyright a {
-    background: #0073ff;
-    color: #FFF;
+#count-copyrights-manual {
+    margin: 1em;
 }
 #empty-statistics {
     margin: 1em;
     font-weight: bold;
     font-size: 16px;
 }
-#count-copyrights-manual {
-    margin: 1em;
+/**USER**/
+#count-query-user {
+    margin: 0.5em;
+    display: flex;
+    gap: 0.5em;
+    & > label {
+        padding: 5px 10px;
+        border-radius: 25px;
+        border: 1px solid;
+        cursor: pointer;
+        position: relative;
+        width: 10em;
+        text-align: right;
+        padding-right: 3em;
+        & > input {
+            position: absolute;
+            right: 1.75em;
+            top: 0.55em;
+        }
+    }
+}
+/**STASH**/
+#stash-count-notice {
+    color: #F44;
+    font-weight: bold;
+    font-size: 80%;
+    &:hover {
+        color: #F88;
+    }
+}
+/**FOOTER**/
+#upload-counts-restore {
     display: none;
+    &.stashed {
+        display: inline-block;
+    }
 }
-#count-copyrights-header .cu-triangle {
-    position: relative;
-}
-#count-copyrights-header .cu-svg-caret {
-    position: absolute;
-}
-#count-copyrights-header .cu-triangle-right .cu-svg-caret-down {
-    display: none;
-}
-#count-copyrights-header .cu-triangle-down .cu-svg-caret-right {
-    display: none;
-}
-.cu-svg-icon {
-    fill: var(--text-color);
-}
+#restore-count-notice {
+    color: mediumseagreen;
+    &:hover {
+        filter: brightness(1.1);
+    }
+}`;
+
+const LIGHT_MODE_CSS = JSPLib.utility.nestedCSSCheck()`
 #upload-counts {
     border-color: var(--grey-1);
-}
-#upload-counts.opened {
-    border-color: var(--grey-2);
-}
-#count-table .cu-manual,
-#count-table .cu-limited {
-    background-color: lightcyan;
-    border-left: 1px solid #CCC;
-}
-body[data-current-user-theme=dark] #upload-counts {
-    border-color: var(--grey-8);
-}
-body[data-current-user-theme=dark] #upload-counts.opened {
-    border-color: var(--grey-7);
-}
-body[data-current-user-theme="dark"] #count-table .cu-manual,
-body[data-current-user-theme="dark"] #count-table .cu-limited {
-    background-color: darkcyan;
-}
-@media (prefers-color-scheme: dark) {
-    body[data-current-user-theme=auto] #upload-counts {
-        border-color: var(--grey-8);
+    &.opened {
+        border-color: var(--grey-2);
     }
-    body[data-current-user-theme=auto] #upload-counts.opened {
+}
+#count-module {
+    border-bottom-color: var(--grey-2);
+}
+#count-header {
+    th {
+        &:not(:first-of-type) {
+            background-color: var(--grey-2);
+            border-left-color: var(--grey-5);
+        }
+    }
+    a {
+        background-color: var(--white);
+        &:hover {
+            color: grey;
+        }
+    }
+}
+#count-body td:not(:first-of-type) {
+    background-color: lightcyan;
+    border-left-color: var(--grey-2);
+}
+#count-query-user > label {
+    background-color: var(--grey-2);
+    border-color: var(--grey-4);
+    &:hover {
+        background-color:  var(--grey-1);
+    }
+}
+.cu-svg-icon {
+    fill: var(--black);
+}`;
+
+const DARK_MODE_CSS = JSPLib.utility.nestedCSSCheck()`
+#upload-counts {
+    border-color: var(--grey-8);
+    &.opened {
         border-color: var(--grey-7);
     }
-    body[data-current-user-theme="auto"] #count-table .cu-manual,
-    body[data-current-user-theme="auto"] #count-table .cu-limited {
-        background-color: darkcyan;
+}
+#count-module {
+    border-bottom-color: var(--grey-7);
+}
+#count-header {
+    th {
+        &:not(:first-of-type) {
+            background-color: var(--grey-7);
+            border-left-color: var(--grey-4);
+        }
     }
+    a {
+        background-color: var(--black);
+        &:hover {
+            color: grey;
+        }
+    }
+}
+#count-body td:not(:first-of-type) {
+    background-color: darkcyan;
+    border-left-color: var(--grey-7);
+}
+#count-query-user > label {
+    background-color: var(--grey-7);
+    border-color: var(--grey-5);
+    &:hover {
+        background-color:  var(--grey-8);
+    }
+}
+.cu-svg-icon {
+    fill: var(--white);
 }`;
 
 //HTML constants
@@ -433,20 +480,22 @@ body[data-current-user-theme="dark"] #count-table .cu-limited {
 const CARET_RIGHT = '<svg class="cu-svg-caret cu-svg-caret-right" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 512" width="20" height="20"><path class="cu-svg-icon" d="M246.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-128-128c-9.2-9.2-22.9-11.9-34.9-6.9s-19.8 16.6-19.8 29.6l0 256c0 12.9 7.8 24.6 19.8 29.6s25.7 2.2 34.9-6.9l128-128z"/></svg>';
 const CARET_DOWN = '<svg class="cu-svg-caret cu-svg-caret-down" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" height="20" width="20"><path class="cu-svg-icon" d="M137.4 374.6c12.5 12.5 32.8 12.5 45.3 0l128-128c9.2-9.2 11.9-22.9 6.9-34.9s-16.6-19.8-29.6-19.8L32 192c-12.9 0-24.6 7.8-29.6 19.8s-2.2 25.7 6.9 34.9l128 128z"/></svg>';
 
-const notice_box = `
-<div class="ui-corner-all" id="upload-counts">
+const NOTICE_BOX = JSPLib.utility.normalizeHTML()`
+<div id="upload-counts">
     <div id="count-module">
-        <div id="count-header"></div>
-        <div id="count-table"></div>
-        <div id="count-order"></div>
-        <div id="count-chart"></div>
-        <div id="count-controls"></div>
-        <div id="count-copyrights">
-            <div id="count-copyrights-header">Copyrights<a class="cu-triangle cu-triangle-right">${CARET_RIGHT}${CARET_DOWN}</a><span id="count-copyrights-counter"></span></div>
-            <div id="count-copyrights-section">
+        <div id="count-table">
+            <div id="count-header"></div>
+            <div id="count-body"></div>
+            <div id="count-order"></div>
+            <div id="count-chart" style="display: none;"></div>
+            <div id="count-controls"></div>
+        </div>
+        <div id="count-copyrights" style="display: none;">
+            <div id="count-copyrights-header"><a class="cu-triangle cu-triangle-right">${CARET_RIGHT}${CARET_DOWN}</a>Copyrights<span id="count-copyrights-counter"></span></div>
+            <div id="count-copyrights-section" style="display: none;">
                 <div id="count-copyrights-controls"></div>
                 <div id="count-copyrights-list"></div>
-                <div id="count-copyrights-manual">
+                <div id="count-copyrights-manual" style="display: none;">
                     <input id="count_query_copyright" placeholder="Check copyright" type="text">
                     <input id="count_add_copyright" type="submit" value="Add" class="btn">
                 </div>
@@ -476,7 +525,7 @@ const unstash_notice = `<span id="upload-counts-restore"> - <a href="#" id="rest
 
 const copyright_counter = '(<span id="loading-counter">...</span>)';
 
-const CACHE_DATA_DETAILS = `
+const CACHE_DATA_DETAILS = JSPLib.utility.normalizeHTML()`
 <ul>
     <li><b>Count data (ctd,ctw,ctmo,cty,ctat):</b> Main data shown in the table.</li>
     <li><b>Post data:</b> Used to determine post statistics shown in the tooltips and chart data.
@@ -502,7 +551,7 @@ const CACHE_DATA_DETAILS = `
     <li><b>Reverse tag implications (rti):</b>The number of tags that a tag implicates. Used to determine the base copyright tag.</li>
 </ul>`;
 
-const PROGRAM_DATA_DETAILS = `
+const PROGRAM_DATA_DETAILS = JSPLib.utility.normalizeHTML()`
 <p class="tn">All timestamps are in milliseconds since the epoch (<a href="https://www.epochconverter.com">Epoch converter</a>).</p>
 <ul>
     <li>General data
@@ -830,9 +879,9 @@ function RenderHeader() {
 
 function RenderBody() {
     if (CU.active_copytags.length > 5) {
-        $("#count-table").addClass("overflowed");
+        $("#count-body").addClass("overflowed");
     } else {
-        $("#count-table").removeClass("overflowed");
+        $("#count-body").removeClass("overflowed");
     }
     var tabletext = RenderRow('');
     for (let i = 0;i < CU.active_copytags.length; i++) {
@@ -912,14 +961,14 @@ function RenderCopyrights(period) {
         let taglink = JSPLib.danbooru.postSearchLink(copyright, tag_text, 'class="tag-type-3"');
         let active = CU.active_copytags.includes(copyright) ? ' class="cu-active-copyright"' : '';
         return `<span title="${copyright}" data-copyright="${copyright}"${active}>${taglink}</span>`;
-    }).join(' ');
+    }).join('');
 }
 
 function RenderCopyrightControls() {
     return copyright_periods.map((period) => {
         let period_name = period_info.longname[period];
-        return `<span class="cu-select-period" data-type="${period}"><a href="#">${JSPLib.utility.titleizeString(period_name)}</a></span>`;
-    }).join(' ') + '<span class="cu-select-period" data-type="manual"><a href="#">Manual</a></span>';
+        return `<span class="cu-select-period cu-switch-control" data-type="${period}"><a href="#">${JSPLib.utility.titleizeString(period_name)}</a></span>`;
+    }).join('') + '<span class="cu-select-period cu-switch-control" data-type="manual"><a href="#">Manual</a></span>';
 }
 
 //Render Tooltips
@@ -948,7 +997,7 @@ function RenderAllTooltipControls() {
 
 function RenderToolcontrol(metric) {
     return `
-<span class="cu-select-tooltip" data-type="${metric}"><a href="#">${JSPLib.utility.titleizeString(metric)}</a></span>`;
+<span class="cu-select-tooltip cu-switch-control" data-type="${metric}"><a href="#">${JSPLib.utility.titleizeString(metric)}</a></span>`;
 }
 
 function RenderStatistics(key, attribute, period, limited = false) {
@@ -1273,6 +1322,7 @@ async function PopulateTable() {
 }
 
 function InitializeControls() {
+    const printer = JSPLib.debug.getFunctionPrint('InitializeControls');
     //Render the controls only once when the table is first opened
     if (!CU.controls_initialized) {
         $("#count-controls").html(RenderAllTooltipControls());
@@ -1284,21 +1334,26 @@ function InitializeControls() {
         $("#count_refresh_user_id").on(JSPLib.program.click, RefreshUser);
         $("#count_add_copyright").on(JSPLib.program.click, AddCopyright);
         CU.controls_initialized = true;
-        if (CU.use_IAC) {
-            setTimeout(() => {
+        JSPLib.load.scriptWaitExecute(CU, 'IAC', {
+            available: () => {
+                CU.IAC.InitializeProgramValues(true);
                 CU.IAC.InitializeAutocompleteIndexed("#count_query_user_id", 'us');
-            }, 1000);
-        }
+                printer.debuglogLevel('Initialized CU input autocomplete: #count_query_user_id', JSPLib.debug.DEBUG);
+            },
+            fallback: () => {
+                printer.debuglogLevel('Unable to initialize textarea autocomplete: #count_query_user_id', JSPLib.debug.DEBUG);
+            },
+        });
     }
 }
 
 function InitializeTable() {
     $("#count-header").html(AddTable(RenderHeader(), 'class="striped"'));
-    $("#count-table").html(AddTable(RenderBody(), 'class="striped"'));
+    $("#count-body").html(AddTable(RenderBody(), 'class="striped"'));
     $("#count-order").html(RenderOrderMessage("d", 0));
     $("#count-header .cu-process").on(JSPLib.program.click, GetPeriod);
     $("#count-header th").on(JSPLib.program.click, SortTable);
-    $("#count-table .cu-manual,#count-table .cu-limited").on(JSPLib.program.click, RenderChart);
+    $("#count-body .cu-manual,#count-body .cu-limited").on(JSPLib.program.click, RenderChart);
     $("#count-controls,#count-copyrights,#count-header").show();
     $(`.cu-select-tooltip[data-type="${CU.current_metric}"] a`).click();
     CU.sorttype = 0;
@@ -1310,7 +1365,7 @@ function InitializeTable() {
 }
 
 function TableMessage(message) {
-    $("#count-table").html(message);
+    $("#count-body").html(message);
     $("#count-controls,#count-copyrights,#count-header,#count-chart").hide();
 }
 
@@ -1377,7 +1432,7 @@ async function GetPeriod(event) {
     await GetPeriodUploads(CU.current_username, period, is_limited, `#count-header th[data-period=${period}] .cu-counter`);
     CU.period_available[CU.usertag][CU.current_username][period] = true;
     let column = header.cellIndex;
-    let $cells = $(`#count-table td:nth-of-type(${column + 1})`);
+    let $cells = $(`#count-body td:nth-of-type(${column + 1})`);
     if (is_limited) {
         let value = $(".cu-uploads", $cells[0]).html();
         $($cells[0]).html(RenderTooltipData(value, period, true));
@@ -1404,7 +1459,7 @@ function SortTable(event) {
         CU.sortperiod = period;
     }
     let rows = [];
-    $("#count-table tr").each((i, row) => {
+    $("#count-body tr").each((i, row) => {
         if (i === 0) {
             return;
         }
@@ -1428,7 +1483,7 @@ function SortTable(event) {
                 return a.posts[0] - b.posts[0];
         }
     }).forEach((row) => {
-        $("#count-table tbody").append(row.domobj);
+        $("#count-body tbody").append(row.domobj);
     });
     CU.sorttype = (CU.sorttype + 1) % 4;
     $("#count-order").html(RenderOrderMessage(period, CU.sorttype));
@@ -1507,8 +1562,9 @@ function RenderChart(event) {
 
 function TooltipChange(event) {
     CU.current_metric = $(event.target.parentElement).data('type');
-    $(".cu-select-tooltip,.cu-tooltiptext").removeClass("cu-activetooltip");
-    $(`.cu-select-tooltip[data-type="${CU.current_metric}"]`).addClass("cu-activetooltip");
+    $(".cu-select-tooltip").removeClass("cu-active-control");
+    $(`.cu-select-tooltip[data-type="${CU.current_metric}"]`).addClass("cu-active-control");
+    $(".cu-tooltiptext").removeClass("cu-activetooltip");
     $(`.cu-tooltiptext[data-type="${CU.current_metric}"]`).addClass("cu-activetooltip");
     JSPLib.storage.setLocalData('cu-current-metric', CU.current_metric);
     $(".cu-hover .cu-uploads").off(JSPLib.program.mouseover).on(JSPLib.program.mouseover, TooltipHover);
@@ -1535,8 +1591,8 @@ function ToggleCopyrightTag(event) {
 async function CopyrightPeriod(event) {
     let $container = $(event.target.parentElement);
     let short_period = CU.copyright_period = $container.data('type');
-    $(".cu-select-period").removeClass("cu-active-period");
-    $container.addClass("cu-active-period");
+    $(".cu-select-period").removeClass("cu-active-control");
+    $container.addClass("cu-active-control");
     if (short_period === 'manual') {
         $("#count-copyrights-manual").show();
         $('#count-copyrights-list').html(RenderCopyrights('manual'));
@@ -1814,7 +1870,7 @@ function InitializeProgramValues() {
         hidden: Boolean(JSPLib.storage.checkLocalData('cu-hide-current-uploads', {default_val: true})),
         stashed: Boolean(JSPLib.storage.checkLocalData('cu-stash-current-uploads', {default_val: false})),
     });
-    JSPLib.load.setProgramGetter(CU, 'IAC', 'IndexedAutocomplete', 29.25);
+    JSPLib.load.setProgramGetter(CU, 'IAC', 'IndexedAutocomplete', 29.32);
     return true;
 }
 
@@ -1868,18 +1924,20 @@ function Main() {
         broadcast_func: BroadcastCU,
         render_menu_func: RenderSettingsMenu,
         program_css: PROGRAM_CSS,
+        light_css: LIGHT_MODE_CSS,
+        dark_css: DARK_MODE_CSS,
     };
     if (!JSPLib.menu.preloadScript(CU, preload)) return;
 
-    var $notice_box = $(notice_box);
+    var $NOTICE_BOX = $(NOTICE_BOX);
     var $footer_notice = $(unstash_notice);
     if (CU.stashed === true) {
-        $notice_box.addClass('stashed');
+        $NOTICE_BOX.addClass('stashed');
         $footer_notice.addClass('stashed');
         //The table needs to be hidden when it's stashed
         CU.hidden = true;
     }
-    $('header#top').append($notice_box);
+    $('header#top').append($NOTICE_BOX);
     $('footer#page-footer').append($footer_notice);
     $("#toggle-count-notice").on(JSPLib.program.click, ToggleNotice);
     $("#stash-count-notice,#restore-count-notice").on(JSPLib.program.click, StashNotice);
