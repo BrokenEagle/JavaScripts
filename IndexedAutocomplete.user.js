@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.36
+// @version      29.37
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1580,10 +1580,6 @@ function GetWordMatches(name, search, use_capture) {
     return match;
 }
 
-function SetKeydownAutocompleteClose($fields) {
-    $fields.on(JSPLib.program_keydown, null, 'left right', () => $fields.autocomplete('close'));
-}
-
 //Time functions
 
 function MinimumExpirationTime(type) {
@@ -2255,7 +2251,6 @@ function RebindSingleTag() {
                     InsertUserSelected(this, ui.item);
                 },
             });
-            SetKeydownAutocompleteClose($fields);
             $fields.addClass('iac-autocomplete');
             setTimeout(() => {
                 $fields.each((_, field) => {
@@ -2340,7 +2335,6 @@ function InitializeTagQueryAutocompleteIndexed(fields_selector = AUTOCOMPLETE_MU
             respond(results);
         },
     });
-    SetKeydownAutocompleteClose($fields_multiple);
     $fields_multiple.each((_, entry) => {
         let autocomplete = $(entry).data('uiAutocomplete');
         autocomplete._renderItem = AutocompleteRenderItem;
@@ -2384,7 +2378,6 @@ function InitializeAutocompleteIndexed(selector, keycode, {multiple = false, wik
             return ui.item.name;
         },
     });
-    SetKeydownAutocompleteClose($fields);
     let alink_func = (SOURCE_CONFIG[type].render ? SOURCE_CONFIG[type].render : ($domobj, item) => $domobj.text(item.name));
     setTimeout(() => {
         $fields.each((_, field) => {
