@@ -24,7 +24,7 @@
         "space-infix-ops": "warn",
         "key-spacing": ["warn", {"beforeColon": false, "afterColon": true }],
         "curly": ["warn", "multi-line", "consistent"],
-        "indent": ["warn", 4, { "SwitchCase": 1 }],
+        "indent": ["warn", 4, { "SwitchCase": 1 , "outerIIFEBody": "off" }],
         "semi": ["warn", "always"],
         "default-case": "error",
         "default-case-last": "error",

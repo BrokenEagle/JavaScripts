@@ -14,17 +14,17 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a8a18cd55504e2e20f255b270805f4c0da3406c5/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a8a18cd55504e2e20f255b270805f4c0da3406c5/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a8a18cd55504e2e20f255b270805f4c0da3406c5/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a8a18cd55504e2e20f255b270805f4c0da3406c5/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a8a18cd55504e2e20f255b270805f4c0da3406c5/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a8a18cd55504e2e20f255b270805f4c0da3406c5/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a8a18cd55504e2e20f255b270805f4c0da3406c5/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a8a18cd55504e2e20f255b270805f4c0da3406c5/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a8a18cd55504e2e20f255b270805f4c0da3406c5/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a8a18cd55504e2e20f255b270805f4c0da3406c5/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a8a18cd55504e2e20f255b270805f4c0da3406c5/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/5e7d33ec35c0ded5e362349acb8ebdf0d8b4908b/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/5e7d33ec35c0ded5e362349acb8ebdf0d8b4908b/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/5e7d33ec35c0ded5e362349acb8ebdf0d8b4908b/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/5e7d33ec35c0ded5e362349acb8ebdf0d8b4908b/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/5e7d33ec35c0ded5e362349acb8ebdf0d8b4908b/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/5e7d33ec35c0ded5e362349acb8ebdf0d8b4908b/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/5e7d33ec35c0ded5e362349acb8ebdf0d8b4908b/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/5e7d33ec35c0ded5e362349acb8ebdf0d8b4908b/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/5e7d33ec35c0ded5e362349acb8ebdf0d8b4908b/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/5e7d33ec35c0ded5e362349acb8ebdf0d8b4908b/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/5e7d33ec35c0ded5e362349acb8ebdf0d8b4908b/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru CanvasJS */
@@ -67,7 +67,7 @@ const PROGRAM_RESET_KEYS = {
 };
 
 //Available setting values
-const period_selectors = ['daily', 'weekly', 'monthly', 'yearly', 'alltime'];
+const PERIOD_SELECTORS = ['daily', 'weekly', 'monthly', 'yearly', 'alltime'];
 
 //Main settings
 const SETTINGS_CONFIG = {
@@ -82,9 +82,9 @@ const SETTINGS_CONFIG = {
         hint: "Process and show user copyright uploads."
     },
     periods_shown: {
-        allitems: period_selectors,
-        reset: period_selectors,
-        validate: (data) => (JSPLib.menu.validateCheckboxRadio(data, 'checkbox', period_selectors) && data.includes('daily')),
+        allitems: PERIOD_SELECTORS,
+        reset: PERIOD_SELECTORS,
+        validate: (data) => (JSPLib.menu.validateCheckboxRadio(data, 'checkbox', PERIOD_SELECTORS) && data.includes('daily')),
         hint: "Select which periods to process and show."
     },
     copyrights_threshold: {
@@ -102,9 +102,9 @@ const SETTINGS_CONFIG = {
 };
 
 //Available config values
-const all_source_types = ['indexed_db', 'local_storage'];
-const all_data_types = ['count', 'uploads', 'approvals', 'reverse_implication', 'custom'];
-const all_periods = ['daily', 'weekly', 'monthly', 'yearly', 'alltime', 'previous'];
+const ALL_SOURCE_TYPES = ['indexed_db', 'local_storage'];
+const ALL_DATA_TYPES = ['count', 'uploads', 'approvals', 'reverse_implication', 'custom'];
+const ALL_PERIODS = ['daily', 'weekly', 'monthly', 'yearly', 'alltime', 'previous'];
 
 const CONTROL_CONFIG = {
     cache_info: {
@@ -117,17 +117,17 @@ const CONTROL_CONFIG = {
         hint: `Dumps all of the cached data related to ${PROGRAM_NAME}.`,
     },
     data_source: {
-        allitems: all_source_types,
+        allitems: ALL_SOURCE_TYPES,
         value: 'indexed_db',
         hint: "Indexed DB is <b>Cache Data</b> and Local Storage is <b>Program Data</b>.",
     },
     data_type: {
-        allitems: all_data_types,
+        allitems: ALL_DATA_TYPES,
         value: 'count',
         hint: "Select type of data. Use <b>Custom</b> for querying by keyname.",
     },
     data_period: {
-        allitems: all_periods,
+        allitems: ALL_PERIODS,
         value: "",
         hint: "Select the data period. <b>Count</b> cannot use the 'Previous' period.",
     },
@@ -166,6 +166,9 @@ const DEFAULT_VALUES = {
 //Style information
 const PROGRAM_CSS = JSPLib.utility.nestedCSSCheck()`
 /**GENERAL**/
+.cu-link {
+    cursor: pointer;
+}
 .cu-switch-control {
     &.cu-active-control {
         text-shadow: 1px 0 0;
@@ -218,7 +221,6 @@ const PROGRAM_CSS = JSPLib.utility.nestedCSSCheck()`
     }
 }
 #count-header a {
-    cursor: pointer;
     padding: 2px;
     border-radius: 5px;
 }
@@ -516,14 +518,14 @@ const NOTICE_BOX = JSPLib.utility.normalizeHTML()`
         </div>
     </div>
     <div id="upload-counts-toggle">
-        <a href="#" id="toggle-count-notice">Toggle Upload Table</a>&nbsp;(<a href="#" id="stash-count-notice">STASH</a>)
+        <a id="toggle-count-notice" class="cu-link">Toggle Upload Table</a>&nbsp;(<a id="stash-count-notice" class="cu-link">STASH</a>)
     </div>
 </div>
 `;
 
-const unstash_notice = `<span id="upload-counts-restore"> - <a href="#" id="restore-count-notice">Restore ${PROGRAM_NAME}</a></span>`;
+const UNSTASH_NOTICE = `<span id="upload-counts-restore"> - <a id="restore-count-notice" class="cu-link">Restore ${PROGRAM_NAME}</a></span>`;
 
-const copyright_counter = '(<span id="loading-counter">...</span>)';
+const COPYRIGHT_COUNTER = '(<span id="loading-counter">...</span>)';
 
 const CACHE_DATA_DETAILS = JSPLib.utility.normalizeHTML()`
 <ul>
@@ -569,14 +571,40 @@ const PROGRAM_DATA_DETAILS = JSPLib.utility.normalizeHTML()`
     </li>
 </ul>`;
 
+const TOOLTIP_DATA_TEMPLATE = JSPLib.utility.normalizeHTML({template: true})`
+<div class="cu-tooltip" data-period="${'period'}">
+    <span class="cu-uploads">${'text'}</span>
+    ${'popups'}
+</div>`;
+
+const TOOLTIP_POPUP_TEMPLATE = JSPLib.utility.normalizeHTML({template: true})`
+<span class="cu-tooltiptext" data-type="${'metric'}">
+    ${'text'}
+</span>`;
+
+const TOOLTIP_CONTROL_TEMPLATE = JSPLib.utility.normalizeHTML({template: true})`
+<span class="cu-select-tooltip cu-switch-control" data-type="${'metric'}">
+    <a class="cu-link">${'text'}</a>
+</span>`;
+
+const COPYRIGHT_CONTROL_TEMPLATE = JSPLib.utility.normalizeHTML({template: true})`
+<span class="cu-select-period cu-switch-control" data-type="${'period'}">
+    <a class="cu-link">${'text'}</a>
+</span>`;
+
+const COPYRIGHT_TAG_TEMPLATE = JSPLib.utility.normalizeHTML({template: true})`
+<span title="${'copyright'}" data-copyright="${'copyright'}" class="${'classname'}">
+    ${'taglink'}
+</span>`;
+
 //Time periods
-const timevalues = ['d', 'w', 'mo', 'y', 'at'];
-const manual_periods = ['w', 'mo'];
-const limited_periods = ['y', 'at'];
-const copyright_periods = ['d', 'w', 'mo'];
+const TIME_VALUES = ['d', 'w', 'mo', 'y', 'at'];
+const MANUAL_PERIODS = ['w', 'mo'];
+const LIMITED_PERIODS = ['y', 'at'];
+const COPYRIGHT_PERIODS = ['d', 'w', 'mo'];
 
 //Period constants
-const period_info = {
+const PERIOD_INFO = {
     countexpires: {
         d: 5 * JSPLib.utility.one_minute,
         w: JSPLib.utility.one_hour,
@@ -625,7 +653,7 @@ const period_info = {
     }
 };
 
-const longname_key = {
+const LONGNAME_KEY = {
     daily: 'd',
     weekly: 'w',
     monthly: 'mo',
@@ -634,35 +662,35 @@ const longname_key = {
 };
 
 //Time constants
-const prune_expires = JSPLib.utility.one_day;
-const rti_expiration = JSPLib.utility.one_month;
+const PRUNE_EXPIRES = JSPLib.utility.one_day;
+const RTI_EXPIRATION = JSPLib.utility.one_month;
 const JQUERY_DELAY = 1; //For jQuery updates that should not be done synchronously
 
 //Network call configuration
-const max_post_limit_query = 100;
+const QUERY_LIMIT = 100;
 
 //Metrics used by statistics functions
-const tooltip_metrics = ['score', 'upscore', 'downscore', 'favcount', 'tagcount', 'gentags', 'week', 'day'];
-const chart_metrics = ['score', 'upscore', 'downscore', 'favcount', 'tagcount', 'gentags'];
+const TOOLTIP_METRICS = ['score', 'upscore', 'downscore', 'favcount', 'tagcount', 'gentags', 'week', 'day'];
+const CHART_METRICS = ['score', 'upscore', 'downscore', 'favcount', 'tagcount', 'gentags'];
 
 //Feedback messages
-const empty_uploads_message_owner = 'Feed me more uploads!';
-const empty_uploads_message_other = 'No uploads for this user.';
-const empty_approvals_message_other = 'No approvals for this user.';
+const EMPTY_UPLOADS_MESSAGE_OWNER = 'No uploads from you.';
+const EMPTY_UPLOADS_MESSAGE_OTHER = 'No uploads for this user.';
+const EMPTY_APPROVALS_MESSAGE_OTHER = 'No approvals for this user.';
 const empty_uploads_message_anonymous = 'User is Anonymous, so no uploads.';
-const copyright_no_uploads = 'No uploads, so no copyrights available for this period.';
-const copyright_no_statistics = 'No statistics available for this period (<span style="font-size:80%;color:grey">click the table header</span>).';
+const COPYRIGHT_NO_UPLOADS = 'No uploads, so no copyrights available for this period.';
+const COPYRIGHT_NO_STATISTICS = 'No statistics available for this period (<span style="font-size:80%;color:grey">click the table header</span>).';
 
 //Other constants
 
-const name_field = "name";
-const id_field = "id";
-const user_fields = "name,level_string";
-const post_fields = "id,score,up_score,down_score,fav_count,tag_count,tag_count_general,tag_string_copyright,created_at";
+const NAME_FIELD = "name";
+const ID_FIELD = "id";
+const USER_FIELDS = "name,level_string";
+const POST_FIELDS = "id,score,up_score,down_score,fav_count,tag_count,tag_count_general,tag_string_copyright,created_at";
 
 //Validation values
 
-const validation_constraints = {
+const VALIDATION_CONSTRAINTS = {
     countentry: JSPLib.validate.counting_constraints,
     implicationentry: JSPLib.validate.counting_constraints,
     postentries: JSPLib.validate.array_constraints,
@@ -719,7 +747,7 @@ const validation_constraints = {
 function BuildValidator(validation_key) {
     return {
         expires: JSPLib.validate.expires_constraints,
-        value: validation_constraints[validation_key]
+        value: VALIDATION_CONSTRAINTS[validation_key]
     };
 }
 
@@ -753,11 +781,11 @@ function ValidateEntry(key, entry) {
 function ValidatePostentries(key, postentries) {
     for (let i = 0;i < postentries.length;i++){
         let value_key = key + `[${i}]`;
-        if (!JSPLib.validate.validateIsArray(value_key, postentries[i], {is: validation_constraints.postentry.length})) {
+        if (!JSPLib.validate.validateIsArray(value_key, postentries[i], {is: VALIDATION_CONSTRAINTS.postentry.length})) {
             return false;
         }
         //It's technically not a hash, although it works since arrays can be treated like one
-        if (!JSPLib.validate.validateHashEntries(value_key, postentries[i], validation_constraints.postentry)) {
+        if (!JSPLib.validate.validateHashEntries(value_key, postentries[i], VALIDATION_CONSTRAINTS.postentry)) {
             return false;
         }
     }
@@ -765,17 +793,17 @@ function ValidatePostentries(key, postentries) {
 }
 
 function ValidateStatEntries(key, statentries) {
-    if (!JSPLib.validate.validateHashEntries(key, statentries, validation_constraints.postmetric)) {
+    if (!JSPLib.validate.validateHashEntries(key, statentries, VALIDATION_CONSTRAINTS.postmetric)) {
         return false;
     }
-    for (let i = 0; i < tooltip_metrics.length; i++) {
-        let metric = tooltip_metrics[i];
+    for (let i = 0; i < TOOLTIP_METRICS.length; i++) {
+        let metric = TOOLTIP_METRICS[i];
         let metric_key = key + '.' + metric;
         if (metric === 'week' || metric === 'day') {
-            if (!JSPLib.validate.validateArrayValues(metric_key, statentries[metric], validation_constraints.timestat)) {
+            if (!JSPLib.validate.validateArrayValues(metric_key, statentries[metric], VALIDATION_CONSTRAINTS.timestat)) {
                 return false;
             }
-        } else if (!JSPLib.validate.validateHashEntries(metric_key, statentries[metric], validation_constraints.poststat)) {
+        } else if (!JSPLib.validate.validateHashEntries(metric_key, statentries[metric], VALIDATION_CONSTRAINTS.poststat)) {
             return false;
         }
     }
@@ -783,12 +811,12 @@ function ValidateStatEntries(key, statentries) {
 }
 
 function ValidateChartEntries(key, chartentries) {
-    if (!JSPLib.validate.validateHashEntries(key, chartentries, validation_constraints.chartentry)) {
+    if (!JSPLib.validate.validateHashEntries(key, chartentries, VALIDATION_CONSTRAINTS.chartentry)) {
         return false;
     }
     for (let chart_key in chartentries) {
         for (let i = 0; i < chartentries[chart_key].length; i ++) {
-            if (!JSPLib.validate.validateHashEntries(`${key}.${chart_key}[${i}]`, chartentries[chart_key][i], validation_constraints.chartdata)) {
+            if (!JSPLib.validate.validateHashEntries(`${key}.${chart_key}[${i}]`, chartentries[chart_key][i], VALIDATION_CONSTRAINTS.chartdata)) {
                 return false;
             }
         }
@@ -808,8 +836,8 @@ function ValidateProgramData(key, entry) {
             }
             break;
         case 'cu-current-metric':
-            if (!tooltip_metrics.includes(entry)) {
-                checkerror = [`Value not in list: ${tooltip_metrics}`];
+            if (!TOOLTIP_METRICS.includes(entry)) {
+                checkerror = [`Value not in list: ${TOOLTIP_METRICS}`];
             }
             break;
         case 'cu-hide-current-uploads':
@@ -860,16 +888,16 @@ function AddTableData(input, inner_args = "") {
 
 function RenderHeader() {
     var tabletext = AddTableHeader('Name');
-    let click_periods = manual_periods.concat(limited_periods);
+    let click_periods = MANUAL_PERIODS.concat(LIMITED_PERIODS);
     let times_shown = GetShownPeriodKeys();
     times_shown.forEach((period) => {
-        let header = period_info.header[period];
+        let header = PERIOD_INFO.header[period];
         if (click_periods.includes(period)) {
             let is_available = CU.period_available[CU.usertag][CU.current_username][period];
-            let link_class = (manual_periods.includes(period) ? 'cu-manual' : 'cu-limited');
+            let link_class = (MANUAL_PERIODS.includes(period) ? 'cu-manual' : 'cu-limited');
             let header_class = (!is_available ? 'cu-process' : '');
             let counter_html = (!is_available ? '<span class="cu-display" style="display:none">&nbsp;(<span class="cu-counter">...</span>)</span>' : '');
-            tabletext += AddTableHeader(`<a class="${link_class}">${header}</a>${counter_html}`, `class="cu-period-header ${header_class}" data-period="${period}"`);
+            tabletext += AddTableHeader(`<a class="cu-link ${link_class}">${header}</a>${counter_html}`, `class="cu-period-header ${header_class}" data-period="${period}"`);
         } else {
             tabletext += AddTableHeader(header, `class="cu-period-header" data-period="${period}"`);
         }
@@ -891,20 +919,27 @@ function RenderBody() {
 }
 
 function RenderRow(key) {
-    var rowtag = (key === '' ? `${CU.usertag}:` + CU.display_username : key);
-    var rowtext = (key === '' ? CU.display_username : key).replace(/_/g, ' ');
-    rowtext = JSPLib.utility.maxLengthString(rowtext);
-    var rowaddon = (key === '' ? `class="user-${CU.level_string.toLowerCase()} with-style"` : 'class="tag-type-3"');
-    var tabletext = AddTableData(JSPLib.danbooru.postSearchLink(rowtag, rowtext, rowaddon));
+    var row_tag, row_text, classname;
+    if (key === '') {
+        row_tag = `${CU.usertag}:` + CU.display_username;
+        row_text = CU.display_username;
+        let normalized_level = CU.level_string.toLowerCase();
+        classname = `user-${normalized_level} with-style`;
+    } else {
+        row_tag = key;
+        row_text = key;
+        classname = 'tag-type-3';
+    }
+    var tabletext = AddTableData(JSPLib.danbooru.postSearchLink(row_text, {tags: row_tag}, {class: classname}));
     let times_shown = GetShownPeriodKeys();
-    let click_periods = manual_periods.concat(limited_periods);
+    let click_periods = MANUAL_PERIODS.concat(LIMITED_PERIODS);
     for (let i = 0;i < times_shown.length; i++) {
         let period = times_shown[i];
         let data_text = GetTableValue(key, period);
-        let is_limited = limited_periods.includes(period);
+        let is_limited = LIMITED_PERIODS.includes(period);
         let class_name = (!is_limited ? 'cu-hover' : '');
         if (click_periods.includes(period) && key === '') {
-            class_name += (manual_periods.includes(period) ? ' cu-manual' : ' cu-limited');
+            class_name += (MANUAL_PERIODS.includes(period) ? ' cu-manual' : ' cu-limited');
         }
         let rowdata = `class="${class_name}" data-period="${period}"`;
         let is_available = CU.period_available[CU.usertag][CU.current_username][period];
@@ -920,7 +955,7 @@ function RenderRow(key) {
 }
 
 function RenderOrderMessage(period, sorttype) {
-    let header = period_info.header[period];
+    let header = PERIOD_INFO.header[period];
     switch (sorttype) {
         case 1:
             return `Copyrights ordered by user postcount; ${header} period; L -> H`;
@@ -958,50 +993,37 @@ function RenderCopyrights(period) {
     let copytags = CU.user_copytags[CU.usertag][CU.current_username][period].sort();
     return copytags.map((copyright) => {
         let tag_text = JSPLib.utility.maxLengthString(copyright);
-        let taglink = JSPLib.danbooru.postSearchLink(copyright, tag_text, 'class="tag-type-3"');
-        let active = CU.active_copytags.includes(copyright) ? ' class="cu-active-copyright"' : '';
-        return `<span title="${copyright}" data-copyright="${copyright}"${active}>${taglink}</span>`;
+        let taglink = JSPLib.danbooru.postSearchLink(tag_text, {tags: copyright}, {class: 'tag-type-3'});
+        let classname = CU.active_copytags.includes(copyright) ? 'cu-active-copyright' : '';
+        return COPYRIGHT_TAG_TEMPLATE({copyright, taglink, classname});
     }).join('');
 }
 
 function RenderCopyrightControls() {
-    return copyright_periods.map((period) => {
-        let period_name = period_info.longname[period];
-        return `<span class="cu-select-period cu-switch-control" data-type="${period}"><a href="#">${JSPLib.utility.titleizeString(period_name)}</a></span>`;
-    }).join('') + '<span class="cu-select-period cu-switch-control" data-type="manual"><a href="#">Manual</a></span>';
+    let controls = COPYRIGHT_PERIODS.map((period) => {
+        let period_name = PERIOD_INFO.longname[period];
+        return COPYRIGHT_CONTROL_TEMPLATE({period, text: JSPLib.utility.titleizeString(period_name)});
+    });
+    controls.push(COPYRIGHT_CONTROL_TEMPLATE({period: 'manual', text: 'Manual'}));
+    return controls.join('');
 }
 
 //Render Tooltips
 
 function RenderTooltipData(text, period, limited = false) {
-    let tooltip_html = RenderAllToolPopups(period, limited);
-    return `
-<div class="cu-tooltip" data-period="${period}"><span class="cu-uploads">${text}</span>${tooltip_html}
-</div>
-`;
-}
-
-function RenderAllToolPopups(period, limited) {
-    return tooltip_metrics.map((metric) => RenderToolpopup(metric, period, limited)).join('');
-}
-
-function RenderToolpopup(metric, period, limited) {
-    let inner_text = (limited ? RenderStatistics('', metric, period, true) : '');
-    return `
-    <span class="cu-tooltiptext" data-type="${metric}">${inner_text}</span>`;
+    let popups = TOOLTIP_METRICS.map((metric) => {
+        let text = (limited ? RenderStatistics('', metric, period, true) : '');
+        return TOOLTIP_POPUP_TEMPLATE({metric, text});
+    });
+    return TOOLTIP_DATA_TEMPLATE({text, period, popups: popups.join('')});
 }
 
 function RenderAllTooltipControls() {
-    return tooltip_metrics.map((metric) => RenderToolcontrol(metric)).join('');
-}
-
-function RenderToolcontrol(metric) {
-    return `
-<span class="cu-select-tooltip cu-switch-control" data-type="${metric}"><a href="#">${JSPLib.utility.titleizeString(metric)}</a></span>`;
+    return TOOLTIP_METRICS.map((metric) => TOOLTIP_CONTROL_TEMPLATE({metric, text: JSPLib.utility.titleizeString(metric)})).join('');
 }
 
 function RenderStatistics(key, attribute, period, limited = false) {
-    let period_key = GetPeriodKey(period_info.longname[period]);
+    let period_key = GetPeriodKey(PERIOD_INFO.longname[period]);
     let data = JSPLib.storage.getIndexedSessionData(period_key);
     if (!data) {
         return "No data!";
@@ -1125,11 +1147,11 @@ function GetPostStatistics(posts, attribute) {
 }
 
 function AssignPostIndexes(period, posts, time_offset) {
-    let points = period_info.points[period];
+    let points = PERIOD_INFO.points[period];
     //Have to do it this way to avoid getting the same object
     let periods = JSPLib.utility.arrayFill(points, "[]");
     posts.forEach((post) => {
-        let index = Math.floor((Date.now() - post.created - time_offset) / (period_info.divisor[period]));
+        let index = Math.floor((Date.now() - post.created - time_offset) / (PERIOD_INFO.divisor[period]));
         index = (points ? Math.min(points - 1, index) : index);
         index = Math.max(0, index);
         if (index >= periods.length) {
@@ -1213,7 +1235,7 @@ function CheckCopyrightVelocity(tag) {
     if (dayuploads === null || weekuploads === null) {
         return true;
     }
-    var day_gettime = dayuploads.expires - period_info.countexpires.d; //Time data was originally retrieved
+    var day_gettime = dayuploads.expires - PERIOD_INFO.countexpires.d; //Time data was originally retrieved
     var week_velocity = (JSPLib.utility.one_week) / (weekuploads.value | 1); //Milliseconds per upload
     var adjusted_poll_interval = Math.min(week_velocity, JSPLib.utility.one_day); //Max wait time is 1 day
     return Date.now() > day_gettime + adjusted_poll_interval;
@@ -1270,7 +1292,7 @@ function PostDecompressData(posts) {
 }
 
 function GetTagData(tag) {
-    return Promise.all(CU.user_settings.periods_shown.map((period) => GetCount(longname_key[period], tag)));
+    return Promise.all(CU.user_settings.periods_shown.map((period) => GetCount(LONGNAME_KEY[period], tag)));
 }
 
 function GetPeriodKey(period_name) {
@@ -1292,8 +1314,8 @@ function CheckPeriodUploads() {
         if (period in CU.period_available[CU.usertag][CU.current_username]) {
             continue;
         }
-        let data_key = GetPeriodKey(period_info.longname[period]);
-        let max_expires = period_info.uploadexpires[period];
+        let data_key = GetPeriodKey(PERIOD_INFO.longname[period]);
+        let max_expires = PERIOD_INFO.uploadexpires[period];
         let check_promise = JSPLib.storage.checkLocalDB(data_key, max_expires).then((check) => {checkPeriod(data_key, period, check);});
         promise_array.push(check_promise);
     }
@@ -1374,11 +1396,11 @@ function TableMessage(message) {
 async function GetReverseTagImplication(tag) {
     let printer = JSPLib.debug.getFunctionPrint('GetReverseTagImplication');
     var key = 'rti-' + tag;
-    var check = await JSPLib.storage.checkLocalDB(key, rti_expiration);
+    var check = await JSPLib.storage.checkLocalDB(key, RTI_EXPIRATION);
     if (!(check)) {
         printer.debuglog("Network:", key);
-        let data = await JSPLib.danbooru.submitRequest('tag_implications', {search: {antecedent_name: tag}, only: id_field}, {default_val: [], key});
-        JSPLib.storage.saveData(key, {value: data.length, expires: JSPLib.utility.getExpires(rti_expiration)});
+        let data = await JSPLib.danbooru.submitRequest('tag_implications', {search: {antecedent_name: tag}, only: ID_FIELD}, {default_val: [], key});
+        JSPLib.storage.saveData(key, {value: data.length, expires: JSPLib.utility.getExpires(RTI_EXPIRATION)});
         return data.length;
     }
     return check.value;
@@ -1386,7 +1408,7 @@ async function GetReverseTagImplication(tag) {
 
 async function GetCount(type, tag) {
     let printer = JSPLib.debug.getFunctionPrint('GetCount');
-    let max_expires = period_info.countexpires[type];
+    let max_expires = PERIOD_INFO.countexpires[type];
     var key = 'ct' + type + '-' + tag;
     var check = await JSPLib.storage.checkLocalDB(key, max_expires);
     if (!(check)) {
@@ -1400,18 +1422,18 @@ async function GetCount(type, tag) {
 
 async function GetPeriodUploads(username, period, limited = false, domname = null) {
     let printer = JSPLib.debug.getFunctionPrint('GetPeriodUploads');
-    let period_name = period_info.longname[period];
-    let max_expires = period_info.uploadexpires[period];
+    let period_name = PERIOD_INFO.longname[period];
+    let max_expires = PERIOD_INFO.uploadexpires[period];
     let key = GetPeriodKey(period_name);
     var check = await JSPLib.storage.checkLocalDB(key, max_expires);
     if (!(check)) {
         printer.debuglog(`Network (${period_name} ${CU.counttype})`);
-        let data = await JSPLib.danbooru.getPostsCountdown(BuildTagParams(period, `${CU.usertag}:${username}`), max_post_limit_query, post_fields, domname);
+        let data = await JSPLib.danbooru.getPostsCountdown(BuildTagParams(period, `${CU.usertag}:${username}`), QUERY_LIMIT, POST_FIELDS, domname);
         let mapped_data = MapPostData(data);
         if (limited) {
             let indexed_posts = AssignPostIndexes(period, mapped_data, 0);
-            mapped_data = JSPLib.utility.mergeHashes(...tooltip_metrics.map((metric) => ({[metric]: GetAllStatistics(mapped_data, metric)})));
-            mapped_data.chart_data = JSPLib.utility.mergeHashes(...chart_metrics.map((metric) => ({[metric]: GetPeriodAverages(indexed_posts, metric)})));
+            mapped_data = JSPLib.utility.mergeHashes(...TOOLTIP_METRICS.map((metric) => ({[metric]: GetAllStatistics(mapped_data, metric)})));
+            mapped_data.chart_data = JSPLib.utility.mergeHashes(...CHART_METRICS.map((metric) => ({[metric]: GetPeriodAverages(indexed_posts, metric)})));
             mapped_data.chart_data.uploads = GetPeriodPosts(indexed_posts);
             JSPLib.storage.saveData(key, {value: mapped_data, expires: JSPLib.utility.getExpires(max_expires)});
         } else {
@@ -1437,7 +1459,7 @@ async function GetPeriod(event) {
         let value = $(".cu-uploads", $cells[0]).html();
         $($cells[0]).html(RenderTooltipData(value, period, true));
     } else {
-        $cells.each((i, cell) => {
+        $cells.each((_i, cell) => {
             let value = $(".cu-uploads", cell).html();
             $(cell).html(RenderTooltipData(value, period));
         });
@@ -1493,23 +1515,23 @@ function RenderChart(event) {
     if (event.target.tagName !== "TD") {
         return;
     }
-    if (!chart_metrics.includes(CU.current_metric)) {
+    if (!CHART_METRICS.includes(CU.current_metric)) {
         JSPLib.notice.notice("Chart data not available on Day and Week metrics.");
         return;
     }
     let period = $(event.target).data('period');
     let is_limited = $(event.target).hasClass("cu-limited");
-    let longname = period_info.longname[period];
-    let points = period_info.points[period];
+    let longname = PERIOD_INFO.longname[period];
+    let points = PERIOD_INFO.points[period];
     let period_key = GetPeriodKey(longname);
     let data = JSPLib.storage.getIndexedSessionData(period_key);
     if (!data || (!is_limited && data.value.length === 0) || (is_limited && !data.value.chart_data)) {
-        JSPLib.notice.notice(`${period_info.header[period]} period not populated! Click the period header to activate the chart.`);
+        JSPLib.notice.notice(`${PERIOD_INFO.header[period]} period not populated! Click the period header to activate the chart.`);
         return;
     }
     var period_averages, period_uploads;
     if (!is_limited) {
-        let time_offset = Date.now() - (data.expires - period_info.uploadexpires[period]);
+        let time_offset = Date.now() - (data.expires - PERIOD_INFO.uploadexpires[period]);
         let posts = PostDecompressData(data.value);
         let indexed_posts = AssignPostIndexes(period, posts, time_offset);
         period_averages = GetPeriodAverages(indexed_posts, CU.current_metric);
@@ -1525,7 +1547,7 @@ function RenderChart(event) {
             text: `${JSPLib.utility.displayCase(longname)} ${CU.counttype} - Average post ${CU.current_metric}`
         },
         axisX: {
-            title: period_info.xlabel[period],
+            title: PERIOD_INFO.xlabel[period],
             minimum: 0,
             maximum: (points ? points - 1 : period_uploads.slice(-1)[0].x)
         },
@@ -1599,7 +1621,7 @@ async function CopyrightPeriod(event) {
         $("#count-copyrights-list a").off(JSPLib.program.click).on(JSPLib.program.click, ToggleCopyrightTag);
     } else {
         $("#count-copyrights-manual").hide();
-        let current_period = period_info.longname[short_period];
+        let current_period = PERIOD_INFO.longname[short_period];
         let is_period_enabled = CU.period_available[CU.usertag][CU.current_username][short_period];
         if (is_period_enabled) {
             if (CU.user_copytags[CU.usertag][CU.current_username][current_period] === undefined) {
@@ -1608,20 +1630,20 @@ async function CopyrightPeriod(event) {
                 let copyright_count = GetCopyrightCount(PostDecompressData(data.value));
                 let user_copytags = SortDict(copyright_count);
                 if (CU.user_settings.copyrights_merge) {
-                    $("#count-copyrights-counter").html(copyright_counter);
+                    $("#count-copyrights-counter").html(COPYRIGHT_COUNTER);
                     user_copytags = await MergeCopyrightTags(user_copytags);
                     $("#count-copyrights-counter").html('');
                 }
                 CU.user_copytags[CU.usertag][CU.current_username][current_period] = user_copytags;
             }
             if (CU.user_copytags[CU.usertag][CU.current_username][current_period].length === 0) {
-                $('#count-copyrights-list').html(`<div id="empty-statistics">${copyright_no_uploads}</div>`);
+                $('#count-copyrights-list').html(`<div id="empty-statistics">${COPYRIGHT_NO_UPLOADS}</div>`);
             } else {
                 $('#count-copyrights-list').html(RenderCopyrights(current_period));
                 $("#count-copyrights-list a").off(JSPLib.program.click).on(JSPLib.program.click, ToggleCopyrightTag);
             }
         } else {
-            $('#count-copyrights-list').html(`<div id="empty-statistics">${copyright_no_statistics}</div>`);
+            $('#count-copyrights-list').html(`<div id="empty-statistics">${COPYRIGHT_NO_STATISTICS}</div>`);
         }
     }
     event.preventDefault();
@@ -1633,7 +1655,7 @@ function ToggleNotice(event) {
         $('#upload-counts').addClass('opened');
         if (!PopulateTable.is_started) {
             //Always show current user on open to prevent processing potentially bad usernames set by CheckUser
-            CU.empty_uploads_message = (CU.username === "Anonymous" ? empty_uploads_message_anonymous : empty_uploads_message_owner);
+            CU.empty_uploads_message = (CU.username === "Anonymous" ? empty_uploads_message_anonymous : EMPTY_UPLOADS_MESSAGE_OWNER);
             CU.display_username = CU.username;
             CU.current_username = CU.username.toLowerCase();
             CU.level_string = (CU.username === "Anonymous" ? 'Member' : Danbooru.CurrentUser.data('level-string'));
@@ -1671,7 +1693,7 @@ function StashNotice(event) {
 }
 
 async function RefreshUser() {
-    $("#count-copyrights-counter").html(copyright_counter);
+    $("#count-copyrights-counter").html(COPYRIGHT_COUNTER);
     let diff_tags = JSPLib.utility.arrayDifference(CU.active_copytags, CU.shown_copytags);
     let promise_array = [];
     diff_tags.forEach((val) => {
@@ -1695,7 +1717,7 @@ async function CheckUser() {
             check_user = CU.checked_usernames[check_username];
         } else {
             //Check each time no matter what as misses can be catastrophic
-            check_user = await JSPLib.danbooru.submitRequest('users', {search: {name_matches: check_username}, only: user_fields, expiry: 30});
+            check_user = await JSPLib.danbooru.submitRequest('users', {search: {name_matches: check_username}, only: USER_FIELDS, expiry: 30});
             CU.checked_usernames[check_username] = check_user;
         }
         if (check_user.length) {
@@ -1703,7 +1725,7 @@ async function CheckUser() {
             CU.current_username = check_user[0].name.toLowerCase();
             CU.level_string = check_user[0].level_string;
             let is_approvals = $("#count_approver_select")[0].checked;
-            CU.empty_uploads_message = is_approvals ? empty_approvals_message_other : empty_uploads_message_other;
+            CU.empty_uploads_message = is_approvals ? EMPTY_APPROVALS_MESSAGE_OTHER : EMPTY_UPLOADS_MESSAGE_OTHER;
             CU.usertag = is_approvals ? 'approver' : 'user';
             CU.counttype = is_approvals ? 'approvals' : 'uploads';
             PopulateTable();
@@ -1716,7 +1738,7 @@ async function CheckUser() {
 async function AddCopyright() {
     let user_copytags = CU.user_copytags[CU.usertag][CU.current_username];
     let tag = $("#count_query_copyright").val();
-    let tagdata = await JSPLib.danbooru.submitRequest('tags', {search: {name: tag}, only: name_field}, {default_val: []});
+    let tagdata = await JSPLib.danbooru.submitRequest('tags', {search: {name: tag}, only: NAME_FIELD}, {default_val: []});
     if (tagdata.length === 0) {
         JSPLib.notice.notice('Tag not valid');
         return;
@@ -1796,7 +1818,7 @@ async function ProcessUploads() {
 }
 
 function CleanupTasks() {
-    JSPLib.storage.pruneProgramCache(PROGRAM_DATA_REGEX, prune_expires);
+    JSPLib.storage.pruneProgramCache(PROGRAM_DATA_REGEX, PRUNE_EXPIRES);
 }
 
 //Cache functions
@@ -1811,7 +1833,7 @@ function OptionCacheDataKey(data_type, data_value) {
             CU.data_value = "";
             return "";
         }
-        let shortkey = (CU.data_period !== "" ? longname_key[CU.data_period] : "");
+        let shortkey = (CU.data_period !== "" ? LONGNAME_KEY[CU.data_period] : "");
         return `ct${shortkey}-${data_value}`;
     }
     return `${CU.data_period}-${data_type}-${data_value}`;
@@ -1853,7 +1875,7 @@ function RemoteResetCallback() {
 }
 
 function GetShownPeriodKeys() {
-    return timevalues.filter((period_key) => CU.user_settings.periods_shown.includes(period_info.longname[period_key]));
+    return TIME_VALUES.filter((period_key) => CU.user_settings.periods_shown.includes(PERIOD_INFO.longname[period_key]));
 }
 
 function DataTypeChange() {
@@ -1930,7 +1952,7 @@ function Main() {
     if (!JSPLib.menu.preloadScript(CU, preload)) return;
 
     var $NOTICE_BOX = $(NOTICE_BOX);
-    var $footer_notice = $(unstash_notice);
+    var $footer_notice = $(UNSTASH_NOTICE);
     if (CU.stashed === true) {
         $NOTICE_BOX.addClass('stashed');
         $footer_notice.addClass('stashed');
