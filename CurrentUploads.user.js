@@ -14,17 +14,17 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/5e7d33ec35c0ded5e362349acb8ebdf0d8b4908b/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/5e7d33ec35c0ded5e362349acb8ebdf0d8b4908b/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/5e7d33ec35c0ded5e362349acb8ebdf0d8b4908b/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/5e7d33ec35c0ded5e362349acb8ebdf0d8b4908b/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/5e7d33ec35c0ded5e362349acb8ebdf0d8b4908b/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/5e7d33ec35c0ded5e362349acb8ebdf0d8b4908b/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/5e7d33ec35c0ded5e362349acb8ebdf0d8b4908b/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/5e7d33ec35c0ded5e362349acb8ebdf0d8b4908b/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/5e7d33ec35c0ded5e362349acb8ebdf0d8b4908b/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/5e7d33ec35c0ded5e362349acb8ebdf0d8b4908b/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/5e7d33ec35c0ded5e362349acb8ebdf0d8b4908b/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/04641863aca11338db0ec4bebe1fd9900975c508/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/04641863aca11338db0ec4bebe1fd9900975c508/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/04641863aca11338db0ec4bebe1fd9900975c508/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/04641863aca11338db0ec4bebe1fd9900975c508/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/04641863aca11338db0ec4bebe1fd9900975c508/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/04641863aca11338db0ec4bebe1fd9900975c508/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/04641863aca11338db0ec4bebe1fd9900975c508/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/04641863aca11338db0ec4bebe1fd9900975c508/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/04641863aca11338db0ec4bebe1fd9900975c508/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/04641863aca11338db0ec4bebe1fd9900975c508/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/04641863aca11338db0ec4bebe1fd9900975c508/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru CanvasJS */
@@ -1897,7 +1897,7 @@ function InitializeProgramValues() {
 }
 
 function RenderSettingsMenu() {
-    $("#current-uploads").append(JSPLib.menu.renderMenuFramework(MENU_CONFIG));
+    $(JSPLib.menu.program_selector).append(JSPLib.menu.renderMenuFramework(MENU_CONFIG));
     $("#cu-general-settings").append(JSPLib.menu.renderDomainSelectors());
     $("#cu-display-settings").append(JSPLib.menu.renderCheckbox('copyrights_merge'));
     $("#cu-display-settings").append(JSPLib.menu.renderCheckbox('copyrights_enabled'));
@@ -1981,7 +1981,7 @@ JSPLib.program_data = CU;
 
 //Variables for debug.js
 JSPLib.debug.mode = true;
-JSPLib.debug.level = JSPLib.debug.INFO;
+JSPLib.debug.level = JSPLib.debug.DEBUG;
 
 //Variables for menu.js
 JSPLib.menu.program_reset_data = PROGRAM_RESET_KEYS;

@@ -41,6 +41,6 @@
         "require-await": "error",
         "max-depth": ["error", 4],
         "max-nested-callbacks": ["error", 3],
-        "complexity": ["error", { "max": 10 }]
+        "complexity": ["warn", { "max": 10 }]
     }
 }
