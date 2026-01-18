@@ -14,17 +14,17 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/04641863aca11338db0ec4bebe1fd9900975c508/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/04641863aca11338db0ec4bebe1fd9900975c508/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/04641863aca11338db0ec4bebe1fd9900975c508/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/04641863aca11338db0ec4bebe1fd9900975c508/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/04641863aca11338db0ec4bebe1fd9900975c508/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/04641863aca11338db0ec4bebe1fd9900975c508/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/04641863aca11338db0ec4bebe1fd9900975c508/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/04641863aca11338db0ec4bebe1fd9900975c508/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/04641863aca11338db0ec4bebe1fd9900975c508/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/04641863aca11338db0ec4bebe1fd9900975c508/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/04641863aca11338db0ec4bebe1fd9900975c508/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8ca6e80112946095bd2ecdbf083e056ed994ba27/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8ca6e80112946095bd2ecdbf083e056ed994ba27/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8ca6e80112946095bd2ecdbf083e056ed994ba27/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8ca6e80112946095bd2ecdbf083e056ed994ba27/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8ca6e80112946095bd2ecdbf083e056ed994ba27/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8ca6e80112946095bd2ecdbf083e056ed994ba27/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8ca6e80112946095bd2ecdbf083e056ed994ba27/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8ca6e80112946095bd2ecdbf083e056ed994ba27/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8ca6e80112946095bd2ecdbf083e056ed994ba27/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8ca6e80112946095bd2ecdbf083e056ed994ba27/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8ca6e80112946095bd2ecdbf083e056ed994ba27/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru CanvasJS */
@@ -1316,7 +1316,7 @@ function CheckPeriodUploads() {
         }
         let data_key = GetPeriodKey(PERIOD_INFO.longname[period]);
         let max_expires = PERIOD_INFO.uploadexpires[period];
-        let check_promise = JSPLib.storage.checkLocalDB(data_key, max_expires).then((check) => {checkPeriod(data_key, period, check);});
+        let check_promise = JSPLib.storage.checkLocalDB(data_key, {max_expires}).then((check) => {checkPeriod(data_key, period, check);});
         promise_array.push(check_promise);
     }
     return Promise.all(promise_array);
@@ -1396,7 +1396,7 @@ function TableMessage(message) {
 async function GetReverseTagImplication(tag) {
     let printer = JSPLib.debug.getFunctionPrint('GetReverseTagImplication');
     var key = 'rti-' + tag;
-    var check = await JSPLib.storage.checkLocalDB(key, RTI_EXPIRATION);
+    var check = await JSPLib.storage.checkLocalDB(key, {max_expires: RTI_EXPIRATION});
     if (!(check)) {
         printer.debuglog("Network:", key);
         let data = await JSPLib.danbooru.submitRequest('tag_implications', {search: {antecedent_name: tag}, only: ID_FIELD}, {default_val: [], key});
@@ -1410,7 +1410,7 @@ async function GetCount(type, tag) {
     let printer = JSPLib.debug.getFunctionPrint('GetCount');
     let max_expires = PERIOD_INFO.countexpires[type];
     var key = 'ct' + type + '-' + tag;
-    var check = await JSPLib.storage.checkLocalDB(key, max_expires);
+    var check = await JSPLib.storage.checkLocalDB(key, {max_expires});
     if (!(check)) {
         printer.debuglog("Network:", key);
         return JSPLib.danbooru.submitRequest('counts/posts', {tags: BuildTagParams(type, tag), skip_cache: true}, {default_val: {counts: {posts: 0}}, key})
@@ -1425,7 +1425,7 @@ async function GetPeriodUploads(username, period, limited = false, domname = nul
     let period_name = PERIOD_INFO.longname[period];
     let max_expires = PERIOD_INFO.uploadexpires[period];
     let key = GetPeriodKey(period_name);
-    var check = await JSPLib.storage.checkLocalDB(key, max_expires);
+    var check = await JSPLib.storage.checkLocalDB(key, {max_expires});
     if (!(check)) {
         printer.debuglog(`Network (${period_name} ${CU.counttype})`);
         let data = await JSPLib.danbooru.getPostsCountdown(BuildTagParams(period, `${CU.usertag}:${username}`), QUERY_LIMIT, POST_FIELDS, domname);
@@ -1775,7 +1775,7 @@ async function ProcessUploads() {
     let previous_key = GetPeriodKey("previous");
     if (current_uploads.length) {
         let is_new_tab = JSPLib.storage.getIndexedSessionData(previous_key) === null;
-        let previous_uploads = await JSPLib.storage.checkLocalDB(previous_key, {default_val: []});
+        let previous_uploads = await JSPLib.storage.checkLocalDB(previous_key, {default_val: {value: []}});
         previous_uploads = PostDecompressData(previous_uploads.value);
         let current_ids = JSPLib.utility.getObjectAttributes(current_uploads, 'id');
         let previous_ids = JSPLib.utility.getObjectAttributes(previous_uploads, 'id');
@@ -1917,10 +1917,10 @@ function RenderSettingsMenu() {
     $("#cu-section-indexed-db").append(JSPLib.menu.renderKeyselect('data_period', true));
     $("#cu-section-local-storage").append(JSPLib.menu.renderCheckbox('raw_data', true));
     $("#cu-cache-editor-controls").append(JSPLib.menu.renderTextinput('data_name', 20, true));
-    JSPLib.menu.engageUI(true);
+    JSPLib.menu.engageUI({checkboxradio: true});
     $("#cu-select-periods-shown-daily").checkboxradio("disable"); //Daily period is mandatory
     JSPLib.menu.saveUserSettingsClick();
-    JSPLib.menu.resetUserSettingsClick(LOCALSTORAGE_KEYS, RemoteResetCallback);
+    JSPLib.menu.resetUserSettingsClick({delete_keys: LOCALSTORAGE_KEYS, local_callback: RemoteResetCallback});
     JSPLib.menu.cacheInfoClick();
     JSPLib.menu.purgeCacheClick();
     JSPLib.menu.expandableClick();
@@ -1981,7 +1981,7 @@ JSPLib.program_data = CU;
 
 //Variables for debug.js
 JSPLib.debug.mode = true;
-JSPLib.debug.level = JSPLib.debug.DEBUG;
+JSPLib.debug.level = JSPLib.debug.VERBOSE;
 
 //Variables for menu.js
 JSPLib.menu.program_reset_data = PROGRAM_RESET_KEYS;
