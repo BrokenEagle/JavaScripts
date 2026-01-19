@@ -12,13 +12,13 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SafelistPlus.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SafelistPlus.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1d3322d2966eeaa89ad2d9547c676f854ef4f3bb/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1d3322d2966eeaa89ad2d9547c676f854ef4f3bb/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1d3322d2966eeaa89ad2d9547c676f854ef4f3bb/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1d3322d2966eeaa89ad2d9547c676f854ef4f3bb/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1d3322d2966eeaa89ad2d9547c676f854ef4f3bb/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1d3322d2966eeaa89ad2d9547c676f854ef4f3bb/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1d3322d2966eeaa89ad2d9547c676f854ef4f3bb/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru validate */
@@ -122,7 +122,7 @@ const DEFAULT_VALUES = {
 
 //CSS Constants
 
-const safelist_css = `
+const PROGRAM_CSS = JSPLib.utility.nestedCSSCheck()`
 /*SafelistPlus controls*/
 #page #safelist-box #safelist .safelist-active,
 #page #safelist-box #safelist .safelist-pending {
@@ -291,13 +291,13 @@ const safelist_css = `
     display: none;
 }`;
 
-const css_enabled = `
+const CSS_ENABLED = `
 #page #blacklist-box,
 #enable-safelist {
     display: none !important;
 }`;
 
-const css_disabled = `
+const CSS_DISABLED = `
 #safelist,
 #disable-safelist {
     display: none !important;
@@ -308,7 +308,7 @@ const css_disabled = `
 
 //HTML constants
 
-const PROGRAM_DATA_DETAILS = `
+const PROGRAM_DATA_DETAILS = JSPLib.utility.normalizeHTML()`
 <p class="tn">All timestamps are in milliseconds since the epoch (<a href="https://www.epochconverter.com">Epoch converter</a>).</p>
 <ul>
     <li>Blacklist data
@@ -328,23 +328,23 @@ const PROGRAM_DATA_DETAILS = `
 
 //Message constants
 
-const keyselect_help = `Changes list when ${PROGRAM_NAME} is active.\nKeep in mind existing Danbooru hotkeys.`;
-const background_help = "Process this list in the background so that changing lists is more responsive.";
-const tagblock_help = "Put any tag combinations you never want to see here.\nEach combination should go on a separate line.";
-const cssblock_help = "Style to apply to the whole site.";
+const KEYSELECT_HELP = `Changes list when ${PROGRAM_NAME} is active.\nKeep in mind existing Danbooru hotkeys.`;
+const BACKGROUND_HELP = "Process this list in the background so that changing lists is more responsive.";
+const TAGBLOCK_HELP = "Put any tag combinations you never want to see here.\nEach combination should go on a separate line.";
+const CSSBLOCK_HELP = "Style to apply to the whole site.";
 
-const button_hints = {
+const BUTTON_HINTS = {
     pull: "Populate tag box with your Danbooru blacklist.",
     push: "Save tag box to your Danbooru blacklist.",
 };
 
 //Other constants
 
-const timeout_polling_interval = 1000;
+const TIMEOUT_POLLING_INTERVAL = 1000;
 
 //Class constants
 
-const safelist_defaults = {
+const SAFELIST_DEFAULTS = {
     set level(level) {
         this._level = level;
     },
@@ -361,52 +361,52 @@ const safelist_defaults = {
     background: true,
 };
 
-const safelist_keys = Object.keys(safelist_defaults).filter((key) => !key.match(/^_/));
+const SAFELIST_KEYS = Object.keys(SAFELIST_DEFAULTS).filter((key) => !key.match(/^_/));
 
-const level_buttons = ['pull', 'push', 'delete'];
-const modifier_keys = ['', 'alt', 'shift', 'ctrl'];
-const keyselect_keys = [''].concat('abcdefghijklmnopqrstuvwxyz1234567890'.split(''));
+const LEVEL_BUTTONS = ['pull', 'push', 'delete'];
+const MODIFIER_KEYS = ['', 'alt', 'shift', 'ctrl'];
+const KEYSELECT_KEYS = [''].concat('abcdefghijklmnopqrstuvwxyz1234567890'.split(''));
 
-const _private_data = new WeakMap();
+const _PRIVATE_DATA = new WeakMap();
 
 //Classes
 
 class Safelist {
     constructor(level) {
-        safelist_defaults.level = level;
-        safelist_keys.forEach((key)=>{this[key] = safelist_defaults[key];});
-        _private_data.set(this, {});
+        SAFELIST_DEFAULTS.level = level;
+        SAFELIST_KEYS.forEach((key)=>{this[key] = SAFELIST_DEFAULTS[key];});
+        _PRIVATE_DATA.set(this, {});
         this.setupPrivateData('menu');
         this.setupPrivateData('side');
     }
 
     correctData(level) {
         let error_messages = [];
-        safelist_defaults.level = level;
+        SAFELIST_DEFAULTS.level = level;
         let check = validate(this,level_constraints);
         if (check !== undefined) {
             error_messages.push([`level_data[${level}]:`, JSON.stringify(check, null, 2)]);
             for (let key in check) {
-                this[key] = safelist_defaults[key];
+                this[key] = SAFELIST_DEFAULTS[key];
             }
         }
         check = validate(this.hotkey,hotkey_constraints);
         if (check !== undefined) {
             error_messages.push([`level_data[${level}].hotkey:`, JSON.stringify(check, null, 2)]);
             for (let key in check) {
-                this.hotkey[key] = safelist_defaults.hotkey[key];
+                this.hotkey[key] = SAFELIST_DEFAULTS.hotkey[key];
             }
         }
         let nonstring_list = this.list.filter((entry) => !JSPLib.utility.isString(entry));
         if (nonstring_list.length > 0) {
             error_messages.push([`level_data[${level}].list: bad values found - `, nonstring_list]);
             if (nonstring_list.length === this.list.length) {
-                this.list = safelist_defaults.list;
+                this.list = SAFELIST_DEFAULTS.list;
             } else {
                 this.list = JSPLib.utility.arrayDifference(this.list, nonstring_list);
             }
         }
-        let extra_keys = JSPLib.utility.arrayDifference(Object.keys(this), Object.keys(safelist_defaults));
+        let extra_keys = JSPLib.utility.arrayDifference(Object.keys(this), Object.keys(SAFELIST_DEFAULTS));
         if (extra_keys.length) {
             error_messages.push([`level_data[${level}]: bad keys found - `, extra_keys]);
             extra_keys.forEach((key)=>{delete this[key];});
@@ -455,11 +455,11 @@ class Safelist {
     setupPrivateData(name) {
         Object.defineProperty(this, name, {
             set: (x)=>{
-                let data = _private_data.get(this);
+                let data = _PRIVATE_DATA.get(this);
                 data[name] = x;
-                _private_data.set(this, data);
+                _PRIVATE_DATA.set(this, data);
             },
-            get: () => _private_data.get(this)[name],
+            get: () => _PRIVATE_DATA.get(this)[name],
         });
     }
 
@@ -506,19 +506,19 @@ class Safelist {
     }
     //Hotkey dropdowns
     get renderedKeyselect() {
-        let select1 = modifier_keys.map((key)=>{
+        let select1 = MODIFIER_KEYS.map((key)=>{
             let selected = (this.hotkey[0] === key ? 'selected="selected"' : "");
             let ucase = JSPLib.utility.titleizeString(key);
             return `<option ${selected} value="${key}">${ucase}</option>`;
         }).join("");
-        let select2 = keyselect_keys.map((key)=>{
+        let select2 = KEYSELECT_KEYS.map((key)=>{
             let selected = (this.hotkey[1] === key ? 'selected="selected"' : "");
             let ucase = key.toUpperCase();
             return `<option ${selected} value="${key}">${ucase}</option>`;
         }).join("");
         return `
     <div class="safelist-selection">
-        <label for="safelist_modifier_level_${this.level}">Hotkey (${RenderHelp(keyselect_help)})</label>
+        <label for="safelist_modifier_level_${this.level}">Hotkey (${RenderHelp(KEYSELECT_HELP)})</label>
         <select id="safelist_modifier_level_${this.level}" class="safelist-modifier">
             ${select1}
         </select>
@@ -532,7 +532,7 @@ class Safelist {
         const value = (this.background ? "checked" : "");
         return `
     <div class="safelist-halfcheckbox">
-        <label for="safelist_background_level_${this.level}">Background Process (${RenderHelp(background_help)})</label>
+        <label for="safelist_background_level_${this.level}">Background Process (${RenderHelp(BACKGROUND_HELP)})</label>
         <input type="checkbox" ${value} id="safelist_process_level_${this.level}" class="safelist-background">
     </div>`;
     }
@@ -551,7 +551,7 @@ class Safelist {
     get renderedTagBlock() {
         return `
     <div class="safelist-textblock">
-        <label for="safelist_tags_level_${this.level}">Blacklisted tags (${RenderHelp(tagblock_help)})</label>
+        <label for="safelist_tags_level_${this.level}">Blacklisted tags (${RenderHelp(TAGBLOCK_HELP)})</label>
         <textarea id="safelist_tags_level_${this.level}" cols="40" rows="5" autocomplete="off" class="safelist-tags">${this.tagstring}</textarea>
     </div>`;
     }
@@ -559,14 +559,14 @@ class Safelist {
     get renderedCSSBlock() {
         return `
     <div class="safelist-textblock">
-        <label for="safelist_css_level_${this.level}">Custom CSS (${RenderHelp(cssblock_help)})</label>
+        <label for="safelist_css_level_${this.level}">Custom CSS (${RenderHelp(CSSBLOCK_HELP)})</label>
         <textarea id="safelist_css_level_${this.level}" cols="40" rows="5" autocomplete="off" class="safelist-css">${this.css}</textarea>
     </div>`;
     }
 
     //Renders all level buttons
     get renderedLevelButtons() {
-        let buttons1 = level_buttons.map((type) => RenderButton(type, button_hints[type])).join("");
+        let buttons1 = LEVEL_BUTTONS.map((type) => RenderButton(type, BUTTON_HINTS[type])).join("");
         return `
     <div class="safelist-setting-buttons">
         ${buttons1}
@@ -646,9 +646,10 @@ class Safelist {
             if (confirm("Update your blacklist on Danbooru?")) {
                 let tagdata = $(".safelist-tags", context.menu).val().replace(/\n/g, '\r\n');
                 let senddata = {'user': {'blacklisted_tags': tagdata}};
+                let url = JSPLib.utility.sprintf(`/users/%s.json`, Danbooru.CurrentUser.data('id'));;
                 $.ajax({
                   type: "PUT",
-                  url: `/users/${SL.userid}.json`,
+                  url,
                   data: senddata,
                   success: function(data) {
                     printer.debuglog('setPushButtonClick',"Success", data);
@@ -703,8 +704,8 @@ const level_constraints = {
 };
 
 const hotkey_constraints = [
-    JSPLib.validate.inclusion_constraints(modifier_keys),
-    JSPLib.validate.inclusion_constraints(keyselect_keys)
+    JSPLib.validate.inclusion_constraints(MODIFIER_KEYS),
+    JSPLib.validate.inclusion_constraints(KEYSELECT_KEYS)
 ];
 
 /****Functions****/
@@ -1298,7 +1299,7 @@ function HelpInfo(event) {
 }
 
 function EnableSafelist(event) {
-    JSPLib.utility.setCSSStyle(css_enabled, "blacklist_css");
+    JSPLib.utility.setCSSStyle(CSS_ENABLED, "blacklist_css");
     if (SL.menu_items.rendered_menus.includes(SL.active_list)){
         let value = SL.level_data[SL.active_list];
         value && $("a", value.side).click();
@@ -1308,7 +1309,7 @@ function EnableSafelist(event) {
 }
 
 function DisableSafelist(event) {
-    JSPLib.utility.setCSSStyle(css_disabled, "blacklist_css");
+    JSPLib.utility.setCSSStyle(CSS_DISABLED, "blacklist_css");
     JSPLib.utility.setCSSStyle("", 'safelist_user_css');
     RemovePostStyles();
     SaveStatus(false);
@@ -1624,7 +1625,6 @@ function InitializeChangedSettings() {
 
 function InitializeProgramValues() {
     Object.assign(SL, {
-        userid: Danbooru.CurrentUser.data('id'),
         blacklist_box: $("#blacklist-box"),
         has_video: Boolean($(".image-container video").length),
         is_shown: JSPLib.storage.checkLocalData('sl-show-menu', ValidateProgramData, {default_val: true}),
@@ -1646,9 +1646,9 @@ function RenderSettingsMenu() {
     $('#sl-cache-editor-controls').append(JSPLib.menu.renderLocalStorageSource());
     $('#sl-cache-editor-controls').append(JSPLib.menu.renderCheckbox('raw_data', true));
     $('#sl-cache-editor-controls').append(JSPLib.menu.renderTextinput('data_name', 20, true));
-    JSPLib.menu.engageUI(true);
+    JSPLib.menu.engageUI({checkboxradio: true});
     JSPLib.menu.saveUserSettingsClick();
-    JSPLib.menu.resetUserSettingsClick(LOCALSTORAGE_KEYS);
+    JSPLib.menu.resetUserSettingsClick({delete_keys: LOCALSTORAGE_KEYS});
     JSPLib.menu.cacheInfoClick();
     JSPLib.menu.expandableClick();
     JSPLib.menu.rawDataChange();
@@ -1675,7 +1675,7 @@ function Main() {
     CorrectLevelData();
     LoadSessionData();
     if (HasBlacklist()) {
-        JSPLib.utility.setCSSStyle(safelist_css, "safelist_css");
+        JSPLib.utility.setCSSStyle(PROGRAM_CSS, "PROGRAM_CSS");
         SL.menu_items = CalculateRenderedMenus();
         SL.blacklist_box.after(RenderSidemenu());
         InitializeSide();
@@ -1693,7 +1693,7 @@ function Main() {
         JSPLib.utility.initializeInterval(()=>{
             SetSafelistSettingsClick();
             SetOtherSectionsClick();
-        },timeout_polling_interval);
+        }, TIMEOUT_POLLING_INTERVAL);
         $(document).on('danbooru:post-preview-updated.sl', PostPreviewUpdated);
     }
 }
@@ -1706,8 +1706,8 @@ JSPLib.program_shortcut = PROGRAM_SHORTCUT;
 JSPLib.program_data = SL;
 
 //Variables for debug.js
-JSPLib.debug.mode = false;
-JSPLib.debug.level = JSPLib.debug.INFO;
+JSPLib.debug.mode = true;
+JSPLib.debug.level = JSPLib.debug.VERBOSE;
 
 //Variables for menu.js
 JSPLib.menu.program_reset_data = PROGRAM_RESET_KEYS;
