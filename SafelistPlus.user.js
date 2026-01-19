@@ -1325,7 +1325,7 @@ function ToggleSafelist(event) {
 }
 
 function SetSafelistSettingsClick() {
-    if (!JSPLib.utility.isNamespaceBound("#display-safelist-settings", 'click', PROGRAM_SHORTCUT)) {
+    if (!JSPLib.utility.isNamespaceBound({root: "#display-safelist-settings", eventtype: 'click', namespace: PROGRAM_SHORTCUT})) {
         $("#display-safelist-settings").on(JSPLib.program_click,(event)=>{
             $("#post-sections li a").removeClass('active');
             $("#display-safelist-settings").addClass('active');
@@ -1338,7 +1338,7 @@ function SetSafelistSettingsClick() {
 
 //These actions get executed along with any other existing click events
 function SetOtherSectionsClick() {
-    if (!JSPLib.utility.isNamespaceBound("#show-posts-link,#show-excerpt-link", 'click', PROGRAM_SHORTCUT)) {
+    if (!JSPLib.utility.isNamespaceBound({root: "#show-posts-link,#show-excerpt-link", eventtype: 'click', namespace: PROGRAM_SHORTCUT})) {
         $("#show-posts-link,#show-excerpt-link").on(JSPLib.program_click, ()=>{
             $("#display-safelist-settings").removeClass('active');
             $('#safelist-settings').hide();
