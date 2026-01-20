@@ -14,17 +14,17 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c376a2779d23397be07a609d312739b493f21c19/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c376a2779d23397be07a609d312739b493f21c19/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c376a2779d23397be07a609d312739b493f21c19/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c376a2779d23397be07a609d312739b493f21c19/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c376a2779d23397be07a609d312739b493f21c19/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c376a2779d23397be07a609d312739b493f21c19/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c376a2779d23397be07a609d312739b493f21c19/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c376a2779d23397be07a609d312739b493f21c19/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c376a2779d23397be07a609d312739b493f21c19/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c376a2779d23397be07a609d312739b493f21c19/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/c376a2779d23397be07a609d312739b493f21c19/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/9f7a82effcc08dd6ee00fdaaadcf2a0a43c4fb7c/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/9f7a82effcc08dd6ee00fdaaadcf2a0a43c4fb7c/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/9f7a82effcc08dd6ee00fdaaadcf2a0a43c4fb7c/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/9f7a82effcc08dd6ee00fdaaadcf2a0a43c4fb7c/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/9f7a82effcc08dd6ee00fdaaadcf2a0a43c4fb7c/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/9f7a82effcc08dd6ee00fdaaadcf2a0a43c4fb7c/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/9f7a82effcc08dd6ee00fdaaadcf2a0a43c4fb7c/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/9f7a82effcc08dd6ee00fdaaadcf2a0a43c4fb7c/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/9f7a82effcc08dd6ee00fdaaadcf2a0a43c4fb7c/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/9f7a82effcc08dd6ee00fdaaadcf2a0a43c4fb7c/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/9f7a82effcc08dd6ee00fdaaadcf2a0a43c4fb7c/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru CanvasJS */

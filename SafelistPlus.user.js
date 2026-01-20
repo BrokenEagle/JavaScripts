@@ -12,13 +12,13 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SafelistPlus.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SafelistPlus.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1d3322d2966eeaa89ad2d9547c676f854ef4f3bb/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1d3322d2966eeaa89ad2d9547c676f854ef4f3bb/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1d3322d2966eeaa89ad2d9547c676f854ef4f3bb/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1d3322d2966eeaa89ad2d9547c676f854ef4f3bb/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1d3322d2966eeaa89ad2d9547c676f854ef4f3bb/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1d3322d2966eeaa89ad2d9547c676f854ef4f3bb/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1d3322d2966eeaa89ad2d9547c676f854ef4f3bb/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/9f7a82effcc08dd6ee00fdaaadcf2a0a43c4fb7c/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/9f7a82effcc08dd6ee00fdaaadcf2a0a43c4fb7c/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/9f7a82effcc08dd6ee00fdaaadcf2a0a43c4fb7c/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/9f7a82effcc08dd6ee00fdaaadcf2a0a43c4fb7c/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/9f7a82effcc08dd6ee00fdaaadcf2a0a43c4fb7c/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/9f7a82effcc08dd6ee00fdaaadcf2a0a43c4fb7c/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/9f7a82effcc08dd6ee00fdaaadcf2a0a43c4fb7c/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru validate */
@@ -71,6 +71,11 @@ const SETTINGS_CONFIG = {
         validate: JSPLib.utility.isBoolean,
         hint: "Currently disabled."
     },
+    ignore_uploads: {
+        reset: true,
+        validate: JSPLib.utility.isBoolean,
+        hint: "Will always show posts uploaded by the user."
+    },
     session_use_enabled: {
         reset: false,
         validate: JSPLib.utility.isBoolean,
@@ -104,6 +109,8 @@ const MENU_CONFIG = {
     settings: [{
         name: 'general',
     },{
+        name: 'display',
+    },{
         name: 'mode',
     },{
         name: 'session',
@@ -123,172 +130,173 @@ const DEFAULT_VALUES = {
 //CSS Constants
 
 const PROGRAM_CSS = JSPLib.utility.nestedCSSCheck()`
-/*SafelistPlus controls*/
-#page #safelist-box #safelist .safelist-active,
-#page #safelist-box #safelist .safelist-pending {
-    font-style: italic;
+/**GENERAL**/
+.sl-link {
+    cursor: pointer;
 }
-#page #safelist-box #safelist .safelist-allnone {
-    font-weight: bold;
+a.safelist-help.sl-link {
+    color: hotpink;
+    &:hover {
+        filter: brightness(1.5);
+    }
 }
-#page #safelist-box #enable-safelist {
-    color: mediumseagreen;
-}
-#page #safelist-box #disable-safelist {
-    color: red;
-}
-    /*Sidebar list*/
-#page #sidebar #safelist-box.sidebar-safelist {
+/**CONTROLS**/
+#safelist-box.sidebar-safelist {
     margin-bottom: 0.5em;
-}
-#page #sidebar #safelist-box.sidebar-safelist h1 {
-    margin-left: -4px;
-    font-size: 1.16667em;
-}
-#page #sidebar #sl-collapsible-list {
-    margin-right: -4px;
-}
-[data-user-theme="dark"] .ui-icon {
-    background-image: url(/packs/media/images/ui-icons_ffffff_256x240-bf27228a.png);
-}
-#page #sidebar #safelist-box.sidebar-safelist #safelist {
-    margin-bottom: 0.5em;
-    margin-left: 2em;
-}
-#page #sidebar #safelist-box.sidebar-safelist #safelist li {
-    list-style-type: disc;
-}
-#page #sidebar #safelist-box.sidebar-blacklist #safelist .safelist-pending:after {
-    content: "(Loading)";
-    padding-left: 4px;
-}
-    /*Topbar list*/
-#page #safelist-box.inline-safelist {
-    margin-bottom: 0.5em;
-}
-#page #safelist-box.inline-safelist h1 {
-    font-size: 1em;
-    display: inline;
-}
-#page #safelist-box.inline-safelist h1:after {
-    content: ":";
-}
-#page #safelist-box.inline-safelist #safelist {
-    display: inline;
-}
-#page #safelist-box.inline-safelist #safelist li {
-    display: inline;
-    position: relative;
-}
-#page #safelist-box.inline-safelist #safelist li:after {
-    content: "|";
-    font-weight: normal;
-}
-#page #safelist-box.inline-safelist #safelist li.safelist-pending:before {
-    content: "(Loading)";
-    top: 20px;
-    left: -5px;
-    position: absolute;
+    h1 {
+        margin-left: -4px;
+        font-size: 1.16667em;
+    }
+    ul {
+        margin-bottom: 0.5em;
+        margin-left: 2em;
+        li {
+            list-style-type: disc;
+        }
+        .safelist-pending:after {
+            content: "(Loading)";
+            padding-left: 4px;
+        }
+    }
 }
 
-/*Level settings*/
-    /*General settings*/
+#safelist-box.inline-safelist {
+    margin-bottom: 1.5em;
+    h1 {
+        font-size: 1em;
+        display: inline;
+        &:after {
+            content: ":";
+        }
+    }
+    ul {
+        display: inline;
+        li {
+            display: inline;
+            position: relative;
+            &.safelist-pending:before {
+                content: "(Loading)";
+                top: 18px;
+                left: 2px;
+                position: absolute;
+            }
+            &:after {
+                content: "|";
+                font-weight: normal;
+            }
+        }
+    }
+}
+#sl-collapsible-list {
+    margin-right: -4px;
+    &.ui-icon {
+        display: inline-block;
+        height: 16px;
+        width: 16px;
+    }
+    &.ui-icon-triangle-1-e {
+        background-position: -32px -14px;
+    }
+    &.ui-icon-triangle-1-s {
+        background-position: -64px -14px;
+    }
+}
+.safelist-active,
+.safelist-pending {
+    font-style: italic;
+}
+.safelist-allnone {
+    font-weight: bold;
+}
+#enable-safelist {
+    color: mediumseagreen;
+}
+#disable-safelist {
+    color: red;
+}
+/**LEVEL MENU**/
 #safelist-settings {
     display: block;
+    & > div {
+        margin-bottom: 1em;
+    }
+    input.btn {
+        margin-right: 1em;
+        margin-top: 1em;
+        min-width: 4em;
+    }
+    textarea {
+        width: 90%;
+        height: 10em;
+    }
 }
-#safelist-settings input.btn {
-    margin-right: 1em;
-    margin-top: 1em;
-    min-width: 4em;
-}
-    /*Name row*/
-#safelist-settings .safelist-namerow {
+.safelist-namerow {
     height: 2em;
+    h2 {
+        display: inline-block;
+        margin-right: 0.5em;
+    }
 }
-#safelist-settings .safelist-namerow h2 {
-    display: inline-block;
-    margin-right: 0.5em;
-}
-#safelist-settings .safelist-namerow .safelist-name {
+.safelist-name {
     margin: 0.5em;
     padding-left: 0.5em;
     line-height:150%;
 }
-#safelist-settings .safelist-namerow .safelist-edit {
+.safelist-edit {
     margin-right: 0;
     margin-top: 0;
     margin-bottom: 0.5em;
 }
-#safelist-settings > div {
-    margin-bottom: 1em;
-}
-    /*Input groupings*/
-#safelist-settings .safelist-input {
+.safelist-input {
     border: 2px solid grey;
     padding: 0.8em;
     border-radius: 10px;
     display: grid;
     grid-template-columns: 50% 50%;
+    label {
+        display: block;
+        font-weight: bold;
+        line-height: 1.5em;
+        font-size: 100%;
+    }
+    span {
+        display: block;
+        max-width: 90%;
+    }
 }
-#safelist-settings .safelist-input label {
-    display: block;
-    font-weight: bold;
-    line-height: 1.5em;
-    font-size: 100%;
+.safelist-textblock {
+    li {
+        list-style-type: disc;
+    }
+    ul {
+        margin-left: 1.5em;
+    }
+    div {
+        padding: 0 0.5em;
+        border: 2px solid lightgrey;
+        width: 90%;
+        height: 10em;
+        font-size: 0.8em;
+        overflow: auto;
+    }
 }
-#safelist-settings .safelist-input span {
-    display: block;
-    max-width: 90%;
-}
-    /*Textblock(s)*/
-#safelist-settings textarea {
-    width: 90%;
-    height: 10em;
-}
-#safelist-settings .safelist-textblock li {
-    list-style-type: disc;
-}
-#safelist-settings .safelist-textblock ul {
-    margin-left: 1.5em;
-}
-#safelist-settings .safelist-textblock div {
-    padding: 0 0.5em;
-    border: 2px solid lightgrey;
-    width: 90%;
-    height: 10em;
-    font-size: 0.8em;
-    overflow: auto;
-}
-    /*Checkbox input*/
-#safelist-settings .safelist-checkbox input {
+.safelist-checkbox input {
     margin-top: 1em;
 }
-#safelist-settings .safelist-checkbox .hint {
-    margin: 1em 0;
-}
-    /*Fit and placement settings*/
-#safelist-settings .safelist-textblock,
-#safelist-settings .safelist-checkbox,
-#safelist-settings .safelist-textinput,
-#safelist-settings .safelist-namerow  {
+.safelist-textblock,
+.safelist-checkbox,
+.safelist-textinput,
+.safelist-namerow  {
     float: left;
     margin-top: 0.5em;
     position: relative;
 }
-#safelist-settings .safelist-selection,
-#safelist-settings .safelist-halfcheckbox {
+.safelist-selection,
+.safelist-halfcheckbox {
     width: 50%;
     float: left;
     margin-top: 0.5em;
     position: relative;
-}
-    /*Tooltip*/
-#safelist-settings .safelist-input .safelist-help {
-    color: hotpink;
-}
-    /*Hide settings*/
-#safelist-settings .safelist-name {
-    display: none;
 }`;
 
 const CSS_ENABLED = `
@@ -325,6 +333,97 @@ const PROGRAM_DATA_DETAILS = JSPLib.utility.normalizeHTML()`
         </ul>
     </li>
 </ul>`;
+
+const SIDEMENU_TEMPLATE = JSPLib.utility.normalizeHTML({template: true})`
+<section id="safelist-box" class="${'classname'}">
+    <h1>
+        <a id="sl-collapsible-list" class="sl-link ui-icon ui-icon-triangle-1-${'direction'}"></a>&nbsp;${{PROGRAM_NAME}}
+    </h1>
+    <ul id="safelist">
+        ${'all_side'}
+        ${'variable_sides'}
+        ${'none_side'}
+    </ul>
+    <a id="enable-safelist" class="sl-link">Enable</a>
+    <a id="disable-safelist" class="sl-link">Disable</a>
+</section>`;
+
+const SIDE_TEMPLATE = JSPLib.utility.normalizeHTML({template: true})`
+<li class="${'classname'}" data-level="${'level'}">
+    <a class="sl-link">${'name'}</a>
+</li>`;
+
+const LEVEL_MENU_TEMPLATE = JSPLib.utility.normalizeHTML({template: true})`
+<fieldset id="safelist-settings">
+    ${'all_menu'}
+    ${'none_menu'}
+    ${'variable_menus'}
+    <hr>
+    <div id="safelist-controls">
+        <input type="submit" id="safelist-commit" value="Submit" class="btn">
+        <input type="submit" id="safelist-add" value="Add" class="btn">
+        <input type="submit" id="safelist-resetall" value="Reset All" class="btn">
+    </div>
+</fieldset>`;
+
+const LEVEL_SETTING_TEMPLATE = JSPLib.utility.normalizeHTML({template: true})`
+<div class="safelist-input" data-level="${'level'}">
+    ${'namerow'}
+    <span style="display:inline-block">
+        ${'keyselect'}
+        ${'background'}
+    </span>
+    ${'mainblock'}
+    ${'cssblock'}
+    ${'buttons'}
+</div>`;
+
+const NAMEROW_TEMPLATE = JSPLib.utility.normalizeHTML({template: true})`
+<div class="safelist-namerow">
+    <h2>${'name'}</h2>
+    <input type="text" value="${'name'}" size="40" autocomplete="off" class="safelist-name" style="display: none;">
+    ${'button'}
+</div>`;
+
+const KEYSELECT_TEMPLATE = JSPLib.utility.normalizeHTML({template: true})`
+<div class="safelist-selection">
+    <label for="safelist_modifier_level_${'level'}">Hotkey (${'help'})</label>
+    <select id="safelist_modifier_level_${'level'}" class="safelist-modifier">
+        ${'select1'}
+    </select>
+    <select id="safelist_keyselect_level_${'level'}" class="safelist-keyselect">
+        ${'select2'}
+    </select>
+</div>`;
+
+const BACKGROUND_OPTION_TEMPLATE = JSPLib.utility.normalizeHTML({template: true})`
+<div class="safelist-halfcheckbox">
+    <label for="safelist_background_level_${'level'}">Background Process (${'help'})</label>
+    <input type="checkbox" ${'checked'} id="safelist_process_level_${'level'}" class="safelist-background">
+</div>`;
+
+const ENABLE_CHECKBOX_TEMPLATE = JSPLib.utility.normalizeHTML({template: true})`
+<div class="safelist-checkbox">
+    <label for="safelist_enable_level_${'level'}">${'label'} list enabled (${'help'})</label>
+    <input type="checkbox" ${'checked'} id="safelist_enable_level_${'level'}" class="safelist-enable">
+</div>`;
+
+const TAG_BLOCK_TEMPLATE = JSPLib.utility.normalizeHTML({template: true})`
+<div class="safelist-textblock">
+    <label for="safelist_tags_level_${'level'}">Blacklisted tags (${'help'})</label>
+    <textarea id="safelist_tags_level_${'level'}" cols="40" rows="5" autocomplete="off" class="safelist-tags">${'tagstring'}</textarea>
+</div>`;
+
+const CSS_BLOCK_TEMPLATE = JSPLib.utility.normalizeHTML({template: true})`
+<div class="safelist-textblock">
+    <label for="safelist_css_level_${this.level}">Custom CSS (${'help'})</label>
+    <textarea id="safelist_css_level_${this.level}" cols="40" rows="5" autocomplete="off" class="safelist-css">${this.css}</textarea>
+</div>`;
+
+const LEVEL_BUTTONS_TEMPLATE = JSPLib.utility.normalizeHTML({template: true})`
+<div class="safelist-setting-buttons">
+    ${'buttons'}
+</div>`;
 
 //Message constants
 
@@ -468,109 +567,96 @@ class Safelist {
 
     //Links in the side menu
     get renderedSide() {
-        if (!this.enabled) {
-            return "";
-        }
-        const constantaddon = (this.isVariable ? "" : 'class="safelist-allnone"');
-        return `
-        <li ${constantaddon} data-level="${this.level}"><a href="#">${this.escaped_name}</a></li>`;
+        if (!this.enabled) return "";
+        return SIDE_TEMPLATE({
+            level: this.level,
+            name: this.escaped_name,
+            classname: (this.isVariable ? "" : 'safelist-allnone'),
+        });
     }
     //Sections in the setting menu
     get renderedLevelSetting() {
-        let namerow = this.renderedNamerow;
-        let keyselect = this.renderedKeyselect;
-        let background = (this.isVariable ? this.renderedBackgroundOption : "");
-        let mainblock = (this.isVariable ? this.renderedTagBlock : this.renderedEnableCheckbox);
-        let cssblock = this.renderedCSSBlock;
-        let buttons = (this.isVariable ? this.renderedLevelButtons : "");
-        return `
-        <div class="safelist-input" data-level="${this.level}">
-            ${namerow}
-            <span style="display:inline-block">
-                ${keyselect}
-                ${background}
-            </span>
-            ${mainblock}
-            ${cssblock}
-            ${buttons}
-        </div>`;
+        return LEVEL_SETTING_TEMPLATE({
+            level: this.level,
+            namerow: this.renderedNamerow,
+            keyselect: this.renderedKeyselect,
+            background: this.renderedBackgroundOption,
+            mainblock: (this.isVariable ? this.renderedTagBlock : this.renderedEnableCheckbox),
+            cssblock: this.renderedCSSBlock,
+            buttons: this.renderedLevelButtons,
+        });
     }
     //List name, edit button and textbox
     get renderedNamerow() {
-        return `
-            <div class="safelist-namerow">
-                <h2>${this.escaped_name}</h2>
-                <input type="text" value="${this.escaped_name}" size="40" autocomplete="off" class="safelist-name">
-                ${RenderButton('edit')}
-            </div>`;
+        return NAMEROW_TEMPLATE({
+            name: this.escaped_name,
+            button: RenderButton('edit'),
+        });
     }
     //Hotkey dropdowns
     get renderedKeyselect() {
-        let select1 = MODIFIER_KEYS.map((key)=>{
-            let selected = (this.hotkey[0] === key ? 'selected="selected"' : "");
-            let ucase = JSPLib.utility.titleizeString(key);
-            return `<option ${selected} value="${key}">${ucase}</option>`;
-        }).join("");
-        let select2 = KEYSELECT_KEYS.map((key)=>{
-            let selected = (this.hotkey[1] === key ? 'selected="selected"' : "");
-            let ucase = key.toUpperCase();
-            return `<option ${selected} value="${key}">${ucase}</option>`;
-        }).join("");
-        return `
-    <div class="safelist-selection">
-        <label for="safelist_modifier_level_${this.level}">Hotkey (${RenderHelp(KEYSELECT_HELP)})</label>
-        <select id="safelist_modifier_level_${this.level}" class="safelist-modifier">
-            ${select1}
-        </select>
-        <select id="safelist_keyselect_level_${this.level}" class="safelist-keyselect">
-            ${select2}
-        </select>
-    </div>`;
+        let select1_items = MODIFIER_KEYS.map((key)=>{
+            return JSPLib.utility.renderHTMLTag('option', JSPLib.utility.titleizeString(key), {
+                value: key,
+                selected: (this.hotkey[0] === key ? null : undefined),
+            });
+        });
+        let select2_items = KEYSELECT_KEYS.map((key)=>{
+            return JSPLib.utility.renderHTMLTag('option', key.toUpperCase(), {
+                value: key,
+                selected: (this.hotkey[1] === key ? null : undefined),
+            });
+        });
+        return KEYSELECT_TEMPLATE({
+            level: this.level,
+            select1: select1_items.join(""),
+            select2: select2_items.join(""),
+            help: RenderHelp(KEYSELECT_HELP),
+        });
     }
     //Background process options
     get renderedBackgroundOption() {
+        if (!this.isVariable) return "";
         const value = (this.background ? "checked" : "");
-        return `
-    <div class="safelist-halfcheckbox">
-        <label for="safelist_background_level_${this.level}">Background Process (${RenderHelp(BACKGROUND_HELP)})</label>
-        <input type="checkbox" ${value} id="safelist_process_level_${this.level}" class="safelist-background">
-    </div>`;
+        return BACKGROUND_OPTION_TEMPLATE({
+            level: this.level,
+            checked: (this.background ? "checked" : ""),
+            help: RenderHelp(BACKGROUND_HELP),
+        });
     }
     //For constant levels all and none... takes place of taglist
     get renderedEnableCheckbox() {
-        const value = (this.enabled ? "checked" : "");
-        const label = (this.level === 'a' ? "All" : "None");
-        const hint = (this.level === 'a' ? "Shows everything." : "Shows nothing.");
-        return `
-    <div class="safelist-checkbox">
-        <label for="safelist_enable_level_${this.level}">${label} list enabled (${RenderHelp(hint)})</label>
-        <input type="checkbox" ${value} id="safelist_enable_level_${this.level}" class="safelist-enable">
-    </div>`;
+        return ENABLE_CHECKBOX_TEMPLATE({
+            level: this.level,
+            label: (this.level === 'a' ? "All" : "None"),
+            checked: (this.enabled ? "checked" : ""),
+            help: RenderHelp(this.level === 'a' ? "Shows everything." : "Shows nothing."),
+        });
     }
     //For custom levels
     get renderedTagBlock() {
-        return `
-    <div class="safelist-textblock">
-        <label for="safelist_tags_level_${this.level}">Blacklisted tags (${RenderHelp(TAGBLOCK_HELP)})</label>
-        <textarea id="safelist_tags_level_${this.level}" cols="40" rows="5" autocomplete="off" class="safelist-tags">${this.tagstring}</textarea>
-    </div>`;
+        return TAG_BLOCK_TEMPLATE({
+            level: this.level,
+            tagstring: this.tagstring.replaceAll('\n', '&#13;'),
+            help: RenderHelp(TAGBLOCK_HELP),
+        });
     }
     //Custom style per level
     get renderedCSSBlock() {
-        return `
-    <div class="safelist-textblock">
-        <label for="safelist_css_level_${this.level}">Custom CSS (${RenderHelp(CSSBLOCK_HELP)})</label>
-        <textarea id="safelist_css_level_${this.level}" cols="40" rows="5" autocomplete="off" class="safelist-css">${this.css}</textarea>
-    </div>`;
+        return CSS_BLOCK_TEMPLATE({
+            level: this.level,
+            css: this.css,
+            help: RenderHelp(CSSBLOCK_HELP),
+        });
     }
 
     //Renders all level buttons
     get renderedLevelButtons() {
-        let buttons1 = LEVEL_BUTTONS.map((type) => RenderButton(type, BUTTON_HINTS[type])).join("");
-        return `
-    <div class="safelist-setting-buttons">
-        ${buttons1}
-    </div>`;
+        if (!this.isVariable) return "";
+        let button_items = LEVEL_BUTTONS.map((type) => RenderButton(type, BUTTON_HINTS[type]));
+        return LEVEL_BUTTONS_TEMPLATE({
+            buttons: button_items.join(""),
+        });
     }
 
     ////////////////////
@@ -606,7 +692,7 @@ class Safelist {
 
     setSideClick() {
         let context = this;
-        $("a", this.side).off(JSPLib.program_click).on(JSPLib.program_click,(event)=>{
+        $("a", this.side).off(JSPLib.program.click).on(JSPLib.program.click,(event)=>{
             SetSideLevel(context);
             event.preventDefault();
         });
@@ -622,7 +708,7 @@ class Safelist {
     }
     setNameChangeClick() {
         let context = this;
-        $(".safelist-edit", context.menu).off(JSPLib.program_click).on(JSPLib.program_click,()=>{
+        $(".safelist-edit", context.menu).off(JSPLib.program.click).on(JSPLib.program.click,()=>{
             $("h2", context.menu).hide();
             $(".safelist-edit", context.menu).hide();
             $(".safelist-name", context.menu).show();
@@ -630,7 +716,7 @@ class Safelist {
     }
     setPullButtonClick() {
         let context = this;
-        $(".safelist-pull", context.menu).off(JSPLib.program_click).on(JSPLib.program_click,()=>{
+        $(".safelist-pull", context.menu).off(JSPLib.program.click).on(JSPLib.program.click,()=>{
             $(".safelist-tags", context.menu).val(
                 JSPLib.utility.getMeta("blacklisted-tags")
                 ?.replace(/(rating:[qes])\w+/ig, "$1")
@@ -642,11 +728,11 @@ class Safelist {
     setPushButtonClick() {
         const printer = JSPLib.debug.getFunctionPrint('setPushButtonClick');
         let context = this;
-        $(".safelist-push", context.menu).off(JSPLib.program_click).on(JSPLib.program_click,()=>{
+        $(".safelist-push", context.menu).off(JSPLib.program.click).on(JSPLib.program.click,()=>{
             if (confirm("Update your blacklist on Danbooru?")) {
                 let tagdata = $(".safelist-tags", context.menu).val().replace(/\n/g, '\r\n');
                 let senddata = {'user': {'blacklisted_tags': tagdata}};
-                let url = JSPLib.utility.sprintf(`/users/%s.json`, Danbooru.CurrentUser.data('id'));;
+                let url = JSPLib.utility.sprintf(`/users/%s.json`, SL.user_id);
                 $.ajax({
                   type: "PUT",
                   url,
@@ -665,7 +751,7 @@ class Safelist {
     }
     setDeleteButtonClick() {
         let context = this;
-        $('.safelist-delete', context.menu).off(JSPLib.program_click).on(JSPLib.program_click,()=>{
+        $('.safelist-delete', context.menu).off(JSPLib.program.click).on(JSPLib.program.click,()=>{
             $(context.side).hide();
             $(context.menu).hide();
             context.enabled = false;
@@ -808,6 +894,7 @@ function SplitWords(string) {
 
 function PostMatch(post, entry) {
     if (entry.disabled) return false;
+    if (SL.ignore_uploads && (Number(post.dataset.uploaderId) == SL.user_id)) return false;
     var $post = $(post);
     var score = parseInt($post.attr("data-score"));
     var score_test = entry.min_score === null || score < entry.min_score;
@@ -892,56 +979,38 @@ function CalculateRenderedMenus() {
 //Render functions
 
 function RenderHelp(help_text) {
-    return `<a class="safelist-help" title="${help_text}">&nbsp;?&nbsp;</a>`;
+    return JSPLib.utility.renderHTMLTag('a', '&nbsp;?&nbsp;', {class: 'safelist-help sl-link', title: help_text});
 }
 
-function RenderButton(type,hint) {
-    const value = JSPLib.utility.titleizeString(type);
-    const hint_html = (hint ? `title="${hint}"` : "");
-    return `<input type="submit" value="${value}" ${hint_html} class="btn safelist-${type}">`;
+function RenderButton(type, hint) {
+    return JSPLib.utility.renderHTMLTag('input', null, {
+        type: 'submit',
+        value: JSPLib.utility.titleizeString(type),
+        title: hint,
+        class: `btn safelist-${type}`,
+    });
 }
 
 function RenderSidemenu() {
-    let all_side = SL.level_data.a.renderedSide;
-    let none_side = SL.level_data.n.renderedSide;
-    let variable_sides = SL.menu_items.variable_menus.map((level) => SL.level_data[level].renderedSide).join("");
-    let safelist_type = (SL.blacklist_box.hasClass("sidebar-blacklist") ? "sidebar-safelist" : "inline-safelist");
-    let direction = (SL.is_shown ? "s" : "e");
-    return `
-<section id="safelist-box" class="${safelist_type}">
-    <h1><a id="sl-collapsible-list" class="ui-icon ui-icon-triangle-1-${direction}"></a>&nbsp;${PROGRAM_NAME}</h1>
-    <ul id="safelist">
-        ${all_side}
-        ${variable_sides}
-        ${none_side}
-    </ul>
-    <a href="#" id="enable-safelist">Enable</a>
-    <a href="#" id="disable-safelist">Disable</a>
-</section>`;
+    return SIDEMENU_TEMPLATE({
+        classname: (SL.blacklist_box.hasClass("sidebar-blacklist") ? "sidebar-safelist" : "inline-safelist"),
+        all_side: SL.level_data.a.renderedSide,
+        none_side: SL.level_data.n.renderedSide,
+        variable_sides: SL.menu_items.variable_menus.map((level) => SL.level_data[level].renderedSide).join(""),
+        direction: (SL.is_shown ? "s" : "e"),
+    });
 }
 
 function RenderSettingMenuLink() {
-    return `
-<a href="#" id="display-safelist-settings">${PROGRAM_NAME}</a>`;
+    return JSPLib.utility.renderHTMLTag('a', PROGRAM_NAME, {id: 'display-safelist-settings', class: 'sl-link'});
 }
 
 function RenderLevelMenu() {
-    let all_menu = SL.level_data.a.renderedLevelSetting;
-    let none_menu = SL.level_data.n.renderedLevelSetting;
-    let variable_menus = SL.menu_items.variable_menus.map((level) => SL.level_data[level].renderedLevelSetting).join("");
-    return `
-<fieldset id="safelist-settings">
-    ${all_menu}
-    ${none_menu}
-    ${variable_menus}
-    <hr>
-    <div id="safelist-controls">
-        <input type="submit" id="safelist-commit" value="Submit" class="btn">
-        <input type="submit" id="safelist-add" value="Add" class="btn">
-        <input type="submit" id="safelist-resetall" value="Reset All" class="btn">
-    </div>
-</fieldset>
-`;
+    return LEVEL_MENU_TEMPLATE({
+        all_menu: SL.level_data.a.renderedLevelSetting,
+        none_menu: SL.level_data.n.renderedLevelSetting,
+        variable_menus: SL.menu_items.variable_menus.map((level) => SL.level_data[level].renderedLevelSetting).join(""),
+    });
 }
 
 
@@ -992,9 +1061,9 @@ function InitializeSideEvents() {
         SL.level_data[level].setSideClick();
         SL.level_data[level].setKeypress();
     }
-    $("#enable-safelist").off(JSPLib.program_click).on(JSPLib.program_click, EnableSafelist);
-    $("#disable-safelist").off(JSPLib.program_click).on(JSPLib.program_click, DisableSafelist);
-    $("#sl-collapsible-list").off(JSPLib.program_click).on(JSPLib.program_click, ToggleSafelist);
+    $("#enable-safelist").off(JSPLib.program.click).on(JSPLib.program.click, EnableSafelist);
+    $("#disable-safelist").off(JSPLib.program.click).on(JSPLib.program.click, DisableSafelist);
+    $("#sl-collapsible-list").off(JSPLib.program.click).on(JSPLib.program.click, ToggleSafelist);
 }
 
 function InitializeSettingsMenu() {
@@ -1019,10 +1088,10 @@ function InitializeSettingEvents() {
     for (let level in SL.level_data) {
         SL.level_data[level].initializeLevelMenuEvents();
     }
-    $(".safelist-help").off(JSPLib.program_click).on(JSPLib.program_click, HelpInfo);
-    $("#safelist-commit").off(JSPLib.program_click).on(JSPLib.program_click, MenuSaveButton);
-    $("#safelist-add").off(JSPLib.program_click).on(JSPLib.program_click, MenuAddButton);
-    $("#safelist-resetall").off(JSPLib.program_click).on(JSPLib.program_click, MenuResetAllButton);
+    $(".safelist-help").off(JSPLib.program.click).on(JSPLib.program.click, HelpInfo);
+    $("#safelist-commit").off(JSPLib.program.click).on(JSPLib.program.click, MenuSaveButton);
+    $("#safelist-add").off(JSPLib.program.click).on(JSPLib.program.click, MenuAddButton);
+    $("#safelist-resetall").off(JSPLib.program.click).on(JSPLib.program.click, MenuResetAllButton);
 }
 
 function InitializeActiveCSS() {
@@ -1326,7 +1395,7 @@ function ToggleSafelist(event) {
 
 function SetSafelistSettingsClick() {
     if (!JSPLib.utility.isNamespaceBound({root: "#display-safelist-settings", eventtype: 'click', namespace: PROGRAM_SHORTCUT})) {
-        $("#display-safelist-settings").on(JSPLib.program_click,(event)=>{
+        $("#display-safelist-settings").on(JSPLib.program.click,(event)=>{
             $("#post-sections li a").removeClass('active');
             $("#display-safelist-settings").addClass('active');
             $("#content > *:not(#post-sections)").hide();
@@ -1339,7 +1408,7 @@ function SetSafelistSettingsClick() {
 //These actions get executed along with any other existing click events
 function SetOtherSectionsClick() {
     if (!JSPLib.utility.isNamespaceBound({root: "#show-posts-link,#show-excerpt-link", eventtype: 'click', namespace: PROGRAM_SHORTCUT})) {
-        $("#show-posts-link,#show-excerpt-link").on(JSPLib.program_click, ()=>{
+        $("#show-posts-link,#show-excerpt-link").on(JSPLib.program.click, ()=>{
             $("#display-safelist-settings").removeClass('active');
             $('#safelist-settings').hide();
         });
@@ -1628,6 +1697,7 @@ function InitializeProgramValues() {
         blacklist_box: $("#blacklist-box"),
         has_video: Boolean($(".image-container video").length),
         is_shown: JSPLib.storage.checkLocalData('sl-show-menu', ValidateProgramData, {default_val: true}),
+        user_id: Danbooru.CurrentUser.data('id'),
     });
     return true;
 }
@@ -1636,6 +1706,7 @@ function RenderSettingsMenu() {
     $('#safelist-plus').append(JSPLib.menu.renderMenuFramework(MENU_CONFIG));
     $('#sl-general-settings').append(JSPLib.menu.renderDomainSelectors());
     $('#sl-mode-settings').append(JSPLib.menu.renderCheckbox('write_mode_enabled'));
+    $('#sl-display-settings').append(JSPLib.menu.renderCheckbox('ignore_uploads'));
     $('#sl-session-settings').append(JSPLib.menu.renderCheckbox('session_use_enabled'));
     $('#sl-session-settings').append(JSPLib.menu.renderCheckbox('session_level_enabled'));
     $('#sl-controls').append(JSPLib.menu.renderCacheControls());
