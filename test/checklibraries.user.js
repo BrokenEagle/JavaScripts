@@ -15,18 +15,18 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-setitems@1.4.0/dist/localforage-setitems.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b7ba0e52a69709552ecf4a270895b32548716967/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b7ba0e52a69709552ecf4a270895b32548716967/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b7ba0e52a69709552ecf4a270895b32548716967/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b7ba0e52a69709552ecf4a270895b32548716967/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b7ba0e52a69709552ecf4a270895b32548716967/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b7ba0e52a69709552ecf4a270895b32548716967/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b7ba0e52a69709552ecf4a270895b32548716967/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b7ba0e52a69709552ecf4a270895b32548716967/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b7ba0e52a69709552ecf4a270895b32548716967/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b7ba0e52a69709552ecf4a270895b32548716967/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b7ba0e52a69709552ecf4a270895b32548716967/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b7ba0e52a69709552ecf4a270895b32548716967/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ed414bc965c964c23977cf11af6d32b5514f396a/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ed414bc965c964c23977cf11af6d32b5514f396a/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ed414bc965c964c23977cf11af6d32b5514f396a/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ed414bc965c964c23977cf11af6d32b5514f396a/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ed414bc965c964c23977cf11af6d32b5514f396a/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ed414bc965c964c23977cf11af6d32b5514f396a/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ed414bc965c964c23977cf11af6d32b5514f396a/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ed414bc965c964c23977cf11af6d32b5514f396a/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ed414bc965c964c23977cf11af6d32b5514f396a/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ed414bc965c964c23977cf11af6d32b5514f396a/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ed414bc965c964c23977cf11af6d32b5514f396a/lib/saucenao.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ed414bc965c964c23977cf11af6d32b5514f396a/lib/load.js
 // @connect      cdn.donmai.us
 // @connect      saucenao.com
 // ==/UserScript==
@@ -192,31 +192,9 @@ function HashCheck(hash) {
     return true;
 }
 
-//Program helper functions
-
-async function LoadWait(program_name) {
-    let numwaits = 0;
-    do {
-        console.log("Sleeping 1000ms");
-        await JSPLib.utility.sleep(1000);
-        numwaits += 1;
-        if (numwaits >= 10) {
-            console.log("Abandoning program test!");
-            return false;
-        }
-    } while (typeof JSPLib.load.program_load_timers[program_name] !== 'boolean');
-    return true;
-}
-
-async function RateLimit(module) {
-    console.log("Before rate limit...");
-    await JSPLib.network.rateLimit(module);
-    console.log("After rate limit...");
-}
-
 //Main functions
 
-async function CheckDebugLibrary() {
+function CheckDebugLibrary() {
     console.log("++++++++++++++++++++CheckDebugLibrary++++++++++++++++++++");
     console.log("Start time:", JSPLib.utility.getProgramTime());
     ResetResult();
@@ -272,19 +250,6 @@ async function CheckDebugLibrary() {
     });
     TestPrint("Test value should be 6", RecordResult(testvalue1 === 6), {result: testvalue1});
 
-    console.log("Checking debugSyncTimer");
-    testvalue1 = 4;
-    let testfunc = JSPLib.debug.debugSyncTimer((a, b) => a + b);
-    let result1 = testfunc(4, 1);
-    TestPrint("Result value should be 5", RecordResult(result1 === 5), {result: result1});
-
-    console.log("Checking debugAsyncTimer");
-    testfunc = JSPLib.debug.debugAsyncTimer((a, b) => a + b);
-    result1 = testfunc(4, 1);
-    let result2 = await result1;
-    TestPrint("Result value should be a promise", RecordResult(result1?.constructor?.name === "Promise"), {result: result1});
-    TestPrint("Result promise value should be 5", RecordResult(result2 === 5), {result: result2});
-
     JSPLib.debug.mode = debug_enabled;
     JSPLib.debug.level = debug_level;
     console.log(`CheckDebugLibrary results: ${test_successes} succeses, ${test_failures} failures`);
@@ -338,16 +303,13 @@ async function CheckNoticeLibrary() {
     jQuery('#close-notice-link').click();
 
     console.log("Checking installBanner");
-    let result1 = JSPLib.notice.danbooru_installed;
+    let result1 = JSPLib.notice.danbooru_notice_installed;
     let result2 = jQuery('#cl-notice').length === 0;
     TestPrint("Boolean flag should be set by invoker", RecordResult(result1), {no_result: true});
     TestPrint("The library banner should not be installed", RecordResult(result2), {no_result: true});
     JSPLib.notice.installBanner('cl');
-    JSPLib.notice.danbooru_installed = false;
-    result1 = JSPLib.notice.banner_installed;
-    result2 = jQuery('#cl-notice').length === 1;
-    TestPrint("Boolean flag should be set by function", RecordResult(result1), {no_result: true});
-    TestPrint("The program banner should be installed", RecordResult(result2), {no_result: true});
+    result1 = jQuery('#cl-notice').length === 1;
+    TestPrint("The program banner should be installed", RecordResult(result1), {no_result: true});
 
     console.log("Checking notice #2");
     JSPLib.notice.notice("check this #2");
@@ -441,15 +403,8 @@ async function CheckUtilityLibrary() {
     TestPrint(`Timestamp for ${timeval3}`, RecordResult(timestamp2 === expectedtimestamp1), {result: timestamp2});
     TestPrint(`Timestamp for invalid ${timeinvalid1}`, RecordResult(Number.isNaN(timestamp3)), {result: timestamp3});
 
-    console.log("Checking not");
-    let testvalue1 = null;
-    let resultbool1 = JSPLib.utility.not(testvalue1, false);
-    let resultbool2 = JSPLib.utility.not(testvalue1, true);
-    TestPrint(`Value ${testvalue1} should not be truthy`, RecordResult(!resultbool1), {result: resultbool1});
-    TestPrint(`The NOT of value ${testvalue1} should be truthy`, RecordResult(resultbool2), {result: resultbool2});
-
     console.log("Checking setPrecision");
-    testvalue1 = 1.22;
+    let testvalue1 = 1.22;
     let testvalue2 = JSPLib.utility.setPrecision(1.2222222, 2);
     TestPrint(`Value ${testvalue1} should be equal to ${testvalue2} with a decimal precision of 2`, RecordResult(testvalue1 === testvalue2), {no_result: true});
 
@@ -535,17 +490,6 @@ async function CheckUtilityLibrary() {
     teststring1 = JSPLib.utility.sprintf(string1, "this", 3);
     TestPrint(`Value ${repr(string1)} should should be changed to ${repr(string2)}`, RecordResult(teststring1 === string2), {result: repr(teststring1)});
 
-    console.log("Checking trim");
-    string1 = "something something";
-    teststring1 = JSPLib.utility.trim`  \r\r  something something    \n\n  `;
-    TestPrint(`Value ${repr(teststring1)} should should be equal to ${repr(string1)}`, RecordResult(teststring1 === string1), {no_result: true});
-
-    console.log("Checking verboseRegex");
-    let regex1 = JSPLib.utility.verboseRegex()`\d+`;
-    let regex2 = JSPLib.utility.verboseRegex('i')`\w`;
-    TestPrint(`Value ${repr(regex1)} should should be a regex`, RecordResult(regex1.constructor.name === 'RegExp'), {no_result: true});
-    TestPrint(String.raw`Value ${repr(regex1)} should have a source of \d+`, RecordResult(regex1.source === String.raw`\d+`), {no_result: true});
-    TestPrint(`Value ${repr(regex2.toString())} should be case-insensitive`, RecordResult(regex2.flags === 'i'), {no_result: true});
 
     console.log("Checking findAll");
     string1 = "100 200 300 400";
@@ -575,7 +519,7 @@ async function CheckUtilityLibrary() {
     TestPrint(`Array ${repr(testarray2)} should not be equal in length to ${repr(resultarray2)}`, RecordResult(testarray2.length !== resultarray2.length), {no_result: true});
 
     console.log("Checking filterRegex");
-    regex1 = /^(?:other|empty)/;
+    let regex1 = /^(?:other|empty)/;
     resultarray1 = JSPLib.utility.filterRegex(testarray1, regex1);
     resultarray2 = JSPLib.utility.filterRegex(testarray2, regex1);
     TestPrint(`Array ${repr(resultarray1)} should have a length of zero`, RecordResult(resultarray1.length === 0), {no_result: true});
@@ -603,7 +547,7 @@ async function CheckUtilityLibrary() {
 
     console.log("Checking isSet");
     let set1 = new Set();
-    resultbool1 = JSPLib.utility.isSet(set1);
+    let resultbool1 = JSPLib.utility.isSet(set1);
     TestPrint(`Set ${repr(set1)} should be a set ${bracket(resultbool1)}`, RecordResult(resultbool1), {no_result: true});
 
     console.log("Checking arrayUnique");
@@ -635,7 +579,7 @@ async function CheckUtilityLibrary() {
     array2 = [1, 2, 3];
     array3 = [2, 4];
     resultbool1 = JSPLib.utility.arrayEquals(array1, array2);
-    resultbool2 = JSPLib.utility.arrayEquals(array1, array3);
+    let resultbool2 = JSPLib.utility.arrayEquals(array1, array3);
     TestPrint(`Array ${repr(array2)} should be equal to ${repr(array1)}`, RecordResult(resultbool1), {no_result: true});
     TestPrint(`Array ${repr(array3)} should not be equal to ${repr(array1)}`, RecordResult(!resultbool2), {no_result: true});
 
@@ -853,7 +797,7 @@ async function CheckUtilityLibrary() {
 
     console.log("Checking isNamespaceBound");
     string1 = 'checklibraries.test_hover';
-    resultbool1 = JSPLib.utility.isNamespaceBound("#checklibrary-count", 'mouseover', string1);
+    resultbool1 = JSPLib.utility.isNamespaceBound({root: "#checklibrary-count", eventtype: 'mouseover', namespace: string1});
     TestPrint(`Bound event names for object should include ${repr(string1)}`, RecordResult(resultbool1), {result: repr(resultbool1)});
 
     console.log("Checking isGlobalFunctionBound");
@@ -876,8 +820,7 @@ async function CheckUtilityLibrary() {
     console.log("Color set to green... changing color in 5 seconds.");
     await JSPLib.utility.sleep(csstyle_waittime);
     JSPLib.utility.addStyleSheet("https://cdn.jsdelivr.net/gh/BrokenEagle/JavaScripts@stable/test/test-css-2.css", "test");
-    console.log("Color set to orange... validate that there is only 1 style element.");
-    TestPrint(`Module global cssstyle ${repr(JSPLib.utility._css_sheet)} should have a length of 1`, RecordResult(Object.keys(JSPLib.utility._css_sheet).length === 1), {result: Object.keys(JSPLib.utility._css_sheet).length});
+    console.log("Color set to orange...");
     await JSPLib.utility.sleep(csstyle_waittime);
     JSPLib.utility.addStyleSheet("", "test");
 
@@ -888,14 +831,11 @@ async function CheckUtilityLibrary() {
     TestPrint("Page footer should be in view", RecordResult(result1), {no_result: true});
 
     console.log("Checking setCSSStyle");
-    let prior_length = Object.keys(JSPLib.utility._css_style).length;
     JSPLib.utility.setCSSStyle("body {background: black !important;}", "test");
     console.log("Color set to black... changing color in 5 seconds.");
     await JSPLib.utility.sleep(csstyle_waittime);
     JSPLib.utility.setCSSStyle("body {background: purple !important;}", "test");
-    console.log("Color set to purple... validate that there is only 1 style element.");
-    let current_length = Object.keys(JSPLib.utility._css_style).length;
-    TestPrint(`Module global cssstyle ${repr(JSPLib.utility._css_style)} should have increased the number of keys by 1`, RecordResult((current_length - prior_length) === 1), {result: {prior: prior_length, current: current_length}});
+    console.log("Color set to purple...");
     await JSPLib.utility.sleep(csstyle_waittime);
     JSPLib.utility.setCSSStyle("", "test");
 
@@ -1027,6 +967,50 @@ async function CheckUtilityLibrary() {
     string2 = "blah_%28foo%29";
     result1 = JSPLib.utility.fullEncodeURIComponent(string1);
     TestPrint(`Value ${repr(string1)} should should be changed to ${repr(string2)}`, RecordResult(string2 === result1), {result: repr(result1)});
+
+    console.log("Checking isHash");
+    testdata1 = [];
+    testdata2 = {};
+    result1 = JSPLib.utility.isHash(testdata1);
+    result2 = JSPLib.utility.isHash(testdata2);
+    TestPrint(`Value of ${testdata1} should not be a hash`, RecordResult(result1 === false), {no_result: true});
+    TestPrint(`Value of ${testdata2} should be a hash`, RecordResult(result2 === true), {no_result: true});
+
+    console.log("Checking isBoolean");
+    testdata2 = true;
+    result1 = JSPLib.utility.isBoolean(testdata1);
+    result2 = JSPLib.utility.isBoolean(testdata2);
+    TestPrint(`Value of ${testdata1} should not be a boolean`, RecordResult(result1 === false), {no_result: true});
+    TestPrint(`Value of ${testdata2} should be a boolean`, RecordResult(result2 === true), {no_result: true});
+
+    console.log("Checking isString");
+    testdata2 = "test";
+    result1 = JSPLib.utility.isString(testdata1);
+    result2 = JSPLib.utility.isString(testdata2);
+    TestPrint(`Value of ${testdata1} should not be a string`, RecordResult(result1 === false), {no_result: true});
+    TestPrint(`Value of ${testdata2} should be a string`, RecordResult(result2 === true), {no_result: true});
+
+    console.log("Checking isNumber");
+    testdata2 = 22.2;
+    result1 = JSPLib.utility.isNumber(testdata1);
+    result2 = JSPLib.utility.isNumber(testdata2);
+    TestPrint(`Value of ${testdata1} should not be a string`, RecordResult(result1 === false), {no_result: true});
+    TestPrint(`Value of ${testdata2} should be a string`, RecordResult(result2 === true), {no_result: true});
+
+    console.log("Checking validateID");
+    testdata1 = 1234;
+    result1 = JSPLib.utility.validateID(testdata1);
+    result2 = JSPLib.utility.validateID(testdata2);
+    TestPrint(`Record ID of ${testdata1} should be valid`, RecordResult(result1 === true), {no_result: true});
+    TestPrint(`Record ID of ${testdata2} should be invalid`, RecordResult(result2 === false), {no_result: true});
+
+    console.log("Checking validateIDList");
+    testdata1 = [1, 2, 3, 4];
+    testdata2 = [1, 'a', -1, null];
+    result1 = JSPLib.utility.validateIDList(testdata1);
+    result2 = JSPLib.utility.validateIDList(testdata2);
+    TestPrint(`Record ID of ${testdata1} should be valid`, RecordResult(result1 === true), {no_result: true});
+    TestPrint(`Record ID of ${testdata2} should be invalid`, RecordResult(result2 === false), {no_result: true});
 
     console.log(`CheckUtilityLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
@@ -1320,50 +1304,6 @@ function CheckValidateLibrary() {
     TestPrint(`Object ${repr(testdata3)} should be all strings`, RecordResult(result3), {no_result: true});
     TestPrint(`Object ${repr(testdata4)} is not all strings`, RecordResult(!result4), {no_result: true});
 
-    console.log("Checking isHash");
-    testdata1 = [];
-    testdata2 = {};
-    result1 = JSPLib.validate.isHash(testdata1);
-    result2 = JSPLib.validate.isHash(testdata2);
-    TestPrint(`Value of ${testdata1} should not be a hash`, RecordResult(result1 === false), {no_result: true});
-    TestPrint(`Value of ${testdata2} should be a hash`, RecordResult(result2 === true), {no_result: true});
-
-    console.log("Checking isBoolean");
-    testdata2 = true;
-    result1 = JSPLib.validate.isBoolean(testdata1);
-    result2 = JSPLib.validate.isBoolean(testdata2);
-    TestPrint(`Value of ${testdata1} should not be a boolean`, RecordResult(result1 === false), {no_result: true});
-    TestPrint(`Value of ${testdata2} should be a boolean`, RecordResult(result2 === true), {no_result: true});
-
-    console.log("Checking isString");
-    testdata2 = "test";
-    result1 = JSPLib.validate.isString(testdata1);
-    result2 = JSPLib.validate.isString(testdata2);
-    TestPrint(`Value of ${testdata1} should not be a string`, RecordResult(result1 === false), {no_result: true});
-    TestPrint(`Value of ${testdata2} should be a string`, RecordResult(result2 === true), {no_result: true});
-
-    console.log("Checking isNumber");
-    testdata2 = 22.2;
-    result1 = JSPLib.validate.isNumber(testdata1);
-    result2 = JSPLib.validate.isNumber(testdata2);
-    TestPrint(`Value of ${testdata1} should not be a string`, RecordResult(result1 === false), {no_result: true});
-    TestPrint(`Value of ${testdata2} should be a string`, RecordResult(result2 === true), {no_result: true});
-
-    console.log("Checking validateID");
-    testdata1 = 1234;
-    result1 = JSPLib.validate.validateID(testdata1);
-    result2 = JSPLib.validate.validateID(testdata2);
-    TestPrint(`Record ID of ${testdata1} should be valid`, RecordResult(result1 === true), {no_result: true});
-    TestPrint(`Record ID of ${testdata2} should be invalid`, RecordResult(result2 === false), {no_result: true});
-
-    console.log("Checking validateIDList");
-    testdata1 = [1, 2, 3, 4];
-    testdata2 = [1, 'a', -1, null];
-    result1 = JSPLib.validate.validateIDList(testdata1);
-    result2 = JSPLib.validate.validateIDList(testdata2);
-    TestPrint(`Record ID of ${testdata1} should be valid`, RecordResult(result1 === true), {no_result: true});
-    TestPrint(`Record ID of ${testdata2} should be invalid`, RecordResult(result2 === false), {no_result: true});
-
     console.log(`CheckValidateLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
 
@@ -1372,11 +1312,6 @@ async function CheckStorageLibrary() {
     console.log("Start time:", JSPLib.utility.getProgramTime());
     ResetResult();
 
-    console.log("Checking global variables");
-    TestPrint(`use_local_storage should be ${ShowEnabled(test_local_storage)}`, RecordResult(JSPLib.storage.use_local_storage === test_local_storage), {no_result: true});
-    TestPrint(`use_indexed_db should be ${ShowEnabled(test_indexed_db)}`, RecordResult(JSPLib.storage.use_indexed_db === test_indexed_db), {no_result: true});
-    TestPrint(`use_storage should be ${ShowEnabled(test_storage)}`, RecordResult(JSPLib.storage.use_storage === test_storage), {no_result: true});
-
     console.log("Checking setStorageData");
     let data1 = ["check this"];
     let data2 = JSON.stringify(data1);
@@ -1384,20 +1319,13 @@ async function CheckStorageLibrary() {
     JSPLib.storage.setLocalData('local-value', data1);
     let result1 = sessionStorage.getItem('session-value');
     let result2 = localStorage.getItem('local-value');
-    let memorydata1 = JSPLib.storage.memory_storage.sessionStorage['session-value'];
-    let memorydata2 = JSPLib.storage.memory_storage.localStorage['local-value'];
     TestPrint(`session-value stored in sessionStorage as ${repr(result1)} should be equal to the stringified data`, RecordResult(result1 === data2), {result: repr(data1)});
-    TestPrint(`session-value stored in memory storage as ${repr(memorydata1)} should be equal to the data`, RecordResult(ArrayEqual(memorydata1, data1)), {result: repr(data1)});
-    TestPrint(`local-value stored in localStorage as ${repr(result1)} should be equal to the stringified data`, RecordResult(result2 === data2), {result: repr(data1)});
-    TestPrint(`local-value stored in memory storage as ${repr(memorydata2)} should be equal to the data`, RecordResult(ArrayEqual(memorydata2, data1)), {result: repr(data1)});
 
     console.log("Checking removeStorageData");
     JSPLib.storage.setSessionData('remove-value', 'blah');
     JSPLib.storage.removeSessionData('remove-value');
     result1 = sessionStorage.getItem('remove-value');
-    result2 = JSPLib.storage.memory_storage.sessionStorage['remove-value'];
     TestPrint("Removed value should return null", RecordResult(result1 === null), {result: repr(result1)});
-    TestPrint("Memory storage value should be undefined", RecordResult(result2 === undefined), {result: repr(result2)});
 
     console.log("Checking getStorageData");
     data1 = `[check this]`;
@@ -1414,17 +1342,17 @@ async function CheckStorageLibrary() {
     console.log("Checking invalidateStorageData");
     data1 = ["check this"];
     JSPLib.storage.setSessionData('memory-value', data1);
-    result1 = JSPLib.storage.memory_storage.sessionStorage['memory-value'];
+    result1 = JSPLib.storage.inMemoryStorage('memory-value', sessionStorage);
     JSPLib.storage.invalidateSessionData('memory-value');
-    result2 = JSPLib.storage.memory_storage.sessionStorage['memory-value'];
-    TestPrint("memory-value should not be defined after setting it's value", RecordResult(result1 !== undefined), {result: repr(result1)});
-    TestPrint("memory-value should be undefined after invalidating it's value", RecordResult(result2 === undefined), {result: repr(result2)});
+    result2 = !JSPLib.storage.inMemoryStorage('memory-value', sessionStorage);
+    TestPrint("memory-value should be in memory storage after setting its value", RecordResult(result1), {no_result: true});
+    TestPrint("memory-value should not be in memory storage after invalidating its value", RecordResult(result2), {no_result: true});
 
     console.log("Checking checkStorageData");
     let validator1 = function () { return true;};
     let validator2 = function () { return false;};
     result1 = JSPLib.storage.checkSessionData('good-value', validator1, sessionStorage);
-    delete JSPLib.storage.memory_storage.sessionStorage['good-value'];
+    JSPLib.storage.invalidateSessionData('good-value');
     result2 = JSPLib.storage.checkSessionData('good-value', validator2, sessionStorage);
     TestPrint(`good-value with data ${repr(data2)} with good validate should return value`, RecordResult(result1?.[0] === "check this"), {result: repr(result1)});
     TestPrint(`good-value with data ${repr(data2)} with bad validate should return null`, RecordResult(result2 === null), {result: repr(result2)});
@@ -1459,17 +1387,13 @@ async function CheckStorageLibrary() {
     data2 = JSON.stringify(data1);
     JSPLib.storage.setIndexedSessionData('session-value', data1);
     result1 = sessionStorage.getItem('danbooru-storage-session-value');
-    memorydata1 = JSPLib.storage.memory_storage.sessionStorage['danbooru-storage-session-value'];
     TestPrint(`Indexed session-value stored in sessionStorage as ${repr(data2)} should be equal to the stringified data`, RecordResult(result1 === data2), {result: repr(result1)});
-    TestPrint(`Indexed session-value stored in memory storage as ${repr(data1)} should be equal to the data`, RecordResult(ArrayEqual(memorydata1, data1)), {result: repr(memorydata1)});
 
     console.log("Checking removeIndexedSessionData");
     JSPLib.storage.setStorageData('danbooru-storage-remove-value', 'blah', sessionStorage);
     JSPLib.storage.removeIndexedSessionData('remove-value');
     result1 = sessionStorage.getItem('danbooru-storage-remove-value');
-    result2 = JSPLib.storage.memory_storage.sessionStorage['danbooru-storage-remove-value'];
     TestPrint('Removed value should return null', RecordResult(result1 === null), {result: repr(result1)});
-    TestPrint('Memory storage value should be undefined', RecordResult(result2 === undefined), {result: repr(result2)});
 
     console.log("Checking getIndexedSessionData");
     data1 = `[check this]`;
@@ -1486,11 +1410,11 @@ async function CheckStorageLibrary() {
     console.log("Checking invalidateIndexedSessionData");
     data1 = ["check this"];
     JSPLib.storage.setIndexedSessionData('memory-value', data1);
-    result1 = JSPLib.storage.memory_storage.sessionStorage['danbooru-storage-memory-value'];
+    result1 = JSPLib.storage.inMemoryStorage('memory-value', sessionStorage, JSPLib.storage.danboorustorage);
     JSPLib.storage.invalidateIndexedSessionData('memory-value');
-    result2 = JSPLib.storage.memory_storage.sessionStorage['danbooru-storage-memory-value'];
-    TestPrint("memory-value should not be defined after setting it's value", RecordResult(result1 !== undefined), {result: repr(result1)});
-    TestPrint("memory-value should be undefined after invalidating it's value", RecordResult(result2 === undefined), {result: repr(result2)});
+    result2 = !JSPLib.storage.inMemoryStorage('memory-value', sessionStorage, JSPLib.storage.danboorustorage);
+    TestPrint("memory-value should not be defined after setting it's value", RecordResult(result1), {no_result: true});
+    TestPrint("memory-value should be undefined after invalidating it's value", RecordResult(result2), {no_result: true});
 
     //For checking library with/without localforage installed
     if (JSPLib.storage.use_storage) {
@@ -1636,7 +1560,7 @@ async function CheckConcurrencyLibrary() {
     let result1 = JSPLib.concurrency.reserveSemaphore('test');
     let result2 = JSPLib.storage.getStorageData(key1, localStorage);
     console.log(JSPLib._window);
-    let result3 = JSPLib.utility.isNamespaceBound(JSPLib._window, 'beforeunload', key2);
+    let result3 = JSPLib.utility.isNamespaceBound({root: JSPLib._window, eventtype: 'beforeunload', namespace: key2});
     TestPrint(`Semaphore ${result1} should be equal to saved data`, RecordResult(result1 === result2), {result: result2});
     TestPrint("Before unload event should have been created", RecordResult(result3 === true), {result: result3});
 
@@ -1647,7 +1571,7 @@ async function CheckConcurrencyLibrary() {
     console.log("Checking freeSemaphore");
     JSPLib.concurrency.freeSemaphore('test');
     result1 = JSPLib.concurrency.checkSemaphore('cl', 'test');
-    result2 = JSPLib.utility.isNamespaceBound(JSPLib._window, 'beforeunload', key2);
+    result2 = JSPLib.utility.isNamespaceBound({root: JSPLib._window, eventtype: 'beforeunload', namespace: key2});
     TestPrint("Semaphore should be available", RecordResult(result1 === true), {result: result1});
     TestPrint("Before unload event should have been cleared", RecordResult(result2 === false), {result: result2});
 
@@ -1661,24 +1585,6 @@ async function CheckConcurrencyLibrary() {
     JSPLib.concurrency.setRecheckTimeout(key3, expiration1);
     result1 = JSPLib.concurrency.checkTimeout(key3, expiration1);
     TestPrint("Timeout should be set and unexpired", RecordResult(result1 === false), {result: result1});
-
-    console.log("Checking _getSelectorChecks");
-    let string1 = 'span';
-    let string2 = '.class';
-    let string3 = '#id';
-    let string4 = '##text';
-    let checkarray1 = ['tagName', 'SPAN'];
-    let checkarray2 = ['className', 'class'];
-    let checkarray3 = ['id', 'id'];
-    let checkarray4 = ['nodeName', '#text'];
-    let testarray1 = JSPLib.concurrency._getSelectorChecks(string1);
-    let testarray2 = JSPLib.concurrency._getSelectorChecks(string2);
-    let testarray3 = JSPLib.concurrency._getSelectorChecks(string3);
-    let testarray4 = JSPLib.concurrency._getSelectorChecks(string4);
-    TestPrint(`Selector ${repr(string1)} should return the values ${repr(checkarray1)}`, RecordResult(ArrayEqual(testarray1, checkarray1)), {result: repr(testarray1)});
-    TestPrint(`Selector ${repr(string2)} should return the values ${repr(checkarray2)}`, RecordResult(ArrayEqual(testarray2, checkarray2)), {result: repr(testarray2)});
-    TestPrint(`Selector ${repr(string3)} should return the values ${repr(checkarray3)}`, RecordResult(ArrayEqual(testarray3, checkarray3)), {result: repr(testarray3)});
-    TestPrint(`Selector ${repr(string4)} should return the values ${repr(checkarray4)}`, RecordResult(ArrayEqual(testarray4, checkarray4)), {result: repr(testarray4)});
 
     console.log("Checking setupMutationReplaceObserver");
     jQuery("#checklibrary-count").after('<span id="checklibrary-observe"></span>');
@@ -1759,28 +1665,6 @@ async function CheckNetworkLibrary() {
     if (!found1) {
         TestPrint('installXHRHook test failed', RecordResult(false), {no_result: true});
     }
-
-    console.log("Checking incrementCounter");
-    JSPLib.network.counter_domname = "#checklibrary-count";
-    await JSPLib.utility.sleep(2000);
-    let result1 = JSPLib.network.num_network_requests;
-    JSPLib.network.incrementCounter('network');
-    let result2 = JSPLib.network.num_network_requests;
-    TestPrint(`The counter should have incremented by 1 from ${repr(result1)}`, RecordResult((result2 - result1) === 1), {result: repr(result2)});
-
-    console.log("Checking decrementCounter");
-    await JSPLib.utility.sleep(2000);
-    result1 = JSPLib.network.num_network_requests;
-    JSPLib.network.decrementCounter('network');
-    result2 = JSPLib.network.num_network_requests;
-    TestPrint(`The counter should have decremented by 1 from ${repr(result1)}`, RecordResult((result1 - result2) === 1), {result: repr(result2)});
-
-    console.log("Checking rateLimit"); //Visual confirmation required
-    JSPLib.network.num_network_requests = JSPLib.network.max_network_requests;
-    RateLimit('network');
-    await JSPLib.utility.sleep(5000);
-    JSPLib.network.num_network_requests = 0;
-    await JSPLib.utility.sleep(2000);
 
     console.log("Checking processError");
     let error1 = {status: 502};
@@ -1881,66 +1765,18 @@ async function CheckDanbooruLibrary() {
     TestPrint("the short name for artist should be art", RecordResult(result3 === 'art'), {result: result2});
     TestPrint("the short name for character should be char", RecordResult(result4 === 'char'), {result: result2});
 
-    console.log("Checking randomDummyTag");
-    let string1 = JSPLib.danbooru.randomDummyTag();
-    let string2 = "notadummytag";
-    let regex1 = /^dummytag-[0-9a-z]{8}$/;
-    result1 = string1.match(regex1);
-    result2 = string2.match(regex1);
-    TestPrint(`the string ${repr(string1)} should be a dummy tag`, RecordResult(!!result1), {result: result1});
-    TestPrint(`the string ${repr(string2)} should not be a dummy tag`, RecordResult(!result2), {result: result2});
-
-    console.log("Checking tagOnlyRegExp");
-    string1 = "character_(qualifier)";
-    string2 = "qualifier";
-    regex1 = JSPLib.danbooru.tagOnlyRegExp(string1);
-    let regex2 = /^character_\(qualifier\)$/i;
-    result1 = string1.match(regex1);
-    TestPrint(`the tag ${repr(string1)} should produce the regex ${String(regex2)}`, RecordResult(String(regex1) === String(regex2)), {result: String(regex1)});
-    TestPrint(`the regex ${String(regex1)} should find one match in the string ${repr(string1)}`, RecordResult(result1?.[0] === string1), {result: repr(result1)});
-
-    var skip_test = false;
-    try {
-        JSPLib.danbooru.tagRegExp("");
-    } catch (e) {
-        console.log("No lookarounds... skipping tagRegExp test!");
-        skip_test = true;
-    }
-    if (!skip_test) {
-        console.log("Checking tagRegExp");
-        string1 = "1girl solo aliased:_the_tag standing aliased:_the_tag character_(qualifier) short_hair";
-        string2 = "aliased:_the_tag";
-        let string3 = "alias_tag";
-        let string4 = "qualifier animated 1girl";
-        let string5 = "qualifier";
-        regex1 = JSPLib.danbooru.tagRegExp(string2);
-        regex2 = RegExp('(?<=(?:^|\\s))aliased\\:_the_tag(?=(?:$|\\s))', 'gi');
-        let regex3 = JSPLib.danbooru.tagRegExp(string5);
-        result1 = string1.match(regex1);
-        result2 = string1.replace(regex1, string3);
-        result3 = string1.match(regex3);
-        result4 = string4.match(regex3);
-        TestPrint(`the tag ${repr(string2)} should produce the regex ${String(regex2)}`, RecordResult(String(regex1) === String(regex2)), {result: String(regex1)});
-        TestPrint(`the regex ${String(regex1)} should find two matches in the string ${repr(string1)}`, RecordResult(result1?.[0] === string2), {result: result1});
-        TestPrint(`the regex ${String(regex1)} should replace the tag ${repr(string2)} with ${repr(string3)} in the string ${repr(string1)}`, RecordResult(result2 === "1girl solo alias_tag standing alias_tag character_(qualifier) short_hair"), {result: result2});
-        TestPrint(`the regex ${String(regex3)} should find no matches in the string ${repr(string1)}`, RecordResult(result3 === null), {result: result3});
-        TestPrint(`the regex ${String(regex3)} should find one match in the string ${repr(string4)}`, RecordResult(result4?.[0] === string5), {result: result4});
-    }
-
     console.log("Checking postSearchLink");
     string1 = "1girl solo";
     string2 = "Check this link";
-    let option1 = `class="search-tag"`;
     let string3 = '<a class="search-tag" href="/posts?tags=1girl+solo">Check this link</a>';
-    result1 = JSPLib.danbooru.postSearchLink(string1, string2, option1);
+    result1 = JSPLib.danbooru.postSearchLink(string2, {tags: string1}, {class: 'search-tag'});
     TestPrint(`the tag ${repr(string1)} with text ${repr(string2)} should produce the link  ${repr(string3)}`, RecordResult(result1 === string3), {result: result1});
 
     console.log("Checking wikiLink");
     string1 = "1girl";
     string2 = "Wiki link";
-    option1 = 'class="category-0"';
     string3 = '<a class="category-0" href="/wiki_pages/1girl">Wiki link</a>';
-    result1 = JSPLib.danbooru.wikiLink(string1, string2, option1);
+    result1 = JSPLib.danbooru.wikiLink(string2, string1, {class: 'category-0'});
     TestPrint(`the tag ${repr(string1)} with text ${repr(string2)} should produce the link  ${repr(string3)}`, RecordResult(result1 === string3), {result: result1});
 
     console.log("Checking submitRequest");
@@ -1957,12 +1793,12 @@ async function CheckDanbooruLibrary() {
     result1 = await JSPLib.danbooru.submitRequest(type1, addons1, {long_format: true});
     TestPrint(`with type ${type1} and addons ${repr(addons1)}, a single post should have been returned`, RecordResult(ArrayLength(result1, 1)), {result: result1});
 
-    console.log("Checking getAllItems");
+    console.log("Checking getAllPageItems");
     type1 = 'users';
     addons1 = {search: {level: 50}, only: 'id,level'}; //Search for admins
     let page1 = 1; //Except for the first admin
     let limit1 = 1; //One at a time
-    result1 = await JSPLib.danbooru.getAllItems(type1, limit1, {url_addons: addons1, batches: 2, page: page1, reverse: true});
+    result1 = await JSPLib.danbooru.getAllPageItems(type1, limit1, {url_addons: addons1, batches: 2, page: page1, reverse: true});
     result2 = JSPLib.utility.getObjectAttributes(result1, 'id');
     result3 = result2.sort((a, b) => a - b);
     result4 = JSPLib.utility.getObjectAttributes(result1, 'level').reduce((total, entry) => total && entry === 50, true);
@@ -1971,8 +1807,8 @@ async function CheckDanbooruLibrary() {
     TestPrint(`should have also returned users in reverse order ${repr(result3)}`, RecordResult(repr(result2) === repr(result3)), {result: repr(result2)});
     TestPrint("should have also returned only admins", RecordResult(result4), {no_result: true});
 
-    console.log("Checking getAllItems (long)");
-    result1 = await JSPLib.danbooru.getAllItems(type1, limit1, {url_addons: addons1, batches: 2, page: page1, reverse: true, long_format: true});
+    console.log("Checking getAllPageItems (long)");
+    result1 = await JSPLib.danbooru.getAllPageItems(type1, limit1, {url_addons: addons1, batches: 2, page: page1, reverse: true, long_format: true});
     result2 = JSPLib.utility.getObjectAttributes(result1, 'id');
     result3 = result2.sort((a, b) => a - b);
     result4 = JSPLib.utility.getObjectAttributes(result1, 'level').reduce((total, entry) => total && entry === 50, true);
@@ -1981,12 +1817,12 @@ async function CheckDanbooruLibrary() {
     TestPrint(`should have also returned users in reverse order ${repr(result3)}`, RecordResult(repr(result2) === repr(result3)), {result: repr(result2)});
     TestPrint("should have also returned only admins", RecordResult(result4), {no_result: true});
 
-    console.log("Checking getAllItems (counter)");
+    console.log("Checking getAllPageItems (counter)");
     let users_latest = await JSPLib.danbooru.submitRequest(type1, {limit: 10, only: 'id'});
     let page_start = JSPLib.danbooru.getNextPageID(users_latest, false);
     let page_end = JSPLib.danbooru.getNextPageID(users_latest, true);
     array1 = JSPLib.utility.getObjectAttributes(users_latest, 'id');
-    result1 = await JSPLib.danbooru.getAllItems(type1, limit1, {page: page_end + 1, url_addons: {search: {id: `${page_end}..${page_start}`}, only: 'id'}, domname: '#checklibrary-count'});
+    result1 = await JSPLib.danbooru.getAllPageItems(type1, limit1, {page: page_end + 1, url_addons: {search: {id: `${page_end}..${page_start}`}, only: 'id'}, domname: '#checklibrary-count'});
     result2 = JSPLib.utility.getObjectAttributes(result1, 'id');
     result3 = jQuery('#checklibrary-count').data('latest-id');
     result4 = Number(jQuery('#checklibrary-count').text());
@@ -2000,13 +1836,6 @@ async function CheckDanbooruLibrary() {
     string2 = 'id'; //Grab only the ID
     result1 = await JSPLib.danbooru.getPostsCountdown(string1, 1, string2, '#checklibrary-count');
     TestPrint(`with query ${string1} and addons "${string2}", four posts should have been returned`, RecordResult(ArrayLength(result1, 4)), {result: repr(result1)});
-
-    console.log("Checking rateLimit #2");
-    JSPLib.danbooru.num_network_requests = JSPLib.danbooru.max_network_requests;
-    JSPLib.danbooru.submitRequest(type1, addons1).then(() => {console.log("Finished submitting request!");});
-    await JSPLib.utility.sleep(5000);
-    JSPLib.danbooru.num_network_requests = 0;
-    await JSPLib.utility.sleep(2000);
 
     console.log(`CheckDanbooruLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
@@ -2026,54 +1855,43 @@ async function CheckSaucenaoLibrary() {
     let object1 = null;
     result1 = JSPLib.saucenao.checkSauce(object1);
     TestPrint(`Response of ${repr(object1)} should return a result of false`, RecordResult(result1 === false), {no_result: true}, {result: result1});
-    TestPrint("The no sauce flag should have been set", RecordResult(JSPLib.saucenao.no_sauce === true), {no_result: true});
     await JSPLib.utility.sleep(2000);
 
     console.log("Checking checkSauce #2");
     object1 = {header: {long_remaining: 0}, results: {}};
     result1 = JSPLib.saucenao.checkSauce(object1);
     TestPrint(`Response of ${repr(object1)} should return a result of true`, RecordResult(result1 === true), {no_result: true});
-    TestPrint("The no sauce flag should have been set", RecordResult(JSPLib.saucenao.no_sauce === true), {no_result: true});
     await JSPLib.utility.sleep(2000);
 
     console.log("Checking checkSauce #3");
     object1 = {header: {long_remaining: 1, short_remaining: 0}, results: {}};
     result1 = JSPLib.saucenao.checkSauce(object1);
     TestPrint(`Response of ${repr(object1)} should return a result of true`, RecordResult(result1 === true), {no_result: true});
-    TestPrint("The no sauce flag should not have been set", RecordResult(JSPLib.saucenao.no_sauce === false), {no_result: true});
     await JSPLib.utility.sleep(2000);
-
+    
     console.log("Checking checkSauce #4");
     object1 = {header: {long_remaining: 1, short_remaining: 1, status: -1, message: 'Some message.'}};
     result1 = JSPLib.saucenao.checkSauce(object1);
     TestPrint(`Response of ${repr(object1)} should return a result of false`, RecordResult(result1 === false), {no_result: true});
-    TestPrint("The no sauce flag should not have been set", RecordResult(JSPLib.saucenao.no_sauce === false), {no_result: true});
     await JSPLib.utility.sleep(2000);
 
     console.log("Checking checkSauce #5");
     object1 = {header: {long_remaining: 1, short_remaining: 1}, results: {}};
     result1 = JSPLib.saucenao.checkSauce(object1);
     TestPrint(`Response of ${repr(object1)} should return a result of true`, RecordResult(result1 === true), {no_result: true});
-    TestPrint("The no sauce flag should not have been set", RecordResult(JSPLib.saucenao.no_sauce === false), {no_result: true});
     await JSPLib.utility.sleep(2000);
-
+    
     console.log("Checking getSauce #1");
     object1 = {header: {long_remaining: 1, short_remaining: 1}, results: {}};
     result1 = await JSPLib.saucenao.getSauce();
     TestPrint(`No API key should return a result of false`, RecordResult(result1 === false), {no_result: true});
     await JSPLib.utility.sleep(2000);
 
-    console.log("Checking getSauce #2");
-    JSPLib.saucenao.api_key = saucenao_api_key;
-    JSPLib.saucenao._sauce_wait = Date.now() + JSPLib.utility.one_second;
-    result1 = await JSPLib.saucenao.getSauce();
-    TestPrint(`Wait time remaining should should return a result of false`, RecordResult(result1 === false), {no_result: true});
-    await JSPLib.utility.sleep(2000);
-
     if (typeof GM.xmlHttpRequest !== 'undefined') {
         //Save old settings
         let old_xhr = jQuery.ajaxSettings.xhr;
         JSPLib.network.jQuerySetup();
+        JSPLib.saucenao.api_key = saucenao_api_key;
 
         console.log("Checking getSauce #3");
         let num_results = 2;
@@ -2099,94 +1917,12 @@ async function CheckSaucenaoLibrary() {
     console.log(`CheckSaucenaoLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
 
-async function CheckLoadLibrary() {
-    console.log("++++++++++++++++++++CheckLoadLibrary++++++++++++++++++++");
-    console.log("Start time:", JSPLib.utility.getProgramTime());
-    ResetResult();
-
-    console.log("Checking isVariableDefined");
-    JSPLib._window.doesexist = null;
-    let test1 = JSPLib.load._isVariableDefined('window.doesexist');
-    let test2 = JSPLib.load._isVariableDefined('window.doesntexist');
-    TestPrint("variable 'window.doesexist' should exist", RecordResult(test1 === true), {no_result: true});
-    TestPrint("variable 'window.doesntexist' shouldn't exist", RecordResult(test2 === false), {no_result: true});
-
-    console.log("Checking programInitialize and programLoad");
-    let function1 = function() { console.log("Shouldn't run!");};
-    let function2 = function() { console.log("Should run!");};
-    JSPLib._window.goodvariable = true;
-    jQuery("body").append(`<div id="id-does-exist">`);
-    jQuery("body").append(`<div class="class-does-exist">`);
-
-    console.log("Starting program load with bad variable");
-    JSPLib.load.programInitialize(function1, {function_name: 'timer1', required_variables: ['window.badvariable'], max_retries: 5});
-    let test_success = await LoadWait('timer1');
-    if (test_success) {
-        TestPrint("program load waiting on 'window.badvariable' should not have run", RecordResult(JSPLib.load.program_load_timers.timer1 === false), {no_result: true});
-        TestPrint("program load waiting on 'window.badvariable' should have tried 6 times", RecordResult(JSPLib.load.program_load_retries.timer1 === 6), {result: JSPLib.load.program_load_retries.timer1});
-    } else {
-        TestPrint("Loading failed", RecordResult(test_success), {no_result: true});
-    }
-
-    console.log("Starting program load with bad DOM id");
-    JSPLib.load.programInitialize(function1, {function_name: 'timer2', required_selectors: ['#id-doesnt-exist'], max_retries: 1});
-    test_success = await LoadWait('timer2');
-    if (test_success) {
-        TestPrint("program load waiting on #id-doesnt-exist should not have run", RecordResult(JSPLib.load.program_load_timers.timer2 === false), {no_result: true});
-        TestPrint("program load waiting on #id-doesnt-exist should have tried 2 times", RecordResult(JSPLib.load.program_load_retries.timer2 === 2), {result: JSPLib.load.program_load_retries.timer2});
-    } else {
-        TestPrint("Loading failed", RecordResult(test_success), {no_result: true});
-    }
-
-    console.log("Starting program load with bad DOM class");
-    JSPLib.load.programInitialize(function1, {function_name: 'timer3', required_selectors: ['.class-doesnt-exist'], max_retries: 0});
-    test_success = await LoadWait('timer3');
-    if (test_success) {
-        TestPrint("program load waiting on .class-doesnt-exist should not have run", RecordResult(JSPLib.load.program_load_timers.timer3 === false), {no_result: true});
-        TestPrint("program load waiting on .class-doesnt-exist should have tried once", RecordResult(JSPLib.load.program_load_retries.timer3 === 1), {result: JSPLib.load.program_load_retries.timer3});
-    } else {
-        TestPrint("Loading failed", RecordResult(test_success), {no_result: true});
-    }
-
-    console.log("Starting program load with bad DOM tagname");
-    JSPLib.load.programInitialize(function1, {function_name: 'timer4', required_selectors: ['badtag'], max_retries: 0});
-    test_success = await LoadWait('timer4');
-    if (test_success) {
-        TestPrint("program load waiting on <badtag> should not have run", RecordResult(JSPLib.load.program_load_timers.timer4 === false), {no_result: true});
-        TestPrint("program load waiting on <badtag> should have tried once", RecordResult(JSPLib.load.program_load_retries.timer4 === 1), {result: JSPLib.load.program_load_retries.timer4});
-    } else {
-        TestPrint("Loading failed", RecordResult(test_success), {no_result: true});
-    }
-
-    console.log("Starting program load with all bad optional selectors");
-    JSPLib.load.programInitialize(function1, {function_name: 'timer5', optional_selectors: ['badtag1', 'badtag2'], max_retries: 0});
-    test_success = await LoadWait('timer5');
-    if (test_success) {
-        TestPrint("program load waiting on <badtag1> or <badtag2> should not have run", RecordResult(JSPLib.load.program_load_timers.timer5 === false), {no_result: true});
-        TestPrint("program load waiting on <badtag> or <badtag2> should have tried once", RecordResult(JSPLib.load.program_load_retries.timer5 === 1), {result: JSPLib.load.program_load_retries.timer5});
-    } else {
-        TestPrint("Loading failed", RecordResult(test_success), {no_result: true});
-    }
-
-    console.log("Starting good program load");
-    JSPLib.load.programInitialize(function2, {function_name: 'timer6', required_variables: ['window.goodvariable'], required_selectors: ['#id-does-exist', '.class-does-exist', 'body'], optional_selectors: ['#c-static', '#c-posts'], max_retries: 5});
-    test_success = await LoadWait('timer6');
-    if (test_success) {
-        TestPrint("program load waiting on 'window.goodvariable' should have run", RecordResult(JSPLib.load.program_load_timers.timer6 === true), {no_result: true});
-        TestPrint("program load waiting on 'window.goodvariable' should have tried once", RecordResult(JSPLib.load.program_load_retries.timer6 === 0), {result: JSPLib.load.program_load_retries.timer6});
-    } else {
-        TestPrint("Loading failed", RecordResult(test_success), {no_result: true});
-    }
-
-    console.log(`CheckLoadLibrary results: ${test_successes} succeses, ${test_failures} failures`);
-}
-
 async function checklibrary() {
     jQuery("footer").prepend('<span id="checklibrary-error" style="font-size:400%">0</span>&emsp;<span id="checklibrary-count" style="font-size:400%">0</span>');
     document.body.style.height = '5000px';
     setTimeout(() => {window.scroll(0, 10000);}, 2000);
 
-    await CheckDebugLibrary();
+    CheckDebugLibrary();
     await CheckNoticeLibrary();
     await CheckUtilityLibrary();
     CheckStatisticsLibrary();
@@ -2196,7 +1932,6 @@ async function checklibrary() {
     await CheckNetworkLibrary();
     await CheckDanbooruLibrary();
     await CheckSaucenaoLibrary();
-    await CheckLoadLibrary();
     console.log(`All library results: ${overall_test_successes} succeses, ${overall_test_failures} failures`);
 }
 
