@@ -2581,25 +2581,24 @@ function RenderHomeSubsection(source) {
 function InitializeUserShowMenu() {
     //#C-USERS #A-SHOW
     if (!EL.show_all_subscribe_controls && !EL.filter_user_mod_actions && !AreAnyEventsEnabled(USER_EVENTS, 'user_events_enabled')) return false;
-    let user_id = $(document.body).data('user-id');
-    let $menu_obj = $.parseHTML(RenderMultilinkMenu(user_id, 'user_events_enabled'));
+    let $menu_obj = $.parseHTML(RenderMultilinkMenu(EL.item_id, 'user_events_enabled'));
     let menu_links = [];
     USER_EVENTS.forEach((type) => {
         if (!EL.show_all_subscribe_controls && !IsUserSubscribeEnabled(type)) return;
-        menu_links.push(RenderSubscribeMultiLink(TYPEDICT[type].display, [type], user_id, 'user_events_enabled'));
+        menu_links.push(RenderSubscribeMultiLink(TYPEDICT[type].display, [type], EL.item_id, 'user_events_enabled'));
     });
     if (EL.show_all_subscribe_controls || AreAllEventsEnabled(ALL_TRANSLATE_EVENTS, 'user_events_enabled')) {
-        menu_links.push(RenderSubscribeMultiLink("Translations", ALL_TRANSLATE_EVENTS, user_id, 'user_events_enabled'));
+        menu_links.push(RenderSubscribeMultiLink("Translations", ALL_TRANSLATE_EVENTS, EL.item_id, 'user_events_enabled'));
     }
     if (EL.filter_user_mod_actions) {
-        menu_links.push(RenderSubscribeMultiLink("Mod Actions", ['mod_action'], user_id, 'user_events_enabled'));
+        menu_links.push(RenderSubscribeMultiLink("Mod Actions", ['mod_action'], EL.item_id, 'user_events_enabled'));
     }
     let enabled_user_events = (EL.show_all_subscribe_controls ? USER_EVENTS : JSPLib.utility.arrayIntersection(USER_EVENTS, EL.user_events_enabled));
     if (EL.filter_user_mod_actions) {
         enabled_user_events.push('mod_action');
     }
     if (enabled_user_events.length > 1) {
-        menu_links.push(RenderSubscribeMultiLink("All", enabled_user_events, user_id, 'user_events_enabled'));
+        menu_links.push(RenderSubscribeMultiLink("All", enabled_user_events, EL.item_id, 'user_events_enabled'));
     }
     $('#el-add-links', $menu_obj).append(menu_links.join(' | '));
     $('#nav').append($menu_obj);
@@ -2609,19 +2608,18 @@ function InitializeUserShowMenu() {
 function InitializePostShowMenu() {
     //#C-POSTS #A-SHOW
     if (!EL.show_all_subscribe_controls && !AreAnyEventsEnabled(ALL_POST_EVENTS, 'subscribe_events_enabled')) return false;
-    let post_id = $('.image-container').data('id');
-    let $menu_obj = $.parseHTML(RenderMultilinkMenu(post_id, 'subscribe_events_enabled'));
+    let $menu_obj = $.parseHTML(RenderMultilinkMenu(EL.item_id, 'subscribe_events_enabled'));
     let menu_links = [];
     ALL_POST_EVENTS.forEach((type) => {
         if (!EL.show_all_subscribe_controls && !IsItemSubscribeEnabled(type)) return;
-        menu_links.push(RenderSubscribeMultiLink(TYPEDICT[type].display, [type], post_id, 'subscribe_events_enabled'));
+        menu_links.push(RenderSubscribeMultiLink(TYPEDICT[type].display, [type], EL.item_id, 'subscribe_events_enabled'));
     });
     if (EL.show_all_subscribe_controls || AreAllEventsEnabled(ALL_TRANSLATE_EVENTS, 'subscribe_events_enabled')) {
-        menu_links.push(RenderSubscribeMultiLink("Translations", ALL_TRANSLATE_EVENTS, post_id, 'subscribe_events_enabled'));
+        menu_links.push(RenderSubscribeMultiLink("Translations", ALL_TRANSLATE_EVENTS, EL.item_id, 'subscribe_events_enabled'));
     }
     let enabled_post_events = (EL.show_all_subscribe_controls ? ALL_POST_EVENTS : JSPLib.utility.arrayIntersection(ALL_POST_EVENTS, EL.subscribe_events_enabled));
     if (enabled_post_events.length > 1) {
-        menu_links.push(RenderSubscribeMultiLink("All", enabled_post_events, post_id, 'subscribe_events_enabled'));
+        menu_links.push(RenderSubscribeMultiLink("All", enabled_post_events, EL.item_id, 'subscribe_events_enabled'));
     }
     $('#el-add-links', $menu_obj).append(menu_links.join(' | '));
     $('#nav').append($menu_obj);
@@ -2631,20 +2629,17 @@ function InitializePostShowMenu() {
 function InitializeTopicShowMenu() {
     //#C-FORUM-TOPICS #A-SHOW
     if (!EL.show_all_subscribe_controls && !IsItemSubscribeEnabled('forum')) return false;
-    let topic_id = $('body').data('forum-topic-id');
-    let $menu_obj = $.parseHTML(RenderMultilinkMenu(topic_id, 'subscribe_events_enabled'));
-    $('#el-add-links', $menu_obj).append(RenderSubscribeMultiLink("Topic", ['forum'], topic_id, 'subscribe_events_enabled'));
+    let $menu_obj = $.parseHTML(RenderMultilinkMenu(EL.item_id, 'subscribe_events_enabled'));
+    $('#el-add-links', $menu_obj).append(RenderSubscribeMultiLink("Topic", ['forum'], EL.item_id, 'subscribe_events_enabled'));
     $('#nav').append($menu_obj);
     return true;
 }
 
 function InitializeWikiShowMenu() {
-    //#C-WIKI-PAGES #A-SHOW / #C-WIKI-PAGE-VERSIONS #A-SHOW
+    //#C-WIKI-PAGES #A-SHOW
     if (!EL.show_all_subscribe_controls && !IsItemSubscribeEnabled('wiki')) return false;
-    let data_selector = (EL.controller === 'wiki-pages' ? 'wiki-page-id' : 'wiki-page-version-wiki-page-id');
-    let wiki_id = $('body').data(data_selector);
-    let $menu_obj = $.parseHTML(RenderMultilinkMenu(wiki_id, 'subscribe_events_enabled'));
-    $('#el-add-links', $menu_obj).append(RenderSubscribeMultiLink("Wiki", ['wiki'], wiki_id, 'subscribe_events_enabled'));
+    let $menu_obj = $.parseHTML(RenderMultilinkMenu(EL.item_id, 'subscribe_events_enabled'));
+    $('#el-add-links', $menu_obj).append(RenderSubscribeMultiLink("Wiki", ['wiki'], EL.item_id, 'subscribe_events_enabled'));
     $('#nav').append($menu_obj);
     return true;
 }
@@ -2652,9 +2647,8 @@ function InitializeWikiShowMenu() {
 function InitializeArtistShowMenu() {
     //#C-ARTISTS #A-SHOW
     if (!EL.show_all_subscribe_controls && !IsItemSubscribeEnabled('artist')) return false;
-    let artist_id = $('body').data('artist-id');
-    let $menu_obj = $.parseHTML(RenderMultilinkMenu(artist_id, 'subscribe_events_enabled'));
-    $('#el-add-links', $menu_obj).append(RenderSubscribeMultiLink("Artist", ['artist'], artist_id, 'subscribe_events_enabled'));
+    let $menu_obj = $.parseHTML(RenderMultilinkMenu(EL.item_id, 'subscribe_events_enabled'));
+    $('#el-add-links', $menu_obj).append(RenderSubscribeMultiLink("Artist", ['artist'], EL.item_id, 'subscribe_events_enabled'));
     $('#nav').append($menu_obj);
     return true;
 }
@@ -2662,9 +2656,8 @@ function InitializeArtistShowMenu() {
 function InitializePoolShowMenu() {
     //#C-POOLS #A-SHOW
     if (!EL.show_all_subscribe_controls && !IsItemSubscribeEnabled('pool')) return false;
-    let pool_id = $('body').data('pool-id');
-    let $menu_obj = $.parseHTML(RenderMultilinkMenu(pool_id, 'subscribe_events_enabled'));
-    $('#el-add-links', $menu_obj).append(RenderSubscribeMultiLink("Pool", ['pool'], pool_id, 'subscribe_events_enabled'));
+    let $menu_obj = $.parseHTML(RenderMultilinkMenu(EL.item_id, 'subscribe_events_enabled'));
+    $('#el-add-links', $menu_obj).append(RenderSubscribeMultiLink("Pool", ['pool'], EL.item_id, 'subscribe_events_enabled'));
     $('#nav').append($menu_obj);
     return true;
 }
@@ -2680,7 +2673,6 @@ function InstallSubscribeLinks() {
             show_submenu = InitializeTopicShowMenu();
             break;
         case 'wiki-pages':
-        case 'wiki-page-versions':
             show_submenu = InitializeWikiShowMenu();
             break;
         case 'artists':
@@ -3953,6 +3945,7 @@ function InitializeProgramValues() {
     Object.assign(EL, {
         user_name: Danbooru.CurrentUser.data('name'),
         user_id: Danbooru.CurrentUser.data('id'),
+        item_id: JSPLib.danbooru.getShowID(),
     });
     if (EL.user_name === 'Anonymous') {
         printer.debugwarnLevel("User must log in!", JSPLib.debug.WARNING);

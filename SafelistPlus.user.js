@@ -71,11 +71,6 @@ const SETTINGS_CONFIG = {
         validate: JSPLib.utility.isBoolean,
         hint: "Currently disabled."
     },
-    ignore_uploads: {
-        reset: true,
-        validate: JSPLib.utility.isBoolean,
-        hint: "Will always show posts uploaded by the user."
-    },
     session_use_enabled: {
         reset: false,
         validate: JSPLib.utility.isBoolean,
@@ -892,18 +887,33 @@ function SplitWords(string) {
 
 //Auxiliary functions
 
+function GetPostTags(post) {
+    let $post = $(post);
+    let tags = $post.data('safelist-tags');
+    if (!tags) {
+        tags = new Set([
+            ...SplitWords($post.attr("data-tags")),
+            ...SplitWords($post.attr("data-flags")).map(s => `status:${s}`),
+            `rating:${$post.attr("data-rating")}`,
+            `uploaderid:${$post.attr("data-uploader-id")}`,
+        ]);
+        $post.data('safelist-tags', tags);
+    }
+    return tags;
+}
+
+function PostExclude(post, entry) {
+    if (entry.disabled) return false;
+    let tags = GetPostTags(post);
+    return entry.passthrough.intersection(tags).size > 0;
+}
+
 function PostMatch(post, entry) {
     if (entry.disabled) return false;
-    if (SL.ignore_uploads && (Number(post.dataset.uploaderId) == SL.user_id)) return false;
     var $post = $(post);
     var score = parseInt($post.attr("data-score"));
     var score_test = entry.min_score === null || score < entry.min_score;
-    var tags = new Set([
-        ...SplitWords($post.attr("data-tags")),
-        ...SplitWords($post.attr("data-flags")).map(s => `status:${s}`),
-        `rating:${$post.attr("data-rating")}`,
-        `uploaderid:${$post.attr("data-uploader-id")}`,
-    ]);
+    var tags = GetPostTags(post);
     return (entry.require.isSubsetOf(tags) && score_test)
     && (entry.optional.size === 0 || !entry.optional.isDisjointFrom(tags))
     && entry.exclude.isDisjointFrom(tags);
@@ -915,6 +925,7 @@ function ParseEntry(string) {
         require: new Set(),
         exclude: new Set(),
         optional: new Set(),
+        passthrough: new Set(),
         disabled: false,
         hits: 0,
         min_score: null,
@@ -925,6 +936,8 @@ function ParseEntry(string) {
             entry.exclude.add(tag.slice(1));
         } else if (tag.charAt(0) === '~') {
             entry.optional.add(tag.slice(1));
+        } else if (tag.charAt(0) === '+') {
+            entry.passthrough.add(tag.slice(1));
         } else if (tag.match(/^score:<.+/)) {
             var score = tag.match(/^score:<(.+)/)[1];
             entry.min_score = parseInt(score);
@@ -1274,6 +1287,10 @@ function CalculatePassiveLists(deadline) {
         //Restart the FOR loop where we left off
         for (let i=SL.passive_background_work.start_id;i < SL.$safelist_posts.length;i++) {
             for (let j=0;j<SL.custom_entries[index].length;j++){
+                if (PostExclude(SL.$safelist_posts[i], SL.custom_entries[index][j])) {
+                    //Bail when the post is passthrough
+                    break;
+                }
                 if (PostMatch(SL.$safelist_posts[i], SL.custom_entries[index][j])) {
                     SL.passive_background_work.update_array.push(SL.$safelist_posts[i]);
                     //Bail early on any entry match
@@ -1320,6 +1337,10 @@ function CalculateActiveList() {
     let iteration_time = performance.now();
     for (let i = SL.active_background_work.start_id; i < SL.$safelist_posts.length; i++) {
         for (let j = 0; j < SL.custom_entries[level].length; j++){
+            if (PostExclude(SL.$safelist_posts[i], SL.custom_entries[level][j])) {
+                //Bail when the post is passthrough
+                break;
+            }
             if (PostMatch(SL.$safelist_posts[i], SL.custom_entries[level][j])) {
                 SL.active_background_work.update_array.push(SL.$safelist_posts[i]);
                 //Bail early on any entry match
@@ -1485,6 +1506,10 @@ function PostPreviewUpdated(event,post) {
         }
         SL.post_lists[level] = SL.post_lists[level].filter((entry) => ($(entry).data('id') !== post.id));
         for (let j = 0; j < SL.custom_entries[level].length; j++){
+            if (PostExclude($post, SL.custom_entries[level][j])) {
+                //Bail when the post is passthrough
+                break;
+            }
             if (PostMatch($post, SL.custom_entries[level][j])) {
                 SL.post_lists[level].push($post);
                 //Bail early on any entry match
@@ -1706,7 +1731,6 @@ function RenderSettingsMenu() {
     $('#safelist-plus').append(JSPLib.menu.renderMenuFramework(MENU_CONFIG));
     $('#sl-general-settings').append(JSPLib.menu.renderDomainSelectors());
     $('#sl-mode-settings').append(JSPLib.menu.renderCheckbox('write_mode_enabled'));
-    $('#sl-display-settings').append(JSPLib.menu.renderCheckbox('ignore_uploads'));
     $('#sl-session-settings').append(JSPLib.menu.renderCheckbox('session_use_enabled'));
     $('#sl-session-settings').append(JSPLib.menu.renderCheckbox('session_level_enabled'));
     $('#sl-controls').append(JSPLib.menu.renderCacheControls());

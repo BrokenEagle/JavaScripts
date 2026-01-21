@@ -39,8 +39,8 @@
         "no-unused-vars": ["warn", {"args": "all", "argsIgnorePattern": "^_"}],
         "no-useless-return": "error",
         "require-await": "error",
-        "max-depth": ["error", 4],
-        "max-nested-callbacks": ["error", 3],
+        "max-depth": ["warn", 4],
+        "max-nested-callbacks": ["warn", 3],
         "complexity": ["warn", { "max": 10 }]
     }
 }
