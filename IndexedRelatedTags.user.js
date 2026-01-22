@@ -14,19 +14,19 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ */
@@ -1105,11 +1105,11 @@ function ChecklistButton(event) {
 }
 
 function RelatedTagsEnter() {
-    $(document).on(JSPLib.program.keydown + '.scroll', null, 'left right', RelatedTagsScroll);
+    $(document).on(JSPLib.event.keydown + '.scroll', null, 'left right', RelatedTagsScroll);
 }
 
 function RelatedTagsLeave() {
-    $(document).off(JSPLib.program.keydown + '.scroll');
+    $(document).off(JSPLib.event.keydown + '.scroll');
 }
 
 function RelatedTagsScroll(event) {
@@ -1302,10 +1302,10 @@ function ToggleTag(event) {
 
 function InitializeRelatedTagsSection() {
     DanbooruProxy.Post.EDIT_DIALOG_MIN_HEIGHT = 800;
-    $(document).on(JSPLib.program.click, '#irt-related-tags a.search-tag', ToggleTag);
-    $(document).on(JSPLib.program.click, '.irt-related-button', RelatedTagsButton);
-    $(document).on(JSPLib.program.click, '.irt-wiki-button', WikiPageButton);
-    $(document).on(JSPLib.program.click, '.irt-checklist-button', ChecklistButton);
+    $(document).on(JSPLib.event.click, '#irt-related-tags a.search-tag', ToggleTag);
+    $(document).on(JSPLib.event.click, '.irt-related-button', RelatedTagsButton);
+    $(document).on(JSPLib.event.click, '.irt-wiki-button', WikiPageButton);
+    $(document).on(JSPLib.event.click, '.irt-checklist-button', ChecklistButton);
     $(document).on('input.irt', '#post_tag_string', UpdateSelected);
     InitialiazeRelatedQueryControls();
     $('.related-tags').before(IRT_RELATED_TAGS_SECTION);
@@ -1359,12 +1359,12 @@ function InitialiazeRelatedQueryControls() {
 
 function InitialiazeRelatedExpandableSection() {
     $('#irt-related-tags').before(IRT_SCROLL_WRAPPER);
-    $('#irt-related-tags').on(JSPLib.program.mouseenter, RelatedTagsEnter);
-    $('#irt-related-tags').on(JSPLib.program.mouseleave, RelatedTagsLeave);
-    $('#irt-edit-scroll-wrapper').on(JSPLib.program.scroll, () => {
+    $('#irt-related-tags').on(JSPLib.event.mouseenter, RelatedTagsEnter);
+    $('#irt-related-tags').on(JSPLib.event.mouseleave, RelatedTagsLeave);
+    $('#irt-edit-scroll-wrapper').on(JSPLib.event.scroll, () => {
         $('#irt-related-tags').scrollLeft($('#irt-edit-scroll-wrapper').scrollLeft());
     });
-    $('#irt-related-tags').on(JSPLib.program.scroll, () => {
+    $('#irt-related-tags').on(JSPLib.event.scroll, () => {
         $('#irt-edit-scroll-wrapper').scrollLeft($('#irt-related-tags').scrollLeft());
     });
     let $container = $('#irt-related-tags-container');
@@ -1543,10 +1543,10 @@ function RenderSettingsMenu() {
     Menu.engageUI({checkboxradio: true});
     Menu.saveUserSettingsClick();
     Menu.resetUserSettingsClick();
-    $('#irt-tag-name-view').on(JSPLib.program.click, ViewChecklistTag);
-    $('#irt-tag-name-save').on(JSPLib.program.click, SaveChecklistTag);
-    $('#irt-tag-name-populate').on(JSPLib.program.click, PopulateChecklistTag);
-    $('#irt-tag-name-list').on(JSPLib.program.click, ListChecklistTags);
+    $('#irt-tag-name-view').on(JSPLib.event.click, ViewChecklistTag);
+    $('#irt-tag-name-save').on(JSPLib.event.click, SaveChecklistTag);
+    $('#irt-tag-name-populate').on(JSPLib.event.click, PopulateChecklistTag);
+    $('#irt-tag-name-list').on(JSPLib.event.click, ListChecklistTags);
     Menu.cacheInfoClick();
     Menu.purgeCacheClick();
     Menu.expandableClick();
