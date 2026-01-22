@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedRelatedTags
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      3.10
+// @version      3.11
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -14,44 +14,30 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/menu.js
 // ==/UserScript==
 
-/* global JSPLib $ Danbooru validate */
+/* global JSPLib $ */
+
+(({DanbooruProxy, ValidateJS, Debug, Notice, Utility, Storage, Template, Validate, Concurrency, Statistics, Network, Danbooru, Load, Menu}) => {
+
+"IndexedRelatedTags";
 
 /****Library updates****/
 
-JSPLib.danbooru.initializeAutocomplete = function (selector, autocomplete_type) {
-    let $fields = $(selector);
-    JSPLib.utility.setDataAttribute($fields, 'autocomplete', autocomplete_type);
-    if (['tag-edit', 'tag-query'].includes(autocomplete_type)) {
-        $fields.autocomplete({
-            select (_event, ui) {
-                Danbooru.Autocomplete.insert_completion(this, ui.item.value);
-                return false;
-            },
-            async source(_request, respond) {
-                let term = Danbooru.Autocomplete.current_term(this.element);
-                let results = await Danbooru.Autocomplete.autocomplete_source(term, 'tag_query');
-                respond(results);
-            },
-        });
-    } else {
-        let query_type = autocomplete_type.replaceAll(/-/g, '_');
-        Danbooru.Autocomplete.initialize_fields($fields, query_type);
-    }
-};
+////NONE
 
 /****Global variables****/
 
@@ -88,92 +74,92 @@ const SETTINGS_CONFIG = {
     related_query_categories: {
         allitems: RELATED_CATEGORY_NAMES,
         reset: RELATED_CATEGORY_NAMES,
-        validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'checkbox', RELATED_CATEGORY_NAMES),
+        validate: (data) => Menu.validateCheckboxRadio(data, 'checkbox', RELATED_CATEGORY_NAMES),
         hint: "Select the category query buttons to show.",
     },
     related_results_limit: {
         reset: 0,
         parse: parseInt,
-        validate: (data) => JSPLib.menu.validateNumber(data, true, 0, 50),
+        validate: (data) => Menu.validateNumber(data, true, 0, 50),
         hint: "Number of results to show (1 - 50) for the primary <b>Tags</b> column. Setting to 0 uses Danbooru's default limit."
     },
     related_query_order_enabled: {
         reset: false,
-        validate: JSPLib.utility.isBoolean,
+        validate: Utility.isBoolean,
         hint: "Show controls that allow for alternate query orders on related tags."
     },
     related_query_order_default: {
         allitems: RELATED_QUERY_ORDERS,
         reset: ['frequency'],
-        validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'radio', RELATED_QUERY_ORDERS),
+        validate: (data) => Menu.validateCheckboxRadio(data, 'radio', RELATED_QUERY_ORDERS),
         hint: "Select the default query order selected on the related tag controls. Will be the order used when the order controls are not available."
     },
     expandable_related_section_enabled: {
         reset: true,
-        validate: JSPLib.utility.isBoolean,
+        validate: Utility.isBoolean,
         hint: "Places all related tag columns on the same row, with top/bottom scrollbars and arrow keys to support scrolling."
     },
     related_statistics_enabled: {
         reset: true,
-        validate: JSPLib.utility.isBoolean,
+        validate: Utility.isBoolean,
         hint: "Show tag overlap statistics for related tag results (<b>Tags</b> column only)."
     },
     random_post_batches: {
         reset: 4,
         parse: parseInt,
-        validate: (data) => JSPLib.menu.validateNumber(data, true, 1, 10),
+        validate: (data) => Menu.validateNumber(data, true, 1, 10),
         hint: "Number of consecutive queries for random posts (1 - 10)."
     },
     random_posts_per_batch: {
         reset: 100,
         parse: parseInt,
-        validate: (data) => JSPLib.menu.validateNumber(data, true, 20, 200),
+        validate: (data) => Menu.validateNumber(data, true, 20, 200),
         hint: "Number of posts to query for each batch (20 - 200)."
     },
     wiki_page_tags_enabled: {
         reset: true,
-        validate: JSPLib.utility.isBoolean,
+        validate: Utility.isBoolean,
         hint: "Include wiki page tags when using one of the related tags buttons."
     },
     wiki_page_query_only_enabled: {
         reset: false,
-        validate: JSPLib.utility.isBoolean,
+        validate: Utility.isBoolean,
         hint: "Include a button to query only wiki page tags."
     },
     checklist_tags_enabled: {
         reset: false,
-        validate: JSPLib.utility.isBoolean,
+        validate: Utility.isBoolean,
         hint: "Include checklist tags when using one of the related tags buttons."
     },
     checklist_query_only_enabled: {
         reset: false,
-        validate: JSPLib.utility.isBoolean,
+        validate: Utility.isBoolean,
         hint: "Include a button to add only checklist tags."
     },
     query_unknown_tags_enabled: {
         reset: false,
-        validate: JSPLib.utility.isBoolean,
+        validate: Utility.isBoolean,
         hint: "Do an additional query if any wiki page tags are not found with the initial query."
     },
     other_wikis_enabled: {
         reset: true,
-        validate: JSPLib.utility.isBoolean,
+        validate: Utility.isBoolean,
         hint: "Include list_of_* wikis when including wiki page tags."
     },
     unique_wiki_tags_enabled: {
         reset: true,
-        validate: JSPLib.utility.isBoolean,
+        validate: Utility.isBoolean,
         hint: "Only show one instance of a tag by its first occurrence."
     },
     recheck_data_interval: {
         reset: 1,
         parse: parseInt,
-        validate: (data) => JSPLib.menu.validateNumber(data, true, 0, 3),
+        validate: (data) => Menu.validateNumber(data, true, 0, 3),
         hint: "Number of days (0 - 3). Setting to 0 disables this."
     },
     network_only_mode: {
         reset: false,
-        validate: JSPLib.utility.isBoolean,
+        validate: Utility.isBoolean,
         hint: `Always goes to network. <b><span style="color:red">Warning:</span> This negates the benefit of cached data!</b>`
     },
 };
@@ -267,7 +253,7 @@ const NONEXISTENT_TAG_CATEGORY = 300;
 
 //CSS Constants
 
-const PROGRAM_CSS = `
+const PROGRAM_CSS = Template.normalizeCSS()`
 /**Container**/
 div#edit-dialog div#irt-related-tags-container {
     max-height: 400px;
@@ -401,7 +387,7 @@ div.irt-related-tag li.irt-selected {
     height: 20px;
 }`;
 
-const LIGHT_MODE_CSS = `
+const LIGHT_MODE_CSS = Template.normalizeCSS({theme: 'light'})`
 /**Related tag**/
 span.irt-tag-statistic {
     color: var(--red-3);
@@ -441,7 +427,7 @@ span.irt-tag-statistic.irt-low-percent {
     border-color: var(--grey-3);
 }`;
 
-const DARK_MODE_CSS = `
+const DARK_MODE_CSS = Template.normalizeCSS({theme: 'dark'})`
 /**Related tag**/
 span.irt-tag-statistic {
     color: var(--red-5);
@@ -498,7 +484,7 @@ const MENU_CSS = `
 
 //HTML Constants
 
-const RELATED_TAG_SETTINGS_DETAILS = `
+const RELATED_TAG_SETTINGS_DETAILS = Template.normalizeHTML()`
 <ul>
     <li><b>Related query orders:</b>
         <ul>
@@ -511,7 +497,7 @@ const RELATED_TAG_SETTINGS_DETAILS = `
 </ul>
 <div style="font-size:80%"><b>Note:</b> Each related query order is stored separately, so results can be repeated with different values.</div>`;
 
-const NETWORK_SETTINGS_DETAILS = `
+const NETWORK_SETTINGS_DETAILS = Template.normalizeHTML()`
 <ul>
     <li><b>Recheck data interval:</b> Data expiring within this period gets automatically requeried.</li>
     <li><b>Network only mode:</b>
@@ -522,7 +508,7 @@ const NETWORK_SETTINGS_DETAILS = `
     </li>
 </ul>`;
 
-const CACHE_DATA_DETAILS = `
+const CACHE_DATA_DETAILS = Template.normalizeHTML()`
 <ul>
     <li><b>Related tag data:</b> Frequency tags from each of the tag categories (<span style="font-size:80%"><i>beneath the tag edit box</i></span>).
         <ul style="font-size:80%">
@@ -538,7 +524,7 @@ const CACHE_DATA_DETAILS = `
     <li><b>Tags overlap (tagov):</b> Frequency of tag in relation to other tags.</li>
 </ul>`;
 
-const PROGRAM_DATA_DETAILS = `
+const PROGRAM_DATA_DETAILS = Template.normalizeHTML()`
 <p class="tn">All timestamps are in milliseconds since the epoch (<a href="https://www.epochconverter.com">Epoch converter</a>).</p>
 <ul>
     <li><u>General data</u>
@@ -549,18 +535,18 @@ const PROGRAM_DATA_DETAILS = `
     </li>
 </ul>`;
 
-const CHECKLIST_TEXTAREA = `
+const CHECKLIST_TEXTAREA = Template.normalizeHTML()`
 <div id="irt-checklist-frequent-tags">
     <textarea data-autocomplete="tag-query"></textarea>
 </div>
 `;
 
-const IRT_SCROLL_WRAPPER = `
+const IRT_SCROLL_WRAPPER = Template.normalizeHTML()`
 <div id="irt-edit-scroll-wrapper">
     <div id="irt-edit-scroll-bar"></div>
 </div>`;
 
-const IRT_RELATED_TAGS_SECTION = `
+const IRT_RELATED_TAGS_SECTION = Template.normalizeHTML()`
 <div id="irt-related-tags-container">
     <div id="irt-related-tags">
         <div id="irt-frequent-recent-container"></div>
@@ -569,55 +555,55 @@ const IRT_RELATED_TAGS_SECTION = `
     </div>
 </div>`;
 
-const WIKI_PAGE_BUTTON = `
+const WIKI_PAGE_BUTTON = Template.normalizeHTML()`
 <div id="irt-wiki-page-controls">
     <button id="irt-wiki-page-query" class="irt-wiki-button" title="Query wiki pages only.">Wiki page</button>
 </div>`;
 
-const CHECKLIST_BUTTON = `
+const CHECKLIST_BUTTON = Template.normalizeHTML()`
 <div id="irt-checklist-controls">
     <button id="irt-checklist-query" class="irt-checklist-button" title="Query checklist only.">Checklist</button>
 </div>`;
 
 //Time constants
 
-const PRUNE_EXPIRES = JSPLib.utility.one_day;
+const PRUNE_EXPIRES = Utility.one_day;
 
 //Expiration variables
 
-const TAGS_OVERLAP_EXPIRES = JSPLib.utility.one_month;
-const WIKI_PAGE_TAGS_EXPIRES = 2 * JSPLib.utility.one_week;
-const RELATED_TAG_EXPIRES = JSPLib.utility.one_week;
+const TAGS_OVERLAP_EXPIRES = Utility.one_month;
+const WIKI_PAGE_TAGS_EXPIRES = 2 * Utility.one_week;
+const RELATED_TAG_EXPIRES = Utility.one_week;
 
 //Validate constants
 
 const RELATEDTAG_CONSTRAINTS = {
-    entry: JSPLib.validate.hashentry_constraints,
+    entry: Validate.hashentry_constraints,
     value: {
-        categories: JSPLib.validate.array_constraints,
-        query: JSPLib.validate.stringonly_constraints,
-        tags: JSPLib.validate.tagentryarray_constraints(),
+        categories: Validate.array_constraints,
+        query: Validate.stringonly_constraints,
+        tags: Validate.tagentryarray_constraints(),
     },
-    categories: JSPLib.validate.inclusion_constraints(ALL_RELATED),
+    categories: Validate.inclusion_constraints(ALL_RELATED),
 };
 
 const TAG_OVERLAP_CONSTRAINTS = {
-    entry: JSPLib.validate.hashentry_constraints,
+    entry: Validate.hashentry_constraints,
     value: {
-        count: JSPLib.validate.counting_constraints,
-        overlap: JSPLib.validate.hash_constraints,
+        count: Validate.counting_constraints,
+        overlap: Validate.hash_constraints,
     },
-    overlap: JSPLib.validate.basic_integer_validator,
+    overlap: Validate.basic_integer_validator,
 };
 
 const WIKI_PAGE_CONSTRAINTS = {
-    entry: JSPLib.validate.hashentry_constraints,
+    entry: Validate.hashentry_constraints,
     value: {
-        title: JSPLib.validate.stringonly_constraints,
-        tags: JSPLib.validate.tagentryarray_constraints([0, 1, 3, 4, 5, NONEXISTENT_TAG_CATEGORY]),
-        other_wikis: JSPLib.validate.array_constraints,
+        title: Validate.stringonly_constraints,
+        tags: Validate.tagentryarray_constraints([0, 1, 3, 4, 5, NONEXISTENT_TAG_CATEGORY]),
+        other_wikis: Validate.array_constraints,
     },
-    other_wikis: JSPLib.validate.basic_stringonly_validator,
+    other_wikis: Validate.basic_stringonly_validator,
 };
 
 /****Functions****/
@@ -625,8 +611,8 @@ const WIKI_PAGE_CONSTRAINTS = {
 //Validate functions
 
 function ValidateEntry(key, entry) {
-    const printer = JSPLib.debug.getFunctionPrint('ValidateEntry');
-    if (!JSPLib.validate.validateIsHash(key, entry)) {
+    const printer = Debug.getFunctionPrint('ValidateEntry');
+    if (!Validate.validateIsHash(key, entry)) {
         return false;
     }
     if (key.match(/^rt[fcjo](gen|char|copy|art)?-/)) {
@@ -638,41 +624,41 @@ function ValidateEntry(key, entry) {
     if (key.match(/^wpt-/)) {
         return ValidateWikiPageEntry(key, entry);
     }
-    printer.debuglog("Bad key!");
+    printer.log("Bad key!");
     return false;
 }
 
 function ValidateRelatedtagEntry(key, entry) {
-    if (!JSPLib.validate.validateHashEntries(key, entry, RELATEDTAG_CONSTRAINTS.entry)) {
+    if (!Validate.validateHashEntries(key, entry, RELATEDTAG_CONSTRAINTS.entry)) {
         return false;
     }
-    if (!JSPLib.validate.validateHashEntries(key + '.value', entry.value, RELATEDTAG_CONSTRAINTS.value)) {
+    if (!Validate.validateHashEntries(key + '.value', entry.value, RELATEDTAG_CONSTRAINTS.value)) {
         return false;
     }
     return true;
 }
 
 function ValidateTagOverlapEntry(key, entry) {
-    if (!JSPLib.validate.validateHashEntries(key, entry, TAG_OVERLAP_CONSTRAINTS.entry)) {
+    if (!Validate.validateHashEntries(key, entry, TAG_OVERLAP_CONSTRAINTS.entry)) {
         return false;
     }
-    if (!JSPLib.validate.validateHashEntries(key + '.value', entry.value, TAG_OVERLAP_CONSTRAINTS.value)) {
+    if (!Validate.validateHashEntries(key + '.value', entry.value, TAG_OVERLAP_CONSTRAINTS.value)) {
         return false;
     }
-    if (!JSPLib.validate.validateHashValues(key + '.value.overlap', entry.value.overlap, TAG_OVERLAP_CONSTRAINTS.overlap)) {
+    if (!Validate.validateHashValues(key + '.value.overlap', entry.value.overlap, TAG_OVERLAP_CONSTRAINTS.overlap)) {
         return false;
     }
     return true;
 }
 
 function ValidateWikiPageEntry(key, entry) {
-    if (!JSPLib.validate.validateHashEntries(key, entry, WIKI_PAGE_CONSTRAINTS.entry)) {
+    if (!Validate.validateHashEntries(key, entry, WIKI_PAGE_CONSTRAINTS.entry)) {
         return false;
     }
-    if (!JSPLib.validate.validateHashEntries(key + '.value', entry.value, WIKI_PAGE_CONSTRAINTS.value)) {
+    if (!Validate.validateHashEntries(key + '.value', entry.value, WIKI_PAGE_CONSTRAINTS.value)) {
         return false;
     }
-    if (!JSPLib.validate.validateArrayValues(key + '.other_wikis', entry.value.other_wikis, WIKI_PAGE_CONSTRAINTS.other_wikis)) {
+    if (!Validate.validateArrayValues(key + '.other_wikis', entry.value.other_wikis, WIKI_PAGE_CONSTRAINTS.other_wikis)) {
         return false;
     }
     return true;
@@ -682,7 +668,7 @@ function ValidateProgramData(key, entry) {
     var checkerror = [];
     switch (key) {
         case 'irt-user-settings':
-            checkerror = JSPLib.menu.validateUserSettings(entry, SETTINGS_CONFIG);
+            checkerror = Menu.validateUserSettings(entry, SETTINGS_CONFIG);
             break;
         case 'irt-prune-expires':
             if (!Number.isInteger(entry)) {
@@ -693,7 +679,7 @@ function ValidateProgramData(key, entry) {
             checkerror = ["Not a valid program data key."];
     }
     if (checkerror.length) {
-        JSPLib.validate.outputValidateError(key, checkerror);
+        Validate.outputValidateError(key, checkerror);
         return false;
     }
     return true;
@@ -702,7 +688,7 @@ function ValidateProgramData(key, entry) {
 //Auxiliary functions
 
 function GetRelatedKeyModifer(category, query_order) {
-    return 'rt' + query_order[0] + (category ? JSPLib.danbooru.getShortName(category) : "");
+    return 'rt' + query_order[0] + (category ? Danbooru.getShortName(category) : "");
 }
 
 function FilterTagEntries(tagentries) {
@@ -716,7 +702,7 @@ function FilterTagEntries(tagentries) {
 }
 
 function GetTagsEntryArray(wiki_page) {
-    let wiki_link_targets = JSPLib.utility.findAll(wiki_page.body, /\[\[([^|\]]+)\|?[^\]]*\]\]/g)
+    let wiki_link_targets = Utility.findAll(wiki_page.body, /\[\[([^|\]]+)\|?[^\]]*\]\]/g)
         .filter((str) => !str.startsWith('[['))
         .map((str) => str.toLowerCase()
             .replace(/ /g, '_')
@@ -740,8 +726,8 @@ function GetTagsEntryArray(wiki_page) {
 }
 
 function GetChecklistTagsArray(tag_name) {
-    let tag_array = JSPLib.storage.getLocalData('irt-checklist-' + tag_name, {default_val: []});
-    let check = validate({tag_array}, {tag_array: JSPLib.validate.tagentryarray_constraints([0, 1, 3, 4, 5, DEPRECATED_TAG_CATEGORY, NONEXISTENT_TAG_CATEGORY])});
+    let tag_array = Storage.getLocalData('irt-checklist-' + tag_name, {default_val: []});
+    let check = ValidateJS({tag_array}, {tag_array: Validate.tagentryarray_constraints([0, 1, 3, 4, 5, DEPRECATED_TAG_CATEGORY, NONEXISTENT_TAG_CATEGORY])});
     if (check) {
         console.warn(`Validation error[${tag_name}]:`, check, tag_array);
         return null;
@@ -776,19 +762,19 @@ function GetTagQueryParams(tag_list) {
 
 function RenderTaglist(taglist, columnname, tags_overlap) {
     let html = "";
-    let display_percentage = Boolean(IRT.related_statistics_enabled && JSPLib.utility.isHash(tags_overlap));
+    let display_percentage = Boolean(IRT.related_statistics_enabled && Utility.isHash(tags_overlap));
     taglist.forEach((tagdata) => {
         let tag = tagdata[0];
-        let escaped_tag = JSPLib.utility.HTMLEscape(tag);
+        let escaped_tag = Utility.HTMLEscape(tag);
         let category = tagdata[1];
         let display_name = tag.replace(/_/g, ' ');
-        let search_link = JSPLib.danbooru.postSearchLink(tag, display_name, `class="search-tag" data-category="${category}" data-tag-name="${escaped_tag}"`);
+        let search_link = Danbooru.postSearchLink(display_name, {tags: tag}, {class: 'search-tag', dataCategory: category, dataTagname: escaped_tag});
         var prefix, classname;
         if (display_percentage) {
             var percentage_string, percent_classname;
             if (Number.isInteger(tags_overlap.overlap[tag])) {
                 let tag_percentage = Math.ceil(100 * (tags_overlap.overlap[tag] / tags_overlap.count)) || 0;
-                percentage_string = JSPLib.utility.padNumber(tag_percentage, 2) + '%';
+                percentage_string = Utility.padNumber(tag_percentage, 2) + '%';
                 percent_classname = (tag_percentage >= 100 ? 'irt-high-percent' : "");
             } else {
                 percentage_string = ">5%";
@@ -845,12 +831,12 @@ function RenderChecklistColumn(checklist_tags, tag_name) {
 function RenderWikiTagQueryColumns(wiki_page, other_wikis) {
     let is_empty = wiki_page.tags.length === 0;
     let display_name = wiki_page.title.replace(/_/g, ' ');
-    let column_html = (!is_empty ? RenderTaglist(FilterTagEntries(wiki_page.tags), JSPLib.danbooru.wikiLink(wiki_page.title, `wiki:${display_name}`, 'target="_blank"')) : "");
+    let column_html = (!is_empty ? RenderTaglist(FilterTagEntries(wiki_page.tags), Danbooru.wikiLink(`wiki:${display_name}`, wiki_page.title, {target: "_blank"})) : "");
     let html = RenderTagColumn('irt-wiki-related-tags-column', column_html, is_empty);
     other_wikis.forEach((other_wiki) => {
         if (other_wiki.tags.length === 0) return;
         let title_name = other_wiki.title.replace(/_/g, ' ');
-        column_html = RenderTaglist(FilterTagEntries(other_wiki.tags), JSPLib.danbooru.wikiLink(other_wiki.title, `wiki:${title_name}`, 'target="_blank"'));
+        column_html = RenderTaglist(FilterTagEntries(other_wiki.tags), Danbooru.wikiLink(`wiki:${title_name}`, other_wiki.title, {target: "_blank"}));
         html += RenderTagColumn('irt-wiki-related-tags-column', column_html, false);
     });
     return html;
@@ -879,7 +865,7 @@ function RenderRelatedQueryCategoryControls() {
     let html = '<button id="related_query_category_all" class="irt-related-button">All</button>';
     for (let category in RELATED_QUERY_CATEGORIES) {
         if (!IRT.related_query_categories.includes(category)) continue;
-        let display_name = JSPLib.utility.displayCase(category);
+        let display_name = Utility.displayCase(category);
         html += `
 <button id="related_query_category_${category}" class="irt-related-button" data-selector="${category}">${display_name}</button>`;
     }
@@ -893,7 +879,7 @@ function RenderRelatedQueryTypeControls() {
     let html = "";
     RELATED_QUERY_ORDERS.forEach((type) => {
         let checked = (IRT.related_query_order_default[0] === type ? 'checked' : "");
-        let display_name = JSPLib.utility.displayCase(type);
+        let display_name = Utility.displayCase(type);
         html += `
 <label for="related_query_type_${type}">
     ${display_name}
@@ -918,20 +904,20 @@ async function RandomPosts(tag, batches, per_batch) {
     };
     for (let i = 1; i <= batches; i++) {
         url_addons.page = i;
-        let result = await JSPLib.danbooru.submitRequest('posts', url_addons);
-        posts = JSPLib.utility.concat(posts, result);
+        let result = await Danbooru.submitRequest('posts', url_addons);
+        posts = Utility.concat(posts, result);
         if (result.length < per_batch) break;
     }
     return posts;
 }
 
 async function TagsOverlapQuery(tag) {
-    const printer = JSPLib.debug.getFunctionPrint('TagsOverlapQuery');
+    const printer = Debug.getFunctionPrint('TagsOverlapQuery');
     const [batches, per_batch] = [IRT.random_post_batches, IRT.random_posts_per_batch];
-    printer.debuglog("Querying:", tag, batches, per_batch);
+    printer.log("Querying:", tag, batches, per_batch);
     let [posts, count] = await Promise.all([
         RandomPosts(tag, batches, per_batch),
-        JSPLib.danbooru.submitRequest('counts/posts', {tags: tag}, {default_val: {counts: {posts: 0}}})
+        Danbooru.submitRequest('counts/posts', {tags: tag}, {default_val: {counts: {posts: 0}}})
     ]);
     let overlap = {};
     for (let i = 0; i < posts.length; i++) {
@@ -946,22 +932,22 @@ async function TagsOverlapQuery(tag) {
             delete overlap[k];
         }
     }
-    return {value: {overlap, count: Math.min(count.counts.posts, batches * per_batch)}, expires: JSPLib.utility.getExpires(TAGS_OVERLAP_EXPIRES)};
+    return {value: {overlap, count: Math.min(count.counts.posts, batches * per_batch)}, expires: Utility.getExpires(TAGS_OVERLAP_EXPIRES)};
 }
 
 async function WikiPageTagsQuery(title) {
-    const printer = JSPLib.debug.getFunctionPrint('WikiPageTagsQuery');
-    printer.debuglog("Querying:", title, (IRT.other_wikis_enabled ? "with" : "without", "other wikis"));
+    const printer = Debug.getFunctionPrint('WikiPageTagsQuery');
+    printer.log("Querying:", title, (IRT.other_wikis_enabled ? "with" : "without", "other wikis"));
     let url_addons = {
         search: {title},
         only: 'body,tag,dtext_links[link_target,link_type,linked_tag[name,category,is_deprecated]]'
     };
-    let wikis_with_links = await JSPLib.danbooru.submitRequest('wiki_pages', url_addons);
+    let wikis_with_links = await Danbooru.submitRequest('wiki_pages', url_addons);
     let tags = (wikis_with_links.length ? GetTagsEntryArray(wikis_with_links[0]) : []);
     if (IRT.query_unknown_tags_enabled) {
         let tag_names = tags.filter((tag) => tag[1] === NONEXISTENT_TAG_CATEGORY).map((tag) => tag[0]);
         if (tag_names.length) {
-            let tag_data = await JSPLib.danbooru.submitRequest('tags', GetTagQueryParams(tag_names));
+            let tag_data = await Danbooru.submitRequest('tags', GetTagQueryParams(tag_names));
             let tag_array = CreateTagArray(tag_names, tag_data);
             tags = tags.map((tag_entry) => (tag_array.find((item) => item[0] === tag_entry[0]) ?? tag_entry));
         }
@@ -971,17 +957,17 @@ async function WikiPageTagsQuery(title) {
             .filter((link) => (link.link_type === 'wiki_link' && link.link_target.startsWith('list_of_')))
             .map((link) => link.link_target) :
         []);
-    return {value: {title, tags, other_wikis}, expires: JSPLib.utility.getExpires(WIKI_PAGE_TAGS_EXPIRES)};
+    return {value: {title, tags, other_wikis}, expires: Utility.getExpires(WIKI_PAGE_TAGS_EXPIRES)};
 }
 
 async function RelatedTagsQuery(tag, category, query_order) {
-    const printer = JSPLib.debug.getFunctionPrint('RelatedTagsQuery');
-    printer.debuglog("Querying:", tag, category);
-    let url_addons = {search: {query: tag, order: query_order}, limit: IRT.related_results_limit || Danbooru.RelatedTag.MAX_RELATED_TAGS};
+    const printer = Debug.getFunctionPrint('RelatedTagsQuery');
+    printer.log("Querying:", tag, category);
+    let url_addons = {search: {query: tag, order: query_order}, limit: IRT.related_results_limit || DanbooruProxy.RelatedTag.MAX_RELATED_TAGS};
     if (category in RELATED_QUERY_CATEGORIES) {
         url_addons.search.category = RELATED_QUERY_CATEGORIES[category];
     }
-    let html = await JSPLib.network.get('/related_tag.html', {data: url_addons});
+    let html = await Network.get('/related_tag.html', {data: url_addons});
     let tagentry_array = $(html).find('tbody .name-column a[href^="/posts"]').toArray().map((link) => {
         let name = link.innerText;
         let category = Number(
@@ -996,31 +982,31 @@ async function RelatedTagsQuery(tag, category, query_order) {
         categories: (category ? [RELATED_QUERY_CATEGORIES[category]] : []),
         tags: tagentry_array,
     };
-    return {value: data, expires: JSPLib.utility.getExpires(RELATED_TAG_EXPIRES)};
+    return {value: data, expires: Utility.getExpires(RELATED_TAG_EXPIRES)};
 }
 
 //Network/storage wrappers
 
 async function GetCachedData({name = "", args = [], keyfunc = (() => {}), netfunc = (() => {}), expires = null} = {}) {
-    const printer = JSPLib.debug.getFunctionPrint('GetCachedData');
+    const printer = Debug.getFunctionPrint('GetCachedData');
     let key = keyfunc(...args);
-    printer.debuglog("Checking", name, ':', key);
+    printer.log("Checking", name, ':', key);
     let cached = await (!IRT.network_only_mode ?
-        JSPLib.storage.checkLocalDB(key, expires) :
+        Storage.checkLocalDB(key, expires) :
         Promise.resolve(null));
     if (!cached) {
         cached = await netfunc(...args);
-        JSPLib.storage.saveData(key, cached);
+        Storage.saveData(key, cached);
     } else if (IRT.recheck_data_interval > 0) {
-        let recheck_time = cached.expires - (IRT.recheck_data_interval * JSPLib.utility.one_day);
-        if (!JSPLib.utility.validateExpires(recheck_time)) {
-            printer.debuglog("Rechecking", name, key);
+        let recheck_time = cached.expires - (IRT.recheck_data_interval * Utility.one_day);
+        if (!Utility.validateExpires(recheck_time)) {
+            printer.log("Rechecking", name, key);
             netfunc(...args).then((data) => {
-                JSPLib.storage.saveData(key, data);
+                Storage.saveData(key, data);
             });
         }
     }
-    printer.debuglog("Found", name, ':', key, cached.value);
+    printer.log("Found", name, ':', key, cached.value);
     return cached.value;
 }
 
@@ -1073,9 +1059,9 @@ async function GetAllWikiPageTags(tag) {
 
 async function RelatedTagsButton(event) {
     event.preventDefault();
-    let currenttag = Danbooru.RelatedTag.current_tag().trim().toLowerCase();
+    let currenttag = DanbooruProxy.RelatedTag.current_tag().trim().toLowerCase();
     let category = $(event.target).data('selector');
-    let query_order = (IRT.related_query_order_enabled ? JSPLib.menu.getCheckboxRadioSelected('.irt-program-checkbox') : IRT.related_query_order_default);
+    let query_order = (IRT.related_query_order_enabled ? Menu.getCheckboxRadioSelected('.irt-program-checkbox') : IRT.related_query_order_default);
     let promise_array = [GetRelatedTags(currenttag, category, query_order[0])];
     if (IRT.related_statistics_enabled) {
         promise_array.push(GetTagsOverlap(currenttag));
@@ -1106,7 +1092,7 @@ async function RelatedTagsButton(event) {
 
 async function WikiPageButton(event) {
     event.preventDefault();
-    let currenttag = Danbooru.RelatedTag.current_tag().trim().toLowerCase();
+    let currenttag = DanbooruProxy.RelatedTag.current_tag().trim().toLowerCase();
     let wiki_result = await GetAllWikiPageTags(currenttag);
     $('#irt-related-tags-query-container').html(RenderWikiTagQueryColumns(wiki_result.wiki_page, wiki_result.other_wikis));
     UpdateSelected();
@@ -1115,10 +1101,10 @@ async function WikiPageButton(event) {
 
 function ChecklistButton(event) {
     event.preventDefault();
-    let currenttag = Danbooru.RelatedTag.current_tag().trim().toLowerCase();
+    let currenttag = DanbooruProxy.RelatedTag.current_tag().trim().toLowerCase();
     let tag_array = GetChecklistTagsArray(currenttag);
     if (tag_array === null) {
-        JSPLib.notice.error("Corrupted data: See debug console for details.");
+        Notice.error("Corrupted data: See debug console for details.");
     } else {
         $('#irt-related-tags-query-container').html(RenderChecklistColumn(tag_array, currenttag));
         UpdateSelected();
@@ -1127,11 +1113,11 @@ function ChecklistButton(event) {
 }
 
 function RelatedTagsEnter() {
-    $(document).on(JSPLib.program_keydown + '.scroll', null, 'left right', RelatedTagsScroll);
+    $(document).on(JSPLib.program.keydown + '.scroll', null, 'left right', RelatedTagsScroll);
 }
 
 function RelatedTagsLeave() {
-    $(document).off(JSPLib.program_keydown + '.scroll');
+    $(document).off(JSPLib.program.keydown + '.scroll');
 }
 
 function RelatedTagsScroll(event) {
@@ -1159,13 +1145,13 @@ function ViewChecklistTag() {
             }
             return null;
         }).filter((data) => data != null);
-        $('#irt-checklist-frequent-tags textarea').val(JSON.stringify(JSPLib.utility.mergeHashes(...tag_data), null, 4));
+        $('#irt-checklist-frequent-tags textarea').val(JSON.stringify(Utility.mergeHashes(...tag_data), null, 4));
     } else {
         let tag_name = $('#irt-control-tag-name').val().split(/\s+/)[0];
         if (!tag_name) return;
         let tag_array = GetChecklistTagsArray(tag_name);
         if (tag_array === null) {
-            JSPLib.notice.error("Corrupted data: See debug console for details.");
+            Notice.error("Corrupted data: See debug console for details.");
         } else {
             let tag_list = tag_array.map((entry) => entry[0]);
             $('#irt-checklist-frequent-tags textarea').val(tag_list.join('\n'));
@@ -1182,9 +1168,9 @@ async function SaveChecklistTag() {
             data_input = JSON.parse(text_input);
         } catch (e) {
             data_input = null;
-            JSPLib.debug.debugerror("Error parsing data:", e);
+            Debug.error("Error parsing data:", e);
         }
-        if (JSPLib.utility.isHash(data_input)) {
+        if (Utility.isHash(data_input)) {
             let checklist_data = {};
             let check_tags = [];
             for (let key in data_input) {
@@ -1193,47 +1179,47 @@ async function SaveChecklistTag() {
                 checklist = checklist.filter((item) => typeof item === "string");
                 if (checklist.length === 0) continue;
                 checklist_data[key] = checklist;
-                check_tags = JSPLib.utility.arrayUnion(check_tags, checklist);
+                check_tags = Utility.arrayUnion(check_tags, checklist);
             }
             if (check_tags.length > 0) {
-                JSPLib.notice.notice("Querying tags...");
+                Notice.notice("Querying tags...");
                 let tag_data = [];
                 for (let i = 0; i < check_tags.length; i += 1000) {
                     let query_tags = check_tags.slice(i, i + 1000);
-                    let tags = await JSPLib.danbooru.submitRequest('tags', GetTagQueryParams(query_tags), {long_format: true});
-                    tag_data = JSPLib.utility.concat(tag_data, tags);
+                    let tags = await Danbooru.submitRequest('tags', GetTagQueryParams(query_tags), {long_format: true});
+                    tag_data = Utility.concat(tag_data, tags);
                 }
                 for (let tag_name in checklist_data) {
                     let checklist = checklist_data[tag_name];
                     let tag_array = CreateTagArray(checklist, tag_data);
-                    JSPLib.storage.setLocalData('irt-checklist-' + tag_name, tag_array);
+                    Storage.setLocalData('irt-checklist-' + tag_name, tag_array);
                 }
-                JSPLib.notice.notice("Checklists imported.");
+                Notice.notice("Checklists imported.");
             } else {
-                JSPLib.notice.error("No valid checklists found.");
+                Notice.error("No valid checklists found.");
             }
         } else {
-            JSPLib.notice.error("Error importing checklist.");
+            Notice.error("Error importing checklist.");
         }
     } else {
         let tag_name = $('#irt-control-tag-name').val().split(/\s+/)[0];
         if (!tag_name) return;
         let checklist = $('#irt-checklist-frequent-tags textarea').val().split(/\s/).filter((name) => (name !== ""));
         if (checklist.length > 0) {
-            let tag_data = await JSPLib.danbooru.submitRequest('tags', GetTagQueryParams(checklist));
+            let tag_data = await Danbooru.submitRequest('tags', GetTagQueryParams(checklist));
             let tag_array = CreateTagArray(checklist, tag_data);
-            JSPLib.storage.setLocalData('irt-checklist-' + tag_name, tag_array);
+            Storage.setLocalData('irt-checklist-' + tag_name, tag_array);
         } else {
-            JSPLib.storage.removeLocalData('irt-checklist-' + tag_name);
+            Storage.removeLocalData('irt-checklist-' + tag_name);
         }
-        JSPLib.notice.notice("Checklist updated.");
+        Notice.notice("Checklist updated.");
     }
 }
 
 function PopulateChecklistTag() {
     let tag_name = $('#irt-control-tag-name').val().split(/\s+/)[0];
     if (!tag_name) return;
-    JSPLib.notice.notice("Querying Danbooru...");
+    Notice.notice("Querying Danbooru...");
     WikiPageTagsQuery(tag_name).then((data) => {
         let tag_list = data.value.tags.map((entry) => entry[0]);
         $('#irt-checklist-frequent-tags textarea').val(tag_list.join('\n'));
@@ -1252,27 +1238,27 @@ function ListChecklistTags() {
 //Initialization functions
 
 function InitializeUserMediaTags() {
-    const printer = JSPLib.debug.getFunctionPrint('InitializeUserMediaTags');
+    const printer = Debug.getFunctionPrint('InitializeUserMediaTags');
     let recent_tags = $('.recent-related-tags-column [data-tag-name]').map((_, entry) => [[entry.dataset.tagName, Number(entry.className.match(/tag-type-(\d)/)?.[1])]]).toArray();
     let frequent_tags = $('.frequent-related-tags-column [data-tag-name]').map((_, entry) => [[entry.dataset.tagName, Number(entry.className.match(/tag-type-(\d)/)?.[1])]]).toArray();
     let ai_tags = $('.ai-tags-related-tags-column [data-tag-name]').map((_, entry) => [[entry.dataset.tagName, Number(entry.className.match(/tag-type-(\d)/)?.[1])]]).toArray();
-    printer.debuglog("Media tags:", {recent_tags, frequent_tags, ai_tags});
+    printer.log("Media tags:", {recent_tags, frequent_tags, ai_tags});
     $('#irt-frequent-recent-container').html(RenderUserQueryColumns(recent_tags, frequent_tags, ai_tags));
     UpdateSelected();
     QueueRelatedTagColumnWidths();
 }
 
 function InitializeTranslatedTags() {
-    const printer = JSPLib.debug.getFunctionPrint('InitializeTranslatedTags');
+    const printer = Debug.getFunctionPrint('InitializeTranslatedTags');
     let translated_tags = $('.translated-tags-related-tags-column [data-tag-name]').map((_, entry) => [[entry.dataset.tagName, Number(entry.className.match(/tag-type-(\d)/)?.[1])]]).toArray();
-    printer.debuglog("Translated tags:", translated_tags);
+    printer.log("Translated tags:", translated_tags);
     $('#irt-translated-tags-container').html(RenderTranslatedColumn(translated_tags));
     UpdateSelected();
     QueueRelatedTagColumnWidths();
 }
 
 function UpdateSelected() {
-    const current_tags = Danbooru.RelatedTag.current_tags();
+    const current_tags = DanbooruProxy.RelatedTag.current_tags();
     $('#irt-related-tags li').each((_, li) => {
         const tag_name = $(li).find('a').attr('data-tag-name');
         if (current_tags.includes(tag_name)) {
@@ -1291,19 +1277,19 @@ function ToggleTag(event) {
     let category = $link.data('category');
     let tag = $link.data('tag-name');
     if (category === DEPRECATED_TAG_CATEGORY) {
-        JSPLib.notice.error(`Tag "${tag}" is deprecated.`);
+        Notice.error(`Tag "${tag}" is deprecated.`);
         event.preventDefault();
         return;
     }
-    if (category === NONEXISTENT_TAG_CATEGORY && !Danbooru.RelatedTag.current_tags().includes(tag) && !confirm(`Tag "${tag}" does not exist. Continue?`)) {
+    if (category === NONEXISTENT_TAG_CATEGORY && !DanbooruProxy.RelatedTag.current_tags().includes(tag) && !confirm(`Tag "${tag}" does not exist. Continue?`)) {
         event.preventDefault();
         return;
     }
     let old_value = $field.val();
-    if (Danbooru.RelatedTag.current_tags().includes(tag)) {
+    if (DanbooruProxy.RelatedTag.current_tags().includes(tag)) {
         let escaped_tag = RegExp.escape(tag);
         let regex = new RegExp('(^|\\s)' + escaped_tag + '($|\\s)', 'gi');
-        let updated_value = old_value.replace(regex, '$1$2')
+        let updated_value = old_value.replace(regex, '$1$2');
         $field.val(updated_value);
     } else {
         $field.val(old_value + ' ' + tag);
@@ -1323,11 +1309,11 @@ function ToggleTag(event) {
 //Initialize functions
 
 function InitializeRelatedTagsSection() {
-    Danbooru.Post.EDIT_DIALOG_MIN_HEIGHT = 800;
-    $(document).on(JSPLib.program_click, '#irt-related-tags a.search-tag', ToggleTag);
-    $(document).on(JSPLib.program_click, '.irt-related-button', RelatedTagsButton);
-    $(document).on(JSPLib.program_click, '.irt-wiki-button', WikiPageButton);
-    $(document).on(JSPLib.program_click, '.irt-checklist-button', ChecklistButton);
+    DanbooruProxy.Post.EDIT_DIALOG_MIN_HEIGHT = 800;
+    $(document).on(JSPLib.program.click, '#irt-related-tags a.search-tag', ToggleTag);
+    $(document).on(JSPLib.program.click, '.irt-related-button', RelatedTagsButton);
+    $(document).on(JSPLib.program.click, '.irt-wiki-button', WikiPageButton);
+    $(document).on(JSPLib.program.click, '.irt-checklist-button', ChecklistButton);
     $(document).on('input.irt', '#post_tag_string', UpdateSelected);
     InitialiazeRelatedQueryControls();
     $('.related-tags').before(IRT_RELATED_TAGS_SECTION);
@@ -1339,22 +1325,22 @@ function InitializeRelatedTagsSection() {
 }
 
 function InitializeTagColumns() {
-    const printer = JSPLib.debug.getFunctionPrint('InitializeTagColumns');
+    const printer = Debug.getFunctionPrint('InitializeTagColumns');
     if (IRT.controller === 'posts') {
         let media_asset_id = $("#related-tags-container").attr("data-media-asset-id");
-        JSPLib.network.get("/related_tag.js", {data: {user_tags: true, media_asset_id}});
+        Network.get("/related_tag.js", {data: {user_tags: true, media_asset_id}});
     }
     if (!$('#related-tags-container .ai-tags-related-tags-column').html()?.trim()) {
-        printer.debuglog("User/Media tags not loaded yet... setting up mutation observer.");
-        JSPLib.concurrency.setupMutationReplaceObserver('#related-tags-container', '.ai-tags-related-tags-column', () => {
+        printer.log("User/Media tags not loaded yet... setting up mutation observer.");
+        Concurrency.setupMutationReplaceObserver('#related-tags-container', '.ai-tags-related-tags-column', () => {
             InitializeUserMediaTags();
         });
     } else {
         InitializeUserMediaTags();
     }
     if (!$('#related-tags-container .translated-tags-related-tags-column').html()?.trim()) {
-        printer.debuglog("Translated tags not loaded yet... setting up mutation observer.");
-        JSPLib.concurrency.setupMutationReplaceObserver('#related-tags-container', '.translated-tags-related-tags-column', () => {
+        printer.log("Translated tags not loaded yet... setting up mutation observer.");
+        Concurrency.setupMutationReplaceObserver('#related-tags-container', '.translated-tags-related-tags-column', () => {
             InitializeTranslatedTags();
         });
     } else {
@@ -1381,12 +1367,12 @@ function InitialiazeRelatedQueryControls() {
 
 function InitialiazeRelatedExpandableSection() {
     $('#irt-related-tags').before(IRT_SCROLL_WRAPPER);
-    $('#irt-related-tags').on(JSPLib.program_mouseenter, RelatedTagsEnter);
-    $('#irt-related-tags').on(JSPLib.program_mouseleave, RelatedTagsLeave);
-    $('#irt-edit-scroll-wrapper').on(JSPLib.program_scroll, () => {
+    $('#irt-related-tags').on(JSPLib.program.mouseenter, RelatedTagsEnter);
+    $('#irt-related-tags').on(JSPLib.program.mouseleave, RelatedTagsLeave);
+    $('#irt-edit-scroll-wrapper').on(JSPLib.program.scroll, () => {
         $('#irt-related-tags').scrollLeft($('#irt-edit-scroll-wrapper').scrollLeft());
     });
-    $('#irt-related-tags').on(JSPLib.program_scroll, () => {
+    $('#irt-related-tags').on(JSPLib.program.scroll, () => {
         $('#irt-edit-scroll-wrapper').scrollLeft($('#irt-related-tags').scrollLeft());
     });
     let $container = $('#irt-related-tags-container');
@@ -1453,30 +1439,30 @@ function QueueRelatedTagColumnWidths() {
 //Main execution functions
 
 function SetupInitializations() {
-    const printer = JSPLib.debug.getFunctionPrint('SetupInitializations');
-    JSPLib.utility.recheckInterval({
+    const printer = Debug.getFunctionPrint('SetupInitializations');
+    Utility.recheckInterval({
         check: () => (($('#related-tags-container .ai-tags-related-tags-column .tag-list').html() || "").trim() !== ""),
         exec: () => {
-            printer.debuglog("Related tags found... initializing.");
+            printer.log("Related tags found... initializing.");
             InitializeRelatedTagsSection();
         },
         fail: () => {
-            printer.debuglog("Related tags not found... setting up event listener.");
+            printer.log("Related tags not found... setting up event listener.");
             $(document)
                 .on('danbooru:open-post-edit-tab.irt danbooru:open-post-edit-dialog.irt', () => {
-                    printer.debuglog("Event listener triggered... initializing.");
+                    printer.log("Event listener triggered... initializing.");
                     InitializeRelatedTagsSection();
                     $(document).off('danbooru:open-post-edit-tab.irt danbooru:open-post-edit-dialog.irt');
                 });
         },
         interval: 250,
-        duration: JSPLib.utility.one_second * 10,
+        duration: Utility.one_second * 10,
     });
     $(document).on('danbooru:close-post-edit-dialog.irt', QueueRelatedTagColumnWidths);
 }
 
 function CleanupTasks() {
-    JSPLib.storage.pruneProgramCache(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, PRUNE_EXPIRES);
+    Storage.pruneProgramCache(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, PRUNE_EXPIRES);
 }
 
 //Menu functions
@@ -1504,88 +1490,83 @@ function DataTypeChange() {
 }
 
 function InitializeMenuAutocomplete() {
-    const printer = JSPLib.debug.getFunctionPrint('InitializeMenuAutocomplete');
-    JSPLib.load.scriptWaitExecute(IRT, 'IAC', {
+    const printer = Debug.getFunctionPrint('InitializeMenuAutocomplete');
+    Load.scriptWaitExecute(IRT, 'IAC', {
         available: () => {
             $('#irt-control-tag-name, #irt-checklist-frequent-tags').data('tag-query');
             IRT.IAC.InitializeTagQueryAutocompleteIndexed('#irt-control-tag-name, #irt-checklist-frequent-tags textarea', null);
-            printer.debuglogLevel('Initialized IAC autocomplete on menu inputs.', JSPLib.debug.DEBUG);
+            printer.logLevel('Initialized IAC autocomplete on menu inputs.', Debug.DEBUG);
         },
         fallback: () => {
-            JSPLib.danboru.initializeAutocomplete('#irt-control-tag-name, #irt-checklist-frequent-tags textarea', 'tag-query', 'tag_query');
-            printer.debuglogLevel('Initialized Danbooru autocomplete on menu inputs.', JSPLib.debug.DEBUG);
+            Danbooru.initializeAutocomplete('#irt-control-tag-name, #irt-checklist-frequent-tags textarea', 'tag-query');
+            printer.logLevel('Initialized Danbooru autocomplete on menu inputs.', Debug.DEBUG);
         },
     });
 }
 
 function InitializeProgramValues() {
-    const printer = JSPLib.debug.getFunctionPrint('InitializeProgramValues');
-    if (!JSPLib.storage.use_indexed_db) {
-        printer.debugwarn("No Indexed DB! Exiting...");
-        return false;
-    }
-    JSPLib.load.setProgramGetter(IRT, 'IAC', 'IndexedAutocomplete', 29.25);
+    Load.setProgramGetter(IRT, 'IAC', 'IndexedAutocomplete', 29.25);
     return true;
 }
 
 function RenderSettingsMenu() {
-    $('#indexed-related-tags').append(JSPLib.menu.renderMenuFramework(MENU_CONFIG));
-    $('#irt-general-settings').append(JSPLib.menu.renderDomainSelectors());
-    $('#irt-related-tag-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", RELATED_TAG_SETTINGS_DETAILS));
-    $('#irt-related-tag-settings').append(JSPLib.menu.renderInputSelectors('related_query_categories', 'checkbox'));
-    $('#irt-related-tag-settings').append(JSPLib.menu.renderCheckbox('related_query_order_enabled'));
-    $('#irt-related-tag-settings').append(JSPLib.menu.renderInputSelectors('related_query_order_default', 'radio'));
-    $('#irt-related-tag-settings').append(JSPLib.menu.renderTextinput('related_results_limit', 5));
-    $('#irt-related-tag-settings').append(JSPLib.menu.renderCheckbox('expandable_related_section_enabled'));
-    $('#irt-tag-statistic-settings').append(JSPLib.menu.renderCheckbox('related_statistics_enabled'));
-    $('#irt-tag-statistic-settings').append(JSPLib.menu.renderTextinput('random_post_batches', 5));
-    $('#irt-tag-statistic-settings').append(JSPLib.menu.renderTextinput('random_posts_per_batch', 5));
-    $('#irt-checklist-settings').append(JSPLib.menu.renderCheckbox('checklist_tags_enabled'));
-    $('#irt-checklist-settings').append(JSPLib.menu.renderCheckbox('checklist_query_only_enabled'));
-    $('#irt-wiki-page-settings').append(JSPLib.menu.renderCheckbox('wiki_page_tags_enabled'));
-    $('#irt-wiki-page-settings').append(JSPLib.menu.renderCheckbox('other_wikis_enabled'));
-    $('#irt-wiki-page-settings').append(JSPLib.menu.renderCheckbox('unique_wiki_tags_enabled'));
-    $('#irt-wiki-page-settings').append(JSPLib.menu.renderCheckbox('wiki_page_query_only_enabled'));
-    $('#irt-wiki-page-settings').append(JSPLib.menu.renderCheckbox('query_unknown_tags_enabled'));
-    $('#irt-network-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", NETWORK_SETTINGS_DETAILS));
-    $('#irt-network-settings').append(JSPLib.menu.renderTextinput('recheck_data_interval', 5));
-    $('#irt-network-settings').append(JSPLib.menu.renderCheckbox('network_only_mode'));
-    $('#irt-checklist-controls').append(JSPLib.menu.renderCheckbox('import_export', true));
-    $('#irt-checklist-controls').append(JSPLib.menu.renderTextinput('tag_name', 50, true));
+    $('#indexed-related-tags').append(Menu.renderMenuFramework(MENU_CONFIG));
+    $('#irt-general-settings').append(Menu.renderDomainSelectors());
+    $('#irt-related-tag-settings-message').append(Menu.renderExpandable("Additional setting details", RELATED_TAG_SETTINGS_DETAILS));
+    $('#irt-related-tag-settings').append(Menu.renderInputSelectors('related_query_categories', 'checkbox'));
+    $('#irt-related-tag-settings').append(Menu.renderCheckbox('related_query_order_enabled'));
+    $('#irt-related-tag-settings').append(Menu.renderInputSelectors('related_query_order_default', 'radio'));
+    $('#irt-related-tag-settings').append(Menu.renderTextinput('related_results_limit', 5));
+    $('#irt-related-tag-settings').append(Menu.renderCheckbox('expandable_related_section_enabled'));
+    $('#irt-tag-statistic-settings').append(Menu.renderCheckbox('related_statistics_enabled'));
+    $('#irt-tag-statistic-settings').append(Menu.renderTextinput('random_post_batches', 5));
+    $('#irt-tag-statistic-settings').append(Menu.renderTextinput('random_posts_per_batch', 5));
+    $('#irt-checklist-settings').append(Menu.renderCheckbox('checklist_tags_enabled'));
+    $('#irt-checklist-settings').append(Menu.renderCheckbox('checklist_query_only_enabled'));
+    $('#irt-wiki-page-settings').append(Menu.renderCheckbox('wiki_page_tags_enabled'));
+    $('#irt-wiki-page-settings').append(Menu.renderCheckbox('other_wikis_enabled'));
+    $('#irt-wiki-page-settings').append(Menu.renderCheckbox('unique_wiki_tags_enabled'));
+    $('#irt-wiki-page-settings').append(Menu.renderCheckbox('wiki_page_query_only_enabled'));
+    $('#irt-wiki-page-settings').append(Menu.renderCheckbox('query_unknown_tags_enabled'));
+    $('#irt-network-settings-message').append(Menu.renderExpandable("Additional setting details", NETWORK_SETTINGS_DETAILS));
+    $('#irt-network-settings').append(Menu.renderTextinput('recheck_data_interval', 5));
+    $('#irt-network-settings').append(Menu.renderCheckbox('network_only_mode'));
+    $('#irt-checklist-controls').append(Menu.renderCheckbox('import_export', true));
+    $('#irt-checklist-controls').append(Menu.renderTextinput('tag_name', 50, true));
     $('#irt-checklist-controls').append(CHECKLIST_TEXTAREA);
-    $('#irt-controls').append(JSPLib.menu.renderCacheControls());
-    $('#irt-cache-controls-message').append(JSPLib.menu.renderExpandable("Cache Data details", CACHE_DATA_DETAILS));
-    $('#irt-cache-controls').append(JSPLib.menu.renderLinkclick('cache_info', true));
-    $('#irt-cache-controls').append(JSPLib.menu.renderCacheInfoTable());
-    $('#irt-cache-controls').append(JSPLib.menu.renderLinkclick('purge_cache', true));
-    $('#irt-controls').append(JSPLib.menu.renderCacheEditor(true));
-    $('#irt-cache-editor-message').append(JSPLib.menu.renderExpandable("Program Data details", PROGRAM_DATA_DETAILS));
-    $('#irt-cache-editor-controls').append(JSPLib.menu.renderKeyselect('data_source', true));
-    $('#irt-cache-editor-controls').append(JSPLib.menu.renderDataSourceSections());
-    $('#irt-section-indexed-db').append(JSPLib.menu.renderKeyselect('data_type', true));
-    $('#irt-section-indexed-db').append(JSPLib.menu.renderKeyselect('tag_category', true));
-    $('#irt-section-indexed-db').append(JSPLib.menu.renderKeyselect('query_order', true));
-    $('#irt-section-local-storage').append(JSPLib.menu.renderCheckbox('raw_data', true));
-    $('#irt-cache-editor-controls').append(JSPLib.menu.renderTextinput('data_name', 20, true));
-    JSPLib.menu.engageUI(true, true);
-    JSPLib.menu.saveUserSettingsClick();
-    JSPLib.menu.resetUserSettingsClick();
-    $('#irt-tag-name-view').on(JSPLib.program_click, ViewChecklistTag);
-    $('#irt-tag-name-save').on(JSPLib.program_click, SaveChecklistTag);
-    $('#irt-tag-name-populate').on(JSPLib.program_click, PopulateChecklistTag);
-    $('#irt-tag-name-list').on(JSPLib.program_click, ListChecklistTags);
-    JSPLib.menu.cacheInfoClick();
-    JSPLib.menu.purgeCacheClick();
-    JSPLib.menu.expandableClick();
-    JSPLib.menu.dataSourceChange();
+    $('#irt-controls').append(Menu.renderCacheControls());
+    $('#irt-cache-controls-message').append(Menu.renderExpandable("Cache Data details", CACHE_DATA_DETAILS));
+    $('#irt-cache-controls').append(Menu.renderLinkclick('cache_info', true));
+    $('#irt-cache-controls').append(Menu.renderCacheInfoTable());
+    $('#irt-cache-controls').append(Menu.renderLinkclick('purge_cache', true));
+    $('#irt-controls').append(Menu.renderCacheEditor(true));
+    $('#irt-cache-editor-message').append(Menu.renderExpandable("Program Data details", PROGRAM_DATA_DETAILS));
+    $('#irt-cache-editor-controls').append(Menu.renderKeyselect('data_source', true));
+    $('#irt-cache-editor-controls').append(Menu.renderDataSourceSections());
+    $('#irt-section-indexed-db').append(Menu.renderKeyselect('data_type', true));
+    $('#irt-section-indexed-db').append(Menu.renderKeyselect('tag_category', true));
+    $('#irt-section-indexed-db').append(Menu.renderKeyselect('query_order', true));
+    $('#irt-section-local-storage').append(Menu.renderCheckbox('raw_data', true));
+    $('#irt-cache-editor-controls').append(Menu.renderTextinput('data_name', 20, true));
+    Menu.engageUI({checkboxradio: true});
+    Menu.saveUserSettingsClick();
+    Menu.resetUserSettingsClick();
+    $('#irt-tag-name-view').on(JSPLib.program.click, ViewChecklistTag);
+    $('#irt-tag-name-save').on(JSPLib.program.click, SaveChecklistTag);
+    $('#irt-tag-name-populate').on(JSPLib.program.click, PopulateChecklistTag);
+    $('#irt-tag-name-list').on(JSPLib.program.click, ListChecklistTags);
+    Menu.cacheInfoClick();
+    Menu.purgeCacheClick();
+    Menu.expandableClick();
+    Menu.dataSourceChange();
     $('#irt-control-data-type').on('change.irt', DataTypeChange);
-    JSPLib.menu.rawDataChange();
-    JSPLib.menu.getCacheClick(ValidateProgramData);
-    JSPLib.menu.saveCacheClick(ValidateProgramData, ValidateEntry);
-    JSPLib.menu.deleteCacheClick();
-    JSPLib.menu.listCacheClick();
-    JSPLib.menu.refreshCacheClick();
-    JSPLib.menu.cacheAutocomplete();
+    Menu.rawDataChange();
+    Menu.getCacheClick(ValidateProgramData);
+    Menu.saveCacheClick(ValidateProgramData, ValidateEntry);
+    Menu.deleteCacheClick();
+    Menu.listCacheClick();
+    Menu.refreshCacheClick();
+    Menu.cacheAutocomplete();
     InitializeMenuAutocomplete();
 }
 
@@ -1601,10 +1582,10 @@ function Main() {
         dark_css: DARK_MODE_CSS,
         menu_css: MENU_CSS,
     };
-    if (!JSPLib.menu.preloadScript(IRT, preload)) return;
+    if (!Menu.preloadScript(IRT, preload)) return;
     SetupInitializations();
-    JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
-    JSPLib.load.noncriticalTasks(CleanupTasks);
+    Statistics.addPageStatistics(PROGRAM_NAME);
+    Load.noncriticalTasks(CleanupTasks);
 }
 
 /****Initialization****/
@@ -1616,21 +1597,23 @@ JSPLib.program_shortcut = PROGRAM_SHORTCUT;
 JSPLib.program_data = IRT;
 
 //Variables for debug.js
-JSPLib.debug.mode = false;
-JSPLib.debug.level = JSPLib.debug.INFO;
+Debug.mode = false;
+Debug.level = Debug.INFO;
 
 //Variables for menu.js
-JSPLib.menu.program_data_regex = PROGRAM_DATA_REGEX;
-JSPLib.menu.program_data_key = OptionCacheDataKey;
-JSPLib.menu.settings_config = SETTINGS_CONFIG;
-JSPLib.menu.control_config = CONTROL_CONFIG;
+Menu.program_data_regex = PROGRAM_DATA_REGEX;
+Menu.program_data_key = OptionCacheDataKey;
+Menu.settings_config = SETTINGS_CONFIG;
+Menu.control_config = CONTROL_CONFIG;
 
 //Variables for storage.js
-JSPLib.storage.indexedDBValidator = ValidateEntry;
+Storage.indexedDBValidator = ValidateEntry;
 
 //Export JSPLib
-JSPLib.load.exportData();
+Load.exportData();
 
 /****Execution start****/
 
-JSPLib.load.programInitialize(Main, {required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, required_selectors: PROGRAM_LOAD_REQUIRED_SELECTORS});
+Load.programInitialize(Main, {required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, required_selectors: PROGRAM_LOAD_REQUIRED_SELECTORS});
+
+})(JSPLib);

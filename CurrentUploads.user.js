@@ -14,18 +14,18 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ CanvasJS */
@@ -46,7 +46,7 @@
 const DANBOORU_TOPIC_ID = '15169';
 
 //Variables for Load.js
-const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'DanbooruProxy.CurrentUser'];
+const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.CurrentUser'];
 const PROGRAM_LOAD_REQUIRED_SELECTORS = ["#top", "#page-footer"];
 
 //Program name constants
@@ -782,7 +782,7 @@ function ValidateEntry(key, entry) {
         }
         return ValidateStatEntries(key + '.value', entry.value);
     }
-    printer.debuglog("Bad key!");
+    printer.log("Bad key!");
     return false;
 }
 
@@ -1343,10 +1343,10 @@ function InitializeControls() {
             available: () => {
                 CU.IAC.InitializeProgramValues(true);
                 CU.IAC.InitializeAutocompleteIndexed("#count_query_user_id", 'us');
-                printer.debuglogLevel('Initialized CU input autocomplete: #count_query_user_id', Debug.DEBUG);
+                printer.logLevel('Initialized CU input autocomplete: #count_query_user_id', Debug.DEBUG);
             },
             fallback: () => {
-                printer.debuglogLevel('Unable to initialize textarea autocomplete: #count_query_user_id', Debug.DEBUG);
+                printer.logLevel('Unable to initialize textarea autocomplete: #count_query_user_id', Debug.DEBUG);
             },
         });
     }
@@ -1381,7 +1381,7 @@ async function GetReverseTagImplication(tag) {
     var key = 'rti-' + tag;
     var check = await Storage.checkLocalDB(key, {max_expires: rti_expiration});
     if (!(check)) {
-        printer.debuglog("Network:", key);
+        printer.log("Network:", key);
         let data = await Danbooru.submitRequest('tag_implications', {search: {antecedent_name: tag}, only: id_field}, {default_val: [], key});
         Storage.saveData(key, {value: data.length, expires: Utility.getExpires(rti_expiration)});
         return data.length;
@@ -1395,7 +1395,7 @@ async function GetCount(type, tag) {
     var key = 'ct' + type + '-' + tag;
     var check = await Storage.checkLocalDB(key, {max_expires});
     if (!(check)) {
-        printer.debuglog("Network:", key);
+        printer.log("Network:", key);
         return Danbooru.submitRequest('counts/posts', {tags: BuildTagParams(type, tag), skip_cache: true}, {default_val: {counts: {posts: 0}}, key})
             .then((data) => {
                 Storage.saveData(key, {value: data.counts.posts, expires: Utility.getExpires(max_expires)});
@@ -1410,7 +1410,7 @@ async function GetPeriodUploads(username, period, limited = false, domname = nul
     let key = GetPeriodKey(period_name);
     var check = await Storage.checkLocalDB(key, {max_expires});
     if (!(check)) {
-        printer.debuglog(`Network (${period_name} ${CU.counttype})`);
+        printer.log(`Network (${period_name} ${CU.counttype})`);
         let data = await Danbooru.getPostsCountdown(BuildTagParams(period, `${CU.usertag}:${username}`), max_post_limit_query, post_fields, domname);
         let mapped_data = MapPostData(data);
         if (limited) {
@@ -1826,7 +1826,7 @@ function OptionCacheDataKey(data_type, data_value) {
 
 function BroadcastCU(ev) {
     let printer = Debug.getFunctionPrint('BroadcastCU');
-    printer.debuglog(`(${ev.data.type}):`, ev.data);
+    printer.log(`(${ev.data.type}):`, ev.data);
     switch (ev.data.type) {
         case "hide":
             CU.hidden = true;
