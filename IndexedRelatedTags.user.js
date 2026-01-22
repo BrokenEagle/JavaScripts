@@ -45,7 +45,7 @@
 const DANBOORU_TOPIC_ID = null;
 
 //Variables for load.js
-const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.RelatedTag', 'Danbooru.CurrentUser', 'Danbooru.Post'];
+const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.RelatedTag', 'Danbooru.Post'];
 const PROGRAM_LOAD_REQUIRED_SELECTORS = ['#top', '#page'];
 
 //Program name constants
@@ -60,21 +60,13 @@ const IRT = {};
 
 //Available setting values
 const RELATED_QUERY_ORDERS = ['frequency', 'cosine', 'jaccard', 'overlap'];
-const RELATED_QUERY_CATEGORIES = {
-    general: 0,
-    copyright: 3,
-    character: 4,
-    artist: 1,
-    meta: 5
-};
-const RELATED_CATEGORY_NAMES = Object.keys(RELATED_QUERY_CATEGORIES);
 
 //Main settings
 const SETTINGS_CONFIG = {
     related_query_categories: {
-        allitems: RELATED_CATEGORY_NAMES,
-        reset: RELATED_CATEGORY_NAMES,
-        validate: (data) => Menu.validateCheckboxRadio(data, 'checkbox', RELATED_CATEGORY_NAMES),
+        allitems: Danbooru.category.names,
+        reset: Danbooru.category.names,
+        validate: (data) => Menu.validateCheckboxRadio(data, 'checkbox', Danbooru.category.names),
         hint: "Select the category query buttons to show.",
     },
     related_results_limit: {
@@ -600,7 +592,7 @@ const WIKI_PAGE_CONSTRAINTS = {
     entry: Validate.hashentry_constraints,
     value: {
         title: Validate.stringonly_constraints,
-        tags: Validate.tagentryarray_constraints([0, 1, 3, 4, 5, NONEXISTENT_TAG_CATEGORY]),
+        tags: Validate.tagentryarray_constraints(Utility.concat(Danbooru.category.values, [NONEXISTENT_TAG_CATEGORY])),
         other_wikis: Validate.array_constraints,
     },
     other_wikis: Validate.basic_stringonly_validator,
@@ -688,7 +680,7 @@ function ValidateProgramData(key, entry) {
 //Auxiliary functions
 
 function GetRelatedKeyModifer(category, query_order) {
-    return 'rt' + query_order[0] + (category ? Danbooru.getShortName(category) : "");
+    return 'rt' + query_order[0] + (category ? Danbooru.categories.short[category] : "");
 }
 
 function FilterTagEntries(tagentries) {
@@ -863,7 +855,7 @@ function RenderTranslatedColumn(translated_tags) {
 
 function RenderRelatedQueryCategoryControls() {
     let html = '<button id="related_query_category_all" class="irt-related-button">All</button>';
-    for (let category in RELATED_QUERY_CATEGORIES) {
+    for (let category in Danbooru.category.name) {
         if (!IRT.related_query_categories.includes(category)) continue;
         let display_name = Utility.displayCase(category);
         html += `
@@ -964,8 +956,8 @@ async function RelatedTagsQuery(tag, category, query_order) {
     const printer = Debug.getFunctionPrint('RelatedTagsQuery');
     printer.log("Querying:", tag, category);
     let url_addons = {search: {query: tag, order: query_order}, limit: IRT.related_results_limit || DanbooruProxy.RelatedTag.MAX_RELATED_TAGS};
-    if (category in RELATED_QUERY_CATEGORIES) {
-        url_addons.search.category = RELATED_QUERY_CATEGORIES[category];
+    if (category in Danbooru.category.name) {
+        url_addons.search.category = Danbooru.category.name[category];
     }
     let html = await Network.get('/related_tag.html', {data: url_addons});
     let tagentry_array = $(html).find('tbody .name-column a[href^="/posts"]').toArray().map((link) => {
@@ -979,7 +971,7 @@ async function RelatedTagsQuery(tag, category, query_order) {
     });
     let data = {
         query: tag,
-        categories: (category ? [RELATED_QUERY_CATEGORIES[category]] : []),
+        categories: (category ? [Danbooru.category.name[category]] : []),
         tags: tagentry_array,
     };
     return {value: data, expires: Utility.getExpires(RELATED_TAG_EXPIRES)};
