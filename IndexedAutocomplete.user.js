@@ -27,7 +27,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/menu.js
 // ==/UserScript==
 
-/* global JSPLib $ Danbooru validate */
+/* global JSPLib $ jQuery Danbooru validate */
 
 /****Library updates****/
 
@@ -1431,6 +1431,16 @@ function ValidateCached(cached, type, term, word_mode) {
 
 //Helper functions
 
+function GetJQueryObj(selector) {
+    if (typeof selector === 'string' || selector instanceof HTMLBodyElement) {
+        return $(selector);
+    }
+    if (selector instanceof jQuery) {
+        return selector;
+    }
+    throw new Error("Bad selector.");
+}
+
 function GetQueryType(element) {
     if (['post_tag_string', 'tag-script-field'].includes(element.id)) {
         return 'tag-edit';
@@ -2285,7 +2295,7 @@ function ReorderAutocompleteEvent($obj) {
 //Initialization functions
 
 function InitializeTagQueryAutocompleteIndexed(fields_selector = AUTOCOMPLETE_MULTITAG_SELECTORS, reorder_selector = '#post_tag_string') {
-    let $fields_multiple = $(fields_selector);
+    let $fields_multiple = GetJQueryObj(fields_selector);
     $fields_multiple.autocomplete({
         select(event, ui) {
             if (event.key === "Enter") {
@@ -2353,7 +2363,7 @@ function InitializeTagQueryAutocompleteIndexed(fields_selector = AUTOCOMPLETE_MU
 
 function InitializeAutocompleteIndexed(selector, keycode, {multiple = false, wiki_link = false} = {}) {
     let type = SOURCE_KEY[keycode];
-    var $fields = $(selector);
+    var $fields = GetJQueryObj(selector);
     let autocomplete = AnySourceIndexed(keycode);
     $fields.autocomplete({
         minLength: 1,
@@ -2435,9 +2445,8 @@ function EnableTextAreaAutocomplete($input, type) {
     if ($input.closest('.autocomplete-mentions').length > 0) {
         $input.autocomplete('destroy').off('keydown.Autocomplete.tab');
     }
-    let input_selector = JSPLib.utility.getHTMLTree($input[0]);
     let type_shortcut = PROGRAM_DATA_KEY[type];
-    InitializeAutocompleteIndexed(input_selector, type_shortcut, {wiki_link: true});
+    InitializeAutocompleteIndexed($input, type_shortcut, {wiki_link: true});
     $input.data('insert-autocomplete', true);
     $input.data('autocomplete', 'tag');
     JSPLib.notice.notice(JSPLib.utility.sprintf(AUTOCOMPLETE_MESSAGE, AUTOCOMPLETE_SOURCE[IAC.ac_source], AUTOCOMPLETE_MODE[IAC.ac_mode], AUTOCOMPLETE_CAPITALIZATION[IAC.ac_caps]));

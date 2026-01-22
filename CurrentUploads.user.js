@@ -14,25 +14,25 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a556e5ccff019751abf651eaf8c8bc7a9b423425/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a556e5ccff019751abf651eaf8c8bc7a9b423425/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a556e5ccff019751abf651eaf8c8bc7a9b423425/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a556e5ccff019751abf651eaf8c8bc7a9b423425/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a556e5ccff019751abf651eaf8c8bc7a9b423425/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a556e5ccff019751abf651eaf8c8bc7a9b423425/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a556e5ccff019751abf651eaf8c8bc7a9b423425/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a556e5ccff019751abf651eaf8c8bc7a9b423425/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a556e5ccff019751abf651eaf8c8bc7a9b423425/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a556e5ccff019751abf651eaf8c8bc7a9b423425/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a556e5ccff019751abf651eaf8c8bc7a9b423425/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a556e5ccff019751abf651eaf8c8bc7a9b423425/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2d02b62ab6da8eccc81e7db740c8b5a24651bf6c/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2d02b62ab6da8eccc81e7db740c8b5a24651bf6c/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2d02b62ab6da8eccc81e7db740c8b5a24651bf6c/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2d02b62ab6da8eccc81e7db740c8b5a24651bf6c/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2d02b62ab6da8eccc81e7db740c8b5a24651bf6c/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2d02b62ab6da8eccc81e7db740c8b5a24651bf6c/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2d02b62ab6da8eccc81e7db740c8b5a24651bf6c/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2d02b62ab6da8eccc81e7db740c8b5a24651bf6c/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2d02b62ab6da8eccc81e7db740c8b5a24651bf6c/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2d02b62ab6da8eccc81e7db740c8b5a24651bf6c/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2d02b62ab6da8eccc81e7db740c8b5a24651bf6c/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2d02b62ab6da8eccc81e7db740c8b5a24651bf6c/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Danbooru CanvasJS */
 
 /****Module import****/
 
-const {debug, utility, validate, storage, template, statistics, danbooru, load, menu} = JSPLib;
+const {debug, utility, validate, storage, template, notice, statistics, danbooru, load, menu} = JSPLib;
 
 /****Library updates****/
 
@@ -1497,7 +1497,7 @@ function RenderChart(event) {
         return;
     }
     if (!chart_metrics.includes(CU.current_metric)) {
-        JSPLib.notice.notice("Chart data not available on Day and Week metrics.");
+        notice.notice("Chart data not available on Day and Week metrics.");
         return;
     }
     let period = $(event.target).data('period');
@@ -1507,7 +1507,7 @@ function RenderChart(event) {
     let period_key = GetPeriodKey(longname);
     let data = storage.getIndexedSessionData(period_key);
     if (!data || (!is_limited && data.value.length === 0) || (is_limited && !data.value.chart_data)) {
-        JSPLib.notice.notice(`${period_info.header[period]} period not populated! Click the period header to activate the chart.`);
+        notice.notice(`${period_info.header[period]} period not populated! Click the period header to activate the chart.`);
         return;
     }
     var period_averages, period_uploads;
@@ -1721,7 +1721,7 @@ async function AddCopyright() {
     let tag = $("#count_query_copyright").val();
     let tagdata = await danbooru.submitRequest('tags', {search: {name: tag}, only: name_field}, {default_val: []});
     if (tagdata.length === 0) {
-        JSPLib.notice.notice('Tag not valid');
+        notice.notice('Tag not valid');
         return;
     }
     tag = tagdata[0].name;

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.11
+// @version      6.12
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -36,6 +36,36 @@ JSPLib.program = new Proxy(JSPLib, {
         return prop + (target.program_shortcut.length ? '.' + target.program_shortcut : "");
     },
 });
+
+JSPLib.utility.setPropertyTrap = function (object, property, {value = null, getter = null, setter = null, caller = null} = {}) {
+    // For subproperties that are accessed/written/called after an object is initialized
+    value ??= object[property] ?? {};
+    let handler = {};
+    if (getter) {
+        handler.get = function (_target, prop, _receiver) {
+            getter(prop);
+            return value[prop];
+        };
+    }
+    if (setter) {
+        handler.set = function (_target, prop, val, _receiver) {
+            setter(prop, val);
+            value[prop] = val;
+        };
+    }
+    if (caller) {
+        handler.apply = function (_target, context, args) {
+            caller(args);
+            return value.apply(context, args);
+        };
+    }
+    object[property] = new Proxy(object, handler);
+    Object.defineProperty(object, property, {
+        configurable: false,
+        enumerable: true,
+        writeable: false,
+    });
+};
 
 JSPLib.utility.clickAndHold = function(selector, func, namespace = "", wait_time = 500, interval_time = 100) {
     let $obj = (typeof selector === 'string' ? JSPLib._jQuery(selector) : selector);
@@ -3516,7 +3546,7 @@ function Main() {
     $('#translate').on(JSPLib.program.click, ToggleSideNotice);
     if (TA.check_last_noted_enabled) {
         CheckLastNoted();
-        Danbooru.Note.Edit.save = JSPLib.utility.hijackFunction(Danbooru.Note.Edit.save, SetLastNoted);
+        JSPLib.utility.setPropertyTrap(Danbooru.Note.Edit, 'save', {caller: SetLastNoted});
     }
     if (TA.has_embedded) {
         CheckEmbeddedFontSize();
