@@ -15,18 +15,18 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-setitems@1.4.0/dist/localforage-setitems.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a0854f3e6bf7948b5c3e1df89a644e9d614e8c7a/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a0854f3e6bf7948b5c3e1df89a644e9d614e8c7a/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a0854f3e6bf7948b5c3e1df89a644e9d614e8c7a/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a0854f3e6bf7948b5c3e1df89a644e9d614e8c7a/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a0854f3e6bf7948b5c3e1df89a644e9d614e8c7a/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a0854f3e6bf7948b5c3e1df89a644e9d614e8c7a/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a0854f3e6bf7948b5c3e1df89a644e9d614e8c7a/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a0854f3e6bf7948b5c3e1df89a644e9d614e8c7a/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a0854f3e6bf7948b5c3e1df89a644e9d614e8c7a/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a0854f3e6bf7948b5c3e1df89a644e9d614e8c7a/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a0854f3e6bf7948b5c3e1df89a644e9d614e8c7a/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a0854f3e6bf7948b5c3e1df89a644e9d614e8c7a/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/saucenao.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/load.js
 // @connect      cdn.donmai.us
 // @connect      saucenao.com
 // ==/UserScript==
@@ -629,37 +629,6 @@ async function CheckUtilityLibrary() {
     teststring1 = Utility.joinList(testarray1, "test-", '-section', ',');
     TestPrint(`Value ${repr(testarray1)} should should be changed to ${repr(string1)}`, RecordResult(teststring1 === string1), {result: repr(teststring1)});
 
-    console.log("Checking freezeObject");
-    let testobject1 = {id: 1, type: {a: 1, b: 2}};
-    let testobject2 = {id: 2, type: {a: 3, b: 4}};
-    Utility.freezeObject(testobject1);
-    Utility.freezeObject(testobject2, true);
-    let boolarray1 = [Object.isFrozen(testobject1), !Object.isFrozen(testobject1.type)];
-    let boolarray2 = [Object.isFrozen(testobject2), Object.isFrozen(testobject2.type)];
-    TestPrint(`Object ${repr(testobject1)} should be frozen but not object attributes`, RecordResult(boolarray1.every((val) => val)), {result: repr(boolarray1)});
-    TestPrint(`Object ${repr(testobject2)} and object attributes should be frozen`, RecordResult(boolarray2.every((val) => val)), {result: repr(boolarray2)});
-
-    console.log("Checking freezeObjects");
-    testobjectarray1 = [{id: 1, type: {a: 1, b: 2}}, {id: 2, type: {a: 3, b: 4}}];
-    Utility.freezeObjects(testobjectarray1, true);
-    boolarray1 = [Object.isFrozen(testobjectarray1[0]), Object.isFrozen(testobjectarray1[0].type), Object.isFrozen(testobjectarray1[1]), Object.isFrozen(testobjectarray1[1].type)];
-    TestPrint(`Objects array ${repr(testobjectarray1)} should have the object and object attributes be frozen`, RecordResult(boolarray1.every((val) => val)), {result: repr(boolarray1)});
-
-    console.log("Checking freezeProperty");
-    testobject1 = {id: 1, type: {a: 1, b: 2}};
-    Utility.freezeProperty(testobject1, 'id');
-    let objectdescriptor1 = Object.getOwnPropertyDescriptor(testobject1, 'id');
-    boolarray1 = [!objectdescriptor1.writable, !objectdescriptor1.configurable];
-    TestPrint(`Object ${repr(testobject1)} should have the 'id' attribute be frozen`, RecordResult(boolarray1.every((val) => val)), {result: repr(boolarray1)});
-
-    console.log("Checking freezeProperties");
-    testobject1 = {id: 2, type: {a: 3, b: 4}};
-    Utility.freezeProperties(testobject1, ['id', 'type']);
-    objectdescriptor1 = Object.getOwnPropertyDescriptor(testobject1, 'id');
-    let objectdescriptor2 = Object.getOwnPropertyDescriptor(testobject1, 'type');
-    boolarray1 = [!objectdescriptor1.writable, !objectdescriptor1.configurable, !objectdescriptor2.writable, !objectdescriptor2.configurable];
-    TestPrint(`Object ${repr(testobject1)} should have the 'id' and 'type' attributes be frozen`, RecordResult(boolarray1.every((val) => val)), {result: repr(boolarray1)});
-
     console.log("Checking getObjectAttributes");
     array1 = [1, 2, 3];
     testobjectarray1 = [{id: 1, type: 'a'}, {id: 2, type: 'b'}, {id: 3, type: 'b'}];
@@ -667,8 +636,9 @@ async function CheckUtilityLibrary() {
     TestPrint(`Object array ${repr(testobjectarray1)} with getting the id attributes should be equal to ${repr(array1)}`, RecordResult(ArrayEqual(resultarray1, array1)), {result: repr(resultarray1)});
 
     console.log("Checking getNestedAttribute");
+    let testobject1 = {id: 1, type: {a: 1, b: 2}};
     result1 = Utility.getNestedAttribute(testobject1, ['type', 'a']);
-    TestPrint(`Object ${repr(testobject1)} with getting a nested attribute should be equal to 3`, RecordResult(result1 === 3), {result: repr(result1)});
+    TestPrint(`Object ${repr(testobject1)} with getting a nested attribute should be equal to 1`, RecordResult(result1 === 1), {result: repr(result1)});
 
     console.log("Checking getNestedObjectAttributes");
     array1 = [1, 3];
@@ -696,7 +666,7 @@ async function CheckUtilityLibrary() {
     let object1 = {search: {id: "20,21,5"}};
     let object2 = {search: {order: "customorder"}};
     result1 = Utility.mergeHashes(object1, object2);
-    boolarray1 = [HashContains(result1, ['search']), HashContains(result1.search, ['id', 'order'])];
+    let boolarray1 = [HashContains(result1, ['search']), HashContains(result1.search, ['id', 'order'])];
     if(boolarray1[1]) {
         boolarray1.push(result1.search.id === "20,21,5")
         boolarray1.push(result1.search.order === "customorder");
@@ -719,15 +689,6 @@ async function CheckUtilityLibrary() {
     TestPrint(`Object ${repr(testarray1)} should have a length of 10`, RecordResult(testarray1.length === 10), {result: testarray1.length});
     TestPrint(`Object ${repr(testarray1)} should have no entries equal to each other`, RecordResult(resultbool1 === true), {no_result: true});
     TestPrint(`Object ${repr(testarray1)} should have all entries equal to the stringified JSON`, RecordResult(resultbool2 === true), {no_result: true});
-
-    console.log("Checking hijackFunction");
-    let add_function = function (a, b) {return a + b;};
-    let subtract_one = function (data) {return data - 1;};
-    let hijacked_function = Utility.hijackFunction(add_function, subtract_one);
-    testvalue1 = add_function(3, 4);
-    testvalue2 = hijacked_function(3, 4);
-    TestPrint("Original add function should produce a result of 7", RecordResult(testvalue1 === 7), {no_result: true});
-    TestPrint("Hijacked add function should produce a result of 6", RecordResult(testvalue2 === 6), {no_result: true});
 
     console.log("Checking DOMtoArray");
     let $domtest = jQuery.parseHTML(domdata_test)[0];
@@ -869,27 +830,6 @@ async function CheckUtilityLibrary() {
     let expectedmeta1 = "authenticity_token";
     let resultmeta1 = Utility.getMeta(metaselector1);
     TestPrint(`Meta ${metaselector1} should have the content of ${repr(expectedmeta1)}`, RecordResult(expectedmeta1 === resultmeta1), {result: repr(resultmeta1)});
-
-    console.log("Checking getNthParent");
-    $domtest = jQuery.parseHTML(walkdom_test);
-    let child1 = jQuery("#child0a", $domtest)[0];
-    result1 = Utility.getNthParent(child1, 1);
-    TestPrint(`Node ${child1.id} should have parent0 as a parent`, RecordResult(result1?.id === "parent0"), {result: result1.id});
-
-    console.log("Checking getNthChild");
-    let parent1 = jQuery("#parent0", $domtest)[0];
-    result1 = Utility.getNthChild(parent1, 2);
-    result2 = Utility.getNthChild(parent1, -2);
-    TestPrint(`Node ${parent1.id} should have child0b as the 2nd child from the start`, RecordResult(result1?.id === "child0b"), {result: result1.id});
-    TestPrint(`Node ${parent1.id} should have child0a as the 2nd child from the end`, RecordResult(result2?.id === "child0a"), {result: result2?.id});
-
-    console.log("Checking getNthSibling");
-    result1 = Utility.getNthSibling(child1, 1);
-    TestPrint(`Node ${child1.id} should have child0b as its first sibling`, RecordResult(result1?.id === "child0b"), {result: result1?.id});
-
-    console.log("Checking walkDOM");
-    result1 = Utility.walkDOM(child1, [[0, -1], [1, 0], [0, 2]]);
-    TestPrint(`Node ${child1.id} should have child1b as the second child of its parent's first sibling`, RecordResult(result1?.id === "child1b"), {result: result1?.id});
 
     console.log("Checking getImageDimensions");
     let dimensions1 = {width: 127, height: 180};
@@ -1870,7 +1810,7 @@ async function CheckSaucenaoLibrary() {
     result1 = Saucenao.checkSauce(object1);
     TestPrint(`Response of ${repr(object1)} should return a result of true`, RecordResult(result1 === true), {no_result: true});
     await Utility.sleep(2000);
-    
+
     console.log("Checking checkSauce #4");
     object1 = {header: {long_remaining: 1, short_remaining: 1, status: -1, message: 'Some message.'}};
     result1 = Saucenao.checkSauce(object1);
@@ -1882,7 +1822,7 @@ async function CheckSaucenaoLibrary() {
     result1 = Saucenao.checkSauce(object1);
     TestPrint(`Response of ${repr(object1)} should return a result of true`, RecordResult(result1 === true), {no_result: true});
     await Utility.sleep(2000);
-    
+
     console.log("Checking getSauce #1");
     object1 = {header: {long_remaining: 1, short_remaining: 1}, results: {}};
     result1 = await Saucenao.getSauce();
@@ -1924,16 +1864,17 @@ async function checklibrary() {
     document.body.style.height = '5000px';
     setTimeout(() => {window.scroll(0, 10000);}, 2000);
 
-    //CheckDebugLibrary();
+    CheckDebugLibrary();
     await CheckNoticeLibrary();
-    //await CheckUtilityLibrary();
-    //CheckStatisticsLibrary();
-    //CheckValidateLibrary();
-    //await CheckStorageLibrary();
-    //await CheckConcurrencyLibrary();
-    //await CheckNetworkLibrary();
-    //await CheckDanbooruLibrary();
-    //await CheckSaucenaoLibrary();
+    await CheckUtilityLibrary();
+    CheckStatisticsLibrary();
+    CheckValidateLibrary();
+    await CheckStorageLibrary();
+    await CheckConcurrencyLibrary();
+    await CheckNetworkLibrary();
+    await CheckDanbooruLibrary();
+    await CheckSaucenaoLibrary();
+
     console.log(`All library results: ${overall_test_successes} succeses, ${overall_test_failures} failures`);
 }
 

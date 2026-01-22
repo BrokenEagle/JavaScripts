@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         CurrentUploads (edit)
+// @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
 // @version      16.25
 // @description  Gives up-to-date stats on uploads.
@@ -14,25 +14,27 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2d02b62ab6da8eccc81e7db740c8b5a24651bf6c/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2d02b62ab6da8eccc81e7db740c8b5a24651bf6c/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2d02b62ab6da8eccc81e7db740c8b5a24651bf6c/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2d02b62ab6da8eccc81e7db740c8b5a24651bf6c/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2d02b62ab6da8eccc81e7db740c8b5a24651bf6c/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2d02b62ab6da8eccc81e7db740c8b5a24651bf6c/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2d02b62ab6da8eccc81e7db740c8b5a24651bf6c/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2d02b62ab6da8eccc81e7db740c8b5a24651bf6c/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2d02b62ab6da8eccc81e7db740c8b5a24651bf6c/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2d02b62ab6da8eccc81e7db740c8b5a24651bf6c/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2d02b62ab6da8eccc81e7db740c8b5a24651bf6c/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/2d02b62ab6da8eccc81e7db740c8b5a24651bf6c/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/menu.js
 // ==/UserScript==
 
-/* global JSPLib $ Danbooru CanvasJS */
+/* global JSPLib $ CanvasJS */
 
 /****Module import****/
 
-const {debug, utility, validate, storage, template, notice, statistics, danbooru, load, menu} = JSPLib;
+(({DanbooruProxy, Debug, Notice, Utility, Storage, Template, Statistics, Validate, Danbooru, Load, Menu}) => {
+
+"CurrentUploads";
 
 /****Library updates****/
 
@@ -43,8 +45,8 @@ const {debug, utility, validate, storage, template, notice, statistics, danbooru
 //Exterior script variables
 const DANBOORU_TOPIC_ID = '15169';
 
-//Variables for load.js
-const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.CurrentUser'];
+//Variables for Load.js
+const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'DanbooruProxy.CurrentUser'];
 const PROGRAM_LOAD_REQUIRED_SELECTORS = ["#top", "#page-footer"];
 
 //Program name constants
@@ -78,18 +80,18 @@ const period_selectors = ['daily', 'weekly', 'monthly', 'yearly', 'alltime'];
 const SETTINGS_CONFIG = {
     copyrights_merge: {
         reset: true,
-        validate: utility.isBoolean,
+        validate: Utility.isBoolean,
         hint: "Merge all implied copyrights to their base copyright. Ex: (splatoon_1, splatoon_2) -> splatoon."
     },
     copyrights_enabled: {
         reset: true,
-        validate: utility.isBoolean,
+        validate: Utility.isBoolean,
         hint: "Process and show user copyright uploads."
     },
     periods_shown: {
         allitems: period_selectors,
         reset: period_selectors,
-        validate: (data) => (menu.validateCheckboxRadio(data, 'checkbox', period_selectors) && data.includes('daily')),
+        validate: (data) => (Menu.validateCheckboxRadio(data, 'checkbox', period_selectors) && data.includes('daily')),
         hint: "Select which periods to process and show."
     },
     copyrights_threshold: {
@@ -169,7 +171,7 @@ const DEFAULT_VALUES = {
 //CSS Constants
 
 //Style information
-const PROGRAM_CSS = template.normalizeCSS()`
+const PROGRAM_CSS = Template.normalizeCSS()`
 /**GENERAL**/
 .cu-link {
     cursor: pointer;
@@ -405,7 +407,7 @@ const PROGRAM_CSS = template.normalizeCSS()`
     }
 }`;
 
-const LIGHT_MODE_CSS = template.normalizeCSS({theme: 'light'})`
+const LIGHT_MODE_CSS = Template.normalizeCSS({theme: 'light'})`
 #upload-counts {
     border-color: var(--grey-1);
     &.opened {
@@ -444,7 +446,7 @@ const LIGHT_MODE_CSS = template.normalizeCSS({theme: 'light'})`
     fill: var(--black);
 }`;
 
-const DARK_MODE_CSS = template.normalizeCSS({theme: 'dark'})`
+const DARK_MODE_CSS = Template.normalizeCSS({theme: 'dark'})`
 #upload-counts {
     border-color: var(--grey-8);
     &.opened {
@@ -488,7 +490,7 @@ const DARK_MODE_CSS = template.normalizeCSS({theme: 'dark'})`
 const CARET_RIGHT = '<svg class="cu-svg-caret cu-svg-caret-right" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 512" width="20" height="20"><path class="cu-svg-icon" d="M246.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-128-128c-9.2-9.2-22.9-11.9-34.9-6.9s-19.8 16.6-19.8 29.6l0 256c0 12.9 7.8 24.6 19.8 29.6s25.7 2.2 34.9-6.9l128-128z"/></svg>';
 const CARET_DOWN = '<svg class="cu-svg-caret cu-svg-caret-down" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" height="20" width="20"><path class="cu-svg-icon" d="M137.4 374.6c12.5 12.5 32.8 12.5 45.3 0l128-128c9.2-9.2 11.9-22.9 6.9-34.9s-16.6-19.8-29.6-19.8L32 192c-12.9 0-24.6 7.8-29.6 19.8s-2.2 25.7 6.9 34.9l128 128z"/></svg>';
 
-const notice_box = template.normalizeHTML()`
+const notice_box = Template.normalizeHTML()`
 <div id="upload-counts">
     <div id="count-module">
         <div id="count-table">
@@ -533,7 +535,7 @@ const unstash_notice = `<span id="upload-counts-restore"> - <a id="restore-count
 
 const copyright_counter = '(<span id="loading-counter">...</span>)';
 
-const CACHE_DATA_DETAILS = template.normalizeHTML()`
+const CACHE_DATA_DETAILS = Template.normalizeHTML()`
 <ul>
     <li><b>Count data (ctd,ctw,ctmo,cty,ctat):</b> Main data shown in the table.</li>
     <li><b>Post data:</b> Used to determine post statistics shown in the tooltips and chart data.
@@ -559,7 +561,7 @@ const CACHE_DATA_DETAILS = template.normalizeHTML()`
     <li><b>Reverse tag implications (rti):</b>The number of tags that a tag implicates. Used to determine the base copyright tag.</li>
 </ul>`;
 
-const PROGRAM_DATA_DETAILS = template.normalizeHTML()`
+const PROGRAM_DATA_DETAILS = Template.normalizeHTML()`
 <p class="tn">All timestamps are in milliseconds since the epoch (<a href="https://www.epochconverter.com">Epoch converter</a>).</p>
 <ul>
     <li>General data
@@ -577,28 +579,28 @@ const PROGRAM_DATA_DETAILS = template.normalizeHTML()`
     </li>
 </ul>`;
 
-const TOOLTIP_DATA_TEMPLATE = template.normalizeHTML({template: true})`
+const TOOLTIP_DATA_TEMPLATE = Template.normalizeHTML({template: true})`
 <div class="cu-tooltip" data-period="${'period'}">
     <span class="cu-uploads">${'text'}</span>
     ${'popups'}
 </div>`;
 
-const TOOLTIP_POPUP_TEMPLATE = template.normalizeHTML({template: true})`
+const TOOLTIP_POPUP_TEMPLATE = Template.normalizeHTML({template: true})`
 <span class="cu-tooltiptext" data-type="${'metric'}">
     ${'text'}
 </span>`;
 
-const TOOLTIP_CONTROL_TEMPLATE = template.normalizeHTML({template: true})`
+const TOOLTIP_CONTROL_TEMPLATE = Template.normalizeHTML({template: true})`
 <span class="cu-select-tooltip cu-switch-control" data-type="${'metric'}">
     <a class="cu-link">${'text'}</a>
 </span>`;
 
-const COPYRIGHT_CONTROL_TEMPLATE = template.normalizeHTML({template: true})`
+const COPYRIGHT_CONTROL_TEMPLATE = Template.normalizeHTML({template: true})`
 <span class="cu-select-period cu-switch-control" data-type="${'period'}">
     <a class="cu-link">${'text'}</a>
 </span>`;
 
-const COPYRIGHT_TAG_TEMPLATE = template.normalizeHTML({template: true})`
+const COPYRIGHT_TAG_TEMPLATE = Template.normalizeHTML({template: true})`
 <span title="${'copyright'}" data-copyright="${'copyright'}" class="${'classname'}">
     ${'taglink'}
 </span>`;
@@ -612,18 +614,18 @@ const copyright_periods = ['d', 'w', 'mo'];
 //Period constants
 const period_info = {
     countexpires: {
-        d: 5 * utility.one_minute,
-        w: utility.one_hour,
-        mo: utility.one_day,
-        y: utility.one_week,
-        at: utility.one_month
+        d: 5 * Utility.one_minute,
+        w: Utility.one_hour,
+        mo: Utility.one_day,
+        y: Utility.one_week,
+        at: Utility.one_month
     },
     uploadexpires: {
-        d: 5 * utility.one_minute,
-        w: utility.one_day,
-        mo: utility.one_week,
-        y: utility.one_month,
-        at: utility.one_year
+        d: 5 * Utility.one_minute,
+        w: Utility.one_day,
+        mo: Utility.one_week,
+        y: Utility.one_month,
+        at: Utility.one_year
     },
     longname: {
         d: 'daily',
@@ -652,10 +654,10 @@ const period_info = {
         at: "Months ago"
     },
     divisor: {
-        w: utility.one_day,
-        mo: utility.one_day,
-        y: utility.one_month,
-        at: utility.one_month,
+        w: Utility.one_day,
+        mo: Utility.one_day,
+        y: Utility.one_month,
+        at: Utility.one_month,
     }
 };
 
@@ -668,8 +670,8 @@ const longname_key = {
 };
 
 //Time constants
-const prune_expires = utility.one_day;
-const rti_expiration = utility.one_month;
+const prune_expires = Utility.one_day;
+const rti_expiration = Utility.one_month;
 const JQUERY_DELAY = 1; //For jQuery updates that should not be done synchronously
 
 //Network call configuration
@@ -697,52 +699,52 @@ const post_fields = "id,score,up_score,down_score,fav_count,tag_count,tag_count_
 //Validation values
 
 const validation_constraints = {
-    countentry: validate.counting_constraints,
-    implicationentry: validate.counting_constraints,
-    postentries: validate.array_constraints,
-    statentries: validate.hash_constraints,
+    countentry: Validate.counting_constraints,
+    implicationentry: Validate.counting_constraints,
+    postentries: Validate.array_constraints,
+    statentries: Validate.hash_constraints,
     postentry: [
-        validate.integer_constraints, //ID
-        validate.integer_constraints, //SCORE
-        validate.integer_constraints, //UPSCORE
-        validate.integer_constraints, //DOWNSCORE
-        validate.integer_constraints, //FAVCOUNT
-        validate.integer_constraints, //TAGCOUNT
-        validate.integer_constraints, //GENTAGS
-        validate.stringonly_constraints, //COPYRIGHTS
-        validate.integer_constraints //CREATED
+        Validate.integer_constraints, //ID
+        Validate.integer_constraints, //SCORE
+        Validate.integer_constraints, //UPSCORE
+        Validate.integer_constraints, //DOWNSCORE
+        Validate.integer_constraints, //FAVCOUNT
+        Validate.integer_constraints, //TAGCOUNT
+        Validate.integer_constraints, //GENTAGS
+        Validate.stringonly_constraints, //COPYRIGHTS
+        Validate.integer_constraints //CREATED
     ],
     postmetric: {
-        chart_data: validate.hash_constraints,
-        score: validate.hash_constraints,
-        upscore: validate.hash_constraints,
-        downscore: validate.hash_constraints,
-        favcount: validate.hash_constraints,
-        tagcount: validate.hash_constraints,
-        gentags: validate.hash_constraints,
-        week: validate.array_constraints,
-        day: validate.array_constraints
+        chart_data: Validate.hash_constraints,
+        score: Validate.hash_constraints,
+        upscore: Validate.hash_constraints,
+        downscore: Validate.hash_constraints,
+        favcount: Validate.hash_constraints,
+        tagcount: Validate.hash_constraints,
+        gentags: Validate.hash_constraints,
+        week: Validate.array_constraints,
+        day: Validate.array_constraints
     },
-    timestat: validate.basic_number_validator,
+    timestat: Validate.basic_number_validator,
     poststat: {
-        max: validate.integer_constraints,
-        average: validate.number_constraints,
-        stddev: validate.number_constraints,
-        outlier: validate.integer_constraints,
-        adjusted: validate.number_constraints
+        max: Validate.integer_constraints,
+        average: Validate.number_constraints,
+        stddev: Validate.number_constraints,
+        outlier: Validate.integer_constraints,
+        adjusted: Validate.number_constraints
     },
     chartentry: {
-        score: validate.array_constraints,
-        upscore: validate.array_constraints,
-        downscore: validate.array_constraints,
-        favcount: validate.array_constraints,
-        tagcount: validate.array_constraints,
-        gentags: validate.array_constraints,
-        uploads: validate.array_constraints
+        score: Validate.array_constraints,
+        upscore: Validate.array_constraints,
+        downscore: Validate.array_constraints,
+        favcount: Validate.array_constraints,
+        tagcount: Validate.array_constraints,
+        gentags: Validate.array_constraints,
+        uploads: Validate.array_constraints
     },
     chartdata: {
-        x: validate.integer_constraints,
-        y: validate.number_constraints
+        x: Validate.integer_constraints,
+        y: Validate.number_constraints
     }
 };
 
@@ -752,30 +754,30 @@ const validation_constraints = {
 
 function BuildValidator(validation_key) {
     return {
-        expires: validate.expires_constraints,
+        expires: Validate.expires_constraints,
         value: validation_constraints[validation_key]
     };
 }
 
 function ValidateEntry(key, entry) {
-    let printer = debug.getFunctionPrint('ValidateEntry');
-    if (!validate.validateIsHash(key, entry)) {
+    let printer = Debug.getFunctionPrint('ValidateEntry');
+    if (!Validate.validateIsHash(key, entry)) {
         return false;
     }
     if (key.match(/^ct(d|w|mo|y|at)?-/)) {
-        return validate.validateHashEntries(key, entry, BuildValidator('countentry'));
+        return Validate.validateHashEntries(key, entry, BuildValidator('countentry'));
     }
     if (key.match(/^rti-/)) {
-        return validate.validateHashEntries(key, entry, BuildValidator('implicationentry'));
+        return Validate.validateHashEntries(key, entry, BuildValidator('implicationentry'));
     }
     if (key.match(/^(daily|weekly|monthly|previous)-(uploads|approvals)-/)) {
-        if (!validate.validateHashEntries(key, entry, BuildValidator('postentries'))) {
+        if (!Validate.validateHashEntries(key, entry, BuildValidator('postentries'))) {
             return false;
         }
         return ValidatePostentries(key + '.value', entry.value);
     }
     if (key.match(/^(yearly|alltime)-(uploads|approvals)-/)) {
-        if (!validate.validateHashEntries(key, entry, BuildValidator('statentries'))) {
+        if (!Validate.validateHashEntries(key, entry, BuildValidator('statentries'))) {
             return false;
         }
         return ValidateStatEntries(key + '.value', entry.value);
@@ -787,11 +789,11 @@ function ValidateEntry(key, entry) {
 function ValidatePostentries(key, postentries) {
     for (let i = 0;i < postentries.length;i++){
         let value_key = key + `[${i}]`;
-        if (!validate.validateIsArray(value_key, postentries[i], {is: validation_constraints.postentry.length})) {
+        if (!Validate.validateIsArray(value_key, postentries[i], {is: validation_constraints.postentry.length})) {
             return false;
         }
         //It's technically not a hash, although it works since arrays can be treated like one
-        if (!validate.validateHashEntries(value_key, postentries[i], validation_constraints.postentry)) {
+        if (!Validate.validateHashEntries(value_key, postentries[i], validation_constraints.postentry)) {
             return false;
         }
     }
@@ -799,17 +801,17 @@ function ValidatePostentries(key, postentries) {
 }
 
 function ValidateStatEntries(key, statentries) {
-    if (!validate.validateHashEntries(key, statentries, validation_constraints.postmetric)) {
+    if (!Validate.validateHashEntries(key, statentries, validation_constraints.postmetric)) {
         return false;
     }
     for (let i = 0; i < tooltip_metrics.length; i++) {
         let metric = tooltip_metrics[i];
         let metric_key = key + '.' + metric;
         if (metric === 'week' || metric === 'day') {
-            if (!validate.validateArrayValues(metric_key, statentries[metric], validation_constraints.timestat)) {
+            if (!Validate.validateArrayValues(metric_key, statentries[metric], validation_constraints.timestat)) {
                 return false;
             }
-        } else if (!validate.validateHashEntries(metric_key, statentries[metric], validation_constraints.poststat)) {
+        } else if (!Validate.validateHashEntries(metric_key, statentries[metric], validation_constraints.poststat)) {
             return false;
         }
     }
@@ -817,12 +819,12 @@ function ValidateStatEntries(key, statentries) {
 }
 
 function ValidateChartEntries(key, chartentries) {
-    if (!validate.validateHashEntries(key, chartentries, validation_constraints.chartentry)) {
+    if (!Validate.validateHashEntries(key, chartentries, validation_constraints.chartentry)) {
         return false;
     }
     for (let chart_key in chartentries) {
         for (let i = 0; i < chartentries[chart_key].length; i ++) {
-            if (!validate.validateHashEntries(`${key}.${chart_key}[${i}]`, chartentries[chart_key][i], validation_constraints.chartdata)) {
+            if (!Validate.validateHashEntries(`${key}.${chart_key}[${i}]`, chartentries[chart_key][i], validation_constraints.chartdata)) {
                 return false;
             }
         }
@@ -834,7 +836,7 @@ function ValidateProgramData(key, entry) {
     var checkerror = [];
     switch (key) {
         case 'cu-user-settings':
-            checkerror = menu.validateUserSettings(entry, SETTINGS_CONFIG);
+            checkerror = Menu.validateUserSettings(entry, SETTINGS_CONFIG);
             break;
         case 'cu-prune-expires':
             if (!Number.isInteger(entry)) {
@@ -848,7 +850,7 @@ function ValidateProgramData(key, entry) {
             break;
         case 'cu-hide-current-uploads':
         case 'cu-stash-current-uploads':
-            if (!utility.isBoolean(entry)) {
+            if (!Utility.isBoolean(entry)) {
                 checkerror = ['Value is not a boolean.'];
             }
             break;
@@ -856,7 +858,7 @@ function ValidateProgramData(key, entry) {
             checkerror = ["Not a valid program data key."];
     }
     if (checkerror.length) {
-        validate.outputValidateError(key, checkerror);
+        Validate.outputValidateError(key, checkerror);
         return false;
     }
     return true;
@@ -867,7 +869,7 @@ function ValidateProgramData(key, entry) {
 //Render table
 
 function RenderHeader() {
-    var tabletext = utility.renderHTMLTag('th', 'Name');
+    var tabletext = Utility.renderHTMLTag('th', 'Name');
     let click_periods = manual_periods.concat(limited_periods);
     let times_shown = GetShownPeriodKeys();
     times_shown.forEach((period) => {
@@ -877,13 +879,13 @@ function RenderHeader() {
             let link_class = (manual_periods.includes(period) ? 'cu-manual' : 'cu-limited');
             let header_class = (!is_available ? 'cu-process' : '');
             let counter_html = (!is_available ? '<span class="cu-display" style="display:none">&nbsp;(<span class="cu-counter">...</span>)</span>' : '');
-            tabletext += utility.renderHTMLTag('th', `<a class="cu-link ${link_class}">${header}</a>${counter_html}`, {class: `cu-period-header ${header_class}`, dataPeriod: period});
+            tabletext += Utility.renderHTMLTag('th', `<a class="cu-link ${link_class}">${header}</a>${counter_html}`, {class: `cu-period-header ${header_class}`, dataPeriod: period});
         } else {
-            tabletext += utility.renderHTMLTag('th', header, {class: 'cu-period-header', dataPeriod: period});
+            tabletext += Utility.renderHTMLTag('th', header, {class: 'cu-period-header', dataPeriod: period});
         }
     });
-    tabletext = utility.renderHTMLTag('tr', tabletext);
-    return utility.renderHTMLTag('thead', tabletext);
+    tabletext = Utility.renderHTMLTag('tr', tabletext);
+    return Utility.renderHTMLTag('thead', tabletext);
 }
 
 function RenderBody() {
@@ -896,7 +898,7 @@ function RenderBody() {
     for (let i = 0;i < CU.active_copytags.length; i++) {
         tabletext += RenderRow(CU.active_copytags[i]);
     }
-    return utility.renderHTMLTag('tbody', tabletext);
+    return Utility.renderHTMLTag('tbody', tabletext);
 }
 
 function RenderRow(key) {
@@ -911,7 +913,7 @@ function RenderRow(key) {
         row_text = key;
         classname = 'tag-type-3';
     }
-    var tabletext = utility.renderHTMLTag('td', danbooru.postSearchLink(row_text, {tags: row_tag}, {class: classname}));
+    var tabletext = Utility.renderHTMLTag('td', Danbooru.postSearchLink(row_text, {tags: row_tag}, {class: classname}));
     let times_shown = GetShownPeriodKeys();
     let click_periods = manual_periods.concat(limited_periods);
     for (let i = 0;i < times_shown.length; i++) {
@@ -925,14 +927,14 @@ function RenderRow(key) {
         let rowdata = {class: class_name, dataPeriod: period};
         let is_available = CU.period_available[CU.usertag][CU.current_username][period];
         if (is_available && is_limited && key === '') {
-            tabletext += utility.renderHTMLTag('td', RenderTooltipData(data_text, times_shown[i], true), rowdata);
+            tabletext += Utility.renderHTMLTag('td', RenderTooltipData(data_text, times_shown[i], true), rowdata);
         } else if (is_available && !is_limited) {
-            tabletext += utility.renderHTMLTag('td', RenderTooltipData(data_text, times_shown[i]), rowdata);
+            tabletext += Utility.renderHTMLTag('td', RenderTooltipData(data_text, times_shown[i]), rowdata);
         } else {
-            tabletext += utility.renderHTMLTag('td', `<span class="cu-uploads">${data_text}</span>`, rowdata);
+            tabletext += Utility.renderHTMLTag('td', `<span class="cu-uploads">${data_text}</span>`, rowdata);
         }
     }
-    return utility.renderHTMLTag('tr', tabletext, {dataKey: key});
+    return Utility.renderHTMLTag('tr', tabletext, {dataKey: key});
 }
 
 function RenderOrderMessage(period, sorttype) {
@@ -952,7 +954,7 @@ function RenderOrderMessage(period, sorttype) {
 
 //Get the data and validate it without checking the expires
 function GetCountData(key, default_val = null) {
-    let count_data = storage.getIndexedSessionData(key);
+    let count_data = Storage.getIndexedSessionData(key);
     if (!ValidateEntry(key, count_data)) {
         return default_val;
     }
@@ -973,8 +975,8 @@ function GetTableValue(key, type) {
 function RenderCopyrights(period) {
     let copytags = CU.user_copytags[CU.usertag][CU.current_username][period].sort();
     return copytags.map((copyright) => {
-        let tag_text = utility.maxLengthString(copyright);
-        let taglink = danbooru.postSearchLink(tag_text, {tags: copyright}, {class: 'tag-type-3'});
+        let tag_text = Utility.maxLengthString(copyright);
+        let taglink = Danbooru.postSearchLink(tag_text, {tags: copyright}, {class: 'tag-type-3'});
         let classname = CU.active_copytags.includes(copyright) ? 'cu-active-copyright' : '';
         return COPYRIGHT_TAG_TEMPLATE({copyright, taglink, classname});
     }).join('');
@@ -983,7 +985,7 @@ function RenderCopyrights(period) {
 function RenderCopyrightControls() {
     let controls = copyright_periods.map((period) => {
         let period_name = period_info.longname[period];
-        return COPYRIGHT_CONTROL_TEMPLATE({period, text: utility.titleizeString(period_name)});
+        return COPYRIGHT_CONTROL_TEMPLATE({period, text: Utility.titleizeString(period_name)});
     });
     controls.push(COPYRIGHT_CONTROL_TEMPLATE({period: 'manual', text: 'Manual'}));
     return controls.join('');
@@ -1000,12 +1002,12 @@ function RenderTooltipData(text, period, limited = false) {
 }
 
 function RenderAllTooltipControls() {
-    return tooltip_metrics.map((metric) => TOOLTIP_CONTROL_TEMPLATE({metric, text: utility.titleizeString(metric)})).join('');
+    return tooltip_metrics.map((metric) => TOOLTIP_CONTROL_TEMPLATE({metric, text: Utility.titleizeString(metric)})).join('');
 }
 
 function RenderStatistics(key, attribute, period, limited = false) {
     let period_key = GetPeriodKey(period_info.longname[period]);
-    let data = storage.getIndexedSessionData(period_key);
+    let data = Storage.getIndexedSessionData(period_key);
     if (!data) {
         return "No data!";
     }
@@ -1092,7 +1094,7 @@ function GetWeekStatistics(posts) {
     });
     let week_stats = week_days.map((day) => {
         let percent = (100 * day / posts.length);
-        return (percent === 0 || percent === 100 ? percent : utility.setPrecision(percent, 1));
+        return (percent === 0 || percent === 100 ? percent : Utility.setPrecision(percent, 1));
     });
     return week_stats;
 }
@@ -1105,38 +1107,38 @@ function GetDayStatistics(posts) {
     });
     let day_stats = day_hours.map((day) => {
         let percent = (100 * day / posts.length);
-        return (percent === 0 || percent === 100 ? percent : utility.setPrecision(percent, 1));
+        return (percent === 0 || percent === 100 ? percent : Utility.setPrecision(percent, 1));
     });
     return day_stats;
 }
 
 function GetPostStatistics(posts, attribute) {
-    let data = utility.getObjectAttributes(posts, attribute);
+    let data = Utility.getObjectAttributes(posts, attribute);
     let data_max = Math.max(...data);
-    let data_average = statistics.average(data);
-    let data_stddev = statistics.standardDeviation(data);
-    let data_outliers = statistics.removeOutliers(data);
+    let data_average = Statistics.average(data);
+    let data_stddev = Statistics.standardDeviation(data);
+    let data_outliers = Statistics.removeOutliers(data);
     let data_removed = data.length - data_outliers.length;
-    let data_adjusted = statistics.average(data_outliers);
+    let data_adjusted = Statistics.average(data_outliers);
     return {
         max: data_max,
-        average: utility.setPrecision(data_average, 2),
-        stddev: utility.setPrecision(data_stddev, 2),
+        average: Utility.setPrecision(data_average, 2),
+        stddev: Utility.setPrecision(data_stddev, 2),
         outlier: data_removed,
-        adjusted: utility.setPrecision(data_adjusted, 2)
+        adjusted: Utility.setPrecision(data_adjusted, 2)
     };
 }
 
 function AssignPostIndexes(period, posts, time_offset) {
     let points = period_info.points[period];
     //Have to do it this way to avoid getting the same object
-    let periods = utility.arrayFill(points, "[]");
+    let periods = Utility.arrayFill(points, "[]");
     posts.forEach((post) => {
         let index = Math.floor((Date.now() - post.created - time_offset) / (period_info.divisor[period]));
         index = (points ? Math.min(points - 1, index) : index);
         index = Math.max(0, index);
         if (index >= periods.length) {
-            periods = periods.concat(utility.arrayFill(index + 1 - periods.length, "[]"));
+            periods = periods.concat(Utility.arrayFill(index + 1 - periods.length, "[]"));
         }
         periods[index].push(post);
     });
@@ -1149,7 +1151,7 @@ function GetPeriodAverages(indexed_posts, metric) {
         if (!indexed_posts[index].length) continue;
         let data_point = {
             x: parseInt(index),
-            y: utility.setPrecision(statistics.average(utility.getObjectAttributes(indexed_posts[index], metric)), 2)
+            y: Utility.setPrecision(Statistics.average(Utility.getObjectAttributes(indexed_posts[index], metric)), 2)
         };
         period_averages.push(data_point);
     }
@@ -1202,8 +1204,8 @@ function GetCopyrightCount(posts) {
 
 function CompareCopyrightCounts(dict1, dict2) {
     let difference = [];
-    utility.arrayUnion(Object.keys(dict1), Object.keys(dict2)).forEach((key) => {
-        if (!utility.arrayEquals(dict1[key], dict2[key])) {
+    Utility.arrayUnion(Object.keys(dict1), Object.keys(dict2)).forEach((key) => {
+        if (!Utility.arrayEquals(dict1[key], dict2[key])) {
             difference.push(key);
         }
     });
@@ -1211,19 +1213,19 @@ function CompareCopyrightCounts(dict1, dict2) {
 }
 
 function CheckCopyrightVelocity(tag) {
-    var dayuploads = storage.getIndexedSessionData('ctd-' + tag);
-    var weekuploads = storage.getIndexedSessionData('ctw-' + tag);
+    var dayuploads = Storage.getIndexedSessionData('ctd-' + tag);
+    var weekuploads = Storage.getIndexedSessionData('ctw-' + tag);
     if (dayuploads === null || weekuploads === null) {
         return true;
     }
     var day_gettime = dayuploads.expires - period_info.countexpires.d; //Time data was originally retrieved
-    var week_velocity = (utility.one_week) / (weekuploads.value | 1); //Milliseconds per upload
-    var adjusted_poll_interval = Math.min(week_velocity, utility.one_day); //Max wait time is 1 day
+    var week_velocity = (Utility.one_week) / (weekuploads.value | 1); //Milliseconds per upload
+    var adjusted_poll_interval = Math.min(week_velocity, Utility.one_day); //Max wait time is 1 day
     return Date.now() > day_gettime + adjusted_poll_interval;
 }
 
 async function MergeCopyrightTags(user_copytags) {
-    let query_implications = utility.arrayDifference(user_copytags, Object.keys(CU.reverse_implications));
+    let query_implications = Utility.arrayDifference(user_copytags, Object.keys(CU.reverse_implications));
     let promise_array = query_implications.map((key) => GetReverseTagImplication(key));
     let reverse_implications = await Promise.all(promise_array);
     query_implications.forEach((key, i) => {
@@ -1285,7 +1287,7 @@ function CheckPeriodUploads() {
     const checkPeriod = (key, period, check) => {
         CU.period_available[CU.usertag][CU.current_username][period] = Boolean(check);
         if (!check) {
-            storage.removeIndexedSessionData(key);
+            Storage.removeIndexedSessionData(key);
         }
     };
     CU.period_available[CU.usertag][CU.current_username] = CU.period_available[CU.usertag][CU.current_username] || {};
@@ -1297,7 +1299,7 @@ function CheckPeriodUploads() {
         }
         let data_key = GetPeriodKey(period_info.longname[period]);
         let max_expires = period_info.uploadexpires[period];
-        let check_promise = storage.checkLocalDB(data_key, {max_expires}).then((check) => {checkPeriod(data_key, period, check);});
+        let check_promise = Storage.checkLocalDB(data_key, {max_expires}).then((check) => {checkPeriod(data_key, period, check);});
         promise_array.push(check_promise);
     }
     return Promise.all(promise_array);
@@ -1315,7 +1317,7 @@ async function PopulateTable() {
     }
     let is_override = $("#count_override_select")[0].checked;
     if (is_override || CU.checked_users[CU.usertag][CU.current_username]) {
-        CU.active_copytags = utility.dataCopy(CU.user_copytags[CU.usertag][CU.current_username].daily);
+        CU.active_copytags = Utility.dataCopy(CU.user_copytags[CU.usertag][CU.current_username].daily);
         await CheckPeriodUploads(CU.current_username);
         InitializeTable();
     } else {
@@ -1325,7 +1327,7 @@ async function PopulateTable() {
 }
 
 function InitializeControls() {
-    const printer = debug.getFunctionPrint('InitializeControls');
+    const printer = Debug.getFunctionPrint('InitializeControls');
     //Render the controls only once when the table is first opened
     if (!CU.controls_initialized) {
         $("#count-controls").html(RenderAllTooltipControls());
@@ -1337,22 +1339,22 @@ function InitializeControls() {
         $("#count_refresh_user_id").on(JSPLib.program.click, RefreshUser);
         $("#count_add_copyright").on(JSPLib.program.click, AddCopyright);
         CU.controls_initialized = true;
-        load.scriptWaitExecute(CU, 'IAC', {
+        Load.scriptWaitExecute(CU, 'IAC', {
             available: () => {
                 CU.IAC.InitializeProgramValues(true);
                 CU.IAC.InitializeAutocompleteIndexed("#count_query_user_id", 'us');
-                printer.debuglogLevel('Initialized CU input autocomplete: #count_query_user_id', debug.DEBUG);
+                printer.debuglogLevel('Initialized CU input autocomplete: #count_query_user_id', Debug.DEBUG);
             },
             fallback: () => {
-                printer.debuglogLevel('Unable to initialize textarea autocomplete: #count_query_user_id', debug.DEBUG);
+                printer.debuglogLevel('Unable to initialize textarea autocomplete: #count_query_user_id', Debug.DEBUG);
             },
         });
     }
 }
 
 function InitializeTable() {
-    $("#count-header").html(utility.renderHTMLTag('table', RenderHeader(), {class: 'striped'}));
-    $("#count-body").html(utility.renderHTMLTag('table', RenderBody(), {class: 'striped'}));
+    $("#count-header").html(Utility.renderHTMLTag('table', RenderHeader(), {class: 'striped'}));
+    $("#count-body").html(Utility.renderHTMLTag('table', RenderBody(), {class: 'striped'}));
     $("#count-order").html(RenderOrderMessage("d", 0));
     $("#count-header .cu-process").on(JSPLib.program.click, GetPeriod);
     $("#count-header th").on(JSPLib.program.click, SortTable);
@@ -1364,7 +1366,7 @@ function InitializeTable() {
     if (CU.copyright_period) {
         $(`.cu-select-period[data-type="${CU.copyright_period}"] a`).click();
     }
-    CU.shown_copytags = utility.dataCopy(CU.active_copytags);
+    CU.shown_copytags = Utility.dataCopy(CU.active_copytags);
 }
 
 function TableMessage(message) {
@@ -1375,50 +1377,50 @@ function TableMessage(message) {
 //Network functions
 
 async function GetReverseTagImplication(tag) {
-    let printer = debug.getFunctionPrint('GetReverseTagImplication');
+    let printer = Debug.getFunctionPrint('GetReverseTagImplication');
     var key = 'rti-' + tag;
-    var check = await storage.checkLocalDB(key, {max_expires: rti_expiration});
+    var check = await Storage.checkLocalDB(key, {max_expires: rti_expiration});
     if (!(check)) {
         printer.debuglog("Network:", key);
-        let data = await danbooru.submitRequest('tag_implications', {search: {antecedent_name: tag}, only: id_field}, {default_val: [], key});
-        storage.saveData(key, {value: data.length, expires: utility.getExpires(rti_expiration)});
+        let data = await Danbooru.submitRequest('tag_implications', {search: {antecedent_name: tag}, only: id_field}, {default_val: [], key});
+        Storage.saveData(key, {value: data.length, expires: Utility.getExpires(rti_expiration)});
         return data.length;
     }
     return check.value;
 }
 
 async function GetCount(type, tag) {
-    let printer = debug.getFunctionPrint('GetCount');
+    let printer = Debug.getFunctionPrint('GetCount');
     let max_expires = period_info.countexpires[type];
     var key = 'ct' + type + '-' + tag;
-    var check = await storage.checkLocalDB(key, {max_expires});
+    var check = await Storage.checkLocalDB(key, {max_expires});
     if (!(check)) {
         printer.debuglog("Network:", key);
-        return danbooru.submitRequest('counts/posts', {tags: BuildTagParams(type, tag), skip_cache: true}, {default_val: {counts: {posts: 0}}, key})
+        return Danbooru.submitRequest('counts/posts', {tags: BuildTagParams(type, tag), skip_cache: true}, {default_val: {counts: {posts: 0}}, key})
             .then((data) => {
-                storage.saveData(key, {value: data.counts.posts, expires: utility.getExpires(max_expires)});
+                Storage.saveData(key, {value: data.counts.posts, expires: Utility.getExpires(max_expires)});
             });
     }
 }
 
 async function GetPeriodUploads(username, period, limited = false, domname = null) {
-    let printer = debug.getFunctionPrint('GetPeriodUploads');
+    let printer = Debug.getFunctionPrint('GetPeriodUploads');
     let period_name = period_info.longname[period];
     let max_expires = period_info.uploadexpires[period];
     let key = GetPeriodKey(period_name);
-    var check = await storage.checkLocalDB(key, {max_expires});
+    var check = await Storage.checkLocalDB(key, {max_expires});
     if (!(check)) {
         printer.debuglog(`Network (${period_name} ${CU.counttype})`);
-        let data = await danbooru.getPostsCountdown(BuildTagParams(period, `${CU.usertag}:${username}`), max_post_limit_query, post_fields, domname);
+        let data = await Danbooru.getPostsCountdown(BuildTagParams(period, `${CU.usertag}:${username}`), max_post_limit_query, post_fields, domname);
         let mapped_data = MapPostData(data);
         if (limited) {
             let indexed_posts = AssignPostIndexes(period, mapped_data, 0);
-            mapped_data = utility.mergeHashes(...tooltip_metrics.map((metric) => ({[metric]: GetAllStatistics(mapped_data, metric)})));
-            mapped_data.chart_data = utility.mergeHashes(...chart_metrics.map((metric) => ({[metric]: GetPeriodAverages(indexed_posts, metric)})));
+            mapped_data = Utility.mergeHashes(...tooltip_metrics.map((metric) => ({[metric]: GetAllStatistics(mapped_data, metric)})));
+            mapped_data.chart_data = Utility.mergeHashes(...chart_metrics.map((metric) => ({[metric]: GetPeriodAverages(indexed_posts, metric)})));
             mapped_data.chart_data.uploads = GetPeriodPosts(indexed_posts);
-            storage.saveData(key, {value: mapped_data, expires: utility.getExpires(max_expires)});
+            Storage.saveData(key, {value: mapped_data, expires: Utility.getExpires(max_expires)});
         } else {
-            storage.saveData(key, {value: PreCompressData(mapped_data), expires: utility.getExpires(max_expires)});
+            Storage.saveData(key, {value: PreCompressData(mapped_data), expires: Utility.getExpires(max_expires)});
         }
         return mapped_data;
     }
@@ -1497,7 +1499,7 @@ function RenderChart(event) {
         return;
     }
     if (!chart_metrics.includes(CU.current_metric)) {
-        notice.notice("Chart data not available on Day and Week metrics.");
+        Notice.notice("Chart data not available on Day and Week metrics.");
         return;
     }
     let period = $(event.target).data('period');
@@ -1505,9 +1507,9 @@ function RenderChart(event) {
     let longname = period_info.longname[period];
     let points = period_info.points[period];
     let period_key = GetPeriodKey(longname);
-    let data = storage.getIndexedSessionData(period_key);
+    let data = Storage.getIndexedSessionData(period_key);
     if (!data || (!is_limited && data.value.length === 0) || (is_limited && !data.value.chart_data)) {
-        notice.notice(`${period_info.header[period]} period not populated! Click the period header to activate the chart.`);
+        Notice.notice(`${period_info.header[period]} period not populated! Click the period header to activate the chart.`);
         return;
     }
     var period_averages, period_uploads;
@@ -1521,11 +1523,11 @@ function RenderChart(event) {
         period_averages = data.value.chart_data[CU.current_metric];
         period_uploads = data.value.chart_data.uploads;
     }
-    let metric_display = utility.displayCase(CU.current_metric);
-    let type_display = utility.displayCase(CU.counttype);
+    let metric_display = Utility.displayCase(CU.current_metric);
+    let type_display = Utility.displayCase(CU.counttype);
     let chart_data = {
         title: {
-            text: `${utility.displayCase(longname)} ${CU.counttype} - Average post ${CU.current_metric}`
+            text: `${Utility.displayCase(longname)} ${CU.counttype} - Average post ${CU.current_metric}`
         },
         axisX: {
             title: period_info.xlabel[period],
@@ -1569,7 +1571,7 @@ function TooltipChange(event) {
     $(`.cu-select-tooltip[data-type="${CU.current_metric}"]`).addClass("cu-active-control");
     $(".cu-tooltiptext").removeClass("cu-activetooltip");
     $(`.cu-tooltiptext[data-type="${CU.current_metric}"]`).addClass("cu-activetooltip");
-    storage.setLocalData('cu-current-metric', CU.current_metric);
+    Storage.setLocalData('cu-current-metric', CU.current_metric);
     $(".cu-hover .cu-uploads").off(JSPLib.program.mouseover).on(JSPLib.program.mouseover, TooltipHover);
     event.preventDefault();
 }
@@ -1607,7 +1609,7 @@ async function CopyrightPeriod(event) {
         if (is_period_enabled) {
             if (CU.user_copytags[CU.usertag][CU.current_username][current_period] === undefined) {
                 let period_key = GetPeriodKey(current_period);
-                let data = storage.getIndexedSessionData(period_key);
+                let data = Storage.getIndexedSessionData(period_key);
                 let copyright_count = GetCopyrightCount(PostDecompressData(data.value));
                 let user_copytags = SortDict(copyright_count);
                 if (CU.user_settings.copyrights_merge) {
@@ -1639,7 +1641,7 @@ function ToggleNotice(event) {
             CU.empty_uploads_message = (CU.username === "Anonymous" ? empty_uploads_message_anonymous : empty_uploads_message_owner);
             CU.display_username = CU.username;
             CU.current_username = CU.username.toLowerCase();
-            CU.level_string = (CU.username === "Anonymous" ? 'Member' : Danbooru.CurrentUser.data('level-string'));
+            CU.level_string = (CU.username === "Anonymous" ? 'Member' : DanbooruProxy.CurrentUser.data('level-string'));
             CU.usertag = 'user';
             PopulateTable();
         }
@@ -1651,7 +1653,7 @@ function ToggleNotice(event) {
         $("#count-chart").hide();
         CU.channel.postMessage({type: "hide"});
     }
-    storage.setLocalData('cu-hide-current-uploads', CU.hidden);
+    Storage.setLocalData('cu-hide-current-uploads', CU.hidden);
     event.preventDefault();
 }
 
@@ -1668,14 +1670,14 @@ function StashNotice(event) {
         $("#count-chart").hide();
         CU.channel.postMessage({type: "stash"});
     }
-    storage.setLocalData('cu-stash-current-uploads', CU.stashed);
-    storage.setLocalData('cu-hide-current-uploads', CU.hidden);
+    Storage.setLocalData('cu-stash-current-uploads', CU.stashed);
+    Storage.setLocalData('cu-hide-current-uploads', CU.hidden);
     event.preventDefault();
 }
 
 async function RefreshUser() {
     $("#count-copyrights-counter").html(copyright_counter);
-    let diff_tags = utility.arrayDifference(CU.active_copytags, CU.shown_copytags);
+    let diff_tags = Utility.arrayDifference(CU.active_copytags, CU.shown_copytags);
     let promise_array = [];
     diff_tags.forEach((val) => {
         promise_array.push(GetTagData(`${CU.usertag}:${CU.current_username} ${val}`));
@@ -1698,7 +1700,7 @@ async function CheckUser() {
             check_user = CU.checked_usernames[check_username];
         } else {
             //Check each time no matter what as misses can be catastrophic
-            check_user = await danbooru.submitRequest('users', {search: {name_matches: check_username}, only: user_fields, expiry: 30});
+            check_user = await Danbooru.submitRequest('users', {search: {name_matches: check_username}, only: user_fields, expiry: 30});
             CU.checked_usernames[check_username] = check_user;
         }
         if (check_user.length) {
@@ -1719,16 +1721,16 @@ async function CheckUser() {
 async function AddCopyright() {
     let user_copytags = CU.user_copytags[CU.usertag][CU.current_username];
     let tag = $("#count_query_copyright").val();
-    let tagdata = await danbooru.submitRequest('tags', {search: {name: tag}, only: name_field}, {default_val: []});
+    let tagdata = await Danbooru.submitRequest('tags', {search: {name: tag}, only: name_field}, {default_val: []});
     if (tagdata.length === 0) {
-        notice.notice('Tag not valid');
+        Notice.notice('Tag not valid');
         return;
     }
     tag = tagdata[0].name;
     user_copytags.manual.push(tag);
-    user_copytags.manual = utility.arrayUnique(user_copytags.manual);
+    user_copytags.manual = Utility.arrayUnique(user_copytags.manual);
     CU.active_copytags.push(tag);
-    CU.active_copytags = utility.arrayUnique(CU.active_copytags);
+    CU.active_copytags = Utility.arrayUnique(CU.active_copytags);
     $('#count-copyrights-list').html(RenderCopyrights('manual'));
     $("#count-copyrights-list a").off(JSPLib.program.click).on(JSPLib.program.click, ToggleCopyrightTag);
 }
@@ -1755,12 +1757,12 @@ async function ProcessUploads() {
     }
     let previous_key = GetPeriodKey("previous");
     if (current_uploads.length) {
-        let is_new_tab = storage.getIndexedSessionData(previous_key) === null;
-        let previous_uploads = await storage.checkLocalDB(previous_key, {default_val: {value: []}});
+        let is_new_tab = Storage.getIndexedSessionData(previous_key) === null;
+        let previous_uploads = await Storage.checkLocalDB(previous_key, {default_val: {value: []}});
         previous_uploads = PostDecompressData(previous_uploads.value);
-        let current_ids = utility.getObjectAttributes(current_uploads, 'id');
-        let previous_ids = utility.getObjectAttributes(previous_uploads, 'id');
-        if (is_new_tab || !utility.arrayEquals(current_ids, previous_ids) || IsMissingTag(`${CU.usertag}:${CU.current_username}`)) {
+        let current_ids = Utility.getObjectAttributes(current_uploads, 'id');
+        let previous_ids = Utility.getObjectAttributes(previous_uploads, 'id');
+        if (is_new_tab || !Utility.arrayEquals(current_ids, previous_ids) || IsMissingTag(`${CU.usertag}:${CU.current_username}`)) {
             promise_array.push(GetTagData(`${CU.usertag}:${CU.current_username}`));
         }
         if (CU.is_gold_user && CU.copyrights_enabled) {
@@ -1774,8 +1776,8 @@ async function ProcessUploads() {
                 user_copytags = user_copytags.slice(0, CU.copyrights_threshold);
             }
             let copyright_symdiff = CompareCopyrightCounts(curr_copyright_count, prev_copyright_count);
-            let copyright_changed = (is_new_tab ? user_copytags : utility.arrayIntersection(user_copytags, copyright_symdiff));
-            let copyright_nochange = (is_new_tab ? [] : utility.arrayDifference(user_copytags, copyright_changed));
+            let copyright_changed = (is_new_tab ? user_copytags : Utility.arrayIntersection(user_copytags, copyright_symdiff));
+            let copyright_nochange = (is_new_tab ? [] : Utility.arrayDifference(user_copytags, copyright_changed));
             copyright_nochange.forEach((val) => {
                 if (CheckCopyrightVelocity(val) || IsMissingTag(val)) {
                     promise_array.push(GetTagData(val));
@@ -1794,12 +1796,12 @@ async function ProcessUploads() {
         await GetTagData(`${CU.usertag}:${CU.current_username}`);
     }
     CU.user_copytags[CU.usertag][CU.current_username] = {daily: user_copytags, manual: []};
-    storage.saveData(previous_key, {value: PreCompressData(current_uploads), expires: 0});
+    Storage.saveData(previous_key, {value: PreCompressData(current_uploads), expires: 0});
     return current_uploads;
 }
 
 function CleanupTasks() {
-    storage.pruneProgramCache(PROGRAM_DATA_REGEX, prune_expires);
+    Storage.pruneProgramCache(PROGRAM_DATA_REGEX, prune_expires);
 }
 
 //Cache functions
@@ -1823,7 +1825,7 @@ function OptionCacheDataKey(data_type, data_value) {
 //Settings functions
 
 function BroadcastCU(ev) {
-    let printer = debug.getFunctionPrint('BroadcastCU');
+    let printer = Debug.getFunctionPrint('BroadcastCU');
     printer.debuglog(`(${ev.data.type}):`, ev.data);
     switch (ev.data.type) {
         case "hide":
@@ -1867,53 +1869,53 @@ function DataTypeChange() {
 
 function InitializeProgramValues() {
     Object.assign(CU, {
-        username: Danbooru.CurrentUser.data('name'),
-        is_gold_user: Danbooru.CurrentUser.data('is-gold'),
-        current_metric: storage.checkLocalData('cu-current-metric', {default_val: 'score'}),
-        hidden: Boolean(storage.checkLocalData('cu-hide-current-uploads', {default_val: true})),
-        stashed: Boolean(storage.checkLocalData('cu-stash-current-uploads', {default_val: false})),
+        username: DanbooruProxy.CurrentUser.data('name'),
+        is_gold_user: DanbooruProxy.CurrentUser.data('is-gold'),
+        current_metric: Storage.checkLocalData('cu-current-metric', {default_val: 'score'}),
+        hidden: Boolean(Storage.checkLocalData('cu-hide-current-uploads', {default_val: true})),
+        stashed: Boolean(Storage.checkLocalData('cu-stash-current-uploads', {default_val: false})),
     });
-    load.setProgramGetter(CU, 'IAC', 'IndexedAutocomplete', 29.32);
+    Load.setProgramGetter(CU, 'IAC', 'IndexedAutocomplete', 29.32);
     return true;
 }
 
 function RenderSettingsMenu() {
-    $(menu.program_selector).append(menu.renderMenuFramework(MENU_CONFIG));
-    $("#cu-general-settings").append(menu.renderDomainSelectors());
-    $("#cu-display-settings").append(menu.renderCheckbox('copyrights_merge'));
-    $("#cu-display-settings").append(menu.renderCheckbox('copyrights_enabled'));
-    $("#cu-display-settings").append(menu.renderTextinput('copyrights_threshold', 10));
-    $("#cu-display-settings").append(menu.renderTextinput('postcount_threshold', 10));
-    $("#cu-display-settings").append(menu.renderInputSelectors('periods_shown', 'checkbox'));
-    $('#cu-controls').append(menu.renderCacheControls());
-    $('#cu-cache-controls-message').append(menu.renderExpandable("Cache Data details", CACHE_DATA_DETAILS));
-    $("#cu-cache-controls").append(menu.renderLinkclick('cache_info', true));
-    $('#cu-cache-controls').append(menu.renderCacheInfoTable());
-    $("#cu-cache-controls").append(menu.renderLinkclick('purge_cache', true));
-    $('#cu-controls').append(menu.renderCacheEditor(true));
-    $('#cu-cache-editor-message').append(menu.renderExpandable("Program Data details", PROGRAM_DATA_DETAILS));
-    $("#cu-cache-editor-controls").append(menu.renderKeyselect('data_source', true));
-    $("#cu-cache-editor-controls").append(menu.renderDataSourceSections());
-    $("#cu-section-indexed-db").append(menu.renderKeyselect('data_type', true));
-    $("#cu-section-indexed-db").append(menu.renderKeyselect('data_period', true));
-    $("#cu-section-local-storage").append(menu.renderCheckbox('raw_data', true));
-    $("#cu-cache-editor-controls").append(menu.renderTextinput('data_name', 20, true));
-    menu.engageUI({checkboxradio: true});
+    $(Menu.program_selector).append(Menu.renderMenuFramework(MENU_CONFIG));
+    $("#cu-general-settings").append(Menu.renderDomainSelectors());
+    $("#cu-display-settings").append(Menu.renderCheckbox('copyrights_merge'));
+    $("#cu-display-settings").append(Menu.renderCheckbox('copyrights_enabled'));
+    $("#cu-display-settings").append(Menu.renderTextinput('copyrights_threshold', 10));
+    $("#cu-display-settings").append(Menu.renderTextinput('postcount_threshold', 10));
+    $("#cu-display-settings").append(Menu.renderInputSelectors('periods_shown', 'checkbox'));
+    $('#cu-controls').append(Menu.renderCacheControls());
+    $('#cu-cache-controls-message').append(Menu.renderExpandable("Cache Data details", CACHE_DATA_DETAILS));
+    $("#cu-cache-controls").append(Menu.renderLinkclick('cache_info', true));
+    $('#cu-cache-controls').append(Menu.renderCacheInfoTable());
+    $("#cu-cache-controls").append(Menu.renderLinkclick('purge_cache', true));
+    $('#cu-controls').append(Menu.renderCacheEditor(true));
+    $('#cu-cache-editor-message').append(Menu.renderExpandable("Program Data details", PROGRAM_DATA_DETAILS));
+    $("#cu-cache-editor-controls").append(Menu.renderKeyselect('data_source', true));
+    $("#cu-cache-editor-controls").append(Menu.renderDataSourceSections());
+    $("#cu-section-indexed-db").append(Menu.renderKeyselect('data_type', true));
+    $("#cu-section-indexed-db").append(Menu.renderKeyselect('data_period', true));
+    $("#cu-section-local-storage").append(Menu.renderCheckbox('raw_data', true));
+    $("#cu-cache-editor-controls").append(Menu.renderTextinput('data_name', 20, true));
+    Menu.engageUI({checkboxradio: true});
     $("#cu-select-periods-shown-daily").checkboxradio("disable"); //Daily period is mandatory
-    menu.saveUserSettingsClick();
-    menu.resetUserSettingsClick({delete_keys: LOCALSTORAGE_KEYS, local_callback: RemoteResetCallback});
-    menu.cacheInfoClick();
-    menu.purgeCacheClick();
-    menu.expandableClick();
-    menu.dataSourceChange();
+    Menu.saveUserSettingsClick();
+    Menu.resetUserSettingsClick({delete_keys: LOCALSTORAGE_KEYS, local_callback: RemoteResetCallback});
+    Menu.cacheInfoClick();
+    Menu.purgeCacheClick();
+    Menu.expandableClick();
+    Menu.dataSourceChange();
     $("#cu-control-data-type").on(JSPLib.program.change, DataTypeChange);
-    menu.rawDataChange();
-    menu.getCacheClick(ValidateProgramData);
-    menu.saveCacheClick(ValidateProgramData, ValidateEntry);
-    menu.deleteCacheClick();
-    menu.listCacheClick();
-    menu.refreshCacheClick();
-    menu.cacheAutocomplete();
+    Menu.rawDataChange();
+    Menu.getCacheClick(ValidateProgramData);
+    Menu.saveCacheClick(ValidateProgramData, ValidateEntry);
+    Menu.deleteCacheClick();
+    Menu.listCacheClick();
+    Menu.refreshCacheClick();
+    Menu.cacheAutocomplete();
 }
 
 //Main program
@@ -1930,7 +1932,7 @@ function Main() {
         //light_css: LIGHT_MODE_CSS,
         //dark_css: DARK_MODE_CSS,
     };
-    if (!menu.preloadScript(CU, preload)) return;
+    if (!Menu.preloadScript(CU, preload)) return;
 
     var $notice_box = $(notice_box);
     var $footer_notice = $(unstash_notice);
@@ -1949,8 +1951,8 @@ function Main() {
         CU.hidden = true;
         setTimeout(() => {$("#toggle-count-notice").click();}, JQUERY_DELAY);
     }
-    statistics.addPageStatistics();
-    load.noncriticalTasks(CleanupTasks);
+    Statistics.addPageStatistics();
+    Load.noncriticalTasks(CleanupTasks);
 }
 
 /****Initialization****/
@@ -1961,26 +1963,28 @@ JSPLib.program_shortcut = PROGRAM_SHORTCUT;
 JSPLib.program_data = CU;
 
 //Variables for debug.js
-debug.mode = true;
-debug.level = debug.VERBOSE;
+Debug.mode = true;
+Debug.level = Debug.VERBOSE;
 
 //Variables for menu.js
-menu.program_reset_data = PROGRAM_RESET_KEYS;
-menu.program_data_regex = PROGRAM_DATA_REGEX;
-menu.program_data_key = OptionCacheDataKey;
-menu.settings_config = SETTINGS_CONFIG;
-menu.control_config = CONTROL_CONFIG;
+Menu.program_reset_data = PROGRAM_RESET_KEYS;
+Menu.program_data_regex = PROGRAM_DATA_REGEX;
+Menu.program_data_key = OptionCacheDataKey;
+Menu.settings_config = SETTINGS_CONFIG;
+Menu.control_config = CONTROL_CONFIG;
 
 //Variables for danbooru.js
-danbooru.counter_domname = "#loading-counter";
+Danbooru.counter_domname = "#loading-counter";
 
 //Export JSPLib
-load.exportData();
+Load.exportData();
 
-//Variables for storage.js
-storage.indexedDBValidator = ValidateEntry;
-storage.localSessionValidator = ValidateProgramData;
+//Variables for Storage.js
+Storage.indexedDBValidator = ValidateEntry;
+Storage.localSessionValidator = ValidateProgramData;
 
 /****Execution start****/
 
-load.programInitialize(Main, {required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, required_selectors: PROGRAM_LOAD_REQUIRED_SELECTORS});
+Load.programInitialize(Main, {required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, required_selectors: PROGRAM_LOAD_REQUIRED_SELECTORS});
+
+})(JSPLib);
