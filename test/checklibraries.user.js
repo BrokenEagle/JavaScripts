@@ -15,25 +15,28 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-setitems@1.4.0/dist/localforage-setitems.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b4f80d231db339c381cb473ef8e06acb88e04d9f/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b4f80d231db339c381cb473ef8e06acb88e04d9f/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b4f80d231db339c381cb473ef8e06acb88e04d9f/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b4f80d231db339c381cb473ef8e06acb88e04d9f/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b4f80d231db339c381cb473ef8e06acb88e04d9f/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b4f80d231db339c381cb473ef8e06acb88e04d9f/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b4f80d231db339c381cb473ef8e06acb88e04d9f/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b4f80d231db339c381cb473ef8e06acb88e04d9f/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b4f80d231db339c381cb473ef8e06acb88e04d9f/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b4f80d231db339c381cb473ef8e06acb88e04d9f/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b4f80d231db339c381cb473ef8e06acb88e04d9f/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b4f80d231db339c381cb473ef8e06acb88e04d9f/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a0854f3e6bf7948b5c3e1df89a644e9d614e8c7a/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a0854f3e6bf7948b5c3e1df89a644e9d614e8c7a/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a0854f3e6bf7948b5c3e1df89a644e9d614e8c7a/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a0854f3e6bf7948b5c3e1df89a644e9d614e8c7a/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a0854f3e6bf7948b5c3e1df89a644e9d614e8c7a/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a0854f3e6bf7948b5c3e1df89a644e9d614e8c7a/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a0854f3e6bf7948b5c3e1df89a644e9d614e8c7a/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a0854f3e6bf7948b5c3e1df89a644e9d614e8c7a/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a0854f3e6bf7948b5c3e1df89a644e9d614e8c7a/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a0854f3e6bf7948b5c3e1df89a644e9d614e8c7a/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a0854f3e6bf7948b5c3e1df89a644e9d614e8c7a/lib/saucenao.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a0854f3e6bf7948b5c3e1df89a644e9d614e8c7a/lib/load.js
 // @connect      cdn.donmai.us
 // @connect      saucenao.com
 // ==/UserScript==
 
 // eslint-disable-next-line no-redeclare
-/* global jQuery JSPLib validate unsafeWindow GM */
+/* global jQuery JSPLib validate GM */
 
+(({Debug, Notice, Utility, Storage, Template, Concurrency, Statistics, Validate, Network, Danbooru, Saucenao, Load, Menu}) => {
+
+'CheckLibraries';
 
 /****SETUP****/
 
@@ -1949,3 +1952,4 @@ Load.exportData();
 
 Load.programInitialize(checklibrary, {program_name: 'CL', required_variables: ['window.jQuery', 'window.Danbooru'], required_selectors: ["footer"]});
 
+})(JSPLib);
