@@ -12,14 +12,14 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SafelistPlus.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SafelistPlus.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/4a907dbb73f4ec888b724f7cfea2c37ef7bb1ecc/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ */
@@ -28,7 +28,8 @@
 
 (({DanbooruProxy, ValidateJS, Debug, Notice, Utility, Storage, Template, Validate, Load, Menu}) => {
 
-"SafelistPlus";
+const PROGRAM_NAME = 'SafelistPlus';
+const PROGRAM_SHORTCUT = 'sl';
 
 /****Library updates****/
 
@@ -42,10 +43,6 @@ const DANBOORU_TOPIC_ID = '14221';
 //Variables for Load.js
 const program_load_required_variables = ['window.jQuery', 'window.Danbooru', 'Danbooru.CurrentUser'];
 const program_load_required_selectors = ["#page"];
-
-//Program name constants
-const PROGRAM_SHORTCUT = 'sl';
-const PROGRAM_NAME = 'SafelistPlus';
 
 //Main program variable
 const SL = {};
@@ -694,7 +691,7 @@ class Safelist {
 
     setSideClick() {
         let context = this;
-        $("a", this.side).off(JSPLib.program.click).on(JSPLib.program.click,(event)=>{
+        $("a", this.side).off(JSPLib.event.click).on(JSPLib.event.click,(event)=>{
             SetSideLevel(context);
             event.preventDefault();
         });
@@ -710,7 +707,7 @@ class Safelist {
     }
     setNameChangeClick() {
         let context = this;
-        $(".safelist-edit", context.menu).off(JSPLib.program.click).on(JSPLib.program.click,()=>{
+        $(".safelist-edit", context.menu).off(JSPLib.event.click).on(JSPLib.event.click,()=>{
             $("h2", context.menu).hide();
             $(".safelist-edit", context.menu).hide();
             $(".safelist-name", context.menu).show();
@@ -718,7 +715,7 @@ class Safelist {
     }
     setPullButtonClick() {
         let context = this;
-        $(".safelist-pull", context.menu).off(JSPLib.program.click).on(JSPLib.program.click,()=>{
+        $(".safelist-pull", context.menu).off(JSPLib.event.click).on(JSPLib.event.click,()=>{
             $(".safelist-tags", context.menu).val(
                 Utility.getMeta("blacklisted-tags")
                 ?.replace(/(rating:[qes])\w+/ig, "$1")
@@ -730,7 +727,7 @@ class Safelist {
     setPushButtonClick() {
         const printer = Debug.getFunctionPrint('setPushButtonClick');
         let context = this;
-        $(".safelist-push", context.menu).off(JSPLib.program.click).on(JSPLib.program.click,()=>{
+        $(".safelist-push", context.menu).off(JSPLib.event.click).on(JSPLib.event.click,()=>{
             if (confirm("Update your blacklist on Danbooru?")) {
                 let tagdata = $(".safelist-tags", context.menu).val().replace(/\n/g, '\r\n');
                 let senddata = {'user': {'blacklisted_tags': tagdata}};
@@ -753,7 +750,7 @@ class Safelist {
     }
     setDeleteButtonClick() {
         let context = this;
-        $('.safelist-delete', context.menu).off(JSPLib.program.click).on(JSPLib.program.click,()=>{
+        $('.safelist-delete', context.menu).off(JSPLib.event.click).on(JSPLib.event.click,()=>{
             $(context.side).hide();
             $(context.menu).hide();
             context.enabled = false;
@@ -1081,9 +1078,9 @@ function InitializeSideEvents() {
         SL.level_data[level].setSideClick();
         SL.level_data[level].setKeypress();
     }
-    $("#enable-safelist").off(JSPLib.program.click).on(JSPLib.program.click, EnableSafelist);
-    $("#disable-safelist").off(JSPLib.program.click).on(JSPLib.program.click, DisableSafelist);
-    $("#sl-collapsible-list").off(JSPLib.program.click).on(JSPLib.program.click, ToggleSafelist);
+    $("#enable-safelist").off(JSPLib.event.click).on(JSPLib.event.click, EnableSafelist);
+    $("#disable-safelist").off(JSPLib.event.click).on(JSPLib.event.click, DisableSafelist);
+    $("#sl-collapsible-list").off(JSPLib.event.click).on(JSPLib.event.click, ToggleSafelist);
 }
 
 function InitializeSettingsMenu() {
@@ -1108,10 +1105,10 @@ function InitializeSettingEvents() {
     for (let level in SL.level_data) {
         SL.level_data[level].initializeLevelMenuEvents();
     }
-    $(".safelist-help").off(JSPLib.program.click).on(JSPLib.program.click, HelpInfo);
-    $("#safelist-commit").off(JSPLib.program.click).on(JSPLib.program.click, MenuSaveButton);
-    $("#safelist-add").off(JSPLib.program.click).on(JSPLib.program.click, MenuAddButton);
-    $("#safelist-resetall").off(JSPLib.program.click).on(JSPLib.program.click, MenuResetAllButton);
+    $(".safelist-help").off(JSPLib.event.click).on(JSPLib.event.click, HelpInfo);
+    $("#safelist-commit").off(JSPLib.event.click).on(JSPLib.event.click, MenuSaveButton);
+    $("#safelist-add").off(JSPLib.event.click).on(JSPLib.event.click, MenuAddButton);
+    $("#safelist-resetall").off(JSPLib.event.click).on(JSPLib.event.click, MenuResetAllButton);
 }
 
 function InitializeActiveCSS() {
@@ -1423,7 +1420,7 @@ function ToggleSafelist(event) {
 
 function SetSafelistSettingsClick() {
     if (!Utility.isNamespaceBound({root: "#display-safelist-settings", eventtype: 'click', namespace: PROGRAM_SHORTCUT})) {
-        $("#display-safelist-settings").on(JSPLib.program.click,(event)=>{
+        $("#display-safelist-settings").on(JSPLib.event.click,(event)=>{
             $("#post-sections li a").removeClass('active');
             $("#display-safelist-settings").addClass('active');
             $("#content > *:not(#post-sections)").hide();
@@ -1436,7 +1433,7 @@ function SetSafelistSettingsClick() {
 //These actions get executed along with any other existing click events
 function SetOtherSectionsClick() {
     if (!Utility.isNamespaceBound({root: "#show-posts-link,#show-excerpt-link", eventtype: 'click', namespace: PROGRAM_SHORTCUT})) {
-        $("#show-posts-link,#show-excerpt-link").on(JSPLib.program.click, ()=>{
+        $("#show-posts-link,#show-excerpt-link").on(JSPLib.event.click, ()=>{
             $("#display-safelist-settings").removeClass('active');
             $('#safelist-settings').hide();
         });
@@ -1803,16 +1800,19 @@ function Main() {
 /****Initialization****/
 
 //Variables for JSPLib
-JSPLib.program_name = PROGRAM_NAME;
-JSPLib.program_shortcut = PROGRAM_SHORTCUT;
-JSPLib.program_data = SL;
+JSPLib.name = PROGRAM_NAME;
+JSPLib.shortcut = PROGRAM_SHORTCUT;
+JSPLib.data = SL;
 
 //Variables for debug.js
 Debug.mode = true;
 Debug.level = Debug.VERBOSE;
 
+//Variables for Storage.js
+Storage.localSessionValidator = ValidateProgramData;
+
 //Variables for menu.js
-Menu.program_reset_data = PROGRAM_RESET_KEYS;
+Menu.reset_data = PROGRAM_RESET_KEYS;
 Menu.settings_callback = RemoteSettingsCallback;
 Menu.reset_callback = RemoteResetCallback;
 Menu.settings_config = SETTINGS_CONFIG;
@@ -1820,9 +1820,6 @@ Menu.control_config = CONTROL_CONFIG;
 
 //Export JSPLib
 Load.exportData();
-
-//Variables for Storage.js
-Storage.localSessionValidator = ValidateProgramData;
 
 /****Execution start****/
 

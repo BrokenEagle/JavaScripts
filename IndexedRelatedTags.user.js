@@ -14,26 +14,27 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/854e2e033e8c9e0f4b26c5961634c3d3027614f5/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ */
 
 (({DanbooruProxy, ValidateJS, Debug, Notice, Utility, Storage, Template, Validate, Concurrency, Statistics, Network, Danbooru, Load, Menu}) => {
 
-"IndexedRelatedTags";
+const PROGRAM_NAME = 'IndexedRelatedTags';
+const PROGRAM_SHORTCUT = 'irt';
 
 /****Library updates****/
 
@@ -42,15 +43,11 @@
 /****Global variables****/
 
 //Exterior script variables
-const DANBOORU_TOPIC_ID = null;
+const DANBOORU_TOPIC_ID = '23592';
 
 //Variables for load.js
 const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.RelatedTag', 'Danbooru.Post'];
 const PROGRAM_LOAD_REQUIRED_SELECTORS = ['#top', '#page'];
-
-//Program name constants
-const PROGRAM_SHORTCUT = 'irt';
-const PROGRAM_NAME = 'IndexedRelatedTags';
 
 //Program data constants
 const PROGRAM_DATA_REGEX = /^(rt[fcjo](gen|char|copy|art)?|wpt|tagov)-/; //Regex that matches the prefix of all program cache data
@@ -64,9 +61,9 @@ const RELATED_QUERY_ORDERS = ['frequency', 'cosine', 'jaccard', 'overlap'];
 //Main settings
 const SETTINGS_CONFIG = {
     related_query_categories: {
-        allitems: Danbooru.category.names,
-        reset: Danbooru.category.names,
-        validate: (data) => Menu.validateCheckboxRadio(data, 'checkbox', Danbooru.category.names),
+        allitems: Danbooru.categories.names,
+        reset: Danbooru.categories.names,
+        validate: (data) => Menu.validateCheckboxRadio(data, 'checkbox', Danbooru.categories.names),
         hint: "Select the category query buttons to show.",
     },
     related_results_limit: {
@@ -592,7 +589,7 @@ const WIKI_PAGE_CONSTRAINTS = {
     entry: Validate.hashentry_constraints,
     value: {
         title: Validate.stringonly_constraints,
-        tags: Validate.tagentryarray_constraints(Utility.concat(Danbooru.category.values, [NONEXISTENT_TAG_CATEGORY])),
+        tags: Validate.tagentryarray_constraints(Utility.concat(Danbooru.categories.values, [NONEXISTENT_TAG_CATEGORY])),
         other_wikis: Validate.array_constraints,
     },
     other_wikis: Validate.basic_stringonly_validator,
@@ -760,7 +757,7 @@ function RenderTaglist(taglist, columnname, tags_overlap) {
         let escaped_tag = Utility.HTMLEscape(tag);
         let category = tagdata[1];
         let display_name = tag.replace(/_/g, ' ');
-        let search_link = Danbooru.postSearchLink(display_name, {tags: tag}, {class: 'search-tag', dataCategory: category, dataTagname: escaped_tag});
+        let search_link = Danbooru.postSearchLink(display_name, {tags: tag}, {class: 'search-tag', dataCategory: category, dataTagName: escaped_tag});
         var prefix, classname;
         if (display_percentage) {
             var percentage_string, percent_classname;
@@ -855,7 +852,7 @@ function RenderTranslatedColumn(translated_tags) {
 
 function RenderRelatedQueryCategoryControls() {
     let html = '<button id="related_query_category_all" class="irt-related-button">All</button>';
-    for (let category in Danbooru.category.name) {
+    for (let category in Danbooru.categories.name) {
         if (!IRT.related_query_categories.includes(category)) continue;
         let display_name = Utility.displayCase(category);
         html += `
@@ -956,8 +953,8 @@ async function RelatedTagsQuery(tag, category, query_order) {
     const printer = Debug.getFunctionPrint('RelatedTagsQuery');
     printer.log("Querying:", tag, category);
     let url_addons = {search: {query: tag, order: query_order}, limit: IRT.related_results_limit || DanbooruProxy.RelatedTag.MAX_RELATED_TAGS};
-    if (category in Danbooru.category.name) {
-        url_addons.search.category = Danbooru.category.name[category];
+    if (category in Danbooru.categories.name) {
+        url_addons.search.category = Danbooru.categories.name[category];
     }
     let html = await Network.get('/related_tag.html', {data: url_addons});
     let tagentry_array = $(html).find('tbody .name-column a[href^="/posts"]').toArray().map((link) => {
@@ -971,7 +968,7 @@ async function RelatedTagsQuery(tag, category, query_order) {
     });
     let data = {
         query: tag,
-        categories: (category ? [Danbooru.category.name[category]] : []),
+        categories: (category ? [Danbooru.categories.name[category]] : []),
         tags: tagentry_array,
     };
     return {value: data, expires: Utility.getExpires(RELATED_TAG_EXPIRES)};
@@ -1583,18 +1580,17 @@ function Main() {
 /****Initialization****/
 
 //Variables for JSPLib
-
-JSPLib.program_name = PROGRAM_NAME;
-JSPLib.program_shortcut = PROGRAM_SHORTCUT;
-JSPLib.program_data = IRT;
+JSPLib.name = PROGRAM_NAME;
+JSPLib.shortcut = PROGRAM_SHORTCUT;
+JSPLib.data = IRT;
 
 //Variables for debug.js
 Debug.mode = false;
 Debug.level = Debug.INFO;
 
 //Variables for menu.js
-Menu.program_data_regex = PROGRAM_DATA_REGEX;
-Menu.program_data_key = OptionCacheDataKey;
+Menu.data_regex = PROGRAM_DATA_REGEX;
+Menu.data_key = OptionCacheDataKey;
 Menu.settings_config = SETTINGS_CONFIG;
 Menu.control_config = CONTROL_CONFIG;
 

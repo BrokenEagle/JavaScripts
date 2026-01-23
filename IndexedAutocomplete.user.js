@@ -2205,18 +2205,26 @@ function DelayInitializeTagAutocomplete(selector, type) {
 //Rebind callback functions
 
 function RebindRenderCheck() {
-    JSPLib.utility.recheckInterval({
-        check: () => !JSPLib.utility.hasDOMDataKey(AUTOCOMPLETE_REBIND_SELECTORS, 'iac-render'),
-        exec: RebindRender,
+    Utility.DOMWaitExecute({
+        name: "rebind render check",
+        data_check: {
+            selector: AUTOCOMPLETE_REBIND_SELECTORS,
+            key: 'iac-render',
+        },
         interval: TIMER_POLL_INTERVAL,
         duration: JSPLib.utility.one_second * 5,
+        found: RebindRender,
     });
 }
 
-function RebindAutocomplete({selector, func, duration} = {}) {
-    JSPLib.utility.recheckInterval({
-        check: () => JSPLib.utility.hasDOMDataKey(selector, 'uiAutocomplete'),
-        exec: () => {
+function RebindAutocomplete({name, selector, func} = {}) {
+    Utility.DOMWaitExecute({
+        name,
+        data_check: {
+            selector: selector,
+            key: 'uiDialog',
+        },
+        () found {
             $(selector).each((_, entry) => {
                 if ($(entry).autocomplete('instance')) {
                     $(entry).autocomplete('destroy').off('keydown.Autocomplete.tab');
@@ -2225,12 +2233,13 @@ function RebindAutocomplete({selector, func, duration} = {}) {
             func();
         },
         interval: TIMER_POLL_INTERVAL,
-        duration,
+        duration: JSPLib.utility.one_second * 5,
     });
 }
 
 function RebindAnyAutocomplete(selector, keycode, multiple) {
     RebindAutocomplete({
+        name: `rebind any autocomplete: ${keycode}`,
         selector,
         func () {
             InitializeAutocompleteIndexed(selector, keycode, {multiple});
@@ -2240,6 +2249,7 @@ function RebindAnyAutocomplete(selector, keycode, multiple) {
 
 function RebindMultipleTag() {
     RebindAutocomplete({
+        name: "rebind multiple tag",
         selector: AUTOCOMPLETE_MULTITAG_SELECTORS,
         func () {
             InitializeTagQueryAutocompleteIndexed();
@@ -2249,6 +2259,7 @@ function RebindMultipleTag() {
 
 function RebindSingleTag() {
     RebindAutocomplete({
+        name: "rebind single tag",
         selector: '[data-autocomplete=tag]',
         func () {
             let $fields = $('[data-autocomplete=tag]');
