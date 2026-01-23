@@ -12,17 +12,17 @@
 // @run-at       document-idle
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/TranslatorAssist.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/TranslatorAssist.user.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8be8b18e19ebdac9f269e35e4fe4b1a98472756f/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/menu.js
 // @connect      validator.nu
 // ==/UserScript==
 

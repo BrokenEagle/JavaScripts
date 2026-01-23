@@ -2181,7 +2181,7 @@ function RebindAutocomplete({name, selector, func} = {}) {
     Utility.DOMWaitExecute({
         name,
         data_check: {
-            selector: selector,
+            selector,
             key: 'uiAutocomplete',
         },
         found () {
