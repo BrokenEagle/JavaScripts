@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.37
+// @version      29.38
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1772,7 +1772,7 @@ function AddUserSelected(type, metatag, term, data, query_type, word_mode, key, 
             // Don't insert static tags on tag-only inputs
             continue;
         }
-        if (check_values && !valid_values.includes(checkterm)) {
+        if (check_values && choice[checkterm].category === METATAG_TAG_CATEGORY && !valid_values.includes(checkterm)) {
             // Don't insert static metatags where they're not valid: tag-query and tag-edit have different sets.
             continue;
         }
