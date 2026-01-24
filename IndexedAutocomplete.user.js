@@ -2170,10 +2170,11 @@ function RebindRenderCheck() {
         data_check: {
             selector: AUTOCOMPLETE_REBIND_SELECTORS,
             key: 'iac-render',
+            negate: true,
         },
+        found: RebindRender,
         interval: TIMER_POLL_INTERVAL,
         duration: Utility.one_second * 5,
-        found: RebindRender,
     });
 }
 
