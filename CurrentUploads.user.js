@@ -14,18 +14,18 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ CanvasJS */
@@ -1803,10 +1803,10 @@ function CleanupTasks() {
 
 //Cache functions
 
-function OptionCacheDataKey(data_type, data_value) {
+function OptionCacheDataKey(data_type) {
     CU.data_period = $("#cu-control-data-period").val();
     if (data_type === "reverse_implication") {
-        return 'rti-' + data_value;
+        return 'rti-';
     }
     if (data_type === "count") {
         if (CU.data_period === "previous") {
@@ -1814,9 +1814,9 @@ function OptionCacheDataKey(data_type, data_value) {
             return "";
         }
         let shortkey = (CU.data_period !== "" ? longname_key[CU.data_period] : "");
-        return `ct${shortkey}-${data_value}`;
+        return `ct${shortkey}-`;
     }
-    return `${CU.data_period}-${data_type}-${data_value}`;
+    return `${CU.data_period}-${data_type}-`;
 }
 
 //Settings functions
@@ -1960,7 +1960,7 @@ JSPLib.shortcut = PROGRAM_SHORTCUT;
 JSPLib.data = CU;
 
 //Variables for debug.js
-Debug.mode = true;
+Debug.mode = false;
 Debug.level = Debug.VERBOSE;
 
 //Variables for menu.js

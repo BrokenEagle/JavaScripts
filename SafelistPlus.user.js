@@ -12,14 +12,14 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SafelistPlus.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SafelistPlus.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ */
@@ -1805,7 +1805,7 @@ JSPLib.shortcut = PROGRAM_SHORTCUT;
 JSPLib.data = SL;
 
 //Variables for debug.js
-Debug.mode = true;
+Debug.mode = false;
 Debug.level = Debug.VERBOSE;
 
 //Variables for Storage.js

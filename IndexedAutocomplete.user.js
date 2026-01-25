@@ -14,18 +14,18 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1f14ba60a43440a753477b92176b297928bb4f34/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ */
@@ -911,12 +911,6 @@ const ALL_USERS = ['system', 'Member', 'Gold', 'Platinum', 'Builder', 'Contribut
 const AUTOCOMPLETE_USERLIST = [
     '[data-autocomplete=user]',
 ];
-//DOM elements with race condition
-const AUTOCOMPLETE_REBINDLIST = [
-    '[data-autocomplete=tag-query]',
-    '[data-autocomplete=tag-edit]',
-    '.autocomplete-mentions textarea',
-];
 //DOM elements with autocomplete
 const AUTOCOMPLETE_DOMLIST = [
     '#search_topic_title_matches',
@@ -927,11 +921,14 @@ const AUTOCOMPLETE_DOMLIST = [
     '[data-autocomplete=pool]',
     '[data-autocomplete=saved-search-label]',
     '[data-autocomplete=forum-topic]',
-].concat(AUTOCOMPLETE_REBINDLIST).concat(AUTOCOMPLETE_USERLIST);
+    '[data-autocomplete=user]',
+    '[data-autocomplete=tag-query]',
+    '[data-autocomplete=tag-edit]',
+    '.autocomplete-mentions textarea',
+];
 
 const AUTOCOMPLETE_ALL_SELECTORS = AUTOCOMPLETE_DOMLIST.join(',');
 const AUTOCOMPLETE_USER_SELECTORS = AUTOCOMPLETE_USERLIST.join(',');
-const AUTOCOMPLETE_REBIND_SELECTORS = AUTOCOMPLETE_REBINDLIST.join(',');
 const AUTOCOMPLETE_MULTITAG_SELECTORS = ['tag-query', 'tag-edit'].map((ac_type) => ['nav', 'page'].map((id_select) => `#${id_select} [data-autocomplete=${ac_type}]`).join(', ')).join(', ');
 
 //Expiration variables
@@ -1550,6 +1547,16 @@ function GetWordMatches(name, search, use_capture) {
     return match;
 }
 
+function SetAutocompleteRender($fields, render_item, render_menu) {
+    setTimeout(() => {
+        $fields.each((_, field) => {
+            let autocomplete = $(field).data('uiAutocomplete');
+            autocomplete._renderItem = render_item;
+            autocomplete._renderMenu = render_menu;
+        });
+    }, JQUERY_DELAY);
+}
+
 //Time functions
 
 function MinimumExpirationTime(type) {
@@ -2138,18 +2145,6 @@ function StoreUsageData(name, key = "", save = true) {
 
 ////Setup functions
 
-function RebindRender() {
-    $(AUTOCOMPLETE_REBIND_SELECTORS).each((_, entry) => {
-        let render_set = $(entry).data('iac-render');
-        let autocomplete = $(entry).data('uiAutocomplete');
-        if (!render_set && autocomplete) {
-            autocomplete._renderItem = AutocompleteRenderItem;
-            autocomplete._renderMenu = RenderMenuItem;
-            $(entry).data('iac-render', true);
-        }
-    });
-}
-
 function DelayInitializeAutocomplete(...args) {
     setTimeout(() => {InitializeAutocompleteIndexed(...args);}, JQUERY_DELAY);
 }
@@ -2163,20 +2158,6 @@ function DelayInitializeTagAutocomplete(selector, type) {
 }
 
 //Rebind callback functions
-
-function RebindRenderCheck() {
-    Utility.DOMWaitExecute({
-        name: "rebind render check",
-        data_check: {
-            selector: AUTOCOMPLETE_REBIND_SELECTORS,
-            key: 'iac-render',
-            negate: true,
-        },
-        found: RebindRender,
-        interval: TIMER_POLL_INTERVAL,
-        duration: Utility.one_second * 5,
-    });
-}
 
 function RebindAutocomplete({name, selector, func} = {}) {
     Utility.DOMWaitExecute({
@@ -2236,13 +2217,7 @@ function RebindSingleTag() {
                 },
             });
             $fields.addClass('iac-autocomplete');
-            setTimeout(() => {
-                $fields.each((_, field) => {
-                    let autocomplete = $(field).data('uiAutocomplete');
-                    autocomplete._renderItem = AutocompleteRenderItem;
-                    autocomplete._renderMenu = RenderMenuItem;
-                });
-            }, JQUERY_DELAY);
+            SetAutocompleteRender($fields, AutocompleteRenderItem, RenderMenuItem);
         },
     });
 }
@@ -2319,11 +2294,7 @@ function InitializeTagQueryAutocompleteIndexed(fields_selector = AUTOCOMPLETE_MU
             respond(results);
         },
     });
-    $fields_multiple.each((_, entry) => {
-        let autocomplete = $(entry).data('uiAutocomplete');
-        autocomplete._renderItem = AutocompleteRenderItem;
-        autocomplete._renderMenu = RenderMenuItem;
-    });
+    SetAutocompleteRender($fields_multiple, AutocompleteRenderItem, RenderMenuItem);
     $fields_multiple.addClass('iac-autocomplete');
     if (reorder_selector) {
         let $tag_input_fields = $(reorder_selector);
@@ -2362,18 +2333,12 @@ function InitializeAutocompleteIndexed(selector, keycode, {multiple = false, wik
             return ui.item.name;
         },
     });
-    let alink_func = (SOURCE_CONFIG[type].render ? SOURCE_CONFIG[type].render : ($domobj, item) => $domobj.text(item.name));
-    setTimeout(() => {
-        $fields.each((_, field) => {
-            let autocomplete = $(field).data('uiAutocomplete');
-            if (wiki_link) {
-                autocomplete._renderItem = AutocompleteRenderItem;
-            } else {
-                autocomplete._renderItem = RenderListItem(alink_func);
-            }
-            autocomplete._renderMenu = RenderMenuItem;
-        });
-    }, JQUERY_DELAY);
+    if (wiki_link) {
+        SetAutocompleteRender($fields, AutocompleteRenderItem, RenderMenuItem);
+    } else {
+        let alink_func = (SOURCE_CONFIG[type].render ? SOURCE_CONFIG[type].render : ($domobj, item) => $domobj.text(item.name));
+        SetAutocompleteRender($fields, RenderListItem(alink_func), RenderMenuItem);
+    }
     if (!Utility.isNamespaceBound({root: selector, eventtype: 'keydown', namespace: 'Autocomplete.tab'})) {
         $fields.on('keydown.Autocomplete.tab', null, 'tab', DanbooruProxy.Autocomplete.on_tab);
     }
@@ -2646,9 +2611,6 @@ function SetupAutocompleteInitializations() {
             //falls through
         default:
             //do nothing
-    }
-    if ($(AUTOCOMPLETE_REBIND_SELECTORS).length) {
-        RebindRenderCheck();
     }
     if ($('[data-autocomplete=tag]').length) {
         RebindSingleTag();

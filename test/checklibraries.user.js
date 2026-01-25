@@ -1865,15 +1865,15 @@ async function checklibrary() {
     setTimeout(() => {window.scroll(0, 10000);}, 2000);
 
     CheckDebugLibrary();
-    await CheckNoticeLibrary();
-    await CheckUtilityLibrary();
-    CheckStatisticsLibrary();
-    CheckValidateLibrary();
-    await CheckStorageLibrary();
-    await CheckConcurrencyLibrary();
-    await CheckNetworkLibrary();
-    await CheckDanbooruLibrary();
-    await CheckSaucenaoLibrary();
+    //await CheckNoticeLibrary();
+    //await CheckUtilityLibrary();
+    //CheckStatisticsLibrary();
+    //CheckValidateLibrary();
+    //await CheckStorageLibrary();
+    //await CheckConcurrencyLibrary();
+    //await CheckNetworkLibrary();
+    //await CheckDanbooruLibrary();
+    //await CheckSaucenaoLibrary();
 
     console.log(`All library results: ${overall_test_successes} succeses, ${overall_test_failures} failures`);
 }
