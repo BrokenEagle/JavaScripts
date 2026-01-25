@@ -13,17 +13,17 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/PostModeMenuPlus.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/PostModeMenuPlus.user.js
 // @require      https://cdn.jsdelivr.net/npm/dragselect@2.3.1/dist/ds.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/b38944dabac13d1905883ce03a75a1e5d0692c4c/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/menu.js
 // ==/UserScript==
 
 /* global $ JSPLib DragSelect */
@@ -1710,7 +1710,7 @@ function InitializeProgramValues() {
             immediateDrag: false,
         });
     }
-    Danbooru.max_network_requests = PMM.maximum_concurrent_requests;
+    Danbooru.max_write_requests = PMM.maximum_concurrent_requests;
     Danbooru.highlight_post_enabled = PMM.highlight_errors_enabled;
     Load.setProgramGetter(PMM, 'VTI', 'ValidateTagInput', 29.13);
     Load.setProgramGetter(PMM, 'IAC', 'IndexedAutocomplete', 29.25);
