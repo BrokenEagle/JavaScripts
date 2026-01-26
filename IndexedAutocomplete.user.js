@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      29.38
+// @version      29.39
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1896,8 +1896,8 @@ function InsertCompletion(input, item) {
         after_caret_text = after_caret_text.replace(/^[ \t]+|[ \t]+$/gm, "");
         before_caret_text = before_caret_text.substring(0, before_caret_text.search(/\S+$/));
         var prefix = "";
+        var query = ParseQuery(input.value, input.selectionStart);
         if (item.source !== 'metatag') {
-            var query = ParseQuery(input.value, input.selectionStart);
             prefix = query_type === 'tag-edit' || !CATEGORY_REGEX.test(query.prefix) ? query.prefix : query.operator;
             if (IAC.is_bur && IAC.BUR_source_enabled) {
                 let line_text = before_caret_text.split('\n').at(-1);
@@ -1907,6 +1907,8 @@ function InsertCompletion(input, item) {
                     prefix = "";
                 }
             }
+        } else {
+            prefix = query.operator;
         }
         before_caret_text += prefix + completion + ' ';
         start = end = before_caret_text.length;
