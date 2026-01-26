@@ -18,20 +18,20 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/391c8169d93613d451da3c4fb8aa59340d60953f/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/391c8169d93613d451da3c4fb8aa59340d60953f/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/391c8169d93613d451da3c4fb8aa59340d60953f/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/391c8169d93613d451da3c4fb8aa59340d60953f/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/391c8169d93613d451da3c4fb8aa59340d60953f/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/391c8169d93613d451da3c4fb8aa59340d60953f/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/391c8169d93613d451da3c4fb8aa59340d60953f/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/391c8169d93613d451da3c4fb8aa59340d60953f/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/391c8169d93613d451da3c4fb8aa59340d60953f/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/391c8169d93613d451da3c4fb8aa59340d60953f/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/391c8169d93613d451da3c4fb8aa59340d60953f/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/391c8169d93613d451da3c4fb8aa59340d60953f/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/391c8169d93613d451da3c4fb8aa59340d60953f/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/391c8169d93613d451da3c4fb8aa59340d60953f/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/61c5c08dca706582a83ec2d393933705d5a6779d/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/61c5c08dca706582a83ec2d393933705d5a6779d/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/61c5c08dca706582a83ec2d393933705d5a6779d/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/61c5c08dca706582a83ec2d393933705d5a6779d/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/61c5c08dca706582a83ec2d393933705d5a6779d/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/61c5c08dca706582a83ec2d393933705d5a6779d/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/61c5c08dca706582a83ec2d393933705d5a6779d/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/61c5c08dca706582a83ec2d393933705d5a6779d/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/61c5c08dca706582a83ec2d393933705d5a6779d/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/61c5c08dca706582a83ec2d393933705d5a6779d/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/61c5c08dca706582a83ec2d393933705d5a6779d/lib/saucenao.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/61c5c08dca706582a83ec2d393933705d5a6779d/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/61c5c08dca706582a83ec2d393933705d5a6779d/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/61c5c08dca706582a83ec2d393933705d5a6779d/lib/menu.js
 // @resource     jquery_ui_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/jquery_ui_custom.css
 // @resource     jquery_qtip_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.css
 // @grant        GM_getResourceText

@@ -14,19 +14,19 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/651c8c1646efe0c718474b1a0aca3183de74ed58/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/651c8c1646efe0c718474b1a0aca3183de74ed58/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/651c8c1646efe0c718474b1a0aca3183de74ed58/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/651c8c1646efe0c718474b1a0aca3183de74ed58/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/651c8c1646efe0c718474b1a0aca3183de74ed58/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/651c8c1646efe0c718474b1a0aca3183de74ed58/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/651c8c1646efe0c718474b1a0aca3183de74ed58/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/651c8c1646efe0c718474b1a0aca3183de74ed58/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/651c8c1646efe0c718474b1a0aca3183de74ed58/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/651c8c1646efe0c718474b1a0aca3183de74ed58/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/651c8c1646efe0c718474b1a0aca3183de74ed58/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/651c8c1646efe0c718474b1a0aca3183de74ed58/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/651c8c1646efe0c718474b1a0aca3183de74ed58/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ */
@@ -253,21 +253,21 @@ div#irt-related-tags {
     flex-wrap: nowrap;
     max-width: calc(100% - 2em);
     display: inline-flex;
-}
-div#irt-related-tags > div {
-    display: inline-flex;
-}
-div#irt-related-tags.scrollable {
-    overflow-x: scroll;
+    & > div {
+        display: inline-flex;
+    }
+    &.scrollable {
+        overflow-x: scroll;
+    }
 }
 /**Related tag columns**/
 div.irt-tag-column {
     width: 18em;
     max-width: unset;
     margin-right: 1em;
-}
-div.irt-tag-column.irt-is-empty-true {
-    display: none;
+    &.irt-is-empty-true {
+        display: none;
+    }
 }
 /**Related tag**/
 div.irt-no-percentage {
@@ -280,25 +280,25 @@ div.irt-has-percentage {
 }
 span.irt-tag-statistic {
     filter: hue-rotate(-30deg);
-}
-span.irt-tag-statistic.irt-high-percent {
-    letter-spacing: -2px;
+    &.irt-high-percent {
+        letter-spacing: -2px;
+    }
 }
 div.irt-related-tag li {
     display: inline;
-}
-div.irt-related-tag li:before {
-    content: "*";
-    font-family: monospace;
-    font-weight: bold;
-    visibility: hidden;
-    padding-right: 0.2em;
-}
-div.irt-related-tag li.irt-selected:before {
-    visibility: visible;
-}
-div.irt-related-tag li.irt-selected {
-    font-weight: bold;
+    &:before {
+        content: "*";
+        font-family: monospace;
+        font-weight: bold;
+        visibility: hidden;
+        padding-right: 0.2em;
+    }
+    &.irt-selected {
+        font-weight: bold;
+        &:before {
+            visibility: visible;
+        }
+    }
 }
 /**Related query controls**/
 #irt-related-tag-query-controls {
@@ -310,12 +310,12 @@ div.irt-related-tag li.irt-selected {
     display: inline-flex;
     margin-bottom: 0.5em;
     margin-right: 1em;
-}
-#irt-related-query-category .irt-related-button {
-    margin: 0 2px;
-}
-#irt-related-query-category .irt-related-button[disabled] {
-    cursor: default;
+    .irt-related-button {
+        margin: 0 2px;
+        &[disabled] {
+            cursor: default;
+        }
+    }
 }
 /****Wiki****/
 #irt-wiki-page-controls {
@@ -330,7 +330,7 @@ div.irt-related-tag li.irt-selected {
     margin-right: 0.5em;
 }
 /****Checklist****/
-#irt-checklist-controls:not(.jsplib-controls-grouping) {
+#irt-checklist-controls {
     display: inline-flex;
     margin-bottom: 0.5em;
     margin-right: 1em;
@@ -347,23 +347,23 @@ div.irt-related-tag li.irt-selected {
     align-items: flex-start;
     gap: 8px;
     margin-bottom: 0.5em;
-}
-#irt-related-query-type label {
-    cursor: pointer;
-    user-select: none;
-    display: block;
-    font-size: 14px;
-    line-height: 1.5em;
-    font-weight: bold;
-    border: 1px solid;
-    border-radius: 3px;
-    padding: 2px 8px;
-    text-align: center;
-}
-#irt-related-query-type input {
-    margin-left: 0.25em;
-    vertical-align: middle;
-    cursor: pointer;
+    label {
+        cursor: pointer;
+        user-select: none;
+        display: block;
+        font-size: 14px;
+        line-height: 1.5em;
+        font-weight: bold;
+        border: 1px solid;
+        border-radius: 3px;
+        padding: 2px 8px;
+        text-align: center;
+    }
+    input {
+        margin-left: 0.25em;
+        vertical-align: middle;
+        cursor: pointer;
+    }
 }
 /**Expandable sections**/
 #irt-edit-scroll-wrapper {
@@ -380,23 +380,27 @@ const LIGHT_MODE_CSS = Template.normalizeCSS({theme: 'light'})`
 /**Related tag**/
 span.irt-tag-statistic {
     color: var(--red-3);
+    &.irt-low-percent {
+        color: var(--grey-3);
+    }
 }
-span.irt-tag-statistic.irt-low-percent {
-    color: var(--grey-3);
+.tag-type-${NONEXISTENT_TAG_CATEGORY} a.search-tag {
+    &:link,
+    &:visited {
+        color: var(--yellow-3);
+    }
+    &:hover {
+        color: var(--yellow-2);
+    }
 }
-.tag-type-${NONEXISTENT_TAG_CATEGORY} a.search-tag:link,
-.tag-type-${NONEXISTENT_TAG_CATEGORY} a.search-tag:visited {
-    color: var(--yellow-3);
-}
-.tag-type-${NONEXISTENT_TAG_CATEGORY} a.search-tag:hover {
-    color: var(--yellow-2);
-}
-.tag-type-${DEPRECATED_TAG_CATEGORY} a.search-tag:link,
-.tag-type-${DEPRECATED_TAG_CATEGORY} a.search-tag:visited {
-    color: var(--grey-4);
-}
-.tag-type-${DEPRECATED_TAG_CATEGORY} a.search-tag:hover {
-    color: var(--grey-3);
+.tag-type-${DEPRECATED_TAG_CATEGORY} a.search-tag {
+    &:link,
+    &:visited {
+        color: var(--grey-4);
+    }
+    &:hover {
+        color: var(--grey-3);
+    }
 }
 /**Related query controls**/
 /****Wiki****/
@@ -420,23 +424,27 @@ const DARK_MODE_CSS = Template.normalizeCSS({theme: 'dark'})`
 /**Related tag**/
 span.irt-tag-statistic {
     color: var(--red-5);
+    &.irt-tag-statistic.irt-low-percent {
+        color: var(--grey-5);
+    }
 }
-span.irt-tag-statistic.irt-low-percent {
-    color: var(--grey-5);
+.tag-type-${NONEXISTENT_TAG_CATEGORY} a.search-tag {
+    &:link,
+    &:visited {
+        color: var(--orange-5);
+    }
+    &:hover {
+        color: var(--orange-4);
+    }
 }
-.tag-type-${NONEXISTENT_TAG_CATEGORY} a.search-tag:link,
-.tag-type-${NONEXISTENT_TAG_CATEGORY} a.search-tag:visited {
-    color: var(--orange-5);
-}
-.tag-type-${NONEXISTENT_TAG_CATEGORY} a.search-tag:hover {
-    color: var(--orange-4);
-}
-.tag-type-${DEPRECATED_TAG_CATEGORY} a.search-tag:link,
-.tag-type-${DEPRECATED_TAG_CATEGORY} a.search-tag:visited {
-    color: var(--grey-5);
-}
-.tag-type-${DEPRECATED_TAG_CATEGORY} a.search-tag:hover {
-    color: var(--grey-4);
+.tag-type-${DEPRECATED_TAG_CATEGORY} a.search-tag {
+    &:link,
+    &:visited {
+        color: var(--grey-5);
+    }
+    &:hover {
+        color: var(--grey-4);
+    }
 }
 /**Related query controls**/
 /****Wiki****/
@@ -457,13 +465,13 @@ span.irt-tag-statistic.irt-low-percent {
 }`;
 
 const MENU_CSS = `
-#indexed-related-tags .jsplib-settings-grouping:not(#irt-general-settings) .irt-selectors label {
+.irt-selectors.jsplib-setting-item label {
     width: 150px;
 }
-#indexed-related-tags .irt-sortlist li {
+.irt-sortlist li {
     width: 10em;
 }
-#indexed-related-tags .irt-formula {
+.irt-formula {
     font-family: mono;
 }
 #irt-checklist-frequent-tags textarea {
@@ -1563,7 +1571,6 @@ function RenderSettingsMenu() {
 
 function Main() {
     const preload = {
-        run_on_settings: true,
         initialize_func: InitializeProgramValues,
         render_menu_func: RenderSettingsMenu,
         program_css: PROGRAM_CSS,
