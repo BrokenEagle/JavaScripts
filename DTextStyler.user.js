@@ -12,15 +12,15 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/DTextStyler.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/DTextStyler.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Papa */

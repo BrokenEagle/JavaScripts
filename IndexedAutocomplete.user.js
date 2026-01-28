@@ -14,18 +14,18 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ */
@@ -184,12 +184,12 @@ const SETTINGS_CONFIG = {
     alternate_tag_wildcards: {
         reset: false,
         validate: Utility.isBoolean,
-        hint: "Allows using a wildcard anywhere in a string with a wildcard always being added to the end."
+        hint: "Adding a wildcard anywhere in the input will cause a wildcard to be added to the end when querying Danbooru."
     },
     word_start_matches: {
         reset: false,
         validate: Utility.isBoolean,
-        hint: "Always adds a wildcard to the end, which forces the old behavior of searching from the beginning only. <b>Note:</b> This will cause correction results from being returned."
+        hint: "Always adds a wildcard to the end when querying Danbooru."
     },
     network_only_mode: {
         reset: false,
@@ -291,6 +291,21 @@ const PROGRAM_CSS = Template.normalizeCSS()`
 }
 .iac-line-entry.ui-menu-item-wrapper.ui-state-active {
     border: none;
+    a.tag-type-0 {
+        color: var(--general-tag-color);
+    }
+    a.tag-type-1 {
+        color: var(--artist-tag-color);
+    }
+    a.tag-type-3 {
+        color: var(--copyright-tag-color);
+    }
+    a.tag-type-4 {
+        color: var(--character-tag-color);
+    }
+    a.tag-type-5 {
+        color: var(--meta-tag-color);
+    }
 }
 .iac-line-entry a {
     white-space: normal;
@@ -539,13 +554,6 @@ const SORT_SETTINGS_DETAILS = Template.normalizeHTML()`
 const NETWORK_SETTINGS_DETAILS = Template.normalizeHTML()`
 <ul>
     <li><b>Alternate tag source:</b> No tag correct or tag prefix matches.</li>
-    <li><b>Alternate tag wildcards:</b> This uses the <code>/tags</code> endpoint instead of the usual <code>/autocomplete</code> one when wildcards are used, though that shouldn't change the results being returned.
-        <ul><b>[Different wildcard bedhavior]</b>
-            <li>No wildcards - A wildcard always gets appended to the end of the string.</li>
-            <li>DanbooruProxy wildcards - The wildcards get used as they are input, and no wildcard is appended at the end.</li>
-            <li>Alternate wildcards - A wildcard always gets appended to the end of the string.</li>
-        </ul>
-    </li>
     <li><b>Network only mode:</b>
         <ul>
             <li>Can be used to correct cache data that has been changed on the server.</li>
@@ -694,7 +702,7 @@ const AUTOCOMPLETE_SOURCE = ['tag', 'wiki'];
 const AUTOCOMPLETE_MODE = ['tag', 'normal', 'pipe', 'custom'];
 const AUTOCOMPLETE_CAPITALIZATION = ['lowercase', 'uppercase', 'titlecase', 'propercase', 'exceptcase', 'romancase'];
 
-//DanbooruProxy constants
+//Danbooru constants
 
 const COUNT_METATAGS = [
     'comment_count', 'deleted_comment_count', 'active_comment_count',
@@ -1753,7 +1761,7 @@ function AddUserSelected(type, metatag, term, data, query_type, word_mode, key, 
             // Don't insert static metatags where they're not valid: tag-query and tag-edit have different sets.
             continue;
         }
-        //Splice out DanbooruProxy data if it exists
+        //Splice out Danbooru data if it exists
         for (let j = 0; j < data.length; j++) {
             let compareterm = (data[j].antecedent ? data[j].antecedent + '\xff' + data[j].name : data[j].name);
             if (compareterm === checkterm) {
@@ -2449,8 +2457,8 @@ function AnySourceIndexed(keycode) {
             word_mode = term.length > 1 &&
                         !(
                             IAC.word_start_matches ||
-                             (SOURCE_CONFIG[type] === SOURCE_CONFIG.tag2) ||
-                             (IAC.alternate_tag_wildcards && Boolean(term.match(/\*/)))
+                            (SOURCE_CONFIG.tag === SOURCE_CONFIG.tag2) ||
+                            (IAC.alternate_tag_wildcards && Boolean(term.match(/\*/)))
                         );
             term += (!word_mode && !term.endsWith('*') ? '*' : "");
         } else {

@@ -16,18 +16,18 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-setitems@1.4.0/dist/localforage-setitems.min.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ */
@@ -618,7 +618,7 @@ async function ValidateTags() {
             $("#form [name=commit],#quick-edit-form [name=commit]").click();
             if ((VTI.controller === 'uploads' && VTI.action === 'new') || (VTI.controller === 'posts' && VTI.controller === 'show')) {
                 printer.log("Disabling return key!");
-                $("#upload_tag_string, #post_tag_string").off(JSPLib.program_keydown);
+                $("#upload_tag_string, #post_tag_string").off(JSPLib.event.keydown);
             }
             if (VTI.is_upload) {
                 setTimeout(() => {
@@ -656,7 +656,7 @@ function RebindHotkey() {
             presence: true,
         },
         found () {
-            $('#upload_tag_string, #post_tag_string').off("keydown.danbooru.submit").off("keydown.danbooru.submit_form").on(JSPLib.program_keydown, null, "ctrl+return", (event) => {
+            $('#upload_tag_string, #post_tag_string').off("keydown.danbooru.submit").off("keydown.danbooru.submit_form").on(JSPLib.event.keydown, null, "ctrl+return", (event) => {
                 $("#validate-tags").click();
                 event.preventDefault();
             });

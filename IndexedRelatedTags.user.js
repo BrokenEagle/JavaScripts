@@ -14,19 +14,19 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f592b650c07cb5b807dbc63a544c6fe9e79c1b42/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f592b650c07cb5b807dbc63a544c6fe9e79c1b42/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f592b650c07cb5b807dbc63a544c6fe9e79c1b42/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f592b650c07cb5b807dbc63a544c6fe9e79c1b42/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f592b650c07cb5b807dbc63a544c6fe9e79c1b42/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f592b650c07cb5b807dbc63a544c6fe9e79c1b42/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f592b650c07cb5b807dbc63a544c6fe9e79c1b42/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f592b650c07cb5b807dbc63a544c6fe9e79c1b42/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f592b650c07cb5b807dbc63a544c6fe9e79c1b42/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f592b650c07cb5b807dbc63a544c6fe9e79c1b42/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f592b650c07cb5b807dbc63a544c6fe9e79c1b42/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f592b650c07cb5b807dbc63a544c6fe9e79c1b42/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f592b650c07cb5b807dbc63a544c6fe9e79c1b42/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ */
@@ -1488,6 +1488,7 @@ function DataTypeChange() {
 
 function InitializeMenuAutocomplete() {
     const printer = Debug.getFunctionPrint('InitializeMenuAutocomplete');
+    Load.setProgramGetter(IRT, 'IAC', 'IndexedAutocomplete', 29.25);
     Load.scriptWaitExecute(IRT, 'IAC', {
         available: () => {
             $('#irt-control-tag-name, #irt-checklist-frequent-tags').data('tag-query');
@@ -1548,10 +1549,10 @@ function RenderSettingsMenu() {
     Menu.engageUI({checkboxradio: true});
     Menu.saveUserSettingsClick();
     Menu.resetUserSettingsClick();
-    $('#irt-tag-name-view').on(JSPLib.event.click, ViewChecklistTag);
-    $('#irt-tag-name-save').on(JSPLib.event.click, SaveChecklistTag);
-    $('#irt-tag-name-populate').on(JSPLib.event.click, PopulateChecklistTag);
-    $('#irt-tag-name-list').on(JSPLib.event.click, ListChecklistTags);
+    $('#irt-control-tag-name-view').on(JSPLib.event.click, ViewChecklistTag);
+    $('#irt-control-tag-name-save').on(JSPLib.event.click, SaveChecklistTag);
+    $('#irt-control-tag-name-populate').on(JSPLib.event.click, PopulateChecklistTag);
+    $('#irt-control-tag-name-list').on(JSPLib.event.click, ListChecklistTags);
     Menu.cacheInfoClick();
     Menu.purgeCacheClick();
     Menu.expandableClick();

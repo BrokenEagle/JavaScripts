@@ -12,14 +12,14 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SafelistPlus.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SafelistPlus.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/07d700643e26bcc27c4569352bc425683c373ea1/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ */
@@ -415,8 +415,8 @@ const TAG_BLOCK_TEMPLATE = Template.normalizeHTML({template: true})`
 
 const CSS_BLOCK_TEMPLATE = Template.normalizeHTML({template: true})`
 <div class="safelist-textblock">
-    <label for="safelist_css_level_${this.level}">Custom CSS (${'help'})</label>
-    <textarea id="safelist_css_level_${this.level}" cols="40" rows="5" autocomplete="off" class="safelist-css">${this.css}</textarea>
+    <label for="safelist_css_level_${'level'}">Custom CSS (${'help'})</label>
+    <textarea id="safelist_css_level_${'level'}" cols="40" rows="5" autocomplete="off" class="safelist-css">${'css'}</textarea>
 </div>`;
 
 const LEVEL_BUTTONS_TEMPLATE = Template.normalizeHTML({template: true})`
@@ -636,7 +636,7 @@ class Safelist {
     get renderedTagBlock() {
         return TAG_BLOCK_TEMPLATE({
             level: this.level,
-            tagstring: this.tagstring.replaceAll('\n', '&#13;'),
+            tagstring: this.tagstring.replaceAll('\n', '&#13;').replaceAll(' ', '&#32;'),
             help: RenderHelp(TAGBLOCK_HELP),
         });
     }
@@ -644,7 +644,7 @@ class Safelist {
     get renderedCSSBlock() {
         return CSS_BLOCK_TEMPLATE({
             level: this.level,
-            css: this.css,
+            css: this.css.replaceAll('\n', '&#13;').replaceAll(' ', '&#32;'),
             help: RenderHelp(CSSBLOCK_HELP),
         });
     }
@@ -913,7 +913,7 @@ function PostExclude(post, entry) {
 }
 
 function PostMatch(post, entry) {
-    if (entry.disabled) return false;
+    if (entry.disabled || entry.passthrough.size > 0) return false;
     var $post = $(post);
     var score = parseInt($post.attr("data-score"));
     var score_test = entry.min_score === null || score < entry.min_score;
