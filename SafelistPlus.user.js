@@ -12,14 +12,14 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SafelistPlus.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SafelistPlus.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f973b92a5579f60559c3ad294569a04b856b7149/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f973b92a5579f60559c3ad294569a04b856b7149/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f973b92a5579f60559c3ad294569a04b856b7149/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f973b92a5579f60559c3ad294569a04b856b7149/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f973b92a5579f60559c3ad294569a04b856b7149/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f973b92a5579f60559c3ad294569a04b856b7149/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f973b92a5579f60559c3ad294569a04b856b7149/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f973b92a5579f60559c3ad294569a04b856b7149/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ */
@@ -636,7 +636,7 @@ class Safelist {
     get renderedTagBlock() {
         return TAG_BLOCK_TEMPLATE({
             level: this.level,
-            tagstring: this.tagstring.replaceAll('\n', '&#13;').replaceAll(' ', '&#32;'),
+            tagstring: Template.normalizeText(this.tagstring),
             help: RenderHelp(TAGBLOCK_HELP),
         });
     }
@@ -644,7 +644,7 @@ class Safelist {
     get renderedCSSBlock() {
         return CSS_BLOCK_TEMPLATE({
             level: this.level,
-            css: this.css.replaceAll('\n', '&#13;').replaceAll(' ', '&#32;'),
+            css: Template.normalizeText(this.css),
             help: RenderHelp(CSSBLOCK_HELP),
         });
     }
