@@ -14,18 +14,18 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ CanvasJS */
@@ -94,13 +94,13 @@ const SETTINGS_CONFIG = {
     copyrights_threshold: {
         reset: 0,
         parse: parseInt,
-        validate: (data) => (Number.isInteger(data) && data >= 0),
+        validate: (data) => (Utility.isInteger(data) && data >= 0),
         hint: "Maximum number of copyrights to display. Enter 0 to disable this threshold."
     },
     postcount_threshold: {
         reset: 0,
         parse: parseInt,
-        validate: (data) => (Number.isInteger(data) && data >= 0),
+        validate: (data) => (Utility.isInteger(data) && data >= 0),
         hint: "Minimum postcount to display copyright. Enter 0 to disable this threshold."
     }
 };
@@ -836,7 +836,7 @@ function ValidateProgramData(key, entry) {
             checkerror = Menu.validateUserSettings(entry, SETTINGS_CONFIG);
             break;
         case 'cu-prune-expires':
-            if (!Number.isInteger(entry)) {
+            if (!Utility.isInteger(entry)) {
                 checkerror = ["Value is not an integer."];
             }
             break;
@@ -1314,7 +1314,7 @@ async function PopulateTable() {
     }
     let is_override = $("#count_override_select")[0].checked;
     if (is_override || CU.checked_users[CU.usertag][CU.current_username]) {
-        CU.active_copytags = Utility.dataCopy(CU.user_copytags[CU.usertag][CU.current_username].daily);
+        CU.active_copytags = Utility.deepCopy(CU.user_copytags[CU.usertag][CU.current_username].daily);
         await CheckPeriodUploads(CU.current_username);
         InitializeTable();
     } else {
@@ -1363,7 +1363,7 @@ function InitializeTable() {
     if (CU.copyright_period) {
         $(`.cu-select-period[data-type="${CU.copyright_period}"] a`).click();
     }
-    CU.shown_copytags = Utility.dataCopy(CU.active_copytags);
+    CU.shown_copytags = Utility.deepCopy(CU.active_copytags);
 }
 
 function TableMessage(message) {
@@ -1379,7 +1379,7 @@ async function GetReverseTagImplication(tag) {
     var check = await Storage.checkLocalDB(key, {max_expires: rti_expiration});
     if (!(check)) {
         printer.log("Network:", key);
-        let data = await Danbooru.submitRequest('tag_implications', {search: {antecedent_name: tag}, only: id_field}, {default_val: [], key});
+        let data = await Danbooru.query('tag_implications', {search: {antecedent_name: tag}, only: id_field}, {default_val: [], key});
         Storage.saveData(key, {value: data.length, expires: Utility.getExpires(rti_expiration)});
         return data.length;
     }
@@ -1393,7 +1393,7 @@ async function GetCount(type, tag) {
     var check = await Storage.checkLocalDB(key, {max_expires});
     if (!(check)) {
         printer.log("Network:", key);
-        return Danbooru.submitRequest('counts/posts', {tags: BuildTagParams(type, tag), skip_cache: true}, {default_val: {counts: {posts: 0}}, key})
+        return Danbooru.query('counts/posts', {tags: BuildTagParams(type, tag), skip_cache: true}, {default_val: {counts: {posts: 0}}, key})
             .then((data) => {
                 Storage.saveData(key, {value: data.counts.posts, expires: Utility.getExpires(max_expires)});
             });
@@ -1412,8 +1412,8 @@ async function GetPeriodUploads(username, period, limited = false, domname = nul
         let mapped_data = MapPostData(data);
         if (limited) {
             let indexed_posts = AssignPostIndexes(period, mapped_data, 0);
-            mapped_data = Utility.mergeHashes(...tooltip_metrics.map((metric) => ({[metric]: GetAllStatistics(mapped_data, metric)})));
-            mapped_data.chart_data = Utility.mergeHashes(...chart_metrics.map((metric) => ({[metric]: GetPeriodAverages(indexed_posts, metric)})));
+            mapped_data = Utility.assignObjects(...tooltip_metrics.map((metric) => ({[metric]: GetAllStatistics(mapped_data, metric)})));
+            mapped_data.chart_data = Utility.assignObjects(...chart_metrics.map((metric) => ({[metric]: GetPeriodAverages(indexed_posts, metric)})));
             mapped_data.chart_data.uploads = GetPeriodPosts(indexed_posts);
             Storage.saveData(key, {value: mapped_data, expires: Utility.getExpires(max_expires)});
         } else {
@@ -1697,7 +1697,7 @@ async function CheckUser() {
             check_user = CU.checked_usernames[check_username];
         } else {
             //Check each time no matter what as misses can be catastrophic
-            check_user = await Danbooru.submitRequest('users', {search: {name_matches: check_username}, only: user_fields, expiry: 30});
+            check_user = await Danbooru.query('users', {search: {name_matches: check_username}, only: user_fields, expiry: 30});
             CU.checked_usernames[check_username] = check_user;
         }
         if (check_user.length) {
@@ -1718,7 +1718,7 @@ async function CheckUser() {
 async function AddCopyright() {
     let user_copytags = CU.user_copytags[CU.usertag][CU.current_username];
     let tag = $("#count_query_copyright").val();
-    let tagdata = await Danbooru.submitRequest('tags', {search: {name: tag}, only: name_field}, {default_val: []});
+    let tagdata = await Danbooru.query('tags', {search: {name: tag}, only: name_field}, {default_val: []});
     if (tagdata.length === 0) {
         Notice.notice('Tag not valid');
         return;
@@ -1865,7 +1865,7 @@ function DataTypeChange() {
 }
 
 function InitializeProgramValues() {
-    Object.assign(CU, {
+    Utility.assignObjects(CU, {
         username: DanbooruProxy.CurrentUser.data('name'),
         is_gold_user: DanbooruProxy.CurrentUser.data('is-gold'),
         current_metric: Storage.checkLocalData('cu-current-metric', {default_val: 'score'}),
@@ -1873,7 +1873,6 @@ function InitializeProgramValues() {
         stashed: Boolean(Storage.checkLocalData('cu-stash-current-uploads', {default_val: false})),
     });
     Load.setProgramGetter(CU, 'IAC', 'IndexedAutocomplete', 29.32);
-    return true;
 }
 
 function RenderSettingsMenu() {
@@ -1918,19 +1917,17 @@ function RenderSettingsMenu() {
 //Main program
 
 function Main() {
-    const preload = {
-        run_on_settings: true,
-        default_data: DEFAULT_VALUES,
-        reset_data: PROGRAM_RESET_KEYS,
-        initialize_func: InitializeProgramValues,
+    Load.preloadScript({
         broadcast_func: BroadcastCU,
-        render_menu_func: RenderSettingsMenu,
         program_css: PROGRAM_CSS,
         light_css: LIGHT_MODE_CSS,
         dark_css: DARK_MODE_CSS,
-    };
-    if (!Menu.preloadScript(CU, preload)) return;
-
+    });
+    Load.preloadMenu({
+        menu_func: RenderSettingsMenu,
+    });
+    if (!Load.isScriptEnabled()) return;
+    InitializeProgramValues();
     var $notice_box = $(notice_box);
     var $footer_notice = $(unstash_notice);
     if (CU.stashed === true) {
@@ -1955,9 +1952,12 @@ function Main() {
 /****Initialization****/
 
 //Variables for JSPLib
+JSPLib.data = CU;
 JSPLib.name = PROGRAM_NAME;
 JSPLib.shortcut = PROGRAM_SHORTCUT;
-JSPLib.data = CU;
+JSPLib.settings_config = SETTINGS_CONFIG;
+JSPLib.default_data = DEFAULT_VALUES;
+JSPLib.reset_data = PROGRAM_RESET_KEYS;
 
 //Variables for debug.js
 Debug.mode = false;
@@ -1967,7 +1967,6 @@ Debug.level = Debug.VERBOSE;
 Menu.reset_data = PROGRAM_RESET_KEYS;
 Menu.data_regex = PROGRAM_DATA_REGEX;
 Menu.data_key = OptionCacheDataKey;
-Menu.settings_config = SETTINGS_CONFIG;
 Menu.control_config = CONTROL_CONFIG;
 
 //Variables for danbooru.js

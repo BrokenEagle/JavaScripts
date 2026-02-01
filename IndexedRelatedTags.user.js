@@ -14,19 +14,19 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ */
@@ -668,7 +668,7 @@ function ValidateProgramData(key, entry) {
             checkerror = Menu.validateUserSettings(entry, SETTINGS_CONFIG);
             break;
         case 'irt-prune-expires':
-            if (!Number.isInteger(entry)) {
+            if (!Utility.isInteger(entry)) {
                 checkerror = ["Value is not an integer."];
             }
             break;
@@ -683,6 +683,13 @@ function ValidateProgramData(key, entry) {
 }
 
 //Auxiliary functions
+
+function GetQueryOrder() {
+    if(IRT.related_query_order_enabled){
+        return $('.irt-program-checkbox').filter((_, input) => input.checked).data('selector');
+    }
+    return IRT.related_query_order_default[0];
+}
 
 function GetRelatedKeyModifer(category, query_order) {
     return 'rt' + query_order[0] + (category ? Danbooru.categories.short[category] : "");
@@ -755,6 +762,27 @@ function GetTagQueryParams(tag_list) {
     };
 }
 
+function SetupMutationReplaceObserver(remove_class, func) {
+    const printer = Debug.getFunctionPrint('SetupMutationReplaceObserver');
+    let [key, name] = _getSelectorChecks(remove_selector);
+    new MutationObserver((mutations, observer) => {
+        for (let i = 0; i < mutations.length; i++) {
+            let mutation = mutations[i];
+            printer.logLevel("Checking mutation:", mutation.type, mutation.removedNodes, Debug.VERBOSE);
+            if (mutation.type === "childList" && mutation.removedNodes.length === 1) {
+                let node = mutation.removedNodes[0];
+                printer.logLevel(`Checking removed node: .${remove_class} "${node.className}"`, Debug.DEBUG);
+                if (node.classList.contains(remove_class)) {
+                    printer.logLevel(`Validated remove: ${remove_selector} has been modified!`, Debug.INFO);
+                    func(mutation);
+                }
+            }
+        }
+    }).observe(document.querySelector('#related-tags-container'), {
+        childList: true,
+    });
+};
+
 //Render functions
 
 function RenderTaglist(taglist, columnname, tags_overlap) {
@@ -769,7 +797,7 @@ function RenderTaglist(taglist, columnname, tags_overlap) {
         var prefix, classname;
         if (display_percentage) {
             var percentage_string, percent_classname;
-            if (Number.isInteger(tags_overlap.overlap[tag])) {
+            if (Utility.isInteger(tags_overlap.overlap[tag])) {
                 let tag_percentage = Math.ceil(100 * (tags_overlap.overlap[tag] / tags_overlap.count)) || 0;
                 percentage_string = Utility.padNumber(tag_percentage, 2) + '%';
                 percent_classname = (tag_percentage >= 100 ? 'irt-high-percent' : "");
@@ -901,7 +929,7 @@ async function RandomPosts(tag, batches, per_batch) {
     };
     for (let i = 1; i <= batches; i++) {
         url_addons.page = i;
-        let result = await Danbooru.submitRequest('posts', url_addons);
+        let result = await Danbooru.query('posts', url_addons);
         posts = Utility.concat(posts, result);
         if (result.length < per_batch) break;
     }
@@ -914,7 +942,7 @@ async function TagsOverlapQuery(tag) {
     printer.log("Querying:", tag, batches, per_batch);
     let [posts, count] = await Promise.all([
         RandomPosts(tag, batches, per_batch),
-        Danbooru.submitRequest('counts/posts', {tags: tag}, {default_val: {counts: {posts: 0}}})
+        Danbooru.query('counts/posts', {tags: tag}, {default_val: {counts: {posts: 0}}})
     ]);
     let overlap = {};
     for (let i = 0; i < posts.length; i++) {
@@ -939,12 +967,12 @@ async function WikiPageTagsQuery(title) {
         search: {title},
         only: 'body,tag,dtext_links[link_target,link_type,linked_tag[name,category,is_deprecated]]'
     };
-    let wikis_with_links = await Danbooru.submitRequest('wiki_pages', url_addons);
+    let wikis_with_links = await Danbooru.query('wiki_pages', url_addons);
     let tags = (wikis_with_links.length ? GetTagsEntryArray(wikis_with_links[0]) : []);
     if (IRT.query_unknown_tags_enabled) {
         let tag_names = tags.filter((tag) => tag[1] === NONEXISTENT_TAG_CATEGORY).map((tag) => tag[0]);
         if (tag_names.length) {
-            let tag_data = await Danbooru.submitRequest('tags', GetTagQueryParams(tag_names));
+            let tag_data = await Danbooru.query('tags', GetTagQueryParams(tag_names));
             let tag_array = CreateTagArray(tag_names, tag_data);
             tags = tags.map((tag_entry) => (tag_array.find((item) => item[0] === tag_entry[0]) ?? tag_entry));
         }
@@ -1058,8 +1086,8 @@ async function RelatedTagsButton(event) {
     event.preventDefault();
     let currenttag = DanbooruProxy.RelatedTag.current_tag().trim().toLowerCase();
     let category = $(event.target).data('selector');
-    let query_order = (IRT.related_query_order_enabled ? Menu.getCheckboxRadioSelected('.irt-program-checkbox') : IRT.related_query_order_default);
-    let promise_array = [GetRelatedTags(currenttag, category, query_order[0])];
+    let query_order = GetQueryOrder();
+    let promise_array = [GetRelatedTags(currenttag, category, query_order)];
     if (IRT.related_statistics_enabled) {
         promise_array.push(GetTagsOverlap(currenttag));
     } else {
@@ -1137,12 +1165,12 @@ function ViewChecklistTag() {
                 .map((name) => name.replace('irt-checklist-', ""));
         let tag_data = tag_list.map((tag_name) => {
             let tag_array = GetChecklistTagsArray(tag_name);
-            if (Array.isArray(tag_array)) {
+            if (Utility.isArray(tag_array)) {
                 return {[tag_name]: tag_array.map((item) => item[0])};
             }
             return null;
         }).filter((data) => data != null);
-        $('#irt-checklist-frequent-tags textarea').val(JSON.stringify(Utility.mergeHashes(...tag_data), null, 4));
+        $('#irt-checklist-frequent-tags textarea').val(JSON.stringify(Utility.assignObjects(...tag_data), null, 4));
     } else {
         let tag_name = $('#irt-control-tag-name').val().split(/\s+/)[0];
         if (!tag_name) return;
@@ -1172,7 +1200,7 @@ async function SaveChecklistTag() {
             let check_tags = [];
             for (let key in data_input) {
                 let checklist = data_input[key];
-                if (!Array.isArray(checklist)) continue;
+                if (!Utility.isArray(checklist)) continue;
                 checklist = checklist.filter((item) => typeof item === "string");
                 if (checklist.length === 0) continue;
                 checklist_data[key] = checklist;
@@ -1183,7 +1211,7 @@ async function SaveChecklistTag() {
                 let tag_data = [];
                 for (let i = 0; i < check_tags.length; i += 1000) {
                     let query_tags = check_tags.slice(i, i + 1000);
-                    let tags = await Danbooru.submitRequest('tags', GetTagQueryParams(query_tags), {long_format: true});
+                    let tags = await Danbooru.query('tags', GetTagQueryParams(query_tags), {long_format: true});
                     tag_data = Utility.concat(tag_data, tags);
                 }
                 for (let tag_name in checklist_data) {
@@ -1203,7 +1231,7 @@ async function SaveChecklistTag() {
         if (!tag_name) return;
         let checklist = $('#irt-checklist-frequent-tags textarea').val().split(/\s/).filter((name) => (name !== ""));
         if (checklist.length > 0) {
-            let tag_data = await Danbooru.submitRequest('tags', GetTagQueryParams(checklist));
+            let tag_data = await Danbooru.query('tags', GetTagQueryParams(checklist));
             let tag_array = CreateTagArray(checklist, tag_data);
             Storage.setLocalData('irt-checklist-' + tag_name, tag_array);
         } else {
@@ -1329,7 +1357,7 @@ function InitializeTagColumns() {
     }
     if (!$('#related-tags-container .ai-tags-related-tags-column').html()?.trim()) {
         printer.log("User/Media tags not loaded yet... setting up mutation observer.");
-        Concurrency.setupMutationReplaceObserver('#related-tags-container', '.ai-tags-related-tags-column', () => {
+        SetupMutationReplaceObserver('.ai-tags-related-tags-column', () => {
             InitializeUserMediaTags();
         });
     } else {
@@ -1337,7 +1365,7 @@ function InitializeTagColumns() {
     }
     if (!$('#related-tags-container .translated-tags-related-tags-column').html()?.trim()) {
         printer.log("Translated tags not loaded yet... setting up mutation observer.");
-        Concurrency.setupMutationReplaceObserver('#related-tags-container', '.translated-tags-related-tags-column', () => {
+        SetupMutationReplaceObserver('.translated-tags-related-tags-column', () => {
             InitializeTranslatedTags();
         });
     } else {
@@ -1424,7 +1452,7 @@ function InitializeRelatedTagColumnWidths() {
 }
 
 function QueueRelatedTagColumnWidths() {
-    if (Number.isInteger(QueueRelatedTagColumnWidths.timer)) {
+    if (Utility.isInteger(QueueRelatedTagColumnWidths.timer)) {
         clearTimeout(QueueRelatedTagColumnWidths.timer);
     }
     QueueRelatedTagColumnWidths.timer = setTimeout(() => {
@@ -1439,7 +1467,7 @@ function SetupInitializations() {
     const printer = Debug.getFunctionPrint('SetupInitializations');
     Utility.recheckInterval({
         check: () => (($('#related-tags-container .ai-tags-related-tags-column .tag-list').html() || "").trim() !== ""),
-        exec: () => {
+        success: () => {
             printer.log("Related tags found... initializing.");
             InitializeRelatedTagsSection();
         },
@@ -1571,15 +1599,17 @@ function RenderSettingsMenu() {
 //Main program
 
 function Main() {
-    const preload = {
-        initialize_func: InitializeProgramValues,
-        render_menu_func: RenderSettingsMenu,
+    Load.preloadScript({
         program_css: PROGRAM_CSS,
         light_css: LIGHT_MODE_CSS,
         dark_css: DARK_MODE_CSS,
+    });
+    Load.preloadMenu({
+        menu_func: RenderSettingsMenu,
         menu_css: MENU_CSS,
-    };
-    if (!Menu.preloadScript(IRT, preload)) return;
+    });
+    if (!Load.isScriptEnabled() || Menu.isSettingsMenu()) return;
+    InitializeProgramValues();
     SetupInitializations();
     Statistics.addPageStatistics(PROGRAM_NAME);
     Load.noncriticalTasks(CleanupTasks);
@@ -1588,9 +1618,10 @@ function Main() {
 /****Initialization****/
 
 //Variables for JSPLib
+JSPLib.data = IRT;
 JSPLib.name = PROGRAM_NAME;
 JSPLib.shortcut = PROGRAM_SHORTCUT;
-JSPLib.data = IRT;
+JSPLib.settings_config = SETTINGS_CONFIG;
 
 //Variables for debug.js
 Debug.mode = false;
@@ -1599,7 +1630,6 @@ Debug.level = Debug.INFO;
 //Variables for menu.js
 Menu.data_regex = PROGRAM_DATA_REGEX;
 Menu.data_key = OptionCacheDataKey;
-Menu.settings_config = SETTINGS_CONFIG;
 Menu.control_config = CONTROL_CONFIG;
 
 //Variables for storage.js

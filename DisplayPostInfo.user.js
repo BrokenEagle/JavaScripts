@@ -17,18 +17,18 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/core.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/md5.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ CryptoJS */
@@ -89,13 +89,13 @@ const SETTINGS_CONFIG = {
     post_show_delay: {
         reset: 500,
         parse: parseInt,
-        validate: (data) => (Number.isInteger(data) && data >= 0),
+        validate: (data) => (Utility.isInteger(data) && data >= 0),
         hint: "How long to delay showing the post tooltip (in milliseconds)."
     },
     post_hide_delay: {
         reset: 125,
         parse: parseInt,
-        validate: (data) => (Number.isInteger(data) && data >= 0),
+        validate: (data) => (Utility.isInteger(data) && data >= 0),
         hint: "How long to delay hiding the post tooltip (in milliseconds)."
     },
     post_favorites_enabled: {
@@ -361,7 +361,7 @@ function ValidateProgramData(key, entry) {
             checkerror = Menu.validateUserSettings(entry, SETTINGS_CONFIG);
             break;
         case 'dpi-prune-expires':
-            if (!Number.isInteger(entry)) {
+            if (!Utility.isInteger(entry)) {
                 checkerror = ["Value is not an integer."];
             }
             break;
@@ -458,7 +458,7 @@ async function GetUserData(user_id) {
     var mapped_data;
     if (!data) {
         printer.log("Querying:", user_id);
-        let user_data = await Danbooru.submitRequest("users", {search: {id: user_id, expiry: 30}, only: USER_FIELDS});
+        let user_data = await Danbooru.query("users", {search: {id: user_id, expiry: 30}, only: USER_FIELDS});
         if (user_data && user_data.length) {
             mapped_data = MapUserData(user_data[0]);
             Storage.saveData(user_key, {value: mapped_data, expires: Utility.getExpires(USER_EXPIRATION)});
@@ -481,17 +481,17 @@ async function GetUsersData(user_ids) {
     if (missing_keys.length) {
         printer.log("Missing users:", missing_keys);
         let missing_ids = missing_keys.map((key) => Number(key.replace('user-', "")));
-        let users = await Danbooru.submitRequest("users", {search: {id: missing_ids.join(',')}, limit: missing_ids.length, only: USER_FIELDS});
+        let users = await Danbooru.query("users", {search: {id: missing_ids.join(',')}, limit: missing_ids.length, only: USER_FIELDS});
         let mapped_users = MapUsersData(users);
         SaveMappedListData(mapped_users, USER_EXPIRATION);
-        cached = Utility.mergeHashes(cached, mapped_users);
+        Utility.assignObjects(cached, mapped_users);
         if (users.length !== missing_keys.length) {
             let network_ids = Utility.getObjectAttributes(users, 'id');
             let bad_ids = Utility.arrayDifference(missing_ids, network_ids);
             printer.log("Bad users:", bad_ids);
             let bad_users = BlankUsers(bad_ids);
             SaveMappedListData(bad_users, BAD_USER_EXPIRATION);
-            cached = Utility.mergeHashes(cached, bad_users);
+            Utility.assignObjects(cached, bad_users);
         }
     }
     return cached;
@@ -547,7 +547,7 @@ async function DisplayTopTagger() {
         let current_tags = {tags: tag_string.split(' ')};
         let user_tags = DPI.user_tags = {};
         let version_order = DPI.version_order = [];
-        let post_versions = await Danbooru.submitRequest('post_versions', {search: {post_id}, limit: 1000, only: POSTVER_FIELDS});
+        let post_versions = await Danbooru.query('post_versions', {search: {post_id}, limit: 1000, only: POSTVER_FIELDS});
         if (post_versions && post_versions.length) {
             post_versions.sort((a, b) => (a.version - b.version));
             if (post_versions[0].unchanged_tags.length !== 0) {
@@ -605,7 +605,7 @@ function UpdateThumbnailTitles() {
 async function ProcessPostFavorites() {
     let $post_previews = $(".post-preview");
     let post_ids = $post_previews.map((_, entry) => $(entry).data('id')).toArray();
-    let favorites = await Danbooru.submitRequest('favorites', {search: {user_id: DPI.user_id, post_id: post_ids.join(',')}, limit: post_ids.length, only: 'post_id'});
+    let favorites = await Danbooru.query('favorites', {search: {user_id: DPI.user_id, post_id: post_ids.join(',')}, limit: post_ids.length, only: 'post_id'});
     DPI.favorite_ids = Utility.getObjectAttributes(favorites, 'post_id');
     $post_previews.each((_, entry) => {
         let $entry = $(entry);
@@ -637,7 +637,7 @@ function ProcessTagStatistics() {
 function ProcessPostStatistics() {
     let $post_previews = $(".post-preview");
     let total_posts = $post_previews.length;
-    let score_list = Utility.getDOMAttributes($post_previews, 'score', Number);
+    let score_list = Utility.getDOMArrayDataValues($post_previews, 'score', {parser: Number});
     let general_count = $post_previews.filter("[data-rating=g]").length;
     let sensitive_count = $post_previews.filter("[data-rating=s]").length;
     let questionable_count = $post_previews.filter("[data-rating=q]").length;
@@ -659,13 +659,13 @@ function ProcessPostStatistics() {
 
 async function ProcessDomainStatistics() {
     let $domain_table = $(DOMAIN_STATISTICS_TABLE);
-    let post_ids = Utility.getDOMAttributes($(".post-preview"), 'id', Number);
-    let posts = await Danbooru.submitRequest('posts', {tags: `id:${post_ids.join(',')} status:any`, limit: post_ids.length, only: 'source', expires_in: '3600s'});
+    let post_ids = Utility.getDOMArrayDataValues($(".post-preview"), 'id', {parser: Number});
+    let posts = await Danbooru.query('posts', {tags: `id:${post_ids.join(',')} status:any`, limit: post_ids.length, only: 'source', expires_in: '3600s'});
     let domain_frequency = posts
         .map((post) => {
             try {
                 //Will generate an exception for non-URL sources
-                return Utility.getDomainName(post.source, 2);
+                return Utility.getDomainName(post.source, {level: 2});
             } catch (e) {
                 return "";
             }
@@ -770,11 +770,10 @@ function InitializeChangedSettings() {
 }
 
 function InitializeProgramValues() {
-    Object.assign(DPI, {
+    Utility.assignObjects(DPI, {
         user_id: DanbooruProxy.CurrentUser.data('id'),
         basic_tooltips: DanbooruProxy.CurrentUser.data('disable-post-tooltips'),
     });
-    return true;
 }
 
 function RenderSettingsMenu() {
@@ -821,13 +820,12 @@ function RenderSettingsMenu() {
 //Main program
 
 function Main() {
-    const preload = {
-        run_on_settings: false,
-        default_data: DEFAULT_VALUES,
-        initialize_func: InitializeProgramValues,
-        render_menu_func: RenderSettingsMenu,
-    };
-    if (!Menu.preloadScript(DPI, preload)) return;
+    Load.preloadScript();
+    Load.preloadMenu({
+        menu_func: RenderSettingsMenu,
+    });
+    if (!Load.isScriptEnabled() || Menu.isSettingsMenu()) return;
+    InitializeProgramValues();
     if (DPI.controller === 'posts' && DPI.action === 'show') {
         $('#post-information #post-info-score').after(POST_VIEWS_LINE);
         $('#post-information #post-info-uploader').after(USER_NAMES_LINE);
@@ -862,7 +860,7 @@ function Main() {
             DanbooruProxy.PostTooltip.initialize();
         }
     } else if (DPI.basic_tooltips && DPI.basic_post_tooltip) {
-        let all_uploaders = Utility.arrayUnique(Utility.getDOMAttributes($(".post-preview"), 'uploader-id'));
+        let all_uploaders = Utility.arrayUnique(Utility.getDOMArrayDataValues($(".post-preview"), 'uploader-id'));
         DPI.all_uploaders = GetUsersData(all_uploaders);
         UpdateThumbnailTitles();
     }
@@ -873,9 +871,11 @@ function Main() {
 /****Initialization****/
 
 //Variables for JSPLib
+JSPLib.data = DPI;
 JSPLib.name = PROGRAM_NAME;
 JSPLib.shortcut = PROGRAM_SHORTCUT;
-JSPLib.data = DPI;
+JSPLib.default_data = DEFAULT_VALUES;
+JSPLib.settings_config = SETTINGS_CONFIG;
 
 //Variables for debug.js
 Debug.mode = false;
@@ -885,7 +885,6 @@ Debug.level = Debug.INFO;
 Menu.data_regex = PROGRAM_DATA_REGEX;
 Menu.data_key = PROGRAM_DATA_KEY;
 Menu.settings_callback = RemoteSettingsCallback;
-Menu.settings_config = SETTINGS_CONFIG;
 Menu.control_config = CONTROL_CONFIG;
 
 //Variables for storage.js

@@ -12,14 +12,14 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SafelistPlus.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SafelistPlus.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f973b92a5579f60559c3ad294569a04b856b7149/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f973b92a5579f60559c3ad294569a04b856b7149/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f973b92a5579f60559c3ad294569a04b856b7149/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f973b92a5579f60559c3ad294569a04b856b7149/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f973b92a5579f60559c3ad294569a04b856b7149/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f973b92a5579f60559c3ad294569a04b856b7149/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f973b92a5579f60559c3ad294569a04b856b7149/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f973b92a5579f60559c3ad294569a04b856b7149/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ */
@@ -525,7 +525,7 @@ class Safelist {
         return (this.list.length === 1) && (this.list[0] === '');
     }
     get hasActiveHotkey() {
-        return !((!Array.isArray(this.hotkey)) || (this.hotkey.length < 2) || (this.hotkey[1] === ''));
+        return !((!Utility.isArray(this.hotkey)) || (this.hotkey.length < 2) || (this.hotkey[1] === ''));
     }
     get tagstring() {
         return this.list.join('\n');
@@ -906,14 +906,7 @@ function GetPostTags(post) {
     return tags;
 }
 
-function PostExclude(post, entry) {
-    if (entry.disabled) return false;
-    let tags = GetPostTags(post);
-    return entry.passthrough.intersection(tags).size > 0;
-}
-
-function PostMatch(post, entry) {
-    if (entry.disabled || entry.passthrough.size > 0) return false;
+function EntryCheck(post, entry) {
     var $post = $(post);
     var score = parseInt($post.attr("data-score"));
     var score_test = entry.min_score === null || score < entry.min_score;
@@ -921,6 +914,18 @@ function PostMatch(post, entry) {
     return (entry.require.isSubsetOf(tags) && score_test)
     && (entry.optional.size === 0 || !entry.optional.isDisjointFrom(tags))
     && entry.exclude.isDisjointFrom(tags);
+}
+
+function PostExclude(post, entry) {
+    if (entry.disabled || entry.passthrough.size == 0) return false;
+    let tags = GetPostTags(post);
+    return !entry.passthrough.isDisjointFrom(tags) &&
+    ((entry.require.size === 0 && entry.optional_size === 0 && entry.min_score === null) || EntryCheck(post, entry));
+}
+
+function PostMatch(post, entry) {
+    if (entry.disabled || entry.passthrough.size > 0) return false;
+    return EntryCheck(post, entry);
 }
 
 function ParseEntry(string) {
@@ -1035,7 +1040,7 @@ function RenderLevelMenu() {
 
 function InitializeSafelistData() {
     for (let level in SL.level_data) {
-        SL.level_data[level] = Object.assign(new Safelist(""), SL.level_data[level]);
+        SL.level_data[level] = Utility.mergeObjects(new Safelist(""), SL.level_data[level]);
     }
 }
 
@@ -1461,7 +1466,7 @@ function MenuResetAllButton() {
 function MenuSaveButton() {
     const printer = Debug.getFunctionPrint('MenuSaveButton');
     //Save presettings change for comparison later
-    var preconfig = Utility.dataCopy(SL.level_data);
+    var preconfig = Utility.deepCopy(SL.level_data);
     var premenu = SL.menu_items;
     for (let level in SL.level_data) {
         let value = SL.level_data[level];
@@ -1722,13 +1727,12 @@ function InitializeChangedSettings() {
 }
 
 function InitializeProgramValues() {
-    Object.assign(SL, {
+    Utility.assignObjects(SL, {
         blacklist_box: $("#blacklist-box"),
         has_video: Boolean($(".image-container video").length),
         is_shown: Storage.checkLocalData('sl-show-menu', ValidateProgramData, {default_val: true}),
         user_id: DanbooruProxy.CurrentUser.data('id'),
     });
-    return true;
 }
 
 function RenderSettingsMenu() {
@@ -1762,14 +1766,14 @@ function RenderSettingsMenu() {
 //Main functions
 
 function Main() {
-    const preload = {
-        run_on_settings: true,
-        default_data: DEFAULT_VALUES,
-        initialize_func: InitializeProgramValues,
+    Load.preloadScript({
         broadcast_func: BroadcastSL,
-        render_menu_func: RenderSettingsMenu,
-    };
-    if (!Menu.preloadScript(SL, preload)) return;
+    });
+    Load.preloadMenu({
+        menu_func: RenderSettingsMenu,
+    });
+    if (!Load.isScriptEnabled()) return;
+    InitializeProgramValues();
     LoadLevelData();
     CorrectLevelData();
     LoadSessionData();
@@ -1800,9 +1804,11 @@ function Main() {
 /****Initialization****/
 
 //Variables for JSPLib
+JSPLib.data = SL;
 JSPLib.name = PROGRAM_NAME;
 JSPLib.shortcut = PROGRAM_SHORTCUT;
-JSPLib.data = SL;
+JSPLib.default_data = DEFAULT_VALUES;
+JSPLib.settings_config = SETTINGS_CONFIG;
 
 //Variables for debug.js
 Debug.mode = false;
@@ -1815,7 +1821,6 @@ Storage.localSessionValidator = ValidateProgramData;
 Menu.reset_data = PROGRAM_RESET_KEYS;
 Menu.settings_callback = RemoteSettingsCallback;
 Menu.reset_callback = RemoteResetCallback;
-Menu.settings_config = SETTINGS_CONFIG;
 Menu.control_config = CONTROL_CONFIG;
 
 //Export JSPLib

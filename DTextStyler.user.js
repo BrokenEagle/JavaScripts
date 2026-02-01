@@ -12,15 +12,15 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/DTextStyler.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/DTextStyler.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Papa */
@@ -482,6 +482,13 @@ const DTEXT_SELECTORS = {
 
 //Auxiliary functions
 
+function BlockActiveElementSwitch() {
+    $('.dtext-markup, .dtext-action').each((_, elem) => {
+        // Allows the use of document.activeElement to get the last selected text input or textarea
+        elem.onmousedown = (e) => {(e || JSPLib._window.event).preventDefault();};
+    });
+}
+
 function GetTextArea($obj) {
     let $text_areas = $obj.closest('.ds-container').find('.ds-input');
     if ($text_areas.length <= 1) {
@@ -917,7 +924,7 @@ function ResizeDtextPreview(resizes, observer) {
 //Initialize
 
 function InitializeButtons($button_container) {
-    let all_configs = Object.assign({}, MARKUP_BUTTON_CONFIG, ACTION_BUTTON_CONFIG);
+    let all_configs = Utility.mergeObjects(MARKUP_BUTTON_CONFIG, ACTION_BUTTON_CONFIG);
     for (let key in all_configs) {
         let {top, left} = all_configs[key];
         $button_container.find(`button[name=${key}] > *:first-of-type`)
@@ -925,7 +932,7 @@ function InitializeButtons($button_container) {
     }
     $button_container.find('.dtext-markup').on(JSPLib.event.click, DtextMarkup);
     $button_container.find('.dtext-action').on(JSPLib.event.click, DtextAction);
-    Utility.blockActiveElementSwitch('.dtext-markup, .dtext-action');
+    BlockActiveElementSwitch();
 }
 
 function InitializeAutocomplete(selector) {
@@ -945,7 +952,7 @@ function InitializeAutocomplete(selector) {
 function InitializeDtextPreviews() {
     const printer = Debug.getFunctionPrint('InitializeDtextPreviews');
     let containers = Utility.multiConcat(...DS.dtext_types_handled.map((type) => DTEXT_SELECTORS[type]));
-    let final_selector = Utility.joinList(containers, '.', ' .dtext-editor textarea', ', ');
+    let final_selector = Utility.joinList(containers, {prefix: '.', suffix: ' .dtext-editor textarea', joiner: ', '});
     let textarea_selectors = [];
     for (let type in DTEXT_SELECTORS) {
         DTEXT_SELECTORS[type].forEach((classname) => {
@@ -1014,12 +1021,11 @@ function InitializeCommentaryDialog() {
         interval: 500,
         duration: Utility.one_second * 15,
         found: () => {
-            let buttons = DS.$add_commentary_dialog.dialog('option', 'buttons');
-            buttons = Object.assign(DIALOG_CONFIG, buttons);
+            let buttons = Utility.mergeObjects(DS.$add_commentary_dialog.dialog('option', 'buttons'), DIALOG_CONFIG);
             let dialog_width = Math.max((DS.available_dtext_markup.length + DS.available_dtext_actions.length) * 40 + 50, DS.$add_commentary_dialog.dialog('option', 'width'));
             DS.$add_commentary_dialog.dialog('option', 'buttons', buttons);
             DS.$add_commentary_dialog.dialog('option', 'width', dialog_width);
-            DS.$add_commentary_dialog.on('dialogopen.ds', OpenDialog);
+            DS.$add_commentary_dialog.on(JSPLib.event.dialogopen, OpenDialog);
         },
     });
     DS.$add_commentary_dialog.find('.ds-input').on(JSPLib.event.keyup, ClearActions);
@@ -1080,11 +1086,8 @@ function InitializeUploadCommentary() {
 // Settings functions
 
 function InitializeProgramValues() {
-    Object.assign(DS, {
-        size_observer: new ResizeObserver(ResizeDtextPreview),
-    });
+    DS.size_observer = new ResizeObserver(ResizeDtextPreview);
     Load.setProgramGetter(DS, 'IAC', 'IndexedAutocomplete', 29.32);
-    return true;
 }
 
 function RenderSettingsMenu() {
@@ -1103,17 +1106,17 @@ function RenderSettingsMenu() {
 //Main program
 
 function Main() {
-    const preload = {
-        run_on_settings: false,
-        default_data: DEFAULT_VALUES,
-        initialize_func: InitializeProgramValues,
-        render_menu_func: RenderSettingsMenu,
+    Load.preloadScript({
         program_css: PROGRAM_CSS,
         light_css: LIGHT_MODE_CSS,
         dark_css: DARK_MODE_CSS,
+    });
+    Load.preloadMenu({
+        menu_func: RenderSettingsMenu,
         menu_css: MENU_CSS,
-    };
-    if (!Menu.preloadScript(DS, preload)) return;
+    });
+    if (!Load.isScriptEnabled() || Menu.isSettingsMenu()) return;
+    InitializeProgramValues();
     if (DS.dtext_types_handled.length) {
         InitializeDtextPreviews();
     }
@@ -1127,16 +1130,15 @@ function Main() {
 /****Initialization****/
 
 //Variables for JSPLib
+JSPLib.data = DS;
 JSPLib.name = PROGRAM_NAME;
 JSPLib.shortcut = PROGRAM_SHORTCUT;
-JSPLib.data = DS;
+JSPLib.default_data = DEFAULT_VALUES;
+JSPLib.settings_config = SETTINGS_CONFIG;
 
 //Variables for debug.js
 Debug.mode = false;
 Debug.level = Debug.INFO;
-
-//Variables for menu.js
-Menu.settings_config = SETTINGS_CONFIG;
 
 //Export JSPLib
 Load.exportData();

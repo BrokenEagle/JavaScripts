@@ -15,18 +15,18 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-setitems@1.4.0/dist/localforage-setitems.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/8456414cffc5bf27ccaf1d86ef997cc112a2490a/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/saucenao.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/load.js
 // @connect      cdn.donmai.us
 // @connect      saucenao.com
 // ==/UserScript==
@@ -407,9 +407,28 @@ async function CheckUtilityLibrary() {
     TestPrint(`Timestamp for ${timeval3}`, RecordResult(timestamp2 === expectedtimestamp1), {result: timestamp2});
     TestPrint(`Timestamp for invalid ${timeinvalid1}`, RecordResult(Number.isNaN(timestamp3)), {result: timestamp3});
 
+    console.log("Checking isDigit");
+    let digit1 = '1234';
+    let digit2 = 'N/A';
+    let testvalue1 = Utility.isDigit(digit1);
+    let testvalue2 = Utility.isDigit(digit2);
+    TestPrint(`Value ${digit1} should be a digit`, RecordResult(testvalue1), {no_result: true});
+    TestPrint(`Value ${digit2} should not be a digit`, RecordResult(testvalue1), {no_result: true});
+
+    console.log("Checking bigIntMax");
+    let bigints1 = [5n, 1000000000000000000000n, 1n, 24n];
+    let expectedmax1 = 1000000000000000000000n;
+    testvalue1 = Utility.bigIntMax(...bigints1);
+    TestPrint(`${bigints1} should have a max of ${expectedmax1}`, RecordResult(testvalue1 === expectedmax1), {result: testvalue1});
+
+    console.log("Checking bigIntMin");
+    let expectedmin1 = 1n;
+    testvalue1 = Utility.bigIntMin(...bigints1);
+    TestPrint(`${bigints1} should have a min of ${expectedmax1}`, RecordResult(testvalue1 === expectedmin1), {result: testvalue1});
+
     console.log("Checking setPrecision");
-    let testvalue1 = 1.22;
-    let testvalue2 = Utility.setPrecision(1.2222222, 2);
+    testvalue1 = 1.22;
+    testvalue2 = Utility.setPrecision(1.2222222, 2);
     TestPrint(`Value ${testvalue1} should be equal to ${testvalue2} with a decimal precision of 2`, RecordResult(testvalue1 === testvalue2), {no_result: true});
 
     console.log("Checking getUniqueID");
@@ -494,6 +513,11 @@ async function CheckUtilityLibrary() {
     teststring1 = Utility.sprintf(string1, "this", 3);
     TestPrint(`Value ${repr(string1)} should should be changed to ${repr(string2)}`, RecordResult(teststring1 === string2), {result: repr(teststring1)});
 
+    console.log("Checking readableBytes");
+    let bytesize = 1048576;
+    let expectedbytes = '1 MB';
+    teststring1 = Utility.readableBytes(bytesize);
+    TestPrint(`Value ${bytesize} should have a readable byte size of ${repr(expectedbytes)}`, RecordResult(teststring1 === expectedbytes), {result: repr(teststring1)});
 
     console.log("Checking findAll");
     string1 = "100 200 300 400";
@@ -514,6 +538,17 @@ async function CheckUtilityLibrary() {
     teststring1 = Utility.regexReplace(format_string1, format_data1);
     TestPrint(`Format ${repr(format_string1)} and data ${repr(format_data1)} should should be regex replaced to ${repr(string1)}`, RecordResult(string1 === teststring1), {result: repr(teststring1)});
 
+    console.log("Checking safeMatch");
+    teststring1 = "blog-navigate";
+    teststring2 = "not-applicable";
+    let regex1 = /^blog-(.*)$/;
+    let exepectedmatch1 = 'navigate';
+    let default_val = 'N/A';
+    let match1 = Utility.safeMatch(teststring1, regex1, {group: 1, default_val});
+    let match2 = Utility.safeMatch(teststring2, regex1, {group: 1, default_val});
+    TestPrint(`Value ${repr(teststring1)} with regex ${regex1} should find a match of ${repr(exepectedmatch1)}`, RecordResult(match1 === exepectedmatch1), {result: match1});
+    TestPrint(`Value ${repr(teststring2)} with regex ${regex1} should return the default value of ${repr(default_val)}`, RecordResult(match2 === default_val), {result: match2});
+
     console.log("Checking filterEmpty");
     let testarray1 = ["test", "first", "nonempty"];
     let testarray2 = ["test", "first", "empty", ""];
@@ -523,7 +558,7 @@ async function CheckUtilityLibrary() {
     TestPrint(`Array ${repr(testarray2)} should not be equal in length to ${repr(resultarray2)}`, RecordResult(testarray2.length !== resultarray2.length), {no_result: true});
 
     console.log("Checking filterRegex");
-    let regex1 = /^(?:other|empty)/;
+    regex1 = /^(?:other|empty)/;
     resultarray1 = Utility.filterRegex(testarray1, regex1);
     resultarray2 = Utility.filterRegex(testarray2, regex1);
     TestPrint(`Array ${repr(resultarray1)} should have a length of zero`, RecordResult(resultarray1.length === 0), {no_result: true});
@@ -613,20 +648,9 @@ async function CheckUtilityLibrary() {
     TestPrint(`Array ${repr(array1)} should have an intersection with ${repr(array2)}`, RecordResult(resultbool1), {no_result: true});
     TestPrint(`Array ${repr(array1)} should not have an intersection with ${repr(array3)}`, RecordResult(!resultbool2), {no_result: true});
 
-    console.log("Checking listFilter");
-    let testobjectarray1 = [{id: 1, type: 'a'}, {id: 2, type: 'b'}, {id: 3, type: 'b'}];
-    testarray1 = [1, 3];
-    testarray2 = ['a'];
-    let expectedobjectarray1 = [{id: 1, type: 'a'}, {id: 3, type: 'b'}];
-    let expectedobjectarray2 = [{id: 2, type: 'b'}, {id: 3, type: 'b'}];
-    let resultobjectarray1 = Utility.listFilter(testobjectarray1, testarray1, 'id');
-    let resultobjectarray2 = Utility.listFilter(testobjectarray1, testarray2, 'type', true);
-    TestPrint(`Object array ${repr(testobjectarray1)} with id filters on ${repr(testarray1)} should be equal to ${repr(expectedobjectarray1)}`, RecordResult(JSON.stringify(resultobjectarray1) === JSON.stringify(expectedobjectarray1)), {result: repr(resultobjectarray1)});
-    TestPrint(`Object array ${repr(testobjectarray1)} with reverse type filters on ${repr(testarray2)} should be equal to ${repr(expectedobjectarray2)}`, RecordResult(JSON.stringify(resultobjectarray2) === JSON.stringify(expectedobjectarray2)), {result: repr(resultobjectarray2)});
-
     console.log("Checking joinList");
     string1 = "test-1-section,test-3-section";
-    teststring1 = Utility.joinList(testarray1, "test-", '-section', ',');
+    teststring1 = Utility.joinList(testarray1, {prefix: "test-", suffix: '-section', joiner: ','});
     TestPrint(`Value ${repr(testarray1)} should should be changed to ${repr(string1)}`, RecordResult(teststring1 === string1), {result: repr(teststring1)});
 
     console.log("Checking getObjectAttributes");
@@ -655,7 +679,7 @@ async function CheckUtilityLibrary() {
     testobject1 = {'test': 0, 'value': {'deep': 1}};
     let copyobject1 = testobject1;
     let shallowobject1 = Object.assign({}, testobject1);
-    let [deepobject1] = Utility.dataCopy([testobject1]);
+    let [deepobject1] = Utility.deepCopy([testobject1]);
     testobject1.test = 10;
     testobject1.value.deep = 11;
     TestPrint(`Object ${repr(copyobject1)} should have the same values as`, RecordResult(copyobject1?.test === 10 && copyobject1?.value?.deep === 11), {result: repr(testobject1)});
@@ -665,7 +689,7 @@ async function CheckUtilityLibrary() {
     console.log("Checking mergeHashes");
     let object1 = {search: {id: "20,21,5"}};
     let object2 = {search: {order: "customorder"}};
-    result1 = Utility.mergeHashes(object1, object2);
+    result1 = Utility.mergeObjects(object1, object2);
     let boolarray1 = [HashContains(result1, ['search']), HashContains(result1.search, ['id', 'order'])];
     if(boolarray1[1]) {
         boolarray1.push(result1.search.id === "20,21,5")
@@ -695,7 +719,7 @@ async function CheckUtilityLibrary() {
     array1 = Utility.DOMtoArray($domtest.attributes);
     array2 = array1.map((entry) => entry.value);
     array3 = ['test1', '2'];
-    TestPrint("Object returned should be an array", RecordResult(Array.isArray(array1)), {no_result: true});
+    TestPrint("Object returned should be an array", RecordResult(ArrayCheck(array1)), {no_result: true});
     TestPrint(`Data values for object should be ${repr(array3)}`, RecordResult(JSON.stringify(array2) === JSON.stringify(array3)), {result: repr(array2)});
 
     console.log("Checking DOMtoHash");
@@ -704,11 +728,11 @@ async function CheckUtilityLibrary() {
     TestPrint("Object returned should be a hash", RecordResult(hash1.constructor === Object), {no_result: true});
     TestPrint(`Data values for object should be ${repr(array3)}`, RecordResult(JSON.stringify(array2) === JSON.stringify(array3)), {result: repr(array2)});
 
-    console.log("Checking getDOMAttributes");
+    console.log("Checking getDOMArrayDataValues");
     let $domarray = jQuery.parseHTML(domdata_test);
     checkarray1 = ["test1"];
-    resultarray1 = Utility.getDOMAttributes($domarray, 'test1', String);
-    TestPrint("Object returned should be an array", RecordResult(Array.isArray(resultarray1)), {no_result: true});
+    resultarray1 = Utility.getDOMArrayDataValues($domarray, 'test1');
+    TestPrint("Object returned should be an array", RecordResult(ArrayCheck(resultarray1)), {no_result: true});
     TestPrint(`Data values for array should be ${repr(checkarray1)}`, RecordResult(ArrayEqual(checkarray1, resultarray1)), {result: repr(resultarray1)});
 
     console.log("Checking getAllDOMData");
@@ -736,25 +760,6 @@ async function CheckUtilityLibrary() {
     data1 = Utility.getPublicData($domobj);
     TestPrint(`data should be object ${repr(testdata1)}`, RecordResult(HashContains(data1, ['test_data']) && data1.test_data === "check"), {result: repr(data1)});
 
-    console.log("Checking saveEventHandlers");
-    string1 = 'checklibraries.test_hover';
-    data1 = Utility.saveEventHandlers('#checklibrary-count', 'mouseover');
-    TestPrint("There should be 1 event for the object", RecordResult(data1.length === 1), {result: data1.length});
-    TestPrint(`The namespace should be named ${string1}`, RecordResult(data1?.[0]?.[0] === string1), {result: data1?.[0]?.[0]});
-
-    if (data1.length) {
-        console.log("Checking rebindEventHandlers");
-        jqueryobj.off("mouseenter.checklibraries.test_hover");
-        result1 = Utility.saveEventHandlers('#checklibrary-count', 'mouseover');
-        Utility.rebindEventHandlers('#checklibrary-count', 'mouseover', data1, ['test_hover']);
-        result2 = Utility.saveEventHandlers('#checklibrary-count', 'mouseover');
-        TestPrint("There should be 0 event for the object before rebinding", RecordResult(result1.length === 0), {result: result1.length});
-        TestPrint("There should be 1 event for the object", RecordResult(result2.length === 1), {result: result2.length});
-        TestPrint(`The namespace should be named ${string1}`, RecordResult(result2?.[0]?.[0] === string1), {result: result2?.[0]?.[0]});
-    } else {
-        console.error("Unable to do the rebindEventHandlers test.");
-    }
-
     console.log("Checking getBoundEventNames");
     array1 = Utility.getBoundEventNames("#checklibrary-count", 'mouseover', null);
     array2 = ['checklibraries.test_hover'];
@@ -777,7 +782,7 @@ async function CheckUtilityLibrary() {
 
     console.log("Checking hasDOMDataKey");
     string1 = 'test_data';
-    resultbool1 = Utility.hasDOMDataKey("#checklibrary-count", string1);
+    resultbool1 = Utility.hasDOMDataKey({selector: "#checklibrary-count", key: string1});
     TestPrint(`DOM data keys for object should include ${repr(string1)}`, RecordResult(resultbool1 === true), {no_result: true});
 
     console.log("Checking addStyleSheet");
@@ -808,38 +813,11 @@ async function CheckUtilityLibrary() {
     result1 = Utility.hasStyle('test');
     TestPrint("Test style should be initialized", RecordResult(result1), {no_result: true});
 
-    console.log("Checking fullHide");
-    let selector1 = "#page";
-    Utility.fullHide(selector1);
-    let expectedstyletext1 = "display: none !important;";
-    let resultstyletext1 = document.querySelector(selector1).style.cssText;
-    TestPrint(`DOM ${selector1} should have the CSS style of ${repr(expectedstyletext1)}`, RecordResult(expectedstyletext1 === resultstyletext1), {result: repr(resultstyletext1)});
-
-    console.log("Sleeping 5 seconds for visual confirmation.");
-    await Utility.sleep(csstyle_waittime);
-
-    console.log("Checking clearHide");
-    Utility.clearHide(selector1);
-    expectedstyletext1 = "";
-    resultstyletext1 = document.querySelector(selector1).style.cssText;
-    TestPrint(`DOM ${selector1} should have the CSS style of ${repr(expectedstyletext1)}`, RecordResult(expectedstyletext1 === resultstyletext1), {result: repr(resultstyletext1)});
-    window.scroll(0, 10000);
-
     console.log("Checking getMeta");
     let metaselector1 = "csrf-param";
     let expectedmeta1 = "authenticity_token";
     let resultmeta1 = Utility.getMeta(metaselector1);
     TestPrint(`Meta ${metaselector1} should have the content of ${repr(expectedmeta1)}`, RecordResult(expectedmeta1 === resultmeta1), {result: repr(resultmeta1)});
-
-    console.log("Checking getImageDimensions");
-    let dimensions1 = {width: 127, height: 180};
-    let dimensions2 = await Utility.getImageDimensions(PREVIEW_URL);
-    TestPrint(`Dimensions should have width of 127 and height of 180`, RecordResult(Boolean(dimensions2?.width === 127 && dimensions2?.height === 180)), {result: repr(dimensions2)});
-
-    console.log("Checking getPreviewDimensions");
-    let base_dimensions = 150;
-    dimensions2 = Utility.getPreviewDimensions(dimensions1.width, dimensions1.height, base_dimensions);
-    TestPrint(`Dimensions should have width of 106 and height of 150`, RecordResult(Boolean(dimensions2?.[0] === 106 && dimensions2?.[1] === 150)), {result: repr(dimensions2)});
 
     console.log("Checking recheckInterval");
     let checkvalue1 = false;
@@ -852,7 +830,7 @@ async function CheckUtilityLibrary() {
             console.log("[Non-expiring] Checking value", ++iterator1, "times.");
             return checkvalue1;
         },
-        exec: () => {checkvalue2 = true;},
+        success: () => {checkvalue2 = true;},
         interval: 100,
     });
     let timer2 = Utility.recheckInterval({
@@ -860,7 +838,7 @@ async function CheckUtilityLibrary() {
             console.log("[Expiring] Checking value", ++iterator2, "times.");
             return checkvalue1;
         },
-        exec: () => {checkvalue3 = true;},
+        success: () => {checkvalue3 = true;},
         interval: 100,
         duration: 100,
     });
@@ -891,7 +869,7 @@ async function CheckUtilityLibrary() {
     console.log("Checking getDomainName");
     string1 = "http://danbooru.donmai.us";
     string2 = "donmai.us";
-    string3 = Utility.getDomainName(string1, 2);
+    string3 = Utility.getDomainName(string1, {level: 2});
     TestPrint(`URL of ${string1} should have a base domain of ${string2}`, RecordResult(string2 === string3), {result: string3});
 
     console.log("Checking parseParams");
@@ -904,12 +882,6 @@ async function CheckUtilityLibrary() {
     string1 = '& < > "';
     string2 = "&amp; &lt; &gt; &quot;";
     result1 = Utility.HTMLEscape(string1);
-    TestPrint(`Value ${repr(string1)} should should be changed to ${repr(string2)}`, RecordResult(string2 === result1), {result: repr(result1)});
-
-    console.log("Checking fullEncodeURIComponent");
-    string1 = 'blah_(foo)';
-    string2 = "blah_%28foo%29";
-    result1 = Utility.fullEncodeURIComponent(string1);
     TestPrint(`Value ${repr(string1)} should should be changed to ${repr(string2)}`, RecordResult(string2 === result1), {result: repr(result1)});
 
     console.log("Checking isHash");
@@ -1538,26 +1510,6 @@ async function CheckConcurrencyLibrary() {
     await Utility.sleep(1000);
     TestPrint(`Value ${repr(value1)} should be equal to ${repr(string2)}`, RecordResult(value1 === string2), {no_result: true});
 
-    console.log("Checking whenScrolledIntoView");
-    let selector1 = '#app-name-header';
-    let testvalue1 = null;
-    let testvalue2 = 'seen';
-    let setvalue1 = testvalue1;
-    Concurrency.whenScrolledIntoView(selector1).then(() => {
-        console.log("!!SCROLLED INTO VIEW!!");
-        setvalue1 = testvalue2;
-    });
-    await Utility.sleep(100);
-    console.log("==BEFORE SCROLL==");
-    let checkvalue1 = setvalue1;
-    window.scroll(0, 0);
-    await Utility.sleep(100);
-    console.log("==AFTER SCROLL==");
-    let checkvalue2 = setvalue1;
-    TestPrint(`Selector ${repr(selector1)} should not be visibile initially`, RecordResult(checkvalue1 === testvalue1), {result: repr(checkvalue1)});
-    TestPrint(`Selector ${repr(selector1)} should visibile after scrolling`, RecordResult(checkvalue2 === testvalue2), {result: repr(checkvalue2)});
-    window.scroll(0, 10000);
-
     //Cleanup actions
     localStorage.removeItem(key1);
     localStorage.removeItem(key3);
@@ -1595,7 +1547,7 @@ async function CheckNetworkLibrary() {
     let found1 = false;
     Network.installXHRHook([
         (data) => {
-            if (Array.isArray(data) && data.length === 1 && data[0].id === 1) {
+            if (ArrayCheck(data) && data.length === 1 && data[0].id === 1) {
                 TestPrint(`With URL ${url1} and addons ${repr(addons1)}, a single user record of user #1 should have been returned`, RecordResult(data[0].name === "albert"), {result: repr(data)});
                 found1 = true;
             }
@@ -1726,21 +1678,21 @@ async function CheckDanbooruLibrary() {
     let type1 = 'posts';
     let type2 = 'doesntexist';
     let addons1 = {limit: 1};
-    result1 = await Danbooru.submitRequest(type1, addons1);
-    result2 = await Danbooru.submitRequest(type2);
+    result1 = await Danbooru.query(type1, addons1);
+    result2 = await Danbooru.query(type2);
     TestPrint(`with type ${type1} and addons ${repr(addons1)}, a single post should have been returned`, RecordResult(ArrayLength(result1, 1)), {result: result1});
     TestPrint(`with nonexistent type ${type2}, null should be returned`, RecordResult(result2 === null), {result: repr(result2)});
 
     console.log("Checking submitRequest (long)");
-    result1 = await Danbooru.submitRequest(type1, addons1, {long_format: true});
+    result1 = await Danbooru.query(type1, addons1, {long_format: true});
     TestPrint(`with type ${type1} and addons ${repr(addons1)}, a single post should have been returned`, RecordResult(ArrayLength(result1, 1)), {result: result1});
 
-    console.log("Checking getAllPageItems");
+    console.log("Checking getPageItems");
     type1 = 'users';
     addons1 = {search: {level: 50}, only: 'id,level'}; //Search for admins
     let page1 = 1; //Except for the first admin
     let limit1 = 1; //One at a time
-    result1 = await Danbooru.getAllPageItems(type1, limit1, {url_addons: addons1, batches: 2, page: page1, reverse: true});
+    result1 = await Danbooru.queryPageItems(type1, limit1, {url_addons: addons1, batches: 2, page: page1, reverse: true});
     result2 = Utility.getObjectAttributes(result1, 'id');
     result3 = result2.sort((a, b) => a - b);
     result4 = Utility.getObjectAttributes(result1, 'level').reduce((total, entry) => total && entry === 50, true);
@@ -1749,8 +1701,8 @@ async function CheckDanbooruLibrary() {
     TestPrint(`should have also returned users in reverse order ${repr(result3)}`, RecordResult(repr(result2) === repr(result3)), {result: repr(result2)});
     TestPrint("should have also returned only admins", RecordResult(result4), {no_result: true});
 
-    console.log("Checking getAllPageItems (long)");
-    result1 = await Danbooru.getAllPageItems(type1, limit1, {url_addons: addons1, batches: 2, page: page1, reverse: true, long_format: true});
+    console.log("Checking getPageItems (long)");
+    result1 = await Danbooru.queryPageItems(type1, limit1, {url_addons: addons1, batches: 2, page: page1, reverse: true, long_format: true});
     result2 = Utility.getObjectAttributes(result1, 'id');
     result3 = result2.sort((a, b) => a - b);
     result4 = Utility.getObjectAttributes(result1, 'level').reduce((total, entry) => total && entry === 50, true);
@@ -1759,12 +1711,12 @@ async function CheckDanbooruLibrary() {
     TestPrint(`should have also returned users in reverse order ${repr(result3)}`, RecordResult(repr(result2) === repr(result3)), {result: repr(result2)});
     TestPrint("should have also returned only admins", RecordResult(result4), {no_result: true});
 
-    console.log("Checking getAllPageItems (counter)");
-    let users_latest = await Danbooru.submitRequest(type1, {limit: 10, only: 'id'});
+    console.log("Checking getPageItems (counter)");
+    let users_latest = await Danbooru.query(type1, {limit: 10, only: 'id'});
     let page_start = Danbooru.getNextPageID(users_latest, false);
     let page_end = Danbooru.getNextPageID(users_latest, true);
     array1 = Utility.getObjectAttributes(users_latest, 'id');
-    result1 = await Danbooru.getAllPageItems(type1, limit1, {page: page_end + 1, url_addons: {search: {id: `${page_end}..${page_start}`}, only: 'id'}, domname: '#checklibrary-count'});
+    result1 = await Danbooru.queryPageItems(type1, limit1, {page: page_end + 1, url_addons: {search: {id: `${page_end}..${page_start}`}, only: 'id'}, domname: '#checklibrary-count'});
     result2 = Utility.getObjectAttributes(result1, 'id');
     result3 = jQuery('#checklibrary-count').data('latest-id');
     result4 = Number(jQuery('#checklibrary-count').text());
@@ -1864,9 +1816,9 @@ async function checklibrary() {
     document.body.style.height = '5000px';
     setTimeout(() => {window.scroll(0, 10000);}, 2000);
 
-    CheckDebugLibrary();
+    //CheckDebugLibrary();
+    await CheckUtilityLibrary();
     //await CheckNoticeLibrary();
-    //await CheckUtilityLibrary();
     //CheckStatisticsLibrary();
     //CheckValidateLibrary();
     //await CheckStorageLibrary();
@@ -1880,8 +1832,8 @@ async function checklibrary() {
 
 /****INITIALIZATION****/
 
-JSPLib.program_shortcut = 'cl';
-JSPLib.program_name = 'CheckLibraries';
+JSPLib.shortcut = 'cl';
+JSPLib.name = 'CheckLibraries';
 
 Debug.mode = true;
 Debug.level = Debug.INFO;

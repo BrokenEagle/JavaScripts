@@ -12,17 +12,17 @@
 // @run-at       document-idle
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/TranslatorAssist.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/TranslatorAssist.user.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/menu.js
 // @connect      validator.nu
 // ==/UserScript==
 
@@ -90,7 +90,7 @@ const SETTINGS_CONFIG = {
     last_noted_cutoff: {
         reset: 15,
         parse: parseInt,
-        validate: (data) => (Number.isInteger(data) && data > 0),
+        validate: (data) => (Utility.isInteger(data) && data > 0),
         hint: "Number of minutes used as a cutoff when determining whether to show the last noted notice (greater than 0)."
     },
     query_last_noter_enabled: {
@@ -101,7 +101,7 @@ const SETTINGS_CONFIG = {
     last_noter_cache_time: {
         reset: 5,
         parse: parseInt,
-        validate: (data) => (Number.isInteger(data) && data >= 0),
+        validate: (data) => (Utility.isInteger(data) && data >= 0),
         hint: "Number of minutes to cache the query last noter data (greater than 0; setting to zero disables caching)."
     },
     filter_last_noter_enabled: {
@@ -117,7 +117,7 @@ const SETTINGS_CONFIG = {
     new_noter_check_interval: {
         reset: 5,
         parse: parseInt,
-        validate: (data) => (Number.isInteger(data) && data > 0),
+        validate: (data) => (Utility.isInteger(data) && data > 0),
         hint: "How often to check for new noters (# of minutes)."
     },
     available_html_tags: {
@@ -293,10 +293,11 @@ const PROGRAM_CSS = Template.normalizeCSS()`
     height: 2.25em;
     top: 2.75em;
     right: 0.5em;
-    padding: 0.25em 0.75em;
+    padding: 0.25em;
     display: flex;
 }
-#ta-side-menu #ta-size-controls img {
+#ta-side-menu #ta-size-controls svg {
+    height: 1.5em;
     width: 1.5em;
 }
 #ta-side-menu #ta-side-menu-tabs {
@@ -785,11 +786,11 @@ const EXPAND_TB_SVG = '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColo
 const CONTRACT_LR_SVG = '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" width="25" height="20" viewBox="0 0 22 16"><path d="M22 3h-5V0l-5 5 5 5V7h5V3zM0 7h5v3l5-5-5-5v3H0v4z"/></svg>';
 const CONTRACT_TB_SVG = '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" width="25" height="20" viewBox="0 0 22 16" transform="rotate(90)"><path d="M22 3h-5V0l-5 5 5 5V7h5V3zM0 7h5v3l5-5-5-5v3H0v4z"/></svg>';
 const PLUS_SIGN = `
-<svg xmlns="http://www.w3.org/2000/svg"  width="15" height="15" viewBox="-20 -40 240 240">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-20 -40 240 240">
     <path d="M75,0 V75 H0 V125 H75 V200 H125 V125 H200 V75 H125 V0 H75 z" fill="#080" />
 </svg>`;
 const MINUS_SIGN = `
-<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="-20 -40 240 240">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-20 -40 240 240">
     <path d="M 0,75 L 0,125 L 200,125 L 200,75 L 0,75 z" fill="#F00" />
 </svg>`;
 
@@ -838,8 +839,8 @@ const SIDE_MENU = `
             <button id="ta-side-menu-apply" title="Apply styles from inputs to HTML tag">Apply</button>
         </div>
         <div id="ta-size-controls" class="ta-cursor-pointer">
-            <a data-add="1" title="Increase the size of the menu"><img src="data:image/svg+xml,${Utility.fullEncodeURIComponent(PLUS_SIGN)}"></a>&nbsp;&nbsp;
-            <a data-add="-1" title="Decrease the size of the menu"><img src="data:image/svg+xml,${Utility.fullEncodeURIComponent(MINUS_SIGN)}"></a>
+            <a data-add="1" title="Increase the size of the menu">${PLUS_SIGN}</a>&nbsp;&nbsp;
+            <a data-add="-1" title="Decrease the size of the menu">${MINUS_SIGN}</a>
         </div>
         <button id="ta-side-menu-reset" class="ta-control-button" title="Reset the side menu size/position (Hotkey: alt+r)">Reset</button>
         <button id="ta-side-menu-close" class="ta-control-button" title="Close the side menu (Hotkey: alt+t)">Close</button>
@@ -1428,10 +1429,10 @@ const STYLE_CONFIG = {
 
 STYLE_CONFIG['line-height'] = STYLE_CONFIG['letter-spacing'] = STYLE_CONFIG['font-size'];
 
-STYLE_CONFIG['border-radius'] = Utility.dataCopy(STYLE_CONFIG.direction_styles);
+STYLE_CONFIG['border-radius'] = Utility.deepCopy(STYLE_CONFIG.direction_styles);
 
 ['margin', 'padding'].forEach((family) => {
-    STYLE_CONFIG[family] = Utility.dataCopy(STYLE_CONFIG.direction_styles);
+    STYLE_CONFIG[family] = Utility.deepCopy(STYLE_CONFIG.direction_styles);
     STYLE_CONFIG[family].family = FAMILY_DICT[family];
     ['top', 'right', 'bottom', 'left'].forEach((direction) => {
         let style_name = family + '-' + direction;
@@ -1494,6 +1495,24 @@ function ShowErrorMessages(error_messages, header = 'Error') {
 function ShowStyleErrors(style_errors) {
     ShowErrorMessages(style_errors, 'Invalid style');
 }
+
+function InitializeClickAndHold() {
+    let $obj = $('#ta-placement-controls .ta-button-placement');
+    let timer = null;
+    let interval = null;
+    $obj.on(JSPLib.event.mousedown, (event) => {
+        if (event.button !== 0) return;
+        PlacementControl(event);
+        timer = setTimeout(() => {
+            interval = Utility.initializeInterval(() => {
+                PlacementControl(event);
+            }, 100);
+        }, 500);
+    }).on(JSPLib.event.mouseup + ',' + JSPLib.event.mouseleave, () => {
+        clearTimeout(timer);
+        clearInterval(interval);
+    });
+};
 
 // Render functions
 
@@ -1694,12 +1713,12 @@ function RenderUserLink(user) {
 //Network functions
 
 function QueryNoteVersions(search_options, query_options) {
-    let send_options = Utility.mergeHashes(
+    let send_options = Utility.assignObjects(
         {search: {post_id: TA.post_id}, limit: 1},
         {search: search_options},
         query_options
     );
-    return Danbooru.submitRequest('note_versions', send_options);
+    return Danbooru.query('note_versions', send_options);
 }
 
 function QueryNewNotations() {
@@ -1802,13 +1821,13 @@ function ParseTagAttributes(html_tag) {
     let attrib_items = Utility.findAll(html_tag, /\w+="[^"]+"/g);
     if (attrib_items.length === 0) return {attrib_dict: {}, style_dict: {}};
     let attrib_pairs = attrib_items.map((attrib) => Utility.findAll(attrib, /(\w+)="([^"]+)"/g).filter((_item, i) => (i % 3)));
-    let attrib_dict = Utility.mergeHashes(...attrib_pairs.map((attrib_pair) => ({[attrib_pair[0]]: attrib_pair[1]})));
+    let attrib_dict = Utility.assignObjects(...attrib_pairs.map((attrib_pair) => ({[attrib_pair[0]]: attrib_pair[1]})));
     var style_dict;
     if ('style' in attrib_dict) {
         let style_pairs = attrib_dict.style
             .split(';').filter((style) => (!style.match(/^\s*$/) && (style.match(/:/g)?.length === 1)))
             .map((style) => (style.split(':').map((str) => str.trim())));
-        style_dict = (style_pairs.length > 0 ? Utility.mergeHashes(...style_pairs.map((style) => ({[style[0]]: style[1]}))) : {});
+        style_dict = (style_pairs.length > 0 ? Utility.assignObjects(...style_pairs.map((style) => ({[style[0]]: style[1]}))) : {});
     } else {
         style_dict = {};
     }
@@ -1918,7 +1937,7 @@ function GetEmbeddedTag(html_text) {
         let html_tag = html_tags[i];
         html_tag.open_tag = html_text.slice(html_tag.open_tag_start, html_tag.open_tag_end);
         if (!html_tag.open_tag.match(/ class="[^"]+"/)) continue;
-        html_tag = Utility.mergeHashes(html_tag, ParseTagAttributes(html_tag.open_tag));
+        Utility.assignObjects(html_tag, ParseTagAttributes(html_tag.open_tag));
         if (html_tag.attrib_dict["class"].split(' ').includes('note-box-attributes')) {
             embedded_tag = html_tag;
             break;
@@ -1943,7 +1962,7 @@ function GetRubyTag(html_text, cursor) {
         html_tag.close_tag = html_text.slice(html_tag.close_tag_start, html_tag.open_tag_end);
         html_tag.inner_html = html_text.slice(html_tag.open_tag_end, html_tag.close_tag_start);
         html_tag.full_tag = html_text.slice(html_tag.open_tag_start, html_tag.close_tag_end);
-        html_tag = Utility.mergeHashes(html_tag, ParseTagAttributes(html_tag.open_tag));
+        Utility.assignObjects(html_tag, ParseTagAttributes(html_tag.open_tag));
         return html_tag;
     });
     if (!overall_ruby_tag) return;
@@ -1961,7 +1980,7 @@ function GetRubyTag(html_text, cursor) {
         next_inner_tag.close_tag = html_text.slice(next_inner_tag.close_tag_start, next_inner_tag.open_tag_end);
         next_inner_tag.inner_html = html_text.slice(next_inner_tag.open_tag_end, next_inner_tag.close_tag_start);
         next_inner_tag.full_tag = html_text.slice(next_inner_tag.open_tag_start, next_inner_tag.close_tag_end);
-        next_inner_tag = Utility.mergeHashes(next_inner_tag, ParseTagAttributes(next_inner_tag.open_tag));
+        Utility.assignObjects(next_inner_tag, ParseTagAttributes(next_inner_tag.open_tag));
         base_inner_tags.push(next_inner_tag);
     }
     let top_ruby_tags = base_inner_tags.filter((html_tag) => (html_tag.tag_name === 'rt'));
@@ -1983,28 +2002,28 @@ function ValidateCSS(input_html) {
             };
             let [attr, value, ...misc] = styles[i].split(':');
             if (misc.length) {
-                error_array.push(Utility.mergeHashes({message: "Extra colons found."}, error));
+                error_array.push(Utility.assignObjects({message: "Extra colons found."}, error));
                 continue;
             }
             attr = attr.trim();
             if (value === undefined) {
                 if (attr.length === 0) {
                     error.excerpt += ';';
-                    error_array.push(Utility.mergeHashes({message: "Extra-semi colon found."}, error));
+                    error_array.push(Utility.assignObjects({message: "Extra-semi colon found."}, error));
                 } else {
-                    error_array.push(Utility.mergeHashes({message: "No colons found."}, error));
+                    error_array.push(Utility.assignObjects({message: "No colons found."}, error));
                 }
                 continue;
             }
             if (!valid_styles.includes(attr)) {
-                error_array.push(Utility.mergeHashes({message: "Invalid style attribute: " + attr}, error));
+                error_array.push(Utility.assignObjects({message: "Invalid style attribute: " + attr}, error));
                 continue;
             }
             let attr_key = Utility.camelCase(attr);
             value = value.replace(/\s*!important\s*$/, "").trim();
             $validator[0].style[attr_key] = value;
             if ($validator[0].style[attr_key] === "") {
-                error_array.push(Utility.mergeHashes({message: "Invalid style value: " + value}, error));
+                error_array.push(Utility.assignObjects({message: "Invalid style value: " + value}, error));
             }
         }
     }
@@ -2132,7 +2151,7 @@ function SetInputs(key, load_data) {
 
 function SaveMenuState() {
     for (let key in INPUT_SECTIONS) {
-        TA.save_data = Utility.mergeHashes(TA.save_data, GetInputs(key));
+        Utility.assignObjects(TA.save_data, GetInputs(key));
     }
     Storage.setLocalData('ta-saved-inputs', TA.save_data);
     Storage.setLocalData('ta-mode', TA.mode);
@@ -2246,7 +2265,7 @@ function GetCSSStyles(overwrite, selector) {
 }
 
 function MergeCSSStyles(style_dict, add_styles) {
-    let copy_style_dict = Utility.dataCopy(style_dict);
+    let copy_style_dict = Utility.deepCopy(style_dict);
     let copy_keys = Object.keys(copy_style_dict);
     for (let style_name in add_styles) {
         copy_keys.forEach((key) => {
@@ -2346,7 +2365,7 @@ function ParseDirectionStyles(style_dict) {
 
 function BuildTextShadowStyle(append, style_dict) {
     let errors = [];
-    let attribs = Utility.mergeHashes(...$('#ta-text-shadow-attribs input').map((_, entry) => ({[entry.dataset.name.trim()]: entry.value})));
+    let attribs = Utility.assignObjects(...$('#ta-text-shadow-attribs input').map((_, entry) => ({[entry.dataset.name.trim()]: entry.value})));
     let initial_shadow = (append && style_dict['text-shadow']) || "";
     if (attribs.size === "") {
         return initial_shadow;
@@ -2687,7 +2706,7 @@ function ClearActions(event) {
     $text_area.data('undo_actions', []);
     $text_area.data('undo_index', 0);
     $text_area.data('undo_saved', false);
-    printer.debuglogLevel('Cleared actions.', Debug.DEBUG);
+    printer.logLevel('Cleared actions.', Debug.DEBUG);
 }
 
 function NormalizeNote() {
@@ -3171,7 +3190,7 @@ function SaveSession() {
     let section_keys = LOAD_PANEL_KEYS[panel];
     let save_inputs = {};
     section_keys.forEach((key) => {
-        save_inputs = Utility.mergeHashes(save_inputs, GetInputs(key));
+        Utility.assignObjects(save_inputs, GetInputs(key));
     });
     Storage.setLocalData('ta-session-' + key, save_inputs);
     if (isnew) {
@@ -3330,7 +3349,7 @@ function PollForNewNotations() {
 function CheckEmbeddedFontSize() {
     Utility.recheckInterval({
         check: () => Utility.isNamespaceBound('#image', 'click', 'danbooru') && $('.note-container').is(':visible'),
-        exec: () => {
+        success: () => {
             let font_size = Number(($('.image-container').get(0)?.style.getPropertyValue('--note-font-size') || '').match(/\d+/)[0]);
             if (font_size === 0) {
                 DanbooruProxy.Note.Box.scale_all();
@@ -3398,7 +3417,6 @@ function InitializeSideMenu() {
     $('#ta-validate-note').on(JSPLib.event.click, ValidateNote);
     $('#ta-text-shadow-controls a').on(JSPLib.event.click, TextShadowControls);
     $('#ta-ruby-dialog-open').on(JSPLib.event.click, OpenRubyDialog);
-    Utility.clickAndHold('#ta-placement-controls .ta-button-placement', PlacementControl, PROGRAM_SHORTCUT);
     $('#ta-get-placement').on(JSPLib.event.click, GetPlacement);
     $('#ta-save-note').on(JSPLib.event.click, SaveNote);
     $('#ta-edit-note').on(JSPLib.event.click, EditNote);
@@ -3422,6 +3440,7 @@ function InitializeSideMenu() {
     $(document).on(JSPLib.event.keydown, null, 'alt+t', KeyboardMenuToggle);
     $(document).on(JSPLib.event.keydown, null, 'alt+r', ResetSideMenu);
     $(document).on(JSPLib.event.visibilitychange, CheckMissedLastNoterPolls);
+    InitializeClickAndHold();
     let positions = Storage.getLocalData('ta-position', {default_val: {}});
     TA.$side_menu = $('#ta-side-menu');
     for (let key in positions) {
@@ -3442,7 +3461,7 @@ function InitializeSideMenu() {
 // Settings functions
 
 function InitializeProgramValues() {
-    Object.assign(TA, {
+    Utility.assignObjects(TA, {
         post_id: Danbooru.getShowID(),
         user_id: DanbooruProxy.CurrentUser.data('id'),
         has_embedded: Utility.getMeta('post-has-embedded-notes') === 'true',
@@ -3450,7 +3469,6 @@ function InitializeProgramValues() {
         mode: Storage.getLocalData('ta-mode', {default_val: 'main'}),
         last_noted_cutoff_mins: TA.last_noted_cutoff * Utility.one_minute,
     });
-    return true;
 }
 
 function RenderSettingsMenu() {
@@ -3481,17 +3499,17 @@ function RenderSettingsMenu() {
 // Main function
 
 function Main() {
-    const preload = {
-        run_on_settings: false,
-        default_data: DEFAULT_VALUES,
-        initialize_func: InitializeProgramValues,
-        render_menu_func: RenderSettingsMenu,
+    Load.preloadScript({
         program_css: PROGRAM_CSS,
         light_css: LIGHT_MODE_CSS,
         dark_css: DARK_MODE_CSS,
+    });
+    Load.preloadMenu({
+        menu_func: RenderSettingsMenu,
         menu_css: MENU_CSS,
-    };
-    if (!Menu.preloadScript(TA, preload)) return;
+    });
+    if (!Load.isScriptEnabled() || Menu.isSettingsMenu()) return;
+    InitializeProgramValues();
     $('#translate').on(JSPLib.event.click, ToggleSideNotice);
     if (TA.check_last_noted_enabled) {
         CheckLastNoted();
@@ -3506,16 +3524,15 @@ function Main() {
 /****Initialization****/
 
 //Variables for JSPLib
+JSPLib.data = TA;
 JSPLib.name = PROGRAM_NAME;
 JSPLib.shortcut = PROGRAM_SHORTCUT;
-JSPLib.data = TA;
+JSPLib.default_data = DEFAULT_VALUES;
+JSPLib.settings_config = SETTINGS_CONFIG;
 
 //Variables for debug.js
 Debug.mode = false;
 Debug.level = Debug.INFO;
-
-//Variables for menu.js
-Menu.settings_config = SETTINGS_CONFIG;
 
 //Export JSPLib
 Load.exportData();

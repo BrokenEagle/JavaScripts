@@ -12,18 +12,18 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/EventListener.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/EventListener.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ */
@@ -203,7 +203,7 @@ const SETTINGS_CONFIG = {
     recheck_interval: {
         reset: 60,
         parse: parseInt,
-        validate: (data) => (Number.isInteger(data) && data >= 5),
+        validate: (data) => (Utility.isInteger(data) && data >= 5),
         hint: "How often to check for new events (# of minutes, min 5)."
     },
     post_query_events_enabled: {
@@ -1259,7 +1259,7 @@ const OPEN_ITEM_LINKS_HTML = Template.normalizeHTML()`
     <span data-action="show" style>
         <a class="el-link el-monospace">%SHOWTEXT%</a>
     </span>
-    <span data-action="hide" style="display:none !important">
+    <span data-action="hide" style="display: none;">
         <a class="el-link el-monospace">%HIDETEXT%</a>
     </span>
 </span>`;
@@ -1683,7 +1683,7 @@ function ValidateNotice(key, entry) {
 }
 
 function ValidateEvents(key, events) {
-    if (!Array.isArray(events)) {
+    if (!Utility.isArray(events)) {
         return [`${key} is not an array.`];
     }
     let messages = [];
@@ -1708,7 +1708,7 @@ function ValidateEvents(key, events) {
 function CorrectEvents(key, events) {
     const printer = Debug.getFunctionPrint('CorrectEvents');
     let valid_events = [];
-    if (!Array.isArray(events)) {
+    if (!Utility.isArray(events)) {
         Storage.removeLocalData(key);
         printer.warn(`${key} is not an array.`);
         return true;
@@ -1745,10 +1745,10 @@ function CorrectList(type, typelist) {
     let error_messages = [];
     if (!Utility.validateIDList(typelist[type])) {
         error_messages.push([`Corrupted data on ${type} list!`]);
-        let oldlist = Utility.dataCopy(typelist[type]);
-        typelist[type] = (Array.isArray(typelist[type]) ? typelist[type].filter((id) => Utility.validateID(id)) : []);
+        let oldlist = Utility.deepCopy(typelist[type]);
+        typelist[type] = (Utility.isArray(typelist[type]) ? typelist[type].filter((id) => Utility.validateID(id)) : []);
         Debug.execute(() => {
-            let validation_error = (Array.isArray(oldlist) ? Utility.arrayDifference(oldlist, typelist[type]) : typelist[type]);
+            let validation_error = (Utility.isArray(oldlist) ? Utility.arrayDifference(oldlist, typelist[type]) : typelist[type]);
             error_messages.push(["Validation error:", validation_error]);
         });
     }
@@ -1800,7 +1800,7 @@ function GetPageEvents(type, page) {
 function GetHTMLAddons(type, events) {
     let query_ids = Utility.getObjectAttributes(events, 'id');
     let type_addon = TYPEDICT[type].html_addons ?? {};
-    return Utility.mergeHashes(type_addon, {search: {id: query_ids.join(','), order: 'custom'}, limit: query_ids.length});
+    return Utility.mergeObjects(type_addon, {search: {id: query_ids.join(','), order: 'custom'}, limit: query_ids.length});
 }
 
 function AnyEventEnabled(type) {
@@ -1874,7 +1874,7 @@ function GetCheckVars(event) {
 
 function ClearPages(type) {
     delete EL.pages[type];
-    if (!Array.isArray(EL.observed[type])) return;
+    if (!Utility.isArray(EL.observed[type])) return;
     EL.observed[type].forEach((entry) => {
         if (entry.nodeName === 'TH') {
             EL.th_observer.unobserve(entry);
@@ -2066,8 +2066,8 @@ function SaveLastID(type, source, last_id) {
 
 async function SaveRecentDanbooruID(type, source) {
     let type_addon = TYPEDICT[type].json_addons ?? {};
-    let url_addons = Utility.mergeHashes(type_addon, {only: 'id,' + TYPEDICT[type].timeval, limit: 1});
-    let items = await Danbooru.submitRequest(TYPEDICT[type].controller, url_addons, {default_val: []});
+    let url_addons = Utility.mergeObjects(type_addon, {only: 'id,' + TYPEDICT[type].timeval, limit: 1});
+    let items = await Danbooru.query(TYPEDICT[type].controller, url_addons, {default_val: []});
     if (items.length) {
         Storage.setLocalData(`el-${type}-${source}-overflow`, false);
         SaveLastID(type, source, Danbooru.getNextPageID(items, true));
@@ -2267,7 +2267,7 @@ function UpdateEventSource(type, source, {last_found = null, last_seen = null, l
         let next_check = Utility.timeFromNow(event_timeout);
         let counter_text = $(`.el-home-section[data-type=${type}] .el-pages-left[data-source="${source}"] span`).text();
         let pages_checked = (counter_text.length ? Number(counter_text) : null);
-        if (!Number.isInteger(pages_checked)) {
+        if (!Utility.isInteger(pages_checked)) {
             pages_checked = (overflow ? MORE_HTML : NONE_HTML);
         }
         UpdateHomeText(type, source, '.el-last-found', found_ago);
@@ -2749,7 +2749,7 @@ function InstallErrorPage(type, page) {
 
 function SetupMenuAutocomplete() {
     const printer = Debug.getFunctionPrint('SetupAutocomplete');
-    let selector = '#el-setting-filter-post-edits,' + Utility.joinList(POST_QUERY_EVENTS, '#el-setting-', '-query', ',');
+    let selector = '#el-setting-filter-post-edits,' + Utility.joinList(POST_QUERY_EVENTS, {prefix: '#el-setting-', suffix: '-query', joiner: ','});
     Load.scriptWaitExecute(EL, 'IAC', {
         available: () => {
             EL.IAC.InitializeTagQueryAutocompleteIndexed(selector, null);
@@ -2780,7 +2780,7 @@ function FindEvents(array, source, subscribe_set, user_set) {
     let found_events = [];
     for (let i = 0; i < array.length; i++) {
         let val = array[i];
-        if (!Number.isInteger(val.id)) {
+        if (!Utility.isInteger(val.id)) {
             continue;
         }
         if ((EL.filter_user_events && this.user && (val[this.user] === EL.user_id)) || EL.filter_users.includes(val[this.user])) {
@@ -3244,7 +3244,7 @@ async function AddParentInclude(versions) {
             }
         }
         printer.log("Querying parent includes:", parent_ids.length);
-        let parent_posts = await Danbooru.getAllIDItems('posts', parent_ids, QUERY_LIMIT, {id_addon, other_addons, domname: selector});
+        let parent_posts = await Danbooru.queryIDItems('posts', parent_ids, QUERY_LIMIT, {id_addon, other_addons, domname: selector});
         versions.filter((version) => version.parent_changed).forEach((version) => {
             let parent_id = version.post.parent_id;
             let parent_post = parent_posts.find((post) => post.id === parent_id);
@@ -3278,7 +3278,7 @@ async function AddModActionSubject(modactions) {
                 other_addons.only += ',' + config.includes;
             }
             if (config.other_addons) {
-                other_addons = Utility.mergeHashes(other_addons, config.other_addons);
+                other_addons = Utility.assignObjects(other_addons, config.other_addons);
             }
             let selector = null;
             if (query_ids.length > QUERY_LIMIT) {
@@ -3292,7 +3292,7 @@ async function AddModActionSubject(modactions) {
                 }
             }
             printer.log("Querying modaction includes:", subject_type, query_ids.length);
-            promise_hash[subject_type] = Danbooru.getAllIDItems(config.controller, query_ids, QUERY_LIMIT, {id_addon: config.id_addon, other_addons, domname: selector});
+            promise_hash[subject_type] = Danbooru.queryIDItems(config.controller, query_ids, QUERY_LIMIT, {id_addon: config.id_addon, other_addons, domname: selector});
         }
         let result_hash = await Utility.promiseHashAll(promise_hash);
         for (let subject_type in result_hash) {
@@ -3568,10 +3568,10 @@ function MarkPage(event) {
     let type = $event_body.data('type');
     var selected_ids;
     if (type === 'comment') {
-        selected_ids = Utility.getDOMAttributes($event_body.find('.comment'), 'id', Number);
+        selected_ids = Utility.getDOMArrayDataValues($event_body.find('.comment'), 'id', {parser: Number});
         $event_body.find('.post').detach();
     } else {
-        selected_ids = Utility.getDOMAttributes($event_body.find('tbody tr'), 'id', Number);
+        selected_ids = Utility.getDOMArrayDataValues($event_body.find('tbody tr'), 'id', {parser: Number});
         $event_body.find('tbody tr').detach();
     }
     PruneSavedEvents(type, selected_ids);
@@ -3596,20 +3596,13 @@ function OpenEventClick(type, $table, func) {
         EL.open_list[type] ??= [];
         let $row = $(event.currentTarget).closest('tr');
         let item_id = $row.data('id');
-        let is_open = $(event.currentTarget.parentElement).data('action') === 'show';
-        if (is_open && !EL.open_list[type].includes(item_id)) {
+        let action = $(event.currentTarget.parentElement).data('action');
+        if (action === 'show' && !EL.open_list[type].includes(item_id)) {
             func(item_id, $row);
             EL.open_list[type].push(item_id);
         }
-        let hide = (is_open ? 'show' : 'hide');
-        let show = (is_open ? 'hide' : 'show');
-        Utility.fullHide(`.el-show-hide-links[data-type="${type}"][data-id="${item_id}"] [data-action="${hide}"]`);
-        Utility.clearHide(`.el-show-hide-links[data-type="${type}"][data-id="${item_id}"] [data-action="${show}"]`);
-        if (is_open) {
-            $(`.el-full-item[data-type="${type}"][data-id="${item_id}"]`).show();
-        } else {
-            $(`.el-full-item[data-type="${type}"][data-id="${item_id}"]`).hide();
-        }
+        $(`.el-full-item[data-type="${type}"][data-id="${item_id}"]`)[action]();
+        $(event.currentTarget.parentElement.parentElement).children().toggle();
     });
 }
 
@@ -3723,14 +3716,14 @@ async function ProcessEventType(type, source, no_limit = false, selector = null)
         if (EL.show_creator_events && source === 'subscribe') {
             only_attribs += (TYPEDICT[type].includes ? ',' + TYPEDICT[type].includes : "");
         }
-        let url_addons = Utility.mergeHashes(type_addon, query_addon, {only: only_attribs});
+        let url_addons = Utility.mergeObjects(type_addon, query_addon, {only: only_attribs});
         let batches = 1;
         if (no_limit) {
             batches = null;
         } else if (source === 'subscribe') {
             batches = TYPEDICT[type].limit;
         }
-        let items = await Danbooru.getAllPageItems(TYPEDICT[type].controller, QUERY_LIMIT, {url_addons, batches, page: last_id, reverse: true, domname: selector});
+        let items = await Danbooru.queryPageItems(TYPEDICT[type].controller, QUERY_LIMIT, {url_addons, batches, page: last_id, reverse: true, domname: selector});
         if (EL.show_parent_events && type === 'post' && source === 'subscribe') {
             items = await AddParentInclude(items);
         }
@@ -3739,7 +3732,7 @@ async function ProcessEventType(type, source, no_limit = false, selector = null)
         }
         SaveLastChecked(type, source);
         if (items.length) {
-            let batch_limit = (Number.isInteger(batches) ? batches * QUERY_LIMIT : Infinity);
+            let batch_limit = (Utility.isInteger(batches) ? batches * QUERY_LIMIT : Infinity);
             SaveOverflow(type, source, items, batch_limit);
             SaveLastSeen(type, source, items);
             let updated_last_id = Danbooru.getNextPageID(items, true);
@@ -3847,7 +3840,7 @@ function InitializeChangedSettings() {
 }
 
 function InitializeUserSettings() {
-    Object.assign(EL, {
+    Utility.assignObjects(EL, {
         all_subscribe_events: Utility.arrayUnion(EL.subscribe_events_enabled, EL.user_events_enabled),
         timeout_expires: EL.recheck_interval * Utility.one_minute,
         post_filter_tags: new Set(EL.filter_post_edits.trim().split(/\s+/)),
@@ -3858,10 +3851,9 @@ function InitializeUserSettings() {
 
 function InitializeProgramValues() {
     const printer = Debug.getFunctionPrint('InitializeProgramValues');
-    Object.assign(EL, {
+    Utility.assignObjects(EL, {
         user_name: DanbooruProxy.CurrentUser.data('name'),
         user_id: DanbooruProxy.CurrentUser.data('id'),
-        item_id: Danbooru.getShowID(),
     });
     if (EL.user_name === 'Anonymous') {
         printer.warnLevel("User must log in!", Debug.WARNING);
@@ -3872,7 +3864,8 @@ function InitializeProgramValues() {
         return false;
     }
     InitializeUserSettings();
-    Object.assign(EL, {
+    Utility.assignObjects(EL, {
+        item_id: Danbooru.getShowID(),
         thead_observer: new ResizeObserver(AdjustFloatingTHEAD),
         th_observer: new ResizeObserver(AdjustFloatingTH),
         new_events: Storage.checkLocalData('el-new-events', {default_val: {}}),
@@ -3945,19 +3938,20 @@ function RenderSettingsMenu() {
 //Main program
 
 function Main() {
-    const preload = {
-        run_on_settings: true,
-        default_data: DEFAULT_VALUES,
-        initialize_func: InitializeProgramValues,
+    Load.preloadScript({
         broadcast_func: BroadcastEL,
-        render_menu_func: RenderSettingsMenu,
         program_css: PROGRAM_CSS,
         light_css: LIGHT_MODE_CSS,
         dark_css: DARK_MODE_CSS,
+    });
+    Load.preloadMenu({
+        menu_func: RenderSettingsMenu,
         menu_css: MENU_CSS,
-    };
-    if (!Menu.preloadScript(EL, preload)) return;
-    Notice.installBanner();
+    });
+    if (!Load.isScriptEnabled() || !InitializeProgramValues()) return;
+    if (!Menu.isSettingsMenu()) {
+        Notice.installBanner();
+    }
     InstallSubscribeLinks();
     InstallEventsNavigation();
     if (EL.display_event_panel && Object.keys(EL.new_events).length) {
@@ -3975,10 +3969,11 @@ function Main() {
 /****Initialization****/
 
 //Variables for JSPLib
-
+JSPLib.data = EL;
 JSPLib.name = PROGRAM_NAME;
 JSPLib.shortcut = PROGRAM_SHORTCUT;
-JSPLib.data = EL;
+JSPLib.default_data = DEFAULT_VALUES;
+JSPLib.settings_config = SETTINGS_CONFIG;
 
 //Variables for debug.js
 Debug.mode = false;
@@ -3987,7 +3982,6 @@ Debug.level = Debug.INFO;
 //Variables for menu.js
 Menu.settings_callback = InitializeChangedSettings;
 Menu.reset_callback = InitializeChangedSettings;
-Menu.settings_config = SETTINGS_CONFIG;
 Menu.control_config = CONTROL_CONFIG;
 
 //Variables for storage.js

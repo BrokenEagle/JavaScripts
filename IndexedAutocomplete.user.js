@@ -14,18 +14,18 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ */
@@ -455,7 +455,7 @@ const DARK_MODE_CSS = Template.normalizeCSS({theme: 'dark'})`
     color: var(--red-3);
 }`;
 
-const SETTINGS_MENU_CSS = `
+const MENU_CSS = `
 #indexed-autocomplete .jsplib-settings-grouping:not(#iac-general-settings) .iac-selectors label {
     width: 150px;
 }
@@ -829,7 +829,7 @@ const EDIT_METATAGS = Utility.multiConcat([
     'newpool', 'pool', 'favgroup',
 ], EDIT_STATIC_METATAGS, CATEGORIZATION_METATAGS).toSorted();
 
-const EDIT_METATAG_REGEXES = Object.assign({}, QUERY_METATAG_REGEXES, {
+const EDIT_METATAG_REGEXES = Utility.mergeObjects(QUERY_METATAG_REGEXES, {
     static: RegExp('^(?:' + EDIT_STATIC_METATAGS.join('|') + ')$'),
     user: RegExp('^(?:' + Utility.arrayDifference(USER_METATAGS, ['upvote', 'downvote', 'fav']).join('|') + ')$')
 }) ;
@@ -939,6 +939,13 @@ const AUTOCOMPLETE_ALL_SELECTORS = AUTOCOMPLETE_DOMLIST.join(',');
 const AUTOCOMPLETE_USER_SELECTORS = AUTOCOMPLETE_USERLIST.join(',');
 const AUTOCOMPLETE_MULTITAG_SELECTORS = ['tag-query', 'tag-edit'].map((ac_type) => ['nav', 'page'].map((id_select) => `#${id_select} [data-autocomplete=${ac_type}]`).join(', ')).join(', ');
 
+//String constants
+
+const WORDBREAK_REGEX = /\(+|\)+|[\s_]+|[^\s_()]+/g;
+const ROMAN_REGEX = /^M?M?M?(CM|CD|D?C?C?C?)(XC|XL|L?X?X?X?)(IX|IV|V?I?I?I?)$/i;
+
+const NONTITLEIZE_WORDS = ['a', 'an', 'of', 'the', 'is'];
+
 //Expiration variables
 
 const EXPIRATION_CONFIG = {
@@ -1029,7 +1036,7 @@ const SOURCE_CONFIG = {
             }
         ),
         map: (tag, term) =>
-            Object.assign({
+            Utility.assignObjects({
                 name: tag.name,
                 category: tag.category,
                 post_count: tag.post_count,
@@ -1058,7 +1065,7 @@ const SOURCE_CONFIG = {
         search_start: false,
         spaces_allowed: true,
         render: (_domobj, item) => {
-            let merge = Object.assign({}, item, {
+            let merge = Utility.mergeObjects(item, {
                 post_count: (['any', 'none', 'collection', 'series'].includes(item.name) ? 'N/A' : item.post_count),
             });
             return $(POOL_TEMPLATE(merge));
@@ -1102,7 +1109,7 @@ const SOURCE_CONFIG = {
         search_start: false,
         spaces_allowed: true,
         render: (_domobj, item) => {
-            let merge = Object.assign({}, item, {
+            let merge = Utility.mergeObjects(item, {
                 post_count: (item.category === 'system' ? 'N/A' : item.post_count),
             });
             return $(FAVGROUP_TEMPLATE(merge));
@@ -1146,7 +1153,7 @@ const SOURCE_CONFIG = {
         spaces_allowed: true,
         render: (_domobj, item) => {
             let count = (item.no_tag ? 'No tag' : item.post_count);
-            return $(WIKIPAGE_TEMPLATE(Object.assign({count}, item)));
+            return $(WIKIPAGE_TEMPLATE(Utility.assignObjects({count}, item)));
         },
     },
     artist: {
@@ -1288,7 +1295,7 @@ function ValidateProgramData(key, entry) {
             checkerror = Menu.validateUserSettings(entry, SETTINGS_CONFIG);
             break;
         case 'iac-prune-expires':
-            if (!Number.isInteger(entry)) {
+            if (!Utility.isInteger(entry)) {
                 checkerror = ["Value is not an integer."];
             }
             break;
@@ -1300,17 +1307,17 @@ function ValidateProgramData(key, entry) {
             }
             break;
         case 'iac-ac-source':
-            if (!Number.isInteger(entry) || entry > AUTOCOMPLETE_SOURCE.length || entry < 0) {
+            if (!Utility.isInteger(entry) || entry > AUTOCOMPLETE_SOURCE.length || entry < 0) {
                 checkerror = [`Value is not an integer between 0 and {AUTOCOMPLETE_SOURCE.length - 1}.`];
             }
             break;
         case 'iac-ac-mode':
-            if (!Number.isInteger(entry) || entry > AUTOCOMPLETE_MODE.length || entry < 0) {
+            if (!Utility.isInteger(entry) || entry > AUTOCOMPLETE_MODE.length || entry < 0) {
                 checkerror = [`Value is not an integer between 0 and {AUTOCOMPLETE_MODE.length - 1}.`];
             }
             break;
         case 'iac-ac-caps':
-            if (!Number.isInteger(entry) || entry > AUTOCOMPLETE_CAPITALIZATION.length || entry < 0) {
+            if (!Utility.isInteger(entry) || entry > AUTOCOMPLETE_CAPITALIZATION.length || entry < 0) {
                 checkerror = [`Value is not an integer between 0 and {AUTOCOMPLETE_CAPITALIZATION.length - 1}.`];
             }
             break;
@@ -1337,7 +1344,7 @@ function ValidateUsageData(choice_info) {
     }
     //Validate choice order
     for (let type in choice_order) {
-        if (!Array.isArray(choice_order[type])) {
+        if (!Utility.isArray(choice_order[type])) {
             error_messages.push(`choice_order[${type}] is not an array.`);
             delete choice_order[type];
             continue;
@@ -1358,7 +1365,7 @@ function ValidateUsageData(choice_info) {
             continue;
         }
         for (let key in choice_data[type]) {
-            let validator = Object.assign({}, AUTOCOMPLETE_CONSTRAINTS[type], USAGE_CONSTRAINTS);
+            let validator = Utility.mergeObjects(AUTOCOMPLETE_CONSTRAINTS[type], USAGE_CONSTRAINTS);
             let check = ValidateJS(choice_data[type][key], validator);
             if (check !== undefined) {
                 error_messages.push(`choice_data[${type}][${key}]`, check);
@@ -1406,6 +1413,26 @@ function ValidateCached(cached, type, term, word_mode) {
 
 //Helper functions
 
+function TitleizeExcept(word) {
+    return (NONTITLEIZE_WORDS.includes(word) ? word : Utility.titleizeString(word));
+}
+
+function TitleizeRoman(word) {
+    return (word.match(ROMAN_REGEX) ? word.toUpperCase() : TitleizeExcept(word));
+}
+
+function ProperCase(string) {
+    return string.match(WORDBREAK_REGEX).map((word) => Utility.titleizeString(word)).join("");
+}
+
+function ExceptCase(string) {
+    return string.match(WORDBREAK_REGEX).map((word) => TitleizeExcept(word)).join("");
+}
+
+function RomanCase(string) {
+    return string.match(WORDBREAK_REGEX).map((word) => TitleizeRoman(word)).join("");
+}
+
 function GetQueryType(element) {
     if (['post_tag_string', 'tag-script-field'].includes(element.id)) {
         return 'tag-edit';
@@ -1449,7 +1476,7 @@ function GetConstantMatches(constant_data, term) {
             nonmatching.push(data);
         }
     });
-    return Utility.concat(matching, nonmatching).map((data) => Object.assign({term}, data));
+    return Utility.concat(matching, nonmatching).map((data) => Utility.assignObjects({term}, data));
 }
 
 function GetConsequentMatch(term, tag) {
@@ -1661,11 +1688,11 @@ function CapitalizeAutocomplete(string) {
         case 2:
             return Utility.titleizeString(string);
         case 3:
-            return Utility.properCase(string);
+            return ProperCase(string);
         case 4:
-            return Utility.exceptCase(string);
+            return ExceptCase(string);
         case 5:
-            return Utility.romanCase(string);
+            return RomanCase(string);
         case 0:
         default:
             return string;
@@ -1770,7 +1797,7 @@ function AddUserSelected(type, metatag, term, data, query_type, word_mode, key, 
                 break;
             }
         }
-        let add_data = Object.assign({}, choice[user_order[i]], {term, key, type});
+        let add_data = Utility.mergeObjects(choice[user_order[i]], {term, key, type});
         if (type === 'tag' && ['tag', 'tag-word'].includes(add_data.source)) {
             add_data.source = (word_mode ? 'tag-word' : 'tag');
         }
@@ -1820,7 +1847,7 @@ function InsertUserSelected(input, item) {
     IAC.choice_order[type] = Utility.arrayUnique(IAC.choice_order[type]);
     //So the use count doesn't get squashed by the new variable assignment
     let use_count = (IAC.choice_data[type][term] && IAC.choice_data[type][term].use_count) || 0;
-    IAC.choice_data[type][term] = Utility.dataCopy(source_data);
+    IAC.choice_data[type][term] = Utility.deepCopy(source_data);
     ['key', 'term', 'label', 'value', 'type', 'original'].forEach((e) => {delete IAC.choice_data[type][term][e];});
     IAC.choice_data[type][term].expires = Utility.getExpires(GetUsageExpires());
     IAC.choice_data[type][term].use_count = use_count + 1;
@@ -1920,7 +1947,7 @@ function StaticMetatagSource(term, metatag, query_type) {
     let full_term = `${metatag}:${lower_term}`;
     let data = SubmetatagData(query_type)
         .filter((item) => item.name.startsWith(full_term))
-        .map((item) => Object.assign({}, item, {term}))
+        .map((item) => Utility.mergeObjects(item, {term}))
         .sort((a, b) => a.name.localeCompare(b.name))
         .slice(0, IAC.source_results_returned);
     AddUserSelected('metatag', "", full_term, data, query_type, false, null, false);
@@ -2418,13 +2445,13 @@ async function NetworkSource(type, key, term, {metatag = null, query_type = null
     }
     printer.log("Querying", type, ':', term);
     let url_addons = $.extend({limit: IAC.source_results_returned}, CONFIG.data(term, query_type));
-    let network_data = await Danbooru.submitRequest(CONFIG.url, url_addons);
-    if (!network_data || !Array.isArray(network_data)) {
+    let network_data = await Danbooru.query(CONFIG.url, url_addons);
+    if (!network_data || !Utility.isArray(network_data)) {
         return [];
     }
     var data = network_data.map((item) => CONFIG.map(item, term));
     var expiration_time = CONFIG.expiration(data);
-    var save_data = Utility.dataCopy(data);
+    var save_data = Utility.deepCopy(data);
     Storage.saveData(key, {value: save_data, expires: Utility.getExpires(expiration_time)});
     if (process) {
         return ProcessSourceData(type, key, term, metatag, query_type, word_mode, data, element, false);
@@ -2516,7 +2543,7 @@ function ProcessSourceData(type, key, term, metatag, query_type, word_mode, data
     }
     data.forEach((val) => {
         FixupMetatag(val, metatag);
-        Object.assign(val, {term, key, type});
+        Utility.assignObjects(val, {term, key, type});
     });
     KeepSourceData(type, metatag, data);
     if (type === 'tag') {
@@ -2528,7 +2555,7 @@ function ProcessSourceData(type, key, term, metatag, query_type, word_mode, data
                 let regex = new RegExp('^' + Utility.regexpEscape(term).replace(/\\\*/g, '.*'));
                 let filter_data = MetatagData(query_type).filter((data) => data.name.match(regex));
                 let metatag_term = term + (term.endsWith('*') ? "" : '*');
-                let add_data = filter_data.map((item) => Object.assign({term: metatag_term}, item));
+                let add_data = filter_data.map((item) => Utility.assignObjects({term: metatag_term}, item));
                 data.unshift(...add_data);
             }
         }
@@ -2700,20 +2727,14 @@ function InitializeProgramValues(override = false) {
         printer.warn("No autocomplete inputs! Exiting...");
         return false;
     }
-    Object.assign(IAC, {
+    Utility.assignObjects(IAC, {
         user_id: DanbooruProxy.CurrentUser.data('id'),
         choice_info: Storage.getLocalData('iac-choice-info', {default_val: {}}),
         is_bur: (IAC.controller === 'bulk-update-requests') && ['edit', 'new'].includes(IAC.action),
         prefixes: JSON.parse(Utility.getMeta('autocomplete-tag-prefixes')),
     }, PROGRAM_RESET_KEYS);
-    Object.assign(IAC, {
+    Utility.assignObjects(IAC, {
         categories: IAC.prefixes.filter((key) => (!['-', '~'].includes(key))).map((key) => (key.slice(0, -1))),
-    });
-    if (Utility.isHash(IAC.choice_info)) {
-        IAC.choice_order = IAC.choice_info.choice_order;
-        IAC.choice_data = IAC.choice_info.choice_data;
-    }
-    Object.assign(IAC, {
         tag_source: AnySourceIndexed('ac'),
         pool_source: AnySourceIndexed('pl'),
         user_source: AnySourceIndexed('us'),
@@ -2721,8 +2742,12 @@ function InitializeProgramValues(override = false) {
         saved_search_source: AnySourceIndexed('ss'),
         static_metatag_source: StaticMetatagSource,
     });
+    if (Utility.isHash(IAC.choice_info)) {
+        IAC.choice_order = IAC.choice_info.choice_order;
+        IAC.choice_data = IAC.choice_info.choice_data;
+        CorrectUsageData();
+    }
     SetTagAutocompleteSource();
-    CorrectUsageData();
     InitializeProgramValues.initialized = true;
     return true;
 }
@@ -2791,18 +2816,17 @@ function RenderSettingsMenu() {
 //Main program
 
 function Main() {
-    const preload = {
-        run_on_settings: true,
-        default_data: DEFAULT_VALUES,
-        initialize_func: InitializeProgramValues,
+    Load.preloadScript({
         broadcast_func: BroadcastIAC,
-        render_menu_func: RenderSettingsMenu,
         program_css: PROGRAM_CSS,
         light_css: LIGHT_MODE_CSS,
         dark_css: DARK_MODE_CSS,
-        menu_css: SETTINGS_MENU_CSS,
-    };
-    if (!Menu.preloadScript(IAC, preload)) return;
+    });
+    Load.preloadMenu({
+        menu_func: RenderSettingsMenu,
+        menu_css: MENU_CSS,
+    });
+    if (!Load.isScriptEnabled() || !InitializeProgramValues()) return;
     SetupAutocompleteInitializations();
     Statistics.addPageStatistics();
     Load.noncriticalTasks(CleanupTasks);
@@ -2811,21 +2835,21 @@ function Main() {
 /****Initialization****/
 
 //Variables for JSPLib
-
+JSPLib.data = IAC;
 JSPLib.name = PROGRAM_NAME;
 JSPLib.shortcut = PROGRAM_SHORTCUT;
-JSPLib.data = IAC;
+JSPLib.default_data = DEFAULT_VALUES;
+JSPLib.reset_data = PROGRAM_RESET_KEYS;
+JSPLib.settings_config = SETTINGS_CONFIG;
 
 //Variables for debug.js
 Debug.mode = false;
 Debug.level = Debug.INFO;
 
 //Variables for menu.js
-Menu.program_reset_data = PROGRAM_RESET_KEYS;
 Menu.program_data_regex = PROGRAM_DATA_REGEX;
 Menu.settings_callback = RemoteSettingsCallback;
 Menu.reset_callback = RemoteSettingsCallback;
-Menu.settings_config = SETTINGS_CONFIG;
 Menu.control_config = CONTROL_CONFIG;
 
 //Variables for storage.js

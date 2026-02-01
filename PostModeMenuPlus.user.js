@@ -13,17 +13,17 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/PostModeMenuPlus.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/PostModeMenuPlus.user.js
 // @require      https://cdn.jsdelivr.net/npm/dragselect@2.3.1/dist/ds.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/menu.js
 // ==/UserScript==
 
 /* global $ JSPLib DragSelect */
@@ -72,7 +72,7 @@ const SETTINGS_CONFIG = {
     maximum_concurrent_requests: {
         reset: 5,
         parse: parseInt,
-        validate: (data) => (Number.isInteger(data) && data > 0),
+        validate: (data) => (Utility.isInteger(data) && data > 0),
         hint: "Determines how many requests will be sent at a time, while the remaining requests wait their turn."
     },
     id_separator: {
@@ -722,11 +722,11 @@ function GetCurrentTagScript() {
     return localStorage.getItem("tag-script-" + GetCurrentScriptID());
 }
 
-function CopyToClipboard(post_ids, prefix, suffix, separator, afterspace) {
-    if (afterspace && !['\n', ' '].includes(separator)) {
-        separator += " ";
+function CopyToClipboard(post_ids, prefix, suffix, joiner, afterspace) {
+    if (afterspace && !['\n', ' '].includes(joiner)) {
+        joiner += " ";
     }
-    let post_string = Utility.joinList(post_ids, prefix, suffix, separator);
+    let post_string = Utility.joinList(post_ids, {prefix, suffix, joiner});
     DanbooruProxy.Utility.copyToClipboard(post_string);
 }
 
@@ -774,7 +774,7 @@ async function ParentPostCheck(post_ids) {
         printer.logLevel("No children found.", Debug.INFO);
         return null;
     }
-    let posts = await Danbooru.submitRequest('posts', {tags: `id:${child_ids.join(',')} status:any`, limit: child_ids.length, only: POST_PARENT_FIELDS});
+    let posts = await Danbooru.query('posts', {tags: `id:${child_ids.join(',')} status:any`, limit: child_ids.length, only: POST_PARENT_FIELDS});
     printer.logLevel("Parents found:", posts, Debug.DEBUG);
     let parent_ids = Utility.getObjectAttributes(posts, 'parent_id');
     //Must have only a single parent
@@ -792,7 +792,7 @@ async function ParentPostCheck(post_ids) {
 
 async function PoolPostCheck(post_ids) {
     const printer = Debug.getFunctionPrint('PoolPostCheck');
-    let pools = await Danbooru.submitRequest('pools', {search: {post_ids_include_all: post_ids.join(' '), category: 'series'}, only: POOL_FIELDS});
+    let pools = await Danbooru.query('pools', {search: {post_ids_include_all: post_ids.join(' '), category: 'series'}, only: POOL_FIELDS});
     printer.logLevel("Pools found:", pools, Debug.DEBUG);
     if (pools.length !== 1) {
         return null;
@@ -878,7 +878,7 @@ function UpdatePostVoteLink($vote, type, post_id, score, vote_id) {
         $vote.addClass('post-unvote-link');
         Utility.setDataAttribute($vote, 'method', 'delete');
         if (vote_id === null) {
-            Danbooru.submitRequest('post_votes', {search: {post_id, user_id: PMM.user_id}, limit: 1, only: POST_VOTE_FIELDS}).then((data) => {
+            Danbooru.query('post_votes', {search: {post_id, user_id: PMM.user_id}, limit: 1, only: POST_VOTE_FIELDS}).then((data) => {
                 $vote.attr('href', `/post_votes/${data.id}`);
             });
         } else {
@@ -967,7 +967,7 @@ function EditDialog(post_ids) {
             buttons.Validate = ValidateEdit;
         }
         buttons.Cancel = CloseDialog;
-        PMM.edit_dialog.dialog(Object.assign({
+        PMM.edit_dialog.dialog(Utility.assignObjects({
             buttons,
             open: EditDialogOpen,
             close: EditDialogClose
@@ -990,7 +990,7 @@ function CommentaryDialog(post_ids) {
     PMM.commentary_post_ids = post_ids;
     if (!PMM.commentary_dialog) {
         PMM.commentary_dialog = $(COMMENTARY_DIALOG_HTML);
-        PMM.commentary_dialog.dialog(Object.assign({
+        PMM.commentary_dialog.dialog(Utility.assignObjects({
             buttons: {
                 Submit: SubmitCommentary,
                 Cancel: CloseDialog,
@@ -1184,7 +1184,7 @@ function TagscriptPost(post_id) {
 function GetCommentary(post_id) {
     const printer = Debug.getFunctionPrint('GetCommentary');
     printer.logLevel(post_id, Debug.DEBUG);
-    return Danbooru.submitRequest(`posts/${post_id}/artist_commentary`, {only: ARTIST_COMMENTARY_FIELDS}).then((artist_commentary) => {
+    return Danbooru.query(`posts/${post_id}/artist_commentary`, {only: ARTIST_COMMENTARY_FIELDS}).then((artist_commentary) => {
         if (artist_commentary !== null) {
             ['original_title', 'original_description', 'translated_title', 'translated_description'].forEach((field) => {
                 PMM.commentary_dialog.find(`[name="${field}"]`).val(artist_commentary[field]);
@@ -1216,9 +1216,9 @@ async function PreloadPostVotes() {
         });
     } else {
         printer.log("Loading votes from network.");
-        let post_ids = Utility.getDOMAttributes($('.post-votes .active-link').closest('.post-preview'), 'id', Number);
+        let post_ids = Utility.getDOMArrayDataValues($('.post-votes .active-link').closest('.post-preview'), 'id', {parser: Number});
         if (post_ids.length) {
-            let post_votes = await Danbooru.submitRequest('post_votes', {search: {post_id: post_ids.join(','), user_id: PMM.user_id}, limit: post_ids.length, only: POST_VOTE_FIELDS});
+            let post_votes = await Danbooru.query('post_votes', {search: {post_id: post_ids.join(','), user_id: PMM.user_id}, limit: post_ids.length, only: POST_VOTE_FIELDS});
             post_votes.forEach((vote) => {
                 PMM.post_votes[vote.post_id] = {id: vote.id, score: vote.score};
             });
@@ -1250,9 +1250,9 @@ function PreloadPostFavorites() {
         },
         fallback: () => {
             printer.log("Loading favorites from network.");
-            let post_ids = Utility.getDOMAttributes($('.post-preview'), 'id', Number);
+            let post_ids = Utility.getDOMArrayDataValues($('.post-preview'), 'id', {parser: Number});
             if (post_ids.length) {
-                Danbooru.submitRequest('favorites', {search: {post_id: post_ids.join(','), user_id: PMM.user_id}, limit: post_ids.length, only: POST_VOTE_FIELDS}).then((post_favorites) => {
+                Danbooru.query('favorites', {search: {post_id: post_ids.join(','), user_id: PMM.user_id}, limit: post_ids.length, only: POST_VOTE_FIELDS}).then((post_favorites) => {
                     let favorite_post_ids = Utility.getObjectAttributes(post_favorites, 'post_id');
                     post_ids.forEach((post_id) => {
                         PMM.post_favorites[post_id] = favorite_post_ids.includes(post_id);
@@ -1301,7 +1301,7 @@ function BatchSelection(event) {
 
 function BatchApply() {
     let $selected_posts = $('.pmm-selected');
-    let post_ids = Utility.getDOMAttributes($selected_posts, 'id', Number);
+    let post_ids = Utility.getDOMArrayDataValues($selected_posts, 'id', {parser: Number});
     MenuFunctions(post_ids);
 }
 
@@ -1431,7 +1431,7 @@ function EditDialogOpen() {
     if (PMM.edit_tag_grouping_enabled) {
         $text_area.val('loading...');
         $text_area.attr('disabled', 'disabled');
-        Danbooru.submitRequest('posts/' + PMM.edit_post_id, {only: POST_CATEGORY_FIELDS}).then((data) => {
+        Danbooru.query('posts/' + PMM.edit_post_id, {only: POST_CATEGORY_FIELDS}).then((data) => {
             let grouped_tag_string = "";
             ['artist', 'copyright', 'character', 'meta', 'general'].forEach((type) => {
                 let type_tag_string = data['tag_string_' + type];
@@ -1692,7 +1692,7 @@ function BroadcastPMM(ev) {
 function InitializeProgramValues() {
     PMM.user_id = DanbooruProxy.CurrentUser.data('id');
     if (!Utility.validateID(PMM.user_id) || DanbooruProxy.CurrentUser.data('level') < GOLD_LEVEL || DanbooruProxy.CurrentUser.data('is-banned')) return false;
-    Object.assign(PMM, {
+    Utility.assignObjects(PMM, {
         mode: Storage.getLocalData('pmm-mode'),
         available_mode_keys: new Set(PMM.available_modes.map((mode) => Utility.kebabCase(mode.toLocaleLowerCase()))),
         id_separator_char: SEPARATOR_DICT[PMM.id_separator[0]],
@@ -1742,18 +1742,17 @@ function RenderSettingsMenu() {
 //Main function
 
 function Main() {
-    const preload = {
-        run_on_settings: false,
-        default_data: DEFAULT_VALUES,
-        initialize_func: InitializeProgramValues,
+    Load.preloadScript({
         broadcast_func: BroadcastPMM,
-        render_menu_func: RenderSettingsMenu,
         program_css: PROGRAM_CSS,
-        menu_css: MENU_CSS,
         light_css: LIGHT_MODE_CSS,
         dark_css: DARK_MODE_CSS,
-    };
-    if (!Menu.preloadScript(PMM, preload)) return;
+    });
+    Load.preloadMenu({
+        menu_func: RenderSettingsMenu,
+        menu_css: MENU_CSS,
+    });
+    if (!Load.isScriptEnabled() || Menu.isSettingsMenu() || !InitializeProgramValues()) return;
     InitializeModeMenu();
     if (PMM.long_searchbar_enabled) {
         Utility.setCSSStyle(SEARCHBAR_CSS, 'searchbar');
@@ -1767,23 +1766,22 @@ function Main() {
     if (PMM.available_mode_keys.has('edit')) {
         $('#quick-edit-div').remove();
     }
+    localStorage.removeItem('mode');
     UnbindEventHandlers();
 }
 
 /****Initialization****/
 
 //Variables for JSPLib
-
+JSPLib.data = PMM;
 JSPLib.name = PROGRAM_NAME;
 JSPLib.shortcut = PROGRAM_SHORTCUT;
-JSPLib.data = PMM;
+JSPLib.default_data = DEFAULT_VALUES;
+JSPLib.settings_config = SETTINGS_CONFIG;
 
 //Variables for debug.js
 Debug.mode = false;
 Debug.level = Debug.INFO;
-
-//Variables for menu.js
-Menu.settings_config = SETTINGS_CONFIG;
 
 //Export JSPLib
 Load.exportData();

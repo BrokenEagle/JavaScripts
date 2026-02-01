@@ -16,18 +16,18 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-setitems@1.4.0/dist/localforage-setitems.min.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ */
@@ -97,19 +97,19 @@ const SETTINGS_CONFIG = {
     general_minimum_threshold: {
         reset: 10,
         parse: parseInt,
-        validate: (data) => (Number.isInteger(data) && data > 0),
+        validate: (data) => (Utility.isInteger(data) && data > 0),
         hint: "The bare minimum number of general tags."
     },
     general_low_threshold: {
         reset: 20,
         parse: parseInt,
-        validate: (data) => (Number.isInteger(data) && data >= 0),
+        validate: (data) => (Utility.isInteger(data) && data >= 0),
         hint: "Threshold for a low amount of general tags. Enter 0 to disable this threshold."
     },
     general_moderate_threshold: {
         reset: 30,
         parse: parseInt,
-        validate: (data) => (Number.isInteger(data) && data >= 0),
+        validate: (data) => (Utility.isInteger(data) && data >= 0),
         hint: "Threshold for a moderate amount of general tags. Enter 0 to disable this threshold."
     },
     single_session_warning: {
@@ -353,7 +353,7 @@ function ValidateProgramData(key, entry) {
             checkerror = Menu.validateUserSettings(entry, SETTINGS_CONFIG);
             break;
         case 'vti-prune-expires':
-            if (!Number.isInteger(entry)) {
+            if (!Utility.isInteger(entry)) {
                 checkerror = ["Value is not an integer."];
             }
             break;
@@ -378,7 +378,7 @@ function StripQuoteSourceMetatag(str) {
 }
 
 function GetNegativetags(array) {
-    return Utility.filterRegex(array, NEGATIVE_REGEX, false).map((value) => value.substring(1));
+    return Utility.filterRegex(array, NEGATIVE_REGEX, {negated: false}).map((value) => value.substring(1));
 }
 
 function TransformTypetags(array) {
@@ -386,7 +386,7 @@ function TransformTypetags(array) {
 }
 
 function GetCurrentTags() {
-    return Utility.filterRegex(Utility.filterRegex(GetTagList(), METATAGS_REGEX, true), TYPETAGS_REGEX, true);
+    return Utility.filterRegex(Utility.filterRegex(GetTagList(), METATAGS_REGEX, {negated: true}), TYPETAGS_REGEX, true);
 }
 
 function GetAutoImplications() {
@@ -491,7 +491,7 @@ async function QueryTags(taglist) {
         printer.log("Uncached tags:", missing_names);
         if (missing_names.length) {
             let options = {url_addons: {search: {name_space: missing_names.join(' ')}, only: ALIAS_FIELDS}, long_format: true};
-            let tags = await Danbooru.getAllPageItems('tags', QUERY_LIMIT, options);
+            let tags = await Danbooru.queryPageItems('tags', QUERY_LIMIT, options);
             let found_aliases = [];
             let found_deprecations = [];
             let mapped_data = {};
@@ -540,7 +540,7 @@ async function QueryTagImplications(taglist) {
     if (missing_keys.length) {
         let missing_implications = missing_keys.map((key) => key.replace(/^ti-/, ""));
         let options = {url_addons: {search: {consequent_name_space: missing_implications.join(' '), status: 'active'}, only: RELATION_FIELDS}, long_format: true};
-        let all_implications = await Danbooru.getAllPageItems('tag_implications', QUERY_LIMIT, options);
+        let all_implications = await Danbooru.queryPageItems('tag_implications', QUERY_LIMIT, options);
         let network_data = {};
         all_implications.forEach((implication) => {
             let tag = implication.consequent_name;
@@ -559,7 +559,7 @@ async function QueryTagImplications(taglist) {
         Storage.batchSaveData(mapped_implications);
         printer.log("Found implications:", found_implications);
         printer.log("Unfound implications:", unfound_implications);
-        VTI.implicationdict = Utility.mergeHashes(VTI.implicationdict, network_data);
+        Utility.assignObjects(VTI.implicationdict, network_data);
     }
     for (let key in cached) {
         VTI.implicationdict[key.replace(/^ti-/, "")] = cached[key].value;
@@ -671,7 +671,7 @@ function RebindHotkey() {
 async function ValidateTagAdds() {
     const printer = Debug.getFunctionPrint('ValidateTagAdds');
     let post_edit_tags = GetCurrentTags();
-    let positive_tags = Utility.filterRegex(post_edit_tags, NEGATIVE_REGEX, true);
+    let positive_tags = Utility.filterRegex(post_edit_tags, NEGATIVE_REGEX, {negated: true});
     let useraddtags = Utility.arrayDifference(positive_tags, VTI.preedit_tags);
     let added_tags = Utility.arrayDifference(useraddtags, GetNegativetags(post_edit_tags));
     printer.log("Added tags:", added_tags);
@@ -756,7 +756,7 @@ function ValidateUpload() {
         return true;
     }
     let errormessages = [];
-    let ratingtag = Boolean(Utility.filterRegex(GetTagList(), /^rating:\w/).length);
+    let ratingtag = Boolean(Utility.filterRegex(GetTagList(), /^rating:\w/, {negated: false}).length);
     let ratingradio = $(".post_rating input").toArray().some((input) => input.checked);
     if (!ratingtag && !ratingradio) {
         errormessages.push("Must specify a rating.");
@@ -784,7 +784,7 @@ async function ValidateArtist() {
             printer.log("Not a URL.");
             return;
         }
-        let source_resp = await Danbooru.submitRequest('source', {url: source_url}, {default_val: {artist: {name: null}}});
+        let source_resp = await Danbooru.query('source', {url: source_url}, {default_val: {artist: {name: null}}});
         if (source_resp.artist.name === null) {
             printer.log("Not a first-party source.");
             return;
@@ -811,7 +811,7 @@ async function ValidateArtist() {
             return;
         }
         let missing_artists = missing_keys.map((key) => key.replace(/^are-/, ""));
-        let tag_resp = await Danbooru.submitRequest('tags', {search: {name_space: missing_artists.join(' '), has_artist: true}, only: TAG_FIELDS}, {default_val: []});
+        let tag_resp = await Danbooru.query('tags', {search: {name_space: missing_artists.join(' '), has_artist: true}, only: TAG_FIELDS}, {default_val: []});
         let mapped_artists = {};
         tag_resp.forEach((entry) => {
             mapped_artists['are-' + entry.name] = {value: true, expires: Utility.getExpires(ARTIST_EXPIRATION)};
@@ -872,21 +872,16 @@ function CleanupTasks() {
 //Settings functions
 
 function InitializeProgramValues() {
-    Object.assign(VTI, {
+    Utility.assignObjects(VTI, {
         is_upload: (VTI.action === 'show' && (VTI.controller === 'uploads' || VTI.controller === 'upload-media-assets')),
-        is_post_show: (VTI.controller === 'posts' && VTI.action === 'show'),
-        is_post_index: (VTI.controller === 'posts' && VTI.action === 'index'),
+        preedit_tags: (VTI.controller === 'posts' && VTI.action === 'show' ? $(".image-container").data('tags').split(' ') : [] ),
         was_upload: Storage.getSessionData('vti-was-upload', {default_val: false}),
-    });
-    Object.assign(VTI, {
-        preedit_tags: (VTI.is_post_show ? $(".image-container").data('tags').split(' ') : [] ),
     });
     if (VTI.is_upload) {
         Storage.setSessionData('vti-was-upload', true);
     } else {
         Storage.setSessionData('vti-was-upload', false);
     }
-    return true;
 }
 
 function RenderSettingsMenu() {
@@ -936,16 +931,16 @@ function RenderSettingsMenu() {
 
 function Main() {
     const printer = Debug.getFunctionPrint('Main');
-    const preload = {
-        run_on_settings: false,
-        default_data: DEFAULT_VALUES,
-        initialize_func: InitializeProgramValues,
-        render_menu_func: RenderSettingsMenu,
+    Load.preloadScript({
         program_css: PROGRAM_CSS,
-    };
-    if (!Menu.preloadScript(VTI, preload)) return;
+    });
+    Load.preloadMenu({
+        menu_func: RenderSettingsMenu,
+    });
+    if (!Load.isScriptEnabled() || Menu.isSettingsMenu()) return;
+    InitializeProgramValues();
     $("#form [name=commit],#quick-edit-form [name=commit]").after(SUBMIT_BUTTON).hide();
-    if (VTI.is_post_index) {
+    if (VTI.controller === 'posts' && VTI.action === 'index') {
         $(".post-preview a").on(JSPLib.event.click, PostModeMenu);
         $("#quick-edit-form").append(INPUT_VALIDATOR);
         $("#quick-edit-form").after(WARNING_MESSAGES);
@@ -953,7 +948,7 @@ function Main() {
         $("#related-tags-container").before(INPUT_VALIDATOR);
         $("#related-tags-container").before(WARNING_MESSAGES);
     }
-    if (VTI.is_post_show) {
+    if (VTI.controller === 'posts' && VTI.action === 'show') {
         printer.log("Preedit tags:", VTI.preedit_tags);
         if (VTI.implication_check_enabled) {
             $(document).on('danbooru:open-post-edit-tab.vti danbooru:open-post-edit-dialog.vti', () => {
@@ -995,9 +990,11 @@ function Main() {
 /****Initialization****/
 
 //Variables for JSPLib
+JSPLib.data = VTI;
 JSPLib.name = PROGRAM_NAME;
 JSPLib.shortcut = PROGRAM_SHORTCUT;
-JSPLib.data = VTI;
+JSPLib.default_data = DEFAULT_VALUES;
+JSPLib.settings_config = SETTINGS_CONFIG;
 
 //Variables for debug.js
 Debug.mode = false;
@@ -1006,7 +1003,6 @@ Debug.level = Debug.INFO;
 //Variables for menu.js
 Menu.program_data_regex = PROGRAM_DATA_REGEX;
 Menu.program_data_key = PROGRAM_DATA_KEY;
-Menu.settings_config = SETTINGS_CONFIG;
 Menu.control_config = CONTROL_CONFIG;
 
 //Variables for storage.js

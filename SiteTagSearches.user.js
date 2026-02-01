@@ -12,14 +12,14 @@
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SiteTagSearches.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SiteTagSearches.user.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/ece7ee0fb90dfa2c90874bd6eea467b5295d15dd/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/menu.js
 // ==/UserScript==
 
 /* global $ JSPLib */
@@ -51,7 +51,7 @@ const SOURCE_SITES = ['pixiv', 'twitter', 'tumblr', 'deviantart', 'E-Hentai', 'n
 
 const CUSTOM_SITES_TOTAL = Storage.checkLocalData('sts-custom-sites-total', {
     default_val: 5,
-    validator: (_, num) => (Number.isInteger(num) && num >= 1 && num <= 20),
+    validator: (_, num) => (Utility.isInteger(num) && num >= 1 && num <= 20),
 });
 
 //Main settings
@@ -85,7 +85,7 @@ const SETTINGS_CONFIG = {
 };
 
 for (let index = 1; index <= CUSTOM_SITES_TOTAL; index++) {
-    Object.assign(SETTINGS_CONFIG, {
+    Utility.assignObjects(SETTINGS_CONFIG, {
         [`custom_site_${index}_enabled`]: {
             reset: false,
             validate: Utility.isBoolean,
@@ -274,6 +274,14 @@ const SITE_CONFIG = {
 
 //Helper functions
 
+function IsWikiPage() {
+    let result = (STS.controller === 'wiki-pages') || ((STS.controller === 'posts') && document.querySelector('.wiki-excerpt-link') !== null);
+    if (!result) {
+        Debug.warn("No wiki page bodies!");
+    }
+    return result;
+}
+
 function GetWikiName() {
     if (STS.controller === 'posts') {
         let wiki_name = "";
@@ -379,17 +387,6 @@ function SiteLinkToggle(close_direction, open_direction) {
 
 //Settings functions
 
-function InitializeProgramValues() {
-    Object.assign(STS, {
-        is_wiki_page: (STS.controller === 'wiki-pages') || ((STS.controller === 'posts') && document.querySelector('.wiki-excerpt-link') !== null),
-    });
-    if (!STS.is_wiki_page) {
-        Debug.warn("No wiki page bodies!");
-        return false;
-    }
-    return true;
-}
-
 function RenderSettingsMenu() {
     $('#site-tag-searches').append(Menu.renderMenuFramework(MENU_CONFIG));
     $('#sts-general-settings').append(Menu.renderDomainSelectors());
@@ -425,14 +422,14 @@ function RenderSettingsMenu() {
 //Main function
 
 function Main() {
-    const preload = {
-        run_on_settings: false,
-        initialize_func: InitializeProgramValues,
-        render_menu_func: RenderSettingsMenu,
+    Load.preloadScript({
         program_css: PROGRAM_CSS,
+    });
+    Load.preloadMenu({
+        menu_func: RenderSettingsMenu,
         menu_css: MENU_CSS,
-    };
-    if (!Menu.preloadScript(STS, preload)) return;
+    });
+    if (!Load.isScriptEnabled() || Menu.isSettingsMenu() || !IsWikiPage()) return;
     let $wiki_other_names = $('.wiki-other-name');
     if ($wiki_other_names.length) {
         let $wiki_container = $wiki_other_names.parent();
@@ -451,16 +448,14 @@ function Main() {
 /****Initialization****/
 
 //Variables for JSPLib
+JSPLib.data = STS;
 JSPLib.name = PROGRAM_NAME;
 JSPLib.shortcut = PROGRAM_SHORTCUT;
-JSPLib.data = STS;
+JSPLib.settings_config = SETTINGS_CONFIG;
 
 //Variables for debug.js
 Debug.mode = false;
 Debug.level = Debug.INFO;
-
-//Variables for menu.js
-Menu.settings_config = SETTINGS_CONFIG;
 
 //Export JSPLib
 Load.exportData();
