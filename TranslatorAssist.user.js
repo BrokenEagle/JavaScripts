@@ -12,17 +12,17 @@
 // @run-at       document-idle
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/TranslatorAssist.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/TranslatorAssist.user.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/menu.js
 // @connect      validator.nu
 // ==/UserScript==
 
@@ -3347,9 +3347,15 @@ function PollForNewNotations() {
 // Other functions
 
 function CheckEmbeddedFontSize() {
-    Utility.recheckInterval({
-        check: () => Utility.isNamespaceBound('#image', 'click', 'danbooru') && $('.note-container').is(':visible'),
-        success: () => {
+    Utility.DOMWaitExecute({
+        name: "embedded font size",
+        namespace_check: {
+            root: '#image',
+            eventtype: 'click',
+            namespace: 'danbooru',
+        },
+        extra_check: () =>  $('.note-container').is(':visible'),
+        found: () => {
             let font_size = Number(($('.image-container').get(0)?.style.getPropertyValue('--note-font-size') || '').match(/\d+/)[0]);
             if (font_size === 0) {
                 DanbooruProxy.Note.Box.scale_all();
@@ -3504,7 +3510,7 @@ function Main() {
         light_css: LIGHT_MODE_CSS,
         dark_css: DARK_MODE_CSS,
     });
-    Load.preloadMenu({
+    Menu.preloadMenu({
         menu_func: RenderSettingsMenu,
         menu_css: MENU_CSS,
     });

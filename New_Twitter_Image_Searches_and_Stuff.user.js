@@ -4583,7 +4583,7 @@ function IntervalStorageHandler() {
     if (QUEUED_STORAGE_REQUESTS.length === 0) {
         return;
     }
-    printer.logLevel(() => ["Queued requests:", Utility.deepCopy(QUEUED_STORAGE_REQUESTS)], Debug.VERBOSE);
+    Debug.execute(() => printer.log("Queued requests:", Utility.deepCopy(QUEUED_STORAGE_REQUESTS)), Debug.VERBOSE);
     for (let database in STORAGE_DATABASES) {
         let requests = QUEUED_STORAGE_REQUESTS.filter((request) => (request.database === database));
         let save_requests = requests.filter((request) => (request.type === 'save'));
@@ -7007,7 +7007,7 @@ Debug.level = Debug.INFO;
 
 //Variables for menu.js
 Menu.reset_data = PROGRAM_RESET_KEYS;
-Menu.data_regex = PROGRAM_DATA_REGEX;
+JSPLib.data_regex = PROGRAM_DATA_REGEX;
 Menu.settings_callback = RemoteSettingsCallback;
 Menu.settings_config = SETTINGS_CONFIG;
 Menu.control_config = CONTROL_CONFIG;

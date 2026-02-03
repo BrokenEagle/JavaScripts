@@ -14,18 +14,18 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ */
@@ -34,15 +34,13 @@
 
 const PROGRAM_NAME = 'IndexedAutocomplete';
 const PROGRAM_SHORTCUT = 'iac';
+const DANBOORU_TOPIC_ID = 14701;
 
 /****Library updates****/
 
 ////NONE
 
 /****Global variables****/
-
-//Exterior script variables
-const DANBOORU_TOPIC_ID = '14701';
 
 //Variables for load.js
 const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.Autocomplete', 'Danbooru.CurrentUser'];
@@ -829,7 +827,7 @@ const EDIT_METATAGS = Utility.multiConcat([
     'newpool', 'pool', 'favgroup',
 ], EDIT_STATIC_METATAGS, CATEGORIZATION_METATAGS).toSorted();
 
-const EDIT_METATAG_REGEXES = Utility.mergeObjects(QUERY_METATAG_REGEXES, {
+const EDIT_METATAG_REGEXES = Utility.assignObjects({}, QUERY_METATAG_REGEXES, {
     static: RegExp('^(?:' + EDIT_STATIC_METATAGS.join('|') + ')$'),
     user: RegExp('^(?:' + Utility.arrayDifference(USER_METATAGS, ['upvote', 'downvote', 'fav']).join('|') + ')$')
 }) ;
@@ -2822,7 +2820,7 @@ function Main() {
         light_css: LIGHT_MODE_CSS,
         dark_css: DARK_MODE_CSS,
     });
-    Load.preloadMenu({
+    Menu.preloadMenu({
         menu_func: RenderSettingsMenu,
         menu_css: MENU_CSS,
     });
@@ -2838,6 +2836,7 @@ function Main() {
 JSPLib.data = IAC;
 JSPLib.name = PROGRAM_NAME;
 JSPLib.shortcut = PROGRAM_SHORTCUT;
+JSPLib.data_regex = PROGRAM_DATA_REGEX;
 JSPLib.default_data = DEFAULT_VALUES;
 JSPLib.reset_data = PROGRAM_RESET_KEYS;
 JSPLib.settings_config = SETTINGS_CONFIG;
@@ -2847,7 +2846,6 @@ Debug.mode = false;
 Debug.level = Debug.INFO;
 
 //Variables for menu.js
-Menu.program_data_regex = PROGRAM_DATA_REGEX;
 Menu.settings_callback = RemoteSettingsCallback;
 Menu.reset_callback = RemoteSettingsCallback;
 Menu.control_config = CONTROL_CONFIG;

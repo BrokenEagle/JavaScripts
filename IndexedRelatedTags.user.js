@@ -14,19 +14,19 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ */
@@ -764,7 +764,6 @@ function GetTagQueryParams(tag_list) {
 
 function SetupMutationReplaceObserver(remove_class, func) {
     const printer = Debug.getFunctionPrint('SetupMutationReplaceObserver');
-    let [key, name] = _getSelectorChecks(remove_selector);
     new MutationObserver((mutations, observer) => {
         for (let i = 0; i < mutations.length; i++) {
             let mutation = mutations[i];
@@ -773,7 +772,7 @@ function SetupMutationReplaceObserver(remove_class, func) {
                 let node = mutation.removedNodes[0];
                 printer.logLevel(`Checking removed node: .${remove_class} "${node.className}"`, Debug.DEBUG);
                 if (node.classList.contains(remove_class)) {
-                    printer.logLevel(`Validated remove: ${remove_selector} has been modified!`, Debug.INFO);
+                    printer.logLevel('Validated remove: #related-tags-container has been modified!', Debug.INFO);
                     func(mutation);
                 }
             }
@@ -1604,7 +1603,7 @@ function Main() {
         light_css: LIGHT_MODE_CSS,
         dark_css: DARK_MODE_CSS,
     });
-    Load.preloadMenu({
+    Menu.preloadMenu({
         menu_func: RenderSettingsMenu,
         menu_css: MENU_CSS,
     });
@@ -1628,7 +1627,7 @@ Debug.mode = false;
 Debug.level = Debug.INFO;
 
 //Variables for menu.js
-Menu.data_regex = PROGRAM_DATA_REGEX;
+JSPLib.data_regex = PROGRAM_DATA_REGEX;
 Menu.data_key = OptionCacheDataKey;
 Menu.control_config = CONTROL_CONFIG;
 

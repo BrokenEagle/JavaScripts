@@ -12,14 +12,14 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SafelistPlus.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SafelistPlus.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ */
@@ -30,6 +30,7 @@
 
 const PROGRAM_NAME = 'SafelistPlus';
 const PROGRAM_SHORTCUT = 'sl';
+const DANBOORU_TOPIC_ID = 14221;
 
 /****Library updates****/
 
@@ -37,18 +38,11 @@ const PROGRAM_SHORTCUT = 'sl';
 
 /****Global variables****/
 
-//Exterior script variables
-const DANBOORU_TOPIC_ID = '14221';
+//Module constants
 
-//Variables for Load.js
-const program_load_required_variables = ['window.jQuery', 'window.Danbooru', 'Danbooru.CurrentUser'];
-const program_load_required_selectors = ["#page"];
-
-//Main program variable
 const SL = {};
 
-//For factory reset
-const LOCALSTORAGE_KEYS = [
+const STORAGE_RESET_KEYS = [
     'sl-script-enabled',
     'sl-show-menu',
     'sl-active-list',
@@ -57,8 +51,16 @@ const PROGRAM_RESET_KEYS = {
     enable_safelist: true,
     is_shown: true,
 };
+const DEFAULT_VALUES = {
+    $safelist_posts: null,
+    active_background_work: {},
+    passive_background_work: {},
+    passive_lists_processed: 0,
+};
 
-//Main settings
+const LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.CurrentUser'];
+const LOAD_REQUIRED_SELECTORS = ["#page"];
+
 const SETTINGS_CONFIG = {
     write_mode_enabled: {
         reset: false,
@@ -114,16 +116,6 @@ const MENU_CONFIG = {
     },{
         name: 'session',
     }],
-    controls: [],
-};
-
-// Default values
-
-const DEFAULT_VALUES = {
-    $safelist_posts: null,
-    active_background_work: {},
-    passive_background_work: {},
-    passive_lists_processed: 0,
 };
 
 //CSS Constants
@@ -1233,7 +1225,7 @@ function SafelistUnhide(post) {
     var type = 'inline-block';
     if (post.id === "image-container") {
         type = 'block';
-    } else if (SL.controller === "comments" || (post.parentElement && Utility.DOMtoArray(post.parentElement.classList).includes('list-of-comments'))) {
+    } else if (SL.controller === "comments" || (post.parentElement && post.parentElement.classList.contains('list-of-comments'))) {
         type = 'flex';
     }
     post.style.setProperty('display', type, 'important');
@@ -1751,7 +1743,7 @@ function RenderSettingsMenu() {
     $('#sl-cache-editor-controls').append(Menu.renderTextinput('data_name', 20, true));
     Menu.engageUI({checkboxradio: true});
     Menu.saveUserSettingsClick();
-    Menu.resetUserSettingsClick({delete_keys: LOCALSTORAGE_KEYS});
+    Menu.resetUserSettingsClick({delete_keys: STORAGE_RESET_KEYS});
     Menu.cacheInfoClick();
     Menu.expandableClick();
     Menu.rawDataChange();
@@ -1769,7 +1761,7 @@ function Main() {
     Load.preloadScript({
         broadcast_func: BroadcastSL,
     });
-    Load.preloadMenu({
+    Menu.preloadMenu({
         menu_func: RenderSettingsMenu,
     });
     if (!Load.isScriptEnabled()) return;
@@ -1803,31 +1795,26 @@ function Main() {
 
 /****Initialization****/
 
-//Variables for JSPLib
 JSPLib.data = SL;
 JSPLib.name = PROGRAM_NAME;
 JSPLib.shortcut = PROGRAM_SHORTCUT;
 JSPLib.default_data = DEFAULT_VALUES;
+JSPLib.reset_data = PROGRAM_RESET_KEYS;
 JSPLib.settings_config = SETTINGS_CONFIG;
 
-//Variables for debug.js
-Debug.mode = false;
-Debug.level = Debug.VERBOSE;
+Debug.mode = true;
+Debug.level = Debug.INFO;
 
-//Variables for Storage.js
 Storage.localSessionValidator = ValidateProgramData;
 
-//Variables for menu.js
-Menu.reset_data = PROGRAM_RESET_KEYS;
 Menu.settings_callback = RemoteSettingsCallback;
 Menu.reset_callback = RemoteResetCallback;
 Menu.control_config = CONTROL_CONFIG;
 
-//Export JSPLib
 Load.exportData();
 
 /****Execution start****/
 
-Load.programInitialize(Main, {required_variables: program_load_required_variables, required_selectors: program_load_required_selectors});
+Load.programInitialize(Main, {required_variables: LOAD_REQUIRED_VARIABLES, required_selectors: LOAD_REQUIRED_SELECTORS});
 
 })(JSPLib);

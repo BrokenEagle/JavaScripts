@@ -17,18 +17,18 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/core.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/md5.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ CryptoJS */
@@ -37,6 +37,7 @@
 
 const PROGRAM_NAME = 'DisplayPostInfo';
 const PROGRAM_SHORTCUT = 'dpi';
+const DANBOORU_TOPIC_ID = 15926;
 
 /****Library updates****/
 
@@ -44,27 +45,24 @@ const PROGRAM_SHORTCUT = 'dpi';
 
 /****Global variables****/
 
-//Exterior script variables
-const DANBOORU_TOPIC_ID = '15926';
+//Module constants
 
-//Variables for load.js
-const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.PostTooltip'];
-const PROGRAM_LOAD_OPTIONAL_SELECTORS = ['#c-posts #a-show', '#c-posts #a-index', '#c-users #a-edit'];
+const DPI = {};
 
-//Program data constants
-const PROGRAM_DATA_REGEX = /^(tt|user|pv)-/; //Regex that matches the prefix of all program cache data
+const DEFAULT_VALUES = {
+    user_promises: {},
+};
+
+const PROGRAM_DATA_REGEX = /^(tt|user|pv)-/;
 const PROGRAM_DATA_KEY = {
     user_data: 'user',
     top_tagger: 'tt',
     post_views: 'pv',
 };
 
-//Main program variable
-const DPI = {};
+const LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.PostTooltip'];
+const LOAD_REQUIRED_SELECTORS = ['#page'];
 
-//Available setting values
-
-//Main settings
 const SETTINGS_CONFIG = {
     post_views_enabled: {
         reset: false,
@@ -120,9 +118,6 @@ const SETTINGS_CONFIG = {
     },
 };
 
-const ALL_SOURCE_TYPES = ['indexed_db', 'local_storage'];
-const ALL_DATA_TYPES = ['user_data', 'top_tagger', 'post_views', 'custom'];
-
 const CONTROL_CONFIG = {
     refresh_frequent_tags: {
         value: "Click to refresh",
@@ -138,12 +133,12 @@ const CONTROL_CONFIG = {
         hint: `Dumps all of the cached data related to ${PROGRAM_NAME}.`,
     },
     data_source: {
-        allitems: ALL_SOURCE_TYPES,
+        allitems: ['indexed_db', 'local_storage'],
         value: 'indexed_db',
         hint: "Indexed DB is <b>Cache Data</b> and Local Storage is <b>Program Data</b>.",
     },
     data_type: {
-        allitems: ALL_DATA_TYPES,
+        allitems: ['user_data', 'top_tagger', 'post_views', 'custom'],
         value: 'user_data',
         hint: "Select type of data. Use <b>Custom</b> for querying by keyname.",
     },
@@ -169,13 +164,6 @@ const MENU_CONFIG = {
     }, {
         name: 'statistics',
     }],
-    controls: [],
-};
-
-// Default values
-
-const DEFAULT_VALUES = {
-    user_promises: {},
 };
 
 //CSS constants
@@ -678,10 +666,11 @@ async function ProcessDomainStatistics() {
         }, {});
     let domain_keys = Object.keys(domain_frequency).sort((a, b) => (domain_frequency[b] - domain_frequency[a]));
     domain_keys.forEach((domain) => {
-        let [class_addon, title_addon] = (domain.length > Utility.max_column_characters ? ['class="dpi-domain-overflow"', `title="${domain}"`] : ["", ""]);
+        let normalized_domain = Utility.maxLengthString(domain);
+        let [classname, title] = (domain.length > normalized_domain.length ? ['dpi-domain-overflow', domain] : [undefined, undefined]);
         $('tbody', $domain_table).append(
             Utility.regexReplace(DOMAIN_STATISTICS_ROW, {
-                DOMAIN_NAME: `<span ${class_addon} ${title_addon}>${Utility.maxLengthString(domain)}</span>`,
+                DOMAIN_NAME: Utility.renderHTMLTag('span', normalized_domain, {class: classname, title}),
                 DOMAIN_COUNT: domain_frequency[domain],
             })
         );
@@ -821,7 +810,7 @@ function RenderSettingsMenu() {
 
 function Main() {
     Load.preloadScript();
-    Load.preloadMenu({
+    Menu.preloadMenu({
         menu_func: RenderSettingsMenu,
     });
     if (!Load.isScriptEnabled() || Menu.isSettingsMenu()) return;
@@ -870,32 +859,27 @@ function Main() {
 
 /****Initialization****/
 
-//Variables for JSPLib
 JSPLib.data = DPI;
 JSPLib.name = PROGRAM_NAME;
 JSPLib.shortcut = PROGRAM_SHORTCUT;
+JSPLib.data_regex = PROGRAM_DATA_REGEX;
 JSPLib.default_data = DEFAULT_VALUES;
 JSPLib.settings_config = SETTINGS_CONFIG;
 
-//Variables for debug.js
 Debug.mode = false;
 Debug.level = Debug.INFO;
 
-//Variables for menu.js
-Menu.data_regex = PROGRAM_DATA_REGEX;
 Menu.data_key = PROGRAM_DATA_KEY;
 Menu.settings_callback = RemoteSettingsCallback;
 Menu.control_config = CONTROL_CONFIG;
 
-//Variables for storage.js
 Storage.indexedDBValidator = ValidateEntry;
 Storage.localSessionValidator = ValidateProgramData;
 
-//Export JSPLib
 Load.exportData();
 
 /****Execution start****/
 
-Load.programInitialize(Main, {required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, optional_selectors: PROGRAM_LOAD_OPTIONAL_SELECTORS});
+Load.programInitialize(Main, {required_variables: LOAD_REQUIRED_VARIABLES, required_selectors: LOAD_REQUIRED_SELECTORS});
 
 })(JSPLib);

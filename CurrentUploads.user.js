@@ -14,18 +14,18 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/d835be8064970ddad7e3051affdeaa105c961b94/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ CanvasJS */
@@ -36,6 +36,7 @@
 
 const PROGRAM_NAME = 'CurrentUploads';
 const PROGRAM_SHORTCUT = 'cu';
+const DANBOORU_TOPIC_ID = 15169;
 
 /****Library updates****/
 
@@ -43,21 +44,11 @@ const PROGRAM_SHORTCUT = 'cu';
 
 /****Global variables****/
 
-//Exterior script variables
-const DANBOORU_TOPIC_ID = '15169';
+//Module constants
 
-//Variables for Load.js
-const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.CurrentUser'];
-const PROGRAM_LOAD_REQUIRED_SELECTORS = ["#top", "#page-footer"];
-
-//Program data constants
-const PROGRAM_DATA_REGEX = /^rti-|ct(d|w|mo|y|at)-|(daily|weekly|monthly|yearly|alltime|previous)-(uploads|approvals)-/; //Regex that matches the prefix of all program cache data
-
-//Main program variable
 const CU = {};
 
-//For factory reset
-const LOCALSTORAGE_KEYS = [
+const STORAGE_RESET_KEYS = [
     'cu-current-metric',
     'cu-hide-current-uploads',
     'cu-stash-current-uploads'
@@ -69,11 +60,18 @@ const PROGRAM_RESET_KEYS = {
     period_available: {user: {}, approver: {}},
     reverse_implications: {},
 };
+const DEFAULT_VALUES = {
+    usertag: 'user',
+    counttype: 'uploads',
+    controls_initialized: false,
+    copyright_period: 'd',
+};
 
-//Available setting values
-const period_selectors = ['daily', 'weekly', 'monthly', 'yearly', 'alltime'];
+const LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.CurrentUser'];
+const LOAD_REQUIRED_SELECTORS = ["#top", "#page-footer"];
 
-//Main settings
+const PROGRAM_DATA_REGEX = /^rti-|ct(d|w|mo|y|at)-|(daily|weekly|monthly|yearly|alltime|previous)-(uploads|approvals)-/;
+
 const SETTINGS_CONFIG = {
     copyrights_merge: {
         reset: true,
@@ -86,9 +84,9 @@ const SETTINGS_CONFIG = {
         hint: "Process and show user copyright uploads."
     },
     periods_shown: {
-        allitems: period_selectors,
-        reset: period_selectors,
-        validate: (data) => (Menu.validateCheckboxRadio(data, 'checkbox', period_selectors) && data.includes('daily')),
+        allitems: ['daily', 'weekly', 'monthly', 'yearly', 'alltime'],
+        get reset() {return this.allitems},
+        validate(data) {return (Menu.validateCheckboxRadio(data, 'checkbox', this.allitems, {min_length: 1}) && data.includes('daily'));},
         hint: "Select which periods to process and show."
     },
     copyrights_threshold: {
@@ -105,11 +103,6 @@ const SETTINGS_CONFIG = {
     }
 };
 
-//Available config values
-const all_source_types = ['indexed_db', 'local_storage'];
-const all_data_types = ['count', 'uploads', 'approvals', 'reverse_implication', 'custom'];
-const all_periods = ['daily', 'weekly', 'monthly', 'yearly', 'alltime', 'previous'];
-
 const CONTROL_CONFIG = {
     cache_info: {
         value: "Click to populate",
@@ -121,17 +114,17 @@ const CONTROL_CONFIG = {
         hint: `Dumps all of the cached data related to ${PROGRAM_NAME}.`,
     },
     data_source: {
-        allitems: all_source_types,
+        allitems: ['indexed_db', 'local_storage'],
         value: 'indexed_db',
         hint: "Indexed DB is <b>Cache Data</b> and Local Storage is <b>Program Data</b>.",
     },
     data_type: {
-        allitems: all_data_types,
+        allitems: ['count', 'uploads', 'approvals', 'reverse_implication', 'custom'],
         value: 'count',
         hint: "Select type of data. Use <b>Custom</b> for querying by keyname.",
     },
     data_period: {
-        allitems: all_periods,
+        allitems: ['daily', 'weekly', 'monthly', 'yearly', 'alltime', 'previous'],
         value: "",
         hint: "Select the data period. <b>Count</b> cannot use the 'Previous' period.",
     },
@@ -153,21 +146,10 @@ const MENU_CONFIG = {
     }, {
         name: 'display',
     }],
-    controls: [],
-};
-
-// Default values
-
-const DEFAULT_VALUES = {
-    usertag: 'user',
-    counttype: 'uploads',
-    controls_initialized: false,
-    copyright_period: 'd',
 };
 
 //CSS Constants
 
-//Style information
 const PROGRAM_CSS = Template.normalizeCSS()`
 /**GENERAL**/
 .cu-link {
@@ -1408,7 +1390,7 @@ async function GetPeriodUploads(username, period, limited = false, domname = nul
     var check = await Storage.checkLocalDB(key, {max_expires});
     if (!(check)) {
         printer.log(`Network (${period_name} ${CU.counttype})`);
-        let data = await Danbooru.getPostsCountdown(BuildTagParams(period, `${CU.usertag}:${username}`), max_post_limit_query, post_fields, domname);
+        let data = await GetPostsCountdown(BuildTagParams(period, `${CU.usertag}:${username}`), max_post_limit_query, post_fields, domname);
         let mapped_data = MapPostData(data);
         if (limited) {
             let indexed_posts = AssignPostIndexes(period, mapped_data, 0);
@@ -1422,6 +1404,46 @@ async function GetPeriodUploads(username, period, limited = false, domname = nul
         return mapped_data;
     }
     return (limited ? check.value : PostDecompressData(check.value));
+}
+
+async function GetPostsCountdown(query, limit, only, domname) {
+    const printer = Debug.getFunctionPrint('GetPostsCountdown');
+    printer.logLevel({query, limit, only, domname}, Debug.VERBOSE);
+    let tag_addon = {tags: query};
+    let only_addon = (only ? {only} : {});
+    let limit_addon = {limit};
+    let page_addon = {};
+    var return_items = [];
+    let page_num = 1;
+    var counter;
+    if (domname) {
+        let count_resp = await Danbooru.query('counts/posts', tag_addon, {default_val: {counts: {posts: 0}}});
+        try {
+            counter = Math.ceil(count_resp.counts.posts / limit);
+        } catch (e) {
+            printer.warnLevel("Malformed count response", count_resp, e, Debug.ERROR);
+            counter = '<span title="Malformed count response" style="color:red">Error!</span>';
+        }
+    }
+    while (true) {
+        if (domname) {
+            $(domname).html(counter);
+        }
+        if (Utility.isInteger(counter)) {
+            printer.logLevel("Pages left #", counter--, Debug.INFO);
+        } else {
+            printer.logLevel("Pages done #", page_num++, Debug.INFO);
+        }
+        let request_addons = Utility.mergeObjects(tag_addon, limit_addon, only_addon, page_addon);
+        let request_key = 'posts-' + Utility.renderParams(request_addons);
+        let temp_items = await Danbooru.query('posts', request_addons, {default_val: [], key: request_key});
+        return_items = Utility.concat(return_items, temp_items);
+        if (temp_items.length < limit) {
+            return return_items;
+        }
+        let lastid = Danbooru.getNextPageID(temp_items, false);
+        page_addon = {page: `b${lastid}`};
+    }
 }
 
 //Event handlers
@@ -1798,7 +1820,7 @@ async function ProcessUploads() {
 }
 
 function CleanupTasks() {
-    Storage.pruneProgramCache(PROGRAM_DATA_REGEX, prune_expires);
+    Storage.pruneProgramCache();
 }
 
 //Cache functions
@@ -1899,7 +1921,7 @@ function RenderSettingsMenu() {
     Menu.engageUI({checkboxradio: true});
     $("#cu-select-periods-shown-daily").checkboxradio("disable"); //Daily period is mandatory
     Menu.saveUserSettingsClick();
-    Menu.resetUserSettingsClick({delete_keys: LOCALSTORAGE_KEYS, local_callback: RemoteResetCallback});
+    Menu.resetUserSettingsClick({delete_keys: STORAGE_RESET_KEYS, local_callback: RemoteResetCallback});
     Menu.cacheInfoClick();
     Menu.purgeCacheClick();
     Menu.expandableClick();
@@ -1923,7 +1945,7 @@ function Main() {
         light_css: LIGHT_MODE_CSS,
         dark_css: DARK_MODE_CSS,
     });
-    Load.preloadMenu({
+    Menu.preloadMenu({
         menu_func: RenderSettingsMenu,
     });
     if (!Load.isScriptEnabled()) return;
@@ -1951,36 +1973,29 @@ function Main() {
 
 /****Initialization****/
 
-//Variables for JSPLib
 JSPLib.data = CU;
 JSPLib.name = PROGRAM_NAME;
 JSPLib.shortcut = PROGRAM_SHORTCUT;
-JSPLib.settings_config = SETTINGS_CONFIG;
+JSPLib.data_regex = PROGRAM_DATA_REGEX;
 JSPLib.default_data = DEFAULT_VALUES;
 JSPLib.reset_data = PROGRAM_RESET_KEYS;
+JSPLib.settings_config = SETTINGS_CONFIG;
 
-//Variables for debug.js
 Debug.mode = false;
-Debug.level = Debug.VERBOSE;
+Debug.level = Debug.INFO;
 
-//Variables for menu.js
-Menu.reset_data = PROGRAM_RESET_KEYS;
-Menu.data_regex = PROGRAM_DATA_REGEX;
 Menu.data_key = OptionCacheDataKey;
 Menu.control_config = CONTROL_CONFIG;
 
-//Variables for danbooru.js
 Danbooru.counter_domname = "#loading-counter";
 
-//Variables for Storage.js
 Storage.indexedDBValidator = ValidateEntry;
 Storage.localSessionValidator = ValidateProgramData;
 
-//Export JSPLib
 Load.exportData();
 
 /****Execution start****/
 
-Load.programInitialize(Main, {required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, required_selectors: PROGRAM_LOAD_REQUIRED_SELECTORS});
+Load.programInitialize(Main, {required_variables: LOAD_REQUIRED_VARIABLES, required_selectors: LOAD_REQUIRED_SELECTORS});
 
 })(JSPLib);

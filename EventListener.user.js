@@ -3944,7 +3944,7 @@ function Main() {
         light_css: LIGHT_MODE_CSS,
         dark_css: DARK_MODE_CSS,
     });
-    Load.preloadMenu({
+    Menu.preloadMenu({
         menu_func: RenderSettingsMenu,
         menu_css: MENU_CSS,
     });

@@ -12,14 +12,14 @@
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SiteTagSearches.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SiteTagSearches.user.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/menu.js
 // ==/UserScript==
 
 /* global $ JSPLib */
@@ -28,6 +28,7 @@
 
 const PROGRAM_NAME = 'SiteTagSearches';
 const PROGRAM_SHORTCUT = 'sts';
+const DANBOORU_TOPIC_ID = 14958;
 
 /****Library updates****/
 
@@ -35,55 +36,48 @@ const PROGRAM_SHORTCUT = 'sts';
 
 /****Global variables****/
 
-//Exterior script variables
-const DANBOORU_TOPIC_ID = '14958';
+//Module constants
 
-//Variables for load.js
-const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery'];
-const PROGRAM_LOAD_OPTIONAL_SELECTORS = ['#c-wiki-pages #a-show', '#c-posts #a-index', '#c-users #a-edit'];
-
-//Main program variable
 const STS = {};
 
-//Setting values
+const LOAD_REQUIRED_VARIABLES = ['window.jQuery'];
+const LOAD_OPTIONAL_SELECTORS = ['#c-wiki-pages #a-show', '#c-posts #a-index', '#c-users #a-edit'];
+
 const BOORU_SITES = ['gelbooru', 'yandere', 'sankaku', 'konachan'];
 const SOURCE_SITES = ['pixiv', 'twitter', 'tumblr', 'deviantart', 'E-Hentai', 'nijie', 'artstation', 'fanbox', 'naver', 'lofter', 'skeb', 'tinami'];
 
-const CUSTOM_SITES_TOTAL = Storage.checkLocalData('sts-custom-sites-total', {
-    default_val: 5,
-    validator: (_, num) => (Utility.isInteger(num) && num >= 1 && num <= 20),
-});
-
-//Main settings
 const SETTINGS_CONFIG = {
     booru_sites_enabled: {
         allitems: BOORU_SITES,
-        reset: BOORU_SITES,
-        validate: (data) => Menu.validateCheckboxRadio(data, 'checkbox', BOORU_SITES),
+        get reset() {return this.allitems},
+        validate (data) {return Menu.validateCheckboxRadio(data, 'checkbox', this.allitems);},
         hint: "Select to show booru type."
     },
     booru_sites_order: {
         allitems: BOORU_SITES,
-        reset: BOORU_SITES,
+        get reset() {return this.allitems},
         sortvalue: true,
-        validate: (data) => Utility.arrayEquals(data, BOORU_SITES),
+        validate (data) {return Utility.arrayEquals(data, this.allitems);},
         hint: "Set the order for how the booru sites appear in the tag popup."
     },
     source_sites_enabled: {
         allitems: SOURCE_SITES,
-        reset: SOURCE_SITES,
-        validate: (data) => Menu.validateCheckboxRadio(data, 'checkbox', SOURCE_SITES),
+        get reset() {return this.allitems},
+        validate (data) {return Menu.validateCheckboxRadio(data, 'checkbox', this.allitems);},
         hint: "Select to show source type."
     },
     source_sites_order: {
         allitems: SOURCE_SITES,
-        reset: SOURCE_SITES,
+        get reset() {return this.allitems},
         sortvalue: true,
-        validate: (data) => Utility.arrayEquals(data, SOURCE_SITES),
+        validate (data) {return Utility.arrayEquals(data, this.allitems);},
         hint: "Set the order for how the source sites appear in the tag and other names popups."
     },
 };
-
+const CUSTOM_SITES_TOTAL = Storage.checkLocalData('sts-custom-sites-total', {
+    default_val: 5,
+    validator: (_, num) => (Utility.isInteger(num) && num >= 1 && num <= 20),
+});
 for (let index = 1; index <= CUSTOM_SITES_TOTAL; index++) {
     Utility.assignObjects(SETTINGS_CONFIG, {
         [`custom_site_${index}_enabled`]: {
@@ -122,7 +116,6 @@ const MENU_CONFIG = {
         name: 'custom',
         message: "Additional sites that can be setup for the right-hand popup for both the main tags and the other names. They will always appear below the regular sites and according to their number.",
     }],
-    controls: [],
 };
 
 //CSS constants
@@ -425,7 +418,7 @@ function Main() {
     Load.preloadScript({
         program_css: PROGRAM_CSS,
     });
-    Load.preloadMenu({
+    Menu.preloadMenu({
         menu_func: RenderSettingsMenu,
         menu_css: MENU_CSS,
     });
@@ -447,21 +440,18 @@ function Main() {
 
 /****Initialization****/
 
-//Variables for JSPLib
 JSPLib.data = STS;
 JSPLib.name = PROGRAM_NAME;
 JSPLib.shortcut = PROGRAM_SHORTCUT;
 JSPLib.settings_config = SETTINGS_CONFIG;
 
-//Variables for debug.js
 Debug.mode = false;
 Debug.level = Debug.INFO;
 
-//Export JSPLib
 Load.exportData();
 
 /****Execution start****/
 
-Load.programInitialize(Main, {required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, optional_selectors: PROGRAM_LOAD_OPTIONAL_SELECTORS});
+Load.programInitialize(Main, {required_variables: LOAD_REQUIRED_VARIABLES, optional_selectors: LOAD_OPTIONAL_SELECTORS});
 
 })(JSPLib);

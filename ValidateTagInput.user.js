@@ -934,7 +934,7 @@ function Main() {
     Load.preloadScript({
         program_css: PROGRAM_CSS,
     });
-    Load.preloadMenu({
+    Menu.preloadMenu({
         menu_func: RenderSettingsMenu,
     });
     if (!Load.isScriptEnabled() || Menu.isSettingsMenu()) return;
