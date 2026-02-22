@@ -13,17 +13,17 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/PostModeMenuPlus.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/PostModeMenuPlus.user.js
 // @require      https://cdn.jsdelivr.net/npm/dragselect@2.3.1/dist/ds.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/menu.js
 // ==/UserScript==
 
 /* global $ JSPLib DragSelect */
@@ -32,6 +32,7 @@
 
 const PROGRAM_NAME = 'PostModeMenu';
 const PROGRAM_SHORTCUT = 'pmm';
+const DANBOORU_TOPIC_ID = 21812;
 
 /****Library updates****/
 
@@ -39,22 +40,23 @@ const PROGRAM_SHORTCUT = 'pmm';
 
 /****Global variables****/
 
-//Exterior script variables
-const DANBOORU_TOPIC_ID = '21812';
+//Module constants
 
-//Variables for load.js
-const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.Utility', 'Danbooru.CurrentUser'];
-const PROGRAM_LOAD_OPTIONAL_SELECTORS = ['#c-posts #a-index #mode-box', '#c-users #a-edit'];
-
-//Program variable
 const PMM = {};
 
-//Available setting values
-const SUPPORTED_MODES = ['edit', 'tag_script', 'commentary', 'copy_ID', 'copy_short', 'copy_link', 'vote_up', 'vote_down', 'unvote', 'favorite', 'unfavorite'];
-const DRAGGABLE_MODES = ['tag-script', 'commentary', 'copy-id', 'copy-short', 'copy-link', 'vote-up', 'vote-down', 'unvote', 'favorite', 'unfavorite'];
-const ID_SEPARATORS = ['comma', 'colon', 'semicolon', 'space', 'return'];
+const DEFAULT_VALUES = {
+    pinned: false,
+    post_votes: {},
+    post_favorites: {},
+};
 
-//Main settings
+const LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.Utility', 'Danbooru.CurrentUser'];
+const LOAD_OPTIONAL_SELECTORS = ['#c-posts #a-index #mode-box', '#c-users #a-edit'];
+
+//Setting constants
+
+const SUPPORTED_MODES = ['edit', 'tag_script', 'commentary', 'copy_ID', 'copy_short', 'copy_link', 'vote_up', 'vote_down', 'unvote', 'favorite', 'unfavorite'];
+
 const SETTINGS_CONFIG = {
     available_modes: {
         allitems: SUPPORTED_MODES,
@@ -77,9 +79,9 @@ const SETTINGS_CONFIG = {
     },
     id_separator: {
         display: "ID Separator",
-        allitems: ID_SEPARATORS,
+        allitems: ['comma', 'colon', 'semicolon', 'space', 'return'],
         reset: ['comma'],
-        validate: (data) => Menu.validateCheckboxRadio(data, 'radio', ID_SEPARATORS),
+        validate (data) {return Menu.validateCheckboxRadio(data, 'radio', this.allitems);},
         hint: "Choose how to separate multiple post IDs copied with Copy ID, Copy Short, or Copy Link."
     },
     edit_tag_grouping_enabled: {
@@ -136,14 +138,6 @@ const MENU_CONFIG = {
         name: 'interface',
     }],
     controls: [],
-};
-
-//Default values
-
-const DEFAULT_VALUES = {
-    pinned: false,
-    post_votes: {},
-    post_favorites: {},
 };
 
 //CSS constants
@@ -601,25 +595,37 @@ const COMMENTARY_DIALOG_HTML = Template.normalizeHTML()`
         <div class="pmm-commentary-tag" data-tag="commentary">
             <label>
                 Commentary
-                <input type="checkbox" name="commentary">
+                <input type="radio" name="commentary_tags">
             </label>
         </div>
         <div class="pmm-commentary-tag" data-tag="commentary_request">
             <label>
-                Commentary request
-                <input type="checkbox" name="commentary_request">
+                Request
+                <input type="radio" name="commentary_tags">
             </label>
         </div>
         <div class="pmm-commentary-tag" data-tag="commentary_check">
             <label>
-                Commentary check
-                <input type="checkbox" name="commentary_check">
+                Check
+                <input type="radio" name="commentary_tags">
             </label>
         </div>
         <div class="pmm-commentary-tag" data-tag="partial_commentary">
             <label>
-                Partial commentary
-                <input type="checkbox" name="partial_commentary">
+                Partial
+                <input type="radio" name="commentary_tags">
+            </label>
+        </div>
+        <div class="pmm-commentary-tag" data-tag="untranslatable_commentary">
+            <label>
+                Untranslatable
+                <input type="radio" name="commentary_tags">
+            </label>
+        </div>
+        <div class="pmm-commentary-tag" data-tag="none">
+            <label>
+                None
+                <input type="radio" name="commentary_tags">
             </label>
         </div>
     </div>
@@ -676,9 +682,34 @@ const POST_VOTE_FIELDS = 'id,post_id,score';
 const POOL_FIELDS = 'post_ids';
 const ARTIST_COMMENTARY_FIELDS = 'original_title,original_description,translated_title,translated_description,post[tag_string_meta]';
 
+const DRAGGABLE_MODES = ['tag-script', 'commentary', 'copy-id', 'copy-short', 'copy-link', 'vote-up', 'vote-down', 'unvote', 'favorite', 'unfavorite'];
+
 const GOLD_LEVEL = 30;
 
 /****Functions****/
+
+//Validate functions
+
+function ValidateProgramData(key, entry) {
+    const printer = Debug.getFunctionPrint('ValidateProgramData');
+    var error_messages = [];
+    switch (key) {
+        case 'pmm-user-settings':
+            error_messages = Load.validateUserSettings(entry);
+            break;
+        default:
+            error_messages = ["Is not exportable/importable."];
+    }
+    let $error_display = $('#pmm-cache-editor-errors');
+    if (error_messages.length) {
+        let error_text = JSON.stringify(error_messages, null, 2);
+        printer.logLevel(key, ':\r\n', error_text, Debug.INFO);
+        $error_display.css('display', 'block').html(`<b>${key}:</b><br><pre>${error_text}</pre>`);
+        return false;
+    }
+    $error_display.css('display', 'none');
+    return true;
+}
 
 //Helper functions
 
@@ -745,6 +776,32 @@ async function ValidateTags() {
     if (!PMM.use_VTI) return true;
     let statuses = await Promise.all([PMM.VTI.ValidateTagAdds(), PMM.VTI.ValidateTagRemoves(), PMM.VTI.ValidateTagDeprecations()]);
     return statuses.every((item) => item);
+}
+
+function AdjustCommentaryTags(tags, set_tag) {
+    switch (set_tag) {
+        case 'untranslatable_commentary':
+            tags = Utility.arrayUnion(tags, ['untranslatable_commentary']);
+            // falls through
+        case 'commentary':
+            tags = Utility.arrayDifference(tags, ['check_commentary', 'partial_commentary', 'commentary_request']);
+            tags = Utility.arrayUnion(tags, ['commentary']);
+            break;
+        case 'partial_commentary':
+            tags = Utility.arrayUnion(tags, ['partial_commentary']);
+            // falls through
+        case 'commentary_request':
+            tags = Utility.arrayDifference(tags, ['untranslatable_commentary', 'commentary']);
+            tags = Utility.arrayUnion(tags, ['commentary_request']);
+            break;
+        case 'check_commentary':
+            tags = Utility.arrayDifference(tags, ['untranslatable_commentary', 'commentary']);
+            tags = Utility.arrayUnion(tags, ['check_commentary', 'commentary_request']);
+            break;
+        default:
+            tags = Utility.arrayDifference(tags, ['untranslatable_commentary', 'commentary', 'check_commentary', 'partial_commentary', 'commentary_request']);
+    }
+    return tags;
 }
 
 //Relationship functions
@@ -892,16 +949,23 @@ function UpdatePostVoteLink($vote, type, post_id, score, vote_id) {
     }
 }
 
-function UpdateCommentaryTags(tag_string) {
-    let tags = tag_string.split(' ');
+function UpdateCommentaryDialogTags(tag_string) {
+    const commentary_tags = ['partial_commentary', 'commentary_check', 'commentary_request', 'untranslatable_commentary', 'commentary'];
     $('.pmm-commentary-tag.pmm-active').removeClass('pmm-active');
-    $('.pmm-commentary-tag input').prop('checked', false);
-    ['commentary', 'commentary_request', 'commentary_check', 'partial_commentary'].forEach((tag_name) => {
+    let tags = tag_string.split(' ');
+    let found = false;
+    for (let tag_name of commentary_tags) {
         if (tags.includes(tag_name)) {
             $(`.pmm-commentary-tag[data-tag="${tag_name}"]`).addClass('pmm-active');
-            $(`.pmm-commentary-tag input[name="${tag_name}"]`).prop('checked', true);
+            $(`.pmm-commentary-tag[data-tag="${tag_name}"] input`).prop('checked', true);
+            found = true;
+            break;
         }
-    });
+    }
+    if (!found) {
+        $(`.pmm-commentary-tag[data-tag="none"]`).addClass('pmm-active');
+        $(`.pmm-commentary-tag[data-tag="none"] input`).prop('checked', true);
+    }
 }
 
 function UpdateDraggerStatus() {
@@ -1149,9 +1213,9 @@ async function UnfavoritePost(post_id, singular) {
     return true;
 }
 
-async function UpdatePostCommentary(post_id, artist_commentary, tag_changes) {
+async function UpdatePostCommentary(post_id, artist_commentary) {
     const printer = Debug.getFunctionPrint('UpdatePostCommentary');
-    printer.logLevel(post_id, artist_commentary, tag_changes, Debug.DEBUG);
+    printer.logLevel(post_id, artist_commentary, Debug.DEBUG);
     await Danbooru.updateSetup();
     return Network.put(`/posts/${post_id}/artist_commentary/create_or_update.json`, {data: {artist_commentary}})
         .always(Danbooru.alwaysCallback())
@@ -1159,8 +1223,7 @@ async function UpdatePostCommentary(post_id, artist_commentary, tag_changes) {
             Danbooru.successCallback(post_id, 'UpdatePostCommentary', () => {
                 let $post = $(`#post_${post_id}`);
                 let tags = $post.data('tags').split(' ');
-                let updated_tags = Utility.arrayUnion(tags, tag_changes.adds);
-                updated_tags = Utility.arrayDifference(updated_tags, tag_changes.removes);
+                let updated_tags = AdjustCommentaryTags(tags, artist_commentary.commentary_tags);
                 Utility.setDataAttribute($post, 'tags', updated_tags.toSorted().join(' '));
                 DestroyTooltip(post_id);
             }),
@@ -1189,7 +1252,7 @@ function GetCommentary(post_id) {
             ['original_title', 'original_description', 'translated_title', 'translated_description'].forEach((field) => {
                 PMM.commentary_dialog.find(`[name="${field}"]`).val(artist_commentary[field]);
             });
-            UpdateCommentaryTags(artist_commentary.post.tag_string_meta);
+            UpdateCommentaryDialogTags(artist_commentary.post.tag_string_meta);
         } else {
             Notice.error("No commentary found.");
         }
@@ -1462,7 +1525,7 @@ function EditDialogClose() {
 
 function FetchPostCommentary() {
     let post_id = Number($('#pmm-fetch input').val());
-    if (Utility.validateID(post_id)) {
+    if (Utility.isID(post_id)) {
         Notice.notice("Loading commentary data.");
         DisableCommentaryInterface();
         GetCommentary(post_id).then(() => {
@@ -1511,7 +1574,8 @@ function FetchPoolCommentary() {
 }
 
 function ChangeCommentaryTag(event) {
-    $(event.currentTarget).closest('.pmm-commentary-tag').toggleClass('pmm-active');
+    $('.pmm-commentary-tag').removeClass('pmm-active');
+    $(event.currentTarget).closest('.pmm-commentary-tag').addClass('pmm-active');
 }
 
 function SubmitCommentary(event) {
@@ -1520,17 +1584,8 @@ function SubmitCommentary(event) {
     $('.pmm-commentary-input input, .pmm-commentary-input textarea').each((_, input) => {
         artist_commentary[input.name] = input.value;
     });
-    let tag_changes = {adds: [], removes: []};
-    $('.pmm-commentary-tag input').each((_, input) => {
-        let field_name = (input.checked ? 'add_' : 'remove_') + input.name + '_tag';
-        artist_commentary[field_name] = 1;
-        if (input.checked) {
-            tag_changes.adds.push(input.name);
-        } else {
-            tag_changes.removes.push(input.name);
-        }
-    });
-    let promise_array = post_ids.map((post_id) => UpdatePostCommentary(post_id, artist_commentary, tag_changes));
+    artist_commentary.commentary_tags = $('.pmm-commentary-tag input').filter((_, input) => input.checked).closest('.pmm-commentary-tag').data('tag');
+    let promise_array = post_ids.map((post_id) => UpdatePostCommentary(post_id, artist_commentary));
     Promise.all(promise_array).then((responses) => {
         if (responses.every(Boolean)) {
             Notice.notice("All posts updated.");
@@ -1547,7 +1602,7 @@ function CommentaryDialogOpen() {
     let post_ids = PMM.commentary_post_ids;
     if (PMM.commentary_post_ids.length === 1) {
         $('#pmm-fetch input').val(PMM.commentary_post_ids[0]);
-        UpdateCommentaryTags($(`#post_${post_ids[0]}`).data('tags'));
+        UpdateCommentaryDialogTags($(`#post_${post_ids[0]}`).data('tags'));
         if (PMM.autoload_post_commentary_enabled) {
             Notice.notice("Loading commentary data.");
             DisableCommentaryInterface();
@@ -1691,7 +1746,7 @@ function BroadcastPMM(ev) {
 
 function InitializeProgramValues() {
     PMM.user_id = DanbooruProxy.CurrentUser.data('id');
-    if (!Utility.validateID(PMM.user_id) || DanbooruProxy.CurrentUser.data('level') < GOLD_LEVEL || DanbooruProxy.CurrentUser.data('is-banned')) return false;
+    if (!Utility.isID(PMM.user_id) || DanbooruProxy.CurrentUser.data('level') < GOLD_LEVEL || DanbooruProxy.CurrentUser.data('is-banned')) return false;
     Utility.assignObjects(PMM, {
         mode: Storage.getLocalData('pmm-mode'),
         available_mode_keys: new Set(PMM.available_modes.map((mode) => Utility.kebabCase(mode.toLocaleLowerCase()))),
@@ -1732,10 +1787,15 @@ function RenderSettingsMenu() {
     $('#pmm-select-settings').append(Menu.renderCheckbox('drag_select_enabled'));
     $('#pmm-interface-settings').append(Menu.renderCheckbox('long_searchbar_enabled'));
     $('#pmm-interface-settings').append(Menu.renderCheckbox('long_tagscript_enabled'));
+    $('#pmm-controls').append(Menu.renderCacheEditor({name: 'Cache data'}));
+    $('#pmm-cache-editor-controls').append(Menu.renderLocalStorageSource());
+    $('#pmm-cache-editor-controls').append(Menu.renderRawData());
     Menu.engageUI({checkboxradio: true, sortable: true});
+    Menu.expandableClick();
+    Menu.getCacheClick();
+    Menu.saveCacheClick();
     Menu.saveUserSettingsClick();
     Menu.resetUserSettingsClick();
-    Menu.expandableClick();
 }
 
 //Main function
@@ -1771,22 +1831,21 @@ function Main() {
 
 /****Initialization****/
 
-//Variables for JSPLib
 JSPLib.data = PMM;
 JSPLib.name = PROGRAM_NAME;
 JSPLib.shortcut = PROGRAM_SHORTCUT;
 JSPLib.default_data = DEFAULT_VALUES;
 JSPLib.settings_config = SETTINGS_CONFIG;
 
-//Variables for debug.js
 Debug.mode = false;
 Debug.level = Debug.INFO;
 
-//Export JSPLib
+Storage.localSessionValidator = ValidateProgramData;
+
 Load.exportData();
 
 /****Execution start****/
 
-Load.programInitialize(Main, {required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, optional_selectors: PROGRAM_LOAD_OPTIONAL_SELECTORS});
+Load.programInitialize(Main, {required_variables: LOAD_REQUIRED_VARIABLES, optional_selectors: LOAD_OPTIONAL_SELECTORS});
 
 })(JSPLib);

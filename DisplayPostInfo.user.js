@@ -17,18 +17,18 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/core.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/md5.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ CryptoJS */
@@ -133,8 +133,8 @@ const CONTROL_CONFIG = {
         hint: `Dumps all of the cached data related to ${PROGRAM_NAME}.`,
     },
     data_source: {
-        allitems: ['indexed_db', 'local_storage'],
-        value: 'indexed_db',
+        allitems: ['local_storage', 'indexed_db'],
+        value: 'local_storage',
         hint: "Indexed DB is <b>Cache Data</b> and Local Storage is <b>Program Data</b>.",
     },
     data_type: {
@@ -298,8 +298,8 @@ const ALL_LEVELS = ['Restricted', 'Member', 'Gold', 'Platinum', 'Builder', 'Cont
 //Validate constants
 
 const TOP_TAGGER_CONSTRAINTS = {
-    expires: Validate.expires_constraints,
-    value: Validate.id_constraints
+    expires: Validate.nonnegative_integer_constraints,
+    value: Validate.positive_integer_constraints
 };
 
 const USER_CONSTRAINTS = {
@@ -311,8 +311,8 @@ const USER_CONSTRAINTS = {
 };
 
 const VIEW_CONSTRAINTS = {
-    expires: Validate.expires_constraints,
-    value: Validate.expires_constraints
+    expires: Validate.nonnegative_integer_constraints,
+    value: Validate.positive_integer_constraints
 };
 
 /****FUNCTIONS****/
@@ -346,7 +346,7 @@ function ValidateProgramData(key, entry) {
     var checkerror = [];
     switch (key) {
         case 'dpi-user-settings':
-            checkerror = Menu.validateUserSettings(entry, SETTINGS_CONFIG);
+            checkerror = Load.validateUserSettings(entry, SETTINGS_CONFIG);
             break;
         case 'dpi-prune-expires':
             if (!Utility.isInteger(entry)) {
@@ -442,11 +442,11 @@ function PostViewsExpiration(created_timestamp) {
 async function GetUserData(user_id) {
     const printer = Debug.getFunctionPrint('GetUserData');
     let user_key = `user-${user_id}`;
-    let data = await Storage.checkLocalDB(user_key, USER_EXPIRATION);
+    let data = await Storage.checkData(user_key, USER_EXPIRATION);
     var mapped_data;
     if (!data) {
         printer.log("Querying:", user_id);
-        let user_data = await Danbooru.query("users", {search: {id: user_id, expiry: 30}, only: USER_FIELDS});
+        let user_data = await Danbooru.query('users', {search: {id: user_id, expiry: 30}, only: USER_FIELDS});
         if (user_data && user_data.length) {
             mapped_data = MapUserData(user_data[0]);
             Storage.saveData(user_key, {value: mapped_data, expires: Utility.getExpires(USER_EXPIRATION)});
@@ -464,12 +464,12 @@ async function GetUserData(user_id) {
 async function GetUsersData(user_ids) {
     const printer = Debug.getFunctionPrint('GetUsersData');
     let user_keys = user_ids.map((user_id) => 'user-' + user_id);
-    let cached = await Storage.batchCheckLocalDB(user_keys, USER_EXPIRATION);
+    let cached = await Storage.batchCheckData(user_keys, {expiration: USER_EXPIRATION});
     let missing_keys = Utility.arrayDifference(user_keys, Object.keys(cached));
     if (missing_keys.length) {
         printer.log("Missing users:", missing_keys);
         let missing_ids = missing_keys.map((key) => Number(key.replace('user-', "")));
-        let users = await Danbooru.query("users", {search: {id: missing_ids.join(',')}, limit: missing_ids.length, only: USER_FIELDS});
+        let users = await Danbooru.query('users', {search: {id: missing_ids.join(',')}, limit: missing_ids.length, only: USER_FIELDS});
         let mapped_users = MapUsersData(users);
         SaveMappedListData(mapped_users, USER_EXPIRATION);
         Utility.assignObjects(cached, mapped_users);
@@ -495,7 +495,7 @@ async function DisplayPostViews() {
     let post_id = $('.image-container').data('id');
     let views_key = `pv-${post_id}`;
     printer.log("Checking:", post_id);
-    let view_data = await Storage.checkLocalDB(views_key, MAX_VIEWS_EXPIRATION);
+    let view_data = await Storage.checkData(views_key, MAX_VIEWS_EXPIRATION);
     if (!view_data) {
         let post_timestamp = new Date($("#post-information time").attr("datetime")).getTime();
         let expiration_time = PostViewsExpiration(post_timestamp);
@@ -528,7 +528,7 @@ async function DisplayTopTagger() {
     let tag_string = $image.data('tags');
     let tag_hash = CryptoJS.MD5(tag_string).toString();
     let key_hash = `tt-${post_id}-${tag_hash}`;
-    let data = await Storage.checkLocalDB(key_hash, TOP_TAGGER_EXPIRATION);
+    let data = await Storage.checkData(key_hash, TOP_TAGGER_EXPIRATION);
     if (!data) {
         printer.log("Cache miss:", key_hash);
         //Hashed so that it's mutable
@@ -681,7 +681,7 @@ async function ProcessDomainStatistics() {
 ////OTHER
 
 function CleanupTasks() {
-    Storage.pruneProgramCache(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, PRUNE_EXPIRES);
+    Storage.pruneProgramCache();
 }
 
 //Settings functions
@@ -783,7 +783,7 @@ function RenderSettingsMenu() {
     $("#dpi-cache-controls").append(Menu.renderLinkclick('cache_info', true));
     $('#dpi-cache-controls').append(Menu.renderCacheInfoTable());
     $("#dpi-cache-controls").append(Menu.renderLinkclick('purge_cache', true));
-    $('#dpi-controls').append(Menu.renderCacheEditor(true));
+    $('#dpi-controls').append(Menu.renderCacheEditor({has_cache_data: true}));
     $('#dpi-cache-editor-message').append(Menu.renderExpandable("Program Data details", PROGRAM_DATA_DETAILS));
     $("#dpi-cache-editor-controls").append(Menu.renderKeyselect('data_source', true));
     $("#dpi-cache-editor-controls").append(Menu.renderDataSourceSections());
@@ -798,8 +798,8 @@ function RenderSettingsMenu() {
     Menu.purgeCacheClick();
     Menu.dataSourceChange();
     Menu.rawDataChange();
-    Menu.getCacheClick(ValidateProgramData);
-    Menu.saveCacheClick(ValidateProgramData, ValidateEntry);
+    Menu.getCacheClick();
+    Menu.saveCacheClick();
     Menu.deleteCacheClick();
     Menu.listCacheClick();
     Menu.refreshCacheClick();

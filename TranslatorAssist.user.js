@@ -12,28 +12,29 @@
 // @run-at       document-idle
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/TranslatorAssist.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/TranslatorAssist.user.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/menu.js
 // @connect      validator.nu
 // ==/UserScript==
 
 // eslint-disable-next-line no-redeclare
 /* global $ JSPLib GM */
-/* eslint-disable dot-notation */
 
 (({DanbooruProxy, Debug, Notice, Utility, Storage, Concurrency, Template, Network, Danbooru, Load, Menu}) => {
 
 const PROGRAM_NAME = 'TranslatorAssist';
 const PROGRAM_SHORTCUT = 'ta';
+const DANBOORU_TOPIC_ID = 20687;
+const GITHUB_WIKI_PAGE = 'https://github.com/BrokenEagle/JavaScripts/wiki/TranslatorAssist';
 
 /****Library updates****/
 
@@ -41,16 +42,12 @@ const PROGRAM_SHORTCUT = 'ta';
 
 /****Global variables****/
 
-//Exterior script variables
-const DANBOORU_TOPIC_ID = '20687';
-const GITHUB_WIKI_PAGE = 'https://github.com/BrokenEagle/JavaScripts/wiki/TranslatorAssist';
+//Module constants
 
-//Variables for load.js
-const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.CurrentUser', 'Danbooru.Note'];
-const PROGRAM_LOAD_OPTIONAL_SELECTORS = ['#c-posts #a-show .image-container', '#c-users #a-edit'];
-
-//Main program variable
 const TA = {};
+
+const LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.CurrentUser', 'Danbooru.Note'];
+const LOAD_OPTIONAL_SELECTORS = ['#c-posts #a-show .image-container', '#c-users #a-edit'];
 
 const DEFAULT_VALUES = {
     initialized: false,
@@ -65,17 +62,15 @@ const DEFAULT_VALUES = {
     $load_dialog: {},
 };
 
-//Available setting values
+//Setting constants
+
 const HTML_STYLE_TAGS = ['div', 'span'];
 const HTML_ONLY_TAGS = ['b', 'i', 'u', 's', 'tn', 'center', 'p', 'small', 'big', 'code'];
 const HTML_TAGS = Utility.concat(HTML_STYLE_TAGS, HTML_ONLY_TAGS);
 const HTML_STYLES = ['color', 'font-size', 'font-family', 'font-weight', 'font-style', 'font-variant', 'text-align', 'text-decoration', 'line-height', 'letter-spacing', 'margin', 'padding', 'white-space', 'background-color', 'transform'];
 const OUTER_RUBY_STYLES = ['color', 'font-size', 'font-family', 'font-weight', 'font-style', 'font-variant', 'text-decoration', 'line-height', 'letter-spacing', 'padding', 'white-space', 'background-color'];
 const INNER_RUBY_STYLES = ['color', 'font-size', 'font-family', 'font-weight', 'font-style', 'font-variant', 'text-decoration', 'letter-spacing'];
-const RUBY_STYLES = OUTER_RUBY_STYLES;
-const EMBEDDED_STYLES = ['border-radius', 'rotate', 'background-color', 'justify-content', 'align-items'];
 
-//Main settings
 const SETTINGS_CONFIG = {
     close_notice_enabled: {
         reset: true,
@@ -145,9 +140,9 @@ const SETTINGS_CONFIG = {
         hint: "Uncheck to removed ruby section."
     },
     available_ruby_styles: {
-        allitems: RUBY_STYLES,
-        reset: RUBY_STYLES,
-        validate: (data) => (Menu.validateCheckboxRadio(data, 'checkbox', RUBY_STYLES) && data.length > 0),
+        allitems: OUTER_RUBY_STYLES,
+        get reset () {return this.allitems;},
+        validate (data) {return Menu.validateCheckboxRadio(data, 'checkbox', this.allitems, {min_length: 1});},
         hint: "Select the list of available ruby styles to be shown. Must have at least one."
     },
     embedded_enabled: {
@@ -156,9 +151,9 @@ const SETTINGS_CONFIG = {
         hint: "Uncheck to removed embedded tab."
     },
     available_embedded_styles: {
-        allitems: EMBEDDED_STYLES,
-        reset: EMBEDDED_STYLES,
-        validate: (data) => (Menu.validateCheckboxRadio(data, 'checkbox', EMBEDDED_STYLES) && data.length > 0),
+        allitems: ['border-radius', 'rotate', 'background-color', 'justify-content', 'align-items'],
+        get reset () {return this.allitems;},
+        validate (data) {return Menu.validateCheckboxRadio(data, 'checkbox', this.allitems, {min_length: 1});},
         hint: "Select the list of available embedded styles to be shown. Must have at least one."
     },
     controls_enabled: {
@@ -572,7 +567,7 @@ const PROGRAM_CSS = Template.normalizeCSS()`
 }
 /** Cursor **/
 #ta-side-menu button[disabled],
-#ta-ruby-dialog ~ div button[disabled] {
+.ta-dialog div button[disabled] {
     cursor: default;
 }
 #ta-side-menu *:not(a, button, input, select) {
@@ -1331,7 +1326,7 @@ const RUBY_DIALOG_SETTINGS = {
 
 const LOAD_DIALOG_SETTINGS = {
     title: "Load Sessions",
-    width: 500,
+    width: 600,
     height: 600,
     modal: false,
     draggable: true,
@@ -1350,8 +1345,14 @@ const LOAD_DIALOG_SETTINGS = {
             'text': 'Rename',
             'click': RenameSession,
         }, {
+            'text': 'Move up',
+            'click': MoveSessionUp,
+        }, {
+            'text': 'Move down',
+            'click': MoveSessionDown,
+        }, {
             'text': 'Delete',
-            'click': DeleteSessions,
+            'click': DeleteSession,
         }, {
             'text': 'Close',
             'click' () {
@@ -1457,6 +1458,13 @@ const OPTION_CONFIG = {
 
 const HTML_REGEX = /<(\/?)([a-z0-9]+)([^>]*)>/i;
 
+const VALIDATE_REGEXES = {
+    setting: /ta-user-settings/,
+    saved: /ta-saved-inputs/,
+    section: /ta-load-session-(?:main|constructs|embedded|ruby)/,
+    session: /ta-session-\d+/,
+};
+
 // Other constants
 
 const INPUT_SECTIONS = {
@@ -1484,6 +1492,109 @@ const CLEANUP_LAST_NOTED = Utility.one_hour;
 
 /****Functions****/
 
+//Validate functions
+
+function ValidateProgramData(key, entry) {
+    const printer = Debug.getFunctionPrint('ValidateProgramData');
+    var error_messages = [];
+    let validate_type = GetValidateType(key);
+    switch (validate_type) {
+        case 'setting':
+            error_messages = Load.validateUserSettings(entry);
+            break;
+        case 'section':
+            if (!Utility.isArray(entry)) {
+                error_messages = ["Is not an array."];
+            }
+            break;
+        case 'saved':
+        case 'session':
+            if (!Utility.isHash(entry)) {
+                error_messages = ["Is not a hash."];
+            }
+            break;
+        default:
+            error_messages = ["Is not exportable/importable."];
+    }
+    let $error_display = $('#pmm-cache-editor-errors');
+    if (error_messages.length) {
+        let error_text = JSON.stringify(error_messages, null, 2);
+        printer.logLevel(key, ':\r\n', error_text, Debug.INFO);
+        $error_display.css('display', 'block').html(`<b>${key}:</b><br><pre>${error_text}</pre>`);
+        return false;
+    }
+    $error_display.css('display', 'none');
+    return true;
+}
+
+function GetValidateType(key) {
+    for (let validate_type in VALIDATE_REGEXES) {
+        let match = VALIDATE_REGEXES[validate_type].exec(key);
+        if (match) {
+            return validate_type;
+        }
+    }
+    return 'other';
+}
+
+// Database functions
+
+function GetSessions(section) {
+    const printer = Debug.getFunctionPrint('GetSessions');
+    let storage_key = 'ta-load-session-' + section;
+    let check = !Storage.inMemoryStorage(storage_key, localStorage);
+    let sessions = Storage.checkLocalData(storage_key, {default_val: []});
+    if (check) {
+        let original_length = sessions.length;
+        sessions = sessions.filter((session) => Utility.isHash(session) && Utility.isString(session.name) && Utility.isInteger(session.key));
+        if (sessions.length !== original_length && sessions.length > 0) {
+            printer.warn("Corrected load section:", section);
+            SetSessions(section, sessions);
+        } else if (sessions.length === 0) {
+            printer.warn("Removed section:", section);
+            Storage.removeLocalData(storage_key);
+        }
+    }
+    return sessions;
+}
+
+function SetSessions(section, sessions) {
+    Storage.setLocalData('ta-load-session-' + section, sessions);
+}
+
+function GetSession(session_id) {
+    const printer = Debug.getFunctionPrint('GetSession');
+    let storage_key = 'ta-session-' + session_id;
+    let check = !Storage.inMemoryStorage(storage_key, localStorage);
+    let session = Storage.checkLocalData(storage_key, {default_val: {}});
+    if (check) {
+        let is_dirty = false;
+        for (let key in session) {
+            if (key.startsWith('shadow-grid-') && !Utility.isBoolean(session[key])) {
+                printer.log("Removed non-boolean key:", session_id, key);
+                delete session[key];
+                is_dirty = true;
+            }
+        }
+        is_dirty ||= Object.keys(session).length === 0 && storage_key in localStorage;
+        if (is_dirty) {
+            if (Object.keys(session).length > 0) {
+                printer.warn("Corrected session:", session_id);
+                SetSession(session_id, session);
+            } else {
+                printer.warn("Removed empty session:", session_id);
+                Storage.removeLocalData(storage_key);
+                session = null;
+            }
+        }
+    }
+    return session;
+}
+
+function SetSession(session_id, session) {
+    Storage.setLocalData('ta-session-' + session_id, session);
+}
+
 // Helper functions
 
 function ShowErrorMessages(error_messages, header = 'Error') {
@@ -1497,10 +1608,9 @@ function ShowStyleErrors(style_errors) {
 }
 
 function InitializeClickAndHold() {
-    let $obj = $('#ta-placement-controls .ta-button-placement');
     let timer = null;
     let interval = null;
-    $obj.on(JSPLib.event.mousedown, (event) => {
+    $('#ta-placement-controls .ta-button-placement').on(JSPLib.event.mousedown, (event) => {
         if (event.button !== 0) return;
         PlacementControl(event);
         timer = setTimeout(() => {
@@ -1512,7 +1622,7 @@ function InitializeClickAndHold() {
         clearTimeout(timer);
         clearInterval(interval);
     });
-};
+}
 
 // Render functions
 
@@ -1561,26 +1671,14 @@ function RenderLoadDialog(panel) {
     let sessions = Storage.getLocalData('ta-load-session-' + panel, {default_val: []});
     return Utility.regexReplace(LOAD_DIALOG, {
         LOADNAME: panel,
-        LOADSAVED: RenderLoadSessions(panel, sessions),
+        LOADSAVED: RenderLoadSessions(sessions),
     });
 }
 
-function RenderLoadSessions(panel, sessions) {
-    const printer = Debug.getFunctionPrint('RenderLoadSessions');
-    let html = "";
-    let updated_list = [];
-    sessions.forEach((item) => {
-        if (item.key) {
-            html += RenderLoadItem(item);
-            updated_list.push(item);
-        } else {
-            printer.error("Malformed item found:", item);
-        }
-    });
-    if (updated_list.length !== sessions.length) {
-        Storage.setLocalData('ta-load-session-' + panel, updated_list);
-    }
-    return (html === "" ? NO_SESSIONS : `<ul>${html}</ul>`);
+function RenderLoadSessions(sessions) {
+    if (sessions.length === 0) return NO_SESSIONS;
+    let html = sessions.map((item) => RenderLoadItem(item)).join("");
+    return `<ul>${html}</ul>`;
 }
 
 function RenderLoadItem(item) {
@@ -1604,8 +1702,8 @@ function RenderSectionTextInputs(section_class, section_names, config) {
     section_names.forEach((name) => {
         let display_name = Utility.displayCase(name);
         let input_name = section_class + '-' + Utility.kebabCase(name);
-        let label_style = config[name]?.label || "";
-        let value = TA.save_data[input_name] || "";
+        let label_style = config[name]?.label ?? "";
+        let value = TA.save_data[input_name] ?? "";
         html += `<div class="ta-${section_class}-input ta-text-input"><label style="${label_style}">${display_name}</label><input name="${input_name}" data-name="${name}" value="${value}"></div>`;
     });
     return html;
@@ -1652,9 +1750,11 @@ function RenderTextShadowGrid() {
 function RenderCharButtons(char_list) {
     let html = "";
     char_list.forEach((item) => {
-        let display = item.display || item["char"];
+        // eslint-disable-next-line dot-notation
+        let display = item.display || item.char;
         let classname = (item.variation ? 'ta-variation' : "");
-        html += `<button value="${item["char"]}" title="${item.title}"><span class="${classname}">${display}</span></button>`;
+        // eslint-disable-next-line dot-notation
+        html += `<button value="${item.char}" title="${item.title}"><span class="${classname}">${display}</span></button>`;
     });
     return html;
 }
@@ -1756,7 +1856,6 @@ function QueryLastNotation() {
             EMBEDDEDCOLOR: embedded_color,
         });
         TA.$text_box.html(html);
-        ToggleSideMenu(true, false);
         TA.last_id = data[0]?.id || TA.last_id;
     });
 }
@@ -1938,7 +2037,8 @@ function GetEmbeddedTag(html_text) {
         html_tag.open_tag = html_text.slice(html_tag.open_tag_start, html_tag.open_tag_end);
         if (!html_tag.open_tag.match(/ class="[^"]+"/)) continue;
         Utility.assignObjects(html_tag, ParseTagAttributes(html_tag.open_tag));
-        if (html_tag.attrib_dict["class"].split(' ').includes('note-box-attributes')) {
+        // eslint-disable-next-line dot-notation
+        if (html_tag.attrib_dict.class.split(' ').includes('note-box-attributes')) {
             embedded_tag = html_tag;
             break;
         }
@@ -2452,6 +2552,34 @@ function OpenLoadDialog(panel) {
         $dialog.find('.ta-load-session-item').on(JSPLib.event.click, LoadSessionInput);
         $dialog.find('.ta-load-saved-controls a').on(JSPLib.event.click, LoadControls);
         $dialog.dialog(LOAD_DIALOG_SETTINGS);
+        $dialog.closest('.ui-dialog').find('.ui-dialog-buttonset button').each((_, button) => {
+            let name = button.innerText.toLowerCase();
+            Utility.setDataAttribute(button, 'name', name);
+            if (!['save', 'close'].includes(name)) {
+                button.setAttribute('disabled', "");
+            }
+        });
+        $dialog.find('.ta-load-sessions input[type="checkbox"]').on(JSPLib.event.change, (event) => {
+            let $dialog = $(event.target).closest('.ta-dialog');
+            let checked = $dialog.find('.ta-load-sessions input[type="checkbox"]').filter((_, input) => input.checked);
+            $dialog.find('.ui-dialog-buttonset button').each((_, button) => {
+                let name = button.dataset.name;
+                if (name === 'close') return;
+                if (checked.length === 0) {
+                    if (name !== 'save') {
+                        button.setAttribute('disabled', "");
+                    } else {
+                        button.removeAttribute('disabled');
+                    }
+                } else if (checked.length === 1) {
+                    button.removeAttribute('disabled');
+                } else if (name === 'delete') {
+                    button.removeAttribute('disabled');
+                } else {
+                    button.setAttribute('disabled', "");
+                }
+            });
+        });
         TA.$load_dialog[panel] = $dialog;
     }
     TA.active_panel = panel;
@@ -2535,9 +2663,8 @@ function ToggleSideNotice() {
     if(!$("body").hasClass("mode-translation")) {
         if (!TA.last_noter_queried && TA.query_last_noter_enabled) {
             QueryLastNotation();
-        } else {
-            ToggleSideMenu(true, false);
         }
+        ToggleSideMenu(true, false);
         if (TA.new_noter_check_enabled) {
             let interval_period = TA.new_noter_check_interval * Utility.one_minute;
             TA.poll_timer = setInterval(() => {PollForNewNotations();}, interval_period);
@@ -2864,12 +2991,14 @@ function SetEmbeddedLevel() {
     let html_text = text_area.value;
     let html_tag = GetTag(html_text, text_area.selectionStart);
     if (!html_tag) return;
-    let classlist = html_tag.attrib_dict["class"].split(/\s+/).filter((classname) => (!classname.match(/level-[1-5]/)));
+    // eslint-disable-next-line dot-notation
+    let classlist = html_tag.attrib_dict.class.split(/\s+/).filter((classname) => (!classname.match(/level-[1-5]/)));
     let level = $('#ta-embedded-level-select').val();
     if (level.match(/^[1-5]$/)){
         classlist.push('level-' + level);
     }
-    html_tag.attrib_dict["class"] = classlist.join(' ');
+    // eslint-disable-next-line dot-notation
+    html_tag.attrib_dict.class = classlist.join(' ');
     let final_tag = BuildHTMLTag(html_tag.tag_name, html_tag.attrib_dict, html_tag.style_dict);
     text_area.value = html_text.replace(html_tag.open_tag, final_tag);
 }
@@ -2973,15 +3102,18 @@ function DeleteNote() {
     if (!note) return;
     if (!note.is_new()) {
         if (!confirm("Do you really want to delete this note?")) return;
-        Network["delete"](`/notes/${note.id}.json`).then(
+        // eslint-disable-next-line dot-notation
+        Network.delete(`/notes/${note.id}.json`).then(
             () => {Notice.notice(`Note #${note.id} deleted.`);},
             () => {Notice.error(`Error deleting note #${note.id}.`);},
         );
     }
     note.box.$note_box.remove();
     note.body.$note_body.remove();
-    DanbooruProxy.Note.notes["delete"](note);
-    TA.starting_notes["delete"](note.id);
+    // eslint-disable-next-line dot-notation
+    DanbooruProxy.Note.notes.delete(note);
+    // eslint-disable-next-line dot-notation
+    TA.starting_notes.delete(note.id);
 }
 
 function EditNote() {
@@ -3179,9 +3311,9 @@ function SaveSession() {
         if (!name) return;
         name = Utility.maxLengthString(name, 50);
         key = Utility.getUniqueID();
-        let session_list = Storage.getLocalData('ta-load-session-' + panel, {default_val: []});
+        let session_list = GetSessions(panel);
         session_list.push({key, name});
-        Storage.setLocalData('ta-load-session-' + panel, session_list);
+        SetSessions(panel, session_list);
         isnew = true;
     } else {
         ({key, name} = checked_sessions.find('a')[0].dataset);
@@ -3192,7 +3324,7 @@ function SaveSession() {
     section_keys.forEach((key) => {
         Utility.assignObjects(save_inputs, GetInputs(key));
     });
-    Storage.setLocalData('ta-session-' + key, save_inputs);
+    SetSession(key, save_inputs);
     if (isnew) {
         let $load_item = $(RenderLoadItem({key, name}));
         $load_item.find('a').on(JSPLib.event.click, LoadSessionInput);
@@ -3210,28 +3342,58 @@ function RenameSession() {
     let panel = TA.active_panel;
     let $dialog = TA.$load_dialog[panel];
     let checked_sessions = $dialog.find('li').filter((_, entry) => $(entry).find('input').prop('checked'));
-    if (checked_sessions.length === 0) {
-        Notice.error("Must select at least 1 session to rename.");
-        return;
-    }
-    if (checked_sessions.length > 1) {
-        Notice.error("Must select only 1 session to rename.");
-        return;
-    }
     let $link = checked_sessions.find('a');
-    let key = Number($link[0].dataset.key);
-    let name = prompt("Enter a name for this session:");
+    let {key, name} = $link.data();
+    name = prompt("Enter a name for this session:", name);
     if (!name) return;
-    let session_list = Storage.getLocalData('ta-load-session-' + panel, {default_val: []});
+    let session_list = GetSessions(panel);
     let rename_item = session_list.find((item) => item.key === key);
     rename_item.name = name;
-    Storage.setLocalData('ta-load-session-' + panel, session_list);
+    SetSessions(panel, session_list);
     $link.attr('data-name', name);
     $link.text(name);
     Notice.notice('Session renamed.');
 }
 
-function DeleteSessions() {
+function MoveSessionUp() {
+    let panel = TA.active_panel;
+    let $dialog = TA.$load_dialog[panel];
+    let checked_sessions = $dialog.find('li').filter((_, entry) => $(entry).find('input').prop('checked'));
+    let $link = checked_sessions.find('a');
+    let key = Number($link[0].dataset.key);
+    let session_list = GetSessions(panel);
+    let index = session_list.findIndex((session) => session.key === key);
+    if (index === 0) {
+        Notice.error("Cannot move up first session.");
+        return;
+    }
+    session_list = Utility.multiConcat(session_list.slice(0, index - 1), [session_list[index]], [session_list[index - 1]], session_list.slice(index + 1));
+    SetSessions(panel, session_list);
+    let $list_item = $link.parent();
+    $list_item.prev().before($list_item);
+    Notice.notice('Session moved.');
+}
+
+function MoveSessionDown() {
+    let panel = TA.active_panel;
+    let $dialog = TA.$load_dialog[panel];
+    let checked_sessions = $dialog.find('li').filter((_, entry) => $(entry).find('input').prop('checked'));
+    let $link = checked_sessions.find('a');
+    let key = Number($link[0].dataset.key);
+    let session_list = GetSessions(panel);
+    let index = session_list.findIndex((session) => session.key === key);
+    if (index === (session_list.length - 1)) {
+        Notice.error("Cannot move down last session.");
+        return;
+    }
+    session_list = Utility.multiConcat(session_list.slice(0, index), [session_list[index + 1]], [session_list[index]], session_list.slice(index + 2));
+    SetSessions(panel, session_list);
+    let $list_item = $link.parent();
+    $list_item.next().after($list_item);
+    Notice.notice('Session moved.');
+}
+
+function DeleteSession() {
     let panel = TA.active_panel;
     let $dialog = TA.$load_dialog[panel];
     let update_items = [];
@@ -3246,10 +3408,10 @@ function DeleteSessions() {
             update_items.push(item);
         }
     });
-    let session_list = Storage.getLocalData('ta-load-session-' + panel, {default_val: []});
+    let session_list = GetSessions(panel);
     if (update_items.length !== session_list.length) {
         $dialog.find('.ta-delete').remove();
-        Storage.setLocalData('ta-load-session-' + panel, update_items);
+        SetSessions(panel, update_items);
         Notice.notice('Sessions deleted.');
         if (update_items.length === 0) {
             TA.$load_dialog[panel].find('.ta-load-sessions').html(NO_SESSIONS);
@@ -3263,13 +3425,13 @@ function LoadSessionInput(event) {
     const printer = Debug.getFunctionPrint('LoadSessionInput');
     let panel = TA.active_panel;
     let {key} = $(event.currentTarget).data();
-    let session_list = Storage.getLocalData('ta-load-session-' + panel);
+    let session_list = GetSessions(panel);
     let session_item = session_list.find((item) => item.key === key);
-    let load_inputs = Storage.getLocalData('ta-session-' + key);
-    if (!load_inputs) {
+    let load_inputs = GetSession(key);
+    if (load_inputs === null) {
         printer.error('Missing session:', panel, key, session_item);
         session_list = session_list.filter((item) => item.key !== key);
-        Storage.setLocalData('ta-load-session-' + panel, session_list);
+        SetSessions(panel, session_list);
         $(event.currentTarget).closest('li').remove();
         return;
     }
@@ -3354,7 +3516,7 @@ function CheckEmbeddedFontSize() {
             eventtype: 'click',
             namespace: 'danbooru',
         },
-        extra_check: () =>  $('.note-container').is(':visible'),
+        extra_check: () => $('.note-container').is(':visible'),
         found: () => {
             let font_size = Number(($('.image-container').get(0)?.style.getPropertyValue('--note-font-size') || '').match(/\d+/)[0]);
             if (font_size === 0) {
@@ -3497,7 +3659,12 @@ function RenderSettingsMenu() {
     $("#ta-embedded-settings").append(Menu.renderInputSelectors('available_embedded_styles', 'checkbox'));
     $('#ta-controls-settings').append(Menu.renderCheckbox('controls_enabled'));
     $('#ta-codes-settings').append(Menu.renderCheckbox('codes_enabled'));
+    $('#ta-controls').append(Menu.renderCacheEditor({name: 'Cache data'}));
+    $('#ta-cache-editor-controls').append(Menu.renderLocalStorageSource());
+    $('#ta-cache-editor-controls').append(Menu.renderRawData());
     Menu.engageUI({checkboxradio: true});
+    Menu.getCacheClick();
+    Menu.saveCacheClick();
     Menu.saveUserSettingsClick();
     Menu.resetUserSettingsClick();
 }
@@ -3529,22 +3696,21 @@ function Main() {
 
 /****Initialization****/
 
-//Variables for JSPLib
 JSPLib.data = TA;
 JSPLib.name = PROGRAM_NAME;
 JSPLib.shortcut = PROGRAM_SHORTCUT;
 JSPLib.default_data = DEFAULT_VALUES;
 JSPLib.settings_config = SETTINGS_CONFIG;
 
-//Variables for debug.js
 Debug.mode = false;
 Debug.level = Debug.INFO;
 
-//Export JSPLib
+Storage.localSessionValidator = ValidateProgramData;
+
 Load.exportData();
 
 /****Execution start****/
 
-Load.programInitialize(Main, {required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, optional_selectors: PROGRAM_LOAD_OPTIONAL_SELECTORS});
+Load.programInitialize(Main, {required_variables: LOAD_REQUIRED_VARIABLES, optional_selectors: LOAD_OPTIONAL_SELECTORS});
 
 })(JSPLib);

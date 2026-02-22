@@ -14,21 +14,21 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/menu.js
 // ==/UserScript==
 
-/* global JSPLib $ */
+/* global JSPLib $ jQuery */
 
 (({DanbooruProxy, ValidateJS, Debug, Notice, Utility, Storage, Validate, Template, Statistics, Danbooru, Load, Menu}) => {
 
@@ -42,11 +42,20 @@ const DANBOORU_TOPIC_ID = 14701;
 
 /****Global variables****/
 
-//Variables for load.js
-const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.Autocomplete', 'Danbooru.CurrentUser'];
-const PROGRAM_LOAD_REQUIRED_SELECTORS = ['#top', '#page'];
+//Module constants
 
-//Program data constants
+const IAC = {};
+
+const PROGRAM_RESET_KEYS = {
+    choice_order: {},
+    choice_data: {},
+    source_data: {},
+};
+
+const STORAGE_RESET_KEYS = [
+    'iac-choice-info',
+];
+
 const PROGRAM_DATA_REGEX = /^(ac|pl|us|fg|ss|ar|wp|ft)-/; //Regex that matches the prefix of all program cache data
 const PROGRAM_DATA_KEY = {
     tag: 'ac',
@@ -59,41 +68,30 @@ const PROGRAM_DATA_KEY = {
     favorite_group: 'fg',
 };
 
-//Main program variable
-const IAC = {};
+const LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.Autocomplete', 'Danbooru.CurrentUser'];
+const LOAD_REQUIRED_SELECTORS = ['#top', '#page'];
 
-//For factory reset
-const LOCALSTORAGE_KEYS = [
-    'iac-choice-info',
-];
-const PROGRAM_RESET_KEYS = {
-    choice_order: {},
-    choice_data: {},
-    source_data: {},
-};
+//Setting constants
 
-//Available setting values
 const TAG_SOURCES = ['metatag', 'tag', 'tag-word', 'tag-abbreviation', 'tag-alias', 'tag-correction', 'tag-other-name'];
-const SCALE_TYPES = ['linear', 'square_root', 'logarithmic'];
 
-//Main settings
 const SETTINGS_CONFIG = {
     usage_multiplier: {
         reset: 0.9,
         parse: parseFloat,
-        validate: (data) => Menu.validateNumber(data, false, 0.0, 1.0),
+        validate: (data) => Menu.validateNumber(data, {integer: false, minimum: 0.0, maximum: 1.0}),
         hint: "Valid values: 0.0 - 1.0."
     },
     usage_maximum: {
         reset: 20,
         parse: parseFloat,
-        validate: (data) => Menu.validateNumber(data, false, 0.0),
+        validate: (data) => Menu.validateNumber(data, {integer: false, minimum: 0.0}),
         hint: "Set to 0 for no maximum."
     },
     usage_expires: {
         reset: 2,
         parse: parseInt,
-        validate: (data) => Menu.validateNumber(data, true, 1),
+        validate: (data) => Menu.validateNumber(data, {integer: true, minimum: 1}),
         hint: "Number of days."
     },
     usage_enabled: {
@@ -107,33 +105,33 @@ const SETTINGS_CONFIG = {
         hint: "Check to use alternate weights and/or scales for sorting calculations."
     },
     postcount_scale: {
-        allitems: SCALE_TYPES,
+        allitems: ['linear', 'square_root', 'logarithmic'],
         reset: ['linear'],
-        validate: (data) => Menu.validateCheckboxRadio(data, 'radio', SCALE_TYPES),
+        validate (data) {return Menu.validateCheckboxRadio(data, 'radio', this.allitems);},
         hint: "Select the type of scaling to be applied to the post count."
     },
     exact_source_weight: {
         reset: 1.0,
         parse: parseFloat,
-        validate: (data) => Menu.validateNumber(data, false, 0.0, 1.0),
+        validate: (data) => Menu.validateNumber(data, {integer: false, minimum: 0.0, maximum: 1.0}),
         hint: "Valid values: 0.0 - 1.0."
     },
     prefix_source_weight: {
         reset: 0.8,
         parse: parseFloat,
-        validate: (data) => Menu.validateNumber(data, false, 0.0, 1.0),
+        validate: (data) => Menu.validateNumber(data, {integer: false, minimum: 0.0, maximum: 1.0}),
         hint: "Valid values: 0.0 - 1.0."
     },
     alias_source_weight: {
         reset: 0.2,
         parse: parseFloat,
-        validate: (data) => Menu.validateNumber(data, false, 0.0, 1.0),
+        validate: (data) => Menu.validateNumber(data, {integer: false, minimum: 0.0, maximum: 1.0}),
         hint: "Valid values: 0.0 - 1.0."
     },
     correct_source_weight: {
         reset: 0.1,
         parse: parseFloat,
-        validate: (data) => Menu.validateNumber(data, false, 0.0, 1.0),
+        validate: (data) => Menu.validateNumber(data, {integer: false, minimum: 0.0, maximum: 1.0}),
         hint: "Valid values: 0.0 - 1.0."
     },
     metatag_source_enabled: {
@@ -149,7 +147,7 @@ const SETTINGS_CONFIG = {
     source_results_returned: {
         reset: 10,
         parse: parseInt,
-        validate: (data) => Menu.validateNumber(data, true, 5, 20),
+        validate: (data) => Menu.validateNumber(data, {integer: true, minimum: 5, maximum: 20}),
         hint: "Number of results to return (5 - 20)."
     },
     source_highlight_enabled: {
@@ -197,7 +195,7 @@ const SETTINGS_CONFIG = {
     recheck_data_interval: {
         reset: 1,
         parse: parseInt,
-        validate: (data) => Menu.validateNumber(data, true, 0, 3),
+        validate: (data) => Menu.validateNumber(data, {integer: true, minimum: 0, maximum: 3}),
         hint: "Number of days (0 - 3). Data expiring within this period gets automatically requeried. Setting to 0 disables this."
     },
     text_input_autocomplete_enabled: {
@@ -206,11 +204,6 @@ const SETTINGS_CONFIG = {
         hint: "Enables autocomplete in non-autocomplete text fields (Alt+A to enable/disable), inserting a wiki link upon completion."
     },
 };
-
-//Available config values
-const ALL_SOURCE_TYPES = ['indexed_db', 'local_storage'];
-const ALL_DATA_TYPES = ['tag', 'pool', 'user', 'artist', 'wiki', 'forum', 'saved_search', 'favorite_group', 'related_tag', 'custom'];
-const ALL_RELATED = ["", 'general', 'copyright', 'character', 'artist'];
 
 const CONTROL_CONFIG = {
     cache_info: {
@@ -223,17 +216,17 @@ const CONTROL_CONFIG = {
         hint: `Dumps all of the cached data related to ${PROGRAM_NAME}.`,
     },
     data_source: {
-        allitems: ALL_SOURCE_TYPES,
-        value: 'indexed_db',
+        allitems: ['local_storage', 'indexed_db'],
+        value: 'local_storage',
         hint: "Indexed DB is <b>Cache Data</b> and Local Storage is <b>Program Data</b>.",
     },
     data_type: {
-        allitems: ALL_DATA_TYPES,
+        allitems: ['tag', 'pool', 'user', 'artist', 'wiki', 'forum', 'saved_search', 'favorite_group', 'related_tag', 'custom'],
         value: 'tag',
         hint: "Select type of data. Use <b>Custom</b> for querying by keyname.",
     },
     related_tag_type: {
-        allitems: ALL_RELATED,
+        allitems: ["", 'general', 'copyright', 'character', 'artist'],
         value: "",
         hint: "Select type of related tag data. Blank selects uncategorized data.",
     },
@@ -268,10 +261,6 @@ const MENU_CONFIG = {
     }],
     controls: [],
 };
-
-// Default values
-
-const DEFAULT_VALUES = PROGRAM_RESET_KEYS;
 
 //Pre-CSS/HTML constants
 
@@ -1214,7 +1203,7 @@ const AUTOCOMPLETE_CONSTRAINTS = {
     },
     pool: {
         category: Validate.inclusion_constraints(ALL_POOLS),
-        post_count: Validate.counting_constraints,
+        post_count: Validate.nonnegative_integer_constraints,
         name: Validate.stringonly_constraints,
     },
     user: {
@@ -1222,7 +1211,7 @@ const AUTOCOMPLETE_CONSTRAINTS = {
         name: Validate.stringonly_constraints,
     },
     favgroup: {
-        post_count: Validate.counting_constraints,
+        post_count: Validate.nonnegative_integer_constraints,
         name: Validate.stringonly_constraints,
         category: Validate.inclusion_constraints(['system', 'danbooru']),
     },
@@ -1231,25 +1220,25 @@ const AUTOCOMPLETE_CONSTRAINTS = {
         category: Validate.inclusion_constraints(['system', 'danbooru']),
     },
     artist: {
-        post_count: Validate.counting_constraints,
+        post_count: Validate.nonnegative_integer_constraints,
         name: Validate.stringonly_constraints,
         no_tag: Validate.boolean_constraints,
     },
     wikipage: {
-        post_count: Validate.counting_constraints,
+        post_count: Validate.nonnegative_integer_constraints,
         name: Validate.stringonly_constraints,
         category: Validate.inclusion_constraints(ALL_CATEGORIES),
         no_tag: Validate.boolean_constraints,
     },
     forumtopic: {
-        response_count: Validate.counting_constraints,
+        response_count: Validate.nonnegative_integer_constraints,
         name: Validate.stringonly_constraints,
         category: Validate.inclusion_constraints(ALL_TOPICS),
     },
 };
 
 const USAGE_CONSTRAINTS = {
-    expires: Validate.expires_constraints,
+    expires: Validate.nonnegative_integer_constraints,
     use_count: {
         numericality: {
             greaterThanOrEqualTo: 0,
@@ -1290,7 +1279,7 @@ function ValidateProgramData(key, entry) {
     var checkerror = [];
     switch (key) {
         case 'iac-user-settings':
-            checkerror = Menu.validateUserSettings(entry, SETTINGS_CONFIG);
+            checkerror = Load.validateUserSettings(entry, SETTINGS_CONFIG);
             break;
         case 'iac-prune-expires':
             if (!Utility.isInteger(entry)) {
@@ -1411,8 +1400,18 @@ function ValidateCached(cached, type, term, word_mode) {
 
 //Helper functions
 
+function GetJqueryObj(selector) {
+    if (typeof selector === 'string' || selector instanceof HTMLBodyElement) {
+        return jQuery(selector);
+    }
+    if (selector instanceof jQuery) {
+        return selector;
+    }
+    throw new Error("Bad selector.");
+}
+
 function TitleizeExcept(word) {
-    return (NONTITLEIZE_WORDS.includes(word) ? word : Utility.titleizeString(word));
+    return (NONTITLEIZE_WORDS.includes(word) ? word : Utility.titleize(word));
 }
 
 function TitleizeRoman(word) {
@@ -1420,7 +1419,7 @@ function TitleizeRoman(word) {
 }
 
 function ProperCase(string) {
-    return string.match(WORDBREAK_REGEX).map((word) => Utility.titleizeString(word)).join("");
+    return string.match(WORDBREAK_REGEX).map((word) => Utility.titleize(word)).join("");
 }
 
 function ExceptCase(string) {
@@ -1684,7 +1683,7 @@ function CapitalizeAutocomplete(string) {
         case 1:
             return string.toUpperCase();
         case 2:
-            return Utility.titleizeString(string);
+            return Utility.titleize(string);
         case 3:
             return ProperCase(string);
         case 4:
@@ -2275,7 +2274,7 @@ function ReorderAutocompleteEvent($obj) {
 //Initialization functions
 
 function InitializeTagQueryAutocompleteIndexed(fields_selector = AUTOCOMPLETE_MULTITAG_SELECTORS, reorder_selector = '#post_tag_string') {
-    let $fields_multiple = Utility.getjQueryObj(fields_selector);
+    let $fields_multiple = GetJqueryObj(fields_selector);
     $fields_multiple.autocomplete({
         select(event, ui) {
             if (event.key === "Enter") {
@@ -2339,7 +2338,7 @@ function InitializeTagQueryAutocompleteIndexed(fields_selector = AUTOCOMPLETE_MU
 
 function InitializeAutocompleteIndexed(selector, keycode, {multiple = false, wiki_link = false} = {}) {
     let type = SOURCE_KEY[keycode];
-    var $fields = Utility.getjQueryObj(selector);
+    var $fields = GetJqueryObj(selector);
     let autocomplete = AnySourceIndexed(keycode);
     $fields.autocomplete({
         minLength: 1,
@@ -2496,7 +2495,7 @@ function AnySourceIndexed(keycode) {
         var final_data = null;
         if (!IAC.network_only_mode) {
             var max_expiration = MaximumExpirationTime(type);
-            var cached = await Storage.checkLocalDB(key, max_expiration);
+            var cached = await Storage.checkData(key, max_expiration);
             if (ValidateCached(cached, type, term, word_mode)) {
                 RecheckSourceData(type, key, term, cached);
                 final_data = ProcessSourceData(type, key, term, metatag, query_type, word_mode, cached.value, autocomplete.element.get(0), false);
@@ -2661,7 +2660,7 @@ function SetupAutocompleteInitializations() {
 
 function CleanupTasks() {
     PruneUsageData();
-    Storage.pruneProgramCache(PROGRAM_DATA_REGEX, PRUNE_EXPIRES);
+    Storage.pruneProgramCache();
 }
 
 //Cache functions
@@ -2786,7 +2785,7 @@ function RenderSettingsMenu() {
     $('#iac-cache-controls').append(Menu.renderLinkclick('cache_info', true));
     $('#iac-cache-controls').append(Menu.renderCacheInfoTable());
     $('#iac-cache-controls').append(Menu.renderLinkclick('purge_cache', true));
-    $('#iac-controls').append(Menu.renderCacheEditor(true));
+    $('#iac-controls').append(Menu.renderCacheEditor({has_cache_data: true}));
     $('#iac-cache-editor-message').append(Menu.renderExpandable("Program Data details", PROGRAM_DATA_DETAILS));
     $('#iac-cache-editor-controls').append(Menu.renderKeyselect('data_source', true));
     $('#iac-cache-editor-controls').append(Menu.renderDataSourceSections());
@@ -2796,15 +2795,15 @@ function RenderSettingsMenu() {
     $('#iac-cache-editor-controls').append(Menu.renderTextinput('data_name', 20, true));
     $('.iac-options[data-setting=related_tag_type]').hide();
     Menu.engageUI({checkboxradio: true, sortable: true});
-    Menu.saveUserSettingsClick(RemoteSettingsCallback);
-    Menu.resetUserSettingsClick(LOCALSTORAGE_KEYS, RemoteSettingsCallback);
+    Menu.saveUserSettingsClick({local_callback: RemoteSettingsCallback});
+    Menu.resetUserSettingsClick({delete_keys: STORAGE_RESET_KEYS, local_callback: RemoteSettingsCallback});
     Menu.cacheInfoClick();
     Menu.purgeCacheClick();
     Menu.expandableClick();
     Menu.dataSourceChange();
     Menu.rawDataChange();
-    Menu.getCacheClick(ValidateProgramData);
-    Menu.saveCacheClick(ValidateProgramData, ValidateEntry, UpdateLocalData);
+    Menu.getCacheClick();
+    Menu.saveCacheClick(UpdateLocalData);
     Menu.deleteCacheClick();
     Menu.listCacheClick();
     Menu.refreshCacheClick();
@@ -2819,6 +2818,7 @@ function Main() {
         program_css: PROGRAM_CSS,
         light_css: LIGHT_MODE_CSS,
         dark_css: DARK_MODE_CSS,
+        run_on_settings: true,
     });
     Menu.preloadMenu({
         menu_func: RenderSettingsMenu,
@@ -2832,33 +2832,28 @@ function Main() {
 
 /****Initialization****/
 
-//Variables for JSPLib
 JSPLib.data = IAC;
 JSPLib.name = PROGRAM_NAME;
 JSPLib.shortcut = PROGRAM_SHORTCUT;
 JSPLib.data_regex = PROGRAM_DATA_REGEX;
-JSPLib.default_data = DEFAULT_VALUES;
 JSPLib.reset_data = PROGRAM_RESET_KEYS;
 JSPLib.settings_config = SETTINGS_CONFIG;
 
-//Variables for debug.js
 Debug.mode = false;
 Debug.level = Debug.INFO;
 
-//Variables for menu.js
 Menu.settings_callback = RemoteSettingsCallback;
 Menu.reset_callback = RemoteSettingsCallback;
 Menu.control_config = CONTROL_CONFIG;
 
-//Variables for storage.js
 Storage.indexedDBValidator = ValidateEntry;
+Storage.localSessionValidator = ValidateProgramData;
 
-//Export JSPLib
 Load.exportData();
 Load.exportFuncs({always_list: [InitializeAutocompleteIndexed, InitializeTagQueryAutocompleteIndexed, InitializeTextAreaAutocomplete, InitializeProgramValues]});
 
 /****Execution start****/
 
-Load.programInitialize(Main, {required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, required_selectors: PROGRAM_LOAD_REQUIRED_SELECTORS});
+Load.programInitialize(Main, {required_variables: LOAD_REQUIRED_VARIABLES, required_selectors: LOAD_REQUIRED_SELECTORS});
 
 })(JSPLib);

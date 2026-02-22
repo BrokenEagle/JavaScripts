@@ -12,15 +12,15 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/DTextStyler.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/DTextStyler.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ Papa */
@@ -48,6 +48,8 @@ const DEFAULT_VALUES = {
 
 const LOAD_REQUIRED_VARIABLES = ['window.jQuery'];
 const LOAD_OPTIONAL_SELECTORS = ['.dtext-editor textarea', '#add-commentary-dialog', '.upload-edit-container', '#c-users #a-edit'];
+
+//Setting constants
 
 const SETTINGS_CONFIG = {
     post_commentary_enabled: {
@@ -142,6 +144,10 @@ const PROGRAM_CSS = Template.normalizeCSS()`
     font-weight: bold;
     white-space: nowrap;
 }
+/** Uploads page **/
+.ds-upload-commentary-description {
+    container-type: inline-size;
+}
 /** Posts page **/
 form#fetch-commentary input#commentary_source {
     max-width: 75%;
@@ -232,7 +238,7 @@ const CONTROL_BUTTONS = Template.normalizeHTML()`
 `
 
 const UPLOAD_COMMENTARY_DESCRIPTION = Template.normalizeHTML({template: true})`
-<div class="input stacked-input text optional post_artist_commentary_${'identifier'}">
+<div class="ds-upload-commentary-description input stacked-input text optional post_artist_commentary_${'identifier'}">
     <label class="text optional" for="post_artist_commentary_${'identifier'}">${'display'}</label>
     <div class="dtext-editor relative w-fit">
         <div class="dtext-editor-body relative resize overflow-hidden">
@@ -476,6 +482,29 @@ const DTEXT_SELECTORS = {
 };
 
 /****Functions****/
+
+//Validate functions
+
+function ValidateProgramData(key, entry) {
+    const printer = Debug.getFunctionPrint('ValidateProgramData');
+    var error_messages = [];
+    switch (key) {
+        case 'ds-user-settings':
+            error_messages = Load.validateUserSettings(entry);
+            break;
+        default:
+            error_messages = ["Is not exportable/importable."];
+    }
+    let $error_display = $('#ds-cache-editor-errors');
+    if (error_messages.length) {
+        let error_text = JSON.stringify(error_messages, null, 2);
+        printer.logLevel(key, ':\r\n', error_text, Debug.INFO);
+        $error_display.css('display', 'block').html(`<b>${key}:</b><br><pre>${error_text}</pre>`);
+        return false;
+    }
+    $error_display.css('display', 'none');
+    return true;
+}
 
 //Auxiliary functions
 
@@ -738,10 +767,10 @@ function AddTableData(input) {
 
 //Network functions
 
-function GetDtextPreview(body, inline) {
+function GetDtextPreview(body, {inline = false, media_embeds = false}) {
     GetDtextPreview.memoized ??= {};
     if (!(body in GetDtextPreview.memoized)) {
-        GetDtextPreview.memoized[body] = Network.post('/dtext_preview', {data: {body, inline, disable_mentions: true, media_embeds: false}});
+        GetDtextPreview.memoized[body] = Network.post('/dtext_preview', {data: {body, inline, disable_mentions: true, media_embeds}});
     }
     return GetDtextPreview.memoized[body];
 }
@@ -799,7 +828,7 @@ function CommentaryDtextPreview() {
         let body = preview.original_body = input.value;
         var promise;
         if (body.trim(/\s+/).length > 0) {
-            promise = GetDtextPreview(body, inline);
+            promise = GetDtextPreview(body, {inline});
         } else {
             promise = Promise.resolve(null);
         }
@@ -847,7 +876,7 @@ function GeneralDtextPreview(event) {
     let body = $container.find('.ds-edit-dtext textarea').val() ?? "";
     if (body.trim().length > 0) {
         $preview.html(LOADING_MESSAGE);
-        GetDtextPreview(body, false).then((preview_html) => {
+        GetDtextPreview(body, {media_embeds: true}).then((preview_html) => {
             $preview.html(preview_html);
         });
     }
@@ -959,7 +988,8 @@ function InitializeDtextPreviews() {
                 $container.prepend(RenderMarkupControls());
                 InitializeButtons($container.find('.ds-buttons'));
                 DS.size_observer.observe($container.find('.ds-edit-dtext').get(0));
-                $container.find('.ds-input').on(JSPLib.event.keyup, ClearActions);
+                $textarea = $container.find('.ds-input');
+                $textarea.on(JSPLib.event.keyup, ClearActions);
                 let $controls = $form.children().eq(-1);
                 var $submit_control;
                 if ($controls.get(0).tagName === 'INPUT') {
@@ -973,6 +1003,15 @@ function InitializeDtextPreviews() {
                 $submit_control.after(CONTROL_BUTTONS);
                 $controls.find('.ds-show-preview').on(JSPLib.event.click, GeneralDtextPreview);
                 $controls.find('.ds-edit-preview').on(JSPLib.event.click, GeneralDtextEdit);
+                Utility.setPropertyTrap($container.find('.dtext-editor').get(0), 'editor', {
+                    setter: (prop, value) => {
+                        if (prop === 'dtext') {
+                            $textarea.val(value);
+                        }
+                    },
+                    getter: true,
+                    value: {dtext: value},
+                });
             });
         });
     }
@@ -1085,7 +1124,13 @@ function RenderSettingsMenu() {
     $('#ds-commentary-settings').append(Menu.renderCheckbox('upload_commentary_enabled'));
     $("#ds-controls-settings").append(Menu.renderInputSelectors('available_dtext_markup', 'checkbox'));
     $("#ds-controls-settings").append(Menu.renderInputSelectors('available_dtext_actions', 'checkbox'));
+    $('#ds-controls').append(Menu.renderCacheEditor({name: 'Cache data'}));
+    $('#ds-cache-editor-controls').append(Menu.renderLocalStorageSource());
+    $('#ds-cache-editor-controls').append(Menu.renderRawData());
     Menu.engageUI({checkboxradio: true});
+    Menu.expandableClick();
+    Menu.getCacheClick();
+    Menu.saveCacheClick();
     Menu.saveUserSettingsClick();
     Menu.resetUserSettingsClick();
 }
@@ -1124,6 +1169,8 @@ JSPLib.settings_config = SETTINGS_CONFIG;
 
 Debug.mode = false;
 Debug.level = Debug.INFO;
+
+Storage.localSessionValidator = ValidateProgramData;
 
 Load.exportData();
 

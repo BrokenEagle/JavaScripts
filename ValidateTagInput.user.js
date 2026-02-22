@@ -16,18 +16,18 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-setitems@1.4.0/dist/localforage-setitems.min.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ */
@@ -36,6 +36,7 @@
 
 const PROGRAM_NAME = 'ValidateTagInput';
 const PROGRAM_SHORTCUT = 'vti';
+const DANBOORU_TOPIC_ID = 14474;
 
 /****Library updates****/
 
@@ -43,15 +44,17 @@ const PROGRAM_SHORTCUT = 'vti';
 
 /****Global variables****/
 
-//Exterior script variables
-const DANBOORU_TOPIC_ID = '14474';
+const VTI = {};
 
-//Variables for load.js
-const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery'];
-const PROGRAM_LOAD_OPTIONAL_SELECTORS = ['#c-posts #a-show', '#c-posts #a-index', '#c-uploads #a-show', '#c-upload-media-assets #a-show', '#c-users #a-edit'];
+const DEFAULT_VALUES = {
+    implicationdict: {},
+    implications_promise: null,
+    validate_lines: [],
+    is_check_ready: true,
+    is_validate_ready: true,
+};
 
-//Program data constants
-const PROGRAM_DATA_REGEX = /^(ti|ta|td|are)-/; //Regex that matches the prefix of all program cache data
+const PROGRAM_DATA_REGEX = /^(ti|ta|td|are)-/;
 const PROGRAM_DATA_KEY = {
     tag_alias: 'ta',
     tag_implication: 'ti',
@@ -59,10 +62,11 @@ const PROGRAM_DATA_KEY = {
     artist_entry: 'are'
 };
 
-//Main program variable
-const VTI = {};
+const LOAD_REQUIRED_VARIABLES = ['window.jQuery'];
+const LOAD_OPTIONAL_SELECTORS = ['#c-posts #a-show', '#c-posts #a-index', '#c-uploads #a-show', '#c-upload-media-assets #a-show', '#c-users #a-edit'];
 
-//Main settings
+//Setting constants
+
 const SETTINGS_CONFIG = {
     implication_check_enabled: {
         reset: true,
@@ -119,9 +123,6 @@ const SETTINGS_CONFIG = {
     }
 };
 
-const ALL_SOURCE_TYPES = ['indexed_db', 'local_storage'];
-const ALL_DATA_TYPES = ['tag_alias', 'tag_implication', 'artist_entry', 'custom'];
-
 const CONTROL_CONFIG = {
     cache_info: {
         value: "Click to populate",
@@ -133,12 +134,12 @@ const CONTROL_CONFIG = {
         hint: `Dumps all of the cached data related to ${PROGRAM_NAME}.`,
     },
     data_source: {
-        allitems: ALL_SOURCE_TYPES,
+        allitems: ['indexed_db', 'local_storage'],
         value: 'indexed_db',
         hint: "Indexed DB is <b>Cache Data</b> and Local Storage is <b>Program Data</b>.",
     },
     data_type: {
-        allitems: ALL_DATA_TYPES,
+        allitems: ['tag_alias', 'tag_implication', 'artist_entry', 'custom'],
         value: 'tag',
         hint: "Select type of data. Use <b>Custom</b> for querying by keyname.",
     },
@@ -165,16 +166,6 @@ const MENU_CONFIG = {
         message: "These settings affect validations when submitting a post edit.",
     }],
     controls: [],
-};
-
-// Default values
-
-const DEFAULT_VALUES = {
-    implicationdict: {},
-    implications_promise: null,
-    validate_lines: [],
-    is_check_ready: true,
-    is_validate_ready: true,
 };
 
 //CSS constants
@@ -299,7 +290,7 @@ const RELATION_FIELDS = "id,antecedent_name,consequent_name";
 //Validate constants
 
 const ALIAS_CONSTRAINTS = {
-    expires: Validate.expires_constraints,
+    expires: Validate.nonnegative_integer_constraints,
     value: Validate.stringonly_constraints,
 };
 
@@ -309,12 +300,12 @@ const IMPLICATION_CONSTRAINTS = {
 };
 
 const DEPRECATION_CONSTRAINTS = {
-    expires: Validate.expires_constraints,
+    expires: Validate.nonnegative_integer_constraints,
     value: Validate.boolean_constraints,
 };
 
 const ARTIST_CONSTRAINTS = {
-    expires: Validate.expires_constraints,
+    expires: Validate.nonnegative_integer_constraints,
     value: Validate.inclusion_constraints([true]),
 };
 
@@ -350,7 +341,7 @@ function ValidateProgramData(key, entry) {
     var checkerror = [];
     switch (key) {
         case 'vti-user-settings':
-            checkerror = Menu.validateUserSettings(entry, SETTINGS_CONFIG);
+            checkerror = Load.validateUserSettings(entry, SETTINGS_CONFIG);
             break;
         case 'vti-prune-expires':
             if (!Utility.isInteger(entry)) {
@@ -370,11 +361,10 @@ function ValidateProgramData(key, entry) {
 //Helper functions
 
 function GetTagList() {
-    return Utility.filterEmpty(StripQuoteSourceMetatag($("#upload_tag_string,#post_tag_string").val() || "").split(/[\s\n]+/).map((tag) => tag.toLowerCase()));
-}
-
-function StripQuoteSourceMetatag(str) {
-    return str.replace(/source:"[^"]+"\s?/g, '');
+    let tag_string = $("#upload_tag_string,#post_tag_string").val() ?? "";
+    let normalized_tags = tag_string.split(/[\s\n]+/).map((tag) => tag.toLowerCase());
+    let nonempty_tags = Utility.filterRegex(normalized_tags, /[\s\S]+/);
+    return nonempty_tags;
 }
 
 function GetNegativetags(array) {
@@ -386,7 +376,10 @@ function TransformTypetags(array) {
 }
 
 function GetCurrentTags() {
-    return Utility.filterRegex(Utility.filterRegex(GetTagList(), METATAGS_REGEX, {negated: true}), TYPETAGS_REGEX, true);
+    let tag_list = GetTagList();
+    let no_metatag_tag_list = Utility.filterRegex(tag_list, METATAGS_REGEX, {negated: true});
+    let no_typetag_tag_list = Utility.filterRegex(no_metatag_tag_list, TYPETAGS_REGEX, {negated: true});
+    return no_typetag_tag_list;
 }
 
 function GetAutoImplications() {
@@ -473,7 +466,7 @@ async function QueryTags(taglist) {
         let alias_keys = check_tags.map((tag) => 'ta-' + tag);
         let deprecated_keys = check_tags.map((tag) => 'td-' + tag);
         let tag_keys = Utility.concat(alias_keys, deprecated_keys);
-        let cached = await Storage.batchCheckLocalDB(tag_keys, TAG_EXPIRATION);
+        let cached = await Storage.batchCheckData(tag_keys, {expiration: TAG_EXPIRATION});
         let found_names = [];
         for (let key in cached) {
             if (key.startsWith('ta-')) {
@@ -487,26 +480,31 @@ async function QueryTags(taglist) {
             }
         }
         let missing_names = Utility.arrayDifference(check_tags, found_names);
-        printer.log("Cached tags:", found_names);
-        printer.log("Uncached tags:", missing_names);
+        printer.log("Alias/Deprecated tags:", found_names);
+        printer.log("Unknown tags:", missing_names);
         if (missing_names.length) {
             let options = {url_addons: {search: {name_space: missing_names.join(' ')}, only: ALIAS_FIELDS}, long_format: true};
             let tags = await Danbooru.queryPageItems('tags', QUERY_LIMIT, options);
             let found_aliases = [];
             let found_deprecations = [];
             let mapped_data = {};
-            tags.forEach((tag) => {
-                if (tag.antecedent_alias && !tag.is_deprecated) {
-                    let consequent = tag.antecedent_alias.consequent_name;
-                    found_aliases.push(tag.name);
-                    mapped_data['ta-' + tag.name] = {value: [consequent], expires: Utility.getExpires(TAG_EXPIRATION)};
-                } else if (tag.is_deprecated) {
-                    mapped_data['td-' + tag.name] = {value: tag.is_deprecated, expires: Utility.getExpires(TAG_EXPIRATION)};
-                    found_deprecations.push(tag.name);
-                } else if (tag.post_count > 0) {
-                    QueryTags.populated_tags.push(tag.name);
+            missing_names.forEach((name) => {
+                let tag = tags.find((tag) => tag.name === name);
+                if (tag) {
+                    if (tag.antecedent_alias && !tag.is_deprecated) {
+                        let consequent = tag.antecedent_alias.consequent_name;
+                        found_aliases.push(tag.name);
+                        mapped_data['ta-' + tag.name] = {value: [consequent], expires: Utility.getExpires(TAG_EXPIRATION)};
+                    } else if (tag.is_deprecated) {
+                        mapped_data['td-' + tag.name] = {value: tag.is_deprecated, expires: Utility.getExpires(TAG_EXPIRATION)};
+                        found_deprecations.push(tag.name);
+                    } else if (tag.post_count > 0) {
+                        QueryTags.populated_tags.push(tag.name);
+                    } else {
+                        QueryTags.empty_tags.push(tag.name);
+                    }
                 } else {
-                    QueryTags.empty_tags.push(tag.name);
+                    QueryTags.empty_tags.push(name);
                 }
             });
             Storage.batchSaveData(mapped_data);
@@ -532,7 +530,7 @@ async function QueryTags(taglist) {
 async function QueryTagImplications(taglist) {
     const printer = Debug.getFunctionPrint('QueryTagImplications');
     let tag_keys = taglist.map((tag) => 'ti-' + tag);
-    let cached = await Storage.batchCheckLocalDB(tag_keys, TAG_EXPIRATION);
+    let cached = await Storage.batchCheckData(tag_keys, {expiration: TAG_EXPIRATION});
     let found_keys = Utility.arrayIntersection(tag_keys, Object.keys(cached));
     let missing_keys = Utility.arrayDifference(tag_keys, Object.keys(cached));
     printer.log("Cached implications:", found_keys);
@@ -756,7 +754,7 @@ function ValidateUpload() {
         return true;
     }
     let errormessages = [];
-    let ratingtag = Boolean(Utility.filterRegex(GetTagList(), /^rating:\w/, {negated: false}).length);
+    let ratingtag = Boolean(Utility.filterRegex(GetTagList(), /^rating:\w/).length);
     let ratingradio = $(".post_rating input").toArray().some((input) => input.checked);
     if (!ratingtag && !ratingradio) {
         errormessages.push("Must specify a rating.");
@@ -804,7 +802,7 @@ async function ValidateArtist() {
     } else {
         //Validate artists have entry
         let artist_keys = artist_names.map((name) => 'are-' + name);
-        let cached = await Storage.batchCheckLocalDB(artist_keys, ARTIST_EXPIRATION, 'are');
+        let cached = await Storage.batchCheckData(artist_keys, {expiration: ARTIST_EXPIRATION});
         let missing_keys = Utility.arrayDifference(artist_keys, Object.keys(cached));
         if (missing_keys.length === 0) {
             printer.log("No missing artists. [cache hit]");
@@ -866,7 +864,7 @@ function ValidateGeneral() {
 }
 
 function CleanupTasks() {
-    Storage.pruneProgramCache(PROGRAM_DATA_REGEX, PRUNE_EXPIRES);
+    Storage.pruneProgramCache();
 }
 
 //Settings functions
@@ -904,7 +902,7 @@ function RenderSettingsMenu() {
     $("#vti-cache-controls").append(Menu.renderLinkclick('cache_info', true));
     $('#vti-cache-controls').append(Menu.renderCacheInfoTable());
     $("#vti-cache-controls").append(Menu.renderLinkclick('purge_cache', true));
-    $('#vti-controls').append(Menu.renderCacheEditor(true));
+    $('#vti-controls').append(Menu.renderCacheEditor({has_cache_data: true}));
     $('#vti-cache-editor-message').append(Menu.renderExpandable("Program Data details", PROGRAM_DATA_DETAILS));
     $("#vti-cache-editor-controls").append(Menu.renderKeyselect('data_source', true));
     $("#vti-cache-editor-controls").append(Menu.renderDataSourceSections());
@@ -919,8 +917,8 @@ function RenderSettingsMenu() {
     Menu.expandableClick();
     Menu.dataSourceChange();
     Menu.rawDataChange();
-    Menu.getCacheClick(ValidateProgramData);
-    Menu.saveCacheClick(ValidateProgramData, ValidateEntry);
+    Menu.getCacheClick();
+    Menu.saveCacheClick();
     Menu.deleteCacheClick();
     Menu.listCacheClick();
     Menu.refreshCacheClick();
@@ -989,31 +987,27 @@ function Main() {
 
 /****Initialization****/
 
-//Variables for JSPLib
 JSPLib.data = VTI;
 JSPLib.name = PROGRAM_NAME;
 JSPLib.shortcut = PROGRAM_SHORTCUT;
+JSPLib.data_regex = PROGRAM_DATA_REGEX;
 JSPLib.default_data = DEFAULT_VALUES;
 JSPLib.settings_config = SETTINGS_CONFIG;
 
-//Variables for debug.js
 Debug.mode = false;
 Debug.level = Debug.INFO;
 
-//Variables for menu.js
-Menu.program_data_regex = PROGRAM_DATA_REGEX;
 Menu.program_data_key = PROGRAM_DATA_KEY;
 Menu.control_config = CONTROL_CONFIG;
 
-//Variables for storage.js
 Storage.indexedDBValidator = ValidateEntry;
+Storage.localSessionValidator = ValidateProgramData;
 
-//Export JSPLib
 Load.exportData({write_list: ['preedit_tags']});
 Load.exportFuncs({always_list: [ValidateTagAdds, ValidateTagRemoves, ValidateTagDeprecations, ValidateUpload, PreloadImplications]});
 
 /****Execution start****/
 
-Load.programInitialize(Main, {required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, optional_selectors: PROGRAM_LOAD_OPTIONAL_SELECTORS});
+Load.programInitialize(Main, {required_variables: LOAD_REQUIRED_VARIABLES, optional_selectors: LOAD_OPTIONAL_SELECTORS});
 
 })(JSPLib);

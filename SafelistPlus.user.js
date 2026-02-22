@@ -12,14 +12,14 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SafelistPlus.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SafelistPlus.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ */
@@ -523,7 +523,7 @@ class Safelist {
         return this.list.join('\n');
     }
     set tagstring(str) {
-        this.list = Utility.filterEmpty(str.split('\n').map($.trim));
+        this.list = Utility.filterRegex(str.split('\n').map($.trim), /[\s\S]+/);
         this.list = (this.list.length === 0 ? [''] : this.list);
     }
     /***Need to see how this works***/
@@ -587,7 +587,7 @@ class Safelist {
     //Hotkey dropdowns
     get renderedKeyselect() {
         let select1_items = MODIFIER_KEYS.map((key)=>{
-            return Utility.renderHTMLTag('option', Utility.titleizeString(key), {
+            return Utility.renderHTMLTag('option', Utility.titleize(key), {
                 value: key,
                 selected: (this.hotkey[0] === key ? null : undefined),
             });
@@ -771,8 +771,8 @@ class Safelist {
 //Validate constants
 
 const level_constraints = {
-    level: Validate.string_constraints(true, {minimum: 1}),
-    name: Validate.string_constraints(true, {minimum: 1}),
+    level: Validate.string_constraints({length: {minimum: 1}}),
+    name: Validate.string_constraints({length: {minimum: 1}}),
     css: Validate.stringonly_constraints,
     enabled: Validate.boolean_constraints,
     background: Validate.boolean_constraints,
@@ -793,7 +793,7 @@ function ValidateProgramData(key,entry) {
     var checkerror = [];
     switch (key) {
         case 'sl-user-settings':
-            checkerror = Menu.validateUserSettings(entry, SETTINGS_CONFIG);
+            checkerror = Load.validateUserSettings(entry, SETTINGS_CONFIG);
             break;
         case 'sl-level-data':
             checkerror = ValidateLevelData();
@@ -882,6 +882,21 @@ function SplitWords(string) {
 }
 
 //Auxiliary functions
+
+function CompareObjects(object1, object2) {
+    let difference = {};
+    for (let key in object1) {
+        if (Utility.isHash(object1[key])) {
+            let temp = CompareObjects(object1[key], object2[key]);
+            if (temp !== undefined) {
+                difference[key] = temp;
+            }
+        } else if (object1[key] !== object2[key]) {
+            difference[key] = {pre_val: object1[key], post_val: object2[key]};
+        }
+    }
+    return (Object.keys(difference).length > 0 ? difference : undefined);
+}
 
 function GetPostTags(post) {
     let $post = $(post);
@@ -999,7 +1014,7 @@ function RenderHelp(help_text) {
 function RenderButton(type, hint) {
     return Utility.renderHTMLTag('input', null, {
         type: 'submit',
-        value: Utility.titleizeString(type),
+        value: Utility.titleize(type),
         title: hint,
         class: `btn safelist-${type}`,
     });
@@ -1484,7 +1499,7 @@ function MenuSaveButton() {
     $(".safelist-namerow .btn").show();
     SaveLevelData();
     Notice.notice("Settings saved.");
-    let changed_settings = Utility.recurseCompareObjects(preconfig, SL.level_data);
+    let changed_settings = CompareObjects(preconfig, SL.level_data);
     SL.menu_items = CalculateRenderedMenus();
     let changed_menus = Boolean(Utility.arraySymmetricDifference(premenu.rendered_menus, SL.menu_items.rendered_menus).length);
     printer.log(changed_settings, changed_menus);
@@ -1747,8 +1762,8 @@ function RenderSettingsMenu() {
     Menu.cacheInfoClick();
     Menu.expandableClick();
     Menu.rawDataChange();
-    Menu.getCacheClick(ValidateProgramData);
-    Menu.saveCacheClick(ValidateProgramData);
+    Menu.getCacheClick();
+    Menu.saveCacheClick();
     Menu.deleteCacheClick();
     Menu.listCacheClick();
     Menu.refreshCacheClick();
@@ -1760,6 +1775,7 @@ function RenderSettingsMenu() {
 function Main() {
     Load.preloadScript({
         broadcast_func: BroadcastSL,
+        run_on_settings: true,
     });
     Menu.preloadMenu({
         menu_func: RenderSettingsMenu,

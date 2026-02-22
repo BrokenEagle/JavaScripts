@@ -12,18 +12,18 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/EventListener.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/EventListener.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ */
@@ -32,7 +32,8 @@
 
 const PROGRAM_NAME = 'EventListener';
 const PROGRAM_SHORTCUT = 'el';
-const EL = {};
+const DANBOORU_TOPIC_ID = 14747;
+const GITHUB_WIKI_PAGE = 'https://github.com/BrokenEagle/JavaScripts/wiki/EventListener';
 
 /****Library updates****/
 
@@ -40,24 +41,26 @@ const EL = {};
 
 /****Global variables****/
 
-//Exterior script variables
-const DANBOORU_TOPIC_ID = '14747';
-const SERVER_USER_ID = 502584;
+//Module constants
 
-//Variables for load.js
-const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.CurrentUser'];
-const PROGRAM_LOAD_REQUIRED_SELECTORS = ['#nav', '#page'];
+const EL = {};
 
-//Event types
+const DEFAULT_VALUES = {
+    events_page_open: false,
+    item_set: {},
+    user_set: {},
+    open_list: {},
+    page_events: {},
+    pages: {},
+    observed: {},
+};
+
 const SUBSCRIBE_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'flag', 'appeal', 'forum', 'wiki', 'pool', 'artist'];
 const USER_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'appeal', 'forum', 'wiki', 'pool', 'artist'];
 const ALL_SUBSCRIBES = Utility.arrayUnion(SUBSCRIBE_EVENTS, USER_EVENTS);
 const POST_QUERY_EVENTS = ['comment', 'note', 'commentary', 'post', 'approval', 'flag', 'appeal'];
 const OTHER_EVENTS = ['dmail', 'ban', 'feedback', 'mod_action'];
 const ALL_EVENTS = Utility.arrayUnique(Utility.multiConcat(POST_QUERY_EVENTS, SUBSCRIBE_EVENTS, OTHER_EVENTS));
-const ALL_SOURCES = ['subscribe', 'post-query', 'other'];
-
-//For factory reset
 const SOURCE_SUFFIXES = ['last-id', 'overflow', 'event-timeout', 'last-checked', 'last-seen', 'last-found'];
 const TYPE_KEYS = ALL_EVENTS.map((type) => [`el-${type}-saved-events`]);
 const SOURCE_KEYS = Utility.multiConcat(
@@ -67,9 +70,14 @@ const SOURCE_KEYS = Utility.multiConcat(
 );
 const SUBSCRIBE_KEYS = SUBSCRIBE_EVENTS.map((type) => ([`el-${type}-item-list`, `el-${type}-user-list`])).flat();
 const OTHER_KEYS = ['el-show-subscribe-links', 'el-new-events-notice', 'el-event-notice-shown'];
-const LOCALSTORAGE_KEYS = Utility.multiConcat(TYPE_KEYS, SOURCE_KEYS, SUBSCRIBE_KEYS, OTHER_KEYS);
+const STORAGE_RESET_KEYS = Utility.multiConcat(TYPE_KEYS, SOURCE_KEYS, SUBSCRIBE_KEYS, OTHER_KEYS);
 
-//Available setting values
+const LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.CurrentUser'];
+const LOAD_REQUIRED_SELECTORS = ['#nav', '#page'];
+
+//Setting constants
+
+const ALL_SOURCES = ['subscribe', 'post-query', 'other'];
 const SUBSCRIBE_ENABLE_EVENTS = ['comment', 'note', 'commentary', 'forum'];
 const USER_ENABLE_EVENTS = [];
 const POST_QUERY_ENABLE_EVENTS = [];
@@ -97,8 +105,8 @@ const MODACTION_EVENTS = [
     'site_credential_create', 'site_credential_delete', 'site_credential_enable', 'site_credential_disable',
     'email_address_update', 'backup_code_send',
 ];
+const SERVER_USER_ID = 502584;
 
-//Main settings
 const SETTINGS_CONFIG = {
     display_event_notice: {
         reset: true,
@@ -196,8 +204,8 @@ const SETTINGS_CONFIG = {
     },
     filter_users: {
         reset: "",
-        parse: (input) => (Utility.arrayUnique(input.split(/\s*,\s*/).map(Number).filter(Utility.validateID))),
-        validate: (input) => (Utility.validateIDList(input)),
+        parse: (input) => (Utility.arrayUnique(input.split(/\s*,\s*/).map(Number).filter(Utility.isID))),
+        validate: (input) => (Utility.isIDList(input)),
         hint: 'Enter a list of user IDs to filter (comma separated).'
     },
     recheck_interval: {
@@ -299,6 +307,7 @@ const CONTROL_CONFIG = {
 
 const MENU_CONFIG = {
     topic_id: DANBOORU_TOPIC_ID,
+    wiki_page: GITHUB_WIKI_PAGE,
     settings: [{
         name: 'general',
     }, {
@@ -321,18 +330,6 @@ const MENU_CONFIG = {
         message: "Except for some exceptions noted below, all events of this type are shown.",
     }],
     controls: [],
-};
-
-// Default values
-
-const DEFAULT_VALUES = {
-    events_page_open: false,
-    item_set: {},
-    user_set: {},
-    open_list: {},
-    page_events: {},
-    pages: {},
-    observed: {},
 };
 
 //CSS Constants
@@ -1603,7 +1600,7 @@ const VALIDATE_REGEXES = {
 };
 
 const EVENT_CONSTRAINTS = {
-    id: Validate.id_constraints,
+    id: Validate.positive_integer_constraints,
     match: Validate.array_constraints,
     seen: Validate.boolean_constraints,
 };
@@ -1619,7 +1616,7 @@ function ValidateProgramData(key, entry) {
     let validate_type = GetValidateType(key);
     switch (validate_type) {
         case 'setting':
-            error_messages = Menu.validateUserSettings(entry);
+            error_messages = Load.validateUserSettings(entry);
             break;
         case 'bool':
             if (!Utility.isBoolean(entry)) {
@@ -1634,12 +1631,12 @@ function ValidateProgramData(key, entry) {
             }
             break;
         case 'id':
-            if (!Utility.validateID(entry)) {
+            if (!Utility.isID(entry)) {
                 error_messages = ["Value is not a valid ID."];
             }
             break;
         case 'idlist':
-            if (!Utility.validateIDList(entry)) {
+            if (!Utility.isIDList(entry)) {
                 error_messages = ["Value is not a valid ID list."];
             }
             break;
@@ -1675,7 +1672,7 @@ function ValidateNotice(key, entry) {
     }
     let messages = [];
     for (let type in entry) {
-        if (!Utility.validateIDList(entry[type])) {
+        if (!Utility.isIDList(entry[type])) {
             messages.push([`${key}.${type} is not a valid ID list.`]);
         }
     }
@@ -1740,18 +1737,10 @@ function CorrectEvents(key, events) {
     return false;
 }
 
-function CorrectList(type, typelist) {
+function CorrectList(set_type, event_type) {
     const printer = Debug.getFunctionPrint('CorrectList');
-    let error_messages = [];
-    if (!Utility.validateIDList(typelist[type])) {
-        error_messages.push([`Corrupted data on ${type} list!`]);
-        let oldlist = Utility.deepCopy(typelist[type]);
-        typelist[type] = (Utility.isArray(typelist[type]) ? typelist[type].filter((id) => Utility.validateID(id)) : []);
-        Debug.execute(() => {
-            let validation_error = (Utility.isArray(oldlist) ? Utility.arrayDifference(oldlist, typelist[type]) : typelist[type]);
-            error_messages.push(["Validation error:", validation_error]);
-        });
-    }
+    let typelist = EL[set_type][event_type];
+    let error_messages = Validate.correctArrayValues(`${set_type}.${event_type}`, typelist, Validate.basic_ID_validator);
     if (error_messages.length) {
         error_messages.forEach((error) => {printer.warn(...error);});
         return true;
@@ -1760,6 +1749,44 @@ function CorrectList(type, typelist) {
 }
 
 //Helper functions
+
+function GetHTML(url, url_addons) {
+    const ajax_options = {
+        beforeSend (request) {
+            request.setRequestHeader('accept', 'text/html');
+        },
+    };
+    return Network.getNotify(url, {url_addons, ajax_options});
+}
+
+async function PromiseHashAll(promise_hash) {
+    const correlate = function (hash, parr = null) {
+        parr ??= [];
+        for (let key in hash) {
+            if (hash[key].constructor.name === 'Promise') {
+                parr.push(hash[key]);
+            } else if (Utility.isHash(hash[key])) {
+                correlate(hash[key], parr);
+            }
+        }
+        return parr;
+    };
+    const resolve = function (hash) {
+        let result = {};
+        for (let key in hash) {
+            if (hash[key].constructor.name === 'Promise') {
+                let index = promise_array.indexOf(hash[key]);
+                result[key] = result_array[index];
+            } else if (Utility.isHash(hash[key])) {
+                result[key] = resolve(hash[key]);
+            }
+        }
+        return result;
+    };
+    let promise_array = correlate(promise_hash);
+    let result_array = await Promise.all(promise_array);
+    return resolve(promise_hash);
+}
 
 function GetNewEventsHash(results_hash) {
     let new_events_hash = {};
@@ -1985,7 +2012,7 @@ function GetItemList(type, override = false) {
         return EL.item_set[type];
     }
     EL.item_set[type] = Storage.getLocalData(`el-${type}-item-list`, {default_val: []});
-    if (CorrectList(type, EL.item_set)) {
+    if (CorrectList('item_set', type)) {
         setTimeout(() => {
             Storage.setLocalData(`el-${type}-item-list`, EL.item_set[type]);
         }, NONSYNCHRONOUS_DELAY);
@@ -2016,7 +2043,7 @@ function GetUserList(type) {
         return EL.user_set[type];
     }
     EL.user_set[type] = Storage.getLocalData(`el-${type}-user-list`, {default_val: []});
-    if (CorrectList(type, EL.user_set)) {
+    if (CorrectList('user_set', type)) {
         setTimeout(() => {
             Storage.setLocalData(`el-${type}-user-list`, EL.user_set[type]);
         }, NONSYNCHRONOUS_DELAY);
@@ -2053,7 +2080,7 @@ function CheckUserList(type) {
 
 function SaveLastID(type, source, last_id) {
     const printer = Debug.getFunctionPrint('SaveLastID');
-    if (!Utility.validateID(last_id)) {
+    if (!Utility.isID(last_id)) {
         printer.warnLevel("Last ID for", type, "is not valid!", last_id, Debug.WARNING);
         return;
     }
@@ -3120,7 +3147,7 @@ async function AddDmailRow(dmail_id, $row) {
     let $outerblock = $(RenderOpenItemContainer('dmail', dmail_id, 7));
     let $td = $outerblock.find('td');
     $row.after($outerblock);
-    let dmail = await Network.getNotify(`/dmails/${dmail_id}`);
+    let dmail = await GetHTML(`/dmails/${dmail_id}`);
     if (dmail) {
         let $dmail = $.parseHTML(dmail);
         $('.dmail h1:first-of-type', $dmail).hide();
@@ -3134,12 +3161,7 @@ async function AddForumPostRow(forum_id, $row) {
     let $outerblock = $(RenderOpenItemContainer('forum', forum_id, 6));
     let $td = $outerblock.find('td');
     $row.after($outerblock);
-    let ajax_options = {
-        beforeSend (request) {
-            request.setRequestHeader('accept', 'text/html');
-        },
-    };
-    let forum_page = await Network.getNotify(`/forum_posts/${forum_id}`, {ajax_options});
+    let forum_page = await GetHTML(`/forum_posts/${forum_id}`);
     if (forum_page) {
         let $forum_page = $.parseHTML(forum_page);
         let $forum_post = $(`#forum_post_${forum_id}`, $forum_page);
@@ -3153,7 +3175,11 @@ async function AddWikiDiffRow(wiki_version_id, $row) {
     let $outerblock = $(RenderOpenItemContainer('wiki', wiki_version_id, 6));
     let $td = $outerblock.find('td');
     $row.after($outerblock);
-    let wiki_diff_page = await Network.getNotify('/wiki_page_versions/diff', {url_addons: {thispage: wiki_version_id, type: 'previous'}});
+    let url_addons = {
+        thispage: wiki_version_id,
+        type: 'previous'
+    };
+    let wiki_diff_page = await GetHTML('/wiki_page_versions/diff', url_addons);
     if (wiki_diff_page) {
         let $wiki_diff_page = $.parseHTML(wiki_diff_page);
         $td.empty().append($('#a-diff #content', $wiki_diff_page));
@@ -3167,7 +3193,7 @@ async function AddPoolDiffRow(pool_version_id, $row) {
     let $outerblock = $(RenderOpenItemContainer('pooldiff', pool_version_id, 9));
     let $td = $outerblock.find('td');
     $row.after($outerblock);
-    let pool_diff = await Network.getNotify(`/pool_versions/${pool_version_id}/diff`);
+    let pool_diff = await GetHTML(`/pool_versions/${pool_version_id}/diff`);
     if (pool_diff) {
         let $pool_diff = $.parseHTML(pool_diff);
         $td.empty().append($('#a-diff', $pool_diff));
@@ -3209,7 +3235,7 @@ async function AddPoolPostsRow(pool_version_id, $row) {
 
 async function GetHTMLPage(type, events) {
     let url_addons = GetHTMLAddons(type, events);
-    let type_html = await Network.getNotify(`/${TYPEDICT[type].controller}.html`, {url_addons});
+    let type_html = await GetHTML(`/${TYPEDICT[type].controller}`, url_addons);
     if (type_html) {
         let $parse = $.parseHTML(type_html);
         return DecodeProtectedEmail($parse);
@@ -3260,7 +3286,7 @@ async function AddModActionSubject(modactions) {
     const printer = Debug.getFunctionPrint('AddModActionSubject');
     if (modactions.length > 0) {
         let subject_dict = {};
-        modactions.filter((modaction) => Utility.validateID(modaction.subject_id)).forEach((modaction) => {
+        modactions.filter((modaction) => Utility.isID(modaction.subject_id)).forEach((modaction) => {
             let subject_type = Utility.snakeCase(modaction.subject_type);
             subject_dict[subject_type] ??= [];
             subject_dict[subject_type].push(modaction.subject_id);
@@ -3294,7 +3320,7 @@ async function AddModActionSubject(modactions) {
             printer.log("Querying modaction includes:", subject_type, query_ids.length);
             promise_hash[subject_type] = Danbooru.queryIDItems(config.controller, query_ids, QUERY_LIMIT, {id_addon: config.id_addon, other_addons, domname: selector});
         }
-        let result_hash = await Utility.promiseHashAll(promise_hash);
+        let result_hash = await PromiseHashAll(promise_hash);
         for (let subject_type in result_hash) {
             modactions.filter((modaction) => subject_dict[subject_type].includes(modaction.subject_id)).forEach((modaction) => {
                 modaction.subject = result_hash[subject_type].find((item) => item.id === modaction.subject_id);
@@ -3309,7 +3335,7 @@ async function GetEventThumbnails(post_ids) {
     for (let i = 0; i < post_ids.length; i += QUERY_LIMIT) {
         let query_ids = post_ids.slice(i, i + QUERY_LIMIT);
         let url_addons = {tags: `id:${query_ids.join(',')} status:any limit:${query_ids.length}`, size: 180, show_votes: false};
-        let html = await Network.getNotify('/posts', {url_addons});
+        let html = await GetHTML('/posts', url_addons);
         if (html) {
             let $posts = $.parseHTML(html);
             thumbnails = Utility.concat(thumbnails, [...$('.post-preview', $posts)]);
@@ -3415,7 +3441,7 @@ function CheckAll(event) {
                     }
                 });
             });
-            Utility.promiseHashAll(promise_hash).then((results_hash) => {
+            PromiseHashAll(promise_hash).then((results_hash) => {
                 for (let type in results_hash) {
                     for (let source in results_hash[type]) {
                         UpdateAfterCheck(type, source, results_hash[type][source]);
@@ -3452,7 +3478,7 @@ function ResetEvent(event) {
                     }
                 });
             });
-            Utility.promiseHashAll(promise_hash).then((results_hash) => {
+            PromiseHashAll(promise_hash).then((results_hash) => {
                 for (let type in results_hash) {
                     for (let source in results_hash[type]) {
                         UpdateEventSource(type, source, {broadcast: true});
@@ -3670,7 +3696,7 @@ function ProcessAllReadyEvents() {
             }
         }
     });
-    Utility.promiseHashAll(promise_hash).then((results_hash) => {
+    PromiseHashAll(promise_hash).then((results_hash) => {
         printer.log(results_hash);
         let all_new_events = false;
         for (let type in results_hash) {
@@ -3859,7 +3885,7 @@ function InitializeProgramValues() {
         printer.warnLevel("User must log in!", Debug.WARNING);
         return false;
     }
-    if (!Utility.isString(EL.user_name) || !Utility.validateID(EL.user_id)) {
+    if (!Utility.isString(EL.user_name) || !Utility.isID(EL.user_id)) {
         printer.warnLevel("Invalid meta variables!", Debug.WARNING);
         return false;
     }
@@ -3921,13 +3947,13 @@ function RenderSettingsMenu() {
     $("#el-cache-editor-controls").append(Menu.renderCheckbox('raw_data', true));
     $('#el-cache-editor-controls').append(Menu.renderTextinput('data_name', 20, true));
     Menu.engageUI({checkboxradio: true, sortable: true});
-    Menu.saveUserSettingsClick(InitializeChangedSettings);
-    Menu.resetUserSettingsClick(LOCALSTORAGE_KEYS, InitializeChangedSettings);
+    Menu.saveUserSettingsClick({local_callback: InitializeChangedSettings});
+    Menu.resetUserSettingsClick({delete_keys: STORAGE_RESET_KEYS, local_callback: InitializeChangedSettings});
     Menu.cacheInfoClick();
     Menu.expandableClick();
     Menu.rawDataChange();
-    Menu.getCacheClick(ValidateProgramData);
-    Menu.saveCacheClick(ValidateProgramData);
+    Menu.getCacheClick();
+    Menu.saveCacheClick();
     Menu.deleteCacheClick();
     Menu.listCacheClick();
     Menu.refreshCacheClick();
@@ -3943,6 +3969,7 @@ function Main() {
         program_css: PROGRAM_CSS,
         light_css: LIGHT_MODE_CSS,
         dark_css: DARK_MODE_CSS,
+        run_on_settings: true,
     });
     Menu.preloadMenu({
         menu_func: RenderSettingsMenu,
@@ -3968,30 +3995,25 @@ function Main() {
 
 /****Initialization****/
 
-//Variables for JSPLib
 JSPLib.data = EL;
 JSPLib.name = PROGRAM_NAME;
 JSPLib.shortcut = PROGRAM_SHORTCUT;
 JSPLib.default_data = DEFAULT_VALUES;
 JSPLib.settings_config = SETTINGS_CONFIG;
 
-//Variables for debug.js
 Debug.mode = false;
 Debug.level = Debug.INFO;
 
-//Variables for menu.js
 Menu.settings_callback = InitializeChangedSettings;
 Menu.reset_callback = InitializeChangedSettings;
 Menu.control_config = CONTROL_CONFIG;
 
-//Variables for storage.js
 Storage.localSessionValidator = ValidateProgramData;
 
-//Export JSPLib
 Load.exportData();
 
 /****Execution start****/
 
-Load.programInitialize(Main, {required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, required_selectors: PROGRAM_LOAD_REQUIRED_SELECTORS});
+Load.programInitialize(Main, {required_variables: LOAD_REQUIRED_VARIABLES, required_selectors: LOAD_REQUIRED_SELECTORS});
 
 })(JSPLib);

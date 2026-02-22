@@ -12,14 +12,14 @@
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SiteTagSearches.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SiteTagSearches.user.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/menu.js
 // ==/UserScript==
 
 /* global $ JSPLib */
@@ -49,26 +49,26 @@ const SOURCE_SITES = ['pixiv', 'twitter', 'tumblr', 'deviantart', 'E-Hentai', 'n
 const SETTINGS_CONFIG = {
     booru_sites_enabled: {
         allitems: BOORU_SITES,
-        get reset() {return this.allitems},
+        get reset() {return this.allitems;},
         validate (data) {return Menu.validateCheckboxRadio(data, 'checkbox', this.allitems);},
         hint: "Select to show booru type."
     },
     booru_sites_order: {
         allitems: BOORU_SITES,
-        get reset() {return this.allitems},
+        get reset() {return this.allitems;},
         sortvalue: true,
         validate (data) {return Utility.arrayEquals(data, this.allitems);},
         hint: "Set the order for how the booru sites appear in the tag popup."
     },
     source_sites_enabled: {
         allitems: SOURCE_SITES,
-        get reset() {return this.allitems},
+        get reset() {return this.allitems;},
         validate (data) {return Menu.validateCheckboxRadio(data, 'checkbox', this.allitems);},
         hint: "Select to show source type."
     },
     source_sites_order: {
         allitems: SOURCE_SITES,
-        get reset() {return this.allitems},
+        get reset() {return this.allitems;},
         sortvalue: true,
         validate (data) {return Utility.arrayEquals(data, this.allitems);},
         hint: "Set the order for how the source sites appear in the tag and other names popups."
@@ -265,6 +265,34 @@ const SITE_CONFIG = {
 
 /***Functions***/
 
+//Validate functions
+
+function ValidateProgramData(key, entry) {
+    const printer = Debug.getFunctionPrint('ValidateProgramData');
+    var error_messages = [];
+    switch (key) {
+        case 'sts-user-settings':
+            error_messages = Load.validateUserSettings(entry);
+            break;
+        case 'sts-custom-sites-total':
+            if (!Utility.isInteger(entry) || entry < 1 || entry > 20) {
+                error_messages = ['Must be an integer between 1 and 20.'];
+            }
+            break;
+        default:
+            error_messages = ["Is not exportable/importable."];
+    }
+    let $error_display = $('#sts-cache-editor-errors');
+    if (error_messages.length) {
+        let error_text = JSON.stringify(error_messages, null, 2);
+        printer.logLevel(key, ':\r\n', error_text, Debug.INFO);
+        $error_display.css('display', 'block').html(`<b>${key}:</b><br><pre>${error_text}</pre>`);
+        return false;
+    }
+    $error_display.css('display', 'none');
+    return true;
+}
+
 //Helper functions
 
 function IsWikiPage() {
@@ -406,8 +434,13 @@ function RenderSettingsMenu() {
             }
         });
     }
+    $('#sts-controls').append(Menu.renderCacheEditor({name: 'Cache data'}));
+    $('#sts-cache-editor-controls').append(Menu.renderLocalStorageSource());
+    $('#sts-cache-editor-controls').append(Menu.renderRawData());
     Menu.engageUI({checkboxradio: true, sortable: true});
     Menu.expandableClick();
+    Menu.getCacheClick();
+    Menu.saveCacheClick();
     Menu.saveUserSettingsClick();
     Menu.resetUserSettingsClick();
 }
@@ -447,6 +480,8 @@ JSPLib.settings_config = SETTINGS_CONFIG;
 
 Debug.mode = false;
 Debug.level = Debug.INFO;
+
+Storage.localSessionValidator = ValidateProgramData;
 
 Load.exportData();
 

@@ -14,18 +14,18 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/a732f8cb07173c58f573252366bbda0dadc3bc1d/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ CanvasJS */
@@ -48,18 +48,6 @@ const DANBOORU_TOPIC_ID = 15169;
 
 const CU = {};
 
-const STORAGE_RESET_KEYS = [
-    'cu-current-metric',
-    'cu-hide-current-uploads',
-    'cu-stash-current-uploads'
-];
-const PROGRAM_RESET_KEYS = {
-    checked_usernames: {},
-    checked_users: {user: {}, approver: {}},
-    user_copytags: {user: {}, approver: {}},
-    period_available: {user: {}, approver: {}},
-    reverse_implications: {},
-};
 const DEFAULT_VALUES = {
     usertag: 'user',
     counttype: 'uploads',
@@ -67,10 +55,26 @@ const DEFAULT_VALUES = {
     copyright_period: 'd',
 };
 
+const PROGRAM_RESET_KEYS = {
+    checked_usernames: {},
+    checked_users: {user: {}, approver: {}},
+    user_copytags: {user: {}, approver: {}},
+    period_available: {user: {}, approver: {}},
+    reverse_implications: {},
+};
+
+const STORAGE_RESET_KEYS = [
+    'cu-current-metric',
+    'cu-hide-current-uploads',
+    'cu-stash-current-uploads'
+];
+
+const PROGRAM_DATA_REGEX = /^rti-|ct(d|w|mo|y|at)-|(daily|weekly|monthly|yearly|alltime|previous)-(uploads|approvals)-/;
+
 const LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.CurrentUser'];
 const LOAD_REQUIRED_SELECTORS = ["#top", "#page-footer"];
 
-const PROGRAM_DATA_REGEX = /^rti-|ct(d|w|mo|y|at)-|(daily|weekly|monthly|yearly|alltime|previous)-(uploads|approvals)-/;
+//Setting constants
 
 const SETTINGS_CONFIG = {
     copyrights_merge: {
@@ -114,8 +118,8 @@ const CONTROL_CONFIG = {
         hint: `Dumps all of the cached data related to ${PROGRAM_NAME}.`,
     },
     data_source: {
-        allitems: ['indexed_db', 'local_storage'],
-        value: 'indexed_db',
+        allitems: ['local_storage', 'indexed_db'],
+        value: 'local_storage',
         hint: "Indexed DB is <b>Cache Data</b> and Local Storage is <b>Program Data</b>.",
     },
     data_type: {
@@ -678,8 +682,8 @@ const post_fields = "id,score,up_score,down_score,fav_count,tag_count,tag_count_
 //Validation values
 
 const validation_constraints = {
-    countentry: Validate.counting_constraints,
-    implicationentry: Validate.counting_constraints,
+    countentry: Validate.nonnegative_integer_constraints,
+    implicationentry: Validate.nonnegative_integer_constraints,
     postentries: Validate.array_constraints,
     statentries: Validate.hash_constraints,
     postentry: [
@@ -733,7 +737,7 @@ const validation_constraints = {
 
 function BuildValidator(validation_key) {
     return {
-        expires: Validate.expires_constraints,
+        expires: Validate.nonnegative_integer_constraints,
         value: validation_constraints[validation_key]
     };
 }
@@ -815,7 +819,7 @@ function ValidateProgramData(key, entry) {
     var checkerror = [];
     switch (key) {
         case 'cu-user-settings':
-            checkerror = Menu.validateUserSettings(entry, SETTINGS_CONFIG);
+            checkerror = Load.validateUserSettings(entry, SETTINGS_CONFIG);
             break;
         case 'cu-prune-expires':
             if (!Utility.isInteger(entry)) {
@@ -964,7 +968,7 @@ function RenderCopyrights(period) {
 function RenderCopyrightControls() {
     let controls = copyright_periods.map((period) => {
         let period_name = period_info.longname[period];
-        return COPYRIGHT_CONTROL_TEMPLATE({period, text: Utility.titleizeString(period_name)});
+        return COPYRIGHT_CONTROL_TEMPLATE({period, text: Utility.titleize(period_name)});
     });
     controls.push(COPYRIGHT_CONTROL_TEMPLATE({period: 'manual', text: 'Manual'}));
     return controls.join('');
@@ -981,7 +985,7 @@ function RenderTooltipData(text, period, limited = false) {
 }
 
 function RenderAllTooltipControls() {
-    return tooltip_metrics.map((metric) => TOOLTIP_CONTROL_TEMPLATE({metric, text: Utility.titleizeString(metric)})).join('');
+    return tooltip_metrics.map((metric) => TOOLTIP_CONTROL_TEMPLATE({metric, text: Utility.titleize(metric)})).join('');
 }
 
 function RenderStatistics(key, attribute, period, limited = false) {
@@ -1110,14 +1114,14 @@ function GetPostStatistics(posts, attribute) {
 
 function AssignPostIndexes(period, posts, time_offset) {
     let points = period_info.points[period];
-    //Have to do it this way to avoid getting the same object
-    let periods = Utility.arrayFill(points, "[]");
+    let periods = Array(length).fill().map(() => []);
     posts.forEach((post) => {
         let index = Math.floor((Date.now() - post.created - time_offset) / (period_info.divisor[period]));
         index = (points ? Math.min(points - 1, index) : index);
         index = Math.max(0, index);
         if (index >= periods.length) {
-            periods = periods.concat(Utility.arrayFill(index + 1 - periods.length, "[]"));
+            let empty_periods = Array(index + 1 - periods.length).fill().map(() => []);
+            periods = Utility.concat(periods, empty_periods);
         }
         periods[index].push(post);
     });
@@ -1278,7 +1282,7 @@ function CheckPeriodUploads() {
         }
         let data_key = GetPeriodKey(period_info.longname[period]);
         let max_expires = period_info.uploadexpires[period];
-        let check_promise = Storage.checkLocalDB(data_key, {max_expires}).then((check) => {checkPeriod(data_key, period, check);});
+        let check_promise = Storage.checkData(data_key, {max_expires}).then((check) => {checkPeriod(data_key, period, check);});
         promise_array.push(check_promise);
     }
     return Promise.all(promise_array);
@@ -1358,7 +1362,7 @@ function TableMessage(message) {
 async function GetReverseTagImplication(tag) {
     let printer = Debug.getFunctionPrint('GetReverseTagImplication');
     var key = 'rti-' + tag;
-    var check = await Storage.checkLocalDB(key, {max_expires: rti_expiration});
+    var check = await Storage.checkData(key, {max_expires: rti_expiration});
     if (!(check)) {
         printer.log("Network:", key);
         let data = await Danbooru.query('tag_implications', {search: {antecedent_name: tag}, only: id_field}, {default_val: [], key});
@@ -1372,7 +1376,7 @@ async function GetCount(type, tag) {
     let printer = Debug.getFunctionPrint('GetCount');
     let max_expires = period_info.countexpires[type];
     var key = 'ct' + type + '-' + tag;
-    var check = await Storage.checkLocalDB(key, {max_expires});
+    var check = await Storage.checkData(key, {max_expires});
     if (!(check)) {
         printer.log("Network:", key);
         return Danbooru.query('counts/posts', {tags: BuildTagParams(type, tag), skip_cache: true}, {default_val: {counts: {posts: 0}}, key})
@@ -1387,7 +1391,7 @@ async function GetPeriodUploads(username, period, limited = false, domname = nul
     let period_name = period_info.longname[period];
     let max_expires = period_info.uploadexpires[period];
     let key = GetPeriodKey(period_name);
-    var check = await Storage.checkLocalDB(key, {max_expires});
+    var check = await Storage.checkData(key, {max_expires});
     if (!(check)) {
         printer.log(`Network (${period_name} ${CU.counttype})`);
         let data = await GetPostsCountdown(BuildTagParams(period, `${CU.usertag}:${username}`), max_post_limit_query, post_fields, domname);
@@ -1777,7 +1781,7 @@ async function ProcessUploads() {
     let previous_key = GetPeriodKey("previous");
     if (current_uploads.length) {
         let is_new_tab = Storage.getIndexedSessionData(previous_key) === null;
-        let previous_uploads = await Storage.checkLocalDB(previous_key, {default_val: {value: []}});
+        let previous_uploads = await Storage.checkData(previous_key, {default_val: {value: []}});
         previous_uploads = PostDecompressData(previous_uploads.value);
         let current_ids = Utility.getObjectAttributes(current_uploads, 'id');
         let previous_ids = Utility.getObjectAttributes(previous_uploads, 'id');
@@ -1910,7 +1914,7 @@ function RenderSettingsMenu() {
     $("#cu-cache-controls").append(Menu.renderLinkclick('cache_info', true));
     $('#cu-cache-controls').append(Menu.renderCacheInfoTable());
     $("#cu-cache-controls").append(Menu.renderLinkclick('purge_cache', true));
-    $('#cu-controls').append(Menu.renderCacheEditor(true));
+    $('#cu-controls').append(Menu.renderCacheEditor({has_cache_data: true}));
     $('#cu-cache-editor-message').append(Menu.renderExpandable("Program Data details", PROGRAM_DATA_DETAILS));
     $("#cu-cache-editor-controls").append(Menu.renderKeyselect('data_source', true));
     $("#cu-cache-editor-controls").append(Menu.renderDataSourceSections());
@@ -1928,8 +1932,8 @@ function RenderSettingsMenu() {
     Menu.dataSourceChange();
     $("#cu-control-data-type").on(JSPLib.event.change, DataTypeChange);
     Menu.rawDataChange();
-    Menu.getCacheClick(ValidateProgramData);
-    Menu.saveCacheClick(ValidateProgramData, ValidateEntry);
+    Menu.getCacheClick();
+    Menu.saveCacheClick();
     Menu.deleteCacheClick();
     Menu.listCacheClick();
     Menu.refreshCacheClick();
@@ -1944,6 +1948,7 @@ function Main() {
         program_css: PROGRAM_CSS,
         light_css: LIGHT_MODE_CSS,
         dark_css: DARK_MODE_CSS,
+        run_on_settings: true,
     });
     Menu.preloadMenu({
         menu_func: RenderSettingsMenu,

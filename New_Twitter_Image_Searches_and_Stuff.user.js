@@ -18,20 +18,20 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/saucenao.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/menu.js
 // @resource     jquery_ui_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/jquery_ui_custom.css
 // @resource     jquery_qtip_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.css
 // @grant        GM_getResourceText
@@ -51,6 +51,7 @@
 const PROGRAM_FULL_NAME = "New Twitter Image Searches and Stuff";
 const PROGRAM_NAME = 'NTISAS';
 const PROGRAM_SHORTCUT = 'ntisas';
+const DANBOORU_TOPIC_ID = 16342;
 
 /****Library updates****/
 
@@ -58,59 +59,10 @@ const PROGRAM_SHORTCUT = 'ntisas';
 
 /****Global variables****/
 
-//Exterior script variables
+//Module constants
 
-const DANBOORU_TOPIC_ID = '16342';
-
-//Variables for load.js
-const PROGRAM_LOAD_REQUIRED_SELECTORS = ['[role=region]'];
-
-//Variables for storage.js
-Storage.twitterstorage = localforage.createInstance({
-    name: 'Twitter storage',
-    driver: [localforage.INDEXEDDB]
-});
-Storage.batchstorage = localforage.createInstance({
-    name: 'Batch storage',
-    driver: [localforage.INDEXEDDB]
-});
-Storage.localforage = localforage.createInstance({
-    name: 'localforage',
-    driver: [localforage.INDEXEDDB]
-});
-
-//Main program variable
 const NTISAS = {};
 
-//Program data constants
-const PROGRAM_DATA_REGEX = /^(post|user|view|tweet|twuser|twimg|ntisas-available-sauce)-/; //Regex that matches the prefix of all program cache data
-
-//For factory reset !!!These need to be set!!!
-const LOCALSTORAGE_KEYS = [
-    'ntisas-side-selection',
-    'ntisas-database-length',
-    'ntisas-user-data',
-    'ntisas-color-style',
-    'ntisas-recent-timestamp',
-    //Boolean
-    'ntisas-overflow',
-    //Last ID
-    'ntisas-postver-lastid',
-    'ntisas-badver-lastid',
-    //Timeouts
-    'ntisas-timeout',
-    'ntisas-length-recheck',
-    'ntisas-badver-recheck',
-    'ntisas-user-profile-recheck',
-    'ntisas-prune-expires',
-    //Semaphore
-    'ntisas-process-semaphore-badvers',
-    'ntisas-process-semaphore-records',
-    'ntisas-process-semaphore-postvers',
-];
-const PROGRAM_RESET_KEYS = {
-    page_stats: {},
-};
 const PROGRAM_DEFAULT_VALUES = {
     tweet_qtip: {},
     image_anchor: {},
@@ -132,11 +84,55 @@ const PROGRAM_DEFAULT_VALUES = {
     storage_data: {danbooru: {}, twitter: {}},
 };
 
-//Settings constants
+const PROGRAM_RESET_KEYS = {
+    page_stats: {},
+};
+
+const STORAGE_RESET_KEYS = [
+    'ntisas-side-selection',
+    'ntisas-database-length',
+    'ntisas-user-data',
+    'ntisas-color-style',
+    'ntisas-recent-timestamp',
+    //Boolean
+    'ntisas-overflow',
+    //Last ID
+    'ntisas-postver-lastid',
+    'ntisas-badver-lastid',
+    //Timeouts
+    'ntisas-timeout',
+    'ntisas-length-recheck',
+    'ntisas-badver-recheck',
+    'ntisas-user-profile-recheck',
+    'ntisas-prune-expires',
+    //Semaphore
+    'ntisas-process-semaphore-badvers',
+    'ntisas-process-semaphore-records',
+    'ntisas-process-semaphore-postvers',
+];
+
+const PROGRAM_DATA_REGEX = /^(post|user|view|tweet|twuser|twimg|ntisas-available-sauce)-/; //Regex that matches the prefix of all program cache data
+
+const LOAD_REQUIRED_SELECTORS = ['[role=region]'];
+
+Storage.twitterstorage = localforage.createInstance({
+    name: 'Twitter storage',
+    driver: [localforage.INDEXEDDB]
+});
+Storage.batchstorage = localforage.createInstance({
+    name: 'Batch storage',
+    driver: [localforage.INDEXEDDB]
+});
+Storage.localforage = localforage.createInstance({
+    name: 'localforage',
+    driver: [localforage.INDEXEDDB]
+});
+
+//Setting constants
+
 const COMMON_QUERY_SETTINGS = ['pick_image', 'confirm_save', 'auto_save'];
 const DEFAULT_QUERY_SETTINGS = ['pick_image', 'confirm_save'];
 
-//Main settings
 const SETTINGS_CONFIG = {
     IQDB_settings: {
         allitems: COMMON_QUERY_SETTINGS,
@@ -159,13 +155,13 @@ const SETTINGS_CONFIG = {
     similarity_cutoff: {
         reset: 80.0,
         parse: parseFloat,
-        validate: (data) => Utility.isNumber(data) && data > 0 && data < 100,
+        validate: (data) => Menu.validateNumber(data, {integer: false: minimum: 0.0, maximum: 100.0}),
         hint: "Minimum similiarity score of an image match to return. Valid values: 0 - 100."
     },
     results_returned: {
         reset: 5,
         parse: parseInt,
-        validate: (data) => Utility.isInteger(data) && data > 0 && data <= 20,
+        validate: (data) => Menu.validateNumber(data, {integer: true: minimum: 1, maximum: 20}),
         hint: "Maximum number of results to return per image. Valid values: 1 - 20."
     },
     URL_wildcards_enabled: {
@@ -176,7 +172,7 @@ const SETTINGS_CONFIG = {
     recheck_interval: {
         reset: 10,
         parse: parseInt,
-        validate: (data) => Utility.isInteger(data) && data >= 5,
+        validate: (data) => Menu.validateNumber(data, {integer: true: minimum: 5}),
         hint: "Number of minutes. Valid values: >= 5. How often to check post versions once up to date."
     },
     custom_order_enabled: {
@@ -185,9 +181,9 @@ const SETTINGS_CONFIG = {
         hint: "Multi-post results will use <span class=\"ntisas-code\">order:custom</span>, showing results with Twitter's order. <b>Note:</b> This will break the tag limit for non-Gold+."
     },
     query_subdomain: {
-        allitems: Menu.domains,
+        allitems: JSPLib.domains,
         reset: ['danbooru'],
-        validate: (data) => Menu.validateCheckboxRadio(data, 'radio', Menu.domains),
+        validate: (data) => Menu.validateCheckboxRadio(data, 'radio', JSPLib.domains),
         hint: "Select which subdomain of Danbooru to query from. <b>Note:</b> The chosen subdomain must be logged into or the script will fail to work."
     },
     auto_unhide_tweets_enabled: {
@@ -268,7 +264,6 @@ const SETTINGS_CONFIG = {
     },
 };
 
-const ALL_IMPORT_TYPES = ['program_data', 'tweet_database'];
 const CONTROL_CONFIG = {
     import_data: {
         display: `Import data (<span id="${PROGRAM_SHORTCUT}-import-counter">...</span>)`,
@@ -276,8 +271,8 @@ const CONTROL_CONFIG = {
         hint: "Imports a JSON file containing cache and program data.",
     },
     export_types: {
-        allitems: ALL_IMPORT_TYPES,
-        value: ALL_IMPORT_TYPES,
+        allitems: ['program_data', 'tweet_database'],
+        get value() {return this.allitems;},
         hint: "Select which types to export.",
     },
     export_data: {
@@ -303,7 +298,7 @@ const BASE_PREVIEW_WIDTH = 160;
 const POST_PREVIEW_DIMENSION = 150;
 const TWEET_PREVIEW_DIMENSION = 300;
 
-const PROGRAM_CSS = `
+const PROGRAM_CSS = Template.normalizeCSS()`
 /**General*/
 :root {
     --menu-height: 100px;
@@ -474,7 +469,7 @@ const PROGRAM_CSS = `
     letter-spacing: -1px;
     position: absolute;
     left: 29.25em;
-    height: 4em;
+    height: 6em;
     padding: 7px;
     width: 18em;
     top: -1em;
@@ -977,17 +972,7 @@ const PROGRAM_CSS = `
     font-size: 14px;
 }`;
 
-const NOTICE_CSS = `
-div#ntisas-notice.ui-state-highlight {
-    color: #5f3f3f;
-    background-color: #fffbbf;
-    border: 1px solid #ccc999;
-}
-div#ntisas-notice.ui-state-error {
-    color: #5f3f3f;
-    background-color: #fddfde;
-    border: 1px solid #fbc7c6;
-}
+const NOTICE_CSS = Template.normalizeCSS()`
 div#ntisas-notice {
     border: 1px solid #dad55e;
     background: #fffa90;
@@ -995,6 +980,16 @@ div#ntisas-notice {
     z-index: 1050;
     max-height: 90vh;
     overflow: auto;
+    &.ui-state-highlight {
+        color: #5f3f3f;
+        background-color: #fffbbf;
+        border: 1px solid #ccc999;
+    }
+    &.ui-state-error {
+        color: #5f3f3f;
+        background-color: #fddfde;
+        border: 1px solid #fbc7c6;
+    }
 }
 #ntisas-close-notice-link {
     bottom: 0;
@@ -1017,7 +1012,7 @@ const IMAGE_NUMBER_CSS = `
     color: rgba(255,255,255,0.6);
 }`;
 
-const MENU_CSS = `
+const MENU_CSS = Template.normalizeCSS()`
 #new-twitter-image-searches-and-stuff {
     z-index: 1001;
     font-size: 14px;
@@ -1160,7 +1155,7 @@ const MENU_CSS = `
     margin-left: 2em;
 }`;
 
-const COLOR_CSS = `
+const COLOR_CSS = Template.normalizeCSS()`
 /**General**/
 .ntisas-code {
     background-color: %TEXT10%;
@@ -1189,12 +1184,12 @@ const COLOR_CSS = `
 }
 #ntisas-menu-selection {
     background-color: %TEXT10%;
-}
-#ntisas-menu-selection a {
-    color: %TEXT50%;
-}
-#ntisas-menu-selection a.ntisas-selected {
-    color: %BASECOLOR%;
+    a {
+        color: %TEXT50%;
+        &.ntisas-selected {
+            color: %BASECOLOR%;
+        }
+    }
 }
 #ntisas-menu-info td:nth-of-type(3),
 #ntisas-menu-controls td:nth-of-type(3) {
@@ -1209,22 +1204,21 @@ const COLOR_CSS = `
 #ntisas-tweet-stats-message {
     color: %TEXT20%;
 }
-#ntisas-tweet-stats-table th {
-    color: %TEXT50%;
-}
-#ntisas-tweet-stats-table th a {
-    color: %BASECOLOR%;
-}
-#ntisas-tweet-stats-table th a {
-    border-color: %BASECOLOR%;
-}
-#ntisas-tweet-stats-table th a:hover {
-    background-color: %BASE20%;
-}
-#ntisas-tweet-stats-table td {
-    color: %TEXTCOLOR%;
-    border-color: %TEXT50%;
-    background-color: %TEXTINPUT%;
+#ntisas-tweet-stats-table {
+    th {
+        color: %TEXT50%;
+        a {
+            color: %BASECOLOR%;
+            &:hover {
+                background-color: %BASE20%;
+            }
+        }
+    }
+    td {
+        color: %TEXTCOLOR%;
+        border-color: %TEXT50%;
+        background-color: %TEXTINPUT%;
+    }
 }
 #ntisas-open-settings input[type=button] {
     color: %TEXTCOLOR%;
@@ -1379,7 +1373,7 @@ const COLOR_CSS = `
     color: %BASECOLOR%;
 }`;
 
-const MENU_COLOR_CSS = `
+const MENU_COLOR_CSS = Template.normalizeCSS()`
 /**Settings menu**/
 #new-twitter-image-searches-and-stuff a {
     color: %BASECOLOR%;
@@ -2400,27 +2394,27 @@ const MENU_DIALOG_BUTTONS = {
 const POST_CONSTRAINTS = {
     entry: Validate.hashentry_constraints,
     value: {
-        id: Validate.id_constraints,
-        uploaderid: Validate.id_constraints,
+        id: Validate.positive_integer_constraints,
+        uploaderid: Validate.positive_integer_constraints,
         uploadername: Validate.stringonly_constraints,
         score: Validate.integer_constraints,
-        favcount: Validate.counting_constraints,
+        favcount: Validate.nonnegative_integer_constraints,
         rating: Validate.inclusion_constraints(['g', 's', 'q', 'e']),
         tags: Validate.stringonly_constraints,
-        created: Validate.counting_constraints,
+        created: Validate.positive_integer_constraints,
         thumbnail: Validate.stringonly_constraints,
         source: Validate.stringonly_constraints,
         ext: Validate.inclusion_constraints(['jpg', 'png', 'gif', 'mp4', 'webm']),
-        size: Validate.counting_constraints,
-        width: Validate.counting_constraints,
-        height: Validate.counting_constraints
+        size: Validate.positive_integer_constraints,
+        width: Validate.positive_integer_constraints,
+        height: Validate.positive_integer_constraints
     }
 };
 
 const USER_CONSTRAINTS = {
     entry: Validate.hashentry_constraints,
     value: {
-        id: Validate.id_constraints,
+        id: Validate.positive_integer_constraints,
         name: Validate.stringonly_constraints,
     }
 };
@@ -2437,27 +2431,27 @@ const TWEET_CONSTRAINTS = {
 const TWIMG_CONSTRAINTS = {
     entry: Validate.hashentry_constraints,
     value: {
-        size: Validate.counting_constraints,
-        width: Validate.counting_constraints,
-        height: Validate.counting_constraints,
+        size: Validate.positive_integer_constraints,
+        width: Validate.positive_integer_constraints,
+        height: Validate.positive_integer_constraints,
     }
 };
 
 const VIEW_CONSTRAINTS = {
     entry: Validate.hashentry_constraints,
     value: {
-        count: Validate.counting_constraints,
-        viewed: Validate.counting_constraints,
+        count: Validate.positive_integer_constraints,
+        viewed: Validate.positive_integer_constraints,
     },
 };
 
 const TWUSER_CONSTRAINTS = {
-    expires: Validate.expires_constraints,
+    expires: Validate.nonnegative_integer_constraints,
     value: Validate.stringonly_constraints,
 };
 
 const SAUCE_CONSTRAINTS = {
-    expires: Validate.expires_constraints,
+    expires: Validate.nonnegative_integer_constraints,
     value: Validate.integer_constraints
 };
 
@@ -2468,11 +2462,13 @@ const COLOR_CONSTRAINTS = {
 };
 
 const PROFILE_CONSTRAINTS = {
-    id: Validate.id_constraints,
-    level: Validate.id_constraints,
+    id: Validate.positive_integer_constraints,
+    level: Validate.positive_integer_constraints,
 };
 
 /****Functions****/
+
+//Validate functions
 
 function ValidateEntry(key, entry) {
     let printer = Debug.getFunctionPrint('ValidateEntry');
@@ -2540,7 +2536,7 @@ function ValidateProgramData(key, entry) {
     var checkerror = [], check;
     switch (key) {
         case 'ntisas-user-settings':
-            checkerror = Menu.validateUserSettings(entry);
+            checkerror = Load.validateUserSettings(entry);
             break;
         case 'ntisas-database-length':
             if (!Utility.isInteger(entry)) {
@@ -2564,7 +2560,7 @@ function ValidateProgramData(key, entry) {
             break;
         case 'ntisas-postver-lastid':
         case 'ntisas-badver-lastid':
-            if (!Utility.validateID(entry)) {
+            if (!Utility.isID(entry)) {
                 checkerror = ["Value is not a valid ID."];
             }
             break;
@@ -2742,7 +2738,7 @@ async function GetNormalImageURL(image_info) {
             Notice.debugNoticeLevel("Webp image detected.", Debug.DEBUG);
             for (let ext of ['jpg', 'png']) {
                 let image_url = `https://pbs.twimg.com/${image_info.path}/${image_info.key}.${ext}`;
-                let dimensions = await Utility.GetImageDimensions(image_url);
+                let dimensions = await GetImageDimensions(image_url);
                 if (dimensions) {
                     NTISAS.known_extensions[image_info.key] = ext;
                     break;
@@ -2765,6 +2761,7 @@ function GetSingleImageInfo(tweet_id) {
         let image = GetMediaTweet(tweet_id).find('img').get(0);
         if (image?.complete && Utility.isString(image.src)) {
             let image_info = GetImageURLInfo(image.src);
+            if (image_info === null) return [];
             GetSingleImageInfo.memoized[tweet_id] = [{partial_image: image_info.path + '/' + image_info.key + '.' + image_info.ext}];
         } else {
             return [];
@@ -2798,6 +2795,51 @@ function PostExpiration(created_timestamp) {
 }
 
 //Auxiliary functions
+
+function IsScrolledIntoView(domnode) {
+    const view_percentage = 0.75;
+    let docViewTop = JSPLib._window.scrollY;
+    let docViewBottom = docViewTop + JSPLib._window.innerHeight;
+    let {top: elemTop} = Utility.getElemPosition(domnode);
+    let elemBottom = elemTop + domnode.offsetHeight;
+    if ((elemBottom <= docViewBottom) && (elemTop >= docViewTop)) {
+        //Is element entirely within view?
+        return true;
+    }
+    if ((elemBottom >= docViewBottom) && (elemTop <= docViewTop)) {
+        //Does element fill up the view?
+        return true;
+    }
+    if ((elemTop >= docViewTop) && (elemTop <= docViewBottom)) {
+        //Does the top portion of the element fill up a certain percentage of the view?
+        return ((docViewBottom - elemTop) / (docViewBottom - docViewTop)) > view_percentage;
+    }
+    if ((elemBottom >= docViewTop) && (elemBottom <= docViewBottom)) {
+        //Does the bottom portion of the element fill up a certain percentage of the view?
+        return ((elemBottom - docViewTop) / (docViewBottom - docViewTop)) > view_percentage;
+    }
+    return false;
+}
+
+function CreateStatusPromise() {
+    const promiseState = function (promise) {
+        const pendingState = {status: 'pending'};
+        return Promise.race([promise, pendingState]).then(
+            (value) => (value === pendingState ? value : {status: 'resolved', value}),
+            (reason) => ({status: 'rejected', reason}),
+        );
+    };
+    const ret = Utility.createPromise();
+    const timer = Utility.initializeInterval(() => {
+        promiseState(ret.promise).then((state) => {
+            ret.status = state.status;
+            if (ret.status !== 'pending') {
+                clearInterval(timer);
+            }
+        });
+    }, 100);
+    return ret;
+}
 
 function BigIntMin(...args) {
     return args.reduce((min, comp) => (min < comp ? min : comp));
@@ -2847,7 +2889,7 @@ function PromptSavePostIDs(tweet_id, message, initial_post_ids) {
         let confirm_post_ids = Utility.arrayUnique(
             prompt_string.split(',')
                 .map(Number)
-                .filter((num) => Utility.validateID(num))
+                .filter((num) => Utility.isID(num))
         );
         printer.log("Confirmed IDs:", confirm_post_ids);
         if (confirm_post_ids.length === 0) {
@@ -2876,22 +2918,22 @@ function UpdateUserIDCallback() {
     if (NTISAS.update_user_id?.timer) {
         clearInterval(NTISAS.update_user_id?.timer);
     }
-    Storage.checkLocalDB('twuser-' + NTISAS.account).then((storage_data) => {
+    Storage.checkData('twuser-' + NTISAS.account).then((storage_data) => {
         if (!storage_data) {
             NTISAS.update_user_id = Utility.recheckInterval({
                 check: () => $('[src*="/profile_banners/"], [href^="/i/connect_people?user_id="]').length,
                 success: () => {
                     let $obj = $('[src*="/profile_banners/"]');
                     if ($obj.length) {
-                        NTISAS.user_id = Utility.safeMatch($obj.attr('src'), BANNER_REGEX, 1);
+                        NTISAS.user_id = Utility.safeMatch($obj.attr('src'), BANNER_REGEX, {group: 1});
                     } else {
-                        NTISAS.user_id = Utility.safeMatch($('[href^="/i/connect_people?user_id="]').attr('href'), /\d+/, 0);
+                        NTISAS.user_id = Utility.safeMatch($('[href^="/i/connect_people?user_id="]').attr('href'), /\d+/);
                     }
                     let expires = Utility.getExpires(TWUSER_EXPIRES);
                     Storage.saveData('twuser-' + NTISAS.account, {value: NTISAS.user_id, expires});
                 },
                 fail: () => {
-                    Notice.createError("User ID not found!");
+                    Notice.error("User ID not found!");
                 },
                 interval: TIMER_POLL_INTERVAL,
                 duration: USER_ID_CALLBACK,
@@ -3062,7 +3104,7 @@ function UpdateSideMenuSelection() {
 }
 
 function DisplayControl(control, all_controls, type) {
-    let all_selectors = Utility.joinList(all_controls, {prefix: '#ntisas-', suffix: '-' + type, joiner: ',');
+    let all_selectors = Utility.joinList(all_controls, {prefix: '#ntisas-', suffix: '-' + type, joiner: ','});
     $(all_selectors).hide();
     setTimeout(() => {$(`#ntisas-${control}-${type}`).show();}, JQUERY_DELAY);
 }
@@ -3352,7 +3394,7 @@ async function CheckPostvers() {
         SavePostvers(add_entries, rem_entries);
         let lastid = Danbooru.getNextPageID(post_versions, true);
         //Since the post version last ID is critical, an extra sanity check has been added
-        if (Utility.validateID(lastid)) {
+        if (Utility.isID(lastid)) {
             Storage.setLocalData('ntisas-postver-lastid', lastid);
             let all_timestamps = Utility.getObjectAttributes(post_versions, 'updated_at');
             let normal_timestamps = all_timestamps.map((timestamp) => (new Date(timestamp).getTime()));
@@ -3384,7 +3426,7 @@ async function CheckServerBadTweets() {
             SavePostvers(add_entries, rem_entries);
             let lastid = Danbooru.getNextPageID(post_versions, true);
             //Since the post version last ID is critical, an extra sanity check has been added
-            if (Utility.validateID(lastid)) {
+            if (Utility.isID(lastid)) {
                 Storage.setLocalData('ntisas-badver-lastid', lastid);
                 InitializeCurrentRecords();
                 NTISAS.channel.postMessage({type: 'currentrecords'});
@@ -3417,7 +3459,7 @@ function SavePostvers(add_entries, rem_entries) {
         let tweet_key = 'tweet-' + tweet_id;
         let post_ids = add_entries[tweet_id];
         Storage.retrieveData(tweet_key, {bypass_cache: true, database: Storage.twitterstorage}).then((data) => {
-            if (Utility.validateIDList(data)) {
+            if (Utility.isIDList(data)) {
                 printer.logLevel("Tweet adds/rems - existing IDs:", tweet_key, data, Debug.DEBUG);
                 post_ids = Utility.arrayUnique(Utility.arrayDifference(Utility.arrayUnion(data, add_entries[tweet_id]), rem_entries[tweet_id]));
             }
@@ -3434,7 +3476,7 @@ function SavePostvers(add_entries, rem_entries) {
         let tweet_key = 'tweet-' + tweet_id;
         let post_ids = add_entries[tweet_id];
         Storage.retrieveData(tweet_key, {bypass_cache: true, database: Storage.twitterstorage}).then((data) => {
-            if (Utility.validateIDList(data)) {
+            if (Utility.isIDList(data)) {
                 printer.log("Tweet adds - existing IDs:", tweet_key, data);
                 post_ids = Utility.arrayUnion(data, post_ids);
             }
@@ -3451,7 +3493,7 @@ function SavePostvers(add_entries, rem_entries) {
         let tweet_key = 'tweet-' + tweet_id;
         let post_ids = [];
         Storage.retrieveData(tweet_key, {bypass_cache: true, database: Storage.twitterstorage}).then((data) => {
-            if (data !== null && Utility.validateIDList(data)) {
+            if (data !== null && Utility.isIDList(data)) {
                 printer.log("Tweet removes - existing IDs:", tweet_key, data);
                 post_ids = Utility.arrayUnique(Utility.arrayDifference(data, rem_entries[tweet_id]));
             }
@@ -3865,7 +3907,7 @@ function RenderDownloadDialog(tweet_id, screen_name, image_urls, videos) {
 }
 
 function RenderPostPreview(post, append_html = "") {
-    let [width, height] = Utility.GetPreviewDimensions(post.width, post.height, POST_PREVIEW_DIMENSION);
+    let [width, height] = GetPreviewDimensions(post.width, post.height, POST_PREVIEW_DIMENSION);
     let padding_height = POST_PREVIEW_DIMENSION - height;
     let title = GetLinkTitle(post);
     return `
@@ -3937,7 +3979,7 @@ function RenderColorStyle(css) {
 
 function InitializeCleanupTasks() {
     CheckServerBadTweets();
-    Storage.pruneProgramCache(PROGRAM_DATA_REGEX, PRUNE_RECHECK_EXPIRES);
+    Storage.pruneProgramCache();
 }
 
 async function InitializeTotalRecords(manual = false) {
@@ -4015,7 +4057,7 @@ function InitializeSideMenu() {
     if (Utility.isHash(positions)) {
         $side_menu.css(positions);
     }
-    Storage.checkLocalDB('ntisas-available-sauce', SAUCE_EXPIRES).then((data) => {
+    Storage.checkData('ntisas-available-sauce', SAUCE_EXPIRES).then((data) => {
         if (data) {
             $('#ntisas-available-sauce').text(data.value);
         }
@@ -4165,7 +4207,7 @@ function InitializeTwitterImage(article, image_urls, preview_dimensions) {
     let image = $('img', article)[0];
     let image_promise = GetImageData(image_url);
     image_promise.then(({size, width, height}) => {
-        let [preview_width, preview_height] = Utility.GetPreviewDimensions(width, height, preview_dimensions);
+        let [preview_width, preview_height] = GetPreviewDimensions(width, height, preview_dimensions);
         image.width = preview_width;
         image.height = preview_height;
         image.style.paddingTop = `${preview_dimensions - preview_height}px`;
@@ -4369,7 +4411,7 @@ async function InitializeViewCount(tweet) {
         $('.ntisas-view-info', tweet).show();
         $(tweet).addClass('ntisas-viewed');
     }
-    if (!document.hidden && Utility.isScrolledIntoView(tweet)) {
+    if (!document.hidden && IsScrolledIntoView(tweet)) {
         printer.logLevel("Viewable tweet:", tweet_id, Utility.DEBUG);
         AddViewCount(tweet_id);
         $(tweet).attr('viewed', 'true');
@@ -4447,10 +4489,8 @@ function InitializeImageTweets($image_tweets) {
         Utility.recheckInterval({
             check: () => ['image', 'video'].includes(media_type) ||
                        $('[ntisas-media-type=image], [ntisas-media-type=video]', tweet).length,
-            exec: () => {
-                Promise.all([
-                    InitializeImageMenu($tweet),
-                ]).then(() => {
+            success: () => {
+                InitializeImageMenu($tweet).then(() => {
                     p.resolve(null);
                 });
             },
@@ -4541,16 +4581,18 @@ function InitializeTweetStats(filter1, filter2) {
 function QueueStorageRequest(type, key, value, database) {
     let queue_key = type + '-' + key + '-' + database;
     if (!CACHE_STORAGE_TYPES.includes(type) || !(queue_key in CACHED_STORAGE_REQUESTS)) {
+        const record_key = Debug.recordKey('QueueStorageRequest', key);
         const request = {
             type,
             key,
+            record_key,
             value,
             database,
             deferred: Utility.createPromise(),
             error: Debug.createError(),
         };
         if (CACHE_STORAGE_TYPES.includes(type)) {
-            Debug.recordTime(key, 'Storage-queue');
+            Debug.recordTime('Storage-queue', record_key);
         }
         QUEUED_STORAGE_REQUESTS.push(request);
         CACHED_STORAGE_REQUESTS[queue_key] = request.deferred.promise;
@@ -4574,7 +4616,7 @@ function FulfillStorageRequests(keylist, data_items, requests) {
         let request = requests.find((request) => (request.key === key));
         request.deferred.resolve(data);
         request.data = data;
-        Debug.recordTimeEnd(key, 'Storage-queue');
+        Debug.recordTimeEnd('Storage-queue', request.record_key);
     });
 }
 
@@ -4612,7 +4654,7 @@ function IntervalStorageHandler() {
         if (check_requests.length) {
             printer.logLevel("Check requests:", check_requests, Debug.DEBUG);
             let check_keys = check_requests.map((request) => request.key);
-            Storage.batchCheckLocalDB(check_keys, ValidateExpiration, {database: STORAGE_DATABASES[database]}).then((check_data) => {
+            Storage.batchCheckData(check_keys, {validation: ValidateExpiration, database: STORAGE_DATABASES[database]}).then((check_data) => {
                 FulfillStorageRequests(check_keys, check_data, check_requests);
             });
         }
@@ -4629,15 +4671,15 @@ function IntervalStorageHandler() {
 }
 
 function QueueNetworkRequest (type, item) {
-    const request_key = type + ',' + item.toString();
+    const record_key = Debug.recordKey('QueueNetworkRequest', () => (type + ',' + item.toString()));
     const request = {
         type,
         item,
-        request_key,
+        record_key,
         deferred: Utility.createPromise(),
         error: Debug.createError(),
     };
-    Debug.recordTime(request_key, 'Network-queue');
+    Debug.recordTime('Network-queue', record_key);
     QUEUED_NETWORK_REQUESTS.push(request);
     Debug.execute(() => {
         SAVED_NETWORK_REQUESTS.push(request);
@@ -4661,7 +4703,7 @@ function IntervalNetworkHandler () {
                     let request_data = data_items.filter((data) => request.item.includes(data[data_key]));
                     request.deferred.resolve(request_data);
                     request.data = request_data;
-                    Debug.recordTimeEnd(request.request_key, 'Network-queue');
+                    Debug.recordTimeEnd('Network-queue', request.record_key);
                 }
             });
         }
@@ -4843,7 +4885,7 @@ async function CheckSauce(image_urls) {
         Notice.error("<b>Error!</b> Must set SauceNAO API key in user settings.");
         return [];
     }
-    let promise_array = image_urls.map((image_url) => Saucenao.getSauce(image_url, Saucenao.getDBIndex('danbooru'), NTISAS.results_returned));
+    let promise_array = image_urls.map((image_url) => Saucenao.getSauce(image_url, {limit: NTISAS.results_returned, notify: true}));
     let all_data = await Promise.all(promise_array);
     let good_data = all_data.filter((data) => Saucenao.checkSauce(data));
     let combined_data = Utility.getObjectAttributes(good_data, 'results');
@@ -5063,10 +5105,10 @@ async function GetImageData(image_url) {
     GetImageData.memoized ??= {};
     if (!(image_url in GetImageData.memoized)) {
         let storage_key = 'twimg-' + image_url;
-        let storage_data = await Storage.checkLocalDB(storage_key, Utility.one_day);
+        let storage_data = await Storage.checkData(storage_key, Utility.one_day);
         if (!storage_data) {
             let size_promise = Network.getDataSize(image_url);
-            let dimensions_promise = Utility.GetImageDimensions(image_url);
+            let dimensions_promise = GetImageDimensions(image_url);
             let [size, dimensions] = await Promise.all([size_promise, dimensions_promise]);
             GetImageData.memoized[image_url] = Object.assign(dimensions, {size});
             Storage.saveData(storage_key, {value: GetImageData.memoized[image_url], expires: Utility.getExpires(Utility.one_day)});
@@ -6021,7 +6063,6 @@ function SelectMetric(event) {
 }
 
 function ExportData() {
-    let export_types = Menu.getCheckboxRadioSelected();
     let export_types = Utility.getDOMArrayDataValues($('[data-setting="export_types"] [data-selector]').filter((_, input) => input.checked), 'selector');
     if (export_types.length === 0) {
         Notice.notice("Must select at least one export type!");
@@ -6222,7 +6263,7 @@ function MarkupStreamTweet(tweet) {
         }
     } catch (e) {
         printer.error(e, tweet);
-        Notice.createError("Error marking up stream tweet! (check debug console for details)", false);
+        Notice.error("Error marking up stream tweet! (check debug console for details)", false);
     }
     $('.ntisas-tweet-actions', tweet).after('<div class="ntisas-footer-section"></div>');
 }
@@ -6288,7 +6329,7 @@ function MarkupMainTweet(tweet) {
         }
     } catch (e) {
         printer.error(e, tweet);
-        Notice.createError("Error marking up main tweet! (check debug console for details)", false);
+        Notice.error("Error marking up main tweet! (check debug console for details)", false);
     }
     $('.ntisas-tweet-actions', tweet).after('<div class="ntisas-footer-section"></div>');
 }
@@ -6330,7 +6371,7 @@ function MarkupMediaTweet(tweet) {
 }
 
 function CheckHiddenMedia(tweet) {
-    tweet.ntisasDeferred = Utility.createStatusPromise();
+    tweet.ntisasDeferred = CreateStatusPromise();
     if ($('.ntisas-tweet-media', tweet).text().match(/The following media includes potentially sensitive content|The Tweet author flagged this Tweet as showing sensitive content|The post author flagged this post as showing sensitive content/)) {
         $('.ntisas-tweet-media', tweet).attr('ntisas-media-type', 'deferred');
         $('.ntisas-tweet-media', tweet).addClass('ntisas-hidden-media');
@@ -6867,7 +6908,7 @@ function InitializeDialogButtons() {
 }
 
 function InitializeProgramValues() {
-    Object.assign(NTISAS, {
+    Utility.assignObjects(NTISAS, {
         intersection_observer: new IntersectionObserver(CheckViews, {threshold: 0.75}),
         seen_observer: new IntersectionObserver(SeenTweet, {threshold: 0.10}),
     });
@@ -6921,8 +6962,8 @@ function RenderSettingsMenu() {
     Menu.engageUI({checkboxradio: true});
     $('#ntisas-settings').tabs();
     //Set event handlers
-    Menu.saveUserSettingsClick(InitializeChangedSettings);
-    Menu.resetUserSettingsClick(LOCALSTORAGE_KEYS, InitializeChangedSettings);
+    Menu.saveUserSettingsClick({local_callback: InitializeChangedSettings});
+    Menu.resetUserSettingsClick({delete_keys: STORAGE_RESET_KEYS, local_callback: InitializeChangedSettings});
     $('#ntisas-control-import-data').on(JSPLib.event.click, ImportData);
     $('#ntisas-control-export-data').on(JSPLib.event.click, ExportData);
     Menu.cacheInfoClick();
@@ -6931,6 +6972,7 @@ function RenderSettingsMenu() {
     //Fixup forum links
     $('.ntisas-forum-topic-link').attr('href', `${NTISAS.domain}/forum_topics/${DANBOORU_TOPIC_ID}`);
     //Add CSS stylings
+    InitializeUIStyle();
     Utility.setCSSStyle(Menu.settings_css, 'menu_settings');
     Utility.setCSSStyle(MENU_CSS, 'menu');
     Utility.recheckInterval({
@@ -6941,7 +6983,6 @@ function RenderSettingsMenu() {
         },
         interval: TIMER_POLL_INTERVAL,
     });
-    InitializeUIStyle();
 }
 
 //Main function
@@ -6951,15 +6992,12 @@ async function Main() {
     if (guest_token) return;
     Network.jQuerySetup();
     jQuery.ajaxSetup({timeout: Utility.one_second * 10});
-    Menu.preloadScript(NTISAS, {
+    Load.preloadScript({
         danbooru_userscript: false,
-        default_data: PROGRAM_DEFAULT_VALUES,
-        reset_data: PROGRAM_RESET_KEYS,
-        initialize_func: InitializeProgramValues,
         broadcast_func: BroadcastNTISAS,
         program_css: PROGRAM_CSS,
-        menu_css: MENU_CSS,
     });
+    InitializeProgramValues();
     await InitializelUserProfileData();
     $(document).on(JSPLib.event.click, '.ntisas-tweet-header a', ToggleSideMenu);
     $(document).on(JSPLib.event.click, '.ntisas-control-search', SearchMenu);
@@ -6996,45 +7034,35 @@ async function Main() {
 }
 /****Initialization****/
 
-//Variables for JSPLib
 JSPLib.name = PROGRAM_NAME;
 JSPLib.shortcut = PROGRAM_SHORTCUT;
 JSPLib.data = NTISAS;
+JSPLib.data_regex = PROGRAM_DATA_REGEX;
+JSPLib.default_data = PROGRAM_DEFAULT_VALUES;
+JSPLib.reset_data = PROGRAM_RESET_KEYS;
+JSPLib.settings_config = SETTINGS_CONFIG;
 
-//Variables for debug.js
 Debug.mode = true;
 Debug.level = Debug.INFO;
 
-//Variables for menu.js
-Menu.reset_data = PROGRAM_RESET_KEYS;
-JSPLib.data_regex = PROGRAM_DATA_REGEX;
 Menu.settings_callback = RemoteSettingsCallback;
-Menu.settings_config = SETTINGS_CONFIG;
 Menu.control_config = CONTROL_CONFIG;
 
-//Variables for storage.js
 Storage.localSessionValidator = ValidateProgramData;
 Storage.indexedDBValidator = ValidateEntry;
 
-//Variables for validate.js
 Validate.dom_output = '#ntisas-import-data-errors';
 
-//variables for network.js
 Network.error_domname = '#ntisas-error-messages';
 Network.wait_interval = Utility.one_second;
 
-//Variables for danbooru.js
 Danbooru.max_read_requests = 5;
 
-//Variables for load.js
-Load.load_when_hidden = false;
-
-//Export JSPLib
 Load.exportData({other_data: {jQuery, SAVED_STORAGE_REQUESTS, SAVED_NETWORK_REQUESTS, PAGE_REGEXES}, read_list: ['page']});
 Load.exportFuncs({debug_list: [GetData, SaveData, MarkupMainTweet, MarkupStreamTweet], always_list: [GetImageLinks, GetImageData]});
 
 /****Execution start****/
 
-Load.programInitialize(Main, {program_name: PROGRAM_NAME, required_selectors: PROGRAM_LOAD_REQUIRED_SELECTORS, max_retries: 100, timer_interval: 500});
+Load.programInitialize(Main, {required_selectors: LOAD_REQUIRED_SELECTORS, max_retries: 100, timer_interval: 500, load_when_hidden: false});
 
 })(JSPLib);

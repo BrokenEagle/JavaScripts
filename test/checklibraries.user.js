@@ -15,18 +15,18 @@
 // @require      https://cdn.jsdelivr.net/npm/localforage-setitems@1.4.0/dist/localforage-setitems.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.12.0/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/saucenao.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/7e48abbddec16868fcd5ca7d9209df1760593c27/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1a49004da6cd62e0be1ae855ea786febcda9afb1/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1a49004da6cd62e0be1ae855ea786febcda9afb1/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1a49004da6cd62e0be1ae855ea786febcda9afb1/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1a49004da6cd62e0be1ae855ea786febcda9afb1/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1a49004da6cd62e0be1ae855ea786febcda9afb1/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1a49004da6cd62e0be1ae855ea786febcda9afb1/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1a49004da6cd62e0be1ae855ea786febcda9afb1/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1a49004da6cd62e0be1ae855ea786febcda9afb1/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1a49004da6cd62e0be1ae855ea786febcda9afb1/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1a49004da6cd62e0be1ae855ea786febcda9afb1/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1a49004da6cd62e0be1ae855ea786febcda9afb1/lib/saucenao.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/1a49004da6cd62e0be1ae855ea786febcda9afb1/lib/load.js
 // @connect      cdn.donmai.us
 // @connect      saucenao.com
 // ==/UserScript==
@@ -75,8 +75,6 @@ const walkdom_test = `
 </div>
 `;
 
-const domdata_test = `<div data-test1="test1" data-test2="2"></div>`;
-
 /****FUNCTIONS****/
 
 //Result helper functions
@@ -108,7 +106,10 @@ function TestPrint(message, test, {result = null, no_result = false} = {}) {
 //Data helper functions
 
 function repr(data) {
-    return JSON.stringify(data);
+    return JSON.stringify(
+        data,
+        (_key, value) => (value instanceof Set ? [...value] : value)
+    );
 }
 
 function bracket(string) {
@@ -171,6 +172,16 @@ function ArrayCheck(test_array) {
     return true;
 }
 
+function HashEqual(x, y) {
+    if (typeof x === 'object' && (typeof x === typeof y)) {
+        if (Object.keys(x).length === Object.keys(y).length) {
+            return Object.keys(x).every((key) => HashEqual(x[key], y[key]));
+        }
+        return false;
+    }
+    return x === y;
+}
+
 function HashContains(hash, includes) {
     if (!HashCheck(hash)) {
         return false;
@@ -206,12 +217,10 @@ function CheckDebugLibrary() {
     let debug_level = Debug.level;
 
     console.log("Checking log(): check this out");
-    Debug.pretext = "Check:";
+    Debug.mode = true;
     Debug.log("enabled: check this out");
-    Debug.log(() => ["delaylog: check this out"]);
     Debug.mode = false;
     Debug.log("disabled: check this out");
-    Debug.pretext = "";
 
     console.log("Checking warnLevel(): WARNING+");
     Debug.mode = true;
@@ -225,14 +234,20 @@ function CheckDebugLibrary() {
     Debug.warnLevel("ERROR", Debug.ERROR);
 
     console.log("Checking debug timer");
-    Debug.program_shortcut = "bl";
     Debug.mode = false;
     Debug.time("check");
     Debug.timeEnd("check");
     Debug.mode = true;
     Debug.time("check");
     Debug.timeEnd("check");
-    Debug.program_shortcut = "cl";
+
+    console.log("Checking recordKey");
+    let record_key1 = Debug.recordKey('CheckDebugLibrary', 'test');
+    let record_key2 = Debug.recordKey('CheckDebugLibrary', ['1', '2', '3']);
+    let record_key3 = Debug.recordKey('CheckDebugLibrary', () => '1234');
+    TestPrint("Record key should take the format: ^CheckDebugLibrary;test;\d+$", RecordResult(/^CheckDebugLibrary;test;\d+$/.test(record_key1)), {result: record_key1});
+    TestPrint("Record key should take the format: ^CheckDebugLibrary;1,2,3;\d+$", RecordResult(/^CheckDebugLibrary;1,2,3;\d+$/.test(record_key2)), {result: record_key2});
+    TestPrint("Record key should take the format: ^CheckDebugLibrary;1234;\d+$", RecordResult(/^CheckDebugLibrary;1234;\d+$/.test(record_key3)), {result: record_key3});
 
     console.log("Checking record timer");
     Debug.recordTime('test1', 'test');
@@ -381,11 +396,19 @@ async function CheckUtilityLibrary() {
     TestPrint(`Expiration of ${testdata1} should be expired`, RecordResult(result1 === false), {no_result: true});
     TestPrint(`Expiration of ${testdata2} should be unexpired`, RecordResult(result2 === true), {no_result: true});
 
+    console.log("Checking toTimeStamp");
+    let timeval3 = '"2000-01-01T00:00:00.000Z"';
+    let expectedtimestamp1 = 946684800000;
+    let timeinvalid1 = 'blah';
+    let timestamp2 = Utility.toTimeStamp(timeval3);
+    let timestamp3 = Utility.toTimeStamp(timeinvalid1);
+    TestPrint(`Timestamp for ${timeval3}`, RecordResult(timestamp2 === expectedtimestamp1), {result: timestamp2});
+    TestPrint(`Timestamp for invalid ${timeinvalid1}`, RecordResult(Number.isNaN(timestamp3)), {result: timestamp3});
+
     console.log("Checking timeAgo");
     let timeval1 = "2007-12-31T04:13:18.602Z";
     let timeval2 = '"2007-09-10T20:31:08.995Z"';
     let timestamp1 = new Date('2000').getTime();
-    let timeinvalid1 = 'blah';
     let comparetime1 = new Date('2008').getTime();
     let expectedtime1 = '19.78 hours ago';
     let expectedtime2 = '3.68 months ago';
@@ -399,36 +422,9 @@ async function CheckUtilityLibrary() {
     TestPrint(`Time ago string for ${timestamp1}`, RecordResult(timestring3 === expectedtime3), {result: timestring3});
     TestPrint(`Time ago string for invalid value ${timeinvalid1}`, RecordResult(timestring4 === 'N/A'), {result: timestring4});
 
-    console.log("Checking toTimeStamp");
-    let timeval3 = '"2000-01-01T00:00:00.000Z"';
-    let expectedtimestamp1 = 946684800000;
-    let timestamp2 = Utility.toTimeStamp(timeval3);
-    let timestamp3 = Utility.toTimeStamp(timeinvalid1);
-    TestPrint(`Timestamp for ${timeval3}`, RecordResult(timestamp2 === expectedtimestamp1), {result: timestamp2});
-    TestPrint(`Timestamp for invalid ${timeinvalid1}`, RecordResult(Number.isNaN(timestamp3)), {result: timestamp3});
-
-    console.log("Checking isDigit");
-    let digit1 = '1234';
-    let digit2 = 'N/A';
-    let testvalue1 = Utility.isDigit(digit1);
-    let testvalue2 = Utility.isDigit(digit2);
-    TestPrint(`Value ${digit1} should be a digit`, RecordResult(testvalue1), {no_result: true});
-    TestPrint(`Value ${digit2} should not be a digit`, RecordResult(testvalue1), {no_result: true});
-
-    console.log("Checking bigIntMax");
-    let bigints1 = [5n, 1000000000000000000000n, 1n, 24n];
-    let expectedmax1 = 1000000000000000000000n;
-    testvalue1 = Utility.bigIntMax(...bigints1);
-    TestPrint(`${bigints1} should have a max of ${expectedmax1}`, RecordResult(testvalue1 === expectedmax1), {result: testvalue1});
-
-    console.log("Checking bigIntMin");
-    let expectedmin1 = 1n;
-    testvalue1 = Utility.bigIntMin(...bigints1);
-    TestPrint(`${bigints1} should have a min of ${expectedmax1}`, RecordResult(testvalue1 === expectedmin1), {result: testvalue1});
-
     console.log("Checking setPrecision");
-    testvalue1 = 1.22;
-    testvalue2 = Utility.setPrecision(1.2222222, 2);
+    let testvalue1 = 1.22;
+    let testvalue2 = Utility.setPrecision(1.2222222, 2);
     TestPrint(`Value ${testvalue1} should be equal to ${testvalue2} with a decimal precision of 2`, RecordResult(testvalue1 === testvalue2), {no_result: true});
 
     console.log("Checking getUniqueID");
@@ -447,10 +443,14 @@ async function CheckUtilityLibrary() {
     TestPrint(`Clamp of ${testvalue2} should be 3`, RecordResult(result2 === 3), {result: result2});
 
     console.log("Checking maxLengthString");
-    testvalue1 = Utility.maxLengthString("AUserNameThatIsWayTooLong");
     testvalue2 = Utility.maxLengthString("AUserNameThatIsWayTooLong", 10);
-    TestPrint(`Value ${repr(testvalue1)} should have a string length of ${Utility.max_column_characters}`, RecordResult(testvalue1.length === Utility.max_column_characters), {no_result: true});
     TestPrint(`Value ${repr(testvalue2)} should have a string length of 10`, RecordResult(testvalue2.length === 10), {no_result: true});
+
+    console.log("Checking titleize");
+    let string = "titleize";
+    let expected = "Titleize";
+    let teststring = Utility.titleize(string);
+    TestPrint(`Value ${repr(string)} should should be changed to ${repr(expected)}`, RecordResult(teststring === expected), {result: repr(teststring)});
 
     console.log("Checking kebabCase");
     let string1 = "testKebabCase";
@@ -479,24 +479,6 @@ async function CheckUtilityLibrary() {
     teststring1 = Utility.displayCase(string1);
     TestPrint(`Value ${repr(string1)} should should be changed to ${repr(string2)}`, RecordResult(teststring1 === string2), {result: repr(teststring1)});
 
-    console.log("Checking properCase");
-    string1 = "Test proper case";
-    string2 = "Test Proper Case";
-    teststring1 = Utility.properCase(string1);
-    TestPrint(`Value ${repr(string1)} should should be changed to ${repr(string2)}`, RecordResult(teststring1 === string2), {result: repr(teststring1)});
-
-    console.log("Checking exceptCase");
-    string1 = "Test the except case";
-    string2 = "Test the Except Case";
-    teststring1 = Utility.exceptCase(string1);
-    TestPrint(`Value ${repr(string1)} should should be changed to ${repr(string2)}`, RecordResult(teststring1 === string2), {result: repr(teststring1)});
-
-    console.log("Checking romanCase");
-    string1 = "Test the roman case iii";
-    string2 = "Test the Roman Case III";
-    teststring1 = Utility.romanCase(string1);
-    TestPrint(`Value ${repr(string1)} should should be changed to ${repr(string2)}`, RecordResult(teststring1 === string2), {result: repr(teststring1)});
-
     console.log("Checking padNumber");
     let num1 = 23;
     let num2 = 23.2;
@@ -518,6 +500,12 @@ async function CheckUtilityLibrary() {
     let expectedbytes = '1 MB';
     teststring1 = Utility.readableBytes(bytesize);
     TestPrint(`Value ${bytesize} should have a readable byte size of ${repr(expectedbytes)}`, RecordResult(teststring1 === expectedbytes), {result: repr(teststring1)});
+
+    console.log("Checking joinList");
+    let testarray1 = ['1', '3'];
+    string1 = "test-1-section,test-3-section";
+    teststring1 = Utility.joinList(testarray1, {prefix: "test-", suffix: '-section', joiner: ','});
+    TestPrint(`Value ${repr(testarray1)} should should be changed to ${repr(string1)}`, RecordResult(teststring1 === string1), {result: repr(teststring1)});
 
     console.log("Checking findAll");
     string1 = "100 200 300 400";
@@ -549,18 +537,12 @@ async function CheckUtilityLibrary() {
     TestPrint(`Value ${repr(teststring1)} with regex ${regex1} should find a match of ${repr(exepectedmatch1)}`, RecordResult(match1 === exepectedmatch1), {result: match1});
     TestPrint(`Value ${repr(teststring2)} with regex ${regex1} should return the default value of ${repr(default_val)}`, RecordResult(match2 === default_val), {result: match2});
 
-    console.log("Checking filterEmpty");
-    let testarray1 = ["test", "first", "nonempty"];
-    let testarray2 = ["test", "first", "empty", ""];
-    let resultarray1 = Utility.filterEmpty(testarray1);
-    let resultarray2 = Utility.filterEmpty(testarray2);
-    TestPrint(`Array ${repr(testarray1)} should be equal in length to ${repr(resultarray1)}`, RecordResult(testarray1.length === resultarray1.length), {no_result: true});
-    TestPrint(`Array ${repr(testarray2)} should not be equal in length to ${repr(resultarray2)}`, RecordResult(testarray2.length !== resultarray2.length), {no_result: true});
-
     console.log("Checking filterRegex");
+    testarray1 = ["test", "first", "nonempty"];
+    let testarray2 = ["test", "first", "empty", ""];
     regex1 = /^(?:other|empty)/;
-    resultarray1 = Utility.filterRegex(testarray1, regex1);
-    resultarray2 = Utility.filterRegex(testarray2, regex1);
+    let resultarray1 = Utility.filterRegex(testarray1, regex1);
+    let resultarray2 = Utility.filterRegex(testarray2, regex1);
     TestPrint(`Array ${repr(resultarray1)} should have a length of zero`, RecordResult(resultarray1.length === 0), {no_result: true});
     TestPrint(`Array ${repr(resultarray2)} should have a length of one`, RecordResult(resultarray2.length === 1), {no_result: true});
 
@@ -577,57 +559,36 @@ async function CheckUtilityLibrary() {
     resultarray1 = Utility.multiConcat(array1, array2, array3);
     TestPrint(`Array ${repr(array1)} concatenated with ${repr(array2)} should become ${repr(checkarray1)}`, RecordResult(ArrayEqual(checkarray1, resultarray1)), {result: resultarray1});
 
-    console.log("Checking concatUnique");
-    array1 = [1, 2, 3];
-    array2 = [3, 4, 5];
-    checkarray1 = [1, 2, 3, 4, 5, ];
-    resultarray1 = Utility.concatUnique(array1, array2);
-    TestPrint(`Array ${repr(array1)} concatenated with ${repr(array2)} should become ${repr(checkarray1)}`, RecordResult(ArrayEqual(checkarray1, resultarray1)), {result: repr(resultarray1)});
-
-    console.log("Checking isSet");
-    let set1 = new Set();
-    let resultbool1 = Utility.isSet(set1);
-    TestPrint(`Set ${repr(set1)} should be a set ${bracket(resultbool1)}`, RecordResult(resultbool1), {no_result: true});
-
     console.log("Checking arrayUnique");
     let testarray3 = ["testing", "first", "testing"];
     checkarray1 = ["testing", "first"];
     resultarray1 = Utility.arrayUnique(testarray3);
     TestPrint(`Array ${repr(testarray3)} should become ${repr(checkarray1)}`, RecordResult(ArrayEqual(checkarray1, resultarray1)), {result: resultarray1});
 
+    console.log("Checking arrayUnion");
+    resultarray1 = Utility.arrayUnion(testarray1, testarray3);
+    TestPrint(`Array ${repr(resultarray1)} should have a length of 4`, RecordResult(resultarray1.length === 4), {no_result: true});
+
     console.log("Checking arrayDifference");
     resultarray1 = Utility.arrayDifference(testarray1, testarray2);
     resultarray2 = Utility.arrayDifference(testarray2, testarray1);
-    TestPrint(`Array ${repr(resultarray1)} should have a length of one`, RecordResult(resultarray1.length === 1), {no_result: true});
-    TestPrint(`Array ${repr(resultarray2)} should have a length of two`, RecordResult(resultarray2.length === 2), {no_result: true});
+    TestPrint(`Array ${repr(resultarray1)} should have a length of 1`, RecordResult(resultarray1.length === 1), {no_result: true});
+    TestPrint(`Array ${repr(resultarray2)} should have a length of 2`, RecordResult(resultarray2.length === 2), {no_result: true});
 
     console.log("Checking arrayIntersection");
     resultarray1 = Utility.arrayIntersection(testarray1, testarray2);
-    TestPrint(`Array ${repr(resultarray1)} should have a length of two`, RecordResult(resultarray1.length === 2), {no_result: true});
-
-    console.log("Checking arrayUnion");
-    resultarray1 = Utility.arrayUnion(testarray1, testarray3);
-    TestPrint(`Array ${repr(resultarray1)} should have a length of four`, RecordResult(resultarray1.length === 4), {no_result: true});
+    TestPrint(`Array ${repr(resultarray1)} should have a length of 2`, RecordResult(resultarray1.length === 2), {no_result: true});
 
     console.log("Checking arraySymmetricDifference");
     resultarray1 = Utility.arraySymmetricDifference(testarray1, testarray3);
-    TestPrint(`Array ${repr(resultarray1)} should have a length of three`, RecordResult(resultarray1.length === 3), {no_result: true});
-
-    console.log("Checking arrayEquals");
-    array1 = [1, 2, 3];
-    array2 = [1, 2, 3];
-    array3 = [2, 4];
-    resultbool1 = Utility.arrayEquals(array1, array2);
-    let resultbool2 = Utility.arrayEquals(array1, array3);
-    TestPrint(`Array ${repr(array2)} should be equal to ${repr(array1)}`, RecordResult(resultbool1), {no_result: true});
-    TestPrint(`Array ${repr(array3)} should not be equal to ${repr(array1)}`, RecordResult(!resultbool2), {no_result: true});
+    TestPrint(`Array ${repr(resultarray1)} should have a length of 3`, RecordResult(resultarray1.length === 3), {no_result: true});
 
     console.log("Checking isSubArray");
     array1 = [1, 2, 3];
     array2 = [1, 3];
     array3 = [2, 4];
-    resultbool1 = Utility.isSubArray(array1, array2);
-    resultbool2 = Utility.isSubArray(array1, array3);
+    let resultbool1 = Utility.isSubArray(array1, array2);
+    let resultbool2 = Utility.isSubArray(array1, array3);
     TestPrint(`Array ${repr(array2)} should be a subset of ${repr(array1)}`, RecordResult(resultbool1), {no_result: true});
     TestPrint(`Array ${repr(array3)} should not be a subset of ${repr(array1)}`, RecordResult(!resultbool2), {no_result: true});
 
@@ -639,6 +600,15 @@ async function CheckUtilityLibrary() {
     TestPrint(`Array ${repr(array2)} should not be a superset of ${repr(array1)}`, RecordResult(!resultbool1), {no_result: true});
     TestPrint(`Array ${repr(array1)} should be a superset of ${repr(array2)}`, RecordResult(resultbool2), {no_result: true});
 
+    console.log("Checking arrayEquals");
+    array1 = [1, 2, 3];
+    array2 = [1, 2, 3];
+    array3 = [2, 4];
+    resultbool1 = Utility.arrayEquals(array1, array2);
+    resultbool2 = Utility.arrayEquals(array1, array3);
+    TestPrint(`Array ${repr(array2)} should be equal to ${repr(array1)}`, RecordResult(resultbool1), {no_result: true});
+    TestPrint(`Array ${repr(array3)} should not be equal to ${repr(array1)}`, RecordResult(!resultbool2), {no_result: true});
+
     console.log("Checking arrayHasIntersection");
     array1 = [1, 2, 3];
     array2 = [3, 5];
@@ -648,19 +618,92 @@ async function CheckUtilityLibrary() {
     TestPrint(`Array ${repr(array1)} should have an intersection with ${repr(array2)}`, RecordResult(resultbool1), {no_result: true});
     TestPrint(`Array ${repr(array1)} should not have an intersection with ${repr(array3)}`, RecordResult(!resultbool2), {no_result: true});
 
-    console.log("Checking joinList");
-    string1 = "test-1-section,test-3-section";
-    teststring1 = Utility.joinList(testarray1, {prefix: "test-", suffix: '-section', joiner: ','});
-    TestPrint(`Value ${repr(testarray1)} should should be changed to ${repr(string1)}`, RecordResult(teststring1 === string1), {result: repr(teststring1)});
+    console.log("Checking setUnion");
+    let testset1 = new Set(["test", "first", "nonempty"]);
+    let testset2 = new Set(["test", "first", "empty", ""]);
+    let testset3 = new Set(["testing", "first", "testing"]);
+    let resultset1 = Utility.setUnion(testset1, testset3);
+    TestPrint(`Set ${repr(resultset1)} should have a size of 4`, RecordResult(resultset1.size === 4), {no_result: true});
+
+    console.log("Checking setDifference");
+    resultset1 = Utility.setDifference(testset1, testset2);
+    let resultset2 = Utility.setDifference(testset2, testset1);
+    TestPrint(`Set ${repr(resultset1)} should have a size of 1`, RecordResult(resultset1.size === 1), {no_result: true});
+    TestPrint(`Set ${repr(resultset2)} should have a size of 2`, RecordResult(resultset2.size === 2), {no_result: true});
+
+    console.log("Checking setIntersection");
+    resultset1 = Utility.setIntersection(testset1, testset2);
+    TestPrint(`Set ${repr(resultset1)} should have a size of 2`, RecordResult(resultset1.size === 2), {no_result: true});
+
+    console.log("Checking arraySymmetricDifference");
+    resultset1 = Utility.setSymmetricDifference(testset1, testset3);
+    TestPrint(`Set ${repr(resultset1)} should have a size of 3`, RecordResult(resultset1.size === 3), {no_result: true});
+
+    console.log("Checking isSubSet");
+    let set1 = new Set([1, 2, 3]);
+    let set2 = new Set([1, 3]);
+    let set3 = new Set([2, 4]);
+    resultbool1 = Utility.isSubSet(set1, set2);
+    resultbool2 = Utility.isSubSet(set1, set3);
+    TestPrint(`Set ${repr(set2)} should be a subset of ${repr(set1)}`, RecordResult(resultbool1), {no_result: true});
+    TestPrint(`Set ${repr(set3)} should not be a subset of ${repr(set1)}`, RecordResult(!resultbool2), {no_result: true});
+
+    console.log("Checking isSuperSet");
+    set1 = new Set([1, 2, 3]);
+    set2 = new Set([1, 3]);
+    resultbool1 = Utility.isSuperSet(set1, set2);
+    resultbool2 = Utility.isSuperSet(set2, set1);
+    TestPrint(`Set ${repr(set2)} should not be a superset of ${repr(set1)}`, RecordResult(!resultbool1), {no_result: true});
+    TestPrint(`Set ${repr(set1)} should be a superset of ${repr(set2)}`, RecordResult(resultbool2), {no_result: true});
+
+    console.log("Checking setEquals");
+    set1 = new Set([1, 2, 3]);
+    set2 = new Set([1, 2, 3]);
+    set3 = new Set([2, 4]);
+    resultbool1 = Utility.setEquals(set1, set2);
+    resultbool2 = Utility.setEquals(set1, set3);
+    TestPrint(`Set ${repr(set2)} should be equal to ${repr(set1)}`, RecordResult(resultbool1), {no_result: true});
+    TestPrint(`Set ${repr(set3)} should not be equal to ${repr(set1)}`, RecordResult(!resultbool2), {no_result: true});
+
+    console.log("Checking setHasIntersection");
+    set1 = new Set([1, 2, 3]);
+    set2 = new Set([3, 5]);
+    set3 = new Set([5, 6]);
+    resultbool1 = Utility.setHasIntersection(set1, set2);
+    resultbool2 = Utility.setHasIntersection(set1, set3);
+    TestPrint(`Set ${repr(set1)} should have an intersection with ${repr(set2)}`, RecordResult(resultbool1), {no_result: true});
+    TestPrint(`Set ${repr(set1)} should not have an intersection with ${repr(set3)}`, RecordResult(!resultbool2), {no_result: true});
+
+    console.log("Checking setEvery");
+    set1 = new Set([1, 1, 1]);
+    set2 = new Set([1, 1, 2]);
+    let compare1 = (val) => val === 1;
+    resultbool1 = Utility.setEvery(set1, compare1);
+    resultbool2 = Utility.setEvery(set2, compare1);
+    TestPrint(`Set ${repr(set1)} should have every value be equal to 1`, RecordResult(resultbool1), {no_result: true});
+    TestPrint(`Set ${repr(set1)} should not have every value be equal to 1`, RecordResult(!resultbool2), {no_result: true});
+
+    console.log("Checking setSome");
+    set1 = new Set([1, 0, 2]);
+    set2 = new Set([0, 2, 4]);
+    resultbool1 = Utility.setSome(set1, compare1);
+    resultbool2 = Utility.setSome(set2, compare1);
+    TestPrint(`Set ${repr(set1)} should have some value be equal to 1`, RecordResult(resultbool1), {no_result: true});
+    TestPrint(`Set ${repr(set1)} should not have some value be equal to 1`, RecordResult(!resultbool2), {no_result: true});
+
+    console.log("Checking deepFreeze");
+    let testobject1 = {id: 1, type: {a: 1, b: 2}};
+    Utility.deepFreeze(testobject1);
+    let boolarray1 = [Object.isFrozen(testobject1), Object.isFrozen(testobject1.type)];
+    TestPrint(`Object ${repr(testobject1)} and the type subobject should be frozen`, RecordResult(boolarray1.every((val) => val)), {result: repr(boolarray1)});
 
     console.log("Checking getObjectAttributes");
     array1 = [1, 2, 3];
-    testobjectarray1 = [{id: 1, type: 'a'}, {id: 2, type: 'b'}, {id: 3, type: 'b'}];
+    let testobjectarray1 = [{id: 1, type: 'a'}, {id: 2, type: 'b'}, {id: 3, type: 'b'}];
     resultarray1 = Utility.getObjectAttributes(testobjectarray1, 'id');
     TestPrint(`Object array ${repr(testobjectarray1)} with getting the id attributes should be equal to ${repr(array1)}`, RecordResult(ArrayEqual(resultarray1, array1)), {result: repr(resultarray1)});
 
     console.log("Checking getNestedAttribute");
-    let testobject1 = {id: 1, type: {a: 1, b: 2}};
     result1 = Utility.getNestedAttribute(testobject1, ['type', 'a']);
     TestPrint(`Object ${repr(testobject1)} with getting a nested attribute should be equal to 1`, RecordResult(result1 === 1), {result: repr(result1)});
 
@@ -675,7 +718,7 @@ async function CheckUtilityLibrary() {
     result1 = Utility.objectReduce(testobject1, (total, val) => total + val, 0);
     TestPrint(`Object ${repr(testobject1)} totaling key values should be equal to 6`, RecordResult(result1 === 6), {result: repr(result1)});
 
-    console.log("Checking dataCopy");
+    console.log("Checking deepCopy");
     testobject1 = {'test': 0, 'value': {'deep': 1}};
     let copyobject1 = testobject1;
     let shallowobject1 = Object.assign({}, testobject1);
@@ -686,119 +729,32 @@ async function CheckUtilityLibrary() {
     TestPrint(`Object ${repr(shallowobject1)} should have one value the same as`, RecordResult(shallowobject1?.test !== 10 && copyobject1?.value?.deep === 11), {result: repr(testobject1)});
     TestPrint(`Object ${repr(deepobject1)} should have no values the same as`, RecordResult(deepobject1?.test !== 10 && deepobject1?.value?.deep !== 11), {result: repr(testobject1)});
 
-    console.log("Checking mergeHashes");
+    console.log("Checking mergeObjects");
     let object1 = {search: {id: "20,21,5"}};
     let object2 = {search: {order: "customorder"}};
     result1 = Utility.mergeObjects(object1, object2);
-    let boolarray1 = [HashContains(result1, ['search']), HashContains(result1.search, ['id', 'order'])];
+    boolarray1 = [HashContains(result1, ['search']), HashContains(result1.search, ['id', 'order'])];
     if(boolarray1[1]) {
         boolarray1.push(result1.search.id === "20,21,5")
         boolarray1.push(result1.search.order === "customorder");
     }
-    TestPrint(`Merging hashes ${repr(object1)} and ${repr(object2)} produces the following result => ${repr(result1)}`, RecordResult(boolarray1.every((val) => val)), {result: repr(boolarray1)});
+    TestPrint(`Merging objects ${repr(object1)} and ${repr(object2)} produces the following result => ${repr(result1)}`, RecordResult(boolarray1.every((val) => val)), {result: repr(boolarray1)});
+    TestPrint(`The original object ${repr(object1)} should be unmodified`, RecordResult(object1.search.order === undefined), {no_result: true});
 
-    console.log("Checking recurseCompareObjects");
-    testobject1 = {'test': 0, 'value': {'deep': 1}};
-    copyobject1 = {'test': 0, 'value': {'deep': 2}};
-    let resultobject1 = Utility.recurseCompareObjects(testobject1, copyobject1);
-    TestPrint(`Object ${repr(testobject1)} compared against ${repr(copyobject1)} should find the changed value ${repr(resultobject1)}`, RecordResult(resultobject1?.value?.deep?.[0] === 1 && resultobject1?.value?.deep?.[1] === 2), {result: repr(resultobject1)});
-
-    console.log("Checking arrayFill");
-    string1 = "[]";
-    testarray1 = Utility.arrayFill(10, string1);
-    //Compare to see if any entry is equal to any other entry
-    resultbool1 = !testarray1.reduce((isequal, entry, i, array) => isequal || ((i < array.length - 1) && array.slice(i + 1, array.length - 1).reduce((subisequal, subentry) => subisequal || (subentry === entry), false)), false);
-    //Compare to see if all entries are equal to the JSON string when stringified
-    resultbool2 = testarray1.reduce((isequal, entry) => isequal && JSON.stringify(entry) === string1, true);
-    TestPrint(`Object ${repr(testarray1)} should have a length of 10`, RecordResult(testarray1.length === 10), {result: testarray1.length});
-    TestPrint(`Object ${repr(testarray1)} should have no entries equal to each other`, RecordResult(resultbool1 === true), {no_result: true});
-    TestPrint(`Object ${repr(testarray1)} should have all entries equal to the stringified JSON`, RecordResult(resultbool2 === true), {no_result: true});
-
-    console.log("Checking DOMtoArray");
-    let $domtest = jQuery.parseHTML(domdata_test)[0];
-    array1 = Utility.DOMtoArray($domtest.attributes);
-    array2 = array1.map((entry) => entry.value);
-    array3 = ['test1', '2'];
-    TestPrint("Object returned should be an array", RecordResult(ArrayCheck(array1)), {no_result: true});
-    TestPrint(`Data values for object should be ${repr(array3)}`, RecordResult(JSON.stringify(array2) === JSON.stringify(array3)), {result: repr(array2)});
-
-    console.log("Checking DOMtoHash");
-    let hash1 = Utility.DOMtoHash($domtest.dataset);
-    array2 = Object.keys(hash1).map((entry) => hash1[entry]);
-    TestPrint("Object returned should be a hash", RecordResult(hash1.constructor === Object), {no_result: true});
-    TestPrint(`Data values for object should be ${repr(array3)}`, RecordResult(JSON.stringify(array2) === JSON.stringify(array3)), {result: repr(array2)});
-
-    console.log("Checking getDOMArrayDataValues");
-    let $domarray = jQuery.parseHTML(domdata_test);
-    checkarray1 = ["test1"];
-    resultarray1 = Utility.getDOMArrayDataValues($domarray, 'test1');
-    TestPrint("Object returned should be an array", RecordResult(ArrayCheck(resultarray1)), {no_result: true});
-    TestPrint(`Data values for array should be ${repr(checkarray1)}`, RecordResult(ArrayEqual(checkarray1, resultarray1)), {result: repr(resultarray1)});
-
-    console.log("Checking getAllDOMData");
-    hash1 = Utility.getAllDOMData($domtest);
-    let hash2 = {test1: "test1", test2: 2};
-    TestPrint("Object returned should be a hash", RecordResult(hash1.constructor === Object), {no_result: true});
-    TestPrint(`Data values for object should be ${repr(hash2)}`, RecordResult(HashContains(hash1, ['test1', 'test2']) && hash1.test1 === hash2.test1 && hash1.test2 === hash2.test2), {result: repr(hash1)});
-
-    //Setup for data functions
-    let jqueryobj = jQuery("#checklibrary-count");
-    jqueryobj.on("mouseenter.checklibraries.test_hover", () => {
-        console.log("Hovering over count...");
-    });
-    testdata1 = {test_data: 'check'};
-    jqueryobj.data(testdata1);
-    let $domobj = jqueryobj[0];
-    jQuery(document).on("checklibraries:log-this", () => {console.log("Check this out");});
-    await Utility.sleep(100);
-
-    console.log("Checking getPrivateData");
-    let data1 = Utility.getPrivateData($domobj);
-    TestPrint("data should be object with 2 keys and 1 subkey", RecordResult(HashContains(data1, ['events', 'handle']) && HashContains(data1.events, ['mouseover'])), {result: repr(data1)});
-
-    console.log("Checking getPublicData");
-    data1 = Utility.getPublicData($domobj);
-    TestPrint(`data should be object ${repr(testdata1)}`, RecordResult(HashContains(data1, ['test_data']) && data1.test_data === "check"), {result: repr(data1)});
-
-    console.log("Checking getBoundEventNames");
-    array1 = Utility.getBoundEventNames("#checklibrary-count", 'mouseover', null);
-    array2 = ['checklibraries.test_hover'];
-    TestPrint(`Bound event names for object should be ${repr(array2)}`, RecordResult(JSON.stringify(array1) === JSON.stringify(array2)), {result: repr(array1)});
-
-    console.log("Checking isNamespaceBound");
-    string1 = 'checklibraries.test_hover';
-    resultbool1 = Utility.isNamespaceBound({root: "#checklibrary-count", eventtype: 'mouseover', namespace: string1});
-    TestPrint(`Bound event names for object should include ${repr(string1)}`, RecordResult(resultbool1), {result: repr(resultbool1)});
-
-    console.log("Checking isGlobalFunctionBound");
-    string1 = 'checklibraries:log-this';
-    resultbool1 = Utility.isGlobalFunctionBound(string1);
-    TestPrint(`Global functions should include ${repr(string1)}`, RecordResult(resultbool1), {result: repr(resultbool1)});
-
-    console.log("Checking getDOMDataKeys");
-    array1 = Utility.getDOMDataKeys("#checklibrary-count");
-    array2 = ['test_data'];
-    TestPrint(`DOM data keys for object should be ${repr(array2)}`, RecordResult(JSON.stringify(array1) === JSON.stringify(array2)), {result: repr(array1)});
-
-    console.log("Checking hasDOMDataKey");
-    string1 = 'test_data';
-    resultbool1 = Utility.hasDOMDataKey({selector: "#checklibrary-count", key: string1});
-    TestPrint(`DOM data keys for object should include ${repr(string1)}`, RecordResult(resultbool1 === true), {no_result: true});
-
-    console.log("Checking addStyleSheet");
-    Utility.addStyleSheet("https://cdn.jsdelivr.net/gh/BrokenEagle/JavaScripts@stable/test/test-css-1.css", "test");
-    console.log("Color set to green... changing color in 5 seconds.");
-    await Utility.sleep(csstyle_waittime);
-    Utility.addStyleSheet("https://cdn.jsdelivr.net/gh/BrokenEagle/JavaScripts@stable/test/test-css-2.css", "test");
-    console.log("Color set to orange...");
-    await Utility.sleep(csstyle_waittime);
-    Utility.addStyleSheet("", "test");
-
-    console.log("Checking isScrolledIntoView");
-    window.scroll(0, 10000);
-    await Utility.sleep(100);
-    result1 = Utility.isScrolledIntoView(document.querySelector('footer'));
-    TestPrint("Page footer should be in view", RecordResult(result1), {no_result: true});
+    console.log("Checking assignObjects");
+    result1 = Utility.assignObjects(object1, object2);
+    boolarray1 = [HashContains(result1, ['search']), HashContains(result1.search, ['id', 'order'])];
+    if(boolarray1[1]) {
+        boolarray1.push(result1.search.id === "20,21,5")
+        boolarray1.push(result1.search.order === "customorder");
+    }
+    let boolarray2 = [HashContains(object1, ['search']), HashContains(object1.search, ['id', 'order'])];
+    if(boolarray1[1]) {
+        boolarray1.push(object1.search.id === "20,21,5")
+        boolarray1.push(object1.search.order === "customorder");
+    }
+    TestPrint(`Merging objects ${repr(object1)} and ${repr(object2)} produces the following result => ${repr(result1)}`, RecordResult(boolarray1.every((val) => val)), {result: repr(boolarray1)});
+    TestPrint(`The first object ${repr(object1)} should be modified and be equal to the return value ${repr(result1)}`, RecordResult(boolarray2.every((val) => val)), {result: repr(boolarray2)});
 
     console.log("Checking setCSSStyle");
     Utility.setCSSStyle("body {background: black !important;}", "test");
@@ -812,6 +768,63 @@ async function CheckUtilityLibrary() {
     console.log("Checking hasStyle");
     result1 = Utility.hasStyle('test');
     TestPrint("Test style should be initialized", RecordResult(result1), {no_result: true});
+
+    //Setup for data functions. These need some delay so that the values can be found when read.
+    let jqueryobj = jQuery("#checklibrary-count");
+    jqueryobj.on("mouseenter.checklibraries.test_hover", () => {
+        console.log("Hovering over count...");
+    });
+    testdata1 = {test_data: 'check'};
+    jqueryobj.data(testdata1);
+    await Utility.sleep(100);
+
+    console.log("Checking getPrivateData");
+    let $domobj = jqueryobj[0];
+    let data1 = Utility.getPrivateData($domobj);
+    TestPrint("data should be object with 2 keys and 1 subkey", RecordResult(HashContains(data1, ['events', 'handle']) && HashContains(data1.events, ['mouseover'])), {result: repr(data1)});
+
+    console.log("Checking getPublicData");
+    data1 = Utility.getPublicData($domobj);
+    TestPrint(`data should be object ${repr(testdata1)}`, RecordResult(HashEqual(testdata1, data1)), {result: repr(data1)});
+
+    console.log("Checking getAttr");
+    let $domarray = jQuery(`<div deleted="true" data-test1="test1" data-test2="2"></div>`);
+    $domobj = $domarray[0];
+    let expected1 = {deleted: 'true'};
+    let expected2 = {deleted: 'true', 'data-test1': 'test1', 'data-test2': '2'};
+    result1 = Utility.getAttr($domobj, 'deleted');
+    result2 = Utility.getAttr($domobj, ['deleted']);
+    let result3 = Utility.getAttr($domobj);
+    TestPrint(`The 'deleted' attribute of the dom object should be 'true'`, RecordResult(result1 === 'true'), {result: repr(result1)});
+    TestPrint("The value returned for ['deleted'] should be a hash", RecordResult(HashCheck(result2)), {no_result: true});
+    TestPrint(`The attributes hash should be equal to ${repr(expected1)}`, RecordResult(HashEqual(result2, expected1)), {result: repr(result2)});
+    TestPrint("The value returned for no keys should be a hash", RecordResult(HashCheck(result3)), {no_result: true});
+    TestPrint(`The attributes hash should be equal to ${repr(expected2)}`, RecordResult(HashEqual(result3, expected2)), {result: repr(result3)});
+
+    console.log("Checking getDOMArrayDataValues");
+    expected1 = ["test1"];
+    resultarray1 = Utility.getDOMArrayDataValues($domarray, 'test1');
+    TestPrint("The value returned should be an array", RecordResult(ArrayCheck(resultarray1)), {no_result: true});
+    TestPrint(`Data values for array should be ${repr(expected1)}`, RecordResult(ArrayEqual(expected1, resultarray1)), {result: repr(resultarray1)});
+
+    console.log("Checking isNamespaceBound");
+    string1 = 'checklibraries.test_hover';
+    resultbool1 = Utility.isNamespaceBound({root: "#checklibrary-count", eventtype: 'mouseover', namespace: string1});
+    TestPrint(`Bound event names for object should include ${repr(string1)}`, RecordResult(resultbool1), {result: repr(resultbool1)});
+
+    console.log("Checking hasDOMDataKey");
+    string1 = 'test_data';
+    resultbool1 = Utility.hasDOMDataKey({selector: "#checklibrary-count", key: string1});
+    TestPrint(`DOM data keys for object should include ${repr(string1)}`, RecordResult(resultbool1 === true), {no_result: true});
+
+    console.log("Checking setDataAttribute");
+    Utility.setDataAttribute($domarray, 'test3', 'on');
+    result1 = $domarray.attr('data-test3');
+    result2 = $domarray.data('test3');
+    TestPrint(`Setting the data attribute 'test3' should set the 'data-test3' attribute`, RecordResult(result1 === 'on'), {result: repr(result1)});
+    TestPrint(`Setting the data attribute 'test3' should set the 'test3' data value`, RecordResult(result2 === 'on'), {result: repr(result2)});
+
+    //Skipping the getElemPosition test. No way to reliably test this.
 
     console.log("Checking getMeta");
     let metaselector1 = "csrf-param";
@@ -876,21 +889,22 @@ async function CheckUtilityLibrary() {
     string1 = "test1=2&test2=3";
     object1 = {test1: "2", test2: "3"};
     result1 = Utility.parseParams(string1);
-    TestPrint(`Value ${repr(string1)} should should be changed to ${repr(object1)}`, RecordResult(JSON.stringify(object1) === JSON.stringify(result1)), {result: repr(result1)});
+    TestPrint(`Value ${repr(string1)} should should be changed to ${repr(object1)}`, RecordResult(HashEqual(object1, result1)), {result: repr(result1)});
+
+    console.log("Checking renderParams");
+    result1 = Utility.renderParams(object1);
+    TestPrint(`Value ${repr(object1)} should should be changed to ${repr(string1)}`, RecordResult(string1 === result1), {result: repr(result1)});
+
+    console.log("Checking renderHTMLTag");
+    expected1 = '<a href="/posts/1234">post #1234</a>';
+    result1 = Utility.renderHTMLTag('a', 'post #1234', {href: '/posts/1234'});
+    TestPrint(`HTML tag should be rendered as ${repr(expected1)}`, RecordResult(expected1 === result1), {result: repr(result1)});
 
     console.log("Checking HTMLEscape");
     string1 = '& < > "';
     string2 = "&amp; &lt; &gt; &quot;";
     result1 = Utility.HTMLEscape(string1);
     TestPrint(`Value ${repr(string1)} should should be changed to ${repr(string2)}`, RecordResult(string2 === result1), {result: repr(result1)});
-
-    console.log("Checking isHash");
-    testdata1 = [];
-    testdata2 = {};
-    result1 = Utility.isHash(testdata1);
-    result2 = Utility.isHash(testdata2);
-    TestPrint(`Value of ${testdata1} should not be a hash`, RecordResult(result1 === false), {no_result: true});
-    TestPrint(`Value of ${testdata2} should be a hash`, RecordResult(result2 === true), {no_result: true});
 
     console.log("Checking isBoolean");
     testdata2 = true;
@@ -913,18 +927,44 @@ async function CheckUtilityLibrary() {
     TestPrint(`Value of ${testdata1} should not be a string`, RecordResult(result1 === false), {no_result: true});
     TestPrint(`Value of ${testdata2} should be a string`, RecordResult(result2 === true), {no_result: true});
 
-    console.log("Checking validateID");
+    console.log("Checking isInteger");
+    testdata2 = 22;
+    result1 = Utility.isInteger(testdata1);
+    result2 = Utility.isInteger(testdata2);
+    TestPrint(`Value of ${testdata1} should not be a string`, RecordResult(result1 === false), {no_result: true});
+    TestPrint(`Value of ${testdata2} should be a string`, RecordResult(result2 === true), {no_result: true});
+
+    console.log("Checking isHash");
+    testdata1 = [];
+    testdata2 = {};
+    result1 = Utility.isHash(testdata1);
+    result2 = Utility.isHash(testdata2);
+    TestPrint(`Value of ${testdata1} should not be a hash`, RecordResult(result1 === false), {no_result: true});
+    TestPrint(`Value of ${testdata2} should be a hash`, RecordResult(result2 === true), {no_result: true});
+
+    console.log("Checking isArray");
+    result1 = Utility.isArray(testdata1);
+    result2 = Utility.isArray(testdata2);
+    TestPrint(`Value of ${testdata1} should be an array`, RecordResult(result1 === true), {no_result: true});
+    TestPrint(`Value of ${testdata2} should not be an array`, RecordResult(result2 === false), {no_result: true});
+
+    console.log("Checking isSet");
+    set1 = new Set();
+    resultbool1 = Utility.isSet(set1);
+    TestPrint(`Set ${repr(set1)} should be a set ${bracket(resultbool1)}`, RecordResult(resultbool1), {no_result: true});
+
+    console.log("Checking isID");
     testdata1 = 1234;
-    result1 = Utility.validateID(testdata1);
-    result2 = Utility.validateID(testdata2);
+    result1 = Utility.isID(testdata1);
+    result2 = Utility.isID(testdata2);
     TestPrint(`Record ID of ${testdata1} should be valid`, RecordResult(result1 === true), {no_result: true});
     TestPrint(`Record ID of ${testdata2} should be invalid`, RecordResult(result2 === false), {no_result: true});
 
-    console.log("Checking validateIDList");
+    console.log("Checking isIDList");
     testdata1 = [1, 2, 3, 4];
     testdata2 = [1, 'a', -1, null];
-    result1 = Utility.validateIDList(testdata1);
-    result2 = Utility.validateIDList(testdata2);
+    result1 = Utility.isIDList(testdata1);
+    result2 = Utility.isIDList(testdata2);
     TestPrint(`Record ID of ${testdata1} should be valid`, RecordResult(result1 === true), {no_result: true});
     TestPrint(`Record ID of ${testdata2} should be invalid`, RecordResult(result2 === false), {no_result: true});
 
@@ -954,20 +994,6 @@ function CheckStatisticsLibrary() {
     result1 = Statistics.removeOutliers(data1);
     TestPrint(`Values of ${repr(data1)} should have had 1 outlier removed`, RecordResult((data1.length - result1.length) === 1), {no_result: true});
 
-    console.log("Checking outputAdjustedMean()");
-    console.log("Shouldn't see output #1");
-    Statistics.outputAdjustedMean("Statistics Test");
-    Debug.recordTime('statistics', 'test');
-    Debug.recordTimeEnd('statistics', 'test');
-    console.log("Shouldn't see output #2");
-    let debug_enabled = Debug.mode;
-    Debug.mode = false;
-    Statistics.outputAdjustedMean("Statistics Test");
-    console.log("Should see output #3");
-    Debug.mode = true;
-    Statistics.outputAdjustedMean("Statistics Test");
-    Debug.mode = debug_enabled;
-
     console.log(`CheckStatisticsLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
 
@@ -985,6 +1011,14 @@ function CheckValidateLibrary() {
 
     //For checking library with/without validate installed
     if (typeof validate === "function") {
+        console.log("Checking boolean_constraints");
+        testdata1 = {value: null};
+        testdata2 = {value: false};
+        result1 = validate(testdata1, {value: Validate.boolean_constraints});
+        result2 = validate(testdata2, {value: Validate.boolean_constraints});
+        TestPrint(`Object ${repr(testdata1)} should have 1 validation error`, RecordResult(GetValidationLength(result1) === 1), {no_result: true});
+        TestPrint(`Object ${repr(testdata2)} should have 0 validation errors`, RecordResult(GetValidationLength(result2) === 0), {no_result: true});
+
         console.log("Checking number_constraints");
         testdata1 = {value: "test"};
         testdata2 = {value: 0};
@@ -1001,110 +1035,19 @@ function CheckValidateLibrary() {
         TestPrint(`Object ${repr(testdata1)} should have 1 validation error`, RecordResult(GetValidationLength(result1) === 1), {no_result: true});
         TestPrint(`Object ${repr(testdata2)} should have 0 validation errors`, RecordResult(GetValidationLength(result2) === 0), {no_result: true});
 
-        console.log("Checking counting_constraints");
+        console.log("Checking nonnegative_integer_constraints");
         testdata1 = {value: -1};
         testdata2 = {value: 0};
-        result1 = validate(testdata1, {value: Validate.counting_constraints});
-        result2 = validate(testdata2, {value: Validate.counting_constraints});
+        result1 = validate(testdata1, {value: Validate.nonnegative_integer_constraints});
+        result2 = validate(testdata2, {value: Validate.nonnegative_integer_constraints});
         TestPrint(`Object ${repr(testdata1)} should have 1 validation error`, RecordResult(GetValidationLength(result1) === 1), {no_result: true});
         TestPrint(`Object ${repr(testdata2)} should have 0 validation errors`, RecordResult(GetValidationLength(result2) === 0), {no_result: true});
 
-        console.log("Checking postcount_constraints");
+        console.log("Checking positive_integer_constraints");
         testdata1 = {value: 0};
         testdata2 = {value: 1};
-        result1 = validate(testdata1, {value: Validate.postcount_constraints});
-        result2 = validate(testdata2, {value: Validate.postcount_constraints});
-        TestPrint(`Object ${repr(testdata1)} should have 1 validation error`, RecordResult(GetValidationLength(result1) === 1), {no_result: true});
-        TestPrint(`Object ${repr(testdata2)} should have 0 validation errors`, RecordResult(GetValidationLength(result2) === 0), {no_result: true});
-
-        console.log("Checking expires_constraints");
-        testdata1 = {value: -1};
-        testdata2 = {value: 1};
-        result1 = validate(testdata1, {value: Validate.expires_constraints});
-        result2 = validate(testdata2, {value: Validate.expires_constraints});
-        TestPrint(`Object ${repr(testdata1)} should have 1 validation error`, RecordResult(GetValidationLength(result1) === 1), {no_result: true});
-        TestPrint(`Object ${repr(testdata2)} should have 0 validation errors`, RecordResult(GetValidationLength(result2) === 0), {no_result: true});
-
-        console.log("Checking inclusion_constraints");
-        testdata1 = {value: null};
-        testdata2 = {value: "dog"};
-        let inclusion1 = ["dog", "cat"];
-        result1 = validate(testdata1, {value: Validate.inclusion_constraints(inclusion1)});
-        result2 = validate(testdata2, {value: Validate.inclusion_constraints(inclusion1)});
-        TestPrint(`Object ${repr(testdata1)} with inclusion ${repr(inclusion1)} should have 1 validation error`, RecordResult(GetValidationLength(result1) === 1), {no_result: true});
-        TestPrint(`Object ${repr(testdata2)} with inclusion ${repr(inclusion1)} should have 0 validation errors`, RecordResult(GetValidationLength(result2) === 0), {no_result: true});
-
-        console.log("Checking hash validator");
-        testdata1 = {value: [0, 1, 2]};
-        testdata2 = {value: {a: 1}};
-        var validator1 = {value: {hash: true}};
-        result1 = validate(testdata1, validator1);
-        result2 = validate(testdata2, validator1);
-        TestPrint(`Object ${repr(testdata1)} with validator ${repr(validator1)} should have 1 validation error`, RecordResult(GetValidationLength(result1) === 1), {no_result: true});
-        TestPrint(`Object ${repr(testdata2)} with validator ${repr(validator1)} should have 0 validation errors`, RecordResult(GetValidationLength(result2) === 0), {no_result: true});
-
-        console.log("Checking array validator");
-        testdata1 = {value: [0, 1, 2]};
-        testdata2 = {value: [0, 1, 2, 3]};
-        validator1 = {value: {array: {length: {is: 4}}}};
-        var validator2 = {value: {array: {length: {minimum: 4}}}};
-        var validator3 = {value: {array: {length: {maximum: 3}}}};
-        result1 = validate(testdata1, validator1);
-        result2 = validate(testdata1, validator2);
-        result3 = validate(testdata2, validator3);
-        result4 = validate(testdata2, validator1);
-        TestPrint(`Object ${repr(testdata1)} with validator ${repr(validator1)} should have 1 validation error`, RecordResult(GetValidationLength(result1) === 1), {no_result: true});
-        TestPrint(`Object ${repr(testdata1)} with validator ${repr(validator2)} should have 1 validation error`, RecordResult(GetValidationLength(result2) === 1), {no_result: true});
-        TestPrint(`Object ${repr(testdata2)} with validator ${repr(validator3)} should have 1 validation error`, RecordResult(GetValidationLength(result3) === 1), {no_result: true});
-        TestPrint(`Object ${repr(testdata2)} with validator ${repr(validator1)} should have 0 validation errors`, RecordResult(GetValidationLength(result4) === 0), {no_result: true});
-
-        console.log("Checking boolean validator");
-        testdata1 = {value: undefined};
-        testdata2 = {value: true};
-        validator1 = {value: {boolean: true}};
-        result1 = validate(testdata1, validator1);
-        result2 = validate(testdata2, validator1);
-        TestPrint(`Object ${repr(testdata1)} with validator ${repr(validator1)} should have 1 validation error`, RecordResult(GetValidationLength(result1) === 1), {no_result: true});
-        TestPrint(`Object ${repr(testdata2)} with validator ${repr(validator1)} should have 0 validation errors`, RecordResult(GetValidationLength(result2) === 0), {no_result: true});
-
-        console.log("Checking string validator");
-        testdata1 = {value: undefined};
-        testdata2 = {value: null};
-        validator1 = {value: {string: {allowNull: true}}};
-        result1 = validate(testdata1, validator1);
-        result2 = validate(testdata2, validator1);
-        TestPrint(`Object ${repr(testdata1)} with validator ${repr(validator1)} should have 1 validation error`, RecordResult(GetValidationLength(result1) === 1), {no_result: true});
-        TestPrint(`Object ${repr(testdata2)} with validator ${repr(validator1)} should have 0 validation errors`, RecordResult(GetValidationLength(result2) === 0), {no_result: true});
-
-        console.log("Checking tagentryarray validator");
-        testdata1 = {value: ["tag", 0]};
-        testdata2 = {value: [["tag", 0]]};
-        result1 = validate(testdata1, {value: {tagentryarray: true}});
-        result2 = validate(testdata2, {value: {tagentryarray: true}});
-        TestPrint(`Object ${repr(testdata1)} should have 1 validation error`, RecordResult(GetValidationLength(result1) === 1), {no_result: true});
-        TestPrint(`Object ${repr(testdata2)} should have 0 validation errors`, RecordResult(GetValidationLength(result2) === 0), {no_result: true});
-
-        console.log("Checking hash_constraints");
-        testdata1 = {value: "0"};
-        testdata2 = {value: {}};
-        result1 = validate(testdata1, {value: Validate.hash_constraints});
-        result2 = validate(testdata2, {value: Validate.hash_constraints});
-        TestPrint(`Object ${repr(testdata1)} should have 1 validation error`, RecordResult(GetValidationLength(result1) === 1), {no_result: true});
-        TestPrint(`Object ${repr(testdata2)} should have 0 validation errors`, RecordResult(GetValidationLength(result2) === 0), {no_result: true});
-
-        console.log("Checking array_constraints");
-        testdata1 = {value: null};
-        testdata2 = {value: ["test"]};
-        result1 = validate(testdata1, {value: Validate.array_constraints()});
-        result2 = validate(testdata2, {value: Validate.array_constraints({is: 1})});
-        TestPrint(`Object ${repr(testdata1)} should have 1 validation error`, RecordResult(GetValidationLength(result1) === 1), {no_result: true});
-        TestPrint(`Object ${repr(testdata2)} should have 0 validation errors`, RecordResult(GetValidationLength(result2) === 0), {no_result: true});
-
-        console.log("Checking boolean_constraints");
-        testdata1 = {value: null};
-        testdata2 = {value: false};
-        result1 = validate(testdata1, {value: Validate.boolean_constraints});
-        result2 = validate(testdata2, {value: Validate.boolean_constraints});
+        result1 = validate(testdata1, {value: Validate.positive_integer_constraints});
+        result2 = validate(testdata2, {value: Validate.positive_integer_constraints});
         TestPrint(`Object ${repr(testdata1)} should have 1 validation error`, RecordResult(GetValidationLength(result1) === 1), {no_result: true});
         TestPrint(`Object ${repr(testdata2)} should have 0 validation errors`, RecordResult(GetValidationLength(result2) === 0), {no_result: true});
 
@@ -1124,15 +1067,21 @@ function CheckValidateLibrary() {
         TestPrint(`Object ${repr(testdata1)} should have 1 validation error`, RecordResult(GetValidationLength(result1) === 1), {no_result: true});
         TestPrint(`Object ${repr(testdata2)} should have 0 validation errors`, RecordResult(GetValidationLength(result2) === 0), {no_result: true});
 
-        console.log("Checking tagentryarray_constraints");
-        testdata1 = {value: null};
-        testdata2 = {value: [["tag", 0]]};
-        result1 = validate(testdata1, {value: Validate.tagentryarray_constraints()});
-        result2 = validate(testdata2, {value: Validate.tagentryarray_constraints()});
-        result3 = validate(testdata2, {value: Validate.tagentryarray_constraints([1])});
+        console.log("Checking string_constraints");
+        testdata1 = {value: 'test'};
+        testdata2 = {value: null};
+        result1 = validate(testdata1, {value: Validate.string_constraints({length: {is: 4}})});
+        result2 = validate(testdata2, {value: Validate.string_constraints({string: {allowNull: true}})});
+        TestPrint(`Object ${repr(testdata1)} should have 0 validation error`, RecordResult(GetValidationLength(result1) === 0), {no_result: true});
+        TestPrint(`Object ${repr(testdata2)} should have 0 validation errors`, RecordResult(GetValidationLength(result2) === 0), {no_result: true});
+
+        console.log("Checking hash_constraints");
+        testdata1 = {value: "0"};
+        testdata2 = {value: {}};
+        result1 = validate(testdata1, {value: Validate.hash_constraints});
+        result2 = validate(testdata2, {value: Validate.hash_constraints});
         TestPrint(`Object ${repr(testdata1)} should have 1 validation error`, RecordResult(GetValidationLength(result1) === 1), {no_result: true});
         TestPrint(`Object ${repr(testdata2)} should have 0 validation errors`, RecordResult(GetValidationLength(result2) === 0), {no_result: true});
-        TestPrint(`Object ${repr(testdata2)} with valid tag categories [1] should have 1 validation error`, RecordResult(GetValidationLength(result3) === 1), {no_result: true});
 
         console.log("Checking hashentry_constraints");
         testdata1 = {value: null};
@@ -1143,14 +1092,40 @@ function CheckValidateLibrary() {
         TestPrint(`Object ${repr(testdata1)} should have 2 validation error`, RecordResult(GetValidationLength(result1) === 2), {no_result: true});
         TestPrint(`Object ${repr(testdata2)} should have 0 validation errors`, RecordResult(GetValidationLength(result2) === 0), {no_result: true});
 
+        console.log("Checking array_constraints");
+        testdata1 = {value: null};
+        testdata2 = {value: ["test"]};
+        result1 = validate(testdata1, {value: Validate.array_constraints()});
+        result2 = validate(testdata2, {value: Validate.array_constraints({is: 1})});
+        TestPrint(`Object ${repr(testdata1)} should have 1 validation error`, RecordResult(GetValidationLength(result1) === 1), {no_result: true});
+        TestPrint(`Object ${repr(testdata2)} should have 0 validation errors`, RecordResult(GetValidationLength(result2) === 0), {no_result: true});
+
         console.log("Checking arrayentry_constraints");
         testdata1 = {expires: -1};
         testdata2 = {value: [], expires: 0};
         result1 = validate(testdata1, Validate.arrayentry_constraints());
         result2 = validate(testdata2, Validate.arrayentry_constraints({maximum: 1}));
-        console.log(result1, result2);
         TestPrint(`Object ${repr(testdata1)} should have 2 validation errors`, RecordResult(GetValidationLength(result1) === 2), {no_result: true});
         TestPrint(`Object ${repr(testdata2)} should have 0 validation errors`, RecordResult(GetValidationLength(result2) === 0), {no_result: true});
+
+        console.log("Checking tagentryarray_constraints");
+        testdata1 = {value: null};
+        testdata2 = {value: [["tag", 0]]};
+        result1 = validate(testdata1, {value: Validate.tagentryarray_constraints()});
+        result2 = validate(testdata2, {value: Validate.tagentryarray_constraints()});
+        result3 = validate(testdata2, {value: Validate.tagentryarray_constraints([1])});
+        TestPrint(`Object ${repr(testdata1)} should have 1 validation error`, RecordResult(GetValidationLength(result1) === 1), {no_result: true});
+        TestPrint(`Object ${repr(testdata2)} should have 0 validation errors`, RecordResult(GetValidationLength(result2) === 0), {no_result: true});
+        TestPrint(`Object ${repr(testdata2)} with valid tag categories [1] should have 1 validation error`, RecordResult(GetValidationLength(result3) === 1), {no_result: true});
+
+        console.log("Checking inclusion_constraints");
+        testdata1 = {value: null};
+        testdata2 = {value: "dog"};
+        let inclusion1 = ["dog", "cat"];
+        result1 = validate(testdata1, {value: Validate.inclusion_constraints(inclusion1)});
+        result2 = validate(testdata2, {value: Validate.inclusion_constraints(inclusion1)});
+        TestPrint(`Object ${repr(testdata1)} with inclusion ${repr(inclusion1)} should have 1 validation error`, RecordResult(GetValidationLength(result1) === 1), {no_result: true});
+        TestPrint(`Object ${repr(testdata2)} with inclusion ${repr(inclusion1)} should have 0 validation errors`, RecordResult(GetValidationLength(result2) === 0), {no_result: true});
 
         console.log("Checking validateIsHash");
         testdata1 = [];
@@ -1171,11 +1146,21 @@ function CheckValidateLibrary() {
         console.log("Checking validateHashEntries");
         testdata1 = {value: 5, expires: true};
         testdata2 = {value: [1, 2, 3, 4], expires: 0};
-        validator1 = Validate.arrayentry_constraints({is: 4});
+        let validator1 = Validate.arrayentry_constraints({is: 4});
         result1 = Validate.validateHashEntries('test', testdata1, validator1);
         result2 = Validate.validateHashEntries('test', testdata2, validator1);
         TestPrint(`Object ${repr(testdata1)} should return false`, RecordResult(result1 === false), {no_result: true});
         TestPrint(`Object ${repr(testdata2)} should return true`, RecordResult(result2 === true), {no_result: true});
+
+        console.log("Checking validateHashArrayEntries");
+        testdata1 = [{a: 5, b: 'c'}];
+        testdata2 = [{a: 5, b: 6}];
+        validator1 = {a: Validate.positive_integer_constraints, b: Validate.positive_integer_constraints};
+        result1 = Validate.validateHashArrayEntries('test', testdata1, validator1);
+        result2 = Validate.validateHashArrayEntries('test', testdata2, validator1);
+        TestPrint(`Object ${repr(testdata1)} should return false`, RecordResult(result1 === false), {no_result: true});
+        TestPrint(`Object ${repr(testdata2)} should return true`, RecordResult(result2 === true), {no_result: true});
+
     }
 
     console.log("Checking validateArrayValues");
@@ -1184,11 +1169,13 @@ function CheckValidateLibrary() {
     let testdata3 = ["one", "two", "three", "four"];
     let testdata4 = [1.2, 1.5];
     let testdata5 = [null, null];
+    let result0 = Validate.validateArrayValues('test', null, Validate.basic_integer_validator);
     result1 = Validate.validateArrayValues('test', testdata1, Validate.basic_integer_validator);
     result2 = Validate.validateArrayValues('test', testdata2, Validate.basic_ID_validator);
     result3 = Validate.validateArrayValues('test', testdata3, Validate.basic_stringonly_validator);
     result4 = Validate.validateArrayValues('test', testdata4, Validate.basic_number_validator);
     let result5 = Validate.validateArrayValues('test', testdata5, Validate.basic_stringonly_validator);
+    TestPrint(`null value should not be an array`, RecordResult(!result0), {no_result: true});
     TestPrint(`Object ${repr(testdata1)} should be all integers`, RecordResult(result1), {no_result: true});
     TestPrint(`Object ${repr(testdata2)} should be all IDs`, RecordResult(result2), {no_result: true});
     TestPrint(`Object ${repr(testdata3)} should be all strings`, RecordResult(result3), {no_result: true});
@@ -1198,9 +1185,11 @@ function CheckValidateLibrary() {
     console.log("Checking correctArrayValues");
     testdata1 = [-1, -2, 3, 4];
     testdata2 = ["one", "two", "three", "four"];
-    result1 = Validate.correctArrayValues('test', testdata1, Validate.basic_ID_validator);
-    result2 = Validate.correctArrayValues('test', testdata2, Validate.basic_stringonly_validator);
-    Utility.concat(result1, result2).forEach((message) => {console.log(message);});
+    result0 = Validate.correctArrayValues('test0', null, Validate.basic_integer_validator);
+    result1 = Validate.correctArrayValues('test1', testdata1, Validate.basic_ID_validator);
+    result2 = Validate.correctArrayValues('test2', testdata2, Validate.basic_stringonly_validator);
+    Utility.multiConcat(result0, result1, result2).forEach((message) => {console.log(message);});
+    TestPrint(`null value should not be an array`, RecordResult(result0[0] === 'test0 is not an array.'), {no_result: true});
     TestPrint(`Object ${repr(testdata1)} should have two corrections`, RecordResult(result1.length === 2), {no_result: true});
     TestPrint(`Object ${repr(testdata2)} should have no corrections`, RecordResult(result2.length === 0), {no_result: true});
 
@@ -1209,10 +1198,10 @@ function CheckValidateLibrary() {
     testdata2 = {a: 1, b: 2, c: 3, d: 4};
     testdata3 = {a: "one", b: "two", c: "three", d: "four"};
     testdata4 = {a: null, b: null, c: null, d: null};
-    result1 = Validate.validateHashValues('test', testdata1, Validate.basic_integer_validator);
-    result2 = Validate.validateHashValues('test', testdata2, Validate.basic_ID_validator);
-    result3 = Validate.validateHashValues('test', testdata3, Validate.basic_stringonly_validator);
-    result4 = Validate.validateHashValues('test', testdata4, Validate.basic_stringonly_validator);
+    result1 = Validate.validateHashValues('test0', testdata1, Validate.basic_integer_validator);
+    result2 = Validate.validateHashValues('test1', testdata2, Validate.basic_ID_validator);
+    result3 = Validate.validateHashValues('test2', testdata3, Validate.basic_stringonly_validator);
+    result4 = Validate.validateHashValues('test3', testdata4, Validate.basic_stringonly_validator);
     TestPrint(`Object ${repr(testdata1)} should be all integers`, RecordResult(result1), {no_result: true});
     TestPrint(`Object ${repr(testdata2)} should be all IDs`, RecordResult(result2), {no_result: true});
     TestPrint(`Object ${repr(testdata3)} should be all strings`, RecordResult(result3), {no_result: true});
@@ -1249,9 +1238,12 @@ async function CheckStorageLibrary() {
     result1 = Storage.getSessionData('bad-value');
     result2 = Storage.getSessionData('good-value');
     let result3 = Storage.getSessionData('nonexistent-value', {default_val: [0]});
+    sessionStorage.setItem('good-value', JSON.stringify(data1));
+    let result4 = Storage.getSessionData('good-value', {bypass: true});
     TestPrint(`bad-value with data ${repr(data1)} should return null`, RecordResult(result1 === null), {result: repr(result1)});
     TestPrint(`good-value with data ${repr(data2)} should return value`, RecordResult(result2?.[0] === "check this"), {result: repr(result2)});
     TestPrint("nonexistant-value with default value [0] should return default value", RecordResult(result3?.[0] === 0), {result: repr(result3)});
+    TestPrint(`good-value should return updated data when bypassing memory storage`, RecordResult(result4 === data1), {result: repr(result4)});
 
     console.log("Checking invalidateStorageData");
     data1 = ["check this"];
@@ -1265,11 +1257,12 @@ async function CheckStorageLibrary() {
     console.log("Checking checkStorageData");
     let validator1 = function () { return true;};
     let validator2 = function () { return false;};
-    result1 = Storage.checkSessionData('good-value', validator1, sessionStorage);
     Storage.invalidateSessionData('good-value');
-    result2 = Storage.checkSessionData('good-value', validator2, sessionStorage);
-    TestPrint(`good-value with data ${repr(data2)} with good validate should return value`, RecordResult(result1?.[0] === "check this"), {result: repr(result1)});
-    TestPrint(`good-value with data ${repr(data2)} with bad validate should return null`, RecordResult(result2 === null), {result: repr(result2)});
+    result1 = Storage.checkSessionData('good-value', {validator: validator1});
+    Storage.invalidateSessionData('good-value');
+    result2 = Storage.checkSessionData('good-value', {validator: validator2});
+    TestPrint(`data with good validate should return value`, RecordResult(result1 === "[check this]"), {result: repr(result1)});
+    TestPrint(`data with bad validate should return null`, RecordResult(result2 === null), {result: repr(result2)});
 
     console.log("Checking storage quota exceeded");
     let testvalue = "test".repeat(1000);
@@ -1279,7 +1272,6 @@ async function CheckStorageLibrary() {
     }
     let testsize1 = JSON.stringify(sessionStorage).length;
     TestPrint(`expected size of storage ${bracket(expectedsize1)} should be greater than actual size`, RecordResult(expectedsize1 > testsize1), {result: testsize1});
-    Debug.level = Debug.VERBOSE;
 
     console.log("Checking hasDataExpired");
     let max_expiration1 = 100000;
@@ -1288,7 +1280,7 @@ async function CheckStorageLibrary() {
     result1 = Storage.hasDataExpired("result1", undefined);
     result2 = Storage.hasDataExpired("result2", data2);
     result3 = Storage.hasDataExpired("result3", data3);
-    let result4 = Storage.hasDataExpired("result4", data4);
+    result4 = Storage.hasDataExpired("result4", data4);
     let result5 = Storage.hasDataExpired("result5", data4, 1000);
     TestPrint(`undefined data should have expired`, RecordResult(result1 === true), {result: repr(result1)});
     TestPrint(`data with no expires ${repr(data2)} should have expired`, RecordResult(result2 === true), {result: repr(result2)});
@@ -1357,15 +1349,15 @@ async function CheckStorageLibrary() {
         TestPrint(`good-value with data deleted should return null (sessionStorage)`, RecordResult(result1 === null), {result: repr(result1)});
         TestPrint(`good-value with data deleted should return null (indexedDB)`, RecordResult(result2 === null), {result: repr(result2)});
 
-        console.log("Checking checkLocalDB");
+        console.log("Checking checkData");
         let data5 = {expires: 0, value: data2};
         await Storage.saveData('expired-value', data3);
         await Storage.saveData('good-value', data4);
         await Storage.saveData('persistent-value', data5);
-        result1 = await Storage.checkLocalDB('expired-value', max_expiration1, {validator: validator1});
-        result2 = await Storage.checkLocalDB('good-value', max_expiration1, {validator: validator2});
-        result3 = await Storage.checkLocalDB('good-value', max_expiration1, {validator: validator1});
-        result4 = await Storage.checkLocalDB('persistent-value', max_expiration1, {validator: validator1});
+        result1 = await Storage.checkData('expired-value', max_expiration1, {validator: validator1});
+        result2 = await Storage.checkData('good-value', max_expiration1, {validator: validator2});
+        result3 = await Storage.checkData('good-value', max_expiration1, {validator: validator1});
+        result4 = await Storage.checkData('persistent-value', max_expiration1, {validator: validator1});
         TestPrint(`expired-value with data ${repr(data3)} should return null`, RecordResult(result1 === null), {result: repr(result1)});
         TestPrint(`good-value with data ${repr(data4)} with false validation should return null`, RecordResult(result2 === null), {result: repr(result2)});
         TestPrint(`good-value with data ${repr(data4)} with true validation should return value`, RecordResult(result3?.value?.[0] === "check this"), {result: repr(result3)});
@@ -1397,11 +1389,11 @@ async function CheckStorageLibrary() {
         TestPrint(`value1 with data ${repr(value1)} should return value`, RecordResult(result1.value1?.value === 1), {result: repr(result1.value1)});
         TestPrint(`value2 with data ${repr(value2)} should return value`, RecordResult(result1.value2?.value === true), {result: repr(result1.value2)});
 
-        console.log("Checking batchCheckLocalDB");
+        console.log("Checking batchCheckData");
         keylist1.forEach((key) => {
             Storage.removeIndexedSessionData(key);
         });
-        result1 = await Storage.batchCheckLocalDB(keylist1, null, {validator: () => (true)});
+        result1 = await Storage.batchCheckData(keylist1, {validator: () => (true)});
         result2 = Object.keys(result1);
         TestPrint(`Batch retrieval of ${repr(keylist1)} should return the keys ${repr(keylist2)}`, RecordResult(ArrayEqual(keylist2, result2)), {result: repr(result2)});
         TestPrint(`value1 with data ${repr(value1)} should return value`, RecordResult(result1.value1?.value === 1), {result: repr(result1.value1)});
@@ -1500,16 +1492,6 @@ async function CheckConcurrencyLibrary() {
     result1 = Concurrency.checkTimeout(key3, expiration1);
     TestPrint("Timeout should be set and unexpired", RecordResult(result1 === false), {result: result1});
 
-    console.log("Checking setupMutationReplaceObserver");
-    jQuery("#checklibrary-count").after('<span id="checklibrary-observe"></span>');
-    let string1 = 'nothing';
-    let string2 = 'something';
-    let value1 = string1;
-    Concurrency.setupMutationReplaceObserver("footer", "#checklibrary-observe", () => {console.log("Observation found!");value1 = string2;});
-    jQuery("#checklibrary-observe").replaceWith('<span id="checklibrary-observe" style="font-size:200%">(Observed)</span>');
-    await Utility.sleep(1000);
-    TestPrint(`Value ${repr(value1)} should be equal to ${repr(string2)}`, RecordResult(value1 === string2), {no_result: true});
-
     //Cleanup actions
     localStorage.removeItem(key1);
     localStorage.removeItem(key3);
@@ -1540,26 +1522,6 @@ async function CheckNetworkLibrary() {
         console.log("Skipping GM.xmlHttpRequest tests...");
     }
 
-    console.log("Checking installXHRHook");
-    let builtinXhrFn = JSPLib._window.XMLHttpRequest;
-    let url1 = '/users';
-    let addons1 = {search: {id: '1'}, limit: 1, only: 'id,name'};
-    let found1 = false;
-    Network.installXHRHook([
-        (data) => {
-            if (ArrayCheck(data) && data.length === 1 && data[0].id === 1) {
-                TestPrint(`With URL ${url1} and addons ${repr(addons1)}, a single user record of user #1 should have been returned`, RecordResult(data[0].name === "albert"), {result: repr(data)});
-                found1 = true;
-            }
-        }
-    ]);
-    await Network.getJSON(url1, {data: addons1});
-    JSPLib._window.XMLHttpRequest = builtinXhrFn;
-    await Utility.sleep(1000);
-    if (!found1) {
-        TestPrint('installXHRHook test failed', RecordResult(false), {no_result: true});
-    }
-
     console.log("Checking processError");
     let error1 = {status: 502};
     let baderror1 = {status: -999, responseText: "Bad error!"};
@@ -1581,7 +1543,7 @@ async function CheckNetworkLibrary() {
     await Utility.sleep(2000);
 
     console.log("Checking getNotify"); //Visual confirmation required
-    url1 = "/bad_url";
+    let url1 = "/bad_url";
     await Network.getNotify(url1, {custom_error: "Unable to get bad URL!"});
     await Utility.sleep(4000);
     jQuery("#close-notice-link").click();
@@ -1621,19 +1583,6 @@ async function CheckNetworkLibrary() {
     TestPrint('Response data should be a hash', RecordResult(HashCheck(json1)), {result: typeof json1});
     TestPrint('JSON should contain the correct structures', RecordResult(json1?.id === 1 & json1?.md5 === 'd34e4cf0a437a5d65f8e82b7bcd02606'), {result: json1});
 
-    console.log("Checking getScript");
-    url1 = "https://cdn.jsdelivr.net/gh/jquery/jquery-ui@1.12.1/ui/widgets/tabs.js";
-    let state1 = typeof jQuery.ui.tabs;
-    options1 = null;
-    resp = Network.getScript(url1, {ajax_options: {beforeSend: (jqXHR, settings) => (options1 = settings)}});
-    await resp;
-    await Utility.sleep(200);
-    let state2 = typeof jQuery.ui.tabs;
-    TestPrint('Method should be GET', RecordResult(options1.type === 'GET'), {result: options1.type});
-    TestPrint('Response code should be 200', RecordResult(resp.status === 200), {result: resp.status});
-    TestPrint('Initial state of jQuery tabs should be undefined', RecordResult(state1 === "undefined"), {result: state1});
-    TestPrint('Subsequent state of jQuery tabs should be a function', RecordResult(state2 === "function"), {result: state2});
-
     console.log(`CheckNetworkLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
 
@@ -1649,16 +1598,6 @@ async function CheckDanbooruLibrary() {
     TestPrint(`for item array ${repr(array1)}, the next page ID going in forward should be 25`, RecordResult(result1 === 25), {result: result1});
     TestPrint(`for item array ${repr(array1)}, the next page ID going in reverse should be 27`, RecordResult(result2 === 27), {result: result2});
 
-    console.log("Checking getShortName");
-    result1 = Danbooru.getShortName('copyright');
-    result2 = Danbooru.getShortName('general');
-    let result3 = Danbooru.getShortName('artist');
-    let result4 = Danbooru.getShortName('character');
-    TestPrint("the short name for copyright should be copy", RecordResult(result1 === 'copy'), {result: result1});
-    TestPrint("the short name for general should be gen", RecordResult(result2 === 'gen'), {result: result2});
-    TestPrint("the short name for artist should be art", RecordResult(result3 === 'art'), {result: result2});
-    TestPrint("the short name for character should be char", RecordResult(result4 === 'char'), {result: result2});
-
     console.log("Checking postSearchLink");
     let string1 = "1girl solo";
     let string2 = "Check this link";
@@ -1673,7 +1612,7 @@ async function CheckDanbooruLibrary() {
     result1 = Danbooru.wikiLink(string2, string1, {class: 'category-0'});
     TestPrint(`the tag ${repr(string1)} with text ${repr(string2)} should produce the link  ${repr(string3)}`, RecordResult(result1 === string3), {result: result1});
 
-    console.log("Checking submitRequest");
+    console.log("Checking query");
     Danbooru.error_domname = "#checklibrary-error";
     let type1 = 'posts';
     let type2 = 'doesntexist';
@@ -1683,25 +1622,25 @@ async function CheckDanbooruLibrary() {
     TestPrint(`with type ${type1} and addons ${repr(addons1)}, a single post should have been returned`, RecordResult(ArrayLength(result1, 1)), {result: result1});
     TestPrint(`with nonexistent type ${type2}, null should be returned`, RecordResult(result2 === null), {result: repr(result2)});
 
-    console.log("Checking submitRequest (long)");
+    console.log("Checking query (long)");
     result1 = await Danbooru.query(type1, addons1, {long_format: true});
     TestPrint(`with type ${type1} and addons ${repr(addons1)}, a single post should have been returned`, RecordResult(ArrayLength(result1, 1)), {result: result1});
 
-    console.log("Checking getPageItems");
+    console.log("Checking queryPageItems");
     type1 = 'users';
     addons1 = {search: {level: 50}, only: 'id,level'}; //Search for admins
     let page1 = 1; //Except for the first admin
     let limit1 = 1; //One at a time
     result1 = await Danbooru.queryPageItems(type1, limit1, {url_addons: addons1, batches: 2, page: page1, reverse: true});
     result2 = Utility.getObjectAttributes(result1, 'id');
-    result3 = result2.sort((a, b) => a - b);
-    result4 = Utility.getObjectAttributes(result1, 'level').reduce((total, entry) => total && entry === 50, true);
+    let result3 = result2.sort((a, b) => a - b);
+    let result4 = Utility.getObjectAttributes(result1, 'level').reduce((total, entry) => total && entry === 50, true);
     TestPrint(`with type ${type1} and addons ${repr(addons1)}, two users should have been returned`, RecordResult(ArrayLength(result1, 2)), {result: repr(result1)});
     TestPrint("should have also not returned the first user", RecordResult(ArrayIncludes(result2, 1, false)), {result: repr(result2)});
     TestPrint(`should have also returned users in reverse order ${repr(result3)}`, RecordResult(repr(result2) === repr(result3)), {result: repr(result2)});
     TestPrint("should have also returned only admins", RecordResult(result4), {no_result: true});
 
-    console.log("Checking getPageItems (long)");
+    console.log("Checking queryPageItems (long)");
     result1 = await Danbooru.queryPageItems(type1, limit1, {url_addons: addons1, batches: 2, page: page1, reverse: true, long_format: true});
     result2 = Utility.getObjectAttributes(result1, 'id');
     result3 = result2.sort((a, b) => a - b);
@@ -1711,7 +1650,7 @@ async function CheckDanbooruLibrary() {
     TestPrint(`should have also returned users in reverse order ${repr(result3)}`, RecordResult(repr(result2) === repr(result3)), {result: repr(result2)});
     TestPrint("should have also returned only admins", RecordResult(result4), {no_result: true});
 
-    console.log("Checking getPageItems (counter)");
+    console.log("Checking queryPageItems (counter)");
     let users_latest = await Danbooru.query(type1, {limit: 10, only: 'id'});
     let page_start = Danbooru.getNextPageID(users_latest, false);
     let page_end = Danbooru.getNextPageID(users_latest, true);
@@ -1724,12 +1663,12 @@ async function CheckDanbooruLibrary() {
     TestPrint(`the countdown counter latest ID should be ${repr(page_start)}`, RecordResult(result3 === page_start), {result: repr(result3)});
     TestPrint("the countdown counter should end at 0", RecordResult(result4 === 0), {result: repr(result4)});
 
-    console.log("Checking getPostsCountdown");
-    Danbooru.error_domname = "#checklibrary-error";
-    string1 = "id:1,2,3,4";
-    string2 = 'id'; //Grab only the ID
-    result1 = await Danbooru.getPostsCountdown(string1, 1, string2, '#checklibrary-count');
-    TestPrint(`with query ${string1} and addons "${string2}", four posts should have been returned`, RecordResult(ArrayLength(result1, 4)), {result: repr(result1)});
+    console.log("Checking queryIDItems (counter)");
+    result1 = await Danbooru.queryIDItems(type1, array1, limit1, {domname: '#checklibrary-count'});
+    result2 = Utility.getObjectAttributes(result1, 'id');
+    result4 = Number(jQuery('#checklibrary-count').text());
+    TestPrint(`getting the latest users with IDs ${repr(array1)} should get the same users`, RecordResult(ArrayEqual(array1, result2)), {result: repr(result2)});
+    TestPrint("the countdown counter should end at 0", RecordResult(result4 === 0), {result: repr(result4)});
 
     console.log(`CheckDanbooruLibrary results: ${test_successes} succeses, ${test_failures} failures`);
 }
@@ -1738,12 +1677,6 @@ async function CheckSaucenaoLibrary() {
     console.log("++++++++++++++++++++CheckSaucenaoLibrary++++++++++++++++++++");
     console.log("Start time:", Utility.getProgramTime());
     ResetResult();
-
-    console.log("Checking getDBIndex");
-    let string1 = 'danbooru';
-    let number1 = 9;
-    let result1 = Saucenao.getDBIndex(string1);
-    TestPrint(`Site ${string1} should have a DB index of ${number1}`, RecordResult(result1 === number1), {result: result1});
 
     console.log("Checking checkSauce #1");
     let object1 = null;
@@ -1789,7 +1722,7 @@ async function CheckSaucenaoLibrary() {
 
         console.log("Checking getSauce #3");
         let num_results = 2;
-        let resp1 = await Saucenao.getSauce(PREVIEW_URL, Saucenao.getDBIndex('danbooru'), num_results, true);
+        let resp1 = await Saucenao.getSauce(PREVIEW_URL, {limit: num_results, notify: true});
         let boolarray1 = [Boolean(resp1?.header), Boolean(resp1?.results)];
         TestPrint(`Image with URL ${PREVIEW_URL} should have a header and results`, RecordResult(boolarray1.every((val) => val)), {result: repr(boolarray1)});
         if (boolarray1.every((val) => val)) {
@@ -1816,16 +1749,16 @@ async function checklibrary() {
     document.body.style.height = '5000px';
     setTimeout(() => {window.scroll(0, 10000);}, 2000);
 
-    //CheckDebugLibrary();
+    CheckDebugLibrary();
     await CheckUtilityLibrary();
-    //await CheckNoticeLibrary();
-    //CheckStatisticsLibrary();
-    //CheckValidateLibrary();
-    //await CheckStorageLibrary();
-    //await CheckConcurrencyLibrary();
-    //await CheckNetworkLibrary();
-    //await CheckDanbooruLibrary();
-    //await CheckSaucenaoLibrary();
+    await CheckNoticeLibrary();
+    CheckStatisticsLibrary();
+    CheckValidateLibrary();
+    await CheckStorageLibrary();
+    await CheckConcurrencyLibrary();
+    await CheckNetworkLibrary();
+    await CheckDanbooruLibrary();
+    await CheckSaucenaoLibrary();
 
     console.log(`All library results: ${overall_test_successes} succeses, ${overall_test_failures} failures`);
 }

@@ -14,19 +14,19 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/notice.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/template.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/concurrency.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/statistics.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/danbooru.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/f1546dcf86ff88eb1c1fc8233fdf463f91b2e4b0/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/notice.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/concurrency.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/statistics.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/danbooru.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/57229c06cc6314a770f055049d167505ea07885c/lib/menu.js
 // ==/UserScript==
 
 /* global JSPLib $ */
@@ -35,6 +35,7 @@
 
 const PROGRAM_NAME = 'IndexedRelatedTags';
 const PROGRAM_SHORTCUT = 'irt';
+const DANBOORU_TOPIC_ID = 23592;
 
 /****Library updates****/
 
@@ -42,23 +43,19 @@ const PROGRAM_SHORTCUT = 'irt';
 
 /****Global variables****/
 
-//Exterior script variables
-const DANBOORU_TOPIC_ID = '23592';
+//Module constants
 
-//Variables for load.js
-const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.RelatedTag', 'Danbooru.Post'];
-const PROGRAM_LOAD_REQUIRED_SELECTORS = ['#top', '#page'];
-
-//Program data constants
-const PROGRAM_DATA_REGEX = /^(rt[fcjo](gen|char|copy|art)?|wpt|tagov)-/; //Regex that matches the prefix of all program cache data
-
-//Main program variables
 const IRT = {};
 
-//Available setting values
+const PROGRAM_DATA_REGEX = new RegExp('^(rt[fcjo](' + Danbooru.categories.shorts.join('|') + ')?|wpt|tagov)-');
+
+const LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.RelatedTag', 'Danbooru.Post'];
+const LOAD_REQUIRED_SELECTORS = ['#top', '#page'];
+
+//Setting constants
+
 const RELATED_QUERY_ORDERS = ['frequency', 'cosine', 'jaccard', 'overlap'];
 
-//Main settings
 const SETTINGS_CONFIG = {
     related_query_categories: {
         allitems: Danbooru.categories.names,
@@ -69,7 +66,7 @@ const SETTINGS_CONFIG = {
     related_results_limit: {
         reset: 0,
         parse: parseInt,
-        validate: (data) => Menu.validateNumber(data, true, 0, 50),
+        validate: (data) => Menu.validateNumber(data, {integer: true, minimum: 0, maximum: 50}),
         hint: "Number of results to show (1 - 50) for the primary <b>Tags</b> column. Setting to 0 uses Danbooru's default limit."
     },
     related_query_order_enabled: {
@@ -96,13 +93,13 @@ const SETTINGS_CONFIG = {
     random_post_batches: {
         reset: 4,
         parse: parseInt,
-        validate: (data) => Menu.validateNumber(data, true, 1, 10),
+        validate: (data) => Menu.validateNumber(data, {integer: true, minimum: 1, maximum: 10}),
         hint: "Number of consecutive queries for random posts (1 - 10)."
     },
     random_posts_per_batch: {
         reset: 100,
         parse: parseInt,
-        validate: (data) => Menu.validateNumber(data, true, 20, 200),
+        validate: (data) => Menu.validateNumber(data, {integer: true, minimum: 20, maximum: 200}),
         hint: "Number of posts to query for each batch (20 - 200)."
     },
     wiki_page_tags_enabled: {
@@ -143,7 +140,7 @@ const SETTINGS_CONFIG = {
     recheck_data_interval: {
         reset: 1,
         parse: parseInt,
-        validate: (data) => Menu.validateNumber(data, true, 0, 3),
+        validate: (data) => Menu.validateNumber(data, {integer: true, minimum: 0, maximum: 3}),
         hint: "Number of days (0 - 3). Setting to 0 disables this."
     },
     network_only_mode: {
@@ -152,12 +149,6 @@ const SETTINGS_CONFIG = {
         hint: `Always goes to network. <b><span style="color:red">Warning:</span> This negates the benefit of cached data!</b>`
     },
 };
-
-//Available config values
-const ALL_SOURCE_TYPES = ['indexed_db', 'local_storage'];
-const ALL_DATA_TYPES = ['related_tag', 'wiki_page', 'tag_overlap', 'custom'];
-const ALL_RELATED = ["", 'general', 'copyright', 'character', 'artist'];
-const ALL_ORDER = ['frequent', 'cosine', 'jaccard', 'overlap'];
 
 const CONTROL_CONFIG = {
     cache_info: {
@@ -170,23 +161,23 @@ const CONTROL_CONFIG = {
         hint: `Dumps all of the cached data related to ${PROGRAM_NAME}.`,
     },
     data_source: {
-        allitems: ALL_SOURCE_TYPES,
-        value: 'indexed_db',
+        allitems: ['local_storage', 'indexed_db'],
+        value: 'local_storage',
         hint: "Indexed DB is <b>Cache Data</b> and Local Storage is <b>Program Data</b>.",
     },
     data_type: {
-        allitems: ALL_DATA_TYPES,
+        allitems: ['related_tag', 'wiki_page', 'tag_overlap', 'custom'],
         value: 'related_tag',
         hint: "Select type of data. Use <b>Custom</b> for querying by keyname.",
     },
     tag_category: {
-        allitems: ALL_RELATED,
+        allitems: Utility.concat([""], Danbooru.categories.names),
         value: "",
         hint: "Select type of tag category. Blank selects uncategorized data.",
     },
     query_order: {
-        allitems: ALL_ORDER,
-        value: 'frequent',
+        allitems: RELATED_QUERY_ORDERS,
+        value: 'frequency',
         hint: "Select type of query order.",
     },
     raw_data: {
@@ -235,12 +226,10 @@ const MENU_CONFIG = {
     }],
 };
 
-//Pre-CSS/HTML constants
+//CSS Constants
 
 const DEPRECATED_TAG_CATEGORY = 200;
 const NONEXISTENT_TAG_CATEGORY = 300;
-
-//CSS Constants
 
 const PROGRAM_CSS = Template.normalizeCSS()`
 /**Container**/
@@ -581,13 +570,13 @@ const RELATEDTAG_CONSTRAINTS = {
         query: Validate.stringonly_constraints,
         tags: Validate.tagentryarray_constraints(),
     },
-    categories: Validate.inclusion_constraints(ALL_RELATED),
+    categories: Validate.inclusion_constraints(Danbooru.categories.names),
 };
 
 const TAG_OVERLAP_CONSTRAINTS = {
     entry: Validate.hashentry_constraints,
     value: {
-        count: Validate.counting_constraints,
+        count: Validate.nonnegative_integer_constraints,
         overlap: Validate.hash_constraints,
     },
     overlap: Validate.basic_integer_validator,
@@ -612,7 +601,7 @@ function ValidateEntry(key, entry) {
     if (!Validate.validateIsHash(key, entry)) {
         return false;
     }
-    if (key.match(/^rt[fcjo](gen|char|copy|art)?-/)) {
+    if (key.match(/^rt[fcjo](gen|char|copy|art|meta)?-/)) {
         return ValidateRelatedtagEntry(key, entry);
     }
     if (key.match(/^tagov-/)) {
@@ -665,7 +654,7 @@ function ValidateProgramData(key, entry) {
     var checkerror = [];
     switch (key) {
         case 'irt-user-settings':
-            checkerror = Menu.validateUserSettings(entry, SETTINGS_CONFIG);
+            checkerror = Load.validateUserSettings(entry, SETTINGS_CONFIG);
             break;
         case 'irt-prune-expires':
             if (!Utility.isInteger(entry)) {
@@ -1016,7 +1005,7 @@ async function GetCachedData({name = "", args = [], keyfunc = (() => {}), netfun
     let key = keyfunc(...args);
     printer.log("Checking", name, ':', key);
     let cached = await (!IRT.network_only_mode ?
-        Storage.checkLocalDB(key, expires) :
+        Storage.checkData(key, expires) :
         Promise.resolve(null));
     if (!cached) {
         cached = await netfunc(...args);
@@ -1356,7 +1345,7 @@ function InitializeTagColumns() {
     }
     if (!$('#related-tags-container .ai-tags-related-tags-column').html()?.trim()) {
         printer.log("User/Media tags not loaded yet... setting up mutation observer.");
-        SetupMutationReplaceObserver('.ai-tags-related-tags-column', () => {
+        SetupMutationReplaceObserver('ai-tags-related-tags-column', () => {
             InitializeUserMediaTags();
         });
     } else {
@@ -1364,7 +1353,7 @@ function InitializeTagColumns() {
     }
     if (!$('#related-tags-container .translated-tags-related-tags-column').html()?.trim()) {
         printer.log("Translated tags not loaded yet... setting up mutation observer.");
-        SetupMutationReplaceObserver('.translated-tags-related-tags-column', () => {
+        SetupMutationReplaceObserver('translated-tags-related-tags-column', () => {
             InitializeTranslatedTags();
         });
     } else {
@@ -1486,23 +1475,23 @@ function SetupInitializations() {
 }
 
 function CleanupTasks() {
-    Storage.pruneProgramCache(PROGRAM_SHORTCUT, PROGRAM_DATA_REGEX, PRUNE_EXPIRES);
+    Storage.pruneProgramCache();
 }
 
 //Menu functions
 
-function OptionCacheDataKey(data_type, data_value) {
+function OptionCacheDataKey(data_type) {
     if (data_type === 'related_tag') {
         IRT.tag_category = $('#irt-control-tag-category').val();
         IRT.query_order = $('#irt-control-query-order').val();
-        let modifier = GetRelatedKeyModifer(IRT.related_category, IRT.query_order);
-        return `${modifier}-${data_value}`;
+        let modifier = GetRelatedKeyModifer(IRT.tag_category, IRT.query_order);
+        return `${modifier}-`;
     }
     if (data_type === 'wiki_page') {
-        return `wpt-${data_value}`;
+        return `wpt-`;
     }
     if (data_type === 'tag_overlap') {
-        return `tagov-${data_value}`;
+        return `tagov-`;
     }
 }
 
@@ -1564,7 +1553,7 @@ function RenderSettingsMenu() {
     $('#irt-cache-controls').append(Menu.renderLinkclick('cache_info', true));
     $('#irt-cache-controls').append(Menu.renderCacheInfoTable());
     $('#irt-cache-controls').append(Menu.renderLinkclick('purge_cache', true));
-    $('#irt-controls').append(Menu.renderCacheEditor(true));
+    $('#irt-controls').append(Menu.renderCacheEditor({has_cache_data: true}));
     $('#irt-cache-editor-message').append(Menu.renderExpandable("Program Data details", PROGRAM_DATA_DETAILS));
     $('#irt-cache-editor-controls').append(Menu.renderKeyselect('data_source', true));
     $('#irt-cache-editor-controls').append(Menu.renderDataSourceSections());
@@ -1586,8 +1575,8 @@ function RenderSettingsMenu() {
     Menu.dataSourceChange();
     $('#irt-control-data-type').on('change.irt', DataTypeChange);
     Menu.rawDataChange();
-    Menu.getCacheClick(ValidateProgramData);
-    Menu.saveCacheClick(ValidateProgramData, ValidateEntry);
+    Menu.getCacheClick();
+    Menu.saveCacheClick();
     Menu.deleteCacheClick();
     Menu.listCacheClick();
     Menu.refreshCacheClick();
@@ -1616,29 +1605,25 @@ function Main() {
 
 /****Initialization****/
 
-//Variables for JSPLib
 JSPLib.data = IRT;
 JSPLib.name = PROGRAM_NAME;
 JSPLib.shortcut = PROGRAM_SHORTCUT;
+JSPLib.data_regex = PROGRAM_DATA_REGEX;
 JSPLib.settings_config = SETTINGS_CONFIG;
 
-//Variables for debug.js
 Debug.mode = false;
 Debug.level = Debug.INFO;
 
-//Variables for menu.js
-JSPLib.data_regex = PROGRAM_DATA_REGEX;
 Menu.data_key = OptionCacheDataKey;
 Menu.control_config = CONTROL_CONFIG;
 
-//Variables for storage.js
 Storage.indexedDBValidator = ValidateEntry;
+Storage.localSessionValidator = ValidateProgramData;
 
-//Export JSPLib
 Load.exportData();
 
 /****Execution start****/
 
-Load.programInitialize(Main, {required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, required_selectors: PROGRAM_LOAD_REQUIRED_SELECTORS});
+Load.programInitialize(Main, {required_variables: LOAD_REQUIRED_VARIABLES, required_selectors: LOAD_REQUIRED_SELECTORS});
 
 })(JSPLib);
