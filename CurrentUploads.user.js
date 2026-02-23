@@ -1602,7 +1602,7 @@ function ToggleNotice(event) {
             CU.current_username = CU.username.toLowerCase();
             CU.level_string = (CU.username === "Anonymous" ? 'Member' : DanbooruProxy.CurrentUser.data('level-string'));
             CU.usertag = 'user';
-            PopulateTable();
+            setTimeout(() => PopulateTable(), JQUERY_DELAY);
         }
     } else {
         CU.hidden = true;
