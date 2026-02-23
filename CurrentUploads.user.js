@@ -6,6 +6,7 @@
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
 // @match        https://*.donmai.us/*
+// @exclude      /^(?!https:\/\/\w+\.donmai\.us\/(static\/site_map|settings)\/?(\?|$)).*/
 // @exclude      /^https://\w+\.donmai\.us/.*\.(xml|json|atom)(\?|$)/
 // @run-at       document-idle
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/CurrentUploads.user.js
@@ -65,14 +66,12 @@ const PROGRAM_RESET_KEYS = {
 
 const STORAGE_RESET_KEYS = [
     'cu-current-metric',
-    'cu-hide-current-uploads',
-    'cu-stash-current-uploads'
 ];
 
 const PROGRAM_DATA_REGEX = /^rti-|ct(d|w|mo|y|at)-|(daily|weekly|monthly|yearly|alltime|previous)-(uploads|approvals)-/;
 
 const LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.CurrentUser'];
-const LOAD_REQUIRED_SELECTORS = ["#top", "#page-footer"];
+const LOAD_OPTIONAL_SELECTORS = ['#c-static #a-site-map', '#c-users #a-edit'];
 
 //Setting constants
 
@@ -172,28 +171,12 @@ const PROGRAM_CSS = Template.normalizeCSS()`
 }
 /**MAIN**/
 #upload-counts {
-    border-style: dotted;
-    border-width: 2px;
+    margin-top: 1em;
+    padding-top: 0.5em;
+    padding-right: 0.5em;
     max-width: 70em;
-    margin-left: 2em;
-    &.opened {
-        border-style: dashed;
-        border-width: 5px;
-        #count-module {
-            display: block;
-        }
-        #upload-counts-toggle {
-            margin: 0.5em;
-        }
-    }
-    &.stashed {
-        display: none;
-    }
-}
-#count-module {
-    display: none;
-    padding-bottom: 1em;
-    border-bottom: 1px solid;
+    border-style: solid;
+    border-width: 5px;
 }
 /**TABLE**/
 #count-table {
@@ -366,39 +349,14 @@ const PROGRAM_CSS = Template.normalizeCSS()`
             top: 0.55em;
         }
     }
-}
-/**STASH**/
-#stash-count-notice {
-    color: #F44;
-    font-weight: bold;
-    font-size: 80%;
-    &:hover {
-        color: #F88;
-    }
-}
-/**FOOTER**/
-#upload-counts-restore {
-    display: none;
-    &.stashed {
-        display: inline-block;
-    }
-}
-#restore-count-notice {
-    color: mediumseagreen;
-    &:hover {
-        filter: brightness(1.1);
-    }
 }`;
 
 const LIGHT_MODE_CSS = Template.normalizeCSS({theme: 'light'})`
+#cu-uploads-report {
+    color: var(--green-5);
+}
 #upload-counts {
     border-color: var(--grey-1);
-    &.opened {
-        border-color: var(--grey-2);
-    }
-}
-#count-module {
-    border-bottom-color: var(--grey-2);
 }
 #count-header {
     th {
@@ -430,14 +388,11 @@ const LIGHT_MODE_CSS = Template.normalizeCSS({theme: 'light'})`
 }`;
 
 const DARK_MODE_CSS = Template.normalizeCSS({theme: 'dark'})`
+#cu-uploads-report {
+    color: var(--green-4);
+}
 #upload-counts {
     border-color: var(--grey-8);
-    &.opened {
-        border-color: var(--grey-7);
-    }
-}
-#count-module {
-    border-bottom-color: var(--grey-7);
 }
 #count-header {
     th {
@@ -470,51 +425,46 @@ const DARK_MODE_CSS = Template.normalizeCSS({theme: 'dark'})`
 
 //HTML constants
 
+const MENU_LINK_HTML = '<li><a id="cu-uploads-report" class="cu-link">Uploads/Approvals</a></li>';
+
 const CARET_RIGHT = '<svg class="cu-svg-caret cu-svg-caret-right" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 512" width="20" height="20"><path class="cu-svg-icon" d="M246.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-128-128c-9.2-9.2-22.9-11.9-34.9-6.9s-19.8 16.6-19.8 29.6l0 256c0 12.9 7.8 24.6 19.8 29.6s25.7 2.2 34.9-6.9l128-128z"/></svg>';
 const CARET_DOWN = '<svg class="cu-svg-caret cu-svg-caret-down" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" height="20" width="20"><path class="cu-svg-icon" d="M137.4 374.6c12.5 12.5 32.8 12.5 45.3 0l128-128c9.2-9.2 11.9-22.9 6.9-34.9s-16.6-19.8-29.6-19.8L32 192c-12.9 0-24.6 7.8-29.6 19.8s-2.2 25.7 6.9 34.9l128 128z"/></svg>';
 
-const notice_box = Template.normalizeHTML()`
-<div id="upload-counts">
-    <div id="count-module">
-        <div id="count-table">
-            <div id="count-header"></div>
-            <div id="count-body"></div>
-            <div id="count-order"></div>
-            <div id="count-chart" style="display: none;"></div>
-            <div id="count-controls"></div>
-        </div>
-        <div id="count-copyrights" style="display: none;">
-            <div id="count-copyrights-header"><a class="cu-triangle cu-triangle-right">${CARET_RIGHT}${CARET_DOWN}</a>Copyrights<span id="count-copyrights-counter"></span></div>
-            <div id="count-copyrights-section" style="display: none;">
-                <div id="count-copyrights-controls"></div>
-                <div id="count-copyrights-list"></div>
-                <div id="count-copyrights-manual" style="display: none;">
-                    <input id="count_query_copyright" placeholder="Check copyright" type="text">
-                    <input id="count_add_copyright" type="submit" value="Add" class="btn">
-                </div>
+const NOTICE_BOX_HTML = Template.normalizeHTML()`
+<div id="upload-counts" style="display: none;">
+    <div id="count-table">
+        <div id="count-header"></div>
+        <div id="count-body"></div>
+        <div id="count-order"></div>
+        <div id="count-chart" style="display: none;"></div>
+        <div id="count-controls"></div>
+    </div>
+    <div id="count-copyrights" style="display: none;">
+        <div id="count-copyrights-header"><a class="cu-triangle cu-triangle-right">${CARET_RIGHT}${CARET_DOWN}</a>Copyrights<span id="count-copyrights-counter"></span></div>
+        <div id="count-copyrights-section" style="display: none;">
+            <div id="count-copyrights-controls"></div>
+            <div id="count-copyrights-list"></div>
+            <div id="count-copyrights-manual" style="display: none;">
+                <input id="count_query_copyright" placeholder="Check copyright" type="text">
+                <input id="count_add_copyright" type="submit" value="Add" class="btn">
             </div>
         </div>
-        <div id="count-query-user" style="display: flex; gap: 0.5em;">
-            <input id="count_query_user_id" placeholder="Check users" type="text">
-            <input id="count_submit_user_id" type="submit" value="Submit" class="btn">
-            <input id="count_refresh_user_id" type="submit" value="Refresh" class="btn">
-            <label for="count_approver_select">
-                Approvals
-                <input id="count_approver_select" class="cu-program-checkbox" type="checkbox">
-            </label>
-            <label for="count_override_select">
-                Override
-                <input id="count_override_select" class="cu-program-checkbox" type="checkbox">
-            </label>
-        </div>
     </div>
-    <div id="upload-counts-toggle">
-        <a id="toggle-count-notice" class="cu-link">Toggle Upload Table</a>&nbsp;(<a id="stash-count-notice" class="cu-link">STASH</a>)
+    <div id="count-query-user">
+        <input id="count_query_user_id" placeholder="Check users" type="text">
+        <input id="count_submit_user_id" type="submit" value="Submit" class="btn">
+        <input id="count_refresh_user_id" type="submit" value="Refresh" class="btn">
+        <label for="count_approver_select" title="Switch to checking approvals instead of uploads.">
+            Approvals
+            <input id="count_approver_select" class="cu-program-checkbox" type="checkbox">
+        </label>
+        <label for="count_override_select" title="Load table even if there were no uploads in the last 24 hours.">
+            Override
+            <input id="count_override_select" class="cu-program-checkbox" type="checkbox">
+        </label>
     </div>
 </div>
 `;
-
-const unstash_notice = `<span id="upload-counts-restore"> - <a id="restore-count-notice" class="cu-link">Restore ${PROGRAM_NAME}</a></span>`;
 
 const copyright_counter = '(<span id="loading-counter">...</span>)';
 
@@ -549,15 +499,12 @@ const PROGRAM_DATA_DETAILS = Template.normalizeHTML()`
 <ul>
     <li>General data
         <ul>
-            <li><b>prune-expires:</b> When the program will next check for cache data that has expired.</li>
             <li><b>user-settings:</b> All configurable settings.</li>
         </ul>
     </li>
     <li>Status data
         <ul>
             <li><b>current-metric:</b> Which metric to show upon first opening the table.</li>
-            <li><b>hide-current-uploads:</b> Should the table be opened on page load?</li>
-            <li><b>stash-current-uploads:</b> Should the table be hidden and the restore link shown? Takes precedence over <code>hide-current-uploads</code>.</li>
         </ul>
     </li>
 </ul>`;
@@ -821,20 +768,9 @@ function ValidateProgramData(key, entry) {
         case 'cu-user-settings':
             checkerror = Load.validateUserSettings(entry, SETTINGS_CONFIG);
             break;
-        case 'cu-prune-expires':
-            if (!Utility.isInteger(entry)) {
-                checkerror = ["Value is not an integer."];
-            }
-            break;
         case 'cu-current-metric':
             if (!tooltip_metrics.includes(entry)) {
                 checkerror = [`Value not in list: ${tooltip_metrics}`];
-            }
-            break;
-        case 'cu-hide-current-uploads':
-        case 'cu-stash-current-uploads':
-            if (!Utility.isBoolean(entry)) {
-                checkerror = ['Value is not a boolean.'];
             }
             break;
         default:
@@ -1658,7 +1594,7 @@ async function CopyrightPeriod(event) {
 function ToggleNotice(event) {
     if (CU.hidden === true) {
         CU.hidden = false;
-        $('#upload-counts').addClass('opened');
+        $('#upload-counts').show();
         if (!PopulateTable.is_started) {
             //Always show current user on open to prevent processing potentially bad usernames set by CheckUser
             CU.empty_uploads_message = (CU.username === "Anonymous" ? empty_uploads_message_anonymous : empty_uploads_message_owner);
@@ -1668,34 +1604,12 @@ function ToggleNotice(event) {
             CU.usertag = 'user';
             PopulateTable();
         }
-        CU.channel.postMessage({type: "show"});
     } else {
         CU.hidden = true;
-        $('#upload-counts').removeClass('opened');
+        $('#upload-counts').hide();
         $('.cu-program-checkbox').prop('checked', false);
         $("#count-chart").hide();
-        CU.channel.postMessage({type: "hide"});
     }
-    Storage.setLocalData('cu-hide-current-uploads', CU.hidden);
-    event.preventDefault();
-}
-
-function StashNotice(event) {
-    if (CU.stashed === true) {
-        CU.stashed = false;
-        $('#upload-counts,#upload-counts-restore').removeClass('stashed');
-        CU.channel.postMessage({type: "unstash"});
-    } else {
-        CU.stashed = true;
-        CU.hidden = true;
-        $('#upload-counts,#upload-counts-restore').removeClass('opened').addClass('stashed');
-        $('.cu-program-checkbox').prop('checked', false);
-        $("#count-chart").hide();
-        CU.channel.postMessage({type: "stash"});
-    }
-    Storage.setLocalData('cu-stash-current-uploads', CU.stashed);
-    Storage.setLocalData('cu-hide-current-uploads', CU.hidden);
-    event.preventDefault();
 }
 
 async function RefreshUser() {
@@ -1847,39 +1761,6 @@ function OptionCacheDataKey(data_type) {
 
 //Settings functions
 
-function BroadcastCU(ev) {
-    let printer = Debug.getFunctionPrint('BroadcastCU');
-    printer.log(`(${ev.data.type}):`, ev.data);
-    switch (ev.data.type) {
-        case "hide":
-            CU.hidden = true;
-            $('#upload-counts').removeClass('opened');
-            break;
-        case "show":
-            CU.hidden = false;
-            $('#upload-counts').addClass('opened');
-            break;
-        case "stash":
-            CU.stashed = true;
-            CU.hidden = true;
-            $('#upload-counts,#upload-counts-restore').removeClass('opened').addClass('stashed');
-            break;
-        case "unstash":
-            CU.stashed = false;
-            $('#upload-counts,#upload-counts-restore').removeClass('stashed');
-            //falls through
-        default:
-            //do nothing
-    }
-}
-
-function RemoteResetCallback() {
-    if (!CU.hidden && !CU.stashed) {
-        CU.hidden = true;
-        $('#upload-counts').removeClass('opened');
-    }
-}
-
 function GetShownPeriodKeys() {
     return timevalues.filter((period_key) => CU.user_settings.periods_shown.includes(period_info.longname[period_key]));
 }
@@ -1895,8 +1776,7 @@ function InitializeProgramValues() {
         username: DanbooruProxy.CurrentUser.data('name'),
         is_gold_user: DanbooruProxy.CurrentUser.data('is-gold'),
         current_metric: Storage.checkLocalData('cu-current-metric', {default_val: 'score'}),
-        hidden: Boolean(Storage.checkLocalData('cu-hide-current-uploads', {default_val: true})),
-        stashed: Boolean(Storage.checkLocalData('cu-stash-current-uploads', {default_val: false})),
+        hidden: true,
     });
     Load.setProgramGetter(CU, 'IAC', 'IndexedAutocomplete', 29.32);
 }
@@ -1925,7 +1805,7 @@ function RenderSettingsMenu() {
     Menu.engageUI({checkboxradio: true});
     $("#cu-select-periods-shown-daily").checkboxradio("disable"); //Daily period is mandatory
     Menu.saveUserSettingsClick();
-    Menu.resetUserSettingsClick({delete_keys: STORAGE_RESET_KEYS, local_callback: RemoteResetCallback});
+    Menu.resetUserSettingsClick({delete_keys: STORAGE_RESET_KEYS});
     Menu.cacheInfoClick();
     Menu.purgeCacheClick();
     Menu.expandableClick();
@@ -1944,7 +1824,6 @@ function RenderSettingsMenu() {
 
 function Main() {
     Load.preloadScript({
-        broadcast_func: BroadcastCU,
         program_css: PROGRAM_CSS,
         light_css: LIGHT_MODE_CSS,
         dark_css: DARK_MODE_CSS,
@@ -1955,23 +1834,9 @@ function Main() {
     });
     if (!Load.isScriptEnabled()) return;
     InitializeProgramValues();
-    var $notice_box = $(notice_box);
-    var $footer_notice = $(unstash_notice);
-    if (CU.stashed === true) {
-        $notice_box.addClass('stashed');
-        $footer_notice.addClass('stashed');
-        //The table needs to be hidden when it's stashed
-        CU.hidden = true;
-    }
-    $('header#top').append($notice_box);
-    $('footer#page-footer').append($footer_notice);
-    $("#toggle-count-notice").on(JSPLib.event.click, ToggleNotice);
-    $("#stash-count-notice,#restore-count-notice").on(JSPLib.event.click, StashNotice);
-    if (CU.hidden === false) {
-        //Set to opposite so that click can be used and sets it back
-        CU.hidden = true;
-        setTimeout(() => {$("#toggle-count-notice").click();}, JQUERY_DELAY);
-    }
+    $('[href="/explore/posts/missed_searches"]').parent().after(MENU_LINK_HTML);
+    $('#a-site-map').after(NOTICE_BOX_HTML);
+    $("#cu-uploads-report").on(JSPLib.event.click, ToggleNotice);
     Statistics.addPageStatistics();
     Load.noncriticalTasks(CleanupTasks);
 }
@@ -2001,6 +1866,6 @@ Load.exportData();
 
 /****Execution start****/
 
-Load.programInitialize(Main, {required_variables: LOAD_REQUIRED_VARIABLES, required_selectors: LOAD_REQUIRED_SELECTORS});
+Load.programInitialize(Main, {required_variables: LOAD_REQUIRED_VARIABLES, optional_selectors: LOAD_OPTIONAL_SELECTORS});
 
 })(JSPLib);
