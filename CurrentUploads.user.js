@@ -599,11 +599,11 @@ const PERIOD_INFO = {
         at: 'alltime'
     },
     header: {
-        d: 'Day',
-        w: 'Week',
-        mo: 'Month',
-        y: 'Year',
-        at: 'All-time'
+        d: "Day",
+        w: "Week",
+        mo: "Month",
+        y: "Year",
+        at: "All-time"
     },
     points: {
         w: 7,
@@ -646,19 +646,19 @@ const TOOLTIP_METRICS = ['score', 'upscore', 'downscore', 'favcount', 'tagcount'
 const CHART_METRICS = ['score', 'upscore', 'downscore', 'favcount', 'tagcount', 'gentags'];
 
 //Feedback messages
-const EMPTY_UPLOADS_MESSAGE_OWNER = 'No uploads from you yet.';
-const EMPTY_UPLOADS_MESSAGE_OTHER = 'No uploads for this user.';
-const EMPTY_APPROVALS_MESSAGE_OTHER = 'No approvals for this user.';
-const EMPTY_UPLOADS_MESSAGE_ANONYMOUS = 'User is Anonymous, so no uploads.';
-const COPYRIGHT_NO_UPLOADS = 'No uploads, so no copyrights available for this period.';
-const COPYRIGHT_NO_STATISTICS = 'No statistics available for this period (<span style="font-size:80%;color:grey">click the table header</span>).';
+const EMPTY_UPLOADS_MESSAGE_OWNER = "No uploads from you yet.";
+const EMPTY_UPLOADS_MESSAGE_OTHER = "No uploads for this user.";
+const EMPTY_APPROVALS_MESSAGE_OTHER = "No approvals for this user.";
+const EMPTY_UPLOADS_MESSAGE_ANONYMOUS = "User is Anonymous, so no uploads.";
+const COPYRIGHT_NO_UPLOADS = "No uploads, so no copyrights available for this period.";
+const COPYRIGHT_NO_STATISTICS = 'No statistics available for this period (<span style="font-size:80%; color:grey;">click the table header</span>).';
 
 //Other constants
 
-const NAME_FIELD = "name";
-const ID_FIELD = "id";
-const USER_FIELDS = "name,level_string";
-const POST_FIELDS = "id,score,up_score,down_score,fav_count,tag_count,tag_count_general,tag_string_copyright,created_at";
+const NAME_FIELD = 'name';
+const ID_FIELD = 'id';
+const USER_FIELDS = 'name,level_string';
+const POST_FIELDS = 'id,score,up_score,down_score,fav_count,tag_count,tag_count_general,tag_string_copyright,created_at';
 
 //Validation values
 
@@ -843,9 +843,9 @@ function RenderHeader() {
 
 function RenderBody() {
     if (CU.active_copytags.length > 5) {
-        $("#count-body").addClass("overflowed");
+        $('#count-body').addClass('overflowed');
     } else {
-        $("#count-body").removeClass("overflowed");
+        $('#count-body').removeClass('overflowed');
     }
     var tabletext = RenderRow('');
     for (let i = 0;i < CU.active_copytags.length; i++) {
@@ -1259,7 +1259,7 @@ async function PopulateTable() {
         post_data = await ProcessUploads(CU.current_username);
         CU.checked_users[CU.usertag][CU.current_username] = post_data.length;
     }
-    let is_override = $("#count_override_select")[0].checked;
+    let is_override = $('#count_override_select')[0].checked;
     if (is_override || CU.checked_users[CU.usertag][CU.current_username]) {
         CU.active_copytags = Utility.deepCopy(CU.user_copytags[CU.usertag][CU.current_username].daily);
         await CheckPeriodUploads(CU.current_username);
@@ -1274,36 +1274,36 @@ function InitializeControls() {
     const printer = Debug.getFunctionPrint('InitializeControls');
     //Render the controls only once when the table is first opened
     if (!CU.controls_initialized) {
-        $("#count-controls").html(RenderAllTooltipControls());
-        $("#count-copyrights-controls").html(RenderCopyrightControls());
-        $(".cu-select-tooltip").on(JSPLib.event.click, TooltipChange);
-        $(".cu-select-period a").on(JSPLib.event.click, CopyrightPeriod);
-        $("#count-copyrights-header a").on(JSPLib.event.click, ToggleCopyrightsSection);
-        $("#count_submit_user_id").on(JSPLib.event.click, CheckUser);
-        $("#count_refresh_user_id").on(JSPLib.event.click, RefreshUser);
-        $("#count_add_copyright").on(JSPLib.event.click, AddCopyright);
+        $('#count-controls').html(RenderAllTooltipControls());
+        $('#count-copyrights-controls').html(RenderCopyrightControls());
+        $('.cu-select-tooltip').on(JSPLib.event.click, TooltipChange);
+        $('.cu-select-period a').on(JSPLib.event.click, CopyrightPeriod);
+        $('#count-copyrights-header a').on(JSPLib.event.click, ToggleCopyrightsSection);
+        $('#count_submit_user_id').on(JSPLib.event.click, CheckUser);
+        $('#count_refresh_user_id').on(JSPLib.event.click, RefreshUser);
+        $('#count_add_copyright').on(JSPLib.event.click, AddCopyright);
         CU.controls_initialized = true;
         Load.scriptWaitExecute(CU, 'IAC', {
             available: () => {
                 CU.IAC.InitializeProgramValues(true);
                 CU.IAC.InitializeAutocompleteIndexed("#count_query_user_id", 'us');
-                printer.logLevel('Initialized CU input autocomplete: #count_query_user_id', Debug.DEBUG);
+                printer.logLevel("Initialized CU input autocomplete: #count_query_user_id", Debug.DEBUG);
             },
             fallback: () => {
-                printer.logLevel('Unable to initialize textarea autocomplete: #count_query_user_id', Debug.DEBUG);
+                printer.logLevel("Unable to initialize textarea autocomplete: #count_query_user_id", Debug.DEBUG);
             },
         });
     }
 }
 
 function InitializeTable() {
-    $("#count-header").html(Utility.renderHTMLTag('table', RenderHeader(), {class: 'striped'}));
-    $("#count-body").html(Utility.renderHTMLTag('table', RenderBody(), {class: 'striped'}));
-    $("#count-order").html(RenderOrderMessage("d", 0));
-    $("#count-header .cu-process").on(JSPLib.event.click, GetPeriod);
-    $("#count-header th").on(JSPLib.event.click, SortTable);
-    $("#count-body .cu-manual,#count-body .cu-limited").on(JSPLib.event.click, RenderChart);
-    $("#count-controls,#count-copyrights,#count-header").show();
+    $('#count-header').html(Utility.renderHTMLTag('table', RenderHeader(), {class: 'striped'}));
+    $('#count-body').html(Utility.renderHTMLTag('table', RenderBody(), {class: 'striped'}));
+    $('#count-order').html(RenderOrderMessage('d', 0));
+    $('#count-header .cu-process').on(JSPLib.event.click, GetPeriod);
+    $('#count-header th').on(JSPLib.event.click, SortTable);
+    $('#count-body .cu-manual, #count-body .cu-limited').on(JSPLib.event.click, RenderChart);
+    $('#count-controls, #count-copyrights, #count-header').show();
     $(`.cu-select-tooltip[data-type="${CU.current_metric}"] a`).click();
     CU.sorttype = 0;
     CU.sortperiod = "d";
@@ -1314,8 +1314,8 @@ function InitializeTable() {
 }
 
 function TableMessage(message) {
-    $("#count-body").html(message);
-    $("#count-controls,#count-copyrights,#count-header,#count-chart").hide();
+    $('#count-body').html(message);
+    $('#count-controls, #count-copyrights, #count-header, #count-chart').hide();
 }
 
 //Network functions
@@ -1423,11 +1423,11 @@ async function GetPeriod(event) {
     let column = header.cellIndex;
     let $cells = $(`#count-body td:nth-of-type(${column + 1})`);
     if (is_limited) {
-        let value = $(".cu-uploads", $cells[0]).html();
+        let value = $('.cu-uploads', $cells[0]).html();
         $($cells[0]).html(RenderTooltipData(value, period, true));
     } else {
         $cells.each((_i, cell) => {
-            let value = $(".cu-uploads", cell).html();
+            let value = $('.cu-uploads', cell).html();
             $(cell).html(RenderTooltipData(value, period));
         });
         $(`.cu-select-tooltip[data-type="${CU.current_metric}"] a`).click();
@@ -1448,7 +1448,7 @@ function SortTable(event) {
         CU.sortperiod = period;
     }
     let rows = [];
-    $("#count-body tr").each((i, row) => {
+    $('#count-body tr').each((i, row) => {
         if (i === 0) {
             return;
         }
@@ -1472,10 +1472,10 @@ function SortTable(event) {
                 return a.posts[0] - b.posts[0];
         }
     }).forEach((row) => {
-        $("#count-body tbody").append(row.domobj);
+        $('#count-body tbody').append(row.domobj);
     });
     CU.sorttype = (CU.sorttype + 1) % 4;
-    $("#count-order").html(RenderOrderMessage(period, CU.sorttype));
+    $('#count-order').html(RenderOrderMessage(period, CU.sorttype));
 }
 
 function RenderChart(event) {
@@ -1487,7 +1487,7 @@ function RenderChart(event) {
         return;
     }
     let period = $(event.target).data('period');
-    let is_limited = $(event.target).hasClass("cu-limited");
+    let is_limited = $(event.target).hasClass('cu-limited');
     let longname = PERIOD_INFO.longname[period];
     let points = PERIOD_INFO.points[period];
     let period_key = GetPeriodKey(longname);
@@ -1525,25 +1525,25 @@ function RenderChart(event) {
             title: `${type_display}`,
         },
         legend: {
-            horizontalAlign: "right",
-            verticalAlign: "bottom",
+            horizontalAlign: 'right',
+            verticalAlign: 'bottom',
         },
         data: [{
             showInLegend: true,
             legendText: `${metric_display}`,
-            type: "spline",
+            type: 'spline',
             dataPoints: period_averages
         },
         {
             showInLegend: true,
             legendText: `${type_display}`,
-            type: "line",
-            axisYType: "secondary",
+            type: 'line',
+            axisYType: 'secondary',
             dataPoints: period_uploads
         }]
     };
     //This needs to be shown now so that the chart function renders to the right size
-    $("#count-chart").show();
+    $('#count-chart').show();
     var chart = new CanvasJS.Chart("count-chart", chart_data);
     chart.render();
     $(".canvasjs-chart-credit").css('top', "400px");
@@ -1551,9 +1551,9 @@ function RenderChart(event) {
 
 function TooltipChange(event) {
     CU.current_metric = $(event.target.parentElement).data('type');
-    $(".cu-select-tooltip").removeClass("cu-active-control");
-    $(`.cu-select-tooltip[data-type="${CU.current_metric}"]`).addClass("cu-active-control");
-    $(".cu-tooltiptext").removeClass("cu-activetooltip");
+    $('.cu-select-tooltip').removeClass('cu-active-control');
+    $(`.cu-select-tooltip[data-type='${CU.current_metric}']`).addClass('cu-active-control');
+    $('.cu-tooltiptext').removeClass('cu-activetooltip');
     $(`.cu-tooltiptext[data-type="${CU.current_metric}"]`).addClass("cu-activetooltip");
     Storage.setLocalData('cu-current-metric', CU.current_metric);
     $(".cu-hover .cu-uploads").off(JSPLib.event.mouseover).on(JSPLib.event.mouseover, TooltipHover);
@@ -1567,9 +1567,9 @@ function ToggleCopyrightsSection(event) {
 
 function ToggleCopyrightTag(event) {
     let $container = $(event.target.parentElement);
-    $container.toggleClass("cu-active-copyright");
+    $container.toggleClass('cu-active-copyright');
     let copyright = $container.data('copyright');
-    if ($container.hasClass("cu-active-copyright")) {
+    if ($container.hasClass('cu-active-copyright')) {
         CU.active_copytags.push(copyright);
     } else {
         CU.active_copytags.splice(CU.active_copytags.indexOf(copyright), 1);
@@ -1580,14 +1580,14 @@ function ToggleCopyrightTag(event) {
 async function CopyrightPeriod(event) {
     let $container = $(event.target.parentElement);
     let short_period = CU.copyright_period = $container.data('type');
-    $(".cu-select-period").removeClass("cu-active-control");
-    $container.addClass("cu-active-control");
+    $('.cu-select-period').removeClass('cu-active-control');
+    $container.addClass('cu-active-control');
     if (short_period === 'manual') {
-        $("#count-copyrights-manual").show();
+        $('#count-copyrights-manual').show();
         $('#count-copyrights-list').html(RenderCopyrights('manual'));
-        $("#count-copyrights-list a").off(JSPLib.event.click).on(JSPLib.event.click, ToggleCopyrightTag);
+        $('#count-copyrights-list a').off(JSPLib.event.click).on(JSPLib.event.click, ToggleCopyrightTag);
     } else {
-        $("#count-copyrights-manual").hide();
+        $('#count-copyrights-manual').hide();
         let current_period = PERIOD_INFO.longname[short_period];
         let is_period_enabled = CU.period_available[CU.usertag][CU.current_username][short_period];
         if (is_period_enabled) {
@@ -1597,9 +1597,9 @@ async function CopyrightPeriod(event) {
                 let copyright_count = GetCopyrightCount(PostDecompressData(data.value));
                 let user_copytags = SortDict(copyright_count);
                 if (CU.user_settings.copyrights_merge) {
-                    $("#count-copyrights-counter").html(COUNTER_HTML);
+                    $('#count-copyrights-counter').html(COUNTER_HTML);
                     user_copytags = await MergeCopyrightTags(user_copytags);
-                    $("#count-copyrights-counter").html('');
+                    $('#count-copyrights-counter').html("");
                 }
                 CU.user_copytags[CU.usertag][CU.current_username][current_period] = user_copytags;
             }
@@ -1607,7 +1607,7 @@ async function CopyrightPeriod(event) {
                 $('#count-copyrights-list').html(`<div id="empty-statistics">${COPYRIGHT_NO_UPLOADS}</div>`);
             } else {
                 $('#count-copyrights-list').html(RenderCopyrights(current_period));
-                $("#count-copyrights-list a").off(JSPLib.event.click).on(JSPLib.event.click, ToggleCopyrightTag);
+                $('#count-copyrights-list a').off(JSPLib.event.click).on(JSPLib.event.click, ToggleCopyrightTag);
             }
         } else {
             $('#count-copyrights-list').html(`<div id="empty-statistics">${COPYRIGHT_NO_STATISTICS}</div>`);
@@ -1625,7 +1625,7 @@ function ToggleNotice(event) {
             CU.empty_uploads_message = (CU.username === "Anonymous" ? EMPTY_UPLOADS_MESSAGE_ANONYMOUS : EMPTY_UPLOADS_MESSAGE_OWNER);
             CU.display_username = CU.username;
             CU.current_username = CU.username.toLowerCase();
-            CU.level_string = (CU.username === "Anonymous" ? 'Member' : DanbooruProxy.CurrentUser.data('level-string'));
+            CU.level_string = (CU.username === "Anonymous" ? "Member" : DanbooruProxy.CurrentUser.data('level-string'));
             CU.usertag = 'user';
             setTimeout(() => PopulateTable(), JQUERY_DELAY);
         }
@@ -1633,7 +1633,7 @@ function ToggleNotice(event) {
         CU.hidden = true;
         $('#upload-counts').hide();
         $('.cu-program-checkbox').prop('checked', false);
-        $("#count-chart").hide();
+        $('#count-chart').hide();
     }
 }
 
@@ -1653,9 +1653,9 @@ async function RefreshUser() {
 async function CheckUser() {
     //Don't change the username while currently processing
     if (!PopulateTable.is_started) {
-        $("#count-chart").hide();
+        $('#count-chart').hide();
         let check_user;
-        let check_username = $("#count_query_user_id").val().toLowerCase();
+        let check_username = $('#count_query_user_id').val().toLowerCase();
         if (check_username === "") {
             check_user = [];
         } else if (check_username in CU.checked_usernames) {
@@ -1669,7 +1669,7 @@ async function CheckUser() {
             CU.display_username = check_user[0].name;
             CU.current_username = check_user[0].name.toLowerCase();
             CU.level_string = check_user[0].level_string;
-            let is_approvals = $("#count_approver_select")[0].checked;
+            let is_approvals = $('#count_approver_select')[0].checked;
             CU.empty_uploads_message = is_approvals ? EMPTY_APPROVALS_MESSAGE_OTHER : EMPTY_UPLOADS_MESSAGE_OTHER;
             CU.usertag = is_approvals ? 'approver' : 'user';
             CU.counttype = is_approvals ? 'approvals' : 'uploads';
@@ -1682,10 +1682,10 @@ async function CheckUser() {
 
 async function AddCopyright() {
     let user_copytags = CU.user_copytags[CU.usertag][CU.current_username];
-    let tag = $("#count_query_copyright").val();
+    let tag = $('#count_query_copyright').val();
     let tagdata = await Danbooru.query('tags', {search: {name: tag}, only: NAME_FIELD}, {default_val: []});
     if (tagdata.length === 0) {
-        Notice.notice('Tag not valid');
+        Notice.notice("Tag not valid");
         return;
     }
     tag = tagdata[0].name;
@@ -1694,15 +1694,15 @@ async function AddCopyright() {
     CU.active_copytags.push(tag);
     CU.active_copytags = Utility.arrayUnique(CU.active_copytags);
     $('#count-copyrights-list').html(RenderCopyrights('manual'));
-    $("#count-copyrights-list a").off(JSPLib.event.click).on(JSPLib.event.click, ToggleCopyrightTag);
+    $('#count-copyrights-list a').off(JSPLib.event.click).on(JSPLib.event.click, ToggleCopyrightTag);
 }
 
 function TooltipHover(event) {
     let container = event.target.parentElement;
-    let $tooltip_text = $(".cu-activetooltip", container);
+    let $tooltip_text = $('.cu-activetooltip', container);
     let tooltip_key = $(container.parentElement.parentElement).data('key');
     let tooltip_period = $(container).data('period');
-    let tooltip_metric = $(".cu-activetooltip", container).data('type');
+    let tooltip_metric = $('.cu-activetooltip', container).data('type');
     $tooltip_text.html("Loading!");
     $tooltip_text.html(RenderStatistics(tooltip_key, tooltip_metric, tooltip_period));
     $(event.target).off();
@@ -1717,7 +1717,7 @@ async function ProcessUploads() {
     if (CU.current_username !== "Anonymous") {
         current_uploads = await GetPeriodUploads(CU.current_username, 'd');
     }
-    let previous_key = GetPeriodKey("previous");
+    let previous_key = GetPeriodKey('previous');
     if (current_uploads.length) {
         let is_new_tab = Storage.getIndexedSessionData(previous_key) === null;
         let previous_uploads = await Storage.checkData(previous_key, {default_val: {value: []}});
@@ -1769,12 +1769,12 @@ function CleanupTasks() {
 //Cache functions
 
 function OptionCacheDataKey(data_type) {
-    CU.data_period = $("#cu-control-data-period").val();
-    if (data_type === "reverse_implication") {
+    CU.data_period = $('#cu-control-data-period').val();
+    if (data_type === 'reverse_implication') {
         return 'rti-';
     }
-    if (data_type === "count") {
-        if (CU.data_period === "previous") {
+    if (data_type === 'count') {
+        if (CU.data_period === 'previous') {
             CU.data_value = "";
             return "";
         }
@@ -1808,34 +1808,34 @@ function InitializeProgramValues() {
 
 function RenderSettingsMenu() {
     $(Menu.program_selector).append(Menu.renderMenuFramework(MENU_CONFIG));
-    $("#cu-general-settings").append(Menu.renderDomainSelectors());
-    $("#cu-display-settings").append(Menu.renderCheckbox('copyrights_merge'));
-    $("#cu-display-settings").append(Menu.renderCheckbox('copyrights_enabled'));
-    $("#cu-display-settings").append(Menu.renderTextinput('copyrights_threshold', 10));
-    $("#cu-display-settings").append(Menu.renderTextinput('postcount_threshold', 10));
-    $("#cu-display-settings").append(Menu.renderInputSelectors('periods_shown', 'checkbox'));
+    $('#cu-general-settings').append(Menu.renderDomainSelectors());
+    $('#cu-display-settings').append(Menu.renderCheckbox('copyrights_merge'));
+    $('#cu-display-settings').append(Menu.renderCheckbox('copyrights_enabled'));
+    $('#cu-display-settings').append(Menu.renderTextinput('copyrights_threshold', 10));
+    $('#cu-display-settings').append(Menu.renderTextinput('postcount_threshold', 10));
+    $('#cu-display-settings').append(Menu.renderInputSelectors('periods_shown', 'checkbox'));
     $('#cu-controls').append(Menu.renderCacheControls());
-    $('#cu-cache-controls-message').append(Menu.renderExpandable("Cache Data details", CACHE_DATA_DETAILS));
-    $("#cu-cache-controls").append(Menu.renderLinkclick('cache_info', true));
+    $('#cu-cache-controls-message').append(Menu.renderExpandable('Cache Data details', CACHE_DATA_DETAILS));
+    $('#cu-cache-controls').append(Menu.renderLinkclick('cache_info', true));
     $('#cu-cache-controls').append(Menu.renderCacheInfoTable());
-    $("#cu-cache-controls").append(Menu.renderLinkclick('purge_cache', true));
+    $('#cu-cache-controls').append(Menu.renderLinkclick('purge_cache', true));
     $('#cu-controls').append(Menu.renderCacheEditor({has_cache_data: true}));
-    $('#cu-cache-editor-message').append(Menu.renderExpandable("Program Data details", PROGRAM_DATA_DETAILS));
-    $("#cu-cache-editor-controls").append(Menu.renderKeyselect('data_source', true));
-    $("#cu-cache-editor-controls").append(Menu.renderDataSourceSections());
-    $("#cu-section-indexed-db").append(Menu.renderKeyselect('data_type', true));
-    $("#cu-section-indexed-db").append(Menu.renderKeyselect('data_period', true));
-    $("#cu-section-local-storage").append(Menu.renderCheckbox('raw_data', true));
-    $("#cu-cache-editor-controls").append(Menu.renderTextinput('data_name', 20, true));
+    $('#cu-cache-editor-message').append(Menu.renderExpandable('Program Data details', PROGRAM_DATA_DETAILS));
+    $('#cu-cache-editor-controls').append(Menu.renderKeyselect('data_source', true));
+    $('#cu-cache-editor-controls').append(Menu.renderDataSourceSections());
+    $('#cu-section-indexed-db').append(Menu.renderKeyselect('data_type', true));
+    $('#cu-section-indexed-db').append(Menu.renderKeyselect('data_period', true));
+    $('#cu-section-local-storage').append(Menu.renderCheckbox('raw_data', true));
+    $('#cu-cache-editor-controls').append(Menu.renderTextinput('data_name', 20, true));
     Menu.engageUI({checkboxradio: true});
-    $("#cu-select-periods-shown-daily").checkboxradio("disable"); //Daily period is mandatory
+    $('#cu-select-periods-shown-daily').checkboxradio('disable'); //Daily period is mandatory
     Menu.saveUserSettingsClick();
     Menu.resetUserSettingsClick({delete_keys: STORAGE_RESET_KEYS});
     Menu.cacheInfoClick();
     Menu.purgeCacheClick();
     Menu.expandableClick();
     Menu.dataSourceChange();
-    $("#cu-control-data-type").on(JSPLib.event.change, DataTypeChange);
+    $('#cu-control-data-type').on(JSPLib.event.change, DataTypeChange);
     Menu.rawDataChange();
     Menu.getCacheClick();
     Menu.saveCacheClick();
@@ -1861,7 +1861,7 @@ function Main() {
     InitializeProgramValues();
     $('[href="/explore/posts/missed_searches"]').parent().after(MENU_LINK_HTML);
     $('#a-site-map').after(NOTICE_BOX_HTML);
-    $("#cu-uploads-report").on(JSPLib.event.click, ToggleNotice);
+    $('#cu-uploads-report').on(JSPLib.event.click, ToggleNotice);
     Statistics.addPageStatistics();
     Load.noncriticalTasks(CleanupTasks);
 }
