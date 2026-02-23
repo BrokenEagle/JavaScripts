@@ -158,6 +158,10 @@ const PROGRAM_CSS = Template.normalizeCSS()`
 .cu-link {
     cursor: pointer;
 }
+.cu-monospace {
+    font-family: monospace;
+    font-size: 12px;
+}
 .cu-switch-control {
     &.cu-active-control {
         text-shadow: 1px 0 0;
@@ -534,6 +538,36 @@ const COPYRIGHT_TAG_TEMPLATE = Template.normalizeHTML({template: true})`
 <span title="${'copyright'}" data-copyright="${'copyright'}" class="${'classname'}">
     ${'taglink'}
 </span>`;
+
+const WEEKLIST_TEMPLATE = Template.normalizeHTML({template: true})`
+<ul class="cu-monospace">
+    <li>Sun: ${'sunday'}</li>
+    <li>Mon: ${'monday'}</li>
+    <li>Tue: ${'tuesday'}</li>
+    <li>Wed: ${'wednesday'}</li>
+    <li>Thu: ${'thursday'}</li>
+    <li>Fri: ${'friday'}</li>
+    <li>Sat: ${'saturday'}</li>
+</ul>`;
+
+const DAYLIST_TEMPLATE = Template.normalizeHTML({template: true})`
+<ul class="cu-monospace">
+    <li>00-04: ${'t00_04'}</li>
+    <li>04-08: ${'t04_08'}</li>
+    <li>08-12: ${'t08_12'}</li>
+    <li>12-16: ${'t12_16'}</li>
+    <li>16-20: ${'t16_20'}</li>
+    <li>20-24: ${'t20_24'}</li>
+</ul>`;
+
+const STATLIST_TEMPLATE = Template.normalizeHTML({template: true})`
+<ul>
+    <li>Max: ${'max'}</li>
+    <li>Avg: ${'average'}</li>
+    <li>StD: ${'stddev'}</li>
+    <li>Out: ${'outlier'}</li>
+    <li>Adj: ${'adjusted'}</li>
+</ul>`;
 
 //Time periods
 const TIMEVALUES = ['d', 'w', 'mo', 'y', 'at'];
@@ -959,39 +993,30 @@ function RenderAllStats(stat, attribute) {
 }
 
 function RenderWeeklist(stat) {
-    return `
-<ul style="font-family:monospace;font-size:12px">
-    <li>Sun: ${stat[0]}</li>
-    <li>Mon: ${stat[1]}</li>
-    <li>Tue: ${stat[2]}</li>
-    <li>Wed: ${stat[3]}</li>
-    <li>Thu: ${stat[4]}</li>
-    <li>Fri: ${stat[5]}</li>
-    <li>Sat: ${stat[6]}</li>
-</ul>`;
+    return WEEKLIST_TEMPLATE({
+        sunday: stat[0],
+        monday: stat[1],
+        tuesday: stat[2],
+        wednesday: stat[3],
+        thursday: stat[4],
+        friday: stat[5],
+        saturday: stat[6],
+    });
 }
 
 function RenderDaylist(stat) {
-    return `
-<ul style="font-family:monospace;font-size:12px">
-    <li>00-04: ${stat[0]}</li>
-    <li>04-08: ${stat[1]}</li>
-    <li>08-12: ${stat[2]}</li>
-    <li>12-16: ${stat[3]}</li>
-    <li>16-20: ${stat[4]}</li>
-    <li>20-24: ${stat[5]}</li>
-</ul>`;
+    return DAYLIST_TEMPLATE({
+        t00_04: stat[0],
+        t04_08: stat[1],
+        t08_12: stat[2],
+        t12_16: stat[3],
+        t16_20: stat[4],
+        t20_24: stat[5],
+    });
 }
 
 function RenderStatlist(stat) {
-    return `
-<ul>
-    <li>Max: ${stat.max}</li>
-    <li>Avg: ${stat.average}</li>
-    <li>StD: ${stat.stddev}</li>
-    <li>Out: ${stat.outlier}</li>
-    <li>Adj: ${stat.adjusted}</li>
-</ul>`;
+    return STATLIST_TEMPLATE(stat);
 }
 
 function GetAllStatistics(posts, attribute) {
