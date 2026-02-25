@@ -54,6 +54,7 @@ const DEFAULT_VALUES = {
     counttype: 'uploads',
     controls_initialized: false,
     copyright_period: 'd',
+    populating_table: false,
 };
 
 const PROGRAM_RESET_KEYS = {
@@ -1279,7 +1280,7 @@ function CheckPeriodUploads() {
 
 async function PopulateTable() {
     //Prevent function from being reentrant while processing uploads
-    PopulateTable.is_started = true;
+    CU.populating_table = true;
     var post_data = [];
     InitializeControls();
     if (CU.checked_users[CU.usertag][CU.current_username] === undefined) {
@@ -1295,7 +1296,7 @@ async function PopulateTable() {
     } else {
         TableMessage(`<div id="empty-uploads">${CU.empty_uploads_message}</div>`);
     }
-    PopulateTable.is_started = false;
+    CU.populating_table = false;
 }
 
 function InitializeControls() {
@@ -1648,7 +1649,7 @@ function ToggleNotice(event) {
     if (CU.hidden === true) {
         CU.hidden = false;
         $('#upload-counts').show();
-        if (!PopulateTable.is_started) {
+        if (!CU.populating_table) {
             //Always show current user on open to prevent processing potentially bad usernames set by CheckUser
             CU.empty_uploads_message = (CU.username === "Anonymous" ? EMPTY_UPLOADS_MESSAGE_ANONYMOUS : EMPTY_UPLOADS_MESSAGE_OWNER);
             CU.display_username = CU.username;
@@ -1680,7 +1681,7 @@ async function RefreshUser() {
 
 async function CheckUser() {
     //Don't change the username while currently processing
-    if (!PopulateTable.is_started) {
+    if (!CU.populating_table) {
         $('#count-chart').hide();
         let check_user;
         let check_username = $('#count_query_user_id').val().toLowerCase();
