@@ -89,7 +89,7 @@ const SETTINGS_CONFIG = {
     },
     periods_shown: {
         allitems: ['daily', 'weekly', 'monthly', 'yearly', 'alltime'],
-        get reset() {return this.allitems},
+        get reset() {return this.allitems;},
         validate(data) {return (Menu.validateCheckboxRadio(data, 'checkbox', this.allitems, {min_length: 1}) && data.includes('daily'));},
         hint: "Select which periods to process and show."
     },
@@ -657,7 +657,6 @@ const LONGNAME_KEY = {
 };
 
 //Time constants
-const PRUNE_EXPIRES = Utility.one_day;
 const RTI_EXPIRATION = Utility.one_month;
 const JQUERY_DELAY = 1; //For jQuery updates that should not be done synchronously
 
@@ -857,7 +856,7 @@ function RenderHeader() {
             // eslint-disable-next-line dot-notation
             header_options.class += ' cu-process';
             let title = POPULATE_MESSAGE + (MANUAL_PERIODS.includes(period) ? '\nShows the statistics for all rows.' : '\nIs limited to only only the top row.');
-            let link_html = Utility.renderHTMLTag('a', header, {title, class: `cu-link ${link_class}`})
+            let link_html = Utility.renderHTMLTag('a', header, {title, class: `cu-link ${link_class}`});
             tabletext += Utility.renderHTMLTag('th', `${link_html}${HEADER_COUNTER_HTML}`, header_options);
         } else {
             tabletext += Utility.renderHTMLTag('th', header, header_options);
@@ -1645,7 +1644,7 @@ async function CopyrightPeriod(event) {
     event.preventDefault();
 }
 
-function ToggleNotice(event) {
+function ToggleNotice() {
     if (CU.hidden === true) {
         CU.hidden = false;
         $('#upload-counts').show();
