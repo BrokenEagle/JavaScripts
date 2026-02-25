@@ -684,12 +684,22 @@ const POST_FIELDS = 'id,score,up_score,down_score,fav_count,tag_count,tag_count_
 
 //Validation values
 
-const VALIDATION_CONSTRAINTS = {
-    countentry: Validate.nonnegative_integer_constraints,
-    implicationentry: Validate.nonnegative_integer_constraints,
-    postentries: Validate.array_constraints,
-    statentries: Validate.hash_constraints,
-    postentry: [
+const COUNT_CONSTRAINTS = {
+    expires: Validate.nonnegative_integer_constraints,
+    value: Validate.nonnegative_integer_constraints,
+};
+
+const IMPLICATION_CONSTRAINTS = {
+    expires: Validate.nonnegative_integer_constraints,
+    value: Validate.nonnegative_integer_constraints,
+};
+
+const POST_CONSTRAINTS = {
+    entry: {
+        expires: Validate.nonnegative_integer_constraints,
+        value: Validate.array_constraints,
+    },
+    value: [
         Validate.positive_integer_constraints, //ID
         Validate.integer_constraints, //SCORE
         Validate.nonnegative_integer_constraints, //UPSCORE
@@ -700,7 +710,11 @@ const VALIDATION_CONSTRAINTS = {
         Validate.stringonly_constraints, //COPYRIGHTS
         Validate.nonnegative_integer_constraints //CREATED
     ],
-    postmetric: {
+};
+
+const STATISTICS_CONSTRAINTS = {
+    entry: Validate.hashentry_constraints,
+    value: {
         chart_data: Validate.hash_constraints,
         score: Validate.hash_constraints,
         upscore: Validate.hash_constraints,
@@ -711,15 +725,18 @@ const VALIDATION_CONSTRAINTS = {
         week: Validate.array_constraints,
         day: Validate.array_constraints
     },
-    timestat: Validate.basic_number_validator,
-    poststat: {
+    time: Validate.basic_number_validator,
+    post: {
         max: Validate.nonnegative_integer_constraints,
         average: Validate.number_constraints,
         stddev: Validate.number_constraints,
         outlier: Validate.nonnegative_integer_constraints,
         adjusted: Validate.number_constraints
     },
-    chartentry: {
+};
+
+const CHART_CONSTRAINTS = {
+    value: {
         score: Validate.array_constraints,
         upscore: Validate.array_constraints,
         downscore: Validate.array_constraints,
@@ -728,22 +745,15 @@ const VALIDATION_CONSTRAINTS = {
         gentags: Validate.array_constraints,
         uploads: Validate.array_constraints
     },
-    chartdata: {
+    data: {
         x: Validate.nonnegative_integer_constraints,
-        y: Validate.number_constraints
-    }
+        y: Validate.number_constraints,
+    },
 };
 
 /**FUNCTIONS**/
 
 //Validation functions
-
-function BuildValidator(validation_key) {
-    return {
-        expires: Validate.nonnegative_integer_constraints,
-        value: VALIDATION_CONSTRAINTS[validation_key]
-    };
-}
 
 function ValidateEntry(key, entry) {
     let printer = Debug.getFunctionPrint('ValidateEntry');
@@ -751,66 +761,66 @@ function ValidateEntry(key, entry) {
         return false;
     }
     if (key.match(/^ct(d|w|mo|y|at)?-/)) {
-        return Validate.validateHashEntries(key, entry, BuildValidator('countentry'));
+        return Validate.validateHashEntries(key, entry, COUNT_CONSTRAINTS);
     }
     if (key.match(/^rti-/)) {
-        return Validate.validateHashEntries(key, entry, BuildValidator('implicationentry'));
+        return Validate.validateHashEntries(key, entry, IMPLICATION_CONSTRAINTS);
     }
     if (key.match(/^(daily|weekly|monthly|previous)-(uploads|approvals)-/)) {
-        if (!Validate.validateHashEntries(key, entry, BuildValidator('postentries'))) {
+        if (!Validate.validateHashEntries(key, entry, POST_CONSTRAINTS.entry)) {
             return false;
         }
-        return ValidatePostentries(key + '.value', entry.value);
+        return ValidatePosts(key + '.value', entry.value);
     }
     if (key.match(/^(yearly|alltime)-(uploads|approvals)-/)) {
-        if (!Validate.validateHashEntries(key, entry, BuildValidator('statentries'))) {
+        if (!Validate.validateHashEntries(key, entry, STATISTICS_CONSTRAINTS.entry)) {
             return false;
         }
-        return ValidateStatEntries(key + '.value', entry.value);
+        return ValidateStatistics(key + '.value', entry.value);
     }
     printer.log("Bad key!");
     return false;
 }
 
-function ValidatePostentries(key, postentries) {
+function ValidatePosts(key, postentries) {
     for (let i = 0;i < postentries.length;i++){
         let value_key = key + `[${i}]`;
-        if (!Validate.validateIsArray(value_key, postentries[i], {is: VALIDATION_CONSTRAINTS.postentry.length})) {
+        if (!Validate.validateIsArray(value_key, postentries[i], {is: POST_CONSTRAINTS.value.length})) {
             return false;
         }
         //It's technically not a hash, although it works since arrays can be treated like one
-        if (!Validate.validateHashEntries(value_key, postentries[i], VALIDATION_CONSTRAINTS.postentry)) {
+        if (!Validate.validateHashEntries(value_key, postentries[i], POST_CONSTRAINTS.value)) {
             return false;
         }
     }
     return true;
 }
 
-function ValidateStatEntries(key, statentries) {
-    if (!Validate.validateHashEntries(key, statentries, VALIDATION_CONSTRAINTS.postmetric)) {
+function ValidateStatistics(key, statentries) {
+    if (!Validate.validateHashEntries(key, statentries, STATISTICS_CONSTRAINTS.value)) {
         return false;
     }
     for (let i = 0; i < TOOLTIP_METRICS.length; i++) {
         let metric = TOOLTIP_METRICS[i];
         let metric_key = key + '.' + metric;
         if (metric === 'week' || metric === 'day') {
-            if (!Validate.validateArrayValues(metric_key, statentries[metric], VALIDATION_CONSTRAINTS.timestat)) {
+            if (!Validate.validateArrayValues(metric_key, statentries[metric], STATISTICS_CONSTRAINTS.time)) {
                 return false;
             }
-        } else if (!Validate.validateHashEntries(metric_key, statentries[metric], VALIDATION_CONSTRAINTS.poststat)) {
+        } else if (!Validate.validateHashEntries(metric_key, statentries[metric], STATISTICS_CONSTRAINTS.post)) {
             return false;
         }
     }
-    return ValidateChartEntries(key + '.chart_data', statentries.chart_data);
+    return ValidateChart(key + '.chart_data', statentries.chart_data);
 }
 
-function ValidateChartEntries(key, chartentries) {
-    if (!Validate.validateHashEntries(key, chartentries, VALIDATION_CONSTRAINTS.chartentry)) {
+function ValidateChart(key, chartentries) {
+    if (!Validate.validateHashEntries(key, chartentries, CHART_CONSTRAINTS.value)) {
         return false;
     }
     for (let chart_key in chartentries) {
         for (let i = 0; i < chartentries[chart_key].length; i ++) {
-            if (!Validate.validateHashEntries(`${key}.${chart_key}[${i}]`, chartentries[chart_key][i], VALIDATION_CONSTRAINTS.chartdata)) {
+            if (!Validate.validateHashEntries(`${key}.${chart_key}[${i}]`, chartentries[chart_key][i], CHART_CONSTRAINTS.data)) {
                 return false;
             }
         }
