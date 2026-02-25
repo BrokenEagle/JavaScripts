@@ -1307,7 +1307,7 @@ function InitializeTable() {
     $('#count-header').html(Utility.renderHTMLTag('table', RenderHeader(), {class: 'striped', 'width': '100%'}));
     $('#count-body').html(Utility.renderHTMLTag('table', RenderBody(), {class: 'striped', 'width': '100%'}));
     $('#count-order').html(RenderOrderMessage('d', 0));
-    $('#count-header .cu-process').on(JSPLib.event.click, GetPeriod);
+    $('#count-header .cu-process a').on(JSPLib.event.click, GetPeriod);
     $('#count-header th').on(JSPLib.event.click, SortTable);
     $('#count-body .cu-manual, #count-body .cu-limited').on(JSPLib.event.click, RenderChart);
     $('#count-controls, #count-copyrights, #count-header').show();
