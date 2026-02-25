@@ -954,7 +954,7 @@ function GetTableValue(key, type) {
 //Render copyrights
 
 function RenderCopyrights(period) {
-    let copytags = CU.user_copytags[CU.usertag][CU.current_username][period].sort();
+    let copytags = CU.user_copytags[CU.usertag][CU.current_username][period].toSorted();
     return copytags.map((copyright) => {
         let tag_text = Utility.maxLengthString(copyright, 20);
         let taglink = Danbooru.postSearchLink(tag_text, {tags: copyright}, {class: 'tag-type-3'});
