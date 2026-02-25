@@ -839,9 +839,218 @@ function ValidateProgramData(key, entry) {
     return true;
 }
 
-//Render functions
+//Helper functions
 
-//Render table
+/**
+ * Returns a sorted key array from highest to lowest
+ * using the length of the array in each value.
+ */
+function SortDict(dict) {
+    var items = Object.keys(dict).map((key) => [key, dict[key].length]);
+    items.sort((first, second) => (first[1] !== second[1] ? second[1] - first[1] : first[0].localeCompare(second[0])));
+    return items.map((entry) => entry[0]);
+}
+
+function BuildTagParams(type, tag) {
+    return (type === 'at' ? '' : ('age:..1' + type + ' ')) + tag;
+}
+
+
+
+function GetAllStatistics(posts, attribute) {
+    switch (attribute) {
+        case 'week':
+            return GetWeekStatistics(posts);
+        case 'day':
+            return GetDayStatistics(posts);
+        default:
+            return GetPostStatistics(posts, attribute);
+    }
+}
+
+function GetWeekStatistics(posts) {
+    let week_days = new Array(7).fill(0);
+    posts.forEach((upload) => {
+        let timeindex = new Date(upload.created).getUTCDay();
+        week_days[timeindex] += 1;
+    });
+    let week_stats = week_days.map((day) => {
+        let percent = (100 * day / posts.length);
+        return (percent === 0 || percent === 100 ? percent : Utility.setPrecision(percent, 1));
+    });
+    return week_stats;
+}
+
+function GetDayStatistics(posts) {
+    let day_hours = new Array(6).fill(0);
+    posts.forEach((upload) => {
+        let timeindex = Math.floor(new Date(upload.created).getUTCHours() / 4);
+        day_hours[timeindex] += 1;
+    });
+    let day_stats = day_hours.map((day) => {
+        let percent = (100 * day / posts.length);
+        return (percent === 0 || percent === 100 ? percent : Utility.setPrecision(percent, 1));
+    });
+    return day_stats;
+}
+
+function GetPostStatistics(posts, attribute) {
+    let data = Utility.getObjectAttributes(posts, attribute);
+    let data_max = Math.max(...data);
+    let data_average = Statistics.average(data);
+    let data_stddev = Statistics.standardDeviation(data);
+    let data_outliers = Statistics.removeOutliers(data);
+    let data_removed = data.length - data_outliers.length;
+    let data_adjusted = Statistics.average(data_outliers);
+    return {
+        max: data_max,
+        average: Utility.setPrecision(data_average, 2),
+        stddev: Utility.setPrecision(data_stddev, 2),
+        outlier: data_removed,
+        adjusted: Utility.setPrecision(data_adjusted, 2)
+    };
+}
+
+function AssignPostIndexes(period, posts, time_offset) {
+    let points = PERIOD_INFO.points[period];
+    let periods = Array(length).fill().map(() => []);
+    posts.forEach((post) => {
+        let index = Math.floor((Date.now() - post.created - time_offset) / (PERIOD_INFO.divisor[period]));
+        index = (points ? Math.min(points - 1, index) : index);
+        index = Math.max(0, index);
+        if (index >= periods.length) {
+            let empty_periods = Array(index + 1 - periods.length).fill().map(() => []);
+            periods = Utility.concat(periods, empty_periods);
+        }
+        periods[index].push(post);
+    });
+    return periods;
+}
+
+function GetPeriodAverages(indexed_posts, metric) {
+    let period_averages = [];
+    for (let index in indexed_posts) {
+        if (!indexed_posts[index].length) continue;
+        let data_point = {
+            x: parseInt(index),
+            y: Utility.setPrecision(Statistics.average(Utility.getObjectAttributes(indexed_posts[index], metric)), 2)
+        };
+        period_averages.push(data_point);
+    }
+    return period_averages;
+}
+
+function GetPeriodPosts(indexed_posts) {
+    let period_uploads = [];
+    for (let index in indexed_posts) {
+        if (!indexed_posts[index].length) continue;
+        let data_point = {
+            x: parseInt(index),
+            y: indexed_posts[index].length
+        };
+        period_uploads.push(data_point);
+    }
+    return period_uploads;
+}
+
+function GetCopyrightCount(posts) {
+    let copyright_count = {};
+    posts.forEach((post) => {
+        post.copyrights.split(' ').forEach((tag) => {
+            copyright_count[tag] = copyright_count[tag] || [];
+            copyright_count[tag] = copyright_count[tag].concat([post.id]);
+        });
+    });
+    if (CU.user_settings.postcount_threshold) {
+        for (let copyright in copyright_count) {
+            if (copyright_count[copyright].length < CU.user_settings.postcount_threshold) {
+                delete copyright_count[copyright];
+            }
+        }
+    }
+    return copyright_count;
+}
+
+function CompareCopyrightCounts(dict1, dict2) {
+    let difference = [];
+    Utility.arrayUnion(Object.keys(dict1), Object.keys(dict2)).forEach((key) => {
+        if (!Utility.arrayEquals(dict1[key], dict2[key])) {
+            difference.push(key);
+        }
+    });
+    return difference;
+}
+
+function CheckCopyrightVelocity(tag) {
+    var dayuploads = Storage.getIndexedSessionData('ctd-' + tag);
+    var weekuploads = Storage.getIndexedSessionData('ctw-' + tag);
+    if (dayuploads === null || weekuploads === null) {
+        return true;
+    }
+    var day_gettime = dayuploads.expires - PERIOD_INFO.countexpires.d; //Time data was originally retrieved
+    var week_velocity = (Utility.one_week) / (weekuploads.value | 1); //Milliseconds per upload
+    var adjusted_poll_interval = Math.min(week_velocity, Utility.one_day); //Max wait time is 1 day
+    return Date.now() > day_gettime + adjusted_poll_interval;
+}
+
+function IsMissingTag(tag) {
+    return GetShownPeriodKeys().reduce((total, period) => (total || !GetCountData(`ct${period}-${tag}`)), false);
+}
+
+function MapPostData(posts) {
+    return posts.map((entry) => (
+        {
+            id: entry.id,
+            score: entry.score,
+            upscore: entry.up_score,
+            downscore: -entry.down_score,
+            favcount: entry.fav_count,
+            tagcount: entry.tag_count,
+            gentags: entry.tag_count_general,
+            copyrights: entry.tag_string_copyright,
+            created: new Date(entry.created_at).getTime()
+        }
+    ));
+}
+
+function PreCompressData(posts) {
+    return posts.map((entry) => [entry.id, entry.score, entry.upscore, entry.downscore, entry.favcount, entry.tagcount, entry.gentags, entry.copyrights, entry.created]);
+}
+
+function PostDecompressData(posts) {
+    return posts.map((entry) => (
+        {
+            id: entry[0],
+            score: entry[1],
+            upscore: entry[2],
+            downscore: entry[3],
+            favcount: entry[4],
+            tagcount: entry[5],
+            gentags: entry[6],
+            copyrights: entry[7],
+            created: entry[8]
+        }
+    ));
+}
+
+function GetTagData(tag) {
+    return Promise.all(CU.user_settings.periods_shown.map((period) => GetCount(LONGNAME_KEY[period], tag)));
+}
+
+function GetPeriodKey(period_name) {
+    return `${period_name}-${CU.counttype}-${CU.current_username}`;
+}
+
+function GetShownPeriodKeys() {
+    return TIMEVALUES.filter((period_key) => CU.user_settings.periods_shown.includes(PERIOD_INFO.longname[period_key]));
+}
+
+function TableMessage(message) {
+    $('#count-body').html(message);
+    $('#count-controls, #count-copyrights, #count-header, #count-chart').hide();
+}
+
+//Render functions
 
 function RenderHeader() {
     var tabletext = Utility.renderHTMLTag('th', 'Name');
@@ -940,17 +1149,6 @@ function RenderOrderMessage(period, sorttype) {
     }
 }
 
-//Get the data and validate it without checking the expires
-function GetCountData(key, default_val = null) {
-    let count_data = Storage.getIndexedSessionData(key);
-    if (!ValidateEntry(key, count_data)) {
-        return default_val;
-    }
-    return count_data.value;
-}
-
-//Render copyrights
-
 function RenderCopyrights(period) {
     let copytags = CU.user_copytags[CU.usertag][CU.current_username][period].toSorted();
     return copytags.map((copyright) => {
@@ -969,8 +1167,6 @@ function RenderCopyrightControls() {
     controls.push(COPYRIGHT_CONTROL_TEMPLATE({period: 'manual', text: 'Manual'}));
     return controls.join('');
 }
-
-//Render Tooltips
 
 function RenderTooltipData(text, period, limited = false) {
     let popups = TOOLTIP_METRICS.map((metric) => {
@@ -1045,211 +1241,14 @@ function RenderStatlist(stat) {
     return STATLIST_TEMPLATE(stat);
 }
 
-function GetAllStatistics(posts, attribute) {
-    switch (attribute) {
-        case 'week':
-            return GetWeekStatistics(posts);
-        case 'day':
-            return GetDayStatistics(posts);
-        default:
-            return GetPostStatistics(posts, attribute);
+//Data functions
+
+function GetCountData(key, default_val = null) {
+    let count_data = Storage.getIndexedSessionData(key);
+    if (!ValidateEntry(key, count_data)) {
+        return default_val;
     }
-}
-
-function GetWeekStatistics(posts) {
-    let week_days = new Array(7).fill(0);
-    posts.forEach((upload) => {
-        let timeindex = new Date(upload.created).getUTCDay();
-        week_days[timeindex] += 1;
-    });
-    let week_stats = week_days.map((day) => {
-        let percent = (100 * day / posts.length);
-        return (percent === 0 || percent === 100 ? percent : Utility.setPrecision(percent, 1));
-    });
-    return week_stats;
-}
-
-function GetDayStatistics(posts) {
-    let day_hours = new Array(6).fill(0);
-    posts.forEach((upload) => {
-        let timeindex = Math.floor(new Date(upload.created).getUTCHours() / 4);
-        day_hours[timeindex] += 1;
-    });
-    let day_stats = day_hours.map((day) => {
-        let percent = (100 * day / posts.length);
-        return (percent === 0 || percent === 100 ? percent : Utility.setPrecision(percent, 1));
-    });
-    return day_stats;
-}
-
-function GetPostStatistics(posts, attribute) {
-    let data = Utility.getObjectAttributes(posts, attribute);
-    let data_max = Math.max(...data);
-    let data_average = Statistics.average(data);
-    let data_stddev = Statistics.standardDeviation(data);
-    let data_outliers = Statistics.removeOutliers(data);
-    let data_removed = data.length - data_outliers.length;
-    let data_adjusted = Statistics.average(data_outliers);
-    return {
-        max: data_max,
-        average: Utility.setPrecision(data_average, 2),
-        stddev: Utility.setPrecision(data_stddev, 2),
-        outlier: data_removed,
-        adjusted: Utility.setPrecision(data_adjusted, 2)
-    };
-}
-
-function AssignPostIndexes(period, posts, time_offset) {
-    let points = PERIOD_INFO.points[period];
-    let periods = Array(length).fill().map(() => []);
-    posts.forEach((post) => {
-        let index = Math.floor((Date.now() - post.created - time_offset) / (PERIOD_INFO.divisor[period]));
-        index = (points ? Math.min(points - 1, index) : index);
-        index = Math.max(0, index);
-        if (index >= periods.length) {
-            let empty_periods = Array(index + 1 - periods.length).fill().map(() => []);
-            periods = Utility.concat(periods, empty_periods);
-        }
-        periods[index].push(post);
-    });
-    return periods;
-}
-
-function GetPeriodAverages(indexed_posts, metric) {
-    let period_averages = [];
-    for (let index in indexed_posts) {
-        if (!indexed_posts[index].length) continue;
-        let data_point = {
-            x: parseInt(index),
-            y: Utility.setPrecision(Statistics.average(Utility.getObjectAttributes(indexed_posts[index], metric)), 2)
-        };
-        period_averages.push(data_point);
-    }
-    return period_averages;
-}
-
-function GetPeriodPosts(indexed_posts) {
-    let period_uploads = [];
-    for (let index in indexed_posts) {
-        if (!indexed_posts[index].length) continue;
-        let data_point = {
-            x: parseInt(index),
-            y: indexed_posts[index].length
-        };
-        period_uploads.push(data_point);
-    }
-    return period_uploads;
-}
-
-//Helper functions
-
-//Returns a sorted key array from highest to lowest using the length of the array in each value
-function SortDict(dict) {
-    var items = Object.keys(dict).map((key) => [key, dict[key].length]);
-    items.sort((first, second) => (first[1] !== second[1] ? second[1] - first[1] : first[0].localeCompare(second[0])));
-    return items.map((entry) => entry[0]);
-}
-
-function BuildTagParams(type, tag) {
-    return (type === 'at' ? '' : ('age:..1' + type + ' ')) + tag;
-}
-
-function GetCopyrightCount(posts) {
-    let copyright_count = {};
-    posts.forEach((post) => {
-        post.copyrights.split(' ').forEach((tag) => {
-            copyright_count[tag] = copyright_count[tag] || [];
-            copyright_count[tag] = copyright_count[tag].concat([post.id]);
-        });
-    });
-    if (CU.user_settings.postcount_threshold) {
-        for (let copyright in copyright_count) {
-            if (copyright_count[copyright].length < CU.user_settings.postcount_threshold) {
-                delete copyright_count[copyright];
-            }
-        }
-    }
-    return copyright_count;
-}
-
-function CompareCopyrightCounts(dict1, dict2) {
-    let difference = [];
-    Utility.arrayUnion(Object.keys(dict1), Object.keys(dict2)).forEach((key) => {
-        if (!Utility.arrayEquals(dict1[key], dict2[key])) {
-            difference.push(key);
-        }
-    });
-    return difference;
-}
-
-function CheckCopyrightVelocity(tag) {
-    var dayuploads = Storage.getIndexedSessionData('ctd-' + tag);
-    var weekuploads = Storage.getIndexedSessionData('ctw-' + tag);
-    if (dayuploads === null || weekuploads === null) {
-        return true;
-    }
-    var day_gettime = dayuploads.expires - PERIOD_INFO.countexpires.d; //Time data was originally retrieved
-    var week_velocity = (Utility.one_week) / (weekuploads.value | 1); //Milliseconds per upload
-    var adjusted_poll_interval = Math.min(week_velocity, Utility.one_day); //Max wait time is 1 day
-    return Date.now() > day_gettime + adjusted_poll_interval;
-}
-
-async function MergeCopyrightTags(user_copytags) {
-    let query_implications = Utility.arrayDifference(user_copytags, Object.keys(CU.reverse_implications));
-    let promise_array = query_implications.map((key) => GetReverseTagImplication(key));
-    let reverse_implications = await Promise.all(promise_array);
-    query_implications.forEach((key, i) => {
-        CU.reverse_implications[key] = reverse_implications[i];
-    });
-    return user_copytags.filter((value) => (CU.reverse_implications[value] === 0));
-}
-
-function IsMissingTag(tag) {
-    return GetShownPeriodKeys().reduce((total, period) => (total || !GetCountData(`ct${period}-${tag}`)), false);
-}
-
-function MapPostData(posts) {
-    return posts.map((entry) => (
-        {
-            id: entry.id,
-            score: entry.score,
-            upscore: entry.up_score,
-            downscore: -entry.down_score,
-            favcount: entry.fav_count,
-            tagcount: entry.tag_count,
-            gentags: entry.tag_count_general,
-            copyrights: entry.tag_string_copyright,
-            created: new Date(entry.created_at).getTime()
-        }
-    ));
-}
-
-function PreCompressData(posts) {
-    return posts.map((entry) => [entry.id, entry.score, entry.upscore, entry.downscore, entry.favcount, entry.tagcount, entry.gentags, entry.copyrights, entry.created]);
-}
-
-function PostDecompressData(posts) {
-    return posts.map((entry) => (
-        {
-            id: entry[0],
-            score: entry[1],
-            upscore: entry[2],
-            downscore: entry[3],
-            favcount: entry[4],
-            tagcount: entry[5],
-            gentags: entry[6],
-            copyrights: entry[7],
-            created: entry[8]
-        }
-    ));
-}
-
-function GetTagData(tag) {
-    return Promise.all(CU.user_settings.periods_shown.map((period) => GetCount(LONGNAME_KEY[period], tag)));
-}
-
-function GetPeriodKey(period_name) {
-    return `${period_name}-${CU.counttype}-${CU.current_username}`;
+    return count_data.value;
 }
 
 function CheckPeriodUploads() {
@@ -1275,26 +1274,17 @@ function CheckPeriodUploads() {
     return Promise.all(promise_array);
 }
 
-async function PopulateTable() {
-    //Prevent function from being reentrant while processing uploads
-    CU.populating_table = true;
-    var post_data = [];
-    InitializeControls();
-    if (CU.checked_users[CU.usertag][CU.current_username] === undefined) {
-        TableMessage(`<div id="empty-uploads">Loading data... (<span id="loading-counter">...</span>)</div>`);
-        post_data = await ProcessUploads(CU.current_username);
-        CU.checked_users[CU.usertag][CU.current_username] = post_data.length;
-    }
-    let is_override = $('#count_override_select')[0].checked;
-    if (is_override || CU.checked_users[CU.usertag][CU.current_username]) {
-        CU.active_copytags = Utility.deepCopy(CU.user_copytags[CU.usertag][CU.current_username].daily);
-        await CheckPeriodUploads(CU.current_username);
-        InitializeTable();
-    } else {
-        TableMessage(`<div id="empty-uploads">${CU.empty_uploads_message}</div>`);
-    }
-    CU.populating_table = false;
+async function MergeCopyrightTags(user_copytags) {
+    let query_implications = Utility.arrayDifference(user_copytags, Object.keys(CU.reverse_implications));
+    let promise_array = query_implications.map((key) => GetReverseTagImplication(key));
+    let reverse_implications = await Promise.all(promise_array);
+    query_implications.forEach((key, i) => {
+        CU.reverse_implications[key] = reverse_implications[i];
+    });
+    return user_copytags.filter((value) => (CU.reverse_implications[value] === 0));
 }
+
+//Initialize functions
 
 function InitializeControls() {
     const printer = Debug.getFunctionPrint('InitializeControls');
@@ -1339,9 +1329,8 @@ function InitializeTable() {
     CU.shown_copytags = Utility.deepCopy(CU.active_copytags);
 }
 
-function TableMessage(message) {
-    $('#count-body').html(message);
-    $('#count-controls, #count-copyrights, #count-header, #count-chart').hide();
+function CleanupTasks() {
+    Storage.pruneProgramCache();
 }
 
 //Network functions
@@ -1736,6 +1725,27 @@ function TooltipHover(event) {
 
 //Main execution functions
 
+async function PopulateTable() {
+    //Prevent function from being reentrant while processing uploads
+    CU.populating_table = true;
+    var post_data = [];
+    InitializeControls();
+    if (CU.checked_users[CU.usertag][CU.current_username] === undefined) {
+        TableMessage(`<div id="empty-uploads">Loading data... (<span id="loading-counter">...</span>)</div>`);
+        post_data = await ProcessUploads(CU.current_username);
+        CU.checked_users[CU.usertag][CU.current_username] = post_data.length;
+    }
+    let is_override = $('#count_override_select')[0].checked;
+    if (is_override || CU.checked_users[CU.usertag][CU.current_username]) {
+        CU.active_copytags = Utility.deepCopy(CU.user_copytags[CU.usertag][CU.current_username].daily);
+        await CheckPeriodUploads(CU.current_username);
+        InitializeTable();
+    } else {
+        TableMessage(`<div id="empty-uploads">${CU.empty_uploads_message}</div>`);
+    }
+    CU.populating_table = false;
+}
+
 async function ProcessUploads() {
     var promise_array = [];
     var current_uploads = [];
@@ -1788,11 +1798,7 @@ async function ProcessUploads() {
     return current_uploads;
 }
 
-function CleanupTasks() {
-    Storage.pruneProgramCache();
-}
-
-//Cache functions
+//Settings functions
 
 function OptionCacheDataKey(data_type) {
     CU.data_period = $('#cu-control-data-period').val();
@@ -1808,12 +1814,6 @@ function OptionCacheDataKey(data_type) {
         return `ct${shortkey}-`;
     }
     return `${CU.data_period}-${data_type}-`;
-}
-
-//Settings functions
-
-function GetShownPeriodKeys() {
-    return TIMEVALUES.filter((period_key) => CU.user_settings.periods_shown.includes(PERIOD_INFO.longname[period_key]));
 }
 
 function DataTypeChange() {
