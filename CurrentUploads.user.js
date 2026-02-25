@@ -855,8 +855,6 @@ function BuildTagParams(type, tag) {
     return (type === 'at' ? '' : ('age:..1' + type + ' ')) + tag;
 }
 
-
-
 function GetAllStatistics(posts, attribute) {
     switch (attribute) {
         case 'week':
@@ -957,7 +955,7 @@ function GetCopyrightCount(posts) {
     let copyright_count = {};
     posts.forEach((post) => {
         post.copyrights.split(' ').forEach((tag) => {
-            copyright_count[tag] = copyright_count[tag] || [];
+            copyright_count[tag] ??= [];
             copyright_count[tag] = copyright_count[tag].concat([post.id]);
         });
     });
@@ -1259,7 +1257,7 @@ function CheckPeriodUploads() {
             Storage.removeIndexedSessionData(key);
         }
     };
-    CU.period_available[CU.usertag][CU.current_username] = CU.period_available[CU.usertag][CU.current_username] || {};
+    CU.period_available[CU.usertag][CU.current_username] ??= {};
     let times_shown = GetShownPeriodKeys();
     for (let i = 0; i < times_shown.length; i++) {
         let period = times_shown[i];
