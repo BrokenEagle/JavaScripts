@@ -178,7 +178,7 @@ const PROGRAM_CSS = Template.normalizeCSS()`
     margin-top: 1em;
     padding-top: 0.5em;
     padding-right: 0.5em;
-    max-width: 70em;
+    max-width: 80em;
     border-style: solid;
     border-width: 5px;
 }
@@ -186,10 +186,8 @@ const PROGRAM_CSS = Template.normalizeCSS()`
 #count-table {
     margin-left: 1em;
     td, th {
-        width: 10em;
         text-align: center;
         &:first-of-type {
-            width: 12em;
             text-align: left;
             word-break: break-all;
         }
@@ -198,9 +196,14 @@ const PROGRAM_CSS = Template.normalizeCSS()`
         }
     }
 }
-#count-header a {
-    padding: 2px;
-    border-radius: 5px;
+#count-header {
+    tr {
+        border-bottom-width: 1px;
+    }
+    a {
+        padding: 2px;
+        border-radius: 5px;
+    }
 }
 #count-body {
     &.overflowed {
@@ -827,14 +830,17 @@ function RenderHeader() {
     let times_shown = GetShownPeriodKeys();
     times_shown.forEach((period) => {
         let header = PERIOD_INFO.header[period];
+        let header_options = {class: 'cu-period-header', dataPeriod: period, width: '15%'};
         if (click_periods.includes(period)) {
             let is_available = CU.period_available[CU.usertag][CU.current_username][period];
             let link_class = (MANUAL_PERIODS.includes(period) ? 'cu-manual' : 'cu-limited');
-            let header_class = (!is_available ? 'cu-process' : '');
+            // eslint-disable-next-line dot-notation
+            header_options.class += (!is_available ? ' cu-process' : "");
             let counter_html = (!is_available ? '<span class="cu-display" style="display:none">&nbsp;(<span class="cu-counter">...</span>)</span>' : '');
-            tabletext += Utility.renderHTMLTag('th', `<a class="cu-link ${link_class}">${header}</a>${counter_html}`, {class: `cu-period-header ${header_class}`, dataPeriod: period});
+            let link_html = Utility.renderHTMLTag('a', header, {class: `cu-link ${link_class}`})
+            tabletext += Utility.renderHTMLTag('th', `${link_html}${counter_html}`, header_options);
         } else {
-            tabletext += Utility.renderHTMLTag('th', header, {class: 'cu-period-header', dataPeriod: period});
+            tabletext += Utility.renderHTMLTag('th', header, header_options);
         }
     });
     tabletext = Utility.renderHTMLTag('tr', tabletext);
@@ -847,11 +853,12 @@ function RenderBody() {
     } else {
         $('#count-body').removeClass('overflowed');
     }
+    let header = Utility.renderHTMLTag('tr', '<th></th>' + Array(CU.periods_shown.length).fill('<th width="15%"></th>').join(""));
     var tabletext = RenderRow('');
     for (let i = 0;i < CU.active_copytags.length; i++) {
         tabletext += RenderRow(CU.active_copytags[i]);
     }
-    return Utility.renderHTMLTag('tbody', tabletext);
+    return Utility.renderHTMLTag('thead', header, {style: 'visibility: collapse;'}) + Utility.renderHTMLTag('tbody', tabletext);
 }
 
 function RenderRow(key) {
@@ -1297,8 +1304,8 @@ function InitializeControls() {
 }
 
 function InitializeTable() {
-    $('#count-header').html(Utility.renderHTMLTag('table', RenderHeader(), {class: 'striped'}));
-    $('#count-body').html(Utility.renderHTMLTag('table', RenderBody(), {class: 'striped'}));
+    $('#count-header').html(Utility.renderHTMLTag('table', RenderHeader(), {class: 'striped', 'width': '100%'}));
+    $('#count-body').html(Utility.renderHTMLTag('table', RenderBody(), {class: 'striped', 'width': '100%'}));
     $('#count-order').html(RenderOrderMessage('d', 0));
     $('#count-header .cu-process').on(JSPLib.event.click, GetPeriod);
     $('#count-header th').on(JSPLib.event.click, SortTable);
@@ -1448,7 +1455,7 @@ function SortTable(event) {
         CU.sortperiod = period;
     }
     let rows = [];
-    $('#count-body tr').each((i, row) => {
+    $('#count-body tbody tr').each((i, row) => {
         if (i === 0) {
             return;
         }
