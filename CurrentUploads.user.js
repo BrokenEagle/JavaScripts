@@ -897,7 +897,14 @@ function RenderRow(key) {
     let click_periods = MANUAL_PERIODS.concat(LIMITED_PERIODS);
     for (let i = 0;i < times_shown.length; i++) {
         let period = times_shown[i];
-        let data_text = GetTableValue(key, period);
+        var data_text;
+        if (key === "") {
+            data_text = GetCountData('ct' + period + `-${CU.usertag}:` + CU.current_username, "N/A");
+        } else {
+            var useruploads = GetCountData('ct' + period + `-${CU.usertag}:` + CU.current_username + ' ' + key, "N/A");
+            var alluploads = GetCountData('ct' + period + '-' + key, "N/A");
+            data_text = `(${useruploads}/${alluploads})`;
+        }
         let is_limited = LIMITED_PERIODS.includes(period);
         let class_name = (!is_limited ? 'cu-hover' : '');
         let title = undefined;
@@ -940,15 +947,6 @@ function GetCountData(key, default_val = null) {
         return default_val;
     }
     return count_data.value;
-}
-
-function GetTableValue(key, type) {
-    if (key === '') {
-        return GetCountData('ct' + type + `-${CU.usertag}:` + CU.current_username, "N/A");
-    }
-    var useruploads = GetCountData('ct' + type + `-${CU.usertag}:` + CU.current_username + ' ' + key, "N/A");
-    var alluploads = GetCountData('ct' + type + '-' + key, "N/A");
-    return `(${useruploads}/${alluploads})`;
 }
 
 //Render copyrights
