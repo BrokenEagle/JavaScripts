@@ -200,6 +200,9 @@ const PROGRAM_CSS = Template.normalizeCSS()`
     tr {
         border-bottom-width: 1px;
     }
+    th {
+        cursor: cell;
+    }
     a {
         padding: 2px;
         border-radius: 5px;
@@ -226,9 +229,13 @@ const PROGRAM_CSS = Template.normalizeCSS()`
             top: -75px;
         }
     }
+    .cu-chart-cell {
+        cursor: copy;
+    }
     .cu-uploads {
         background-color: var(--body-background-color);
         padding: 0 5px;
+        cursor: default;
     }
     a.with-style:hover {
         filter: brightness(1.5);
@@ -382,6 +389,9 @@ const LIGHT_MODE_CSS = Template.normalizeCSS({theme: 'light'})`
 #count-body td:not(:first-of-type) {
     background-color: lightcyan;
     border-left-color: var(--grey-2);
+    &.cu-chart-cell {
+        background-color: palegreen;
+    }
 }
 #count-query-user > label {
     background-color: var(--grey-2);
@@ -418,6 +428,9 @@ const DARK_MODE_CSS = Template.normalizeCSS({theme: 'dark'})`
 #count-body td:not(:first-of-type) {
     background-color: darkcyan;
     border-left-color: var(--grey-7);
+    &.cu-chart-cell {
+        background-color: forestgreen;
+    }
 }
 #count-query-user > label {
     background-color: var(--grey-7);
@@ -572,6 +585,11 @@ const STATLIST_TEMPLATE = Template.normalizeHTML({template: true})`
     <li>Out: ${'outlier'}</li>
     <li>Adj: ${'adjusted'}</li>
 </ul>`;
+
+//Message constants
+
+const REORDER_MESSAGE = "Click to reorder the table by this column.\nWill switch the order when clicked more than once.";
+const POPULATE_MESSAGE = "Click to populate the upload statistics for this period.";
 
 //Time periods
 const TIMEVALUES = ['d', 'w', 'mo', 'y', 'at'];
@@ -831,13 +849,14 @@ function RenderHeader() {
     let times_shown = GetShownPeriodKeys();
     times_shown.forEach((period) => {
         let header = PERIOD_INFO.header[period];
-        let header_options = {class: 'cu-period-header', dataPeriod: period, width: '15%'};
         let is_available = CU.period_available[CU.usertag][CU.current_username][period];
+        let header_options = {title: REORDER_MESSAGE, class: 'cu-period-header', dataPeriod: period, width: '15%'};
         if (click_periods.includes(period) && !is_available) {
             let link_class = (MANUAL_PERIODS.includes(period) ? 'cu-manual' : 'cu-limited');
             // eslint-disable-next-line dot-notation
             header_options.class += ' cu-process';
-            let link_html = Utility.renderHTMLTag('a', header, {class: `cu-link ${link_class}`})
+            let title = POPULATE_MESSAGE + (MANUAL_PERIODS.includes(period) ? '\nShows the statistics for all rows.' : '\nIs limited to only only the top row.');
+            let link_html = Utility.renderHTMLTag('a', header, {title, class: `cu-link ${link_class}`})
             tabletext += Utility.renderHTMLTag('th', `${link_html}${HEADER_COUNTER_HTML}`, header_options);
         } else {
             tabletext += Utility.renderHTMLTag('th', header, header_options);
@@ -881,10 +900,12 @@ function RenderRow(key) {
         let data_text = GetTableValue(key, period);
         let is_limited = LIMITED_PERIODS.includes(period);
         let class_name = (!is_limited ? 'cu-hover' : '');
+        let title = undefined;
         if (click_periods.includes(period) && key === '') {
-            class_name += (MANUAL_PERIODS.includes(period) ? ' cu-manual' : ' cu-limited');
+            title = "Click to show the uploads chart.";
+            class_name += ' cu-chart-cell' + (MANUAL_PERIODS.includes(period) ? ' cu-manual' : ' cu-limited');
         }
-        let rowdata = {class: class_name, dataPeriod: period};
+        let rowdata = {title, class: class_name, dataPeriod: period};
         let is_available = CU.period_available[CU.usertag][CU.current_username][period];
         if (is_available && is_limited && key === '') {
             tabletext += Utility.renderHTMLTag('td', RenderTooltipData(data_text, times_shown[i], true), rowdata);
