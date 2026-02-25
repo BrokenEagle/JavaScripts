@@ -474,6 +474,7 @@ const NOTICE_BOX_HTML = Template.normalizeHTML()`
 `;
 
 const COUNTER_HTML = '(<span id="loading-counter">...</span>)';
+const HEADER_COUNTER_HTML = '<span class="cu-display" style="display:none">&nbsp;(<span class="cu-counter">...</span>)</span>';
 
 const CACHE_DATA_DETAILS = Template.normalizeHTML()`
 <ul>
@@ -831,14 +832,13 @@ function RenderHeader() {
     times_shown.forEach((period) => {
         let header = PERIOD_INFO.header[period];
         let header_options = {class: 'cu-period-header', dataPeriod: period, width: '15%'};
-        if (click_periods.includes(period)) {
-            let is_available = CU.period_available[CU.usertag][CU.current_username][period];
+        let is_available = CU.period_available[CU.usertag][CU.current_username][period];
+        if (click_periods.includes(period) && !is_available) {
             let link_class = (MANUAL_PERIODS.includes(period) ? 'cu-manual' : 'cu-limited');
             // eslint-disable-next-line dot-notation
-            header_options.class += (!is_available ? ' cu-process' : "");
-            let counter_html = (!is_available ? '<span class="cu-display" style="display:none">&nbsp;(<span class="cu-counter">...</span>)</span>' : '');
+            header_options.class += ' cu-process';
             let link_html = Utility.renderHTMLTag('a', header, {class: `cu-link ${link_class}`})
-            tabletext += Utility.renderHTMLTag('th', `${link_html}${counter_html}`, header_options);
+            tabletext += Utility.renderHTMLTag('th', `${link_html}${HEADER_COUNTER_HTML}`, header_options);
         } else {
             tabletext += Utility.renderHTMLTag('th', header, header_options);
         }
