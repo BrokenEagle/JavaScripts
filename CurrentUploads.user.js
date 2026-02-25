@@ -691,15 +691,15 @@ const VALIDATION_CONSTRAINTS = {
     postentries: Validate.array_constraints,
     statentries: Validate.hash_constraints,
     postentry: [
-        Validate.integer_constraints, //ID
+        Validate.positive_integer_constraints, //ID
         Validate.integer_constraints, //SCORE
-        Validate.integer_constraints, //UPSCORE
-        Validate.integer_constraints, //DOWNSCORE
-        Validate.integer_constraints, //FAVCOUNT
-        Validate.integer_constraints, //TAGCOUNT
-        Validate.integer_constraints, //GENTAGS
+        Validate.nonnegative_integer_constraints, //UPSCORE
+        Validate.nonnegative_integer_constraints, //DOWNSCORE
+        Validate.nonnegative_integer_constraints, //FAVCOUNT
+        Validate.positive_integer_constraints, //TAGCOUNT
+        Validate.nonnegative_integer_constraints, //GENTAGS
         Validate.stringonly_constraints, //COPYRIGHTS
-        Validate.integer_constraints //CREATED
+        Validate.nonnegative_integer_constraints //CREATED
     ],
     postmetric: {
         chart_data: Validate.hash_constraints,
@@ -714,10 +714,10 @@ const VALIDATION_CONSTRAINTS = {
     },
     timestat: Validate.basic_number_validator,
     poststat: {
-        max: Validate.integer_constraints,
+        max: Validate.nonnegative_integer_constraints,
         average: Validate.number_constraints,
         stddev: Validate.number_constraints,
-        outlier: Validate.integer_constraints,
+        outlier: Validate.nonnegative_integer_constraints,
         adjusted: Validate.number_constraints
     },
     chartentry: {
@@ -730,7 +730,7 @@ const VALIDATION_CONSTRAINTS = {
         uploads: Validate.array_constraints
     },
     chartdata: {
-        x: Validate.integer_constraints,
+        x: Validate.nonnegative_integer_constraints,
         y: Validate.number_constraints
     }
 };
