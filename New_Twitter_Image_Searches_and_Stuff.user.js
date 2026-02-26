@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      11.14
+// @version      11.15
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -6120,6 +6120,9 @@ function MarkupStreamTweet(tweet) {
             index = saved_index;
         }
         saved_index = index;
+        if (sub_body.children[index].querySelector('button') && sub_body.children[index].innerText === "") {
+            index++;
+        }
         $(sub_body.children[index++]).addClass('ntisas-tweet-text');
         var has_media;
         if (sub_body.childElementCount > (index + 1)) {
