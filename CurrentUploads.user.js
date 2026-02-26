@@ -594,13 +594,19 @@ const STATLIST_TEMPLATE = Template.normalizeHTML({template: true})`
 const REORDER_MESSAGE = "Click to reorder the table by this column.\nWill switch the order when clicked more than once.";
 const POPULATE_MESSAGE = "Click to populate the upload statistics for this period.";
 
-//Time periods
+const EMPTY_UPLOADS_MESSAGE_OWNER = "No uploads from you yet.";
+const EMPTY_UPLOADS_MESSAGE_OTHER = "No uploads for this user.";
+const EMPTY_APPROVALS_MESSAGE_OTHER = "No approvals for this user.";
+const EMPTY_UPLOADS_MESSAGE_ANONYMOUS = "User is Anonymous, so no uploads.";
+const COPYRIGHT_NO_UPLOADS = "No uploads, so no copyrights available for this period.";
+const COPYRIGHT_NO_STATISTICS = 'No statistics available for this period (<span style="font-size:80%; color:grey;">click the table header</span>).';
+
+//Period constants
+
 const TIMEVALUES = ['d', 'w', 'mo', 'y', 'at'];
 const MANUAL_PERIODS = ['w', 'mo'];
 const LIMITED_PERIODS = ['y', 'at'];
 const COPYRIGHT_PERIODS = ['d', 'w', 'mo'];
-
-//Period constants
 
 const COUNT_EXPIRES = {
     d: 5 * Utility.one_minute,
@@ -664,32 +670,23 @@ const LONGNAME_KEY = {
 };
 
 //Time constants
+
 const RTI_EXPIRATION = Utility.one_month;
 const JQUERY_DELAY = 1; //For jQuery updates that should not be done synchronously
 
-//Network call configuration
-const MAX_POST_LIMIT_QUERY = 100;
+//Other constants
 
-//Metrics used by statistics functions
 const TOOLTIP_METRICS = ['score', 'upscore', 'downscore', 'favcount', 'tagcount', 'gentags', 'week', 'day'];
 const CHART_METRICS = ['score', 'upscore', 'downscore', 'favcount', 'tagcount', 'gentags'];
 
-//Feedback messages
-const EMPTY_UPLOADS_MESSAGE_OWNER = "No uploads from you yet.";
-const EMPTY_UPLOADS_MESSAGE_OTHER = "No uploads for this user.";
-const EMPTY_APPROVALS_MESSAGE_OTHER = "No approvals for this user.";
-const EMPTY_UPLOADS_MESSAGE_ANONYMOUS = "User is Anonymous, so no uploads.";
-const COPYRIGHT_NO_UPLOADS = "No uploads, so no copyrights available for this period.";
-const COPYRIGHT_NO_STATISTICS = 'No statistics available for this period (<span style="font-size:80%; color:grey;">click the table header</span>).';
-
-//Other constants
+const MAX_POST_LIMIT_QUERY = 100;
 
 const IMPLICATION_FIELDS = 'antecedent_name';
 const NAME_FIELD = 'name';
 const USER_FIELDS = 'name,level_string';
 const POST_FIELDS = 'id,score,up_score,down_score,fav_count,tag_count,tag_count_general,tag_string_copyright,created_at';
 
-//Validation values
+//Validation constants
 
 const COUNT_CONSTRAINTS = {
     expires: Validate.nonnegative_integer_constraints,
