@@ -1405,7 +1405,7 @@ async function GetPeriodUploads(username, period, limited = false, domname = nul
     var check = await Storage.checkData(key, {max_expires});
     if (!(check)) {
         printer.log(`Network (${period_name} ${CU.counttype})`);
-        let data = await GetPostsCountdown(BuildTagParams(period, `${CU.usertag}:${username}`), MAX_POST_LIMIT_QUERY, POST_FIELDS, domname);
+        let data = await GetPostsCountdown(BuildTagParams(period, `${CU.usertag}:${username}`), domname);
         let mapped_data = MapPostData(data);
         if (limited) {
             let indexed_posts = AssignPostIndexes(period, mapped_data, 0);
@@ -1421,11 +1421,12 @@ async function GetPeriodUploads(username, period, limited = false, domname = nul
     return (limited ? check.value : PostDecompressData(check.value));
 }
 
-async function GetPostsCountdown(query, limit, only, domname) {
+async function GetPostsCountdown(query, domname) {
     const printer = Debug.getFunctionPrint('GetPostsCountdown');
-    printer.logLevel({query, limit, only, domname}, Debug.VERBOSE);
+    printer.logLevel({query, domname}, Debug.VERBOSE);
+    let limit = MAX_POST_LIMIT_QUERY;
     let tag_addon = {tags: query};
-    let only_addon = (only ? {only} : {});
+    let only_addon = {only: POST_FIELDS};
     let limit_addon = {limit};
     let page_addon = {};
     var return_items = [];
