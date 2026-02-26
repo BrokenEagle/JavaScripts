@@ -601,53 +601,58 @@ const LIMITED_PERIODS = ['y', 'at'];
 const COPYRIGHT_PERIODS = ['d', 'w', 'mo'];
 
 //Period constants
-const PERIOD_INFO = {
-    countexpires: {
-        d: 5 * Utility.one_minute,
-        w: Utility.one_hour,
-        mo: Utility.one_day,
-        y: Utility.one_week,
-        at: Utility.one_month
-    },
-    uploadexpires: {
-        d: 5 * Utility.one_minute,
-        w: Utility.one_day,
-        mo: Utility.one_week,
-        y: Utility.one_month,
-        at: Utility.one_year
-    },
-    longname: {
-        d: 'daily',
-        w: 'weekly',
-        mo: 'monthly',
-        y: 'yearly',
-        at: 'alltime'
-    },
-    header: {
-        d: "Day",
-        w: "Week",
-        mo: "Month",
-        y: "Year",
-        at: "All-time"
-    },
-    points: {
-        w: 7,
-        mo: 30,
-        y: 12,
-        at: 0
-    },
-    xlabel: {
-        w: "Days ago",
-        mo: "Days ago",
-        y: "Months ago",
-        at: "Months ago"
-    },
-    divisor: {
-        w: Utility.one_day,
-        mo: Utility.one_day,
-        y: Utility.one_month,
-        at: Utility.one_month,
-    }
+
+const COUNT_EXPIRES = {
+    d: 5 * Utility.one_minute,
+    w: Utility.one_hour,
+    mo: Utility.one_day,
+    y: Utility.one_week,
+    at: Utility.one_month,
+};
+
+const UPLOAD_EXPIRES = {
+    d: 5 * Utility.one_minute,
+    w: Utility.one_day,
+    mo: Utility.one_week,
+    y: Utility.one_month,
+    at: Utility.one_year,
+};
+
+const PERIOD_HEADER = {
+    d: "Day",
+    w: "Week",
+    mo: "Month",
+    y: "Year",
+    at: "All-time",
+};
+
+const PERIOD_X_POINTS = {
+    w: 7,
+    mo: 30,
+    y: 12,
+    at: 0,
+};
+
+const PERIOD_X_LABEL = {
+    w: "Days ago",
+    mo: "Days ago",
+    y: "Months ago",
+    at: "Months ago",
+};
+
+const PERIOD_DIVISOR = {
+    w: Utility.one_day,
+    mo: Utility.one_day,
+    y: Utility.one_month,
+    at: Utility.one_month,
+};
+
+const SHORTNAME_KEY = {
+    d: 'daily',
+    w: 'weekly',
+    mo: 'monthly',
+    y: 'yearly',
+    at: 'alltime',
 };
 
 const LONGNAME_KEY = {
@@ -853,7 +858,7 @@ function ValidateProgramData(key, entry) {
 
 function ValidateExpiration(key) {
     let short_period = /^ct(?:d|w|mo|y|at)-/.exec(key)[1];
-    return PERIOD_INFO.countexpires[short_period];
+    return COUNT_EXPIRES[short_period];
 }
 
 //Helper functions
@@ -927,10 +932,10 @@ function GetPostStatistics(posts, attribute) {
 }
 
 function AssignPostIndexes(period, posts, time_offset) {
-    let points = PERIOD_INFO.points[period];
+    let points = PERIOD_X_POINTS[period];
     let periods = Array(length).fill().map(() => []);
     posts.forEach((post) => {
-        let index = Math.floor((Date.now() - post.created - time_offset) / (PERIOD_INFO.divisor[period]));
+        let index = Math.floor((Date.now() - post.created - time_offset) / (PERIOD_DIVISOR[period]));
         index = (points ? Math.min(points - 1, index) : index);
         index = Math.max(0, index);
         if (index >= periods.length) {
@@ -1002,7 +1007,7 @@ function CheckCopyrightVelocity(tag) {
     if (dayuploads === null || weekuploads === null) {
         return true;
     }
-    var day_gettime = dayuploads.expires - PERIOD_INFO.countexpires.d; //Time data was originally retrieved
+    var day_gettime = dayuploads.expires - COUNT_EXPIRES.d; //Time data was originally retrieved
     var week_velocity = (Utility.one_week) / (weekuploads.value | 1); //Milliseconds per upload
     var adjusted_poll_interval = Math.min(week_velocity, Utility.one_day); //Max wait time is 1 day
     return Date.now() > day_gettime + adjusted_poll_interval;
@@ -1053,7 +1058,7 @@ function GetPeriodKey(period_name) {
 }
 
 function GetShownPeriodKeys() {
-    return TIMEVALUES.filter((period_key) => CU.user_settings.periods_shown.includes(PERIOD_INFO.longname[period_key]));
+    return TIMEVALUES.filter((period_key) => CU.user_settings.periods_shown.includes(SHORTNAME_KEY[period_key]));
 }
 
 function TableMessage(message) {
@@ -1068,7 +1073,7 @@ function RenderHeader() {
     let click_periods = MANUAL_PERIODS.concat(LIMITED_PERIODS);
     let times_shown = GetShownPeriodKeys();
     times_shown.forEach((period) => {
-        let header = PERIOD_INFO.header[period];
+        let header = PERIOD_HEADER[period];
         let is_available = CU.period_available[CU.usertag][CU.current_username][period];
         let header_options = {title: REORDER_MESSAGE, class: 'cu-period-header', dataPeriod: period, width: '15%'};
         if (click_periods.includes(period) && !is_available) {
@@ -1146,7 +1151,7 @@ function RenderRow(key) {
 }
 
 function RenderOrderMessage(period, sorttype) {
-    let header = PERIOD_INFO.header[period];
+    let header = PERIOD_HEADER[period];
     switch (sorttype) {
         case 1:
             return `Copyrights ordered by user postcount; ${header} period; L -> H`;
@@ -1172,7 +1177,7 @@ function RenderCopyrights(period) {
 
 function RenderCopyrightControls() {
     let controls = COPYRIGHT_PERIODS.map((period) => {
-        let period_name = PERIOD_INFO.longname[period];
+        let period_name = SHORTNAME_KEY[period];
         return COPYRIGHT_CONTROL_TEMPLATE({period, text: Utility.titleize(period_name)});
     });
     controls.push(COPYRIGHT_CONTROL_TEMPLATE({period: 'manual', text: 'Manual'}));
@@ -1192,7 +1197,7 @@ function RenderAllTooltipControls() {
 }
 
 function RenderStatistics(key, attribute, period, limited = false) {
-    let period_key = GetPeriodKey(PERIOD_INFO.longname[period]);
+    let period_key = GetPeriodKey(SHORTNAME_KEY[period]);
     let data = Storage.getIndexedSessionData(period_key);
     if (!data) {
         return "No data!";
@@ -1277,8 +1282,8 @@ function CheckPeriodUploads() {
         if (period in CU.period_available[CU.usertag][CU.current_username]) {
             continue;
         }
-        let data_key = GetPeriodKey(PERIOD_INFO.longname[period]);
-        let max_expires = PERIOD_INFO.uploadexpires[period];
+        let data_key = GetPeriodKey(SHORTNAME_KEY[period]);
+        let max_expires = UPLOAD_EXPIRES[period];
         let check_promise = Storage.checkData(data_key, {max_expires}).then((check) => {checkPeriod(data_key, period, check);});
         promise_array.push(check_promise);
     }
@@ -1386,8 +1391,8 @@ async function LoadTagCountData(tags) {
         let [, short_period, tag] = /^ct(?:d|w|mo|y|at)-(.*)/.exec(key);
         let promise = Danbooru.query('counts/posts', {tags: BuildTagParams(short_period, tag), skip_cache: true}, {default_val: {counts: {posts: 0}}});
         promise.then((network_data) => {
-            printer.logLevel("Count:", tag, PERIOD_INFO.longname[short_period], network_data, Debug.VERBOSE);
-            batch_save[key] = {value: network_data.counts.posts, expires: Utility.getExpires(PERIOD_INFO.countexpires[short_period])};
+            printer.logLevel("Count:", tag, SHORTNAME_KEY[short_period], network_data, Debug.VERBOSE);
+            batch_save[key] = {value: network_data.counts.posts, expires: Utility.getExpires(COUNT_EXPIRES[short_period])};
         });
         promise_array.push(promise);
     }
@@ -1397,8 +1402,8 @@ async function LoadTagCountData(tags) {
 
 async function GetPeriodUploads(username, period, limited = false, domname = null) {
     let printer = Debug.getFunctionPrint('GetPeriodUploads');
-    let period_name = PERIOD_INFO.longname[period];
-    let max_expires = PERIOD_INFO.uploadexpires[period];
+    let period_name = SHORTNAME_KEY[period];
+    let max_expires = UPLOAD_EXPIRES[period];
     let key = GetPeriodKey(period_name);
     var check = await Storage.checkData(key, {max_expires});
     if (!(check)) {
@@ -1536,17 +1541,17 @@ function RenderChart(event) {
     }
     let period = $(event.target).data('period');
     let is_limited = $(event.target).hasClass('cu-limited');
-    let longname = PERIOD_INFO.longname[period];
-    let points = PERIOD_INFO.points[period];
+    let longname = SHORTNAME_KEY[period];
+    let points = PERIOD_X_POINTS[period];
     let period_key = GetPeriodKey(longname);
     let data = Storage.getIndexedSessionData(period_key);
     if (!data || (!is_limited && data.value.length === 0) || (is_limited && !data.value.chart_data)) {
-        Notice.notice(`${PERIOD_INFO.header[period]} period not populated! Click the period header to activate the chart.`);
+        Notice.notice(`${PERIOD_HEADER[period]} period not populated! Click the period header to activate the chart.`);
         return;
     }
     var period_averages, period_uploads;
     if (!is_limited) {
-        let time_offset = Date.now() - (data.expires - PERIOD_INFO.uploadexpires[period]);
+        let time_offset = Date.now() - (data.expires - UPLOAD_EXPIRES[period]);
         let posts = PostDecompressData(data.value);
         let indexed_posts = AssignPostIndexes(period, posts, time_offset);
         period_averages = GetPeriodAverages(indexed_posts, CU.current_metric);
@@ -1562,7 +1567,7 @@ function RenderChart(event) {
             text: `${Utility.displayCase(longname)} ${CU.counttype} - Average post ${CU.current_metric}`
         },
         axisX: {
-            title: PERIOD_INFO.xlabel[period],
+            title: PERIOD_X_LABEL[period],
             minimum: 0,
             maximum: (points ? points - 1 : period_uploads.slice(-1)[0].x)
         },
@@ -1636,7 +1641,7 @@ async function CopyrightPeriod(event) {
         $('#count-copyrights-list a').off(JSPLib.event.click).on(JSPLib.event.click, ToggleCopyrightTag);
     } else {
         $('#count-copyrights-manual').hide();
-        let current_period = PERIOD_INFO.longname[short_period];
+        let current_period = SHORTNAME_KEY[short_period];
         let is_period_enabled = CU.period_available[CU.usertag][CU.current_username][short_period];
         if (is_period_enabled) {
             if (CU.user_copytags[CU.usertag][CU.current_username][current_period] === undefined) {
