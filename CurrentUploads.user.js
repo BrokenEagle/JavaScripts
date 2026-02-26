@@ -755,7 +755,7 @@ const CHART_CONSTRAINTS = {
     },
 };
 
-/**FUNCTIONS**/
+/****Functions****/
 
 //Validation functions
 
