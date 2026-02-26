@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EventListener
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      26.1
+// @version      26.2
 // @description  Informs users of new events.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1692,7 +1692,7 @@ const EVENT_CONSTRAINTS = {
     seen: JSPLib.validate.boolean_constraints,
 };
 
-const KNOWN_MATCHES = ['subscribe', 'user', 'creator', 'post-query', 'other', 'category'];
+const KNOWN_MATCHES = ['subscribe', 'user', 'creator', 'post-query', 'other', 'related', 'category'];
 
 /****Functions****/
 
