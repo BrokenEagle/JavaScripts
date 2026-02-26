@@ -98,13 +98,13 @@ const SETTINGS_CONFIG = {
     copyrights_threshold: {
         reset: 0,
         parse: parseInt,
-        validate: (data) => (Utility.isInteger(data) && data >= 0),
+        validate: (data) => Menu.validateNumber(data, {integer: true, minimum: 0}),
         hint: "Maximum number of copyrights to display. Enter 0 to disable this threshold."
     },
     postcount_threshold: {
         reset: 0,
         parse: parseInt,
-        validate: (data) => (Utility.isInteger(data) && data >= 0),
+        validate: (data) => Menu.validateNumber(data, {integer: true, minimum: 0}),
         hint: "Minimum postcount to display copyright. Enter 0 to disable this threshold."
     }
 };
