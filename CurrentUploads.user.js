@@ -71,7 +71,7 @@ const STORAGE_RESET_KEYS = [
     'cu-current-metric',
 ];
 
-const PROGRAM_DATA_REGEX = /^rti-|ct(d|w|mo|y|at)-|(daily|weekly|monthly|yearly|alltime|previous)-(uploads|approvals)-/;
+const PROGRAM_DATA_REGEX = /^rti-|ct(?:d|w|mo|y|at)-|(?:daily|weekly|monthly|yearly|alltime|previous)-(?:uploads|approvals)-/;
 
 const LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.CurrentUser'];
 const LOAD_OPTIONAL_SELECTORS = ['#c-static #a-site-map', '#c-users #a-edit'];
@@ -767,19 +767,19 @@ function ValidateEntry(key, entry) {
     if (!Validate.validateIsHash(key, entry)) {
         return false;
     }
-    if (key.match(/^ct(d|w|mo|y|at)?-/)) {
+    if (key.match(/^ct(?:d|w|mo|y|at)-/)) {
         return Validate.validateHashEntries(key, entry, COUNT_CONSTRAINTS);
     }
     if (key.match(/^rti-/)) {
         return Validate.validateHashEntries(key, entry, IMPLICATION_CONSTRAINTS);
     }
-    if (key.match(/^(daily|weekly|monthly|previous)-(uploads|approvals)-/)) {
+    if (key.match(/^(?:daily|weekly|monthly|previous)-(?:uploads|approvals)-/)) {
         if (!Validate.validateHashEntries(key, entry, POST_CONSTRAINTS.entry)) {
             return false;
         }
         return ValidatePosts(key + '.value', entry.value);
     }
-    if (key.match(/^(yearly|alltime)-(uploads|approvals)-/)) {
+    if (key.match(/^(?:yearly|alltime)-(?:uploads|approvals)-/)) {
         if (!Validate.validateHashEntries(key, entry, STATISTICS_CONSTRAINTS.entry)) {
             return false;
         }
@@ -857,7 +857,7 @@ function ValidateProgramData(key, entry) {
 }
 
 function ValidateExpiration(key) {
-    let short_period = /^ct(?:d|w|mo|y|at)-/.exec(key)[1];
+    let short_period = /^ct(d|w|mo|y|at)-/.exec(key)[1];
     return COUNT_EXPIRES[short_period];
 }
 
@@ -1388,7 +1388,7 @@ async function LoadTagCountData(tags) {
     let promise_array = [];
     let batch_save = {};
     for (let key of missing_keys) {
-        let [, short_period, tag] = /^ct(?:d|w|mo|y|at)-(.*)/.exec(key);
+        let [, short_period, tag] = /^ct(d|w|mo|y|at)-(.*)/.exec(key);
         let promise = Danbooru.query('counts/posts', {tags: BuildTagParams(short_period, tag), skip_cache: true}, {default_val: {counts: {posts: 0}}});
         promise.then((network_data) => {
             printer.logLevel("Count:", tag, SHORTNAME_KEY[short_period], network_data, Debug.VERBOSE);
