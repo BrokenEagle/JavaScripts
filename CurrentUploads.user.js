@@ -609,18 +609,18 @@ const LIMITED_PERIODS = ['y', 'at'];
 const COPYRIGHT_PERIODS = ['d', 'w', 'mo'];
 
 const COUNT_EXPIRES = {
-    d: 5 * Utility.one_minute,
-    w: Utility.one_hour,
-    mo: Utility.one_day,
-    y: Utility.one_week,
-    at: Utility.one_month,
-};
-
-const UPLOAD_EXPIRES = {
-    d: 5 * Utility.one_minute,
+    d: 15 * Utility.one_minute,
     w: Utility.one_day,
     mo: Utility.one_week,
     y: Utility.one_month,
+    at: 3 * Utility.one_month,
+};
+
+const UPLOAD_EXPIRES = {
+    d: 15 * Utility.one_minute,
+    w: Utility.one_week,
+    mo: Utility.one_month,
+    y: 3 * Utility.one_month,
     at: Utility.one_year,
 };
 
