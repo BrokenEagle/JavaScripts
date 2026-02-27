@@ -998,6 +998,10 @@ function CompareCopyrightCounts(dict1, dict2) {
     return difference;
 }
 
+/**
+ * Given the rate at which a tag has been uploaded over the last week for
+ * all of Danbooru, has an upload likely occurred since the last check?
+ */
 function CheckCopyrightVelocity(tag) {
     var dayuploads = Storage.getIndexedSessionData('ctd-' + tag);
     var weekuploads = Storage.getIndexedSessionData('ctw-' + tag);
