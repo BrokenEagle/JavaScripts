@@ -701,6 +701,7 @@ const IMPLICATION_CONSTRAINTS = {
 const POST_CONSTRAINTS = {
     entry: {
         expires: Validate.nonnegative_integer_constraints,
+        recorded: Validate.nonnegative_integer_constraints,
         value: Validate.array_constraints,
     },
     value: [
@@ -1419,7 +1420,7 @@ async function GetPeriodUploads(username, period, limited = false, domname = nul
             mapped_data.chart_data.uploads = GetPeriodPosts(indexed_posts);
             Storage.saveData(key, {value: mapped_data, expires: Utility.getExpires(max_expires)});
         } else {
-            Storage.saveData(key, {value: PreCompressData(mapped_data), expires: Utility.getExpires(max_expires)});
+            Storage.saveData(key, {value: PreCompressData(mapped_data), recorded: Date.now(), expires: Utility.getExpires(max_expires)});
         }
         return mapped_data;
     }
@@ -1554,7 +1555,7 @@ function RenderChart(event) {
     }
     var period_averages, period_uploads;
     if (!is_limited) {
-        let time_offset = Date.now() - (data.expires - UPLOAD_EXPIRES[period]);
+        let time_offset = Date.now() - data.recorded;
         let posts = PostDecompressData(data.value);
         let indexed_posts = AssignPostIndexes(period, posts, time_offset);
         period_averages = GetPeriodAverages(indexed_posts, CU.current_metric);
