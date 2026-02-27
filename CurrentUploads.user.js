@@ -870,8 +870,8 @@ function SortDict(dict) {
     return items.map((entry) => entry[0]);
 }
 
-function BuildTagParams(type, tag) {
-    return (type === 'at' ? '' : ('age:..1' + type + ' ')) + tag;
+function BuildTagParams(tag, period) {
+    return (period === 'at' ? '' : ('age:..1' + period + ' ')) + tag;
 }
 
 function GetAllStatistics(posts, attribute) {
@@ -1390,7 +1390,7 @@ async function LoadTagCountData(tags) {
     let batch_save = {};
     for (let key of missing_keys) {
         let [, short_period, tag] = /^ct(d|w|mo|y|at)-(.*)/.exec(key);
-        let promise = Danbooru.query('counts/posts', {tags: BuildTagParams(short_period, tag), skip_cache: true}, {default_val: {counts: {posts: 0}}});
+        let promise = Danbooru.query('counts/posts', {tags: BuildTagParams(tag, short_period), skip_cache: true}, {default_val: {counts: {posts: 0}}});
         promise.then((network_data) => {
             printer.logLevel("Count:", tag, SHORTNAME_KEY[short_period], network_data, Debug.VERBOSE);
             batch_save[key] = {value: network_data.counts.posts, expires: Utility.getExpires(COUNT_EXPIRES[short_period])};
@@ -1409,7 +1409,7 @@ async function GetPeriodUploads(username, period, limited = false, domname = nul
     var check = await Storage.checkData(key, {max_expires});
     if (!(check)) {
         printer.log(`Network (${period_name} ${CU.counttype})`);
-        let data = await GetPostsCountdown(BuildTagParams(period, `${CU.usertag}:${username}`), domname);
+        let data = await GetPostsCountdown(BuildTagParams(`${CU.usertag}:${username}`, period), domname);
         let mapped_data = MapPostData(data);
         if (limited) {
             let indexed_posts = AssignPostIndexes(period, mapped_data, 0);
