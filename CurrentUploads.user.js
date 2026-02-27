@@ -1127,9 +1127,9 @@ function RenderRow(key) {
         if (key === "") {
             data_text = GetCountData('ct' + period + `-${CU.usertag}:` + CU.current_username, "N/A");
         } else {
-            var useruploads = GetCountData('ct' + period + `-${CU.usertag}:` + CU.current_username + ' ' + key, "N/A");
-            var alluploads = GetCountData('ct' + period + '-' + key, "N/A");
-            data_text = `(${useruploads}/${alluploads})`;
+            var user_uploads = GetCountData('ct' + period + `-${CU.usertag}:` + CU.current_username + ' ' + key, "N/A");
+            var all_uploads = GetCountData('ct' + period + '-' + key, "N/A");
+            data_text = `(${user_uploads}/${all_uploads})`;
         }
         let is_limited = LIMITED_PERIODS.includes(period);
         let class_name = (!is_limited ? 'cu-hover' : '');
@@ -1328,8 +1328,8 @@ function InitializeTable() {
     $('#count-body .cu-manual, #count-body .cu-limited').on(JSPLib.event.click, RenderChart);
     $('#count-controls, #count-copyrights, #count-header').show();
     $(`.cu-select-tooltip[data-type="${CU.current_metric}"] a`).click();
-    CU.sorttype = 0;
-    CU.sortperiod = "d";
+    CU.sort_type = 0;
+    CU.sort_period = "d";
     if (CU.copyright_period) {
         $(`.cu-select-period[data-type="${CU.copyright_period}"] a`).click();
     }
@@ -1498,9 +1498,9 @@ function SortTable(event) {
     }
     let column = event.target.cellIndex + 1;
     let period = $(`#count-header th:nth-of-type(${column})`).data('period');
-    if (CU.sortperiod !== period) {
-        CU.sorttype = 3;
-        CU.sortperiod = period;
+    if (CU.sort_period !== period) {
+        CU.sort_type = 3;
+        CU.sort_period = period;
     }
     let rows = [];
     $('#count-body tbody tr').each((i, row) => {
@@ -1515,7 +1515,7 @@ function SortTable(event) {
         });
     });
     rows.sort((a, b) => {
-        switch (CU.sorttype) {
+        switch (CU.sort_type) {
             case 1:
                 return b.posts[1] - a.posts[1];
             case 2:
@@ -1529,8 +1529,8 @@ function SortTable(event) {
     }).forEach((row) => {
         $('#count-body tbody').append(row.domobj);
     });
-    CU.sorttype = (CU.sorttype + 1) % 4;
-    $('#count-order').html(RenderOrderMessage(period, CU.sorttype));
+    CU.sort_type = (CU.sort_type + 1) % 4;
+    $('#count-order').html(RenderOrderMessage(period, CU.sort_type));
 }
 
 function RenderChart(event) {
@@ -1543,9 +1543,9 @@ function RenderChart(event) {
     }
     let period = $(event.target).data('period');
     let is_limited = $(event.target).hasClass('cu-limited');
-    let longname = SHORTNAME_KEY[period];
+    let long_period = SHORTNAME_KEY[period];
     let points = PERIOD_X_POINTS[period];
-    let period_key = GetPeriodKey(longname);
+    let period_key = GetPeriodKey(long_period);
     let data = Storage.getIndexedSessionData(period_key);
     if (!data || (!is_limited && data.value.length === 0) || (is_limited && !data.value.chart_data)) {
         Notice.notice(`${PERIOD_HEADER[period]} period not populated! Click the period header to activate the chart.`);
@@ -1566,7 +1566,7 @@ function RenderChart(event) {
     let type_display = Utility.displayCase(CU.counttype);
     let chart_data = {
         title: {
-            text: `${Utility.displayCase(longname)} ${CU.counttype} - Average post ${CU.current_metric}`
+            text: `${Utility.displayCase(long_period)} ${CU.counttype} - Average post ${CU.current_metric}`
         },
         axisX: {
             title: PERIOD_X_LABEL[period],
