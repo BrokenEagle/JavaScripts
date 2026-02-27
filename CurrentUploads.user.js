@@ -468,13 +468,13 @@ const NOTICE_BOX_HTML = Template.normalizeHTML()`
             <div id="count-copyrights-controls"></div>
             <div id="count-copyrights-list"></div>
             <div id="count-copyrights-manual" style="display: none;">
-                <input id="count_query_copyright" placeholder="Check copyright" type="text">
+                <input id="count_query_copyright" placeholder="Check copyright" type="text" autocomplete="off">
                 <input id="count_add_copyright" type="submit" value="Add" class="btn">
             </div>
         </div>
     </div>
     <div id="count-query-user">
-        <input id="count_query_user_id" placeholder="Check users" type="text">
+        <input id="count_query_user_id" placeholder="Check users" type="text" autocomplete="off">
         <input id="count_submit_user_id" type="submit" value="Submit" class="btn">
         <input id="count_refresh_user_id" type="submit" value="Refresh" class="btn">
         <label for="count_approver_select" title="Switch to checking approvals instead of uploads.">
@@ -1310,10 +1310,11 @@ function InitializeControls() {
             available: () => {
                 CU.IAC.InitializeProgramValues(true);
                 CU.IAC.InitializeAutocompleteIndexed("#count_query_user_id", 'us');
-                printer.logLevel("Initialized CU input autocomplete: #count_query_user_id", Debug.DEBUG);
+                CU.IAC.InitializeAutocompleteIndexed("#count_query_copyright", 'ac');
+                printer.logLevel("Initialized CU input autocomplete.", Debug.DEBUG);
             },
             fallback: () => {
-                printer.logLevel("Unable to initialize textarea autocomplete: #count_query_user_id", Debug.DEBUG);
+                printer.logLevel("Unable to initialize textarea autocomplete.", Debug.DEBUG);
             },
         });
     }
