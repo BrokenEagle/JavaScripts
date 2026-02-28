@@ -855,8 +855,16 @@ function ValidateProgramData(key, entry) {
 }
 
 function ValidateExpiration(key) {
-    let short_period = /^ct(d|w|mo|y|at)-/.exec(key)[1];
-    return COUNT_EXPIRES[short_period];
+    let count_period = Utility.safeMatch(key, /^ct(d|w|mo|y|at)-/, {group: 1});
+    if (count_period) {
+        return COUNT_EXPIRES[count_period];
+    }
+    let upload_period = Utility.safeMatch(key, /^(daily|weekly|monthly|yearly|alltime)-/, {group: 1});
+    if (upload_period) {
+        let period = LONGNAME_KEY[upload_period];
+        return UPLOAD_EXPIRES[period];
+    }
+    throw new Error(`"Not a valid key name: ${key}`);
 }
 
 //Helper functions
@@ -1269,27 +1277,24 @@ function GetCountData(key, default_val = null) {
     return count_data.value;
 }
 
-function CheckPeriodUploads() {
-    let promise_array = [];
-    const checkPeriod = (key, period, check) => {
-        CU.period_available[CU.usertag][CU.current_username][period] = Boolean(check);
-        if (!check) {
+async function CheckPeriodUploads() {
+    const printer = Debug.getFunctionPrint('CheckPeriodUploads');
+    CU.period_available[CU.usertag][CU.current_username] ??= {};
+    let storage_keys = GetShownPeriodKeys()
+        .filter((period) => !(period in CU.period_available[CU.usertag][CU.current_username]))
+        .map((period) => GetPeriodKey(SHORTNAME_KEY[period]));
+    if (storage_keys.length === 0) return;
+    printer.log("Check:", storage_keys);
+    let storage_data = await Storage.batchCheckData(storage_keys, {expiration: ValidateExpiration});
+    printer.log("Storage:", storage_keys);
+    for (let key of storage_keys) {
+        let long_period = /^(daily|weekly|monthly|yearly|alltime)-/.exec(key)[1];
+        let short_period = LONGNAME_KEY[long_period];
+        CU.period_available[CU.usertag][CU.current_username][short_period] = (key in storage_data);
+        if (!CU.period_available[CU.usertag][CU.current_username][short_period]) {
             Storage.removeIndexedSessionData(key);
         }
-    };
-    CU.period_available[CU.usertag][CU.current_username] ??= {};
-    let times_shown = GetShownPeriodKeys();
-    for (let i = 0; i < times_shown.length; i++) {
-        let period = times_shown[i];
-        if (period in CU.period_available[CU.usertag][CU.current_username]) {
-            continue;
-        }
-        let data_key = GetPeriodKey(SHORTNAME_KEY[period]);
-        let max_expires = UPLOAD_EXPIRES[period];
-        let check_promise = Storage.checkData(data_key, {max_expires}).then((check) => {checkPeriod(data_key, period, check);});
-        promise_array.push(check_promise);
     }
-    return Promise.all(promise_array);
 }
 
 //Initialize functions
