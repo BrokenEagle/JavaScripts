@@ -12,6 +12,8 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/CurrentUploads.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/CurrentUploads.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js
+// @require      https://cdn.jsdelivr.net/npm/localforage-getitems@1.4.2/dist/localforage-getitems.min.js
+// @require      https://cdn.jsdelivr.net/npm/localforage-setitems@1.4.0/dist/localforage-setitems.min.js
 // @require      https://cdn.jsdelivr.net/npm/localforage-removeitems@1.4.0/dist/localforage-removeitems.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/canvasjs.min.js
@@ -677,8 +679,8 @@ const COPYRIGHT_NO_STATISTICS = 'No statistics available for this period (<span 
 
 //Other constants
 
+const IMPLICATION_FIELDS = 'antecedent_name';
 const NAME_FIELD = 'name';
-const ID_FIELD = 'id';
 const USER_FIELDS = 'name,level_string';
 const POST_FIELDS = 'id,score,up_score,down_score,fav_count,tag_count,tag_count_general,tag_string_copyright,created_at';
 
@@ -691,7 +693,7 @@ const COUNT_CONSTRAINTS = {
 
 const IMPLICATION_CONSTRAINTS = {
     expires: Validate.nonnegative_integer_constraints,
-    value: Validate.nonnegative_integer_constraints,
+    value: Validate.boolean_constraints,
 };
 
 const POST_CONSTRAINTS = {
@@ -1282,16 +1284,6 @@ function CheckPeriodUploads() {
     return Promise.all(promise_array);
 }
 
-async function MergeCopyrightTags(user_copytags) {
-    let query_implications = Utility.arrayDifference(user_copytags, Object.keys(CU.reverse_implications));
-    let promise_array = query_implications.map((key) => GetReverseTagImplication(key));
-    let reverse_implications = await Promise.all(promise_array);
-    query_implications.forEach((key, i) => {
-        CU.reverse_implications[key] = reverse_implications[i];
-    });
-    return user_copytags.filter((value) => (CU.reverse_implications[value] === 0));
-}
-
 //Initialize functions
 
 function InitializeControls() {
@@ -1343,17 +1335,34 @@ function CleanupTasks() {
 
 //Network functions
 
-async function GetReverseTagImplication(tag) {
-    let printer = Debug.getFunctionPrint('GetReverseTagImplication');
-    var key = 'rti-' + tag;
-    var check = await Storage.checkData(key, {max_expires: RTI_EXPIRATION});
-    if (!(check)) {
-        printer.log("Network:", key);
-        let data = await Danbooru.query('tag_implications', {search: {antecedent_name: tag}, only: ID_FIELD}, {default_val: [], key});
-        Storage.saveData(key, {value: data.length, expires: Utility.getExpires(RTI_EXPIRATION)});
-        return data.length;
+async function CheckTagImplications(tags) {
+    let printer = Debug.getFunctionPrint('CheckTagImplications');
+    let check_tags = Utility.arrayDifference(tags, Object.keys(CU.reverse_implications));
+    if (check_tags.length) {
+        printer.log("Check:", check_tags);
+        let storage_keys = check_tags.map((tag) => 'rti-' + tag);
+        let storage_data = await Storage.batchCheckData(storage_keys, {expiration: RTI_EXPIRATION});
+        printer.log("Storage:", storage_data);
+        for (let key in storage_data) {
+            let tag = key.slice(4);
+            CU.reverse_implications[tag] = storage_data[key].value;
+        }
+        let query_tags = Utility.arrayDifference(check_tags, Object.keys(CU.reverse_implications));
+        if (query_tags.length) {
+            printer.log("Network:", query_tags);
+            let network_data = await Danbooru.query('tag_implications', {search: {antecedent_name_comma: query_tags.join(',')}, only: IMPLICATION_FIELDS, limit: query_tags.limit}, {default_val: []});
+            let found_tags = network_data.map((implication) => implication.antecedent_name);
+            printer.log("Found:", found_tags);
+            let expires = Utility.getExpires(RTI_EXPIRATION);
+            let batch_save = {};
+            query_tags.forEach((tag) => {
+                CU.reverse_implications[tag] = found_tags.includes(tag);
+                batch_save['rti-' + tag] = {value: CU.reverse_implications[tag], expires};
+            });
+            Storage.batchSaveData(batch_save);
+        }
     }
-    return check.value;
+    return tags.filter((tag) => !CU.reverse_implications[tag]);
 }
 
 async function GetCount(type, tag) {
@@ -1621,7 +1630,7 @@ async function CopyrightPeriod(event) {
                 let user_copytags = SortDict(copyright_count);
                 if (CU.user_settings.copyrights_merge) {
                     $('#count-copyrights-counter').html(COUNTER_HTML);
-                    user_copytags = await MergeCopyrightTags(user_copytags);
+                    user_copytags = await CheckTagImplications(user_copytags);
                     $('#count-copyrights-counter').html("");
                 }
                 CU.user_copytags[CU.usertag][CU.current_username][current_period] = user_copytags;
