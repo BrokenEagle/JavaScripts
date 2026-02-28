@@ -40,6 +40,7 @@
 const PROGRAM_NAME = 'CurrentUploads';
 const PROGRAM_SHORTCUT = 'cu';
 const DANBOORU_TOPIC_ID = 15169;
+const GITHUB_WIKI_PAGE = 'https://github.com/BrokenEagle/JavaScripts/wiki/CurrentUploads';
 
 /****Library updates****/
 
@@ -147,6 +148,7 @@ const CONTROL_CONFIG = {
 
 const MENU_CONFIG = {
     topic_id: DANBOORU_TOPIC_ID,
+    wiki_page: GITHUB_WIKI_PAGE,
     settings: [{
         name: 'general',
     }, {
