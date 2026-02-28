@@ -987,9 +987,9 @@ function GetCopyrightCount(posts) {
             copyright_count[tag] = copyright_count[tag].concat([post.id]);
         });
     });
-    if (CU.user_settings.postcount_threshold) {
+    if (CU.postcount_threshold) {
         for (let copyright in copyright_count) {
-            if (copyright_count[copyright].length < CU.user_settings.postcount_threshold) {
+            if (copyright_count[copyright].length < CU.postcount_threshold) {
                 delete copyright_count[copyright];
             }
         }
@@ -1068,7 +1068,7 @@ function GetPeriodKey(period_name) {
 }
 
 function GetShownPeriodKeys() {
-    return TIMEVALUES.filter((period_key) => CU.user_settings.periods_shown.includes(SHORTNAME_KEY[period_key]));
+    return TIMEVALUES.filter((period_key) => CU.periods_shown.includes(SHORTNAME_KEY[period_key]));
 }
 
 function TableMessage(message) {
@@ -1658,7 +1658,7 @@ async function CopyrightPeriod(event) {
                 let data = Storage.getIndexedSessionData(period_key);
                 let copyright_count = GetCopyrightCount(PostDecompressData(data.value));
                 let user_copytags = SortDict(copyright_count);
-                if (CU.user_settings.copyrights_merge) {
+                if (CU.copyrights_merge) {
                     $('#count-copyrights-counter').html(COUNTER_HTML);
                     user_copytags = await CheckTagImplications(user_copytags);
                     $('#count-copyrights-counter').html("");
