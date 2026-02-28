@@ -851,6 +851,11 @@ function ValidateProgramData(key, entry) {
     return true;
 }
 
+function ValidateExpiration(key) {
+    let short_period = /^ct(?:d|w|mo|y|at)-/.exec(key)[1];
+    return PERIOD_INFO.countexpires[short_period];
+}
+
 //Helper functions
 
 /**
@@ -1041,10 +1046,6 @@ function PostDecompressData(posts) {
             created: entry[8]
         }
     ));
-}
-
-function GetTagData(tag) {
-    return Promise.all(CU.user_settings.periods_shown.map((period) => GetCount(LONGNAME_KEY[period], tag)));
 }
 
 function GetPeriodKey(period_name) {
@@ -1365,18 +1366,33 @@ async function CheckTagImplications(tags) {
     return tags.filter((tag) => !CU.reverse_implications[tag]);
 }
 
-async function GetCount(type, tag) {
-    let printer = Debug.getFunctionPrint('GetCount');
-    let max_expires = PERIOD_INFO.countexpires[type];
-    var key = 'ct' + type + '-' + tag;
-    var check = await Storage.checkData(key, {max_expires});
-    if (!(check)) {
-        printer.log("Network:", key);
-        return Danbooru.query('counts/posts', {tags: BuildTagParams(type, tag), skip_cache: true}, {default_val: {counts: {posts: 0}}, key})
-            .then((data) => {
-                Storage.saveData(key, {value: data.counts.posts, expires: Utility.getExpires(max_expires)});
-            });
+async function LoadTagCountData(tags) {
+    let printer = Debug.getFunctionPrint('LoadTagCountData');
+    LoadTagCountData.memoized ??= [];
+    let check_tags = Utility.arrayDifference(tags, LoadTagCountData.memoized);
+    if (check_tags.length === 0) return;
+    LoadTagCountData.memoized = Utility.arrayUnion(check_tags, LoadTagCountData.memoized);
+    printer.log("Check:", check_tags);
+    let short_periods = CU.periods_shown.map((period) => LONGNAME_KEY[period]);
+    let storage_keys = check_tags.map((tag) => short_periods.map((period) => 'ct' + period + '-' + tag)).flat();
+    let storage_data = await Storage.batchCheckData(storage_keys, {expiration: ValidateExpiration});
+    printer.log("Storage:", storage_data);
+    let missing_keys = Utility.arrayDifference(storage_keys, Object.keys(storage_data));
+    if (missing_keys.length === 0) return;
+    printer.log("Network:", missing_keys);
+    let promise_array = [];
+    let batch_save = {};
+    for (let key of missing_keys) {
+        let [, short_period, tag] = /^ct(?:d|w|mo|y|at)-(.*)/.exec(key);
+        let promise = Danbooru.query('counts/posts', {tags: BuildTagParams(short_period, tag), skip_cache: true}, {default_val: {counts: {posts: 0}}});
+        promise.then((network_data) => {
+            printer.logLevel("Count:", tag, PERIOD_INFO.longname[short_period], network_data, Debug.VERBOSE);
+            batch_save[key] = {value: network_data.counts.posts, expires: Utility.getExpires(PERIOD_INFO.countexpires[short_period])};
+        });
+        promise_array.push(promise);
     }
+    await Promise.all(promise_array);
+    Storage.batchSaveData(batch_save);
 }
 
 async function GetPeriodUploads(username, period, limited = false, domname = null) {
@@ -1672,12 +1688,12 @@ function ToggleNotice() {
 async function RefreshUser() {
     $("#count-copyrights-counter").html(COUNTER_HTML);
     let diff_tags = Utility.arrayDifference(CU.active_copytags, CU.shown_copytags);
-    let promise_array = [];
+    let count_tags = [];
     diff_tags.forEach((val) => {
-        promise_array.push(GetTagData(`${CU.usertag}:${CU.current_username} ${val}`));
-        promise_array.push(GetTagData(val));
+        count_tags.push(`${CU.usertag}:${CU.current_username} ${val}`);
+        count_tags.push(val);
     });
-    await Promise.all(promise_array);
+    await LoadTagCountData(count_tags);
     $("#count-copyrights-counter").html('');
     InitializeTable();
 }
@@ -1764,7 +1780,7 @@ async function PopulateTable() {
 }
 
 async function ProcessUploads() {
-    var promise_array = [];
+    var count_tags = [];
     var current_uploads = [];
     var user_copytags = [];
     if (CU.current_username !== "Anonymous") {
@@ -1778,14 +1794,14 @@ async function ProcessUploads() {
         let current_ids = Utility.getObjectAttributes(current_uploads, 'id');
         let previous_ids = Utility.getObjectAttributes(previous_uploads, 'id');
         if (is_new_tab || !Utility.arrayEquals(current_ids, previous_ids) || IsMissingTag(`${CU.usertag}:${CU.current_username}`)) {
-            promise_array.push(GetTagData(`${CU.usertag}:${CU.current_username}`));
+            count_tags.push(`${CU.usertag}:${CU.current_username}`);
         }
         if (CU.is_gold_user && CU.copyrights_enabled) {
             let curr_copyright_count = GetCopyrightCount(current_uploads);
             let prev_copyright_count = GetCopyrightCount(previous_uploads);
             user_copytags = SortDict(curr_copyright_count);
             if (CU.copyrights_merge) {
-                user_copytags = await MergeCopyrightTags(user_copytags);
+                user_copytags = await CheckTagImplications(user_copytags);
             }
             if (CU.copyrights_threshold) {
                 user_copytags = user_copytags.slice(0, CU.copyrights_threshold);
@@ -1795,20 +1811,20 @@ async function ProcessUploads() {
             let copyright_nochange = (is_new_tab ? [] : Utility.arrayDifference(user_copytags, copyright_changed));
             copyright_nochange.forEach((val) => {
                 if (CheckCopyrightVelocity(val) || IsMissingTag(val)) {
-                    promise_array.push(GetTagData(val));
+                    count_tags.push(val);
                 }
                 if (IsMissingTag(`${CU.usertag}:${CU.current_username} ${val}`)) {
-                    promise_array.push(GetTagData(`${CU.usertag}:${CU.current_username} ${val}`));
+                    count_tags.push(`${CU.usertag}:${CU.current_username} ${val}`);
                 }
             });
             copyright_changed.forEach((val) => {
-                promise_array.push(GetTagData(`${CU.usertag}:${CU.current_username} ${val}`));
-                promise_array.push(GetTagData(val));
+                count_tags.push(`${CU.usertag}:${CU.current_username} ${val}`);
+                count_tags.push(val);
             });
         }
-        await Promise.all(promise_array);
+        await LoadTagCountData(count_tags);
     } else if (IsMissingTag(`${CU.usertag}:${CU.current_username}`)) {
-        await GetTagData(`${CU.usertag}:${CU.current_username}`);
+        await LoadTagCountData([`${CU.usertag}:${CU.current_username}`]);
     }
     CU.user_copytags[CU.usertag][CU.current_username] = {daily: user_copytags, manual: []};
     Storage.saveData(previous_key, {value: PreCompressData(current_uploads), expires: 0});
