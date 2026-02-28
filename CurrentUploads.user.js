@@ -1336,7 +1336,7 @@ function InitializeTable() {
     $('#count-header').html(Utility.renderHTMLTag('table', RenderHeader(), {class: 'striped', 'width': '100%'}));
     $('#count-body').html(Utility.renderHTMLTag('table', RenderBody(), {class: 'striped', 'width': '100%'}));
     $('#count-order').html(RenderOrderMessage('d', 0));
-    $('#count-header .cu-process a').on(JSPLib.event.click, GetPeriod);
+    $('#count-header .cu-process a').one(JSPLib.event.click, GetPeriod);
     $('#count-header th').on(JSPLib.event.click, SortTable);
     $('#count-body .cu-manual, #count-body .cu-limited').on(JSPLib.event.click, RenderChart);
     $(".cu-hover.cu-chart-cell .cu-uploads").on(JSPLib.event.mouseenter, UploadCountEnter);
@@ -1484,28 +1484,21 @@ async function GetPostsCountdown(query, domname) {
 //Event handlers
 
 async function GetPeriod(event) {
-    let header = event.target.parentElement;
+    let $header = $(event.target.parentElement);
     let is_limited = $(event.target).hasClass("cu-limited");
-    let period = header.dataset.period;
+    let period = $header.data('period');
     $(`#count-header th[data-period=${period}] .cu-display`).show();
     await GetPeriodUploads(CU.current_username, period, is_limited, `#count-header th[data-period=${period}] .cu-counter`);
     CU.period_available[CU.usertag][CU.current_username][period] = true;
-    let column = header.cellIndex;
-    let $cells = $(`#count-body td:nth-of-type(${column + 1})`);
-    if (is_limited) {
-        let value = $('.cu-uploads', $cells[0]).html();
-        $($cells[0]).html(RenderTooltipData(value, period, true));
-    } else {
-        $cells.each((_i, cell) => {
-            let value = $('.cu-uploads', cell).html();
-            $(cell).html(RenderTooltipData(value, period));
-        });
-        $(`.cu-select-tooltip[data-type="${CU.current_metric}"] a`).click();
-    }
-    $(`#count-header th[data-period=${period}] .cu-display`).hide();
+    let column = $header.index();
+    $(`#count-body td:nth-of-type(${column + 1})`).each((i, cell) => {
+        let value = $('.cu-uploads', cell).html();
+        $(cell).html(RenderTooltipData(value, period, is_limited)).addClass('cu-hover');
+        if (is_limited) return false;
+    });
     $(`.cu-select-tooltip[data-type="${CU.current_metric}"] a`).click();
-    $(event.target).off(JSPLib.event.click);
-}
+    $header.text(event.target.innerText);
+ }
 
 function SortTable(event) {
     if (event.target.tagName !== "TH") {
