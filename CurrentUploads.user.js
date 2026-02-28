@@ -1141,17 +1141,21 @@ function RenderRow(key) {
             data_text = `(${user_uploads}/${all_uploads})`;
         }
         let is_limited = LIMITED_PERIODS.includes(period);
-        let class_name = (!is_limited ? 'cu-hover' : '');
+        let class_name = "";
         let title = undefined;
         if (click_periods.includes(period) && key === '') {
             title = "Click to show the uploads chart.";
-            class_name += ' cu-chart-cell' + (MANUAL_PERIODS.includes(period) ? ' cu-manual' : ' cu-limited');
+            class_name = 'cu-chart-cell' + (MANUAL_PERIODS.includes(period) ? ' cu-manual' : ' cu-limited');
         }
         let rowdata = {title, class: class_name, dataPeriod: period};
         let is_available = CU.period_available[CU.usertag][CU.current_username][period];
         if (is_available && is_limited && key === '') {
+            // eslint-disable-next-line dot-notation
+            rowdata.class += ' cu-hover';
             tabletext += Utility.renderHTMLTag('td', RenderTooltipData(data_text, times_shown[i], true), rowdata);
         } else if (is_available && !is_limited) {
+            // eslint-disable-next-line dot-notation
+            rowdata.class += ' cu-hover';
             tabletext += Utility.renderHTMLTag('td', RenderTooltipData(data_text, times_shown[i]), rowdata);
         } else {
             tabletext += Utility.renderHTMLTag('td', `<span class="cu-uploads">${data_text}</span>`, rowdata);
@@ -1333,6 +1337,8 @@ function InitializeTable() {
     $('#count-header .cu-process a').on(JSPLib.event.click, GetPeriod);
     $('#count-header th').on(JSPLib.event.click, SortTable);
     $('#count-body .cu-manual, #count-body .cu-limited').on(JSPLib.event.click, RenderChart);
+    $(".cu-hover.cu-chart-cell .cu-uploads").on(JSPLib.event.mouseenter, UploadCountEnter);
+    $(".cu-hover.cu-chart-cell .cu-uploads").on(JSPLib.event.mouseleave, UploadCountLeave);
     $('#count-controls, #count-copyrights, #count-header').show();
     $(`.cu-select-tooltip[data-type="${CU.current_metric}"] a`).click();
     CU.sort_type = 0;
@@ -1618,7 +1624,7 @@ function TooltipChange(event) {
     $('.cu-tooltiptext').removeClass('cu-activetooltip');
     $(`.cu-tooltiptext[data-type="${CU.current_metric}"]`).addClass("cu-activetooltip");
     Storage.setLocalData('cu-current-metric', CU.current_metric);
-    $(".cu-hover .cu-uploads").off(JSPLib.event.mouseover).on(JSPLib.event.mouseover, TooltipHover);
+    $(".cu-hover .cu-uploads").off(JSPLib.event.mouseover).one(JSPLib.event.mouseover, TooltipHover);
     event.preventDefault();
 }
 
@@ -1760,14 +1766,29 @@ async function AddCopyright() {
 }
 
 function TooltipHover(event) {
-    let container = event.target.parentElement;
-    let $tooltip_text = $('.cu-activetooltip', container);
-    let tooltip_key = $(container.parentElement.parentElement).data('key');
-    let tooltip_period = $(container).data('period');
-    let tooltip_metric = $('.cu-activetooltip', container).data('type');
+    let $container = $(event.target.parentElement);
+    let $cell = $container.parent();
+    let $row = $cell.parent();
+    let $tooltip_text = $container.find('.cu-activetooltip');
+    let tooltip_key = $row.data('key');
+    let tooltip_period = $container.data('period');
+    let tooltip_metric = $tooltip_text.data('type');
+    let is_limited = $cell.hasClass('cu-limited');
     $tooltip_text.html("Loading!");
-    $tooltip_text.html(RenderStatistics(tooltip_key, tooltip_metric, tooltip_period));
-    $(event.target).off();
+    $tooltip_text.html(RenderStatistics(tooltip_key, tooltip_metric, tooltip_period, is_limited));
+}
+
+function UploadCountEnter(event) {
+    let $cell = $(event.target).closest('.cu-chart-cell');
+    let title = $cell.attr('title');
+    $cell.data('title', title);
+    $cell.removeAttr('title');
+}
+
+function UploadCountLeave(event) {
+    let $cell = $(event.target).closest('.cu-chart-cell');
+    let title = $cell.data('title');
+    $cell.attr('title', title);
 }
 
 //Main execution functions
