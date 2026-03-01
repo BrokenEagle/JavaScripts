@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SiteTagSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.5
+// @version      6.0
 // @description  Presents additional site links for the wiki tag(s).
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -12,16 +12,23 @@
 // @run-at       document-end
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SiteTagSearches.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SiteTagSearches.user.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/menu.js
 // ==/UserScript==
 
 /* global $ JSPLib */
+
+(({Debug, Utility, Storage, Template, Load, Menu}) => {
+
+const PROGRAM_NAME = 'SiteTagSearches';
+const PROGRAM_SHORTCUT = 'sts';
+const DANBOORU_TOPIC_ID = 14958;
 
 /****Library updates****/
 
@@ -29,82 +36,71 @@
 
 /****Global variables****/
 
-//Exterior script variables
-const DANBOORU_TOPIC_ID = '14958';
+//Module constants
 
-//Variables for load.js
-const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery'];
-const PROGRAM_LOAD_OPTIONAL_SELECTORS = ['#c-wiki-pages #a-show', '#c-posts #a-index', '#c-users #a-edit'];
-
-//Program name constants
-const PROGRAM_SHORTCUT = 'sts';
-const PROGRAM_NAME = 'SiteTagSearches';
-
-//Main program variable
 const STS = {};
 
-//Setting values
+const LOAD_REQUIRED_VARIABLES = ['window.jQuery'];
+const LOAD_OPTIONAL_SELECTORS = ['#c-wiki-pages #a-show', '#c-posts #a-index', '#c-users #a-edit'];
+
 const BOORU_SITES = ['gelbooru', 'yandere', 'sankaku', 'konachan'];
 const SOURCE_SITES = ['pixiv', 'twitter', 'tumblr', 'deviantart', 'E-Hentai', 'nijie', 'artstation', 'fanbox', 'naver', 'lofter', 'skeb', 'tinami'];
 
-const CUSTOM_SITES_TOTAL = JSPLib.storage.checkLocalData('sts-custom-sites-total', {
-    default_val: 5,
-    validator: (_, num) => (Number.isInteger(num) && num >= 1 && num <= 20),
-});
-
-//Main settings
 const SETTINGS_CONFIG = {
     booru_sites_enabled: {
         allitems: BOORU_SITES,
-        reset: BOORU_SITES,
-        validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'checkbox', BOORU_SITES),
+        get reset() {return this.allitems;},
+        validate (data) {return Menu.validateCheckboxRadio(data, 'checkbox', this.allitems);},
         hint: "Select to show booru type."
     },
     booru_sites_order: {
         allitems: BOORU_SITES,
-        reset: BOORU_SITES,
+        get reset() {return this.allitems;},
         sortvalue: true,
-        validate: (data) => JSPLib.utility.arrayEquals(data, BOORU_SITES),
+        validate (data) {return Utility.arrayEquals(data, this.allitems);},
         hint: "Set the order for how the booru sites appear in the tag popup."
     },
     source_sites_enabled: {
         allitems: SOURCE_SITES,
-        reset: SOURCE_SITES,
-        validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'checkbox', SOURCE_SITES),
+        get reset() {return this.allitems;},
+        validate (data) {return Menu.validateCheckboxRadio(data, 'checkbox', this.allitems);},
         hint: "Select to show source type."
     },
     source_sites_order: {
         allitems: SOURCE_SITES,
-        reset: SOURCE_SITES,
+        get reset() {return this.allitems;},
         sortvalue: true,
-        validate: (data) => JSPLib.utility.arrayEquals(data, SOURCE_SITES),
+        validate (data) {return Utility.arrayEquals(data, this.allitems);},
         hint: "Set the order for how the source sites appear in the tag and other names popups."
     },
 };
-
+const CUSTOM_SITES_TOTAL = Storage.checkLocalData('sts-custom-sites-total', {
+    default_val: 5,
+    validator: (_, num) => Menu.validateNumber(num, {integer: true, minimum: 1, maximum: 20}),
+});
 for (let index = 1; index <= CUSTOM_SITES_TOTAL; index++) {
-    Object.assign(SETTINGS_CONFIG, {
+    Utility.assignObjects(SETTINGS_CONFIG, {
         [`custom_site_${index}_enabled`]: {
             reset: false,
-            validate: JSPLib.utility.isBoolean,
+            validate: Utility.isBoolean,
             hint: `Enable custom site ${index}.`
         },
         [`custom_site_${index}_url`]: {
             reset: "",
             parse: String,
-            validate: JSPLib.utility.isString,
+            validate: Utility.isString,
             hint: `Tag URL for custom site ${index}.`
         },
         [`custom_site_${index}_name`]: {
             reset: "",
             parse: String,
-            validate: JSPLib.utility.isString,
+            validate: Utility.isString,
             hint: `Entry name for custom site ${index}.`
         },
         [`custom_site_${index}_icon`]: {
             reset: "",
             parse: String,
-            validate: JSPLib.utility.isString,
+            validate: Utility.isString,
             hint: `Icon URL for custom site ${index}. (optional)`
         }
     });
@@ -120,12 +116,11 @@ const MENU_CONFIG = {
         name: 'custom',
         message: "Additional sites that can be setup for the right-hand popup for both the main tags and the other names. They will always appear below the regular sites and according to their number.",
     }],
-    controls: [],
 };
 
 //CSS constants
 
-const PROGRAM_CSS = `
+const PROGRAM_CSS = Template.normalizeCSS()`
 .sts-tag {
     border: 1px solid var(--default-border-color);
     padding: 2px 5px;
@@ -146,20 +141,20 @@ const PROGRAM_CSS = `
     z-index: 1;
     left: 50%;
     transform: translate(-50%);
-}
-.sts-links[data-type="source"] {
-    top: 1.55em;
-}
-.sts-links[data-type="booru"] {
-    bottom: 1.55em;
-}
-.sts-links ul.sts-link-list {
-    padding: 5px;
-    margin: 0;
-}
-.sts-links ul.sts-link-list li.sts-link {
-    list-style-type: none;
-    white-space: nowrap;
+    &[data-type="source"] {
+        top: 1.55em;
+    }
+    &[data-type="booru"] {
+        bottom: 1.55em;
+    }
+    ul.sts-link-list {
+        padding: 5px;
+        margin: 0;
+        li.sts-link {
+            list-style-type: none;
+            white-space: nowrap;
+        }
+    }
 }
 /*JQUERY-UI*/
 .ui-icon {
@@ -187,12 +182,12 @@ const MENU_CSS = `
 
 //HTML constants
 
-const CUSTOM_SITE_URL_DETAILS = `
+const CUSTOM_SITE_URL_DETAILS = Template.normalizeHTML()`
 <p>Site URL format needs to include a <code>%s</code> where the tag should go.</p>
 <p>For instance, the site URL for Pixiv is the following:</p>
 <p><code>https://www.pixiv.net/en/tags/%s/artworks</code></p>`;
 
-const CUSTOM_SITE_CONFIGURATION_DETAILS = `
+const CUSTOM_SITE_CONFIGURATION_DETAILS = Template.normalizeHTML()`
 <p>The total number of custom sites available can be altered by setting the <b>localStorage</b> variable <code>sts-custom-sites-total</code> in the dev console (<b>F12</b>).</p>
 <p><pre>localStorage['sts-custom-sites-total'] = 10;</pre></p>
 <p>The default value is 5; the minimum value is 1; the maximum value is 20.</p>`;
@@ -272,6 +267,14 @@ const SITE_CONFIG = {
 
 //Helper functions
 
+function IsWikiPage() {
+    let result = (STS.controller === 'wiki-pages') || ((STS.controller === 'posts') && document.querySelector('.wiki-excerpt-link') !== null);
+    if (!result) {
+        Debug.warn("No wiki page bodies!");
+    }
+    return result;
+}
+
 function GetWikiName() {
     if (STS.controller === 'posts') {
         let wiki_name = "";
@@ -304,8 +307,8 @@ function GetCustomSetting(setting, index) {
 function RenderSiteLinks(type, searchtag, num) {
     let site_list = STS.user_settings[`${type}_sites_order`].map((site) => {
         if (!IsSiteEnabled(site, type)) return;
-        let url = JSPLib.utility.sprintf(SITE_CONFIG[site].url, searchtag);
-        let display_name = JSPLib.utility.displayCase(site);
+        let url = Utility.sprintf(SITE_CONFIG[site].url, searchtag);
+        let display_name = Utility.displayCase(site);
         let icon = (SITE_CONFIG[site].icon ? `<img style="height: 15px; width: 15px; margin-right: 0.5em;" src="${SITE_CONFIG[site].icon}">` : NO_ICON);
         return `<li class="sts-link"><a target="_blank" href="${url}" style="display: flex; align-items: center;">${icon} ${display_name}</a></li>`;
     });
@@ -314,9 +317,9 @@ function RenderSiteLinks(type, searchtag, num) {
             if (!GetCustomSetting('enabled', index)) continue;
             let template_url = GetCustomSetting('url', index);
             if (template_url.length === 0) continue;
-            let url = JSPLib.utility.sprintf(template_url, searchtag);
+            let url = Utility.sprintf(template_url, searchtag);
             let name = GetCustomSetting('name', index);
-            let display_name = (name.length ? JSPLib.utility.displayCase(name) : "Custom #" + index);
+            let display_name = (name.length ? Utility.displayCase(name) : "Custom #" + index);
             let icon_url = GetCustomSetting('icon', index);
             let icon = (icon_url.length ? `<img style="height: 15px; width: 15px; margin-right: 0.5em;" src="${icon_url}">` : NO_ICON);
             site_list.push(`<li class="sts-link"><a target="_blank" href="${url}" style="display: flex; align-items: center;">${icon} ${display_name}</a></li>`);
@@ -377,35 +380,24 @@ function SiteLinkToggle(close_direction, open_direction) {
 
 //Settings functions
 
-function InitializeProgramValues() {
-    Object.assign(STS, {
-        is_wiki_page: (STS.controller === 'wiki-pages') || ((STS.controller === 'posts') && document.querySelector('.wiki-excerpt-link') !== null),
-    });
-    if (!STS.is_wiki_page) {
-        JSPLib.debug.debuglog("No wiki page bodies!");
-        return false;
-    }
-    return true;
-}
-
 function RenderSettingsMenu() {
-    $('#site-tag-searches').append(JSPLib.menu.renderMenuFramework(MENU_CONFIG));
-    $('#sts-general-settings').append(JSPLib.menu.renderDomainSelectors());
-    $('#sts-source-settings').append(JSPLib.menu.renderInputSelectors('booru_sites_enabled', 'checkbox'));
-    $('#sts-source-settings').append(JSPLib.menu.renderSortlist('booru_sites_order'));
-    $('#sts-source-settings').append(JSPLib.menu.renderInputSelectors('source_sites_enabled', 'checkbox'));
-    $('#sts-source-settings').append(JSPLib.menu.renderSortlist('source_sites_order'));
-    $('#sts-custom-settings-message').append(JSPLib.menu.renderExpandable("Custom site configuration", CUSTOM_SITE_CONFIGURATION_DETAILS));
-    $('#sts-custom-settings-message').append(JSPLib.menu.renderExpandable("Site URL format", CUSTOM_SITE_URL_DETAILS));
+    $('#site-tag-searches').append(Menu.renderMenuFramework(MENU_CONFIG));
+    $('#sts-general-settings').append(Menu.renderDomainSelectors());
+    $('#sts-source-settings').append(Menu.renderInputSelectors('booru_sites_enabled', 'checkbox'));
+    $('#sts-source-settings').append(Menu.renderSortlist('booru_sites_order'));
+    $('#sts-source-settings').append(Menu.renderInputSelectors('source_sites_enabled', 'checkbox'));
+    $('#sts-source-settings').append(Menu.renderSortlist('source_sites_order'));
+    $('#sts-custom-settings-message').append(Menu.renderExpandable("Custom site configuration", CUSTOM_SITE_CONFIGURATION_DETAILS));
+    $('#sts-custom-settings-message').append(Menu.renderExpandable("Site URL format", CUSTOM_SITE_URL_DETAILS));
     for (let index = 1; index <= CUSTOM_SITES_TOTAL; index++) {
-        $('#sts-custom-settings').append(JSPLib.menu.renderCheckbox(`custom_site_${index}_enabled`));
+        $('#sts-custom-settings').append(Menu.renderCheckbox(`custom_site_${index}_enabled`));
         let custom_id = 'sts-custom-setting-' + index;
         let custom_selector = '#' + custom_id;
         let custom_show = (GetCustomSetting('enabled', index) ? "" : 'display: none;');
         $('#sts-custom-settings').append(`<div id="${custom_id}" style="${custom_show}"></div>`);
-        $(custom_selector).append(JSPLib.menu.renderTextinput(`custom_site_${index}_name`, 10));
-        $(custom_selector).append(JSPLib.menu.renderTextinput(`custom_site_${index}_url`, 80));
-        $(custom_selector).append(JSPLib.menu.renderTextinput(`custom_site_${index}_icon`, 80));
+        $(custom_selector).append(Menu.renderTextinput(`custom_site_${index}_name`, 10));
+        $(custom_selector).append(Menu.renderTextinput(`custom_site_${index}_url`, 80));
+        $(custom_selector).append(Menu.renderTextinput(`custom_site_${index}_icon`, 80));
         $(`#sts-enable-custom-site-${index}-enabled`).on('change.sts', (event) => {
             if (event.target.checked) {
                 $(custom_selector).show();
@@ -414,23 +406,23 @@ function RenderSettingsMenu() {
             }
         });
     }
-    JSPLib.menu.engageUI(true, true);
-    JSPLib.menu.expandableClick();
-    JSPLib.menu.saveUserSettingsClick();
-    JSPLib.menu.resetUserSettingsClick();
+    Menu.engageUI({checkboxradio: true, sortable: true});
+    Menu.expandableClick();
+    Menu.saveUserSettingsClick();
+    Menu.resetUserSettingsClick();
 }
 
 //Main function
 
 function Main() {
-    const preload = {
-        run_on_settings: false,
-        initialize_func: InitializeProgramValues,
-        render_menu_func: RenderSettingsMenu,
+    Load.preloadScript({
         program_css: PROGRAM_CSS,
+    });
+    Menu.preloadMenu({
+        menu_func: RenderSettingsMenu,
         menu_css: MENU_CSS,
-    };
-    if (!JSPLib.menu.preloadScript(STS, preload)) return;
+    });
+    if (!Load.isScriptEnabled() || Menu.isSettingsMenu() || !IsWikiPage()) return;
     let $wiki_other_names = $('.wiki-other-name');
     if ($wiki_other_names.length) {
         let $wiki_container = $wiki_other_names.parent();
@@ -442,28 +434,25 @@ function Main() {
         let $elem = $('<p class="flex"></p>').prepend(RenderMainTag());
         $('#wiki-page-body, #c-posts #a-index .prose').prepend($elem);
     }
-    $('.sts-collapsible-links[data-type=source]').on(JSPLib.program_click, SiteLinkToggle('e', 's'));
-    $('.sts-collapsible-links[data-type=booru]').on(JSPLib.program_click, SiteLinkToggle('w', 'n'));
+    $('.sts-collapsible-links[data-type=source]').on(JSPLib.event.click, SiteLinkToggle('e', 's'));
+    $('.sts-collapsible-links[data-type=booru]').on(JSPLib.event.click, SiteLinkToggle('w', 'n'));
 }
 
 /****Initialization****/
 
-//Variables for JSPLib
+JSPLib.data = STS;
+JSPLib.name = PROGRAM_NAME;
+JSPLib.shortcut = PROGRAM_SHORTCUT;
+JSPLib.settings_config = SETTINGS_CONFIG;
 
-JSPLib.program_name = PROGRAM_NAME;
-JSPLib.program_shortcut = PROGRAM_SHORTCUT;
-JSPLib.program_data = STS;
+Debug.mode = false;
+Debug.level = Debug.INFO;
 
-//Variables for debug.js
-JSPLib.debug.mode = false;
-JSPLib.debug.level = JSPLib.debug.INFO;
 
-//Variables for menu.js
-JSPLib.menu.settings_config = SETTINGS_CONFIG;
-
-//Export JSPLib
-JSPLib.load.exportData();
+Load.exportData();
 
 /****Execution start****/
 
-JSPLib.load.programInitialize(Main, {required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, optional_selectors: PROGRAM_LOAD_OPTIONAL_SELECTORS});
+Load.programInitialize(Main, {required_variables: LOAD_REQUIRED_VARIABLES, optional_selectors: LOAD_OPTIONAL_SELECTORS});
+
+})(JSPLib);
