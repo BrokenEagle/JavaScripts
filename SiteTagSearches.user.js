@@ -265,6 +265,34 @@ const SITE_CONFIG = {
 
 /***Functions***/
 
+//Validate functions
+
+function ValidateProgramData(key, entry) {
+    const printer = Debug.getFunctionPrint('ValidateProgramData');
+    var error_messages = [];
+    switch (key) {
+        case 'sts-user-settings':
+            error_messages = Load.validateUserSettings(entry);
+            break;
+        case 'sts-custom-sites-total':
+            if (!Menu.validateNumber(entry, {integer: true, minimum: 1, maximum: 20})) {
+                error_messages = ['Must be an integer between 1 and 20.'];
+            }
+            break;
+        default:
+            error_messages = ["Is not exportable/importable."];
+    }
+    let $error_display = $('#sts-cache-editor-errors');
+    if (error_messages.length) {
+        let error_text = JSON.stringify(error_messages, null, 2);
+        printer.logLevel(key, ':\r\n', error_text, Debug.INFO);
+        $error_display.css('display', 'block').html(`<b>${key}:</b><br><pre>${error_text}</pre>`);
+        return false;
+    }
+    $error_display.css('display', 'none');
+    return true;
+}
+
 //Helper functions
 
 function IsWikiPage() {
@@ -406,8 +434,13 @@ function RenderSettingsMenu() {
             }
         });
     }
+    $('#sts-controls').append(Menu.renderCacheEditor({name: 'Cache data'}));
+    $('#sts-cache-editor-controls').append(Menu.renderLocalStorageSource());
+    $('#sts-cache-editor-controls').append(Menu.renderRawData());
     Menu.engageUI({checkboxradio: true, sortable: true});
     Menu.expandableClick();
+    Menu.getCacheClick();
+    Menu.saveCacheClick();
     Menu.saveUserSettingsClick();
     Menu.resetUserSettingsClick();
 }
@@ -448,6 +481,7 @@ JSPLib.settings_config = SETTINGS_CONFIG;
 Debug.mode = false;
 Debug.level = Debug.INFO;
 
+Storage.localSessionValidator = ValidateProgramData;
 
 Load.exportData();
 
