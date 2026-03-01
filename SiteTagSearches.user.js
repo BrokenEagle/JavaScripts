@@ -176,7 +176,7 @@ const PROGRAM_CSS = Template.normalizeCSS()`
 }`;
 
 const MENU_CSS = `
-.sts-selectors.jsplib-selectors label {
+.sts-selectors:not([data-setting="domain_selector"]) label {
     width: 120px;
 }`;
 
