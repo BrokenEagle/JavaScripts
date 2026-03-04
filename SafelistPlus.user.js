@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         SafelistPlus
+// @name         Safelist+
 // @namespace    https://github.com/BrokenEagle/JavaScripts
 // @version      4.26
 // @description  Alternate Danbooru blacklist handler.
@@ -12,16 +12,25 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SafelistPlus.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/SafelistPlus.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/menu.js
 // ==/UserScript==
 
-/* global JSPLib $ Danbooru validate */
+/* global JSPLib $ */
+
+/****Module import****/
+
+(({DanbooruProxy, ValidateJS, Debug, Notice, Utility, Storage, Template, Validate, Load, Menu}) => {
+
+const PROGRAM_NAME = 'Safelist';
+const PROGRAM_SHORTCUT = 'sl';
+const DANBOORU_TOPIC_ID = 14221;
 
 /****Library updates****/
 
@@ -29,22 +38,11 @@
 
 /****Global variables****/
 
-//Exterior script variables
-const DANBOORU_TOPIC_ID = '14221';
+//Module constants
 
-//Variables for load.js
-const program_load_required_variables = ['window.jQuery', 'window.Danbooru', 'Danbooru.CurrentUser'];
-const program_load_required_selectors = ["#page"];
-
-//Program name constants
-const PROGRAM_SHORTCUT = 'sl';
-const PROGRAM_NAME = 'SafelistPlus';
-
-//Main program variable
 const SL = {};
 
-//For factory reset
-const LOCALSTORAGE_KEYS = [
+const STORAGE_RESET_KEYS = [
     'sl-script-enabled',
     'sl-show-menu',
     'sl-active-list',
@@ -53,32 +51,40 @@ const PROGRAM_RESET_KEYS = {
     enable_safelist: true,
     is_shown: true,
 };
+const DEFAULT_VALUES = {
+    $safelist_posts: null,
+    active_background_work: {},
+    passive_background_work: {},
+    passive_lists_processed: 0,
+};
 
-//Main settings
+const LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.CurrentUser'];
+const LOAD_REQUIRED_SELECTORS = ["#page"];
+
 const SETTINGS_CONFIG = {
     write_mode_enabled: {
         reset: false,
-        validate: JSPLib.utility.isBoolean,
+        validate: Utility.isBoolean,
         hint: "Enable writes to your Danbooru blacklist with the <b><u>Push</u></b> button."
     },
     validate_mode_enabled: {
         reset: false,
-        validate: JSPLib.utility.isBoolean,
+        validate: Utility.isBoolean,
         hint: "Currently disabled."
     },
     order_mode_enabled: {
         reset: false,
-        validate: JSPLib.utility.isBoolean,
+        validate: Utility.isBoolean,
         hint: "Currently disabled."
     },
     session_use_enabled: {
         reset: false,
-        validate: JSPLib.utility.isBoolean,
+        validate: Utility.isBoolean,
         hint: "Have a different state of enabled on every page tab."
     },
     session_level_enabled: {
         reset: false,
-        validate: JSPLib.utility.isBoolean,
+        validate: Utility.isBoolean,
         hint: "Have a different active list on every page tab."
     }
 };
@@ -104,200 +110,193 @@ const MENU_CONFIG = {
     settings: [{
         name: 'general',
     },{
+        name: 'display',
+    },{
         name: 'mode',
     },{
         name: 'session',
     }],
-    controls: [],
-};
-
-// Default values
-
-const DEFAULT_VALUES = {
-    $safelist_posts: null,
-    active_background_work: {},
-    passive_background_work: {},
-    passive_lists_processed: 0,
 };
 
 //CSS Constants
 
-const safelist_css = `
-/*SafelistPlus controls*/
-#page #safelist-box #safelist .safelist-active,
-#page #safelist-box #safelist .safelist-pending {
-    font-style: italic;
+const PROGRAM_CSS = Template.normalizeCSS()`
+/**GENERAL**/
+.sl-link {
+    cursor: pointer;
 }
-#page #safelist-box #safelist .safelist-allnone {
-    font-weight: bold;
+a.safelist-help.sl-link {
+    color: hotpink;
+    &:hover {
+        filter: brightness(1.5);
+    }
 }
-#page #safelist-box #enable-safelist {
-    color: mediumseagreen;
-}
-#page #safelist-box #disable-safelist {
-    color: red;
-}
-    /*Sidebar list*/
-#page #sidebar #safelist-box.sidebar-safelist {
+/**CONTROLS**/
+#safelist-box.sidebar-safelist {
     margin-bottom: 0.5em;
-}
-#page #sidebar #safelist-box.sidebar-safelist h1 {
-    margin-left: -4px;
-    font-size: 1.16667em;
-}
-#page #sidebar #sl-collapsible-list {
-    margin-right: -4px;
-}
-[data-user-theme="dark"] .ui-icon {
-    background-image: url(/packs/media/images/ui-icons_ffffff_256x240-bf27228a.png);
-}
-#page #sidebar #safelist-box.sidebar-safelist #safelist {
-    margin-bottom: 0.5em;
-    margin-left: 2em;
-}
-#page #sidebar #safelist-box.sidebar-safelist #safelist li {
-    list-style-type: disc;
-}
-#page #sidebar #safelist-box.sidebar-blacklist #safelist .safelist-pending:after {
-    content: "(Loading)";
-    padding-left: 4px;
-}
-    /*Topbar list*/
-#page #safelist-box.inline-safelist {
-    margin-bottom: 0.5em;
-}
-#page #safelist-box.inline-safelist h1 {
-    font-size: 1em;
-    display: inline;
-}
-#page #safelist-box.inline-safelist h1:after {
-    content: ":";
-}
-#page #safelist-box.inline-safelist #safelist {
-    display: inline;
-}
-#page #safelist-box.inline-safelist #safelist li {
-    display: inline;
-    position: relative;
-}
-#page #safelist-box.inline-safelist #safelist li:after {
-    content: "|";
-    font-weight: normal;
-}
-#page #safelist-box.inline-safelist #safelist li.safelist-pending:before {
-    content: "(Loading)";
-    top: 20px;
-    left: -5px;
-    position: absolute;
+    h1 {
+        margin-left: -4px;
+        font-size: 1.16667em;
+    }
+    ul {
+        margin-bottom: 0.5em;
+        margin-left: 2em;
+        li {
+            list-style-type: disc;
+        }
+        .safelist-pending:after {
+            content: "(Loading)";
+            padding-left: 4px;
+        }
+    }
 }
 
-/*Level settings*/
-    /*General settings*/
+#safelist-box.inline-safelist {
+    margin-bottom: 1.5em;
+    h1 {
+        font-size: 1em;
+        display: inline;
+        &:after {
+            content: ":";
+        }
+    }
+    ul {
+        display: inline;
+        li {
+            display: inline;
+            position: relative;
+            &.safelist-pending:before {
+                content: "(Loading)";
+                top: 18px;
+                left: 2px;
+                position: absolute;
+            }
+            &:after {
+                content: "|";
+                font-weight: normal;
+            }
+        }
+    }
+}
+#sl-collapsible-list {
+    margin-right: -4px;
+    &.ui-icon {
+        display: inline-block;
+        height: 16px;
+        width: 16px;
+    }
+    &.ui-icon-triangle-1-e {
+        background-position: -32px -14px;
+    }
+    &.ui-icon-triangle-1-s {
+        background-position: -64px -14px;
+    }
+}
+.safelist-active,
+.safelist-pending {
+    font-style: italic;
+}
+.safelist-allnone {
+    font-weight: bold;
+}
+#enable-safelist {
+    color: mediumseagreen;
+}
+#disable-safelist {
+    color: red;
+}
+/**LEVEL MENU**/
 #safelist-settings {
     display: block;
+    & > div {
+        margin-bottom: 1em;
+    }
+    input.btn {
+        margin-right: 1em;
+        margin-top: 1em;
+        min-width: 4em;
+    }
+    textarea {
+        width: 90%;
+        height: 10em;
+    }
 }
-#safelist-settings input.btn {
-    margin-right: 1em;
-    margin-top: 1em;
-    min-width: 4em;
-}
-    /*Name row*/
-#safelist-settings .safelist-namerow {
+.safelist-namerow {
     height: 2em;
+    h2 {
+        display: inline-block;
+        margin-right: 0.5em;
+    }
 }
-#safelist-settings .safelist-namerow h2 {
-    display: inline-block;
-    margin-right: 0.5em;
-}
-#safelist-settings .safelist-namerow .safelist-name {
+.safelist-name {
     margin: 0.5em;
     padding-left: 0.5em;
     line-height:150%;
 }
-#safelist-settings .safelist-namerow .safelist-edit {
+.safelist-edit {
     margin-right: 0;
     margin-top: 0;
     margin-bottom: 0.5em;
 }
-#safelist-settings > div {
-    margin-bottom: 1em;
-}
-    /*Input groupings*/
-#safelist-settings .safelist-input {
+.safelist-input {
     border: 2px solid grey;
     padding: 0.8em;
     border-radius: 10px;
     display: grid;
     grid-template-columns: 50% 50%;
+    label {
+        display: block;
+        font-weight: bold;
+        line-height: 1.5em;
+        font-size: 100%;
+    }
+    span {
+        display: block;
+        max-width: 90%;
+    }
 }
-#safelist-settings .safelist-input label {
-    display: block;
-    font-weight: bold;
-    line-height: 1.5em;
-    font-size: 100%;
+.safelist-textblock {
+    li {
+        list-style-type: disc;
+    }
+    ul {
+        margin-left: 1.5em;
+    }
+    div {
+        padding: 0 0.5em;
+        border: 2px solid lightgrey;
+        width: 90%;
+        height: 10em;
+        font-size: 0.8em;
+        overflow: auto;
+    }
 }
-#safelist-settings .safelist-input span {
-    display: block;
-    max-width: 90%;
-}
-    /*Textblock(s)*/
-#safelist-settings textarea {
-    width: 90%;
-    height: 10em;
-}
-#safelist-settings .safelist-textblock li {
-    list-style-type: disc;
-}
-#safelist-settings .safelist-textblock ul {
-    margin-left: 1.5em;
-}
-#safelist-settings .safelist-textblock div {
-    padding: 0 0.5em;
-    border: 2px solid lightgrey;
-    width: 90%;
-    height: 10em;
-    font-size: 0.8em;
-    overflow: auto;
-}
-    /*Checkbox input*/
-#safelist-settings .safelist-checkbox input {
+.safelist-checkbox input {
     margin-top: 1em;
 }
-#safelist-settings .safelist-checkbox .hint {
-    margin: 1em 0;
-}
-    /*Fit and placement settings*/
-#safelist-settings .safelist-textblock,
-#safelist-settings .safelist-checkbox,
-#safelist-settings .safelist-textinput,
-#safelist-settings .safelist-namerow  {
+.safelist-textblock,
+.safelist-checkbox,
+.safelist-textinput,
+.safelist-namerow  {
     float: left;
     margin-top: 0.5em;
     position: relative;
 }
-#safelist-settings .safelist-selection,
-#safelist-settings .safelist-halfcheckbox {
+.safelist-selection,
+.safelist-halfcheckbox {
     width: 50%;
     float: left;
     margin-top: 0.5em;
     position: relative;
-}
-    /*Tooltip*/
-#safelist-settings .safelist-input .safelist-help {
-    color: hotpink;
-}
-    /*Hide settings*/
-#safelist-settings .safelist-name {
-    display: none;
 }`;
 
-const css_enabled = `
+const CSS_ENABLED = `
 #page #blacklist-box,
 #enable-safelist {
     display: none !important;
 }`;
 
-const css_disabled = `
+const CSS_DISABLED = `
 #safelist,
 #disable-safelist {
     display: none !important;
@@ -308,7 +307,7 @@ const css_disabled = `
 
 //HTML constants
 
-const PROGRAM_DATA_DETAILS = `
+const PROGRAM_DATA_DETAILS = Template.normalizeHTML()`
 <p class="tn">All timestamps are in milliseconds since the epoch (<a href="https://www.epochconverter.com">Epoch converter</a>).</p>
 <ul>
     <li>Blacklist data
@@ -326,25 +325,116 @@ const PROGRAM_DATA_DETAILS = `
     </li>
 </ul>`;
 
+const SIDEMENU_TEMPLATE = Template.normalizeHTML({template: true})`
+<section id="safelist-box" class="${'classname'}">
+    <h1>
+        <a id="sl-collapsible-list" class="sl-link ui-icon ui-icon-triangle-1-${'direction'}"></a>&nbsp;${{PROGRAM_NAME}}
+    </h1>
+    <ul id="safelist">
+        ${'all_side'}
+        ${'variable_sides'}
+        ${'none_side'}
+    </ul>
+    <a id="enable-safelist" class="sl-link">Enable</a>
+    <a id="disable-safelist" class="sl-link">Disable</a>
+</section>`;
+
+const SIDE_TEMPLATE = Template.normalizeHTML({template: true})`
+<li class="${'classname'}" data-level="${'level'}">
+    <a class="sl-link">${'name'}</a>
+</li>`;
+
+const LEVEL_MENU_TEMPLATE = Template.normalizeHTML({template: true})`
+<fieldset id="safelist-settings">
+    ${'all_menu'}
+    ${'none_menu'}
+    ${'variable_menus'}
+    <hr>
+    <div id="safelist-controls">
+        <input type="submit" id="safelist-commit" value="Submit" class="btn">
+        <input type="submit" id="safelist-add" value="Add" class="btn">
+        <input type="submit" id="safelist-resetall" value="Reset All" class="btn">
+    </div>
+</fieldset>`;
+
+const LEVEL_SETTING_TEMPLATE = Template.normalizeHTML({template: true})`
+<div class="safelist-input" data-level="${'level'}">
+    ${'namerow'}
+    <span style="display:inline-block">
+        ${'keyselect'}
+        ${'background'}
+    </span>
+    ${'mainblock'}
+    ${'cssblock'}
+    ${'buttons'}
+</div>`;
+
+const NAMEROW_TEMPLATE = Template.normalizeHTML({template: true})`
+<div class="safelist-namerow">
+    <h2>${'name'}</h2>
+    <input type="text" value="${'name'}" size="40" autocomplete="off" class="safelist-name" style="display: none;">
+    ${'button'}
+</div>`;
+
+const KEYSELECT_TEMPLATE = Template.normalizeHTML({template: true})`
+<div class="safelist-selection">
+    <label for="safelist_modifier_level_${'level'}">Hotkey (${'help'})</label>
+    <select id="safelist_modifier_level_${'level'}" class="safelist-modifier">
+        ${'select1'}
+    </select>
+    <select id="safelist_keyselect_level_${'level'}" class="safelist-keyselect">
+        ${'select2'}
+    </select>
+</div>`;
+
+const BACKGROUND_OPTION_TEMPLATE = Template.normalizeHTML({template: true})`
+<div class="safelist-halfcheckbox">
+    <label for="safelist_background_level_${'level'}">Background Process (${'help'})</label>
+    <input type="checkbox" ${'checked'} id="safelist_process_level_${'level'}" class="safelist-background">
+</div>`;
+
+const ENABLE_CHECKBOX_TEMPLATE = Template.normalizeHTML({template: true})`
+<div class="safelist-checkbox">
+    <label for="safelist_enable_level_${'level'}">${'label'} list enabled (${'help'})</label>
+    <input type="checkbox" ${'checked'} id="safelist_enable_level_${'level'}" class="safelist-enable">
+</div>`;
+
+const TAG_BLOCK_TEMPLATE = Template.normalizeHTML({template: true})`
+<div class="safelist-textblock">
+    <label for="safelist_tags_level_${'level'}">Blacklisted tags (${'help'})</label>
+    <textarea id="safelist_tags_level_${'level'}" cols="40" rows="5" autocomplete="off" class="safelist-tags">${'tagstring'}</textarea>
+</div>`;
+
+const CSS_BLOCK_TEMPLATE = Template.normalizeHTML({template: true})`
+<div class="safelist-textblock">
+    <label for="safelist_css_level_${'level'}">Custom CSS (${'help'})</label>
+    <textarea id="safelist_css_level_${'level'}" cols="40" rows="5" autocomplete="off" class="safelist-css">${'css'}</textarea>
+</div>`;
+
+const LEVEL_BUTTONS_TEMPLATE = Template.normalizeHTML({template: true})`
+<div class="safelist-setting-buttons">
+    ${'buttons'}
+</div>`;
+
 //Message constants
 
-const keyselect_help = `Changes list when ${PROGRAM_NAME} is active.\nKeep in mind existing Danbooru hotkeys.`;
-const background_help = "Process this list in the background so that changing lists is more responsive.";
-const tagblock_help = "Put any tag combinations you never want to see here.\nEach combination should go on a separate line.";
-const cssblock_help = "Style to apply to the whole site.";
+const KEYSELECT_HELP = `Changes list when ${PROGRAM_NAME} is active.\nKeep in mind existing Danbooru hotkeys.`;
+const BACKGROUND_HELP = "Process this list in the background so that changing lists is more responsive.";
+const TAGBLOCK_HELP = "Put any tag combinations you never want to see here.\nEach combination should go on a separate line.";
+const CSSBLOCK_HELP = "Style to apply to the whole site.";
 
-const button_hints = {
+const BUTTON_HINTS = {
     pull: "Populate tag box with your Danbooru blacklist.",
     push: "Save tag box to your Danbooru blacklist.",
 };
 
 //Other constants
 
-const timeout_polling_interval = 1000;
+const TIMEOUT_POLLING_INTERVAL = 1000;
 
 //Class constants
 
-const safelist_defaults = {
+const SAFELIST_DEFAULTS = {
     set level(level) {
         this._level = level;
     },
@@ -361,52 +451,52 @@ const safelist_defaults = {
     background: true,
 };
 
-const safelist_keys = Object.keys(safelist_defaults).filter((key) => !key.match(/^_/));
+const SAFELIST_KEYS = Object.keys(SAFELIST_DEFAULTS).filter((key) => !key.match(/^_/));
 
-const level_buttons = ['pull', 'push', 'delete'];
-const modifier_keys = ['', 'alt', 'shift', 'ctrl'];
-const keyselect_keys = [''].concat('abcdefghijklmnopqrstuvwxyz1234567890'.split(''));
+const LEVEL_BUTTONS = ['pull', 'push', 'delete'];
+const MODIFIER_KEYS = ['', 'alt', 'shift', 'ctrl'];
+const KEYSELECT_KEYS = [''].concat('abcdefghijklmnopqrstuvwxyz1234567890'.split(''));
 
-const _private_data = new WeakMap();
+const _PRIVATE_DATA = new WeakMap();
 
 //Classes
 
 class Safelist {
     constructor(level) {
-        safelist_defaults.level = level;
-        safelist_keys.forEach((key)=>{this[key] = safelist_defaults[key];});
-        _private_data.set(this, {});
+        SAFELIST_DEFAULTS.level = level;
+        SAFELIST_KEYS.forEach((key)=>{this[key] = SAFELIST_DEFAULTS[key];});
+        _PRIVATE_DATA.set(this, {});
         this.setupPrivateData('menu');
         this.setupPrivateData('side');
     }
 
     correctData(level) {
         let error_messages = [];
-        safelist_defaults.level = level;
-        let check = validate(this,level_constraints);
+        SAFELIST_DEFAULTS.level = level;
+        let check = ValidateJS(this,level_constraints);
         if (check !== undefined) {
             error_messages.push([`level_data[${level}]:`, JSON.stringify(check, null, 2)]);
             for (let key in check) {
-                this[key] = safelist_defaults[key];
+                this[key] = SAFELIST_DEFAULTS[key];
             }
         }
-        check = validate(this.hotkey,hotkey_constraints);
+        check = ValidateJS(this.hotkey,hotkey_constraints);
         if (check !== undefined) {
             error_messages.push([`level_data[${level}].hotkey:`, JSON.stringify(check, null, 2)]);
             for (let key in check) {
-                this.hotkey[key] = safelist_defaults.hotkey[key];
+                this.hotkey[key] = SAFELIST_DEFAULTS.hotkey[key];
             }
         }
-        let nonstring_list = this.list.filter((entry) => !JSPLib.utility.isString(entry));
+        let nonstring_list = this.list.filter((entry) => !Utility.isString(entry));
         if (nonstring_list.length > 0) {
             error_messages.push([`level_data[${level}].list: bad values found - `, nonstring_list]);
             if (nonstring_list.length === this.list.length) {
-                this.list = safelist_defaults.list;
+                this.list = SAFELIST_DEFAULTS.list;
             } else {
-                this.list = JSPLib.utility.arrayDifference(this.list, nonstring_list);
+                this.list = Utility.arrayDifference(this.list, nonstring_list);
             }
         }
-        let extra_keys = JSPLib.utility.arrayDifference(Object.keys(this), Object.keys(safelist_defaults));
+        let extra_keys = Utility.arrayDifference(Object.keys(this), Object.keys(SAFELIST_DEFAULTS));
         if (extra_keys.length) {
             error_messages.push([`level_data[${level}]: bad keys found - `, extra_keys]);
             extra_keys.forEach((key)=>{delete this[key];});
@@ -427,18 +517,18 @@ class Safelist {
         return (this.list.length === 1) && (this.list[0] === '');
     }
     get hasActiveHotkey() {
-        return !((!Array.isArray(this.hotkey)) || (this.hotkey.length < 2) || (this.hotkey[1] === ''));
+        return !((!Utility.isArray(this.hotkey)) || (this.hotkey.length < 2) || (this.hotkey[1] === ''));
     }
     get tagstring() {
         return this.list.join('\n');
     }
     set tagstring(str) {
-        this.list = JSPLib.utility.filterEmpty(str.split('\n').map($.trim));
+        this.list = Utility.filterRegex(str.split('\n').map($.trim), /[\s\S]+/);
         this.list = (this.list.length === 0 ? [''] : this.list);
     }
     /***Need to see how this works***/
     get escaped_name() {
-        return JSPLib.utility.HTMLEscape(this.name);
+        return Utility.HTMLEscape(this.name);
     }
     //Copied code from Danbooru on adding !important to every entry
     get renderedCSS() {
@@ -455,11 +545,11 @@ class Safelist {
     setupPrivateData(name) {
         Object.defineProperty(this, name, {
             set: (x)=>{
-                let data = _private_data.get(this);
+                let data = _PRIVATE_DATA.get(this);
                 data[name] = x;
-                _private_data.set(this, data);
+                _PRIVATE_DATA.set(this, data);
             },
-            get: () => _private_data.get(this)[name],
+            get: () => _PRIVATE_DATA.get(this)[name],
         });
     }
 
@@ -468,109 +558,96 @@ class Safelist {
 
     //Links in the side menu
     get renderedSide() {
-        if (!this.enabled) {
-            return "";
-        }
-        const constantaddon = (this.isVariable ? "" : 'class="safelist-allnone"');
-        return `
-        <li ${constantaddon} data-level="${this.level}"><a href="#">${this.escaped_name}</a></li>`;
+        if (!this.enabled) return "";
+        return SIDE_TEMPLATE({
+            level: this.level,
+            name: this.escaped_name,
+            classname: (this.isVariable ? "" : 'safelist-allnone'),
+        });
     }
     //Sections in the setting menu
     get renderedLevelSetting() {
-        let namerow = this.renderedNamerow;
-        let keyselect = this.renderedKeyselect;
-        let background = (this.isVariable ? this.renderedBackgroundOption : "");
-        let mainblock = (this.isVariable ? this.renderedTagBlock : this.renderedEnableCheckbox);
-        let cssblock = this.renderedCSSBlock;
-        let buttons = (this.isVariable ? this.renderedLevelButtons : "");
-        return `
-        <div class="safelist-input" data-level="${this.level}">
-            ${namerow}
-            <span style="display:inline-block">
-                ${keyselect}
-                ${background}
-            </span>
-            ${mainblock}
-            ${cssblock}
-            ${buttons}
-        </div>`;
+        return LEVEL_SETTING_TEMPLATE({
+            level: this.level,
+            namerow: this.renderedNamerow,
+            keyselect: this.renderedKeyselect,
+            background: this.renderedBackgroundOption,
+            mainblock: (this.isVariable ? this.renderedTagBlock : this.renderedEnableCheckbox),
+            cssblock: this.renderedCSSBlock,
+            buttons: this.renderedLevelButtons,
+        });
     }
     //List name, edit button and textbox
     get renderedNamerow() {
-        return `
-            <div class="safelist-namerow">
-                <h2>${this.escaped_name}</h2>
-                <input type="text" value="${this.escaped_name}" size="40" autocomplete="off" class="safelist-name">
-                ${RenderButton('edit')}
-            </div>`;
+        return NAMEROW_TEMPLATE({
+            name: this.escaped_name,
+            button: RenderButton('edit'),
+        });
     }
     //Hotkey dropdowns
     get renderedKeyselect() {
-        let select1 = modifier_keys.map((key)=>{
-            let selected = (this.hotkey[0] === key ? 'selected="selected"' : "");
-            let ucase = JSPLib.utility.titleizeString(key);
-            return `<option ${selected} value="${key}">${ucase}</option>`;
-        }).join("");
-        let select2 = keyselect_keys.map((key)=>{
-            let selected = (this.hotkey[1] === key ? 'selected="selected"' : "");
-            let ucase = key.toUpperCase();
-            return `<option ${selected} value="${key}">${ucase}</option>`;
-        }).join("");
-        return `
-    <div class="safelist-selection">
-        <label for="safelist_modifier_level_${this.level}">Hotkey (${RenderHelp(keyselect_help)})</label>
-        <select id="safelist_modifier_level_${this.level}" class="safelist-modifier">
-            ${select1}
-        </select>
-        <select id="safelist_keyselect_level_${this.level}" class="safelist-keyselect">
-            ${select2}
-        </select>
-    </div>`;
+        let select1_items = MODIFIER_KEYS.map((key)=>{
+            return Utility.renderHTMLTag('option', Utility.titleize(key), {
+                value: key,
+                selected: (this.hotkey[0] === key ? null : undefined),
+            });
+        });
+        let select2_items = KEYSELECT_KEYS.map((key)=>{
+            return Utility.renderHTMLTag('option', key.toUpperCase(), {
+                value: key,
+                selected: (this.hotkey[1] === key ? null : undefined),
+            });
+        });
+        return KEYSELECT_TEMPLATE({
+            level: this.level,
+            select1: select1_items.join(""),
+            select2: select2_items.join(""),
+            help: RenderHelp(KEYSELECT_HELP),
+        });
     }
     //Background process options
     get renderedBackgroundOption() {
+        if (!this.isVariable) return "";
         const value = (this.background ? "checked" : "");
-        return `
-    <div class="safelist-halfcheckbox">
-        <label for="safelist_background_level_${this.level}">Background Process (${RenderHelp(background_help)})</label>
-        <input type="checkbox" ${value} id="safelist_process_level_${this.level}" class="safelist-background">
-    </div>`;
+        return BACKGROUND_OPTION_TEMPLATE({
+            level: this.level,
+            checked: (this.background ? "checked" : ""),
+            help: RenderHelp(BACKGROUND_HELP),
+        });
     }
     //For constant levels all and none... takes place of taglist
     get renderedEnableCheckbox() {
-        const value = (this.enabled ? "checked" : "");
-        const label = (this.level === 'a' ? "All" : "None");
-        const hint = (this.level === 'a' ? "Shows everything." : "Shows nothing.");
-        return `
-    <div class="safelist-checkbox">
-        <label for="safelist_enable_level_${this.level}">${label} list enabled (${RenderHelp(hint)})</label>
-        <input type="checkbox" ${value} id="safelist_enable_level_${this.level}" class="safelist-enable">
-    </div>`;
+        return ENABLE_CHECKBOX_TEMPLATE({
+            level: this.level,
+            label: (this.level === 'a' ? "All" : "None"),
+            checked: (this.enabled ? "checked" : ""),
+            help: RenderHelp(this.level === 'a' ? "Shows everything." : "Shows nothing."),
+        });
     }
     //For custom levels
     get renderedTagBlock() {
-        return `
-    <div class="safelist-textblock">
-        <label for="safelist_tags_level_${this.level}">Blacklisted tags (${RenderHelp(tagblock_help)})</label>
-        <textarea id="safelist_tags_level_${this.level}" cols="40" rows="5" autocomplete="off" class="safelist-tags">${this.tagstring}</textarea>
-    </div>`;
+        return TAG_BLOCK_TEMPLATE({
+            level: this.level,
+            tagstring: Template.normalizeText(this.tagstring),
+            help: RenderHelp(TAGBLOCK_HELP),
+        });
     }
     //Custom style per level
     get renderedCSSBlock() {
-        return `
-    <div class="safelist-textblock">
-        <label for="safelist_css_level_${this.level}">Custom CSS (${RenderHelp(cssblock_help)})</label>
-        <textarea id="safelist_css_level_${this.level}" cols="40" rows="5" autocomplete="off" class="safelist-css">${this.css}</textarea>
-    </div>`;
+        return CSS_BLOCK_TEMPLATE({
+            level: this.level,
+            css: Template.normalizeText(this.css),
+            help: RenderHelp(CSSBLOCK_HELP),
+        });
     }
 
     //Renders all level buttons
     get renderedLevelButtons() {
-        let buttons1 = level_buttons.map((type) => RenderButton(type, button_hints[type])).join("");
-        return `
-    <div class="safelist-setting-buttons">
-        ${buttons1}
-    </div>`;
+        if (!this.isVariable) return "";
+        let button_items = LEVEL_BUTTONS.map((type) => RenderButton(type, BUTTON_HINTS[type]));
+        return LEVEL_BUTTONS_TEMPLATE({
+            buttons: button_items.join(""),
+        });
     }
 
     ////////////////////
@@ -580,7 +657,7 @@ class Safelist {
 
     //Activate hotkey for level if it exists
     setKeypress() {
-        const printer = JSPLib.debug.getFunctionPrint('setKeypress');
+        const printer = Debug.getFunctionPrint('setKeypress');
         let namespace = "keydown.sl-level_" + this.level;
         $(document).off(namespace);
         if (!this.enabled || !this.hasActiveHotkey) {
@@ -588,14 +665,14 @@ class Safelist {
         }
         let context = this;
         let combokey = (this.hotkey[0] === '' ? this.hotkey[1] : this.hotkey.join('+'));
-        printer.debuglog('setKeypress',`Level ${this.level} hotkey: ${combokey}`);
+        printer.log('setKeypress',`Level ${this.level} hotkey: ${combokey}`);
         $(document).on(namespace, null, combokey,(event)=>{
             if (SL.enable_safelist) {
                 event.preventDefault();
                 if (HasBlacklist()) {
                     $("a", context.side).click();
                 } else {
-                    JSPLib.utility.setCSSStyle(context.renderedCSS, 'safelist_user_css');
+                    Utility.setCSSStyle(context.renderedCSS, 'safelist_user_css');
                     SaveLevel(context.level);
                 }
             }
@@ -606,7 +683,7 @@ class Safelist {
 
     setSideClick() {
         let context = this;
-        $("a", this.side).off(JSPLib.program_click).on(JSPLib.program_click,(event)=>{
+        $("a", this.side).off(JSPLib.event.click).on(JSPLib.event.click,(event)=>{
             SetSideLevel(context);
             event.preventDefault();
         });
@@ -622,7 +699,7 @@ class Safelist {
     }
     setNameChangeClick() {
         let context = this;
-        $(".safelist-edit", context.menu).off(JSPLib.program_click).on(JSPLib.program_click,()=>{
+        $(".safelist-edit", context.menu).off(JSPLib.event.click).on(JSPLib.event.click,()=>{
             $("h2", context.menu).hide();
             $(".safelist-edit", context.menu).hide();
             $(".safelist-name", context.menu).show();
@@ -630,9 +707,9 @@ class Safelist {
     }
     setPullButtonClick() {
         let context = this;
-        $(".safelist-pull", context.menu).off(JSPLib.program_click).on(JSPLib.program_click,()=>{
+        $(".safelist-pull", context.menu).off(JSPLib.event.click).on(JSPLib.event.click,()=>{
             $(".safelist-tags", context.menu).val(
-                JSPLib.utility.getMeta("blacklisted-tags")
+                Utility.getMeta("blacklisted-tags")
                 ?.replace(/(rating:[qes])\w+/ig, "$1")
                 .toLowerCase().split(/,/).join('\n')
                 || ""
@@ -640,23 +717,24 @@ class Safelist {
         });
     }
     setPushButtonClick() {
-        const printer = JSPLib.debug.getFunctionPrint('setPushButtonClick');
+        const printer = Debug.getFunctionPrint('setPushButtonClick');
         let context = this;
-        $(".safelist-push", context.menu).off(JSPLib.program_click).on(JSPLib.program_click,()=>{
+        $(".safelist-push", context.menu).off(JSPLib.event.click).on(JSPLib.event.click,()=>{
             if (confirm("Update your blacklist on Danbooru?")) {
                 let tagdata = $(".safelist-tags", context.menu).val().replace(/\n/g, '\r\n');
                 let senddata = {'user': {'blacklisted_tags': tagdata}};
+                let url = Utility.sprintf(`/users/%s.json`, SL.user_id);
                 $.ajax({
                   type: "PUT",
-                  url: `/users/${SL.userid}.json`,
+                  url,
                   data: senddata,
                   success: function(data) {
-                    printer.debuglog('setPushButtonClick',"Success", data);
-                    JSPLib.notice.notice("Settings updated.");
+                    printer.log('setPushButtonClick',"Success", data);
+                    Notice.notice("Settings updated.");
                   },
                   error: function(data) {
-                    printer.debuglog('setPushButtonClick',"Failure", data);
-                    JSPLib.notice.notice("Error updating settings!");
+                    printer.log('setPushButtonClick',"Failure", data);
+                    Notice.notice("Error updating settings!");
                   }
                 });
             }
@@ -664,7 +742,7 @@ class Safelist {
     }
     setDeleteButtonClick() {
         let context = this;
-        $('.safelist-delete', context.menu).off(JSPLib.program_click).on(JSPLib.program_click,()=>{
+        $('.safelist-delete', context.menu).off(JSPLib.event.click).on(JSPLib.event.click,()=>{
             $(context.side).hide();
             $(context.menu).hide();
             context.enabled = false;
@@ -693,18 +771,18 @@ class Safelist {
 //Validate constants
 
 const level_constraints = {
-    level: JSPLib.validate.string_constraints(true, {minimum: 1}),
-    name: JSPLib.validate.string_constraints(true, {minimum: 1}),
-    css: JSPLib.validate.stringonly_constraints,
-    enabled: JSPLib.validate.boolean_constraints,
-    background: JSPLib.validate.boolean_constraints,
-    list: JSPLib.validate.array_constraints({minimum: 1}),
-    hotkey: JSPLib.validate.array_constraints({is: 2}),
+    level: Validate.string_constraints({length: {minimum: 1}}),
+    name: Validate.string_constraints({length: {minimum: 1}}),
+    css: Validate.stringonly_constraints,
+    enabled: Validate.boolean_constraints,
+    background: Validate.boolean_constraints,
+    list: Validate.array_constraints({minimum: 1}),
+    hotkey: Validate.array_constraints({is: 2}),
 };
 
 const hotkey_constraints = [
-    JSPLib.validate.inclusion_constraints(modifier_keys),
-    JSPLib.validate.inclusion_constraints(keyselect_keys)
+    Validate.inclusion_constraints(MODIFIER_KEYS),
+    Validate.inclusion_constraints(KEYSELECT_KEYS)
 ];
 
 /****Functions****/
@@ -715,14 +793,14 @@ function ValidateProgramData(key,entry) {
     var checkerror = [];
     switch (key) {
         case 'sl-user-settings':
-            checkerror = JSPLib.menu.validateUserSettings(entry, SETTINGS_CONFIG);
+            checkerror = Load.validateUserSettings(entry, SETTINGS_CONFIG);
             break;
         case 'sl-level-data':
             checkerror = ValidateLevelData();
             break;
         case 'sl-script-enabled':
         case 'sl-show-menu':
-            if (!JSPLib.utility.isBoolean(entry)) {
+            if (!Utility.isBoolean(entry)) {
                 checkerror = ["Value is not a boolean."];
             }
             break;
@@ -735,7 +813,7 @@ function ValidateProgramData(key,entry) {
             checkerror = ["Not a valid program data key."];
     }
     if (checkerror.length) {
-        JSPLib.validate.outputValidateError(key,checkerror);
+        Validate.outputValidateError(key,checkerror);
         return false;
     }
     return true;
@@ -750,7 +828,7 @@ function ValidateLevelData() {
         } else {
             let level_error = SL.level_data[level].correctData(level);
             if (level_error.length) {
-                error_messages = JSPLib.utility.concat(error_messages, level_error);
+                error_messages = Utility.concat(error_messages, level_error);
             }
         }
     }
@@ -758,15 +836,15 @@ function ValidateLevelData() {
 }
 
 function CorrectLevelData() {
-    const printer = JSPLib.debug.getFunctionPrint('CorrectLevelData');
+    const printer = Debug.getFunctionPrint('CorrectLevelData');
     let error_messages = ValidateLevelData();
     if (error_messages.length) {
-        printer.debuglog("Corrections to level data detected!");
-        error_messages.forEach((error)=>{printer.debuglog(...error);});
+        printer.log("Corrections to level data detected!");
+        error_messages.forEach((error)=>{printer.log(...error);});
         SaveLevelData();
         SL.channel.postMessage({type: "correction", level_data: SL.level_data});
     } else {
-        printer.debuglog("Level data is valid.");
+        printer.log("Level data is valid.");
     }
 }
 
@@ -805,20 +883,49 @@ function SplitWords(string) {
 
 //Auxiliary functions
 
-function PostMatch(post, entry) {
-    if (entry.disabled) return false;
+function CompareObjects(object1, object2) {
+    let difference = {};
+    for (let key in object1) {
+        if (Utility.isHash(object1[key])) {
+            let temp = CompareObjects(object1[key], object2[key]);
+            if (temp !== undefined) {
+                difference[key] = temp;
+            }
+        } else if (object1[key] !== object2[key]) {
+            difference[key] = {pre_val: object1[key], post_val: object2[key]};
+        }
+    }
+    return (Object.keys(difference).length > 0 ? difference : undefined);
+}
+
+function GetPostTags(post) {
+    let $post = $(post);
+    let tags = $post.data('safelist-tags');
+    if (!tags) {
+        tags = new Set([
+            ...SplitWords($post.attr("data-tags")),
+            ...SplitWords($post.attr("data-flags")).map(s => `status:${s}`),
+            `rating:${$post.attr("data-rating")}`,
+            `uploaderid:${$post.attr("data-uploader-id")}`,
+        ]);
+        $post.data('safelist-tags', tags);
+    }
+    return tags;
+}
+
+function EntryCheck(post, entry) {
     var $post = $(post);
     var score = parseInt($post.attr("data-score"));
     var score_test = entry.min_score === null || score < entry.min_score;
-    var tags = new Set([
-        ...SplitWords($post.attr("data-tags")),
-        ...SplitWords($post.attr("data-flags")).map(s => `status:${s}`),
-        `rating:${$post.attr("data-rating")}`,
-        `uploaderid:${$post.attr("data-uploader-id")}`,
-    ]);
+    var tags = GetPostTags(post);
     return (entry.require.isSubsetOf(tags) && score_test)
     && (entry.optional.size === 0 || !entry.optional.isDisjointFrom(tags))
     && entry.exclude.isDisjointFrom(tags);
+}
+
+function PostMatch(post, entry) {
+    if (entry.disabled || entry.passthrough.size > 0) return false;
+    return EntryCheck(post, entry);
 }
 
 function ParseEntry(string) {
@@ -891,56 +998,38 @@ function CalculateRenderedMenus() {
 //Render functions
 
 function RenderHelp(help_text) {
-    return `<a class="safelist-help" title="${help_text}">&nbsp;?&nbsp;</a>`;
+    return Utility.renderHTMLTag('a', '&nbsp;?&nbsp;', {class: 'safelist-help sl-link', title: help_text});
 }
 
-function RenderButton(type,hint) {
-    const value = JSPLib.utility.titleizeString(type);
-    const hint_html = (hint ? `title="${hint}"` : "");
-    return `<input type="submit" value="${value}" ${hint_html} class="btn safelist-${type}">`;
+function RenderButton(type, hint) {
+    return Utility.renderHTMLTag('input', null, {
+        type: 'submit',
+        value: Utility.titleize(type),
+        title: hint,
+        class: `btn safelist-${type}`,
+    });
 }
 
 function RenderSidemenu() {
-    let all_side = SL.level_data.a.renderedSide;
-    let none_side = SL.level_data.n.renderedSide;
-    let variable_sides = SL.menu_items.variable_menus.map((level) => SL.level_data[level].renderedSide).join("");
-    let safelist_type = (SL.blacklist_box.hasClass("sidebar-blacklist") ? "sidebar-safelist" : "inline-safelist");
-    let direction = (SL.is_shown ? "s" : "e");
-    return `
-<section id="safelist-box" class="${safelist_type}">
-    <h1><a id="sl-collapsible-list" class="ui-icon ui-icon-triangle-1-${direction}"></a>&nbsp;${PROGRAM_NAME}</h1>
-    <ul id="safelist">
-        ${all_side}
-        ${variable_sides}
-        ${none_side}
-    </ul>
-    <a href="#" id="enable-safelist">Enable</a>
-    <a href="#" id="disable-safelist">Disable</a>
-</section>`;
+    return SIDEMENU_TEMPLATE({
+        classname: (SL.blacklist_box.hasClass("sidebar-blacklist") ? "sidebar-safelist" : "inline-safelist"),
+        all_side: SL.level_data.a.renderedSide,
+        none_side: SL.level_data.n.renderedSide,
+        variable_sides: SL.menu_items.variable_menus.map((level) => SL.level_data[level].renderedSide).join(""),
+        direction: (SL.is_shown ? "s" : "e"),
+    });
 }
 
 function RenderSettingMenuLink() {
-    return `
-<a href="#" id="display-safelist-settings">${PROGRAM_NAME}</a>`;
+    return Utility.renderHTMLTag('a', PROGRAM_NAME, {id: 'display-safelist-settings', class: 'sl-link'});
 }
 
 function RenderLevelMenu() {
-    let all_menu = SL.level_data.a.renderedLevelSetting;
-    let none_menu = SL.level_data.n.renderedLevelSetting;
-    let variable_menus = SL.menu_items.variable_menus.map((level) => SL.level_data[level].renderedLevelSetting).join("");
-    return `
-<fieldset id="safelist-settings">
-    ${all_menu}
-    ${none_menu}
-    ${variable_menus}
-    <hr>
-    <div id="safelist-controls">
-        <input type="submit" id="safelist-commit" value="Submit" class="btn">
-        <input type="submit" id="safelist-add" value="Add" class="btn">
-        <input type="submit" id="safelist-resetall" value="Reset All" class="btn">
-    </div>
-</fieldset>
-`;
+    return LEVEL_MENU_TEMPLATE({
+        all_menu: SL.level_data.a.renderedLevelSetting,
+        none_menu: SL.level_data.n.renderedLevelSetting,
+        variable_menus: SL.menu_items.variable_menus.map((level) => SL.level_data[level].renderedLevelSetting).join(""),
+    });
 }
 
 
@@ -948,7 +1037,7 @@ function RenderLevelMenu() {
 
 function InitializeSafelistData() {
     for (let level in SL.level_data) {
-        SL.level_data[level] = Object.assign(new Safelist(""), SL.level_data[level]);
+        SL.level_data[level] = Utility.mergeObjects(new Safelist(""), SL.level_data[level]);
     }
 }
 
@@ -991,9 +1080,9 @@ function InitializeSideEvents() {
         SL.level_data[level].setSideClick();
         SL.level_data[level].setKeypress();
     }
-    $("#enable-safelist").off(JSPLib.program_click).on(JSPLib.program_click, EnableSafelist);
-    $("#disable-safelist").off(JSPLib.program_click).on(JSPLib.program_click, DisableSafelist);
-    $("#sl-collapsible-list").off(JSPLib.program_click).on(JSPLib.program_click, ToggleSafelist);
+    $("#enable-safelist").off(JSPLib.event.click).on(JSPLib.event.click, EnableSafelist);
+    $("#disable-safelist").off(JSPLib.event.click).on(JSPLib.event.click, DisableSafelist);
+    $("#sl-collapsible-list").off(JSPLib.event.click).on(JSPLib.event.click, ToggleSafelist);
 }
 
 function InitializeSettingsMenu() {
@@ -1018,15 +1107,15 @@ function InitializeSettingEvents() {
     for (let level in SL.level_data) {
         SL.level_data[level].initializeLevelMenuEvents();
     }
-    $(".safelist-help").off(JSPLib.program_click).on(JSPLib.program_click, HelpInfo);
-    $("#safelist-commit").off(JSPLib.program_click).on(JSPLib.program_click, MenuSaveButton);
-    $("#safelist-add").off(JSPLib.program_click).on(JSPLib.program_click, MenuAddButton);
-    $("#safelist-resetall").off(JSPLib.program_click).on(JSPLib.program_click, MenuResetAllButton);
+    $(".safelist-help").off(JSPLib.event.click).on(JSPLib.event.click, HelpInfo);
+    $("#safelist-commit").off(JSPLib.event.click).on(JSPLib.event.click, MenuSaveButton);
+    $("#safelist-add").off(JSPLib.event.click).on(JSPLib.event.click, MenuAddButton);
+    $("#safelist-resetall").off(JSPLib.event.click).on(JSPLib.event.click, MenuResetAllButton);
 }
 
 function InitializeActiveCSS() {
     let value = SL.level_data[SL.active_list];
-    value && JSPLib.utility.setCSSStyle(value.renderedCSS, 'safelist_user_css');
+    value && Utility.setCSSStyle(value.renderedCSS, 'safelist_user_css');
 }
 
 function InitializeNonpost() {
@@ -1052,7 +1141,7 @@ function ResetAllSettings() {
 //Storage functions
 
 function LoadLevelData() {
-    SL.level_data = JSPLib.storage.getLocalData('sl-level-data');
+    SL.level_data = Storage.getLocalData('sl-level-data');
     if (!SL.level_data) {
         InitializeProgramData();
     } else {
@@ -1061,23 +1150,23 @@ function LoadLevelData() {
 }
 
 function SaveLevelData() {
-    JSPLib.storage.setLocalData('sl-level-data', SL.level_data);
+    Storage.setLocalData('sl-level-data', SL.level_data);
 }
 
 function LoadSessionData() {
-    SL.enable_safelist = JSPLib.storage.checkStorageData('sl-script-enabled', GetEnabledStorage());
+    SL.enable_safelist = Storage.checkStorageData('sl-script-enabled', GetEnabledStorage());
     if (!SL.enable_safelist && SL.session_use_enabled) {
-        SL.enable_safelist = JSPLib.storage.checkLocalData('sl-script-enabled', {default_val: true});
+        SL.enable_safelist = Storage.checkLocalData('sl-script-enabled', {default_val: true});
     }
-    SL.active_list = JSPLib.storage.checkStorageData('sl-active-list', GetEnabledStorage());
+    SL.active_list = Storage.checkStorageData('sl-active-list', GetEnabledStorage());
     if (!SL.active_list && SL.session_level_enabled) {
-        SL.active_list = JSPLib.storage.checkLocalData('sl-active-list');
+        SL.active_list = Storage.checkLocalData('sl-active-list');
     }
 }
 
 function SaveSessionData() {
-    JSPLib.storage.setStorageData('sl-script-enabled', SL.enable_safelist, GetEnabledStorage());
-    JSPLib.storage.setStorageData('sl-active-list', SL.active_list, GetActiveStorage());
+    Storage.setStorageData('sl-script-enabled', SL.enable_safelist, GetEnabledStorage());
+    Storage.setStorageData('sl-active-list', SL.active_list, GetActiveStorage());
 }
 
 function SaveStatus(status) {
@@ -1141,7 +1230,7 @@ function SafelistUnhide(post) {
     var type = 'inline-block';
     if (post.id === "image-container") {
         type = 'block';
-    } else if (SL.controller === "comments" || (post.parentElement && JSPLib.utility.DOMtoArray(post.parentElement.classList).includes('list-of-comments'))) {
+    } else if (SL.controller === "comments" || (post.parentElement && post.parentElement.classList.contains('list-of-comments'))) {
         type = 'flex';
     }
     post.style.setProperty('display', type, 'important');
@@ -1169,7 +1258,7 @@ function SafelistPosts() {
 
 //Asynchronous function that calculates inactive lists in the background
 function CalculatePassiveLists(deadline) {
-    const printer = JSPLib.debug.getFunctionPrint('CalculatePassiveLists');
+    const printer = Debug.getFunctionPrint('CalculatePassiveLists');
     //Only start calculating once the active enabled list is done
     if (CheckPriority()) {
         SL.passive_handle = requestIdleCallback(CalculatePassiveLists);
@@ -1180,14 +1269,14 @@ function CalculatePassiveLists(deadline) {
         //Are we starting a new job?
         if (!('update_list' in SL.passive_background_work)) {
             //Get the next uncalculated list
-            let update_list = JSPLib.utility.arrayDifference(SL.menu_items.process_menus, Object.keys(SL.post_lists))[0];
+            let update_list = Utility.arrayDifference(SL.menu_items.process_menus, Object.keys(SL.post_lists))[0];
             //Main exit condition
             if (update_list === undefined) {
-                printer.debuglog("Done!");
+                printer.log("Done!");
                 return;
             }
             if (SL.passive_lists_processed === 0) {
-                printer.debuglog("Passive list start:", JSPLib.utility.getProgramTime());
+                printer.log("Passive list start:", Utility.getProgramTime());
             }
             SL.passive_lists_processed++;
             //Initialize FOR loop and other variables
@@ -1220,27 +1309,27 @@ function CalculatePassiveLists(deadline) {
         //Add finished list to global variable
         SL.post_lists[index] = SL.passive_background_work.update_array;
         SetListCount(index);
-        printer.debuglog(`Complete[${index}]:`, performance.now() - SL.passive_background_work.start_time);
+        printer.log(`Complete[${index}]:`, performance.now() - SL.passive_background_work.start_time);
         SL.passive_background_work = {};
     }
 }
 
 //Like CalculatePassiveLists, but for the active list, plus it has higher priority
 function CalculateActiveList() {
-    const printer = JSPLib.debug.getFunctionPrint('CalculateActiveList');
+    const printer = Debug.getFunctionPrint('CalculateActiveList');
     SL.$safelist_posts = SL.$safelist_posts || SafelistPosts();
     if (('level' in SL.active_background_work) && (SL.active_list !== SL.active_background_work.level)) {
-        printer.debuglog("Changing list...");
+        printer.log("Changing list...");
         SL.active_background_work = {};
     }
     if ((SL.active_list in SL.post_lists) || (!SL.enable_safelist)) {
-        printer.debuglog("Bailing on work...");
+        printer.log("Bailing on work...");
         SL.active_background_work = {};
         SetActiveList(SL.active_list,'active');
         return;
     }
     if (!('level' in SL.active_background_work)) {
-        printer.debuglog("Active list start:", JSPLib.utility.getProgramTime());
+        printer.log("Active list start:", Utility.getProgramTime());
         SL.active_background_work.level = SL.active_list;
         SL.active_background_work.start_id = 0;
         SL.active_background_work.update_array = [];
@@ -1264,7 +1353,7 @@ function CalculateActiveList() {
         }
     }
     SL.post_lists[level] = SL.active_background_work.update_array;
-    printer.debuglog("Complete:",performance.now() - SL.active_background_work.start_time);
+    printer.log("Complete:",performance.now() - SL.active_background_work.start_time);
     SetActiveList(SL.active_list, 'active');
     ShowHidePosts(SL.post_lists[level]);
     SetListCount(level);
@@ -1298,7 +1387,7 @@ function HelpInfo(event) {
 }
 
 function EnableSafelist(event) {
-    JSPLib.utility.setCSSStyle(css_enabled, "blacklist_css");
+    Utility.setCSSStyle(CSS_ENABLED, "blacklist_css");
     if (SL.menu_items.rendered_menus.includes(SL.active_list)){
         let value = SL.level_data[SL.active_list];
         value && $("a", value.side).click();
@@ -1308,8 +1397,8 @@ function EnableSafelist(event) {
 }
 
 function DisableSafelist(event) {
-    JSPLib.utility.setCSSStyle(css_disabled, "blacklist_css");
-    JSPLib.utility.setCSSStyle("", 'safelist_user_css');
+    Utility.setCSSStyle(CSS_DISABLED, "blacklist_css");
+    Utility.setCSSStyle("", 'safelist_user_css');
     RemovePostStyles();
     SaveStatus(false);
     event.preventDefault();
@@ -1319,13 +1408,13 @@ function ToggleSafelist(event) {
     $(event.target).toggleClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
     $('#safelist').slideToggle(100);
     SL.is_shown = !SL.is_shown;
-    JSPLib.storage.setLocalData('sl-show-menu', SL.is_shown);
+    Storage.setLocalData('sl-show-menu', SL.is_shown);
     SL.channel.postMessage({type: "toggle", is_shown: SL.is_shown});
 }
 
 function SetSafelistSettingsClick() {
-    if (!JSPLib.utility.isNamespaceBound("#display-safelist-settings", 'click', PROGRAM_SHORTCUT)) {
-        $("#display-safelist-settings").on(JSPLib.program_click,(event)=>{
+    if (!Utility.isNamespaceBound({root: "#display-safelist-settings", eventtype: 'click', namespace: PROGRAM_SHORTCUT})) {
+        $("#display-safelist-settings").on(JSPLib.event.click,(event)=>{
             $("#post-sections li a").removeClass('active');
             $("#display-safelist-settings").addClass('active');
             $("#content > *:not(#post-sections)").hide();
@@ -1337,8 +1426,8 @@ function SetSafelistSettingsClick() {
 
 //These actions get executed along with any other existing click events
 function SetOtherSectionsClick() {
-    if (!JSPLib.utility.isNamespaceBound("#show-posts-link,#show-excerpt-link", 'click', PROGRAM_SHORTCUT)) {
-        $("#show-posts-link,#show-excerpt-link").on(JSPLib.program_click, ()=>{
+    if (!Utility.isNamespaceBound({root: "#show-posts-link,#show-excerpt-link", eventtype: 'click', namespace: PROGRAM_SHORTCUT})) {
+        $("#show-posts-link,#show-excerpt-link").on(JSPLib.event.click, ()=>{
             $("#display-safelist-settings").removeClass('active');
             $('#safelist-settings').hide();
         });
@@ -1364,9 +1453,9 @@ function MenuResetAllButton() {
 }
 
 function MenuSaveButton() {
-    const printer = JSPLib.debug.getFunctionPrint('MenuSaveButton');
+    const printer = Debug.getFunctionPrint('MenuSaveButton');
     //Save presettings change for comparison later
-    var preconfig = JSPLib.utility.dataCopy(SL.level_data);
+    var preconfig = Utility.deepCopy(SL.level_data);
     var premenu = SL.menu_items;
     for (let level in SL.level_data) {
         let value = SL.level_data[level];
@@ -1391,11 +1480,11 @@ function MenuSaveButton() {
     $(".safelist-namerow h2").show();
     $(".safelist-namerow .btn").show();
     SaveLevelData();
-    JSPLib.notice.notice("Settings saved.");
-    let changed_settings = JSPLib.utility.recurseCompareObjects(preconfig, SL.level_data);
+    Notice.notice("Settings saved.");
+    let changed_settings = CompareObjects(preconfig, SL.level_data);
     SL.menu_items = CalculateRenderedMenus();
-    let changed_menus = Boolean(JSPLib.utility.arraySymmetricDifference(premenu.rendered_menus, SL.menu_items.rendered_menus).length);
-    printer.debuglog(changed_settings, changed_menus);
+    let changed_menus = Boolean(Utility.arraySymmetricDifference(premenu.rendered_menus, SL.menu_items.rendered_menus).length);
+    printer.log(changed_settings, changed_menus);
     if (!$.isEmptyObject(changed_settings) || changed_menus) {
         ReloadSafelist(changed_settings, changed_menus);
         SL.channel.postMessage({type: "reload", level_data: SL.level_data, changed_settings: changed_settings, changed_menus: changed_menus});
@@ -1434,9 +1523,9 @@ function PostPreviewUpdated(event,post) {
 //Main execution functions
 
 function SetSideLevel(context) {
-    const printer = JSPLib.debug.getFunctionPrint('SetSideLevel');
+    const printer = Debug.getFunctionPrint('SetSideLevel');
     if (SL.post_lists[context.level] === undefined){
-        printer.debuglog("List not ready!");
+        printer.log("List not ready!");
         //If no lists are being actively calculated...?
         if ($.isEmptyObject(SL.active_background_work)) {
             //Don't start calculating the list in the click event
@@ -1445,16 +1534,16 @@ function SetSideLevel(context) {
         SetActiveList(context.level,'pending');
         //Else CalculateActiveList will automatically switch over
     } else {
-        printer.debuglog("Precalculated list change");
+        printer.log("Precalculated list change");
         ShowHidePosts(SL.post_lists[context.level]);
         SetActiveList(context.level, 'active');
     }
-    JSPLib.utility.setCSSStyle(context.renderedCSS, 'safelist_user_css');
+    Utility.setCSSStyle(context.renderedCSS, 'safelist_user_css');
     SaveLevel(context.level);
 }
 
 function ReloadSafelist(changed_settings,changed_menus) {
-    const printer = JSPLib.debug.getFunctionPrint('ReloadSafelist');
+    const printer = Debug.getFunctionPrint('ReloadSafelist');
     if (changed_menus) {
         //The side menu has changed, so rerender it
         $("#safelist-box").replaceWith(RenderSidemenu());
@@ -1469,7 +1558,7 @@ function ReloadSafelist(changed_settings,changed_menus) {
     } else if (!$.isEmptyObject(changed_settings)) {
         //A list has changed, so recreate the entry array
         if (Object.keys(changed_settings).some((level) => ('list' in changed_settings[level]))) {
-            printer.debuglog("Updating custom entries...");
+            printer.log("Updating custom entries...");
             SL.custom_entries = CreateEntryArray();
         }
         for (let level in changed_settings) {
@@ -1484,7 +1573,7 @@ function ReloadSafelist(changed_settings,changed_menus) {
                         SetActiveList(level, 'pending');
                         SignalActiveList(true);
                     } else if (key === 'css') {
-                        JSPLib.utility.setCSSStyle(value.renderedCSS, 'safelist_user_css');
+                        Utility.setCSSStyle(value.renderedCSS, 'safelist_user_css');
                     }
                 }
                 if (IsLevelMenu()) {
@@ -1522,8 +1611,8 @@ function ReloadSafelist(changed_settings,changed_menus) {
 //Settings functions
 
 function BroadcastSL(ev) {
-    const printer = JSPLib.debug.getFunctionPrint('BroadcastSL');
-    printer.debuglog(`(${ev.data.type}):`, ev.data);
+    const printer = Debug.getFunctionPrint('BroadcastSL');
+    printer.log(`(${ev.data.type}):`, ev.data);
     if (((ev.data.type === "level_change") && SL.session_level_enabled) &&
         ((ev.data.type === "status_change") && SL.session_use_enabled)) {
         return;
@@ -1531,7 +1620,7 @@ function BroadcastSL(ev) {
     if ('level_data' in ev.data) {
         SL.old_level_data = SL.level_data;
         SL.level_data = ev.data.level_data;
-        let removed_menus = JSPLib.utility.arrayDifference(Object.keys(SL.old_level_data), Object.keys(SL.level_data));
+        let removed_menus = Utility.arrayDifference(Object.keys(SL.old_level_data), Object.keys(SL.level_data));
         removed_menus.forEach((level)=>{
             SL.old_level_data[level].disableLevel();
             delete SL.post_lists[level];
@@ -1587,7 +1676,7 @@ function BroadcastSL(ev) {
                 //do nothing
         }
     } else if (ev.data.type === "status_change") {
-        JSPLib.utility.setCSSStyle("", 'safelist_user_css');
+        Utility.setCSSStyle("", 'safelist_user_css');
     }
     if (ev.data.type === 'toggle') {
         SL.is_shown = ev.data.is_shown;
@@ -1612,7 +1701,7 @@ function RemoteResetCallback() {
 
 function InitializeChangedSettings() {
     if (IsLevelMenu()) {
-        if (JSPLib.menu.hasSettingChanged('write_mode_enabled')) {
+        if (Menu.hasSettingChanged('write_mode_enabled')) {
             if (SL.write_mode_enabled) {
                 $(".safelist-push").removeAttr('disabled').show();
             } else {
@@ -1623,59 +1712,59 @@ function InitializeChangedSettings() {
 }
 
 function InitializeProgramValues() {
-    Object.assign(SL, {
-        userid: Danbooru.CurrentUser.data('id'),
+    Utility.assignObjects(SL, {
         blacklist_box: $("#blacklist-box"),
         has_video: Boolean($(".image-container video").length),
-        is_shown: JSPLib.storage.checkLocalData('sl-show-menu', ValidateProgramData, {default_val: true}),
+        is_shown: Storage.checkLocalData('sl-show-menu', ValidateProgramData, {default_val: true}),
+        user_id: DanbooruProxy.CurrentUser.data('id'),
     });
-    return true;
 }
 
 function RenderSettingsMenu() {
-    $('#safelist-plus').append(JSPLib.menu.renderMenuFramework(MENU_CONFIG));
-    $('#sl-general-settings').append(JSPLib.menu.renderDomainSelectors());
-    $('#sl-mode-settings').append(JSPLib.menu.renderCheckbox('write_mode_enabled'));
-    $('#sl-session-settings').append(JSPLib.menu.renderCheckbox('session_use_enabled'));
-    $('#sl-session-settings').append(JSPLib.menu.renderCheckbox('session_level_enabled'));
-    $('#sl-controls').append(JSPLib.menu.renderCacheControls());
-    $('#sl-cache-controls').append(JSPLib.menu.renderLinkclick('cache_info'));
-    $('#sl-cache-controls').append(JSPLib.menu.renderCacheInfoTable());
-    $('#sl-controls').append(JSPLib.menu.renderCacheEditor());
-    $('#sl-cache-editor-message').append(JSPLib.menu.renderExpandable("Program Data details", PROGRAM_DATA_DETAILS));
-    $('#sl-cache-editor-controls').append(JSPLib.menu.renderLocalStorageSource());
-    $('#sl-cache-editor-controls').append(JSPLib.menu.renderCheckbox('raw_data', true));
-    $('#sl-cache-editor-controls').append(JSPLib.menu.renderTextinput('data_name', 20, true));
-    JSPLib.menu.engageUI(true);
-    JSPLib.menu.saveUserSettingsClick();
-    JSPLib.menu.resetUserSettingsClick(LOCALSTORAGE_KEYS);
-    JSPLib.menu.cacheInfoClick();
-    JSPLib.menu.expandableClick();
-    JSPLib.menu.rawDataChange();
-    JSPLib.menu.getCacheClick(ValidateProgramData);
-    JSPLib.menu.saveCacheClick(ValidateProgramData);
-    JSPLib.menu.deleteCacheClick();
-    JSPLib.menu.listCacheClick();
-    JSPLib.menu.refreshCacheClick();
-    JSPLib.menu.cacheAutocomplete();
+    $('#safelist').append(Menu.renderMenuFramework(MENU_CONFIG));
+    $('#sl-general-settings').append(Menu.renderDomainSelectors());
+    $('#sl-mode-settings').append(Menu.renderCheckbox('write_mode_enabled'));
+    $('#sl-session-settings').append(Menu.renderCheckbox('session_use_enabled'));
+    $('#sl-session-settings').append(Menu.renderCheckbox('session_level_enabled'));
+    $('#sl-controls').append(Menu.renderCacheControls());
+    $('#sl-cache-controls').append(Menu.renderLinkclick('cache_info'));
+    $('#sl-cache-controls').append(Menu.renderCacheInfoTable());
+    $('#sl-controls').append(Menu.renderCacheEditor());
+    $('#sl-cache-editor-message').append(Menu.renderExpandable("Program Data details", PROGRAM_DATA_DETAILS));
+    $('#sl-cache-editor-controls').append(Menu.renderLocalStorageSource());
+    $('#sl-cache-editor-controls').append(Menu.renderCheckbox('raw_data', true));
+    $('#sl-cache-editor-controls').append(Menu.renderTextinput('data_name', 20, true));
+    Menu.engageUI({checkboxradio: true});
+    Menu.saveUserSettingsClick();
+    Menu.resetUserSettingsClick({delete_keys: STORAGE_RESET_KEYS});
+    Menu.cacheInfoClick();
+    Menu.expandableClick();
+    Menu.rawDataChange();
+    Menu.getCacheClick();
+    Menu.saveCacheClick();
+    Menu.deleteCacheClick();
+    Menu.listCacheClick();
+    Menu.refreshCacheClick();
+    Menu.cacheAutocomplete();
 }
 
 //Main functions
 
 function Main() {
-    const preload = {
-        run_on_settings: true,
-        default_data: DEFAULT_VALUES,
-        initialize_func: InitializeProgramValues,
+    Load.preloadScript({
         broadcast_func: BroadcastSL,
-        render_menu_func: RenderSettingsMenu,
-    };
-    if (!JSPLib.menu.preloadScript(SL, preload)) return;
+        run_on_settings: true,
+    });
+    Menu.preloadMenu({
+        menu_func: RenderSettingsMenu,
+    });
+    if (!Load.isScriptEnabled()) return;
+    InitializeProgramValues();
     LoadLevelData();
     CorrectLevelData();
     LoadSessionData();
     if (HasBlacklist()) {
-        JSPLib.utility.setCSSStyle(safelist_css, "safelist_css");
+        Utility.setCSSStyle(PROGRAM_CSS, "PROGRAM_CSS");
         SL.menu_items = CalculateRenderedMenus();
         SL.blacklist_box.after(RenderSidemenu());
         InitializeSide();
@@ -1690,38 +1779,36 @@ function Main() {
         $("#excerpt").before(RenderLevelMenu());
         InitializeSettingsMenu();
         //Accounts for other userscripts binding the same links
-        JSPLib.utility.initializeInterval(()=>{
+        Utility.initializeInterval(()=>{
             SetSafelistSettingsClick();
             SetOtherSectionsClick();
-        },timeout_polling_interval);
+        }, TIMEOUT_POLLING_INTERVAL);
         $(document).on('danbooru:post-preview-updated.sl', PostPreviewUpdated);
     }
 }
 
 /****Initialization****/
 
-//Variables for JSPLib
-JSPLib.program_name = PROGRAM_NAME;
-JSPLib.program_shortcut = PROGRAM_SHORTCUT;
-JSPLib.program_data = SL;
+JSPLib.data = SL;
+JSPLib.name = PROGRAM_NAME;
+JSPLib.shortcut = PROGRAM_SHORTCUT;
+JSPLib.default_data = DEFAULT_VALUES;
+JSPLib.reset_data = PROGRAM_RESET_KEYS;
+JSPLib.settings_config = SETTINGS_CONFIG;
 
-//Variables for debug.js
-JSPLib.debug.mode = false;
-JSPLib.debug.level = JSPLib.debug.INFO;
+Debug.mode = false;
+Debug.level = Debug.INFO;
 
-//Variables for menu.js
-JSPLib.menu.program_reset_data = PROGRAM_RESET_KEYS;
-JSPLib.menu.settings_callback = RemoteSettingsCallback;
-JSPLib.menu.reset_callback = RemoteResetCallback;
-JSPLib.menu.settings_config = SETTINGS_CONFIG;
-JSPLib.menu.control_config = CONTROL_CONFIG;
+Storage.localSessionValidator = ValidateProgramData;
 
-//Export JSPLib
-JSPLib.load.exportData();
+Menu.settings_callback = RemoteSettingsCallback;
+Menu.reset_callback = RemoteResetCallback;
+Menu.control_config = CONTROL_CONFIG;
 
-//Variables for storage.js
-JSPLib.storage.localSessionValidator = ValidateProgramData;
+Load.exportData();
 
 /****Execution start****/
 
-JSPLib.load.programInitialize(Main, {required_variables: program_load_required_variables, required_selectors: program_load_required_selectors});
+Load.programInitialize(Main, {required_variables: LOAD_REQUIRED_VARIABLES, required_selectors: LOAD_REQUIRED_SELECTORS});
+
+})(JSPLib);
