@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DTextStyler
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      5.13
+// @version      6.0
 // @description  Danbooru DText UI addon.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -12,171 +12,72 @@
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/DTextStyler.user.js
 // @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/DTextStyler.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/module.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/debug.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/utility.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/validate.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/storage.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/network.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/load.js
-// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20251218/lib/menu.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/module.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/debug.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/utility.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/validate.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/storage.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/template.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/network.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/load.js
+// @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/menu.js
 // ==/UserScript==
 
-/* global JSPLib $ Danbooru Papa */
+/* global JSPLib $ Papa */
+
+(({Debug, Notice, Utility, Template, Network, Load, Menu}) => {
+
+const PROGRAM_NAME = 'DTextStyler';
+const PROGRAM_SHORTCUT = 'ds';
+const DANBOORU_TOPIC_ID = 14229;
+const GITHUB_WIKI_PAGE = 'https://github.com/BrokenEagle/JavaScripts/wiki/DtextStyler';
 
 /****Library updates****/
 
-JSPLib.program = new Proxy(JSPLib, {
-    get(target, prop, _receiver) {
-        return prop + (target.program_shortcut.length ? '.' + target.program_shortcut : "");
-    },
-});
-
-JSPLib.utility.getAttr = function (domobj, key) {
-    if (typeof key === 'string') {
-        return domobj.attributes[key].value;
-    }
-    let data = {};
-    for (let attr of domobj.attributes) {
-        if (Array.isArray(key) && !key.includes(attr.name)) continue;
-        data[attr.name] = attr.value;
-    }
-    return data;
-};
-
-JSPLib.utility.isNamespaceBound2 = function ({root = null, eventtype = null, namespace = null, selector = null, presence = true} = {}) {
-    let event_namespaces = this.getBoundEventNames(root, eventtype, selector);
-    let name_parts = namespace.split('.');
-    return this._not(event_namespaces.some((name) => this.isSubArray(name.split('.'), name_parts)), !presence);
-};
-
-JSPLib.utility.DOMWaitExecute = function ({namespace_check = null, data_check = null, extra_check = null, found = null, interval = null, duration = null, name = null} = {}) {
-    const printer = (name ? JSPLib.debug.getFunctionPrint('utility.DOMWaitExecute') : (()=>{}));
-    extra_check ??= (() => true);
-    this.recheckInterval({
-        check: () => {
-            let checks = [];
-            if (namespace_check !== null) {
-                checks.push(this.isNamespaceBound2(namespace_check));
-            }
-            if (data_check !== null) {
-                checks.push(this.hasDOMDataKey(data_check.selector, data_check.key));
-            }
-            if (extra_check !== null) {
-                checks.push(extra_check());
-            }
-            return checks.every((c) => c);
-        },
-        debug: () => printer.debuglogLevel(`Waiting on DOM: ${name}.`, JSPLib.debug.VERBOSE),
-        fail: () => printer.debuglogLevel(`Failed to execute: ${name}.`, JSPLib.debug.WARNING),
-        exec: () => {
-            printer.debuglogLevel(`Event triggered: ${name}.`, JSPLib.debug.INFO);
-            found();
-        },
-        interval,
-        duration,
-    });
-};
-
-JSPLib.utility.subscribeDOMProperty = function (obj, prop, func) {
-    const property = Object.getOwnPropertyDescriptor(obj.constructor.prototype, prop);
-    Object.defineProperty(obj, prop, {
-        set: function(value) {
-            property.set.call(obj, value);
-            func?.(value);
-        },
-        get: function() {
-            return property.get.call(obj);
-        },
-        configurable: false,
-        enumerable: true,
-        writeable: false,
-    });
-};
-
-JSPLib.utility.setPropertyTrap = function (obj, property, {value = {}, getter = null, setter = null} = {}) {
-    // For subproperties that are accessed/written after the DOM object is initialized
-    const private_property = '_' + property;
-    obj[property] = new Proxy(obj, {
-        get(target, prop, receiver) {
-            getter?.(prop);
-            return target[private_property][prop];
-        },
-        set(target, prop, value, receiver) {
-            target[private_property][prop] = value;
-            setter?.(prop, value);
-        },
-    });
-    Object.defineProperty(obj, property, {
-        configurable: false,
-        enumerable: true,
-        writeable: false,
-    });
-    Object.defineProperty(obj, private_property, {
-        value,
-        configurable: false,
-        enumerable: false,
-        writeable: false,
-    });
-};
-
-//For module.js, since this script does not import notice.js. The notice.js module needs its own version
-JSPLib.notice.close = (() => JSPLib._document.getElementById('close-notice-link')?.click());
+////NONE
 
 /****Global variables****/
 
-//Exterior script variables
-const DANBOORU_TOPIC_ID = '14229';
-const GITHUB_WIKI_PAGE = 'https://github.com/BrokenEagle/JavaScripts/wiki/DtextStyler';
+//Module constants
 
-//Variables for load.js
-const PROGRAM_LOAD_REQUIRED_VARIABLES = ['window.jQuery', 'window.Danbooru', 'Danbooru.Upload'];
-const PROGRAM_LOAD_OPTIONAL_SELECTORS = ['.dtext-editor textarea', '#add-commentary-dialog', '.upload-edit-container', '#c-users #a-edit'];
-
-//Program name constants
-const PROGRAM_SHORTCUT = 'ds';
-const PROGRAM_NAME = 'DTextStyler';
-
-//Main program variable
 const DS = {};
 
 const DEFAULT_VALUES = {
     mode: 'edit',
 };
 
-//Available setting values
-const ALL_TYPES = ['comment', 'forum', 'wiki', 'pool', 'dmail'];
-const ALL_MARKUP = ['bold', 'italic', 'underline', 'strikethrough', 'translation', 'spoiler', 'code', 'nodtext', 'quote', 'expand', 'textile_link', 'wiki_link', 'named_link', 'search_link', 'full_table', 'headless_table'];
-const ALL_ACTIONS = ['undo', 'redo'];
+const LOAD_REQUIRED_VARIABLES = ['window.jQuery'];
+const LOAD_OPTIONAL_SELECTORS = ['.dtext-editor textarea', '#add-commentary-dialog', '.upload-edit-container', '#c-users #a-edit'];
 
-//Main settings
+//Setting constants
+
 const SETTINGS_CONFIG = {
     post_commentary_enabled: {
         reset: true,
-        validate: JSPLib.utility.isBoolean,
+        validate: Utility.isBoolean,
         hint: "Show dtext controls on the post commentary dialog."
     },
     upload_commentary_enabled: {
         reset: true,
-        validate: JSPLib.utility.isBoolean,
+        validate: Utility.isBoolean,
         hint: "Show dtext controls above the upload commentary inputs."
     },
     dtext_types_handled: {
-        allitems: ALL_TYPES,
-        reset: ALL_TYPES,
-        validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'checkbox', ALL_TYPES),
+        allitems: ['comment', 'forum', 'wiki', 'pool', 'dmail'],
+        get reset() {return this.allitems},
+        validate (data) {return Menu.validateCheckboxRadio(data, 'checkbox', this.allitems);},
         hint: "Show dtext controls above the preview area for the available types.",
     },
     available_dtext_markup: {
-        allitems: ALL_MARKUP,
-        reset: ALL_MARKUP,
-        validate: (data) => (JSPLib.menu.validateCheckboxRadio(data, 'checkbox', ALL_MARKUP) && (data.length > 0)),
+        allitems: ['bold', 'italic', 'underline', 'strikethrough', 'translation', 'spoiler', 'code', 'nodtext', 'quote', 'expand', 'textile_link', 'wiki_link', 'named_link', 'search_link', 'full_table', 'headless_table'],
+        get reset() {return this.allitems},
+        validate (data) {return Menu.validateCheckboxRadio(data, 'checkbox', this.allitems, {min_length: 1});},
         hint: "Select the list of available DText tags to be shown. Must have at least one.",
     },
     available_dtext_actions: {
-        allitems: ALL_ACTIONS,
-        reset: ALL_ACTIONS,
-        validate: (data) => JSPLib.menu.validateCheckboxRadio(data, 'checkbox', ALL_ACTIONS),
+        allitems: ['undo', 'redo'],
+        get reset() {return this.allitems},
+        validate (data) {return Menu.validateCheckboxRadio(data, 'checkbox', this.allitems);},
         hint: "Select the list of available DText actions to be shown.",
     },
 }
@@ -193,33 +94,32 @@ const MENU_CONFIG = {
     },{
         name: 'controls',
     }],
-    controls: [],
 };
 
 //CSS constants
 
-const PROGRAM_CSS = `
+const PROGRAM_CSS = Template.normalizeCSS()`
 /** General **/
-/**** Preview ****/
-.ds-preview-display {
-    max-height: 300px;
-    overflow-y: auto;
-}
-.ds-preview-display .ds-section {
-    border: 1px solid;
-    padding: 5px;
-    min-height: 10em;
-}
-.ds-preview-display .ds-section-header {
-    font-size: var(--text-lg);
-    font-weight: bold;
-    text-decoration: underline;
-    margin: 0.5rem 0;
-}
 .ds-button {
     width: 7em;
 }
-/**** Markup buttons ****/
+/** Preview **/
+.ds-preview-display {
+    max-height: 300px;
+    overflow-y: auto;
+    .ds-section {
+        border: 1px solid;
+        padding: 5px;
+        min-height: 10em;
+    }
+    .ds-section-header {
+        font-size: var(--text-lg);
+        font-weight: bold;
+        text-decoration: underline;
+        margin: 0.5rem 0;
+    }
+}
+/** Markup buttons **/
 .ds-markup-headers > div,
 .ds-markup-headers > div > div,
 .ds-buttons > div,
@@ -235,48 +135,58 @@ const PROGRAM_CSS = `
     width: 40px;
     height: 40px;
     position: relative;
-}
-.dtext-button > * {
-    position: absolute;
+    & > * {
+        position: absolute;
+    }
 }
 .ds-translate-content {
     font-size: 16px;
     font-weight: bold;
     white-space: nowrap;
 }
+/** Uploads page **/
+.ds-upload-commentary-description {
+    container-type: inline-size;
+}
 /** Posts page **/
 form#fetch-commentary input#commentary_source {
     max-width: 75%;
 }
-form#edit-commentary input#artist_commentary_original_title,
-form#edit-commentary input#artist_commentary_translated_title {
-    max-width: 100%;
+form#edit-commentary {
+    input#artist_commentary_original_title,
+    input#artist_commentary_translated_title {
+        max-width: 100%;
+    }
 }
-button.ds-dialog-button[name=Cancel] {
-    color: white;
-    background: red;
-}
-button.ds-dialog-button[name=Submit] {
-    color: white;
-    background: green;
+button.ds-dialog-button {
+    &[name=Cancel] {
+        color: white;
+        background: red;
+    }
+    &[name=Submit] {
+        color: white;
+        background: green;
+    }
 }`;
 
-const LIGHT_MODE_CSS = `
+const LIGHT_MODE_CSS = Template.normalizeCSS({theme: 'light'})`
 .ds-preview-display .ds-section {
     border-color: var(--grey-2);
 }`;
 
-const DARK_MODE_CSS = `
+const DARK_MODE_CSS = Template.normalizeCSS({theme: 'dark'})`
 .ds-preview-display .ds-section {
     border-color: var(--grey-7);
 }`;
 
-const MENU_CSS = `
-.jsplib-selectors.ds-selectors[data-setting="dtext_types_handled"] label {
-    width: 120px;
-}
-.jsplib-selectors.ds-selectors[data-setting="available_dtext_markup"] label {
-    width: 150px;
+const MENU_CSS = Template.normalizeCSS()`
+.jsplib-selectors.ds-selectors {
+    &[data-setting="dtext_types_handled"] label {
+        width: 120px;
+    }
+    &[data-setting="available_dtext_markup"] label {
+        width: 150px;
+    }
 }`;
 
 //HTML constants
@@ -300,47 +210,47 @@ const HEADLESS_TABLE_CONTENT = '<svg height="20" width="20" viewBox="-10 -10 150
 const UNDO_CONTENT = '<svg height="24" width="24" viewBox="0 0 24 24"><path d="M12,3A8.959,8.959,0,0,0,5,6.339V4H3v6H9V8H6.274A6.982,6.982,0,1,1,5.22,13.751l-1.936.5A9,9,0,1,0,12,3Z"/></svg>';
 const REDO_CONTENT = '<svg height="24" width="24" viewBox="0 0 24 24" style="transform: scaleX(-1);"><path d="M12,3A8.959,8.959,0,0,0,5,6.339V4H3v6H9V8H6.274A6.982,6.982,0,1,1,5.22,13.751l-1.936.5A9,9,0,1,0,12,3Z"/></svg>';
 
-const MARKUP_CONTROLS = `
-<div class="ds-markup-controls" style="width: %spx;">
+const MARKUP_CONTROLS = Template.normalizeHTML({template: true})`
+<div class="ds-markup-controls" style="width: ${'width'}px;">
     <div class="ds-markup-headers">
-        %s
+        ${'header'}
     </div>
     <div class="ds-buttons">
-        %s
+        ${'buttons'}
     </div>
 </div>`;
 
-const PREVIEW_SECTION = `
-<div class="ds-preview-display dtext-preview" data-section="%s">
-    %s
+const PREVIEW_SECTION = Template.normalizeHTML({template: true})`
+<div class="ds-preview-display dtext-preview" data-section="${'section'}">
+    <div class="ds-section-header">${'display'}</div>
     <section class="ds-section"></section>
 </div>`;
 
-const PREVIEW_BUTTONS = `
+const PREVIEW_BUTTONS = Template.normalizeHTML()`
 <div id="ds-commentary-buttons">
     <button type="button" id="ds-preview-button" class="ds-button ds-commentary-button ui-button ui-corner-all ui-widget">Preview</button>
     <button type="button" id="ds-edit-button" class="ds-button ds-commentary-button ui-button ui-corner-all ui-widget">Edit</button>
 </div>`;
 
-const CONTROL_BUTTONS = `
+const CONTROL_BUTTONS = Template.normalizeHTML()`
 <button class="ds-button ds-show-preview">Preview</button>
 <button style="display: none;" class="ds-button ds-edit-preview">Edit</button>
 `
 
-const UPLOAD_COMMENTARY_DESCRIPTION = `
-<div class="input stacked-input text optional post_artist_commentary_%IDENTIFIER%">
-    <label class="text optional" for="post_artist_commentary_%IDENTIFIER%">%DISPLAY%</label>
+const UPLOAD_COMMENTARY_DESCRIPTION = Template.normalizeHTML({template: true})`
+<div class="ds-upload-commentary-description input stacked-input text optional post_artist_commentary_${'identifier'}">
+    <label class="text optional" for="post_artist_commentary_${'identifier'}">${'display'}</label>
     <div class="dtext-editor relative w-fit">
         <div class="dtext-editor-body relative resize overflow-hidden">
-            <textarea class="dtext optional w-full h-full m-0 p-1 resize-none thin-scrollbar ui-autocomplete-input" name="post[artist_commentary][%IDENTIFIER%]" id="post_artist_commentary_%IDENTIFIER%"></textarea>
+            <textarea class="dtext optional w-full h-full m-0 p-1 resize-none thin-scrollbar ui-autocomplete-input" name="post[artist_commentary][${'identifier'}]" id="post_artist_commentary_${'identifier'}"></textarea>
         </div>
     </div>
 </div>`;
 
-const DTEXT_TEXTAREA = `
-<div class="relative w-fit ds-edit-dtext dtext-editor %CLASSES%">
+const DTEXT_TEXTAREA = Template.normalizeHTML({template: true})`
+<div class="relative w-fit ds-edit-dtext dtext-editor ${'classes'}">
     <div class="relative resize overflow-hidden dtext-editor-body">
-        <textarea class="ds-input ds-general-input dtext optional w-full h-full m-0 p-1 resize-none thin-scrollbar" name="%NAME%" id="%IDENTIFIER%">%VALUE%</textarea>
+        <textarea class="ds-input ds-general-input dtext optional w-full h-full m-0 p-1 resize-none thin-scrollbar" name="${'name'}" id="${'id'}">${'value'}</textarea>
     </div>
 </div>
 <div class="ds-preview-dtext dtext-preview prose w-full h-full p-1 border overflow-auto thin-scrollbar" style="display: none;">
@@ -575,24 +485,31 @@ const DTEXT_SELECTORS = {
 
 //Auxiliary functions
 
+function BlockActiveElementSwitch() {
+    $('.dtext-markup, .dtext-action').each((_, elem) => {
+        // Allows the use of document.activeElement to get the last selected text input or textarea
+        elem.onmousedown = (e) => {(e || JSPLib._window.event).preventDefault();};
+    });
+}
+
 function GetTextArea($obj) {
     let $text_areas = $obj.closest('.ds-container').find('.ds-input');
     if ($text_areas.length <= 1) {
         var text_area = $text_areas.get(0);
     } else {
-        text_area = (['TEXTAREA', 'INPUT'].includes(document.activeElement.tagName) && [...document.activeElement.classList].includes('ds-commentary-input') ? document.activeElement : null);
+        text_area = (['TEXTAREA', 'INPUT'].includes(document.activeElement.tagName) && document.activeElement.classList.contains('ds-commentary-input') ? document.activeElement : null);
     }
     if (!text_area) {
-        JSPLib.notice.error("No text input selected.");
+        Notice.error("No text input selected.");
     } else {
-        JSPLib.notice.close();
+        Notice.close();
     }
     return text_area;
 }
 
 function MarkupSelectionText(text_area, config) {
-    if ([...text_area.classList].includes('string') && config.stripped) {
-        JSPLib.notice.notice("Block elements not available for inline DText.");
+    if (text_area.classList.contains('string') && config.stripped) {
+        Notice.notice("Block elements not available for inline DText.");
         return false;
     }
     SaveMarkup(text_area);
@@ -624,8 +541,8 @@ function MarkupSelectionText(text_area, config) {
 }
 
 function TableMarkup(text_area, has_header) {
-    if ([...text_area.classList].includes('string')) {
-        JSPLib.notice.notice("Block elements not available for inline DText.");
+    if (text_area.classList.contains('string')) {
+        Notice.notice("Block elements not available for inline DText.");
         return false;
     }
     SaveMarkup(text_area);
@@ -642,7 +559,7 @@ function TableMarkup(text_area, has_header) {
 }
 
 function SaveMarkup(text_area) {
-    const printer = JSPLib.debug.getFunctionPrint('SaveMarkup');
+    const printer = Debug.getFunctionPrint('SaveMarkup');
     let $text_area = $(text_area);
     let undo_actions = $text_area.data('undo_actions') || [];
     let undo_index = $text_area.data('undo_index') || 0;
@@ -651,11 +568,11 @@ function SaveMarkup(text_area) {
     $text_area.data('undo_actions', undo_actions);
     $text_area.data('undo_index', undo_actions.length);
     $text_area.data('undo_saved', true);
-    printer.debuglog('SaveMarkup', {undo_actions, undo_index});
+    printer.log('SaveMarkup', {undo_actions, undo_index});
 }
 
 function UndoAction(text_area) {
-    const printer = JSPLib.debug.getFunctionPrint('UndoAction');
+    const printer = Debug.getFunctionPrint('UndoAction');
     let $text_area = $(text_area);
     let {undo_actions = [], undo_index = 0, undo_saved} = $text_area.data();
     if (undo_saved) {
@@ -666,39 +583,39 @@ function UndoAction(text_area) {
     if (undo_html) {
         text_area.value = undo_html;
     } else {
-        JSPLib.notice.notice("Beginning of actions buffer reached.");
+        Notice.notice("Beginning of actions buffer reached.");
     }
     let new_index = Math.max(0, undo_index - 1);
     $text_area.data('undo_index', new_index);
     $text_area.data('undo_saved', false);
-    printer.debuglog('UndoAction', {undo_actions, undo_index, new_index});
+    printer.log('UndoAction', {undo_actions, undo_index, new_index});
     return Boolean(undo_html);
 }
 
 function RedoAction(text_area) {
-    const printer = JSPLib.debug.getFunctionPrint('RedoAction');
+    const printer = Debug.getFunctionPrint('RedoAction');
     let $text_area = $(text_area);
     let {undo_actions = [], undo_index = 0} = $text_area.data();
     let undo_html = undo_actions.slice(undo_index + 1, undo_index + 2)[0];
     if (undo_html) {
         text_area.value = undo_html;
     } else {
-        JSPLib.notice.notice("End of actions buffer reached.");
+        Notice.notice("End of actions buffer reached.");
     }
     let new_index = Math.min(undo_actions.length - 1, undo_index + 1);
     $text_area.data('undo_index', new_index);
     $text_area.data('undo_saved', false);
-    printer.debuglog('RedoAction', {undo_actions, undo_index, new_index});
+    printer.log('RedoAction', {undo_actions, undo_index, new_index});
     return Boolean(undo_html);
 }
 
 function ClearActions(event) {
-    const printer = JSPLib.debug.getFunctionPrint('ClearActions');
+    const printer = Debug.getFunctionPrint('ClearActions');
     let $text_area = $(event.currentTarget);
     $text_area.data('undo_actions', []);
     $text_area.data('undo_index', 0);
     $text_area.data('undo_saved', false);
-    printer.debuglogLevel('Cleared actions.', JSPLib.debug.DEBUG);
+    printer.logLevel('Cleared actions.', Debug.DEBUG);
 }
 
 function DisplayUploadCommentary(open) {
@@ -718,7 +635,7 @@ function DisplayUploadCommentary(open) {
 //Render functions
 
 function RenderMarkupButton(type, name, config) {
-    let title = JSPLib.utility.displayCase(name);
+    let title = Utility.displayCase(name);
     return `<button title="${title}" name="${name}" type="button" class="dtext-button dtext-${type}" tabindex="-1">${config.content}</button>`;
 }
 
@@ -738,60 +655,50 @@ function RenderSectionControls(type, section_config, button_config, available_co
         button_html += `<div>${html}</div>`;
         let width = (button_length * 40);
         let color = section_config[section].color;
-        let name = (button_length > 1 ? JSPLib.utility.displayCase(section) : "&ensp;");
+        let name = (button_length > 1 ? Utility.displayCase(section) : "&ensp;");
         header_html += `<div style="width: ${width}px; background: ${color};" title="${section}">${name}</div>`;
     }
-    return [header_html, button_html];
+    return {header_html, button_html};
 }
 
 function RenderMarkupControls() {
     if (DS.available_dtext_markup.length === 0 && DS.available_dtext_actions.length === 0) return;
-    let header_html = "";
-    let button_html = "";
+    let header = "";
+    let buttons = "";
     if (DS.available_dtext_markup.length) {
-        let [markup_header, markup_buttons] = RenderSectionControls('markup', MARKUP_SECTION_CONFIG, MARKUP_BUTTON_CONFIG, DS.available_dtext_markup);
-        header_html += `<div>${markup_header}</div>`;
-        button_html += `<div>${markup_buttons}</div>`;
+        let {header_html, button_html} = RenderSectionControls('markup', MARKUP_SECTION_CONFIG, MARKUP_BUTTON_CONFIG, DS.available_dtext_markup);
+        header += `<div>${header_html}</div>`;
+        buttons += `<div>${button_html}</div>`;
     }
     if (DS.available_dtext_actions.length > 0) {
-        let [action_header, action_buttons] = RenderSectionControls('action', ACTION_SECTION_CONFIG, ACTION_BUTTON_CONFIG, DS.available_dtext_actions);
-        header_html += `<div style="margin-left: 10px;">${action_header}</div>`;
-        button_html += `<div style="margin-left: 10px;">${action_buttons}</div>`;
+        let {header_html, button_html} = RenderSectionControls('action', ACTION_SECTION_CONFIG, ACTION_BUTTON_CONFIG, DS.available_dtext_actions);
+        header += `<div style="margin-left: 10px;">${header_html}</div>`;
+        buttons += `<div style="margin-left: 10px;">${button_html}</div>`;
     }
     let width = ((DS.available_dtext_markup.length + DS.available_dtext_actions.length) * 40) + 20;
-    return JSPLib.utility.sprintf(MARKUP_CONTROLS, String(width), header_html, button_html);
+    return MARKUP_CONTROLS({width, header, buttons});
 }
 
 function RenderUploadCommentary(identifier) {
-    let display_name = JSPLib.utility.displayCase(identifier);
-    return JSPLib.utility.regexReplace(UPLOAD_COMMENTARY_DESCRIPTION, {
-        DISPLAY: display_name,
-        IDENTIFIER: identifier,
-    });
+    return UPLOAD_COMMENTARY_DESCRIPTION({identifier, display: Utility.displayCase(identifier)});
 }
 
 function RenderDtextPreview(id, name, value, classes) {
-    return JSPLib.utility.regexReplace(DTEXT_TEXTAREA, {
-        CLASSES: classes,
-        IDENTIFIER: id,
-        NAME: name,
-        VALUE: value,
-    });
+    return DTEXT_TEXTAREA({id, name, value: Template.normalizeText(value), classes});
 }
 
-function RenderPreviewSection(name, has_header=false) {
-    let section_header = (has_header ? `<div class="ds-section-header">${JSPLib.utility.displayCase(name)}</div>` : "");
-    return JSPLib.utility.sprintf(PREVIEW_SECTION, name, section_header);
+function RenderPreviewSection(section) {
+    return PREVIEW_SECTION({section, display: Utility.displayCase(section)});
 }
 
 //Dtext functions
 
 function CSVtoDtextTable(csvtext, has_header) {
-    const printer = JSPLib.debug.getFunctionPrint('CSVtoDtextTable');
+    const printer = Debug.getFunctionPrint('CSVtoDtextTable');
     let tabletext = "";
     let sectiontext = "";
     let csvdata = Papa.parse(csvtext);
-    printer.debuglog('CSVtoDtextTable', {csvdata, has_header});
+    printer.log('CSVtoDtextTable', {csvdata, has_header});
     csvdata.data.forEach((row, i)=>{
         let rowtext = "";
         row.forEach((col)=>{
@@ -837,10 +744,10 @@ function AddTableData(input) {
 
 //Network functions
 
-function GetDtextPreview(body, inline) {
+function GetDtextPreview(body, {inline = false, media_embeds = false} = {}) {
     GetDtextPreview.memoized ??= {};
     if (!(body in GetDtextPreview.memoized)) {
-        GetDtextPreview.memoized[body] = JSPLib.network.post('/dtext_preview', {data: {body, inline, disable_mentions: true, media_embeds: false}});
+        GetDtextPreview.memoized[body] = Network.post('/dtext_preview', {data: {body, inline, disable_mentions: true, media_embeds}});
     }
     return GetDtextPreview.memoized[body];
 }
@@ -879,7 +786,7 @@ function OpenDialog() {
 }
 
 function CommentaryDtextPreview() {
-    const printer = JSPLib.debug.getFunctionPrint('CommentaryDtextPreview');
+    const printer = Debug.getFunctionPrint('CommentaryDtextPreview');
     if (DS.controller === 'posts') {
         let {height} = getComputedStyle(DS.$add_commentary_dialog.get(0));
         DS.$add_commentary_dialog.css({height});
@@ -894,11 +801,11 @@ function CommentaryDtextPreview() {
     (DS.$commentary_input ||= $('.ds-commentary-input')).each((_i, input)=>{
         let {section, part} = $(input).data();
         let preview = {section, part};
-        let inline = preview.inline = [...input.classList].includes('string');
+        let inline = preview.inline = input.classList.contains('string');
         let body = preview.original_body = input.value;
         var promise;
         if (body.trim(/\s+/).length > 0) {
-            promise = GetDtextPreview(body, inline);
+            promise = GetDtextPreview(body, {inline});
         } else {
             promise = Promise.resolve(null);
         }
@@ -922,7 +829,7 @@ function CommentaryDtextPreview() {
                 }
             });
         });
-        printer.debuglog(preview_array);
+        printer.log(preview_array);
     });
     DS.mode = 'preview';
 }
@@ -946,7 +853,7 @@ function GeneralDtextPreview(event) {
     let body = $container.find('.ds-edit-dtext textarea').val() ?? "";
     if (body.trim().length > 0) {
         $preview.html(LOADING_MESSAGE);
-        GetDtextPreview(body, false).then((preview_html) => {
+        GetDtextPreview(body, {media_embeds: true}).then((preview_html) => {
             $preview.html(preview_html);
         });
     }
@@ -1010,35 +917,35 @@ function ResizeDtextPreview(resizes, observer) {
 //Initialize
 
 function InitializeButtons($button_container) {
-    let all_configs = Object.assign({}, MARKUP_BUTTON_CONFIG, ACTION_BUTTON_CONFIG);
+    let all_configs = Utility.mergeObjects(MARKUP_BUTTON_CONFIG, ACTION_BUTTON_CONFIG);
     for (let key in all_configs) {
         let {top, left} = all_configs[key];
         $button_container.find(`button[name=${key}] > *:first-of-type`)
             .css({top, left});
     }
-    $button_container.find('.dtext-markup').on(JSPLib.program.click, DtextMarkup);
-    $button_container.find('.dtext-action').on(JSPLib.program.click, DtextAction);
-    JSPLib.utility.blockActiveElementSwitch('.dtext-markup, .dtext-action');
+    $button_container.find('.dtext-markup').on(JSPLib.event.click, DtextMarkup);
+    $button_container.find('.dtext-action').on(JSPLib.event.click, DtextAction);
+    BlockActiveElementSwitch();
 }
 
 function InitializeAutocomplete(selector) {
-    const printer = JSPLib.debug.getFunctionPrint('InitializeAutocomplete');
-    JSPLib.load.scriptWaitExecute(DS, 'IAC', {
+    const printer = Debug.getFunctionPrint('InitializeAutocomplete');
+    Load.scriptWaitExecute(DS, 'IAC', {
         available: () => {
             DS.IAC.InitializeProgramValues(true);
             DS.IAC.InitializeTextAreaAutocomplete(selector);
-            printer.debuglogLevel(`Initialized IAC textarea autocomplete: ${selector}`, JSPLib.debug.DEBUG);
+            printer.logLevel(`Initialized IAC textarea autocomplete: ${selector}`, Debug.DEBUG);
         },
         fallback: () => {
-            printer.debuglogLevel(`Unable to initialize textarea autocomplete: ${selector}`, JSPLib.debug.DEBUG);
+            printer.logLevel(`Unable to initialize textarea autocomplete: ${selector}`, Debug.DEBUG);
         },
     });
 }
 
 function InitializeDtextPreviews() {
-    const printer = JSPLib.debug.getFunctionPrint('InitializeDtextPreviews');
-    let containers = JSPLib.utility.multiConcat(...DS.dtext_types_handled.map((type) => DTEXT_SELECTORS[type]));
-    let final_selector = JSPLib.utility.joinList(containers, '.', ' .dtext-editor textarea', ', ');
+    const printer = Debug.getFunctionPrint('InitializeDtextPreviews');
+    let containers = Utility.multiConcat(...DS.dtext_types_handled.map((type) => DTEXT_SELECTORS[type]));
+    let final_selector = Utility.joinList(containers, {prefix: '.', suffix: ' .dtext-editor textarea', joiner: ', '});
     let textarea_selectors = [];
     for (let type in DTEXT_SELECTORS) {
         DTEXT_SELECTORS[type].forEach((classname) => {
@@ -1051,14 +958,15 @@ function InitializeDtextPreviews() {
                 let $container = $textarea.closest('.input.dtext');
                 let $form = $container.closest('form');
                 $container.addClass('ds-container');
-                let {id, name} = JSPLib.utility.getAttr(textarea, ['id', 'name']);
+                let {id, name} = Utility.getAttr(textarea, ['id', 'name']);
                 let value = $textarea.val() ?? "";
                 let classes = ($container.find('.dtext-editor-large').length ? 'dtext-editor-large' : "");
                 $container.html(RenderDtextPreview(id, name, value, classes));
                 $container.prepend(RenderMarkupControls());
                 InitializeButtons($container.find('.ds-buttons'));
                 DS.size_observer.observe($container.find('.ds-edit-dtext').get(0));
-                $container.find('.ds-input').on(JSPLib.program.keyup, ClearActions);
+                $textarea = $container.find('.ds-input');
+                $textarea.on(JSPLib.event.keyup, ClearActions);
                 let $controls = $form.children().eq(-1);
                 var $submit_control;
                 if ($controls.get(0).tagName === 'INPUT') {
@@ -1070,8 +978,17 @@ function InitializeDtextPreviews() {
                     $submit_control = $controls.find('input[type=submit]');
                 }
                 $submit_control.after(CONTROL_BUTTONS);
-                $controls.find('.ds-show-preview').on(JSPLib.program.click, GeneralDtextPreview);
-                $controls.find('.ds-edit-preview').on(JSPLib.program.click, GeneralDtextEdit);
+                $controls.find('.ds-show-preview').on(JSPLib.event.click, GeneralDtextPreview);
+                $controls.find('.ds-edit-preview').on(JSPLib.event.click, GeneralDtextEdit);
+                Utility.setPropertyTrap($container.find('.dtext-editor').get(0), 'editor', {
+                    setter: (prop, value) => {
+                        if (prop === 'dtext') {
+                            $textarea.val(value);
+                        }
+                    },
+                    getter: true,
+                    value: {dtext: value},
+                });
             });
         });
     }
@@ -1087,7 +1004,7 @@ function InitializeCommentaryDialog() {
     DS.$add_commentary_dialog.find('#fetch-commentary')
         .after(RenderMarkupControls());
     InitializeButtons(DS.$add_commentary_dialog.find('.ds-buttons'));
-    DS.$preview_display = $('<div></div>');
+    DS.$preview_display = $('<div style="display: none;"></div>');
     DS.$preview_display.append(RenderPreviewSection('original', true));
     DS.$preview_display.append(RenderPreviewSection('translated', true));
     DS.$edit_commentary = $('#edit-commentary').after(DS.$preview_display);
@@ -1098,24 +1015,23 @@ function InitializeCommentaryDialog() {
         });
     });
     //Wait for the dialog to be initialized before performing the final step
-    JSPLib.utility.DOMWaitExecute({
+    Utility.DOMWaitExecute({
         name: "commentary dialog initialization",
         data_check: {
             selector: '#add-commentary-dialog',
             key: 'uiDialog',
         },
         interval: 500,
-        duration: JSPLib.utility.one_second * 15,
+        duration: Utility.one_second * 15,
         found: () => {
-            let buttons = DS.$add_commentary_dialog.dialog('option', 'buttons');
-            buttons = Object.assign(DIALOG_CONFIG, buttons);
+            let buttons = Utility.mergeObjects(DS.$add_commentary_dialog.dialog('option', 'buttons'), DIALOG_CONFIG);
             let dialog_width = Math.max((DS.available_dtext_markup.length + DS.available_dtext_actions.length) * 40 + 50, DS.$add_commentary_dialog.dialog('option', 'width'));
             DS.$add_commentary_dialog.dialog('option', 'buttons', buttons);
             DS.$add_commentary_dialog.dialog('option', 'width', dialog_width);
-            DS.$add_commentary_dialog.on('dialogopen.ds', OpenDialog);
+            DS.$add_commentary_dialog.on(JSPLib.event.dialogopen, OpenDialog);
         },
     });
-    DS.$add_commentary_dialog.find('.ds-input').on(JSPLib.program.keyup, ClearActions);
+    DS.$add_commentary_dialog.find('.ds-input').on(JSPLib.event.keyup, ClearActions);
     InitializeAutocomplete('#edit-commentary .ds-input');
 }
 
@@ -1150,17 +1066,17 @@ function InitializeUploadCommentary() {
             $(`#post_artist_commentary_${section}_${part}`).data({section, part}).addClass('ds-input ds-commentary-input');
         });
     });
-    DS.$preview_button = $('#ds-preview-button').on(JSPLib.program.click, CommentaryDtextPreview);
-    DS.$edit_button = $('#ds-edit-button').on(JSPLib.program.click, CommentaryDtextEdit).hide();
+    DS.$preview_button = $('#ds-preview-button').on(JSPLib.event.click, CommentaryDtextPreview);
+    DS.$edit_button = $('#ds-edit-button').on(JSPLib.event.click, CommentaryDtextEdit).hide();
     let $source_tab_link = $('a.source-tab');
     if ($source_tab_link.hasClass('active-tab')) {
         setOverallContainerHeight();
     } else {
-        $source_tab_link.one(JSPLib.program.click, setOverallContainerHeight);
+        $source_tab_link.one(JSPLib.event.click, setOverallContainerHeight);
     }
-    DS.$edit_commentary.find('.ds-input').on(JSPLib.program.keyup, ClearActions);
+    DS.$edit_commentary.find('.ds-input').on(JSPLib.event.keyup, ClearActions);
     InitializeAutocomplete('.source-tab .ds-input');
-    JSPLib.utility.setPropertyTrap($(".post_artist_commentary_original_description .dtext-editor").get(0), 'editor', {
+    Utility.setPropertyTrap($(".post_artist_commentary_original_description .dtext-editor").get(0), 'editor', {
         setter: (prop, value) => {
             if (prop === 'dtext') {
                 $("#post_artist_commentary_original_description").val(value);
@@ -1173,40 +1089,38 @@ function InitializeUploadCommentary() {
 // Settings functions
 
 function InitializeProgramValues() {
-    Object.assign(DS, {
-        size_observer: new ResizeObserver(ResizeDtextPreview),
-    });
-    JSPLib.load.setProgramGetter(DS, 'IAC', 'IndexedAutocomplete', 29.32);
-    return true;
+    DS.size_observer = new ResizeObserver(ResizeDtextPreview);
+    Load.setProgramGetter(DS, 'IAC', 'IndexedAutocomplete', 29.32);
 }
 
 function RenderSettingsMenu() {
-    $('#dtext-styler').append(JSPLib.menu.renderMenuFramework(MENU_CONFIG));
-    $("#ds-general-settings").append(JSPLib.menu.renderDomainSelectors());
-    $("#ds-main-settings").append(JSPLib.menu.renderInputSelectors('dtext_types_handled', 'checkbox'));
-    $('#ds-commentary-settings').append(JSPLib.menu.renderCheckbox('post_commentary_enabled'));
-    $('#ds-commentary-settings').append(JSPLib.menu.renderCheckbox('upload_commentary_enabled'));
-    $("#ds-controls-settings").append(JSPLib.menu.renderInputSelectors('available_dtext_markup', 'checkbox'));
-    $("#ds-controls-settings").append(JSPLib.menu.renderInputSelectors('available_dtext_actions', 'checkbox'));
-    JSPLib.menu.engageUI(true);
-    JSPLib.menu.saveUserSettingsClick();
-    JSPLib.menu.resetUserSettingsClick();
+    $('#dtext-styler').append(Menu.renderMenuFramework(MENU_CONFIG));
+    $("#ds-general-settings").append(Menu.renderDomainSelectors());
+    $("#ds-main-settings").append(Menu.renderInputSelectors('dtext_types_handled', 'checkbox'));
+    $('#ds-commentary-settings').append(Menu.renderCheckbox('post_commentary_enabled'));
+    $('#ds-commentary-settings').append(Menu.renderCheckbox('upload_commentary_enabled'));
+    $("#ds-controls-settings").append(Menu.renderInputSelectors('available_dtext_markup', 'checkbox'));
+    $("#ds-controls-settings").append(Menu.renderInputSelectors('available_dtext_actions', 'checkbox'));
+    Menu.engageUI({checkboxradio: true});
+    Menu.expandableClick();
+    Menu.saveUserSettingsClick();
+    Menu.resetUserSettingsClick();
 }
 
 //Main program
 
 function Main() {
-    const preload = {
-        run_on_settings: false,
-        default_data: DEFAULT_VALUES,
-        initialize_func: InitializeProgramValues,
-        render_menu_func: RenderSettingsMenu,
+    Load.preloadScript({
         program_css: PROGRAM_CSS,
         light_css: LIGHT_MODE_CSS,
         dark_css: DARK_MODE_CSS,
+    });
+    Menu.preloadMenu({
+        menu_func: RenderSettingsMenu,
         menu_css: MENU_CSS,
-    };
-    if (!JSPLib.menu.preloadScript(DS, preload)) return;
+    });
+    if (!Load.isScriptEnabled() || Menu.isSettingsMenu()) return;
+    InitializeProgramValues();
     if (DS.dtext_types_handled.length) {
         InitializeDtextPreviews();
     }
@@ -1219,21 +1133,20 @@ function Main() {
 
 /****Initialization****/
 
-//Variables for JSPLib
-JSPLib.program_name = PROGRAM_NAME;
-JSPLib.program_shortcut = PROGRAM_SHORTCUT;
-JSPLib.program_data = DS;
+JSPLib.data = DS;
+JSPLib.name = PROGRAM_NAME;
+JSPLib.shortcut = PROGRAM_SHORTCUT;
+JSPLib.default_data = DEFAULT_VALUES;
+JSPLib.settings_config = SETTINGS_CONFIG;
 
-//Variables for debug.js
-JSPLib.debug.mode = false;
-JSPLib.debug.level = JSPLib.debug.INFO;
+Debug.mode = false;
+Debug.level = Debug.INFO;
 
-//Variables for menu.js
-JSPLib.menu.settings_config = SETTINGS_CONFIG;
 
-//Export JSPLib
-JSPLib.load.exportData();
+Load.exportData();
 
 /****Execution start****/
 
-JSPLib.load.programInitialize(Main, {required_variables: PROGRAM_LOAD_REQUIRED_VARIABLES, optional_selectors: PROGRAM_LOAD_OPTIONAL_SELECTORS});
+Load.programInitialize(Main, {required_variables: LOAD_REQUIRED_VARIABLES, optional_selectors: LOAD_OPTIONAL_SELECTORS});
+
+})(JSPLib);
