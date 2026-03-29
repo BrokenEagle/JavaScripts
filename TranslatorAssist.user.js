@@ -686,6 +686,12 @@ const LIGHT_MODE_CSS = Template.normalizeCSS({theme: 'light'})`
 /** Load dialog **/
 .ta-load-sessions {
     border-color: var(--grey-3);
+}
+/** Ruby dialog **/
+.ta-pin.ta-active {
+    color: var(--white);
+    border-color: var(--blue-6);
+    background: var(--blue-4);
 }`;
 
 const DARK_MODE_CSS = Template.normalizeCSS({theme: 'dark'})`
@@ -775,6 +781,12 @@ const DARK_MODE_CSS = Template.normalizeCSS({theme: 'dark'})`
 /** Load dialog **/
 .ta-load-sessions {
     border-color: var(--grey-5);
+}
+/** Ruby dialog **/
+.ta-pin.ta-active {
+    color: var(--white);
+    border-color: var(--blue-6);
+    background: var(--blue-4);
 }`;
 
 const MENU_CSS = `
@@ -2597,10 +2609,11 @@ function OpenLoadDialog(panel) {
 function OpenRubyDialog() {
     if (!TA.$ruby_dialog) {
         TA.$ruby_dialog = $(RenderRubyDialog());
-        TA.$ruby_dialog.find('#ta-ruby-dialog-tabs > .ta-menu-tab').on(JSPLib.program.click, SwitchRubySections);
+        TA.$ruby_dialog.find('#ta-ruby-dialog-tabs > .ta-menu-tab').on(JSPLib.event.click, SwitchRubySections);
         TA.$ruby_dialog.dialog(RUBY_DIALOG_SETTINGS);
-        TA.$pin_button = $("<button/>").button({icons: {primary: "ui-icon-pin-w"}, label: "pin", text: false});
-        TA.$pin_button.css({width: "20px", height: "20px", position: "absolute", right: "28.4px"});
+        TA.$pin_button = $("<button/>").button({label: "pin"});
+        TA.$pin_button.css({width: "40px", height: "20px", padding: '0px', position: "absolute", right: "40px"});
+        TA.$pin_button.addClass('ta-pin');
         TA.$ruby_dialog.parent().children(".ui-dialog-titlebar").append(TA.$pin_button);
         TA.$pin_button.on(JSPLib.event.click, PinRubyDialog);
     }
@@ -3217,13 +3230,13 @@ function PinRubyDialog() {
         pos.top -= $(window).scrollTop();
         $dialog_widget.offset(pos).css({ position: "fixed" });
         TA.$ruby_dialog.dialog("option", "resize", () => { $dialog_widget.css({ position: "fixed" }); });
-        TA.$pin_button.button("option", "icons", {primary: "ui-icon-pin-s"});
+        TA.$pin_button.addClass('ta-active');
     } else {
         pos.left += $(window).scrollLeft();
         pos.top += $(window).scrollTop();
         $dialog_widget.offset(pos).css({ position: "absolute" });
         TA.$ruby_dialog.dialog("option", "resize", () => { /* do nothing */ });
-        TA.$pin_button.button("option", "icons", {primary: "ui-icon-pin-w"});
+        TA.$pin_button.removeClass('ta-active');
     }
 }
 
