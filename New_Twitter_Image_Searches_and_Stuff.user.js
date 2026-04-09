@@ -2794,6 +2794,10 @@ function GetSingleImageInfo(tweet_id) {
 
 //Time functions
 
+function SnowflakeToEpoch(snowflake) {
+    return Number((BigInt(snowflake) >> BigInt(22)) + BigInt('1288834974657'));
+}
+
 function GetPostVersionsExpiration() {
     return NTISAS.recheck_interval * Utility.one_minute;
 }
@@ -2801,6 +2805,23 @@ function GetPostVersionsExpiration() {
 function LogarithmicExpiration(count, max_count, time_divisor, multiplier) {
     let time_exponent = Math.pow(10, (1 / time_divisor));
     return Math.round(Math.log10(time_exponent + (10 - time_exponent) * (count / max_count)) * multiplier);
+}
+
+function TimeRange(timestamp1, timestamp2) {
+    let time_interval = timestamp1 - timestamp2;
+    if (time_interval < Utility.one_hour) {
+        return Utility.setPrecision(time_interval / Utility.one_minute, 2) + " minutes";
+    }
+    if (time_interval < Utility.one_day) {
+        return Utility.setPrecision(time_interval / Utility.one_hour, 2) + " hours";
+    }
+    if (time_interval < Utility.one_month) {
+        return Utility.setPrecision(time_interval / Utility.one_day, 2) + " days";
+    }
+    if (time_interval < Utility.one_year) {
+        return Utility.setPrecision(time_interval / Utility.one_month, 2) + " months";
+    }
+    return Utility.setPrecision(time_interval / Utility.one_year, 2) + " years";
 }
 
 function PostExpiration(created_timestamp) {
@@ -3016,6 +3037,28 @@ function UnhideTweets() {
     if ($hidden_tweets.length) {
         printer.log("Found hidden tweets:", $hidden_tweets.length);
         $hidden_tweets.click();
+    }
+}
+
+function UpdateRanges(tweet_ids) {
+    if (Utility.isArray(tweet_ids)) {
+        let bigint_tweet_ids = tweet_ids.map((tweet_id) => BigInt(tweet_id));
+        let max_id = BigIntMax(...bigint_tweet_ids);
+        let min_id = BigIntMin(...bigint_tweet_ids);
+        let max_timestamp = SnowflakeToEpoch(max_id);
+        let min_timestamp = SnowflakeToEpoch(min_id);
+        let time_range = TimeRange(max_timestamp, min_timestamp);
+        let max_id_str = String(max_id);
+        let min_id_str = String(min_id);
+        let max_timestring = new Date(max_timestamp).toString();
+        let min_timestring = new Date(min_timestamp).toString();
+        $('#ntisas-page-max').html(`<span title="${max_timestring}">${max_id_str}</span>`);
+        $('#ntisas-page-min').html(`<span title="${min_timestring}">${min_id_str}</span>`);
+        $('#ntisas-time-range').text(time_range);
+    } else {
+        $('#ntisas-page-max').text('N/A');
+        $('#ntisas-page-min').text('N/A');
+        $('#ntisas-time-range').text('N/A');
     }
 }
 
@@ -3685,6 +3728,9 @@ function DownloadObject(export_obj, export_name, is_json) {
 function RenderSideMenu() {
     let current_message = (!Storage.checkLocalData('ntisas-recent-timestamp') ? MUST_INSTALL_HELP : UPDATE_RECORDS_HELP);
     return Utility.regexReplace(SIDE_MENU, {
+        MAXIDHELP: RenderHelp('The artwork max on the current page.\nHover to show the time string.'),
+        MINIDHELP: RenderHelp('The artwork min on the current page.\nHover to show the time string.'),
+        TIMERANGEHELP: RenderHelp('The artwork time range on the current page.'),
         SIMILAR_SOURCE: SIMILAR_SOURCE_HTML,
         SIMILAR_SOURCE_HELP: RenderHelp(SIMILAR_SOURCE_HELP),
         CONFIRM_UPLOAD: CONFIRM_UPLOAD_HTML,
@@ -6696,25 +6742,52 @@ function AdjustColorScheme() {
 
 function CollectTweetStats() {
     let are_new = false;
-    let tweets_collected = JSPLib.utility.getObjectAttributes(NTISAS.tweet_stats, 'tweetid');
-    $('[ntisas-tweet]').each((_, entry) => {
-        let tweet_id = String($(entry).data('tweet-id'));
+    let tweets_collected = Utility.getObjectAttributes(NTISAS.tweet_stats, 'tweet_id');
+    let min_tweet_id = null;
+    $('[ntisas-tweet]:not([data-index])').get().reverse().forEach((entry) => {
+        let $entry = $(entry);
+        let tweet_id = BigInt($entry.data('tweet-id'));
         if (tweets_collected.includes(tweet_id)) {
             return;
         }
+        //The first tweet in each reversed batch should be the minimum for that batch.
+        min_tweet_id ??= tweet_id;
         NTISAS.tweet_stats.push({
-            tweetid: tweet_id,
-            retweet: $(entry).data('is-retweet'),
-            video: Boolean($('.ntisas-tweet-video', entry).length),
-            image: Boolean($('.ntisas-tweet-image', entry).length),
+            tweet_id,
+            retweet: $entry.data('is-retweet'),
+            pinned: $entry.data('is-pinned'),
+            video: Boolean($entry.find('.ntisas-tweet-video').length),
+            image: Boolean($entry.find('.ntisas-tweet-image').length),
             replies: GetTweetStat(entry, ['reply']),
             retweets: GetTweetStat(entry, ['retweet', 'unretweet']),
-            favorites: GetTweetStat(entry, ['like', 'unlike'])
+            favorites: GetTweetStat(entry, ['like', 'unlike']),
+            self: entry.classList.contains('ntisas-self-tweet'),
+            chronologic: tweet_id >= min_tweet_id,
         });
         are_new = true;
     });
     if (are_new) {
         InitializeTweetStats(NTISAS.tweet_type1_filter, NTISAS.tweet_type2_filter);
+        let tweet_stats = NTISAS.tweet_stats.filter((stat) => !stat.retweet && stat.chronologic);
+        if (['search', 'hashtag'].includes(NTISAS.page) && NTISAS.params.f === 'live' || ['main', 'replies', 'list'].includes(NTISAS.page)) {
+            tweet_stats = (['main', 'replies'].includes(NTISAS.page) ? tweet_stats.filter((stat) => stat.self && !stat.pinned) : tweet_stats);
+            if (tweet_stats.length) {
+                UpdateRanges(Utility.getObjectAttributes(tweet_stats, 'tweet_id'));
+            }
+        } else if (NTISAS.page === 'home') {
+            let user_id = (Utility.readCookie('twid') ?? "").split('=').at(1);
+            if (user_id) {
+                Storage.retrieveData(`user:${user_id}:rweb.pinnedTimelines`, {bypass_cache: true, database: Storage.localforage}).then((data) => {
+                    if (data?.selected.type === 'home_latest') {
+                        UpdateRanges(Utility.getObjectAttributes(tweet_stats, 'tweet_id'));
+                    } else {
+                        UpdateRanges();
+                    }
+                });
+            }
+        } else {
+            UpdateRanges();
+        }
     }
 }
 
