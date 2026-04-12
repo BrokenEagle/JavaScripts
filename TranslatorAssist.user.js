@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TranslatorAssist
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      7.0
+// @version      7.1
 // @description  Provide information and tools for help with translations.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -231,8 +231,6 @@ const PROGRAM_CSS = Template.normalizeCSS()`
 }
 #ta-side-menu input[type=checkbox]:not(:checked) {
     appearance: none;
-    width: 13px;
-    height: 13px;
 }
 /** Side menu **/
 #ta-side-menu {
