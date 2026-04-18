@@ -124,6 +124,12 @@ Provides additional user interfaces on Twitter/X that facilitates searching imag
 
 https://github.com/BrokenEagle/JavaScripts/wiki/Twitter-Image-Searches-and-Stuff
 
+### New Pixiv Image Searches and Stuff
+
+Provides additional user interfaces on Pixiv that facilitates searching images/IDs for posts on Danbooru, as well as downloading/uploading images/artworks. See the wiki for more details.
+
+https://github.com/BrokenEagle/JavaScripts/wiki/New-Pixiv-Image-Searches-and-Stuff
+
 ## Issues
 
 Submit a Github issue, send a Dmail on Danbooru, or ping me in `#technical` on Danbooru's Discord.
