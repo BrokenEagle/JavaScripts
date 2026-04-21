@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         New Pixiv Image Searches and Stuff
-// @version      2.0
+// @version      2.1
 // @description  Searches Danbooru database for artwork IDs, adds image search links.
 // @match        *://www.pixiv.net/*
 // @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/npisas/New_Pixiv_Image_Searches_and_Stuff.user.js
@@ -586,6 +586,14 @@ div.npisas-menu-loading {
 div.npisas-loading > span {
     font-size: 32px;
     font-weight: bold;
+}
+div.npisas-dialog-error {
+    height: 65vh;
+    span {
+        font-size: 32px;
+        font-weight: bold;
+        color: red;
+    }
 }
 /**MARKERS**/
 div.npisas-marker {
@@ -1654,6 +1662,7 @@ const ILLUST_VIEW_INDICATOR = '<div class="npisas-viewed-marker npisas-illust-ma
 const MENU_LOADING_HTML = '<div class="npisas-menu-loading npisas-loading npisas-flex-center"><span>loading...</span></div>';
 const MENU_UNAVAILABLE_HTML = '<div class="npisas-menu-unavailable">Unavailable on artwork view.</div>';
 const DIALOG_LOADING_HTML = '<div class="npisas-dialog-loading npisas-loading npisas-flex-center"><span>loading...</span></div>';
+const DIALOG_ERROR_HTML = '<div class="npisas-dialog-error npisas-illust-previews npisas-flex-center" data-artwork-id="%s"><span>[ERROR]</span></div>';
 
 //Message constants
 
@@ -3294,6 +3303,11 @@ function InitializeUnified($container, type, image_url, source, index) {
 
 async function InitializePreviewsDialog($dialog, artwork_id, image_url, user_id, tab, force) {
     let page_data = await GetIllustUrls(artwork_id, image_url, force);
+    if (!page_data) {
+        $dialog.children().remove();
+        $dialog.append(Utility.sprintf(DIALOG_ERROR_HTML, artwork_id));
+        return;
+    }
     let danbooru = GetSessionDanbooruResult(artwork_id);
     let local = GetSessionLocalResult(artwork_id);
     let image_count = page_data.page.length;
@@ -3611,22 +3625,27 @@ async function GetIllustUrls(artwork_id, image_url = null, force_network = false
             storage_data = await Storage.checkData('page-' + artwork_id, {max_expires: PAGE_EXPIRES, timeout: Utility.one_second, database: Storage.pixivstorage});
         }
         if (!storage_data || (image_url && storage_data.value.date !== GetImageURLInfo(image_url).date)) {
-            let network_data = await Network.getJSON(`/ajax/illust/${artwork_id}/pages`);
-            if (!network_data.body.error) {
-                let image_info = GetImageURLInfo(network_data.body[0].urls.original);
-                GetIllustUrls.pages[artwork_id] = {
-                    value: {
-                        id: image_info.id,
-                        date: image_info.date,
-                        page: network_data.body,
-                        queried: Date.now(),
-                    },
-                    expires: Utility.getExpires(PAGE_EXPIRES),
-                };
-                SaveData('page-' + artwork_id, GetIllustUrls.pages[artwork_id], 'pixiv');
-                printer.log(artwork_id, GetIllustUrls.pages[artwork_id]);
-            } else {
-                GetIllustUrls.pages[artwork_id] = {};
+            try {
+                let network_data = await Network.getJSON(`/ajax/illust/${artwork_id}/pages`);
+                if (!network_data.body.error) {
+                    let image_info = GetImageURLInfo(network_data.body[0].urls.original);
+                    GetIllustUrls.pages[artwork_id] = {
+                        value: {
+                            id: image_info.id,
+                            date: image_info.date,
+                            page: network_data.body,
+                            queried: Date.now(),
+                        },
+                        expires: Utility.getExpires(PAGE_EXPIRES),
+                    };
+                    SaveData('page-' + artwork_id, GetIllustUrls.pages[artwork_id], 'pixiv');
+                    printer.log(artwork_id, GetIllustUrls.pages[artwork_id]);
+                } else {
+                    return null;
+                }
+            } catch (error) {
+                printer.error("Network error:", error);
+                return null;
             }
         } else {
             GetIllustUrls.pages[artwork_id] = storage_data;
@@ -4170,7 +4189,9 @@ function MenuDownloadControl(event) {
         if (image_count === 1 && $link.find('a[href]').length === 0) {
             $link.addClass('npisas-active');
             GetIllustUrls(artwork_id, image_url).then((page_data) => {
-                UpdateDownloadLink(artwork_id, page_data);
+                if (page_data) {
+                    UpdateDownloadLink(artwork_id, page_data);
+                }
                 $link.removeClass('npisas-active');
             });
         }
@@ -4181,7 +4202,9 @@ function MenuDownloadControl(event) {
     } else if (!NPISAS.confirm_download || confirm("Download all?")) {
         $link.addClass('npisas-active');
         DownloadAll(artwork_id, image_url).then((page_data) => {
-            UpdateDownloadLink(artwork_id, page_data);
+            if (page_data) {
+                UpdateDownloadLink(artwork_id, page_data);
+            }
             $link.removeClass('npisas-active');
         });
     }
@@ -4193,7 +4216,9 @@ function MenuDownloadAlternate(event) {
     if (!NPISAS.confirm_download || confirm("Download all?")) {
         $link.addClass('npisas-active');
         DownloadAll(artwork_id, image_url).then((page_data) => {
-            UpdateDownloadLink(artwork_id, page_data);
+            if (page_data) {
+                UpdateDownloadLink(artwork_id, page_data);
+            }
             $link.removeClass('npisas-active');
         });
     }
@@ -4308,7 +4333,9 @@ function DialogDownloadAll(event) {
     $button.addClass('ui-state-active').attr('disabled', 'disabled');
     DownloadAll(artwork_id).then((page_data) => {
         $button.removeClass('ui-state-active').attr('disabled', null);
-        UpdateDownloadLink(artwork_id, page_data);
+        if (page_data) {
+            UpdateDownloadLink(artwork_id, page_data);
+        }
     });
 }
 
@@ -4334,11 +4361,13 @@ function DialogReloadInfo(event) {
 
 async function DownloadAll(artwork_id, image_url) {
     let data = await GetIllustUrls(artwork_id, image_url);
-    for (let i = 0; i < data.page.length; i++) {
-        let original_url = data.page[i].urls.original;
-        let image_info = GetImageURLInfo(original_url);
-        let download_file = `${image_info.id}_p${image_info.order}.${image_info.ext}`;
-        await DownloadMediaFile(original_url, download_file, image_info.ext);
+    if (data) {
+        for (let i = 0; i < data.page.length; i++) {
+            let original_url = data.page[i].urls.original;
+            let image_info = GetImageURLInfo(original_url);
+            let download_file = `${image_info.id}_p${image_info.order}.${image_info.ext}`;
+            await DownloadMediaFile(original_url, download_file, image_info.ext);
+        }
     }
     return data;
 }
