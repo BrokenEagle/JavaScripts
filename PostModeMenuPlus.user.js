@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://github.com/BrokenEagle
-// @version      10.0
+// @version      10.1
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -28,7 +28,7 @@
 
 /* global $ JSPLib DragSelect */
 
-(({DanbooruProxy, Debug, Notice, Utility, Storage, Template, Network, Danbooru, Load, Menu}) => {
+(({DanbooruProxy, Debug, Notice, Utility, Storage, Template, Network, Danbooru, Load, Menu, jQueryProxy}) => {
 
 const PROGRAM_NAME = 'PostModeMenu';
 const PROGRAM_SHORTCUT = 'pmm';
@@ -36,7 +36,16 @@ const DANBOORU_TOPIC_ID = 21812;
 
 /****Library updates****/
 
-////NONE
+Danbooru.initializeAutocomplete = function (selector, autocomplete_type) {
+    let $fields = jQueryProxy(selector);
+    Utility.setDataAttribute($fields, 'autocomplete', autocomplete_type);
+    if (['tag-edit', 'tag-query'].includes(autocomplete_type)) {
+        $fields.each((_, field) => new DanbooruProxy.Autocomplete(field, "tag_query"));
+    } else {
+        let query_type = autocomplete_type.replaceAll(/-/g, '_');
+        $fields.each((_, field) => new DanbooruProxy.Autocomplete(field, query_type));
+    }
+};
 
 /****Global variables****/
 
@@ -1084,6 +1093,7 @@ function SetupAutocomplete(selector) {
         },
         fallback: () => {
             Danbooru.initializeAutocomplete(selector, 'tag-edit');
+            printer.logLevel(`Initialized fallback autocomplete on ${selector}.`, Debug.DEBUG);
         },
     });
 }
