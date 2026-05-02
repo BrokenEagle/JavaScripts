@@ -894,6 +894,25 @@ function UpdateModeMenu(primary = true) {
     }
 }
 
+function UpdateDockStatus() {
+    let $mode_box = $('#pmm-mode-box');
+    let $placeholder = $('#pmm-placeholder');
+    let $pin_svg = $('#pmm-undock > svg');
+    let {height, width} = getComputedStyle($mode_box.get(0));
+    let pinned = Storage.getLocalData('pmm-pinned', {default_val: false});
+    if (pinned) {
+        $mode_box.css({top: "", left: "", width: "", position: 'relative'});
+        $pin_svg.css('transform', 'rotate(63deg)');
+        $placeholder.hide();
+    } else {
+        let {top, left} = $mode_box.get(0).getBoundingClientRect();
+        $mode_box.css({top, left, width, position: 'fixed'});
+        $pin_svg.css('transform', 'rotate(-27deg)');
+        $placeholder.show();
+    }
+    $('#pmm-placeholder').css('height', height);
+}
+
 function UpdateSelectControls() {
     if (PMM.mode === 'tag-script') {
         $('#pmm-tag-script-field').show();
@@ -1028,6 +1047,7 @@ function InitializeModeMenu() {
         $('#pmm-tag-script-field input').addClass('pmm-long-focus');
     }
     UpdateModeMenu(false);
+    UpdateDockStatus();
 }
 
 function EditDialog(post_ids) {
@@ -1403,23 +1423,9 @@ function ChangeTagScript(event) {
 }
 
 function UndockModeMenu() {
-    let $mode_box = $('#pmm-mode-box');
-    let $placeholder = $('#pmm-placeholder');
-    let $pin_svg = $('#pmm-undock > svg');
-    let {height, width} = getComputedStyle($mode_box.get(0));
-    if (PMM.pinned) {
-        $mode_box.css({top: "", left: "", width: "", position: 'relative'});
-        $pin_svg.css('transform', 'rotate(63deg)');
-        $placeholder.hide();
-        PMM.pinned = false;
-    } else {
-        let {top, left} = $mode_box.get(0).getBoundingClientRect();
-        $mode_box.css({top, left, width, position: 'fixed'});
-        $pin_svg.css('transform', 'rotate(-27deg)');
-        $placeholder.show();
-        PMM.pinned = true;
-    }
-    $('#pmm-placeholder').css('height', height);
+    let pinned = Storage.getLocalData('pmm-pinned', {default_val: false});
+    Storage.setLocalData('pmm-pinned', !pinned);
+    UpdateDockStatus();
 }
 
 function PostUpvote(event) {
