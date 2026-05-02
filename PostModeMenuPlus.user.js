@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://github.com/BrokenEagle
-// @version      10.1
+// @version      10.2
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1342,6 +1342,7 @@ function PreloadPostFavorites() {
 //Event handlers
 
 function PostModeMenu(event) {
+    if (event.ctrlKey || event.shiftKey || event.metaKey) return;
     let $article = $(event.currentTarget).closest("article");
     if (PMM.select_only && DRAGGABLE_MODES.includes(PMM.mode)) {
         $article.toggleClass('pmm-selected');
