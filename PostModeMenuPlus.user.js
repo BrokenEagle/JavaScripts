@@ -1336,35 +1336,56 @@ function PreloadPostFavorites() {
     Load.scriptWaitExecute(PMM, 'DPI', {
         version: false,
         available: () => {
+            printer.log("Checking favorites from DOM.");
+            PreloadFavoritesWithDisplayPostInfo(p);
+        },
+        fallback: () => {
+            printer.log("Loading favorites from network.");
+            PreloadFavoritesFromNetwork(p);
+        },
+    });
+}
+
+function PreloadFavoritesWithDisplayPostInfo(p) {
+    const printer = Debug.getFunctionPrint('PreloadFavoritesWithDisplayPostInfo');
+    Utility.recheckInterval({
+        check: () => ($('.post-preview').toArray().every((entry) => typeof entry.getAttribute('data-is-favorited') === 'string')),
+        success: () => {
             printer.log("Loading favorites from DOM.");
             let post_ids = [];
             $('.post-preview').each((_, entry) => {
                 let $entry = $(entry);
-                let favorited = $entry.data('is-favorited');
-                if (typeof favorited === 'boolean') {
+                let favorited = entry.getAttribute('data-is-favorited');
+                if (['true', 'false'].includes(favorited)) {
                     let post_id = $entry.data('id');
                     post_ids.push(post_id);
-                    PMM.post_favorites[post_id] = favorited;
+                    PMM.post_favorites[post_id] = Boolean(favorited);
                 }
             });
             p.resolve(null);
         },
-        fallback: () => {
+        fail: () => {
             printer.log("Loading favorites from network.");
-            let post_ids = Utility.getDOMArrayDataValues($('.post-preview'), 'id', {parser: Number});
-            if (post_ids.length) {
-                Danbooru.query('favorites', {search: {post_id: post_ids.join(','), user_id: PMM.user_id}, limit: post_ids.length, only: POST_VOTE_FIELDS}).then((post_favorites) => {
-                    let favorite_post_ids = Utility.getObjectAttributes(post_favorites, 'post_id');
-                    post_ids.forEach((post_id) => {
-                        PMM.post_favorites[post_id] = favorite_post_ids.includes(post_id);
-                    });
-                    p.resolve(null);
-                });
-            } else {
-                p.resolve(null);
-            }
+            PreloadFavoritesFromNetwork(p);
         },
+        interval: 250,
+        duration: Utility.one_second * 2,
     });
+}
+
+function PreloadFavoritesFromNetwork(p) {
+    let post_ids = Utility.getDOMArrayDataValues($('.post-preview'), 'id', {parser: Number});
+    if (post_ids.length) {
+        Danbooru.query('favorites', {search: {post_id: post_ids.join(','), user_id: PMM.user_id}, limit: post_ids.length, only: POST_VOTE_FIELDS}).then((post_favorites) => {
+            let favorite_post_ids = Utility.getObjectAttributes(post_favorites, 'post_id');
+            post_ids.forEach((post_id) => {
+                PMM.post_favorites[post_id] = favorite_post_ids.includes(post_id);
+            });
+            p.resolve(null);
+        });
+    } else {
+        p.resolve(null);
+    }
 }
 
 //Event handlers
