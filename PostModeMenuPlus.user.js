@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://github.com/BrokenEagle
-// @version      10.2
+// @version      10.3
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -901,11 +901,19 @@ function UpdateDockStatus() {
     let {height, width} = getComputedStyle($mode_box.get(0));
     let pinned = Storage.getLocalData('pmm-pinned', {default_val: false});
     if (pinned) {
+        Storage.removeLocalData('ntisas-menu-position');
         $mode_box.css({top: "", left: "", width: "", position: 'relative'});
         $pin_svg.css('transform', 'rotate(63deg)');
         $placeholder.hide();
     } else {
-        let {top, left} = $mode_box.get(0).getBoundingClientRect();
+        var top, left;
+        let positions = Storage.getLocalData('ntisas-menu-position');
+        if (Utility.isHash(positions)) {
+            ({top, left} = positions);
+        } else {
+            ({top, left} = $mode_box.get(0).getBoundingClientRect());
+            Storage.setLocalData('ntisas-menu-position', {top, left});
+        }
         $mode_box.css({top, left, width, position: 'fixed'});
         $pin_svg.css('transform', 'rotate(-27deg)');
         $placeholder.show();
