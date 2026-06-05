@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SiteTagSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.1
+// @version      6.2
 // @description  Presents additional site links for the wiki tag(s).
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -477,6 +477,8 @@ function Main() {
     if ($wiki_other_names.length) {
         let $wiki_container = $wiki_other_names.first().parent().parent().parent().parent();
         $wiki_other_names.each((i, entry) => {
+        let $parent_button = $(entry).parent('a.popup-menu-button');
+        if ($parent_button.length) $parent_button.removeClass('popup-menu-button');
             entry.outerHTML = RenderTranslatedTags(entry.innerText, i + 1);
         });
         $wiki_container.prepend(RenderMainTag());
@@ -484,6 +486,11 @@ function Main() {
         let $elem = $('<p class="flex"></p>').prepend(RenderMainTag());
         $('#wiki-page-body, #c-posts #a-index .prose').prepend($elem);
     }
+    $(document).on(JSPLib.event.pointerdown, (event) => {
+        if (event.target.closest('.sts-tag, .sts-collapsible-links, .sts-links')) {
+            event.stopPropagation();
+        }
+    });
     $('.sts-collapsible-links[data-type=source]').on(JSPLib.event.click, SiteLinkToggle('e', 's'));
     $('.sts-collapsible-links[data-type=booru]').on(JSPLib.event.click, SiteLinkToggle('w', 'n'));
     $('.sts-links').on(JSPLib.event.click, (event) => event.stopPropagation());
