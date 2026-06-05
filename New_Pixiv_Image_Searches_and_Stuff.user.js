@@ -3,8 +3,8 @@
 // @version      2.3
 // @description  Searches Danbooru database for artwork IDs, adds image search links.
 // @match        *://www.pixiv.net/*
-// @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/npisas/New_Pixiv_Image_Searches_and_Stuff.user.js
-// @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/npisas/New_Pixiv_Image_Searches_and_Stuff.user.js
+// @downloadURL  https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/New_Pixiv_Image_Searches_and_Stuff.user.js
+// @updateURL    https://raw.githubusercontent.com/BrokenEagle/JavaScripts/master/New_Pixiv_Image_Searches_and_Stuff.user.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js
 // @require      https://cdn.jsdelivr.net/npm/jquery-hotkeys@0.2.2/jquery-hotkeys.min.js
