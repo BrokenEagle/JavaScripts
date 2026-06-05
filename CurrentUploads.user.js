@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CurrentUploads
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      17.1
+// @version      17.2
 // @description  Gives up-to-date stats on uploads.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -29,7 +29,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/danbooru.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/load.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/menu.js
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=donmai.us
+// @icon         https://raw.githubusercontent.com/danbooru/danbooru/refs/heads/master/public/favicon.svg
 // ==/UserScript==
 
 /* global JSPLib $ CanvasJS */

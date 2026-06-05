@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DTextStyler
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.1
+// @version      6.2
 // @description  Danbooru DText UI addon.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -21,7 +21,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/network.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/load.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/menu.js
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=donmai.us
+// @icon         https://raw.githubusercontent.com/danbooru/danbooru/refs/heads/master/public/favicon.svg
 // ==/UserScript==
 
 /* global JSPLib $ Papa */

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IndexedAutocomplete
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      30.1
+// @version      30.2
 // @description  Uses Indexed DB for autocomplete, plus caching of other data.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -26,7 +26,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/danbooru.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/load.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/menu.js
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=donmai.us
+// @icon         https://raw.githubusercontent.com/danbooru/danbooru/refs/heads/master/public/favicon.svg
 // ==/UserScript==
 
 /* global JSPLib $ jQuery */
