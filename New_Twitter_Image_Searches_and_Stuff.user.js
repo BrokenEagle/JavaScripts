@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      12.1
+// @version      12.2
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -32,6 +32,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/network.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/load.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/menu.js
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=donmai.us
 // @resource     jquery_ui_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/jquery_ui_custom.css
 // @resource     jquery_qtip_css https://raw.githubusercontent.com/BrokenEagle/JavaScripts/custom-20190305/custom/qtip_tisas.css
 // @grant        GM_getResourceText

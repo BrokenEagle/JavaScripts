@@ -20,6 +20,7 @@
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/template.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/load.js
 // @require      https://raw.githubusercontent.com/BrokenEagle/JavaScripts/20260225/lib/menu.js
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=donmai.us
 // ==/UserScript==
 
 /* global $ JSPLib */
