@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SiteTagSearches
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      6.0
+// @version      6.1
 // @description  Presents additional site links for the wiki tag(s).
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -122,15 +122,14 @@ const MENU_CONFIG = {
 
 const PROGRAM_CSS = Template.normalizeCSS()`
 .sts-tag {
-    border: 1px solid var(--default-border-color);
     padding: 2px 5px;
     display: flex;
+    align-items: center;
     position: relative;
-    text-align: center;
+    gap: 4px;
 }
 .sts-tag-text {
-    display: inline-block;
-    width: 100%;
+    flex: 1;
     text-align: center;
 }
 .sts-links {
@@ -142,10 +141,10 @@ const PROGRAM_CSS = Template.normalizeCSS()`
     left: 50%;
     transform: translate(-50%);
     &[data-type="source"] {
-        top: 1.55em;
+        top: 1.8em;
     }
     &[data-type="booru"] {
-        bottom: 1.55em;
+        bottom: 1.7em;
     }
     ul.sts-link-list {
         padding: 5px;
@@ -156,23 +155,37 @@ const PROGRAM_CSS = Template.normalizeCSS()`
         }
     }
 }
-/*JQUERY-UI*/
-.ui-icon {
-    display: inline-block;
-    height: 16px;
-    width: 16px;
+.sts-collapsible-links {
+    width: 5px;
+    height: 5px;
+    cursor: pointer;
+    flex-shrink: 0;
+    color: var(--muted-text-color);
 }
-.ui-icon-triangle-1-e {
-    background-position: -32px -14px;
+.sts-triangle:after {
+    content: "▸";
+    font-size: 24px;
+    position: absolute;
 }
-.ui-icon-triangle-1-w {
-    background-position: -100px -14px;
+.sts-triangle-e:after {
+    transform: rotate(0deg);
+    right: -4px;
+    bottom: 5px;
 }
-.ui-icon-triangle-1-n {
-    background-position: -2px -14px;
+.sts-triangle-s:after {
+    transform: rotate(90deg);
+    right: -6px;
+    bottom: 2px;
 }
-.ui-icon-triangle-1-s {
-    background-position: -64px -14px;
+.sts-triangle-w:after {
+    transform: rotate(180deg);
+    left: -3px;
+    bottom: 1px;
+}
+.sts-triangle-n:after {
+    transform: rotate(270deg);
+    left: -4px;
+    bottom: 3px;
 }`;
 
 const MENU_CSS = `
@@ -363,7 +376,7 @@ function RenderSiteLinks(type, searchtag, num) {
 
 function RenderSiteToggle(type, num, direction) {
     if (AnySiteEnabled(type)) {
-        return `<a class="ui-icon sts-collapsible-links ui-icon-triangle-1-${direction}" data-type="${type}" data-id="${num}"></a>`;
+        return `<a class="sts-collapsible-links sts-triangle sts-triangle-${direction}" data-type="${type}" data-id="${num}"></a>`;
     }
     return "";
 }
@@ -372,7 +385,7 @@ function RenderTranslatedTags(tag_name, num) {
     let rendered_source_tags = RenderSiteLinks('source', encodeURIComponent(tag_name), num);
     let source_toggle = RenderSiteToggle('source', num, 'e');
     return `
-<div class="sts-tag">
+<div class="sts-tag" data-type="source" data-id="${num}">
     <span class="sts-tag-text">${tag_name}</span>
     ${source_toggle}
     ${rendered_source_tags}
@@ -386,7 +399,7 @@ function RenderMainTag() {
     let source_toggle = RenderSiteToggle('source', 0, 'e');
     let booru_toggle = RenderSiteToggle('booru', 'a', 'w');
     return `
-<div class="wiki-other-name sts-tag">
+<div class="wiki-other-name sts-tag" data-type="source" data-id="0">
     ${booru_toggle}
     <span class="sts-tag-text">${tag_name}</span>
     ${source_toggle}
@@ -399,10 +412,13 @@ function RenderMainTag() {
 
 function SiteLinkToggle(close_direction, open_direction) {
     return function (event) {
-        let id = $(event.target).data('id');
-        let type = $(event.target).data('type');
-        $(`.sts-collapsible-links[data-type=${type}][data-id=${id}]`).toggleClass(`ui-icon-triangle-1-${close_direction} ui-icon-triangle-1-${open_direction}`);
+        let $target = $(event.currentTarget);
+        let id = $target.data('id');
+        let type = $target.data('type');
+        $(`.sts-collapsible-links[data-type=${type}][data-id=${id}]`).toggleClass(`sts-triangle-${close_direction} sts-triangle-${open_direction}`);
         $(`.sts-links[data-type=${type}][data-id=${id}]`).slideToggle(250);
+        event.preventDefault();
+        event.stopPropagation();
     };
 }
 
@@ -458,7 +474,7 @@ function Main() {
     if (!Load.isScriptEnabled() || Menu.isSettingsMenu() || !IsWikiPage()) return;
     let $wiki_other_names = $('.wiki-other-name');
     if ($wiki_other_names.length) {
-        let $wiki_container = $wiki_other_names.parent();
+        let $wiki_container = $wiki_other_names.first().parent().parent().parent().parent();
         $wiki_other_names.each((i, entry) => {
             entry.outerHTML = RenderTranslatedTags(entry.innerText, i + 1);
         });
@@ -469,6 +485,7 @@ function Main() {
     }
     $('.sts-collapsible-links[data-type=source]').on(JSPLib.event.click, SiteLinkToggle('e', 's'));
     $('.sts-collapsible-links[data-type=booru]').on(JSPLib.event.click, SiteLinkToggle('w', 'n'));
+    $('.sts-links').on(JSPLib.event.click, (event) => event.stopPropagation());
 }
 
 /****Initialization****/
