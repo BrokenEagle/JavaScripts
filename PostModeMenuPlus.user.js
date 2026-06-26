@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://github.com/BrokenEagle
-// @version      10.5
+// @version      11.0
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -56,6 +56,7 @@ const PMM = {};
 
 const DEFAULT_VALUES = {
     pinned: false,
+    draggable: false,
     post_votes: {},
     post_favorites: {},
 };
@@ -172,9 +173,21 @@ article.pmm-selected {
 }
 /**MODE BOX**/
 section#pmm-mode-box {
+    border: 1px solid;
+}
+section#pmm-mode-box.pmm-unpinned {
+    z-index: 100;
+}
+div#pmm-mode-header {
+    height: 1em;
+    border-bottom: 1px solid;
+    section#pmm-mode-box.pmm-unpinned & {
+        cursor: move;
+    }
+}
+div#pmm-mode-content {
     position: relative;
     padding: 5px;
-    border: 1px solid;
 }
 div#pmm-mode-controls {
     display: flex;
@@ -239,8 +252,11 @@ div#pmm-tag-script-field input {
 }
 div#pmm-tag-script-field input.pmm-long-focus:focus {
     width: 95vw;
-    z-index: 10;
+    z-index: 200;
     position: relative;
+    section#pmm-mode-box.pmm-unpinned & {
+        width: 50em;
+    }
 }
 /**APPLY**/
 div#pmm-apply-all button {
@@ -304,6 +320,13 @@ div.pmm-commentary-tag input {
 }`;
 
 const LIGHT_MODE_CSS = Template.normalizeCSS({theme: 'light'})`
+div#pmm-mode-header {
+    background-color: var(--grey-1);
+    border-bottom-color: var(--grey-2);
+    section#pmm-mode-box.pmm-unpinned & {
+        background-color: var(--red-4);
+    }
+}
 article.pmm-selected {
     background-color: var(--grey-1);
     border-color: var(--grey-2);
@@ -400,6 +423,13 @@ div.pmm-commentary-tag.pmm-active.pmm-disabled label {
 }`;
 
 const DARK_MODE_CSS = Template.normalizeCSS({theme: 'dark'})`
+div#pmm-mode-header {
+    background-color: var(--grey-8);
+    border-bottom-color: var(--grey-7);
+    section#pmm-mode-box.pmm-unpinned & {
+        background-color: var(--red-6);
+    }
+}
 article.pmm-selected {
     background-color: var(--grey-8);
     border-color: var(--grey-7);
@@ -528,36 +558,37 @@ const MENU_CSS = `
 
 const MODE_CONTROLS_HTML = Template.normalizeHTML()`
 <section id="pmm-mode-box">
-    <div id="pmm-mode-controls">
-        <div id="pmm-mode-select">
-            <h2>Mode</h2>
-            <select name="mode">%s</select>
-        </div>
-        <div id="pmm-select-controls">
-            <div id="pmm-select-only-input">
-                <label for="pmm-select-only">
-                    Select Only
-                    <input type="checkbox" id="pmm-select-only">
-                </label>
+    <div id="pmm-mode-header"></div>
+    <div id="pmm-mode-content">
+        <div id="pmm-mode-controls">
+            <div id="pmm-mode-select">
+                <h2>Mode</h2>
+                <select name="mode">%s</select>
             </div>
-            <div id="pmm-selection-buttons">
-                <button class="pmm-select" data-type="all">All</button>
-                <button class="pmm-select" data-type="none">None</button>
-                <button class="pmm-select" data-type="invert">Invert</button>
+            <div id="pmm-select-controls">
+                <div id="pmm-select-only-input">
+                    <label for="pmm-select-only">
+                        Select Only
+                        <input type="checkbox" id="pmm-select-only">
+                    </label>
+                </div>
+                <div id="pmm-selection-buttons">
+                    <button class="pmm-select" data-type="all">All</button>
+                    <button class="pmm-select" data-type="none">None</button>
+                    <button class="pmm-select" data-type="invert">Invert</button>
+                </div>
             </div>
         </div>
+        <div id="pmm-tag-script-field">
+            <input placeholder="Enter tag script" style="margin: 0.25em 0;" autocomplete="off" id="tag-script-field">
+        </div>
+        <div id="pmm-apply-all">
+            <button>Apply</button>
+        </div>
+        <button id="pmm-undock" title="pin">
+            <svg x="0" y="0" viewBox="0 0 128 128" style="transform: rotate(63deg);" width="18" height="18"><style>.st0,.st1{display:none;fill:#191919}.st1,.st4{fill-rule:evenodd;clip-rule:evenodd}.st4,.st5{display:inline;fill:#191919}</style><g id="row2"><path id="nav:4_1_" d="M36.1 55.8 75.9 76c4.9 2.5 6.8 8.4 4.3 13.2-2.5 4.8-8.5 6.7-13.4 4.2L26.9 73.2c-4.9-2.5-6.8-8.4-4.3-13.2s8.6-6.7 13.5-4.2zm1.8 28.5 13.3 6.8L23.9 127l14-42.7zM68.2 2l33.7 17.1c4.1 2.1 5.8 7.1 3.6 11.2-2.1 4.1-7.2 5.7-11.4 3.6L60.5 16.7c-4.1-2.1-5.8-7.1-3.6-11.2C59 1.5 64.1-.1 68.2 2zm7.9 69.1c2.3-6.8 5.4-14 9.2-21.1 2.1-4 4.3-7.8 6.6-11.4l-34-17.3c-1.7 3.9-3.5 7.9-5.6 11.9-3.8 7.2-7.9 13.8-12.2 19.6l36 18.3z" style="fill-rule:evenodd;clip-rule:evenodd;fill:#191919"></path></g></svg>
+        </button>
     </div>
-    <div id="pmm-tag-script-field">
-        <input placeholder="Enter tag script" style="margin: 0.25em 0;" autocomplete="off" id="tag-script-field">
-    </div>
-    <div id="pmm-apply-all">
-        <button>Apply</button>
-    </div>
-    <button id="pmm-undock" title="pin">
-        <svg x="0" y="0" viewBox="0 0 128 128" style="transform: rotate(63deg);" width="18" height="18"><style>.st0,.st1{display:none;fill:#191919}.st1,.st4{fill-rule:evenodd;clip-rule:evenodd}.st4,.st5{display:inline;fill:#191919}</style><g id="row2"><path id="nav:4_1_" d="M36.1 55.8 75.9 76c4.9 2.5 6.8 8.4 4.3 13.2-2.5 4.8-8.5 6.7-13.4 4.2L26.9 73.2c-4.9-2.5-6.8-8.4-4.3-13.2s8.6-6.7 13.5-4.2zm1.8 28.5 13.3 6.8L23.9 127l14-42.7zM68.2 2l33.7 17.1c4.1 2.1 5.8 7.1 3.6 11.2-2.1 4.1-7.2 5.7-11.4 3.6L60.5 16.7c-4.1-2.1-5.8-7.1-3.6-11.2C59 1.5 64.1-.1 68.2 2zm7.9 69.1c2.3-6.8 5.4-14 9.2-21.1 2.1-4 4.3-7.8 6.6-11.4l-34-17.3c-1.7 3.9-3.5 7.9-5.6 11.9-3.8 7.2-7.9 13.8-12.2 19.6l36 18.3z" style="fill-rule:evenodd;clip-rule:evenodd;fill:#191919"></path></g></svg>
-    </button>
-</section>
-<section id="pmm-placeholder" style="display: none;">
 </section>`;
 
 const EDIT_DIALOG_HTML = Template.normalizeHTML()`
@@ -897,7 +928,6 @@ function UpdateModeMenu(primary = true) {
 
 function UpdateDockStatus() {
     let $mode_box = $('#pmm-mode-box');
-    let $placeholder = $('#pmm-placeholder');
     let $pin_svg = $('#pmm-undock > svg');
     let {height, width} = getComputedStyle($mode_box.get(0));
     let pinned = Storage.getLocalData('pmm-pinned', {default_val: false});
@@ -905,19 +935,29 @@ function UpdateDockStatus() {
         Storage.removeLocalData('ntisas-menu-position');
         $mode_box.css({top: "", left: "", width: "", position: 'relative'});
         $pin_svg.css('transform', 'rotate(63deg)');
-        $placeholder.hide();
+        if (PMM.draggable) {
+            $mode_box.removeClass('pmm-unpinned');
+            $mode_box.draggable('destroy');
+            PMM.draggable = false;
+        }
     } else {
         var top, left;
         let positions = Storage.getLocalData('ntisas-menu-position');
         if (Utility.isHash(positions)) {
             ({top, left} = positions);
         } else {
-            ({top, left} = $mode_box.get(0).getBoundingClientRect());
-            Storage.setLocalData('ntisas-menu-position', {top, left});
+            ({top, left} = SaveLastPosition());
         }
-        $mode_box.css({top, left, width, position: 'fixed'});
+        $mode_box.css({top, left});
         $pin_svg.css('transform', 'rotate(-27deg)');
-        $placeholder.show();
+        if (!PMM.draggable) {
+            $mode_box.addClass('pmm-unpinned');
+            $mode_box.draggable({
+                handle: '#pmm-mode-header',
+                stop: SaveLastPosition,
+            });
+            PMM.draggable = true;
+        }
     }
     $('#pmm-placeholder').css('height', height);
 }
@@ -1427,6 +1467,12 @@ function BatchApply() {
     let $selected_posts = $('.pmm-selected');
     let post_ids = Utility.getDOMArrayDataValues($selected_posts, 'id', {parser: Number});
     MenuFunctions(post_ids);
+}
+
+function SaveLastPosition() {
+    let {top, left} = $('#pmm-mode-box').get(0).style;
+    Storage.setLocalData('ntisas-menu-position', {top, left});
+    return {top, left};
 }
 
 function SaveTagScript(event) {
