@@ -312,6 +312,21 @@ button#pmm-undock > span {
 #pmm-commentary-dialog > div {
     margin-bottom: 0.5em;
 }
+#pmm-commentary-selector {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    width: 100%;
+}
+#pmm-commentary-selector > div {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+#pmm-fetch-post,
+#pmm-fetch-source {
+    width: 100%;
+}
 #pmm-commentary-dialog textarea {
     height: 15em;
 }
@@ -642,12 +657,28 @@ const EDIT_DIALOG_HTML = Template.normalizeHTML()`
 
 const COMMENTARY_DIALOG_HTML = Template.normalizeHTML()`
 <div id="pmm-commentary-dialog">
-    <div id="pmm-fetch">
-        <label>Post ID</label>
-        <input type="text" placeholder="Enter a post ID" autocomplete="off">
-        <button name="post" title="Loads the commentary of the post ID entered.">Fetch post</button>
-        <button name="parent" title="Loads the parent post's commentary amongst all of the selected posts.">Fetch parent</button>
-        <button name="pool" title="Loads the first post's commentary of a pool amongst all of the selected posts.">Fetch pool</button>
+    <div id="pmm-commentary-selector">
+        <div id="pmm-commentary-from">
+            <label for="commentary_source" class="whitespace-nowrap">From</label>
+            <select name="commentary_source_type" id="commentary_source_type">
+                <option value="post">Post</option>
+                <option value="source">Source</option>
+            </select>
+        </div>
+        <div id="pmm-fetch-post">
+            <input type="text" placeholder="Enter a post ID" autocomplete="off">
+            <label class="whitespace-nowrap">Fetch</label>
+            <div style="display: flex;">
+                <button name="post" title="Loads the commentary of the post ID entered.">Post</button>
+                <button name="parent" title="Loads the parent post's commentary amongst all of the selected posts.">Parent</button>
+                <button name="pool" title="Loads the first post's commentary of a pool amongst all of the selected posts.">Pool</button>
+            </div>
+        </div>
+        <div id="pmm-fetch-source" style="display: none;">
+            <input type="text" placeholder="Enter a source" autocomplete="off">
+            <input type="hidden">
+            <button name="source" title="Fetches the commentary from a source and appends it to the current commentary.">Fetch</button>
+        </div>
     </div>
     <div class="pmm-commentary-input">
         <label for="pmm-artist-commentary-original-title">Original title</label>
@@ -817,6 +848,10 @@ function DisableCommentaryInterface() {
     PMM.commentary_dialog.find('input, button, textarea').attr('disabled', 'disabled');
     PMM.commentary_dialog.find('.pmm-commentary-tag').addClass('pmm-disabled');
     $('#pmm-commentary-submit').attr('disabled', 'disabled');
+}
+
+function CommentarySourceCheck(url, description) {
+    return new RegExp(`^Source: ${url}$`, 'm').test(description);
 }
 
 function GetCurrentScriptID() {
@@ -1107,6 +1142,13 @@ function RenderPostModeMenuAddons() {
     return html;
 }
 
+function RenderSourceURL(url) {
+return `
+[tn]
+Source: ${url}
+[/tn]`.trim();
+}
+
 //Initialize functions
 
 function InitializeModeMenu() {
@@ -1181,9 +1223,20 @@ function CommentaryDialog(post_ids) {
             open: CommentaryDialogOpen,
             close: CommentaryDialogClose,
         }, COMMENTARY_DIALOG_SETTINGS));
-        PMM.commentary_dialog.find('#pmm-fetch button[name=post]').on(JSPLib.event.click, FetchPostCommentary);
-        PMM.commentary_dialog.find('#pmm-fetch button[name=parent]').on(JSPLib.event.click, FetchParentCommentary);
-        PMM.commentary_dialog.find('#pmm-fetch button[name=pool]').on(JSPLib.event.click, FetchPoolCommentary);
+        PMM.commentary_dialog.find('#pmm-commentary-from').on(JSPLib.event.change, () => {
+            let value = PMM.commentary_dialog.find('#pmm-commentary-from select').val();
+            if (value === 'post') {
+                $('#pmm-fetch-source').hide();
+                $('#pmm-fetch-post').show();
+            } else {
+                $('#pmm-fetch-post').hide();
+                $('#pmm-fetch-source').show();
+            }
+        });
+        PMM.commentary_dialog.find('#pmm-fetch-post button[name=post]').on(JSPLib.event.click, FetchPostCommentary);
+        PMM.commentary_dialog.find('#pmm-fetch-post button[name=parent]').on(JSPLib.event.click, FetchParentCommentary);
+        PMM.commentary_dialog.find('#pmm-fetch-post button[name=pool]').on(JSPLib.event.click, FetchPoolCommentary);
+        PMM.commentary_dialog.find('#pmm-fetch-source button[name=source]').on(JSPLib.event.click, FetchSourceCommentary);
         PMM.commentary_dialog.find('.pmm-commentary-tag input').on(JSPLib.event.change, ChangeCommentaryTag);
         PMM.commentary_dialog.closest('.pmm-dialog').find('.ui-button').each((_, entry) => {
             let button_id = 'pmm-commentary-' + entry.innerText.toLowerCase();
@@ -1373,6 +1426,54 @@ function GetCommentary(post_id) {
                 PMM.commentary_dialog.find(`[name="${field}"]`).val(artist_commentary[field]);
             });
             UpdateCommentaryDialogTags(artist_commentary.post.tag_string_meta);
+        } else {
+            Notice.error("No commentary found.");
+        }
+    });
+}
+
+function GetSource(input_url) {
+    const printer = Debug.getFunctionPrint('GetSource');
+    printer.logLevel(input_url, Debug.DEBUG);
+    return Danbooru.query(`source`, {url: input_url, expires_in: '300s'}).then((data) => {
+        printer.logLevel(data, Debug.INFO);
+        if (data.artist_commentary.dtext_title.length || data.artist_commentary.dtext_description.length) {
+            let original_url = $('#pmm-fetch-source input[type=hidden]').val();
+            for (let type of ['original', 'translated']) {
+                let $title = $(`#pmm-artist-commentary-${type}-title`);
+                let $description = $(`#pmm-artist-commentary-${type}-description`);
+                let title = $title.val();
+                let description = $description.val();
+                if (type === 'original' && CommentarySourceCheck(description, input_url)) {
+                    Notice.error("Commentary already added!");
+                    return false;
+                }
+                if (type === 'original' && title.length === 0 && description.length === 0) {
+                    $title.val(data.artist_commentary.dtext_title);
+                    description = data.artist_commentary.dtext_description + '\n\n' + RenderSourceURL(input_url);
+                    $description.val(description);
+                    break;
+                }
+                if (type === 'translated' && title.length === 0 && description.length === 0) return;
+                let $input = $(`#pmm-artist-commentary-${type}-description`);
+                description = $input.val();
+                if (!CommentarySourceCheck(description, original_url)) {
+                    if (description.length) {
+                        description += '\n\n' + RenderSourceURL(original_url);
+                    } else {
+                        description = RenderSourceURL(original_url);
+                    }
+                    description += '\n\n';
+                }
+                if (data.artist_commentary.dtext_title.length) {
+                    description += `h6. ${data.artist_commentary.dtext_title}\n\n`;
+                }
+                if (data.artist_commentary.dtext_description.length) {
+                    description += data.artist_commentary.dtext_description;
+                }
+                description += '\n\n' + RenderSourceURL(input_url);
+                $input.val(description);
+            }
         } else {
             Notice.error("No commentary found.");
         }
@@ -1707,6 +1808,23 @@ function FetchPoolCommentary() {
     });
 }
 
+function FetchSourceCommentary() {
+    let input_url = $('#pmm-fetch-source input[type=text]').val();
+    let original_url = $('#pmm-fetch-source input[type=hidden]').val();
+    let original_description = $(`#pmm-artist-commentary-original-description`).val();
+    let already_added = input_url === original_url || new RegExp(`^Source: ${input_url}$`, 'm').test(original_description);
+    if (!already_added) {
+        Notice.notice("Checking source.");
+        DisableCommentaryInterface();
+        GetSource(input_url, original_url).then(() => {
+            Notice.notice("Commentary fetched.");
+            EnableCommentaryInterface();
+        });
+    } else {
+        Notice.error("Commentary already added.");
+    }
+}
+
 function ChangeCommentaryTag(event) {
     $('.pmm-commentary-tag').removeClass('pmm-active');
     $(event.currentTarget).closest('.pmm-commentary-tag').addClass('pmm-active');
@@ -1745,6 +1863,10 @@ function CommentaryDialogOpen() {
                 EnableCommentaryInterface();
             });
         }
+        $('#pmm-fetch-post input').val(PMM.commentary_post_ids[0]);
+        Danbooru.query('posts/' + PMM.commentary_post_ids[0], {only: 'source', expires_in: '300s'}).then((data) => {
+            $('#pmm-fetch-source input').val(data.source);
+        });
     }
 }
 
