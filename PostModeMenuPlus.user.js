@@ -113,12 +113,12 @@ const SETTINGS_CONFIG = {
     long_searchbar_enabled: {
         reset: false,
         validate: Utility.isBoolean,
-        hint: "Adds additional CSS which repositions the searchbar and has it span the entire screen."
+        hint: "Extends the searchbar input when focused."
     },
     long_tagscript_enabled: {
         reset: false,
         validate: Utility.isBoolean,
-        hint: "Adds additional CSS which makes the tagscript bar span the entire screen when selected."
+        hint: "Extends the tagscript input when focused."
     },
     highlight_errors_enabled: {
         reset: false,
@@ -129,6 +129,11 @@ const SETTINGS_CONFIG = {
         reset: true,
         validate: Utility.isBoolean,
         hint: "Turns on being able to drag select, allowing multiple posts to be processed at once."
+    },
+    mode_searchbar_enabled: {
+        reset: false,
+        validate: Utility.isBoolean,
+        hint: "Adds a searchbar to the mode box."
     },
 };
 
@@ -268,6 +273,28 @@ div#pmm-apply-all button {
 }
 div#pmm-apply-all button:disabled {
     cursor: default;
+}
+/**SEARCH BAR**/
+div#pmm-search-bar {
+    display: flex;
+    white-space: nowrap;
+    align-items: center;
+    gap: 5px;
+}
+div#pmm-search-bar label {
+    font-weight: bold;
+}
+div#pmm-search-bar form,
+div#pmm-search-bar input {
+    width: 100%;
+}
+div#pmm-search-bar input.pmm-long-focus:focus {
+    width: 92vw;
+    z-index: 200;
+    position: relative;
+    section#pmm-mode-box.pmm-unpinned & {
+        width: 50em;
+    }
 }
 /**PIN**/
 button#pmm-undock {
@@ -588,6 +615,12 @@ const MODE_CONTROLS_HTML = Template.normalizeHTML()`
         <button id="pmm-undock" title="pin">
             <svg x="0" y="0" viewBox="0 0 128 128" style="transform: rotate(63deg);" width="18" height="18"><style>.st0,.st1{display:none;fill:#191919}.st1,.st4{fill-rule:evenodd;clip-rule:evenodd}.st4,.st5{display:inline;fill:#191919}</style><g id="row2"><path id="nav:4_1_" d="M36.1 55.8 75.9 76c4.9 2.5 6.8 8.4 4.3 13.2-2.5 4.8-8.5 6.7-13.4 4.2L26.9 73.2c-4.9-2.5-6.8-8.4-4.3-13.2s8.6-6.7 13.5-4.2zm1.8 28.5 13.3 6.8L23.9 127l14-42.7zM68.2 2l33.7 17.1c4.1 2.1 5.8 7.1 3.6 11.2-2.1 4.1-7.2 5.7-11.4 3.6L60.5 16.7c-4.1-2.1-5.8-7.1-3.6-11.2C59 1.5 64.1-.1 68.2 2zm7.9 69.1c2.3-6.8 5.4-14 9.2-21.1 2.1-4 4.3-7.8 6.6-11.4l-34-17.3c-1.7 3.9-3.5 7.9-5.6 11.9-3.8 7.2-7.9 13.8-12.2 19.6l36 18.3z" style="fill-rule:evenodd;clip-rule:evenodd;fill:#191919"></path></g></svg>
         </button>
+        <div id="pmm-search-bar" style="display: none">
+            <label for="pmm-search-box-form">Search</label>
+            <form id="pmm-search-box-form" action="/posts" accept-charset="UTF-8" method="get">
+                <input type="text" name="tags" id="pmm-tags" value="" autocomplete="off">
+            </form>
+        </div>
     </div>
 </section>`;
 
@@ -1092,8 +1125,16 @@ function InitializeModeMenu() {
     $("#pmm-select-only").prop('checked', PMM.select_only);
     $('#pmm-tag-script-field input').val(GetCurrentTagScript());
     SetupAutocomplete('#pmm-tag-script-field input');
+    if (PMM.mode_searchbar_enabled) {
+        $('#pmm-tags').val($('#tags').val());
+        $('#pmm-search-bar').show();
+        SetupAutocomplete('#pmm-tags');
+    }
     if (PMM.long_tagscript_enabled) {
         $('#pmm-tag-script-field input').addClass('pmm-long-focus');
+    }
+    if (PMM.long_searchbar_enabled) {
+        $('#pmm-search-bar input').addClass('pmm-long-focus');
     }
     UpdateModeMenu(false);
     UpdateDockStatus();
@@ -1878,6 +1919,7 @@ function RenderSettingsMenu() {
     $("#pmm-network-settings").append(Menu.renderTextinput('maximum_concurrent_requests', 10));
     $('#pmm-network-settings').append(Menu.renderCheckbox('highlight_errors_enabled'));
     $('#pmm-select-settings').append(Menu.renderCheckbox('drag_select_enabled'));
+    $('#pmm-interface-settings').append(Menu.renderCheckbox('mode_searchbar_enabled'));
     $('#pmm-interface-settings').append(Menu.renderCheckbox('long_searchbar_enabled'));
     $('#pmm-interface-settings').append(Menu.renderCheckbox('long_tagscript_enabled'));
     $('#pmm-controls').append(Menu.renderCacheEditor({name: 'Cache data'}));
