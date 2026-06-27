@@ -552,6 +552,13 @@ const CHECKLIST_BUTTON = Template.normalizeHTML()`
     <button id="irt-checklist-query" class="irt-checklist-button" title="Query checklist only.">Checklist</button>
 </div>`;
 
+//Regex constants
+
+const METATAGS_REGEX = /^(?:rating|-?parent|source|-?locked|-?pool|newpool|-?fav|child|-?favgroup|upvote|downvote):/i;
+const TYPETAGS_REGEX = /^-?(?:general|gen|artist|art|copyright|copy|co|character|char|ch|meta):/i;
+const NEGATIVE_REGEX = /^-/;
+const STRIPTYPE_REGEX = /^(-?)(?:general:|gen:|artist:|art:|copyright:|copy:|co:|character:|char:|ch:|meta:)?(.*)/i;
+
 //Time constants
 
 const PRUNE_EXPIRES = Utility.one_day;
@@ -771,6 +778,33 @@ function SetupMutationReplaceObserver(remove_class, func) {
         childList: true,
     });
 };
+
+function GetTagList() {
+    let tag_string = $("#upload_tag_string,#post_tag_string").val() ?? "";
+    let normalized_tags = tag_string.split(/[\s\n]+/).map((tag) => tag.toLowerCase());
+    let nonempty_tags = Utility.filterRegex(normalized_tags, /[\s\S]+/);
+    return nonempty_tags;
+}
+
+function GetNegativetags(array) {
+    return Utility.filterRegex(array, NEGATIVE_REGEX, {negated: false}).map((value) => value.substring(1));
+}
+
+function TransformTypetags(array) {
+    return array.map((value) => value.match(STRIPTYPE_REGEX).splice(1).join(''));
+}
+
+function NormalizeTags(array) {
+    return array.map((entry) => entry.replace(/^-/, ''));
+}
+
+function GetCurrentTags() {
+    let tag_list = GetTagList();
+    if (!IRT.user_settings.include_metatags) {
+        tag_list = Utility.filterRegex(tag_list, METATAGS_REGEX, {negated: true});
+    }
+    return TransformTypetags(tag_list);
+}
 
 //Render functions
 
@@ -1145,6 +1179,44 @@ function RelatedTagsScroll(event) {
     $related_tags.prop('scrollLeft', current_left);
 }
 
+function CaptureTagSubmission() {
+    let post_edit_tags = GetCurrentTags();
+    let new_recent_tags = NormalizeTags(post_edit_tags);
+    let positive_tags = Utility.filterRegex(post_edit_tags, NEGATIVE_REGEX, {negated: true});
+    let negative_tags = GetNegativetags(post_edit_tags);
+    let user_remove_tags = Utility.arrayDifference(IRT.pre_edit_tags, positive_tags);
+    console.log('CaptureTagSubmission-1', {post_edit_tags, new_recent_tags: [...new_recent_tags], positive_tags, negative_tags, user_remove_tags});
+    if (!IRT.include_unchanged_tags) {
+        let existing_tags = Utility.arrayIntersection(IRT.pre_edit_tags, positive_tags);
+        let unchanged_tags = Utility.arrayDifference(existing_tags, negative_tags);
+        new_recent_tags = Utility.arrayDifference(new_recent_tags, unchanged_tags);
+        console.log('CaptureTagSubmission-2', {new_recent_tags: [...new_recent_tags], existing_tags, unchanged_tags});
+    }
+    if (!IRT.include_removed_tags) {
+        let removed_tags = Utility.arrayUnion(user_remove_tags, negative_tags);
+        new_recent_tags = Utility.arrayDifference(new_recent_tags, removed_tags);
+        console.log('CaptureTagSubmission-3a', {new_recent_tags: [...new_recent_tags], removed_tags});
+    } else {
+        new_recent_tags = new_recent_tags.concat(user_remove_tags);
+        console.log('CaptureTagSubmission-3b', {new_recent_tags: [...new_recent_tags]});
+    }
+    switch(IRT.tag_order) {
+        case "alphabetic":
+            new_recent_tags.sort();
+            break;
+        case "post_count":
+        case "category":
+            Storage.setLocalData('irt-new-recent-tags', new_recent_tags);
+            new_recent_tags = []; //IRT.recent_tags;
+            break;
+        case "form_order":
+        default:
+            //Do nothing
+    }
+    Debug.log("New recent tags:", new_recent_tags);
+    //AddRecentTags(new_recent_tags);
+}
+
 function ViewChecklistTag() {
     let import_export = $('#irt-enable-import-export').prop('checked');
     if (import_export) {
@@ -1473,6 +1545,66 @@ function SetupInitializations() {
         duration: Utility.one_second * 10,
     });
     $(document).on('danbooru:close-post-edit-dialog.irt', QueueRelatedTagColumnWidths);
+    //$("#form").on('submit.irt', CaptureTagSubmission);
+}
+
+async function CheckAllRecentTags() {
+    if (!JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'recent')) {
+        RecheckDisplaySemaphore("recent");
+        return;
+    }
+    let original_recent_tags = JSPLib.utility.dataCopy(RTC.recent_tags);
+    RTC.saved_recent_tags = [];
+    let tag_list = RTC.recent_tags.concat(RTC.pinned_tags);
+    if (RTC.tag_order === "post_count" || RTC.tag_order === "category") {
+        RTC.saved_recent_tags = JSPLib.storage.checkStorageData('rtc-new-recent-tags',ValidateProgramData,localStorage,[]);
+        tag_list = JSPLib.utility.arrayUnion(tag_list,RTC.saved_recent_tags);
+    }
+    if (RTC.user_settings.list_type[0] === "multiple") {
+        RTC.other_recent.forEach((recent_entry)=>{
+            tag_list = JSPLib.utility.arrayUnion(tag_list,recent_entry.tags);
+        });
+    }
+    RTC.missing_recent_tags = await CheckMissingTags(FilterMetatags(tag_list), "Recent");
+    if (!RTC.user_settings.include_deleted_tags) {
+        FilterDeletedTags();
+    }
+    if ((RTC.tag_order === "post_count" || RTC.tag_order === "category") && RTC.saved_recent_tags.length) {
+        SortTagData(RTC.saved_recent_tags,RTC.tag_order);
+    }
+    JSPLib.storage.removeStorageData('rtc-new-recent-tags', localStorage);
+    if (JSPLib.utility.arraySymmetricDifference(original_recent_tags,RTC.recent_tags).length || RTC.saved_recent_tags.length) {
+        AddRecentTags(RTC.saved_recent_tags);
+    }
+    JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT, 'recent');
+}
+
+function AddRecentTags(newtags) {
+    switch (RTC.user_settings.list_type[0]) {
+        case "multiple":
+            RTC.was_upload = JSPLib.storage.checkStorageData('rtc-was-upload',ValidateProgramData,localStorage,false);
+            if (newtags.length && RTC.recent_tags.length) {
+                RTC.other_recent.unshift({
+                    was_upload: RTC.was_upload,
+                    tags: RTC.recent_tags
+                });
+                RTC.other_recent = RTC.other_recent.slice(0,RTC.user_settings.maximum_tag_groups);
+                JSPLib.storage.setStorageData('rtc-other-recent',RTC.other_recent,localStorage);
+            }
+            JSPLib.storage.setStorageData('rtc-was-upload',RTC.is_upload,localStorage);
+            //falls through
+        case "single":
+            if (newtags.length) {
+                RTC.recent_tags = newtags;
+            }
+            break;
+        case "queue":
+        default:
+            RTC.recent_tags = JSPLib.utility.concatUnique(newtags,RTC.recent_tags);
+    }
+    RTC.recent_tags = RTC.recent_tags.slice(0,RTC.user_settings.maximum_tags);
+    JSPLib.storage.setStorageData('rtc-recent-tags',RTC.recent_tags,localStorage);
+    RTC.channel.postMessage({type: "reload_recent", recent_tags: RTC.recent_tags, pinned_tags: RTC.pinned_tags, other_recent: RTC.other_recent, new_recent_tags: newtags});
 }
 
 function CleanupTasks() {
@@ -1520,6 +1652,9 @@ function InitializeMenuAutocomplete() {
 }
 
 function InitializeProgramValues() {
+    Utility.assignObjects(IRT, {
+        pre_edit_tags: GetTagList(),
+    });
     Load.setProgramGetter(IRT, 'IAC', 'IndexedAutocomplete', 29.25);
     return true;
 }
@@ -1612,7 +1747,7 @@ JSPLib.shortcut = PROGRAM_SHORTCUT;
 JSPLib.data_regex = PROGRAM_DATA_REGEX;
 JSPLib.settings_config = SETTINGS_CONFIG;
 
-Debug.mode = false;
+Debug.mode = true;
 Debug.level = Debug.INFO;
 
 Menu.data_key = OptionCacheDataKey;
@@ -1622,6 +1757,7 @@ Storage.indexedDBValidator = ValidateEntry;
 Storage.localSessionValidator = ValidateProgramData;
 
 Load.exportData();
+Load.exportFuncs({debug_list: [CaptureTagSubmission]});
 
 /****Execution start****/
 

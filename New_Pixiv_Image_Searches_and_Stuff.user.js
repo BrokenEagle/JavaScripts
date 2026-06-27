@@ -2163,7 +2163,7 @@ const AI_TAGS = [
     'ai_generated', 'ai_generated_art', 'ai_image', 'aiart', 'aiartists', 'aigenerated', 'aigeneratedart', 'aigirl', 'ai绘画', 'anything_v3',
     'cuteAI', 'midjourneyv61', 'nai3', 'nanobanana', 'nijijourney', 'nijijourneyv5', 'novelai', 'にじジャーニー', 'アイ', 'aigc',
     'AI-assisted', 'AI補助', 'AI+手書き', 'ai辅助绘画', 'ai辅助', 'aiassisted', 'ai_assisted', 'イラストAI加筆あり', 'イラストAI加筆',
-    'AI制作', 'Illustrious', 'IllustriousXL', 'AI着色補助',
+    'AI制作', 'Illustrious', 'IllustriousXL', 'AI着色補助', '一部AI', 'ai_gen', 'aihentai',
 ];
 
 const GOLD_LEVEL = 30;

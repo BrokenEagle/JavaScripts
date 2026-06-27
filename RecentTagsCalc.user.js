@@ -63,15 +63,12 @@ const localstorage_keys = [
     'rtc-pinned-tags',
     'rtc-recent-tags',
     'rtc-other-recent',
-    'rtc-frequent-tags',
-    'rtc-frequent-tags-expires',
     'rtc-was-upload',
 ];
 const PROGRAM_RESET_KEYS = {
     pinned_tags: [],
     recent_tags: [],
     other_recent: [],
-    frequent_tags: [],
     tag_data: {},
 };
 
@@ -148,21 +145,12 @@ const SETTINGS_CONFIG = {
         validate: JSPLib.validate.isBoolean,
         hint: "Does not filter out unaliased tags with a post count of 0."
     },
-    cache_frequent_tags: {
-        reset: true,
-        validate: JSPLib.validate.isBoolean,
-        hint: "Saves the user's favorite tags locally."
-    }
 };
 
 const all_source_types = ['indexed_db','local_storage'];
 const all_data_types = ['tag_data', 'tag_alias', 'custom'];
 
 const CONTROL_CONFIG = {
-    refresh_frequent_tags: {
-        value: "Click to refresh",
-        hint: "Gets the latest favorite tags from the user's profile.",
-    },
     cache_info: {
         value: "Click to populate",
         hint: "Calculates the cache usage of the program and compares it to the total usage.",
@@ -203,12 +191,8 @@ const MENU_CONFIG = {
         name: 'list',
     },{
         name: 'inclusion',
-    },{
-        name: 'frequent',
     }],
-    controls: [{
-        name: 'frequent',
-    }],
+    controls: [],
 };
 
 const DEFAULT_VALUES = PROGRAM_RESET_KEYS;
@@ -342,16 +326,6 @@ const INCLUSION_SETTINGS_DETAILS = `
     </li>
 </ul>`;
 
-const FREQUENT_SETTINGS_DETAILS = `
-<ul>
-    <li><b>Cache frequent tags:</b>
-        <ul>
-            <li>Makes for quicker loading of recent/frequent tags.</li>
-            <li>Tags are automatically refreshed once a week.</li>
-        </ul>
-    </li>
-</ul>`;
-
 const CACHE_DATA_DETAILS = `
 <ul>
     <li><b>Tag data (tag):</b> Used to determine a tag's post count and category.</li>
@@ -380,20 +354,12 @@ const PROGRAM_DATA_DETAILS = `
             <li><b>process-semaphore-recent:</b> Prevents two tabs from processing the same recent data at the same time.</li>
         </ul>
     </li>
-    <li>Frequent tags
-        <ul>
-            <li><b>frequent-tags:</b> List of all favorite tags from the user.</li>
-            <li><b>frequent-tags-expires:</b> When to next query the user's profile.</li>
-            <li><b>process-semaphore-frequent:</b> Prevents two tabs from processing the same frequency data at the same time.</li>
-        </ul>
-    </li>
 </ul>`;
 
 //Expirations
 const prune_expires = JSPLib.utility.one_day;
 const noncritical_recheck = JSPLib.utility.one_minute;
 const tag_expires = JSPLib.utility.one_week;
-const frequent_tags_expires = JSPLib.utility.one_week;
 
 //Tag regexes
 const negative_regex = /^-/;
@@ -491,9 +457,7 @@ function ValidateProgramData(key,entry) {
             checkerror = JSPLib.menu.validateUserSettings(entry,SETTINGS_CONFIG);
             break;
         case 'rtc-prune-expires':
-        case 'rtc-frequent-tags-expires':
         case 'rtc-process-semaphore-recent':
-        case 'rtc-process-semaphore-frequent':
             if (!Number.isInteger(entry)) {
                 checkerror = ["Value is not an integer."];
             }
@@ -505,7 +469,6 @@ function ValidateProgramData(key,entry) {
             break;
         case 'rtc-recent-tags':
         case 'rtc-pinned-tags':
-        case 'rtc-frequent-tags':
             maximum_validator = (key === 'rtc-recent-tags' ? {maximum: RTC.user_settings.maximum_tags} : undefined);
             if (!JSPLib.validate.validateIsArray(key,entry,maximum_validator)) {
                 return false;
@@ -599,7 +562,7 @@ function GetTagData(tag) {
 
 function GetTagColumnList(name) {
     if (name === "frequent") {
-        return RTC.frequent_tags;
+        //To remove
     } else if (name === "recent") {
         let all_tags = RTC.recent_tags;
         if (RTC.user_settings.list_type[0] === "multiple") {
@@ -640,24 +603,12 @@ async function DisplayRecentTags() {
     $(".recent-related-tags-column .ui-icon").on(PROGRAM_CLICK,PinnedTagsToggle);
 }
 
-async function DisplayFrequentTags() {
-    await RTC.pageload_frequentcheck;
-    let $tag_column = $(".rtc-user-related-tags-columns .frequent-related-tags-column");
-    let html = RenderTaglist(RTC.frequent_tags,"Frequent");
-    $tag_column.html(html);
-    $tag_column.removeClass("is-empty-true").addClass("is-empty-false");
-    Danbooru.RelatedTag.update_selected();
-}
-
 function RecheckAndDisplay(name) {
     JSPLib.storage.batchStorageCheck(FilterMetatags(GetTagColumnList(name)),ValidateEntry,tag_expires,'tag')
     .then(()=>{
         switch(name) {
             case "recent":
                 DisplayRecentTags();
-                break;
-            case "frequent":
-                DisplayFrequentTags();
                 break;
             default:
                 //do nothing
@@ -701,13 +652,6 @@ ${html.slice(0,-1)}
 }
 
 //Event handlers
-
-function ReloadFrequentTags(event) {
-    QueryFrequentTags().then(()=>{
-        JSPLib.notice.notice(`${PROGRAM_NAME}: Frequent tags reloaded!`);
-    });
-    event.preventDefault();
-}
 
 function PinnedTagsToggle(event) {
     $(event.target).toggleClass("ui-icon-radio-off ui-icon-pin-s");
@@ -899,64 +843,6 @@ function AddRecentTags(newtags) {
     RTC.channel.postMessage({type: "reload_recent", recent_tags: RTC.recent_tags, pinned_tags: RTC.pinned_tags, other_recent: RTC.other_recent, new_recent_tags: newtags});
 }
 
-////Frequent tags
-
-async function LoadFrequentTags() {
-    if (!RTC.userid) {
-        //User must have an account to have frequent tags
-        return;
-    }
-    if (RTC.user_settings.cache_frequent_tags) {
-        RTC.frequent_tags = JSPLib.storage.checkStorageData('rtc-frequent-tags',ValidateProgramData,localStorage,[]);
-        if (JSPLib.concurrency.checkTimeout('rtc-frequent-tags-expires',frequent_tags_expires)) {
-            if (JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'frequent')) {
-                await QueryFrequentTags();
-                JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT, 'frequent');
-            } else {
-                return false;
-            }
-        }
-    } else {
-        if (RTC.controller === 'posts' && RTC.action === 'show') {
-            await new Promise((resolve)=>{
-                $(document).one("rtc:get-frequent-tags", () => resolve(null));
-            });
-        }
-        await QueryFrequentTags();
-    }
-    return true;
-}
-
-async function QueryFrequentTags() {
-    let user_account = await JSPLib.danbooru.submitRequest('users',{search: {id: RTC.userid}, only: user_fields, expires_in: '300s'});
-    if (!user_account || user_account.length === 0) {
-        //Should never get here, but just in case
-        return;
-    }
-    RTC.frequent_tags = user_account[0].favorite_tags.split(/\s+/).map((tag) => tag.trim());
-    this.debug('log',"Found tags:",RTC.frequent_tags);
-    if (RTC.user_settings.cache_frequent_tags) {
-        JSPLib.storage.setStorageData('rtc-frequent-tags',RTC.frequent_tags,localStorage);
-        JSPLib.concurrency.setRecheckTimeout('rtc-frequent-tags-expires',frequent_tags_expires);
-    } else {
-        JSPLib.storage.removeStorageData('rtc-frequent-tags', localStorage);
-    }
-    RTC.channel.postMessage({type: "reload_frequent", frequent_tags: RTC.frequent_tags});
-}
-
-async function CheckAllFrequentTags() {
-    let status = await LoadFrequentTags();
-    if (!status) {
-        return;
-    }
-    if (JSPLib.concurrency.reserveSemaphore(PROGRAM_SHORTCUT, 'frequent')) {
-        RTC.missing_frequent_tags = await CheckMissingTags(RTC.frequent_tags, "Frequent");
-        JSPLib.concurrency.freeSemaphore(PROGRAM_SHORTCUT, 'frequent');
-    } else {
-        RecheckDisplaySemaphore("frequent");
-    }
-}
-
 ////Other
 
 function CleanupTasks() {
@@ -1000,6 +886,23 @@ function RebindShowRelatedTags() {
     }
 }
 
+function SetupInitializations() {
+    JSPLib.utility.recheckTimer({
+        check: () => (($('#related-tags-container .ai-tags-related-tags-column .tag-list').html() || "").trim() !== ""),
+        exec: () => {
+            console.log("SetupInitializations", "Related tags found... initializing.");
+        },
+        fail: () => {
+            console.log("SetupInitializations", "Related tags not found... setting up event listener.");
+            $(document)
+                .on('danbooru:open-post-edit-tab.rtc danbooru:open-post-edit-dialog.rtc', () => {
+                    console.log("SetupInitializations", "Event listener triggered... initializing.");
+                    $(document).off('danbooru:open-post-edit-tab.rtc danbooru:open-post-edit-dialog.rtc');
+                });
+        },
+    }, 250, JSPLib.utility.one_second * 10);
+}
+
 //Settings functions
 
 function BroadcastRTC(ev) {
@@ -1019,10 +922,6 @@ function BroadcastRTC(ev) {
             RTC.recent_tags = ev.data.recent_tags;
             RTC.other_recent = ev.data.other_recent;
             !RTC.is_setting_menu && RecheckAndDisplay("recent");
-            break;
-        case "reload_frequent":
-            RTC.frequent_tags = ev.data.frequent_tags;
-            !RTC.is_setting_menu && RecheckAndDisplay("frequent");
             //falls through
         default:
             //do nothing
@@ -1060,9 +959,8 @@ function InitializeProgramValues() {
         JSPLib.storage.removeStorageData('rtc-other-recent', localStorage);
         JSPLib.storage.removeStorageData('rtc-was-upload', localStorage);
     }
-    RTC.pageload_recentcheck = CheckAllRecentTags();
-    RTC.pageload_frequentcheck = CheckAllFrequentTags();
-    JSPLib.load.setProgramGetter(RTC, 'IAC', 'IndexedAutocomplete');
+    //RTC.pageload_recentcheck = CheckAllRecentTags();
+    //JSPLib.load.setProgramGetter(RTC, 'IAC', 'IndexedAutocomplete');
     return true;
 }
 
@@ -1084,9 +982,6 @@ function RenderSettingsMenu() {
     $("#rtc-inclusion-settings").append(JSPLib.menu.renderCheckbox('include_unchanged_tags'));
     $("#rtc-inclusion-settings").append(JSPLib.menu.renderCheckbox('include_removed_tags'));
     $("#rtc-inclusion-settings").append(JSPLib.menu.renderCheckbox('include_deleted_tags'));
-    $('#rtc-frequent-settings-message').append(JSPLib.menu.renderExpandable("Additional setting details", FREQUENT_SETTINGS_DETAILS));
-    $("#rtc-frequent-settings").append(JSPLib.menu.renderCheckbox('cache_frequent_tags'));
-    $("#rtc-frequent-controls").append(JSPLib.menu.renderLinkclick('refresh_frequent_tags', true));
     $('#rtc-controls').append(JSPLib.menu.renderCacheControls());
     $('#rtc-cache-controls-message').append(JSPLib.menu.renderExpandable("Cache Data details", CACHE_DATA_DETAILS));
     $("#rtc-cache-controls").append(JSPLib.menu.renderLinkclick('cache_info', true));
@@ -1104,7 +999,6 @@ function RenderSettingsMenu() {
         $(`#rtc-select-uploads-order-${type}`).checkboxradio("disable");
         $(`#rtc-select-post-edits-order-${type}`).checkboxradio("disable");
     });
-    $("#rtc-control-refresh-frequent-tags").on(PROGRAM_CLICK, ReloadFrequentTags);
     JSPLib.menu.saveUserSettingsClick();
     JSPLib.menu.resetUserSettingsClick(localstorage_keys);
     JSPLib.menu.cacheInfoClick();
@@ -1132,11 +1026,11 @@ function Main() {
         menu_css: MENU_CSS,
     };
     if (!JSPLib.menu.preloadScript(RTC, RenderSettingsMenu, preload)) return;
-    RebindShowRelatedTags();
-    InitializeRelatedTagColumns();
-    DisplayRecentTags();
-    DisplayFrequentTags();
-    $("#form").on('submit.rtc', CaptureTagSubmission);
+    SetupInitializations();
+    //RebindShowRelatedTags();
+    //InitializeRelatedTagColumns();
+    //DisplayRecentTags();
+    //$("#form").on('submit.rtc', CaptureTagSubmission);
     JSPLib.utility.setCSSStyle(program_css,'program');
     JSPLib.statistics.addPageStatistics(PROGRAM_NAME);
     JSPLib.load.noncriticalTasks(CleanupTasks);
@@ -1145,21 +1039,21 @@ function Main() {
 /****Function decoration****/
 
 [
-    Main,BroadcastRTC,QueryFrequentTags,CaptureTagSubmission,SortTagData,FilterDeletedTags,
+    Main,BroadcastRTC,CaptureTagSubmission,SortTagData,FilterDeletedTags,
     QueryMissingTags,CheckMissingTags,RecheckDisplaySemaphore,ValidateEntry,
 ] = JSPLib.debug.addFunctionLogs([
-    Main,BroadcastRTC,QueryFrequentTags,CaptureTagSubmission,SortTagData,FilterDeletedTags,
+    Main,BroadcastRTC,CaptureTagSubmission,SortTagData,FilterDeletedTags,
     QueryMissingTags,CheckMissingTags,RecheckDisplaySemaphore,ValidateEntry,
 ]);
 
 [
     RenderSettingsMenu,CaptureTagSubmission,
-    CheckAllRecentTags,CheckAllFrequentTags,QueryFrequentTags,CheckMissingTags,
+    CheckAllRecentTags,CheckMissingTags,
 ] = JSPLib.debug.addFunctionTimers([
     //Sync
     RenderSettingsMenu,CaptureTagSubmission,
     //Async
-    CheckAllRecentTags,CheckAllFrequentTags,QueryFrequentTags,
+    CheckAllRecentTags,
     [CheckMissingTags, 1],
 ]);
 
