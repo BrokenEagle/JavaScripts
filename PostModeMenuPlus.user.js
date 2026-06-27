@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://github.com/BrokenEagle
-// @version      11.1
+// @version      11.2
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -308,6 +308,11 @@ button#pmm-undock > span {
     width: 16px;
     display: inline-block;
 }
+/**PLACEHOLDER**/
+section#pmm-placeholder {
+    border: 1px solid;
+    cursor: pointer;
+}
 /**COMMENTARY**/
 #pmm-commentary-dialog > div {
     margin-bottom: 0.5em;
@@ -434,6 +439,7 @@ button#pmm-undock:hover {
 }
 section#pmm-placeholder {
     background-color: var(--grey-1);
+    border-color: var(--grey-3);
 }
 div.pmm-commentary-tag label {
     border-color: var(--grey-2);
@@ -535,6 +541,7 @@ button#pmm-undock:hover {
 }
 section#pmm-placeholder {
     background-color: var(--grey-8);
+    border-color: var(--grey-6);
 }
 div.pmm-commentary-tag label {
     border-color: var(--grey-5);
@@ -637,7 +644,8 @@ const MODE_CONTROLS_HTML = Template.normalizeHTML()`
             </form>
         </div>
     </div>
-</section>`;
+</section>
+<section id="pmm-placeholder" style="display: none;" title="Click to redock the mode menu."></section>`;
 
 const EDIT_DIALOG_HTML = Template.normalizeHTML()`
 <div id="pmm-edit-dialog">
@@ -996,13 +1004,15 @@ function UpdateModeMenu(primary = true) {
 
 function UpdateDockStatus() {
     let $mode_box = $('#pmm-mode-box');
+    let $placeholder = $('#pmm-placeholder');
     let $pin_svg = $('#pmm-undock > svg');
     let {height, width} = getComputedStyle($mode_box.get(0));
-    let pinned = Storage.getLocalData('pmm-pinned', {default_val: false});
+    let pinned = Storage.getLocalData('pmm-pinned', {default_val: true});
     if (pinned) {
         Storage.removeLocalData('pmm-menu-position');
         $mode_box.css({top: "", left: "", width: "", position: 'relative'});
         $pin_svg.css('transform', 'rotate(63deg)');
+        $placeholder.hide();
         if (PMM.draggable) {
             $mode_box.removeClass('pmm-unpinned');
             $mode_box.draggable('destroy');
@@ -1016,8 +1026,9 @@ function UpdateDockStatus() {
         } else {
             ({top, left} = SaveLastPosition());
         }
-        $mode_box.css({top, left});
+        $mode_box.css({top, left, width, position: 'fixed'});
         $pin_svg.css('transform', 'rotate(-27deg)');
+        $placeholder.show();
         if (!PMM.draggable) {
             $mode_box.addClass('pmm-unpinned');
             $mode_box.draggable({
@@ -1167,6 +1178,7 @@ function InitializeModeMenu() {
     $("#pmm-select-only").prop('checked', PMM.select_only);
     $('#pmm-tag-script-field input').val(GetCurrentTagScript());
     SetupAutocomplete('#pmm-tag-script-field input');
+    $('#pmm-placeholder').on(JSPLib.event.click, ResetDockStatus);
     if (PMM.mode_searchbar_enabled) {
         $('#pmm-tags').val($('#tags').val());
         $('#pmm-search-bar').show();
@@ -1612,7 +1624,7 @@ function BatchApply() {
 }
 
 function SaveLastPosition() {
-    let {top, left} = $('#pmm-mode-box').get(0).style;
+    let {top, left} = $('#pmm-mode-box').get(0).getBoundingClientRect();
     Storage.setLocalData('pmm-menu-position', {top, left});
     return {top, left};
 }
@@ -1641,8 +1653,13 @@ function ChangeTagScript(event) {
 }
 
 function UndockModeMenu() {
-    let pinned = Storage.getLocalData('pmm-pinned', {default_val: false});
+    let pinned = Storage.getLocalData('pmm-pinned', {default_val: true});
     Storage.setLocalData('pmm-pinned', !pinned);
+    UpdateDockStatus();
+}
+
+function ResetDockStatus() {
+    Storage.setLocalData('pmm-pinned', true);
     UpdateDockStatus();
 }
 
