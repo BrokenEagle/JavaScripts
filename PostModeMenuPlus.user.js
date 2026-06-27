@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PostModeMenu+
 // @namespace    https://github.com/BrokenEagle
-// @version      11.0
+// @version      11.1
 // @description  Provide additional functions on the post mode menu.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1000,7 +1000,7 @@ function UpdateDockStatus() {
     let {height, width} = getComputedStyle($mode_box.get(0));
     let pinned = Storage.getLocalData('pmm-pinned', {default_val: false});
     if (pinned) {
-        Storage.removeLocalData('ntisas-menu-position');
+        Storage.removeLocalData('pmm-menu-position');
         $mode_box.css({top: "", left: "", width: "", position: 'relative'});
         $pin_svg.css('transform', 'rotate(63deg)');
         if (PMM.draggable) {
@@ -1010,7 +1010,7 @@ function UpdateDockStatus() {
         }
     } else {
         var top, left;
-        let positions = Storage.getLocalData('ntisas-menu-position');
+        let positions = Storage.getLocalData('pmm-menu-position');
         if (Utility.isHash(positions)) {
             ({top, left} = positions);
         } else {
@@ -1613,7 +1613,7 @@ function BatchApply() {
 
 function SaveLastPosition() {
     let {top, left} = $('#pmm-mode-box').get(0).style;
-    Storage.setLocalData('ntisas-menu-position', {top, left});
+    Storage.setLocalData('pmm-menu-position', {top, left});
     return {top, left};
 }
 
