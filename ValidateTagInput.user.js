@@ -649,12 +649,14 @@ function RebindHotkey() {
     Utility.DOMWaitExecute({
         name: "rebind hotkey",
         namespace_check: {
-            root: '#post_tag_string',
+            root: document,
             eventtype: 'keydown',
             namespace: 'danbooru.submit_form',
+            selector: 'input[type="text"], textarea',
             presence: true,
         },
         found () {
+            $(document).off("keydown.danbooru.submit_form", 'input[type="text"], textarea');
             $('#upload_tag_string, #post_tag_string').off("keydown.danbooru.submit").off("keydown.danbooru.submit_form").on(JSPLib.event.keydown, null, "ctrl+return", (event) => {
                 $("#validate-tags").click();
                 event.preventDefault();
