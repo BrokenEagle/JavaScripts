@@ -205,6 +205,11 @@ const SETTINGS_CONFIG = {
         validate: Utility.isBoolean,
         hint: "Not implemented yet."
     },
+    auto_load_size: {
+        reset: false,
+        validate: Utility.isBoolean,
+        hint: "Automatically loads the sizes in the previews dialog."
+    }
 };
 
 //CSS constants
@@ -785,6 +790,9 @@ a.npisas-preview-selector {
 }
 div.npisas-preview-info span.npisas-image-size.npisas-load-size {
     color: orange;
+    &.npisas-initial {
+        color: green;
+    }
 }
 div.npisas-preview-search div.npisas-image-search-menu span.npisas-control-search {
     border-left-color: #AAA;
@@ -965,6 +973,9 @@ a.npisas-preview-selector {
 }
 div.npisas-preview-info span.npisas-image-size.npisas-load-size {
     color: orange;
+    &.npisas-initial {
+        color: green;
+    }
 }
 div.npisas-preview-search div.npisas-image-search-menu span.npisas-control-search {
     border-left-color: #666;
@@ -3227,14 +3238,20 @@ function InitializeGridArtwork(artwork) {
     let $preview_controls = $artwork.find('.npisas-preview-controls');
     //Container
     let $container = $(RenderMiniMenu(artwork_id, image_count, image_url));
-    if (image_count === 1) {
-        GetData('page-' + artwork_id, 'pixiv').then((storage_data) => {
-            let image_info = GetImageURLInfo(image_url);
-            if (storage_data && storage_data.value.date === image_info.date) {
+    GetData('page-' + artwork_id, 'pixiv').then((storage_data) => {
+        let image_info = GetImageURLInfo(image_url);
+        if (storage_data && storage_data.value.date === image_info.date) {
+            if (image_count === 1) {
                 UpdateDownloadLink(artwork_id, storage_data.value);
             }
-        });
-    }
+            UpdateSourcesButton(artwork_id);
+        }
+    });
+    GetData('info-' + artwork_id, 'pixiv').then((storage_data) => {
+        if (storage_data) {
+            UpdateInfoButton(artwork_id);
+        }
+    });
     GetDanbooruResult(artwork_id).then((danbooru) => {
         InitializeResult($container, 'danbooru', image_url, danbooru);
     });
@@ -3334,7 +3351,7 @@ async function InitializePreviewsDialog($dialog, artwork_id, image_url, user_id,
         $img_container.find(`.npisas-preview-${tab}`).show();
         $images.append($img_container);
         if (source !== null && image_info.type === 'image') {
-            InitializeInfoSize($img_container, url_data.urls.original);
+            InitializeInfoSize($img_container.find('.npisas-image-size'), url_data.urls.original);
         }
     });
     if (image_count > 1) {
@@ -3347,19 +3364,33 @@ async function InitializePreviewsDialog($dialog, artwork_id, image_url, user_id,
         $section.find('.npisas-preview-selectors').hide();
         UpdateDownloadLink(artwork_id, page_data);
     }
+    UpdateSourcesButton(artwork_id);
     $dialog.children().remove();
     $dialog.append($section);
 }
 
-function InitializeInfoSize($img_container, original_url) {
-    GetPixivImageSize(original_url).then((size) => {
-        let $link = $img_container.find('.npisas-image-size');
-        if (size > 0) {
-            $link.text(`${Utility.readableBytes(size)}`);
-        } else {
-            $link.addClass('npisas-load-size').html('<span class="npisas-link">load size</span>');
+function InitializeInfoSize($link, original_url, manual = false) {
+    if (NPISAS.auto_load_size || manual) {
+        GetPixivImageSize(original_url).then((size) => {
+            if (size > 0) {
+                $link.text(`${Utility.readableBytes(size)}`);
+            } else {
+                $link.addClass('npisas-load-size').removeClass('npisas-initial').html('<span class="npisas-link">load size</span>');
+            }
+        });
+        if ($link.hasClass('npisas-load-size')) {
+            $link.text('loading...');
         }
-    });
+    } else {
+        Storage.checkData('image-size-' + original_url, {validator: () => true, max_expires: Utility.one_month, database: Storage.pixivstorage}).then((data) => {
+            if (data) {
+                $link.text(`${Utility.readableBytes(data.value)}`);
+            } else {
+                $link.addClass('npisas-load-size npisas-initial').html('<span class="npisas-link">load size</span>');
+            }
+        });
+        $link.text('loading...');
+    }
 }
 
 //Dialog functions
@@ -3423,6 +3454,7 @@ function ShowInfoDialog(artwork_id) {
             printer.log(illust_data);
             $dialog.children().remove();
             $dialog.append(RenderInfoDialog(illust_data));
+            UpdateInfoButton(artwork_id);
         });
         $dialog.dialog(INFO_DIALOG_SETTINGS);
         NPISAS.info_dialog[artwork_id] = $dialog;
@@ -3492,6 +3524,18 @@ function UpdateDownloadLink(artwork_id, page_data) {
     let $menu = $(`.npisas-artwork-menu[data-artwork-id="${artwork_id}"]`);
     $menu.find('.npisas-control-download a').attr('href', page_data.page[0].urls.original);
     $menu.find('.npisas-control-download').addClass('npisas-download-set');
+}
+
+function UpdateSourcesButton(artwork_id) {
+    let $menu = $(`.npisas-artwork-menu[data-artwork-id="${artwork_id}"]`);
+    $menu.find('.npisas-danbooru-results').addClass('npisas-page-available');
+    $menu.find('.npisas-danbooru-results').css('background-color', '#CFF');
+}
+
+function UpdateInfoButton(artwork_id) {
+    let $menu = $(`.npisas-artwork-menu[data-artwork-id="${artwork_id}"]`);
+    $menu.find('.npisas-show-info').addClass('npisas-info-available');
+    $menu.find('.npisas-show-info').css('color', 'blue');
 }
 
 //Database functions
@@ -4374,21 +4418,26 @@ async function DownloadAll(artwork_id, image_url) {
 }
 
 function PreviewLoadSize(event) {
+    console.log('PreviewLoadSize', event);
     let {$link, original_url} = GetPreviewPreload(event);
-    let ajax_options = {
-        beforeSend (request) {
-            request.setRequestHeader('referer', 'https://www.pixiv.net/');
-        },
-    };
-    Network.getData(original_url, {ajax_options}).then((data) => {
-        if (Utility.isInteger(data?.size)) {
-            Storage.saveData('image-size-' + original_url, {expires: Utility.getExpires(Utility.one_month), value: data.size}, {database: Storage.pixivstorage});
-            $link.text(Utility.readableBytes(data.size));
-        } else {
-            $link.text('(error)').css('color', 'red');
-        }
-    });
-    $link.removeClass('npisas-load-size').text('(loading...)');
+    if ($link.hasClass('npisas-initial')) {
+        InitializeInfoSize($link, original_url, true);
+    } else {
+        let ajax_options = {
+            beforeSend (request) {
+                request.setRequestHeader('referer', 'https://www.pixiv.net/');
+            },
+        };
+        Network.getData(original_url, {ajax_options}).then((data) => {
+            if (Utility.isInteger(data?.size)) {
+                Storage.saveData('image-size-' + original_url, {expires: Utility.getExpires(Utility.one_month), value: data.size}, {database: Storage.pixivstorage});
+                $link.text(Utility.readableBytes(data.size));
+            } else {
+                $link.text('(error)').css('color', 'red');
+            }
+        });
+        $link.removeClass('npisas-load-size').text('(loading...)');
+    }
 }
 
 function PopupMediaArtworkImage(event) {
@@ -4414,7 +4463,7 @@ function LoadPreviewImages(event) {
         let {small, original} = $img_container.data();
         if (i < load_images && !image.src) {
             $(image).attr('src', small);
-            InitializeInfoSize($img_container, original);
+            InitializeInfoSize($img_container.find('.npisas-image-size'), original);
         }
     });
     if (load_images >= $images.length) {
