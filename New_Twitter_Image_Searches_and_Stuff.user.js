@@ -7172,7 +7172,7 @@ JSPLib.default_data = PROGRAM_DEFAULT_VALUES;
 JSPLib.reset_data = PROGRAM_RESET_KEYS;
 JSPLib.settings_config = SETTINGS_CONFIG;
 
-Debug.mode = true;
+Debug.mode = false;
 Debug.level = Debug.INFO;
 
 Menu.settings_callback = RemoteSettingsCallback;
