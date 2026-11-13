@@ -1948,7 +1948,10 @@ ${TWITTER_HOST}
 /
 (?<account>${TWITTER_ACCOUNT})
 /media
-${QUERY_END}
+(?:\?filter=
+(?<filter>photo)
+|
+$)
 `;
 
 const LIKES_PAGE_REGEX = Template.verboseRegex('i')`
@@ -6495,6 +6498,10 @@ function RegularCheck() {
     let pagetype = GetPageType(window.location.href);
     if (pagetype === "other") {
         return;
+    }
+
+    if (pagetype === 'media' && NTISAS.page_match.groups.filter === undefined) {
+        pagetype = 'main'; //'video'
     }
 
     //Process events on a page change
