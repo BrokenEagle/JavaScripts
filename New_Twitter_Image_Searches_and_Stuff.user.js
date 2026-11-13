@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      12.3
+// @version      12.4
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -711,6 +711,8 @@ const PROGRAM_CSS = Template.normalizeCSS()`
     display: flex;
     flex-wrap: wrap;
     margin: 15px;
+    max-height: 500px;
+    overflow-y: auto;
 }
 .ntisas-media-menu .ntisas-media-images .ntisas-media-image,
 .ntisas-media-menu .ntisas-media-images .ntisas-media-video {
@@ -3886,8 +3888,8 @@ function RenderSearchDialog(tweet_id, image_urls) {
     return `
 <div class="ntisas-search-dialog ntisas-confirm-image ntisas-selectable-results ntisas-dialog-container" data-tweet-id="${tweet_id}">
     <p><small>Selected images (blue border) will be used for the query. Click <b>Submit</b> to finish, or <b>Close</b> to exit.</small></p>
-    <div style="position: relative;">
-        ${html}
+    <div style="position: relative; display: flex; max-width: 1000px; max-height: 500px;">
+        <div>${html}</div>
         ${SELECTION_CONTROLS}
     </div>
 </div>`;
@@ -4314,13 +4316,15 @@ function InitializeSearchDialog(tweet_id, image_urls) {
         $('article', $dialog[0]).each((_, article) => {
             InitializeTwitterImage(article, image_urls, POST_PREVIEW_DIMENSION);
         });
+        let base_width = image_urls.length > 1 ? 180 : 120;
+        let render_width = Math.min(((image_urls.length + 1) * BASE_PREVIEW_WIDTH) + base_width, 1000);
         let dialog_settings = Object.assign({}, GENERAL_DIALOG_SETTINGS, {
             title: "Search Menu",
             buttons: {
                 Submit: SearchSubmit,
                 Close: CloseDialog,
             },
-            width: Math.max(BASE_DIALOG_WIDTH + BASE_PREVIEW_WIDTH * image_urls.length + 50, 350),
+            width: render_width,
         });
         $dialog.dialog(dialog_settings);
         NTISAS.search_dialog[tweet_id] = $dialog;
