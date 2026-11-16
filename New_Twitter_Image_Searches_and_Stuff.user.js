@@ -2064,6 +2064,13 @@ settings/display
 ${QUERY_END}
 `;
 
+const HISTORY_PAGE_REGEX = Template.verboseRegex('i')`
+${TWITTER_HOST}
+/
+i/history
+${QUERY_END}
+`;
+
 const PAGE_REGEXES = {
     main: MAIN_PAGE_REGEX,
     media: MEDIA_PAGE_REGEX,
@@ -2080,6 +2087,7 @@ const PAGE_REGEXES = {
     events: EVENTS_PAGE_REGEX,
     topics: TOPICS_PAGE_REGEX,
     display: DISPLAY_PAGE_REGEX,
+    history: HISTORY_PAGE_REGEX
 };
 
 //Network constants
@@ -2329,7 +2337,7 @@ const TWITTER_COLORS = {
     },
 };
 
-const STREAMING_PAGES = ['home', 'main', 'likes', 'replies', 'quotes', 'media', 'list', 'search', 'hashtag', 'events', 'topics'];
+const STREAMING_PAGES = ['home', 'main', 'likes', 'replies', 'quotes', 'media', 'list', 'search', 'hashtag', 'events', 'topics', 'history'];
 const SHOWN_MENU_PAGES = Utility.concat(STREAMING_PAGES, ['tweet', 'web_tweet']);
 
 const GOLD_LEVEL = 30;
@@ -3346,6 +3354,7 @@ function PageNavigation(pagetype) {
         case 'display':
             printer.log("Twitter display settings");
             return;
+        case 'history':
         default:
             //Do nothing
     }
