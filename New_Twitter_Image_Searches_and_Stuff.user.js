@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      12.4
+// @version      12.5
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -2068,6 +2068,9 @@ const HISTORY_PAGE_REGEX = Template.verboseRegex('i')`
 ${TWITTER_HOST}
 /
 i/history
+(?:/
+(?<likes>likes)
+)?
 ${QUERY_END}
 `;
 
