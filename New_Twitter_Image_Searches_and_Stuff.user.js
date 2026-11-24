@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Twitter Image Searches and Stuff
 // @namespace    https://github.com/BrokenEagle/JavaScripts
-// @version      12.5
+// @version      12.6
 // @description  Searches Danbooru database for tweet IDs, adds image search links.
 // @source       https://danbooru.donmai.us/users/23799
 // @author       BrokenEagle
@@ -1970,6 +1970,14 @@ ${TWITTER_HOST}
 ${QUERY_END}
 `;
 
+const REPOSTS_PAGE_REGEX = Template.verboseRegex('i')`
+${TWITTER_HOST}
+/
+(?<account>${TWITTER_ACCOUNT})
+/reposts
+${QUERY_END}
+`;
+
 const SEARCH_PAGE_REGEX = Template.verboseRegex('i')`
 ${TWITTER_HOST}
 /
@@ -2079,6 +2087,7 @@ const PAGE_REGEXES = {
     media: MEDIA_PAGE_REGEX,
     likes: LIKES_PAGE_REGEX,
     replies: REPLIES_PAGE_REGEX,
+    reposts: REPOSTS_PAGE_REGEX,
     search: SEARCH_PAGE_REGEX,
     quotes: QUOTES_PAGE_REGEX,
     tweet: TWEET_PAGE_REGEX,
@@ -2340,7 +2349,7 @@ const TWITTER_COLORS = {
     },
 };
 
-const STREAMING_PAGES = ['home', 'main', 'likes', 'replies', 'quotes', 'media', 'list', 'search', 'hashtag', 'events', 'topics', 'history'];
+const STREAMING_PAGES = ['home', 'main', 'likes', 'replies', 'reposts', 'quotes', 'media', 'list', 'search', 'hashtag', 'events', 'topics', 'history'];
 const SHOWN_MENU_PAGES = Utility.concat(STREAMING_PAGES, ['tweet', 'web_tweet']);
 
 const GOLD_LEVEL = 30;
@@ -3316,6 +3325,7 @@ function PageNavigation(pagetype) {
         case 'media':
         case 'likes':
         case 'replies':
+        case 'reposts':
             printer.log(`User timeline [${NTISAS.page}]:`, account);
             NTISAS.account = account;
             UpdateUserIDCallback();
@@ -3407,7 +3417,7 @@ function PageNavigation(pagetype) {
             $('#ntisas-tweet-stats-table').show();
             $('#ntisas-tweet-stats-message').hide();
         }
-        if (IsPageType(['main', 'media', 'likes', 'replies'])) {
+        if (IsPageType(['main', 'media', 'likes', 'replies', 'reposts'])) {
             if (NTISAS.display_user_id || NTISAS.display_profile_views) {
                 InitializeProfileTimeline();
             }
@@ -6309,7 +6319,7 @@ function MarkupStreamTweet(tweet) {
         $(tweet).attr('ntisas-tweet', 'stream');
         $(tweet).attr('data-tweet-id', tweet_id);
         $(tweet).attr('data-screen-name', screen_name);
-        if (IsPageType(['main', 'likes', 'replies']) && screen_name === NTISAS.account) {
+        if (IsPageType(['main', 'likes', 'replies', 'reposts']) && screen_name === NTISAS.account) {
             $(tweet).addClass('ntisas-self-tweet');
         }
         //Not marking this with a a class since Twitter alters it
@@ -6900,7 +6910,7 @@ function InitializeChangedSettings() {
     });
     let called_profile_callback = false;
     if (Menu.hasSettingChanged('display_user_id')) {
-        if (NTISAS.display_user_id && IsPageType(['main', 'media', 'likes', 'replies'])) {
+        if (NTISAS.display_user_id && IsPageType(['main', 'media', 'likes', 'replies', 'reposts'])) {
             UpdateProfileCallback();
             called_profile_callback = true;
         } else if (!NTISAS.display_user_id) {
@@ -6910,7 +6920,7 @@ function InitializeChangedSettings() {
     if (Menu.hasSettingChanged('auto_unhide_tweets_enabled') && NTISAS.auto_unhide_tweets_enabled) {
         UnhideTweets();
     }
-    if (Menu.hasSettingChanged('display_profile_views') && IsPageType(['main', 'media', 'likes', 'replies'])) {
+    if (Menu.hasSettingChanged('display_profile_views') && IsPageType(['main', 'media', 'likes', 'replies', 'reposts'])) {
         if (NTISAS.display_profile_views && !called_profile_callback) {
             UpdateProfileCallback();
         } else {
@@ -6918,7 +6928,7 @@ function InitializeChangedSettings() {
             $('.ntisas-profile-stream-view').html("");
         }
     }
-    if (Menu.hasSettingChanged('self_tweet_highlights') && IsPageType(['main', 'likes', 'replies'])) {
+    if (Menu.hasSettingChanged('self_tweet_highlights') && IsPageType(['main', 'likes', 'replies', 'reposts'])) {
         if (NTISAS.self_tweet_highlights) {
             $('[role=main]').addClass('ntisas-self-tweet-highlights');
         } else {
